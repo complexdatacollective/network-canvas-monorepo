@@ -1,17 +1,19 @@
 import getErrors from "@/db/getErrors";
-import getEvents from "@/db/getEvents";
+import TotalAppsCard from "@/components/dashboard/TotalAppsCard";
+import TotalProtocolsInstalledCard from "@/components/dashboard/TotalProtocolsInstalledCard";
 
-export default async function Home() {
+export default async function DashboardPage() {
   const errors = await getErrors();
-  const events = await getEvents();
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-24">
-      <h1>Fresco Error & Analytics Reporting</h1>
-      <h2>Errors</h2>
-      <div>{JSON.stringify(errors)}</div>
-      <h2>Analytics Events</h2>
-      <div>{JSON.stringify(events)}</div>
+    <main>
+      <div className="p-12">
+        <h2 className="text-3xl font-bold">Dashboard</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <TotalAppsCard />
+          <TotalProtocolsInstalledCard />
+        </div>
+      </div>
     </main>
   );
 }
