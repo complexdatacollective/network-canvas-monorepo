@@ -10,6 +10,8 @@
     "seed": "node -r dotenv/config ./db/seed.js"
   },
   "dependencies": {
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@tanstack/react-table": "^8.10.7",
     "@vercel/kv": "^0.2.4",
     "@vercel/postgres": "^0.5.1",
     "class-variance-authority": "^0.7.0",
