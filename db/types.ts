@@ -7,3 +7,9 @@ export type Error = {
   installationid: string;
   path: string;
 };
+
+export type Event = {
+  event: string;
+  timestamp: string;
+  installationid: string;
+};
