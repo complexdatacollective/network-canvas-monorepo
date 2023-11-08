@@ -1,3 +1,5 @@
+"use client";
+import { DataTableColumnHeader } from "@/components/DataTable/column-header";
 import { ColumnDef } from "@tanstack/react-table";
 
 export type Error = {
@@ -11,27 +13,39 @@ export type Error = {
 
 export const columns: ColumnDef<Error>[] = [
   {
-    header: "Code",
     accessorKey: "code",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Code" />
+    ),
   },
   {
-    header: "Message",
     accessorKey: "message",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Message" />
+    ),
   },
   {
-    header: "Details",
     accessorKey: "details",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Details" />
+    ),
   },
   {
-    header: "Stack Trace",
     accessorKey: "stacktrace",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Stack Trace" />
+    ),
   },
   {
-    header: "Installation ID",
     accessorKey: "installationid",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Installation Id" />
+    ),
   },
   {
-    header: "Path",
     accessorKey: "path",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Path" />
+    ),
   },
 ];
