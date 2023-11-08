@@ -2,7 +2,7 @@
 import { DataTableColumnHeader } from "@/components/DataTable/column-header";
 import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
-import { Error } from "@/db/types";
+import type { Error } from "@/db/types";
 import { StackTraceDialog } from "@/app/_components/errors/ErrorsTable/StackTraceDialog";
 export const columns: ColumnDef<Error>[] = [
   {
@@ -44,7 +44,7 @@ export const columns: ColumnDef<Error>[] = [
     cell: ({ row }) => {
       return (
         <div className="min-w-max">
-          <StackTraceDialog stacktrace={row.original.stacktrace} />
+          <StackTraceDialog error={row.original} />
         </div>
       );
     },
