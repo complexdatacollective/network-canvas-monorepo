@@ -1,22 +1,18 @@
 "use client";
 import { DataTableColumnHeader } from "@/components/DataTable/column-header";
+import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
-
-export type Error = {
-  code: number;
-  message: string;
-  details: string;
-  stacktrace: string;
-  installationid: string;
-  path: string;
-};
-
+import { Error } from "@/db/types";
+import { StackTraceDialog } from "@/app/_components/errors/ErrorsTable/StackTraceDialog";
 export const columns: ColumnDef<Error>[] = [
   {
     accessorKey: "code",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Code" />
     ),
+    cell: ({ row }) => {
+      return <Badge variant="secondary">{row.original.code}</Badge>;
+    },
   },
   {
     accessorKey: "message",
@@ -31,9 +27,9 @@ export const columns: ColumnDef<Error>[] = [
     ),
   },
   {
-    accessorKey: "stacktrace",
+    accessorKey: "path",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Stack Trace" />
+      <DataTableColumnHeader column={column} title="Path" />
     ),
   },
   {
@@ -43,9 +39,14 @@ export const columns: ColumnDef<Error>[] = [
     ),
   },
   {
-    accessorKey: "path",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Path" />
-    ),
+    accessorKey: "stacktrace",
+    header: "",
+    cell: ({ row }) => {
+      return (
+        <div className="min-w-max">
+          <StackTraceDialog stacktrace={row.original.stacktrace} />
+        </div>
+      );
+    },
   },
 ];
