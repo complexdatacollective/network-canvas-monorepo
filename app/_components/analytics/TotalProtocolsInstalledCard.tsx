@@ -1,5 +1,5 @@
 import { getTotalProtocolsInstalled } from "@/utils/getTotalProtocolsInstalled";
-import { SummaryCard } from "./SummaryCard";
+import { SummaryCard } from "@/components/SummaryCard";
 
 const TotalProtocolsInstalledCard = async () => {
   const totalProtocolsInstalled = await getTotalProtocolsInstalled();

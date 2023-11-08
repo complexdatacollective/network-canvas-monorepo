@@ -1,5 +1,5 @@
 import { getTotalAppsSetup } from "@/utils/getTotalAppsSetup";
-import { SummaryCard } from "./SummaryCard";
+import { SummaryCard } from "@/components/SummaryCard";
 
 const TotalAppsCard = async () => {
   const totalAppsSetup = await getTotalAppsSetup();
