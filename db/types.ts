@@ -3,6 +3,7 @@ export type Error = {
   message: string;
   details: string;
   stacktrace: string;
+  timestamp: string;
   installationid: string;
   path: string;
 };
