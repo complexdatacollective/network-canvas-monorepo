@@ -5,7 +5,7 @@ const TotalAppsCard = async () => {
   const totalAppsSetup = await getTotalAppsSetup();
   return (
     <SummaryCard
-      title="Total Apps Setup"
+      title="Apps Setup"
       value={totalAppsSetup}
       description="Total apps setup across all instances of Fresco"
     />

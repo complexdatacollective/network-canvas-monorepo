@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 type SummaryCardProps = {
   title: string;
   value: number;
-  description: string;
+  description?: string;
 };
 
 export const SummaryCard = ({
@@ -18,7 +18,9 @@ export const SummaryCard = ({
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
       </CardContent>
     </Card>
   );

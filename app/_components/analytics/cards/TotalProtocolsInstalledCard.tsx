@@ -5,7 +5,7 @@ const TotalProtocolsInstalledCard = async () => {
   const totalProtocolsInstalled = await getTotalProtocolsInstalled();
   return (
     <SummaryCard
-      title="Total Protocols Installed"
+      title="Protocols Installed"
       value={totalProtocolsInstalled}
       description="Total protocols installed across all instances of Fresco"
     />
