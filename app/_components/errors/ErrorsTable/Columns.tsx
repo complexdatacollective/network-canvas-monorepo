@@ -39,6 +39,12 @@ export const columns: ColumnDef<Error>[] = [
     ),
   },
   {
+    accessorKey: "timestamp",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Timestamp" />
+    ),
+  },
+  {
     accessorKey: "stacktrace",
     header: "",
     cell: ({ row }) => {
