@@ -4,5 +4,5 @@ import { columns } from "./Columns";
 
 export default async function ErrorsTable() {
   const errors = await getErrors();
-  return <DataTable columns={columns} data={errors} />;
+  return <DataTable columns={columns} data={errors} pagination={true} />;
 }

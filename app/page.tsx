@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AnalyticsView from "@/app/_components/analytics/AnalyticsView";
 import ErrorsView from "@/app/_components/errors/ErrorsView";
 import { UserButton } from "@clerk/nextjs";
+import UserManagementDialog from "./_components/UserManagementDialog";
 
 export default function DashboardPage() {
   return (
@@ -9,7 +10,10 @@ export default function DashboardPage() {
       <div className="p-12 space-y-4">
         <div className="flex flex-row justify-between">
           <h2 className="text-3xl font-bold flex flex-row">Dashboard</h2>
-          <UserButton afterSignOutUrl="/" />
+          <div className="flex flex-row">
+            <UserManagementDialog />
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
 
         <Tabs defaultValue="analytics" className="space-y-4">
