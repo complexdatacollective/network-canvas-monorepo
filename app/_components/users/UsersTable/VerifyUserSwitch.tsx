@@ -19,9 +19,5 @@ export default function VerifyUserSwitch({
     });
   };
 
-  return (
-    <Switch checked={verified} onCheckedChange={handleToggle}>
-      Verify
-    </Switch>
-  );
+  return <Switch checked={verified} onCheckedChange={handleToggle} />;
 }
