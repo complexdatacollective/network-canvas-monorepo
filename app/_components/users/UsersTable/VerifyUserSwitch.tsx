@@ -1,4 +1,4 @@
-import { updateUserVerification, getVerificationStatus } from "@/app/actions";
+import { updateUserVerification } from "@/app/actions";
 import { Switch } from "@/components/ui/switch";
 import { useOptimistic } from "react";
 
@@ -13,7 +13,6 @@ export default function VerifyUserSwitch({
 }: VerifyUserSwitchProps) {
   const handleToggle = async () => {
     await updateUserVerification(id, !verified);
-    getVerificationStatus(id);
   };
 
   return (

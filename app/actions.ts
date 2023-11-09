@@ -9,11 +9,6 @@ export async function updateUserVerification(id: string, verified: boolean) {
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
-}
-
-export async function getVerificationStatus(id: string) {
-  const user = await clerkClient.users.getUser(id);
-  console.log(user);
 }
