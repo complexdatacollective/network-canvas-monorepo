@@ -7,25 +7,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users } from "lucide-react";
-import UsersTable from "./UsersTable/UsersTable";
+import { Users as UsersIcon } from "lucide-react";
+import VerifiedUsersTable from "./UsersTable/UsersTable";
 
 export default function UserManagementDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="mr-4">
-          <Users />
+          <UsersIcon />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Verified Users</DialogTitle>
+          <DialogTitle>User Management</DialogTitle>
         </DialogHeader>
-        <DialogDescription>View and manage verified users.</DialogDescription>
-        <div className="max-w-md">
-          <UsersTable />
-        </div>
+        <DialogDescription>View and manage verified users</DialogDescription>
+        <VerifiedUsersTable />
       </DialogContent>
     </Dialog>
   );
