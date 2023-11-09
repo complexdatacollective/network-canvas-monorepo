@@ -12,13 +12,12 @@ export default function VerifyUserSwitch({
   verified,
 }: VerifyUserSwitchProps) {
   const handleToggle = async () => {
-    await updateUserVerification(id, !verified).then(() => {
-      getVerificationStatus(id);
-    });
+    await updateUserVerification(id, !verified);
+    getVerificationStatus(id);
   };
 
   return (
-    <Switch checked={verified} onCheckedChange={() => void handleToggle()}>
+    <Switch checked={verified} onCheckedChange={handleToggle}>
       Verify
     </Switch>
   );
