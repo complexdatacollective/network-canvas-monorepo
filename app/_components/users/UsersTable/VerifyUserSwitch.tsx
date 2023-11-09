@@ -1,6 +1,4 @@
-import { updateUserVerification } from "@/app/actions";
 import { Switch } from "@/components/ui/switch";
-import { useOptimistic } from "react";
 
 type VerifyUserSwitchProps = {
   id: string;
@@ -12,7 +10,13 @@ export default function VerifyUserSwitch({
   verified,
 }: VerifyUserSwitchProps) {
   const handleToggle = async () => {
-    await updateUserVerification(id, !verified);
+    await fetch("/api/clerk", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId: id, verified: !verified }),
+    });
   };
 
   return (
