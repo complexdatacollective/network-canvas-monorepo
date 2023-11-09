@@ -5,7 +5,6 @@ import type { User } from "@clerk/nextjs/api";
 
 export default async function VerifiedUsersTable() {
   const clerkUsers = await clerkClient.users.getUserList();
-  console.log(clerkUsers);
 
   const users = clerkUsers.map((user: User) => {
     return {
