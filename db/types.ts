@@ -10,6 +10,7 @@ export type Error = {
 
 export type Event = {
   event: string;
+  metadata: string;
   timestamp: string;
   installationid: string;
 };

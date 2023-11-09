@@ -19,6 +19,7 @@ async function seedEvents() {
     await sql`
     CREATE TABLE IF NOT EXISTS Events (
       event varchar,
+      metadata json,
       timestamp timestamp,
       installationId varchar
     );
@@ -27,10 +28,14 @@ async function seedEvents() {
       const event = faker.helpers.arrayElement(eventTypes);
       const installationId = faker.helpers.arrayElement(installationIds);
       const timestamp = faker.date.recent();
+      const metadata = {
+        [faker.lorem.word()]: faker.lorem.sentence(),
+        [faker.lorem.word()]: faker.lorem.sentence(),
+      };
 
       await sql`
-          INSERT INTO Events (event, timestamp, installationId)
-          VALUES (${event}, ${timestamp}, ${installationId});
+          INSERT INTO Events (event, metadata, timestamp, installationId)
+          VALUES (${event}, ${metadata}, ${timestamp}, ${installationId});
         `;
     }
   } catch (error) {

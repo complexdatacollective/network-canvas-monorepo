@@ -2,6 +2,7 @@
 import { DataTableColumnHeader } from "@/components/DataTable/column-header";
 import { ColumnDef } from "@tanstack/react-table";
 import type { Event } from "@/db/types";
+import { MetadataDialog } from "./MetadataDialog";
 export const columns: ColumnDef<Event>[] = [
   {
     accessorKey: "event",
@@ -20,5 +21,16 @@ export const columns: ColumnDef<Event>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Installation Id" />
     ),
+  },
+  {
+    accessorKey: "stacktrace",
+    header: "",
+    cell: ({ row }) => {
+      return (
+        <div className="min-w-max">
+          <MetadataDialog event={row.original} />
+        </div>
+      );
+    },
   },
 ];

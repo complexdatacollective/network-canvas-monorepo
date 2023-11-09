@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   const timestamp = new Date().toISOString();
 
   try {
-    await sql`INSERT INTO Events (event, installationId) VALUES ( ${event}, ${timestamp}, ${installationId});`;
+    await sql`INSERT INTO Events (event, metadata, timestamp, installationId) VALUES ( ${event.name}, ${event.metadata}, ${timestamp}, ${installationId});`;
   } catch (error) {
     return NextResponse.json({ error }, { status: 500 });
   }
