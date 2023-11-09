@@ -1,6 +1,14 @@
-import { UserButton } from "@clerk/nextjs";
+"use client";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 export default function Verification() {
+  const { user } = useUser();
+  const isVerified = user?.publicMetadata?.verified;
+  if (isVerified) {
+    redirect("/");
+  }
+
   return (
     <main className="flex justify-between p-12">
       <div>
