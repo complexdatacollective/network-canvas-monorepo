@@ -12,7 +12,6 @@ import {
 
 interface DialogButtonProps {
   buttonLabel: string;
-  children: ReactNode;
   title: string;
   description: string;
   content: ReactNode;
@@ -20,7 +19,6 @@ interface DialogButtonProps {
 
 export function DialogButton({
   buttonLabel,
-  children,
   title,
   description,
   content,

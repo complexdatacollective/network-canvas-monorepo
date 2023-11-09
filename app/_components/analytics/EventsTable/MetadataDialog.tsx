@@ -8,8 +8,6 @@ export function MetadataDialog({ event }: { event: Event }) {
       title="Event Details"
       description={event.event}
       content={JSON.stringify(event.metadata)}
-    >
-      {JSON.stringify(event.metadata)}
-    </DialogButton>
+    />
   );
 }
