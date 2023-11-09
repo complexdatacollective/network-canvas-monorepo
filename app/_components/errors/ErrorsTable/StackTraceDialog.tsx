@@ -8,8 +8,6 @@ export function StackTraceDialog({ error }: { error: Error }) {
       title="Stack Trace"
       description={error.message}
       content={error.stacktrace}
-    >
-      {error.stacktrace}
-    </DialogButton>
+    />
   );
 }
