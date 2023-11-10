@@ -4,7 +4,7 @@ export const getTotalInterviewsStarted = async () => {
   const events = await getEvents();
 
   const nInterviewsStarted = events.reduce((count, event) => {
-    if (event.event === "InterviewStarted") {
+    if (event.type === "InterviewStarted") {
       return count + 1;
     }
     return count;

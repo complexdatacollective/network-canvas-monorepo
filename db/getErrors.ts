@@ -1,5 +1,5 @@
 import { sql } from "@vercel/postgres";
-import type { Error } from "@/db/types";
+import type { ErrorPayload as Error } from "@/@codaco/analytics";
 
 export default async function getErrors() {
   const errors = await sql`SELECT * FROM Errors ;`;

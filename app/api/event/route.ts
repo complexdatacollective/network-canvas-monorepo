@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
+import type { EventPayload } from "@/@codaco/analytics";
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
 
-  const { event, installationId } = data;
-  const timestamp = new Date().toISOString();
+  const event: EventPayload = data;
+  const timestamp = event.timestamp || new Date().toISOString();
 
   try {
-    await sql`INSERT INTO Events (event, metadata, timestamp, installationId) VALUES ( ${event.name}, ${event.metadata}, ${timestamp}, ${installationId});`;
+    await sql`INSERT INTO Events (event, metadata, timestamp, installationid) VALUES ( ${event.type}, ${event.metadata}, ${timestamp}, ${event.installationid});`;
   } catch (error) {
     return NextResponse.json({ error }, { status: 500 });
   }
