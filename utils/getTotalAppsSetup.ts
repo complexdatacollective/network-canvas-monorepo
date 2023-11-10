@@ -4,7 +4,7 @@ export const getTotalAppsSetup = async () => {
   const events = await getEvents();
 
   const nAppsSetup = events.reduce((count, event) => {
-    if (event.event === "AppSetup") {
+    if (event.type === "AppSetup") {
       return count + 1;
     }
     return count;

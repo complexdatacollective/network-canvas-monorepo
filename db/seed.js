@@ -1,9 +1,9 @@
 const { sql } = require("@vercel/postgres");
 const { faker } = require("@faker-js/faker");
 
-let installationIds = [];
+let installationids = [];
 for (let i = 0; i < 20; i++) {
-  installationIds.push(faker.string.uuid());
+  installationids.push(faker.string.uuid());
 }
 
 async function seedEvents() {
@@ -18,15 +18,15 @@ async function seedEvents() {
   try {
     await sql`
     CREATE TABLE IF NOT EXISTS Events (
-      event varchar,
-      metadata json,
+      type varchar,
+      metadata varchar,
       timestamp timestamp,
-      installationId varchar
+      installationid varchar
     );
   `;
     for (let i = 0; i < 100; i++) {
-      const event = faker.helpers.arrayElement(eventTypes);
-      const installationId = faker.helpers.arrayElement(installationIds);
+      const type = faker.helpers.arrayElement(eventTypes);
+      const installationid = faker.helpers.arrayElement(installationids);
       const timestamp = faker.date.recent();
       const metadata = {
         [faker.lorem.word()]: faker.lorem.sentence(),
@@ -34,8 +34,8 @@ async function seedEvents() {
       };
 
       await sql`
-          INSERT INTO Events (event, metadata, timestamp, installationId)
-          VALUES (${event}, ${metadata}, ${timestamp}, ${installationId});
+          INSERT INTO Events (type, metadata, timestamp, installationid)
+          VALUES (${type}, ${metadata}, ${timestamp}, ${installationid});
         `;
     }
   } catch (error) {
@@ -59,9 +59,9 @@ async function seedErrors() {
       code integer,
       message varchar,
       details varchar,
-      stackTrace varchar,
+      stacktrace varchar,
       timestamp timestamp,
-      installationId varchar,
+      installationid varchar,
       path varchar
     );
   `;
@@ -69,14 +69,14 @@ async function seedErrors() {
       const code = faker.internet.httpStatusCode();
       const message = faker.helpers.arrayElement(messages);
       const details = faker.lorem.paragraph();
-      const stackTrace = faker.lorem.lines();
-      const installationId = faker.helpers.arrayElement(installationIds);
+      const stacktrace = faker.lorem.lines();
+      const installationid = faker.helpers.arrayElement(installationids);
       const path = faker.system.directoryPath();
       const timestamp = faker.date.recent();
 
       await sql`
-            INSERT INTO Errors (code, message, details, stackTrace, timestamp, installationId, path)
-            VALUES (${code}, ${message}, ${details}, ${stackTrace}, ${timestamp}, ${installationId}, ${path});
+            INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path)
+            VALUES (${code}, ${message}, ${details}, ${stacktrace}, ${timestamp}, ${installationid}, ${path});
             `;
     }
   } catch (error) {

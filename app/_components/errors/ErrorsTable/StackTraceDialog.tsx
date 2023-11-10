@@ -1,7 +1,8 @@
 import { DialogButton } from "@/components/DialogButton";
-import type { Error } from "@/db/types";
+import type { ErrorPayload as Error } from "@/@codaco/analytics/src";
 
 export function StackTraceDialog({ error }: { error: Error }) {
+  console.log(error);
   return (
     <DialogButton
       buttonLabel="Stack Trace"
