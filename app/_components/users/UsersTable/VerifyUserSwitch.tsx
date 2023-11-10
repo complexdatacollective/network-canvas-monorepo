@@ -14,7 +14,6 @@ export default function VerifyUserSwitch({
 
   const updateMetadata = async () => {
     try {
-      console.log("Updating database...");
       const response = await fetch("/api/clerk", {
         method: "POST",
         headers: {
@@ -24,9 +23,11 @@ export default function VerifyUserSwitch({
       });
 
       if (!response.ok) {
+        setLocalVerified(!localVerified);
         console.error("Database update failed.");
       }
     } catch (error) {
+      setLocalVerified;
       console.error("Error updating database:", error);
     }
   };
