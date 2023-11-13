@@ -1,5 +1,5 @@
 import { DialogButton } from "@/components/DialogButton";
-import type { EventPayload as Event } from "@/@codaco/analytics";
+import type { EventPayload as Event } from "@codaco/analytics";
 
 export function MetadataDialog({ event }: { event: Event }) {
   console.log(event);

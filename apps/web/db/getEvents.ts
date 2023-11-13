@@ -1,5 +1,5 @@
 import { sql } from "@vercel/postgres";
-import type { EventPayload as Event } from "@/@codaco/analytics";
+import type { EventPayload as Event } from "@codaco/analytics";
 
 export default async function getEvents() {
   const events = await sql`SELECT * FROM Events ;`;
