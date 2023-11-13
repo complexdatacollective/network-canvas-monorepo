@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
-import { ErrorPayload } from "@/@codaco/analytics";
+import { ErrorPayload } from "@codaco/analytics";
 
 export async function POST(request: NextRequest) {
   const data = await request.json();

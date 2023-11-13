@@ -1,7 +1,7 @@
 "use client";
 import { DataTableColumnHeader } from "@/components/DataTable/column-header";
 import { ColumnDef } from "@tanstack/react-table";
-import type { EventPayload as Event } from "@/@codaco/analytics";
+import type { EventPayload as Event } from "@codaco/analytics";
 import { MetadataDialog } from "./MetadataDialog";
 export const columns: ColumnDef<Event>[] = [
   {
