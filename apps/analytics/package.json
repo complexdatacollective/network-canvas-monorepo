@@ -1,0 +1,47 @@
+{
+  "name": "analytics",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "node -r dotenv/config ./db/seed.js"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^4.26.2",
+    "@codaco/analytics": "workspace:*",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-switch": "^1.0.3",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@tanstack/react-table": "^8.10.7",
+    "@vercel/kv": "^0.2.4",
+    "@vercel/postgres": "^0.5.1",
+    "autoprefixer": "^10.4.16",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "dotenv": "^16.3.1",
+    "lucide-react": "^0.292.0",
+    "next": "14.0.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss-animate": "^1.0.7",
+    "ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.2.0",
+    "@next/eslint-plugin-next": "^13.4.19",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint-config-custom": "workspace:*",
+    "tailwindcss": "^3.3.0",
+    "tsconfig": "workspace:*",
+    "typescript": "^5.2.2"
+  }
+}
