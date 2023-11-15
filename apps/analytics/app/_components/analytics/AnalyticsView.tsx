@@ -4,6 +4,7 @@ import TotalAppsCard from "./cards/TotalAppsCard";
 import TotalInterviewsCompletedCard from "./cards/TotalInterviewsCompletedCard";
 import TotalInterviewsStartedCard from "./cards/TotalInterviewsStartedCard";
 import TotalProtocolsInstalledCard from "./cards/TotalProtocolsInstalledCard";
+import RegionsTable from "./RegionsTable/RegionsTable";
 
 export default function AnalyticsView() {
   return (
@@ -19,9 +20,7 @@ export default function AnalyticsView() {
         <Card>
           <CardHeader>Regions</CardHeader>
           <CardContent>
-            <div className="h-64 bg-gray-100 rounded-md flex flex-col justify-center items-center">
-              <p className="text-gray-600">Visualization goes here</p>
-            </div>
+            <RegionsTable />
           </CardContent>
         </Card>
       </div>

@@ -6,7 +6,7 @@ export type EventPayload = {
     | "AppSetup";
   metadata?: string;
   timestamp?: string;
-  isoCode?: string;
+  isocode?: string;
   installationid: string;
 };
 
