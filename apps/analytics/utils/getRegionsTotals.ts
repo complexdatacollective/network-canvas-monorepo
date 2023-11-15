@@ -22,10 +22,10 @@ export default async function getRegionsTotals(): Promise<RegionTotal[]> {
 
   const regionsTotals: RegionTotal[] = [];
 
-  for (const isoCode in calculatedTotals) {
+  for (const isocode in calculatedTotals) {
     regionsTotals.push({
-      country: countries.getName(isoCode, "en"),
-      total: calculatedTotals[isoCode] || 0,
+      country: countries.getName(isocode, "en"),
+      total: calculatedTotals[isocode] || 0,
     });
   }
 
