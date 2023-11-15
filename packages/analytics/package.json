@@ -1,7 +1,10 @@
 {
   "name": "@codaco/analytics",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
     "lint": "eslint ."
   },
   "dependencies": {
