@@ -1,6 +1,11 @@
 {
   "name": "@codaco/analytics",
-  "main": "./src/index.ts",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "author": "Complex Data Collective <developers@coda.co>",
+  "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
     "lint": "eslint ."
   },
