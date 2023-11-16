@@ -8,7 +8,8 @@
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "dev": "npm run build -- --watch"
   },
   "dependencies": {
     "tsup": "^7.2.0",
