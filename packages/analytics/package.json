@@ -7,7 +7,9 @@
   "author": "Complex Data Collective <developers@coda.co>",
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
-    "lint": "eslint ."
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "lint": "eslint .",
+    "dev": "npm run build -- --watch"
   },
   "dependencies": {
     "tsup": "^7.2.0",
