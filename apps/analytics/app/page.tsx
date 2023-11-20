@@ -3,6 +3,7 @@ import AnalyticsView from "~/app/_components/analytics/AnalyticsView";
 import ErrorsView from "~/app/_components/errors/ErrorsView";
 import { UserButton } from "@clerk/nextjs";
 import UserManagementDialog from "./_components/users/UserManagementDialog";
+import { EventPayload, trackEvent } from "@codaco/analytics";
 
 export default function DashboardPage() {
   return (

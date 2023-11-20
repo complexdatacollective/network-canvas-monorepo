@@ -21,14 +21,15 @@ export type ErrorPayload = {
 };
 
 export async function trackEvent(event: EventPayload) {
-  const endpoint = "localhost:3000/api/event";
+  const endpoint = "http://localhost:3000/api/event";
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ event: event }),
+      body: JSON.stringify(event),
     });
 
     if (!response.ok) {
@@ -40,14 +41,14 @@ export async function trackEvent(event: EventPayload) {
 }
 
 export async function trackError(error: ErrorPayload) {
-  const endpoint = "localhost:3000/api/error";
+  const endpoint = "http://localhost:3000/api/error";
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ errorPayload: error }),
+      body: JSON.stringify(error),
     });
 
     if (!response.ok) {
