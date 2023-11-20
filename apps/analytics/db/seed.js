@@ -21,7 +21,8 @@ async function seedEvents() {
       type varchar,
       metadata varchar,
       timestamp timestamp,
-      installationid varchar
+      installationid varchar,
+      isocode varchar
     );
   `;
     for (let i = 0; i < 100; i++) {
@@ -34,8 +35,8 @@ async function seedEvents() {
       };
 
       await sql`
-          INSERT INTO Events (type, metadata, timestamp, installationid)
-          VALUES (${type}, ${metadata}, ${timestamp}, ${installationid});
+          INSERT INTO Events (type, metadata, timestamp, installationid, isocode)
+          VALUES (${type}, ${metadata}, ${timestamp}, ${installationid}, ${faker.location.countryCode()});
         `;
     }
   } catch (error) {

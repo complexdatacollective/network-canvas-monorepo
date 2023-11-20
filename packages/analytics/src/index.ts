@@ -4,8 +4,9 @@ export type EventPayload = {
     | "InterviewStarted"
     | "ProtocolInstalled"
     | "AppSetup";
-  metadata: string;
+  metadata?: string;
   timestamp?: string;
+  isocode?: string;
   installationid: string;
 };
 
@@ -38,7 +39,7 @@ export async function trackEvent(event: EventPayload) {
   }
 }
 
-export async function sendEvent(error: ErrorPayload) {
+export async function trackError(error: ErrorPayload) {
   const endpoint = "localhost:3000/api/error";
   try {
     const response = await fetch(endpoint, {
