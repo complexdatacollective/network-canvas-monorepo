@@ -37,17 +37,20 @@ const AnalyticsContext = createContext<AnalyticsContextType>({
   sendEvent: () => {},
   sendError: () => {},
 });
+
 export const AnalyticsProvider = ({
   children,
   id,
   enabled,
-  endpoint,
+  endpoint = "",
 }: {
   id?: string; // todo: pass id to endpoint with the rest of the payload
   enabled: boolean;
-  endpoint: string; // todo: make optional and provide default
+  endpoint?: string;
   children: React.ReactNode;
 }) => {
+  const defaultEndpoint = "https://localhost:3000/api";
+
   const [eventQueue, setEventQueue] = useState<EventPayload[]>([]);
   const [errorQueue, setErrorQueue] = useState<ErrorPayload[]>([]);
 
@@ -65,7 +68,7 @@ export const AnalyticsProvider = ({
         const event = eventQueue[0];
         // Send event to the analytics service
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetch(endpoint || `${defaultEndpoint}/event`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -98,7 +101,7 @@ export const AnalyticsProvider = ({
         const error = errorQueue[0];
         // Send error to the analytics service
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetch(endpoint || `${defaultEndpoint}/error`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
