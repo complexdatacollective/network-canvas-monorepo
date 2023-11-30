@@ -9,7 +9,11 @@ export async function POST(request: NextRequest) {
   const timestamp = event.timestamp || new Date().toISOString();
 
   try {
-    await sql`INSERT INTO Events (type, metadata, timestamp, installationid, isocode) VALUES ( ${event.type}, ${event.metadata}, ${timestamp}, ${event.installationid}, ${event.isocode});`;
+    await sql`INSERT INTO Events (type, metadata, timestamp, installationid, isocode) VALUES (${
+      event.type
+    }, ${event.metadata || ""}, ${timestamp}, ${event.installationid}, ${
+      event.isocode || ""
+    });`;
   } catch (error) {
     return NextResponse.json({ error }, { status: 500 });
   }
