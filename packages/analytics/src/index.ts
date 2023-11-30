@@ -22,6 +22,12 @@ export type ErrorPayload = {
   path: string;
 };
 
+type AnalyticsEvent = {
+  type: "event" | "error";
+  label: string;
+  payload: Record<string, unknown> | Error;
+};
+
 type AnalyticsClientConfiguration = {
   installationId: string;
   platformUrl?: string;
@@ -47,6 +53,36 @@ export class AnalyticsClient {
 
     this.eventQueue = queue(this.processEvent, 1);
     this.errorQueue = queue(this.processError, 1);
+  }
+
+  private cleanEventPayload(payload: AnalyticsEvent): EventPayload {
+    const cleanedPayload: EventPayload = {
+      type: payload.label,
+      metadata: JSON.stringify(payload.payload),
+      installationid: this.installationId,
+    };
+    return cleanedPayload;
+  }
+
+  private cleanErrorPayload(payload: AnalyticsEvent): ErrorPayload {
+    function extractPathFromStackTrace(
+      stackTrace: string | undefined
+    ): string | undefined {
+      const pathRegex = /\bapp\/(.+):\d+:\d+\)/;
+      const match = stackTrace?.match(pathRegex);
+
+      return match ? match[1] : "";
+    }
+    const code = 404; // TODO: figure out how to get the error code
+    const cleanedPayload: ErrorPayload = {
+      code: code,
+      message: JSON.stringify(payload.payload.message) || "",
+      details: payload.label,
+      stacktrace: JSON.stringify(payload.payload.stack) || "",
+      installationid: this.installationId,
+      path: extractPathFromStackTrace(payload.payload.stack as string) || "",
+    };
+    return cleanedPayload;
   }
 
   private async processEvent(event: EventPayload) {
@@ -77,12 +113,14 @@ export class AnalyticsClient {
     });
   }
 
-  public trackEvent(payload: EventPayload) {
-    this.eventQueue.push(payload);
+  public trackEvent(payload: AnalyticsEvent) {
+    const cleanedPayload = this.cleanEventPayload(payload);
+    this.eventQueue.push(cleanedPayload);
   }
 
-  public trackError(error: ErrorPayload) {
-    this.errorQueue.push(error);
+  public trackError(payload: AnalyticsEvent) {
+    const cleanedPayload = this.cleanErrorPayload(payload);
+    this.errorQueue.push(cleanedPayload);
   }
 
   public enable() {
