@@ -3,6 +3,8 @@ import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { ShieldAlert, BarChartBig, X, Menu } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
+import AnalyticsView from "./_components/analytics/AnalyticsView";
+import ErrorsView from "./_components/errors/ErrorsView";
 const navigation = [
   { name: "Analytics", href: "#", icon: BarChartBig, current: true },
   { name: "Errors", href: "#", icon: ShieldAlert, current: false },
@@ -12,7 +14,7 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Example() {
+export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedNavItem, setSelectedNavItem] = useState(navigation[0]);
 
@@ -166,12 +168,8 @@ export default function Example() {
                 <UserButton afterSignOutUrl="/" />
               </div>
             </div>
-            {selectedNavItem?.name === "Analytics" && (
-              <p>This is the analytics content.</p>
-            )}
-            {selectedNavItem?.name === "Errors" && (
-              <p>This is the errors content.</p>
-            )}
+            {selectedNavItem?.name === "Analytics" && <AnalyticsView />}
+            {selectedNavItem?.name === "Errors" && <ErrorsView />}
           </div>
         </main>
       </div>
