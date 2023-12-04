@@ -12,7 +12,9 @@
     "dev": "npm run build -- --watch"
   },
   "dependencies": {
+    "@maxmind/geoip2-node": "^4.2.0",
     "async": "^3.2.5",
+    "next": "14.0.1",
     "tsup": "^7.2.0",
     "typescript": "latest"
   },

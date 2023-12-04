@@ -1,4 +1,6 @@
+import { WebServiceClient } from "@maxmind/geoip2-node";
 import { QueueObject, queue } from "async";
+import type { NextRequest } from "next/server";
 
 export type EventPayload = {
   type:
@@ -30,11 +32,15 @@ type AnalyticsEvent = {
 
 type AnalyticsClientConfiguration = {
   installationId: string;
+  maxmindAccountId: string;
+  maxmindLicenseKey: string;
   platformUrl?: string;
 };
 
 export class AnalyticsClient {
   private installationId: string;
+  private maxmindAccountId: string;
+  private maxmindLicenseKey: string;
   private eventQueue: QueueObject<EventPayload>;
   private errorQueue: QueueObject<ErrorPayload>;
   private enabled: boolean = true;
@@ -45,7 +51,13 @@ export class AnalyticsClient {
       throw new Error("Installation ID is required");
     }
 
+    if (!configuration.maxmindAccountId || !configuration.maxmindLicenseKey) {
+      throw new Error("Maxmind API key is required");
+    }
+
     this.installationId = configuration.installationId;
+    this.maxmindAccountId = configuration.maxmindAccountId;
+    this.maxmindLicenseKey = configuration.maxmindLicenseKey;
 
     if (configuration.platformUrl) {
       this.platformUrl = configuration.platformUrl;
@@ -53,6 +65,39 @@ export class AnalyticsClient {
 
     this.eventQueue = queue(this.processEvent, 1);
     this.errorQueue = queue(this.processError, 1);
+  }
+
+  public async routeHandler(req: NextRequest) {
+    const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
+      ","
+    )[0];
+    const client = new WebServiceClient(
+      this.maxmindAccountId,
+      this.maxmindLicenseKey,
+      {
+        host: "geolite.info",
+      }
+    );
+
+    try {
+      if (!ip) {
+        console.error("Could not get IP address");
+        return null;
+      }
+      const response = await client.country(ip);
+
+      if (!response || !response.country || !response.country.isoCode) {
+        // eslint-disable-next-line no-console
+        console.error("Could not get country code");
+        return null;
+      }
+
+      return response.country.isoCode;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Error getting country code");
+      return null;
+    }
   }
 
   private cleanEventPayload(payload: AnalyticsEvent): EventPayload {
@@ -90,10 +135,13 @@ export class AnalyticsClient {
       return;
     }
 
+    const geolocation = await fetch("api/analytics");
+
     await fetch(`${this.platformUrl}/api/event`, {
       method: "POST",
       body: JSON.stringify({
         ...event,
+        isocode: geolocation,
         installationId: this.installationId,
       }),
     });
