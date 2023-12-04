@@ -101,6 +101,19 @@ export class AnalyticsClient {
   }
 
   private cleanEventPayload(payload: AnalyticsEvent): EventPayload {
+    // temp workaround for Type 'string' is not assignable to type '"InterviewCompleted" | "InterviewStarted" | "ProtocolInstalled" | "AppSetup"'.
+    if (
+      payload.label !== "InterviewCompleted" &&
+      payload.label !== "InterviewStarted" &&
+      payload.label !== "ProtocolInstalled" &&
+      payload.label !== "AppSetup"
+    ) {
+      return {
+        type: "InterviewCompleted",
+        metadata: JSON.stringify(payload.payload),
+        installationid: this.installationId,
+      };
+    }
     const cleanedPayload: EventPayload = {
       type: payload.label,
       metadata: JSON.stringify(payload.payload),
