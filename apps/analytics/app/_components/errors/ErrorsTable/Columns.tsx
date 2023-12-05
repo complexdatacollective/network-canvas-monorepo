@@ -2,7 +2,7 @@
 import { DataTableColumnHeader } from "~/components/DataTable/column-header";
 import { Badge } from "~/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
-import type { ErrorPayload as Error } from "@codaco/analytics";
+import { Error } from "~/db/schema";
 import { StackTraceDialog } from "~/app/_components/errors/ErrorsTable/StackTraceDialog";
 export const columns: ColumnDef<Error>[] = [
   {
