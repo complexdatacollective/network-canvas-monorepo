@@ -13,6 +13,7 @@ export type AnalyticsEventBase = {
     | "ProtocolInstalled"
     | "AppSetup"
     | "Error";
+  timestamp?: string;
 };
 
 export type AnalyticsEvent = AnalyticsEventBase & {
