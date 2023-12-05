@@ -53,8 +53,9 @@ export class AnalyticsClient {
   private installationId: string | null = null;
   private maxmindAccountId: string;
   private maxmindLicenseKey: string;
+  private maxMindClient: WebServiceClient;
 
-  private dispatchQueue: QueueObject<AnalyticsError | AnalyticsEvent>;
+  private dispatchQueue: QueueObject<AnalyticsEventOrError>;
 
   private enabled: boolean = false;
 
@@ -65,6 +66,14 @@ export class AnalyticsClient {
 
     this.maxmindAccountId = configuration.maxmindAccountId;
     this.maxmindLicenseKey = configuration.maxmindLicenseKey;
+
+    this.maxMindClient = new WebServiceClient(
+      this.maxmindAccountId,
+      this.maxmindLicenseKey,
+      {
+        host: "geolite.info",
+      }
+    );
 
     if (configuration.platformUrl) {
       this.platformUrl = configuration.platformUrl;
@@ -84,16 +93,8 @@ export class AnalyticsClient {
       return null;
     }
 
-    const client = new WebServiceClient(
-      this.maxmindAccountId,
-      this.maxmindLicenseKey,
-      {
-        host: "geolite.info",
-      }
-    );
-
     try {
-      const response = await client.country(ip);
+      const response = await this.maxMindClient.country(ip);
 
       return response?.country?.isoCode ?? null;
     } catch (error) {
@@ -103,13 +104,13 @@ export class AnalyticsClient {
     }
   }
 
-  private async processEvent(event: AnalyticsEvent | AnalyticsError) {
+  private async processEvent(event: AnalyticsEventOrError) {
     // Todo: we need to think about client vs server geolocation. If we want
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
-    // Todo: use fetchWithZod
+    // Todo: use fetchWithZod?
     const response = await fetch("api/analytics/geolocate");
-    const countryCode = await response.json();
+    const countryCode: string | null = await response.json();
 
     const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
       ...event,
@@ -137,9 +138,6 @@ export class AnalyticsClient {
   }
 
   public trackEvent(payload: AnalyticsEvent | AnalyticsError) {
-    if (!this.enabled) {
-      return;
-    }
     this.dispatchQueue.push(payload);
   }
 
