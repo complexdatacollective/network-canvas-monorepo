@@ -2,76 +2,72 @@ import { WebServiceClient } from "@maxmind/geoip2-node";
 import { QueueObject, queue } from "async";
 import type { NextRequest } from "next/server";
 
-export type EventPayload = {
+type GeoLocation = {
+  countryCode: string;
+};
+
+export type AnalyticsEventBase = {
+  type:
+    | "InterviewCompleted"
+    | "InterviewStarted"
+    | "ProtocolInstalled"
+    | "AppSetup"
+    | "Error";
+};
+
+export type AnalyticsEvent = AnalyticsEventBase & {
   type:
     | "InterviewCompleted"
     | "InterviewStarted"
     | "ProtocolInstalled"
     | "AppSetup";
-  metadata?: string;
-  timestamp?: string;
-  isocode?: string;
-  installationid: string;
+  metadata?: Record<string, unknown>;
 };
 
-export type ErrorPayload = {
-  code: number;
-  message: string;
-  details: string;
-  stacktrace: string;
-  installationid: string;
-  timestamp?: string;
-  path: string;
+export type AnalyticsError = AnalyticsEventBase & {
+  type: "Error";
+  error: {
+    code: number;
+    message: string;
+    details: string;
+    stacktrace: string;
+    path: string;
+  };
 };
 
-type AnalyticsEvent = {
-  type: "event" | "error";
-  label: string;
-  payload: Record<string, unknown> | Error;
+export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
+
+export type DispatchableAnalyticsEvent = AnalyticsEventOrError & {
+  installationId: string;
+  geolocation?: GeoLocation;
 };
 
 type AnalyticsClientConfiguration = {
-  installationId: string;
   maxmindAccountId: string;
   maxmindLicenseKey: string;
   platformUrl?: string;
 };
 
 export class AnalyticsClient {
-  private installationId: string;
+  private platformUrl?: string = "https://analytics.networkcanvas.dev";
+  private installationId: string | null = null;
   private maxmindAccountId: string;
   private maxmindLicenseKey: string;
-  private eventQueue: QueueObject<EventPayload>;
-  private errorQueue: QueueObject<ErrorPayload>;
-  private enabled: boolean = true;
-  private platformUrl?: string = "https://analytics.networkcanvas.dev";
+  private maxMindClient: WebServiceClient;
+
+  private dispatchQueue: QueueObject<AnalyticsEventOrError>;
+
+  private enabled: boolean = false;
 
   constructor(configuration: AnalyticsClientConfiguration) {
-    if (!configuration.installationId) {
-      throw new Error("Installation ID is required");
-    }
-
     if (!configuration.maxmindAccountId || !configuration.maxmindLicenseKey) {
       throw new Error("Maxmind API key is required");
     }
 
-    this.installationId = configuration.installationId;
     this.maxmindAccountId = configuration.maxmindAccountId;
     this.maxmindLicenseKey = configuration.maxmindLicenseKey;
 
-    if (configuration.platformUrl) {
-      this.platformUrl = configuration.platformUrl;
-    }
-
-    this.eventQueue = queue(this.processEvent, 1);
-    this.errorQueue = queue(this.processError, 1);
-  }
-
-  public async routeHandler(req: NextRequest) {
-    const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
-      ","
-    )[0];
-    const client = new WebServiceClient(
+    this.maxMindClient = new WebServiceClient(
       this.maxmindAccountId,
       this.maxmindLicenseKey,
       {
@@ -79,20 +75,28 @@ export class AnalyticsClient {
       }
     );
 
+    if (configuration.platformUrl) {
+      this.platformUrl = configuration.platformUrl;
+    }
+
+    this.dispatchQueue = queue(this.processEvent, 1);
+    this.dispatchQueue.pause(); // Start the queue paused so we can set the installation ID
+  }
+
+  public async geoLocationRouteHandler(req: NextRequest) {
+    const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
+      ","
+    )[0];
+
+    if (!ip) {
+      console.error("No IP address provided for geolocation");
+      return null;
+    }
+
     try {
-      if (!ip) {
-        console.error("Could not get IP address");
-        return null;
-      }
-      const response = await client.country(ip);
+      const response = await this.maxMindClient.country(ip);
 
-      if (!response || !response.country || !response.country.isoCode) {
-        // eslint-disable-next-line no-console
-        console.error("Could not get country code");
-        return null;
-      }
-
-      return response.country.isoCode;
+      return response?.country?.isoCode ?? null;
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Error getting country code");
@@ -100,96 +104,59 @@ export class AnalyticsClient {
     }
   }
 
-  private cleanEventPayload(payload: AnalyticsEvent): EventPayload {
-    // temp workaround for Type 'string' is not assignable to type '"InterviewCompleted" | "InterviewStarted" | "ProtocolInstalled" | "AppSetup"'.
-    if (
-      payload.label !== "InterviewCompleted" &&
-      payload.label !== "InterviewStarted" &&
-      payload.label !== "ProtocolInstalled" &&
-      payload.label !== "AppSetup"
-    ) {
-      return {
-        type: "InterviewCompleted",
-        metadata: JSON.stringify(payload.payload),
-        installationid: this.installationId,
-      };
-    }
-    const cleanedPayload: EventPayload = {
-      type: payload.label,
-      metadata: JSON.stringify(payload.payload),
-      installationid: this.installationId,
+  private async processEvent(event: AnalyticsEventOrError) {
+    // Todo: we need to think about client vs server geolocation. If we want
+    // client, does this get us that? If we want server, we can get it once,
+    // and simply store it.
+    // Todo: use fetchWithZod?
+    const response = await fetch("api/analytics/geolocate");
+    const countryCode: string | null = await response.json();
+
+    const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
+      ...event,
+      installationId: this.installationId ?? "",
+      geolocation: {
+        countryCode: countryCode ?? "",
+      },
     };
-    return cleanedPayload;
-  }
 
-  private cleanErrorPayload(payload: AnalyticsEvent): ErrorPayload {
-    function extractPathFromStackTrace(
-      stackTrace: string | undefined
-    ): string | undefined {
-      const pathRegex = /\bapp\/(.+):\d+:\d+\)/;
-      const match = stackTrace?.match(pathRegex);
+    // We could validate against a zod schema here.
 
-      return match ? match[1] : "";
+    // Send event to microservice.
+    try {
+      await fetch(`${this.platformUrl}/api/event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventWithRequiredProperties),
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Error sending event to analytics microservice");
     }
-    const code = 404; // TODO: figure out how to get the error code
-    const cleanedPayload: ErrorPayload = {
-      code: code,
-      message: JSON.stringify(payload.payload.message) || "",
-      details: payload.label,
-      stacktrace: JSON.stringify(payload.payload.stack) || "",
-      installationid: this.installationId,
-      path: extractPathFromStackTrace(payload.payload.stack as string) || "",
-    };
-    return cleanedPayload;
   }
 
-  private async processEvent(event: EventPayload) {
-    if (!this.enabled) {
-      return;
-    }
-
-    const geolocation = await fetch("api/analytics");
-
-    await fetch(`${this.platformUrl}/api/event`, {
-      method: "POST",
-      body: JSON.stringify({
-        ...event,
-        isocode: geolocation,
-        installationId: this.installationId,
-      }),
-    });
+  public trackEvent(payload: AnalyticsEvent | AnalyticsError) {
+    this.dispatchQueue.push(payload);
   }
 
-  private async processError(error: ErrorPayload) {
-    if (!this.enabled) {
-      return;
-    }
-
-    await fetch(`${this.platformUrl}/api/error`, {
-      method: "POST",
-      body: JSON.stringify({
-        ...error,
-        installationId: this.installationId,
-      }),
-    });
-  }
-
-  public trackEvent(payload: AnalyticsEvent) {
-    const cleanedPayload = this.cleanEventPayload(payload);
-    this.eventQueue.push(cleanedPayload);
-  }
-
-  public trackError(payload: AnalyticsEvent) {
-    const cleanedPayload = this.cleanErrorPayload(payload);
-    this.errorQueue.push(cleanedPayload);
+  public setInstallationId(installationId: string) {
+    this.installationId = installationId;
   }
 
   public enable() {
+    if (!this.installationId) {
+      throw new Error("Installation ID is required to enable analytics.");
+    }
+
     this.enabled = true;
+    this.dispatchQueue.resume();
   }
 
   public disable() {
     this.enabled = false;
+    this.dispatchQueue.pause();
   }
 
   get isEnabled() {
