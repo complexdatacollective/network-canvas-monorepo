@@ -4,9 +4,10 @@ import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
+  console.log(data);
   const event: DispatchableAnalyticsEvent = data;
 
-  const timestamp = event.timestamp || new Date().toISOString();
+  const timestamp = JSON.stringify(event.timestamp || new Date().toISOString());
 
   // determine if this is an error and push it to the errors table
   if (event.type === "Error") {

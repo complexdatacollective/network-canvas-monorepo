@@ -106,27 +106,36 @@ export class AnalyticsClient {
       }
     };
 
-  private async processEvent(event: AnalyticsEventOrError) {
+  private processEvent = async (event: AnalyticsEventOrError) => {
     // Todo: we need to think about client vs server geolocation. If we want
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
     // Todo: use fetchWithZod?
-    const response = await fetch("api/analytics/geolocate");
-    const countryCode: string | null = await response.json();
 
-    const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
-      ...event,
-      installationId: this.installationId ?? "",
-      timestamp: new Date(),
-      geolocation: {
-        countryCode: countryCode ?? "",
-      },
-    };
-
-    // We could validate against a zod schema here.
-
-    // Send event to microservice.
     try {
+      const response = await fetch("api/analytics/geolocate");
+      if (!response.ok) {
+        console.error("Geolocation request failed");
+        return;
+      }
+
+      const countryCode: string | null = await response.text();
+
+      const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
+        ...event,
+        installationId: this.installationId ?? "",
+        timestamp: new Date(),
+        geolocation: {
+          countryCode: countryCode ?? "",
+        },
+      };
+      console.info(eventWithRequiredProperties);
+      console.info(this.platformUrl);
+
+      // We could validate against a zod schema here.
+
+      // Send event to microservice.
+
       const result = await fetch(`${this.platformUrl}/api/event`, {
         method: "POST",
         headers: {
@@ -146,10 +155,10 @@ export class AnalyticsClient {
         `🚀 Event "${eventWithRequiredProperties.type}" successfully sent to analytics microservice`
       );
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Error sending event to analytics microservice");
+      console.error("Error sending event to analytics microservice", error);
+      return;
     }
-  }
+  };
 
   public trackEvent(payload: AnalyticsEventOrError) {
     console.info(`🕠 Event ${payload.type} queued for dispatch...`);
