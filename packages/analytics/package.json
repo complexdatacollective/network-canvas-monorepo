@@ -1,18 +1,17 @@
 {
   "name": "@codaco/analytics",
   "version": "1.0.0-alpha",
-  "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "author": "Complex Data Collective <developers@coda.co>",
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsup src/index.ts --format esm --dts --minify --clean --sourcemap",
     "lint": "eslint .",
     "dev": "npm run build -- --watch"
   },
   "dependencies": {
-    "@maxmind/geoip2-node": "^4.2.0",
+    "@maxmind/geoip2-node": "^5.0.0",
     "async": "^3.2.5",
     "zod-fetch": "^0.1.1"
   },

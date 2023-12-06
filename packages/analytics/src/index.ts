@@ -13,7 +13,6 @@ export type AnalyticsEventBase = {
     | "ProtocolInstalled"
     | "AppSetup"
     | "Error";
-  timestamp?: string;
 };
 
 export type AnalyticsEvent = AnalyticsEventBase & {
@@ -41,6 +40,7 @@ export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
 export type DispatchableAnalyticsEvent = AnalyticsEventOrError & {
   installationId: string;
   geolocation?: GeoLocation;
+  timestamp: Date;
 };
 
 type AnalyticsClientConfiguration = {
@@ -52,29 +52,20 @@ type AnalyticsClientConfiguration = {
 export class AnalyticsClient {
   private platformUrl?: string = "https://analytics.networkcanvas.dev";
   private installationId: string | null = null;
-  private maxmindAccountId: string;
-  private maxmindLicenseKey: string;
-  private maxMindClient: WebServiceClient;
+  // private maxmindAccountId: string;
+  // private maxmindLicenseKey: string;
 
   private dispatchQueue: QueueObject<AnalyticsEventOrError>;
 
   private enabled: boolean = false;
 
   constructor(configuration: AnalyticsClientConfiguration) {
-    if (!configuration.maxmindAccountId || !configuration.maxmindLicenseKey) {
-      throw new Error("Maxmind API key is required");
-    }
+    // if (!configuration.maxmindAccountId || !configuration.maxmindLicenseKey) {
+    //   throw new Error("Maxmind API key is required");
+    // }
 
-    this.maxmindAccountId = configuration.maxmindAccountId;
-    this.maxmindLicenseKey = configuration.maxmindLicenseKey;
-
-    this.maxMindClient = new WebServiceClient(
-      this.maxmindAccountId,
-      this.maxmindLicenseKey,
-      {
-        host: "geolite.info",
-      }
-    );
+    // this.maxmindAccountId = configuration.maxmindAccountId;
+    // this.maxmindLicenseKey = configuration.maxmindLicenseKey;
 
     if (configuration.platformUrl) {
       this.platformUrl = configuration.platformUrl;
@@ -84,26 +75,36 @@ export class AnalyticsClient {
     this.dispatchQueue.pause(); // Start the queue paused so we can set the installation ID
   }
 
-  public async geoLocationRouteHandler(req: NextRequest) {
-    const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
-      ","
-    )[0];
+  public createRouteHandler =
+    (maxMindClient: WebServiceClient) =>
+    async (req: NextRequest): Promise<Response> => {
+      const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
+        ","
+      )[0];
 
-    if (!ip) {
-      console.error("No IP address provided for geolocation");
-      return null;
-    }
+      if (!ip) {
+        console.error("No IP address provided for geolocation");
+        return new Response(null, { status: 500 });
+      }
 
-    try {
-      const response = await this.maxMindClient.country(ip);
+      try {
+        const response = await maxMindClient.country(ip);
 
-      return response?.country?.isoCode ?? null;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Error getting country code");
-      return null;
-    }
-  }
+        console.info(
+          `🌎 IP address ${ip} geolocated to country ${response?.country?.isoCode}`
+        );
+
+        return new Response(response?.country?.isoCode, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("Error getting country code", error);
+        return new Response(null, { status: 500 });
+      }
+    };
 
   private async processEvent(event: AnalyticsEventOrError) {
     // Todo: we need to think about client vs server geolocation. If we want
@@ -116,6 +117,7 @@ export class AnalyticsClient {
     const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
       ...event,
       installationId: this.installationId ?? "",
+      timestamp: new Date(),
       geolocation: {
         countryCode: countryCode ?? "",
       },
@@ -125,20 +127,32 @@ export class AnalyticsClient {
 
     // Send event to microservice.
     try {
-      await fetch(`${this.platformUrl}/api/event`, {
+      const result = await fetch(`${this.platformUrl}/api/event`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(eventWithRequiredProperties),
       });
+
+      if (!result.ok) {
+        console.info(
+          `🚫 Event "${eventWithRequiredProperties.type}" failed to send to analytics microservice.`
+        );
+        return;
+      }
+
+      console.info(
+        `🚀 Event "${eventWithRequiredProperties.type}" successfully sent to analytics microservice`
+      );
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Error sending event to analytics microservice");
     }
   }
 
-  public trackEvent(payload: AnalyticsEvent | AnalyticsError) {
+  public trackEvent(payload: AnalyticsEventOrError) {
+    console.info(`🕠 Event ${payload.type} queued for dispatch...`);
     this.dispatchQueue.push(payload);
   }
 
@@ -148,14 +162,18 @@ export class AnalyticsClient {
 
   public enable() {
     if (!this.installationId) {
-      throw new Error("Installation ID is required to enable analytics.");
+      console.error(
+        "🚫 An installation ID must be set before you can enable analytics"
+      );
     }
 
+    console.info("📈 Analytics enabled");
     this.enabled = true;
     this.dispatchQueue.resume();
   }
 
   public disable() {
+    console.info("📈 Analytics disabled");
     this.enabled = false;
     this.dispatchQueue.pause();
   }
