@@ -78,9 +78,11 @@ export class AnalyticsClient {
   public createRouteHandler =
     (maxMindClient: WebServiceClient) =>
     async (req: NextRequest): Promise<Response> => {
-      const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
-        ","
-      )[0];
+      // const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
+      //   ","
+      // )[0];
+
+      const ip = "13.139.142.42";
 
       if (!ip) {
         console.error("No IP address provided for geolocation");
@@ -116,7 +118,6 @@ export class AnalyticsClient {
       const response = await fetch("api/analytics/geolocate");
       if (!response.ok) {
         console.error("Geolocation request failed");
-        return;
       }
 
       const countryCode: string | null = await response.text();
