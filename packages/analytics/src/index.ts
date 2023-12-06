@@ -138,6 +138,7 @@ export class AnalyticsClient {
 
       const result = await fetch(`${this.platformUrl}/api/event`, {
         method: "POST",
+        mode: "no-cors",
         headers: {
           "Content-Type": "application/json",
         },

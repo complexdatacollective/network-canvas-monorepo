@@ -11,10 +11,10 @@ export async function POST(request: NextRequest) {
 
   // determine if this is an error and push it to the errors table
   if (event.type === "Error") {
-    const error = event.error;
+    const errorPayload = event.error;
     try {
-      await sql`INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path) VALUES (${error.code}, ${error.message}, ${error.details}, ${error.stacktrace}, ${timestamp}, ${event.installationId}, ${error.path});`;
-      return;
+      await sql`INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.code}, ${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
+      return NextResponse.json({ errorPayload }, { status: 200 });
     } catch (error) {
       return NextResponse.json({ error }, { status: 500 });
     }
@@ -24,15 +24,15 @@ export async function POST(request: NextRequest) {
   // push the event to the events table
 
   try {
-    await sql`INSERT INTO Events (type, metadata, timestamp, installationid, isocode) VALUES (${
-      event.type
-    }, ${JSON.stringify(event.metadata)}, ${timestamp}, ${
-      event.installationId
-    }, ${event.geolocation?.countryCode}
-    });`;
+    await sql`INSERT INTO EVENTS (type, metadata, timestamp, installationid, isocode) VALUES(
+      ${event.type},
+      ${JSON.stringify(event.metadata)},
+      ${timestamp},
+      ${event.installationId},
+      ${event.geolocation?.countryCode}
+    );`;
+    return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error }, { status: 500 });
   }
-
-  return Response.json(data);
 }
