@@ -44,29 +44,18 @@ export type DispatchableAnalyticsEvent = AnalyticsEventOrError & {
 };
 
 type AnalyticsClientConfiguration = {
-  maxmindAccountId: string;
-  maxmindLicenseKey: string;
   platformUrl?: string;
 };
 
 export class AnalyticsClient {
   private platformUrl?: string = "https://analytics.networkcanvas.dev";
   private installationId: string | null = null;
-  // private maxmindAccountId: string;
-  // private maxmindLicenseKey: string;
 
   private dispatchQueue: QueueObject<AnalyticsEventOrError>;
 
   private enabled: boolean = false;
 
   constructor(configuration: AnalyticsClientConfiguration) {
-    // if (!configuration.maxmindAccountId || !configuration.maxmindLicenseKey) {
-    //   throw new Error("Maxmind API key is required");
-    // }
-
-    // this.maxmindAccountId = configuration.maxmindAccountId;
-    // this.maxmindLicenseKey = configuration.maxmindLicenseKey;
-
     if (configuration.platformUrl) {
       this.platformUrl = configuration.platformUrl;
     }
@@ -78,11 +67,9 @@ export class AnalyticsClient {
   public createRouteHandler =
     (maxMindClient: WebServiceClient) =>
     async (req: NextRequest): Promise<Response> => {
-      // const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
-      //   ","
-      // )[0];
-
-      const ip = "13.139.142.42";
+      const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
+        ","
+      )[0];
 
       if (!ip) {
         console.error("No IP address provided for geolocation");
@@ -91,10 +78,6 @@ export class AnalyticsClient {
 
       try {
         const response = await maxMindClient.country(ip);
-
-        console.info(
-          `🌎 IP address ${ip} geolocated to country ${response?.country?.isoCode}`
-        );
 
         return new Response(response?.country?.isoCode, {
           headers: {
@@ -130,8 +113,6 @@ export class AnalyticsClient {
           countryCode: countryCode ?? "",
         },
       };
-      console.info(eventWithRequiredProperties);
-      console.info(this.platformUrl);
 
       // We could validate against a zod schema here.
 
