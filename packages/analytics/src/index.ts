@@ -71,6 +71,11 @@ export class AnalyticsClient {
         ","
       )[0];
 
+      if (ip === "::1") {
+        // This is a localhost request, so we can't geolocate it.
+        return new Response(null, { status: 200 });
+      }
+
       if (!ip) {
         console.error("No IP address provided for geolocation");
         return new Response(null, { status: 500 });
