@@ -4,7 +4,6 @@ import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  console.log(data);
   const event: DispatchableAnalyticsEvent = data;
 
   const timestamp = JSON.stringify(event.timestamp || new Date().toISOString());

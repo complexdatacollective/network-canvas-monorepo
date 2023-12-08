@@ -1,6 +1,6 @@
 {
   "name": "@codaco/analytics",
-  "version": "1.0.0-alpha",
+  "version": "0.1.0-alpha",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "author": "Complex Data Collective <developers@coda.co>",
