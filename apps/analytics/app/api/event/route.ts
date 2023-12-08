@@ -1,6 +1,16 @@
+// Import necessary modules and types
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
+
+// Set headers to allow CORS
+const headers = {
+  "Access-Control-Allow-Credentials": "true",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "OPTIONS, POST",
+  "Access-Control-Allow-Headers":
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
+};
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
@@ -13,9 +23,15 @@ export async function POST(request: NextRequest) {
     const errorPayload = event.error;
     try {
       await sql`INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.code}, ${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
-      return NextResponse.json({ errorPayload }, { status: 200 });
+      return new NextResponse(JSON.stringify({ errorPayload }), {
+        headers,
+        status: 200,
+      });
     } catch (error) {
-      return NextResponse.json({ error }, { status: 500 });
+      return new NextResponse(JSON.stringify({ error }), {
+        headers,
+        status: 500,
+      });
     }
   }
 
@@ -30,14 +46,22 @@ export async function POST(request: NextRequest) {
       ${event.installationId},
       ${event.geolocation?.countryCode}
     );`;
-    return NextResponse.json({ event }, { status: 200 });
+    return new NextResponse(JSON.stringify({ event }), {
+      headers,
+      status: 200,
+    });
   } catch (error) {
-    return NextResponse.json({ error }, { status: 500 });
+    return new NextResponse(JSON.stringify({ error }), {
+      headers,
+      status: 500,
+    });
   }
 }
 
+// Preflight request
 export async function OPTIONS() {
   return new NextResponse(null, {
+    headers,
     status: 200,
   });
 }
