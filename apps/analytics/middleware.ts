@@ -7,22 +7,22 @@ import { NextResponse } from "next/server";
 export default authMiddleware({
   publicRoutes: ["((?!^/dashboard/).*)"], // all routes except /dashboard
   ignoredRoutes: ["^/api/.*", "^/trpc/.*"], // all routes except /api and /trpc
-  async afterAuth(auth, req, evt) {
-    // handle users who aren't authenticated
-    if (!auth.userId && !auth.isPublicRoute) {
-      return redirectToSignIn({ returnBackUrl: req.url });
-    }
+  // async afterAuth(auth, req, evt) {
+  //   // handle users who aren't authenticated
+  //   if (!auth.userId && !auth.isPublicRoute) {
+  //     return redirectToSignIn({ returnBackUrl: req.url });
+  //   }
 
-    // handle users who aren't verified
-    if (auth.userId) {
-      const user = await clerkClient.users.getUser(auth.userId);
-      const isVerified = user?.publicMetadata?.verified;
+  //   // handle users who aren't verified
+  //   if (auth.userId) {
+  //     const user = await clerkClient.users.getUser(auth.userId);
+  //     const isVerified = user?.publicMetadata?.verified;
 
-      if (!isVerified && req.nextUrl.pathname !== "/verification") {
-        return NextResponse.redirect(new URL("/verification", req.nextUrl));
-      }
-    }
-  },
+  //     if (!isVerified && req.nextUrl.pathname !== "/verification") {
+  //       return NextResponse.redirect(new URL("/verification", req.nextUrl));
+  //     }
+  //   }
+  // },
 });
 
 export const config = {
