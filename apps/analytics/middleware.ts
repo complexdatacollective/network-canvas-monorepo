@@ -6,7 +6,8 @@ import { NextResponse } from "next/server";
 // See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your Middleware
 export default authMiddleware({
   publicRoutes: ["((?!^/dashboard/).*)"], // all routes except /dashboard
-  ignoredRoutes: ["^/api/.*", "^/trpc/.*"], // all routes except /api and /trpc
+  // Ignore any routes that start with /api
+  ignoredRoutes: ["/api"],
   // async afterAuth(auth, req, evt) {
   //   // handle users who aren't authenticated
   //   if (!auth.userId && !auth.isPublicRoute) {
