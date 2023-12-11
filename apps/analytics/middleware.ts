@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 export default authMiddleware({
   publicRoutes: ["((?!^/dashboard/).*)"], // all routes except /dashboard
   // Ignore any routes that start with /api
-  ignoredRoutes: ["/api"],
+  ignoredRoutes: ["/api/(.*)"],
   // async afterAuth(auth, req, evt) {
   //   // handle users who aren't authenticated
   //   if (!auth.userId && !auth.isPublicRoute) {
