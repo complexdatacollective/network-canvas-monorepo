@@ -4,7 +4,7 @@ import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -49,6 +49,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error }, { status: 500, headers: corsHeaders });
   }
+}
+
+export async function GET() {
+  return new NextResponse(null, {
+    status: 200,
+    statusText: "OK",
+    headers: corsHeaders,
+  });
 }
 
 export async function OPTIONS() {
