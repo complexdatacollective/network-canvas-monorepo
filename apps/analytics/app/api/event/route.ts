@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export const dynamic = "force-dynamic"; // defaults to force-static
+export const runtime = "edge";
+
 export async function POST(request: NextRequest) {
   const data = await request.json();
   const event: DispatchableAnalyticsEvent = data;
@@ -13,9 +22,15 @@ export async function POST(request: NextRequest) {
     const errorPayload = event.error;
     try {
       await sql`INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.code}, ${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
-      return NextResponse.json({ errorPayload }, { status: 200 });
+      return NextResponse.json(
+        { errorPayload },
+        { status: 200, headers: corsHeaders }
+      );
     } catch (error) {
-      return NextResponse.json({ error }, { status: 500 });
+      return NextResponse.json(
+        { error },
+        { status: 500, headers: corsHeaders }
+      );
     }
   }
 
@@ -30,14 +45,15 @@ export async function POST(request: NextRequest) {
       ${event.installationId},
       ${event.geolocation?.countryCode}
     );`;
-    return NextResponse.json({ event }, { status: 200 });
+    return NextResponse.json({ event }, { status: 200, headers: corsHeaders });
   } catch (error) {
-    return NextResponse.json({ error }, { status: 500 });
+    return NextResponse.json({ error }, { status: 500, headers: corsHeaders });
   }
 }
 
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
+    headers: corsHeaders,
   });
 }
