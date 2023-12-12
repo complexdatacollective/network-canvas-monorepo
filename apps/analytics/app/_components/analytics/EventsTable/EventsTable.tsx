@@ -13,7 +13,7 @@ export default async function EventsTable() {
     <Card>
       <CardHeader>Events</CardHeader>
       <CardContent>
-        <ExportButton data={events} filename="events.tsx" />
+        <ExportButton data={events} filename="events.csv" />
         <div className="mt-4">
           <DataTable columns={columns} data={events} pagination={true} />
         </div>
