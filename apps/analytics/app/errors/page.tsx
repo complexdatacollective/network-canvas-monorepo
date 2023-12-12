@@ -1,6 +1,5 @@
-import { ErrorsStats } from "./ErrorsStats";
-import ErrorsTable from "./ErrorsTable/ErrorsTable";
-import TotalErrorsCard from "./cards/TotalErrorsCard";
+import { ErrorsStats } from "./_components/ErrorsStats";
+import ErrorsTable from "./_components/ErrorsTable/ErrorsTable";
 
 export default function ErrorsView() {
   return (

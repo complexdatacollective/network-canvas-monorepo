@@ -1,8 +1,7 @@
-import { Card, CardHeader, CardContent } from "~/components/ui/card";
-import EventsTable from "./EventsTable/EventsTable";
-
-import RegionsTable from "./RegionsTable/RegionsTable";
-import { AnalyticsStats } from "./AnalyticsStats";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import { AnalyticsStats } from "./_components/AnalyticsStats";
+import EventsTable from "./_components/EventsTable/EventsTable";
+import RegionsTable from "./_components/RegionsTable/RegionsTable";
 
 export default function AnalyticsView() {
   return (
