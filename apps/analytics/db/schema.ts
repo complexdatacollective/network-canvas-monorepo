@@ -9,7 +9,6 @@ export interface Event {
 }
 
 export interface Error {
-  code: number;
   message: string;
   details: string;
   stacktrace: string;

@@ -27,7 +27,6 @@ export type AnalyticsEvent = AnalyticsEventBase & {
 export type AnalyticsError = AnalyticsEventBase & {
   type: "Error";
   error: {
-    code: number;
     message: string;
     details: string;
     stacktrace: string;

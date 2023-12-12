@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (event.type === "Error") {
     const errorPayload = event.error;
     try {
-      await sql`INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.code}, ${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
+      await sql`INSERT INTO Errors (message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
       return NextResponse.json(
         { errorPayload },
         { status: 200, headers: corsHeaders }
