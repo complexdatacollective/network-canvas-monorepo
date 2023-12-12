@@ -152,14 +152,9 @@ export class AnalyticsClient {
 
   public setInstallationId(installationId: string) {
     if (this.enabled) {
-      try {
-        this.installationId = installationId;
-        this.dispatchQueue.resume();
-        console.info("📈 Analytics queue resumed");
-      } catch (error) {
-        console.error("Error setting installation ID", error);
-      }
+      this.installationId = installationId;
     }
+    this.dispatchQueue.resume();
   }
 
   public disable() {
