@@ -148,13 +148,24 @@ export class AnalyticsClient {
   public trackEvent(payload: AnalyticsEventOrError) {
     console.info(`🕠 Event ${payload.type} queued for dispatch...`);
     this.dispatchQueue.push(payload);
+    console.log(
+      "Installation id:",
+      this.installationId,
+      "Queue paused:",
+      this.dispatchQueue.paused
+    );
+    // if (this.enabled && this.dispatchQueue.paused) {
+    //   this.dispatchQueue.resume();
+    // }
   }
 
   public setInstallationId(installationId: string) {
     if (this.enabled) {
       this.installationId = installationId;
+      console.info(`🆔 Installation ID set to ${installationId}`);
+      this.dispatchQueue.resume();
+      console.info("Queue resumed");
     }
-    this.dispatchQueue.resume();
   }
 
   public disable() {
