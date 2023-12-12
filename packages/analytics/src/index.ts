@@ -100,8 +100,6 @@ export class AnalyticsClient {
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
     // Todo: use fetchWithZod?
-    console.info("starting processEvent");
-
     try {
       const response = await fetch("api/analytics/geolocate");
       if (!response.ok) {
@@ -150,22 +148,14 @@ export class AnalyticsClient {
   public trackEvent(payload: AnalyticsEventOrError) {
     console.info(`🕠 Event ${payload.type} queued for dispatch...`);
     this.dispatchQueue.push(payload);
-    console.info(this.dispatchQueue.length());
-    console.info(this.dispatchQueue.started);
   }
 
   public setInstallationId(installationId: string) {
     if (this.enabled) {
       try {
         this.installationId = installationId;
-        console.info(
-          "🆔 Installation ID set",
-          this.installationId,
-          "paused",
-          this.dispatchQueue.paused
-        );
         this.dispatchQueue.resume();
-        console.info("📈 Analytics queue resumed", this.dispatchQueue.paused);
+        console.info("📈 Analytics queue resumed");
       } catch (error) {
         console.error("Error setting installation ID", error);
       }
