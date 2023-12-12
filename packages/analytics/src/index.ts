@@ -52,7 +52,7 @@ export class AnalyticsClient {
 
   private dispatchQueue: QueueObject<AnalyticsEventOrError>;
 
-  private enabled: boolean = false;
+  private enabled: boolean = true;
 
   constructor(configuration: AnalyticsClientConfiguration) {
     if (configuration.platformUrl) {
@@ -100,6 +100,7 @@ export class AnalyticsClient {
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
     // Todo: use fetchWithZod?
+    console.info("starting processEvent");
 
     try {
       const response = await fetch("api/analytics/geolocate");
@@ -149,22 +150,26 @@ export class AnalyticsClient {
   public trackEvent(payload: AnalyticsEventOrError) {
     console.info(`🕠 Event ${payload.type} queued for dispatch...`);
     this.dispatchQueue.push(payload);
+    console.info(this.dispatchQueue.length());
+    console.info(this.dispatchQueue.started);
   }
 
   public setInstallationId(installationId: string) {
-    this.installationId = installationId;
-  }
-
-  public enable() {
-    if (!this.installationId) {
-      console.error(
-        "🚫 An installation ID must be set before you can enable analytics"
-      );
+    if (this.enabled) {
+      try {
+        this.installationId = installationId;
+        console.info(
+          "🆔 Installation ID set",
+          this.installationId,
+          "paused",
+          this.dispatchQueue.paused
+        );
+        this.dispatchQueue.resume();
+        console.info("📈 Analytics queue resumed", this.dispatchQueue.paused);
+      } catch (error) {
+        console.error("Error setting installation ID", error);
+      }
     }
-
-    console.info("📈 Analytics enabled");
-    this.enabled = true;
-    this.dispatchQueue.resume();
   }
 
   public disable() {
