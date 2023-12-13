@@ -49,11 +49,6 @@ describe('Sending events', () => {
   beforeEach(() => {
     client = new AnalyticsClient();
 
-    jest.spyOn(client, 'processEvent').mockImplementation(async () => {
-      console.log('processEvent');
-      return;
-    });
-
     jest.spyOn(client, 'geoLocate').mockImplementation(async () => {
       console.log('geolocate');
       return "0.0.0.0";
@@ -65,9 +60,10 @@ describe('Sending events', () => {
     });
   });
 
-  it('sends events to the platform', () => {
+  it('sends events to the platform', async () => {
     const event = { type: 'test' };
     client.trackEvent(event);
+    expect(client.dispatchQueue.length()).toEqual(1);
   });
 
   it('Does not send events if no installation ID is set, and sends them when set', async () => {
@@ -75,11 +71,14 @@ describe('Sending events', () => {
 
     client.trackEvent({ type: 'test' });
     expect(client.dispatchQueue.length()).toEqual(1);
-    expect(client.processEvent).not.toHaveBeenCalled();
+    expect(client.geoLocate).not.toHaveBeenCalled();
+    expect(client.sendToMicroservice).not.toHaveBeenCalled();
 
     client.trackEvent({ type: 'test' });
+    expect(client.dispatchQueue.paused).toEqual(true);
     expect(client.dispatchQueue.length()).toEqual(2);
-    expect(client.processEvent).not.toHaveBeenCalled();
+    expect(client.geoLocate).not.toHaveBeenCalled();
+    expect(client.sendToMicroservice).not.toHaveBeenCalled();
 
     const id = '1234';
     client.setInstallationId(id);

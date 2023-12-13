@@ -66,7 +66,10 @@ export class AnalyticsClient {
     async (req: NextRequest): Promise<Response> => {
       let ip;
 
-      if (req.headers.get("x-forwarded-for")) {
+      if (
+        req.headers.get("x-forwarded-for") &&
+        !(req.headers.get("x-forwarded-for")?.split(",")[0] == "::1")
+      ) {
         ip = req.headers.get("x-forwarded-for")?.split(",")[0];
       } else {
         // attempt geolocation via third party service
