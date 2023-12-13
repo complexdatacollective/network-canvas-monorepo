@@ -6,7 +6,7 @@
   "author": "Complex Data Collective <developers@coda.co>",
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --minify --clean --sourcemap",
+    "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
     "lint": "eslint .",
     "dev": "npm run build -- --watch",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
