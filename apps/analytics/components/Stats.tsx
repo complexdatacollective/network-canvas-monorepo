@@ -6,14 +6,11 @@ type Stat = {
 
 const Stats: React.FC<{ stats: Stat[] }> = ({ stats }) => {
   return (
-    <div className="bg-gray-700 border border-white/5">
+    <div className="bg-gray-800 border border-white/5">
       <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-px bg-white/5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-px bg-white/5 grid-cols-4">
           {stats.map((stat) => (
-            <div
-              key={stat.name}
-              className="bg-gray-800 px-4 py-6 sm:px-6 lg:px-8"
-            >
+            <div key={stat.name} className="bg-gray-800 py-6 sm:px-6 lg:px-8">
               <p className="text-sm font-medium leading-6 text-gray-400">
                 {stat.name}
               </p>
