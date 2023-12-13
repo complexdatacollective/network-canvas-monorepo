@@ -5,8 +5,9 @@ export default function AnalyticsView() {
   return (
     <div className="space-y-4">
       <AnalyticsStats />
-
-      <EventsTable />
+      <div className="p-8">
+        <EventsTable />
+      </div>
     </div>
   );
 }

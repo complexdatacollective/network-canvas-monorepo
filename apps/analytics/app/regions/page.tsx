@@ -6,7 +6,6 @@ export default function RegionsView() {
   return (
     <div className="space-y-4">
       <RegionsStats />
-
       <Card>
         <CardHeader>Regions</CardHeader>
         <CardContent>

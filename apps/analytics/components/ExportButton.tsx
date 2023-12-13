@@ -28,8 +28,8 @@ const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
   };
 
   return (
-    <Button onClick={handleExportCSV}>
-      <Download className="h-4 w-4" />
+    <Button onClick={handleExportCSV} className="bg-indigo-800">
+      <Download className="mr-2 h-4 w-4" /> Download Data
     </Button>
   );
 };
