@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ShieldAlert, BarChartBig } from "lucide-react";
+import { useState } from "react";
+import { ShieldAlert, BarChartBig, Globe2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const navigation = [
   { name: "Analytics", href: "/", icon: BarChartBig },
+  { name: "Regions", href: "/regions", icon: Globe2 },
   { name: "Errors", href: "/errors", icon: ShieldAlert },
 ];
 

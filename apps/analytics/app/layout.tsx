@@ -25,11 +25,9 @@ export default function RootLayout({
             <div style={{ display: "flex", flexDirection: "column" }}>
               <Sidebar />
             </div>
-            <main>
-              <div className="pl-72">
-                <Header />
-                {children}
-              </div>
+            <main className="flex-1 pl-72 pr-4 bg-gray-900">
+              <Header />
+              {children}
             </main>
           </div>
         </body>

@@ -11,7 +11,7 @@ export default async function EventsTable() {
 
   return (
     <Card>
-      <CardHeader>Events</CardHeader>
+      <CardHeader>Latest Activity</CardHeader>
       <CardContent>
         <ExportButton data={events} filename="events.csv" />
         <div className="mt-4">

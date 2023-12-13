@@ -34,3 +34,17 @@ export default async function getRegionsTotals(): Promise<RegionTotal[]> {
 
   return regionsTotals;
 }
+
+export async function getNRegions(): Promise<number> {
+  const events: EventPayload[] = await getEvents();
+  const nRegions: Set<string> = new Set();
+
+  for (const event of events) {
+    const isocode = event.isocode;
+    if (isocode) {
+      nRegions.add(isocode);
+    }
+  }
+
+  return nRegions.size;
+}

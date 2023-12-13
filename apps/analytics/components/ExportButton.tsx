@@ -2,6 +2,7 @@
 import { EventPayload, ErrorPayload } from "@codaco/analytics";
 import Papa from "papaparse";
 import { Button } from "~/components/ui/button";
+import { Download } from "lucide-react";
 
 interface ExportButtonProps {
   data: (EventPayload | ErrorPayload)[];
@@ -26,7 +27,11 @@ const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
     }
   };
 
-  return <Button onClick={handleExportCSV}>Export CSV</Button>;
+  return (
+    <Button onClick={handleExportCSV}>
+      <Download className="h-4 w-4" />
+    </Button>
+  );
 };
 
 export default ExportButton;
