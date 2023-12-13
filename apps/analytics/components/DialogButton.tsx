@@ -26,7 +26,9 @@ export function DialogButton({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="border border-white">{buttonLabel}</Button>
+        <Button className="border border-white bg-gray-800">
+          {buttonLabel}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

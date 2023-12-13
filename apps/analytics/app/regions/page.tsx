@@ -6,6 +6,9 @@ export default function RegionsView() {
     <div className="space-y-4">
       <RegionsStats />
       <div className="p-8">
+        <div className="flex justify-between">
+          <h2 className="font-semibold text-white pb-4">Top Regions</h2>
+        </div>
         <RegionsTable />
       </div>
     </div>
