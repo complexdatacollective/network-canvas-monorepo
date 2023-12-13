@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { AnalyticsClient } from '../dist/index.mjs';
 
 describe('Class is able to be constructed', () => {
@@ -41,11 +42,52 @@ describe('Supports configuration', () => {
     expect(client.installationId).toEqual(id);
   });
 
-  it('Does not send events if no installation ID is set, and sends them when set', () => {
+});
+
+describe('Sending events', () => {
+  let client;
+  beforeEach(() => {
+    client = new AnalyticsClient();
+
+    jest.spyOn(client, 'processEvent').mockImplementation(async () => {
+      console.log('processEvent');
+      return;
+    });
+
+    jest.spyOn(client, 'geoLocate').mockImplementation(async () => {
+      console.log('geolocate');
+      return "0.0.0.0";
+    });
+
+    jest.spyOn(client, 'sendToMicroservice').mockImplementation(async () => {
+      console.log('sendToMicroservice')
+      return;
+    });
+  });
+
+  it('sends events to the platform', () => {
+    const event = { type: 'test' };
+    client.trackEvent(event);
+  });
+
+  it('Does not send events if no installation ID is set, and sends them when set', async () => {
     expect(client.dispatchQueue.paused).toEqual(true);
+
+    client.trackEvent({ type: 'test' });
+    expect(client.dispatchQueue.length()).toEqual(1);
+    expect(client.processEvent).not.toHaveBeenCalled();
+
+    client.trackEvent({ type: 'test' });
+    expect(client.dispatchQueue.length()).toEqual(2);
+    expect(client.processEvent).not.toHaveBeenCalled();
 
     const id = '1234';
     client.setInstallationId(id);
+
+    // Artificially wait for the queue to process
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     expect(client.dispatchQueue.paused).toEqual(false);
+    expect(client.dispatchQueue.length()).toEqual(0);
   });
-});
+})

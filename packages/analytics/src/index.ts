@@ -120,12 +120,16 @@ export class AnalyticsClient {
       if (!result.ok) {
         throw new Error("Error sending event to microservice");
       }
+
+      console.info(
+        `🚀 Event "${event.type}" successfully sent to analytics microservice!`
+      );
     } catch (e) {
       throw new Error("Error sending event to microservice");
     }
   };
 
-  private processEvent = async (event: AnalyticsEventOrError) => {
+  private processEvent = async (event: AnalyticsEventOrError, callback) => {
     // Todo: we need to think about client vs server geolocation. If we want
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
@@ -146,19 +150,19 @@ export class AnalyticsClient {
 
       // Send event to microservice.
       await this.sendToMicroservice(eventWithRequiredProperties);
-      console.info(
-        `🚀 Event "${event.type}" successfully sent to analytics microservice!`
-      );
     } catch (error) {
       console.error("❗️ Error sending event to analytics microservice", error);
-      return;
     }
+
+    callback();
   };
 
   public trackEvent(payload: AnalyticsEventOrError) {
     this.dispatchQueue.push(payload);
     console.info(
-      `🕠 Event ${payload.type} queued for dispatch. Current queue size is ${this.dispatchQueue.length}.`
+      `🕠 Event ${
+        payload.type
+      } queued for dispatch. Current queue size is ${this.dispatchQueue.length()}.`
     );
   }
 
