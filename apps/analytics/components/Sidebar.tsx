@@ -1,7 +1,6 @@
 "use client";
 
 import { ShieldAlert, BarChartBig } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
 
 const navigation = [
   { name: "Analytics", href: "/", icon: BarChartBig, current: true },
@@ -12,7 +11,7 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Example() {
+export default function Sidebar() {
   return (
     <>
       <div>
@@ -49,11 +48,6 @@ export default function Example() {
                       </li>
                     ))}
                   </ul>
-                </li>
-                <li className="-mx-6 mt-auto">
-                  <UserButton />
-                  <span className="sr-only">Your profile</span>
-                  <span aria-hidden="true">Tom Cook</span>
                 </li>
               </ul>
             </nav>
