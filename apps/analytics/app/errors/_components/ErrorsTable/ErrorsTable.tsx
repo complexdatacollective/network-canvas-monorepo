@@ -7,9 +7,15 @@ export default async function ErrorsTable() {
   const errors = await getErrors();
 
   return (
-    <>
-      <ExportButton data={errors} filename="errors.csv" />
-      <DataTable columns={columns} data={errors} pagination={true} />
-    </>
+    <div>
+      <div className="flex justify-between">
+        <h2 className="font-semibold text-white pb-4">Latest Errors</h2>
+        <ExportButton data={errors} filename="errors.csv" />
+      </div>
+
+      <div className="mt-4">
+        <DataTable columns={columns} data={errors} pagination={true} />
+      </div>
+    </div>
   );
 }

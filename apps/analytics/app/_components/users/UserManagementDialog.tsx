@@ -14,7 +14,11 @@ export default function UserManagementDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="mr-4 text-white">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-4 text-white hover:bg-gray-800 hover:text-white"
+        >
           <UsersIcon />
         </Button>
       </DialogTrigger>
