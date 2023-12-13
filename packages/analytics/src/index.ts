@@ -47,15 +47,13 @@ type AnalyticsClientConfiguration = {
 };
 
 export class AnalyticsClient {
-  private platformUrl?: string = "https://analytics.networkcanvas.dev";
-  private installationId: string | null = null;
+  private platformUrl: string = "https://analytics.networkcanvas.dev";
+  private installationId: string | undefined = undefined;
 
   private dispatchQueue: QueueObject<AnalyticsEventOrError>;
 
-  private enabled: boolean = true;
-
-  constructor(configuration: AnalyticsClientConfiguration) {
-    if (configuration.platformUrl) {
+  constructor(configuration: AnalyticsClientConfiguration | null) {
+    if (configuration?.platformUrl) {
       this.platformUrl = configuration.platformUrl;
     }
 
@@ -66,13 +64,16 @@ export class AnalyticsClient {
   public createRouteHandler =
     (maxMindClient: WebServiceClient) =>
     async (req: NextRequest): Promise<Response> => {
-      const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(
-        ","
-      )[0];
+      let ip;
 
-      if (ip === "::1") {
-        // This is a localhost request, so we can't geolocate it.
-        return new Response(null, { status: 200 });
+      if (
+        req.headers.get("x-forwarded-for") &&
+        !(req.headers.get("x-forwarded-for")?.split(",")[0] == "::1")
+      ) {
+        ip = req.headers.get("x-forwarded-for")?.split(",")[0];
+      } else {
+        // attempt geolocation via third party service
+        ip = await fetch("https://api64.ipify.org").then((res) => res.text());
       }
 
       if (!ip) {
@@ -95,18 +96,48 @@ export class AnalyticsClient {
       }
     };
 
+  private geoLocate = async () => {
+    try {
+      const response = await fetch(`api/analytics/geolocate`);
+      if (!response.ok) {
+        throw new Error("Geolocation request failed");
+      }
+
+      const countryCode: string | null = await response.text();
+      return countryCode;
+    } catch (error) {
+      throw new Error("Error fetching country code");
+    }
+  };
+
+  private sendToMicroservice = async (event: DispatchableAnalyticsEvent) => {
+    try {
+      const result = await fetch(`${this.platformUrl}/api/event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(event),
+      });
+
+      if (!result.ok) {
+        throw new Error("Error sending event to microservice");
+      }
+
+      console.info(
+        `🚀 Event "${event.type}" successfully sent to analytics microservice!`
+      );
+    } catch (e) {
+      throw new Error("Error sending event to microservice");
+    }
+  };
+
   private processEvent = async (event: AnalyticsEventOrError) => {
     // Todo: we need to think about client vs server geolocation. If we want
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
-    // Todo: use fetchWithZod?
     try {
-      const response = await fetch("api/analytics/geolocate");
-      if (!response.ok) {
-        console.error("Geolocation request failed");
-      }
-
-      const countryCode: string | null = await response.text();
+      const countryCode = await this.geoLocate();
 
       const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
         ...event,
@@ -120,61 +151,25 @@ export class AnalyticsClient {
       // We could validate against a zod schema here.
 
       // Send event to microservice.
-
-      const result = await fetch(`${this.platformUrl}/api/event`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventWithRequiredProperties),
-      });
-
-      if (!result.ok) {
-        console.info(
-          `🚫 Event "${eventWithRequiredProperties.type}" failed to send to analytics microservice.`
-        );
-        return;
-      }
-
-      console.info(
-        `🚀 Event "${eventWithRequiredProperties.type}" successfully sent to analytics microservice`
-      );
+      await this.sendToMicroservice(eventWithRequiredProperties);
     } catch (error) {
-      console.error("Error sending event to analytics microservice", error);
+      console.error("❗️ Error sending event to analytics microservice", error);
       return;
     }
   };
 
   public trackEvent(payload: AnalyticsEventOrError) {
-    console.info(`🕠 Event ${payload.type} queued for dispatch...`);
     this.dispatchQueue.push(payload);
-    console.log(
-      "Installation id:",
-      this.installationId,
-      "Queue paused:",
-      this.dispatchQueue.paused
+    console.info(
+      `🕠 Event ${
+        payload.type
+      } queued for dispatch. Current queue size is ${this.dispatchQueue.length()}.`
     );
-    // if (this.enabled && this.dispatchQueue.paused) {
-    //   this.dispatchQueue.resume();
-    // }
   }
 
   public setInstallationId(installationId: string) {
-    if (this.enabled) {
-      this.installationId = installationId;
-      console.info(`🆔 Installation ID set to ${installationId}`);
-      this.dispatchQueue.resume();
-      console.info("Queue resumed");
-    }
-  }
-
-  public disable() {
-    console.info("📈 Analytics disabled");
-    this.enabled = false;
-    this.dispatchQueue.pause();
-  }
-
-  get isEnabled() {
-    return this.enabled;
+    this.installationId = installationId;
+    console.info(`🆔 Installation ID set to ${installationId}`);
+    this.dispatchQueue.resume();
   }
 }

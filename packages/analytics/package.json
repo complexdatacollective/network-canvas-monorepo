@@ -6,9 +6,10 @@
   "author": "Complex Data Collective <developers@coda.co>",
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --minify --clean --sourcemap",
+    "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
     "lint": "eslint .",
-    "dev": "npm run build -- --watch"
+    "dev": "npm run build -- --watch",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
     "@maxmind/geoip2-node": "^5.0.0",
@@ -20,10 +21,13 @@
   },
   "devDependencies": {
     "@types/async": "^3.2.24",
+    "@types/jest": "^29.5.11",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "eslint-config-custom": "workspace:*",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "react": "^18.2.0",
     "tsconfig": "workspace:*",
     "tsup": "^7.2.0",
