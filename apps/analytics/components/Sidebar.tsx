@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ShieldAlert, BarChartBig } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 const navigation = [
-  { name: "Analytics", href: "/", icon: BarChartBig, current: true },
-  { name: "Errors", href: "/errors", icon: ShieldAlert, current: false },
+  { name: "Analytics", href: "/", icon: BarChartBig },
+  { name: "Errors", href: "/errors", icon: ShieldAlert },
 ];
 
 function classNames(...classes: string[]) {
@@ -12,6 +14,12 @@ function classNames(...classes: string[]) {
 }
 
 export default function Sidebar() {
+  const pathname = usePathname();
+  const [current, setCurrent] = useState<string | null>(() => {
+    const currentItem = navigation.find((item) => item.href === pathname);
+    return currentItem ? currentItem.name : null;
+  });
+
   return (
     <>
       <div>
@@ -28,8 +36,9 @@ export default function Sidebar() {
                       <li key={item.name}>
                         <a
                           href={item.href}
+                          onClick={() => setCurrent(item.name)}
                           className={classNames(
-                            item.current
+                            current === item.name
                               ? "bg-gray-800 text-white"
                               : "text-gray-400 hover:text-white hover:bg-gray-800",
                             "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold"
