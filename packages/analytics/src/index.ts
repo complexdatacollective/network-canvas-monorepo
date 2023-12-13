@@ -129,11 +129,10 @@ export class AnalyticsClient {
     }
   };
 
-  private processEvent = async (event: AnalyticsEventOrError, callback) => {
+  private processEvent = async (event: AnalyticsEventOrError) => {
     // Todo: we need to think about client vs server geolocation. If we want
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
-    // Todo: use fetchWithZod?
     try {
       const countryCode = await this.geoLocate();
 
@@ -152,9 +151,8 @@ export class AnalyticsClient {
       await this.sendToMicroservice(eventWithRequiredProperties);
     } catch (error) {
       console.error("❗️ Error sending event to analytics microservice", error);
+      return;
     }
-
-    callback();
   };
 
   public trackEvent(payload: AnalyticsEventOrError) {
