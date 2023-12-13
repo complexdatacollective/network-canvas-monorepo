@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { ShieldAlert, BarChartBig } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
 const navigation = [
-  { name: "Analytics", href: "/analytics", icon: BarChartBig, current: true },
+  { name: "Analytics", href: "/", icon: BarChartBig, current: true },
   { name: "Errors", href: "/errors", icon: ShieldAlert, current: false },
 ];
 
@@ -14,14 +13,10 @@ function classNames(...classes: string[]) {
 }
 
 export default function Example() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
     <>
       <div>
-        {/* Static sidebar for desktop */}
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-          {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6">
             <div className="flex h-16 shrink-0 items-center">
               <img

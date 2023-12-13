@@ -3,7 +3,7 @@ import React from "react";
 import { DataTable } from "~/components/DataTable/data-table";
 import getEvents from "~/db/getEvents";
 import { columns } from "./Columns";
-import ExportButton from "../../../../components/ExportButton";
+import ExportButton from "../../../components/ExportButton";
 import { Card, CardHeader, CardContent } from "~/components/ui/card";
 
 export default async function EventsTable() {
