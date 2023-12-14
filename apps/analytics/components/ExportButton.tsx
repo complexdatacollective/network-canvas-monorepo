@@ -2,6 +2,7 @@
 import type { Event, Error } from "~/db/schema";
 import Papa from "papaparse";
 import { Button } from "~/components/ui/button";
+import { Download } from "lucide-react";
 
 interface ExportButtonProps {
   data: (Event | Error)[];
@@ -26,7 +27,11 @@ const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
     }
   };
 
-  return <Button onClick={handleExportCSV}>Export CSV</Button>;
+  return (
+    <Button onClick={handleExportCSV} size="sm">
+      <Download className="mr-2 h-4 w-4" /> Download Data
+    </Button>
+  );
 };
 
 export default ExportButton;

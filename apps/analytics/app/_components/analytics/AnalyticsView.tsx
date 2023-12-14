@@ -15,7 +15,7 @@ export default function AnalyticsView() {
         <TotalInterviewsStartedCard />
         <TotalInterviewsCompletedCard />
       </div>
-      <div className="grid gap-4 grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 sm:grid-cols-1">
         <EventsTable />
         <Card>
           <CardHeader>Regions</CardHeader>
