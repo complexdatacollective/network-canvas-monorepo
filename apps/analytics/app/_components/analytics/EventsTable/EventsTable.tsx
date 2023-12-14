@@ -11,9 +11,13 @@ export default async function EventsTable() {
 
   return (
     <Card>
-      <CardHeader>Events</CardHeader>
+      <CardHeader>
+        <div className="flex justify-between">
+          Events
+          <ExportButton data={events} filename="events.csv" />
+        </div>
+      </CardHeader>
       <CardContent>
-        <ExportButton data={events} filename="events.csv" />
         <div className="mt-4">
           <DataTable columns={columns} data={events} pagination={true} />
         </div>
