@@ -11,8 +11,7 @@ const corsHeaders = {
 export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
-  const event: DispatchableAnalyticsEvent = data;
+  const event = (await request.json()) as DispatchableAnalyticsEvent;
 
   const timestamp = JSON.stringify(event.timestamp || new Date().toISOString());
 

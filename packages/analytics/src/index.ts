@@ -12,8 +12,7 @@ export type AnalyticsEventBase = {
     | "InterviewStarted"
     | "ProtocolInstalled"
     | "AppSetup"
-    | "Error"
-    | string;
+    | "Error";
 };
 
 export type AnalyticsEvent = AnalyticsEventBase & {
@@ -21,8 +20,7 @@ export type AnalyticsEvent = AnalyticsEventBase & {
     | "InterviewCompleted"
     | "InterviewStarted"
     | "ProtocolInstalled"
-    | "AppSetup"
-    | string;
+    | "AppSetup";
   metadata?: Record<string, unknown>;
 };
 
