@@ -61,68 +61,103 @@ export const createRouteHandler = ({
   WebServiceClient,
 }: RouteHandlerConfiguration) => {
   return async (request: NextRequest) => {
-    const maxMindClient = new WebServiceClient(
-      maxMindAccountId,
-      maxMindLicenseKey,
-      {
-        host: "geolite.info",
+    try {
+      const maxMindClient = new WebServiceClient(
+        maxMindAccountId,
+        maxMindLicenseKey,
+        {
+          host: "geolite.info",
+        }
+      );
+
+      const installationId = await getInstallationId();
+
+      const event =
+        (await request.json()) as AnalyticsEventOrErrorWithTimestamp;
+
+      const ip = await fetch("https://api64.ipify.org").then((res) =>
+        res.text()
+      );
+
+      const { country } = await maxMindClient.country(ip);
+      const countryCode = country?.isoCode ?? "Unknown";
+
+      const dispatchableEvent: DispatchableAnalyticsEvent = {
+        ...event,
+        installationId,
+        geolocation: {
+          countryCode,
+        },
+      };
+
+      console.log(dispatchableEvent);
+
+      // Forward to microservice
+      const response = await fetch(`${platformUrl}/api/event`, {
+        keepalive: true,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dispatchableEvent),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to forward event to microservice: ${response.statusText}`
+        );
       }
-    );
 
-    const installationId = await getInstallationId();
+      return new Response(
+        JSON.stringify({ message: "Event forwarded successfully" }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (e) {
+      const error = ensureError(e);
+      console.error("Error in route handler:", error);
 
-    const event = (await request.json()) as AnalyticsEventOrErrorWithTimestamp;
-
-    const ip = await fetch("https://api64.ipify.org").then((res) => res.text());
-
-    const { country } = await maxMindClient.country(ip);
-    const countryCode = country?.isoCode ?? "Unknown";
-
-    const dispatchableEvent: DispatchableAnalyticsEvent = {
-      ...event,
-      installationId,
-      geolocation: {
-        countryCode,
-      },
-    };
-
-    console.log(dispatchableEvent);
-
-    // Forward to microservice
-    void fetch(`${platformUrl}/api/event`, {
-      keepalive: true,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(dispatchableEvent),
-    });
-
-    return Response.json({
-      message: "This is the API route",
-    });
+      // Return an appropriate error response
+      return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
   };
 };
 
 export const makeEventTracker =
   ({ endpoint }: { endpoint: string }) =>
-  (event: AnalyticsEventOrError) => {
+  async (event: AnalyticsEventOrError) => {
     const eventWithTimeStamp = {
       ...event,
       timestamp: new Date(),
     };
 
-    fetch(endpoint, {
-      method: "POST",
-      keepalive: true,
-      body: JSON.stringify(eventWithTimeStamp),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).catch((e) => {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        keepalive: true,
+        body: JSON.stringify(eventWithTimeStamp),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to send analytics event: ${response.statusText}`
+        );
+      }
+    } catch (e) {
       const error = ensureError(e);
 
-      // eslint-disable-next-line no-console
       console.error("Error sending analytics event:", error.message);
-    });
+    }
   };
