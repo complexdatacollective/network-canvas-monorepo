@@ -21,6 +21,9 @@ export const columns: ColumnDef<Event>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Installation Id" />
     ),
+    cell: ({ row }) => {
+      return <div className="break-all">{row.original.installationid}</div>;
+    },
   },
   {
     accessorKey: "stacktrace",
