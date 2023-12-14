@@ -1,6 +1,6 @@
-import { WebServiceClient } from "@maxmind/geoip2-node";
-import { QueueObject, queue } from "async";
 import type { NextRequest } from "next/server";
+import { WebServiceClient } from "@maxmind/geoip2-node";
+import { ensureError } from "./utils";
 
 type GeoLocation = {
   countryCode: string;
@@ -36,7 +36,7 @@ export type AnalyticsError = AnalyticsEventBase & {
 
 export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
 
-type AnalyticsEventOrErrorWithTimestamp = AnalyticsEventOrError & {
+export type AnalyticsEventOrErrorWithTimestamp = AnalyticsEventOrError & {
   timestamp: Date;
 };
 
@@ -45,135 +45,84 @@ export type DispatchableAnalyticsEvent = AnalyticsEventOrErrorWithTimestamp & {
   geolocation?: GeoLocation;
 };
 
-type AnalyticsClientConfiguration = {
+type RouteHandlerConfiguration = {
+  maxMindAccountId: string;
+  maxMindLicenseKey: string;
   platformUrl?: string;
+  getInstallationId: () => Promise<string>;
+  WebServiceClient: typeof WebServiceClient;
 };
 
-export class AnalyticsClient {
-  private platformUrl: string = "https://analytics.networkcanvas.dev";
-  private installationId: string | undefined = undefined;
-
-  private dispatchQueue: QueueObject<AnalyticsEventOrErrorWithTimestamp>;
-
-  constructor(configuration?: AnalyticsClientConfiguration) {
-    if (configuration?.platformUrl) {
-      this.platformUrl = configuration.platformUrl;
-    }
-
-    this.dispatchQueue = queue(this.processEvent, 1);
-    this.dispatchQueue.pause(); // Start the queue paused so we can set the installation ID
-  }
-
-  public createRouteHandler =
-    (maxMindClient: WebServiceClient) =>
-    async (req: NextRequest): Promise<Response> => {
-      let ip;
-
-      if (
-        req.headers.get("x-forwarded-for") &&
-        !(req.headers.get("x-forwarded-for")?.split(",")[0] == "::1")
-      ) {
-        ip = req.headers.get("x-forwarded-for")?.split(",")[0];
-      } else {
-        // attempt geolocation via third party service
-        ip = await fetch("https://api64.ipify.org").then((res) => res.text());
+export const createRouteHandler = ({
+  maxMindAccountId,
+  maxMindLicenseKey,
+  platformUrl = "https://analytics.networkcanvas.com",
+  getInstallationId,
+  WebServiceClient,
+}: RouteHandlerConfiguration) => {
+  return async (request: NextRequest) => {
+    const maxMindClient = new WebServiceClient(
+      maxMindAccountId,
+      maxMindLicenseKey,
+      {
+        host: "geolite.info",
       }
+    );
 
-      if (!ip) {
-        console.error("No IP address provided for geolocation");
-        return new Response(null, { status: 500 });
-      }
+    const installationId = await getInstallationId();
 
-      try {
-        const response = await maxMindClient.country(ip);
+    const event = (await request.json()) as AnalyticsEventOrErrorWithTimestamp;
 
-        return new Response(response?.country?.isoCode, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("Error getting country code", error);
-        return new Response(null, { status: 500 });
-      }
+    const ip = await fetch("https://api64.ipify.org").then((res) => res.text());
+
+    const { country } = await maxMindClient.country(ip);
+    const countryCode = country?.isoCode ?? "Unknown";
+
+    const dispatchableEvent: DispatchableAnalyticsEvent = {
+      ...event,
+      installationId,
+      geolocation: {
+        countryCode,
+      },
     };
 
-  private geoLocate = async () => {
-    try {
-      const response = await fetch(`api/analytics/geolocate`);
-      if (!response.ok) {
-        throw new Error("Geolocation request failed");
-      }
+    console.log(dispatchableEvent);
 
-      const countryCode: string | null = await response.text();
-      return countryCode;
-    } catch (error) {
-      throw new Error("Error fetching country code");
-    }
-  };
-
-  private sendToMicroservice = (event: DispatchableAnalyticsEvent) => {
-    try {
-      const formData = new FormData();
-      formData.append("event", JSON.stringify(event));
-      const res = navigator.sendBeacon(
-        `${this.platformUrl}/api/event`,
-        formData
-      );
-
-      if (!res) {
-        throw new Error("Error sending event to microservice");
-      }
-
-      console.info(
-        `🚀 Event "${event.type}" successfully sent to analytics microservice!`
-      );
-    } catch (e) {
-      throw new Error("Error sending event to microservice");
-    }
-  };
-
-  private processEvent = async (event: AnalyticsEventOrErrorWithTimestamp) => {
-    // Todo: we need to think about client vs server geolocation. If we want
-    // client, does this get us that? If we want server, we can get it once,
-    // and simply store it.
-    try {
-      const countryCode = await this.geoLocate();
-
-      const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
-        ...event,
-        installationId: this.installationId ?? "",
-        geolocation: {
-          countryCode: countryCode ?? "",
-        },
-      };
-
-      // We could validate against a zod schema here.
-
-      // Send event to microservice.
-      this.sendToMicroservice(eventWithRequiredProperties);
-    } catch (error) {
-      console.error("❗️ Error sending event to analytics microservice", error);
-      return;
-    }
-  };
-
-  public trackEvent(payload: AnalyticsEventOrError) {
-    this.dispatchQueue.push({
-      ...payload,
-      timestamp: new Date(),
+    // Forward to microservice
+    void fetch(`${platformUrl}/api/event`, {
+      keepalive: true,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(dispatchableEvent),
     });
-    console.info(
-      `🕠 Event ${
-        payload.type
-      } queued for dispatch. Current queue size is ${this.dispatchQueue.length()}.`
-    );
-  }
 
-  public setInstallationId(installationId: string) {
-    this.installationId = installationId;
-    console.info(`🆔 Installation ID set to ${installationId}`);
-    this.dispatchQueue.resume();
-  }
-}
+    return Response.json({
+      message: "This is the API route",
+    });
+  };
+};
+
+export const makeEventTracker =
+  ({ endpoint }: { endpoint: string }) =>
+  (event: AnalyticsEventOrError) => {
+    const eventWithTimeStamp = {
+      ...event,
+      timestamp: new Date(),
+    };
+
+    fetch(endpoint, {
+      method: "POST",
+      keepalive: true,
+      body: JSON.stringify(eventWithTimeStamp),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).catch((e) => {
+      const error = ensureError(e);
+
+      // eslint-disable-next-line no-console
+      console.error("Error sending analytics event:", error.message);
+    });
+  };

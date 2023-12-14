@@ -8,12 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export const dynamic = "force-dynamic"; // defaults to force-static
 export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
-  const event: DispatchableAnalyticsEvent = data;
+  const event = (await request.json()) as DispatchableAnalyticsEvent;
 
   const timestamp = JSON.stringify(event.timestamp || new Date().toISOString());
 
