@@ -1,10 +1,10 @@
 "use client";
-import { EventPayload, ErrorPayload } from "@codaco/analytics";
+import type { Event, Error } from "~/db/schema";
 import Papa from "papaparse";
 import { Button } from "~/components/ui/button";
 
 interface ExportButtonProps {
-  data: (EventPayload | ErrorPayload)[];
+  data: (Event | Error)[];
   filename: string;
 }
 

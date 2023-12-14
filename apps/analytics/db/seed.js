@@ -6,6 +6,19 @@ for (let i = 0; i < 20; i++) {
   installationids.push(faker.string.uuid());
 }
 
+async function dropTables() {
+  try {
+    await sql`
+      DROP TABLE IF EXISTS Events;
+    `;
+    await sql`
+      DROP TABLE IF EXISTS Errors;
+    `;
+  } catch (error) {
+    console.error("Error dropping tables:", error);
+  }
+}
+
 async function seedEvents() {
   const eventTypes = [
     "AppSetup",
@@ -57,7 +70,6 @@ async function seedErrors() {
   try {
     await sql`
     CREATE TABLE IF NOT EXISTS Errors (
-      code integer,
       message varchar,
       details varchar,
       stacktrace varchar,
@@ -67,7 +79,6 @@ async function seedErrors() {
     );
   `;
     for (let i = 0; i < 100; i++) {
-      const code = faker.internet.httpStatusCode();
       const message = faker.helpers.arrayElement(messages);
       const details = faker.lorem.paragraph();
       const stacktrace = faker.lorem.lines();
@@ -76,8 +87,8 @@ async function seedErrors() {
       const timestamp = faker.date.recent();
 
       await sql`
-            INSERT INTO Errors (code, message, details, stacktrace, timestamp, installationid, path)
-            VALUES (${code}, ${message}, ${details}, ${stacktrace}, ${timestamp}, ${installationid}, ${path});
+            INSERT INTO Errors (message, details, stacktrace, timestamp, installationid, path)
+            VALUES (${message}, ${details}, ${stacktrace}, ${timestamp}, ${installationid}, ${path});
             `;
     }
   } catch (error) {
@@ -86,6 +97,7 @@ async function seedErrors() {
 }
 
 (async () => {
+  await dropTables();
   await seedEvents();
   await seedErrors();
 })();

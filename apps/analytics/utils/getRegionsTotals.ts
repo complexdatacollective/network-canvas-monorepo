@@ -1,4 +1,4 @@
-import { EventPayload } from "@codaco/analytics";
+import { Event } from "~/db/schema";
 import getEvents from "~/db/getEvents";
 
 export type RegionTotal = {
@@ -7,7 +7,7 @@ export type RegionTotal = {
 };
 
 export default async function getRegionsTotals(): Promise<RegionTotal[]> {
-  const events: EventPayload[] = await getEvents();
+  const events: Event[] = await getEvents();
   var countries = require("i18n-iso-countries");
 
   const calculatedTotals: Record<string, number> = {};
