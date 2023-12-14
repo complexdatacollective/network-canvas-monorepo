@@ -52,7 +52,7 @@ export class AnalyticsClient {
 
   private dispatchQueue: QueueObject<AnalyticsEventOrError>;
 
-  constructor(configuration: AnalyticsClientConfiguration | null) {
+  constructor(configuration?: AnalyticsClientConfiguration) {
     if (configuration?.platformUrl) {
       this.platformUrl = configuration.platformUrl;
     }
