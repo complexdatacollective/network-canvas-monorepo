@@ -36,10 +36,13 @@ export type AnalyticsError = AnalyticsEventBase & {
 
 export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
 
-export type DispatchableAnalyticsEvent = AnalyticsEventOrError & {
+type AnalyticsEventOrErrorWithTimestamp = AnalyticsEventOrError & {
+  timestamp: Date;
+};
+
+export type DispatchableAnalyticsEvent = AnalyticsEventOrErrorWithTimestamp & {
   installationId: string;
   geolocation?: GeoLocation;
-  timestamp: Date;
 };
 
 type AnalyticsClientConfiguration = {
@@ -50,7 +53,7 @@ export class AnalyticsClient {
   private platformUrl: string = "https://analytics.networkcanvas.dev";
   private installationId: string | undefined = undefined;
 
-  private dispatchQueue: QueueObject<AnalyticsEventOrError>;
+  private dispatchQueue: QueueObject<AnalyticsEventOrErrorWithTimestamp>;
 
   constructor(configuration?: AnalyticsClientConfiguration) {
     if (configuration?.platformUrl) {
@@ -110,17 +113,16 @@ export class AnalyticsClient {
     }
   };
 
-  private sendToMicroservice = async (event: DispatchableAnalyticsEvent) => {
+  private sendToMicroservice = (event: DispatchableAnalyticsEvent) => {
     try {
-      const result = await fetch(`${this.platformUrl}/api/event`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(event),
-      });
+      const formData = new FormData();
+      formData.append("event", JSON.stringify(event));
+      const res = navigator.sendBeacon(
+        `${this.platformUrl}/api/event`,
+        formData
+      );
 
-      if (!result.ok) {
+      if (!res) {
         throw new Error("Error sending event to microservice");
       }
 
@@ -132,7 +134,7 @@ export class AnalyticsClient {
     }
   };
 
-  private processEvent = async (event: AnalyticsEventOrError) => {
+  private processEvent = async (event: AnalyticsEventOrErrorWithTimestamp) => {
     // Todo: we need to think about client vs server geolocation. If we want
     // client, does this get us that? If we want server, we can get it once,
     // and simply store it.
@@ -142,7 +144,6 @@ export class AnalyticsClient {
       const eventWithRequiredProperties: DispatchableAnalyticsEvent = {
         ...event,
         installationId: this.installationId ?? "",
-        timestamp: new Date(),
         geolocation: {
           countryCode: countryCode ?? "",
         },
@@ -151,7 +152,7 @@ export class AnalyticsClient {
       // We could validate against a zod schema here.
 
       // Send event to microservice.
-      await this.sendToMicroservice(eventWithRequiredProperties);
+      this.sendToMicroservice(eventWithRequiredProperties);
     } catch (error) {
       console.error("❗️ Error sending event to analytics microservice", error);
       return;
@@ -159,7 +160,10 @@ export class AnalyticsClient {
   };
 
   public trackEvent(payload: AnalyticsEventOrError) {
-    this.dispatchQueue.push(payload);
+    this.dispatchQueue.push({
+      ...payload,
+      timestamp: new Date(),
+    });
     console.info(
       `🕠 Event ${
         payload.type
