@@ -8,7 +8,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export const dynamic = "force-dynamic"; // defaults to force-static
 export const runtime = "edge";
 
 export async function POST(request: NextRequest) {

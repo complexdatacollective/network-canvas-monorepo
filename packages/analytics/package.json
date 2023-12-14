@@ -1,6 +1,6 @@
 {
   "name": "@codaco/analytics",
-  "version": "0.6.0-alpha",
+  "version": "1.0.0-alpha-1",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "author": "Complex Data Collective <developers@coda.co>",
@@ -8,30 +8,18 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
     "lint": "eslint .",
-    "dev": "npm run build -- --watch",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
-  },
-  "dependencies": {
-    "@maxmind/geoip2-node": "^5.0.0",
-    "async": "^3.2.5",
-    "zod-fetch": "^0.1.1"
+    "dev": "npm run build -- --watch"
   },
   "peerDependencies": {
-    "next": "14.0.1"
+    "next": "13 || 14"
   },
   "devDependencies": {
-    "@types/async": "^3.2.24",
-    "@types/jest": "^29.5.11",
-    "@types/node": "^20.5.2",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
     "eslint-config-custom": "workspace:*",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "react": "^18.2.0",
     "tsconfig": "workspace:*",
     "tsup": "^7.2.0",
-    "typescript": "^5.3.2",
-    "zod": "^3.22.4"
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "@maxmind/geoip2-node": "^5.0.0"
   }
 }
