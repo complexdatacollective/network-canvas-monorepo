@@ -1,5 +1,4 @@
-// DialogButton.tsx
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -28,7 +27,7 @@ export function DialogButton({
       <DialogTrigger asChild>
         <Button variant="outline">{buttonLabel}</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-screen overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
