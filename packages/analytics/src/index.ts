@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { WebServiceClient } from "@maxmind/geoip2-node";
-import { ensureError } from "./utils";
+import { ensureError, getBaseUrl } from "./utils";
 
 type GeoLocation = {
   countryCode: string;
@@ -46,32 +46,18 @@ export type DispatchableAnalyticsEvent = AnalyticsEventOrErrorWithTimestamp & {
 };
 
 type RouteHandlerConfiguration = {
-  maxMindAccountId: string;
-  maxMindLicenseKey: string;
   platformUrl?: string;
-  getInstallationId: () => Promise<string>;
-  WebServiceClient: typeof WebServiceClient;
+  installationId: string;
+  maxMindClient: WebServiceClient;
 };
 
 export const createRouteHandler = ({
-  maxMindAccountId,
-  maxMindLicenseKey,
   platformUrl = "https://analytics.networkcanvas.com",
-  getInstallationId,
-  WebServiceClient,
+  installationId,
+  maxMindClient,
 }: RouteHandlerConfiguration) => {
   return async (request: NextRequest) => {
     try {
-      const maxMindClient = new WebServiceClient(
-        maxMindAccountId,
-        maxMindLicenseKey,
-        {
-          host: "geolite.info",
-        }
-      );
-
-      const installationId = await getInstallationId();
-
       const event =
         (await request.json()) as AnalyticsEventOrErrorWithTimestamp;
 
@@ -132,16 +118,22 @@ export const createRouteHandler = ({
   };
 };
 
+type MakeEventTracker = {
+  endpoint?: string;
+};
+
 export const makeEventTracker =
-  ({ endpoint }: { endpoint: string }) =>
+  ({ endpoint = "/api/analytics" }: MakeEventTracker) =>
   async (event: AnalyticsEventOrError) => {
+    const endpointWithHost = getBaseUrl() + endpoint;
+
     const eventWithTimeStamp = {
       ...event,
       timestamp: new Date(),
     };
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(endpointWithHost, {
         method: "POST",
         keepalive: true,
         body: JSON.stringify(eventWithTimeStamp),
@@ -151,13 +143,27 @@ export const makeEventTracker =
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to send analytics event: ${response.statusText}`
+        if (response.status === 404) {
+          console.error(
+            `Analytics endpoint not found, did you forget to add the route?`
+          );
+          return;
+        }
+
+        if (response.status === 500) {
+          console.error(
+            `Internal server error when sending analytics event: ${response.statusText}. Check the route handler implementation.`
+          );
+          return;
+        }
+
+        console.error(
+          `General error sending analytics event: ${response.statusText}`
         );
       }
     } catch (e) {
       const error = ensureError(e);
 
-      console.error("Error sending analytics event:", error.message);
+      console.error("Internal error with analytics:", error.message);
     }
   };
