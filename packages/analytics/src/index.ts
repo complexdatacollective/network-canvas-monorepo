@@ -76,8 +76,6 @@ export const createRouteHandler = ({
         },
       };
 
-      console.log(dispatchableEvent);
-
       // Forward to microservice
       const response = await fetch(`${platformUrl}/api/event`, {
         keepalive: true,
@@ -89,10 +87,33 @@ export const createRouteHandler = ({
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to forward event to microservice: ${response.statusText}`
+        if (response.status === 404) {
+          console.error(
+            `Analytics platform not found. Please specify a valid platform URL.`
+          );
+        } else if (response.status === 500) {
+          console.error(
+            `Internal server error on analytics platform when forwarding event: ${response.statusText}.`
+          );
+        } else {
+          console.error(
+            `General error when forwarding event: ${response.statusText}`
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ error: "Internal Server Error" }),
+          {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
         );
       }
+
+      console.info(`🚀 Analytics event forwarded successfully.`);
+      console.info(JSON.stringify(dispatchableEvent, null, 2));
 
       return new Response(
         JSON.stringify({ message: "Event forwarded successfully" }),
@@ -118,12 +139,8 @@ export const createRouteHandler = ({
   };
 };
 
-type MakeEventTracker = {
-  endpoint?: string;
-};
-
 export const makeEventTracker =
-  ({ endpoint = "/api/analytics" }: MakeEventTracker) =>
+  (endpoint: string = "/api/analytics") =>
   async (event: AnalyticsEventOrError) => {
     const endpointWithHost = getBaseUrl() + endpoint;
 
