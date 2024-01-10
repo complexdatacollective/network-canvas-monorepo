@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { WebServiceClient } from "@maxmind/geoip2-node";
-import { ensureError } from "./utils";
+import { ensureError, getBaseUrl } from "./utils";
 
 type GeoLocation = {
   countryCode: string;
@@ -46,32 +46,18 @@ export type DispatchableAnalyticsEvent = AnalyticsEventOrErrorWithTimestamp & {
 };
 
 type RouteHandlerConfiguration = {
-  maxMindAccountId: string;
-  maxMindLicenseKey: string;
   platformUrl?: string;
-  getInstallationId: () => Promise<string>;
-  WebServiceClient: typeof WebServiceClient;
+  installationId: string;
+  maxMindClient: WebServiceClient;
 };
 
 export const createRouteHandler = ({
-  maxMindAccountId,
-  maxMindLicenseKey,
   platformUrl = "https://analytics.networkcanvas.com",
-  getInstallationId,
-  WebServiceClient,
+  installationId,
+  maxMindClient,
 }: RouteHandlerConfiguration) => {
   return async (request: NextRequest) => {
     try {
-      const maxMindClient = new WebServiceClient(
-        maxMindAccountId,
-        maxMindLicenseKey,
-        {
-          host: "geolite.info",
-        }
-      );
-
-      const installationId = await getInstallationId();
-
       const event =
         (await request.json()) as AnalyticsEventOrErrorWithTimestamp;
 
@@ -90,8 +76,6 @@ export const createRouteHandler = ({
         },
       };
 
-      console.log(dispatchableEvent);
-
       // Forward to microservice
       const response = await fetch(`${platformUrl}/api/event`, {
         keepalive: true,
@@ -103,10 +87,33 @@ export const createRouteHandler = ({
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to forward event to microservice: ${response.statusText}`
+        if (response.status === 404) {
+          console.error(
+            `Analytics platform not found. Please specify a valid platform URL.`
+          );
+        } else if (response.status === 500) {
+          console.error(
+            `Internal server error on analytics platform when forwarding event: ${response.statusText}.`
+          );
+        } else {
+          console.error(
+            `General error when forwarding event: ${response.statusText}`
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ error: "Internal Server Error" }),
+          {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
         );
       }
+
+      console.info(`🚀 Analytics event forwarded successfully.`);
+      console.info(JSON.stringify(dispatchableEvent, null, 2));
 
       return new Response(
         JSON.stringify({ message: "Event forwarded successfully" }),
@@ -133,15 +140,17 @@ export const createRouteHandler = ({
 };
 
 export const makeEventTracker =
-  ({ endpoint }: { endpoint: string }) =>
+  (endpoint: string = "/api/analytics") =>
   async (event: AnalyticsEventOrError) => {
+    const endpointWithHost = getBaseUrl() + endpoint;
+
     const eventWithTimeStamp = {
       ...event,
       timestamp: new Date(),
     };
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(endpointWithHost, {
         method: "POST",
         keepalive: true,
         body: JSON.stringify(eventWithTimeStamp),
@@ -151,13 +160,27 @@ export const makeEventTracker =
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to send analytics event: ${response.statusText}`
+        if (response.status === 404) {
+          console.error(
+            `Analytics endpoint not found, did you forget to add the route?`
+          );
+          return;
+        }
+
+        if (response.status === 500) {
+          console.error(
+            `Internal server error when sending analytics event: ${response.statusText}. Check the route handler implementation.`
+          );
+          return;
+        }
+
+        console.error(
+          `General error sending analytics event: ${response.statusText}`
         );
       }
     } catch (e) {
       const error = ensureError(e);
 
-      console.error("Error sending analytics event:", error.message);
+      console.error("Internal error with analytics:", error.message);
     }
   };
