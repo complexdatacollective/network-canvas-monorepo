@@ -19,6 +19,7 @@ export type AnalyticsEventBase = {
 export type AnalyticsEvent = AnalyticsEventBase & {
   type:
     | "InterviewCompleted"
+    | "DataExported"
     | "InterviewStarted"
     | "ProtocolInstalled"
     | "AppSetup";
