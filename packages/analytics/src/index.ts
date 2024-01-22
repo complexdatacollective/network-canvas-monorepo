@@ -8,6 +8,7 @@ type GeoLocation = {
 
 export type AnalyticsEventBase = {
   type:
+    | "DataExported"
     | "InterviewCompleted"
     | "InterviewStarted"
     | "ProtocolInstalled"
