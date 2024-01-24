@@ -14,6 +14,7 @@ export type AnalyticsEventBase = {
     | "ProtocolInstalled"
     | "AppSetup"
     | "Error";
+  metadata?: Record<string, unknown>;
 };
 
 export type AnalyticsEvent = AnalyticsEventBase & {
@@ -23,17 +24,11 @@ export type AnalyticsEvent = AnalyticsEventBase & {
     | "InterviewStarted"
     | "ProtocolInstalled"
     | "AppSetup";
-  metadata?: Record<string, unknown>;
 };
 
 export type AnalyticsError = AnalyticsEventBase & {
   type: "Error";
-  error: {
-    message: string;
-    details: string;
-    stacktrace: string;
-    path: string;
-  };
+  error: Error;
 };
 
 export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
