@@ -6,32 +6,30 @@ type GeoLocation = {
   countryCode: string;
 };
 
-export type AnalyticsEventBase = {
-  type:
-    | "DataExported"
-    | "InterviewCompleted"
-    | "InterviewStarted"
-    | "ProtocolInstalled"
-    | "AppSetup"
-    | "Error";
+export type AnalyticsEventExtensible = {
+  type: string;
   metadata?: Record<string, unknown>;
 };
 
-export type AnalyticsEvent = AnalyticsEventBase & {
+export type AnalyticsEvent = {
   type:
     | "InterviewCompleted"
     | "DataExported"
     | "InterviewStarted"
     | "ProtocolInstalled"
     | "AppSetup";
+  metadata?: Record<string, unknown>;
 };
 
-export type AnalyticsError = AnalyticsEventBase & {
+export type AnalyticsError = {
   type: "Error";
   error: Error;
+  metadata?: Record<string, unknown>;
 };
 
-export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
+export type AnalyticsMainEvent = AnalyticsEvent | AnalyticsEventExtensible;
+
+export type AnalyticsEventOrError = AnalyticsMainEvent | AnalyticsError;
 
 export type AnalyticsEventOrErrorWithTimestamp = AnalyticsEventOrError & {
   timestamp: Date;
