@@ -109,9 +109,6 @@ export const createRouteHandler = ({
         );
       }
 
-      console.info(`🚀 Analytics event forwarded successfully.`);
-      console.info(JSON.stringify(dispatchableEvent, null, 2));
-
       return new Response(
         JSON.stringify({ message: "Event forwarded successfully" }),
         {
