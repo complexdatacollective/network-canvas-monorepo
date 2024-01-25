@@ -18,8 +18,16 @@ export async function POST(request: NextRequest) {
   // determine if this is an error and push it to the errors table
   if (event.type === "Error") {
     const errorPayload = event.error;
+    const errorDetails = event.metadata?.details;
+    const errorPath = event.metadata?.path;
     try {
-      await sql`INSERT INTO Errors (message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
+      await sql`INSERT INTO Errors (message, details, stacktrace, timestamp, installationid, path) VALUES (${
+        errorPayload.message
+      }, ${errorDetails ? JSON.stringify(errorDetails) : null}, ${
+        errorPayload.stack
+      }, ${timestamp}, ${event.installationId}, ${
+        errorPath ? JSON.stringify(errorPath) : null
+      });`;
       return NextResponse.json(
         { errorPayload },
         { status: 200, headers: corsHeaders }
