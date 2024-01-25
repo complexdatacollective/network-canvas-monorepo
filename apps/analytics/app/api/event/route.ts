@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
-import { DispatchableAnalyticsEvent } from "../../../packages/analytics/src"; //Todo: fix this import path
+import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
