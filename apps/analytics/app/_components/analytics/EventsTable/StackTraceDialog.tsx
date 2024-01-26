@@ -1,7 +1,7 @@
 import { DialogButton } from "~/components/DialogButton";
-import { type ErrorEvent } from "~/db/getErrors";
+import { Event } from "~/db/getEvents";
 
-export function StackTraceDialog({ error }: { error: ErrorEvent }) {
+export function StackTraceDialog({ error }: { error: Event }) {
   return (
     <DialogButton
       buttonLabel="Stack Trace"

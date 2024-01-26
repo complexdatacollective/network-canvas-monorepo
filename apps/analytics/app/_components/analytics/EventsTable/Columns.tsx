@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "~/components/DataTable/column-header";
 import { MetadataDialog } from "~/components/MetadataDialog";
 import type { Event } from "~/db/getEvents";
+import { StackTraceDialog } from "./StackTraceDialog";
 
 export const columns: ColumnDef<Event>[] = [
   {
@@ -31,6 +32,28 @@ export const columns: ColumnDef<Event>[] = [
     cell: ({ row }) => {
       return <div className="break-all">{row.original.installationId}</div>;
     },
+  },
+  {
+    accessorKey: "name",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Name" />
+    ),
+  },
+  {
+    accessorKey: "message",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Message" />
+    ),
+  },
+  {
+    accessorKey: "stack",
+    header: "",
+    cell: ({ row }) =>
+      row.original.stack && (
+        <div className="min-w-max">
+          <StackTraceDialog error={row.original} />
+        </div>
+      ),
   },
   {
     accessorKey: "metadata",
