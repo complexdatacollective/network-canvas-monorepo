@@ -1,12 +1,23 @@
-import { sql } from "@vercel/postgres";
-import type { Event } from "~/db/schema";
+import { db } from "./db";
 
 export default async function getEvents() {
-  const events = await sql`SELECT * FROM Events ;`;
+  try {
+    const events = await db.query.eventsTable.findMany({
+      where: (events, { ne }) => ne(events.type, "Error"),
+      orderBy: (events, { desc }) => [desc(events.timestamp)],
+      columns: {
+        name: false,
+        message: false,
+        stack: false,
+      },
+    });
 
-  // sort by timestamp to display events in order of most recent first
-  events.rows.sort((a, b) => {
-    return b.timestamp - a.timestamp;
-  });
-  return events.rows as Event[];
+    return events;
+  } catch (error) {
+    console.error("Error getting events", error);
+    return [];
+  }
 }
+
+type Events = Awaited<ReturnType<typeof getEvents>>;
+export type Event = Events[0];

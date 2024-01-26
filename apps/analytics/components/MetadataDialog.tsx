@@ -1,7 +1,8 @@
 import { DialogButton } from "~/components/DialogButton";
-import type { Event } from "~/db/schema";
+import { type ErrorEvent } from "~/db/getErrors";
+import { type Event } from "~/db/getEvents";
 
-export function MetadataDialog({ event }: { event: Event }) {
+export function MetadataDialog({ event }: { event: Event | ErrorEvent }) {
   return (
     <DialogButton
       buttonLabel="Details"

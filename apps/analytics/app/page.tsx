@@ -1,7 +1,7 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { UserButton } from "@clerk/nextjs";
 import AnalyticsView from "~/app/_components/analytics/AnalyticsView";
 import ErrorsView from "~/app/_components/errors/ErrorsView";
-import { UserButton } from "@clerk/nextjs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import UserManagementDialog from "./_components/users/UserManagementDialog";
 
 export default function DashboardPage() {

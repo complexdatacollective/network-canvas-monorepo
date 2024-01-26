@@ -1,5 +1,4 @@
-import { Event } from "~/db/schema";
-import getEvents from "~/db/getEvents";
+import getEvents, { type Event } from "~/db/getEvents";
 
 export type RegionTotal = {
   country: string;

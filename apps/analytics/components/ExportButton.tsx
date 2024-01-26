@@ -1,11 +1,13 @@
 "use client";
-import type { Event, Error } from "~/db/schema";
+
 import Papa from "papaparse";
 import { Button } from "~/components/ui/button";
 import { Download } from "lucide-react";
+import { type Event } from "~/db/getEvents";
+import { type ErrorEvent } from "~/db/getErrors";
 
 interface ExportButtonProps {
-  data: (Event | Error)[];
+  data: (Event | ErrorEvent)[];
   filename: string;
 }
 

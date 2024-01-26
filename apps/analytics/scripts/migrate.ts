@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { migrate } from "drizzle-orm/vercel-postgres/migrator";
-import { db } from "~/lib/db";
+import { db } from "~/db/db";
 
 export async function runMigration() {
   try {

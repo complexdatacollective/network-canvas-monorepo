@@ -1,6 +1,7 @@
+import { type DispatchableAnalyticsEvent } from "@codaco/analytics";
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
-import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
+import { type EventInsertType } from "~/db/db";
+import insertEvent from "~/db/insertEvent";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,44 +14,27 @@ export const runtime = "edge";
 export async function POST(request: NextRequest) {
   const event = (await request.json()) as DispatchableAnalyticsEvent;
 
-  const timestamp = JSON.stringify(event.timestamp || new Date().toISOString());
+  let generalEvent: EventInsertType = {
+    type: event.type,
+    metadata: event.metadata,
+    timestamp: event.timestamp,
+    installationId: event.installationId,
+    isocode: event.geolocation?.countryCode,
+  };
 
-  // determine if this is an error and push it to the errors table
   if (event.type === "Error") {
-    const errorPayload = event.error;
-    const errorDetails = event.metadata?.details;
-    const errorPath = event.metadata?.path;
-    try {
-      await sql`INSERT INTO Errors (message, details, stacktrace, timestamp, installationid, path) VALUES (${
-        errorPayload.message
-      }, ${errorDetails ? JSON.stringify(errorDetails) : null}, ${
-        errorPayload.stack
-      }, ${timestamp}, ${event.installationId}, ${
-        errorPath ? JSON.stringify(errorPath) : null
-      });`;
-      return NextResponse.json(
-        { errorPayload },
-        { status: 200, headers: corsHeaders }
-      );
-    } catch (error) {
-      return NextResponse.json(
-        { error },
-        { status: 500, headers: corsHeaders }
-      );
-    }
+    generalEvent = {
+      ...generalEvent,
+      message: event.error.message,
+      name: event.error.name,
+      stack: event.error.stack,
+    };
   }
 
-  // event is not an error
-  // push the event to the events table
-
   try {
-    await sql`INSERT INTO EVENTS (type, metadata, timestamp, installationid, isocode) VALUES(
-      ${event.type},
-      ${JSON.stringify(event.metadata)},
-      ${timestamp},
-      ${event.installationId},
-      ${event.geolocation?.countryCode}
-    );`;
+    const result = await insertEvent(generalEvent);
+    if (result.error) throw new Error(result.error);
+
     return NextResponse.json({ event }, { status: 200, headers: corsHeaders });
   } catch (error) {
     return NextResponse.json({ error }, { status: 500, headers: corsHeaders });

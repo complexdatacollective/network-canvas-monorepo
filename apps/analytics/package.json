@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node -r dotenv/config ./db/seed.js"
+    "generate": "npx drizzle-kit generate:pg",
+    "migrate": "npx tsx scripts/migrate.ts",
+    "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^4.26.2",

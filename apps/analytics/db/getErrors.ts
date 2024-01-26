@@ -1,12 +1,18 @@
-import { sql } from "@vercel/postgres";
-import type { Error } from "~/db/schema";
+import { db } from "./db";
 
 export default async function getErrors() {
-  const errors = await sql`SELECT * FROM Errors ;`;
+  try {
+    const errorEvents = await db.query.eventsTable.findMany({
+      where: (events, { eq }) => eq(events.type, "Error"),
+      orderBy: (events, { desc }) => [desc(events.timestamp)],
+    });
 
-  // sort by timestamp to display errros in order of most recent first
-  errors.rows.sort((a, b) => {
-    return b.timestamp - a.timestamp;
-  });
-  return errors.rows as Error[];
+    return errorEvents;
+  } catch (error) {
+    console.error("Error getting events", error);
+    return [];
+  }
 }
+
+type ErrorEvents = Awaited<ReturnType<typeof getErrors>>;
+export type ErrorEvent = ErrorEvents[0];

@@ -1,9 +1,8 @@
 // EventsTable.tsx
-import React from "react";
 import { DataTable } from "~/components/DataTable/data-table";
+import ExportButton from "~/components/ExportButton";
 import getEvents from "~/db/getEvents";
 import { columns } from "./Columns";
-import ExportButton from "~/components/ExportButton";
 
 export default async function EventsTable() {
   const events = await getEvents();
