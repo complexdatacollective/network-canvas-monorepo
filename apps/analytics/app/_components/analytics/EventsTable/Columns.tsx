@@ -17,6 +17,11 @@ export const columns: ColumnDef<Event>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Timestamp" />
     ),
+    cell: ({ row }) => {
+      return (
+        <div className="break-all">{row.original.timestamp.toUTCString()}</div>
+      );
+    },
   },
   {
     accessorKey: "installationId",
