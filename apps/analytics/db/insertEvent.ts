@@ -10,7 +10,7 @@ export default async function insertEvent(event: EventInsertType) {
 
     return { data: insertedEvent, error: null };
   } catch (error) {
-    console.error("Error getting events", error);
-    return { data: null, error: "Error getting events" };
+    console.error("Error inserting events", error);
+    return { data: null, error: "Error inserting events" };
   }
 }

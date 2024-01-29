@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   let generalEvent: EventInsertType = {
     type: event.type,
     metadata: event.metadata,
-    timestamp: event.timestamp,
+    timestamp: new Date(event.timestamp),
     installationId: event.installationId,
     isocode: event.geolocation?.countryCode,
   };
