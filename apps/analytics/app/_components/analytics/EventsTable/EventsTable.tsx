@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "~/components/DataTable/data-table";
 import ExportButton from "~/components/ExportButton";
 import { Event } from "~/db/getEvents";
-import { columns } from "./Columns";
-import TableFilter from "./TableFilter";
+import { getColumns } from "./Columns";
 
 export type EventType = {
   text: string;
@@ -34,15 +33,17 @@ export default function EventsTable({ events }: { events: Event[] }) {
 
   return (
     <div>
-      <TableFilter eventTypes={eventTypes} setEventTypes={setEventTypes} />
-
       <div className="flex justify-between items-center mt-2">
         <h2>Events</h2>
         <ExportButton data={events} filename="events.csv" />
       </div>
 
       <div className="mt-2">
-        <DataTable columns={columns} data={filteredEvents} pagination={true} />
+        <DataTable
+          columns={getColumns(eventTypes, setEventTypes)}
+          data={filteredEvents}
+          pagination={true}
+        />
       </div>
     </div>
   );

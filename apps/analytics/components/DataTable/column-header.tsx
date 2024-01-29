@@ -13,7 +13,7 @@ import { cn } from "~/utils/shadcn";
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   column: Column<TData, TValue>;
-  title: string;
+  title?: string;
 }
 
 export function DataTableColumnHeader<TData, TValue>({
@@ -36,11 +36,15 @@ export function DataTableColumnHeader<TData, TValue>({
           >
             <span>{title}</span>
             {column.getIsSorted() === "desc" ? (
-              <ArrowDown className="ml-2 h-4 w-4 text-emerald-500" />
+              <ArrowDown
+                className={`${title && "ml-2 "}h-4 w-4 text-emerald-500`}
+              />
             ) : column.getIsSorted() === "asc" ? (
-              <ArrowUp className="ml-2 h-4 w-4 text-emerald-500" />
+              <ArrowUp
+                className={`${title && "ml-2"} h-4 w-4 text-emerald-500`}
+              />
             ) : (
-              <ArrowUpDown className="w-4t ml-2 h-4" />
+              <ArrowUpDown className={`${title && "ml-2"} w-4t h-4`} />
             )}
           </Button>
         </DropdownMenuTrigger>
