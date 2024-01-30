@@ -2,9 +2,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { faker } from "@faker-js/faker";
-import { eventTypes } from "~/app/api/event/route";
 import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
+import { eventTypes } from "~/lib/shared_consts";
 
 let installationIds: string[] = [];
 for (let i = 0; i < 20; i++) {

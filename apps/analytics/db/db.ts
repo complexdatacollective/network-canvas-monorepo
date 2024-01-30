@@ -8,4 +8,4 @@ export const db = drizzle(sql, { schema });
 
 export type EventInsertType = typeof eventsTable.$inferInsert;
 
-// derive a zod schema from the table schema and use it inside analytics package
+// Todo: derive a zod schema from the table schema and use it inside analytics package
