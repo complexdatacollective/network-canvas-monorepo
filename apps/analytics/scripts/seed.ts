@@ -2,24 +2,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { faker } from "@faker-js/faker";
-import { db } from "~/db/db";
+import { eventTypes } from "~/app/api/event/route";
+import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
-import { type EventInsertType } from "~/db/db";
 
 let installationIds: string[] = [];
 for (let i = 0; i < 20; i++) {
   installationIds.push(faker.string.uuid());
 }
-
-const eventTypes = [
-  "AppSetup",
-  "ProtocolInstalled",
-  "InterviewStarted",
-  "InterviewCompleted",
-  "InterviewCompleted",
-  "DataExported",
-  "Error",
-];
 
 async function seedEvents() {
   console.info("Starting to seed events");

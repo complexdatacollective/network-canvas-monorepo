@@ -2,6 +2,37 @@ import { type DispatchableAnalyticsEvent } from "@codaco/analytics";
 import { NextRequest, NextResponse } from "next/server";
 import { type EventInsertType } from "~/db/db";
 import insertEvent from "~/db/insertEvent";
+import z from "zod";
+
+export const eventTypes = [
+  "AppSetup",
+  "ProtocolInstalled",
+  "InterviewStarted",
+  "InterviewCompleted",
+  "InterviewCompleted",
+  "DataExported",
+  "Error",
+] as const;
+
+export type EventType = (typeof eventTypes)[number];
+
+export const EventsSchema = z.object({
+  type: z.enum(eventTypes),
+  installationId: z.string(),
+  timestamp: z.date(),
+  isocode: z.string().optional(),
+  message: z.string().optional(),
+  name: z.string().optional(),
+  stack: z.string().optional(),
+  metadata: z
+    .object({
+      details: z.string(),
+      path: z.string(),
+    })
+    .optional(),
+});
+
+export type Event = z.infer<typeof EventsSchema>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,27 +43,19 @@ const corsHeaders = {
 export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
-  const event = (await request.json()) as DispatchableAnalyticsEvent;
+  const event = (await request.json()) as unknown;
 
-  let generalEvent: EventInsertType = {
-    type: event.type,
-    metadata: event.metadata,
-    timestamp: new Date(event.timestamp),
-    installationId: event.installationId,
-    isocode: event.geolocation?.countryCode,
-  };
+  const parsedEvent = EventsSchema.safeParse(event);
 
-  if (event.type === "Error") {
-    generalEvent = {
-      ...generalEvent,
-      message: event.error.message,
-      name: event.error.name,
-      stack: event.error.stack,
-    };
+  if (parsedEvent.success === false) {
+    return NextResponse.json(
+      { error: "Invalid event" },
+      { status: 401, headers: corsHeaders }
+    );
   }
 
   try {
-    const result = await insertEvent(generalEvent);
+    const result = await insertEvent(parsedEvent.data);
     if (result.error) throw new Error(result.error);
 
     return NextResponse.json({ event }, { status: 200, headers: corsHeaders });
