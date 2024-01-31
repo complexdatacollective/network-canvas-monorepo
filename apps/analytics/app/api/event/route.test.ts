@@ -1,7 +1,7 @@
 import { testApiHandler } from "next-test-api-route-handler";
 import insertEvent from "~/db/insertEvent";
 import * as appHandler from "./route";
-import { Event } from "~/lib/shared_consts";
+import { Event } from "@codaco/analytics";
 
 jest.mock("~/db/insertEvent", () => jest.fn());
 

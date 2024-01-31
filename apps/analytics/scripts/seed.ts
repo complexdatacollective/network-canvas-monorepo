@@ -4,7 +4,7 @@ dotenv.config();
 import { faker } from "@faker-js/faker";
 import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
-import { eventTypes } from "~/lib/shared_consts";
+import { eventTypes } from "@codaco/analytics";
 
 let installationIds: string[] = [];
 for (let i = 0; i < 20; i++) {

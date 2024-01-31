@@ -1,45 +1,52 @@
 import type { NextRequest } from "next/server";
 import { WebServiceClient } from "@maxmind/geoip2-node";
 import { ensureError, getBaseUrl } from "./utils";
+import z from "zod";
 
-type GeoLocation = {
-  countryCode: string;
-};
+export const eventTypes = [
+  "AppSetup",
+  "ProtocolInstalled",
+  "InterviewStarted",
+  "InterviewCompleted",
+  "DataExported",
+  "Error",
+] as const;
 
-export type AnalyticsEventBase = {
-  type:
-    | "DataExported"
-    | "InterviewCompleted"
-    | "InterviewStarted"
-    | "ProtocolInstalled"
-    | "AppSetup"
-    | "Error";
+export type EventType = (typeof eventTypes)[number];
+type EventTypeWithoutError = Exclude<EventType, "Error">;
+
+export const EventsSchema = z.object({
+  type: z.enum(eventTypes),
+  installationId: z.string(),
+  timestamp: z.string(),
+  isocode: z.string().optional(),
+  error: z
+    .object({
+      message: z.string(),
+      name: z.string(),
+      stack: z.string().optional(),
+    })
+    .optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type Event = z.infer<typeof EventsSchema>;
+
+export type AnalyticsEvent = {
+  type: EventTypeWithoutError;
   metadata?: Record<string, unknown>;
 };
 
-export type AnalyticsEvent = AnalyticsEventBase & {
-  type:
-    | "InterviewCompleted"
-    | "DataExported"
-    | "InterviewStarted"
-    | "ProtocolInstalled"
-    | "AppSetup";
-};
-
-export type AnalyticsError = AnalyticsEventBase & {
+export type AnalyticsError = {
   type: "Error";
   error: Error;
+  metadata?: Record<string, unknown>;
 };
 
 export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
 
 export type AnalyticsEventOrErrorWithTimestamp = AnalyticsEventOrError & {
-  timestamp: Date;
-};
-
-export type DispatchableAnalyticsEvent = AnalyticsEventOrErrorWithTimestamp & {
-  installationId: string;
-  geolocation?: GeoLocation;
+  timestamp: string;
 };
 
 type RouteHandlerConfiguration = {
@@ -65,12 +72,10 @@ export const createRouteHandler = ({
       const { country } = await maxMindClient.country(ip);
       const countryCode = country?.isoCode ?? "Unknown";
 
-      const dispatchableEvent: DispatchableAnalyticsEvent = {
+      const dispatchableEvent: Event = {
         ...event,
         installationId,
-        geolocation: {
-          countryCode,
-        },
+        isocode: countryCode,
       };
 
       // Forward to microservice
