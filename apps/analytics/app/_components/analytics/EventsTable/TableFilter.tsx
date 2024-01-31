@@ -1,6 +1,6 @@
 "use client";
 
-import { type Dispatch, type SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -18,8 +18,10 @@ type TableFilterProps = {
 };
 
 const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
+  const [options, setOptions] = useState<EventType[]>(eventTypes);
+
   const toggleOption = (option: string) => {
-    setEventTypes((prevState) =>
+    setOptions((prevState) =>
       prevState.map((t) =>
         t.text === option ? { ...t, isSelected: !t.isSelected } : t
       )
@@ -27,10 +29,10 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
   };
 
   const toggleAllOptions = (isSelected: boolean) => {
-    setEventTypes((prevState) => prevState.map((t) => ({ ...t, isSelected })));
+    setOptions((prevState) => prevState.map((t) => ({ ...t, isSelected })));
   };
 
-  const isAllSelected = eventTypes.every((option) => option.isSelected);
+  const isAllSelected = options.every((option) => option.isSelected);
 
   return (
     <DropdownMenu>
@@ -53,18 +55,26 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
           </label>
           <DropdownMenuSeparator />
 
-          {eventTypes.map((type) => (
+          {options.map((option) => (
             <label
-              key={type.text}
+              key={option.text}
               className="text-sm flex items-center gap-3 pl-2 transition-colors hover:bg-muted p-1 rounded-md"
             >
               <Checkbox
-                checked={type.isSelected}
-                onCheckedChange={() => toggleOption(type.text)}
+                checked={option.isSelected}
+                onCheckedChange={() => toggleOption(option.text)}
               />
-              <span>{type.text}</span>
+              <span>{option.text}</span>
             </label>
           ))}
+
+          <Button
+            onClick={() => setEventTypes(options)}
+            className="float-right"
+            size={"sm"}
+          >
+            Apply
+          </Button>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
