@@ -3,51 +3,76 @@ import { WebServiceClient } from "@maxmind/geoip2-node";
 import { ensureError, getBaseUrl } from "./utils";
 import z from "zod";
 
+// Todo: it would be great to work out a way to support arbitrary types here.
 export const eventTypes = [
   "AppSetup",
   "ProtocolInstalled",
   "InterviewStarted",
   "InterviewCompleted",
   "DataExported",
-  "Error",
 ] as const;
 
-export type EventType = (typeof eventTypes)[number];
-type EventTypeWithoutError = Exclude<EventType, "Error">;
+// Properties that everything has in common.
+const SharedEventAndErrorSchema = z
+  .object({
+    metadata: z.record(z.unknown()).optional(),
+  })
+  .strict();
 
-export const EventsSchema = z.object({
-  type: z.enum(eventTypes),
-  installationId: z.string(),
-  timestamp: z.string(),
-  isocode: z.string().optional(),
-  error: z
-    .object({
-      message: z.string(),
-      name: z.string(),
-      stack: z.string().optional(),
-    })
-    .optional(),
-  metadata: z.record(z.unknown()).optional(),
-});
+const EventSchema = z
+  .object({
+    type: z.enum(eventTypes),
+  })
+  .strict();
 
-export type Event = z.infer<typeof EventsSchema>;
+const ErrorSchema = z
+  .object({
+    type: z.literal("Error"),
+    error: z
+      .object({
+        message: z.string(),
+        name: z.string(),
+        stack: z.string().optional(),
+      })
+      .strict(),
+  })
+  .strict();
 
-export type AnalyticsEvent = {
-  type: EventTypeWithoutError;
-  metadata?: Record<string, unknown>;
-};
+// Raw events are the events that are sent to the route handler. They could be
+// any of the event types, or an error, based on the type property.
+const RawEventSchema = z.discriminatedUnion("type", [
+  SharedEventAndErrorSchema.merge(EventSchema),
+  SharedEventAndErrorSchema.merge(ErrorSchema),
+]);
+export type RawEvent = z.infer<typeof RawEventSchema>;
 
-export type AnalyticsError = {
-  type: "Error";
-  error: Error;
-  metadata?: Record<string, unknown>;
-};
+// This property is added by trackEvent
+const TrackablePropertiesSchema = z
+  .object({
+    timestamp: z.string(),
+  })
+  .strict();
 
-export type AnalyticsEventOrError = AnalyticsEvent | AnalyticsError;
+const TrackableEventSchema = z.intersection(
+  RawEventSchema,
+  TrackablePropertiesSchema
+);
+export type TrackableEvent = z.infer<typeof TrackableEventSchema>;
 
-export type AnalyticsEventOrErrorWithTimestamp = AnalyticsEventOrError & {
-  timestamp: string;
-};
+// These properties are added by the route handler
+const DispatchablePropertiesSchema = z
+  .object({
+    installationId: z.string(),
+    countryISOCode: z.string(),
+  })
+  .strict();
+
+// Events that are ready to be sent to the platform
+const DispatchableEventSchema = z.intersection(
+  TrackableEventSchema,
+  DispatchablePropertiesSchema
+);
+export type DispatchableEvent = z.infer<typeof DispatchableEventSchema>;
 
 type RouteHandlerConfiguration = {
   platformUrl?: string;
@@ -62,20 +87,38 @@ export const createRouteHandler = ({
 }: RouteHandlerConfiguration) => {
   return async (request: NextRequest) => {
     try {
-      const event =
-        (await request.json()) as AnalyticsEventOrErrorWithTimestamp;
+      const incomingEvent = (await request.json()) as unknown;
 
-      const ip = await fetch("https://api64.ipify.org").then((res) =>
-        res.text()
-      );
+      // Validate the event
+      const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
-      const { country } = await maxMindClient.country(ip);
-      const countryCode = country?.isoCode ?? "Unknown";
+      if (!trackableEvent.success) {
+        console.error("Invalid event:", trackableEvent.error);
+        return new Response(JSON.stringify({ error: "Invalid event" }), {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
 
-      const dispatchableEvent: Event = {
-        ...event,
+      // We don't want failures in third party services to prevent us from
+      // tracking analytics events.
+      let countryISOCode = "Unknown";
+      try {
+        const ip = await fetch("https://api64.ipify.org").then((res) =>
+          res.text()
+        );
+        const { country } = await maxMindClient.country(ip);
+        countryISOCode = country?.isoCode ?? "Unknown";
+      } catch (e) {
+        console.error("Geolocation failed:", e);
+      }
+
+      const dispatchableEvent: DispatchableEvent = {
+        ...trackableEvent.data,
         installationId,
-        isocode: countryCode,
+        countryISOCode,
       };
 
       // Forward to microservice
@@ -91,7 +134,7 @@ export const createRouteHandler = ({
       if (!response.ok) {
         if (response.status === 404) {
           console.error(
-            `Analytics platform not found. Please specify a valid platform URL.`
+            `Analytics platform could not be reached. Please specify a valid platform URL, or check that the platform is online.`
           );
         } else if (response.status === 500) {
           console.error(
@@ -140,12 +183,17 @@ export const createRouteHandler = ({
 
 export const makeEventTracker =
   (endpoint: string = "/api/analytics") =>
-  async (event: AnalyticsEventOrError) => {
+  async (event: RawEvent) => {
+    // If analytics is disabled don't send analytics events.
+    if (process.env.DISABLE_ANALYTICS === "true") {
+      return;
+    }
+
     const endpointWithHost = getBaseUrl() + endpoint;
 
-    const eventWithTimeStamp = {
+    const eventWithTimeStamp: TrackableEvent = {
       ...event,
-      timestamp: new Date(),
+      timestamp: new Date().toJSON(),
     };
 
     try {
@@ -179,7 +227,6 @@ export const makeEventTracker =
       }
     } catch (e) {
       const error = ensureError(e);
-
       console.error("Internal error with analytics:", error.message);
     }
   };

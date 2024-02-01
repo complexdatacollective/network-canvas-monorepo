@@ -15,7 +15,7 @@ export const eventsTable = pgTable(
     type: text("type").notNull(),
     installationId: text("installationId").notNull(),
     timestamp: timestamp("timestamp").notNull(),
-    isocode: text("isocode"),
+    countryISOCode: text("countryISOCode").notNull(),
     message: text("message"),
     name: text("name"),
     stack: text("stack"),
