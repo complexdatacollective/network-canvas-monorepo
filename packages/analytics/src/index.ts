@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import { WebServiceClient } from "@maxmind/geoip2-node";
 import { ensureError, getBaseUrl } from "./utils";
 import z from "zod";
@@ -13,30 +13,24 @@ export const eventTypes = [
 ] as const;
 
 // Properties that everything has in common.
-const SharedEventAndErrorSchema = z
-  .object({
-    metadata: z.record(z.unknown()).optional(),
-  })
-  .strict();
+const SharedEventAndErrorSchema = z.object({
+  metadata: z.record(z.unknown()).optional(),
+});
 
-const EventSchema = z
-  .object({
-    type: z.enum(eventTypes),
-  })
-  .strict();
+const EventSchema = z.object({
+  type: z.enum(eventTypes),
+});
 
-const ErrorSchema = z
-  .object({
-    type: z.literal("Error"),
-    error: z
-      .object({
-        message: z.string(),
-        name: z.string(),
-        stack: z.string().optional(),
-      })
-      .strict(),
-  })
-  .strict();
+const ErrorSchema = z.object({
+  type: z.literal("Error"),
+  error: z
+    .object({
+      message: z.string(),
+      name: z.string(),
+      stack: z.string().optional(),
+    })
+    .strict(),
+});
 
 // Raw events are the events that are sent trackEvent.
 export const RawEventSchema = z.discriminatedUnion("type", [
@@ -46,11 +40,9 @@ export const RawEventSchema = z.discriminatedUnion("type", [
 export type RawEvent = z.infer<typeof RawEventSchema>;
 
 // Trackable events are the events that are sent to the route handler.
-const TrackablePropertiesSchema = z
-  .object({
-    timestamp: z.string(),
-  })
-  .strict();
+const TrackablePropertiesSchema = z.object({
+  timestamp: z.string(),
+});
 
 export const TrackableEventSchema = z.intersection(
   RawEventSchema,
@@ -59,12 +51,10 @@ export const TrackableEventSchema = z.intersection(
 export type TrackableEvent = z.infer<typeof TrackableEventSchema>;
 
 // Dispatchable events are the events that are sent to the platform.
-const DispatchablePropertiesSchema = z
-  .object({
-    installationId: z.string(),
-    countryISOCode: z.string(),
-  })
-  .strict();
+const DispatchablePropertiesSchema = z.object({
+  installationId: z.string(),
+  countryISOCode: z.string(),
+});
 
 export const DispatchableEventSchema = z.intersection(
   TrackableEventSchema,
@@ -144,19 +134,21 @@ export const createRouteHandler = ({
           error = `Analytics platform returned an internal server error. Please check the platform logs.`;
         }
 
-        return NextResponse.json(
+        console.info("⚠️ Analytics platform rejected event.");
+        return Response.json(
           {
             error,
           },
           { status: 500 }
         );
       }
-      return NextResponse.json({ message: "Event forwarded successfully" });
+      console.info("🚀 Analytics event sent to platform!");
+      return Response.json({ message: "Event forwarded successfully" });
     } catch (e) {
       const error = ensureError(e);
-      console.error("Error in route handler:", error.message);
+      console.info("🚫 Internal error with sending analytics event.");
 
-      return NextResponse.json(
+      return Response.json(
         { error: `Error in analytics route handler: ${error.message}` },
         { status: 500 }
       );
@@ -164,12 +156,23 @@ export const createRouteHandler = ({
   };
 };
 
+type ConsumerConfiguration = {
+  enabled?: boolean;
+  endpoint?: string;
+};
+
+export type EventTrackerReturn = {
+  error: string | null;
+  success: boolean;
+};
+
 export const makeEventTracker =
-  (endpoint: string = "/api/analytics") =>
-  async (event: RawEvent) => {
+  ({ enabled = false, endpoint = "/api/analytics" }: ConsumerConfiguration) =>
+  async (event: RawEvent): Promise<EventTrackerReturn> => {
     // If analytics is disabled don't send analytics events.
-    if (process.env.DISABLE_ANALYTICS === "true") {
-      return;
+    if (!enabled) {
+      console.log("Analytics disabled, not sending event");
+      return { error: null, success: true };
     }
 
     const endpointWithHost = getBaseUrl() + endpoint;
@@ -179,32 +182,45 @@ export const makeEventTracker =
       timestamp: new Date().toJSON(),
     };
 
-    const response = await fetch(endpointWithHost, {
-      method: "POST",
-      keepalive: true,
-      body: JSON.stringify(eventWithTimeStamp),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    try {
+      const response = await fetch(endpointWithHost, {
+        method: "POST",
+        keepalive: true,
+        body: JSON.stringify(eventWithTimeStamp),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(
-          `Analytics endpoint not found, did you forget to add the route?`
-        );
+      if (!response.ok) {
+        if (response.status === 404) {
+          return {
+            error: `Analytics endpoint not found, did you forget to add the route?`,
+            success: false,
+          };
+        }
+
+        // createRouteHandler will return a 400 if the event failed schema validation.
+        if (response.status === 400) {
+          return {
+            error: `Invalid event sent to analytics endpoint: ${response.statusText}`,
+            success: false,
+          };
+        }
+
+        // createRouteHandler will return a 500 for all error states
+        return {
+          error: `Internal server error when sending analytics event: ${response.statusText}. Check the route handler implementation.`,
+          success: false,
+        };
       }
 
-      // createRouteHandler will return a 400 if the event failed schema validation.
-      if (response.status === 400) {
-        throw new Error(
-          `Invalid event sent to analytics endpoint: ${response.statusText}`
-        );
-      }
-
-      // createRouteHandler will return a 500 for all error states
-      throw new Error(
-        `Internal server error when sending analytics event: ${response.statusText}. Check the route handler implementation.`
-      );
+      return { error: null, success: true };
+    } catch (e) {
+      const error = ensureError(e);
+      return {
+        error: `Internal error when sending analytics event: ${error.message}`,
+        success: false,
+      };
     }
   };
