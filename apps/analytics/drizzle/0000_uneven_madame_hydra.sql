@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS "events" (
 	"type" text NOT NULL,
 	"installationId" text NOT NULL,
 	"timestamp" timestamp NOT NULL,
-	"isocode" text,
+	"countryISOCode" text NOT NULL,
 	"message" text,
 	"name" text,
 	"stack" text,

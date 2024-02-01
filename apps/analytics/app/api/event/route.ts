@@ -22,12 +22,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const eventWithDate = {
+  const formattedEvent = {
     ...parsedEvent.data,
+    ...(parsedEvent.data.type === "Error" && {
+      type: "Error",
+      message: parsedEvent.data.error.message,
+      name: parsedEvent.data.error.name,
+      stack: parsedEvent.data.error.stack,
+    }),
     timestamp: new Date(parsedEvent.data.timestamp), // Convert back into a date object
   };
 
-  const result = await insertEvent(eventWithDate);
+  const result = await insertEvent(formattedEvent);
 
   if (result.error) {
     return NextResponse.json(
