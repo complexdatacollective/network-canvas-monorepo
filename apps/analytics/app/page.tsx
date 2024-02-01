@@ -1,7 +1,5 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import AnalyticsView from "~/app/_components/analytics/AnalyticsView";
-import ErrorsView from "~/app/_components/errors/ErrorsView";
 import { UserButton } from "@clerk/nextjs";
+import AnalyticsView from "~/app/_components/analytics/AnalyticsView";
 import UserManagementDialog from "./_components/users/UserManagementDialog";
 
 export default function DashboardPage() {
@@ -16,18 +14,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="analytics" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="errors">Errors</TabsTrigger>
-          </TabsList>
-          <TabsContent value="analytics">
-            <AnalyticsView />
-          </TabsContent>
-          <TabsContent value="errors">
-            <ErrorsView />
-          </TabsContent>
-        </Tabs>
+        <AnalyticsView />
       </div>
     </main>
   );

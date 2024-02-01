@@ -1,6 +1,6 @@
 {
   "name": "@codaco/analytics",
-  "version": "2.1.1",
+  "version": "3.1.0",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "author": "Complex Data Collective <developers@coda.co>",
@@ -11,8 +11,8 @@
     "dev": "npm run build -- --watch"
   },
   "peerDependencies": {
-    "next": "13 || 14",
-    "@maxmind/geoip2-node": "^5.0.0"
+    "@maxmind/geoip2-node": "^5.0.0",
+    "next": "13 || 14"
   },
   "devDependencies": {
     "eslint-config-custom": "workspace:*",
@@ -20,5 +20,7 @@
     "tsup": "^7.2.0",
     "typescript": "^5.3.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^3.22.4"
+  }
 }

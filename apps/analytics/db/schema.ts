@@ -1,18 +1,29 @@
-// Postgres database schema
+import {
+  json,
+  pgTable,
+  serial,
+  text,
+  uniqueIndex,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
-export interface Event {
-  type: string;
-  metadata: string;
-  timestamp: string;
-  installationid: string;
-  isocode: string;
-}
-
-export interface Error {
-  message: string;
-  details: string;
-  stacktrace: string;
-  timestamp: string;
-  installationid: string;
-  path: string;
-}
+// Create a pgTable that maps to a table in your DB
+export const eventsTable = pgTable(
+  "events",
+  {
+    id: serial("id").primaryKey(),
+    type: text("type").notNull(),
+    installationId: text("installationId").notNull(),
+    timestamp: timestamp("timestamp").notNull(),
+    isocode: text("isocode"),
+    message: text("message"),
+    name: text("name"),
+    stack: text("stack"),
+    metadata: json("metadata"),
+  },
+  (events) => {
+    return {
+      uniqueIdx: uniqueIndex("unique_idx").on(events.id),
+    };
+  }
+);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
-import type { DispatchableAnalyticsEvent } from "@codaco/analytics";
+import insertEvent from "~/db/insertEvent";
+import { EventsSchema } from "@codaco/analytics";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,41 +11,32 @@ const corsHeaders = {
 export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
-  const event = (await request.json()) as DispatchableAnalyticsEvent;
+  const event = (await request.json()) as unknown;
+  const parsedEvent = EventsSchema.safeParse(event);
 
-  const timestamp = JSON.stringify(event.timestamp || new Date().toISOString());
-
-  // determine if this is an error and push it to the errors table
-  if (event.type === "Error") {
-    const errorPayload = event.error;
-    try {
-      await sql`INSERT INTO Errors (message, details, stacktrace, timestamp, installationid, path) VALUES (${errorPayload.message}, ${errorPayload.details}, ${errorPayload.stacktrace}, ${timestamp}, ${event.installationId}, ${errorPayload.path});`;
-      return NextResponse.json(
-        { errorPayload },
-        { status: 200, headers: corsHeaders }
-      );
-    } catch (error) {
-      return NextResponse.json(
-        { error },
-        { status: 500, headers: corsHeaders }
-      );
-    }
+  if (parsedEvent.success === false) {
+    return NextResponse.json(
+      { error: "Invalid event" },
+      { status: 400, headers: corsHeaders }
+    );
   }
 
-  // event is not an error
-  // push the event to the events table
-
   try {
-    await sql`INSERT INTO EVENTS (type, metadata, timestamp, installationid, isocode) VALUES(
-      ${event.type},
-      ${JSON.stringify(event.metadata)},
-      ${timestamp},
-      ${event.installationId},
-      ${event.geolocation?.countryCode}
-    );`;
+    const result = await insertEvent({
+      ...parsedEvent.data,
+      timestamp: new Date(parsedEvent.data.timestamp),
+      message: parsedEvent.data.error?.message,
+      name: parsedEvent.data.error?.name,
+      stack: parsedEvent.data.error?.stack,
+    });
+    if (result.error) throw new Error(result.error);
+
     return NextResponse.json({ event }, { status: 200, headers: corsHeaders });
   } catch (error) {
-    return NextResponse.json({ error }, { status: 500, headers: corsHeaders });
+    return NextResponse.json(
+      { error: "Error inserting events" },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
 

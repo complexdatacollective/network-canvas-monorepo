@@ -32,7 +32,9 @@ export function DialogButton({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <DialogDescription>{description}</DialogDescription>
-        <div className="bg-secondary p-2 rounded-sm break-all">{content}</div>
+        <div className="bg-secondary p-2 rounded-sm break-all">
+          <code>{content}</code>
+        </div>
       </DialogContent>
     </Dialog>
   );
