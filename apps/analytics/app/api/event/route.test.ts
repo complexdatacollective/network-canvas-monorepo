@@ -2,7 +2,7 @@ import { testApiHandler } from "next-test-api-route-handler";
 import insertEvent from "~/db/insertEvent";
 import * as appHandler from "./route";
 
-jest.mock("~/db/insertEvent", () => async (eventData: Event) => {
+jest.mock("~/db/insertEvent", () => async (eventData: unknown) => {
   return { data: eventData, error: null };
 });
 
