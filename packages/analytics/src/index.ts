@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { WebServiceClient } from "@maxmind/geoip2-node";
 import { ensureError, getBaseUrl } from "./utils";
 import z from "zod";
@@ -38,28 +38,27 @@ const ErrorSchema = z
   })
   .strict();
 
-// Raw events are the events that are sent to the route handler. They could be
-// any of the event types, or an error, based on the type property.
-const RawEventSchema = z.discriminatedUnion("type", [
+// Raw events are the events that are sent trackEvent.
+export const RawEventSchema = z.discriminatedUnion("type", [
   SharedEventAndErrorSchema.merge(EventSchema),
   SharedEventAndErrorSchema.merge(ErrorSchema),
 ]);
 export type RawEvent = z.infer<typeof RawEventSchema>;
 
-// This property is added by trackEvent
+// Trackable events are the events that are sent to the route handler.
 const TrackablePropertiesSchema = z
   .object({
     timestamp: z.string(),
   })
   .strict();
 
-const TrackableEventSchema = z.intersection(
+export const TrackableEventSchema = z.intersection(
   RawEventSchema,
   TrackablePropertiesSchema
 );
 export type TrackableEvent = z.infer<typeof TrackableEventSchema>;
 
-// These properties are added by the route handler
+// Dispatchable events are the events that are sent to the platform.
 const DispatchablePropertiesSchema = z
   .object({
     installationId: z.string(),
@@ -67,8 +66,7 @@ const DispatchablePropertiesSchema = z
   })
   .strict();
 
-// Events that are ready to be sent to the platform
-const DispatchableEventSchema = z.intersection(
+export const DispatchableEventSchema = z.intersection(
   TrackableEventSchema,
   DispatchablePropertiesSchema
 );
@@ -132,51 +130,36 @@ export const createRouteHandler = ({
       });
 
       if (!response.ok) {
-        if (response.status === 404) {
-          console.error(
-            `Analytics platform could not be reached. Please specify a valid platform URL, or check that the platform is online.`
-          );
-        } else if (response.status === 500) {
-          console.error(
-            `Internal server error on analytics platform when forwarding event: ${response.statusText}.`
-          );
-        } else {
-          console.error(
-            `General error when forwarding event: ${response.statusText}`
-          );
+        let error = `Analytics platform returned an unexpected error: ${response.statusText}`;
+
+        if (response.status === 400) {
+          error = `Analytics platform rejected the event as invalid. Please check the event schema`;
         }
 
-        return new Response(
-          JSON.stringify({ error: "Internal Server Error" }),
+        if (response.status === 404) {
+          error = `Analytics platform could not be reached. Please specify a valid platform URL, or check that the platform is online.`;
+        }
+
+        if (response.status === 500) {
+          error = `Analytics platform returned an internal server error. Please check the platform logs.`;
+        }
+
+        return NextResponse.json(
           {
-            status: 500,
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
+            error,
+          },
+          { status: 500 }
         );
       }
-
-      return new Response(
-        JSON.stringify({ message: "Event forwarded successfully" }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return NextResponse.json({ message: "Event forwarded successfully" });
     } catch (e) {
       const error = ensureError(e);
-      console.error("Error in route handler:", error);
+      console.error("Error in route handler:", error.message);
 
-      // Return an appropriate error response
-      return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      return NextResponse.json(
+        { error: `Error in analytics route handler: ${error.message}` },
+        { status: 500 }
+      );
     }
   };
 };
@@ -196,37 +179,32 @@ export const makeEventTracker =
       timestamp: new Date().toJSON(),
     };
 
-    try {
-      const response = await fetch(endpointWithHost, {
-        method: "POST",
-        keepalive: true,
-        body: JSON.stringify(eventWithTimeStamp),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+    const response = await fetch(endpointWithHost, {
+      method: "POST",
+      keepalive: true,
+      body: JSON.stringify(eventWithTimeStamp),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.error(
-            `Analytics endpoint not found, did you forget to add the route?`
-          );
-          return;
-        }
-
-        if (response.status === 500) {
-          console.error(
-            `Internal server error when sending analytics event: ${response.statusText}. Check the route handler implementation.`
-          );
-          return;
-        }
-
-        console.error(
-          `General error sending analytics event: ${response.statusText}`
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(
+          `Analytics endpoint not found, did you forget to add the route?`
         );
       }
-    } catch (e) {
-      const error = ensureError(e);
-      console.error("Internal error with analytics:", error.message);
+
+      // createRouteHandler will return a 400 if the event failed schema validation.
+      if (response.status === 400) {
+        throw new Error(
+          `Invalid event sent to analytics endpoint: ${response.statusText}`
+        );
+      }
+
+      // createRouteHandler will return a 500 for all error states
+      throw new Error(
+        `Internal server error when sending analytics event: ${response.statusText}. Check the route handler implementation.`
+      );
     }
   };

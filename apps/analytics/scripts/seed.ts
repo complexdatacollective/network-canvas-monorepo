@@ -23,7 +23,7 @@ async function seedEvents() {
         details: faker.lorem.sentence(),
         path: faker.lorem.sentence(),
       };
-      const isocode = faker.location.countryCode();
+      const countryISOCode = faker.location.countryCode();
       const message = faker.lorem.sentence();
       const name = faker.lorem.sentence();
       const stack = faker.lorem.sentence();
@@ -33,7 +33,7 @@ async function seedEvents() {
         metadata,
         timestamp,
         installationId,
-        isocode,
+        countryISOCode,
         message,
         name,
         stack,

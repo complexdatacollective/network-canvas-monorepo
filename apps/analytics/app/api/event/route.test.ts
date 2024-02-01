@@ -1,9 +1,10 @@
 import { testApiHandler } from "next-test-api-route-handler";
 import insertEvent from "~/db/insertEvent";
 import * as appHandler from "./route";
-import { Event } from "@codaco/analytics";
 
-jest.mock("~/db/insertEvent", () => jest.fn());
+jest.mock("~/db/insertEvent", () => async (eventData: Event) => {
+  return { data: eventData, error: null };
+});
 
 describe("/api/event", () => {
   it("should insert event to the database", async () => {
@@ -16,10 +17,6 @@ describe("/api/event", () => {
       installationId: "21321546453213123",
       timestamp: new Date().toString(),
     };
-
-    (insertEvent as jest.Mock).mockImplementation(async (eventData: Event) => {
-      return { data: eventData, error: null };
-    });
 
     await testApiHandler({
       appHandler,
@@ -72,7 +69,7 @@ describe("/api/event", () => {
       timestamp: new Date().toString(),
     };
 
-    (insertEvent as jest.Mock).mockImplementation(async (eventData: Event) => {
+    (insertEvent as jest.Mock).mockImplementation(async (eventData) => {
       return { data: null, error: "Error inserting events" };
     });
 

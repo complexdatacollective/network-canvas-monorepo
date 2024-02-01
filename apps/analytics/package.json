@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:event": "jest app/api/event/route.test.ts",
+    "test": "jest",
     "generate": "npx drizzle-kit generate:pg",
     "migrate": "npx tsx scripts/migrate.ts",
     "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
