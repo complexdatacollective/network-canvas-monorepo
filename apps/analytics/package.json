@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "test:watch": "jest --watch",
     "generate": "npx drizzle-kit generate:pg",
     "migrate": "npx tsx scripts/migrate.ts",
     "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
