@@ -1,6 +1,5 @@
 import { describe, expect, vi, it, afterEach } from "vitest";
 import { testApiHandler } from "next-test-api-route-handler";
-import insertEvent from "~/db/insertEvent";
 import * as appHandler from "./route";
 import { analyticsEvent } from "@codaco/analytics";
 
