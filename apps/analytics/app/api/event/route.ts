@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import insertEvent from "~/db/insertEvent";
-import { DispatchableEventSchema } from "@codaco/analytics";
+import { AnalyticsEventSchema } from "@codaco/analytics";
 
 // Allow CORS requests from anywhere.
 const corsHeaders = {
@@ -13,7 +13,7 @@ export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
   const event = (await request.json()) as unknown;
-  const parsedEvent = DispatchableEventSchema.safeParse(event);
+  const parsedEvent = AnalyticsEventSchema.safeParse(event);
 
   if (!parsedEvent.success) {
     return NextResponse.json(
@@ -24,12 +24,6 @@ export async function POST(request: NextRequest) {
 
   const formattedEvent = {
     ...parsedEvent.data,
-    ...(parsedEvent.data.type === "Error" && {
-      type: "Error",
-      message: parsedEvent.data.error.message,
-      name: parsedEvent.data.error.name,
-      stack: parsedEvent.data.error.stack,
-    }),
     timestamp: new Date(parsedEvent.data.timestamp), // Convert back into a date object
   };
 

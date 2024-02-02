@@ -12,34 +12,38 @@ export const eventTypes = [
   "DataExported",
 ] as const;
 
-// Properties that everything has in common.
-const SharedEventAndErrorSchema = z.object({
-  metadata: z.record(z.unknown()).optional(),
-});
-
 const EventSchema = z.object({
   type: z.enum(eventTypes),
 });
 
 const ErrorSchema = z.object({
   type: z.literal("Error"),
-  error: z
-    .object({
-      message: z.string(),
-      name: z.string(),
-      stack: z.string().optional(),
-    })
-    .strict(),
+  message: z.string(),
+  name: z.string(),
+  stack: z.string().optional(),
+  cause: z.string().optional(),
 });
 
-// Raw events are the events that are sent trackEvent.
+const SharedEventAndErrorSchema = z.object({
+  metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Raw events are the events that are sent trackEvent. They are either general
+ * events or errors. We discriminate on the `type` property to determine which
+ * schema to use, and then merge the shared properties.
+ */
 export const RawEventSchema = z.discriminatedUnion("type", [
   SharedEventAndErrorSchema.merge(EventSchema),
   SharedEventAndErrorSchema.merge(ErrorSchema),
 ]);
 export type RawEvent = z.infer<typeof RawEventSchema>;
 
-// Trackable events are the events that are sent to the route handler.
+/**
+ * Trackable events are the events that are sent to the route handler. The
+ * `trackEvent` function adds the timestamp to ensure it is not inaccurate
+ * due to network latency or processing time.
+ */
 const TrackablePropertiesSchema = z.object({
   timestamp: z.string(),
 });
@@ -50,29 +54,35 @@ export const TrackableEventSchema = z.intersection(
 );
 export type TrackableEvent = z.infer<typeof TrackableEventSchema>;
 
-// Dispatchable events are the events that are sent to the platform.
+/**
+ * Dispatchable events are the events that are sent to the platform. The route
+ * handler injects the installationId and countryISOCode properties.
+ */
 const DispatchablePropertiesSchema = z.object({
   installationId: z.string(),
   countryISOCode: z.string(),
 });
 
-export const DispatchableEventSchema = z.intersection(
+/**
+ * The final schema for an analytics event. This is the schema that is used to
+ * validate the event before it is inserted into the database. It is the
+ * intersection of the trackable event and the dispatchable properties.
+ */
+export const AnalyticsEventSchema = z.intersection(
   TrackableEventSchema,
   DispatchablePropertiesSchema
 );
-export type DispatchableEvent = z.infer<typeof DispatchableEventSchema>;
-
-type RouteHandlerConfiguration = {
-  platformUrl?: string;
-  installationId: string;
-  maxMindClient: WebServiceClient;
-};
+export type analyticsEvent = z.infer<typeof AnalyticsEventSchema>;
 
 export const createRouteHandler = ({
   platformUrl = "https://analytics.networkcanvas.com",
   installationId,
   maxMindClient,
-}: RouteHandlerConfiguration) => {
+}: {
+  platformUrl?: string;
+  installationId: string;
+  maxMindClient: WebServiceClient;
+}) => {
   return async (request: NextRequest) => {
     try {
       const incomingEvent = (await request.json()) as unknown;
@@ -91,32 +101,38 @@ export const createRouteHandler = ({
       }
 
       // We don't want failures in third party services to prevent us from
-      // tracking analytics events.
+      // tracking analytics events, so we'll catch any errors and log them
+      // and continue with an 'Unknown' country code.
       let countryISOCode = "Unknown";
       try {
         const ip = await fetch("https://api64.ipify.org").then((res) =>
           res.text()
         );
+
+        if (!ip) {
+          throw new Error("Could not fetch IP address");
+        }
+
         const { country } = await maxMindClient.country(ip);
         countryISOCode = country?.isoCode ?? "Unknown";
       } catch (e) {
         console.error("Geolocation failed:", e);
       }
 
-      const dispatchableEvent: DispatchableEvent = {
+      const analyticsEvent: analyticsEvent = {
         ...trackableEvent.data,
         installationId,
         countryISOCode,
       };
 
-      // Forward to microservice
+      // Forward to backend
       const response = await fetch(`${platformUrl}/api/event`, {
         keepalive: true,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(dispatchableEvent),
+        body: JSON.stringify(analyticsEvent),
       });
 
       if (!response.ok) {
@@ -134,7 +150,7 @@ export const createRouteHandler = ({
           error = `Analytics platform returned an internal server error. Please check the platform logs.`;
         }
 
-        console.info("⚠️ Analytics platform rejected event.");
+        console.info(`⚠️ Analytics platform rejected event: ${error}`);
         return Response.json(
           {
             error,
@@ -156,22 +172,22 @@ export const createRouteHandler = ({
   };
 };
 
-type ConsumerConfiguration = {
-  enabled?: boolean;
-  endpoint?: string;
-};
-
-export type EventTrackerReturn = {
-  error: string | null;
-  success: boolean;
-};
-
 export const makeEventTracker =
-  ({ enabled = false, endpoint = "/api/analytics" }: ConsumerConfiguration) =>
-  async (event: RawEvent): Promise<EventTrackerReturn> => {
-    // If analytics is disabled don't send analytics events.
+  ({
+    enabled = false,
+    endpoint = "/api/analytics",
+  }: {
+    enabled?: boolean;
+    endpoint?: string;
+  }) =>
+  async (
+    event: RawEvent
+  ): Promise<{
+    error: string | null;
+    success: boolean;
+  }> => {
     if (!enabled) {
-      console.log("Analytics disabled, not sending event");
+      console.log("Analytics disabled - event not sent.");
       return { error: null, success: true };
     }
 
