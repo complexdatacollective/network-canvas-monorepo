@@ -18,6 +18,7 @@ export const eventsTable = pgTable(
     message: text("message"),
     name: text("name"),
     stack: text("stack"),
+    cause: text("cause"),
     metadata: json("metadata"),
   },
   (events) => {

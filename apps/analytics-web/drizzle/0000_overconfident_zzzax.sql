@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS "events" (
 	"message" text,
 	"name" text,
 	"stack" text,
+	"cause" text,
 	"metadata" json
 );
 --> statement-breakpoint

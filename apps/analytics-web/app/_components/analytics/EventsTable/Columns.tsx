@@ -58,6 +58,12 @@ export const getColumns = (
       ),
     },
     {
+      accessorKey: "cause",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Cause" />
+      ),
+    },
+    {
       accessorKey: "stack",
       header: "",
       cell: ({ row }) =>

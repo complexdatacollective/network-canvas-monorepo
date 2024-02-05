@@ -1,5 +1,5 @@
 {
-  "id": "13cbb638-62c2-4e6a-aef8-a17910f27456",
+  "id": "dd5e2f22-a389-41cc-98a4-d6b3a7a3feee",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -52,6 +52,12 @@
         },
         "stack": {
           "name": "stack",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cause": {
+          "name": "cause",
           "type": "text",
           "primaryKey": false,
           "notNull": false
