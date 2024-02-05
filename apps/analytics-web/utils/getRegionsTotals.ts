@@ -12,7 +12,7 @@ export default async function getRegionsTotals(): Promise<RegionTotal[]> {
   const calculatedTotals: Record<string, number> = {};
 
   for (const event of events) {
-    const isocode = event.isocode;
+    const isocode = event.countryISOCode;
 
     if (isocode) {
       calculatedTotals[isocode] = (calculatedTotals[isocode] || 0) + 1;

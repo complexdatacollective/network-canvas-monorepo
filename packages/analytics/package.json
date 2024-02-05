@@ -1,8 +1,9 @@
 {
   "name": "@codaco/analytics",
-  "version": "3.1.0",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
+  "version": "5.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "author": "Complex Data Collective <developers@coda.co>",
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {

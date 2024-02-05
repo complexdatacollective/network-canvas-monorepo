@@ -16,30 +16,43 @@ async function seedEvents() {
 
   try {
     for (let i = 0; i < 100; i++) {
-      const type = faker.helpers.arrayElement(eventTypes);
+      const type = faker.helpers.arrayElement([...eventTypes, "Error"]);
       const installationId = faker.helpers.arrayElement(installationIds);
       const timestamp = faker.date.recent();
       const metadata = {
         details: faker.lorem.sentence(),
         path: faker.lorem.sentence(),
       };
-      const isocode = faker.location.countryCode();
+      const countryISOCode = faker.location.countryCode();
       const message = faker.lorem.sentence();
       const name = faker.lorem.sentence();
       const stack = faker.lorem.sentence();
+      const cause = faker.lorem.sentence();
 
-      const event: EventInsertType = {
+      const noneErrorEvent: EventInsertType = {
         type,
-        metadata,
-        timestamp,
         installationId,
-        isocode,
+        timestamp,
+        metadata,
+        countryISOCode,
+      };
+
+      const errorEvent: EventInsertType = {
+        type,
+        installationId,
+        timestamp,
+        metadata,
+        countryISOCode,
         message,
         name,
         stack,
+        cause,
       };
 
-      await db.insert(eventsTable).values(event).returning();
+      await db
+        .insert(eventsTable)
+        .values(type === "Error" ? errorEvent : noneErrorEvent)
+        .returning();
     }
   } catch (error) {
     console.error("Error seeding events", error);

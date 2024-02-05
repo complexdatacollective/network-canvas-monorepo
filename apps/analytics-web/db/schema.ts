@@ -7,18 +7,18 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-// Create a pgTable that maps to a table in your DB
 export const eventsTable = pgTable(
   "events",
   {
     id: serial("id").primaryKey(),
-    type: text("type").notNull(),
+    type: text("type").notNull(), // Todo: make this use pgEnum with the eventTypes array.
     installationId: text("installationId").notNull(),
     timestamp: timestamp("timestamp").notNull(),
-    isocode: text("isocode"),
+    countryISOCode: text("countryISOCode").notNull(),
     message: text("message"),
     name: text("name"),
     stack: text("stack"),
+    cause: text("cause"),
     metadata: json("metadata"),
   },
   (events) => {

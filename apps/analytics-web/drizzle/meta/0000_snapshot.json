@@ -1,5 +1,5 @@
 {
-  "id": "8314d6f3-51e8-44a2-a9ec-d3128c1a7775",
+  "id": "dd5e2f22-a389-41cc-98a4-d6b3a7a3feee",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -32,11 +32,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "isocode": {
-          "name": "isocode",
+        "countryISOCode": {
+          "name": "countryISOCode",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "message": {
           "name": "message",
@@ -52,6 +52,12 @@
         },
         "stack": {
           "name": "stack",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cause": {
+          "name": "cause",
           "type": "text",
           "primaryKey": false,
           "notNull": false

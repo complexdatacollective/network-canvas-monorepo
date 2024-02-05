@@ -7,6 +7,9 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "test": {},
+    "test:watch": {
+      "cache": false
+    },
     "lint": {},
     "dev": {
       "cache": false,
