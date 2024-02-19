@@ -77,11 +77,9 @@ export type analyticsEvent = z.infer<typeof AnalyticsEventSchema>;
 export const createRouteHandler = ({
   platformUrl = "https://analytics.networkcanvas.com",
   installationId,
-  maxMindClient,
 }: {
   platformUrl?: string;
   installationId: string;
-  maxMindClient: WebServiceClient;
 }) => {
   return async (request: NextRequest) => {
     try {
@@ -113,8 +111,13 @@ export const createRouteHandler = ({
           throw new Error("Could not fetch IP address");
         }
 
-        const { country } = await maxMindClient.country(ip);
-        countryISOCode = country?.isoCode ?? "Unknown";
+        const geoData = await fetch(`http://ip-api.com/json/${ip}`).then((res) => res.json());
+
+        if(geoData.status === "success") {
+          countryISOCode = geoData.countryCode;
+        } else {
+          throw new Error(geoData.message);
+        }
       } catch (e) {
         console.error("Geolocation failed:", e);
       }
