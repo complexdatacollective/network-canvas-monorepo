@@ -1,5 +1,4 @@
 import { type NextRequest } from "next/server";
-import { WebServiceClient } from "@maxmind/geoip2-node";
 import { ensureError, getBaseUrl } from "./utils";
 import z from "zod";
 
