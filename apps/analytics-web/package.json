@@ -54,6 +54,7 @@
     "eslint-config-custom": "workspace:*",
     "jsdom": "^24.0.0",
     "next-test-api-route-handler": "^4.0.3",
+    "shared-tailwind-config": "workspace:*",
     "tailwindcss": "^3.3.0",
     "tsconfig": "workspace:*",
     "typescript": "^5.2.2",
