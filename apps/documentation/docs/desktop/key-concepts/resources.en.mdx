@@ -1,0 +1,54 @@
+---
+title: Resources
+
+definition: External files, such as audio, images, video, and network roster data, that can be used within your interview protocol.
+---
+
+In Architect, 'resources' are any external files that you use within your interview. These can be media files, such as audio, images, or even video. They can also be network data files that you can use as a roster. Careful use of resources can improve the interview experience for your participants, or enable different types of interview workflow.
+
+Once added to your protocol in Architect, resources are stored within the `.netcanvas` file itself. Because of this, you will need to handle updating or removing resources from within Architect.
+
+<TipBox danger>
+  Using large numbers of resources, or resources that are poorly optimized, in your protocol can **heavily** impact performance. This means that protocols take longer to install on devices, and some stages may take much longer to load. Special care must be taken to appropriately resize and compress your resources before importing them, and you must ensure that you have tested your protocol on your intended field devices to ascertain performance levels.
+
+As a general guide, you should aim to have your total protocol file size be less than 10mb.
+
+</TipBox>
+
+## Adding Resources to a Stage
+
+Many stages allow you to add resources directly while configuring them. This is designed to provide a more seamless flow when creating your interview protocol. Examples of this include background images on the Sociogram interface, roster files in either of the roster Name Generators, and media files on the Information interface.
+
+If the stage you are supporting uses a resource it will provide an interface for you to add it directly, and will give instructions about which type of resource is required.
+
+![Image](/assets/img/key-concepts/assets/bg-asset.png)
+
+## Adding and Removing Resources from the Resource Library
+
+For a more broad overview of all resources within your current protocol, click the 'resource library' button in the upper right hand corner of the protocol overview card, when looking at the timeline. This will open the Resource Library.
+
+![image](/assets/img/key-concepts/assets/manage-assets-button.png)
+
+Under the resource library screen, you can browse, filter, and delete any existing resources, as well as add new ones. To add a new resource to the resource library, simply drag and drop a file into the designated area, or browse for the file you wish to import.
+
+![Image](/assets/img/key-concepts/assets/asset-library.png)
+
+You will notice that existing resources that are unused show a red "unused" pill. This indicates that they are able to be deleted. Attempting to delete an resource that is in use within your interview will be prevented. You must first update or remove all uses of a resource before you can delete it.
+
+## Supported File Types
+
+### Image
+
+Interviewer supports JPEG, GIF, and PNG image file formats.
+
+### Audio
+
+Interviewer supports MP3, AIFF, M4A, and MP4 audio file formats.
+
+### Video
+
+Interviewer supports MP4 and MOV video file formats. Take special care when using video to make your files as small as possible.
+
+### Network
+
+Interviewer supports network data in CSV format. The heading row will be used to set variable names for any nodes brought in to the interview. Ensure that you have a column called "name" to take advantage of automatic [node labelling](/en/desktop/reference/node-labelling). Download a simple example CSV file from [here](/assets/previousInterview.csv).

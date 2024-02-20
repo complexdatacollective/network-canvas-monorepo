@@ -1,0 +1,623 @@
+[
+  {
+    "en": [
+      {
+        "type": "folder",
+        "name": "desktop",
+        "language": "en",
+        "source": "desktop",
+        "folderPagePath": null,
+        "isExpanded": false,
+        "files": [
+          {
+            "type": "folder",
+            "name": "Getting Started",
+            "language": "en",
+            "source": "getting-started",
+            "folderPagePath": "/desktop",
+            "isExpanded": false,
+            "files": [
+              {
+                "type": "file",
+                "name": "Project Overview",
+                "language": "en",
+                "path": "/desktop/getting-started/project-overview",
+                "source": "project-overview"
+              },
+              {
+                "type": "file",
+                "name": "Installation Guide",
+                "language": "en",
+                "path": "/desktop/getting-started/installation-guide",
+                "source": "installation-guide"
+              },
+              {
+                "type": "file",
+                "name": "Protocol Gallery",
+                "language": "en",
+                "path": "/desktop/getting-started/protocol-gallery",
+                "source": "protocol-gallery"
+              },
+              {
+                "type": "file",
+                "name": "Frequently Asked Questions",
+                "language": "en",
+                "path": "/desktop/getting-started/faq",
+                "source": "faq"
+              },
+              {
+                "type": "file",
+                "name": "Citing the Software",
+                "language": "en",
+                "path": "/desktop/getting-started/citing-the-software",
+                "source": "citing-the-software"
+              },
+              {
+                "type": "file",
+                "name": "Contributing Code",
+                "language": "en",
+                "path": "/desktop/getting-started/contributing-code",
+                "source": "contributing-code"
+              },
+              {
+                "type": "file",
+                "name": "February 2022 Project Update",
+                "language": "en",
+                "path": "/desktop/getting-started/february-2022-project-update",
+                "source": "february-2022-project-update"
+              },
+              {
+                "type": "file",
+                "name": "Requests for Collaboration",
+                "language": "en",
+                "path": "/desktop/getting-started/requests-for-collaboration",
+                "source": "requests-for-collaboration"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "How-to guides",
+            "language": "en",
+            "source": "how-to",
+            "folderPagePath": "/desktop/how-to",
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "Choosing a Hardware Device for Interviewer",
+                "language": "en",
+                "path": "/desktop/how-to/choosing-hardware",
+                "source": "choosing-hardware"
+              },
+              {
+                "type": "file",
+                "name": "Configuring Devices Prior To Starting Data Collection",
+                "language": "en",
+                "path": "/desktop/how-to/configuring-devices",
+                "source": "configuring-devices"
+              },
+              {
+                "type": "file",
+                "name": "Importing Roster Data",
+                "language": "en",
+                "path": "/desktop/how-to/importing-roster-data",
+                "source": "importing-roster-data"
+              },
+              {
+                "type": "file",
+                "name": "Pairing Interviewer Devices with Server",
+                "language": "en",
+                "path": "/desktop/how-to/pairing",
+                "source": "pairing"
+              },
+              {
+                "type": "file",
+                "name": "Updating from Beta to the Stable Release",
+                "language": "en",
+                "path": "/desktop/how-to/updating-from-beta",
+                "source": "updating-from-beta"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Interface documentation",
+            "language": "en",
+            "source": "interface-documentation",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "Categorical Bin",
+                "language": "en",
+                "path": "/desktop/interface-documentation/categorical-bin",
+                "source": "categorical-bin"
+              },
+              {
+                "type": "file",
+                "name": "Dyad Census",
+                "language": "en",
+                "path": "/desktop/interface-documentation/dyad-census",
+                "source": "dyad-census"
+              },
+              {
+                "type": "file",
+                "name": "Ego Form",
+                "language": "en",
+                "path": "/desktop/interface-documentation/ego-form",
+                "source": "ego-form"
+              },
+              {
+                "type": "file",
+                "name": "Information",
+                "language": "en",
+                "path": "/desktop/interface-documentation/information",
+                "source": "information"
+              },
+              {
+                "type": "file",
+                "name": "Large Roster Name Generator",
+                "language": "en",
+                "path": "/desktop/interface-documentation/large-roster-name-generator",
+                "source": "large-roster-name-generator"
+              },
+              {
+                "type": "file",
+                "name": "Name Generator for Roster Data",
+                "language": "en",
+                "path": "/desktop/interface-documentation/name-generator-roster",
+                "source": "name-generator-roster"
+              },
+              {
+                "type": "file",
+                "name": "Name Generator using Forms",
+                "language": "en",
+                "path": "/desktop/interface-documentation/name-generator-using-forms",
+                "source": "name-generator-using-forms"
+              },
+              {
+                "type": "file",
+                "name": "Name Generators using Quick Add",
+                "language": "en",
+                "path": "/desktop/interface-documentation/name-generator-using-quick-add",
+                "source": "name-generator-using-quick-add"
+              },
+              {
+                "type": "file",
+                "name": "Narrative",
+                "language": "en",
+                "path": "/desktop/interface-documentation/narrative",
+                "source": "narrative"
+              },
+              {
+                "type": "file",
+                "name": "Ordinal Bin",
+                "language": "en",
+                "path": "/desktop/interface-documentation/ordinal-bin",
+                "source": "ordinal-bin"
+              },
+              {
+                "type": "file",
+                "name": "Per Alter Edge Form",
+                "language": "en",
+                "path": "/desktop/interface-documentation/per-alter-edge-form",
+                "source": "per-alter-edge-form"
+              },
+              {
+                "type": "file",
+                "name": "Per Alter Form",
+                "language": "en",
+                "path": "/desktop/interface-documentation/per-alter-form",
+                "source": "per-alter-form"
+              },
+              {
+                "type": "file",
+                "name": "Shared Interface Options",
+                "language": "en",
+                "path": "/desktop/interface-documentation/shared",
+                "source": "shared"
+              },
+              {
+                "type": "file",
+                "name": "Small Roster Name Generator",
+                "language": "en",
+                "path": "/desktop/interface-documentation/small-roster-name-generator",
+                "source": "small-roster-name-generator"
+              },
+              {
+                "type": "file",
+                "name": "Sociogram",
+                "language": "en",
+                "path": "/desktop/interface-documentation/sociogram",
+                "source": "sociogram"
+              },
+              {
+                "type": "file",
+                "name": "Tie-Strength Census",
+                "language": "en",
+                "path": "/desktop/interface-documentation/tie-strength-census",
+                "source": "tie-strength-census"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Key concepts",
+            "language": "en",
+            "source": "key-concepts",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "Additional Variables",
+                "language": "en",
+                "path": "/desktop/key-concepts/additional-variables",
+                "source": "additional-variables"
+              },
+              {
+                "type": "file",
+                "name": "Codebook",
+                "language": "en",
+                "path": "/desktop/key-concepts/codebook",
+                "source": "codebook"
+              },
+              {
+                "type": "file",
+                "name": "Field Validation",
+                "language": "en",
+                "path": "/desktop/key-concepts/field-validation",
+                "source": "field-validation"
+              },
+              {
+                "type": "file",
+                "name": "Forms",
+                "language": "en",
+                "path": "/desktop/key-concepts/forms",
+                "source": "forms"
+              },
+              {
+                "type": "file",
+                "name": "Input Controls",
+                "language": "en",
+                "path": "/desktop/key-concepts/input-controls",
+                "source": "input-controls"
+              },
+              {
+                "type": "file",
+                "name": "Interfaces",
+                "language": "en",
+                "path": "/desktop/key-concepts/interfaces",
+                "source": "interfaces"
+              },
+              {
+                "type": "file",
+                "name": "Network Filtering",
+                "language": "en",
+                "path": "/desktop/key-concepts/network-filtering",
+                "source": "network-filtering"
+              },
+              {
+                "type": "file",
+                "name": "Preview Mode",
+                "language": "en",
+                "path": "/desktop/key-concepts/preview-mode",
+                "source": "preview-mode"
+              },
+              {
+                "type": "file",
+                "name": "Prompts",
+                "language": "en",
+                "path": "/desktop/key-concepts/prompts",
+                "source": "prompts"
+              },
+              {
+                "type": "file",
+                "name": "Resources",
+                "language": "en",
+                "path": "/desktop/key-concepts/resources",
+                "source": "resources"
+              },
+              {
+                "type": "file",
+                "name": "Skip Logic",
+                "language": "en",
+                "path": "/desktop/key-concepts/skip-logic",
+                "source": "skip-logic"
+              },
+              {
+                "type": "file",
+                "name": "The Protocol File",
+                "language": "en",
+                "path": "/desktop/key-concepts/the-protocol-file",
+                "source": "the-protocol-file"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Technical reference",
+            "language": "en",
+            "source": "reference",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "IRB and Security Best Practices",
+                "language": "en",
+                "path": "/desktop/reference/irb-best-practices",
+                "source": "irb-best-practices"
+              },
+              {
+                "type": "file",
+                "name": "Network Canvas GraphML Format",
+                "language": "en",
+                "path": "/desktop/reference/network-canvas-graphml",
+                "source": "network-canvas-graphml"
+              },
+              {
+                "type": "file",
+                "name": "Node Labelling",
+                "language": "en",
+                "path": "/desktop/reference/node-labelling",
+                "source": "node-labelling"
+              },
+              {
+                "type": "file",
+                "name": "Protocol File Format",
+                "language": "en",
+                "path": "/desktop/reference/protocol-file-format",
+                "source": "protocol-file-format"
+              },
+              {
+                "type": "file",
+                "name": "Protocol Schema Information",
+                "language": "en",
+                "path": "/desktop/reference/protocol-schema-information",
+                "source": "protocol-schema-information"
+              },
+              {
+                "type": "file",
+                "name": "Overview of Security Model",
+                "language": "en",
+                "path": "/desktop/reference/security-model",
+                "source": "security-model"
+              },
+              {
+                "type": "file",
+                "name": "Project Testing Strategy",
+                "language": "en",
+                "path": "/desktop/reference/testing-strategy",
+                "source": "testing-strategy"
+              },
+              {
+                "type": "file",
+                "name": "Variable Types",
+                "language": "en",
+                "path": "/desktop/reference/variable-types",
+                "source": "variable-types"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Tutorials",
+            "language": "en",
+            "source": "tutorials",
+            "folderPagePath": "/desktop/tutorials",
+            "isExpanded": false,
+            "files": [
+              {
+                "type": "file",
+                "name": "Using Interviewer",
+                "language": "en",
+                "path": "/desktop/tutorials/using-interviewer",
+                "source": "using-interviewer"
+              },
+              {
+                "type": "file",
+                "name": "Building a protocol using Architect",
+                "language": "en",
+                "path": "/desktop/tutorials/building-a-protocol",
+                "source": "building-a-protocol"
+              },
+              {
+                "type": "file",
+                "name": "Using Server to manage a study",
+                "language": "en",
+                "path": "/desktop/tutorials/using-server",
+                "source": "using-server"
+              },
+              {
+                "type": "file",
+                "name": "Protocol and Data Workflows without Server",
+                "language": "en",
+                "path": "/desktop/tutorials/workflows-without-server",
+                "source": "workflows-without-server"
+              },
+              {
+                "type": "file",
+                "name": "Working with Network Canvas data in R",
+                "language": "en",
+                "path": "/desktop/tutorials/working-with-data",
+                "source": "working-with-data"
+              },
+              {
+                "type": "file",
+                "name": "Working with Roster Data",
+                "language": "en",
+                "path": "/desktop/tutorials/working-with-rosters",
+                "source": "working-with-rosters"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "fresco",
+        "language": "en",
+        "source": "fresco",
+        "folderPagePath": null,
+        "isExpanded": false,
+        "files": [
+          {
+            "type": "folder",
+            "name": "Getting Started",
+            "language": "en",
+            "source": "getting-started",
+            "folderPagePath": "/fresco",
+            "isExpanded": false,
+            "files": [
+              {
+                "type": "file",
+                "name": "Fresco Installation guide",
+                "language": "en",
+                "path": "/fresco/getting-started/installation",
+                "source": "installation"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Some Notes",
+            "language": "en",
+            "source": "some-notes",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "Notes",
+                "language": "en",
+                "path": "/fresco/some-notes/notes",
+                "source": "notes"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Third folder",
+            "language": "en",
+            "source": "third-folder",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "TEST Document",
+                "language": "en",
+                "path": "/fresco/third-folder/test",
+                "source": "test"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ru": [
+      {
+        "type": "folder",
+        "name": "desktop",
+        "language": "ru",
+        "source": "desktop",
+        "folderPagePath": null,
+        "isExpanded": false,
+        "files": [
+          {
+            "type": "folder",
+            "name": "Начиная",
+            "language": "ru",
+            "source": "getting-started",
+            "folderPagePath": "/desktop",
+            "isExpanded": false,
+            "files": []
+          },
+          {
+            "type": "folder",
+            "name": "Практические руководства",
+            "language": "ru",
+            "source": "how-to",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "Выбор оборудования для Interviewer",
+                "language": "ru",
+                "path": "/desktop/how-to/choosing-hardware",
+                "source": "choosing-hardware"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Техническая справка",
+            "language": "ru",
+            "source": "reference",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "Практики безопасности IRB и безопасность",
+                "language": "ru",
+                "path": "/desktop/reference/irb-best-practices",
+                "source": "irb-best-practices"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "fresco",
+        "language": "ru",
+        "source": "fresco",
+        "folderPagePath": null,
+        "isExpanded": false,
+        "files": [
+          {
+            "type": "folder",
+            "name": "Начиная",
+            "language": "ru",
+            "source": "getting-started",
+            "folderPagePath": "/fresco",
+            "isExpanded": false,
+            "files": [
+              {
+                "type": "file",
+                "name": "Руководство по установке Fresco",
+                "language": "ru",
+                "path": "/fresco/getting-started/installation",
+                "source": "installation"
+              }
+            ]
+          },
+          {
+            "type": "folder",
+            "name": "Третья папка",
+            "language": "ru",
+            "source": "third-folder",
+            "folderPagePath": null,
+            "isExpanded": true,
+            "files": [
+              {
+                "type": "file",
+                "name": "ТЕСТОВЫЙ документ",
+                "language": "ru",
+                "path": "/fresco/third-folder/test",
+                "source": "test"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

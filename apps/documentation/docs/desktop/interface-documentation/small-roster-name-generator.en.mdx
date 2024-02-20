@@ -1,0 +1,49 @@
+---
+title: Small Roster Name Generator
+
+image: /assets/img/interface-documentation/name-generators/small-roster.png
+type: Name Generator
+creates: Creates nodes of a single type
+uses_prompts: Yes
+bad:
+  - Avoid using this Interface with larger roster datasets that may benefit from the search function only available in the Large Roster Name Generator Interface.
+  - Add needless attributes to the sort options. This will confuse users and may potentially cause display issues on smaller screens. Aim for no more than 3 sortable properties.
+
+good:
+  - Ensure that the roster data file used has `name` attribute to avoid seeing "No name variable!" on your cards. See our article on [node labelling](/en/desktop/reference/node-labelling) for more information on this topic.
+  - Configure the display and sorting options of the cards to help improve a participant's ability to locate nodes within the roster.
+---
+
+Name Generators are one of the fundamental components of a network interview. They allow your participant to create alters, thereby describing one of the two main entities in your study's networks.
+
+There are four name generator [Interfaces](/en/desktop/key-concepts/interfaces) in Network Canvas that can be added to your study, all of which can be configured within Architect.
+
+Each of these Interfaces is designed for a specific type of alter elicitation, with several associated advantages and disadvantages. Although they have some configuration options that are [shared with all other Network Canvas Interfaces](./shared), this article will focus on options specific to roster based name generators.
+
+Roster name generators are useful when you have a known set of network members that you want your participant to be able to nominate. The "Small Roster Name Generator" and the "Large Roster Name Generator" Interfaces differ in two crucial ways:
+
+- The **size** of the roster data they are designed to work with.
+- The **method** of nominating a member of the roster to be brought into the interview network.
+
+## Defining a Roster
+
+Both of these interfaces require you to have a datafile that represents your roster. See our article on [importing roster data](/en/desktop/how-to/importing-roster-data) for more information about how to create such a file. Have this file, or a suitable mock file, ready before you attempt to configure either of these interfaces.
+
+<KeyConcept title="Roster size constraints">
+  We have tested a 60,000 node roster in the Large Roster Name Generator with
+  success, however, rosters of this size are not without problems. If your study
+  requires such a roster, please be prepared for the loading and search
+  functions to slow down considerably. The upper limit of this interface is
+  largely dependent on both the device you use and your usability threshold, so
+  a powerful laptop might be required particularly for larger datasets. For
+  information on devices, please see our article on [choosing a device for your
+  study](/en/desktop/how-to/choosing-hardware).
+</KeyConcept>
+
+## Small Roster Name Generator
+
+When using the "Small Roster Name Generator" Interface, cards representing node data from a predetermined roster will be displayed to a participant. This Interface is intended to accommodate roster data files containing up to 100 nodes, with the idea that the list view allows for simple and fast scanning of the roster by a participant, supported by sorting and filtering where necessary.
+
+By default, cards will display the `name` attribute from the roster data as a card title, and will sort the cards in the order the nodes are defined in the data file. These options can be configured from within architect. Note that you are able to define both the default sorting options, and allow the user to sort themselves by multiple properties.
+
+![Image](/assets/img/interface-documentation/name-generators/architect-card.png)

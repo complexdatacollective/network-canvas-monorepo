@@ -1,0 +1,70 @@
+---
+title: Notes
+date: 27th September 2023
+description: Some description about Notes
+---
+
+## This is an MDX file
+
+**TipBox example** (can be alternative to `{:.tip-box}` and `{: .tip-box .caution}`)
+
+<TipBox>
+  Welcome to Fresco! You can use it as a starting point for your own project :)
+</TipBox>
+
+**StandAlone example** (can be alternative to `{:standalone}`)
+
+<StandAloneImage
+  src="/assets/img/case-id.png"
+  content="Some text about the image"
+/>
+
+**KeyConcept example** (can be alternative to `{: .key-concept data-title="Roster size constraints"}`)
+
+<KeyConcept title="Roster size constraints">
+  We have tested a 60,000 node roster with success, however, rosters of this
+  size are not without problems. If your study requires such a roster, please be
+  prepared for the loading and search functions to slow down considerably. The
+  upper limit of this interface is largely dependent on both the device you use
+  and your usability threshold, so a powerful laptop might be required
+  particularly for larger datasets. For information on devices, please see our
+  article on [choosing a device for your
+  study](/en/desktop/how-to/choosing-hardware)
+</KeyConcept>
+
+**ImageFullWith example** (can be alternative to `{: .img-width-full}`)
+
+<ImageFullWith
+  src="/assets/img/server-guide/discovery-section.png"
+  name="discovery-section"
+/>
+
+**ImageFloatLeft example** (can be alternative to `{: .img-float-left .img-width-20}`)
+
+<ImageFloatLeft
+  name="screen-shot-2021-04-29-at-5.03.54-pm.png"
+  src="/assets/uploads/screen-shot-2021-04-29-at-5.03.54-pm.png"
+/>
+
+Your workspaces are shown in the purple column on the left hand side of the app,
+with a large plus button always visible that can be used to create a new workspace.
+
+To create a new workspace, locate a `.netcanvas` protocol file. For the purposes of this demonstration, we can use the sample protocol file that has been discussed in the tutorials on Interviewer and Architect (which can be downloaded [here](https://github.com/complexdatacollective/Documentation/blob/master/protocols/Sample%20Protocol%20v2.netcanvas)).
+
+Once imported, you will see a workspace icon that contains the initials of the protocol name, with a unique background that is generated based on the protocol content. Clicking this icon will switch to that workspace, and show the "overview" tab.
+
+**Citation example** (I handled the `{:.citation}` with tailwind css `prose-blockquote:border-blue-500`)
+
+> Complex Data Collective. Network Canvas Interviewer. 2016. www.doi.org/10.5281/zenodo.6026548
+
+**Main Header example** (I handled the `{: .fs-9 }` with a custom class in global.css `mainHeading` )
+
+**Button examples** (can be alternative to `{: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }`)
+
+<ButtonPrimary href="#">Project Overview</ButtonPrimary>
+
+<ButtonSecondary href="#">Installation Guide</ButtonSecondary>
+
+### Good practices <GoodPractice />
+
+### Bad practices <BadPractice />
