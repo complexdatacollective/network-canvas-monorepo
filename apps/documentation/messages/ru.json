@@ -1,0 +1,36 @@
+{
+  "Navbar": {
+    "communityBtn": "Сообщество"
+  },
+  "ThemeTranslations": {
+    "light": "День",
+    "dark": "Ночь",
+    "system": "Система"
+  },
+  "SearchCommand": {
+    "searchPlaceholder": "Поиск документации...",
+    "searchNoResultsFor": "Нет результатов для",
+    "searchNoResults": "Нет результатов"
+  },
+  "ProductSwitcher": {
+    "selectPlaceholder": "Выберите программное",
+    "fresco": "Фреска",
+    "desktop": "Рабочий стол"
+  },
+  "Home": {
+    "title": "Домашняя страница"
+  },
+  "DocPage": {
+    "docAvailableTxt": "Этот документ также доступен в"
+  },
+  "ProjectPage": {
+    "title": "Это вводная страница для"
+  },
+  "AIAssistant": {
+    "dialogPlaceholder": "Какова основная цель проекта Network Canvas?",
+    "q1": "Как это работает?",
+    "q2": "Что такое сетевое полотно?",
+    "popupText": "Привет, чем я могу тебе помочь?",
+    "welcomeMessage": "Привет, я помощник по искусственному интеллекту, обученный документации. Спросите меня о Network Canvas."
+  }
+}

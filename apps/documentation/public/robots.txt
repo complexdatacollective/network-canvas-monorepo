@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://documentation.networkcanvas.dev
+
+# Sitemaps
+Sitemap: https://documentation.networkcanvas.dev/sitemap.xml

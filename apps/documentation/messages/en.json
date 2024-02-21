@@ -1,0 +1,36 @@
+{
+  "Navbar": {
+    "communityBtn": "Community"
+  },
+  "ThemeTranslations": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "SearchCommand": {
+    "searchPlaceholder": "Search documentation...",
+    "searchNoResultsFor": "No results for",
+    "searchNoResults": "No results"
+  },
+  "ProductSwitcher": {
+    "selectPlaceholder": "Select software",
+    "fresco": "Fresco",
+    "desktop": "Desktop"
+  },
+  "Home": {
+    "title": "Home Page"
+  },
+  "DocPage": {
+    "docAvailableTxt": "This document is also available in"
+  },
+  "ProjectPage": {
+    "title": "This is an introductory page for"
+  },
+  "AIAssistant": {
+    "dialogPlaceholder": "What is the main aim of the Network Canvas project?",
+    "q1": "How does it work?",
+    "q2": "What is Network Canvas?",
+    "popupText": "Hi, how can I help you?",
+    "welcomeMessage": "Hi, I'm an AI assistant trained on documentation. Ask me anything about Network Canvas."
+  }
+}
