@@ -2,7 +2,7 @@ import { CheckSquare, XOctagon } from 'lucide-react';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import CustomParagraph from './CustomParagraph';
 import CustomAnchor from './CustomAnchor';
-import { options } from '@/lib/mdxOptions';
+import { options } from '~/lib/mdxOptions';
 
 type BestPracticesProps = {
   data: {

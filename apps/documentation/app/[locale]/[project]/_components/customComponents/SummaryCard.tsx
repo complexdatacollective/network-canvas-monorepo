@@ -1,8 +1,8 @@
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '~/components/ui/card';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { Clock } from 'lucide-react';
 import CustomAnchor from './CustomAnchor';
-import { options } from '@/lib/mdxOptions';
+import { options } from '~/lib/mdxOptions';
 
 type SummaryCardProps = {
   data: {

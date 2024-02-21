@@ -1,8 +1,8 @@
 'use client';
 
-import { filterSidebarData } from '@/lib/helper_functions';
-import { usePathname } from '@/navigation';
-import { type SidebarData } from '@/types';
+import { filterSidebarData } from '~/lib/helper_functions';
+import { usePathname } from '~/navigation';
+import { type SidebarData } from '~/types';
 import { useEffect, useMemo, useState } from 'react';
 import NavigationMenus from './NavigationMenus';
 import ProductSwitcher from './ProductSwitcher';

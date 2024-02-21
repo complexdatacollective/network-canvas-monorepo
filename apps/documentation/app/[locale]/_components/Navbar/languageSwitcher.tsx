@@ -6,11 +6,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { getLocaleBasedSidebarData, isPathExist } from '@/lib/helper_functions';
-import { usePathname, useRouter } from '@/navigation';
-import data from '@/public/sidebar.json';
-import { type SidebarData } from '@/types';
+} from '~/components/ui/select';
+import { getLocaleBasedSidebarData, isPathExist } from '~/lib/helper_functions';
+import { usePathname, useRouter } from '~/navigation';
+import data from '~/public/sidebar.json';
+import { type SidebarData } from '~/types';
 import { useLocale } from 'next-intl';
 
 interface LanguageSwitcherProps {

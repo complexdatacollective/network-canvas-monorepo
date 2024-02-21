@@ -1,5 +1,5 @@
-import { getDoc } from '@/lib/docs';
-import { options } from '@/lib/mdxOptions';
+import { getDoc } from '~/lib/docs';
+import { options } from '~/lib/mdxOptions';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { notFound } from 'next/navigation';

@@ -1,7 +1,7 @@
 'use client';
 
-import { env } from '@/env.mjs';
-import logo from '@/public/assets/img/logo.svg';
+import { env } from '~/env.mjs';
+import logo from '~/public/assets/img/logo.svg';
 import { MendableFloatingButton } from '@mendable/search';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';

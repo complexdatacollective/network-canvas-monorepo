@@ -1,4 +1,4 @@
-import { type DocFile, type Folder } from '@/types';
+import { type DocFile, type Folder } from '~/types';
 import Menu from './Menu';
 import NavigationLink from './NavigationLink';
 import OpenMenu from './OpenMenu';

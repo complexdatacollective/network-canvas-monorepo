@@ -1,6 +1,6 @@
 'use client';
 
-import { Link } from '@/navigation';
+import { Link } from '~/navigation';
 import { useEffect, useRef } from 'react';
 
 type NavigationLinkProps = {

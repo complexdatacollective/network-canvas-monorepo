@@ -1,5 +1,5 @@
-import { Link } from '@/navigation';
-import logo from '@/public/assets/img/logo.svg';
+import { Link } from '~/navigation';
+import logo from '~/public/assets/img/logo.svg';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import DocSearchComponent from './Search/DocSearchComponent';

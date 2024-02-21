@@ -1,6 +1,6 @@
-import { Separator } from '@/components/ui/separator';
-import { getAllMarkdownDocs, getDoc, processPath } from '@/lib/docs';
-import { getHeadings } from '@/lib/tableOfContents';
+import { Separator } from '~/components/ui/separator';
+import { getAllMarkdownDocs, getDoc, processPath } from '~/lib/docs';
+import { getHeadings } from '~/lib/tableOfContents';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { notFound } from 'next/navigation';
@@ -11,7 +11,7 @@ import SummaryCard from '../_components/customComponents/SummaryCard';
 import WorkInProgress from '../_components/customComponents/WorkInProgress';
 import { customComponents } from '../_components/customComponents/customComponents';
 import InnerLanguageSwitcher from '../_components/InnerLanguageSwitcher';
-import { options } from '@/lib/mdxOptions';
+import { options } from '~/lib/mdxOptions';
 
 type PageParams = {
   locale: string;

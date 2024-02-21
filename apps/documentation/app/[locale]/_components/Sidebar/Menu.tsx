@@ -5,8 +5,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Link } from '@/navigation';
+} from '~/components/ui/accordion';
+import { Link } from '~/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 
 type MenuProps = {

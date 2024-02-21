@@ -1,4 +1,4 @@
-import { CommandEmpty } from '@/components/ui/command';
+import { CommandEmpty } from '~/components/ui/command';
 import { useInstantSearch } from 'react-instantsearch';
 
 export default function NoResultsBoundary({

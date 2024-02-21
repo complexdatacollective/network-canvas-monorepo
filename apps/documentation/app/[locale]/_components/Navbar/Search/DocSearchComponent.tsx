@@ -2,7 +2,7 @@
 
 import { DocSearch } from '@docsearch/react';
 import '@docsearch/css';
-import { env } from '@/env.mjs';
+import { env } from '~/env.mjs';
 import { useLocale } from 'next-intl';
 
 const DocSearchComponent = () => {

@@ -7,8 +7,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useRouter } from '@/navigation';
+} from '~/components/ui/select';
+import { useRouter } from '~/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { type Dispatch, type SetStateAction } from 'react';
 

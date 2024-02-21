@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Link } from '@/navigation';
+import { Link } from '~/navigation';
 
 type OpenMenuProps = {
   children: ReactNode;

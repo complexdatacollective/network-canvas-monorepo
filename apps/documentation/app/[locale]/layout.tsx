@@ -1,8 +1,8 @@
-import { ThemeProvider } from '@/components/Providers/theme-provider';
-import AIAssistant from '@/components/ai-assistant';
-import { locales } from '@/locales.mjs';
-import data from '@/public/sidebar.json';
-import { type Messages, type SidebarData } from '@/types';
+import { ThemeProvider } from '~/components/Providers/theme-provider';
+import AIAssistant from '~/components/ai-assistant';
+import { locales } from '~/locales.mjs';
+import data from '~/public/sidebar.json';
+import { type Messages, type SidebarData } from '~/types';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import {

@@ -7,7 +7,7 @@
 import { MDXRemote, type MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { serialize } from 'next-mdx-remote/serialize';
 import React, { useEffect, useState } from 'react';
-import { env } from '@/env.mjs';
+import { env } from '~/env.mjs';
 
 const ShowMDX = ({ content }: { content: string }) => {
   const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult | null>(

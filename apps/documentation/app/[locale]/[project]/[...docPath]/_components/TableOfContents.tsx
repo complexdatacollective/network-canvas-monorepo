@@ -1,4 +1,4 @@
-import { type HeadingNode } from '@/lib/tableOfContents';
+import { type HeadingNode } from '~/lib/tableOfContents';
 import TOCLink from './TOCLink';
 
 interface TableOfContentsProps {

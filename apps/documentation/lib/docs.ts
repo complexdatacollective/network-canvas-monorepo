@@ -1,4 +1,4 @@
-import { env } from '@/env.mjs';
+import { env } from '~/env.mjs';
 import fs from 'fs';
 import matter from 'gray-matter';
 import { readdir } from 'node:fs/promises';

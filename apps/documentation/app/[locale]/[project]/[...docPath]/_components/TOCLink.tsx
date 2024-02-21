@@ -1,7 +1,7 @@
 'use client';
 
-import useHighlighted from '@/hooks/useHighlighted';
-import { type HeadingNode } from '@/lib/tableOfContents';
+import useHighlighted from '~/hooks/useHighlighted';
+import { type HeadingNode } from '~/lib/tableOfContents';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 

@@ -1,4 +1,4 @@
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Lightbulb, ShieldAlert, Terminal } from 'lucide-react';
 import { type ReactNode } from 'react';
 

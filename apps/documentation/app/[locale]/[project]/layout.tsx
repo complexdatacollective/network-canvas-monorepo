@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { getAllProjects } from '@/lib/docs';
+import { getAllProjects } from '~/lib/docs';
 
 export function generateStaticParams({
   params,

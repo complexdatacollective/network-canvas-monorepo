@@ -1,4 +1,4 @@
-import { Link } from '@/navigation';
+import { Link } from '~/navigation';
 import React from 'react';
 
 type HeaderLinkProps = {

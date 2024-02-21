@@ -1,23 +1,23 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { Button } from '~/components/ui/button';
 import {
   CommandDialog,
   CommandGroup,
   CommandList,
   CommandSeparator,
-} from '@/components/ui/command';
-import { algolia_client } from '@/lib/algolia-client.mjs';
+} from '~/components/ui/command';
+import { algolia_client } from '~/lib/algolia-client.mjs';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Hits, InstantSearch, Configure } from 'react-instantsearch';
 import CustomSearchBox from './CustomSearchBox';
 import EmptyQueryBoundary from './EmptyQueryBoundary';
 import Hit from './Hit';
-import algoliaLogo from '@/public/algolia-logo.svg';
+import algoliaLogo from '~/public/algolia-logo.svg';
 import NoResultsBoundary from './NoResultsBoundary';
 import { DialogContextProvider } from './Provider/DialogContext';
-import { env } from '@/env.mjs';
+import { env } from '~/env.mjs';
 import Link from 'next/link';
 import Image from 'next/image';
 
