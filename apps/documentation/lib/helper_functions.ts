@@ -17,10 +17,8 @@ export function convertToUrlText(text: string): string {
 
 export const getLocaleBasedSidebarData = (
   data: SidebarData,
-  locale: typeof locales,
+  locale: string,
 ) => {
-  const test = data[0]![locale];
-
   return data.filter((item) => item[locale])[0][locale];
 };
 
