@@ -27,7 +27,7 @@ export async function markdownToText(markdown) {
     .process(markdown);
 
   const html = String(result);
-  const text = html.replace(/<[^>]*>/g, ''); // remove HTML tags
+  const text = html.replace(/<[^>]*>/g, '').replace(/\.\.\//g, ''); // remove HTML tags
 
   return text;
 }
