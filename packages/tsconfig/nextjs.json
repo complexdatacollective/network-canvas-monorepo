@@ -3,7 +3,6 @@
   "display": "Next.js",
   "extends": "./base.json",
   "compilerOptions": {
-    "react": ["node_modules/@types/react"],
     "plugins": [{ "name": "next" }],
     "incremental": true,
     "allowJs": true,
