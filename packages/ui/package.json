@@ -1,0 +1,26 @@
+{
+  "name": "@codaco/ui",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./button": "./src/button.tsx",
+    "./card": "./src/card.tsx",
+    "./code": "./src/code.tsx"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "generate:component": "turbo gen react-component"
+  },
+  "devDependencies": {
+    "eslint-config-custom": "workspace:*",
+    "tsconfig": "workspace:*",
+    "@turbo/gen": "^1.11.3",
+    "@types/node": "^20.5.2",
+    "@types/eslint": "^8.44.6",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "eslint": "^8.48.0",
+    "react": "^18.2.0",
+    "typescript": "^5.2.2"
+  }
+}

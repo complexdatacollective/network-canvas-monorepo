@@ -6,6 +6,7 @@ const withNextIntl = require('next-intl/plugin')(
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@codaco/ui'],
   output: 'export',
   images: {
     unoptimized: true,
