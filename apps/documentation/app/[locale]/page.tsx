@@ -12,7 +12,7 @@ const Page = ({ params: { locale } }: { params: { locale: string } }) => {
 
   return (
     <div>
-      <Heading variant="h1" className="text-sea-green">
+      <Heading variant="h1" className="text-sea-serpent">
         THIS IS HEADING
       </Heading>
       <h2>

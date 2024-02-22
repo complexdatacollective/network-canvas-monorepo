@@ -12,11 +12,10 @@
   "scripts": {
     "build": "tailwindcss -i ./src/styles.css -o dist/index.css",
     "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@turbo/gen": "^1.11.3",
     "@types/eslint": "^8.44.6",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.48",
@@ -29,7 +28,6 @@
     "shared-tailwind-config": "workspace:*",
     "tailwindcss": "^3.3.0",
     "tsconfig": "workspace:*",
-    "tsup": "^7.2.0",
     "typescript": "^5.2.2"
   },
   "dependencies": {
