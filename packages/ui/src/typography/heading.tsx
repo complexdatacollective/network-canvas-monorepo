@@ -1,8 +1,10 @@
+"use client";
+
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
+import { cn } from "../utils/shadcn";
 import { Slot } from "@radix-ui/react-slot";
 import { motion } from "framer-motion";
-import { cn } from "../utils/shadcn";
 
 export const headingVariants = cva("text-balance", {
   variants: {

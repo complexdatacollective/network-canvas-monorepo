@@ -1,3 +1,5 @@
+"use client";
+
 import { cva, type VariantProps } from "class-variance-authority";
 import { forwardRef } from "react";
 import { cn } from "../utils/shadcn";
@@ -37,8 +39,8 @@ const Paragraph = forwardRef<HTMLParagraphElement, ParagraphProps>(
   ({ className, variant, margin, ...props }, ref) => {
     return (
       <p
-        className={cn(paragraphVariants({ variant, margin, className }))}
         ref={ref}
+        className={cn(paragraphVariants({ variant, margin, className }))}
         {...props}
       />
     );

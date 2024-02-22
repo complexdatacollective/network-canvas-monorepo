@@ -1,8 +1,8 @@
 {
-  "extends": "tsconfig/react-library.json",
+  "extends": "tsconfig/nextjs.json",
   "compilerOptions": {
     "outDir": "dist",
   },
-  "include": ["src"],
+  "include": ["."],
   "exclude": ["node_modules", "dist"],
 }

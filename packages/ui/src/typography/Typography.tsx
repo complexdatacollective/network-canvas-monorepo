@@ -1,7 +1,9 @@
+"use client";
+
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-import { Slot } from "@radix-ui/react-slot";
 import { cn } from "../utils/shadcn";
+import { Slot } from "@radix-ui/react-slot";
 
 const typographyVariants = cva("text-foreground", {
   variants: {
