@@ -7,7 +7,7 @@
   "private": true,
   "exports": {
     "./styles.css": "./dist/index.css",
-    "./card": "./src/card.tsx"
+    "./typography/Heading": "./src/typography/Heading.tsx"
   },
   "scripts": {
     "build": "tailwindcss -i ./src/styles.css -o dist/index.css",

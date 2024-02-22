@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
+import Heading from '@codaco/ui/typography/Heading';
 
 const Page = ({ params: { locale } }: { params: { locale: string } }) => {
   // setting setRequestLocale to support next-intl for static rendering
@@ -11,6 +12,9 @@ const Page = ({ params: { locale } }: { params: { locale: string } }) => {
 
   return (
     <div>
+      <Heading variant="h1" className="text-sea-green">
+        THIS IS HEADING
+      </Heading>
       <h2>
         {t('title')} {locale}
       </h2>
