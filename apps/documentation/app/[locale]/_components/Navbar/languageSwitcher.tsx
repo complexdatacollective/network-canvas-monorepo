@@ -13,9 +13,9 @@ import data from '~/public/sidebar.json';
 import { type SidebarData } from '~/types';
 import { useLocale } from 'next-intl';
 
-interface LanguageSwitcherProps {
+type LanguageSwitcherProps = {
   width: string;
-}
+};
 
 const LanguageSwitcher = ({ width }: LanguageSwitcherProps) => {
   const locale = useLocale();
@@ -43,11 +43,11 @@ const LanguageSwitcher = ({ width }: LanguageSwitcherProps) => {
   return (
     <Select onValueChange={handleLanguageChange}>
       <SelectTrigger
-        className={`bg-white hover:bg-stone-100 dark:bg-slate-700 dark:hover:bg-slate-600 ${width} space-x-1 text-xs sm:text-sm`}
+        className={`hover:bg-stone-100 dark:bg-slate-700 dark:hover:bg-slate-600 bg-white ${width} space-x-1 text-xs sm:text-sm`}
       >
         <SelectValue placeholder={locale === 'en' ? 'English' : 'Русский'} />
       </SelectTrigger>
-      <SelectContent className="bg-white dark:bg-slate-700">
+      <SelectContent className="dark:bg-slate-700 bg-white">
         <SelectItem value="en">English</SelectItem>
         <SelectItem value="ru">Русский</SelectItem>
       </SelectContent>

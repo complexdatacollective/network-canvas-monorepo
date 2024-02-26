@@ -94,6 +94,7 @@ function transformDocsToSearchObjects(articles) {
 
 // Index the files after build
 (async function indexAllFiles() {
+  // eslint-disable-next-line no-console
   console.log('STARTED INDEXING');
 
   try {
@@ -104,10 +105,12 @@ function transformDocsToSearchObjects(articles) {
 
     const algoliaResponse = await index.saveObjects(transformed);
 
+    // eslint-disable-next-line no-console
     console.log(
       `SUCCESSFULLY ADDED ${algoliaResponse.objectIDs.length} RECORDS TO Algolia SEARCH.`,
     );
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error(error);
   }
 })();

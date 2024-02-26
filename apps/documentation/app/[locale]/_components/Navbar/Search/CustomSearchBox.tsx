@@ -7,9 +7,9 @@ import {
   useSearchBox,
 } from 'react-instantsearch';
 
-interface CustomSearchBoxProps extends UseSearchBoxProps {
+type CustomSearchBoxProps = {
   placeholder: string;
-}
+} & UseSearchBoxProps;
 
 export default function CustomSearchBox(props: CustomSearchBoxProps) {
   const { query, refine } = useSearchBox(props);
@@ -49,7 +49,7 @@ export default function CustomSearchBox(props: CustomSearchBoxProps) {
     >
       <div className="flex items-center px-1.5">
         {isSearchStalled ? (
-          <Loader size={'19px'} className="animate-spin text-gray-400" />
+          <Loader size={'19px'} className="text-gray-400 animate-spin" />
         ) : (
           <SearchIcon size={'19px'} className="text-gray-400" />
         )}

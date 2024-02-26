@@ -1,24 +1,22 @@
-export interface Folder {
+export type Folder = {
   type: 'folder';
   name: string;
   language: string;
   source: string;
   folderPagePath: string | null;
   isExpanded: boolean;
-  files: Array<DocFile | Folder>;
-}
+  files: (DocFile | Folder)[];
+};
 
-export interface DocFile {
+export type DocFile = {
   type: 'file';
   name: string;
   language: string;
   path: string;
   source: string;
-}
-
-type LanguageData = {
-  [key: string]: Folder[];
 };
+
+type LanguageData = Record<string, Folder[]>;
 
 export type SidebarData = LanguageData[];
 

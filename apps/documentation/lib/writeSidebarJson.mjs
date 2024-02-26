@@ -144,5 +144,6 @@ try {
     'utf-8',
   );
 } catch (e) {
-  console.log('Error writing sidebar data!', e);
+  // eslint-disable-next-line no-console
+  console.error('Error writing sidebar data!', e);
 }

@@ -58,8 +58,9 @@ export default async function MainLayout({
   let messages: Messages;
 
   try {
-    messages = (await import(`../../messages/${locale}.json`))
-      .default as Messages;
+    messages =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      (await import(`../../messages/${locale}.json`)).default as Messages;
   } catch (error) {
     notFound(); // redirecting to 404 page in case there's no translated locale json
   }

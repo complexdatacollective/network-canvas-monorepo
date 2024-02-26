@@ -28,7 +28,7 @@ export function generateMetadata({ params }: { params: PageParams }) {
     project,
     pathSegment: docPath,
   });
-  if (!doc || !doc.title) {
+  if (!doc?.title) {
     throw new Error(`Error getting document title for:${docPath.join('')}`);
   }
 
@@ -78,7 +78,7 @@ const Page = async ({ params }: { params: PageParams }) => {
     pathSegment: docPath,
   });
 
-  if (!doc || doc?.content === null) notFound();
+  if (!doc?.content) notFound();
 
   // Frontmatter data of markdown files
   const {
@@ -95,7 +95,7 @@ const Page = async ({ params }: { params: PageParams }) => {
 
   return (
     <div className="flex items-start gap-1">
-      <article className="DocSearch-content prose prose-sm prose-slate mx-5 dark:prose-invert md:prose-base prose-blockquote:border-blue-500">
+      <article className="DocSearch-content prose-blockquote:border-blue-500 prose prose-sm prose-slate mx-5 dark:prose-invert md:prose-base">
         <h1>{title}</h1>
         <InnerLanguageSwitcher currentLocale={locale} filePath={filePath} />
         {interfaceSummary && <InterfaceSummary data={interfaceSummary} />}
@@ -107,7 +107,7 @@ const Page = async ({ params }: { params: PageParams }) => {
           source={content}
         />
         {bestPractices && <BestPractices data={bestPractices} />}
-        <p className="text-sm text-red-400">{lastUpdated}</p>
+        <p className="text-red-400 text-sm">{lastUpdated}</p>
       </article>
       {headings && (
         <div className="sticky top-20">

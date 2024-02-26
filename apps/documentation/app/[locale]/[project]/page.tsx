@@ -21,13 +21,13 @@ export default function Page({ params }: PageProps) {
     pathSegment: ['index'], // pointing to home page for the project
   });
 
-  if (!doc || doc?.content === null) notFound();
+  if (!doc?.content) notFound();
 
   // Frontmatter data of markdown files
   const { title, content, lastUpdated } = doc;
 
   return (
-    <article className="DocSearch-content prose prose-sm prose-slate mx-5 dark:prose-invert md:prose-base prose-blockquote:border-blue-500">
+    <article className="DocSearch-content prose-blockquote:border-blue-500 prose prose-sm prose-slate mx-5 dark:prose-invert md:prose-base">
       <h1>{title}</h1>
       <InnerLanguageSwitcher currentLocale={locale} filePath={filePath} />
       <MDXRemote
@@ -35,7 +35,7 @@ export default function Page({ params }: PageProps) {
         components={customComponents}
         source={content}
       />
-      <p className="text-sm text-red-400">{lastUpdated}</p>
+      <p className="text-red-400 text-sm">{lastUpdated}</p>
     </article>
   );
 }

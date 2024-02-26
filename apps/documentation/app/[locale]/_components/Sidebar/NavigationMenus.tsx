@@ -3,10 +3,10 @@ import Menu from './Menu';
 import NavigationLink from './NavigationLink';
 import OpenMenu from './OpenMenu';
 
-export interface NavigationMenusProps {
+export type NavigationMenusProps = {
   sidebarData: (Folder | DocFile)[];
   pathItems: string[];
-}
+};
 
 export default function NavigationMenus({
   sidebarData,

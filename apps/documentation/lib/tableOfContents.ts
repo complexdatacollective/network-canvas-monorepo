@@ -1,8 +1,8 @@
 import { toString } from 'mdast-util-to-string';
 import { remark } from 'remark';
-import { Node } from 'unist';
+import { type Node } from 'unist';
 import { visit } from 'unist-util-visit';
-import { VFile } from 'vfile';
+import { type VFile } from 'vfile';
 import { convertToUrlText } from './helper_functions';
 
 export type HeadingNode = {
@@ -23,7 +23,7 @@ export function headingTree(): (node: Node, file: VFile) => void {
 function getHeadingsForTree(root: Node): HeadingNode[] {
   const nodes = {};
   const output: HeadingNode[] = [];
-  const indexMap = {};
+  const indexMap: Record<string, HeadingNode> = {};
   visit(root, 'heading', (node: HeadingNode) => {
     addID(node, nodes);
     transformNode(node, output, indexMap);
@@ -44,7 +44,7 @@ function addID(node: HeadingNode, nodes: Record<string, number>): void {
 function transformNode(
   node: HeadingNode,
   output: HeadingNode[],
-  indexMap: Record<string, any>,
+  indexMap: Record<string, HeadingNode>,
 ): void {
   const transformedNode: HeadingNode = {
     value: toString(node),

@@ -7,12 +7,12 @@ type DialogContextType = {
 
 export const DialogContext = createContext<DialogContextType>({
   open: false,
-  setOpen: () => {},
+  setOpen: () => undefined,
 });
 
-interface DialogContextProviderProps extends DialogContextType {
+type DialogContextProviderProps = {
   children: React.ReactNode;
-}
+} & DialogContextType;
 
 export const DialogContextProvider: React.FC<DialogContextProviderProps> = ({
   children,

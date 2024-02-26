@@ -14,6 +14,7 @@ const config = {
     "dist/",
     ".eslintrc.js",
     "next.config.js",
+    "**/*.cjs",
   ],
   rules: {
     "@next/next/no-img-element": "off",
