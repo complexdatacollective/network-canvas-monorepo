@@ -1,5 +1,5 @@
-import Heading from './Heading';
-import Paragraph from './Paragraph';
+import Heading from "./Heading";
+import Paragraph from "./Paragraph";
 
 const PageHeader = ({
   headerText,

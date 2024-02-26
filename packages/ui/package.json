@@ -4,8 +4,8 @@
   "private": true,
   "exports": {
     "./globals.css": "./src/globals.css",
-    "./typography/Heading": "./src/components/typography/Heading.tsx",
-    "./postcss.config": "./postcss.config.js"
+    "./postcss.config": "./postcss.config.js",
+    "./components/*": "./src/components/*.tsx"
   },
   "scripts": {
     "lint": "eslint ."

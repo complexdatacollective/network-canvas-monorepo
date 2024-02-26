@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
-import Heading from '@codaco/ui/typography/Heading';
+import { MotionHeading } from '@codaco/ui/components/typography/Heading';
+import PageHeader from '@codaco/ui/components/typography/PageHeader';
 
 const Page = ({ params: { locale } }: { params: { locale: string } }) => {
   // setting setRequestLocale to support next-intl for static rendering
@@ -12,9 +13,13 @@ const Page = ({ params: { locale } }: { params: { locale: string } }) => {
 
   return (
     <div>
-      <Heading variant="h1" className="text-sea-serpent">
+      <MotionHeading variant="h1" className="text-sea-serpent">
         THIS IS HEADING
-      </Heading>
+      </MotionHeading>
+      <PageHeader
+        headerText="Dashboard"
+        subHeaderText="Welcome to Fresco! This page provides an overview of your recent activity and key metrics."
+      />
       <h2>
         {t('title')} {locale}
       </h2>
