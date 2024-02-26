@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
-import '~/styles/globals.css';
-import '@codaco/ui/styles.css';
+// import '~/styles/globals.css';
+import '@codaco/ui/globals.css';
 
 type Props = {
   children: ReactNode;

@@ -1,21 +1,17 @@
 {
   "name": "@codaco/ui",
   "version": "0.0.0",
-  "sideEffects": [
-    "**/*.css"
-  ],
   "private": true,
   "exports": {
-    "./styles.css": "./dist/index.css",
-    "./typography/Heading": "./src/typography/Heading.tsx"
+    "./globals.css": "./src/globals.css",
+    "./typography/Heading": "./src/components/typography/Heading.tsx",
+    "./postcss.config": "./postcss.config.js"
   },
   "scripts": {
-    "build": "tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
-    "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "@types/d3-interpolate-path": "^2.0.3",
     "@types/eslint": "^8.44.6",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.48",
@@ -48,9 +44,11 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.0.7",
+    "blobs": "2.3.0-beta.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
+    "d3-interpolate-path": "^2.3.0",
     "framer-motion": "^11.0.5",
     "lucide-react": "^0.336.0",
     "tailwind-merge": "^1.14.0"
