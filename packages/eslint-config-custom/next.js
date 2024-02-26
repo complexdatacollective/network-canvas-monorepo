@@ -1,30 +1,11 @@
-import { join } from "path";
-
 /** @type {import("eslint").Linter.Config} */
 const config = {
-  overrides: [
-    {
-      extends: [
-        "plugin:@typescript-eslint/stylistic-type-checked",
-        "plugin:@typescript-eslint/recommended-type-checked",
-      ],
-      files: ["*.ts", "*.tsx"],
-      parserOptions: {
-        project: join(__dirname, "tsconfig.json"),
-      },
-    },
-  ],
-  parser: "@typescript-eslint/parser",
-  parserOptions: {
-    project: join(__dirname, "tsconfig.json"),
-  },
-  plugins: ["@typescript-eslint", "eslint-plugin-local-rules"],
+  plugins: ["@typescript-eslint"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/stylistic",
     "plugin:@typescript-eslint/recommended",
     "next/core-web-vitals",
-    "plugin:storybook/recommended",
     "prettier",
   ],
   ignorePatterns: ["node_modules", "*.stories.*", "*.test.*"],
@@ -54,7 +35,7 @@ const config = {
       },
     ],
     "no-unreachable": "error",
-    "local-rules/require-data-mapper": "error",
   },
 };
-export default config;
+
+module.exports = config;
