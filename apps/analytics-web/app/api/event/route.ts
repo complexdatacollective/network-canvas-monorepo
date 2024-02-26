@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import insertEvent from "~/db/insertEvent";
 import { AnalyticsEventSchema } from "@codaco/analytics";
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ event }, { status: 200, headers: corsHeaders });
 }
 
-export async function OPTIONS() {
+export function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: corsHeaders,

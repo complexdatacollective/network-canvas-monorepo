@@ -1,8 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs";
+import z from "zod";
+
+const clerkPayloadSchema = z.object({
+  verified: z.boolean(),
+  userId: z.string(),
+});
 
 export async function POST(request: NextRequest) {
-  const { verified, userId } = await request.json();
+  const payload: unknown = await request.json();
+
+  const parsedPayload = clerkPayloadSchema.safeParse(payload);
+
+  if (!parsedPayload.success) {
+    return NextResponse.json(
+      { error: "Invalid clerk payload" },
+      { status: 400 }
+    );
+  }
+
+  const { verified, userId } = parsedPayload.data;
 
   await clerkClient.users.updateUserMetadata(userId, {
     publicMetadata: {

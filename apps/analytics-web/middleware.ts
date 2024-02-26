@@ -7,9 +7,10 @@ import { NextResponse } from "next/server";
 export default authMiddleware({
   publicRoutes: ["/verification"],
   ignoredRoutes: ["/api/event"],
-  async afterAuth(auth, req, evt) {
+  async afterAuth(auth, req, _) {
     // handle users who aren't authenticated
     if (!auth.userId && !auth.isPublicRoute) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return redirectToSignIn({ returnBackUrl: req.url });
     }
 

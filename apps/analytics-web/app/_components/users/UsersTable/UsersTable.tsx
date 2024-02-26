@@ -11,7 +11,7 @@ export default async function VerifiedUsersTable() {
       id: user.id,
       fullName: user.firstName + " " + user.lastName,
       username: user.username,
-      verified: user.publicMetadata.verified,
+      verified: !!user.publicMetadata.verified,
     };
   });
 

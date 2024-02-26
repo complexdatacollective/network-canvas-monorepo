@@ -5,10 +5,10 @@ import Papa from "papaparse";
 import { Button } from "~/components/ui/button";
 import { type Event } from "~/db/getEvents";
 
-interface ExportButtonProps {
+type ExportButtonProps = {
   data: Event[];
   filename: string;
-}
+};
 
 const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
   const handleExportCSV = () => {

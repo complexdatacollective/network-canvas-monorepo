@@ -1,7 +1,19 @@
 "use client";
-import { ColumnDef } from "@tanstack/react-table";
+
+import { type ColumnDef } from "@tanstack/react-table";
 import VerifyUserSwitch from "./VerifyUserSwitch";
-export const columns: ColumnDef<any>[] = [
+
+type UserColumn = ColumnDef<
+  {
+    id: string;
+    fullName: string;
+    username: string | null;
+    verified: boolean;
+  },
+  unknown
+>;
+
+export const columns: UserColumn[] = [
   {
     accessorKey: "user",
     header: "User",

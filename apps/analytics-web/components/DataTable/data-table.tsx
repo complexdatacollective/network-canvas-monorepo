@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  ColumnDef,
-  SortingState,
+  type ColumnDef,
+  type SortingState,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -19,11 +19,11 @@ import {
   TableRow,
 } from "~/components/ui/table";
 
-interface DataTableProps<TData, TValue> {
+type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   pagination?: boolean;
-}
+};
 
 import { DataTablePagination } from "~/components/DataTable/data-table-pagination";
 import { useState } from "react";

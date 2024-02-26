@@ -10,6 +10,7 @@ export default async function insertEvent(event: EventInsertType) {
 
     return { data: insertedEvent, error: null };
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error inserting events", error);
     return { data: null, error: "Error inserting events" };
   }

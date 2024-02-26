@@ -8,8 +8,9 @@ export async function runMigration() {
   try {
     await migrate(db, { migrationsFolder: "./drizzle" });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error running migration:", error);
   }
 }
 
-runMigration();
+await runMigration();

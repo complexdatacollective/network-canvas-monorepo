@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "~/components/DataTable/data-table";
 import ExportButton from "~/components/ExportButton";
-import { Event } from "~/db/getEvents";
+import { type Event } from "~/db/getEvents";
 import { getColumns } from "./Columns";
 
 export type EventType = {

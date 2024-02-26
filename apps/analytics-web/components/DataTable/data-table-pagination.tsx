@@ -5,7 +5,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 
-import { Table } from "@tanstack/react-table";
+import { type Table } from "@tanstack/react-table";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -16,9 +16,9 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 
-interface DataTablePaginationProps<TData> {
+type DataTablePaginationProps<TData> = {
   table: Table<TData>;
-}
+};
 
 export function DataTablePagination<TData>({
   table,

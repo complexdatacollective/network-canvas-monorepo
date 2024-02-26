@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -9,12 +9,12 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 
-interface DialogButtonProps {
+type DialogButtonProps = {
   buttonLabel: string;
   title: string;
   description: string;
   content: ReactNode;
-}
+};
 
 export function DialogButton({
   buttonLabel,

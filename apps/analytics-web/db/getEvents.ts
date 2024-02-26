@@ -8,6 +8,7 @@ export default async function getEvents() {
 
     return events;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error getting events", error);
     return [];
   }

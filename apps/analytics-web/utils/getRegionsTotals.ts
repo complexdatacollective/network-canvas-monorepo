@@ -1,4 +1,5 @@
 import getEvents, { type Event } from "~/db/getEvents";
+import { getName } from "i18n-iso-countries";
 
 export type RegionTotal = {
   country: string;
@@ -7,7 +8,6 @@ export type RegionTotal = {
 
 export default async function getRegionsTotals(): Promise<RegionTotal[]> {
   const events: Event[] = await getEvents();
-  var countries = require("i18n-iso-countries");
 
   const calculatedTotals: Record<string, number> = {};
 
@@ -15,7 +15,7 @@ export default async function getRegionsTotals(): Promise<RegionTotal[]> {
     const isocode = event.countryISOCode;
 
     if (isocode) {
-      calculatedTotals[isocode] = (calculatedTotals[isocode] || 0) + 1;
+      calculatedTotals[isocode] = (calculatedTotals[isocode] ?? 0) + 1;
     }
   }
 
@@ -23,8 +23,8 @@ export default async function getRegionsTotals(): Promise<RegionTotal[]> {
 
   for (const isocode in calculatedTotals) {
     regionsTotals.push({
-      country: countries.getName(isocode, "en"),
-      total: calculatedTotals[isocode] || 0,
+      country: getName(isocode, "en") ?? "",
+      total: calculatedTotals[isocode] ?? 0,
     });
   }
 

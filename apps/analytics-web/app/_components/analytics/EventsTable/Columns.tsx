@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { type Dispatch, type SetStateAction } from "react";
 import { DataTableColumnHeader } from "~/components/DataTable/column-header";
 import { MetadataDialog } from "~/components/MetadataDialog";
