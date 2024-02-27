@@ -46,29 +46,35 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.0.0",
     "tailwind-merge": "^1.14.0",
-    "tailwindcss-animate": "^1.0.7",
     "unified": "^11.0.3",
     "unist-util-visit": "^5.0.0",
     "vfile": "^6.0.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/tsconfig": "workspace:*",
+    "@acme/tailwind-config": "workspace:*",
     "@types/eslint": "^8.44.6",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@types/unist": "^3.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
     "autoprefixer": "^10.4.16",
-    "eslint-config-custom": "workspace:*",
     "postcss": "latest",
-    "prettier": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.6",
-    "shared-tailwind-config": "workspace:*",
-    "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.1",
-    "tsconfig": "workspace:*",
-    "typescript": "^5.2.2"
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": [
+      "@acme/eslint-config/base",
+      "@acme/eslint-config/nextjs",
+      "@acme/eslint-config/react"
+    ]
   }
 }
