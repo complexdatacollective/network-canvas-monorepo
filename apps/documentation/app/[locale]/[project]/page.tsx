@@ -1,10 +1,13 @@
-import { getDoc } from '~/lib/docs';
-import { options } from '~/lib/mdxOptions';
+import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { MDXRemote } from 'next-mdx-remote/rsc';
-import { notFound } from 'next/navigation';
-import InnerLanguageSwitcher from './_components/InnerLanguageSwitcher';
+
+import { Button, Heading } from '@acme/ui';
+
+import { getDoc } from '~/lib/docs';
+import { options } from '~/lib/mdxOptions';
 import { customComponents } from './_components/customComponents/customComponents';
+import InnerLanguageSwitcher from './_components/InnerLanguageSwitcher';
 
 type PageProps = { params: { locale: string; project: string } };
 
@@ -21,21 +24,21 @@ export default function Page({ params }: PageProps) {
     pathSegment: ['index'], // pointing to home page for the project
   });
 
-  if (!doc || doc?.content === null) notFound();
+  if (!doc?.content) notFound();
 
   // Frontmatter data of markdown files
   const { title, content, lastUpdated } = doc;
 
   return (
-    <article className="DocSearch-content prose prose-sm prose-slate mx-5 dark:prose-invert md:prose-base prose-blockquote:border-blue-500">
-      <h1>{title}</h1>
+    <article className="mx-5">
+      <Heading variant="h1">{title}</Heading>
       <InnerLanguageSwitcher currentLocale={locale} filePath={filePath} />
       <MDXRemote
         options={options}
         components={customComponents}
         source={content}
       />
-      <p className="text-sm text-red-400">{lastUpdated}</p>
+      <p className="text-sm text-destructive">{lastUpdated}</p>
     </article>
   );
 }

@@ -1,17 +1,20 @@
-import { Separator } from '~/components/ui/separator';
-import { getAllMarkdownDocs, getDoc, processPath } from '~/lib/docs';
-import { getHeadings } from '~/lib/tableOfContents';
+import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { MDXRemote } from 'next-mdx-remote/rsc';
-import { notFound } from 'next/navigation';
-import TableOfContents from './_components/TableOfContents';
+
+import { Heading } from '@acme/ui';
+
+import { Separator } from '~/components/ui/separator';
+import { getAllMarkdownDocs, getDoc, processPath } from '~/lib/docs';
+import { options } from '~/lib/mdxOptions';
+import { getHeadings } from '~/lib/tableOfContents';
 import BestPractices from '../_components/customComponents/BestPractices';
+import { customComponents } from '../_components/customComponents/customComponents';
 import InterfaceSummary from '../_components/customComponents/InterfaceSummary';
 import SummaryCard from '../_components/customComponents/SummaryCard';
 import WorkInProgress from '../_components/customComponents/WorkInProgress';
-import { customComponents } from '../_components/customComponents/customComponents';
 import InnerLanguageSwitcher from '../_components/InnerLanguageSwitcher';
-import { options } from '~/lib/mdxOptions';
+import TableOfContents from './_components/TableOfContents';
 
 type PageParams = {
   locale: string;
@@ -95,8 +98,8 @@ const Page = async ({ params }: { params: PageParams }) => {
 
   return (
     <div className="flex items-start gap-1">
-      <article className="DocSearch-content prose prose-sm prose-slate mx-5 dark:prose-invert md:prose-base prose-blockquote:border-blue-500">
-        <h1>{title}</h1>
+      <article className="">
+        <Heading variant="h1">{title}</Heading>
         <InnerLanguageSwitcher currentLocale={locale} filePath={filePath} />
         {interfaceSummary && <InterfaceSummary data={interfaceSummary} />}
         {summaryData && <SummaryCard data={summaryData} />}
@@ -107,7 +110,7 @@ const Page = async ({ params }: { params: PageParams }) => {
           source={content}
         />
         {bestPractices && <BestPractices data={bestPractices} />}
-        <p className="text-sm text-red-400">{lastUpdated}</p>
+        <p className="text-red-400 text-sm">{lastUpdated}</p>
       </article>
       {headings && (
         <div className="sticky top-20">

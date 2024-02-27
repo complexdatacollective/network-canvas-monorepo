@@ -1,9 +1,11 @@
 'use client';
 
 import { DocSearch } from '@docsearch/react';
-import '@docsearch/css';
-import { env } from '~/env.mjs';
 import { useLocale } from 'next-intl';
+
+import '@docsearch/css';
+
+import { env } from '~/env.mjs';
 
 const DocSearchComponent = () => {
   const locale = useLocale();

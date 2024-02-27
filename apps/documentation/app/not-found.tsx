@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <html>
       <body>
-        <div className="prose prose-sm prose-slate mx-auto my-10 md:prose-base">
+        <div className="mx-auto my-10">
           <h1>404 - Not found</h1>
           <div className="h-[2px] w-full bg-black" />
           <h2>The requested page could not be found.</h2>

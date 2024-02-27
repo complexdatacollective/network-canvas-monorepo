@@ -23,4 +23,4 @@ type LanguageData = {
 export type SidebarData = LanguageData[];
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-export type Messages = typeof import('./messages/en.json');
+export type Messages = typeof import('../messages/en.json');

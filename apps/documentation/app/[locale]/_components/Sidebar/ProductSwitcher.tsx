@@ -1,5 +1,8 @@
 'use client';
 
+import { type Dispatch, type SetStateAction } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+
 import {
   Select,
   SelectContent,
@@ -7,10 +10,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '~/components/ui/select';
+} from '@acme/ui';
+
 import { useRouter } from '~/navigation';
-import { useLocale, useTranslations } from 'next-intl';
-import { type Dispatch, type SetStateAction } from 'react';
 
 type ProductSwitcherProps = {
   setProduct: Dispatch<SetStateAction<string>>;
@@ -33,7 +35,7 @@ export default function ProductSwitcher({
         router.push(`/${val}`, { locale });
       }}
     >
-      <SelectTrigger className="h-16 w-full text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 lg:text-base">
+      <SelectTrigger className="hover:bg-slate-100 dark:hover:bg-slate-800 h-16 w-full text-sm transition-colors lg:text-base">
         <SelectValue placeholder={t('selectPlaceholder')} />
       </SelectTrigger>
       <SelectContent>

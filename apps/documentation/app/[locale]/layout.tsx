@@ -1,17 +1,18 @@
-import { ThemeProvider } from '~/components/Providers/theme-provider';
-import AIAssistant from '~/components/ai-assistant';
-import { locales } from '~/locales.mjs';
-import data from '~/public/sidebar.json';
-import { type Messages, type SidebarData } from '~/types';
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import {
   getNow,
   getTimeZone,
   unstable_setRequestLocale,
 } from 'next-intl/server';
-import { Inter } from 'next/font/google';
-import { notFound } from 'next/navigation';
+
+import { type Messages, type SidebarData } from '~/app/types';
+import AIAssistant from '~/components/ai-assistant';
+import { ThemeProvider } from '~/components/Providers/theme-provider';
+import { locales } from '~/locales.mjs';
+import data from '~/public/sidebar.json';
 import Navbar from './_components/Navbar/Navbar';
 import Sidebar from './_components/Sidebar/Sidebar';
 
@@ -80,11 +81,9 @@ export default async function MainLayout({
             messages={messages}
           >
             <Navbar />
-            <div className="container mt-8 grid grid-cols-5 items-start gap-5">
+            <div className="  grid grid-cols-5 items-start gap-5">
               {sidebarData && <Sidebar data={sidebarData} locale={locale} />}
-              <main className="DocSearch-content col-span-4 px-2">
-                {children}
-              </main>
+              <main className="col-span-4 px-2">{children}</main>
               <AIAssistant />
             </div>
           </NextIntlClientProvider>

@@ -1,8 +1,9 @@
-import { Card, CardContent } from '~/components/ui/card';
-import { MDXRemote } from 'next-mdx-remote/rsc';
 import { Clock } from 'lucide-react';
-import CustomAnchor from './CustomAnchor';
+import { MDXRemote } from 'next-mdx-remote/rsc';
+
+import { Card, CardContent } from '~/components/ui/card';
 import { options } from '~/lib/mdxOptions';
+import { customComponents } from './customComponents';
 
 type SummaryCardProps = {
   data: {
@@ -20,7 +21,7 @@ const SummaryCard = ({ data }: SummaryCardProps) => {
           <span className="font-bold">SUMMARY:</span>
           <MDXRemote
             options={options}
-            components={{ a: CustomAnchor }}
+            components={customComponents}
             source={data.summary}
           />
         </div>
@@ -28,7 +29,7 @@ const SummaryCard = ({ data }: SummaryCardProps) => {
           <span className="font-bold">PREREQUISITES:</span>
           <MDXRemote
             options={options}
-            components={{ a: CustomAnchor }}
+            components={customComponents}
             source={data.prerequisites}
           />
         </div>

@@ -1,8 +1,8 @@
 import { CheckSquare, XOctagon } from 'lucide-react';
 import { MDXRemote } from 'next-mdx-remote/rsc';
-import CustomParagraph from './CustomParagraph';
-import CustomAnchor from './CustomAnchor';
+
 import { options } from '~/lib/mdxOptions';
+import { customComponents } from './customComponents';
 
 type BestPracticesProps = {
   data: {
@@ -20,11 +20,11 @@ const BestPractices = ({ data }: BestPracticesProps) => {
           {data.good.map((item) => (
             <li className="flex items-start gap-3" key={item}>
               <span>
-                <CheckSquare size={'19px'} className="mt-1.5 text-green-500" />
+                <CheckSquare size={'19px'} className="text-green-500 mt-1.5" />
               </span>
               <MDXRemote
                 options={options}
-                components={{ p: CustomParagraph, a: CustomAnchor }}
+                components={customComponents}
                 source={item}
               />
             </li>
@@ -37,11 +37,11 @@ const BestPractices = ({ data }: BestPracticesProps) => {
           {data.bad.map((item) => (
             <li className="flex items-start gap-3" key={item}>
               <span>
-                <XOctagon size={'19px'} className="mt-1.5 text-red-500" />
+                <XOctagon size={'19px'} className="text-red-500 mt-1.5" />
               </span>
               <MDXRemote
                 options={options}
-                components={{ p: CustomParagraph, a: CustomAnchor }}
+                components={customComponents}
                 source={item}
               />
             </li>

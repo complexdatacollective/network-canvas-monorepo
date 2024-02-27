@@ -2,6 +2,7 @@
   "name": "analytics-web",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,6 +15,7 @@
     "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@acme/ui": "workspace:*",
     "@clerk/nextjs": "^4.29.5",
     "@codaco/analytics": "workspace:*",
     "@radix-ui/react-checkbox": "^1.0.4",

@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import "@acme/tailwind-config/globals.css";
 import '~/app/globals.css';
 
 type Props = {
