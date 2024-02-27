@@ -5,8 +5,13 @@
     "paths": {
       "~/*": [
         "./*"
-      ],
+      ]
     },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
@@ -16,5 +21,5 @@
   ],
   "exclude": [
     "node_modules"
-  ],
+  ]
 }

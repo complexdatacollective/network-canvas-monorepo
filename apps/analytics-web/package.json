@@ -26,7 +26,7 @@
     "@tanstack/react-table": "^8.10.7",
     "@vercel/kv": "^0.2.4",
     "@vercel/postgres": "^0.5.1",
-    "autoprefixer": "^10.4.16",
+    "autoprefixer": "^10.4.17",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "dotenv": "^16.3.1",
@@ -41,6 +41,10 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/prettier-config": "workspace:*",
+    "@acme/tailwind-config": "workspace:*",
+    "@acme/tsconfig": "workspace:*",
     "@faker-js/faker": "^8.2.0",
     "@testing-library/react": "^14.1.2",
     "@types/node": "^20.5.2",
@@ -49,16 +53,13 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "drizzle-kit": "^0.20.13",
+    "eslint": "^8.57.0",
     "jsdom": "^24.0.0",
     "next-test-api-route-handler": "^4.0.3",
-    "@acme/tailwind-config": "workspace:*",
-    "vitest": "^1.2.2",
-    "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "@acme/eslint-config": "workspace:*",
-    "@acme/tsconfig": "workspace:*"
+    "vitest": "^1.2.2"
   },
   "eslintConfig": {
     "root": true,
@@ -67,5 +68,6 @@
       "@acme/eslint-config/nextjs",
       "@acme/eslint-config/react"
     ]
-  }
+  },
+  "prettier": "@acme/prettier-config"
 }
