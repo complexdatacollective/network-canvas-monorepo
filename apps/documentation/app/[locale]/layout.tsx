@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Quicksand } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import {
@@ -16,14 +16,13 @@ import data from '~/public/sidebar.json';
 import Navbar from './_components/Navbar/Navbar';
 import Sidebar from './_components/Sidebar/Sidebar';
 
-const inter = Inter({ subsets: ['latin'] });
+const quicksand = Quicksand({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Network Canvas Docs',
-  description: 'All Network Canvas Docs',
-  icons: {
-    icon: '/nc.png',
-  },
   other: {
     'docsearch:language': 'en',
     'docsearch:version': '1.0.1',
@@ -67,7 +66,7 @@ export default async function MainLayout({
 
   return (
     <html lang={locale}>
-      <body className={inter.className}>
+      <body className={`${quicksand.className} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

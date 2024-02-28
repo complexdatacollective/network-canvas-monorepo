@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@acme/ui": "workspace:*",
+    "@docsearch/css": "^3.5.2",
     "@docsearch/react": "3",
     "@mendable/search": "^0.0.167",
     "@radix-ui/react-accordion": "^1.1.2",

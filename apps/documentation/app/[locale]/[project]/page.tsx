@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 
-import { Button, Heading } from '@acme/ui';
+import { Heading } from '@acme/ui';
 
 import { getDoc } from '~/lib/docs';
 import { options } from '~/lib/mdxOptions';
@@ -38,7 +38,7 @@ export default function Page({ params }: PageProps) {
         components={customComponents}
         source={content}
       />
-      <p className="text-sm text-destructive">{lastUpdated}</p>
+      <p className="text-sm text-destructive">Last updated: {lastUpdated}</p>
     </article>
   );
 }

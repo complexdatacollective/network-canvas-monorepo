@@ -168,6 +168,9 @@ importers:
       '@acme/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@docsearch/css':
+        specifier: ^3.5.2
+        version: 3.5.2
       '@docsearch/react':
         specifier: '3'
         version: 3.5.2(@algolia/client-search@4.22.1)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)(search-insights@2.13.0)
@@ -467,7 +470,7 @@ importers:
         version: 0.341.0(react@18.2.0)
       next-themes:
         specifier: ^0.2.1
-        version: 0.2.1(next@14.1.0)(react-dom@18.2.0)(react@18.2.0)
+        version: 0.2.1(next@14.0.1)(react-dom@18.2.0)(react@18.2.0)
       react-hook-form:
         specifier: ^7.50.1
         version: 7.50.1(react@18.2.0)
@@ -8591,18 +8594,6 @@ packages:
       react-dom: '*'
     dependencies:
       next: 14.0.1(@babel/core@7.23.9)(react-dom@18.2.0)(react@18.2.0)
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-    dev: false
-
-  /next-themes@0.2.1(next@14.1.0)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-B+AKNfYNIzh0vqQQKqQItTS8evEouKD7H5Hj3kmuPERwddR2TxvDSFZuTj6T7Jfn1oyeUyJMydPl1Bkxkh0W7A==}
-    peerDependencies:
-      next: '*'
-      react: '*'
-      react-dom: '*'
-    dependencies:
-      next: 14.1.0(react-dom@18.2.0)(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
     dev: false
