@@ -1,17 +1,18 @@
-import { getAvailableLocales } from '~/lib/helper_functions';
-import { getTranslator } from 'next-intl/server';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+
+import { getAvailableLocales } from '~/lib/helper_functions';
 
 type InnerLanguageSwitcherProps = {
   filePath: string;
   currentLocale: string;
 };
 
-const InnerLanguageSwitcher = async ({
+const InnerLanguageSwitcher = ({
   filePath,
   currentLocale,
 }: InnerLanguageSwitcherProps) => {
-  const t = await getTranslator(currentLocale, 'DocPage');
+  const t = getTranslations('DocPage');
   const availableLocales = getAvailableLocales(filePath);
 
   // removes the current locale from availableLocales
@@ -27,7 +28,7 @@ const InnerLanguageSwitcher = async ({
       {supportedLanguages.map((lang) => (
         <div key={lang}>
           <Link
-            className="mx-1 text-blue-400 transition-colors hover:text-cyan-400"
+            className="text-blue-400 hover:text-cyan-400 mx-1 transition-colors"
             href={`/${lang}${filePath}`}
           >
             {lang}

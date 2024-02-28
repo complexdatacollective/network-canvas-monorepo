@@ -18,9 +18,9 @@ const icons = {
 };
 
 const iconStyles = {
-  blue: '[--icon-foreground:theme(colors.slate.900)] [--icon-background:theme(colors.white)]',
+  blue: '[--icon-foreground:theme(colors.platinum)] [--icon-background:theme(colors.white)]',
   amber:
-    '[--icon-foreground:theme(colors.amber.900)] [--icon-background:theme(colors.amber.100)]',
+    '[--icon-foreground:theme(colors.mustard-dark)] [--icon-background:theme(colors.mustard)]',
 };
 
 export function Icon({

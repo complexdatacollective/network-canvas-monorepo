@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import sidebarData from '~/public/sidebar.json' assert { type: 'json' };
+import ProductSwitcher from '~/app/[locale]/_components/Sidebar/ProductSwitcher';
+import { SidebarData } from '~/app/types';
 
-export function Navigation({
+export async function Navigation({
   className,
   onLinkClick,
 }: {
@@ -15,6 +18,7 @@ export function Navigation({
 
   return (
     <nav className={clsx('lg:text-sm', className)}>
+      {/* <ProductSwitcher /> */}
       <ul role="list" className="space-y-9">
         {navigation.map((section) => (
           <li key={section.title}>

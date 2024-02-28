@@ -1,6 +1,6 @@
 'use client';
 
-import { type Dispatch, type SetStateAction } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 
 import {
@@ -14,24 +14,18 @@ import {
 
 import { useRouter } from '~/navigation';
 
-type ProductSwitcherProps = {
-  setProduct: Dispatch<SetStateAction<string>>;
-  product: string;
-};
+export default function ProductSwitcher() {
+  const pathName = usePathname();
+  const currentProduct = pathName.split('/')[1]; // splitting pathname to get current "product"
 
-export default function ProductSwitcher({
-  setProduct,
-  product,
-}: ProductSwitcherProps) {
   const router = useRouter();
   const t = useTranslations('ProductSwitcher');
   const locale = useLocale();
 
   return (
     <Select
-      value={product}
+      value={currentProduct}
       onValueChange={(val) => {
-        setProduct(val);
         router.push(`/${val}`, { locale });
       }}
     >

@@ -38,7 +38,7 @@
     "lucide-react": "^0.279.0",
     "mdast-util-to-string": "^4.0.0",
     "next": "14.0.1",
-    "next-intl": "3.0.0-rc.6",
+    "next-intl": "3.9.1",
     "next-mdx-remote": "^4.4.1",
     "next-sitemap": "^4.2.3",
     "next-themes": "^0.2.1",
