@@ -81,7 +81,7 @@ const Page = async ({ params }: { params: PageParams }) => {
     pathSegment: docPath,
   });
 
-  if (!doc || doc?.content === null) notFound();
+  if (doc?.content === null) notFound();
 
   // Frontmatter data of markdown files
   const {
@@ -98,7 +98,7 @@ const Page = async ({ params }: { params: PageParams }) => {
 
   return (
     <div className="flex items-start gap-1">
-      <article className="">
+      <article className="max-w-[85ch]">
         <Heading variant="h1">{title}</Heading>
         <InnerLanguageSwitcher currentLocale={locale} filePath={filePath} />
         {interfaceSummary && <InterfaceSummary data={interfaceSummary} />}

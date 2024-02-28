@@ -110,14 +110,14 @@
     --white: 0 0% 100%;
 
     /* https://www.fluid-type-scale.com */
-  --font-size-sm: clamp(0.8rem, 0.14vw + 0.76rem, 0.94rem);
-  --font-size-base: clamp(1rem, 0.13vw + 0.97rem, 1.13rem);
-  --font-size-lg: clamp(1.25rem, 0.11vw + 1.22rem, 1.35rem);
-  --font-size-xl: clamp(1.56rem, 0.06vw + 1.55rem, 1.62rem);
-  --font-size-2xl: clamp(1.95rem, -0.01vw + 1.96rem, 1.94rem);
-  --font-size-3xl: clamp(2.44rem, -0.11vw + 2.47rem, 2.33rem);
-  --font-size-4xl: clamp(3.05rem, -0.27vw + 3.12rem, 2.8rem);
-  --font-size-5xl: clamp(3.81rem, -0.48vw + 3.93rem, 3.36rem);
-  --font-size-6xl: clamp(4.77rem, -0.78vw + 4.96rem, 4.03rem);
+  --font-size-sm: clamp(0.8rem, 0.18vw + 0.75rem, 0.9rem);
+  --font-size-base: clamp(1rem, 0.23vw + 0.94rem, 1.13rem);
+  --font-size-lg: clamp(1.25rem, 0.28vw + 1.18rem, 1.41rem);
+  --font-size-xl: clamp(1.56rem, 0.36vw + 1.47rem, 1.76rem);
+  --font-size-2xl: clamp(1.95rem, 0.44vw + 1.84rem, 2.2rem);
+  --font-size-3xl: clamp(2.44rem, 0.55vw + 2.3rem, 2.75rem);
+  --font-size-4xl: clamp(3.05rem, 0.69vw + 2.88rem, 3.43rem);
+  --font-size-5xl: clamp(3.81rem, 0.87vw + 3.6rem, 4.29rem);
+  --font-size-6xl: clamp(4.77rem, 1.08vw + 4.5rem, 5.36rem);
   }
 }

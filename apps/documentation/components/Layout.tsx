@@ -61,9 +61,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
     <div className="flex w-full flex-col">
       <SharedNav active="Documentation" />
       <DocsNav />
-      <div className="m-5 overflow-clip rounded-[3rem] bg-primary p-[3rem]">
-        {isHomePage && <Hero />}
-      </div>
+      {isHomePage && <Hero />}
       <div className="max-w-8xl relative mx-auto flex w-full flex-auto justify-center sm:px-2 lg:px-8 xl:px-12">
         <aside className="sticky top-[4.75rem] -ml-0.5 hidden h-[calc(100vh-4.75rem)] w-64 overflow-y-auto overflow-x-hidden py-16 pl-0.5 pr-8 lg:relative lg:block lg:flex-none xl:w-72 xl:pr-16">
           <Navigation />
