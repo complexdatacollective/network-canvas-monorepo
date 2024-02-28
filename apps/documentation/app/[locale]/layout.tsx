@@ -8,13 +8,11 @@ import {
   unstable_setRequestLocale,
 } from 'next-intl/server';
 
-import { type Messages, type SidebarData } from '~/app/types';
+import { type Messages } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { locales } from '~/locales.mjs';
-import Navbar from './_components/Navbar/Navbar';
-import Sidebar from './_components/Sidebar/Sidebar';
 
 const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'],

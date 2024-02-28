@@ -1,8 +1,8 @@
-import type { Config } from "tailwindcss";
+import type { Config } from 'tailwindcss';
+import animate from 'tailwindcss-animate';
 import defaultTheme from 'tailwindcss/defaultTheme';
-import animate from "tailwindcss-animate";
 
-import base from "./base";
+import base from './base';
 
 export default {
   content: base.content,
@@ -136,6 +136,17 @@ export default {
       input: defaultTheme.borderRadius.xl,
     },
     extend: {
+      fontSize: {
+        'sm': ['var(--font-size-sm)', '1.5'],
+        'base': ['var(--font-size-base)', '1.5'],
+        'lg': ['var(--font-size-lg)', '1.5'],
+        'xl': ['var(--font-size-xl)', '1.4'],
+        '2xl': ['var(--font-size-2xl)', '1.2'],
+        '3xl': ['var(--font-size-3xl)', '1.2'],
+        '4xl': ['var(--font-size-4xl)', '1.15'],
+        '5xl': ['var(--font-size-5xl)', '1.1'],
+        '6xl': ['var(--font-size-6xl)', '1.1'],
+      },
       keyframes: {
         'wiggle': {
           '0%, 100%': { transform: 'rotate(-3deg)' },
