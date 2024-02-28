@@ -10,9 +10,9 @@ import {
 
 import { type Messages, type SidebarData } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
+import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { locales } from '~/locales.mjs';
-import data from '~/public/sidebar.json';
 import Navbar from './_components/Navbar/Navbar';
 import Sidebar from './_components/Sidebar/Sidebar';
 
@@ -51,9 +51,6 @@ export default async function MainLayout({
 
   const now = await getNow(locale);
   const timeZone = await getTimeZone(locale);
-  const sidebarData: SidebarData = JSON.parse(
-    JSON.stringify(data),
-  ) as SidebarData;
 
   let messages: Messages;
 
@@ -65,26 +62,21 @@ export default async function MainLayout({
   }
 
   return (
-    <html lang={locale}>
-      <body className={`${quicksand.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${quicksand.className} antialiased`}
+    >
+      <body className="flex min-h-full">
+        <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
           <NextIntlClientProvider
             timeZone={timeZone}
             now={now}
             locale={locale}
             messages={messages}
           >
-            <Navbar />
-            <div className="  grid grid-cols-5 items-start gap-5">
-              {sidebarData && <Sidebar data={sidebarData} locale={locale} />}
-              <main className="col-span-4 px-2">{children}</main>
-              <AIAssistant />
-            </div>
+            <LayoutComponent>{children}</LayoutComponent>
+            <AIAssistant />
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

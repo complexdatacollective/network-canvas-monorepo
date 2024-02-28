@@ -1,6 +1,8 @@
 import { useTranslations } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
+import { Heading } from '@acme/ui';
+
 const Page = ({ params: { locale } }: { params: { locale: string } }) => {
   // setting setRequestLocale to support next-intl for static rendering
   unstable_setRequestLocale(locale);
@@ -11,9 +13,7 @@ const Page = ({ params: { locale } }: { params: { locale: string } }) => {
 
   return (
     <div>
-      <h2>
-        {t('title')} {locale}
-      </h2>
+      <Heading variant="h2">Welcome to our documentation.</Heading>
     </div>
   );
 };

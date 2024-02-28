@@ -1,4 +1,5 @@
 import { Button, buttonVariants } from './Button';
+import SharedNav from './components/SharedNav';
 import {
   Select,
   SelectContent,
@@ -10,13 +11,14 @@ import {
   selectTriggerStyles,
   SelectValue,
 } from './select';
-import Heading from './typography/Heading';
+import Heading, { headingVariants } from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
 export {
   Button,
   buttonVariants,
   Heading,
+  headingVariants,
   Paragraph,
   Select,
   SelectContent,
@@ -27,4 +29,5 @@ export {
   SelectTrigger,
   SelectValue,
   selectTriggerStyles,
+  SharedNav,
 };
