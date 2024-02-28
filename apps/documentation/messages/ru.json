@@ -1,6 +1,9 @@
 {
-  "Navbar": {
-    "communityBtn": "Сообщество"
+  "SharedNavigation": {
+    "community": "Сообщество",
+    "documentation": "Документация",
+    "projects": "Проекты",
+    "download": "Скачать"
   },
   "ThemeTranslations": {
     "light": "День",

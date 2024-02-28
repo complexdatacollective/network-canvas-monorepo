@@ -1,6 +1,9 @@
 {
-  "Navbar": {
-    "communityBtn": "Community"
+  "SharedNavigation": {
+    "community": "Community",
+    "documentation": "Documentation",
+    "projects": "Projects",
+    "download": "Download"
   },
   "ThemeTranslations": {
     "light": "Light",

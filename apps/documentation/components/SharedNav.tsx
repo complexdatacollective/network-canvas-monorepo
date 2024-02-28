@@ -1,12 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 import { Button, headingVariants } from '@acme/ui';
 
 import { cn } from '~/lib/utils';
 
 export default function SharedNav({ active }: { active?: string }) {
-  const getLinkClasses = (name: string) =>
+  const t = useTranslations('SharedNavigation');
+
+  const getLinkClasses = (name?: string) =>
     cn(
       headingVariants({ variant: 'h4-all-caps' }),
       'underline-offset-8 hover:text-success',
@@ -37,22 +40,22 @@ export default function SharedNav({ active }: { active?: string }) {
             href="https://community.networkcanvas.com"
             className={getLinkClasses('Community')}
           >
-            Community
+            {t('community')}
           </Link>
         </li>
         <li>
           <Link href="/" className={getLinkClasses('Documentation')}>
-            Documentation
+            {t('documentation')}
           </Link>
         </li>
         <li>
-          <Link href="#" className={getLinkClasses('Blog')}>
-            Projects
+          <Link href="#" className={getLinkClasses()}>
+            {t('projects')}
           </Link>
         </li>
         <li>
           <Link href="https://networkcanvas.com/download">
-            <Button>Download</Button>
+            <Button>{t('download')}</Button>
           </Link>
         </li>
       </ul>
