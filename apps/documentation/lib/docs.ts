@@ -1,8 +1,10 @@
-import { env } from '~/env.mjs';
 import fs from 'fs';
-import matter from 'gray-matter';
 import { readdir } from 'node:fs/promises';
 import { join, sep } from 'path';
+import matter from 'gray-matter';
+
+import { env } from '~/env.mjs';
+import { relativePathToDocs } from './helper_functions';
 import { isFolderPageAvailableForLocale } from './universal_helper_functions.mjs';
 
 export type DocRouteParams = {
@@ -25,11 +27,6 @@ export const processPath = (docPath: string) => {
   const processedPathList = processedPath.replace(/\.\w+$/, '').split(sep);
   return [...processedPathList, locale];
 };
-
-export const relativePathToDocs = join(
-  process.cwd(),
-  env.NEXT_PUBLIC_DOCS_PATH,
-);
 
 export const getAllMarkdownDocs = async () => {
   const files = await readdir(relativePathToDocs, {
