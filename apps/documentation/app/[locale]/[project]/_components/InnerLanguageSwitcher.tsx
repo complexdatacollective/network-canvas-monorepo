@@ -8,11 +8,11 @@ type InnerLanguageSwitcherProps = {
   currentLocale: string;
 };
 
-const InnerLanguageSwitcher = ({
+const InnerLanguageSwitcher = async ({
   filePath,
   currentLocale,
 }: InnerLanguageSwitcherProps) => {
-  const t = getTranslations('DocPage');
+  const t = await getTranslations('DocPage');
   const availableLocales = getAvailableLocales(filePath);
 
   // removes the current locale from availableLocales

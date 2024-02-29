@@ -1,5 +1,6 @@
 import { createSharedPathnamesNavigation } from 'next-intl/navigation';
-import { locales } from './locales.mjs';
+
+import { locales } from './app/types';
 
 export const { Link, redirect, usePathname, useRouter } =
   createSharedPathnamesNavigation({ locales });

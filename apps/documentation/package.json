@@ -7,7 +7,7 @@
     "dev": "pnpm next dev",
     "build": "pnpm next build",
     "postbuild": "pnpm next-sitemap",
-    "prebuild": "node ./lib/writeSidebarJson.mjs",
+    "prebuild": "ts-node ./lib/writeSidebarJson.ts",
     "start": "pnpm next start",
     "lint": "pnpm next lint"
   },

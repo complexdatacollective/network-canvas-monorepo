@@ -1,6 +1,5 @@
 import type { Folder } from '~/app/types';
-import { SidebarData } from '~/app/types';
-import { locales } from '~/locales.mjs';
+import { locales, SidebarData } from '~/app/types';
 import data from '~/public/sidebar.json';
 
 const sidebarData: SidebarData = JSON.parse(

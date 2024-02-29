@@ -3,8 +3,8 @@ import fs from 'fs';
 import matter from 'gray-matter';
 import { basename, join, relative } from 'path';
 import { env } from '../env.mjs';
-import { locales } from '../locales.mjs';
 import { isFolderPageAvailableForLocale } from './universal_helper_functions.mjs';
+import { locales } from '~/app/types';
 
 dotenv.config();
 

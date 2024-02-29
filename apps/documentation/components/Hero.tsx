@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import Link from 'next/link';
 import clsx from 'clsx';
 import { Highlight } from 'prism-react-renderer';
 
@@ -43,10 +44,12 @@ export function Hero() {
                 Canvas project.
               </Paragraph>
               <div className="mt-8 flex gap-4 md:justify-center lg:justify-start">
-                <Button href="/">Get started</Button>
-                <Button href="/" variant="secondary">
-                  View on GitHub
-                </Button>
+                <Link href="/en/desktop">
+                  <Button variant="accent">Desktop Software</Button>
+                </Link>
+                <Link href="/en/fresco">
+                  <Button variant="secondary">Fresco</Button>
+                </Link>
               </div>
             </div>
           </div>

@@ -4,8 +4,8 @@ import * as React from 'react';
 import * as LabelPrimitive from '@radix-ui/react-label';
 import { type VariantProps } from 'class-variance-authority';
 
-import { cn } from '~/utils/shadcn';
 import { headingVariants } from './typography/Heading';
+import { cn } from './utils';
 
 const Label = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,

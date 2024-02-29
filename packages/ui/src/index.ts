@@ -1,5 +1,6 @@
 import { Button, buttonVariants } from './Button';
-import SharedNav from './components/SharedNav';
+import { Input, inputClasses } from './Input';
+import { Label } from './Label';
 import {
   Select,
   SelectContent,
@@ -29,5 +30,7 @@ export {
   SelectTrigger,
   SelectValue,
   selectTriggerStyles,
-  SharedNav,
+  Input,
+  inputClasses,
+  Label,
 };

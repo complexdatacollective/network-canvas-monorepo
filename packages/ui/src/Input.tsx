@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { cn } from '~/utils/shadcn';
-import { Label } from '~/components/ui/Label';
+
+import { Label } from './Label';
+import { cn } from './utils';
 
 export type InputProps = {
   inputClassName?: string;
@@ -11,6 +12,10 @@ export type InputProps = {
   leftAdornment?: React.ReactNode;
   rightAdornment?: React.ReactNode;
 } & React.InputHTMLAttributes<HTMLInputElement>;
+
+export const inputClasses = cn(
+  'text-input-foreground flex h-10 w-full rounded-input border border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+);
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
@@ -48,7 +53,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={id}
             type={type}
             className={cn(
-              'focus-visible:ring-ring flex h-10 w-full rounded-input border border-border bg-input px-3 py-2 text-sm text-input-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+              inputClasses,
               leftAdornment && 'pl-10',
               rightAdornment && 'pr-10',
               inputClassName,
