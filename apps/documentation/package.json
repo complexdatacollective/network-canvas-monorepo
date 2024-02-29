@@ -7,7 +7,7 @@
     "dev": "pnpm next dev",
     "build": "pnpm next build",
     "postbuild": "pnpm next-sitemap",
-    "prebuild": "ts-node ./lib/writeSidebarJson.ts",
+    "prebuild": "tsx ./lib/writeSidebarJson.ts",
     "start": "pnpm next start",
     "lint": "pnpm next lint"
   },
@@ -55,6 +55,7 @@
     "remark-rehype": "^11.0.0",
     "simple-functional-loader": "^1.2.1",
     "tailwind-merge": "^1.14.0",
+    "tsx": "^4.7.1",
     "unified": "^11.0.3",
     "unist-util-visit": "^5.0.0",
     "vfile": "^6.0.1",
@@ -72,7 +73,6 @@
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.1",
-    "ts-node": "^10.9.1",
     "typescript": "^5.3.3"
   },
   "eslintConfig": {

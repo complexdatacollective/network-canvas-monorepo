@@ -1,7 +1,9 @@
 {
+  "type": "folder",
   "localeLabels": {
     "en": "Key concepts",
     "ru": "Ключевые идеи"
   },
-  "isExpanded": true
+  "isExpanded": true,
+  "slug": "key-concepts"
 }

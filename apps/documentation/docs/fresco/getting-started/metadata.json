@@ -1,7 +1,12 @@
 {
+  "type": "folder",
   "localeLabels": {
     "en": "Getting Started",
     "ru": "Начиная"
   },
-  "folderPagePath": "/fresco"
+  "localeIndexFiles": {
+    "en": "installation.en.mdx",
+    "ru": "installation.ru.mdx"
+  },
+  "slug": "getting-started"
 }

@@ -1,7 +1,12 @@
 {
+  "type": "folder",
   "localeLabels": {
     "en": "Getting Started",
     "ru": "Начиная"
   },
-  "folderPagePath": "/desktop"
+  "localeIndexFiles": {
+    "en": "project-overview.en.mdx"
+  },
+  "isExpanded": true,
+  "slug": "getting-started"
 }

@@ -4,9 +4,7 @@ export const locales = ['en', 'ru'] as const;
 
 const LocalesEnum = z.enum(locales);
 
-export const projects = ['Desktop', 'Fresco'] as const;
-
-const ProjectsEnum = z.enum(projects);
+export type LocalesEnum = (typeof locales)[number];
 
 export const itemTypes = [
   'project', // Top level projects
@@ -19,7 +17,7 @@ const ItemTypesEnum = z.enum(itemTypes);
 export const SidebarItemBase = z.object({
   type: ItemTypesEnum,
   sourceFile: z.string().optional(),
-  slug: z.string(),
+  label: z.string(),
 });
 
 export const SidebarPage = SidebarItemBase.extend({
@@ -48,16 +46,34 @@ export const SidebarFolder: z.ZodType<TSidebarFolder> =
     children: z.lazy(() => z.record(z.union([SidebarFolder, SidebarPage]))),
   });
 
+export type SidebarFolder = z.infer<typeof SidebarFolder>;
+
 export const SidebarProject = SidebarItemBase.extend({
   type: z.literal('project'),
   children: z.record(z.union([SidebarFolder, SidebarPage])),
 });
 
-export const SidebarLocaleDefinition = z.record(ProjectsEnum, SidebarProject);
+export type SidebarProject = z.infer<typeof SidebarProject>;
+
+export const SidebarLocaleDefinition = z.record(z.string(), SidebarProject);
+
+export type SidebarLocaleDefinition = z.infer<typeof SidebarLocaleDefinition>;
 
 export const SideBar = z.record(LocalesEnum, SidebarLocaleDefinition);
 
 export type TSideBar = z.infer<typeof SideBar>;
+
+const metadatatypes = ['folder', 'project'] as const;
+
+export const MetadataFile = z.object({
+  type: z.enum(metadatatypes),
+  sourceFile: z.string().optional(),
+  localeLabels: z.record(LocalesEnum, z.string()).optional(),
+  localeIndexFiles: z.record(LocalesEnum, z.string()).optional(),
+  isExpanded: z.boolean().optional(),
+});
+
+export type MetadataFile = z.infer<typeof MetadataFile>;
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 export type Messages = typeof import('../messages/en.json');

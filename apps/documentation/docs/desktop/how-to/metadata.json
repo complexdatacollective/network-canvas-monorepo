@@ -1,8 +1,12 @@
 {
+  "type": "folder",
   "localeLabels": {
-    "en": "How-to guides",
+    "en": "How-to Guides",
     "ru": "Практические руководства"
   },
-  "folderPagePath": "/desktop/how-to",
+  "localeIndexFiles": {
+    "en": "index.en.mdx"
+  },
+  "slug": "how-to",
   "isExpanded": true
 }
