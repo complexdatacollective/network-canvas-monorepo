@@ -8,9 +8,10 @@ export default function Article({
   title: string;
 }) {
   return (
-    <article className="max-w-[85ch] flex-1">
+    <article className="max-w-[75ch] flex-1">
       <header>
-        <Heading variant="h1">{title}</Heading>
+        <Heading variant="h4-all-caps" margin='none'>Section Name</Heading>
+        <Heading variant="h1" margin='none' className='!mb-8'>{title}</Heading>
       </header>
       {content}
     </article>

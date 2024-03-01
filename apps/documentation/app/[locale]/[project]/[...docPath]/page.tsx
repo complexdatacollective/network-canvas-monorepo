@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
-import { createPortal } from 'react-dom';
 
+import type { LocalesEnum } from '~/app/types';
+import Article from '~/components/article';
 import { getDocsForRouteSegment, getDocumentForPath } from '~/lib/docs';
-import Article from '../../_components/article';
 
 type PageParams = {
-  locale: string;
+  locale: LocalesEnum;
   project: string;
   docPath: string[];
 };
@@ -33,15 +33,7 @@ export async function generateStaticParams({
     project,
   });
 
-  return docPathSegmentsForRoute
-    .map((docPathSegments) => docPathSegments.slice(1, -1)) // Remove project and locale from the path
-    .filter((docPathSegments) => docPathSegments.length) // Remove empty paths
-    .map((docPathSegments) => ({
-      // Map to the expected params shape
-      locale,
-      project,
-      docPath: docPathSegments,
-    }));
+  return docPathSegmentsForRoute;
 }
 
 export default async function Page({ params }: { params: PageParams }) {

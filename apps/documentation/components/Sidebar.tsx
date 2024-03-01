@@ -3,6 +3,8 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import sidebarData from '~/public/sidebar.json' assert { type: 'json' };
 import { Heading } from '@acme/ui';
+import DocSearchComponent from './DocSearchComponent';
+import { cn } from '~/lib/utils';
 
 const navigation = [];
 
@@ -16,8 +18,11 @@ export function Sidebar({
   let pathname = usePathname();
 
   return (
-    <nav className={clsx('lg:text-sm sticky -ml-0.5 hidden h-[calc(100vh-4.75rem)] w-64 overflow-y-auto overflow-x-hidden lg:relative lg:block lg:flex-none xl:w-72 xl:pr-16', className)}>
-      <Heading variant="h2">Sidebar</Heading>
+    <nav className={cn(
+      'sticky hidden h-[calc(100vh-4.75rem)] w-72 overflow-y-auto overflow-x-hidden lg:block',
+      className
+      )}>
+      <DocSearchComponent />
       <ul role="list" className="space-y-9">
         {navigation.map((section) => (
           <li key={section.title}>

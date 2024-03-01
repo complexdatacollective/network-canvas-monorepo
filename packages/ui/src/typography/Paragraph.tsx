@@ -20,7 +20,7 @@ export const paragraphVariants = cva(
         smallText: 'text-sm',
       },
       margin: {
-        default: '[&:not(:first-child)]:mt-4',
+        default: '[p+&]:mt-5',
         none: 'mt-0',
       },
     },

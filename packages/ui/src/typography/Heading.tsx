@@ -8,18 +8,26 @@ import { motion } from 'framer-motion';
 
 import { cn } from '../utils';
 
-export const headingVariants = cva('text-balance [&:not(:first-child)]:mt-6', {
+export const headingVariants = cva('text-balance', {
   variants: {
     variant: {
-      'h1': 'scroll-m-20 text-3xl font-extrabold tracking-tight',
-      'h2': 'scroll-m-20 text-xl font-semibold tracking-tight',
-      'h3': 'scroll-m-20 text-lg font-semibold tracking-tight',
-      'h4': 'text-md scroll-m-20 font-semibold tracking-tight',
+      'h1': 'scroll-m-20 text-3xl font-extrabold tracking-tight [&:not(:first-child)]:mb-6 [&:not(:first-child)]:mt-8',
+      'h2': 'scroll-m-20 text-xl font-semibold tracking-tight [&:not(:first-child)]:mb-4 [&:not(:first-child)]:mt-6',
+      'h3': 'scroll-m-20 text-lg font-semibold tracking-tight [&:not(:first-child)]:mb-2 [&:not(:first-child)]:mt-5',
+      'h4': 'text-md scroll-m-20 font-semibold tracking-tight [&:not(:first-child)]:mb-1 [&:not(:first-child)]:mt-4',
       'h4-all-caps':
         'scroll-m-20 text-sm font-extrabold uppercase tracking-[.2em]',
       'label':
         'scroll-m-20 text-sm font-extrabold tracking-normal peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
     },
+    margin: {
+      default: '',
+      none: '!m-0',
+    },
+  },
+  defaultVariants: {
+    variant: 'h1',
+    margin: 'default',
   },
 });
 
@@ -44,13 +52,13 @@ export type HeadingProps = {
   VariantProps<typeof headingVariants>;
 
 const Heading = React.forwardRef<HTMLElement, HeadingProps>(
-  ({ className, variant, as, asChild, ...props }, ref) => {
+  ({ className, variant, margin, as, asChild, ...props }, ref) => {
     const Comp = asChild
       ? Slot
       : as ?? (variant ? variantElementMap[variant] : undefined) ?? 'div';
     return (
       <Comp
-        className={cn(headingVariants({ variant, className }))}
+        className={cn(headingVariants({ variant, margin, className }))}
         ref={ref}
         {...props}
       />

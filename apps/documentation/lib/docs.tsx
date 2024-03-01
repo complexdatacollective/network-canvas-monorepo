@@ -1,5 +1,4 @@
 import fs, { existsSync, readFileSync } from 'fs';
-import { readdir } from 'node:fs/promises';
 import { join, sep } from 'path';
 import sidebar from '~/public/sidebar.json' assert { type: 'json' };
 import { get, relativePathToDocs } from './helper_functions';
@@ -13,6 +12,7 @@ import processYamlMatter from './processYamlMatter';
 import { Heading, ListItem, OrderedList, Paragraph, UnorderedList } from '@acme/ui';
 import * as prod from 'react/jsx-runtime'
 import Link from '~/components/Link';
+import { LocalesEnum, SidebarFolder, SidebarPage, SidebarProject, TSideBar } from '~/app/types';
 
 export type DocRouteParams = {
   params: {
@@ -45,37 +45,79 @@ export type Frontmatter = z.infer<typeof FrontmatterSchema>;
 // Process docPaths to remove CWD, docs subdirectory, file extensions, and split into segments
 const processPath = (docPath: string) => {
   const processedPath = docPath
-    .replace(process.cwd() + sep, '') // Remove CWD
-    .replace('docs' + sep, '') // Remove docs subdirectory
-    .replace(sep + 'index', '') // Remove folder page path
-    .replace('.mdx', '')
-    .replace('.md', ''); // Remove file extensions
+    .split(sep)
+    .slice(3) // First element is empty string, second is 'docs', third is the project name
+    // Process the last item to remove the locale and file extension
+    .map((segment, index, array) => {
+      if (index === array.length - 1) {
+        return segment.split('.')[0]!;
+      }
+      return segment;
+    });
 
-  const locale = processedPath.split('.')[1]; // get locale from file path
-  // Remove file locale and split into segments based on the platform directory separator
-  const processedPathList = processedPath.replace(/\.\w+$/, '').split(sep);
-  return [...processedPathList, locale];
+  return processedPath;
 };
 
-export const getDocsForRouteSegment = async ({ locale, project }: { locale: string, project: string }) => {
-  const files = await readdir(relativePathToDocs, {
-    withFileTypes: true,
-    recursive: true,
-  });
 
-  return files
-    .filter((dirent) => dirent.isFile()) // Only get files
-    .filter(
-      (dirent) => dirent.name.endsWith('.mdx') || dirent.name.endsWith('.md'),
-    ) // Only get files with .md or .mdx extension
-    .map((dirent) => join(dirent.path, dirent.name)) // Get the full path
-    .map(processPath) // Process the path to remove CWD, docs subdirectory, file extensions, and split into segments
-    .filter((pathSegments) => { // Filter out paths that don't match the current locale and project
-      const docProject = pathSegments[0]; 
-      const docLocale = pathSegments[pathSegments.length - 1];
+// Given locale and project, generate all the possible docPaths.
+// Return something in the format of:
+// {
+//   locale: 'ru',
+//   project: 'fresco',
+//   docPath: [ 'getting-started', 'installation' ]
+// }
+type ReturnType = {
+  locale: LocalesEnum;
+  project: string;
+  docPath: string[];
+};
 
-      return locale === docLocale && project === docProject;
-    });
+export const getDocsForRouteSegment = async ({ locale, project }: { locale: LocalesEnum, project: string }) => {
+  const typedSidebar = sidebar as TSideBar;
+  const sidebarData = get(typedSidebar, [locale, project], null) as SidebarProject;
+
+  if (!sidebarData) {
+    console.log(`No sidebar data found for ${locale} and ${project}`);
+    return [];
+  }
+
+  const results: ReturnType[] = [];
+
+  const getSourceFilePaths = (data: SidebarProject | SidebarFolder | SidebarPage) => {
+    // Leaf node
+    if (data.type === 'page') {
+      results.push({
+        locale,
+        project,
+        docPath: processPath(data.sourceFile),
+      });
+      return;
+    }
+
+    if (data.sourceFile) {
+      // Handle projects and folders differently, if they have a souceFile
+      // it should generate a path pointing to the folder/project.
+      results.push({
+        locale,
+        project,
+        docPath: processPath(data.sourceFile).slice(0, -1), 
+      });
+    }
+
+    for (const key in data.children) {
+      const child = data.children[key];
+      if (child) {
+        getSourceFilePaths(child);
+      }
+    }
+
+    return;
+  }
+
+  
+  getSourceFilePaths(sidebarData);
+
+  return results;
 };
 
 // Get the sourceFile path from the sidebar.json
@@ -134,7 +176,7 @@ export async function getDocumentForPath({
       jsx: prod.jsx,
       jsxs: prod.jsxs,
       components: {
-        h1: (props: JSX.IntrinsicElements['h1']) => <Heading variant='h1' {...props} />,
+        h1: (props) => <Heading variant='h1' {...props} />,
         h2: (props: JSX.IntrinsicElements['h2']) => <Heading variant='h2' {...props} />,
         h3: (props: JSX.IntrinsicElements['h3']) => <Heading variant='h3' {...props} />,
         h4: (props: JSX.IntrinsicElements['h4']) => <Heading variant='h4' {...props} />,
