@@ -1,20 +1,9 @@
 import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
-import { MDXRemote } from 'next-mdx-remote/rsc';
+import { createPortal } from 'react-dom';
 
-import { Heading } from '@acme/ui';
-
-import { Separator } from '~/components/ui/separator';
-import { getAllMarkdownDocs, getDoc, processPath } from '~/lib/docs';
-import { options } from '~/lib/mdxOptions';
-import { getHeadings } from '~/lib/tableOfContents';
-import BestPractices from '../_components/customComponents/BestPractices';
-import { customComponents } from '../_components/customComponents/customComponents';
-import InterfaceSummary from '../_components/customComponents/InterfaceSummary';
-import SummaryCard from '../_components/customComponents/SummaryCard';
-import WorkInProgress from '../_components/customComponents/WorkInProgress';
-import InnerLanguageSwitcher from '../_components/InnerLanguageSwitcher';
-import TableOfContents from './_components/TableOfContents';
+import { getDocsForRouteSegment, getDocumentForPath } from '~/lib/docs';
+import Article from '../../_components/article';
 
 type PageParams = {
   locale: string;
@@ -22,104 +11,64 @@ type PageParams = {
   docPath: string[];
 };
 
-type PageParamsWithoutDocPath = Omit<PageParams, 'docPath'>;
-
-export function generateMetadata({ params }: { params: PageParams }) {
+export async function generateMetadata({ params }: { params: PageParams }) {
   const { locale, project, docPath } = params;
-  const doc = getDoc({
+  const document = await getDocumentForPath({
     locale,
     project,
     pathSegment: docPath,
   });
-  if (!doc || !doc.title) {
-    throw new Error(`Error getting document title for:${docPath.join('')}`);
-  }
 
-  return { title: doc.title };
+  return { title: document?.frontmatter.title };
 }
 
 export async function generateStaticParams({
   params,
 }: {
-  params: PageParamsWithoutDocPath;
+  params: Omit<PageParams, 'docPath'>;
 }) {
   const { locale, project } = params;
-  const docs = await getAllMarkdownDocs();
-
-  const filteredDocs = docs.map(processPath).filter((processedPathList) => {
-    const docProject = processedPathList[0]; // get docProject
-    const docLocale = processedPathList[processedPathList.length - 1]; // get docLocale;
-
-    return locale === docLocale && project === docProject;
-  });
-  // removes the locale and project from filteredDocs
-  const docsWithoutLocaleAndProject = filteredDocs.map((doc) =>
-    doc.slice(1, -1),
-  );
-  // remove empty docPaths
-  const filteredDocPaths = docsWithoutLocaleAndProject.filter(
-    (docPath) => docPath.length,
-  );
-
-  return filteredDocPaths.map((docPath) => ({
+  const docPathSegmentsForRoute = await getDocsForRouteSegment({
     locale,
     project,
-    docPath,
-  }));
+  });
+
+  return docPathSegmentsForRoute
+    .map((docPathSegments) => docPathSegments.slice(1, -1)) // Remove project and locale from the path
+    .filter((docPathSegments) => docPathSegments.length) // Remove empty paths
+    .map((docPathSegments) => ({
+      // Map to the expected params shape
+      locale,
+      project,
+      docPath: docPathSegments,
+    }));
 }
 
-// The Page Component
-const Page = async ({ params }: { params: PageParams }) => {
+export default async function Page({ params }: { params: PageParams }) {
   const { locale, project, docPath } = params;
-  const filePath = `/${project}/` + docPath.join('/'); //file path for InnerLanguage switcher
   // setting setRequestLocale to support next-intl for static rendering
   unstable_setRequestLocale(locale);
 
-  const doc = getDoc({
+  const document = await getDocumentForPath({
     locale,
     project,
     pathSegment: docPath,
   });
 
-  if (doc?.content === null) notFound();
+  if (document === null) notFound();
 
-  // Frontmatter data of markdown files
-  const {
-    title,
-    content,
-    lastUpdated,
-    toc,
-    wip,
-    summaryData,
-    interfaceSummary,
-    bestPractices,
-  } = doc;
-  const headings = toc ? await getHeadings(content) : null;
+  // const tableOfContents = collectSections(nodes);
 
   return (
-    <div className="flex items-start gap-1">
-      <article className="max-w-[85ch]">
-        <Heading variant="h1">{title}</Heading>
-        <InnerLanguageSwitcher currentLocale={locale} filePath={filePath} />
-        {interfaceSummary && <InterfaceSummary data={interfaceSummary} />}
-        {summaryData && <SummaryCard data={summaryData} />}
-        {wip && <WorkInProgress />}
-        <MDXRemote
-          options={options}
-          components={customComponents}
-          source={content}
-        />
-        {bestPractices && <BestPractices data={bestPractices} />}
-        <p className="text-red-400 text-sm">{lastUpdated}</p>
-      </article>
-      {headings && (
-        <div className="sticky top-20">
-          <TableOfContents nodes={headings} />
-          <Separator />
-        </div>
-      )}
-    </div>
+    <>
+      <Article
+        content={document.component}
+        title={document.frontmatter.title}
+      />
+      {/* {createPortal(
+        <ArticleTOC content={content} />,
+        document.getElementById('article-toc')!,
+      )} */}
+    </>
   );
-};
-
-export default Page;
+}

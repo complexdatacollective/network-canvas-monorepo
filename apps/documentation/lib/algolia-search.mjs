@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { join, relative, sep } from 'path';
 import { env } from '../env.mjs';
 import { algolia_client } from './algolia-client.mjs';
-import { markdownToText } from './universal_helper_functions.mjs';
+import { markdownToText } from './helper_functions';
 
 dotenv.config();
 

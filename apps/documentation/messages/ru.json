@@ -10,11 +10,6 @@
     "dark": "Ночь",
     "system": "Система"
   },
-  "SearchCommand": {
-    "searchPlaceholder": "Поиск документации...",
-    "searchNoResultsFor": "Нет результатов для",
-    "searchNoResults": "Нет результатов"
-  },
   "ProductSwitcher": {
     "selectPlaceholder": "Выберите программное",
     "fresco": "Фреска",

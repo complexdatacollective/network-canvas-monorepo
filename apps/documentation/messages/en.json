@@ -52,11 +52,6 @@
     "dark": "Dark",
     "system": "System"
   },
-  "SearchCommand": {
-    "searchPlaceholder": "Search documentation...",
-    "searchNoResultsFor": "No results for",
-    "searchNoResults": "No results"
-  },
   "ProductSwitcher": {
     "selectPlaceholder": "Select software",
     "fresco": "Fresco",

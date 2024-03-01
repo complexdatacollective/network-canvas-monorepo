@@ -2,13 +2,13 @@
   "en": {
     "desktop": {
       "type": "project",
-      "sourceFile": "/docs/index.en.mdx",
+      "sourceFile": "/docs/desktop/index.en.mdx",
       "label": "Desktop",
       "children": {
         "getting-started": {
           "type": "folder",
           "expanded": true,
-          "sourceFile": "/docs/desktop/project-overview.en.mdx",
+          "sourceFile": "/docs/desktop/getting-started/project-overview.en.mdx",
           "label": "Getting Started",
           "children": {
             "project-overview": {
@@ -56,7 +56,7 @@
         "how-to": {
           "type": "folder",
           "expanded": true,
-          "sourceFile": "/docs/desktop/index.en.mdx",
+          "sourceFile": "/docs/desktop/how-to/index.en.mdx",
           "label": "How-to Guides",
           "children": {
             "choosing-hardware": {
@@ -328,13 +328,13 @@
     },
     "fresco": {
       "type": "project",
-      "sourceFile": "/docs/index.en.mdx",
+      "sourceFile": "/docs/fresco/index.en.mdx",
       "label": "Fresco",
       "children": {
         "getting-started": {
           "type": "folder",
           "expanded": false,
-          "sourceFile": "/docs/fresco/installation.en.mdx",
+          "sourceFile": "/docs/fresco/getting-started/installation.en.mdx",
           "label": "Getting Started",
           "children": {
             "installation": {
@@ -350,7 +350,7 @@
   "ru": {
     "desktop": {
       "type": "project",
-      "sourceFile": "/docs/index.ru.mdx",
+      "sourceFile": "/docs/desktop/index.ru.mdx",
       "label": "Desktop",
       "children": {
         "getting-started": {
@@ -405,13 +405,13 @@
     },
     "fresco": {
       "type": "project",
-      "sourceFile": "/docs/index.ru.mdx",
+      "sourceFile": "/docs/fresco/index.ru.mdx",
       "label": "Fresco",
       "children": {
         "getting-started": {
           "type": "folder",
           "expanded": false,
-          "sourceFile": "/docs/fresco/installation.ru.mdx",
+          "sourceFile": "/docs/fresco/getting-started/installation.ru.mdx",
           "label": "Начиная",
           "children": {
             "installation": {

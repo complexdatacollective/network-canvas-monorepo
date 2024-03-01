@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Dialog } from '@headlessui/react';
 
-import { Navigation } from '~/components/Sidebar';
+import { Sidebar } from '~/components/Sidebar';
 
 function MenuIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
   return (
@@ -100,7 +100,7 @@ export function MobileNavigation() {
               />
             </Link>
           </div>
-          <Navigation className="mt-5 px-1" onLinkClick={onLinkClick} />
+          <Sidebar className="mt-5 px-1" onLinkClick={onLinkClick} />
         </Dialog.Panel>
       </Dialog>
     </>

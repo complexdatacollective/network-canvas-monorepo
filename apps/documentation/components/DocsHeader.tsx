@@ -2,13 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 
-import { navigation } from '~/lib/navigation';
-
 export function DocsHeader({ title }: { title?: string }) {
   let pathname = usePathname();
-  let section = navigation.find((section) =>
-    section.links.find((link) => link.href === pathname),
-  );
+  // let section = navigation.find((section) =>
+  //   section.links.find((link) => link.href === pathname),
+  // );
+
+  const section = { title: 'Section Name' };
 
   if (!title && !section) {
     return null;

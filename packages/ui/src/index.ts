@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from './select';
 import Heading, { headingVariants } from './typography/Heading';
+import { ListItem, OrderedList, UnorderedList } from './typography/Lists';
 import Paragraph from './typography/Paragraph';
 
 export {
@@ -33,4 +34,7 @@ export {
   Input,
   inputClasses,
   Label,
+  UnorderedList,
+  OrderedList,
+  ListItem,
 };

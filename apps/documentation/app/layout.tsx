@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import "@acme/tailwind-config/globals.css";
-import '~/app/globals.css';
+import '~/styles/globals.css';
+import '~/styles/prism.css';
 
 type Props = {
   children: ReactNode;

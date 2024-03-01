@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import sidebarData from '~/public/sidebar.json' assert { type: 'json' };
-import ProductSwitcher from '~/app/[locale]/_components/Sidebar/ProductSwitcher';
-import { SidebarData } from '~/app/types';
+import { Heading } from '@acme/ui';
 
-export async function Navigation({
+const navigation = [];
+
+export function Sidebar({
   className,
   onLinkClick,
 }: {
@@ -14,11 +15,9 @@ export async function Navigation({
 }) {
   let pathname = usePathname();
 
-  return 'sidebar';
-
   return (
-    <nav className={clsx('lg:text-sm', className)}>
-      {/* <ProductSwitcher /> */}
+    <nav className={clsx('lg:text-sm sticky -ml-0.5 hidden h-[calc(100vh-4.75rem)] w-64 overflow-y-auto overflow-x-hidden lg:relative lg:block lg:flex-none xl:w-72 xl:pr-16', className)}>
+      <Heading variant="h2">Sidebar</Heading>
       <ul role="list" className="space-y-9">
         {navigation.map((section) => (
           <li key={section.title}>

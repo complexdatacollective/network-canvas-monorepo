@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
-import LanguageSwitcher from '~/app/[locale]/_components/Navbar/languageSwitcher';
-import DocSearchComponent from '~/app/[locale]/_components/Navbar/Search/DocSearchComponent';
-import { ThemeToggle } from '~/app/[locale]/_components/Navbar/themeToggle';
+import DocSearchComponent from '~/components/DocSearchComponent';
 import { Hero } from '~/components/Hero';
-import { MobileNavigation } from '~/components/MobileSidebar';
-import { Navigation } from '~/components/Sidebar';
+// import { MobileNavigation } from '~/components/MobileSidebar';
+import { Sidebar } from '~/components/Sidebar';
+import { cn } from '~/lib/utils';
 import SharedNav from './SharedNav';
 
 function DocsNav() {
@@ -29,7 +28,7 @@ function DocsNav() {
   }, []);
 
   return (
-    <header
+    <nav
       className={clsx(
         'sticky top-0 z-50 flex flex-none flex-wrap items-center justify-between px-4 py-5 sm:px-6 lg:px-8',
         isScrolled
@@ -37,9 +36,7 @@ function DocsNav() {
           : 'bg-transparent',
       )}
     >
-      <div className="mr-6 flex lg:hidden">
-        <MobileNavigation />
-      </div>
+      <div className="mr-6 flex lg:hidden">{/* <MobileNavigation /> */}</div>
       <div className="-my-5 mr-6 sm:mr-8 md:mr-0">
         {(isScrolled || !isHomePage) && <DocSearchComponent />}
       </div>
@@ -47,7 +44,7 @@ function DocsNav() {
         <LanguageSwitcher />
         <ThemeToggle />
       </div> */}
-    </header>
+    </nav>
   );
 }
 
@@ -60,11 +57,15 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       <SharedNav active="Documentation" />
       <DocsNav />
       {isHomePage && <Hero />}
-      <div className="max-w-8xl relative mx-auto flex w-full flex-auto justify-center sm:px-2 lg:px-8 xl:px-12">
-        <aside className="sticky top-[4.75rem] -ml-0.5 hidden h-[calc(100vh-4.75rem)] w-64 overflow-y-auto overflow-x-hidden py-16 pl-0.5 pr-8 lg:relative lg:block lg:flex-none xl:w-72 xl:pr-16">
-          <Navigation />
-        </aside>
+      <div
+        className={cn(
+          'max-w-8xl justify-cente relative mx-auto flex w-full flex-auto gap-6 p-4',
+          'lg:px-8 xl:px-12',
+        )}
+      >
+        <Sidebar />
         <main className="flex flex-1">{children}</main>
+        <aside id="toc-area" />
       </div>
     </div>
   );

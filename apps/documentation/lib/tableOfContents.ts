@@ -2,7 +2,7 @@ import { toString } from 'mdast-util-to-string';
 import { remark } from 'remark';
 import { Node } from 'unist';
 import { visit } from 'unist-util-visit';
-import { VFile } from 'vfile';
+
 import { convertToUrlText } from './helper_functions';
 
 export type HeadingNode = {
@@ -14,7 +14,7 @@ export type HeadingNode = {
   children: HeadingNode[];
 };
 
-export function headingTree(): (node: Node, file: VFile) => void {
+export function headingTree(): (node: Node, file: File) => void {
   return (node, file) => {
     file.data.headings = getHeadingsForTree(node);
   };

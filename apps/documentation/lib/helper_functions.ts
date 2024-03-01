@@ -21,6 +21,7 @@ export const relativePathToDocs = join(
   env.NEXT_PUBLIC_DOCS_PATH,
 );
 
+// Converts markdown to text which we use to push to Algolia
 export async function markdownToText(markdown: string) {
   const result = await unified()
     .use(remarkParse)
@@ -28,10 +29,10 @@ export async function markdownToText(markdown: string) {
     .use(rehypeStringify)
     .process(markdown);
 
-  const html = String(result);
-  const text = html.replace(/<[^>]*>/g, '').replace(/\.\.\//g, ''); // remove HTML tags
-
-  return text;
+  return result
+    .toString()
+    .replace(/<[^>]*>/g, '')
+    .replace(/\.\.\//g, ''); // remove HTML tags and relative paths
 }
 
 // Converts text to URL eg: Network Canvas => network-canvas
@@ -87,6 +88,23 @@ export const getNestedPath = (path: string) => {
       return [value, 'children'];
     })
     .flat();
+};
+
+// WARNING: This is not a drop in replacement solution and
+// it might not work for some edge cases. Test your code!
+export const get = (obj, path, defValue) => {
+  // If path is not defined or it has false value
+  if (!path) return undefined;
+  // Check if path is string or array. Regex : ensure that we do not have '.' and brackets.
+  // Regex explained: https://regexr.com/58j0k
+  const pathArray = Array.isArray(path) ? path : path.match(/([^[.\]])+/g);
+  // Find value
+  const result = pathArray.reduce(
+    (prevObj, key) => prevObj && prevObj[key],
+    obj,
+  );
+  // If found value is undefined return default value; otherwise return the value
+  return result === undefined ? defValue : result;
 };
 
 /**
@@ -149,8 +167,17 @@ export const createProjectEntry = (
 ): SidebarProject => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];
   const sourceFile = localeIndexFile
-    ? join(file.path, localeIndexFile).replace(process.cwd(), '')
+    ? join(file.path, file.name, localeIndexFile).replace(process.cwd(), '')
     : undefined;
+
+  console.log('projectsourcefile', {
+    sourceFile,
+    path: file.path,
+    localeIndexFile,
+    metadata,
+    name: file.name,
+    locale,
+  });
 
   return {
     type: 'project',
@@ -175,7 +202,7 @@ export const createFolderEntry = (
 ): SidebarFolder => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];
   const sourceFile = localeIndexFile
-    ? join(file.path, localeIndexFile).replace(process.cwd(), '')
+    ? join(file.path, file.name, localeIndexFile).replace(process.cwd(), '')
     : undefined;
 
   return {

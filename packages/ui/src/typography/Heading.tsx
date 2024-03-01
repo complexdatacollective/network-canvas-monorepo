@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 
 import { cn } from '../utils';
 
-export const headingVariants = cva('text-balance [&:not(:first-child)]:mt-4', {
+export const headingVariants = cva('text-balance [&:not(:first-child)]:mt-6', {
   variants: {
     variant: {
       'h1': 'scroll-m-20 text-3xl font-extrabold tracking-tight',
