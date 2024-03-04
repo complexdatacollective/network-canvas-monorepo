@@ -1,58 +1,187 @@
+import { sep } from 'path';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import sidebarData from '~/public/sidebar.json' assert { type: 'json' };
-import { Heading } from '@acme/ui';
-import DocSearchComponent from './DocSearchComponent';
+import { motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
+
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@acme/ui';
+
+import type {
+  LocalesEnum,
+  SidebarPage,
+  TSideBar,
+  SidebarFolder as TSidebarFolder,
+} from '~/app/types';
 import { cn } from '~/lib/utils';
+import sidebarData from '~/public/sidebar.json';
+import DocSearchComponent from './DocSearchComponent';
 
-const navigation = [];
+const MotionCollapsibleContent = motion(CollapsibleContent);
+const MotionChevron = motion(ChevronRight);
 
-export function Sidebar({
-  className,
-  onLinkClick,
+// Used by sidebar to process sourceFile values into usable routes
+export const processSourceFile = (
+  type: 'folder' | 'page',
+  locale: LocalesEnum,
+  sourceFile?: string,
+) => {
+  if (!sourceFile) return;
+  const pathSegments = sourceFile.split(sep).slice(2);
+
+  let returnPath = '';
+
+  if (type === 'folder') {
+    returnPath = pathSegments.slice(0, -1).join('/');
+  } else {
+    returnPath = pathSegments
+      // Process the last item to remove the locale and file extension
+      .map((segment, index, array) => {
+        if (index === array.length - 1) {
+          return segment.split('.')[0]!;
+        }
+        return segment;
+      })
+      .join('/');
+  }
+
+  return `/${locale}/${returnPath}`;
+};
+
+const SidebarFolder = ({
+  label,
+  href,
+  defaultOpen,
+  alwaysOpen,
+  children,
 }: {
-  className?: string;
-  onLinkClick?: React.MouseEventHandler<HTMLAnchorElement>;
-}) {
-  let pathname = usePathname();
+  label: string;
+  href?: string;
+  defaultOpen?: boolean;
+  alwaysOpen?: boolean;
+  children?: React.ReactNode;
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen ?? alwaysOpen ?? false);
 
   return (
-    <nav className={cn(
-      'sticky hidden h-[calc(100vh-4.75rem)] w-72 overflow-y-auto overflow-x-hidden lg:block',
-      className
-      )}>
+    <Collapsible
+      defaultOpen={defaultOpen ?? alwaysOpen}
+      open={isOpen}
+      onOpenChange={() => {
+        if (alwaysOpen) return;
+        setIsOpen(!isOpen);
+      }}
+      className="my-4 flex flex-col overflow-hidden"
+    >
+      <CollapsibleTrigger
+        className="my-1 flex flex-1 cursor-pointer items-center justify-between text-base font-semibold capitalize"
+        asChild
+      >
+        {href ? (
+          <Link href={href}>
+            {label}{' '}
+            {!alwaysOpen && (
+              <MotionChevron
+                className="h-4 w-4"
+                initial={{ rotate: isOpen ? 90 : 0 }}
+                animate={{ rotate: isOpen ? 90 : 0 }}
+              />
+            )}
+          </Link>
+        ) : (
+          <div>
+            {label}{' '}
+            {!alwaysOpen && (
+              <MotionChevron
+                className="h-4 w-4"
+                initial={{ rotate: isOpen ? 90 : 0 }}
+                animate={{ rotate: isOpen ? 90 : 0 }}
+              />
+            )}
+          </div>
+        )}
+      </CollapsibleTrigger>
+      <MotionCollapsibleContent
+        className="flex flex-col"
+        forceMount
+        initial={{ height: isOpen ? 'auto' : 0 }}
+        animate={{ height: isOpen ? 'auto' : 0 }}
+      >
+        {children}
+      </MotionCollapsibleContent>
+    </Collapsible>
+  );
+};
+
+const SidebarLink = ({
+  href,
+  label,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+}) => {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={clsx(
+        'flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-base transition-colors',
+        isActive && 'border-success/100 font-semibold text-success',
+      )}
+    >
+      {label}
+    </Link>
+  );
+};
+
+export function Sidebar({ className }: { className?: string }) {
+  const pathname = usePathname();
+  const locale = pathname.split('/')[1]! as LocalesEnum;
+  const project = pathname.split('/')[2]!;
+
+  const typedSidebarData = sidebarData as TSideBar;
+
+  const formattedSidebarData = typedSidebarData[locale]![project]!.children;
+
+  const renderSidebarItem = (item: TSidebarFolder | SidebarPage) => {
+    const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
+    if (item.type === 'folder') {
+      return (
+        <SidebarFolder
+          key={item.label}
+          label={item.label}
+          alwaysOpen={item.expanded}
+          href={sourceFile}
+        >
+          {Object.values(item.children).map((child) =>
+            renderSidebarItem(child),
+          )}
+        </SidebarFolder>
+      );
+    } else {
+      return (
+        <SidebarLink key={item.label} href={sourceFile!} label={item.label} />
+      );
+    }
+  };
+
+  return (
+    <nav
+      className={cn(
+        'sticky top-2 hidden max-h-[calc(100vh-1rem)] w-80 overflow-y-auto overflow-x-hidden pr-4 lg:block',
+        className,
+      )}
+    >
       <DocSearchComponent />
-      <ul role="list" className="space-y-9">
-        {navigation.map((section) => (
-          <li key={section.title}>
-            <h2 className="font-display text-slate-900 font-medium dark:text-white">
-              {section.title}
-            </h2>
-            <ul
-              role="list"
-              className="border-slate-100 lg:border-slate-200 dark:border-slate-800 mt-2 space-y-2 border-l-2 lg:mt-4 lg:space-y-4"
-            >
-              {section.links.map((link) => (
-                <li key={link.href} className="relative">
-                  <Link
-                    href={link.href}
-                    onClick={onLinkClick}
-                    className={clsx(
-                      'block w-full pl-3.5 before:pointer-events-none before:absolute before:-left-1 before:top-1/2 before:h-1.5 before:w-1.5 before:-translate-y-1/2 before:rounded-full',
-                      link.href === pathname
-                        ? 'text-sky-500 before:bg-sky-500 font-semibold'
-                        : 'text-slate-500 before:bg-slate-300 hover:text-slate-600 dark:text-slate-400 dark:before:bg-slate-700 dark:hover:text-slate-300 before:hidden hover:before:block',
-                    )}
-                  >
-                    {link.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+
+      {Object.values(formattedSidebarData).map((item) =>
+        renderSidebarItem(item),
+      )}
     </nav>
   );
 }

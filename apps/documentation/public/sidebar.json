@@ -55,7 +55,7 @@
         },
         "how-to": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "sourceFile": "/docs/desktop/how-to/index.en.mdx",
           "label": "How-to Guides",
           "children": {
@@ -88,7 +88,7 @@
         },
         "interface-documentation": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Interface documentation",
           "children": {
             "categorical-bin": {
@@ -175,7 +175,7 @@
         },
         "key-concepts": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Key concepts",
           "children": {
             "additional-variables": {
@@ -242,7 +242,7 @@
         },
         "reference": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Technical reference",
           "children": {
             "irb-best-practices": {
@@ -289,7 +289,7 @@
         },
         "tutorials": {
           "type": "folder",
-          "expanded": false,
+          "expanded": true,
           "label": "Tutorials",
           "children": {
             "using-interviewer": {
@@ -361,7 +361,7 @@
         },
         "how-to": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Практические руководства",
           "children": {
             "choosing-hardware": {
@@ -373,19 +373,19 @@
         },
         "interface-documentation": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Документация интерфейса",
           "children": {}
         },
         "key-concepts": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Ключевые идеи",
           "children": {}
         },
         "reference": {
           "type": "folder",
-          "expanded": true,
+          "expanded": false,
           "label": "Техническая справка",
           "children": {
             "irb-best-practices": {
@@ -397,7 +397,7 @@
         },
         "tutorials": {
           "type": "folder",
-          "expanded": false,
+          "expanded": true,
           "label": "Учебники",
           "children": {}
         }

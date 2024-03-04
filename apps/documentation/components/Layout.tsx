@@ -21,7 +21,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           'max-w-8xl justify-cente relative mx-auto flex flex-auto gap-6 p-4',
-          'lg:px-8 xl:px-12',
+          'lg:gap-8 lg:px-8',
         )}
       >
         <Sidebar />

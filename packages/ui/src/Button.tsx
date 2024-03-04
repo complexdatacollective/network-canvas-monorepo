@@ -6,7 +6,7 @@ import { cva } from 'class-variance-authority';
 import { cn } from './utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center truncate text-nowrap rounded-full text-xs font-semibold uppercase tracking-[3px] text-foreground shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center truncate text-nowrap rounded-full text-xs font-semibold uppercase tracking-[3px] text-foreground ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -29,17 +29,28 @@ const buttonVariants = cva(
         sm: 'h-10 px-4',
         lg: 'h-12 px-8',
         icon: 'h-10 w-10',
+        link: 'h-auto px-0',
+      },
+      shadow: {
+        default: 'shadow-md',
+        none: 'shadow-none',
       },
     },
     defaultVariants: {
       variant: 'default',
       size: 'default',
+      shadow: 'default',
     },
     compoundVariants: [
       {
         variant: 'tableHeader',
         size: 'sm',
         className: '-ml-4',
+      },
+      {
+        variant: 'link',
+        size: 'link',
+        shadow: 'none',
       },
     ],
   },
@@ -48,15 +59,16 @@ const buttonVariants = cva(
 export type ButtonProps = {
   variant?: VariantProps<typeof buttonVariants>['variant'];
   size?: VariantProps<typeof buttonVariants>['size'];
+  shadow?: VariantProps<typeof buttonVariants>['shadow'];
   asChild?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, shadow, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, shadow, className }))}
         ref={ref}
         {...props}
       />

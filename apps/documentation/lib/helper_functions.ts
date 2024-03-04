@@ -9,11 +9,11 @@ import { unified } from 'unified';
 
 import type {
   LocalesEnum,
-  SidebarFolder,
-  SidebarPage,
-  SidebarProject,
+  SidebarFolderSchema,
+  SidebarPageSchema,
+  SidebarProjectSchema,
 } from '~/app/types';
-import { locales, MetadataFile } from '~/app/types';
+import { locales, MetadataFileSchema } from '~/app/types';
 import { env } from '../env.mjs';
 
 export const relativePathToDocs = join(
@@ -147,7 +147,7 @@ export const getMetaDataForDirectory = (directoryPath: string) => {
   const metadataString = readFileSync(metadataPath, 'utf-8');
   const metadataRaw = JSON.parse(metadataString) as unknown;
 
-  const parsed = MetadataFile.parse(metadataRaw);
+  const parsed = MetadataFileSchema.parse(metadataRaw);
 
   return parsed;
 };

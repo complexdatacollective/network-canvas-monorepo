@@ -30,6 +30,7 @@
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
     "dotenv": "^16.3.1",
+    "framer-motion": "^11.0.6",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.279.0",
     "mdast-util-to-string": "^4.0.0",

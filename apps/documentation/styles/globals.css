@@ -102,6 +102,7 @@
     --docsearch-footer-shadow: 0 -1px 0 0 rgb(224, 227, 232),
       0 -3px 6px 0 rgba(69, 98, 155, 0.12);
 
+    @apply w-full !important;
     @apply h-10 !important;
     @apply rounded-input !important;
     @apply bg-input !important;

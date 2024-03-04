@@ -4,5 +4,6 @@
     "en": "Tutorials",
     "ru": "Учебники"
   },
-  "slug": "tutorials"
+  "slug": "tutorials",
+  "isExpanded": true
 }

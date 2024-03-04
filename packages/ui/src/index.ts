@@ -1,4 +1,9 @@
 import { Button, buttonVariants } from './Button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from './collapsible';
 import { Input, inputClasses } from './Input';
 import { Label } from './Label';
 import {
@@ -37,4 +42,7 @@ export {
   UnorderedList,
   OrderedList,
   ListItem,
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
 };

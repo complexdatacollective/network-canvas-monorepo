@@ -20,12 +20,12 @@ export const SidebarItemBase = z.object({
   label: z.string(),
 });
 
-export const SidebarPage = SidebarItemBase.extend({
+export const SidebarPageSchema = SidebarItemBase.extend({
   type: z.literal('page'),
   sourceFile: z.string(),
 });
 
-export type SidebarPage = z.infer<typeof SidebarPage>;
+export type SidebarPage = z.infer<typeof SidebarPageSchema>;
 
 // Sidebar folder is potentially recursive in that it can contain other folders
 // See: https://github.com/colinhacks/zod#recursive-types
@@ -41,31 +41,41 @@ export type TSidebarFolder = z.infer<typeof baseSidebarFolder> & {
   children: Record<string, TSidebarFolder | SidebarPage>;
 };
 
-export const SidebarFolder: z.ZodType<TSidebarFolder> =
+export const SidebarFolderSchema: z.ZodType<TSidebarFolder> =
   baseSidebarFolder.extend({
-    children: z.lazy(() => z.record(z.union([SidebarFolder, SidebarPage]))),
+    children: z.lazy(() =>
+      z.record(z.union([SidebarFolderSchema, SidebarPageSchema])),
+    ),
   });
 
-export type SidebarFolder = z.infer<typeof SidebarFolder>;
+export type SidebarFolder = z.infer<typeof SidebarFolderSchema>;
 
-export const SidebarProject = SidebarItemBase.extend({
+export const SidebarProjectSchema = SidebarItemBase.extend({
   type: z.literal('project'),
-  children: z.record(z.union([SidebarFolder, SidebarPage])),
+  children: z.record(z.union([SidebarFolderSchema, SidebarPageSchema])),
 });
 
-export type SidebarProject = z.infer<typeof SidebarProject>;
+export type SidebarProject = z.infer<typeof SidebarProjectSchema>;
 
-export const SidebarLocaleDefinition = z.record(z.string(), SidebarProject);
+export const SidebarLocaleDefinitionSchema = z.record(
+  z.string(),
+  SidebarProjectSchema,
+);
 
-export type SidebarLocaleDefinition = z.infer<typeof SidebarLocaleDefinition>;
+export type SidebarLocaleDefinition = z.infer<
+  typeof SidebarLocaleDefinitionSchema
+>;
 
-export const SideBar = z.record(LocalesEnum, SidebarLocaleDefinition);
+export const SideBarSchema = z.record(
+  LocalesEnum,
+  SidebarLocaleDefinitionSchema,
+);
 
-export type TSideBar = z.infer<typeof SideBar>;
+export type TSideBar = z.infer<typeof SideBarSchema>;
 
 const metadatatypes = ['folder', 'project'] as const;
 
-export const MetadataFile = z.object({
+export const MetadataFileSchema = z.object({
   type: z.enum(metadatatypes),
   sourceFile: z.string().optional(),
   localeLabels: z.record(LocalesEnum, z.string()).optional(),
@@ -73,7 +83,7 @@ export const MetadataFile = z.object({
   isExpanded: z.boolean().optional(),
 });
 
-export type MetadataFile = z.infer<typeof MetadataFile>;
+export type MetadataFile = z.infer<typeof MetadataFileSchema>;
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 export type Messages = typeof import('../messages/en.json');

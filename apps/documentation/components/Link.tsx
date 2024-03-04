@@ -1,9 +1,12 @@
 import NextLink, { type LinkProps } from 'next/link';
+import { type ReactNode, forwardRef } from 'react';
+import { cn } from '~/lib/utils';
 
-export default function Link(props: LinkProps) {
+const Link = forwardRef<HTMLAnchorElement, LinkProps & { children: ReactNode, className?: string}>((props, ref) => {
   return (
     <NextLink
-      className="text-link group font-semibold transition-all duration-300 ease-in-out"
+      ref={ref}
+      className={cn("text-link group font-semibold transition-all duration-300 ease-in-out", props.className)}
       {...props}
     >
       <span className="from-link to-link bg-gradient-to-r bg-[length:0%_2px] bg-left-bottom bg-no-repeat pb-[2px] transition-all duration-200 ease-out group-hover:bg-[length:100%_2px]">
@@ -11,4 +14,8 @@ export default function Link(props: LinkProps) {
       </span>
     </NextLink>
   );
-}
+});
+
+Link.displayName = 'Link';
+
+export default Link;

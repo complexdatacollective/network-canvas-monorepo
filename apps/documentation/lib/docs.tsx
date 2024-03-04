@@ -1,18 +1,33 @@
 import fs, { existsSync, readFileSync } from 'fs';
 import { join, sep } from 'path';
-import sidebar from '~/public/sidebar.json' assert { type: 'json' };
-import { get, relativePathToDocs } from './helper_functions';
-import { z } from 'zod';
-import { unified } from 'unified';
+import type { Options } from 'rehype-react';
+import * as prod from 'react/jsx-runtime';
+import rehypeReact from 'rehype-react';
+import remarkFrontmatter from 'remark-frontmatter';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
-import remarkFrontmatter from 'remark-frontmatter';
-import rehypeReact, {type Options } from 'rehype-react';
-import processYamlMatter from './processYamlMatter';
-import { Heading, ListItem, OrderedList, Paragraph, UnorderedList } from '@acme/ui';
-import * as prod from 'react/jsx-runtime'
+import { unified } from 'unified';
+import { z } from 'zod';
+
+import {
+  Heading,
+  ListItem,
+  OrderedList,
+  Paragraph,
+  UnorderedList,
+} from '@acme/ui';
+
+import type {
+  LocalesEnum,
+  SidebarFolder,
+  SidebarPage,
+  SidebarProject,
+  TSideBar,
+} from '~/app/types';
 import Link from '~/components/Link';
-import { LocalesEnum, SidebarFolder, SidebarPage, SidebarProject, TSideBar } from '~/app/types';
+import sidebar from '~/public/sidebar.json';
+import { get, relativePathToDocs } from './helper_functions';
+import processYamlMatter from './processYamlMatter';
 
 export type DocRouteParams = {
   params: {
@@ -28,11 +43,11 @@ export const FrontmatterSchema = z.object({
   nav_order: z.number().optional(),
   toc: z.boolean().optional(),
   // Tutorials
-    summary: z.string().optional(), // Summary of the tutorial
+  summary: z.string().optional(), // Summary of the tutorial
   prerequisites: z.string().optional(), // Prerequisites for the tutorial
   completion_time: z.string().optional(), // Estimated time to complete the tutorial
   // interfaces
-    image: z.string().optional(), // Path to hero image
+  image: z.string().optional(), // Path to hero image
   type: z.string().optional(), // Name of interface
   creates: z.string().optional(), // What the interface creates
   uses_prompts: z.string().optional(), // If the interface supports prompts
@@ -43,7 +58,7 @@ export const FrontmatterSchema = z.object({
 export type Frontmatter = z.infer<typeof FrontmatterSchema>;
 
 // Process docPaths to remove CWD, docs subdirectory, file extensions, and split into segments
-const processPath = (docPath: string) => {
+export const processPath = (docPath: string) => {
   const processedPath = docPath
     .split(sep)
     .slice(3) // First element is empty string, second is 'docs', third is the project name
@@ -58,7 +73,6 @@ const processPath = (docPath: string) => {
   return processedPath;
 };
 
-
 // Given locale and project, generate all the possible docPaths.
 // Return something in the format of:
 // {
@@ -72,18 +86,31 @@ type ReturnType = {
   docPath: string[];
 };
 
-export const getDocsForRouteSegment = async ({ locale, project }: { locale: LocalesEnum, project: string }) => {
+export const getDocsForRouteSegment = ({
+  locale,
+  project,
+}: {
+  locale: LocalesEnum;
+  project: string;
+}) => {
   const typedSidebar = sidebar as TSideBar;
-  const sidebarData = get(typedSidebar, [locale, project], null) as SidebarProject;
+  const sidebarData = get(
+    typedSidebar,
+    [locale, project],
+    null,
+  ) as SidebarProject;
 
   if (!sidebarData) {
+    // eslint-disable-next-line no-console
     console.log(`No sidebar data found for ${locale} and ${project}`);
     return [];
   }
 
   const results: ReturnType[] = [];
 
-  const getSourceFilePaths = (data: SidebarProject | SidebarFolder | SidebarPage) => {
+  const getSourceFilePaths = (
+    data: SidebarProject | SidebarFolder | SidebarPage,
+  ) => {
     // Leaf node
     if (data.type === 'page') {
       results.push({
@@ -100,7 +127,7 @@ export const getDocsForRouteSegment = async ({ locale, project }: { locale: Loca
       results.push({
         locale,
         project,
-        docPath: processPath(data.sourceFile).slice(0, -1), 
+        docPath: processPath(data.sourceFile).slice(0, -1),
       });
     }
 
@@ -112,32 +139,47 @@ export const getDocsForRouteSegment = async ({ locale, project }: { locale: Loca
     }
 
     return;
-  }
+  };
 
-  
   getSourceFilePaths(sidebarData);
 
   return results;
 };
 
 // Get the sourceFile path from the sidebar.json
-const getSourceFile = (locale: string, project: string, pathSegment?: string[]) => {
-  const sourceFile = get(sidebar, [locale, project, 'sourceFile'], null) as string;
+const getSourceFile = (
+  locale: string,
+  project: string,
+  pathSegment?: string[],
+) => {
+  const sourceFile = get(
+    sidebar,
+    [locale, project, 'sourceFile'],
+    null,
+  ) as string;
 
   if (!pathSegment) return join(process.cwd(), sourceFile);
 
-
   // TODO: handle sourcefiles for folders
-  const pathSegmentWithChildren = pathSegment.map((segment, index) => {
-    if (index === 0) {
-      return segment;
-    }
+  const pathSegmentWithChildren = pathSegment
+    .map((segment, index) => {
+      if (index === 0) {
+        return segment;
+      }
 
-    return ['children', segment];
-  }).flat();
+      return ['children', segment];
+    })
+    .flat();
 
-  return join(process.cwd(), get(sidebar, [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'], null) as string);
-}
+  return join(
+    process.cwd(),
+    get(
+      sidebar,
+      [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'],
+      null,
+    ) as string,
+  );
+};
 
 // Get all project names
 export const getAllProjects = function () {
@@ -167,7 +209,7 @@ export async function getDocumentForPath({
   const markdownFile = readFileSync(sourceFile, 'utf-8');
 
   const result = await unified()
-    .use(remarkParse, {fragment: true})
+    .use(remarkParse, { fragment: true })
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype)
@@ -176,24 +218,29 @@ export async function getDocumentForPath({
       jsx: prod.jsx,
       jsxs: prod.jsxs,
       components: {
-        h1: (props) => <Heading variant='h1' {...props} />,
-        h2: (props: JSX.IntrinsicElements['h2']) => <Heading variant='h2' {...props} />,
-        h3: (props: JSX.IntrinsicElements['h3']) => <Heading variant='h3' {...props} />,
-        h4: (props: JSX.IntrinsicElements['h4']) => <Heading variant='h4' {...props} />,
+        h1: (props) => <Heading variant="h1" {...props} />,
+        h2: (props: JSX.IntrinsicElements['h2']) => (
+          <Heading variant="h2" {...props} />
+        ),
+        h3: (props: JSX.IntrinsicElements['h3']) => (
+          <Heading variant="h3" {...props} />
+        ),
+        h4: (props: JSX.IntrinsicElements['h4']) => (
+          <Heading variant="h4" {...props} />
+        ),
         p: Paragraph,
         a: Link,
         ul: UnorderedList,
         ol: OrderedList,
         li: ListItem,
-      }
+      },
     } as Options)
     .process(markdownFile);
-
 
   const validatedFrontmatter = FrontmatterSchema.parse(result.data.matter);
 
   return {
     frontmatter: validatedFrontmatter,
     component: result.result,
-  }
+  };
 }
