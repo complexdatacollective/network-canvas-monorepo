@@ -6,30 +6,27 @@ import { cva } from 'class-variance-authority';
 
 import { cn } from '../utils';
 
-export const paragraphVariants = cva(
-  'text-pretty text-base font-normal text-foreground',
-  {
-    variants: {
-      variant: {
-        default: '',
-        blockquote: 'mt-6 border-l-2 pl-6 italic',
-        inlineCode:
-          'relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold',
-        lead: 'mb-3 text-lg font-semibold leading-6 text-opacity-70 md:text-xl',
-        mutedText: 'text-muted',
-        smallText: 'text-sm',
-      },
-      margin: {
-        default: '[p+&]:mt-5',
-        none: 'mt-0',
-      },
+export const paragraphVariants = cva('text-pretty text-base font-normal', {
+  variants: {
+    variant: {
+      default: '',
+      blockquote: 'mt-6 border-l-2 pl-6 italic',
+      inlineCode:
+        'relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold',
+      lead: 'mb-3 text-lg font-semibold leading-6 text-opacity-70 md:text-xl',
+      mutedText: 'text-muted',
+      smallText: 'text-sm',
     },
-    defaultVariants: {
-      variant: 'default',
-      margin: 'default',
+    margin: {
+      default: '[p+&]:mt-5',
+      none: 'mt-0',
     },
   },
-);
+  defaultVariants: {
+    variant: 'default',
+    margin: 'default',
+  },
+});
 
 export type ParagraphProps = {
   variant?: VariantProps<typeof paragraphVariants>['variant'];

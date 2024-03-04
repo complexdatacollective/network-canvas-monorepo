@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export const locales = ['en', 'ru'] as const;
+export const projects = ['desktop', 'fresco'] as const;
+
+export type ProjectsEnum = (typeof projects)[number];
+
+export const locales = ['en'] as const;
 
 const LocalesEnum = z.enum(locales);
 

@@ -1,4 +1,18 @@
 {
+  "ProjectSwitcher": {
+    "fresco": {
+      "label": "Fresco",
+      "description": "A web-based platform for creating and sharing network data collection instruments."
+    },
+    "desktop": {
+      "label": "Desktop Suite",
+      "description": "The traditional Network Canvas suite of desktop and tablet applications (Architect and Interviewer)."
+    },
+    "studio": {
+      "label": "Studio",
+      "description": "A web-based platform for creating and sharing network data collection instruments."
+    }
+  },
   "DocSearch": {
     "button": {
       "buttonText": "Search",
@@ -51,11 +65,6 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System"
-  },
-  "ProductSwitcher": {
-    "selectPlaceholder": "Select software",
-    "fresco": "Fresco",
-    "desktop": "Desktop"
   },
   "Home": {
     "title": "Home Page"

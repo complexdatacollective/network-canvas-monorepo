@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { useLocale } from 'next-intl';
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@acme/ui';
 
@@ -17,6 +18,7 @@ import type {
 import { cn } from '~/lib/utils';
 import sidebarData from '~/public/sidebar.json';
 import DocSearchComponent from './DocSearchComponent';
+import ProjectSwitcher from './ProjectSwitcher';
 
 const MotionCollapsibleContent = motion(CollapsibleContent);
 const MotionChevron = motion(ChevronRight);
@@ -131,7 +133,7 @@ const SidebarLink = ({
       onClick={onClick}
       className={clsx(
         'flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-base transition-colors',
-        isActive && 'border-success/100 font-semibold text-success',
+        isActive && 'border-accent/100 font-semibold text-accent',
       )}
     >
       {label}
@@ -141,7 +143,7 @@ const SidebarLink = ({
 
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const locale = pathname.split('/')[1]! as LocalesEnum;
+  const locale = useLocale() as LocalesEnum;
   const project = pathname.split('/')[2]!;
 
   const typedSidebarData = sidebarData as TSideBar;
@@ -173,11 +175,12 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        'sticky top-2 hidden max-h-[calc(100vh-1rem)] w-80 overflow-y-auto overflow-x-hidden pr-4 lg:block',
+        'sticky top-2 hidden max-h-[calc(100vh-1rem)] w-80 overflow-y-auto overflow-x-hidden lg:block',
         className,
       )}
     >
       <DocSearchComponent />
+      <ProjectSwitcher />
 
       {Object.values(formattedSidebarData).map((item) =>
         renderSidebarItem(item),
