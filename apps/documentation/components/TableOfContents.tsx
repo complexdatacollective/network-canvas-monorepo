@@ -5,10 +5,16 @@ import Link from 'next/link';
 
 import useHighlighted from '~/hooks/useHighlighted';
 import { type HeadingNode } from '~/lib/tableOfContents';
-import { Heading } from '@acme/ui';
+import { Heading, ListItem, OrderedList } from '@acme/ui';
 import { cn } from '~/lib/utils';
 
-const TOCLink = ({ node }: { node: HeadingNode }) => {
+const TOCLink = ({
+  node,
+  sideBar,
+}: {
+  node: HeadingNode;
+  sideBar: boolean;
+}) => {
   const ref = useRef<HTMLAnchorElement>(null);
   const [highlighted] = useHighlighted(node.data.id);
 
@@ -27,8 +33,10 @@ const TOCLink = ({ node }: { node: HeadingNode }) => {
       ref={ref}
       href={`#${node.data.id}`}
       className={cn(
-        'block py-1 transition-colors hover:text-accent',
-        node.depth === 2 ? 'text-sm' : 'text-xs',
+        'block text-base transition-colors hover:text-accent',
+        sideBar && 'my-2',
+        sideBar && node.depth === 2 && 'text-sm',
+        sideBar && node.depth === 3 && 'ml-4 text-xs',
         highlighted && 'text-accent',
       )}
     >
@@ -37,30 +45,45 @@ const TOCLink = ({ node }: { node: HeadingNode }) => {
   );
 };
 
-const TableOfContents = ({ headings }: { headings: HeadingNode[] }) => {
+const TableOfContents = ({
+  headings,
+  sideBar = false,
+}: {
+  headings: HeadingNode[];
+  sideBar: boolean;
+}) => {
   return (
     <div
       className={cn(
-        'group sticky top-2 w-80 overflow-y-auto overflow-x-hidden pb-5',
-        headings.length > 10 && 'h-[750px]',
+        'group',
+        sideBar && 'sticky top-2 w-80 overflow-y-auto overflow-x-hidden pb-5',
+        sideBar && headings.length > 10 && 'h-[750px]',
       )}
     >
-      <Heading variant="h4-all-caps">Table of contents</Heading>
-      {renderNodes(headings)}
+      <Heading
+        variant={sideBar ? 'h4-all-caps' : 'h2'}
+        className={cn(sideBar && 'mb-2')}
+      >
+        Table of Contents
+      </Heading>
+      {renderNodes(headings, sideBar)}
     </div>
   );
 };
 
-function renderNodes(nodes: HeadingNode[]) {
+function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
+  const ULComponent = sideBar ? 'ul' : OrderedList;
+  const LIComponent = sideBar ? 'li' : ListItem;
+
   return (
-    <ul>
+    <ULComponent>
       {nodes.map((node) => (
-        <li key={node.data.id}>
-          <TOCLink node={node} />
-          {node.children?.length > 0 && renderNodes(node.children)}
-        </li>
+        <LIComponent key={node.data.id}>
+          <TOCLink node={node} sideBar={sideBar} />
+          {node.children?.length > 0 && renderNodes(node.children, sideBar)}
+        </LIComponent>
       ))}
-    </ul>
+    </ULComponent>
   );
 }
 

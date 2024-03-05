@@ -34,13 +34,18 @@ export default function Article({
             {title}
           </Heading>
         </header>
+        {headings && headings.length > 0 && (
+          <div className="xl:hidden">
+            <TableOfContents headings={headings} />
+          </div>
+        )}
         {content}
       </article>
       {mounted &&
         headings &&
         headings.length > 0 &&
         createPortal(
-          <TableOfContents headings={headings} />,
+          <TableOfContents headings={headings} sideBar />,
           document.getElementById('toc-area'),
         )}
     </>
