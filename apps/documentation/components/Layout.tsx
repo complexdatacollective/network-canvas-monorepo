@@ -22,14 +22,14 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       {isHomePage && <Hero />}
       <div
         className={cn(
-          'max-w-8xl justify-cente relative mx-auto flex flex-auto gap-6 p-4',
-          'lg:gap-8 lg:px-8',
+          'justify-cente relative mx-auto flex flex-auto gap-2 px-4 py-2',
+          'lg:gap-4 xl:gap-8',
         )}
       >
         {!isHomePage && <Sidebar />}
 
         <main className="flex flex-1">{children}</main>
-        <aside id="toc-area" />
+        <aside id="toc-area" className="hidden xl:block" />
       </div>
     </div>
   );

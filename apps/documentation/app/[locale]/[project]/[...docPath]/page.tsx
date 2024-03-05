@@ -22,13 +22,13 @@ export async function generateMetadata({ params }: { params: PageParams }) {
   return { title: document?.frontmatter.title };
 }
 
-export async function generateStaticParams({
+export function generateStaticParams({
   params,
 }: {
   params: Omit<PageParams, 'docPath'>;
 }) {
   const { locale, project } = params;
-  const docPathSegmentsForRoute = await getDocsForRouteSegment({
+  const docPathSegmentsForRoute = getDocsForRouteSegment({
     locale,
     project,
   });
@@ -49,18 +49,11 @@ export default async function Page({ params }: { params: PageParams }) {
 
   if (document === null) notFound();
 
-  // const tableOfContents = collectSections(nodes);
-
   return (
-    <>
-      <Article
-        content={document.component}
-        title={document.frontmatter.title}
-      />
-      {/* {createPortal(
-        <ArticleTOC content={content} />,
-        document.getElementById('article-toc')!,
-      )} */}
-    </>
+    <Article
+      content={document.component}
+      title={document.frontmatter.title}
+      headings={document.headings}
+    />
   );
 }

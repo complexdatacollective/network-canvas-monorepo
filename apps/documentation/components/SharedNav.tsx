@@ -17,8 +17,8 @@ export default function SharedNav({ active }: { active?: string }) {
     );
 
   return (
-    <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-      <Link href="/" aria-label="Home page" className="pr-10">
+    <nav className="justify-cente relative mx-auto mb-4 flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4">
+      <Link href="/" aria-label="Home page" className="flex-shrink-0 pr-10">
         <Image
           src="/images/mark.svg"
           alt="Network Canvas Documentation"
@@ -31,7 +31,7 @@ export default function SharedNav({ active }: { active?: string }) {
           alt="Network Canvas Documentation"
           height={48} //5.27
           width={275}
-          className="hidden h-12 w-auto lg:block "
+          className="hidden h-12 w-auto lg:block"
         />
       </Link>
       <ul className="flex items-center gap-10">

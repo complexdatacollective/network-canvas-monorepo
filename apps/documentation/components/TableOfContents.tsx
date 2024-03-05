@@ -1,14 +1,26 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 import useHighlighted from '~/hooks/useHighlighted';
 import { type HeadingNode } from '~/lib/tableOfContents';
+import { Heading, ListItem, OrderedList } from '@acme/ui';
+import { cn } from '~/lib/utils';
 
-const TOCLink = ({ node }: { node: HeadingNode }) => {
+const TOCLink = ({
+  node,
+  sideBar,
+}: {
+  node: HeadingNode;
+  sideBar: boolean;
+}) => {
   const ref = useRef<HTMLAnchorElement>(null);
-  const [highlighted] = useHighlighted(node.data.id);
+  const [highlighted] = useHighlighted(node.id);
 
   useEffect(() => {
+    if (!sideBar) return;
+
     if (highlighted && ref.current) {
       ref.current.scrollIntoView({
         behavior: 'auto',
@@ -16,51 +28,63 @@ const TOCLink = ({ node }: { node: HeadingNode }) => {
         inline: 'nearest',
       });
     }
-  }, [highlighted]);
+  }, [highlighted, sideBar]);
 
   return (
     <Link
       ref={ref}
-      href={`#${node.data.id}`}
-      className={`block ${
-        node.depth === 2 ? 'text-base' : 'text-sm'
-      } hover:text-black py-1 transition-colors dark:hover:text-white ${
-        highlighted ? 'text-black dark:text-white' : 'text-slate-400'
-      }`}
+      href={`#${node.id}`}
+      className={cn(
+        'block text-base transition-colors hover:text-accent',
+        sideBar && 'my-2 text-sm',
+        sideBar && node.level === 3 && 'ml-4',
+        highlighted && 'text-accent',
+      )}
     >
       {node.value}
     </Link>
   );
 };
-interface TableOfContentsProps {
-  nodes: HeadingNode[] | null;
-}
 
-const TableOfContents = ({ nodes }: TableOfContentsProps) => {
-  if (!nodes) return null;
-
+const TableOfContents = ({
+  headings,
+  sideBar = false,
+}: {
+  headings: HeadingNode[];
+  sideBar?: boolean;
+}) => {
   return (
     <div
-      className={`toc-component group overflow-x-hidden pb-5 ${
-        nodes.length > 10 && 'h-[750px]'
-      } min-w-[300px] overflow-y-auto`}
+      className={cn(
+        'group',
+        sideBar && 'sticky top-2 w-80 overflow-y-auto overflow-x-hidden pb-5',
+        sideBar && headings.length > 10 && 'h-[750px]',
+      )}
     >
-      <h3 className="text-slate-400 text-sm uppercase">Table of contents</h3>
-      {renderNodes(nodes)}
+      <Heading
+        variant={sideBar ? 'h4-all-caps' : 'h2'}
+        className={cn(sideBar && 'mb-2')}
+      >
+        Table of Contents
+      </Heading>
+      {renderNodes(headings, sideBar)}
     </div>
   );
 };
 
-function renderNodes(nodes: HeadingNode[]) {
+function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
+  const ULComponent = sideBar ? 'ul' : OrderedList;
+  const LIComponent = sideBar ? 'li' : ListItem;
+
   return (
-    <ul className="mx-6">
+    <ULComponent>
       {nodes.map((node) => (
-        <li key={node.data.id}>
-          <TOCLink node={node} />
-          {node.children?.length > 0 && renderNodes(node.children)}
-        </li>
+        <LIComponent key={node.id}>
+          <TOCLink node={node} sideBar={sideBar} />
+          {node.children?.length > 0 && renderNodes(node.children, sideBar)}
+        </LIComponent>
       ))}
-    </ul>
+    </ULComponent>
   );
 }
 

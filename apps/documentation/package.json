@@ -44,6 +44,7 @@
     "react-highlight-words": "^0.20.0",
     "rehype-react": "^8.0.0",
     "rehype-slug": "^6.0.0",
+    "rehype-slug-custom-id": "^1.1.0",
     "rehype-stringify": "^10.0.0",
     "remark": "^15.0.1",
     "remark-frontmatter": "^5.0.0",
@@ -62,14 +63,17 @@
     "@acme/prettier-config": "workspace:*",
     "@acme/tailwind-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
+    "@types/hast": "^3.0.4",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.18",
     "@types/unist": "^3.0.0",
     "eslint": "^8.57.0",
+    "hast-util-heading-rank": "^3.0.0",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vfile": "^6.0.1"
   },
   "eslintConfig": {
     "root": true,
