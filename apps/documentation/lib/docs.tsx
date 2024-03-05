@@ -213,9 +213,10 @@ export async function getDocumentForPath({
       jsxs: prod.jsxs,
       components: {
         h1: (props) => <Heading variant="h1" {...props} />,
-        h2: (props: JSX.IntrinsicElements['h2']) => (
-          <Heading variant="h2" {...props} />
-        ),
+        h2: (props) => {
+          console.log('h2 props', props);
+          return <Heading variant="h2" {...props} />;
+        },
         h3: (props: JSX.IntrinsicElements['h3']) => (
           <Heading variant="h3" {...props} />
         ),
@@ -233,6 +234,7 @@ export async function getDocumentForPath({
 
   const validatedFrontmatter = FrontmatterSchema.parse(result.data.matter);
 
+  console.log(result.data.headings);
   return {
     frontmatter: validatedFrontmatter,
     headings: result.data.headings as HeadingNode[],

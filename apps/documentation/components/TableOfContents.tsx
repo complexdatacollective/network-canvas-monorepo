@@ -6,6 +6,7 @@ import Link from 'next/link';
 import useHighlighted from '~/hooks/useHighlighted';
 import { type HeadingNode } from '~/lib/tableOfContents';
 import { Heading } from '@acme/ui';
+import { cn } from '~/lib/utils';
 
 const TOCLink = ({ node }: { node: HeadingNode }) => {
   const ref = useRef<HTMLAnchorElement>(null);
@@ -25,11 +26,11 @@ const TOCLink = ({ node }: { node: HeadingNode }) => {
     <Link
       ref={ref}
       href={`#${node.data.id}`}
-      className={`block ${
-        node.depth === 2 ? 'text-base' : 'text-sm'
-      } hover:text-black py-1 transition-colors dark:hover:text-white ${
-        highlighted ? 'text-black dark:text-white' : 'text-slate-400'
-      }`}
+      className={cn(
+        'block py-1 transition-colors hover:text-accent',
+        node.depth === 2 ? 'text-sm' : 'text-xs',
+        highlighted && 'text-accent',
+      )}
     >
       {node.value}
     </Link>
@@ -39,9 +40,10 @@ const TOCLink = ({ node }: { node: HeadingNode }) => {
 const TableOfContents = ({ headings }: { headings: HeadingNode[] }) => {
   return (
     <div
-      className={`toc-component group overflow-x-hidden pb-5 ${
-        headings.length > 10 && 'h-[750px]'
-      } min-w-[300px] overflow-y-auto`}
+      className={cn(
+        'group sticky top-2 w-80 overflow-y-auto overflow-x-hidden pb-5',
+        headings.length > 10 && 'h-[750px]',
+      )}
     >
       <Heading variant="h4-all-caps">Table of contents</Heading>
       {renderNodes(headings)}
@@ -51,7 +53,7 @@ const TableOfContents = ({ headings }: { headings: HeadingNode[] }) => {
 
 function renderNodes(nodes: HeadingNode[]) {
   return (
-    <ul className="mx-6">
+    <ul>
       {nodes.map((node) => (
         <li key={node.data.id}>
           <TOCLink node={node} />

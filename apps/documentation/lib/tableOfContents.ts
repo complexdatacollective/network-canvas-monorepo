@@ -35,10 +35,12 @@ function getHeadingsForTree(root: Node): HeadingNode[] {
 
 // Add an "id" attribute to the heading elements based on their content
 function addID(node: HeadingNode, nodes: Record<string, number>): void {
+  console.log('addId', node, nodes);
   const id = node.children.map((c: HeadingNode) => c.value || '').join('');
   nodes[id] = (nodes[id] || 0) + 1;
   node.data = node.data || {
-    id: convertToUrlText(`${id}${nodes[id] > 1 ? ` ${nodes[id] - 1}` : ''}`),
+    id: 'booya',
+    // id: convertToUrlText(`${id}${nodes[id] > 1 ? ` ${nodes[id] - 1}` : ''}`),
   };
 }
 
@@ -53,6 +55,8 @@ function transformNode(
     data: node.data,
     children: [],
   };
+
+  console.log('transformNode', node, transformedNode);
 
   if (node.depth === 2) {
     output.push(transformedNode);

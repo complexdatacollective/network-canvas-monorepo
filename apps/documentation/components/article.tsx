@@ -38,6 +38,7 @@ export default function Article({
       </article>
       {mounted &&
         headings &&
+        headings.length > 0 &&
         createPortal(
           <TableOfContents headings={headings} />,
           document.getElementById('toc-area'),
