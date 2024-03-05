@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: 'Network Canvas Docs',
   description: 'All Network Canvas Docs',
   icons: {
-    icon: '/nc.png',
+    icon: '/assets/img/nc.png',
   },
   other: {
     'docsearch:language': 'en',
