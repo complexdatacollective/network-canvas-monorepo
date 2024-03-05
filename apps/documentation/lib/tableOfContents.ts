@@ -2,6 +2,7 @@ import { toString } from 'mdast-util-to-string';
 import { remark } from 'remark';
 import { Node } from 'unist';
 import { visit } from 'unist-util-visit';
+import type { VFile } from 'vfile';
 
 import { convertToUrlText } from './helper_functions';
 
@@ -14,7 +15,7 @@ export type HeadingNode = {
   children: HeadingNode[];
 };
 
-export function headingTree(): (node: Node, file: File) => void {
+export function headingTree(): (node: Node, file: VFile) => void {
   return (node, file) => {
     file.data.headings = getHeadingsForTree(node);
   };
@@ -63,11 +64,4 @@ function transformNode(
       indexMap[node.depth] = transformedNode;
     }
   }
-}
-
-export async function getHeadings(content: string): Promise<HeadingNode[]> {
-  // Use remark to convert Markdown into HTML string
-  const processedContent = await remark().use(headingTree).process(content);
-
-  return processedContent.data.headings as HeadingNode[];
 }

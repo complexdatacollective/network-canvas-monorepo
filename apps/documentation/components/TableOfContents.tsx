@@ -1,8 +1,11 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 import useHighlighted from '~/hooks/useHighlighted';
 import { type HeadingNode } from '~/lib/tableOfContents';
+import { Heading } from '@acme/ui';
 
 const TOCLink = ({ node }: { node: HeadingNode }) => {
   const ref = useRef<HTMLAnchorElement>(null);
@@ -32,21 +35,16 @@ const TOCLink = ({ node }: { node: HeadingNode }) => {
     </Link>
   );
 };
-interface TableOfContentsProps {
-  nodes: HeadingNode[] | null;
-}
 
-const TableOfContents = ({ nodes }: TableOfContentsProps) => {
-  if (!nodes) return null;
-
+const TableOfContents = ({ headings }: { headings: HeadingNode[] }) => {
   return (
     <div
       className={`toc-component group overflow-x-hidden pb-5 ${
-        nodes.length > 10 && 'h-[750px]'
+        headings.length > 10 && 'h-[750px]'
       } min-w-[300px] overflow-y-auto`}
     >
-      <h3 className="text-slate-400 text-sm uppercase">Table of contents</h3>
-      {renderNodes(nodes)}
+      <Heading variant="h4-all-caps">Table of contents</Heading>
+      {renderNodes(headings)}
     </div>
   );
 };

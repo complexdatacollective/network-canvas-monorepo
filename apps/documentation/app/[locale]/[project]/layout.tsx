@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react';
-
-import { getAllProjects } from '~/lib/docs';
+import { projects } from '~/app/types';
 
 export function generateStaticParams({
   params,
@@ -8,7 +7,6 @@ export function generateStaticParams({
   params: { locale: string };
 }) {
   const { locale } = params;
-  const projects = getAllProjects();
 
   return projects.map((project) => {
     return {

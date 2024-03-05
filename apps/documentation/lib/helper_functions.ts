@@ -6,12 +6,12 @@ import rehypeStringify from 'rehype-stringify';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-
 import type {
   LocalesEnum,
-  SidebarFolderSchema,
-  SidebarPageSchema,
-  SidebarProjectSchema,
+  MetadataFile,
+  SidebarFolder,
+  SidebarPage,
+  SidebarProject,
 } from '~/app/types';
 import { locales, MetadataFileSchema } from '~/app/types';
 import { env } from '../env.mjs';
@@ -92,19 +92,24 @@ export const getNestedPath = (path: string) => {
 
 // WARNING: This is not a drop in replacement solution and
 // it might not work for some edge cases. Test your code!
-export const get = (obj, path, defValue) => {
+export const get = (
+  obj: Record<string | number, unknown>,
+  path: string | string[],
+  defValue: unknown = undefined,
+) => {
   // If path is not defined or it has false value
   if (!path) return undefined;
   // Check if path is string or array. Regex : ensure that we do not have '.' and brackets.
   // Regex explained: https://regexr.com/58j0k
   const pathArray = Array.isArray(path) ? path : path.match(/([^[.\]])+/g);
   // Find value
-  const result = pathArray.reduce(
-    (prevObj, key) => prevObj && prevObj[key],
+  const result = pathArray?.reduce(
+    // @ts-expect-error: No way to type this that I can think of...
+    (prevObj, key) => prevObj?.[key],
     obj,
   );
   // If found value is undefined return default value; otherwise return the value
-  return result === undefined ? defValue : result;
+  return result ?? defValue;
 };
 
 /**
@@ -169,15 +174,6 @@ export const createProjectEntry = (
   const sourceFile = localeIndexFile
     ? join(file.path, file.name, localeIndexFile).replace(process.cwd(), '')
     : undefined;
-
-  console.log('projectsourcefile', {
-    sourceFile,
-    path: file.path,
-    localeIndexFile,
-    metadata,
-    name: file.name,
-    locale,
-  });
 
   return {
     type: 'project',

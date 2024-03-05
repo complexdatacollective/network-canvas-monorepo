@@ -28,6 +28,7 @@ import Link from '~/components/Link';
 import sidebar from '~/public/sidebar.json';
 import { get, relativePathToDocs } from './helper_functions';
 import processYamlMatter from './processYamlMatter';
+import { HeadingNode, headingTree } from './tableOfContents';
 
 export type DocRouteParams = {
   params: {
@@ -122,8 +123,8 @@ export const getDocsForRouteSegment = ({
     }
 
     if (data.sourceFile) {
-      // Handle projects and folders differently, if they have a souceFile
-      // it should generate a path pointing to the folder/project.
+      // Handle projects and folders differently - if they have a souceFile
+      // docPath should generate a path pointing to the folder/project.
       results.push({
         locale,
         project,
@@ -181,14 +182,6 @@ const getSourceFile = (
   );
 };
 
-// Get all project names
-export const getAllProjects = function () {
-  const projects = fs.readdirSync(relativePathToDocs);
-
-  // Make projects unique
-  return [...new Set(projects.flat())];
-};
-
 export async function getDocumentForPath({
   locale,
   project,
@@ -211,6 +204,7 @@ export async function getDocumentForPath({
   const result = await unified()
     .use(remarkParse, { fragment: true })
     .use(remarkFrontmatter)
+    .use(headingTree)
     .use(processYamlMatter)
     .use(remarkRehype)
     .use(rehypeReact, {
@@ -241,6 +235,7 @@ export async function getDocumentForPath({
 
   return {
     frontmatter: validatedFrontmatter,
+    headings: result.data.headings as HeadingNode[],
     component: result.result,
   };
 }
