@@ -20,6 +20,10 @@ export default async function Page({ params }: PageProps) {
   if (document === null) notFound();
 
   return (
-    <Article content={document.component} title={document.frontmatter.title} />
+    <Article
+      content={document.component}
+      title={document.frontmatter.title}
+      headings={document.headings}
+    />
   );
 }
