@@ -41,7 +41,7 @@ const TriggerButton = () => {
             role="button"
             ref={ref}
             tabIndex={0}
-            className="fixed bottom-4 right-4 z-10 flex h-20 w-20 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl"
+            className="fixed bottom-6 right-6 z-10 flex h-20 w-20 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             initial={{ scale: 0 }}

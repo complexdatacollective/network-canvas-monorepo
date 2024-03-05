@@ -1,18 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import clsx from 'clsx';
 
 import { Hero } from '~/components/Hero';
 // import { MobileNavigation } from '~/components/MobileSidebar';
 import { Sidebar } from '~/components/Sidebar';
 import { cn } from '~/lib/utils';
 import SharedNav from './SharedNav';
+import { useLocale } from 'next-intl';
 
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isHomePage = pathname === '/en';
+  const locale = useLocale();
+
+  // Check if we are on the home page by comparing the pathname to our supported locals
+  const isHomePage = pathname === `/${locale}`;
 
   return (
     <div className="flex w-full flex-col">
@@ -24,7 +26,8 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
           'lg:gap-8 lg:px-8',
         )}
       >
-        <Sidebar />
+        {!isHomePage && <Sidebar />}
+
         <main className="flex flex-1">{children}</main>
         <aside id="toc-area" />
       </div>

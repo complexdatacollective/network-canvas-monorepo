@@ -8,7 +8,7 @@ import {
   unstable_setRequestLocale,
 } from 'next-intl/server';
 
-import type { Messages } from '~/app/types';
+import type { LocalesEnum, Messages } from '~/app/types';
 import { locales } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
@@ -33,7 +33,7 @@ export function generateStaticParams() {
 
 type MainLayoutProps = {
   children: React.ReactNode;
-  params: { locale: string };
+  params: { locale: LocalesEnum };
 };
 
 export default async function MainLayout({
@@ -47,16 +47,17 @@ export default async function MainLayout({
   // setting setRequestLocale to support next-intl for static rendering
   unstable_setRequestLocale(locale);
 
-  const now = await getNow(locale);
-  const timeZone = await getTimeZone(locale);
+  const now = await getNow({ locale });
+  const timeZone = await getTimeZone({ locale });
 
-  let messages: Messages;
+  let messages;
 
   try {
-    messages = (await import(`../../messages/${locale}.json`))
-      .default as Messages;
-  } catch (error) {
-    notFound(); // redirecting to 404 page in case there's no translated locale json
+    messages = (await import(`../../messages/${locale}.json`)) as {
+      default: Messages;
+    };
+  } catch (e) {
+    notFound();
   }
 
   return (
@@ -71,7 +72,7 @@ export default async function MainLayout({
             timeZone={timeZone}
             now={now}
             locale={locale}
-            messages={messages}
+            messages={messages.default}
           >
             <LayoutComponent>{children}</LayoutComponent>
             <AIAssistant />

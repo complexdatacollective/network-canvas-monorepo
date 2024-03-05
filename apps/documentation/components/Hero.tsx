@@ -1,11 +1,12 @@
 import { Fragment } from 'react';
-import Link from 'next/link';
 import clsx from 'clsx';
 import { Highlight } from 'prism-react-renderer';
 
 import { Button, Heading, Paragraph } from '@acme/ui';
 
 import { HeroBackground } from '~/components/HeroBackground';
+import { useTranslations } from 'next-intl';
+import { Link } from '~/navigation';
 
 const codeLanguage = 'javascript';
 const code = `export default {
@@ -32,23 +33,28 @@ function TrafficLightsIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
 }
 
 export function Hero() {
+  const t = useTranslations();
+
   return (
     <div className="overflow-hidden bg-primary text-primary-foreground">
       <div className="py-16 sm:px-2 lg:relative lg:px-0 lg:py-20">
         <div className="mx-auto grid grid-cols-1 items-center gap-x-8 gap-y-16 px-4 lg:max-w-6xl lg:grid-cols-2 lg:px-8 xl:gap-x-16 xl:px-12">
           <div className="relative z-10 md:text-center lg:text-left">
             <div className="relative">
-              <Heading variant="h1">Network Canvas Documentation</Heading>
+              <Heading variant="h1">{t('Hero.title')}</Heading>
               <Paragraph className="text-slate-400 mt-3 text-2xl tracking-tight">
-                A home for tutorials, guides, and information about the Network
-                Canvas project.
+                {t('Hero.tagline')}
               </Paragraph>
               <div className="mt-8 flex gap-4 md:justify-center lg:justify-start">
-                <Link href="/en/desktop">
-                  <Button variant="accent">Desktop Software</Button>
+                <Link href="/desktop">
+                  <Button variant="accent">
+                    {t('ProjectSwitcher.desktop.label')}
+                  </Button>
                 </Link>
-                <Link href="/en/fresco">
-                  <Button variant="secondary">Fresco</Button>
+                <Link href="/fresco">
+                  <Button variant="secondary">
+                    {t('ProjectSwitcher.fresco.label')}
+                  </Button>
                 </Link>
               </div>
             </div>

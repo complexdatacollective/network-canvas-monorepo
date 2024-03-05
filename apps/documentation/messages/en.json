@@ -66,14 +66,16 @@
     "dark": "Dark",
     "system": "System"
   },
+  "Hero": {
+    "title": "Welcome to our documentation",
+    "tagline": "A home for tutorials, guides, and information about the Network Canvas project."
+  },
   "Home": {
-    "title": "Home Page"
+    "title": "Home",
+    "subtitle": "Welcome to the Network Canvas documentation. This is a place to learn about the project, find tutorials, and get help with using our software."
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
-  },
-  "ProjectPage": {
-    "title": "This is an introductory page for"
   },
   "AIAssistant": {
     "dialogPlaceholder": "What are the main aims of the Network Canvas project?",
