@@ -15,6 +15,7 @@ import type {
 } from '~/app/types';
 import { locales, MetadataFileSchema } from '~/app/types';
 import { env } from '../env.mjs';
+import { getSourceFile } from './docs';
 
 export const relativePathToDocs = join(
   process.cwd(),
@@ -44,28 +45,19 @@ export function convertToUrlText(text: string): string {
   return cleanedText;
 }
 
-// get available locales for the document
-export function getAvailableLocales() {
-  // const availableLocales = locales.filter((locale) => {
-  //   const localeBasedSidebarData = getLocaleBasedSidebarData(
-  //     sidebarData,
-  //     locale,
-  //   );
-  //   let result;
+// get available locales for the document path
+export function getAvailableLocalesForPath(
+  project: string,
+  pathSegment: string[],
+) {
+  // iterate through all locales and check if the file exists
+  const availableLocales = locales.filter((locale) => {
+    const sourceFile = getSourceFile(locale, project, pathSegment);
+    const isFileExist = !!(sourceFile && existsSync(sourceFile));
+    return isFileExist;
+  });
 
-  //   for (const folder of localeBasedSidebarData) {
-  //     result = isPathExist(folder, filePath);
-  //     if (result) break;
-  //   }
-
-  //   return result;
-  // });
-
-  // return availableLocales;
-
-  // eslint-disable-next-line no-console
-  console.log('reimplement getAvailableLocales');
-  return locales;
+  return availableLocales;
 }
 
 /**
@@ -100,7 +92,7 @@ export const get = (obj, path, defValue) => {
   const pathArray = Array.isArray(path) ? path : path.match(/([^[.\]])+/g);
   // Find value
   const result = pathArray.reduce(
-    (prevObj, key) => prevObj && prevObj[key],
+    (prevObj, key) => prevObj?.[key],
     obj,
   );
   // If found value is undefined return default value; otherwise return the value

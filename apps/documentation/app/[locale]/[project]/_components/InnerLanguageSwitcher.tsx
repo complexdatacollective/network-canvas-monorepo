@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-
-import { getAvailableLocales } from '~/lib/helper_functions';
+import { getAvailableLocalesForPath } from '~/lib/helper_functions';
 
 type InnerLanguageSwitcherProps = {
-  filePath: string;
+  pathSegment: string[];
   currentLocale: string;
+  project: string;
 };
 
 const InnerLanguageSwitcher = async ({
-  filePath,
+  pathSegment,
   currentLocale,
+  project,
 }: InnerLanguageSwitcherProps) => {
   const t = await getTranslations('DocPage');
-  const availableLocales = getAvailableLocales(filePath);
+  const availableLocales = getAvailableLocalesForPath(project, pathSegment);
+  const filePath = `/${project}/` + pathSegment.join('/'); //document file path to navigate to
 
   // removes the current locale from availableLocales
   const supportedLanguages = availableLocales.filter(

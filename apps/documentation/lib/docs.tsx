@@ -147,20 +147,19 @@ export const getDocsForRouteSegment = ({
 };
 
 // Get the sourceFile path from the sidebar.json
-const getSourceFile = (
+export const getSourceFile = (
   locale: string,
   project: string,
   pathSegment?: string[],
 ) => {
-  const sourceFile = get(
+  const projectSourceFile = get(
     sidebar,
     [locale, project, 'sourceFile'],
     null,
   ) as string;
 
-  if (!pathSegment) return join(process.cwd(), sourceFile);
+  if (!pathSegment) return join(process.cwd(), projectSourceFile);
 
-  // TODO: handle sourcefiles for folders
   const pathSegmentWithChildren = pathSegment
     .map((segment, index) => {
       if (index === 0) {
@@ -171,14 +170,15 @@ const getSourceFile = (
     })
     .flat();
 
-  return join(
-    process.cwd(),
-    get(
-      sidebar,
-      [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'],
-      null,
-    ) as string,
-  );
+  const folderSourceFile = get(
+    sidebar,
+    [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'],
+    null,
+  ) as string | null; // Todo: Fix this type
+
+  if (!folderSourceFile) return null;
+
+  return join(process.cwd(), folderSourceFile);
 };
 
 // Get all project names
@@ -200,7 +200,7 @@ export async function getDocumentForPath({
 }) {
   const sourceFile = getSourceFile(locale, project, pathSegment);
 
-  if (!existsSync(sourceFile)) {
+  if (!sourceFile || (sourceFile && !existsSync(sourceFile))) {
     // eslint-disable-next-line no-console
     console.log(`File not found: ${sourceFile}`);
     return null;
