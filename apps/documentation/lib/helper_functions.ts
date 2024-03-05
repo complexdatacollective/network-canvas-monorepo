@@ -35,15 +35,6 @@ export async function markdownToText(markdown: string) {
     .replace(/\.\.\//g, ''); // remove HTML tags and relative paths
 }
 
-// Converts text to URL eg: Network Canvas => network-canvas
-export function convertToUrlText(text: string): string {
-  const lowercaseText = text.toLowerCase();
-  const hyphenatedText = lowercaseText.replace(/\s+/g, '-');
-  const cleanedText = hyphenatedText.replace(/[^a-z0-9-\u0400-\u04FF]/g, '');
-
-  return cleanedText;
-}
-
 // get available locales for the document
 export function getAvailableLocales() {
   // const availableLocales = locales.filter((locale) => {

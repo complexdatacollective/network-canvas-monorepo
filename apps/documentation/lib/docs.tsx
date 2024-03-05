@@ -1,4 +1,4 @@
-import fs, { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join, sep } from 'path';
 import type { Options } from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
@@ -26,9 +26,10 @@ import type {
 } from '~/app/types';
 import Link from '~/components/Link';
 import sidebar from '~/public/sidebar.json';
-import { get, relativePathToDocs } from './helper_functions';
+import { get } from './helper_functions';
 import processYamlMatter from './processYamlMatter';
-import { HeadingNode, headingTree } from './tableOfContents';
+import slug from 'rehype-slug';
+import { type HeadingNode, headingTree } from './tableOfContents';
 
 export type DocRouteParams = {
   params: {
@@ -204,25 +205,23 @@ export async function getDocumentForPath({
   const result = await unified()
     .use(remarkParse, { fragment: true })
     .use(remarkFrontmatter)
-    .use(headingTree)
     .use(processYamlMatter)
     .use(remarkRehype)
+    .use(slug)
+    .use(headingTree)
     .use(rehypeReact, {
       Fragment: prod.Fragment,
       jsx: prod.jsx,
       jsxs: prod.jsxs,
       components: {
+        // @ts-expect-error: Seems to be an issue with React types.
         h1: (props) => <Heading variant="h1" {...props} />,
-        h2: (props) => {
-          console.log('h2 props', props);
-          return <Heading variant="h2" {...props} />;
-        },
-        h3: (props: JSX.IntrinsicElements['h3']) => (
-          <Heading variant="h3" {...props} />
-        ),
-        h4: (props: JSX.IntrinsicElements['h4']) => (
-          <Heading variant="h4" {...props} />
-        ),
+        // @ts-expect-error: Seems to be an issue with React types.
+        h2: (props) => <Heading variant="h2" {...props} />,
+        // @ts-expect-error: Seems to be an issue with React types.
+        h3: (props) => <Heading variant="h3" {...props} />,
+        // @ts-expect-error: Seems to be an issue with React types.
+        h4: (props) => <Heading variant="h4" {...props} />,
         p: Paragraph,
         a: Link,
         ul: UnorderedList,
@@ -234,7 +233,6 @@ export async function getDocumentForPath({
 
   const validatedFrontmatter = FrontmatterSchema.parse(result.data.matter);
 
-  console.log(result.data.headings);
   return {
     frontmatter: validatedFrontmatter,
     headings: result.data.headings as HeadingNode[],

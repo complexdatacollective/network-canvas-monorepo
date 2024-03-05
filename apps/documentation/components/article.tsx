@@ -46,7 +46,7 @@ export default function Article({
         headings.length > 0 &&
         createPortal(
           <TableOfContents headings={headings} sideBar />,
-          document.getElementById('toc-area'),
+          document.getElementById('toc-area')!,
         )}
     </>
   );

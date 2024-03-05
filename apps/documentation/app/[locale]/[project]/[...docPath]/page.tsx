@@ -49,8 +49,6 @@ export default async function Page({ params }: { params: PageParams }) {
 
   if (document === null) notFound();
 
-  // const tableOfContents = collectSections(nodes);
-
   return (
     <Article
       content={document.component}

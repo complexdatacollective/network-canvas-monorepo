@@ -16,9 +16,11 @@ const TOCLink = ({
   sideBar: boolean;
 }) => {
   const ref = useRef<HTMLAnchorElement>(null);
-  const [highlighted] = useHighlighted(node.data.id);
+  const [highlighted] = useHighlighted(node.id);
 
   useEffect(() => {
+    if (!sideBar) return;
+
     if (highlighted && ref.current) {
       ref.current.scrollIntoView({
         behavior: 'auto',
@@ -26,17 +28,16 @@ const TOCLink = ({
         inline: 'nearest',
       });
     }
-  }, [highlighted]);
+  }, [highlighted, sideBar]);
 
   return (
     <Link
       ref={ref}
-      href={`#${node.data.id}`}
+      href={`#${node.id}`}
       className={cn(
         'block text-base transition-colors hover:text-accent',
-        sideBar && 'my-2',
-        sideBar && node.depth === 2 && 'text-sm',
-        sideBar && node.depth === 3 && 'ml-4 text-xs',
+        sideBar && 'my-2 text-sm',
+        sideBar && node.level === 3 && 'ml-4',
         highlighted && 'text-accent',
       )}
     >
@@ -50,7 +51,7 @@ const TableOfContents = ({
   sideBar = false,
 }: {
   headings: HeadingNode[];
-  sideBar: boolean;
+  sideBar?: boolean;
 }) => {
   return (
     <div
@@ -78,7 +79,7 @@ function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
   return (
     <ULComponent>
       {nodes.map((node) => (
-        <LIComponent key={node.data.id}>
+        <LIComponent key={node.id}>
           <TOCLink node={node} sideBar={sideBar} />
           {node.children?.length > 0 && renderNodes(node.children, sideBar)}
         </LIComponent>

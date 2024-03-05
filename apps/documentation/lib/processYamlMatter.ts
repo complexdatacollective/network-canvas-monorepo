@@ -1,8 +1,5 @@
-/**
- * @typedef {import('unist').Node} Node
- * @typedef {import('vfile').VFile} VFile
- */
-
+import type { VFile } from 'vfile';
+import type { Node } from 'unist';
 import { matter } from 'vfile-matter';
 
 /**
@@ -22,7 +19,7 @@ export default function processYamlMatter() {
    * @returns {undefined}
    *   Nothing.
    */
-  return function (_tree, file) {
+  return function (_tree: Node, file: VFile) {
     matter(file, { strip: true });
   };
 }

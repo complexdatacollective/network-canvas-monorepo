@@ -1,71 +1,57 @@
 import { toString } from 'mdast-util-to-string';
-import { remark } from 'remark';
-import { Node } from 'unist';
+import type { Nodes, Root } from 'hast';
 import { visit } from 'unist-util-visit';
 import type { VFile } from 'vfile';
-
-import { convertToUrlText } from './helper_functions';
+import { headingRank } from 'hast-util-heading-rank';
 
 export type HeadingNode = {
   value: string;
-  depth: number;
-  data: {
-    id: string;
-  };
+  level: number;
+  id: string;
   children: HeadingNode[];
 };
 
-export function headingTree(): (node: Node, file: VFile) => void {
+export function headingTree(): (node: Root, file: VFile) => void {
   return (node, file) => {
     file.data.headings = getHeadingsForTree(node);
   };
 }
 
-function getHeadingsForTree(root: Node): HeadingNode[] {
-  const nodes = {};
-  const output: HeadingNode[] = [];
-  const indexMap = {};
-  visit(root, 'heading', (node: HeadingNode) => {
-    addID(node, nodes);
-    transformNode(node, output, indexMap);
+type SpecialNodes = {
+  properties: {
+    id?: string;
+  };
+} & Nodes;
+
+function getHeadingsForTree(root: Nodes): HeadingNode[] {
+  const indexMap: HeadingNode[] = [];
+
+  visit(root, 'element', (node: SpecialNodes) => {
+    if (headingRank(node) && node.properties.id) {
+      const level = headingRank(node)!;
+
+      // If this is a level 2 heading, we want to start a new tree
+      if (level === 2) {
+        indexMap.push({
+          value: toString(node),
+          level,
+          id: node.properties.id,
+          children: [],
+        });
+      }
+
+      // If level 3, add to the last level 2 headings children
+      if (level === 3) {
+        const lastLevel2 = indexMap[indexMap.length - 1];
+        lastLevel2!.children.push({
+          value: toString(node),
+          level,
+          id: node.properties.id,
+          children: [],
+        });
+      }
+    }
   });
 
-  return output;
-}
-
-// Add an "id" attribute to the heading elements based on their content
-function addID(node: HeadingNode, nodes: Record<string, number>): void {
-  console.log('addId', node, nodes);
-  const id = node.children.map((c: HeadingNode) => c.value || '').join('');
-  nodes[id] = (nodes[id] || 0) + 1;
-  node.data = node.data || {
-    id: 'booya',
-    // id: convertToUrlText(`${id}${nodes[id] > 1 ? ` ${nodes[id] - 1}` : ''}`),
-  };
-}
-
-function transformNode(
-  node: HeadingNode,
-  output: HeadingNode[],
-  indexMap: Record<string, any>,
-): void {
-  const transformedNode: HeadingNode = {
-    value: toString(node),
-    depth: node.depth,
-    data: node.data,
-    children: [],
-  };
-
-  console.log('transformNode', node, transformedNode);
-
-  if (node.depth === 2) {
-    output.push(transformedNode);
-    indexMap[node.depth] = transformedNode;
-  } else {
-    const parent = indexMap[node.depth - 1];
-    if (parent) {
-      parent.children.push(transformedNode);
-      indexMap[node.depth] = transformedNode;
-    }
-  }
+  return indexMap;
 }
