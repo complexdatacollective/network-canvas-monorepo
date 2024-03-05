@@ -76,10 +76,10 @@
     "title": "This is an introductory page for"
   },
   "AIAssistant": {
-    "dialogPlaceholder": "What is the main aim of the Network Canvas project?",
-    "q1": "How does it work?",
-    "q2": "What is Network Canvas?",
-    "popupText": "Hi, how can I help you?",
-    "welcomeMessage": "Hi, I'm an AI assistant trained on documentation. Ask me anything about Network Canvas."
+    "dialogPlaceholder": "What are the main aims of the Network Canvas project?",
+    "q2": "How do I get started with Network Canvas?",
+    "q1": "What is Network Canvas?",
+    "popupText": "Click this button to open our AI assistant. It's a great way to get quick answers to your questions.",
+    "welcomeMessage": "Hi, I'm an AI assistant trained on the Network Canvas documentation. Ask me anything about Network Canvas."
   }
 }

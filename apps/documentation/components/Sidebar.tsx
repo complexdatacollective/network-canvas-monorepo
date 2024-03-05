@@ -74,7 +74,7 @@ const SidebarFolder = ({
         if (alwaysOpen) return;
         setIsOpen(!isOpen);
       }}
-      className="my-4 flex flex-col overflow-hidden"
+      className={cn('my-4 flex flex-col')}
     >
       <CollapsibleTrigger
         className="my-1 flex flex-1 cursor-pointer items-center justify-between text-base font-semibold capitalize"
@@ -105,7 +105,7 @@ const SidebarFolder = ({
         )}
       </CollapsibleTrigger>
       <MotionCollapsibleContent
-        className="flex flex-col"
+        className="flex flex-col overflow-y-hidden"
         forceMount
         initial={{ height: isOpen ? 'auto' : 0 }}
         animate={{ height: isOpen ? 'auto' : 0 }}
@@ -131,8 +131,8 @@ const SidebarLink = ({
     <Link
       href={href}
       onClick={onClick}
-      className={clsx(
-        'flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-base transition-colors',
+      className={cn(
+        'flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors',
         isActive && 'border-accent/100 font-semibold text-accent',
       )}
     >
@@ -175,7 +175,7 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        'sticky top-2 hidden max-h-[calc(100vh-1rem)] w-80 overflow-y-auto overflow-x-hidden lg:block',
+        'sticky top-2 hidden max-h-[calc(100vh-1rem)] w-80 overflow-y-auto px-2 lg:block',
         className,
       )}
     >

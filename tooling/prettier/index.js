@@ -3,7 +3,7 @@ import { fileURLToPath } from "url";
 /** @typedef {import("prettier").Config} PrettierConfig */
 /** @typedef {import("prettier-plugin-tailwindcss").PluginOptions} TailwindConfig */
 
-/** @type { PrettierConfig | SortImportsConfig | TailwindConfig } */
+/** @type { PrettierConfig | TailwindConfig } */
 const config = {
   plugins: [
     "prettier-plugin-tailwindcss",

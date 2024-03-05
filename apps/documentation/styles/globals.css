@@ -59,6 +59,7 @@
   }
 }
 
+
 .DocSearch-Button {
     --docsearch-primary-color: hsl(var(--primary));
     --docsearch-text-color: hsl(var(--foreground));
