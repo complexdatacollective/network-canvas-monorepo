@@ -12,13 +12,6 @@ import Menu from './Menu';
 export default function SharedNav({ active }: { active?: string }) {
   const t = useTranslations('SharedNavigation');
 
-  const getLinkClasses = (name?: string) =>
-    cn(
-      headingVariants({ variant: 'h4-all-caps' }),
-      'underline-offset-8 hover:text-success',
-      name === active && 'text-success underline',
-    );
-
   return (
     <motion.nav
       className="justify-cente relative mx-auto flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4"
@@ -32,7 +25,7 @@ export default function SharedNav({ active }: { active?: string }) {
         // delay: 1.5,
       }}
     >
-      <Link href="/" className="flex-shrink-0 pr-10">
+      <Link href="/" className="focusable flex-shrink-0 pr-10">
         <Image
           src="/images/mark.svg"
           alt="Network Canvas Documentation"

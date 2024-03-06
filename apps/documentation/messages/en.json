@@ -15,8 +15,8 @@
   },
   "DocSearch": {
     "button": {
-      "buttonText": "Search",
-      "buttonAriaLabel": "Search"
+      "buttonText": "Search documentation",
+      "buttonAriaLabel": "Open search mdal"
     },
     "modal": {
       "searchBox": {

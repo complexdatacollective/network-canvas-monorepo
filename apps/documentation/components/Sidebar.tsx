@@ -78,11 +78,11 @@ const SidebarFolder = ({
       className={cn('my-4 flex flex-col')}
     >
       <CollapsibleTrigger
-        className="my-1 flex flex-1 cursor-pointer items-center justify-between text-base font-semibold capitalize"
+        className="focusable my-1 flex flex-1 cursor-pointer items-center justify-between text-base font-semibold capitalize"
         asChild
       >
         {href ? (
-          <Link href={href}>
+          <Link href={href} className="">
             {label}{' '}
             {!alwaysOpen && (
               <MotionChevron
@@ -133,7 +133,7 @@ const SidebarLink = ({
       href={href}
       onClick={onClick}
       className={cn(
-        'flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors',
+        'focusable flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors',
         isActive && 'border-accent/100 font-semibold text-accent',
       )}
     >

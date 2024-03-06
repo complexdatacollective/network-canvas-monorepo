@@ -1,12 +1,10 @@
 import { Fragment } from 'react';
-import clsx from 'clsx';
 import { Highlight } from 'prism-react-renderer';
-
-import { Button, Heading, Paragraph } from '@acme/ui';
-
+import { Heading, Paragraph, buttonVariants } from '@acme/ui';
 import { HeroBackground } from '~/components/HeroBackground';
 import { useTranslations } from 'next-intl';
 import { Link } from '~/navigation';
+import { cn } from '~/lib/utils';
 
 const codeLanguage = 'javascript';
 const code = `export default {
@@ -46,15 +44,17 @@ export function Hero() {
                 {t('Hero.tagline')}
               </Paragraph>
               <div className="mt-8 flex gap-4 md:justify-center lg:justify-start">
-                <Link href="/desktop">
-                  <Button variant="accent">
-                    {t('ProjectSwitcher.desktop.label')}
-                  </Button>
+                <Link
+                  href="/desktop"
+                  className={buttonVariants({ variant: 'accent' })}
+                >
+                  {t('ProjectSwitcher.desktop.label')}
                 </Link>
-                <Link href="/fresco">
-                  <Button variant="secondary">
-                    {t('ProjectSwitcher.fresco.label')}
-                  </Button>
+                <Link
+                  href="/fresco"
+                  className={buttonVariants({ variant: 'secondary' })}
+                >
+                  {t('ProjectSwitcher.fresco.label')}
                 </Link>
               </div>
             </div>
@@ -75,7 +75,7 @@ export function Hero() {
                     {tabs.map((tab) => (
                       <div
                         key={tab.name}
-                        className={clsx(
+                        className={cn(
                           'flex h-6 rounded-full',
                           tab.isActive
                             ? 'from-sky-400/30 via-sky-400 to-sky-400/30 text-sky-300 bg-gradient-to-r p-px font-medium'
@@ -83,7 +83,7 @@ export function Hero() {
                         )}
                       >
                         <div
-                          className={clsx(
+                          className={cn(
                             'flex items-center rounded-full px-2.5',
                             tab.isActive && 'bg-slate-800',
                           )}
@@ -120,10 +120,7 @@ export function Hero() {
                         getTokenProps,
                       }) => (
                         <pre
-                          className={clsx(
-                            className,
-                            'flex overflow-x-auto pb-6',
-                          )}
+                          className={cn(className, 'flex overflow-x-auto pb-6')}
                           style={style}
                         >
                           <code className="px-4">

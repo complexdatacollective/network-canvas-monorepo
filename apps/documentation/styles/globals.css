@@ -40,6 +40,9 @@
 
     --panel: var(--platinum);
 
+    /* Focus ring */
+    --ring: var(--mustard);
+
     --input: 0 0% 100%;
     --input-foreground: var(--cyber-grape);
 
@@ -56,6 +59,14 @@
   body {
     @apply text-foreground;
     @apply bg-background;
+  }
+}
+
+@layer utilities {
+  .focusable {
+    @apply focus-visible:outline-4;
+    @apply focus-visible:outline-offset-4;
+    @apply focus-visible:outline-mustard;
   }
 }
 
@@ -109,6 +120,7 @@
     @apply bg-input !important;
     @apply m-0 !important;
     @apply px-2 !important;
+    @apply focusable !important;
 
     border: 1px solid hsl(var(--border)) !important;
     font-weight: inherit !important;

@@ -50,7 +50,7 @@ const links = [
 const getLinkClasses = (name?: string) =>
   cn(
     headingVariants({ variant: 'h4-all-caps' }),
-    'underline-offset-8 hover:text-success',
+    'focusable underline-offset-8 hover:text-success',
     // name === active && 'text-success underline',
   );
 
@@ -58,8 +58,8 @@ const NavigationMenuDemo = () => {
   const t = useTranslations('SharedNavigation');
 
   return (
-    <NavigationMenu.Root className="relative z-10 flex ">
-      <NavigationMenu.List className="center m-0 flex list-none items-center justify-center gap-10">
+    <NavigationMenu.Root className="relative z-10 flex">
+      <NavigationMenu.List className="center m-0 flex list-none items-center gap-10">
         {links.map((link, i) => {
           if (link.menu) {
             return (
@@ -69,18 +69,20 @@ const NavigationMenuDemo = () => {
                 >
                   {t(link.translationKey)}{' '}
                   <CaretDownIcon
-                    className="text-violet10 duration-[250] relative top-[1px] transition-transform ease-in group-data-[state=open]:-rotate-180"
+                    className="duration-[250] relative top-[1px] transition-transform ease-in group-data-[state=open]:-rotate-180"
                     aria-hidden
                   />
                 </NavigationMenu.Trigger>
                 <NavigationMenu.Content className="absolute right-0 top-0 w-full">
-                  <ul className="m-0 grid grid-cols-3 gap-4 p-6 sm:w-[800px]">
+                  <ul className="m-0 grid w-full grid-cols-3 gap-4 p-6">
                     {link.menu.map((subLink, i) => (
                       <li key={i} className="col-span-1 grid">
                         <NavigationMenu.Link asChild>
                           <a
-                            className="flex h-full w-full select-none
-                            flex-col justify-end rounded-[6px] bg-accent p-4 text-accent-foreground no-underline outline-none focus:shadow-md"
+                            className={cn(
+                              'flex h-full w-full select-none flex-col justify-end rounded-md bg-accent p-4 text-accent-foreground no-underline outline-none',
+                              'focusable',
+                            )}
                             href={subLink.href}
                           >
                             {/* <Image
@@ -131,12 +133,12 @@ const NavigationMenuDemo = () => {
           );
         })}
         <NavigationMenu.Indicator className="data-[state=visible]:animate-fadeIn data-[state=hidden]:animate-fadeOut top-full z-[1] flex h-[10px] items-end justify-center overflow-hidden transition-[width,transform_250ms_ease]">
-          <div className="relative top-[70%] h-[14px] w-[14px] rotate-[45deg] rounded-tl-[2px] bg-white" />
+          <div className="relative top-[70%] h-[14px] w-[14px] rotate-[45deg] rounded-tl-[2px] bg-card" />
         </NavigationMenu.Indicator>
       </NavigationMenu.List>
 
-      <div className="perspective-[2000px] absolute right-0 top-full flex w-full justify-center">
-        <NavigationMenu.Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut relative mt-[10px] h-[var(--radix-navigation-menu-viewport-height)] w-full origin-[top_center] overflow-hidden rounded-[6px] bg-white shadow-xl transition-[width,_height] duration-300" />
+      <div className="perspective-[2000px] absolute right-0 top-full flex justify-center">
+        <NavigationMenu.Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut relative mt-[10px] h-[var(--radix-navigation-menu-viewport-height)] w-[calc(100vw-3rem)] origin-[top_center] overflow-hidden rounded-[6px] bg-white shadow-xl transition-[width,_height] duration-300 lg:w-[50rem]" />
       </div>
     </NavigationMenu.Root>
   );

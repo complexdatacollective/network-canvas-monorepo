@@ -35,7 +35,7 @@ const TOCLink = ({
       ref={ref}
       href={`#${node.id}`}
       className={cn(
-        'my-2 block text-base transition-colors hover:text-accent',
+        'focusable my-2 block text-base transition-colors hover:text-accent',
         sideBar && 'text-sm',
         node.level === 3 && 'ml-4 font-normal',
         sideBar && highlighted && 'font-semibold text-accent',
