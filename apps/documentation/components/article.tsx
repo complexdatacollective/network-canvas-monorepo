@@ -25,7 +25,7 @@ export default function Article({
 
   return (
     <>
-      <article className="max-w-[75ch] flex-1">
+      <article className="mb-20 max-w-[75ch] flex-1">
         <header>
           <Heading variant="h4-all-caps" margin="none" className="text-accent">
             {project} {section && <>&#129046; {section}</>}
