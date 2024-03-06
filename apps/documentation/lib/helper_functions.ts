@@ -167,9 +167,12 @@ export const createProjectEntry = (
     ? join(file.path, file.name, localeIndexFile).replace(process.cwd(), '')
     : undefined;
 
+  // replace double backslashes with forward slashes for windows
+  const formattedSourceFile = sourceFile?.replace(/\\/g, '/');
+
   return {
     type: 'project',
-    sourceFile,
+    sourceFile: formattedSourceFile,
     label: metadata.localeLabels?.[locale] ?? file.name,
     children: {},
   };
@@ -193,10 +196,13 @@ export const createFolderEntry = (
     ? join(file.path, file.name, localeIndexFile).replace(process.cwd(), '')
     : undefined;
 
+  // replace double backslashes with forward slashes for windows
+  const formattedSourceFile = sourceFile?.replace(/\\/g, '/');
+
   return {
     type: 'folder',
     expanded: metadata.isExpanded ?? false,
-    sourceFile,
+    sourceFile: formattedSourceFile,
     label: metadata.localeLabels?.[locale] ?? file.name,
     children: {},
   };
@@ -214,9 +220,14 @@ export const createPageEntry = (
   matterResult: matter.GrayMatterFile<string>,
 ): SidebarPage => {
   const title = matterResult.data?.title as string | undefined;
+  const sourceFile = join(file.path, file.name).replace(process.cwd(), '');
+
+  // replace double backslashes with forward slashes for windows
+  const formattedSourceFile = sourceFile?.replace(/\\/g, '/');
+
   return {
     type: 'page',
-    sourceFile: join(file.path, file.name).replace(process.cwd(), ''),
+    sourceFile: formattedSourceFile,
     label: title ?? file.name,
   };
 };
