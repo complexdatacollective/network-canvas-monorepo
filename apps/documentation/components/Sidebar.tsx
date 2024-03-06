@@ -2,7 +2,6 @@ import { sep } from 'path';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLocale } from 'next-intl';
