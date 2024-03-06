@@ -29,7 +29,9 @@ export const processSourceFile = (
   sourceFile?: string,
 ) => {
   if (!sourceFile) return;
-  const pathSegments = sourceFile.split(sep).slice(2);
+  const pathSegments = sourceFile.split(/[\\/]/).slice(2);
+
+  console.log(sourceFile, pathSegments);
 
   let returnPath = '';
 
