@@ -8,10 +8,9 @@ const config: Pick<
   darkMode: ['class'],
   content: [
     ...sharedConfig.content,
-    './pages/**/*.{ts,tsx}',
+    './lib/**/*.{ts,tsx}', // For JSX components in MD
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
     '../../packages/ui/**/*.{ts,tsx}', // UI package
   ],
   presets: [sharedConfig],

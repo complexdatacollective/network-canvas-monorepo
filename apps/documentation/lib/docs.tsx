@@ -191,7 +191,7 @@ export const getSourceFile = (
     sidebar,
     [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'],
     null,
-  ) as string | null; // Todo: Fix this type
+  ) as string | null;
 
   if (!folderSourceFile) return null;
 
@@ -222,8 +222,8 @@ export async function getDocumentForPath({
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype)
-    .use(slug)
-    .use(headingTree)
+    .use(slug) // Add IDs to headings
+    .use(headingTree) // Create a tree of headings in data.headings
     .use(rehypeReact, {
       Fragment: prod.Fragment,
       jsx: prod.jsx,
@@ -242,6 +242,17 @@ export async function getDocumentForPath({
         ul: UnorderedList,
         ol: OrderedList,
         li: ListItem,
+        blockquote: (props) => (
+          <blockquote className="my-4 border-s-4 border-accent bg-card p-4">
+            {props.children}
+          </blockquote>
+        ),
+        pre: (props) => (
+          <pre className="overflow-x-auto bg-card p-4">{props.children}</pre>
+        ),
+        code: (props) => (
+          <code className="p-1 font-mono text-sm">{props.children}</code>
+        ),
       },
     } as Options)
     .process(markdownFile);
