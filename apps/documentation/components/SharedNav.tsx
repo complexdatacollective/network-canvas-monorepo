@@ -17,7 +17,7 @@ export default function SharedNav({ active }: { active?: string }) {
     );
 
   return (
-    <nav className="justify-cente relative mx-auto mb-4 flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4">
+    <nav className="relative mx-auto mb-4 flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4">
       <Link href="/" aria-label="Home page" className="flex-shrink-0 pr-10">
         <Image
           src="/images/mark.svg"
