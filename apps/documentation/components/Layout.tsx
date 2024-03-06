@@ -18,7 +18,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex w-full flex-col">
-      {/* <SharedNav active="Documentation" /> */}
+      <SharedNav active="Documentation" />
       <MobileNavBar />
       {isHomePage && <Hero />}
       <div
