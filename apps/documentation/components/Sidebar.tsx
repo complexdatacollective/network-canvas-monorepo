@@ -142,6 +142,31 @@ const SidebarLink = ({
   );
 };
 
+const renderSidebarItem = (
+  item: TSidebarFolder | SidebarPage,
+  locale: LocalesEnum,
+) => {
+  const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
+  if (item.type === 'folder') {
+    return (
+      <SidebarFolder
+        key={item.label}
+        label={item.label}
+        alwaysOpen={item.expanded}
+        href={sourceFile}
+      >
+        {Object.values(item.children).map((child) =>
+          renderSidebarItem(child, locale),
+        )}
+      </SidebarFolder>
+    );
+  } else {
+    return (
+      <SidebarLink key={item.label} href={sourceFile!} label={item.label} />
+    );
+  }
+};
+
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as LocalesEnum;
@@ -150,28 +175,6 @@ export function Sidebar({ className }: { className?: string }) {
   const typedSidebarData = sidebarData as TSideBar;
 
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
-
-  const renderSidebarItem = (item: TSidebarFolder | SidebarPage) => {
-    const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
-    if (item.type === 'folder') {
-      return (
-        <SidebarFolder
-          key={item.label}
-          label={item.label}
-          alwaysOpen={item.expanded}
-          href={sourceFile}
-        >
-          {Object.values(item.children).map((child) =>
-            renderSidebarItem(child),
-          )}
-        </SidebarFolder>
-      );
-    } else {
-      return (
-        <SidebarLink key={item.label} href={sourceFile!} label={item.label} />
-      );
-    }
-  };
 
   return (
     <nav
@@ -184,7 +187,30 @@ export function Sidebar({ className }: { className?: string }) {
       <ProjectSwitcher />
 
       {Object.values(formattedSidebarData).map((item) =>
-        renderSidebarItem(item),
+        renderSidebarItem(item, locale),
+      )}
+    </nav>
+  );
+}
+
+export function SidebarMobile({ className }: { className?: string }) {
+  const pathname = usePathname();
+  const locale = useLocale() as LocalesEnum;
+  const project = pathname.split('/')[2]!;
+
+  const typedSidebarData = sidebarData as TSideBar;
+
+  const formattedSidebarData = typedSidebarData[locale]![project]!.children;
+
+  return (
+    <nav
+      className={cn(
+        'block h-screen w-80 overflow-y-auto bg-slate-blue px-2 lg:hidden',
+        className,
+      )}
+    >
+      {Object.values(formattedSidebarData).map((item) =>
+        renderSidebarItem(item, locale),
       )}
     </nav>
   );
