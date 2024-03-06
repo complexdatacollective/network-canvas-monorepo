@@ -1,10 +1,13 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-
+import { motion, spring } from 'framer-motion';
 import { Button, headingVariants } from '@acme/ui';
 
 import { cn } from '~/lib/utils';
+import Menu from './Menu';
 
 export default function SharedNav({ active }: { active?: string }) {
   const t = useTranslations('SharedNavigation');
@@ -17,14 +20,26 @@ export default function SharedNav({ active }: { active?: string }) {
     );
 
   return (
-    <nav className="justify-cente relative mx-auto mb-4 flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4">
-      <Link href="/" aria-label="Home page" className="flex-shrink-0 pr-10">
+    <motion.nav
+      className="justify-cente relative mx-auto flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4"
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{
+        type: 'spring',
+        stiffness: 200,
+        damping: 30,
+        mass: 1,
+        // delay: 1.5,
+      }}
+    >
+      <Link href="/" className="flex-shrink-0 pr-10">
         <Image
           src="/images/mark.svg"
           alt="Network Canvas Documentation"
           width={48}
           height={48}
           className="h-9 w-9 lg:hidden"
+          priority
         />
         <Image
           src="/images/typemark-negative.svg"
@@ -34,31 +49,7 @@ export default function SharedNav({ active }: { active?: string }) {
           className="hidden h-12 w-auto lg:block"
         />
       </Link>
-      <ul className="flex items-center gap-10">
-        <li>
-          <Link
-            href="https://community.networkcanvas.com"
-            className={getLinkClasses('Community')}
-          >
-            {t('community')}
-          </Link>
-        </li>
-        <li>
-          <Link href="/" className={getLinkClasses('Documentation')}>
-            {t('documentation')}
-          </Link>
-        </li>
-        <li>
-          <Link href="#" className={getLinkClasses()}>
-            {t('projects')}
-          </Link>
-        </li>
-        <li>
-          <Link href="https://networkcanvas.com/download">
-            <Button>{t('download')}</Button>
-          </Link>
-        </li>
-      </ul>
-    </nav>
+      <Menu />
+    </motion.nav>
   );
 }

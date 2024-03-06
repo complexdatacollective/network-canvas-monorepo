@@ -11,10 +11,12 @@ export default function Article({
   content,
   headings,
   title,
+  showToc = false,
 }: {
   content: JSX.Element;
-  headings?: HeadingNode[];
+  headings: HeadingNode[];
   title: string;
+  showToc?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -34,7 +36,7 @@ export default function Article({
             {title}
           </Heading>
         </header>
-        {headings && headings.length > 0 && (
+        {showToc && (
           <div className="xl:hidden">
             <TableOfContents headings={headings} />
           </div>
@@ -42,8 +44,7 @@ export default function Article({
         {content}
       </article>
       {mounted &&
-        headings &&
-        headings.length > 0 &&
+        showToc &&
         createPortal(
           <TableOfContents headings={headings} sideBar />,
           document.getElementById('toc-area')!,

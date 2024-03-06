@@ -6,9 +6,11 @@ import rehypeReact from 'rehype-react';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
+import rehypeRaw from 'rehype-raw';
 import { unified } from 'unified';
 import { z } from 'zod';
 import {
+  Button,
   Heading,
   ListItem,
   OrderedList,
@@ -30,6 +32,8 @@ import { get } from './helper_functions';
 import processYamlMatter from './processYamlMatter';
 import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
+import StandAloneImage from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
+import TipBox from '~/app/[locale]/[project]/_components/customComponents/TipBox';
 
 export type DocRouteParams = {
   params: {
@@ -221,13 +225,17 @@ export async function getDocumentForPath({
     .use(remarkParse, { fragment: true })
     .use(remarkFrontmatter)
     .use(processYamlMatter)
-    .use(remarkRehype)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw, {
+      passThrough: ['link'],
+    }) // Allow raw HTML
     .use(slug) // Add IDs to headings
     .use(headingTree) // Create a tree of headings in data.headings
     .use(rehypeReact, {
       Fragment: prod.Fragment,
       jsx: prod.jsx,
       jsxs: prod.jsxs,
+      passNode: true,
       components: {
         // @ts-expect-error: Seems to be an issue with React types.
         h1: (props) => <Heading variant="h1" {...props} />,
@@ -253,6 +261,16 @@ export async function getDocumentForPath({
         code: (props) => (
           <code className="p-1 font-mono text-sm">{props.children}</code>
         ),
+        button: (props) => (
+          // @ts-expect-error: Seems to be an issue with React types.
+          <Button variant="default" className="mt-4" {...props} />
+        ),
+        link: (props) => {
+          console.log('link props', props);
+          return <Link {...props} />;
+        },
+        standaloneimage: StandAloneImage,
+        tipbox: TipBox,
       },
     } as Options)
     .process(markdownFile);

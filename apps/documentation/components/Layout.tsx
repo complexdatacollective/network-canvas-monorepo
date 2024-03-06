@@ -6,7 +6,7 @@ import { Hero } from '~/components/Hero';
 // import { MobileNavigation } from '~/components/MobileSidebar';
 import { Sidebar } from '~/components/Sidebar';
 import { cn } from '~/lib/utils';
-import SharedNav from './SharedNav';
+import SharedNav from './SharedNav/SharedNav';
 import { useLocale } from 'next-intl';
 
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
