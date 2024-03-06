@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import type fs from 'node:fs';
 import matter from 'gray-matter';
 import rehypeStringify from 'rehype-stringify';
@@ -72,7 +72,7 @@ export const getNestedPath = (path: string) => {
   const withoutRelativePath = path.replace(relativePathToDocs, '');
 
   // Split the path into an array of folders
-  const asArray = withoutRelativePath.split('/').filter(Boolean);
+  const asArray = withoutRelativePath.split(sep).filter(Boolean);
 
   // insert 'children', between each value
   return asArray
