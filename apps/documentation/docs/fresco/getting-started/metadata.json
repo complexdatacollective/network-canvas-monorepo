@@ -5,8 +5,9 @@
     "ru": "Начиная"
   },
   "localeIndexFiles": {
-    "en": "installation.en.mdx",
-    "ru": "installation.ru.mdx"
+    "en": "deployment-guide.en.mdx",
+    "ru": "deployment-guide.ru.mdx"
   },
+  "isExpanded": true,
   "slug": "getting-started"
 }
