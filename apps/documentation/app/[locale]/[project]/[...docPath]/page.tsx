@@ -54,6 +54,7 @@ export default async function Page({ params }: { params: PageParams }) {
       content={document.component}
       title={document.frontmatter.title}
       headings={document.headings}
+      showToc={document.frontmatter.toc && document.headings.length > 0}
     />
   );
 }

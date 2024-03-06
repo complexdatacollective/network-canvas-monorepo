@@ -59,6 +59,20 @@
     "community": "Community",
     "documentation": "Documentation",
     "projects": "Projects",
+    "projectsChildren": {
+      "partner-services": {
+        "label": "Partner Services",
+        "description": "Evaluating Network Canvas in the context of partner notification services."
+      },
+      "fresco": {
+        "label": "Fresco",
+        "description": "A pilot project to bring Network Canvas interviews to the web browser."
+      },
+      "studio": {
+        "label": "Studio",
+        "description": "A web-based platform for creating and sharing network data collection instruments."
+      }
+    },
     "download": "Download"
   },
   "ThemeTranslations": {
@@ -67,7 +81,7 @@
     "system": "System"
   },
   "Hero": {
-    "title": "Welcome to our documentation",
+    "title": "Welcome to our documentation!",
     "tagline": "A home for tutorials, guides, and information about the Network Canvas project."
   },
   "Home": {

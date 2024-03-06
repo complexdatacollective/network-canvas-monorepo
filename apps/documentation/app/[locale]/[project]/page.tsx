@@ -24,6 +24,7 @@ export default async function Page({ params }: PageProps) {
       content={document.component}
       title={document.frontmatter.title}
       headings={document.headings}
+      showToc={document.frontmatter.toc && document.headings.length > 0}
     />
   );
 }

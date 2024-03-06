@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Hero } from '~/components/Hero';
 import { Sidebar } from '~/components/Sidebar';
 import { cn } from '~/lib/utils';
-import SharedNav from './SharedNav';
+import SharedNav from './SharedNav/SharedNav';
 import { useLocale } from 'next-intl';
 import MobileNavBar from '~/components/MobileNavBar';
 
