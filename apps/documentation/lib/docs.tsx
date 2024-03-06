@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'fs';
-import { join, sep } from 'path';
+import { join } from 'path';
 import type { Options } from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 import rehypeReact from 'rehype-react';
@@ -62,7 +62,7 @@ export type Frontmatter = z.infer<typeof FrontmatterSchema>;
 // Process docPaths to remove CWD, docs subdirectory, file extensions, and split into segments
 export const processPath = (docPath: string) => {
   const processedPath = docPath
-    .split(sep)
+    .split('/')
     .slice(3) // First element is empty string, second is 'docs', third is the project name
     // Process the last item to remove the locale and file extension
     .map((segment, index, array) => {
