@@ -1,16 +1,18 @@
-import { cn } from "../utils";
+import { cn } from '../utils';
 
 export type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
   children: React.ReactNode;
   className?: string;
 };
 
-export function UnorderedList({
-  children,
-  className,
-}: UnorderedListProps) {
+const listContainerClasses = cn(
+  'mb-5 ml-8 text-base [&>li]:mt-2',
+  // '[&:not(:first-child)]:my-0',
+);
+
+export function UnorderedList({ children, className }: UnorderedListProps) {
   return (
-    <ul className={cn('my-4 ml-8 list-disc [&>li]:mt-2 text-base', className)}>
+    <ul className={cn(listContainerClasses, 'list-disc', className)}>
       {children}
     </ul>
   );
@@ -21,12 +23,9 @@ export type OrderedListProps = React.HTMLAttributes<HTMLOListElement> & {
   className?: string;
 };
 
-export function OrderedList({
-  children,
-  className,
-}: OrderedListProps) {
+export function OrderedList({ children, className }: OrderedListProps) {
   return (
-    <ol className={cn('my-4 ml-8 list-decimal [&>li]:mt-2 text-base', className)}>
+    <ol className={cn(listContainerClasses, 'list-decimal', className)}>
       {children}
     </ol>
   );
@@ -37,14 +36,10 @@ export type ListItemProps = React.HTMLAttributes<HTMLLIElement> & {
   className?: string;
 };
 
-export function ListItem({
-  children,
-  className,
-}: ListItemProps) {
+export function ListItem({ children, className }: ListItemProps) {
   return (
-    <li className={cn('text-pretty', className)}>
+    <li className={cn('text-pretty [&>ol]:mb-0 [&>ul]:mb-0', className)}>
       {children}
     </li>
   );
 }
-

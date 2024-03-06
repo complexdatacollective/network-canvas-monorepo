@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import useHighlighted from '~/hooks/useHighlighted';
 import { type HeadingNode } from '~/lib/tableOfContents';
-import { Heading, ListItem, OrderedList } from '@acme/ui';
+import { Heading } from '@acme/ui';
 import { cn } from '~/lib/utils';
 
 const TOCLink = ({
@@ -35,10 +35,10 @@ const TOCLink = ({
       ref={ref}
       href={`#${node.id}`}
       className={cn(
-        'block text-base transition-colors hover:text-accent',
-        sideBar && 'my-2 text-sm',
-        sideBar && node.level === 3 && 'ml-4',
-        highlighted && 'text-accent',
+        'my-2 block text-base transition-colors hover:text-accent',
+        sideBar && 'text-sm',
+        node.level === 3 && 'ml-4 font-normal',
+        sideBar && highlighted && 'font-semibold text-accent',
       )}
     >
       {node.value}
@@ -57,12 +57,13 @@ const TableOfContents = ({
     <div
       className={cn(
         'group',
-        sideBar && 'sticky top-2 w-80 overflow-y-auto overflow-x-hidden pb-5',
-        sideBar && headings.length > 10 && 'h-[750px]',
+        sideBar &&
+          'sticky top-2 max-h-[calc(100vh-1rem)] w-72 overflow-y-auto overflow-x-hidden',
+        !sideBar && 'mb-5 rounded-lg border border-border bg-input px-6 py-4',
       )}
     >
       <Heading
-        variant={sideBar ? 'h4-all-caps' : 'h2'}
+        variant={sideBar ? 'h4-all-caps' : 'h3'}
         className={cn(sideBar && 'mb-2')}
       >
         Table of Contents
@@ -73,18 +74,18 @@ const TableOfContents = ({
 };
 
 function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
-  const ULComponent = sideBar ? 'ul' : OrderedList;
-  const LIComponent = sideBar ? 'li' : ListItem;
-
   return (
-    <ULComponent>
+    <ol>
       {nodes.map((node) => (
-        <LIComponent key={node.id}>
+        <li
+          key={node.id}
+          className={cn('list-none', `ml-[${0.5 * node.level}rem]`)}
+        >
           <TOCLink node={node} sideBar={sideBar} />
           {node.children?.length > 0 && renderNodes(node.children, sideBar)}
-        </LIComponent>
+        </li>
       ))}
-    </ULComponent>
+    </ol>
   );
 }
 

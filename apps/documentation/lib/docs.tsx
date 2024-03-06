@@ -8,7 +8,6 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { z } from 'zod';
-
 import {
   Heading,
   ListItem,
@@ -17,12 +16,13 @@ import {
   UnorderedList,
 } from '@acme/ui';
 
-import type {
-  LocalesEnum,
-  SidebarFolder,
-  SidebarPage,
-  SidebarProject,
-  TSideBar,
+import {
+  locales,
+  type LocalesEnum,
+  type SidebarFolder,
+  type SidebarPage,
+  type SidebarProject,
+  type TSideBar,
 } from '~/app/types';
 import Link from '~/components/Link';
 import sidebar from '~/public/sidebar.json';
@@ -58,6 +58,21 @@ export const FrontmatterSchema = z.object({
 });
 
 export type Frontmatter = z.infer<typeof FrontmatterSchema>;
+
+// get available locales for the document path
+export function getAvailableLocalesForPath(
+  project: string,
+  pathSegment: string[],
+) {
+  // iterate through all locales and check if the file exists
+  const availableLocales = locales.filter((locale) => {
+    const sourceFile = getSourceFile(locale, project, pathSegment);
+    const isFileExist = !!(sourceFile && existsSync(sourceFile));
+    return isFileExist;
+  });
+
+  return availableLocales;
+}
 
 // Process docPaths to remove CWD, docs subdirectory, file extensions, and split into segments
 export const processPath = (docPath: string) => {

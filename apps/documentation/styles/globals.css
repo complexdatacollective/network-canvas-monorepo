@@ -59,6 +59,17 @@
   }
 }
 
+@layer base {
+  code {
+    @apply bg-platinum-dark;
+    @apply font-mono;
+    @apply text-sm;
+    @apply rounded-md;
+    @apply p-1;
+    @apply tracking-wide;
+  }
+}
+
 
 .DocSearch-Button {
     --docsearch-primary-color: hsl(var(--primary));
