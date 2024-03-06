@@ -19,36 +19,48 @@ import { cn } from '~/lib/utils';
 
 const getImageForProject = (project: ProjectsEnum) => {
   if (project === 'desktop') {
-    return <Image src='/images/desktop.png' width={65} height={40} alt={project} />
+    return (
+      <Image src="/images/desktop.png" width={65} height={40} alt={project} />
+    );
   }
 
   if (project === 'fresco') {
-    return <Image src='/images/fresco.png' width={40} height={40} alt={project} />
+    return (
+      <Image src="/images/fresco.png" width={40} height={40} alt={project} />
+    );
   }
-}
+};
 
 const ProjectValue = forwardRef<
   HTMLDivElement,
   {
     project: ProjectsEnum;
     showDescription?: boolean;
-  }>
-(({
-  project,
-  showDescription,
-}, ref) => {
+  }
+>(({ project, showDescription }, ref) => {
   const t = useTranslations('ProjectSwitcher');
   return (
-      <div className='flex-1 flex items-center' ref={ref}>
-        <div className={cn('flex items-center justify-start mr-2', showDescription && 'min-w-[75px]')}>
-          {getImageForProject(project)}
-        </div>
-        <div className='flex flex-col'>
-          <Heading variant="h4">{t(`${project}.label`)}</Heading>
-          {showDescription && <Paragraph variant="smallText">{t(`${project}.description`)}</Paragraph>}
-        </div>
+    <div className="flex flex-1 items-center" ref={ref}>
+      <div
+        className={cn(
+          'mr-2 flex items-center justify-start',
+          showDescription && 'min-w-[75px]',
+        )}
+      >
+        {getImageForProject(project)}
       </div>
-  )
+      <div className="flex flex-col">
+        <Heading variant="h4" margin={showDescription ? 'default' : 'none'}>
+          {t(`${project}.label`)}
+        </Heading>
+        {showDescription && (
+          <Paragraph variant="smallText">
+            {t(`${project}.description`)}
+          </Paragraph>
+        )}
+      </div>
+    </div>
+  );
 });
 
 ProjectValue.displayName = 'ProjectValue';
@@ -66,17 +78,13 @@ export default function ProjectSwitcher() {
         router.push(`/${val}`, { locale });
       }}
     >
-      <SelectTrigger className="h-16 my-4">
-          <ProjectValue project={project} />
+      <SelectTrigger className="my-4 h-16">
+        <ProjectValue project={project} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          { projects.map((p) => (
-            <SelectItem
-              key={p}
-              value={p}
-              className='w-[30rem]'
-            >
+          {projects.map((p) => (
+            <SelectItem key={p} value={p} className="w-[30rem]">
               <ProjectValue project={p} showDescription />
             </SelectItem>
           ))}
