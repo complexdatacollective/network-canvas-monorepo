@@ -31,8 +31,6 @@ export const processSourceFile = (
   if (!sourceFile) return;
   const pathSegments = sourceFile.split(/[\\/]/).slice(2);
 
-  console.log(sourceFile, pathSegments);
-
   let returnPath = '';
 
   if (type === 'folder') {

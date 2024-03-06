@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { getAvailableLocalesForPath } from '~/lib/helper_functions';
+import { getAvailableLocalesForPath } from '~/lib/docs';
 
 type InnerLanguageSwitcherProps = {
   pathSegment: string[];

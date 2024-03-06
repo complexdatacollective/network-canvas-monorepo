@@ -13,9 +13,8 @@ import type {
   SidebarPage,
   SidebarProject,
 } from '~/app/types';
-import { locales, MetadataFileSchema } from '~/app/types';
+import { MetadataFileSchema } from '~/app/types';
 import { env } from '../env.mjs';
-import { getSourceFile } from './docs';
 
 export const relativePathToDocs = join(
   process.cwd(),
@@ -43,21 +42,6 @@ export function convertToUrlText(text: string): string {
   const cleanedText = hyphenatedText.replace(/[^a-z0-9-\u0400-\u04FF]/g, '');
 
   return cleanedText;
-}
-
-// get available locales for the document path
-export function getAvailableLocalesForPath(
-  project: string,
-  pathSegment: string[],
-) {
-  // iterate through all locales and check if the file exists
-  const availableLocales = locales.filter((locale) => {
-    const sourceFile = getSourceFile(locale, project, pathSegment);
-    const isFileExist = !!(sourceFile && existsSync(sourceFile));
-    return isFileExist;
-  });
-
-  return availableLocales;
 }
 
 /**
