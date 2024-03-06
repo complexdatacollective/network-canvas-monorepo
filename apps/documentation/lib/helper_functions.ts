@@ -214,9 +214,11 @@ export const createPageEntry = (
   matterResult: matter.GrayMatterFile<string>,
 ): SidebarPage => {
   const title = matterResult.data?.title as string | undefined;
+  const sourceFile = join(file.path, file.name).replace(process.cwd(), '');
+
   return {
     type: 'page',
-    sourceFile: join(file.path, file.name).replace(process.cwd(), ''),
+    sourceFile,
     label: title ?? file.name,
   };
 };
