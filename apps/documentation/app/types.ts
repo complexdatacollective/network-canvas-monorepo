@@ -82,8 +82,8 @@ const metadatatypes = ['folder', 'project'] as const;
 export const MetadataFileSchema = z.object({
   type: z.enum(metadatatypes),
   sourceFile: z.string().optional(),
-  localeLabels: z.record(LocalesEnum, z.string()).optional(),
-  localeIndexFiles: z.record(LocalesEnum, z.string()).optional(),
+  localeLabels: z.record(z.string(), z.string()).optional(),
+  localeIndexFiles: z.record(z.string(), z.string()).optional(),
   isExpanded: z.boolean().optional(),
 });
 

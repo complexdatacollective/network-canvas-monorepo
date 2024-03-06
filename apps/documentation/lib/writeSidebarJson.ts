@@ -77,10 +77,13 @@ function generateSidebarData() {
     // Determine locale based on file name (format is `index.en.mdx` or `index.en.md`)
     const locale = file.name.split('.')[1] as LocalesEnum | undefined;
 
+    // If there's no locale, or the locale isn't included in the type, ignore it.
     if (!locale || !locales.includes(locale as LocalesEnum)) {
-      throw new Error(
-        `File ${file.name} is missing a locale or has an invalid locale.`,
+      // eslint-disable-next-line no-console
+      console.warn(
+        `File ${file.name} is missing a locale or has a locale not defined in LocalesEnum. Locale is ${locale}. Skipping.`,
       );
+      return;
     }
 
     // create a key based on the filename without the locale or extension
@@ -108,7 +111,7 @@ try {
   const sidebarData = generateSidebarData();
 
   writeFileSync(
-    './public/sidebar.json',
+    join(process.cwd(), 'public', 'sidebar.json'),
     JSON.stringify(sidebarData, null, 2),
     'utf-8',
   );
