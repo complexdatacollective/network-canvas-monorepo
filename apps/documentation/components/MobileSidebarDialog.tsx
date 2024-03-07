@@ -1,6 +1,7 @@
 'use client';
 
 import { Sheet, SheetContent } from '~/components/ui/sheet';
+import LogoComponent from './SharedNav/LogoComponent';
 import { SidebarMobile } from './Sidebar';
 
 type MobileSidebarDialogProps = {
@@ -14,7 +15,8 @@ export default function MobileSidebarDialog({
 }: MobileSidebarDialogProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent className="w-fit bg-neon-coral-dark" side={'left'}>
+      <SheetContent className="w-fit bg-platinum" side={'left'}>
+        <LogoComponent className="mx-4 my-2 block" />
         <SidebarMobile />
       </SheetContent>
     </Sheet>

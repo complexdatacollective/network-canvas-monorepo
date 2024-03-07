@@ -58,7 +58,7 @@ const NavigationMenuDemo = () => {
   const t = useTranslations('SharedNavigation');
 
   return (
-    <NavigationMenu.Root className="relative z-10 flex">
+    <NavigationMenu.Root className="relative z-10 hidden lg:flex">
       <NavigationMenu.List className="center m-0 flex list-none items-center gap-10">
         {links.map((link, i) => {
           if (link.menu) {

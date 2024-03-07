@@ -205,7 +205,7 @@ export function SidebarMobile({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        'block h-screen w-80 overflow-y-auto bg-slate-blue px-2 lg:hidden',
+        'block h-screen w-80 overflow-y-auto px-2 lg:hidden',
         className,
       )}
     >

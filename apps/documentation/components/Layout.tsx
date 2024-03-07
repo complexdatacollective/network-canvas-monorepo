@@ -1,13 +1,11 @@
 'use client';
 
+import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
-
 import { Hero } from '~/components/Hero';
 import { Sidebar } from '~/components/Sidebar';
 import { cn } from '~/lib/utils';
 import SharedNav from './SharedNav/SharedNav';
-import { useLocale } from 'next-intl';
-import MobileNavBar from '~/components/MobileNavBar';
 
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -19,7 +17,6 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex w-full flex-col">
       <SharedNav active="Documentation" />
-      <MobileNavBar />
       {isHomePage && <Hero />}
       <div
         className={cn(
