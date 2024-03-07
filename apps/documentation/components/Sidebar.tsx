@@ -78,7 +78,10 @@ const SidebarFolder = ({
       className={cn('my-4 flex flex-col')}
     >
       <CollapsibleTrigger
-        className="focusable my-1 flex flex-1 cursor-pointer items-center justify-between text-base font-semibold capitalize"
+        className={cn(
+          'focusable my-1 flex flex-1 items-center justify-between text-base font-semibold capitalize',
+          !alwaysOpen && 'cursor-pointer',
+        )}
         asChild
       >
         {href ? (
@@ -106,7 +109,7 @@ const SidebarFolder = ({
         )}
       </CollapsibleTrigger>
       <MotionCollapsibleContent
-        className="flex flex-col overflow-y-hidden"
+        className="ml-4 flex flex-col overflow-y-hidden"
         forceMount
         initial={{ height: isOpen ? 'auto' : 0 }}
         animate={{ height: isOpen ? 'auto' : 0 }}
@@ -128,6 +131,15 @@ const SidebarLink = ({
 }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
+
+  if (href === undefined) {
+    return (
+      <div className="focusable flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors">
+        {label}
+      </div>
+    );
+  }
+
   return (
     <Link
       href={href}
