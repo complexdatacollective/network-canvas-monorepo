@@ -233,12 +233,14 @@ export const getOrder = (file: fs.Dirent): number => {
  */
 export const sortDirectoryListing = (files: fs.Dirent[]) =>
   files.sort((a, b) => {
-    if (a.isDirectory() && !b.isDirectory()) return -1;
-    if (!a.isDirectory() && b.isDirectory()) return 1;
+    const depthA = a.name.split('/').length; // Get depth of directory/file A
+    const depthB = b.name.split('/').length; // Get depth of directory/file B
 
-    // compare based on nav_order or file name if nav_order is not present
-    const orderA = getOrder(a);
-    const orderB = getOrder(b);
+    return depthA - depthB; // Sort by ascending depth (shallowest to deepest)
 
-    return orderA - orderB || a.name.localeCompare(b.name);
+    // // compare based on nav_order or file name if nav_order is not present
+    // const orderA = getOrder(a);
+    // const orderB = getOrder(b);
+
+    // return orderA - orderB || a.name.localeCompare(b.name);
   });

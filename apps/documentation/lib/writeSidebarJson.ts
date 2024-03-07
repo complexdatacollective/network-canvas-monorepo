@@ -26,7 +26,12 @@ function generateSidebarData() {
   const files = readdirSync(relativePathToDocs, {
     withFileTypes: true, // returns fs.Dirent objects
     recursive: true, // recursively read all files in subdirectories
-  });
+  }).filter(
+    (file) =>
+      file.isDirectory() ||
+      file.name.endsWith('.mdx') ||
+      file.name.endsWith('.md'),
+  );
 
   // Set up initial structure for sidebar data.
   const sidebarData: TSideBar = locales.reduce((acc, locale) => {
