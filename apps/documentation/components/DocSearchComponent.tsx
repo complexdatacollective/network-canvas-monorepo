@@ -2,11 +2,9 @@
 
 import { DocSearch } from '@docsearch/react';
 import { useLocale, useTranslations } from 'next-intl';
-
 import '@docsearch/css';
-
 import { env } from '~/env.mjs';
-import { Input, inputClasses } from '@acme/ui';
+import { inputClasses } from '@acme/ui';
 import { Search } from 'lucide-react';
 import { cn } from '~/lib/utils';
 
@@ -29,12 +27,18 @@ const DocSearchComponent = () => {
   return (
     <>
       <button
-        className={cn(inputClasses, 'flex items-center')}
+        className={cn(inputClasses, 'flex items-center justify-between px-4')}
         onClick={madHax}
         aria-label={t('button.buttonAriaLabel')}
       >
-        <Search className="mr-2" />
-        {t('button.buttonText')}
+        <span className="flex items-center">
+          <Search className="mr-2" />
+          {t('button.buttonText')}
+        </span>
+
+        <kbd className="pointer-events-none ml-4 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+          <span className="text-xs">⌘</span>K
+        </kbd>
       </button>
       <div className="hidden">
         <DocSearch

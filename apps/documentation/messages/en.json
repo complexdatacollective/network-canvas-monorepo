@@ -16,7 +16,7 @@
   "DocSearch": {
     "button": {
       "buttonText": "Search documentation",
-      "buttonAriaLabel": "Open search mdal"
+      "buttonAriaLabel": "Open search modal"
     },
     "modal": {
       "searchBox": {
