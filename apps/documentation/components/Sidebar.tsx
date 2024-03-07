@@ -228,7 +228,7 @@ export function SidebarMobile({
   return (
     <nav
       className={cn(
-        'my-2 block w-80 overflow-y-auto px-2 lg:hidden',
+        'my-2 block w-fit overflow-y-auto px-2 lg:hidden lg:w-80',
         className,
       )}
     >
