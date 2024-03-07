@@ -12,10 +12,8 @@ const MobileNavBar = ({ open, setOpen }: MobileNavBarProps) => {
   return (
     <>
       <MobileSidebarDialog open={open} setOpen={setOpen} />
-
       <div className="flex items-center gap-3 lg:hidden">
         <DocSearchComponent />
-
         {open ? (
           <Button
             size={'sm'}

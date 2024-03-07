@@ -13,7 +13,7 @@ export default function SharedNav({ active }: { active?: string }) {
 
   return (
     <motion.nav
-      className="sticky top-0 z-50 mx-auto flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4 lg:relative"
+      className="sticky top-0 z-50 mx-auto flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4 backdrop-blur-md lg:relative lg:backdrop-blur-0"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{

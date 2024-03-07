@@ -78,13 +78,13 @@ export default function ProjectSwitcher() {
         router.push(`/${val}`, { locale });
       }}
     >
-      <SelectTrigger className="my-4 h-16">
+      <SelectTrigger className="pointer-events-auto my-4 h-16">
         <ProjectValue project={project} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="pointer-events-auto">
         <SelectGroup>
           {projects.map((p) => (
-            <SelectItem key={p} value={p} className="w-[30rem]">
+            <SelectItem key={p} value={p} className="w-[20rem] sm:w-[30rem]">
               <ProjectValue project={p} showDescription />
             </SelectItem>
           ))}

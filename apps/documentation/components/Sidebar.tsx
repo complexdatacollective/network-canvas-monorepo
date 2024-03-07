@@ -85,7 +85,7 @@ const SidebarFolder = ({
         asChild
       >
         {href ? (
-          <Link href={href} className="">
+          <Link href={href}>
             {label}{' '}
             {!alwaysOpen && (
               <MotionChevron
@@ -157,6 +157,7 @@ const SidebarLink = ({
 const renderSidebarItem = (
   item: TSidebarFolder | SidebarPage,
   locale: LocalesEnum,
+  onClickLink?: () => void,
 ) => {
   const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
   if (item.type === 'folder') {
@@ -168,13 +169,18 @@ const renderSidebarItem = (
         href={sourceFile}
       >
         {Object.values(item.children).map((child) =>
-          renderSidebarItem(child, locale),
+          renderSidebarItem(child, locale, onClickLink),
         )}
       </SidebarFolder>
     );
   } else {
     return (
-      <SidebarLink key={item.label} href={sourceFile!} label={item.label} />
+      <SidebarLink
+        key={item.label}
+        href={sourceFile!}
+        label={item.label}
+        onClick={onClickLink}
+      />
     );
   }
 };
@@ -205,11 +211,16 @@ export function Sidebar({ className }: { className?: string }) {
   );
 }
 
-export function SidebarMobile({ className }: { className?: string }) {
+export function SidebarMobile({
+  className,
+  onClickLink,
+}: {
+  className?: string;
+  onClickLink: () => void;
+}) {
   const pathname = usePathname();
   const locale = useLocale() as LocalesEnum;
   const project = pathname.split('/')[2]!;
-
   const typedSidebarData = sidebarData as TSideBar;
 
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
@@ -217,12 +228,12 @@ export function SidebarMobile({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        'block h-screen w-80 overflow-y-auto px-2 lg:hidden',
+        'my-2 block w-80 overflow-y-auto px-2 lg:hidden',
         className,
       )}
     >
       {Object.values(formattedSidebarData).map((item) =>
-        renderSidebarItem(item, locale),
+        renderSidebarItem(item, locale, onClickLink),
       )}
     </nav>
   );
