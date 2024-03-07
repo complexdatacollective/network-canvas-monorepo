@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import MobileNavBar from '../MobileNavBar';
 import LogoComponent from './LogoComponent';
-import Menu from './Menu';
+import { NavigationMenuDemo as Menu } from './Menu';
 
 export default function SharedNav({ active }: { active?: string }) {
   const t = useTranslations('SharedNavigation');
@@ -26,7 +26,6 @@ export default function SharedNav({ active }: { active?: string }) {
     >
       <LogoComponent invisible={isMobileMenuOpen} />
       <MobileNavBar open={isMobileMenuOpen} setOpen={setIsMobileMenuOpen} />
-
       <Menu />
     </motion.nav>
   );

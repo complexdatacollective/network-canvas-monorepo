@@ -1,11 +1,11 @@
-import * as NavigationMenu from '@radix-ui/react-navigation-menu';
-import { CaretDownIcon } from '@radix-ui/react-icons';
-import { cn } from '~/lib/utils';
-import { forwardRef } from 'react';
-import Link from 'next/link';
 import { Heading, Paragraph, buttonVariants, headingVariants } from '@acme/ui';
+import { CaretDownIcon } from '@radix-ui/react-icons';
+import * as NavigationMenu from '@radix-ui/react-navigation-menu';
+import { ArrowLeftCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
+import { cn } from '~/lib/utils';
 
 const links = [
   {
@@ -54,7 +54,7 @@ const getLinkClasses = (name?: string) =>
     // name === active && 'text-success underline',
   );
 
-const NavigationMenuDemo = () => {
+export const NavigationMenuDemo = () => {
   const t = useTranslations('SharedNavigation');
 
   return (
@@ -144,4 +144,83 @@ const NavigationMenuDemo = () => {
   );
 };
 
-export default NavigationMenuDemo;
+type SubMenu = {
+  titleTranslationKey: string;
+  descriptionTranslationKey: string;
+  href: string;
+  image: string;
+}[];
+
+export const NavigationMenuMobile = () => {
+  const t = useTranslations('SharedNavigation');
+  const [submenu, setSubmenu] = useState<SubMenu>([]);
+
+  if (!submenu.length) {
+    return (
+      <ul className={'flex flex-col items-center justify-center gap-4'}>
+        {links.map((link, i) => {
+          if (link.style === 'button') {
+            return (
+              <li key={i}>
+                <Link
+                  className={buttonVariants({
+                    variant: 'default',
+                    size: 'sm',
+                  })}
+                  href={link.href}
+                >
+                  {t(link.translationKey)}
+                </Link>
+              </li>
+            );
+          }
+
+          if (link.menu) {
+            return (
+              <li key={i}>
+                <button
+                  className={getLinkClasses()}
+                  onClick={() => setSubmenu(link.menu)}
+                >
+                  {t(link.translationKey)}
+                </button>
+              </li>
+            );
+          }
+
+          return (
+            <li key={i}>
+              <Link className={getLinkClasses()} href={link.href}>
+                {t(link.translationKey)}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  return (
+    <ul className={'flex flex-col items-center justify-center gap-4'}>
+      {submenu.map((subLink, i) => (
+        <li key={i}>
+          <Link className={getLinkClasses()} href={subLink.href}>
+            {t(subLink.titleTranslationKey)}
+          </Link>
+        </li>
+      ))}
+
+      <li>
+        <button
+          className={cn(
+            buttonVariants({ variant: 'accent', size: 'sm' }),
+            'rounded-full px-2',
+          )}
+          onClick={() => setSubmenu([])}
+        >
+          <ArrowLeftCircle className="shrink-0" />
+        </button>
+      </li>
+    </ul>
+  );
+};
