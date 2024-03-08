@@ -13,13 +13,13 @@ const MobileNavBar = ({ open, setOpen }: MobileNavBarProps) => {
     <>
       <MobileSidebarDialog open={open} setOpen={setOpen} />
       <div className="flex items-center gap-3 lg:hidden">
-        <DocSearchComponent />
+        <DocSearchComponent className="hidden sm:flex" />
         {open ? (
           <Button
             size={'sm'}
             onClick={() => setOpen(false)}
             variant="outline"
-            className="pointer-events-auto rounded-full"
+            className="pointer-events-auto hidden rounded-full sm:flex"
           >
             <CloseMenu className="h-5 w-5 shrink-0 transition-transform duration-300" />
           </Button>
