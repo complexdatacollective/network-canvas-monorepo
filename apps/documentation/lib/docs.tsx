@@ -34,6 +34,10 @@ import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
 import StandAloneImage from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
 import TipBox from '~/app/[locale]/[project]/_components/customComponents/TipBox';
+import ImageFloatLeft from '~/app/[locale]/[project]/_components/customComponents/ImageFloatLeft';
+import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
+import KeyConcept from '~/app/[locale]/[project]/_components/customComponents/KeyConcept';
+import { CheckSquare, XOctagon } from 'lucide-react';
 
 export type DocRouteParams = {
   params: {
@@ -47,7 +51,7 @@ export const FrontmatterSchema = z.object({
   hidden: z.boolean().optional(),
   wip: z.boolean().optional(),
   nav_order: z.number().optional(),
-  toc: z.boolean().optional(),
+  toc: z.boolean().optional().default(true),
   // Tutorials
   summary: z.string().optional(), // Summary of the tutorial
   prerequisites: z.string().optional(), // Prerequisites for the tutorial
@@ -226,24 +230,17 @@ export async function getDocumentForPath({
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw, {
-      passThrough: ['link'],
-    }) // Allow raw HTML
+    .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings
     .use(headingTree) // Create a tree of headings in data.headings
     .use(rehypeReact, {
       Fragment: prod.Fragment,
       jsx: prod.jsx,
       jsxs: prod.jsxs,
-      passNode: true,
       components: {
-        // @ts-expect-error: Seems to be an issue with React types.
         h1: (props) => <Heading variant="h1" {...props} />,
-        // @ts-expect-error: Seems to be an issue with React types.
         h2: (props) => <Heading variant="h2" {...props} />,
-        // @ts-expect-error: Seems to be an issue with React types.
         h3: (props) => <Heading variant="h3" {...props} />,
-        // @ts-expect-error: Seems to be an issue with React types.
         h4: (props) => <Heading variant="h4" {...props} />,
         p: Paragraph,
         a: Link,
@@ -262,15 +259,18 @@ export async function getDocumentForPath({
           <code className="p-1 font-mono text-sm">{props.children}</code>
         ),
         button: (props) => (
-          // @ts-expect-error: Seems to be an issue with React types.
           <Button variant="default" className="mt-4" {...props} />
         ),
         link: (props) => {
-          console.log('link props', props);
           return <Link {...props} />;
         },
         standaloneimage: StandAloneImage,
         tipbox: TipBox,
+        imagefloatleft: ImageFloatLeft,
+        imagefullwidth: ImageFullWidth,
+        keyconcept: KeyConcept,
+        goodpractice: () => <CheckSquare className="inline text-success" />,
+        badpractice: () => <XOctagon className="inline text-destructive" />,
       },
     } as Options)
     .process(markdownFile);

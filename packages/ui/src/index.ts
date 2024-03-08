@@ -37,9 +37,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './tooltip';
-import Heading, { headingVariants } from './typography/Heading';
+import Heading, {
+  headingVariants,
+  type HeadingProps,
+} from './typography/Heading';
 import { ListItem, OrderedList, UnorderedList } from './typography/Lists';
 import Paragraph from './typography/Paragraph';
+
+export type { HeadingProps };
 
 export {
   Button,

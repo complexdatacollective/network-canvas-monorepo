@@ -1,11 +1,11 @@
 import Image from 'next/image';
 
-type ImageFullWithProps = {
+type ImageFullWidthProps = {
   src: string;
   name?: string;
 };
 
-const ImageFullWith = ({ src, name }: ImageFullWithProps) => {
+const ImageFullWidth = ({ src, name }: ImageFullWidthProps) => {
   return (
     <Image
       width={450}
@@ -18,4 +18,4 @@ const ImageFullWith = ({ src, name }: ImageFullWithProps) => {
   );
 };
 
-export default ImageFullWith;
+export default ImageFullWidth;

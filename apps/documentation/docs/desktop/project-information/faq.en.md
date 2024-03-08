@@ -1,7 +1,6 @@
 ---
 title: Frequently Asked Questions
 wip: false
-has_children: false
 toc: true
 nav_order: 5
 ---

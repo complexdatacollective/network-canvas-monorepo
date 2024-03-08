@@ -1,7 +1,5 @@
 ---
-
 title: Overview of Security Model
-
 ---
 
 Security is an important consideration when handling study data.
@@ -9,7 +7,7 @@ Security is an important consideration when handling study data.
 - Sessions may contain personal participant information which needs to be kept private
 - Protocols may include information about participants which needs to be kept private
 - Studies need to be able to ensure that collected data is genuine to ensure the integrity
-of the research.
+  of the research.
 
 ## What data needs to be secured
 
