@@ -1,8 +1,8 @@
 {
   "type": "folder",
   "localeLabels": {
-    "en": "Getting Started"
+    "en": "Project Information"
   },
   "isExpanded": true,
-  "slug": "getting-started"
+  "slug": "project-information"
 }

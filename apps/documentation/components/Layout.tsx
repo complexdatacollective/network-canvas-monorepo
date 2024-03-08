@@ -21,7 +21,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           'relative mx-auto flex flex-auto justify-center gap-2 px-4 py-2',
-          'lg:gap-4 xl:gap-8',
+          'lg:gap-4 xl:gap-8 2xl:gap-12',
         )}
       >
         {!isHomePage && <Sidebar className="hidden lg:block" />}
