@@ -6,6 +6,9 @@ import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
 import { Sheet, SheetContent } from '~/components/ui/sheet';
 import LogoComponent from './SharedNav/LogoComponent';
 import { Sidebar } from './Sidebar';
+import { Button } from '@acme/ui';
+import { X as CloseMenu } from 'lucide-react';
+import DocSearchComponent from './DocSearchComponent';
 
 type MobileSidebarDialogProps = {
   open: boolean;
@@ -26,8 +29,20 @@ export default function MobileSidebarDialog({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent className="bg-platinum" side={'left'}>
-        <LogoComponent className="mx-4 my-2 block" />
+      <SheetContent className="w-full bg-platinum" side={'left'}>
+        <div className="absolute right-4 top-4 flex items-center gap-2 sm:hidden">
+          <DocSearchComponent />
+          <Button
+            size={'sm'}
+            onClick={() => setOpen(false)}
+            variant="outline"
+            className="rounded-full px-4"
+          >
+            <CloseMenu className="h-4 w-4 shrink-0 transition-transform duration-300" />
+          </Button>
+        </div>
+
+        <LogoComponent className="mx-4 my-2 block w-fit" />
         <NavigationMenuMobile />
         {!isHomePage && <Sidebar onClickLink={onClickLink} />}
       </SheetContent>

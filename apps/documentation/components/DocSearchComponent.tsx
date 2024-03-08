@@ -8,7 +8,7 @@ import { inputClasses } from '@acme/ui';
 import { Search } from 'lucide-react';
 import { cn } from '~/lib/utils';
 
-const DocSearchComponent = () => {
+const DocSearchComponent = ({ className }: { className?: string }) => {
   const locale = useLocale();
   const t = useTranslations('DocSearch');
 
@@ -30,6 +30,7 @@ const DocSearchComponent = () => {
         className={cn(
           inputClasses,
           'pointer-events-auto flex items-center justify-between gap-1 lg:gap-0 lg:px-4',
+          className,
         )}
         onClick={madHax}
         aria-label={t('button.buttonAriaLabel')}

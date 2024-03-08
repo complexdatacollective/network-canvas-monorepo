@@ -206,12 +206,10 @@ export function Sidebar({
         className,
       )}
     >
-      <div className="hidden lg:block">
-        <DocSearchComponent />
-      </div>
+      <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="h-full max-h-[60vh] overflow-y-auto pr-3 lg:max-h-[calc(100vh-11rem)] lg:w-80">
+      <div className="h-full max-h-[80vh] overflow-y-auto pr-1 max-[840px]:max-h-[60vh] lg:max-h-[calc(100vh-11rem)] lg:w-80">
         {Object.values(formattedSidebarData).map((item) =>
           renderSidebarItem(item, locale, onClickLink),
         )}
