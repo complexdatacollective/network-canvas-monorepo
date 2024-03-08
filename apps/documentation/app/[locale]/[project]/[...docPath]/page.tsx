@@ -55,6 +55,7 @@ export default async function Page({ params }: { params: PageParams }) {
       title={document.frontmatter.title}
       headings={document.headings}
       showToc={document.frontmatter.toc && document.headings.length > 0}
+      wip={document.frontmatter.wip}
     />
   );
 }

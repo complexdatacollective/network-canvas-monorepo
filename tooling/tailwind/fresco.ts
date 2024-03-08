@@ -104,6 +104,10 @@ export default {
         DEFAULT: 'hsl(var(--info) / <alpha-value>)',
         foreground: 'hsl(var(--info-foreground) / <alpha-value>)',
       },
+      'warning': {
+        DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
+        foreground: 'hsl(var(--warning-foreground) / <alpha-value>)',
+      },
       'muted': {
         DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
         foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',

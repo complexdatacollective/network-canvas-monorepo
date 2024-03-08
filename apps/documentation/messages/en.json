@@ -13,6 +13,10 @@
       "description": "A web-based platform for creating and sharing network data collection instruments."
     }
   },
+  "TipBox": {
+    "info": "Good to know:",
+    "warning": "Take Care!"
+  },
   "DocSearch": {
     "button": {
       "buttonText": "Search documentation",

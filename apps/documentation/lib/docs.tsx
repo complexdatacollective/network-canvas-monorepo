@@ -34,11 +34,15 @@ import processYamlMatter from './processYamlMatter';
 import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
 import StandAloneImage from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
-import TipBox from '~/app/[locale]/[project]/_components/customComponents/TipBox';
+import TipBox, {
+  type TipBoxProps,
+} from '~/app/[locale]/[project]/_components/customComponents/TipBox';
 import ImageFloatLeft from '~/app/[locale]/[project]/_components/customComponents/ImageFloatLeft';
 import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
 import KeyConcept from '~/app/[locale]/[project]/_components/customComponents/KeyConcept';
 import { CheckSquare, XOctagon } from 'lucide-react';
+import { type LinkProps } from 'next/link';
+import { type ReactNode } from 'react';
 
 export type DocRouteParams = {
   params: {
@@ -263,13 +267,18 @@ export async function getDocumentForPath({
         button: (props) => (
           <Button variant="default" className="mt-4" {...props} />
         ),
-        link: (props) => {
+        link: (
+          props: LinkProps & { className?: string; children: ReactNode },
+        ) => {
           return <Link {...props} />;
         },
         standaloneimage: StandAloneImage,
-        tipbox: (props) => {
-          console.log(props);
-          return <TipBox danger={props.danger}>{props.children}</TipBox>;
+        tipbox: (props: TipBoxProps) => {
+          return (
+            <TipBox danger={props.danger !== undefined}>
+              {props.children}
+            </TipBox>
+          );
         },
         imagefloatleft: ImageFloatLeft,
         imagefullwidth: ImageFullWidth,

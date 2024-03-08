@@ -7,17 +7,20 @@ import TableOfContents from './TableOfContents';
 import { useEffect, useState } from 'react';
 import type { HeadingNode } from '~/lib/tableOfContents';
 import FancyHeading from './FancyHeading';
+import WorkInProgress from '~/app/[locale]/[project]/_components/customComponents/WorkInProgress';
 
 export default function Article({
   content,
   headings,
   title,
   showToc,
+  wip,
 }: {
   content: JSX.Element;
   headings: HeadingNode[];
   title: string;
   showToc: boolean;
+  wip?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -37,6 +40,7 @@ export default function Article({
             {title}
           </FancyHeading>
         </header>
+        {wip && <WorkInProgress />}
         {showToc && (
           <div className="xl:hidden">
             <TableOfContents headings={headings} />
