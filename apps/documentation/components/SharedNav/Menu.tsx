@@ -58,7 +58,7 @@ export const NavigationMenuDemo = () => {
   const t = useTranslations('SharedNavigation');
 
   return (
-    <NavigationMenu.Root className="relative z-10 hidden lg:flex">
+    <NavigationMenu.Root className="relative z-10 hidden min-[840px]:flex">
       <NavigationMenu.List className="center m-0 flex list-none items-center gap-10">
         {links.map((link, i) => {
           if (link.menu) {
@@ -138,7 +138,7 @@ export const NavigationMenuDemo = () => {
       </NavigationMenu.List>
 
       <div className="perspective-[2000px] absolute right-0 top-full flex justify-center">
-        <NavigationMenu.Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut relative mt-[10px] h-[var(--radix-navigation-menu-viewport-height)] w-[calc(100vw-3rem)] origin-[top_center] overflow-hidden rounded-[6px] bg-white shadow-xl transition-[width,_height] duration-300 lg:w-[50rem]" />
+        <NavigationMenu.Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut relative mt-[10px] h-[var(--radix-navigation-menu-viewport-height)] w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] bg-white shadow-xl transition-[width,_height] duration-300 lg:w-[50rem]" />
       </div>
     </NavigationMenu.Root>
   );
@@ -157,7 +157,11 @@ export const NavigationMenuMobile = () => {
 
   if (!submenu.length) {
     return (
-      <ul className={'flex flex-col items-center justify-center gap-4'}>
+      <ul
+        className={
+          'flex flex-col items-center justify-center gap-4 min-[840px]:hidden'
+        }
+      >
         {links.map((link, i) => {
           if (link.style === 'button') {
             return (

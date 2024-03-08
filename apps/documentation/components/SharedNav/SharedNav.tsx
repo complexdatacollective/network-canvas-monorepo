@@ -25,8 +25,8 @@ export default function SharedNav({ active }: { active?: string }) {
       }}
     >
       <LogoComponent invisible={isMobileMenuOpen} />
-      <MobileNavBar open={isMobileMenuOpen} setOpen={setIsMobileMenuOpen} />
       <Menu />
+      <MobileNavBar open={isMobileMenuOpen} setOpen={setIsMobileMenuOpen} />
     </motion.nav>
   );
 }
