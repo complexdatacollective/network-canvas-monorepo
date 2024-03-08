@@ -23,39 +23,41 @@ const FancyHeading = (props: HeadingProps) => {
   const renderWord = (word: string, outerIndex: number) => {
     const segments = word.split(' ');
     return segments.map((segment, innerIndex) => (
-      <motion.span
+      <span
         key={`${outerIndex}-${innerIndex}`}
-        custom={outerIndex + innerIndex}
-        variants={variants}
-        initial="hidden"
-        animate="visible"
-        className="inline-block"
+        className="relative -top-[0.75em] -mb-[1em] inline-block overflow-hidden"
       >
-        {segment}&nbsp;
-      </motion.span>
+        <motion.span
+          custom={outerIndex + innerIndex}
+          variants={variants}
+          initial="hidden"
+          animate="visible"
+          className="inline-block"
+        >
+          {segment}&nbsp;
+        </motion.span>
+      </span>
     ));
   };
 
   return (
     <Heading {...props}>
-      {words.map((word, index) => (
-        <span key={index} className="inline-block overflow-hidden">
-          {typeof word === 'string' ? (
-            renderWord(word, index)
-          ) : (
-            <motion.span
-              key={index}
-              custom={index}
-              variants={variants}
-              initial="hidden"
-              animate="visible"
-              className="inline-block"
-            >
-              {word}
-            </motion.span>
-          )}
-        </span>
-      ))}
+      {words.map((word, index) =>
+        typeof word === 'string' ? (
+          renderWord(word, index)
+        ) : (
+          <motion.span
+            key={index}
+            custom={index}
+            variants={variants}
+            initial="hidden"
+            animate="visible"
+            className="inline-block"
+          >
+            {word}
+          </motion.span>
+        ),
+      )}
     </Heading>
   );
 };

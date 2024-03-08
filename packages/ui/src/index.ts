@@ -42,7 +42,7 @@ import Heading, {
   type HeadingProps,
 } from './typography/Heading';
 import { ListItem, OrderedList, UnorderedList } from './typography/Lists';
-import Paragraph from './typography/Paragraph';
+import Paragraph, { paragraphVariants } from './typography/Paragraph';
 
 export type { HeadingProps };
 
@@ -52,6 +52,7 @@ export {
   Heading,
   headingVariants,
   Paragraph,
+  paragraphVariants,
   Select,
   SelectContent,
   SelectGroup,

@@ -1,4 +1,5 @@
 import { cn } from '../utils';
+import { baseParagraphClasses } from './Paragraph';
 
 export type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
   children: React.ReactNode;
@@ -6,7 +7,7 @@ export type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
 };
 
 const listContainerClasses = cn(
-  'mb-5 ml-8 text-base [&>li]:mt-2',
+  'my-5 ml-8 text-base [&>li]:mt-2',
   // '[&:not(:first-child)]:my-0',
 );
 
@@ -38,7 +39,13 @@ export type ListItemProps = React.HTMLAttributes<HTMLLIElement> & {
 
 export function ListItem({ children, className }: ListItemProps) {
   return (
-    <li className={cn('text-pretty [&>ol]:mb-0 [&>ul]:mb-0', className)}>
+    <li
+      className={cn(
+        baseParagraphClasses,
+        'pl-2 [&>ol]:mb-0 [&>ul]:mb-0',
+        className,
+      )}
+    >
       {children}
     </li>
   );

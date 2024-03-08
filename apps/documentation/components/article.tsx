@@ -33,7 +33,7 @@ export default function Article({
           <Heading variant="h4-all-caps" margin="none" className="text-accent">
             {project} {section && <>&#129046; {section}</>}
           </Heading>
-          <FancyHeading variant="h1" margin="none" className="!mb-8">
+          <FancyHeading variant="h1" className="!mt-0">
             {title}
           </FancyHeading>
         </header>

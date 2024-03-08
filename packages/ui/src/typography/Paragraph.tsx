@@ -6,7 +6,9 @@ import { cva } from 'class-variance-authority';
 
 import { cn } from '../utils';
 
-export const paragraphVariants = cva('text-pretty text-base font-normal', {
+export const baseParagraphClasses = 'text-pretty text-base font-normal';
+
+export const paragraphVariants = cva(baseParagraphClasses, {
   variants: {
     variant: {
       default: '',

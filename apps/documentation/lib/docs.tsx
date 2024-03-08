@@ -6,6 +6,7 @@ import rehypeReact from 'rehype-react';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
+import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { unified } from 'unified';
 import { z } from 'zod';
@@ -227,6 +228,7 @@ export async function getDocumentForPath({
 
   const result = await unified()
     .use(remarkParse, { fragment: true })
+    .use(remarkGfm)
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype, { allowDangerousHtml: true })
@@ -265,12 +267,16 @@ export async function getDocumentForPath({
           return <Link {...props} />;
         },
         standaloneimage: StandAloneImage,
-        tipbox: TipBox,
+        tipbox: (props) => {
+          console.log(props);
+          return <TipBox danger={props.danger}>{props.children}</TipBox>;
+        },
         imagefloatleft: ImageFloatLeft,
         imagefullwidth: ImageFullWidth,
         keyconcept: KeyConcept,
         goodpractice: () => <CheckSquare className="inline text-success" />,
         badpractice: () => <XOctagon className="inline text-destructive" />,
+        table: (props) => <table className="prose" {...props} />,
       },
     } as Options)
     .process(markdownFile);
