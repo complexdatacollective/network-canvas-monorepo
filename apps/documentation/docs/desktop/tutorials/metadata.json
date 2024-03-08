@@ -4,6 +4,9 @@
     "en": "Tutorials",
     "ru": "Учебники"
   },
+  "localeIndexFiles": {
+    "en": "index.en.mdx"
+  },
   "slug": "tutorials",
   "isExpanded": true
 }
