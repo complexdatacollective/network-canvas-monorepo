@@ -211,7 +211,7 @@ export function Sidebar({
       </div>
       <ProjectSwitcher />
 
-      <div className="h-full max-h-[60vh] w-fit overflow-y-auto pr-3 lg:max-h-[calc(100vh-11rem)] lg:w-80">
+      <div className="h-full max-h-[60vh] overflow-y-auto pr-3 lg:max-h-[calc(100vh-11rem)] lg:w-80">
         {Object.values(formattedSidebarData).map((item) =>
           renderSidebarItem(item, locale, onClickLink),
         )}
