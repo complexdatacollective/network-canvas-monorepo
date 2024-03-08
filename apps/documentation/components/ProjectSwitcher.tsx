@@ -78,7 +78,7 @@ export default function ProjectSwitcher() {
         router.push(`/${val}`, { locale });
       }}
     >
-      <SelectTrigger className="my-4 h-16">
+      <SelectTrigger className="my-4 h-16 sm:w-full md:w-[90%] lg:w-full">
         <ProjectValue project={project} />
       </SelectTrigger>
       <SelectContent>

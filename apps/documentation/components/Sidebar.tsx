@@ -185,38 +185,12 @@ const renderSidebarItem = (
   }
 };
 
-export function Sidebar({ className }: { className?: string }) {
-  const pathname = usePathname();
-  const locale = useLocale() as LocalesEnum;
-  const project = pathname.split('/')[2]!;
-
-  const typedSidebarData = sidebarData as TSideBar;
-
-  const formattedSidebarData = typedSidebarData[locale]![project]!.children;
-
-  return (
-    <nav
-      className={cn(
-        'sticky top-2 hidden max-h-[calc(100vh-1rem)] w-80 overflow-y-auto px-2 lg:block',
-        className,
-      )}
-    >
-      <DocSearchComponent />
-      <ProjectSwitcher />
-
-      {Object.values(formattedSidebarData).map((item) =>
-        renderSidebarItem(item, locale),
-      )}
-    </nav>
-  );
-}
-
-export function SidebarMobile({
+export function Sidebar({
   className,
   onClickLink,
 }: {
   className?: string;
-  onClickLink: () => void;
+  onClickLink?: () => void;
 }) {
   const pathname = usePathname();
   const locale = useLocale() as LocalesEnum;
@@ -228,13 +202,20 @@ export function SidebarMobile({
   return (
     <nav
       className={cn(
-        'my-2 block w-fit overflow-y-auto px-2 lg:hidden lg:w-80',
+        'top-2 max-h-[80vh] px-2 pb-7 lg:sticky lg:max-h-[calc(100vh-1rem)]',
         className,
       )}
     >
-      {Object.values(formattedSidebarData).map((item) =>
-        renderSidebarItem(item, locale, onClickLink),
-      )}
+      <div className="hidden lg:block">
+        <DocSearchComponent />
+      </div>
+      <ProjectSwitcher />
+
+      <div className="h-full max-h-[60vh] w-fit overflow-y-auto pr-3 lg:max-h-[calc(100vh-11rem)] lg:w-80">
+        {Object.values(formattedSidebarData).map((item) =>
+          renderSidebarItem(item, locale, onClickLink),
+        )}
+      </div>
     </nav>
   );
 }

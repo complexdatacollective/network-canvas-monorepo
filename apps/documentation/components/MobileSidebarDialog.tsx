@@ -1,12 +1,11 @@
 'use client';
 
-import { Sheet, SheetContent } from '~/components/ui/sheet';
-import LogoComponent from './SharedNav/LogoComponent';
-import { SidebarMobile } from './Sidebar';
-import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
-import ProjectSwitcher from './ProjectSwitcher';
 import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
+import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
+import { Sheet, SheetContent } from '~/components/ui/sheet';
+import LogoComponent from './SharedNav/LogoComponent';
+import { Sidebar } from './Sidebar';
 
 type MobileSidebarDialogProps = {
   open: boolean;
@@ -30,12 +29,7 @@ export default function MobileSidebarDialog({
       <SheetContent className="bg-platinum" side={'left'}>
         <LogoComponent className="mx-4 my-2 block" />
         <NavigationMenuMobile />
-        {!isHomePage && (
-          <div>
-            <ProjectSwitcher />
-            <SidebarMobile onClickLink={onClickLink} />
-          </div>
-        )}
+        {!isHomePage && <Sidebar onClickLink={onClickLink} />}
       </SheetContent>
     </Sheet>
   );

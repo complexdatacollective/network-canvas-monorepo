@@ -24,7 +24,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
           'lg:gap-4 xl:gap-8',
         )}
       >
-        {!isHomePage && <Sidebar />}
+        {!isHomePage && <Sidebar className="hidden lg:block" />}
 
         <main className="flex flex-1">{children}</main>
         <aside id="toc-area" className="hidden xl:block" />
