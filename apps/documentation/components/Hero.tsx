@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { Highlight } from 'prism-react-renderer';
 import { Heading, Paragraph, buttonVariants } from '@acme/ui';
 import { HeroBackground } from '~/components/HeroBackground';
 import { useTranslations } from 'next-intl';
@@ -107,37 +106,7 @@ export function Hero() {
                         </Fragment>
                       ))}
                     </div>
-                    <Highlight
-                      code={code}
-                      language={codeLanguage}
-                      theme={{ plain: {}, styles: [] }}
-                    >
-                      {({
-                        className,
-                        style,
-                        tokens,
-                        getLineProps,
-                        getTokenProps,
-                      }) => (
-                        <pre
-                          className={cn(className, 'flex overflow-x-auto pb-6')}
-                          style={style}
-                        >
-                          <code className="px-4">
-                            {tokens.map((line, lineIndex) => (
-                              <div key={lineIndex} {...getLineProps({ line })}>
-                                {line.map((token, tokenIndex) => (
-                                  <span
-                                    key={tokenIndex}
-                                    {...getTokenProps({ token })}
-                                  />
-                                ))}
-                              </div>
-                            ))}
-                          </code>
-                        </pre>
-                      )}
-                    </Highlight>
+                    put something here
                   </div>
                 </div>
               </div>

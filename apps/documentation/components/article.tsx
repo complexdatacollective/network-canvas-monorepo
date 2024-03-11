@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import type { HeadingNode } from '~/lib/tableOfContents';
 import FancyHeading from './FancyHeading';
 import WorkInProgress from '~/app/[locale]/[project]/_components/customComponents/WorkInProgress';
+import { useBreakpoint } from '~/hooks/useBreakpoint';
 
 export default function Article({
   content,
@@ -22,16 +23,14 @@ export default function Article({
   showToc: boolean;
   wip?: boolean;
 }) {
-  const [mounted, setMounted] = useState(false);
+  const { isBelowXl } = useBreakpoint('xl');
   const pathname = usePathname();
   const project = pathname.split('/')[1];
   const section = pathname.split('/')[2]?.replace(/-/g, ' '); // replace hyphens with spaces
 
-  useEffect(() => setMounted(true), []);
-
   return (
     <>
-      <article className="mb-20 max-w-[75ch] flex-1">
+      <article className="mx-4 mb-20 mt-2 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-12">
         <header>
           <Heading variant="h4-all-caps" margin="none" className="text-accent">
             {project} {section && <>&#129046; {section}</>}
@@ -41,19 +40,10 @@ export default function Article({
           </FancyHeading>
         </header>
         {wip && <WorkInProgress />}
-        {showToc && (
-          <div className="xl:hidden">
-            <TableOfContents headings={headings} />
-          </div>
-        )}
+        {showToc && isBelowXl && <TableOfContents headings={headings} />}
         {content}
       </article>
-      {mounted &&
-        showToc &&
-        createPortal(
-          <TableOfContents headings={headings} sideBar />,
-          document.getElementById('toc-area')!,
-        )}
+      {showToc && !isBelowXl && <TableOfContents headings={headings} sideBar />}
     </>
   );
 }

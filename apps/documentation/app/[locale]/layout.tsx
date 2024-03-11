@@ -13,6 +13,9 @@ import { locales } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
+import '@acme/tailwind-config/globals.css';
+import '~/styles/globals.css';
+import '~/lib/highlight.js/styles/tokyo-night-dark.css';
 
 const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'],
@@ -66,7 +69,7 @@ export default async function MainLayout({
       suppressHydrationWarning
       className={`${quicksand.className} antialiased`}
     >
-      <body className="flex min-h-full">
+      <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
           <NextIntlClientProvider
             timeZone={timeZone}

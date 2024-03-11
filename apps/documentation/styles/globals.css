@@ -60,6 +60,10 @@
     @apply text-foreground;
     @apply bg-background;
   }
+
+  code {
+    @apply text-sm;
+  }
 }
 
 @layer utilities {

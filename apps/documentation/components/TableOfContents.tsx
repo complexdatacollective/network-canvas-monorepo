@@ -54,11 +54,11 @@ const TableOfContents = ({
   sideBar?: boolean;
 }) => {
   return (
-    <div
+    <aside
       className={cn(
-        'group',
+        'shrink-0',
         sideBar &&
-          'sticky top-2 max-h-[calc(100vh-1rem)] w-72 overflow-y-auto overflow-x-hidden',
+          'sticky top-2 max-h-[calc(100vh-1rem)] w-64 overflow-y-auto overflow-x-hidden',
         !sideBar && 'mb-5 rounded-lg border border-border bg-input px-6 py-4',
       )}
     >
@@ -69,7 +69,7 @@ const TableOfContents = ({
         Table of Contents
       </Heading>
       {renderNodes(headings, sideBar)}
-    </div>
+    </aside>
   );
 };
 
