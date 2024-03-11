@@ -4,7 +4,7 @@
  */
 import type { Config } from 'tailwindcss';
 
-import baseConfig from '@acme/tailwind-config/fresco';
+import baseConfig from '@codaco/tailwind-config/fresco';
 
 export default {
   content: ['./src/**/*.tsx'],

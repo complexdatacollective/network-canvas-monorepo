@@ -4,7 +4,7 @@ import { DocSearch } from '@docsearch/react';
 import { useLocale, useTranslations } from 'next-intl';
 import '@docsearch/css';
 import { env } from '~/env.mjs';
-import { inputClasses } from '@acme/ui';
+import { inputClasses } from '@codaco/ui';
 import { Search } from 'lucide-react';
 import { cn } from '~/lib/utils';
 

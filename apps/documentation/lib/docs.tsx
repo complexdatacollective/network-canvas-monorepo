@@ -19,7 +19,7 @@ import {
   Paragraph,
   Summary,
   UnorderedList,
-} from '@acme/ui';
+} from '@codaco/ui';
 
 import {
   locales,

@@ -15,8 +15,8 @@
     "next": "13 || 14"
   },
   "devDependencies": {
-    "@acme/eslint-config": "workspace:*",
-    "@acme/tsconfig": "workspace:*",
+    "@codaco/eslint-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.1",
@@ -29,9 +29,9 @@
   "eslintConfig": {
     "root": true,
     "extends": [
-      "@acme/eslint-config/base",
-      "@acme/eslint-config/nextjs",
-      "@acme/eslint-config/react"
+      "@codaco/eslint-config/base",
+      "@codaco/eslint-config/nextjs",
+      "@codaco/eslint-config/react"
     ]
   }
 }

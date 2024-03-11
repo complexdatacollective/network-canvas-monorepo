@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import "@acme/tailwind-config/globals.css";
+import "@codaco/tailwind-config/globals.css";
 import '~/styles/globals.css';
 import '~/styles/prism.css';
 

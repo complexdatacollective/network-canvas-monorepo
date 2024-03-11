@@ -1,4 +1,4 @@
-import { Heading } from '@acme/ui';
+import { Heading } from '@codaco/ui';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { type ReactNode } from 'react';

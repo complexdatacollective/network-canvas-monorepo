@@ -1,4 +1,4 @@
-import { Heading, Paragraph, buttonVariants, headingVariants } from '@acme/ui';
+import { Heading, Paragraph, buttonVariants, headingVariants } from '@codaco/ui';
 import { CaretDownIcon } from '@radix-ui/react-icons';
 import * as NavigationMenu from '@radix-ui/react-navigation-menu';
 import { ArrowLeftCircle } from 'lucide-react';

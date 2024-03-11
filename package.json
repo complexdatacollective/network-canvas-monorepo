@@ -10,7 +10,7 @@
     "publish-packages": "turbo run build lint && changeset version && changeset publish"
   },
   "devDependencies": {
-    "@acme/prettier-config": "workspace:*",
+    "@codaco/prettier-config": "workspace:*",
     "@changesets/cli": "^2.26.2",
     "prettier": "^3.2.5",
     "turbo": "^1.12.4",
@@ -18,5 +18,5 @@
   },
   "packageManager": "pnpm@8.9.0",
   "name": "network-canvas-monorepo",
-  "prettier": "@acme/prettier-config"
+  "prettier": "@codaco/prettier-config"
 }

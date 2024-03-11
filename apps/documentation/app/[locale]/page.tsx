@@ -1,6 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
-import { Heading } from '@acme/ui';
+import { Heading } from '@codaco/ui';
 import type { LocalesEnum } from '../types';
 
 const Page = ({ params: { locale } }: { params: { locale: LocalesEnum } }) => {

@@ -8,12 +8,12 @@ importers:
 
   .:
     devDependencies:
-      '@acme/prettier-config':
-        specifier: workspace:*
-        version: link:tooling/prettier
       '@changesets/cli':
         specifier: ^2.26.2
         version: 2.27.1
+      '@codaco/prettier-config':
+        specifier: workspace:*
+        version: link:tooling/prettier
       prettier:
         specifier: ^3.2.5
         version: 3.2.5
@@ -26,15 +26,15 @@ importers:
 
   apps/analytics-web:
     dependencies:
-      '@acme/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@clerk/nextjs':
         specifier: ^4.29.5
         version: 4.29.9(next@14.0.1)(react-dom@18.2.0)(react@18.2.0)
       '@codaco/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@codaco/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@radix-ui/react-checkbox':
         specifier: ^1.0.4
         version: 1.0.4(@types/react-dom@18.2.21)(@types/react@18.2.64)(react-dom@18.2.0)(react@18.2.0)
@@ -105,16 +105,16 @@ importers:
         specifier: ^3.22.4
         version: 3.22.4
     devDependencies:
-      '@acme/eslint-config':
+      '@codaco/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
-      '@acme/prettier-config':
+      '@codaco/prettier-config':
         specifier: workspace:*
         version: link:../../tooling/prettier
-      '@acme/tailwind-config':
+      '@codaco/tailwind-config':
         specifier: workspace:*
         version: link:../../tooling/tailwind
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
       '@faker-js/faker':
@@ -165,7 +165,7 @@ importers:
 
   apps/documentation:
     dependencies:
-      '@acme/ui':
+      '@codaco/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@docsearch/css':
@@ -259,16 +259,16 @@ importers:
         specifier: ^18
         version: 18.2.0(react@18.2.0)
     devDependencies:
-      '@acme/eslint-config':
+      '@codaco/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
-      '@acme/prettier-config':
+      '@codaco/prettier-config':
         specifier: workspace:*
         version: link:../../tooling/prettier
-      '@acme/tailwind-config':
+      '@codaco/tailwind-config':
         specifier: workspace:*
         version: link:../../tooling/tailwind
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
       '@types/hast':
@@ -362,10 +362,10 @@ importers:
         specifier: ^3.22.4
         version: 3.22.4
     devDependencies:
-      '@acme/eslint-config':
+      '@codaco/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
       eslint:
@@ -438,16 +438,16 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.1)
     devDependencies:
-      '@acme/eslint-config':
+      '@codaco/eslint-config':
         specifier: workspace:^0.2.0
         version: link:../../tooling/eslint
-      '@acme/prettier-config':
+      '@codaco/prettier-config':
         specifier: workspace:^0.1.0
         version: link:../../tooling/prettier
-      '@acme/tailwind-config':
+      '@codaco/tailwind-config':
         specifier: workspace:^0.1.0
         version: link:../../tooling/tailwind
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:^0.1.0
         version: link:../../tooling/typescript
       '@types/react':
@@ -499,10 +499,10 @@ importers:
         specifier: ^4.6.0
         version: 4.6.0(eslint@8.57.0)
     devDependencies:
-      '@acme/prettier-config':
+      '@codaco/prettier-config':
         specifier: workspace:^0.1.0
         version: link:../prettier
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:^0.1.0
         version: link:../typescript
       '@types/eslint':
@@ -529,7 +529,7 @@ importers:
         specifier: ^0.5.11
         version: 0.5.12(prettier@3.2.5)
     devDependencies:
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../typescript
       typescript:
@@ -548,13 +548,13 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.1)
     devDependencies:
-      '@acme/eslint-config':
+      '@codaco/eslint-config':
         specifier: workspace:*
         version: link:../eslint
-      '@acme/prettier-config':
+      '@codaco/prettier-config':
         specifier: workspace:*
         version: link:../prettier
-      '@acme/tsconfig':
+      '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../typescript
       eslint:

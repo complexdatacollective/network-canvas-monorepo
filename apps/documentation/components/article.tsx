@@ -1,6 +1,6 @@
 'use client';
 
-import { Heading } from '@acme/ui';
+import { Heading } from '@codaco/ui';
 import { createPortal } from 'react-dom';
 import { usePathname } from '~/navigation';
 import TableOfContents from './TableOfContents';
