@@ -19,7 +19,8 @@ Options are displayed vertically, to allow for longer labels and to create a mor
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Use this input control for allowing the participant to select multiple items.
 - Check that the option labels are not too long, or text wrapping might be an issue.
@@ -29,7 +30,8 @@ Options are displayed vertically, to allow for longer labels and to create a mor
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice
+/>
 
 - Do not use more than 8 options, unless absolutely necessary. Long checkbox groups can be hard to see on a screen without scrolling.
 - Avoid using this control when the data is hierarchical, or when the participant should only select a single option. Use the RadioGroup or the Likert scale instead.
@@ -46,7 +48,8 @@ If your interview context is better suited to keyboard text entry rather than th
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Carefully consider the range of values that you allow your participant to select between. You should aim to constrain these values as much as possible, to eliminate potential errors.
 - For questions asking about the past, make use of the ability to specify an empty "end range" parameter, which will ensure that the most recent date the participant can select is aligned with the date of the interview.
@@ -54,7 +57,8 @@ If your interview context is better suited to keyboard text entry rather than th
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Since dates can be burdensome to enter, avoid the use of this control in name generator forms.
 - Since this control is optimized for touch/mouse, avoid using it if you are creating a largely keyboard driven interview.
@@ -71,7 +75,8 @@ When first loaded, this control is in an "untouched" state, with a semi-transpar
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice
+/>
 
 - Consider whether you want to provide a middle choice or not and mark it as neutral/ambivalent (e.g., "neither agree nor disagree", rather than unsure).
 - Consider whether you need more than five categories. Much research suggests there's limited power in using seven or more categories rather than just 5 (or even 3).
@@ -79,7 +84,8 @@ When first loaded, this control is in an "untouched" state, with a semi-transpar
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Never place the response categories out of order - they must be in sequence.
 - Do not use this control for large numbers of options. Consider the use of the RadioGroup control instead.
@@ -96,14 +102,16 @@ Please note that because of the way numbers are represented scientifically, the 
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Set validation options that constrain the range of possible entries when the variable value should only be positive (e.g. age).
 - Use this control for capturing numeric data rather than the text input for cleaner data.
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Do not use the number input to capture date data. Date data should be captured using the DatePicker or a text input.
 - Do not use this control for non-integer number variables, such as phone numbers. Use a text input.
@@ -118,7 +126,8 @@ A radio group is a control that allows participants to select a single choice fr
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Create succinct labels for options to avoid issues with text wrapping.
 - Ensure that option labels can be quickly differentiated from one another.
@@ -127,7 +136,8 @@ A radio group is a control that allows participants to select a single choice fr
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Avoid using long radio groups with many options, as they can be difficult for a participant to see without scrolling.
 - Items that are not selected provide an 'implied no', meaning that all items not selected by a participant do not apply to them. If you need explicit confirmation, consider using a different input control with a true/false value per option.
@@ -147,13 +157,15 @@ Unlike the date picker control, the relative date picker does not allow you to s
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Ensure you specify the range of dates prior to or after the anchor date to broaden or shorten available dates a participant can select from. By default, the relative date picker uses 180 days prior to and 0 days after the anchor date.
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - If you want to allow participants to be less granular in their date selection, such as just using a month or a year rather than a date, consider using the date picker control instead.
 
@@ -167,13 +179,15 @@ The text area control provides participants with a simple field for data entry o
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Use the text area control for question prompts that require longer form responses from participants. This may be especially useful for qualitative studies.
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Avoid using a text area control when the data you want could be more effectively captured as a categorical or numeric variable.
 - Avoid using the text area control on devices with software keyboards, since text entry can be error-prone and laborious.
@@ -188,7 +202,8 @@ The text input control provides participants with a field for simple data entry 
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Set correct validation options to ensure that appropriate data is provided.
 - Consider using the text input control for numerical data that should be stored as a string, such as phone numbers.
@@ -196,7 +211,8 @@ The text input control provides participants with a field for simple data entry 
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Do not use the text input control for longer responses, or free form data. Use the text area control instead.
 - It is not possible to paste text into the text input control. Do not rely on pasting data into this control.
@@ -211,14 +227,16 @@ The toggle control provides participants a switch that can be toggled on or off,
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Use a toggle to easily collect simple true/false variable values, and specifically to indicate the presence of an attribute.
 - Consider using multiple toggles to indicate attributes that can then be used as part of [network filtering](/en/desktop/key-concepts/network-filtering) or [skip logic](/en/desktop/key-concepts/skip-logic).
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Only use the toggle for dichotomous variables. Where a third option is required, consider using a radio group instead.
 - Carefully consider the 'implied no' inherent in this input control. If you require the user to specifically indicate a negative value, consider using a RadioGroup with two items, and using the `required` validation.
@@ -235,14 +253,16 @@ It is provided as an alternative to the checkbox group for scenarios where it ma
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Use this component to collect categorical data, particularly when you have smaller numbers of items.
 - The visual emphasis of this control implies 'membership', so consider using it for variables that represent groups or activities.
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Avoid using long labels, or labels of more than two words, as it may be difficult for participants to clearly see the categories.
 - Avoid using more than 8 categories for a toggle button group, as only 8 distinct colors are provided.
@@ -257,12 +277,14 @@ A visual analog scale is a control that sets a normalized value between 0 and 1 
 
 ### Good practices
 
-<GoodPractice />
+<GoodPractice 
+/>
 
 - Consider using a visual analog scale to collect variable data that is best represented on a continuum with a linear progression. Participants are able to give more precise responses on a continuum rather choose a specific option, like on a Likert scale.
 
 ### Things to avoid
 
-<BadPractice />
+<BadPractice 
+/>
 
 - Use another control for variables necessitating multiple predefined items.
