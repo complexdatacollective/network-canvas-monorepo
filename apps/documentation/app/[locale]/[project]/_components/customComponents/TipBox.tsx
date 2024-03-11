@@ -1,7 +1,7 @@
-import { Heading } from '@codaco/ui';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { type ReactNode } from 'react';
+import PopoutBox from '~/components/PopoutBox';
 import { cn } from '~/lib/utils';
 
 export type TipBoxProps = {
@@ -15,20 +15,13 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
   const title = t(type);
 
   return (
-    <aside
-      className={cn(
-        'relative mx-6 my-10  rounded-lg px-10 py-8',
-        type === 'info' && 'bg-info/10 [--link:var(--info)]',
-        type === 'warning' && 'bg-warning/10 [--link:var(--warning)]',
+    <PopoutBox
+      title={title}
+      iconClassName={cn(
+        type === 'info' && 'bg-info',
+        type === 'warning' && 'bg-warning',
       )}
-    >
-      <div
-        className={cn(
-          type === 'info' && 'bg-info',
-          type === 'warning' && 'bg-warning',
-          'absolute -left-4 -top-4 flex h-12 w-12 items-center justify-center rounded-full',
-        )}
-      >
+      icon={
         <Image
           src={
             type === 'info' ? '/images/tip-info.svg' : '/images/tip-caution.svg'
@@ -37,12 +30,14 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
           width={32}
           height={32}
         />
-      </div>
-      <div className="flex-auto">
-        <Heading variant="h4">{title}</Heading>
-        {children}
-      </div>
-    </aside>
+      }
+      className={cn(
+        type === 'info' && 'bg-info/10 [--link:var(--info)]',
+        type === 'warning' && 'bg-warning/10 [--link:var(--warning)]',
+      )}
+    >
+      {children}
+    </PopoutBox>
   );
 };
 

@@ -5,7 +5,11 @@ import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLocale } from 'next-intl';
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@codaco/ui';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@codaco/ui';
 
 import type {
   LocalesEnum,
@@ -146,6 +150,7 @@ const SidebarLink = ({
       onClick={onClick}
       className={cn(
         'focusable flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors',
+        'hover:border-accent/100 hover:text-accent',
         isActive && 'border-accent/100 font-semibold text-accent',
       )}
     >

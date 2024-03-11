@@ -30,7 +30,7 @@ export default function Article({
 
   return (
     <>
-      <article className="mx-4 mb-20 mt-2 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-12">
+      <article className="mx-4 mb-20 mt-2 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-16">
         <header>
           <Heading variant="h4-all-caps" margin="none" className="text-accent">
             {project} {section && <>&#129046; {section}</>}

@@ -1,5 +1,6 @@
-import { Card, CardContent } from '~/components/ui/card';
+import Image from 'next/image';
 import { type ReactNode } from 'react';
+import PopoutBox from '~/components/PopoutBox';
 
 type KeyConceptProps = {
   title: string;
@@ -8,12 +9,20 @@ type KeyConceptProps = {
 
 const KeyConcept = ({ children, title }: KeyConceptProps) => {
   return (
-    <Card className="my-2">
-      <span className="mt-2 block text-center uppercase">{title}</span>
-      <CardContent>
-        <div className="text-sm leading-5">{children}</div>
-      </CardContent>
-    </Card>
+    <PopoutBox
+      title={title}
+      className="bg-accent/10 [--link:var(--accent)]"
+      icon={
+        <Image
+          src="/images/key-concept.svg"
+          width={32}
+          height={32}
+          alt={title}
+        />
+      }
+    >
+      {children}
+    </PopoutBox>
   );
 };
 
