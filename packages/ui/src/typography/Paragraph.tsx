@@ -21,6 +21,7 @@ export const paragraphVariants = cva(baseParagraphClasses, {
     },
     margin: {
       default: '[p+&]:mt-5',
+      forced: 'mt-5',
       none: 'mt-0',
     },
   },

@@ -76,7 +76,8 @@ Migrating a protocol happens within Architect, and is automatic. The process wor
 4. Architect will automatically append "(schema version X)" to the filename, which may help you to keep track of the different versions of your protocol, and to differentiate them within Server and Interviewer.
 
 <TipBox danger>
-  Schema changes may represent changes to the underlying network data model and, therefore, protocols migrated from one schema version to another must be treated as different workspaces within Server.
+
+Schema changes may represent changes to the underlying network data model, and therefore protocols migrated from one schema version to another must be treated as different workspaces within Server.
 
 Users that migrate their protocols to a new schema version will need to create a merging script to handle combining the two data sources from the two workspaces once exported.
 

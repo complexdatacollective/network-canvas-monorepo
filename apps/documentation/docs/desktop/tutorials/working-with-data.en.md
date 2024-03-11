@@ -1,13 +1,8 @@
 ---
 title: Working with Network Canvas data in R
-summary: "
-  This tutorial will show you how to work with Network Canvas data in the R statistics environment."
-prerequisites: "
-  In order to follow along with this tutorial you should:\n
-
-- Have an understanding of the R environment.\n
-- Have a working installation of R studio, or similar, in order to enter commands.\n
-  "
+summary: '
+  This tutorial will show you how to work with Network Canvas data in the R statistics environment.'
+prerequisites: 'In order to follow along with this tutorial you should: (1) Have an understanding of the R environment. (2) Have a working installation of R studio, or similar, in order to enter commands.'
 completion_time: 30 mins
 ---
 
@@ -27,7 +22,7 @@ Find the github repository for this tutorial here: <https://github.com/complexda
 The first step in exporting data from Network Canvas is to navigate to
 the Manage and Export Session data in the Interviewer app.
 
-![Manage and Export Session](../../assets/img/working-with-data/NC_DataExport0.png)  
+![Manage and Export Session](../../assets/img/working-with-data/NC_DataExport0.png)
 
 Next, you’ll indicate which sessions you want to export by selecting the
 appropriate cards and clicking “Export Selected To File.”
@@ -49,7 +44,7 @@ need to unzip the file before starting our data analysis described below
 
 ### Import and clean the data
 
-Next we want to load the data into R. We use the *egor* to do this,
+Next we want to load the data into R. We use the _egor_ to do this,
 using examples derived from an egor [vignette](https://cran.r-project.org/web/packages/egor/vignettes/using_egor.html).
 
     # Load egor
@@ -225,18 +220,18 @@ true/false).
 ## Data analysis
 
 The egor package has numerous functions that help with basic data
-analysis of ego networks. For example, the *summary* function provides
-an overview of all ego networks in the egor while the *ego\_density*
+analysis of ego networks. For example, the _summary_ function provides
+an overview of all ego networks in the egor while the _ego_density_
 functions provides the density for each participant’s network.
 
     summary(egorNetworkCanvas)
 
-    ## 9 Egos/ Ego Networks 
-    ## 91 Alters 
-    ## Min. Netsize 3 
-    ## Average Netsize 10.1111111111111 
-    ## Max. Netsize 20 
-    ## Average Density 0.385856531573766 
+    ## 9 Egos/ Ego Networks
+    ## 91 Alters
+    ## Min. Netsize 3
+    ## Average Netsize 10.1111111111111
+    ## Max. Netsize 20
+    ## Average Density 0.385856531573766
     ## Alter survey design:
     ##   Maximum nominations: Inf
 
@@ -245,17 +240,17 @@ functions provides the density for each participant’s network.
     ## # A tibble: 9 × 2
     ##   .egoID                               density
     ##   <chr>                                  <dbl>
-    ## 1 1b915958-a970-4742-9f98-154a5b97c3e9 0.619  
-    ## 2 102783ac-c48d-4953-97e6-3d84f39fd5d5 0.214  
-    ## 3 51ce5e11-9aed-4b07-8ccf-1e96f7194ba6 0.0256 
-    ## 4 ef3aeefe-1af9-4fd4-9e75-318eb329778f 0.105  
-    ## 5 aae09896-5fc5-4295-8349-58045da6e86a 1      
+    ## 1 1b915958-a970-4742-9f98-154a5b97c3e9 0.619
+    ## 2 102783ac-c48d-4953-97e6-3d84f39fd5d5 0.214
+    ## 3 51ce5e11-9aed-4b07-8ccf-1e96f7194ba6 0.0256
+    ## 4 ef3aeefe-1af9-4fd4-9e75-318eb329778f 0.105
+    ## 5 aae09896-5fc5-4295-8349-58045da6e86a 1
     ## 6 2944b829-ef9d-446e-b592-6fbf57657743 0.00526
-    ## 7 79cee692-a513-408d-9701-0efe078b0240 0.218  
-    ## 8 1c6dd8fd-2b2f-4139-80bc-63c7f34a5ec1 1      
+    ## 7 79cee692-a513-408d-9701-0efe078b0240 0.218
+    ## 8 1c6dd8fd-2b2f-4139-80bc-63c7f34a5ec1 1
     ## 9 0ce518be-d845-4439-8e3a-bd6b86e7cf40 0.286
 
-We can also use a traditional package, such as *sna*, to look at these
+We can also use a traditional package, such as _sna_, to look at these
 networks by applying functions (i.e., lapply) to each of these networks
 and aggregating the results. For example, here we first make a simple
 histogram of alter degrees across all ego networks.
@@ -279,7 +274,6 @@ Finally, we often want to examine how an ego attribute may be associated
 with ego network characteristics. In this example we look at the
 association between the number of substances a participant reported
 using and the density of their ego network.
-
 
     ego_density(egorNetworkCanvas) %>%
       full_join(egorNetworkCanvas$ego,by=".egoID") %>%

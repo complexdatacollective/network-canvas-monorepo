@@ -12,10 +12,12 @@ import { unified } from 'unified';
 import { z } from 'zod';
 import {
   Button,
+  Details,
   Heading,
   ListItem,
   OrderedList,
   Paragraph,
+  Summary,
   UnorderedList,
 } from '@acme/ui';
 
@@ -285,7 +287,16 @@ export async function getDocumentForPath({
         keyconcept: KeyConcept,
         goodpractice: () => <CheckSquare className="inline text-success" />,
         badpractice: () => <XOctagon className="inline text-destructive" />,
-        table: (props) => <table className="prose" {...props} />,
+        table: (props) => (
+          <div className="overflow-x-auto">
+            <table
+              className="prose my-5 w-full text-pretty break-keep [&>th]:text-nowrap"
+              {...props}
+            />
+          </div>
+        ),
+        details: Details,
+        summary: Summary,
       },
     } as Options)
     .process(markdownFile);
