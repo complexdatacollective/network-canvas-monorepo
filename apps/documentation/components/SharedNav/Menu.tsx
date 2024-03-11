@@ -1,4 +1,9 @@
-import { Heading, Paragraph, buttonVariants, headingVariants } from '@acme/ui';
+import {
+  Heading,
+  Paragraph,
+  buttonVariants,
+  headingVariants,
+} from '@codaco/ui';
 import { CaretDownIcon } from '@radix-ui/react-icons';
 import * as NavigationMenu from '@radix-ui/react-navigation-menu';
 import { ArrowLeftCircle } from 'lucide-react';
@@ -69,7 +74,7 @@ export const NavigationMenuDemo = () => {
                 >
                   {t(link.translationKey)}{' '}
                   <CaretDownIcon
-                    className="duration-[250] relative top-[1px] transition-transform ease-in group-data-[state=open]:-rotate-180"
+                    className="relative top-[1px] transition-transform duration-200 ease-in group-data-[state=open]:-rotate-180"
                     aria-hidden
                   />
                 </NavigationMenu.Trigger>

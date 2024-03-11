@@ -15,7 +15,7 @@
     "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
   },
   "dependencies": {
-    "@acme/ui": "workspace:*",
+    "@codaco/ui": "workspace:*",
     "@clerk/nextjs": "^4.29.5",
     "@codaco/analytics": "workspace:*",
     "@radix-ui/react-checkbox": "^1.0.4",
@@ -43,10 +43,10 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@acme/eslint-config": "workspace:*",
-    "@acme/prettier-config": "workspace:*",
-    "@acme/tailwind-config": "workspace:*",
-    "@acme/tsconfig": "workspace:*",
+    "@codaco/eslint-config": "workspace:*",
+    "@codaco/prettier-config": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*",
     "@faker-js/faker": "^8.2.0",
     "@testing-library/react": "^14.1.2",
     "@types/node": "^20.5.2",
@@ -66,10 +66,10 @@
   "eslintConfig": {
     "root": true,
     "extends": [
-      "@acme/eslint-config/base",
-      "@acme/eslint-config/nextjs",
-      "@acme/eslint-config/react"
+      "@codaco/eslint-config/base",
+      "@codaco/eslint-config/nextjs",
+      "@codaco/eslint-config/react"
     ]
   },
-  "prettier": "@acme/prettier-config"
+  "prettier": "@codaco/prettier-config"
 }

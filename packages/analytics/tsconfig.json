@@ -1,14 +1,9 @@
 {
-  "extends": "@acme/tsconfig/base.json",
+  "extends": "@codaco/tsconfig/base.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
-  "include": [
-    "."
-  ],
-  "exclude": [
-    "dist",
-    "build",
-    "node_modules"
-  ]
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"]
 }

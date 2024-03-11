@@ -1,4 +1,4 @@
-import { Button } from '@acme/ui';
+import { Button } from '@codaco/ui';
 import { X as CloseMenu, Menu as HamburgerMenu } from 'lucide-react';
 import DocSearchComponent from './DocSearchComponent';
 import MobileSidebarDialog from './MobileSidebarDialog';

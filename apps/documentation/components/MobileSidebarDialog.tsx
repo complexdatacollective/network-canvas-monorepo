@@ -6,7 +6,7 @@ import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
 import { Sheet, SheetContent } from '~/components/ui/sheet';
 import LogoComponent from './SharedNav/LogoComponent';
 import { Sidebar } from './Sidebar';
-import { Button } from '@acme/ui';
+import { Button } from '@codaco/ui';
 import { X as CloseMenu } from 'lucide-react';
 import DocSearchComponent from './DocSearchComponent';
 

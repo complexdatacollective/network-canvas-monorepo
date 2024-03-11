@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import useHighlighted from '~/hooks/useHighlighted';
 import { type HeadingNode } from '~/lib/tableOfContents';
-import { Heading } from '@acme/ui';
+import { Heading } from '@codaco/ui';
 import { cn } from '~/lib/utils';
 
 const TOCLink = ({

@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 import typography from '@tailwindcss/typography';
-import sharedConfig from '@acme/tailwind-config/fresco';
+import sharedConfig from '@codaco/tailwind-config/fresco';
 
 const config: Pick<
   Config,

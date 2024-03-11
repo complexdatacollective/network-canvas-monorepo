@@ -12,7 +12,7 @@
     "lint": "pnpm next lint"
   },
   "dependencies": {
-    "@acme/ui": "workspace:*",
+    "@codaco/ui": "workspace:*",
     "@docsearch/css": "^3.5.2",
     "@docsearch/react": "3",
     "@mendable/search": "^0.0.205",
@@ -46,10 +46,10 @@
     "rehype-highlight": "^7.0.0"
   },
   "devDependencies": {
-    "@acme/eslint-config": "workspace:*",
-    "@acme/prettier-config": "workspace:*",
-    "@acme/tailwind-config": "workspace:*",
-    "@acme/tsconfig": "workspace:*",
+    "@codaco/eslint-config": "workspace:*",
+    "@codaco/prettier-config": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*",
     "@types/hast": "^3.0.4",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.61",
@@ -81,10 +81,10 @@
   "eslintConfig": {
     "root": true,
     "extends": [
-      "@acme/eslint-config/base",
-      "@acme/eslint-config/nextjs",
-      "@acme/eslint-config/react"
+      "@codaco/eslint-config/base",
+      "@codaco/eslint-config/nextjs",
+      "@codaco/eslint-config/react"
     ]
   },
-  "prettier": "@acme/prettier-config"
+  "prettier": "@codaco/prettier-config"
 }

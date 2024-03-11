@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { Heading, Paragraph, buttonVariants } from '@acme/ui';
+import { Heading, Paragraph, buttonVariants } from '@codaco/ui';
 import { HeroBackground } from '~/components/HeroBackground';
 import { useTranslations } from 'next-intl';
 import { Link } from '~/navigation';

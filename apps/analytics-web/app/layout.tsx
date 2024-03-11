@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import '@acme/tailwind-config/globals.css';
-import './globals.css';
-import { ClerkProvider } from '@clerk/nextjs';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "@codaco/tailwind-config/globals.css";
+import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const inter = Inter({ subsets: ['latin'] });
 

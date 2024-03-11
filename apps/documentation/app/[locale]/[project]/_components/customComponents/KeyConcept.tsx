@@ -8,12 +8,10 @@ type KeyConceptProps = {
 
 const KeyConcept = ({ children, title }: KeyConceptProps) => {
   return (
-    <Card className="my-2 bg-violet-500">
-      <span className="mt-2 block text-center uppercase text-white">
-        {title}
-      </span>
+    <Card className="my-2">
+      <span className="mt-2 block text-center uppercase">{title}</span>
       <CardContent>
-        <div className="text-sm leading-5 text-white">{children}</div>
+        <div className="text-sm leading-5">{children}</div>
       </CardContent>
     </Card>
   );

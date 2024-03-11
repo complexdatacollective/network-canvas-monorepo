@@ -1,4 +1,4 @@
-import { Heading, ListItem, Paragraph, UnorderedList } from '@acme/ui';
+import { Heading, ListItem, Paragraph, UnorderedList } from '@codaco/ui';
 import { Quicksand } from 'next/font/google';
 
 import Link from '~/components/Link';

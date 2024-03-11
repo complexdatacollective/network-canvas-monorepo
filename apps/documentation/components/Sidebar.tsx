@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLocale } from 'next-intl';
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@acme/ui';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@codaco/ui';
 
 import type {
   LocalesEnum,

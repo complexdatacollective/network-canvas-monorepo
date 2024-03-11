@@ -5,7 +5,7 @@ image: /assets/uploads/stage-tiestrengthcensus.png
 title: Tie-Strength Census
 type: Edge Generator/Edge Interpreter
 creates: Edges with weight stored on an ordinal variable
-uses_prompts: true
+uses_prompts: Yes
 good:
   - Use this interface in scenarios where you are already using a Dyad Census
     and wish to also collect data about the strength of a tie.

@@ -1,25 +1,17 @@
 {
-  "extends": "@acme/tsconfig/base.json",
+  "extends": "@codaco/tsconfig/base.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "./*"
-      ]
+      "~/*": ["./*"]
     },
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

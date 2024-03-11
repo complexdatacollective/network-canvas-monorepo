@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   dialogContentClasses,
-} from '@acme/ui';
+} from '@codaco/ui';
 import { cn } from '~/lib/utils';
 import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';

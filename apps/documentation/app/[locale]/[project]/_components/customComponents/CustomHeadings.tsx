@@ -1,7 +1,7 @@
 import { type DetailedHTMLProps, type HTMLAttributes } from 'react';
 import { Link2 } from 'lucide-react';
 
-import { Heading } from '@acme/ui';
+import { Heading } from '@codaco/ui';
 
 import HeaderLink from './HeaderLink';
 

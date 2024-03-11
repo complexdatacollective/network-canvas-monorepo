@@ -8,7 +8,7 @@ import {
   SelectGroup,
   SelectItem,
   SelectTrigger,
-} from '@acme/ui';
+} from '@codaco/ui';
 import { useRouter } from '~/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
