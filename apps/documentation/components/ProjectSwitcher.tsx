@@ -54,7 +54,10 @@ const ProjectValue = forwardRef<
           {t(`${project}.label`)}
         </Heading>
         {showDescription && (
-          <Paragraph variant="smallText">
+          <Paragraph
+            className="max-w-[20rem] max-[450px]:max-w-[12rem] sm:max-w-full"
+            variant="smallText"
+          >
             {t(`${project}.description`)}
           </Paragraph>
         )}
@@ -84,7 +87,7 @@ export default function ProjectSwitcher() {
       <SelectContent>
         <SelectGroup>
           {projects.map((p) => (
-            <SelectItem key={p} value={p} className="w-[20rem] sm:w-[30rem]">
+            <SelectItem key={p} value={p} className="sm:w-[30rem]">
               <ProjectValue project={p} showDescription />
             </SelectItem>
           ))}
