@@ -6,9 +6,7 @@ import { cva } from 'class-variance-authority';
 import { cn } from './utils';
 
 const baseButtonClasses = cn(
-  'inline-flex items-center justify-center truncate text-nowrap rounded-full text-xs font-semibold uppercase tracking-[3px] ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50',
-  // Focus classes
-  // 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+  'inline-flex items-center justify-center truncate text-nowrap rounded-full text-xs font-semibold uppercase tracking-[3px] shadow-md ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50',
   'focusable',
 );
 
@@ -23,27 +21,23 @@ const buttonVariants = cva(baseButtonClasses, {
       outline:
         'border bg-transparent hover:bg-accent hover:text-accent-foreground',
       secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-      ghost: 'hover:text-accent',
       tableHeader: '-ml-6 hover:text-accent data-[state=open]:text-accent',
-      link: 'underline-offset-4 hover:underline',
+      link: 'underline-offset-4 shadow-none hover:underline',
+      ghost: 'shadow-none hover:bg-accent hover:text-accent-foreground',
     },
     size: {
-      default: 'h-12 px-8',
-      xs: 'h-6 px-3 text-xs',
-      sm: 'h-10 px-4',
-      lg: 'h-12 px-8',
-      icon: 'h-10 w-10',
-      link: 'h-auto px-0',
-    },
-    shadow: {
-      default: 'shadow-md',
-      none: 'shadow-none',
+      'default': 'h-12 px-8',
+      'xs': 'h-6 px-3 text-xs',
+      'sm': 'h-10 px-4',
+      'lg': 'h-12 px-8',
+      'icon': 'h-10 w-10',
+      'icon-large': 'h-12 w-12',
+      'link': 'h-auto px-0',
     },
   },
   defaultVariants: {
     variant: 'default',
     size: 'default',
-    shadow: 'default',
   },
   compoundVariants: [
     {
@@ -51,27 +45,21 @@ const buttonVariants = cva(baseButtonClasses, {
       size: 'sm',
       className: '-ml-4',
     },
-    {
-      variant: 'link',
-      size: 'link',
-      shadow: 'none',
-    },
   ],
 });
 
 export type ButtonProps = {
   variant?: VariantProps<typeof buttonVariants>['variant'];
   size?: VariantProps<typeof buttonVariants>['size'];
-  shadow?: VariantProps<typeof buttonVariants>['shadow'];
   asChild?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, shadow, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, shadow, className }))}
+        className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       />

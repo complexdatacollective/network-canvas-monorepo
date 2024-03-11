@@ -25,7 +25,7 @@ const LogoComponent = ({
         alt="Network Canvas Documentation"
         width={48}
         height={48}
-        className="h-9 w-9 lg:hidden"
+        className="h-9 w-auto lg:hidden"
         priority
       />
       <Image

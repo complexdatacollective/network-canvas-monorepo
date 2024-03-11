@@ -1,19 +1,16 @@
-'use client';
-
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
-import { useState } from 'react';
 import MobileNavBar from '../MobileNavBar';
 import LogoComponent from './LogoComponent';
 import { NavigationMenuDemo as Menu } from './Menu';
+import { cn } from '~/lib/utils';
 
-export default function SharedNav({ active }: { active?: string }) {
-  const t = useTranslations('SharedNavigation');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+export default function SharedNav() {
   return (
     <motion.nav
-      className="sticky top-0 z-50 mx-auto flex w-full max-w-[1433px] flex-auto items-center justify-between px-6 py-4 backdrop-blur-md lg:relative lg:backdrop-blur-0"
+      className={cn(
+        'sticky top-0 z-50 mx-auto flex w-full flex-auto items-center justify-between bg-background/80 px-4 py-2 shadow-md backdrop-blur-sm',
+        'lg:relative lg:flex lg:bg-transparent lg:px-6 lg:py-4 lg:shadow-none lg:backdrop-blur-0',
+      )}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{
@@ -21,12 +18,11 @@ export default function SharedNav({ active }: { active?: string }) {
         stiffness: 200,
         damping: 30,
         mass: 1,
-        // delay: 1.5,
       }}
     >
-      <LogoComponent invisible={isMobileMenuOpen} />
+      <LogoComponent />
       <Menu />
-      <MobileNavBar open={isMobileMenuOpen} setOpen={setIsMobileMenuOpen} />
+      <MobileNavBar />
     </motion.nav>
   );
 }

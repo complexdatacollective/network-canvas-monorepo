@@ -202,14 +202,14 @@ export function Sidebar({
   return (
     <nav
       className={cn(
-        'top-2 max-h-[80vh] px-2 pb-7 lg:sticky lg:max-h-[calc(100vh-1rem)]',
+        'top-2 flex max-h-[calc(100dvh-0.5rem)] shrink-0 flex-col lg:sticky lg:basis-80',
         className,
       )}
     >
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="h-full max-h-[80vh] overflow-y-auto pr-1 max-[840px]:max-h-[60vh] lg:max-h-[calc(100vh-11rem)] lg:w-80">
+      <div className="h-full overflow-y-auto">
         {Object.values(formattedSidebarData).map((item) =>
           renderSidebarItem(item, locale, onClickLink),
         )}

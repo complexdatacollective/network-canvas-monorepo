@@ -8,6 +8,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeHighlight from 'rehype-highlight';
 import { unified } from 'unified';
 import { z } from 'zod';
 import {
@@ -242,6 +243,12 @@ export async function getDocumentForPath({
     .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings
     .use(headingTree) // Create a tree of headings in data.headings
+    .use(
+      rehypeHighlight, // Highlight code blocks
+      {
+        detect: true, // Automatically detect the language
+      },
+    )
     .use(rehypeReact, {
       Fragment: prod.Fragment,
       jsx: prod.jsx,
@@ -262,11 +269,9 @@ export async function getDocumentForPath({
           </blockquote>
         ),
         pre: (props) => (
-          <pre className="overflow-x-auto bg-card p-4">{props.children}</pre>
+          <pre className="my-5 overflow-hidden rounded-xl" {...props} />
         ),
-        code: (props) => (
-          <code className="p-1 font-mono text-sm">{props.children}</code>
-        ),
+        code: (props) => <code className="text-small" {...props} />,
         button: (props) => (
           <Button variant="default" className="mt-4" {...props} />
         ),

@@ -2,13 +2,10 @@ import { Button } from '@codaco/ui';
 import { X as CloseMenu, Menu as HamburgerMenu } from 'lucide-react';
 import DocSearchComponent from './DocSearchComponent';
 import MobileSidebarDialog from './MobileSidebarDialog';
+import { useState } from 'react';
 
-type MobileNavBarProps = {
-  open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-};
-
-const MobileNavBar = ({ open, setOpen }: MobileNavBarProps) => {
+const MobileNavBar = () => {
+  const [open, setOpen] = useState(false);
   return (
     <>
       <MobileSidebarDialog open={open} setOpen={setOpen} />
@@ -16,21 +13,21 @@ const MobileNavBar = ({ open, setOpen }: MobileNavBarProps) => {
         <DocSearchComponent className="hidden sm:flex" />
         {open ? (
           <Button
-            size={'sm'}
             onClick={() => setOpen(false)}
-            variant="outline"
-            className="pointer-events-auto hidden rounded-full sm:flex"
+            variant="ghost"
+            size="icon-large"
+            className="shrink-0"
           >
-            <CloseMenu className="h-5 w-5 shrink-0 transition-transform duration-300" />
+            <CloseMenu className="h-8 w-8  transition-transform duration-300" />
           </Button>
         ) : (
           <Button
-            size={'sm'}
             onClick={() => setOpen(true)}
-            variant="outline"
-            className="rounded-full"
+            variant="ghost"
+            size="icon-large"
+            className="shrink-0"
           >
-            <HamburgerMenu className="h-5 w-5 shrink-0 transition-transform duration-300" />
+            <HamburgerMenu className="h-8 w-8" />
           </Button>
         )}
       </div>

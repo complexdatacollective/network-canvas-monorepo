@@ -1,8 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-@layer base {
   :root {    
     /* UI Colors */
     /* To generate dark color variants, subtract 5% from the lightness. */
@@ -120,4 +116,3 @@
     --font-size-5xl: clamp(3.34rem, 1vw + 3.09rem, 4.29rem);
     --font-size-6xl: clamp(4.17rem, 1.25vw + 3.86rem, 5.36rem);
   }
-}
