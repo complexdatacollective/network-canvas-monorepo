@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -70,6 +70,18 @@ const SidebarFolder = ({
   children?: React.ReactNode;
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen ?? alwaysOpen ?? false);
+
+  const pathname = usePathname();
+
+  // Folder should be open if any of its children are the current page
+  useEffect(() => {
+    if (!alwaysOpen && children) {
+      const shouldOpen = (
+        children as React.ReactElement<{ href?: string }>[]
+      ).some((child) => child.props.href === pathname);
+      setIsOpen(shouldOpen);
+    }
+  }, [pathname, alwaysOpen, children]);
 
   return (
     <Collapsible
