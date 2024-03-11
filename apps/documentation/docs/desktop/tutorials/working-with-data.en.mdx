@@ -7,7 +7,7 @@ completion_time: 30 mins
 ---
 
 This tutorial provides basic examples of import and analysis in R using
-data from the software. The
+data from the [Network Canvas](http://networkcanvas.com) software. The
 example will use simulated data from the following network canvas
 [protocol
 file](https://github.com/complexdatacollective/working-with-data/raw/main/IJE_RADAR_Protocol.netcanvas)
@@ -201,7 +201,7 @@ layout the figure with the final coordinates from the sociogram stage.
                             nrow=length(unique(oneEgoNet%v%"name")),
                             ncol=2))
 
-![''](/assets/img/working-with-data/vis1.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis1.png" name="" />
 
 As you can see, this only shows a single egocentric network. However,
 the egor package has several functions that facilitate comparison of
@@ -215,7 +215,7 @@ true/false).
          pie_var = "ContactFreq",vertex_label_var="nodeID",
          type = "egogram")
 
-![''](/assets/img/working-with-data/vis2.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis2.png" name="" />
 
 ## Data analysis
 
@@ -268,7 +268,7 @@ histogram of alter degrees across all ego networks.
         geom_histogram(color="black", fill="white",bins=5) +
         theme_classic()
 
-![''](/assets/img/working-with-data/vis4.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis4.png" name="" />
 
 Finally, we often want to examine how an ego attribute may be associated
 with ego network characteristics. In this example we look at the
@@ -282,4 +282,4 @@ using and the density of their ego network.
         geom_text(label=egorNetworkCanvas$ego$networkCanvasCaseID, aes(vjust=c(-1.5))) +
         ylim(0,1.05) + theme_classic()
 
-![''](/assets/img/working-with-data/vis5.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis5.png" name="" />
