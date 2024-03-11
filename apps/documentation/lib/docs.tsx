@@ -13,12 +13,12 @@ import { unified } from 'unified';
 import { z } from 'zod';
 import {
   Button,
-  // Details,
+  Details,
   Heading,
   ListItem,
   OrderedList,
   Paragraph,
-  // Summary,
+  Summary,
   UnorderedList,
 } from '@codaco/ui';
 
@@ -301,8 +301,8 @@ export async function getDocumentForPath({
             />
           </div>
         ),
-        // details: Details,
-        // summary: Summary,
+        details: Details,
+        summary: Summary,
       },
     } as Options)
     .process(markdownFile);

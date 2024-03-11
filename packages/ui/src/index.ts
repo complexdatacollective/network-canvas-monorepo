@@ -43,7 +43,7 @@ import Heading, {
 } from './typography/Heading';
 import { ListItem, OrderedList, UnorderedList } from './typography/Lists';
 import Paragraph, { paragraphVariants } from './typography/Paragraph';
-// import { Details, Summary } from './typography/Details';
+import { Details, Summary } from './typography/Details';
 
 export type { HeadingProps };
 
@@ -84,10 +84,10 @@ export {
   DialogOverlay,
   DialogPortal,
   dialogContentClasses,
-  // Details,
+  Details,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  // Summary,
+  Summary,
 };
