@@ -16,14 +16,9 @@ const StandAloneImage = ({ src, content, name }: StandAloneImgProps) => {
         alt={name ?? src}
         style={{ marginBlock: '5px' }}
       />
-      <span className="text-sm italic text-slate-400">{content}</span>
+      <span className="text-slate-400 text-sm italic">{content}</span>
     </div>
   );
 };
 
 export default StandAloneImage;
-
-/* 
-className="relative h-full w-full" 
-className="h-full w-full object-cover"
-*/
