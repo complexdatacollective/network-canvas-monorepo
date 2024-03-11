@@ -1,22 +1,23 @@
 ---
-summary: "This tutorial will introduce you to Interviewer by walking through an
+summary: 'This tutorial will introduce you to Interviewer by walking through an
   example based on our sample protocol. We will explore the participant-facing
   interview experience, as well as discuss some of the researcher-facing
   functionality of the app. The sample protocol we will be using demonstrates
   all the main data collection features of the tool, which we hope will
   encourage you to imagine the many types of study that can be created using
-  Network Canvas."
+  Network Canvas.'
 prerequisites: >-
   To get the most from this tutorial, you should have first:
 
   - Read and understood the [project overview](../../project-overview).
    - To follow along using your own computer or device, you should have [downloaded and installed Interviewer](https://networkcanvas.com/download.html).
 
-  Please note that we have created a separate tutorial article covering how to create a protocol, called [building a protocol using Architect](../building-a-protocol). We suggest you continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read this articles in any order you wish. 
+  Please note that we have created a separate tutorial article covering how to create a protocol, called [building a protocol using Architect](../building-a-protocol). We suggest you continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read this articles in any order you wish.
 completion_time: 30 minutes
 nav_order: 1
 title: Using Interviewer
 wip: false
+toc: true
 ---
 
 ## Introducing Interviewer
@@ -33,7 +34,10 @@ What follows is an introduction to the software, which describes some of its key
 
 After opening Interviewer, the first thing you will see is the 'start screen'. This is a 'back-stage' area of Interviewer, designed to be used by the person conducting the study (not the participant). It allows you to configure the software, launch a new interview, resume an existing interview, and manage your data.
 
-![The Interviewer start screen](/assets/img/sample-protocol/start-screen.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/start-screen.png"
+  content="The Interviewer start screen"
+/>
 
 The start screen is divided into sections that group related tasks together, such as "starting an interview" or "exporting and managing interview data". Not all sections are visible all of the time. The start screen intelligently shows options only when they are available to use. For example, the export data section will only become visible once you have conducted one or more interviews.
 
@@ -41,45 +45,63 @@ When opening Interviewer for the first time, you will see three default sections
 
 The **welcome section** which contains links to install the sample protocol, visit the documentation website, or watch our overview video.
 
-![The welcome section](/assets/img/sample-protocol/welcome-section.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/welcome-section.png"
+  content="The welcome section"
+/>
 
 The welcome section also contains a button (the cog icon) that opens the main device settings screen. We encourage you to open the settings screen and explore the various options.
 
-The welcome section can be hidden when no longer needed, using the toggle in the top right hand corner.
-{: .tip-box}
+<TipBox>
+  The welcome section can be hidden when no longer needed, using the toggle in
+  the top right hand corner.
+</TipBox>
 
 The **protocols section** which allows you to quickly import a [Network Canvas protocol file](../_key-concepts/the-protocol-file.md) from a URL, or by choosing a file ( and later, also by importing from Server). Once you have installed one or more protocol files, this section will also allow you to manage your installed protocols.
 
-![The protocols section](/assets/img/sample-protocol/protocols-section.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/protocols-section.png"
+  content="The protocols section"
+/>
 
 The **server status section** which initially shows nearby computers running Server that you may wish to [pair with](../_key-concepts/pairing.md) and, once paired, shows the communication status of Interviewer with your paired Server.
 
-![The Server status section](/assets/img/sample-protocol/server-section.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/server-section.png"
+  content="The Server status section"
+/>
 
 ## Installing and managing protocols
 
 Interviewer must be configured using one or more Network Canvas interview protocols before it can be used to collect data. There are three ways to import it into your devices running Interviewer. Which one you choose will depend on the needs of your study.
 
 ### Importing a file directly
-  
+
 This option provides a simple means to import a protocol file that is already stored on your device. It can be accessed either from the file menu (if running Interviewer on a desktop operating system), or from the protocols section of the start screen.
 
-We recommend this method for smaller studies, and situations where the device running Interviewer is also the device used to author protocols in Architect.
-{: .tip-box}
+<TipBox>
+  We recommend this method for smaller studies, and situations where the device
+  running Interviewer is also the device used to author protocols in Architect.
+</TipBox>
 
 ### Importing from a URL
 
 This option allows you to download a protocol file directly from any URL that is accessible from the device running Interviewer. It can be useful in circumstances where you have a study website or intranet, and need to quickly install a protocol on a device, but you do not wish to use Server as part of your workflow (see ["when to use Server"](./using-server.md#when-to-use-server) for more on this). It can be accessed from the protocols section of the start screen.
 
-We recommend this method for devices using a project website or cloud storage provider to distribute protocol files to multiple devices.
-{: .tip-box}
+<TipBox>
+  We recommend this method for devices using a project website or cloud storage
+  provider to distribute protocol files to multiple devices.
+</TipBox>
 
 ### Importing from Server
 
 This option uses our companion application, Server, to manage the distribution of interview protocols to field devices. The option to import from Server will appear in the protocols section once you have [paired your device](../_key-concepts/pairing.md) with a computer running Server.
 
-We recommend this method for larger studies that have a single dedicated data manager or coordinator responsible for study administration. See ["when to use Server"](./using-server.md#when-to-use-server) for more on this.
-{: .tip-box}
+<TipBox>
+  We recommend this method for larger studies that have a single dedicated data
+  manager or coordinator responsible for study administration. See ["when to use
+  Server"](./using-server.md#when-to-use-server) for more on this.
+</TipBox>
 
 ### Import the Sample Protocol
 
@@ -87,34 +109,43 @@ For the purposes of this tutorial, we will proceed using the built-in sample pro
 
 Once a protocol has been imported, a new section will appear on the start screen: the **new interview section**. Inside this section will be a protocol card, representing the protocol you imported.
 
-<div class="key-concept" data-title="Anatomy of a protocol card" markdown="1">
+<KeyConcept title="Anatomy of a protocol card">
 The protocol card is a visual device representing a Network Canvas interview protocol. It is used throughout Architect, Server, and Interviewer, whenever a protocol is used.
 
 ![A protocol card](/assets/img/sample-protocol/protocol-card.png)
 
 The protocol card can often be clicked, tapped, or dragged in order to perform an action related to the protocol. The card itself has three main visual elements:
 
-* The protocol name, which is defined by the original file name of the protocol file itself
-* The protocol description, which can contain any descriptive information you like, and is set in Architect
-* The protocol metadata, which summarizes when a protocol was installed and modified, as well as the [schema version](../_reference/protocol-schema-information.md) of the protocol
+- The protocol name, which is defined by the original file name of the protocol file itself
+- The protocol description, which can contain any descriptive information you like, and is set in Architect
+- The protocol metadata, which summarizes when a protocol was installed and modified, as well as the [schema version](../_reference/protocol-schema-information.md) of the protocol
 
-</div>
+</KeyConcept>
 
 ### Removing or managing installed protocols
 
 To help you to manage protocols that are installed in Interviewer, there is a dedicated overlay. This can be opened from the protocols section, which will now display a "manage installed protocols" button.
 
-![Protocols section showing "manage installed protocols" button](/assets/img/sample-protocol/manage-installed-protocols.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/manage-installed-protocols.png"
+  content="Protocols section showing `manage installed protocols` button"
+/>
 
 From within this overlay, you can sort your installed protocols, as well as filter them by name. To remove a protocol file from your device, drag its card into the bin that appears at the bottom of the screen.
 
-![Deleting a protocol by dragging it into the bin](/assets/img/sample-protocol/delete-protocol.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/delete-protocol.png"
+  content="Deleting a protocol by dragging it into the bin"
+/>
 
 ## Starting a new interview
 
 By default, the start a new interview section shows the last protocol you installed (or started an interview with). It can be tapped or clicked to immediately begin an interview.
 
-![The start new interview section, showing the sample protocol installed](/assets/img/sample-protocol/start-new-section.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/start-new-section.png"
+  content="The start new interview section, showing the sample protocol installed"
+/>
 
 If you have more than one protocol installed in Interviewer, a card stack will appear to the right side of the start a new interview section. To access all available protocols, tap or click this card stack. An overlay will open with a list of protocols currently stored in the app. Scroll, filter, or sort the protocol card list to locate the protocol you wish to use for your interview, and tap or click it to begin. This protocol will then appear in the start a new interview section for quicker future access.
 
@@ -122,18 +153,24 @@ If you have more than one protocol installed in Interviewer, a card stack will a
 
 When initiating a new interview, you will immediately be presented with a dialog that asks you to enter a 'case ID'. This is a simple mechanism designed to help you keep track of and identify interview sessions in a way that is meaningful to you and your study. The case ID will be visible in Interviewer and Server anywhere that you see interview sessions, and will also be included in all exported data.
 
-![The case ID form](/assets/img/sample-protocol/case-id.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/case-id.png"
+  content="The case ID form"
+/>
 
 A case ID can contain any combination of numbers and letters (including spaces) up to 30 characters. There is no requirement that a case ID be unique, since this would not be possible to enforce across multiple devices. Nevertheless, you should strongly consider a consistent system for naming cases that allows you to uniquely identify them.
 
 For example, you might consider:
 
-* `INTERVIEWER_INITIALS PARTICIPANT_ID DATE` (e.g `JRM 12345 December 5th`)
-* `STUDY_ID-PARTICIPANT_NAME-VISIT_NUMBER` (e.g `NetCanvas-Joshua-4`)
-* ...or simply `PARTICIPANT_NAME` (e.g `James Montgomery Williams`)
+- `INTERVIEWER_INITIALS PARTICIPANT_ID DATE` (e.g `JRM 12345 December 5th`)
+- `STUDY_ID-PARTICIPANT_NAME-VISIT_NUMBER` (e.g `NetCanvas-Joshua-4`)
+- ...or simply `PARTICIPANT_NAME` (e.g `James Montgomery Williams`)
 
-The case ID of an interview can be changed from within the interview. Simply click the menu icon, and click the 'edit' button in the white session summary card that appears on the right.
-{: .tip-box}
+<TipBox>
+  The case ID of an interview can be changed from within the interview. Simply
+  click the menu icon, and click the 'edit' button in the white session summary
+  card that appears on the right.
+</TipBox>
 
 ## Sample interview walkthrough
 
@@ -156,21 +193,30 @@ In terms of the user interface elements that are always visible when within the 
 
 The **menu button** at the very top of the screen opens the primary app menu, which allows you to:
 
-* Exit the interview
-* See a summary of the session, including numbers of nodes and edges and current duration
-* Open the device settings menu
-* Open the stages menu (see below)
+- Exit the interview
+- See a summary of the session, including numbers of nodes and edges and current duration
+- Open the device settings menu
+- Open the stages menu (see below)
 
-![The primary app menu](/assets/img/sample-protocol/primary-menu.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/primary-menu.png"
+  content="The primary app menu"
+/>
 
 The large vertical bar is the interview **timeline**, which is a visual indicator of progress through the interview. As the participant progresses forwards the bar will fill up, and eventually turn green when the interview is finished. Tapping the timeline will reveal the "stages menu", which allows the researcher to quickly see precisely where they are within the interview, as well as to move to another location. The stages menu can also be opened from the main app menu.
 
-![The stages menu](/assets/img/sample-protocol/stages-menu.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/stages-menu.png"
+  content="The stages menu"
+/>
 
 Moving forwards and backwards through the interview is accomplished using the **next** (down arrow) and **previous** (up arrow) buttons visible at the top and bottom of the timeline, which can be used by the participant or by the researcher to advance the interview.
 
-The next button at the bottom left of the screen is particularly important to explain to the participant if you wish them to have physical control of the device, which may help with engagement.
-{: .tip-box}
+<TipBox>
+  The next button at the bottom left of the screen is particularly important to
+  explain to the participant if you wish them to have physical control of the
+  device, which may help with engagement.
+</TipBox>
 
 ## Stages and interfaces
 
@@ -182,25 +228,34 @@ Each stage is an _instance_ of a specialized task-based screen that we call an [
 
 The first screens within the sample interview protocol all use the [information interface](../_interface-documentation/information.md), with the very first being the welcome stage.
 
-![The welcome stage](/assets/img/sample-protocol/welcome-info.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/welcome-info.png"
+  content="The welcome stage"
+/>
 
 The information interface can be used to build stages that communicate information to a participant, such as providing a study description or instructions for completing a task on a subsequent screen. It can also contain media, such as audio, images or video. We have used numerous Information Interfaces throughout this sample protocol to clarify the primary tasks performed in Interviewer, but we will not describe them in this article to avoid redundancy.
 
 ## Ego data collection
 
-After clicking "next" to  pass through two additional information stages, you will arrive at the first data collection stage in the sample protocol.
+After clicking "next" to pass through two additional information stages, you will arrive at the first data collection stage in the sample protocol.
 
 While Interviewer is optimized for collecting data about network members from an ego-centric perspective, we also provide the ability for researchers to capture data about the participant (ego) through the [ego form](../_interface-documentation/ego-form.md) interface. It allows the researcher to show an arbitrary [form](../_key-concepts/forms.md) to the participant, where responses will be stored in a dedicated section of the interview data model devoted to ego data.
 
 The first use-case for ego data collection demonstrated is an example of a participant consent form.
 
-![A participant consent form built using the ego form interface](/assets/img/sample-protocol/consent-form.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/consent-form.png"
+  content="A participant consent form built using the ego form interface"
+/>
 
 It shows a single form 'field' that represents a boolean attribute corresponding to the consent status of the participant. Once the question is answered, the attribute will be included in the network data model, and will be exported along with the interview data. It can be used to direct the flow of the interview, using [skip logic](../_key-concepts/skip-logic.md).
 
 The next ego form interface shows a more full-featured example of this interface. In this particular stage, we ask for a variety of individual level data using numerous input control types.
 
-![A more full-featured ego data collection form, showing a variety of input controls](/assets/img/sample-protocol/ego-form.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/ego-form.png"
+  content="A more full-featured ego data collection form, showing a variety of input controls"
+/>
 
 The form includes [validation](../_key-concepts/field-validation.md), which requires you to enter the first and last name before proceeding onto the next screen.
 
@@ -214,7 +269,10 @@ The first name generator stage uses the "[quick add](../_interface-documentation
 
 To add nodes, click the "add" button in the bottom right, which will reveal the label input. Enter a name, and press enter (or click the node icon), and notice that a node will appear in the main node list. When you are finished, either click the button again, or click away, to close the input.
 
-![A Quick-Add Name Generator](/assets/img/sample-protocol/quick-add.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/quick-add.png"
+  content="A Quick-Add Name Generator"
+/>
 
 This stage is configured with a single [prompt](../_key-concepts/prompts.md):
 
@@ -226,7 +284,10 @@ Prompts are defined by the researcher, and frame the data collection task. Many 
 
 Clicking forwards through an information stage and into the next name generator stage, a side panel will appear that contains all of the nodes named on the first stage. We can drag and drop nodes from this side panel into the node list area, or we can create new nodes by clicking on the add button in the bottom right right corner as we did previously.
 
-![A name generator with a side panel](/assets/img/sample-protocol/side-panel.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/side-panel.png"
+  content="A name generator with a side panel"
+/>
 
 The side panel functionality is available in both of our non-roster specific name generator Interfaces. It is designed for two specific scenarios:
 
@@ -242,15 +303,21 @@ Moving forwards through an additional information screen, you will arrive at the
 
 > Within the **past 12 months**, which **clinics or healthcare providers** have you visited?
 
-Although this stage is also a name generator, it uses a [separate interface](../_interface-documentation/name-generator-using-forms.md) which makes it behave differently. This time, when clicking the add button in the bottom right, you will see that a dialog is triggered. Network Canvas can be configured to collect more in-depth node information at the time of elicitation, using the concept of "[forms](../_key-concepts/forms.md)". In this example, clicking the "add" button  shows a form with three fields (name, visit date, and treatment summary).
+Although this stage is also a name generator, it uses a [separate interface](../_interface-documentation/name-generator-using-forms.md) which makes it behave differently. This time, when clicking the add button in the bottom right, you will see that a dialog is triggered. Network Canvas can be configured to collect more in-depth node information at the time of elicitation, using the concept of "[forms](../_key-concepts/forms.md)". In this example, clicking the "add" button shows a form with three fields (name, visit date, and treatment summary).
 
-![A Name Generator that uses forms to collect additional data](/assets/img/sample-protocol/using-forms.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/using-forms.png"
+  content="A Name Generator that uses forms to collect additional data"
+/>
 
 The forms you design can collect whichever attributes you wish. This is one of the key ways that a researcher can vary the front-facing response burden of naming alters. Collecting a large number of attributes as the node is created can allow for fewer overall stages in your interview, but can also condition the participant against naming large numbers of alters.
 
 Experiment with adding alters on this stage, and notice that these nodes are a different color from the ones we created previously. This is because Network Canvas interviews can collect data on as many node types as the researcher desires.
 
-![Different node types are automatically styled in visually distinctive ways so that participants can always differentiate between them](/assets/img/sample-protocol/blue-nodes.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/blue-nodes.png"
+  content="Different node types are automatically styled in visually distinctive ways so that participants can always differentiate between them"
+/>
 
 In this case, our name generator will create "clinic" nodes, which are displayed in blue, as opposed to the red "person" nodes we saw previously. This is an element of the ontological flexibility discussed in our [project overview](../project-overview.md#ontological-flexibility), and allows for powerful research designs that model networks in sophisticated ways.
 
@@ -262,13 +329,19 @@ Continue forwards through the sample protocol, until you arrive at a name genera
 
 This stage once again behaves differently from the previous name generators due to being based on a different interface. It allows a participant to nominate alters from a predetermined list (i.e. a roster). In this case, "classmate" nodes are added by selecting the appropriate "display card" on the scrollable roster. Multiple alters can be added at one time. Note that you are able to filter and sort the list, which helps when trying to locate a specific roster member. The sortable properties, as well as the information to be displayed on the cards, are all fully customizable within Architect.
 
-![The Small Roster Name Generator](/assets/img/sample-protocol/small-roster.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/small-roster.png"
+  content="The Small Roster Name Generator"
+/>
 
 Once a member of the roster has been nominated by selecting its card, Interviewer creates a node in the network model using data from the roster. This results in data files that contain only the nodes that the participant nominated. This stage is an example of the [small roster name generator interface](../_interface-documentation/small-roster-name-generator.md).
 
 Clicking next again will take you to a second roster-based name generator Interface, but this time designed to work for extremely large rosters. Here, we ask about universities visited or studied at. Our CSV roster data file contains approximately 9,300 nodes.
 
-![The Large Roster Interface](/assets/img/sample-protocol/large-roster.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/large-roster.png"
+  content="The Large Roster Interface"
+/>
 
 Since this roster is so large, this interface does not display the roster in its entirety. Instead, it offers a search box, and customizable levels of fuzzy matching, in order to help the participant quickly locate the nodes they wish to nominate. This is an example of a stage configured using the [large roster name generator interface](../_interface-documentation/large-roster-name-generator.md).
 
@@ -278,7 +351,10 @@ For situations where general purpose data collection is required, we provided fo
 
 Clicking next from the university roster stage, you will immediately arrive on a stage that uses the [per-alter form](../_interface-documentation/per-alter-form.md) interface to ask followup name interpreter questions about all alters that were named on the previous screen.
 
-![The per-alter form interface](/assets/img/sample-protocol/per-alter-form.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/per-alter-form.png"
+  content="The per-alter form interface"
+/>
 
 As with all [forms](../_key-concepts/forms.md) used by Interviewer, the Per Alter Form allows you to capture different types of data in a series of fields utilizing a variety of input controls. Any data in these forms is stored directly on the alter as attributes. The Per Alter Form stage will cycle through all alters of a given type in the interview network, presenting the form for each.
 
@@ -290,7 +366,10 @@ After clicking through an information stage, you will next arrive at an example 
 
 Network Canvas has been heavily inspired by the long tradition of using visual methods in social networks research, which often feature the sociogram as a means of presenting the network in a way that is intuitive to participants.
 
-![The sociogram interface](/assets/img/sample-protocol/sociogram-positioning.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/sociogram-positioning.png"
+  content="The sociogram interface"
+/>
 
 The sociogram interface in Interviewer is capable of three main tasks:
 
@@ -304,7 +383,10 @@ As with other Interfaces, every aspect of theses three behaviours is customized 
 
 Some research has preferred more systematic approaches to evaluating the presence of alter-alter ties in ego networks. Immediately following the edge creation sociogram stage in the sample protocol is an illustration of the [dyad census](../_interface-documentation/dyad-census.md) interface, which has been designed to accommodate these methods.
 
-![An example of the dyad-census interface](/assets/img/sample-protocol/dyad-census.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/dyad-census.png"
+  content="An example of the dyad-census interface"
+/>
 
 On this stage, all previously named alters are presented under a researcher-defined prompt and a simple "yes"/"no" user interface. By clicking the 'yes' button, a tie between the alters is created. By clicking the 'no' button, no edge is created. All possible pairs within the network for a particular node type will appear. Note that providing an answer immediately advances to the next pair, significantly speeding up the process.
 
@@ -314,7 +396,10 @@ Apart from general purpose form interfaces, Interviewer also contains a variety 
 
 Continuing through the sample protocol to the "contact frequency" stage, you will find an example of the [ordinal bin](../_interface-documentation/ordinal-bin.md) interface, which as the name suggests deals specifically with ordinal variables.
 
-![The contact frequency stage, which uses the ordinal bin interface](/assets/img/sample-protocol/ordinal-bin.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/ordinal-bin.png"
+  content="The contact frequency stage, which uses the ordinal bin interface"
+/>
 
 The ordinal bin interface allows you to drag nodes into a "bin" representing an ordinal variable value, thereby assigning that value to the alter. Here, we ask:
 
@@ -324,9 +409,12 @@ This greatly improves response burden of "matrix type" questions, where the same
 
 Once again, the key elements of the Interface are configurable by the researcher, including the alter type, the ordinal variable (and its categories), the color scheme of the bins, and the text for the prompt(s).
 
-The following stage uses the [categorical bin](../_interface-documentation/categorical-bin.md) interface, which follows a similar pattern but for unordered data. 
+The following stage uses the [categorical bin](../_interface-documentation/categorical-bin.md) interface, which follows a similar pattern but for unordered data.
 
-![An example categorical bin stage](/assets/img/sample-protocol/cat-bin.png){:standalone}
+<StandAloneImage
+  src="/assets/img/sample-protocol/cat-bin.png"
+  content="An example categorical bin stage"
+/>
 
 It allows you to drag nodes into colorful circles, each representing a categorical variable value. When a node is placed within a circle the variable value is assigned to that alter. You can view which nodes were placed in which circle by selecting the circle. This action allows you to move nodes from one circle to another, which may be necessary to correct an error.
 
@@ -340,8 +428,11 @@ Similarly, network filtering is configured using a rule which filters out all al
 
 You may wish to navigate back and forth between the quick add name generator and this stage to see the skip logic and network filtering in action.
 
-Remember that at any time during the interview, you can view a menu of all protocol stages by tapping on the timeline. Tapping on a stage will navigate to it.
-{: .tip-box}
+<TipBox>
+  Remember that at any time during the interview, you can view a menu of all
+  protocol stages by tapping on the timeline. Tapping on a stage will navigate
+  to it.
+</TipBox>
 
 ## The Narrative Interface
 

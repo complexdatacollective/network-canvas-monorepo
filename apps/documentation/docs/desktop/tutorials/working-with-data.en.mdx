@@ -22,25 +22,25 @@ Find the github repository for this tutorial here: <https://github.com/complexda
 The first step in exporting data from Network Canvas is to navigate to
 the Manage and Export Session data in the Interviewer app.
 
-![Manage and Export Session](../../assets/img/working-with-data/NC_DataExport0.png)
+![Manage and Export Session](/assets/img/working-with-data/NC_DataExport0.png)
 
 Next, you’ll indicate which sessions you want to export by selecting the
 appropriate cards and clicking “Export Selected To File.”
 
-![Select Network Canvas Sessions for Export](../../assets/img/working-with-data/NC_DataExport1.png)
+![Select Network Canvas Sessions for Export](/assets/img/working-with-data/NC_DataExport1.png)
 
 Next, we’ll confirm export options. We will focus on the CSV export in
 this tutorial. I also leave the “Merge Sessions” option unselected
 because I prefer to aggregate session data manually in R, as I will
 demonstrate below.
 
-![Confirm Network Canvas Export Options](../../assets/img/working-with-data/NC_DataExport2.png)
+![Confirm Network Canvas Export Options](/assets/img/working-with-data/NC_DataExport2.png)
 
 Finally, after a short wait, we simply select where we would like the
 zip file containing all our data to be saved on our computer. We will
 need to unzip the file before starting our data analysis described below
 
-![Select file location](../../assets/img/working-with-data/NC_DataExport3.png)
+![Select file location](/assets/img/working-with-data/NC_DataExport3.png)
 
 ### Import and clean the data
 
@@ -201,7 +201,7 @@ layout the figure with the final coordinates from the sociogram stage.
                             nrow=length(unique(oneEgoNet%v%"name")),
                             ncol=2))
 
-![''](../../assets/img/working-with-data/vis1.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis1.png" name="" />
 
 As you can see, this only shows a single egocentric network. However,
 the egor package has several functions that facilitate comparison of
@@ -215,7 +215,7 @@ true/false).
          pie_var = "ContactFreq",vertex_label_var="nodeID",
          type = "egogram")
 
-![''](../../assets/img/working-with-data/vis2.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis2.png" name="" />
 
 ## Data analysis
 
@@ -268,7 +268,7 @@ histogram of alter degrees across all ego networks.
         geom_histogram(color="black", fill="white",bins=5) +
         theme_classic()
 
-![''](../../assets/img/working-with-data/vis4.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis4.png" name="" />
 
 Finally, we often want to examine how an ego attribute may be associated
 with ego network characteristics. In this example we look at the
@@ -282,4 +282,4 @@ using and the density of their ego network.
         geom_text(label=egorNetworkCanvas$ego$networkCanvasCaseID, aes(vjust=c(-1.5))) +
         ylim(0,1.05) + theme_classic()
 
-![''](../../assets/img/working-with-data/vis5.png){: .img-width-full}
+<ImageFullWith src="/assets/img/working-with-data/vis5.png" name="" />
