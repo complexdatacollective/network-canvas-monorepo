@@ -45,8 +45,6 @@ function getHeadingsForTree(root: Nodes): HeadingNode[] {
         const lastLevel2 = indexMap[indexMap.length - 1];
 
         if (!lastLevel2) {
-          // eslint-disable-next-line no-console
-          console.log('No level 2 heading found for level 3 heading', node);
           indexMap.push({
             value: toString(node),
             level: 2,
