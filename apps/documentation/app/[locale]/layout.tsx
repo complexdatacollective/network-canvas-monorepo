@@ -69,7 +69,7 @@ export default async function MainLayout({
       suppressHydrationWarning
       className={`${quicksand.className} antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col gap-4">
         <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
           <NextIntlClientProvider
             timeZone={timeZone}

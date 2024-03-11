@@ -18,11 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" className="scroll-smooth">
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css"
-        />
+      <html lang="en">
         <body className={inter.className}>{children}</body>
       </html>
     </ClerkProvider>
