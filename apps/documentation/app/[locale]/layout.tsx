@@ -13,9 +13,6 @@ import { locales } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
-import '@codaco/tailwind-config/globals.css';
-import '~/styles/globals.css';
-import '~/lib/highlight.js/styles/tokyo-night-dark.css';
 
 const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'],

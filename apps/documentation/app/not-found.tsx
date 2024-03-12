@@ -13,9 +13,9 @@ export default function NotFound() {
   return (
     <html lang="en" className={`${quicksand.className} antialiased`}>
       <body className="flex h-screen items-center justify-center">
-        <div className="max-w-lg">
+        <div className="max-w-lg p-3 sm:p-0">
           <Heading variant="h1">404 - Not found</Heading>
-          <div className="bg-black h-[2px] w-full" />
+          <div className="h-[2px] w-full bg-rich-black" />
           <Heading variant="h2">The requested page could not be found.</Heading>
           <Paragraph>
             This is most likely to have happened because the page has been moved

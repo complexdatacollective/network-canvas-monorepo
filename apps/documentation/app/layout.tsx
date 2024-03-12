@@ -1,4 +1,7 @@
 import { type ReactNode } from 'react';
+import '@codaco/tailwind-config/globals.css';
+import '~/styles/globals.css';
+import '~/lib/highlight.js/styles/tokyo-night-dark.css';
 
 type Props = {
   children: ReactNode;
