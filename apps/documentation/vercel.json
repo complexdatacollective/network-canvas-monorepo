@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/:path((?!en|ru|_next/static|_next/image|favicon.ico|assets|protocols).*)",
+      "source": "/:path((?!en|ru|_next/static|_next/image|favicon.ico|assets|protocols|favicons|images).*)",
       "destination": "/en/:path*",
       "permanent": true
     }
