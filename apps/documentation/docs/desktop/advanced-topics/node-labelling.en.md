@@ -7,25 +7,25 @@ title: Node Labelling
 Interviewer calculates the label to be used when rendering a node using the the following logic:
 
 0. Use any node label worker that is within the protocol (see [section below](#custom-node-labelling-advanced) for details on this advanced feature).
-1. Look for a variable called "name" (regardless of case) in the [codebook](/en/desktop/key-concepts/codebook) for node's type, and try to retrieve this value from the node.
+1. Look for a variable called "name" (regardless of case) in the [codebook](../key-concepts/codebook) for node's type, and try to retrieve this value from the node.
 2. Look for a property on the node with a key of 'name' (regardless of case), and try to retrieve this value.
 3. Show the text "No 'name' variable!"
 
 If you are seeing unexpected results, such as "No 'name' variable!" messages, ensure you have constructed your protocol or your data in a way that satisfies a rule with a higher precedence. For example, ensure you have correctly created a 'name' variable for the node type, and that this variable is assigned a value within your interview.
 
-For advanced functionality, such as calculating a node label dynamically, see ["custom node labelling"](#custom-node-labelling-advanced).
+For advanced functionality, such as calculating a node label dynamically, see ["custom node labelling"](../advanced-topics/node-labelling#custom-node-labelling-advanced).
 
 ## Labelling Nodes from Roster Data
 
 To control the labelling of nodes from network file assets, the following options are available: create an attribute for your nodes called "name" (regardless of case). You can implement this attribute as a column in your CSV file, or as a named attribute in a GraphML file.
 
-See also: [working with assets](/en/desktop/key-concepts/resources#network).
+See also: [working with assets](../key-concepts/resources#network).
 
 ## Custom Node Labelling (Advanced)
 
 For more flexible labelling of nodes, you can implement a custom labelling function. To accomplish this, you would:
 
-- Add `nodeLabelWorker.js` to your protocol (see: [the protocol file format](/en/desktop/reference/protocol-file-format) for details of how to do this)
+- Add `nodeLabelWorker.js` to your protocol (see: [the protocol file format](../advanced-topics/protocol-schema-information) for details of how to do this)
 - Within this file, define a function named `nodeLabelWorker`
 - Return a string from that function, which will be used as the label.
 

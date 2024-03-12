@@ -15,4 +15,4 @@ The Dyad Census is a _name interpreter_ interface that collects edges for existi
 
 ## Configuring Dyad Census
 
-A Dyad Census can include multiple [prompts](/en/desktop/key-concepts/prompts), each of which relates to a single edge type. Each alter pair will be considered separately for each prompt.
+A Dyad Census can include multiple [prompts](../key-concepts/prompts), each of which relates to a single edge type. Each alter pair will be considered separately for each prompt.
