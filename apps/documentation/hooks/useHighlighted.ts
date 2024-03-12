@@ -18,7 +18,7 @@ const useHighlighted = (
     };
 
     observer.current = new IntersectionObserver(handleObserver, {
-      rootMargin: '0% 0% -30% 0%',
+      rootMargin: '0% 0% -75% 0%',
     });
 
     const elements = document.querySelectorAll('h2, h3');
