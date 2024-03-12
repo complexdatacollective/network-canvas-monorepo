@@ -7,7 +7,7 @@ creates: Does not create data
 uses_prompts: No
 bad:
   - Resist the urge to create long forms with many items. This may discourage participants from naming additional alters, as it will make the task of nominating an alter more burdensome.
-  - Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](/en/desktop/interface-documentation/ordinal-bin) Interface.
+  - Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](../interface-documentation/ordinal-bin) Interface.
 good:
   - Nodes positioned too close together may visually occlude one another or the edge between them. Caution participants not to place nodes directly on top of one another.
 ---

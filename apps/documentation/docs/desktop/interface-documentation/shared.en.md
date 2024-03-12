@@ -26,10 +26,10 @@ This feature is available to _Sociogram_ and _Name Interpreter_ stage type categ
 
 For example, a Sociogram may have a "Person" node type selected as the entity type. You may then use this option to narrow down to only those "Person" nodes which also have a specific attribute.
 
-[Find out more about filtering](/en/desktop/key-concepts/network-filtering)
+[Find out more about filtering](../key-concepts/network-filtering)
 
 ### Skip Logic
 
 This feature is available to all stage types. The state of the participant network may be assessed in order to determine whether a stage should be shown or instead skipped.
 
-[Find out more about skip logic](/en/desktop/key-concepts/skip-logic)
+[Find out more about skip logic](../key-concepts/skip-logic)
