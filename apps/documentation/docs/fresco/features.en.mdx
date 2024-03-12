@@ -6,9 +6,46 @@ date: 6th March 2024
 The Fresco project aims to bring Network Canvas interviews to the web browser. It is a pilot project that does not
 add new features to Network Canvas, but rather provides a new way to conduct interviews.
 
-## Known Issues
+Though there are no new features added to the interview experience, there are some differences in how studies are managed. This document outlines the Fresco-specific features and functionality for study management.
 
-- Custom node label workers are not implemented.
-- Videos and audio cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
-- The 'Use fullscreen forms' visual preference is not supported.
-- When exporting data, the "use screen layout coordinates" feature uses a hardcoded screen size of 1920 x 1080. Please note that this does not correspond to the screen size used by your participants.
+## Dashboard
+
+The main dashboard provides an overview of all activity within the study. It is the first page you see when you log in to the application.
+
+## Protocol Management
+
+You can upload Network Canvas protocols created in Architect on the **Protocols** page. This page also provides an overview of all protocols uploaded to the study.
+
+If anonymous recruitment is enabled, you can also generate a unique onboarding URL for each protocol. These URLs can be shared with participants to allow them to self-enroll in your study.
+
+## Participant Management
+
+The **Participants** page allows you to manage participants in the study.
+
+You can add new participants to the study indiviudally, or in bulk by uploading a CSV file. Your CSV file can contain the following columns:
+
+- **identifier** - must be a unique string, and should not be easy to guess. Used to generate the onboarding URL to allow integration with other survey tools.
+- **label** - can be any text or number. Used to provide a human readable label for the participant.
+
+<TipBox>
+Either an identifier column or a label column must be provided for each participant. The identifier and label columns must be lowercase.
+</TipBox>
+
+You can also view the status of each participant's interview, and generate a unique participation url for a selected participant and protocol. These URLs can be shared with participants to allow them to self-enroll in your study.
+
+Participants and participation URLs can also be exported in bulk.
+
+## Data Export
+Data can be managed and exported from the **Interview** page. This page provides an overview of all interviews in the study, and allows you to export data with a variety of export options.
+
+You can also export a CSV of incomplete URLs from the **Interview** page. This can be useful for sending reminders to participants who have not yet completed their interview.
+
+## Settings and Configuration
+The **Settings** page allows you to configure your instance of Fresco.
+
+### Anonymous Recruitment
+If enabled, participants can self-enroll in the study using a unique onboarding URL. This URL can be generated for each protocol, and shared with participants.
+
+### Limit interviews
+If this option is enabled, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once an interview has been completed, attempting to start a new interview or to resume any other in-progress interview, will be prevented.
+
