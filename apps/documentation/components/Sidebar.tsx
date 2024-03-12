@@ -75,13 +75,14 @@ const SidebarFolder = ({
 
   // Folder should be open if any of its children are the current page
   useEffect(() => {
-    if (!alwaysOpen && children) {
+    if (!alwaysOpen) {
       const shouldOpen = (
         children as React.ReactElement<{ href?: string }>[]
       ).some((child) => child.props.href === pathname);
       setIsOpen(shouldOpen);
     }
-  }, [pathname, alwaysOpen, children]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, alwaysOpen]);
 
   return (
     <Collapsible
