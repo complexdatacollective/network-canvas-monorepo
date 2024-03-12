@@ -49,13 +49,13 @@ For information about cloud pricing, read our [cloud pricing](./cloud-pricing) d
 
 ## Step 2: Fork Fresco Repository
 
-1. On the [Fresco repository](https://github.com/complexdatacollective/Fresco), click **Fork**.
+1. On the [Fresco repository](https://github.com/complexdatacollective/Fresco), click **"Fork"**.
 
    ![GitHub - Fork this repository](/assets/img/fresco-images/github-fork1.png)
 
 2. Create your Fork
 
-Enter a repository name (this will be your Fresco instance name), description (optional), and click **Create Fork**.
+Enter a repository name (this will be your Fresco instance name), description (optional), and click **"Create Fork"**.
 
 ![Github - Create your fork](/assets/img/fresco-images/github-fork2.png)
 
@@ -73,7 +73,7 @@ Sign in to Vercel via your Github account so that you can easily connect your re
 
 2. Import Git Repository
 
-Find your Fresco instance from the list of your git repositories and click **Import**.
+Find your Fresco instance from the list of your git repositories and click **"Import"**.
 
 ![Import Git Repository](/assets/img/fresco-images/vercel2.png)
 
@@ -100,15 +100,21 @@ We use analytics to gather error data from instances of Fresco to troubleshoot i
 
 ![Configure Environment Variables](/assets/img/fresco-images/vercel-configure.png)
 
-> **_NOTE_**: When entering the environment variables, do not include the variable keys in the inputs(e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
+<TipBox danger>
+When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
 
-**Also, when providing the environment variables, do not enclose the variable values in quotes. For example:**
+</TipBox>
+
+<TipBox danger>
+When providing the environment variables, do not enclose the variable values in quotes. For example:
 
 ✅ Correct:
 `sk_live_xxxxxxxxxxxxxxxxxxx`
 
 ❌ Incorrect:
 `'sk_live_xxxxxxxxxxxxxxxxxxx'`
+
+</TipBox>
 
 4. Deploy
 
@@ -122,7 +128,7 @@ If you encounter any issues during deployment, check out the [Troubleshooting](.
 
 ## Step 4: Create your database
 
-1. From your project dashboard, select _Storage_. Then, select _Create_ within the Postgres row.
+1. From your project dashboard, select **"Storage"**. Then, select **Create** within the Postgres row.
 
 ![Vercel Database Setup 1](/assets/img/fresco-images/vercel-db-1.png)
 
@@ -130,15 +136,15 @@ If you encounter any issues during deployment, check out the [Troubleshooting](.
 
 ![Vercel Database Setup 2](/assets/img/fresco-images/vercel-db-2.png)
 
-3. Give your database a name and select the region that is closest to where you and your participants will be located. Then, click _Create_. Your database will be generated and you will be redirected to the Getting Started page.
+3. Give your database a name and select the region that is closest to where you and your participants will be located. Then, click **"Create"**. Your database will be generated and you will be redirected to the Getting Started page.
 
 ![Vercel Database Setup 3](/assets/img/fresco-images/vercel-db-3.png)
 
-4. You will be prompted to connect your project. Select _Connect_.
+4. You will be prompted to connect your project. Select **"Connect"**.
 
 ![Vercel Database Setup 4](/assets/img/fresco-images/vercel-db-4.png)
 
-5. Select the _Deployments_ tab. Click on the menu beside the most recent deployment and select _Redeploy_. This will redeploy your project with your new connected database.
+5. Select the **"Deployments"** tab. Click on the menu beside the most recent deployment and select **"Redeploy"**. This will redeploy your project with your new connected database.
 
 ![Vercel Database Setup 5](/assets/img/fresco-images/vercel-db-5.png)
 
