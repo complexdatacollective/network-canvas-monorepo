@@ -226,7 +226,7 @@ export function Sidebar({
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="h-full overflow-y-auto">
+      <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto max-[840px]:max-h-[calc(100dvh-20rem)] lg:h-full">
         {Object.values(formattedSidebarData).map((item) =>
           renderSidebarItem(item, locale, onClickLink),
         )}
