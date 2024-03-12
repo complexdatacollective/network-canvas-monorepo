@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -148,6 +148,17 @@ const SidebarLink = ({
 }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
+  const ref = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (isActive && ref.current) {
+      ref.current.scrollIntoView({
+        behavior: 'auto',
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    }
+  }, [isActive]);
 
   if (href === undefined) {
     return (
@@ -159,6 +170,7 @@ const SidebarLink = ({
 
   return (
     <Link
+      ref={ref}
       href={href}
       onClick={onClick}
       className={cn(
