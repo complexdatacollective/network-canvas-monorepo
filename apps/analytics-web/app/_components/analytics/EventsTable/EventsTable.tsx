@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { DataTable } from "~/components/DataTable/data-table";
-import ExportButton from "~/components/ExportButton";
-import { Event } from "~/db/getEvents";
-import { getColumns } from "./Columns";
+import { useEffect, useMemo, useState } from 'react';
+import { DataTable } from '~/components/DataTable/data-table';
+import ExportButton from '~/components/ExportButton';
+import { type Event } from '~/db/getEvents';
+import { getColumns } from './Columns';
 
 export type EventType = {
   text: string;
@@ -17,7 +17,7 @@ export default function EventsTable({ events }: { events: Event[] }) {
   useEffect(() => {
     const eventTypesMap = new Map<string, EventType>();
     events.forEach((event) =>
-      eventTypesMap.set(event.type, { text: event.type, isSelected: true })
+      eventTypesMap.set(event.type, { text: event.type, isSelected: true }),
     );
 
     setEventTypes([...Array.from(eventTypesMap.values())]);
@@ -33,7 +33,7 @@ export default function EventsTable({ events }: { events: Event[] }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mt-2">
+      <div className="mt-2 flex items-center justify-between">
         <h2>Events</h2>
         <ExportButton data={events} filename="events.csv" />
       </div>

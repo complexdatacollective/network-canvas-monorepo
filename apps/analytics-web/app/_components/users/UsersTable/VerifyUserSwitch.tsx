@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Switch } from "~/components/ui/switch";
+import { useState } from 'react';
+import { Switch } from '~/components/ui/switch';
 
 type VerifyUserSwitchProps = {
   id: string;
@@ -14,27 +14,29 @@ export default function VerifyUserSwitch({
 
   const updateMetadata = async () => {
     try {
-      const response = await fetch("/api/clerk", {
-        method: "POST",
+      const response = await fetch('/api/clerk', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ userId: id, verified: !localVerified }),
       });
 
       if (!response.ok) {
         setLocalVerified(!localVerified);
-        console.error("Database update failed.");
+        // eslint-disable-next-line no-console
+        console.error('Database update failed.');
       }
     } catch (error) {
       setLocalVerified;
-      console.error("Error updating database:", error);
+      // eslint-disable-next-line no-console
+      console.error('Error updating database:', error);
     }
   };
 
   const handleToggle = async () => {
     setLocalVerified(!localVerified);
-    updateMetadata();
+    await updateMetadata();
   };
 
   return <Switch checked={localVerified} onCheckedChange={handleToggle} />;

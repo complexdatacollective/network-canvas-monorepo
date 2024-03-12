@@ -1,5 +1,5 @@
-import { SummaryCard } from "~/components/SummaryCard";
-import { getTotalErrors } from "~/utils/getTotalErrors";
+import { SummaryCard } from '~/components/SummaryCard';
+import { getTotalErrors } from '~/utils/getTotalErrors';
 
 const TotalErrorsCard = async () => {
   const totalErrors = await getTotalErrors();

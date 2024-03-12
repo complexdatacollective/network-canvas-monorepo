@@ -1,4 +1,4 @@
-import { Button } from "~/components/ui/button";
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -6,9 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "~/components/ui/dialog";
-import { Users as UsersIcon } from "lucide-react";
-import VerifiedUsersTable from "./UsersTable/UsersTable";
+} from '~/components/ui/dialog';
+import { Users as UsersIcon } from 'lucide-react';
+import VerifiedUsersTable from './UsersTable/UsersTable';
 
 export default function UserManagementDialog() {
   return (

@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { ColumnDef } from "@tanstack/react-table";
-import { type Dispatch, type SetStateAction } from "react";
-import { DataTableColumnHeader } from "~/components/DataTable/column-header";
-import { MetadataDialog } from "~/components/MetadataDialog";
-import type { Event } from "~/db/getEvents";
-import { type EventType } from "./EventsTable";
-import { StackTraceDialog } from "./StackTraceDialog";
-import TableFilter from "./TableFilter";
+import { type ColumnDef } from '@tanstack/react-table';
+import { type Dispatch, type SetStateAction } from 'react';
+import { DataTableColumnHeader } from '~/components/DataTable/column-header';
+import { MetadataDialog } from '~/components/MetadataDialog';
+import type { Event } from '~/db/getEvents';
+import { type EventType } from './EventsTable';
+import { StackTraceDialog } from './StackTraceDialog';
+import TableFilter from './TableFilter';
 
 export const getColumns = (
   eventTypes: EventType[],
-  setEventTypes: Dispatch<SetStateAction<EventType[]>>
+  setEventTypes: Dispatch<SetStateAction<EventType[]>>,
 ) => {
   const columns: ColumnDef<Event>[] = [
     {
-      accessorKey: "type",
+      accessorKey: 'type',
       header: ({ column }) => (
         <div className="flex space-x-4">
           <TableFilter eventTypes={eventTypes} setEventTypes={setEventTypes} />
@@ -24,7 +24,7 @@ export const getColumns = (
       ),
     },
     {
-      accessorKey: "timestamp",
+      accessorKey: 'timestamp',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Timestamp" />
       ),
@@ -37,7 +37,7 @@ export const getColumns = (
       },
     },
     {
-      accessorKey: "installationId",
+      accessorKey: 'installationId',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Installation Id" />
       ),
@@ -46,26 +46,26 @@ export const getColumns = (
       },
     },
     {
-      accessorKey: "name",
+      accessorKey: 'name',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Name" />
       ),
     },
     {
-      accessorKey: "message",
+      accessorKey: 'message',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Message" />
       ),
     },
     {
-      accessorKey: "cause",
+      accessorKey: 'cause',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Cause" />
       ),
     },
     {
-      accessorKey: "stack",
-      header: "",
+      accessorKey: 'stack',
+      header: '',
       cell: ({ row }) =>
         row.original.stack && (
           <div className="min-w-max">
@@ -74,8 +74,8 @@ export const getColumns = (
         ),
     },
     {
-      accessorKey: "metadata",
-      header: "",
+      accessorKey: 'metadata',
+      header: '',
       cell: ({ row }) => {
         return (
           <div className="min-w-max">

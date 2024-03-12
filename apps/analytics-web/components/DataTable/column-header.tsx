@@ -1,20 +1,19 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
-import { type Column } from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { type Column } from '@tanstack/react-table';
 
-import { Button } from "~/components/ui/button";
+import { Button } from '~/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { cn } from "~/utils/shadcn";
+} from '~/components/ui/dropdown-menu';
+import { cn } from '~/utils/shadcn';
 
-interface DataTableColumnHeaderProps<TData, TValue>
-  extends React.HTMLAttributes<HTMLDivElement> {
+type DataTableColumnHeaderProps<TData, TValue> = {
   column: Column<TData, TValue>;
   title?: string;
-}
+} & React.HTMLAttributes<HTMLDivElement>;
 
 export function DataTableColumnHeader<TData, TValue>({
   column,
@@ -26,7 +25,7 @@ export function DataTableColumnHeader<TData, TValue>({
   }
 
   return (
-    <div className={cn("flex items-center space-x-2", className)}>
+    <div className={cn('flex items-center space-x-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -35,16 +34,16 @@ export function DataTableColumnHeader<TData, TValue>({
             className="-ml-3 h-8 data-[state=open]:bg-accent"
           >
             <span>{title}</span>
-            {column.getIsSorted() === "desc" ? (
+            {column.getIsSorted() === 'desc' ? (
               <ArrowDown
-                className={`${title && "ml-2 "}h-4 w-4 text-emerald-500`}
+                className={`${title && 'ml-2 '}h-4 text-emerald-500 w-4`}
               />
-            ) : column.getIsSorted() === "asc" ? (
+            ) : column.getIsSorted() === 'asc' ? (
               <ArrowUp
-                className={`${title && "ml-2"} h-4 w-4 text-emerald-500`}
+                className={`${title && 'ml-2'} text-emerald-500 h-4 w-4`}
               />
             ) : (
-              <ArrowUpDown className={`${title && "ml-2"} w-4t h-4`} />
+              <ArrowUpDown className={`${title && 'ml-2'} w-4t h-4`} />
             )}
           </Button>
         </DropdownMenuTrigger>

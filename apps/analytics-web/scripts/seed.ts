@@ -1,22 +1,23 @@
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
 dotenv.config();
 
-import { faker } from "@faker-js/faker";
-import { db, type EventInsertType } from "~/db/db";
-import { eventsTable } from "~/db/schema";
-import { eventTypes } from "@codaco/analytics";
+import { faker } from '@faker-js/faker';
+import { db, type EventInsertType } from '~/db/db';
+import { eventsTable } from '~/db/schema';
+import { eventTypes } from '@codaco/analytics';
 
-let installationIds: string[] = [];
+const installationIds: string[] = [];
 for (let i = 0; i < 20; i++) {
   installationIds.push(faker.string.uuid());
 }
 
 async function seedEvents() {
-  console.info("Starting to seed events");
+  // eslint-disable-next-line no-console
+  console.info('Starting to seed events');
 
   try {
     for (let i = 0; i < 100; i++) {
-      const type = faker.helpers.arrayElement([...eventTypes, "Error"]);
+      const type = faker.helpers.arrayElement([...eventTypes, 'Error']);
       const installationId = faker.helpers.arrayElement(installationIds);
       const timestamp = faker.date.recent();
       const metadata = {
@@ -51,16 +52,15 @@ async function seedEvents() {
 
       await db
         .insert(eventsTable)
-        .values(type === "Error" ? errorEvent : noneErrorEvent)
+        .values(type === 'Error' ? errorEvent : noneErrorEvent)
         .returning();
     }
   } catch (error) {
-    console.error("Error seeding events", error);
+    // eslint-disable-next-line no-console
+    console.error('Error seeding events', error);
   }
 
   process.exit();
 }
 
-(async () => {
-  await seedEvents();
-})();
+await seedEvents();

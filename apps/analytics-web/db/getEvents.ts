@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db } from './db';
 
 export default async function getEvents() {
   try {
@@ -8,7 +8,8 @@ export default async function getEvents() {
 
     return events;
   } catch (error) {
-    console.error("Error getting events", error);
+    // eslint-disable-next-line no-console
+    console.error('Error getting events', error);
     return [];
   }
 }

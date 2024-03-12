@@ -1,14 +1,14 @@
-import type { Config } from "tailwindcss";
-import sharedConfig from "@codaco/tailwind-config/fresco";
+import type { Config } from 'tailwindcss';
+import sharedConfig from '@codaco/tailwind-config/fresco';
 
-const config: Pick<Config, "content" | "darkMode" | "presets" | "plugins"> = {
+const config: Pick<Config, 'content' | 'darkMode' | 'presets' | 'plugins'> = {
   content: [
     ...sharedConfig.content,
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-    "../../packages/ui/**/*.{ts,tsx}", // UI package
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
+    '../../packages/ui/**/*.{ts,tsx}', // UI package
   ],
   presets: [sharedConfig],
 };

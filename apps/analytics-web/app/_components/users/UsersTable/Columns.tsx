@@ -1,22 +1,33 @@
-"use client";
-import { ColumnDef } from "@tanstack/react-table";
-import VerifyUserSwitch from "./VerifyUserSwitch";
-export const columns: ColumnDef<any>[] = [
+'use client';
+import { type ColumnDef } from '@tanstack/react-table';
+import VerifyUserSwitch from './VerifyUserSwitch';
+
+type UserColumn = ColumnDef<
   {
-    accessorKey: "user",
-    header: "User",
+    id: string;
+    fullName: string;
+    username: string | null;
+    verified: boolean;
+  },
+  unknown
+>;
+
+export const columns: UserColumn[] = [
+  {
+    accessorKey: 'user',
+    header: 'User',
     cell: ({ row }) => {
       return (
-        <div className={row.original.verified ? "" : "text-muted-foreground"}>
-          <div className="font-bold text-md">{row.original.fullName}</div>
-          <div className="text-sm text-gray-500">{row.original.username}</div>
+        <div className={row.original.verified ? '' : 'text-muted-foreground'}>
+          <div className="text-md font-bold">{row.original.fullName}</div>
+          <div className="text-gray-500 text-sm">{row.original.username}</div>
         </div>
       );
     },
   },
   {
-    accessorKey: "verified",
-    header: "Verified",
+    accessorKey: 'verified',
+    header: 'Verified',
     cell: ({ row }) => {
       return (
         <VerifyUserSwitch

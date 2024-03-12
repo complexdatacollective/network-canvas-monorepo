@@ -1,5 +1,5 @@
-import { getTotalInterviewsStarted } from "~/utils/getTotalInterviewsStarted";
-import { SummaryCard } from "~/components/SummaryCard";
+import { getTotalInterviewsStarted } from '~/utils/getTotalInterviewsStarted';
+import { SummaryCard } from '~/components/SummaryCard';
 
 const TotalInterviewsStartedCard = async () => {
   const totalInterviewsStarted = await getTotalInterviewsStarted();

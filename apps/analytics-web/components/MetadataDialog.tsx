@@ -1,6 +1,6 @@
-import { DialogButton } from "~/components/DialogButton";
+import { DialogButton } from '~/components/DialogButton';
 
-import { type Event } from "~/db/getEvents";
+import { type Event } from '~/db/getEvents';
 
 export function MetadataDialog({ event }: { event: Event }) {
   return (
