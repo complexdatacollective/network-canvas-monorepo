@@ -9,8 +9,8 @@ const MobileNavBar = () => {
   return (
     <>
       <MobileSidebarDialog open={open} setOpen={setOpen} />
-      <div className="flex items-center gap-3 lg:hidden">
-        <DocSearchComponent className="hidden sm:flex" />
+      <div className="flex flex-1 items-center gap-4 lg:hidden">
+        <DocSearchComponent />
         {open ? (
           <Button
             onClick={() => setOpen(false)}
