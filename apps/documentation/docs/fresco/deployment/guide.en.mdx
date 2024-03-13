@@ -102,21 +102,23 @@ Sign in to Vercel via your Github account credentials so that you can easily con
    | **UPLOADTHING_APP_ID** | The unique identifier for your UploadThing app. This is used along with the secret key to identify your app when making requests from Fresco to the UploadThing API. |
    | **DISABLE_ANALYTICS**  | A flag to disable the analytics microservice for Fresco. If this is set to `false`, the analytics microservice will be enabled.                                      |
 
-   <TipBox>
+<TipBox>
 
-   We use analytics to gather error data from instances of Fresco to troubleshoot issues. By leaving **`DISABLE_ANALYTICS`** set to **`false`** (the default), you will help us identify bugs and improve the app.
+We use analytics to gather error data from instances of Fresco to troubleshoot issues. By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
 
    </TipBox>
 
    ![Configure Environment Variables](/assets/img/fresco-images/vercel-configure.png)
 
-   <TipBox danger>
-   When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
+<TipBox danger>
+
+When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
 
    </TipBox>
 
-   <TipBox danger>
-   When providing the environment variables, do not enclose the variable values in quotes. For example:
+<TipBox danger>
+
+When providing the environment variables, do not enclose the variable values in quotes. For example:
 
    ✅ Correct:
    `sk_live_xxxxxxxxxxxxxxxxxxx`
