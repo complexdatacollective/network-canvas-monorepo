@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -69,20 +69,17 @@ const SidebarFolder = ({
   alwaysOpen?: boolean;
   children?: React.ReactNode;
 }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen ?? alwaysOpen ?? false);
-
   const pathname = usePathname();
 
-  // Folder should be open if any of its children are the current page
-  useEffect(() => {
-    if (!alwaysOpen) {
-      const shouldOpen = (
-        children as React.ReactElement<{ href?: string }>[]
-      ).some((child) => child.props.href === pathname);
-      setIsOpen(shouldOpen);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, alwaysOpen]);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (alwaysOpen) return true;
+
+    if (defaultOpen) return true;
+
+    return (children as React.ReactElement<{ href?: string }>[]).some(
+      (child) => child.props.href === pathname,
+    );
+  });
 
   return (
     <Collapsible

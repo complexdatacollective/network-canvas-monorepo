@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './dialog';
+import { Divider } from './Divider';
 import { Input, inputClasses } from './Input';
 import { Label } from './Label';
 import {
@@ -85,6 +86,7 @@ export {
   DialogPortal,
   dialogContentClasses,
   Details,
+  Divider,
   Tooltip,
   TooltipContent,
   TooltipProvider,

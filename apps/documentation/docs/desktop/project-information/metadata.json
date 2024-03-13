@@ -3,6 +3,9 @@
   "localeLabels": {
     "en": "Project Information"
   },
+  "localeIndexFiles": {
+    "en": "project-overview.en.mdx"
+  },
   "isExpanded": true,
   "slug": "project-information"
 }

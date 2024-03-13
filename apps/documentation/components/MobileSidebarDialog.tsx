@@ -8,7 +8,6 @@ import LogoComponent from './SharedNav/LogoComponent';
 import { Sidebar } from './Sidebar';
 import { Button } from '@codaco/ui';
 import { X as CloseMenu } from 'lucide-react';
-import DocSearchComponent from './DocSearchComponent';
 
 type MobileSidebarDialogProps = {
   open: boolean;

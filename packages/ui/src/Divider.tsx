@@ -1,9 +1,9 @@
-import { cn } from '~/utils/shadcn';
+import { cn } from './utils';
 
 export const Divider = ({ className }: { className?: string }) => (
   <hr
     className={cn(
-      'mx-auto my-4 w-[30rem] max-w-full rounded-full border-[1.5px] border-[hsl(var(--platinum--dark))]',
+      'mx-auto w-full rounded-full border-[1.5px] border-border',
       className,
     )}
   />
