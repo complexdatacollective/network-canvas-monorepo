@@ -32,8 +32,7 @@ export async function markdownToText(markdown: string) {
   return result
     .toString()
     .replace(/<[^>]*>/g, '')
-    .replace(/\.\.\//g, '') // remove HTML tags and relative paths
-    .replace(/\[<script\]/g, ''); // remove potential HTML element injection
+    .replace(/\.\.\//g, ''); // remove HTML tags and relative paths
 }
 
 // Converts text to URL eg: Network Canvas => network-canvas
