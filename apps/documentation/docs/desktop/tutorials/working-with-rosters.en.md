@@ -3,7 +3,7 @@ title: Working with Roster Data
 wip: false
 ---
 
-<SummaryCard completion_time="30 minutes">
+<SummaryCard completionTime="30 minutes">
 <SummarySection>
 
 This tutorial describes a workflow for using roster data within

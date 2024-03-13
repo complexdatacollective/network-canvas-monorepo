@@ -1,14 +1,25 @@
-type StandAloneImgProps = {
+import { cn } from '~/lib/utils';
+
+export type StandAloneImgProps = {
   src: string;
-  content: string;
-  name?: string;
+  caption?: string;
+  noGap?: boolean;
 };
 
-const StandAloneImage = ({ src, content, name }: StandAloneImgProps) => {
+const StandAloneImage = ({ src, caption, noGap }: StandAloneImgProps) => {
   return (
-    <figure className="my-5 flex w-full flex-col items-center justify-center gap-2">
-      <img src={src} alt={name ?? src} className="w-full px-4" />
-      <figcaption className="text-center text-sm italic">{content}</figcaption>
+    <figure
+      className={cn(
+        'my-5 flex w-full flex-col items-center justify-center',
+        noGap ? 'gap-0' : 'gap-4',
+      )}
+    >
+      <img src={src} alt={caption ?? src} className="w-full px-4" />
+      <figcaption
+        className={cn('text-center text-sm italic', noGap && 'relative -top-2')}
+      >
+        {caption}
+      </figcaption>
     </figure>
   );
 };

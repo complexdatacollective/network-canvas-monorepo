@@ -51,6 +51,7 @@ import {
 import { CheckSquare, XOctagon } from 'lucide-react';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
+import { StandAloneImgProps } from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
 
 export type DocRouteParams = {
   params: {
@@ -68,7 +69,7 @@ export const FrontmatterSchema = z.object({
   // Tutorials
   summary: z.string().optional(), // Summary of the tutorial
   prerequisites: z.string().optional(), // Prerequisites for the tutorial
-  completion_time: z.string().optional(), // Estimated time to complete the tutorial
+  completionTime: z.string().optional(), // Estimated time to complete the tutorial
   // interfaces
   image: z.string().optional(), // Path to hero image
   type: z.string().optional(), // Name of interface
@@ -282,7 +283,9 @@ export async function getDocumentForPath({
         ) => {
           return <Link {...props} />;
         },
-        standaloneimage: StandAloneImage,
+        standaloneimage: (props: StandAloneImgProps) => (
+          <StandAloneImage noGap {...props} />
+        ),
         tipbox: (props: TipBoxProps) => {
           return (
             <TipBox danger={props.danger !== undefined}>
@@ -292,13 +295,23 @@ export async function getDocumentForPath({
         },
         imagefloatleft: ImageFloatLeft,
         imagefullwidth: ImageFullWidth,
+        img: (props) => (
+          <StandAloneImage src={props.src!} caption={props.alt} />
+        ),
         keyconcept: KeyConcept,
         goodpractice: () => <CheckSquare className="inline text-success" />,
         badpractice: () => <XOctagon className="inline text-destructive" />,
         videoiframe: VideoIFrame,
-        summarycard: SummaryCard,
-        prerequisitessection: PrerequisitesSection,
-        summarysection: SummarySection,
+        summarycard: (props: {
+          completionTime: string;
+          children: ReactNode;
+        }) => <SummaryCard {...props} />,
+        prerequisitessection: (props: { children: ReactNode }) => (
+          <PrerequisitesSection {...props} />
+        ),
+        summarysection: (props: { children: ReactNode }) => (
+          <SummarySection {...props} />
+        ),
         table: (props) => (
           <div className="overflow-x-auto">
             <table
