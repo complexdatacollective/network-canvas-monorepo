@@ -8,7 +8,7 @@ Some configuration options are available to all or most interface screens (depen
 
 ## Shared Configuration
 
-![](/assets/img/interface-documentation/shared/shared-configuration.png)
+![Image](/assets/img/interface-documentation/shared/shared-configuration.png)
 
 ### Name
 

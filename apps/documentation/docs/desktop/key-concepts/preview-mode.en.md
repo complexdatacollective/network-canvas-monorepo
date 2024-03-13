@@ -10,7 +10,7 @@ Preview mode is a feature within Architect that allows users to interactively pr
 
 To use preview mode, click the card of the stage you wish to preview. Once on the stage configuration screen, click the large pink button in the bottom left corner. A window will open which displays the stage as it would appear in the Interviewer app. From there, you can cycle through the stage prompts and complete any stage specific activities. If you wish to preview more than one stage, continue advancing to subsequent stage(s) until you reach the end of your protocol.
 
-![](/assets/img/key-concepts/preview-mode/Preview-Mode.png)
+![Image](/assets/img/key-concepts/preview-mode/Preview-Mode.png)
 
 You can exit preview mode at any time by closing the window. Data you enter will carry forward to subsequent stages so long as you keep the preview mode window open. As soon as the window is closed, any data entered will be lost as preview mode does not permanently store data.
 

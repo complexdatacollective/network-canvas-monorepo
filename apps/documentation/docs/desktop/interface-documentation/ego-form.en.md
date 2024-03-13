@@ -18,4 +18,4 @@ The Ego Form is an interface that collects data on your participant (ego). When 
 
 The configurable [form](../key-concepts/forms) determines which [variables](../reference/variable-types) will be assigned to the ego section of the network.
 
-![](/assets/img/interface-documentation/ego-form/architect-ego-form.png)
+![Image](/assets/img/interface-documentation/ego-form/architect-ego-form.png)

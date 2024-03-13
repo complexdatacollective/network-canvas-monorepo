@@ -9,7 +9,7 @@ Below you will find a summary of each available input control, and advice about 
 
 ## Checkbox Group
 
-![](/assets/img/key-concepts/input-controls/CheckboxGroup.png)
+![image](/assets/img/key-concepts/input-controls/CheckboxGroup.png)
 
 ### Purpose
 
@@ -38,7 +38,7 @@ Options are displayed vertically, to allow for longer labels and to create a mor
 
 ## Date Picker
 
-![](/assets/img/key-concepts/input-controls/DatePicker.png)
+![image](/assets/img/key-concepts/input-controls/DatePicker.png)
 
 ### Purpose
 
@@ -65,7 +65,7 @@ If your interview context is better suited to keyboard text entry rather than th
 
 ## Likert Scale
 
-![](/assets/img/key-concepts/input-controls/LikertScale.png)
+![image](/assets/img/key-concepts/input-controls/LikertScale.png)
 
 ### Purpose
 
@@ -92,7 +92,7 @@ When first loaded, this control is in an "untouched" state, with a semi-transpar
 
 ## Number Input
 
-![](/assets/img/key-concepts/input-controls/NumberInput.png)
+![image](/assets/img/key-concepts/input-controls/NumberInput.png)
 
 ### Purpose
 
@@ -118,7 +118,7 @@ Please note that because of the way numbers are represented scientifically, the 
 
 ## Radio Group
 
-![](/assets/img/key-concepts/input-controls/RadioGroup.png)
+![image](/assets/img/key-concepts/input-controls/RadioGroup.png)
 
 ### Purpose
 
@@ -145,7 +145,7 @@ A radio group is a control that allows participants to select a single choice fr
 
 ## Relative Date Picker
 
-![](/assets/img/key-concepts/input-controls/RelativeDatePicker.png)
+![image](/assets/img/key-concepts/input-controls/RelativeDatePicker.png)
 
 ### Purpose
 
@@ -171,7 +171,7 @@ Unlike the date picker control, the relative date picker does not allow you to s
 
 ## Text Area
 
-![](/assets/img/key-concepts/input-controls/TextArea.png)
+![image](/assets/img/key-concepts/input-controls/TextArea.png)
 
 ### Purpose
 
@@ -194,7 +194,7 @@ The text area control provides participants with a simple field for data entry o
 
 ## Text Input
 
-![](/assets/img/key-concepts/input-controls/TextInput.png)
+![image](/assets/img/key-concepts/input-controls/TextInput.png)
 
 ### Purpose
 
@@ -219,7 +219,7 @@ The text input control provides participants with a field for simple data entry 
 
 ## Toggle
 
-![](/assets/img/key-concepts/input-controls/Toggle.png)
+![image](/assets/img/key-concepts/input-controls/Toggle.png)
 
 ### Purpose
 
@@ -243,7 +243,7 @@ The toggle control provides participants a switch that can be toggled on or off,
 
 ## Toggle Button Group
 
-![](/assets/img/key-concepts/input-controls/ToggleButtonGroup.png)
+![image](/assets/img/key-concepts/input-controls/ToggleButtonGroup.png)
 
 ### Purpose
 
@@ -269,7 +269,7 @@ It is provided as an alternative to the checkbox group for scenarios where it ma
 
 ## Visual Analog Scale
 
-![](/assets/img/key-concepts/input-controls/VisualAnalogScale.png)
+![image](/assets/img/key-concepts/input-controls/VisualAnalogScale.png)
 
 ### Purpose
 

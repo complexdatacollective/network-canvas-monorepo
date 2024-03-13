@@ -20,4 +20,4 @@ There are two sociogram Interfaces in Network Canvas - one for data collection a
 
 When using the "Sociogram" Interface, participants position their alters and draw ties between them. The Interface can be used to create one or multiple edge types between alters in a participant's network, and to collect alter attribute data by highlighting alters where the variable value is true.
 
-![](/assets/img/interface-documentation/sociogram/sociogram-highlight.png)
+![Image](/assets/img/interface-documentation/sociogram/sociogram-highlight.png)
