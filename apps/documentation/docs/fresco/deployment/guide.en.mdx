@@ -3,13 +3,26 @@ title: Deployment Guide
 date: 12th March 2024
 ---
 
+<SummaryCard completion_time="20 minutes" />
+
+<SummarySection>
 This guide will walk you through the process of deploying your instance of Fresco, including forking the repository, setting up database infrastructure, and deploying to the web.
+
+</SummarySection>
+
+<PrerequisitesSection>
+Before you get started, you should:
+
+- Read the [about Fresco](/en/fresco) article to understand what Fresco is and how it works.
+- Read about the deployment process in our [deployment overview](/en/fresco/deployment) article.
+- Create an account on [GitHub](https://github.com/) if you do not already have one.
+
+</PrerequisitesSection>
+</SummaryCard>
 
 ## Step 1: Create an app on UploadThing
 
 Fresco uses your UploadThing account to store media files including protocol assets.
-
-_Prerequisite:_ You need to have a GitHub account. Go to <a href="https://github.com" target="_blank">github.com</a> and sign up for an account if you do not already have one.
 
 1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
 
@@ -41,7 +54,7 @@ Save your API keys in a safe place as they are required to deploy Fresco on Verc
 
 </TipBox>
 
-   ![UploadThing copy your API keys](/assets/img/fresco-images/uploadthing6.png)
+![UploadThing copy your API keys](/assets/img/fresco-images/uploadthing6.png)
 
 For more information about UploadThing, check out <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
 
@@ -55,17 +68,14 @@ For information about cloud pricing, read our [cloud pricing](./cloud-pricing) d
 
 2. Create your Fork
 
-Enter a repository name (this will be your Fresco instance name), description (optional), and click **"Create Fork"**.
-
-![Github - Create your fork](/assets/img/fresco-images/github-fork2.png)
+   Enter a repository name (this will be your Fresco instance name), description (optional), and click **"Create Fork"**.
+   ![Github - Create your fork](/assets/img/fresco-images/github-fork2.png)
 
 This will create a separate instance of the Fresco repository that you can deploy.
 
 ## Step 3: Deploy Forked Repository on Vercel
 
-_Prerequisite:_ You need to have a Vercel account. Go to <a href="https://vercel.com/" target="_blank">vercel.com</a> and sign up for an account.
-
-Sign in to Vercel via your Github account so that you can easily connect your repositories. You can use their "Hobby" tier or paid plan.
+Sign in to Vercel via your Github account credentials so that you can easily connect your repositories. You can use their "Hobby" tier or paid plan. For more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation.
 
 1. <a href="https://vercel.com/new" target="_blank">
      Create a new Project
@@ -73,48 +83,48 @@ Sign in to Vercel via your Github account so that you can easily connect your re
 
 2. Import Git Repository
 
-Find your Fresco instance from the list of your git repositories and click **"Import"**.
+   Find your Fresco instance from the list of your git repositories and click **"Import"**.
+   ![Import Git Repository](/assets/img/fresco-images/vercel2.png)
 
-![Import Git Repository](/assets/img/fresco-images/vercel2.png)
-
-3. Configure Project.
+3. Configure Environment Variables.
 
    Copy the template below and paste it into the Environment Variables section in Vercel to prepopulate the form with the required environment variables.
 
    Replace the values with your environment variable values from UploadThing you copied in [Step 1](#step-1-create-an-app-on-uploadthing)
 
-> UPLOADTHING_SECRET=your_uploadthing_api_key\
-> UPLOADTHING_APP_ID=your_uploadthing_app_id\
-> DISABLE_ANALYTICS=false
+   > UPLOADTHING_SECRET=your_uploadthing_api_key\
+   > UPLOADTHING_APP_ID=your_uploadthing_app_id\
+   > DISABLE_ANALYTICS=false
 
-| Variable Key       | Description                                                                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| UPLOADTHING_SECRET | The API key for your UploadThing app. This is used to authenticate requests from Fresco to the UploadThing API. [More info](https://uploadthing.com/dashboard)                                                      |
-| UPLOADTHING_APP_ID | The unique identifier for your UploadThing app. This is used along with the secret key to identify your app when making requests from Fresco to the UploadThing API. [More info](https://uploadthing.com/dashboard) |
-| DISABLE_ANALYTICS  | A flag to disable the analytics microservice for Fresco. If this is set to `false`, the analytics microservice will be enabled.                                                                                     |
+   | Variable Key           | Description                                                                                                                                                          |
+   | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | **UPLOADTHING_SECRET** | The API key for your UploadThing app. This is used to authenticate requests from Fresco to the UploadThing API.                                                      |
+   | **UPLOADTHING_APP_ID** | The unique identifier for your UploadThing app. This is used along with the secret key to identify your app when making requests from Fresco to the UploadThing API. |
+   | **DISABLE_ANALYTICS**  | A flag to disable the analytics microservice for Fresco. If this is set to `false`, the analytics microservice will be enabled.                                      |
 
-<TipBox>
-We use analytics to gather error data from instances of Fresco to troubleshoot issues. By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
+   <TipBox>
 
-</TipBox>
+   We use analytics to gather error data from instances of Fresco to troubleshoot issues. By leaving **`DISABLE_ANALYTICS`** set to **`false`** (the default), you will help us identify bugs and improve the app.
 
-![Configure Environment Variables](/assets/img/fresco-images/vercel-configure.png)
+   </TipBox>
 
-<TipBox danger>
-When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
+   ![Configure Environment Variables](/assets/img/fresco-images/vercel-configure.png)
 
-</TipBox>
+   <TipBox danger>
+   When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
 
-<TipBox danger>
-When providing the environment variables, do not enclose the variable values in quotes. For example:
+   </TipBox>
 
-✅ Correct:
-`sk_live_xxxxxxxxxxxxxxxxxxx`
+   <TipBox danger>
+   When providing the environment variables, do not enclose the variable values in quotes. For example:
 
-❌ Incorrect:
-`'sk_live_xxxxxxxxxxxxxxxxxxx'`
+   ✅ Correct:
+   `sk_live_xxxxxxxxxxxxxxxxxxx`
 
-</TipBox>
+   ❌ Incorrect:
+   `'sk_live_xxxxxxxxxxxxxxxxxxx'`
+
+   </TipBox>
 
 4. Deploy
 
@@ -129,33 +139,32 @@ If you encounter any issues during deployment, check out the [Troubleshooting](.
 ## Step 4: Create your database
 
 1. From your project dashboard, select **"Storage"**. Then, select **Create** within the Postgres row.
-
-![Vercel Database Setup 1](/assets/img/fresco-images/vercel-db-1.png)
+   ![Vercel Database Setup 1](/assets/img/fresco-images/vercel-db-1.png)
 
 2. Review and accept the terms in the modal.
-
-![Vercel Database Setup 2](/assets/img/fresco-images/vercel-db-2.png)
+   ![Vercel Database Setup 2](/assets/img/fresco-images/vercel-db-2.png)
 
 3. Give your database a name and select the region that is closest to where you and your participants will be located. Then, click **"Create"**. Your database will be generated and you will be redirected to the Getting Started page.
 
-![Vercel Database Setup 3](/assets/img/fresco-images/vercel-db-3.png)
+   ![Vercel Database Setup 3](/assets/img/fresco-images/vercel-db-3.png)
 
 4. You will be prompted to connect your project. Select **"Connect"**.
 
-![Vercel Database Setup 4](/assets/img/fresco-images/vercel-db-4.png)
+   ![Vercel Database Setup 4](/assets/img/fresco-images/vercel-db-4.png)
 
 5. Select the **"Deployments"** tab. Click on the menu beside the most recent deployment and select **"Redeploy"**. This will redeploy your project with your new connected database.
 
-![Vercel Database Setup 5](/assets/img/fresco-images/vercel-db-5.png)
+   ![Vercel Database Setup 5](/assets/img/fresco-images/vercel-db-5.png)
 
 ## Step 5: Visit your deployed app
+
 Visit your deployed Fresco app by clicking on the preview or go to your dashboard by clicking **"Continue to Dashboard"**.
 
-   ![Deploy on Vercel3](/assets/img/fresco-images/vercel3.png)
+![Deploy on Vercel3](/assets/img/fresco-images/vercel3.png)
 
-   Then, click on one of the domain names or the **"Visit"** button.
+Then, click on one of the domain names or the **"Visit"** button.
 
-   ![Deploy on Vercel4](/assets/img/fresco-images/vercel4.png)
+![Deploy on Vercel4](/assets/img/fresco-images/vercel4.png)
 
 ## Next Steps
 
