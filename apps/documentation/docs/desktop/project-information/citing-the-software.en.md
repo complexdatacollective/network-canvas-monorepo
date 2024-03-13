@@ -56,4 +56,4 @@ URLs for Network Canvas software repositories are:
 
 Current downloads for the Network Canvas Software Suite are available at:
 
-- [https://networkcanvas.com/download.html](https://networkcanvas.com/download.html)
+- [https://networkcanvas.com/download.html](https://networkcanvas.com/download)

@@ -13,7 +13,7 @@ Architect will create your protocol file automatically when you create a new pro
 
 Once you deploy your protocol to other applications, however, be aware that making changes effectively makes your protocol a new version. If you find that you need to make changes after deploying it, you have two options. It is recommended to save a copy of your protocol with a new name after making changes, and to import the new version to Interviewer and Server. The other option is to remove the existing protocol (and any interview data) from Server and Interviewer and upload the newer version. This is necessary to ensure compatibility across tools.
 
-If you choose to create or edit a protocol file by hand, you will be responsible for ensuring it follows all specifications for the current [schema](/en/desktop/reference/protocol-schema-information).
+If you choose to create or edit a protocol file by hand, you will be responsible for ensuring it follows all specifications for the current [schema](/en/desktop/advanced-topics/protocol-schema-information).
 
 ## Using Protocol Files
 

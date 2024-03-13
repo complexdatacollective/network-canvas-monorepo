@@ -37,7 +37,7 @@ When you update Interviewer or Architect, you may encounter messages when using 
 
 ### Within Interviewer
 
-In Interviewer, you may see a blue light bulb icon, or a red robot icon, on your protocol card. Where a new schema is backward-compatible with a prior version you will see a blue light bulb, and Interviewer will continue to support installing and running protocols of that version without any issues. This means that if you are happy with your protocol file **you do not need to take any action**. Your protocol will continue to function as before, albeit without access to new functionality implemented with the new schema version (see the [schema versions table](#schema-versions) below for details on this).
+In Interviewer, you may see a blue light bulb icon, or a red robot icon, on your protocol card. Where a new schema is backward-compatible with a prior version you will see a blue light bulb, and Interviewer will continue to support installing and running protocols of that version without any issues. This means that if you are happy with your protocol file **you do not need to take any action**. Your protocol will continue to function as before, albeit without access to new functionality implemented with the new schema version (see the [schema versions table](/en/desktop/advanced-topics/protocol-schema-information#compatibility-table) below for details on this).
 
 If you wish to update the protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
 
@@ -101,6 +101,6 @@ Consult the table below for information about which schema versions are supporte
 
 The following section may be useful if you are attempting to understand how schema migration is performed on a technical level. In rare cases, this may help you to troubleshoot an issue with a migrated protocol yourself, should you wish.
 
-- A migration between two sequential schema versions is a functional transformation of the protocol object. These transformations are written as simple functions that take a protocol object, mutate it, and return the mutated protocol. Migration functions are defined in the [protocol-validation submodule](https://github.com/complexdatacollective/protocol-validation/tree/master/migrations/migrations).
+- A migration between two sequential schema versions is a functional transformation of the protocol object. These transformations are written as simple functions that take a protocol object, mutate it, and return the mutated protocol. Migration functions are defined in the [protocol-validation submodule](https://github.com/complexdatacollective/protocol-validation/tree/master/src/migrations/migrations).
 - Transformations can be chained together, meaning that a protocol can be migrated from version 1 to version n by applying all transformations in between in sequence \[1 … n].
 - We plan a parallel system of "patching", which will use the same technique as migration, but is designed to address any data corruption issues caused as a result of bugs in Architect. Patches are designed to fix protocol issues without updating the schema version.
