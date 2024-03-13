@@ -17,4 +17,4 @@ If you choose to create or edit a protocol file by hand, you will be responsible
 
 ## Using Protocol Files
 
-Once your protocol file is complete, you can then use this file in Server and Interviewer. See [importing a protocol into Interviewer](/en/desktop/how-to/import-a-protocol) or [creating and managing workspaces in Server](/en/desktop/how-to/server-workspaces) for more.
+Once your protocol file is complete, you can then use this file in Interviewer. See [Protocol and Data Workflows without Server](/en/desktop/tutorials/workflows-without-server) for more information.
