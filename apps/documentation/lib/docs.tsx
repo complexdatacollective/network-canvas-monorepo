@@ -273,9 +273,7 @@ export async function getDocumentForPath({
           <pre className="my-5 overflow-hidden rounded-xl" {...props} />
         ),
         code: (props) => <code className="text-small" {...props} />,
-        button: (props) => (
-          <Button variant="default" className="mt-4" {...props} />
-        ),
+        button: (props) => <Button variant="default" {...props} />,
         link: (
           props: LinkProps & { className?: string; children: ReactNode },
         ) => {

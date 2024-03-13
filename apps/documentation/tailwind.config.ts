@@ -6,7 +6,7 @@ const config: Pick<
   Config,
   'content' | 'darkMode' | 'presets' | 'plugins' | 'theme'
 > = {
-  darkMode: ['class'],
+  darkMode: 'class',
   content: [
     ...sharedConfig.content,
     './lib/**/*.{ts,tsx}', // For JSX components in MD

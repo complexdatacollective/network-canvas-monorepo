@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 type StandAloneImgProps = {
   src: string;
   content: string;
@@ -8,16 +6,10 @@ type StandAloneImgProps = {
 
 const StandAloneImage = ({ src, content, name }: StandAloneImgProps) => {
   return (
-    <div className="m-0 flex w-full flex-col items-center p-0">
-      <Image
-        width={500}
-        height={500}
-        src={src}
-        alt={name ?? src}
-        style={{ marginBlock: '5px' }}
-      />
-      <span className="text-slate-400 text-sm italic">{content}</span>
-    </div>
+    <figure className="my-5 flex w-full flex-col items-center justify-center gap-2">
+      <img src={src} alt={name ?? src} className="w-full px-4" />
+      <figcaption className="text-center text-sm italic">{content}</figcaption>
+    </figure>
   );
 };
 
