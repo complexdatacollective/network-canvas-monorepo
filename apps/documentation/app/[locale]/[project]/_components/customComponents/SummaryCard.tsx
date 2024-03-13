@@ -11,35 +11,32 @@ export const SummaryCard = ({
   completion_time: string;
 }) => {
   return (
-    <Card className="mt-10 bg-card">
-      <CardContent className="flex flex-col gap-4 p-4">
+    <summary className="my-5 rounded-lg bg-card">
+      <CardContent className="p-6">
         {children}
-        <div>
-          <Heading variant={'h4-all-caps'}>Duration:</Heading>
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-5 w-5 shrink-0" />
-            <Paragraph>{completion_time}</Paragraph>
-          </div>
-        </div>
+        <Heading variant={'h4-all-caps'}>Duration:</Heading>
+        <Paragraph className="flex items-center gap-2" margin="none">
+          <Clock className="h-5 w-5 shrink-0" /> {completion_time}
+        </Paragraph>
       </CardContent>
-    </Card>
+    </summary>
   );
 };
 
 export const SummarySection = ({ children }: { children: ReactNode }) => {
   return (
-    <div>
+    <>
       <Heading variant={'h4-all-caps'}>Summary:</Heading>
       {children}
-    </div>
+    </>
   );
 };
 
 export const PrerequisitesSection = ({ children }: { children: ReactNode }) => {
   return (
-    <div>
+    <>
       <Heading variant={'h4-all-caps'}>Prerequisites:</Heading>
       {children}
-    </div>
+    </>
   );
 };

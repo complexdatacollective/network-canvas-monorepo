@@ -4,9 +4,8 @@ import {
   buttonVariants,
   headingVariants,
 } from '@codaco/ui';
-import { CaretDownIcon } from '@radix-ui/react-icons';
 import * as NavigationMenu from '@radix-ui/react-navigation-menu';
-import { ArrowLeftCircle } from 'lucide-react';
+import { ArrowLeftCircle, ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -53,8 +52,8 @@ const links = [
 ];
 
 const linkClasses = cn(
-  headingVariants({ variant: 'h4-all-caps' }),
-  'focusable underline-offset-8 hover:text-success',
+  headingVariants({ variant: 'h4-all-caps', margin: 'none' }),
+  'focusable flex items-center underline-offset-8 hover:text-success',
 );
 
 export const NavigationMenuDemo = () => {
@@ -63,19 +62,14 @@ export const NavigationMenuDemo = () => {
   return (
     <NavigationMenu.Root asChild>
       <div className="relative z-10 flex grow justify-end">
-        <NavigationMenu.List className="center m-0 flex list-none items-center gap-4 md:gap-10">
+        <NavigationMenu.List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
           {links.map((link, i) => {
             if (link.menu) {
               return (
                 <NavigationMenu.Item key={i}>
-                  <NavigationMenu.Trigger
-                    className={cn(linkClasses, 'flex gap-2')}
-                  >
+                  <NavigationMenu.Trigger className={cn(linkClasses, 'gap-2')}>
                     {t(link.translationKey)}{' '}
-                    <CaretDownIcon
-                      className="relative top-[1px] transition-transform duration-200 ease-in group-data-[state=open]:-rotate-180"
-                      aria-hidden
-                    />
+                    <ChevronDown className="h-4 w-4" aria-hidden />
                   </NavigationMenu.Trigger>
                   <NavigationMenu.Content className="absolute right-0 top-0 w-full">
                     <ul className="m-0 grid w-full grid-cols-3 gap-4 p-6">
@@ -216,7 +210,7 @@ export const NavigationMenuMobile = () => {
         <button
           className={cn(
             buttonVariants({ variant: 'accent', size: 'sm' }),
-            'rounded-full px-2',
+            'inline rounded-full px-2',
           )}
           onClick={() => setSubmenu([])}
         >

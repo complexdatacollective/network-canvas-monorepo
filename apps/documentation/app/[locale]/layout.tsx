@@ -66,7 +66,7 @@ export default async function MainLayout({
       suppressHydrationWarning
       className={`${quicksand.className} antialiased`}
     >
-      <body className="flex min-h-full flex-col gap-4">
+      <body className="flex min-h-full flex-col gap-4 text-base">
         <ThemeProvider
           enableSystem
           enableColorScheme

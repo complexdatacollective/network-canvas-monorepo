@@ -106,6 +106,7 @@ const SidebarFolder = ({
                 className="h-4 w-4"
                 initial={{ rotate: isOpen ? 90 : 0 }}
                 animate={{ rotate: isOpen ? 90 : 0 }}
+                aria-hidden
               />
             )}
           </Link>
@@ -117,6 +118,7 @@ const SidebarFolder = ({
                 className="h-4 w-4"
                 initial={{ rotate: isOpen ? 90 : 0 }}
                 animate={{ rotate: isOpen ? 90 : 0 }}
+                aria-hidden
               />
             )}
           </div>

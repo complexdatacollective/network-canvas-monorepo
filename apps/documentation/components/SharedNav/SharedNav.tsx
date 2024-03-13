@@ -6,7 +6,7 @@ import { cn } from '~/lib/utils';
 import { useBreakpoint } from '~/hooks/useBreakpoint';
 
 export default function SharedNav() {
-  const { isAboveMd, isBelowMd } = useBreakpoint('md');
+  const { isAboveMd } = useBreakpoint('md');
   const { isBelowLg } = useBreakpoint('lg');
   return (
     <motion.nav

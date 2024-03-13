@@ -12,6 +12,7 @@ const KeyConcept = ({ children, title }: KeyConceptProps) => {
     <PopoutBox
       title={title}
       className="bg-accent/10 [--link:var(--accent)]"
+      iconClassName="bg-white"
       icon={
         <Image
           src="/images/key-concept.svg"

@@ -28,7 +28,7 @@ const PopoutBox = ({
       {icon && (
         <div
           className={cn(
-            'flex h-12 w-12 shrink-0 scale-75 items-center justify-center rounded-full bg-card shadow-md',
+            'flex h-12 w-12 shrink-0 scale-75 items-center justify-center rounded-full bg-foreground shadow-md',
             'md:absolute md:-left-6 md:-top-4 md:scale-100',
             iconClassName,
           )}

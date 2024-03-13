@@ -16,7 +16,7 @@ export const headingVariants = cva('text-balance', {
       'h3': 'mb-2 scroll-m-20 text-lg font-semibold tracking-tight [&:not(:first-child)]:mt-5',
       'h4': 'mb-1 scroll-m-20 text-base font-semibold tracking-tight [&:not(:first-child)]:mt-4',
       'h4-all-caps':
-        'scroll-m-20 text-sm font-extrabold uppercase tracking-[.2em]',
+        'mb-1 scroll-m-20 text-sm font-extrabold uppercase tracking-[.2em] [&:not(:first-child)]:mt-6',
       'label':
         'scroll-m-20 text-sm font-extrabold tracking-normal peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
     },
