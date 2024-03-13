@@ -16,16 +16,16 @@ The Per Alter Form is a _name interpreter_ interface that captures attribute dat
 
 ## Configuring Per Alter Form
 
-![Image](/assets/img/interface-documentation/per-alter-form/add-screen.png)
+![](/assets/img/interface-documentation/per-alter-form/add-screen.png)
 
 A single edge type is selectable per screen. This screen supports [filtering](../key-concepts/network-filtering) for nodes that match the specified type.
 
-![Image](/assets/img/interface-documentation/per-alter-form/architect-node-type.png)
+![](/assets/img/interface-documentation/per-alter-form/architect-node-type.png)
 
 The introduction screen is shown before any matching alters and can be used to introduce the task.
 
-![Image](/assets/img/interface-documentation/per-alter-form/architect-intro.png)
+![](/assets/img/interface-documentation/per-alter-form/architect-intro.png)
 
 Each node will be assigned [variables](../reference/variable-types) using a configurable [form](../key-concepts/forms).
 
-![Image](/assets/img/interface-documentation/per-alter-form/architect-form.png)
+![](/assets/img/interface-documentation/per-alter-form/architect-form.png)

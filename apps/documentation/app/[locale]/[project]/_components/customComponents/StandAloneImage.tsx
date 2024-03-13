@@ -11,15 +11,20 @@ const StandAloneImage = ({ src, caption, noGap }: StandAloneImgProps) => {
     <figure
       className={cn(
         'my-5 flex w-full flex-col items-center justify-center',
-        noGap ? 'gap-0' : 'gap-4',
+        noGap ?? !caption ? 'gap-0' : 'gap-4',
       )}
     >
       <img src={src} alt={caption ?? src} className="w-full px-4" />
-      <figcaption
-        className={cn('text-center text-sm italic', noGap && 'relative -top-2')}
-      >
-        {caption}
-      </figcaption>
+      {caption && (
+        <figcaption
+          className={cn(
+            'text-center text-sm italic',
+            noGap && 'relative -top-2',
+          )}
+        >
+          {caption}
+        </figcaption>
+      )}
     </figure>
   );
 };
