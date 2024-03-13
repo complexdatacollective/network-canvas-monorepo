@@ -41,14 +41,14 @@ const TriggerButton = () => {
             role="button"
             ref={ref}
             tabIndex={0}
-            className="focusable fixed bottom-6 right-6 z-10 flex h-20 w-20 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl"
+            className="focusable fixed bottom-6 right-6 z-10 flex h-14 w-14 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl lg:h-20 lg:w-20"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring' }}
           >
-            <span className="text-2xl">🤖</span>
+            <span className="text-xl lg:text-2xl">🤖</span>
           </motion.div>
         </TooltipTrigger>
         <TooltipContent className="bg-accent text-accent-foreground">
