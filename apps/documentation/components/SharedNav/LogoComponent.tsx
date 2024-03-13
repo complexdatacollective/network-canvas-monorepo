@@ -1,3 +1,4 @@
+import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '~/lib/utils';
@@ -11,6 +12,7 @@ const LogoComponent = ({
   invisible = false,
   className,
 }: LogoComponentProps) => {
+  const { resolvedTheme } = useTheme();
   return (
     <Link
       href="/"
@@ -29,7 +31,11 @@ const LogoComponent = ({
         priority
       />
       <Image
-        src="/images/typemark-negative.svg"
+        src={
+          resolvedTheme === 'dark'
+            ? '/images/typemark-positive.svg'
+            : '/images/typemark-negative.svg'
+        }
         alt="Network Canvas Documentation"
         height={48} //5.27
         width={275}

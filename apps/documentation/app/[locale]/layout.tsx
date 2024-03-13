@@ -67,7 +67,12 @@ export default async function MainLayout({
       className={`${quicksand.className} antialiased`}
     >
       <body className="flex min-h-full flex-col gap-4">
-        <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
+        <ThemeProvider
+          enableSystem
+          enableColorScheme
+          attribute="class"
+          storageKey="nc-docs-site"
+        >
           <NextIntlClientProvider
             timeZone={timeZone}
             now={now}

@@ -1,5 +1,6 @@
 ---
 title: Advanced Deployment
+date: 13th March 2024
 wip: true
 ---
 
@@ -14,21 +15,25 @@ This guide is intended for advanced users who are familiar with Docker and cloud
 ## Finding Hosting Services
 
 For advanced deployment, you will need to find a cloud service or VPS provider that supports Docker. Here are a few options:
+
 - [Digial Ocean](https://www.digitalocean.com/)
 - [AWS](https://aws.amazon.com/)
 - Your own VPS
 
 ## Set up Docker Environment
+
 Ensure that you have Docker installed on your server. You can follow the instructions on the [official Docker website](https://docs.docker.com/install/).
 
 ## Prepare Fresco Repository
 
 Clone the [Fresco repository](https://github.com/complexdatacollective/Fresco) to your server. You can do this by running the following command:
+
 ```bash
 git clone https://github.com/complexdatacollective/Fresco.git
 ```
 
 ## Setup Database Infrastructure
+
 Configure your database infrastructure. You can use a managed database service or set up your own database server.
 
 ## Configure Environment Variables
@@ -38,6 +43,7 @@ Create a `.env` file in the root of the Fresco repository. You can use the [`.en
 ## Build Docker Image
 
 Run the following command to build the Docker image using the [`Dockerfile`](https://github.com/complexdatacollective/Fresco/blob/main/Dockerfile) in the root of the Fresco repository:
+
 ```bash
 docker build -t fresco .
 ```
