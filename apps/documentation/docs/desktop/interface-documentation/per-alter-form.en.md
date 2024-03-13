@@ -26,6 +26,6 @@ The introduction screen is shown before any matching alters and can be used to i
 
 ![Image](/assets/img/interface-documentation/per-alter-form/architect-intro.png)
 
-Each node will be assigned [variables](../reference/variable-types) using a configurable [form](../key-concepts/forms).
+Each node will be assigned variables using a configurable [form](../key-concepts/forms).
 
 ![Image](/assets/img/interface-documentation/per-alter-form/architect-form.png)
