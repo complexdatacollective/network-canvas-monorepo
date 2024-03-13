@@ -8,12 +8,12 @@ Configuring validation refers to the process of setting constraints on the answe
 
 Setting validations on particular question prompts may help improve your data quality by minimizing extraneous and missing answers from participants. For example, if you plan to only survey participants between the ages of 18 and 24, you may want to set a validation on an [Ego Form](/en/desktop/interface-documentation/ego-form) that constrains the minValue and maxValue of a participant's answer to a question prompt asking for their age. Similarly, you may wish to require participants to provide a name for each node they nominate on a [Name Generator](/en/desktop/interface-documentation/name-generator-using-forms) using forms.
 
-![Image](/assets/img/key-concepts/field-validation/1.png)
+![](/assets/img/key-concepts/field-validation/1.png)
 
-![Image](/assets/img/key-concepts/field-validation/2.png)
+![](/assets/img/key-concepts/field-validation/2.png)
 
 If a validation has been set and a participant's response to the question prompt does not comply with the constraints, Interviewer will indicate the error.
 
-![Image](/assets/img/key-concepts/field-validation/3.png)
+![](/assets/img/key-concepts/field-validation/3.png)
 
 Validation options differ depending on the input control used to capture the variable in question. You can view all Interviewer input controls and corresponding validations in the [input controls](/en/desktop/key-concepts/input-controls) article.
