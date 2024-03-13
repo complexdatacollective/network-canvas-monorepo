@@ -43,6 +43,9 @@ import {
   ImageFullWidth,
   KeyConcept,
   VideoIFrame,
+  SummaryCard,
+  PrerequisitesSection,
+  SummarySection,
   type TipBoxProps,
 } from '~/app/[locale]/[project]/_components/customComponents';
 import { CheckSquare, XOctagon } from 'lucide-react';
@@ -293,6 +296,9 @@ export async function getDocumentForPath({
         goodpractice: () => <CheckSquare className="inline text-success" />,
         badpractice: () => <XOctagon className="inline text-destructive" />,
         videoiframe: VideoIFrame,
+        summarycard: SummaryCard,
+        prerequisitessection: PrerequisitesSection,
+        summarysection: SummarySection,
         table: (props) => (
           <div className="overflow-x-auto">
             <table
