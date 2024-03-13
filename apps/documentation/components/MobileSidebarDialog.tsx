@@ -29,9 +29,8 @@ export default function MobileSidebarDialog({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent className="w-full bg-platinum" side={'left'}>
+      <SheetContent className="w-full bg-background" side={'left'}>
         <div className="absolute right-4 top-4 flex items-center gap-2 sm:hidden">
-          <DocSearchComponent />
           <Button
             size={'sm'}
             onClick={() => setOpen(false)}
