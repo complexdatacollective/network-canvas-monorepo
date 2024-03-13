@@ -1,43 +1,24 @@
+import { Heading, Paragraph } from '@codaco/ui';
 import { Clock } from 'lucide-react';
-import { MDXRemote } from 'next-mdx-remote/rsc';
-
+import { type ReactNode } from 'react';
 import { Card, CardContent } from '~/components/ui/card';
-import { options } from '~/lib/mdxOptions';
-import { customComponents } from './customComponents';
 
-type SummaryCardProps = {
-  data: {
-    summary: string;
-    prerequisites: string;
-    completion_time: string;
-  };
-};
-
-const SummaryCard = ({ data }: SummaryCardProps) => {
+export const SummaryCard = ({
+  completion_time,
+  children,
+}: {
+  children: ReactNode;
+  completion_time: string;
+}) => {
   return (
-    <Card className="bg-slate-200 text-black dark:bg-slate-600 dark:text-white">
-      <CardContent className="p-4">
-        <div className="text-sm">
-          <span className="font-bold">SUMMARY:</span>
-          <MDXRemote
-            options={options}
-            components={customComponents}
-            source={data.summary}
-          />
-        </div>
-        <div className="text-sm">
-          <span className="font-bold">PREREQUISITES:</span>
-          <MDXRemote
-            options={options}
-            components={customComponents}
-            source={data.prerequisites}
-          />
-        </div>
-        <div className="text-sm">
-          <span className="block font-bold">DURATION:</span>
-          <div className="flex gap-1">
-            <Clock size={'20px'} />
-            {data.completion_time}
+    <Card className="mt-10 bg-card">
+      <CardContent className="flex flex-col gap-4 p-4">
+        {children}
+        <div>
+          <Heading variant={'h4-all-caps'}>Duration:</Heading>
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-5 w-5 shrink-0" />
+            <Paragraph>{completion_time}</Paragraph>
           </div>
         </div>
       </CardContent>
@@ -45,4 +26,20 @@ const SummaryCard = ({ data }: SummaryCardProps) => {
   );
 };
 
-export default SummaryCard;
+export const SummarySection = ({ children }: { children: ReactNode }) => {
+  return (
+    <div>
+      <Heading variant={'h4-all-caps'}>Summary:</Heading>
+      {children}
+    </div>
+  );
+};
+
+export const PrerequisitesSection = ({ children }: { children: ReactNode }) => {
+  return (
+    <div>
+      <Heading variant={'h4-all-caps'}>Prerequisites:</Heading>
+      {children}
+    </div>
+  );
+};
