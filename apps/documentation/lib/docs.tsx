@@ -51,7 +51,7 @@ import {
 import { CheckSquare, XOctagon } from 'lucide-react';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
-import { StandAloneImgProps } from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
+import { type StandAloneImgProps } from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
 
 export type DocRouteParams = {
   params: {
@@ -66,10 +66,6 @@ export const FrontmatterSchema = z.object({
   wip: z.boolean().optional(),
   nav_order: z.number().optional(),
   toc: z.boolean().optional().default(true),
-  // Tutorials
-  summary: z.string().optional(), // Summary of the tutorial
-  prerequisites: z.string().optional(), // Prerequisites for the tutorial
-  completionTime: z.string().optional(), // Estimated time to complete the tutorial
   // interfaces
   image: z.string().optional(), // Path to hero image
   type: z.string().optional(), // Name of interface
@@ -302,10 +298,9 @@ export async function getDocumentForPath({
         goodpractice: () => <CheckSquare className="inline text-success" />,
         badpractice: () => <XOctagon className="inline text-destructive" />,
         videoiframe: VideoIFrame,
-        summarycard: (props: {
-          completionTime: string;
-          children: ReactNode;
-        }) => <SummaryCard {...props} />,
+        summarycard: (props: { duration: string; children: ReactNode }) => (
+          <SummaryCard {...props} />
+        ),
         prerequisitessection: (props: { children: ReactNode }) => (
           <PrerequisitesSection {...props} />
         ),
