@@ -206,6 +206,7 @@ export function Sidebar({ className }: { className?: string }) {
   const typedSidebarData = sidebarData as TSideBar;
 
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
+  // const sortedSidebarItems = sortSidebarItems(formattedSidebarData);
 
   return (
     <nav className={cn('flex w-full grow flex-col pl-4', className)}>
@@ -220,3 +221,36 @@ export function Sidebar({ className }: { className?: string }) {
     </nav>
   );
 }
+
+//  function sortSidebarItems(
+//   formattedSidebarData: Record<string, TSidebarFolder | SidebarPage>,
+// ) {
+//   const objectItems = Object.values(formattedSidebarData);
+//   const objectKeys = Object.keys(formattedSidebarData);
+
+//   objectItems.sort((a, b) => {
+//     if (a.navOrder !== null && b.navOrder !== null) {
+//       return a.navOrder - b.navOrder;
+//     } else if (a.navOrder !== null) {
+//       return -1;
+//     } else if (b.navOrder !== null) {
+//       return 1;
+//     } else {
+//       return a.label.localeCompare(b.label);
+//     }
+//   });
+
+//   // Recursively sort folder children
+//   const sortedItems = items.map((item) => {
+//     if (item.type === 'folder') {
+//       const folderPages = Object.values(item.children);
+//       const folderSlug = Object.keys(item.children)[0];
+//       item.children[folderSlug!] = sortSidebarItems(folderPages).find(
+//         (i) => i.label === item.label,
+//       ) as TSidebarFolder;
+//     }
+//     return item;
+//   });
+
+//   return sortedItems;
+// }
