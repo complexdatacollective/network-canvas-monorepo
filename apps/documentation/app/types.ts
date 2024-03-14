@@ -27,6 +27,7 @@ export const SidebarItemBase = z.object({
 export const SidebarPageSchema = SidebarItemBase.extend({
   type: z.literal('page'),
   sourceFile: z.string(),
+  navOrder: z.number().nullable(),
 });
 
 export type SidebarPage = z.infer<typeof SidebarPageSchema>;
@@ -38,6 +39,7 @@ export type SidebarPage = z.infer<typeof SidebarPageSchema>;
 
 export const baseSidebarFolder = SidebarItemBase.extend({
   type: z.literal('folder'),
+  navOrder: z.number().nullable(),
   expanded: z.boolean().optional(),
 });
 
@@ -85,6 +87,7 @@ export const MetadataFileSchema = z.object({
   localeLabels: z.record(z.string(), z.string()).optional(),
   localeIndexFiles: z.record(z.string(), z.string()).optional(),
   isExpanded: z.boolean().optional(),
+  navOrder: z.number().optional(),
 });
 
 export type MetadataFile = z.infer<typeof MetadataFileSchema>;

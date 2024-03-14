@@ -8,5 +8,6 @@
     "en": "index.en.mdx"
   },
   "slug": "tutorials",
-  "isExpanded": true
+  "isExpanded": true,
+  "navOrder": 2
 }

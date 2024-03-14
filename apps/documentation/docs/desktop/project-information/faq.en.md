@@ -2,7 +2,7 @@
 title: Frequently Asked Questions
 wip: false
 toc: true
-nav_order: 5
+navOrder: 5
 ---
 
 ## What is Network Canvas?

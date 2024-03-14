@@ -1,6 +1,6 @@
 ---
 title: Installation Guide
-nav_order: 3
+navOrder: 3
 last_modified_at: 2021-02-10
 wip: false
 toc: true

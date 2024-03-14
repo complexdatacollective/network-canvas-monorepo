@@ -64,7 +64,7 @@ export const FrontmatterSchema = z.object({
   lastUpdated: z.string().optional(),
   hidden: z.boolean().optional(),
   wip: z.boolean().optional(),
-  nav_order: z.number().optional(),
+  navOrder: z.number().optional(),
   toc: z.boolean().optional().default(true),
   // interfaces
   image: z.string().optional(), // Path to hero image

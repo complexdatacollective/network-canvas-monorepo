@@ -1,7 +1,7 @@
 ---
 title: Cloud Pricing
 date: 12th March 2024
-nav_order: 6
+navOrder: 6
 wip: false
 ---
 
@@ -24,4 +24,3 @@ For specific information on Vercel's Postgres Database Storage pricing, you can 
 - **Upgrade Option**: If you require additional storage or features, you can upgrade to 100GB of storage for $10/month.
 
 For more information on UploadThing's pricing plans and features, you can visit their [pricing page.](https://uploadthing.com/pricing)
-

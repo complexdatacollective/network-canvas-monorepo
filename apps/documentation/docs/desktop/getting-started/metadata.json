@@ -4,5 +4,6 @@
     "en": "Getting Started"
   },
   "isExpanded": true,
-  "slug": "getting-started"
+  "slug": "getting-started",
+  "navOrder": 1
 }

@@ -1,7 +1,7 @@
 ---
 title: Citing the Software
 wip: false
-nav_order: 6
+navOrder: 6
 ---
 
 We ask you to please cite us in publications or presentations that are created from any research, clinical, educational, or other applicable use of the Network Canvas Suite or any of its components. Through your citation of the software, we are able to measure its impact and track the ways in which it is being used.

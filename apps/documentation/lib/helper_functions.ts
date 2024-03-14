@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import type fs from 'node:fs';
-import matter from 'gray-matter';
+import type matter from 'gray-matter';
 import rehypeStringify from 'rehype-stringify';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
@@ -12,6 +12,7 @@ import type {
   SidebarFolder,
   SidebarPage,
   SidebarProject,
+  TSidebarFolder,
 } from '~/app/types';
 import { MetadataFileSchema } from '~/app/types';
 import { env } from '../env.mjs';
@@ -182,6 +183,7 @@ export const createFolderEntry = (
     expanded: metadata.isExpanded ?? false,
     sourceFile,
     label: metadata.localeLabels?.[locale] ?? file.name,
+    navOrder: metadata.navOrder ?? null,
     children: {},
   };
 };
@@ -198,35 +200,20 @@ export const createPageEntry = (
   matterResult: matter.GrayMatterFile<string>,
 ): SidebarPage => {
   const title = matterResult.data?.title as string | undefined;
+  const navOrder = matterResult.data?.navOrder as number | undefined;
   const sourceFile = join(file.path, file.name).replace(process.cwd(), '');
 
   return {
     type: 'page',
     sourceFile,
     label: title ?? file.name,
+    navOrder: navOrder ?? null,
   };
 };
 
 /**
- * Given a file, return the nav_order from the frontmatter, or Infinity if it
- * doesn't exist.
- *
- * @param file {fs.Dirent}
- * @returns {number}
- */
-export const getOrder = (file: fs.Dirent): number => {
-  if (!file.isDirectory()) {
-    const path = join(file.path, file.name);
-    const markdownFile = readFileSync(path, 'utf-8');
-    const { data } = matter(markdownFile);
-    return (data.nav_order as number) ?? Infinity;
-  }
-  return Infinity;
-};
-
-/**
- * Given a list of files, sort them based on whether they are directories, and
- * then based on their nav_order or file name if nav_order is not present.
+ * Given a list of files, sort them based on whether they are directories,
+ * and by ascending depth.
  *
  * @param files {fs.Dirent[]}
  * @returns {fs.Dirent[]}
@@ -237,10 +224,4 @@ export const sortDirectoryListing = (files: fs.Dirent[]) =>
     const depthB = b.name.split('/').length; // Get depth of directory/file B
 
     return depthA - depthB; // Sort by ascending depth (shallowest to deepest)
-
-    // // compare based on nav_order or file name if nav_order is not present
-    // const orderA = getOrder(a);
-    // const orderB = getOrder(b);
-
-    // return orderA - orderB || a.name.localeCompare(b.name);
   });
