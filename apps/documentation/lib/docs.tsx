@@ -37,7 +37,6 @@ import { get } from './helper_functions';
 import processYamlMatter from './processYamlMatter';
 import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
-import { CheckSquare, XOctagon } from 'lucide-react';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
 import TipBox, {
@@ -53,6 +52,10 @@ import {
   SummarySection,
 } from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
 import { InterfaceSummary } from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
+import {
+  GoodPractice,
+  BadPractice,
+} from '~/app/[locale]/[project]/_components/customComponents/BestPractices';
 
 export type DocRouteParams = {
   params: {
@@ -299,8 +302,12 @@ export async function getDocumentForPath({
           <img alt={props.alt} {...props} className="my-10 w-full px-8" />
         ),
         keyconcept: KeyConcept,
-        goodpractice: () => <CheckSquare className="inline text-success" />,
-        badpractice: () => <XOctagon className="inline text-destructive" />,
+        goodpractice: (props: { children: ReactNode }) => (
+          <GoodPractice {...props} />
+        ),
+        badpractice: (props: { children: ReactNode }) => (
+          <BadPractice {...props} />
+        ),
         videoiframe: VideoIFrame,
         summarycard: (props: { duration: string; children: ReactNode }) => (
           <SummaryCard {...props} />

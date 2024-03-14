@@ -1,55 +1,20 @@
 import { CheckSquare, XOctagon } from 'lucide-react';
-import { MDXRemote } from 'next-mdx-remote/rsc';
+import type { ReactNode } from 'react';
 
-import { options } from '~/lib/mdxOptions';
-import { customComponents } from './customComponents';
-
-type BestPracticesProps = {
-  data: {
-    good: string[];
-    bad: string[];
-  };
-};
-
-const BestPractices = ({ data }: BestPracticesProps) => {
+export const GoodPractice = ({ children }: { children: ReactNode }) => {
   return (
-    <div>
-      <div>
-        <p className="text-sm font-bold uppercase">Best Practices</p>
-        <ul className="list-none">
-          {data.good.map((item) => (
-            <li className="flex items-start gap-3" key={item}>
-              <span>
-                <CheckSquare size={'19px'} className="text-green-500 mt-1.5" />
-              </span>
-              <MDXRemote
-                options={options}
-                components={customComponents}
-                source={item}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <p className="text-sm font-bold uppercase">Try To Avoid</p>
-        <ul className="list-none">
-          {data.bad.map((item) => (
-            <li className="flex items-start gap-3" key={item}>
-              <span>
-                <XOctagon size={'19px'} className="text-red-500 mt-1.5" />
-              </span>
-              <MDXRemote
-                options={options}
-                components={customComponents}
-                source={item}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="flex flex-row">
+      <CheckSquare className="mt-1.5 min-w-5 text-success" />
+      <span className="pl-4">{children}</span>
     </div>
   );
 };
 
-export default BestPractices;
+export const BadPractice = ({ children }: { children: ReactNode }) => {
+  return (
+    <div className="flex flex-row">
+      <XOctagon size={'19px'} className="mt-1.5 min-w-5 text-destructive" />
+      <span className="pl-4">{children}</span>
+    </div>
+  );
+};
