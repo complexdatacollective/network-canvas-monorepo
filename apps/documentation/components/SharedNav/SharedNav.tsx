@@ -3,11 +3,8 @@ import MobileNavBar from '../MobileNavBar';
 import LogoComponent from './LogoComponent';
 import { NavigationMenuDemo as Menu } from './Menu';
 import { cn } from '~/lib/utils';
-import { useBreakpoint } from '~/hooks/useBreakpoint';
 
 export default function SharedNav() {
-  const { isAboveMd } = useBreakpoint('md');
-  const { isBelowLg } = useBreakpoint('lg');
   return (
     <motion.nav
       className={cn(
@@ -24,8 +21,8 @@ export default function SharedNav() {
       }}
     >
       <LogoComponent />
-      {isAboveMd && <Menu />}
-      {isBelowLg && <MobileNavBar />}
+      <Menu />
+      <MobileNavBar />
     </motion.nav>
   );
 }

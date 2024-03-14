@@ -56,10 +56,11 @@ const TableOfContents = ({
   return (
     <aside
       className={cn(
-        'shrink-0',
+        'hidden shrink-0',
         sideBar &&
-          'sticky top-2 max-h-[calc(100vh-1rem)] w-64 overflow-y-auto overflow-x-hidden',
-        !sideBar && 'mb-5 rounded-lg border border-border bg-input px-6 py-4',
+          'sticky top-2 max-h-[calc(100vh-1rem)] w-64 overflow-y-auto overflow-x-hidden xl:block',
+        !sideBar &&
+          'mb-5 block rounded-lg border border-border bg-input px-6 py-4 xl:hidden',
       )}
     >
       <Heading

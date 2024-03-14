@@ -7,7 +7,8 @@ const WorkInProgress = () => {
   return (
     <PopoutBox
       title="Work in Progress"
-      iconClassName="bg-accent"
+      className="bg-success/10 [--link:var(--success)]"
+      iconClassName="bg-white"
       icon={
         <Image
           src="/images/work-in-progress.svg"

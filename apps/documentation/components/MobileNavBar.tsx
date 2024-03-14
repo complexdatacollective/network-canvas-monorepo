@@ -8,8 +8,8 @@ const MobileNavBar = () => {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <MobileSidebarDialog open={open} setOpen={setOpen} />
       <div className="flex flex-1 items-center gap-4 lg:hidden">
+        <MobileSidebarDialog open={open} setOpen={setOpen} />
         <DocSearchComponent />
         {open ? (
           <Button

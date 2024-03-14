@@ -6,6 +6,7 @@ import rehypeReact from 'rehype-react';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
+import rehypeFigure from '@microflash/rehype-figure';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
@@ -36,22 +37,21 @@ import { get } from './helper_functions';
 import processYamlMatter from './processYamlMatter';
 import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
-import {
-  StandAloneImage,
-  TipBox,
-  ImageFloatLeft,
-  ImageFullWidth,
-  KeyConcept,
-  VideoIFrame,
-  SummaryCard,
-  PrerequisitesSection,
-  SummarySection,
-  type TipBoxProps,
-} from '~/app/[locale]/[project]/_components/customComponents';
 import { CheckSquare, XOctagon } from 'lucide-react';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
-import { type StandAloneImgProps } from '~/app/[locale]/[project]/_components/customComponents/StandAloneImage';
+import TipBox, {
+  TipBoxProps,
+} from '~/app/[locale]/[project]/_components/customComponents/TipBox';
+import ImageFloatLeft from '~/app/[locale]/[project]/_components/customComponents/ImageFloatLeft';
+import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
+import KeyConcept from '~/app/[locale]/[project]/_components/customComponents/KeyConcept';
+import VideoIFrame from '~/app/[locale]/[project]/_components/customComponents/VideoIFrame';
+import {
+  PrerequisitesSection,
+  SummaryCard,
+  SummarySection,
+} from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
 
 export type DocRouteParams = {
   params: {
@@ -241,6 +241,7 @@ export async function getDocumentForPath({
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeFigure)
     .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings
     .use(headingTree) // Create a tree of headings in data.headings
@@ -279,9 +280,6 @@ export async function getDocumentForPath({
         ) => {
           return <Link {...props} />;
         },
-        standaloneimage: (props: StandAloneImgProps) => (
-          <StandAloneImage noGap {...props} />
-        ),
         tipbox: (props: TipBoxProps) => {
           return (
             <TipBox danger={props.danger !== undefined}>
@@ -291,8 +289,17 @@ export async function getDocumentForPath({
         },
         imagefloatleft: ImageFloatLeft,
         imagefullwidth: ImageFullWidth,
+        figure: (props) => (
+          <figure
+            {...props}
+            className="my-10 flex w-full flex-col items-center justify-center [&>img]:m-0 [&>img]:w-full [&>img]:px-4"
+          />
+        ),
+        figcaption: (props) => (
+          <figcaption {...props} className="mt-2 text-center text-sm italic" />
+        ),
         img: (props) => (
-          <StandAloneImage src={props.src!} caption={props.alt} />
+          <img alt={props.alt} {...props} className="my-10 w-full px-8" />
         ),
         keyconcept: KeyConcept,
         goodpractice: () => <CheckSquare className="inline text-success" />,
