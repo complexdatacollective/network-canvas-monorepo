@@ -1,16 +1,20 @@
 ---
 title: Narrative
 
-image: /assets/img/interface-documentation/narrative/narrative-example.png
-type: Visualisation
-creates: Does not create data
-uses_prompts: No
 bad:
   - Resist the urge to create long forms with many items. This may discourage participants from naming additional alters, as it will make the task of nominating an alter more burdensome.
   - Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](../interface-documentation/ordinal-bin) Interface.
 good:
   - Nodes positioned too close together may visually occlude one another or the edge between them. Caution participants not to place nodes directly on top of one another.
 ---
+
+<InterfaceSummary
+  title="Narrative"
+  image="/assets/img/interface-documentation/narrative/narrative-example.png"
+  type="Visualization"
+  creates="Does not create data"
+  usesprompts="false"
+/>
 
 Sociograms are the visual mapping component of a network interview. On the Sociogram, participants draw ties between alters to signify the relationships between individuals within their personal network.
 

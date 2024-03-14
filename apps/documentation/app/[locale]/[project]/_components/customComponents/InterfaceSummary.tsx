@@ -1,48 +1,39 @@
+import { Paragraph } from '@codaco/ui';
 import Image from 'next/image';
 
-type InterfaceSummaryProps = {
-  data: {
-    image: string;
-    type: string;
-    creates: string;
-    uses_prompts: string;
-  };
-};
-
-const InterfaceSummary = ({ data }: InterfaceSummaryProps) => {
+export const InterfaceSummary = ({
+  title,
+  image,
+  type,
+  creates,
+  usesprompts,
+}: {
+  title: string;
+  image: string;
+  type: string;
+  creates: string;
+  usesprompts: string;
+}) => {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex h-96">
       <Image
-        className="object-cover"
-        width={450}
-        height={450}
-        src={data.image}
-        alt="Image"
+        width={500}
+        height={500}
+        src={image}
+        alt={title}
+        style={{ marginBlock: '15px' }}
       />
-      <div className="space-y-3">
-        <div>
-          <span className="block text-sm font-semibold uppercase">Type:</span>
-          <span className="block text-[16px] text-slate-500">{data.type}</span>
-        </div>
-        <div>
-          <span className="block text-sm font-semibold uppercase">
-            Creates:
-          </span>
-          <span className="block text-[16px] text-slate-500">
-            {data.creates}
-          </span>
-        </div>
-        <div>
-          <span className="block text-sm font-semibold uppercase">
-            Uses Prompts:
-          </span>
-          <span className="block text-[16px] text-slate-500">
-            {data.uses_prompts === 'Yes' ? 'True' : 'False'}
-          </span>
-        </div>
+      <div className="flex flex-col content-center justify-center space-y-6 pl-6">
+        <Paragraph>
+          <strong className="uppercase">Type:</strong> {type}
+        </Paragraph>
+        <Paragraph>
+          <strong className="uppercase">Creates:</strong> {creates}
+        </Paragraph>
+        <Paragraph>
+          <strong className="uppercase">Uses Prompts:</strong> {usesprompts}
+        </Paragraph>
       </div>
     </div>
   );
 };
-
-export default InterfaceSummary;

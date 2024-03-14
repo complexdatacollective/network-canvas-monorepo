@@ -41,7 +41,7 @@ import { CheckSquare, XOctagon } from 'lucide-react';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
 import TipBox, {
-  TipBoxProps,
+  type TipBoxProps,
 } from '~/app/[locale]/[project]/_components/customComponents/TipBox';
 import ImageFloatLeft from '~/app/[locale]/[project]/_components/customComponents/ImageFloatLeft';
 import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
@@ -52,6 +52,7 @@ import {
   SummaryCard,
   SummarySection,
 } from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
+import { InterfaceSummary } from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
 
 export type DocRouteParams = {
   params: {
@@ -67,10 +68,6 @@ export const FrontmatterSchema = z.object({
   navOrder: z.number().optional(),
   toc: z.boolean().optional().default(true),
   // interfaces
-  image: z.string().optional(), // Path to hero image
-  type: z.string().optional(), // Name of interface
-  creates: z.string().optional(), // What the interface creates
-  uses_prompts: z.string().optional(), // If the interface supports prompts
   good: z.array(z.string()).optional(), // List of best practices
   bad: z.array(z.string()).optional(), // List of bad practices
 });
@@ -314,6 +311,13 @@ export async function getDocumentForPath({
         summarysection: (props: { children: ReactNode }) => (
           <SummarySection {...props} />
         ),
+        interfacesummary: (props: {
+          title: string;
+          image: string;
+          type: string;
+          creates: string;
+          usesprompts: string;
+        }) => <InterfaceSummary {...props} />,
         table: (props) => (
           <div className="overflow-x-auto">
             <table

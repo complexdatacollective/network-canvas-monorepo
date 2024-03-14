@@ -16,6 +16,14 @@ bad:
     create a very crowded interface.
 ---
 
+<InterfaceSummary
+  title="Tie-Strength Census"
+  image="/assets/uploads/stage-tiestrengthcensus.png"
+  type="Edge Generator/Edge Interpreter"
+  creates="Edges with weight stored on an ordinal variable"
+  usesprompts="true"
+/>
+
 The Tie-Strength Census interface is similar to the [Dyad Census](../interface-documentation/dyad-census) in terms of user experience, but has the additional benefit of assigning an ordinal variable value to each edge that is created.
 
 For each pair of alters, the participant will be able to indicate if a tie is present by indicating the strength of that tie. The participant can also indicate that a tie is not present between the pair. Selecting an option will automatically advance to the next pair, creating a stremlined and low-burden experience.
