@@ -18,7 +18,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
     <>
       <SharedNav />
       {isHomePage && <Hero />}
-      <main className={cn('mt-4 flex w-full flex-auto justify-center px-2')}>
+      <main className={cn('mt-4 flex w-full flex-auto justify-center')}>
         {!isHomePage && (
           <Sidebar className="hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
         )}

@@ -21,6 +21,8 @@ export default function Article({
   wip?: boolean;
 }) {
   const pathname = usePathname();
+
+  // Todo: nextjs has hooks specifically for this: useSelectedLayoutSegment
   const project = pathname.split('/')[1];
   const section = pathname.split('/')[2]?.replace(/-/g, ' '); // replace hyphens with spaces
 

@@ -208,7 +208,7 @@ export function Sidebar({ className }: { className?: string }) {
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
 
   return (
-    <nav className={cn('flex w-full grow flex-col', className)}>
+    <nav className={cn('flex w-full grow flex-col pl-4', className)}>
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
