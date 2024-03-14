@@ -1,5 +1,3 @@
-'use client';
-
 import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
@@ -8,6 +6,7 @@ import LogoComponent from './SharedNav/LogoComponent';
 import { Sidebar } from './Sidebar';
 import { Button } from '@codaco/ui';
 import { X as CloseMenu } from 'lucide-react';
+import { useEffect } from 'react';
 
 type MobileSidebarDialogProps = {
   open: boolean;
@@ -24,25 +23,28 @@ export default function MobileSidebarDialog({
   // Check if we are on the home page by comparing the pathname to our supported locals
   const isHomePage = pathname === `/${locale}`;
 
-  const onClickLink = () => setOpen(false);
+  // When the path changes, close
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname, setOpen]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent className="w-full bg-background" side={'left'}>
-        <div className="absolute right-4 top-4 flex items-center gap-2 sm:hidden">
-          <Button
-            size={'sm'}
-            onClick={() => setOpen(false)}
-            variant="outline"
-            className="rounded-full px-4"
-          >
-            <CloseMenu className="h-4 w-4 shrink-0 transition-transform duration-300" />
-          </Button>
-        </div>
-
+      <SheetContent
+        className="flex h-[100vh] w-full flex-col bg-background"
+        side={'left'}
+      >
+        <Button
+          size={'sm'}
+          onClick={() => setOpen(false)}
+          variant="ghost"
+          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center gap-2 rounded-full sm:hidden"
+        >
+          <CloseMenu className="h-4 w-4 shrink-0" />
+        </Button>
         <LogoComponent className="mx-4 my-2 block w-fit" />
         <NavigationMenuMobile />
-        {!isHomePage && <Sidebar onClickLink={onClickLink} />}
+        {!isHomePage && <Sidebar />}
       </SheetContent>
     </Sheet>
   );

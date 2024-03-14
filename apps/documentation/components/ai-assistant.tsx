@@ -38,10 +38,12 @@ const TriggerButton = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <motion.div
-            role="button"
             ref={ref}
             tabIndex={0}
-            className="focusable fixed bottom-6 right-6 z-10 flex h-14 w-14 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl lg:h-20 lg:w-20"
+            className={cn(
+              'flex h-16 w-16 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl',
+              'sm:h-20 sm:w-20',
+            )}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             initial={{ scale: 0 }}
@@ -70,7 +72,7 @@ const AIAssistant = () => {
 
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger className="focusable fixed bottom-6 right-6 z-10">
         <TriggerButton />
       </DialogTrigger>
       <DialogContentEmpty>

@@ -61,7 +61,7 @@ export const NavigationMenuDemo = () => {
 
   return (
     <NavigationMenu.Root asChild>
-      <div className="relative z-10 flex grow justify-end">
+      <div className={cn('z-10 hidden grow justify-end', 'md:flex')}>
         <NavigationMenu.List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
           {links.map((link, i) => {
             if (link.menu) {
@@ -150,9 +150,7 @@ export const NavigationMenuMobile = () => {
   if (!submenu.length) {
     return (
       <ul
-        className={
-          'flex flex-col items-center justify-center gap-4 min-[840px]:hidden'
-        }
+        className={'flex flex-col items-center justify-center gap-4 md:hidden'}
       >
         {links.map((link, i) => {
           if (link.style === 'button') {

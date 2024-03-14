@@ -1,14 +1,11 @@
 'use client';
 
 import { Heading } from '@codaco/ui';
-import { createPortal } from 'react-dom';
 import { usePathname } from '~/navigation';
 import TableOfContents from './TableOfContents';
-import { useEffect, useState } from 'react';
 import type { HeadingNode } from '~/lib/tableOfContents';
 import FancyHeading from './FancyHeading';
 import WorkInProgress from '~/app/[locale]/[project]/_components/customComponents/WorkInProgress';
-import { useBreakpoint } from '~/hooks/useBreakpoint';
 
 export default function Article({
   content,
@@ -23,14 +20,13 @@ export default function Article({
   showToc: boolean;
   wip?: boolean;
 }) {
-  const { isBelowXl } = useBreakpoint('xl');
   const pathname = usePathname();
   const project = pathname.split('/')[1];
   const section = pathname.split('/')[2]?.replace(/-/g, ' '); // replace hyphens with spaces
 
   return (
     <>
-      <article className="mx-4 mb-20 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-20">
+      <article className="mx-4 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-20">
         <header>
           <Heading variant="h4-all-caps" margin="none" className="text-accent">
             {project} {section && <>&#129046; {section}</>}
@@ -40,10 +36,10 @@ export default function Article({
           </FancyHeading>
         </header>
         {wip && <WorkInProgress />}
-        {showToc && isBelowXl && <TableOfContents headings={headings} />}
+        {showToc && <TableOfContents headings={headings} />}
         {content}
       </article>
-      {showToc && !isBelowXl && <TableOfContents headings={headings} sideBar />}
+      {showToc && <TableOfContents headings={headings} sideBar />}
     </>
   );
 }

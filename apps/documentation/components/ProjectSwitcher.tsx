@@ -13,20 +13,19 @@ import { useRouter } from '~/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { type LocalesEnum, type ProjectsEnum, projects } from '~/app/types';
-import Image from 'next/image';
 import { forwardRef } from 'react';
 import { cn } from '~/lib/utils';
 
 const getImageForProject = (project: ProjectsEnum) => {
   if (project === 'desktop') {
     return (
-      <Image src="/images/desktop.png" width={65} height={40} alt={project} />
+      <img src="/images/desktop.png" alt={project} className="h-10 w-auto" />
     );
   }
 
   if (project === 'fresco') {
     return (
-      <Image src="/images/fresco.png" width={40} height={40} alt={project} />
+      <img src="/images/fresco.png" alt={project} className="h-10 w-auto" />
     );
   }
 };

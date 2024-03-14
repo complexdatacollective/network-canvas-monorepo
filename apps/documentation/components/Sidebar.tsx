@@ -136,15 +136,7 @@ const SidebarFolder = ({
   );
 };
 
-const SidebarLink = ({
-  href,
-  label,
-  onClick,
-}: {
-  href: string;
-  label: string;
-  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
-}) => {
+const SidebarLink = ({ href, label }: { href: string; label: string }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
   const ref = useRef<HTMLAnchorElement>(null);
@@ -171,7 +163,6 @@ const SidebarLink = ({
     <Link
       ref={ref}
       href={href}
-      onClick={onClick}
       className={cn(
         'focusable flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors',
         'hover:border-accent/100 hover:text-accent',
@@ -186,7 +177,6 @@ const SidebarLink = ({
 const renderSidebarItem = (
   item: TSidebarFolder | SidebarPage,
   locale: LocalesEnum,
-  onClickLink?: () => void,
 ) => {
   const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
   if (item.type === 'folder') {
@@ -198,29 +188,18 @@ const renderSidebarItem = (
         href={sourceFile}
       >
         {Object.values(item.children).map((child) =>
-          renderSidebarItem(child, locale, onClickLink),
+          renderSidebarItem(child, locale),
         )}
       </SidebarFolder>
     );
   } else {
     return (
-      <SidebarLink
-        key={item.label}
-        href={sourceFile!}
-        label={item.label}
-        onClick={onClickLink}
-      />
+      <SidebarLink key={item.label} href={sourceFile!} label={item.label} />
     );
   }
 };
 
-export function Sidebar({
-  className,
-  onClickLink,
-}: {
-  className?: string;
-  onClickLink?: () => void;
-}) {
+export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as LocalesEnum;
   const project = pathname.split('/')[2]!;
@@ -229,18 +208,13 @@ export function Sidebar({
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
 
   return (
-    <nav
-      className={cn(
-        'top-2 flex max-h-[calc(100dvh-0.5rem)] shrink-0 flex-col lg:sticky lg:basis-80',
-        className,
-      )}
-    >
+    <nav className={cn('flex w-full grow flex-col', className)}>
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto max-[840px]:max-h-[calc(100dvh-20rem)] lg:h-full">
+      <div className="flex-1 basis-[0] overflow-y-auto">
         {Object.values(formattedSidebarData).map((item) =>
-          renderSidebarItem(item, locale, onClickLink),
+          renderSidebarItem(item, locale),
         )}
       </div>
     </nav>
