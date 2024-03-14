@@ -156,9 +156,9 @@ export const getDocsForRouteSegment = ({
       return;
     }
 
-    if (data.sourceFile) {
-      // Handle projects and folders differently - if they have a souceFile
-      // docPath should generate a path pointing to the folder/project.
+    if (data.sourceFile && data.type !== 'project') {
+      // Handle folders differently - if they have a sourceFile
+      // docPath should generate a path pointing to the folder.
       results.push({
         locale,
         project,
