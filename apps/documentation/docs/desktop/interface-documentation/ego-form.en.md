@@ -1,11 +1,5 @@
 ---
 title: Ego Form
-
-good:
-  - Use this Interface as a simple way to collect attribute data on each participant in your study.
-  - Consider adding this Interface toward the beginning of your survey to capture data on your participant before asking them to provide data on the individuals in their network.
-bad:
-  - Avoid overloading the form with too many fields and/or text-heavy prompts which make the Interface burdensome to complete.
 ---
 
 <InterfaceSummary
@@ -22,3 +16,23 @@ The Ego Form is an interface that collects data on your participant (ego). When 
 The configurable [form](../key-concepts/forms) determines which variables will be assigned to the ego section of the network.
 
 ![](/assets/img/interface-documentation/ego-form/architect-ego-form.png)
+
+### Good Practices
+
+<GoodPractice>
+
+Use this Interface as a simple way to collect attribute data on each participant in your study.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Consider adding this Interface toward the beginning of your survey to capture data on your participant before asking them to provide data on the individuals in their network.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+Avoid overloading the form with too many fields and/or text-heavy prompts which make the Interface burdensome to complete.
+</BadPractice>

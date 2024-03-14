@@ -13,7 +13,7 @@ export const GoodPractice = ({ children }: { children: ReactNode }) => {
 export const BadPractice = ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex flex-row">
-      <XOctagon size={'19px'} className="mt-1.5 min-w-5 text-destructive" />
+      <XOctagon className="mt-1.5 min-w-5 text-destructive" />
       <span className="pl-4">{children}</span>
     </div>
   );
