@@ -25,6 +25,30 @@ import ProjectSwitcher from './ProjectSwitcher';
 const MotionCollapsibleContent = motion(CollapsibleContent);
 const MotionChevron = motion(ChevronRight);
 
+/**
+ * Given a list of sidebar items (folder/files), sort them based on `navOrder`,
+ * and alphabetically by label.
+ *
+ * @param sidebarItems {(TSidebarFolder | SidebarPage)[]}
+ * @returns {(TSidebarFolder | SidebarPage)[]}
+ */
+const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
+  sidebarItems.sort((a, b) => {
+    // If both items have navOrder, sort by that
+    if (a.navOrder !== null && b.navOrder !== null) {
+      return a.navOrder - b.navOrder;
+      // if only 'a' has navOrder, make it first
+    } else if (a.navOrder !== null) {
+      return -1;
+      // if only 'b' has navOrder, make it first
+    } else if (b.navOrder !== null) {
+      return 1;
+    } else {
+      // If neither has navOrder, sort alphabetically by label
+      return a.label.localeCompare(b.label);
+    }
+  });
+
 // Used by sidebar to process sourceFile values into usable routes
 export const processSourceFile = (
   type: 'folder' | 'page',
@@ -180,6 +204,7 @@ const renderSidebarItem = (
 ) => {
   const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
   if (item.type === 'folder') {
+    const sortedChildren = sortSidebarItems(Object.values(item.children));
     return (
       <SidebarFolder
         key={item.label}
@@ -187,9 +212,7 @@ const renderSidebarItem = (
         alwaysOpen={item.expanded}
         href={sourceFile}
       >
-        {Object.values(item.children).map((child) =>
-          renderSidebarItem(child, locale),
-        )}
+        {sortedChildren.map((child) => renderSidebarItem(child, locale))}
       </SidebarFolder>
     );
   } else {
@@ -206,7 +229,9 @@ export function Sidebar({ className }: { className?: string }) {
   const typedSidebarData = sidebarData as TSideBar;
 
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
-  // const sortedSidebarItems = sortSidebarItems(formattedSidebarData);
+  const sortedSidebarItems = sortSidebarItems(
+    Object.values(formattedSidebarData),
+  );
 
   return (
     <nav className={cn('flex w-full grow flex-col pl-4', className)}>
@@ -214,43 +239,8 @@ export function Sidebar({ className }: { className?: string }) {
       <ProjectSwitcher />
 
       <div className="flex-1 basis-[0] overflow-y-auto">
-        {Object.values(formattedSidebarData).map((item) =>
-          renderSidebarItem(item, locale),
-        )}
+        {sortedSidebarItems.map((item) => renderSidebarItem(item, locale))}
       </div>
     </nav>
   );
 }
-
-//  function sortSidebarItems(
-//   formattedSidebarData: Record<string, TSidebarFolder | SidebarPage>,
-// ) {
-//   const objectItems = Object.values(formattedSidebarData);
-//   const objectKeys = Object.keys(formattedSidebarData);
-
-//   objectItems.sort((a, b) => {
-//     if (a.navOrder !== null && b.navOrder !== null) {
-//       return a.navOrder - b.navOrder;
-//     } else if (a.navOrder !== null) {
-//       return -1;
-//     } else if (b.navOrder !== null) {
-//       return 1;
-//     } else {
-//       return a.label.localeCompare(b.label);
-//     }
-//   });
-
-//   // Recursively sort folder children
-//   const sortedItems = items.map((item) => {
-//     if (item.type === 'folder') {
-//       const folderPages = Object.values(item.children);
-//       const folderSlug = Object.keys(item.children)[0];
-//       item.children[folderSlug!] = sortSidebarItems(folderPages).find(
-//         (i) => i.label === item.label,
-//       ) as TSidebarFolder;
-//     }
-//     return item;
-//   });
-
-//   return sortedItems;
-// }
