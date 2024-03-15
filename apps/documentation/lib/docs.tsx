@@ -291,7 +291,9 @@ export async function getDocumentForPath({
           );
         },
         imagefloatleft: ImageFloatLeft,
-        imagefullwidth: ImageFullWidth,
+        imagefullwidth: (props: { src: string; alt: string }) => (
+          <ImageFullWidth {...props} />
+        ),
         figure: (props) => (
           <figure
             {...props}
