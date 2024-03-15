@@ -1,20 +1,16 @@
 ---
-layout: interface-documentation
-
-image: /assets/uploads/stage-tiestrengthcensus.png
 title: Tie-Strength Census
-type: Edge Generator/Edge Interpreter
-creates: Edges with weight stored on an ordinal variable
-uses_prompts: Yes
 ---
 
-<InterfaceSummary
-  title="Tie-Strength Census"
-  image="/assets/uploads/stage-tiestrengthcensus.png"
-  type="Edge Generator/Edge Interpreter"
-  creates="Edges with weight stored on an ordinal variable"
-  usesprompts="true"
-/>
+<InterfaceSummary>
+
+![Tie-Strength Census Interface](/assets/uploads/stage-tiestrengthcensus.png)
+
+<InterfaceMeta type="Edge Generator/Edge Interpreter" creates="Edges with weight stored on an ordinal variable" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
 
 The Tie-Strength Census interface is similar to the [Dyad Census](../interface-documentation/dyad-census) in terms of user experience, but has the additional benefit of assigning an ordinal variable value to each edge that is created.
 

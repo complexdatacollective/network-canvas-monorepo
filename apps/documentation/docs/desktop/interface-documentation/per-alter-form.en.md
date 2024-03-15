@@ -2,13 +2,15 @@
 title: Per Alter Form
 ---
 
-<InterfaceSummary
-  title="Per Alter Form"
-  image="/assets/img/interface-documentation/per-alter-form/example.png"
-  type="Name Interpreter"
-  creates="Attribute data on a single node type"
-  usesprompts="false"
-/>
+<InterfaceSummary>
+
+![Per Alter Form Interface](/assets/img/interface-documentation/per-alter-form/example.png)
+
+<InterfaceMeta type="Name Interpreter" creates="Attribute data on a single node type" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
 
 The Per Alter Form is a _name interpreter_ interface that captures attribute data on the alters in a participant's network. When using the Per Alter Form, participants review an introductory panel which describes the tasks on the stage and then complete a [form](../key-concepts/forms) on each node in their network. These forms are customizable and can include one or multiple fields to collect specific attribute data using a variety of [input controls](../key-concepts/input-controls).
 
