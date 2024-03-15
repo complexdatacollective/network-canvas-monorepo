@@ -51,7 +51,10 @@ import {
   SummaryCard,
   SummarySection,
 } from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
-import { InterfaceSummary } from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
+import {
+  InterfaceMeta,
+  InterfaceSummary,
+} from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
 import {
   GoodPractice,
   BadPractice,
@@ -318,13 +321,14 @@ export async function getDocumentForPath({
         summarysection: (props: { children: ReactNode }) => (
           <SummarySection {...props} />
         ),
-        interfacesummary: (props: {
-          title: string;
-          image: string;
+        interfacesummary: (props: { children: ReactNode }) => (
+          <InterfaceSummary {...props} />
+        ),
+        interfacemeta: (props: {
           type: string;
           creates: string;
           usesprompts: string;
-        }) => <InterfaceSummary {...props} />,
+        }) => <InterfaceMeta {...props} />,
         table: (props) => (
           <div className="overflow-x-auto">
             <table

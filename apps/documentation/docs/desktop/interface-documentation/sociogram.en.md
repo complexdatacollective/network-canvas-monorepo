@@ -2,13 +2,15 @@
 title: Sociogram
 ---
 
-<InterfaceSummary
-  title="Sociogram"
-  image="/assets/img/interface-documentation/sociogram/sociogram-edges.png"
-  type="Name Interpreter and Edge Generator"
-  creates="Edges of multiple types, and attribute data on a single node type"
-  usesprompts="true"
-/>
+<InterfaceSummary>
+
+![Sociogram Interface](/assets/img/interface-documentation/sociogram/sociogram-edges.png)
+
+<InterfaceMeta type="Name Interpreter and Edge Generator" creates="Edges of multiple types, and attribute data on a single node type" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
 
 Sociograms are the visual mapping component of a network interview. On the Sociogram, participants draw ties between alters to signify the relationships between individuals within their personal network.
 
