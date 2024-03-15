@@ -7,6 +7,7 @@ import DocSearchComponent from './DocSearchComponent';
 import { BackgroundBlobs } from '@codaco/art';
 import { motion } from 'framer-motion';
 import FancyHeading from './FancyHeading';
+import FancyParagraph from './FancyParagraph';
 
 export function Hero() {
   const t = useTranslations();
@@ -20,16 +21,16 @@ export function Hero() {
       >
         <BackgroundBlobs large={3} medium={0} small={0} speedFactor={0.5} />
       </motion.div>
-      <div className="py-16 sm:px-2 lg:relative lg:px-0 lg:py-20">
+      <div className="py-20">
         <div className="mx-auto grid grid-cols-1 items-center gap-x-8 gap-y-16 px-4 lg:max-w-6xl lg:grid-cols-2 lg:px-8 xl:gap-x-16 xl:px-12">
           <div className="relative md:text-center lg:text-left">
             <div className="relative">
               <FancyHeading variant="h1" className="text-4xl">
                 {t('Hero.title')}
               </FancyHeading>
-              <Paragraph variant="lead" className="font-normal">
+              <FancyParagraph variant="lead">
                 {t('Hero.tagline')}
-              </Paragraph>
+              </FancyParagraph>
               <div className="hidden pt-8 lg:block">
                 <DocSearchComponent className="lg:w-3/4" />
               </div>

@@ -43,10 +43,13 @@ import Heading, {
   type HeadingProps,
 } from './typography/Heading';
 import { ListItem, OrderedList, UnorderedList } from './typography/Lists';
-import Paragraph, { paragraphVariants } from './typography/Paragraph';
+import Paragraph, {
+  paragraphVariants,
+  type ParagraphProps,
+} from './typography/Paragraph';
 import { Details, Summary } from './typography/Details';
 
-export type { HeadingProps };
+export type { HeadingProps, ParagraphProps };
 
 export {
   Button,

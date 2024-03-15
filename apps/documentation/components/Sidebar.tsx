@@ -238,7 +238,7 @@ export function Sidebar({ className }: { className?: string }) {
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="flex-1 basis-[0] overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {sortedSidebarItems.map((item) => renderSidebarItem(item, locale))}
       </div>
     </nav>

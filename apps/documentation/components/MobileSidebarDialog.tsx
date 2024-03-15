@@ -31,18 +31,21 @@ export default function MobileSidebarDialog({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
-        className="flex h-[100vh] w-full flex-col bg-background"
+        className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background"
         side={'left'}
       >
-        <Button
-          size={'sm'}
-          onClick={() => setOpen(false)}
-          variant="ghost"
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center gap-2 rounded-full sm:hidden"
-        >
-          <CloseMenu className="h-4 w-4 shrink-0" />
-        </Button>
-        <LogoComponent className="mx-4 my-2 block w-fit" />
+        <div className="sticky top-2 flex items-center justify-between">
+          <LogoComponent className="mx-4 my-2 block w-fit" />
+          <Button
+            size={'sm'}
+            onClick={() => setOpen(false)}
+            variant="ghost"
+            className="flex h-10 w-10 items-center justify-center gap-2 rounded-full sm:hidden"
+          >
+            <CloseMenu className="h-4 w-4 shrink-0" />
+          </Button>
+        </div>
+
         <NavigationMenuMobile />
         {!isHomePage && <Sidebar />}
       </SheetContent>
