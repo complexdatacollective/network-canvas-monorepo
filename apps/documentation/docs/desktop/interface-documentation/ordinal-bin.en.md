@@ -1,11 +1,5 @@
 ---
 title: Ordinal Bin
-
-bad:
-  - Due to size affordances, avoid using scales of more than six bins on this Interface. Larger scales cause bin labels to be difficult to read and the other visual components on the Interface become compromised.
-  - Resist using this Interface to collect nominal data that would be more suitable for capture on the [Categorical Bin](../interface-documentation/categorical-bin/).
-good:
-  - Use this Interface to collect ordinal or interval scale data on alters. Although a Likert Scale can be added as an [input control](../key-concepts/input-controls/) on other interfaces, the drag and drop functionality on the Ordinal Bin provides a tactile method to capturing these data that is engaging for participants.
 ---
 
 <InterfaceSummary
@@ -27,3 +21,25 @@ A single node type is selectable per screen. This screen supports [filtering](..
 An Ordinal Bin screen can include multiple [prompts](../key-concepts/prompts), each of which relates to a single ordinal variable.
 
 ![](/assets/img/interface-documentation/ordinal-bin/architect_2.png)
+
+### Best Practices
+
+<GoodPractice>
+
+Use this Interface to collect ordinal or interval scale data on alters. Although a Likert Scale can be added as an [input control](../key-concepts/input-controls/) on other interfaces, the drag and drop functionality on the Ordinal Bin provides a tactile method to capturing these data that is engaging for participants.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Due to size affordances, avoid using scales of more than six bins on this Interface. Larger scales cause bin labels to be difficult to read and the other visual components on the Interface become compromised.
+
+</BadPractice>
+
+<BadPractice>
+
+Resist using this Interface to collect nominal data that would be more suitable for capture on the [Categorical Bin](../interface-documentation/categorical-bin/).
+
+</BadPractice>

@@ -1,11 +1,5 @@
 ---
 title: Per Alter Form
-
-bad:
-  - Avoid overloading this Interface with too many fields and/or text-heavy prompts. Instead, consider taking advantage of other more interactive Interfaces, such as the [Categorical Bin](../interface-documentation/categorical-bin) and [Ordinal Bin](../interface-documentation/ordinal-bin), to ease participant burden.
-good:
-  - Use this Interface as a simple way to systematically collect data on alters.
-  - Use the introductory panel to orient participants to the tasks within the form they will complete for each alter.
 ---
 
 <InterfaceSummary
@@ -33,3 +27,25 @@ The introduction screen is shown before any matching alters and can be used to i
 Each node will be assigned variables using a configurable [form](../key-concepts/forms).
 
 ![](/assets/img/interface-documentation/per-alter-form/architect-form.png)
+
+### Best Practices
+
+<GoodPractice>
+
+Use this Interface as a simple way to systematically collect data on alters.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Use the introductory panel to orient participants to the tasks within the form they will complete for each alter.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid overloading this Interface with too many fields and/or text-heavy prompts. Instead, consider taking advantage of other more interactive Interfaces, such as the [Categorical Bin](../interface-documentation/categorical-bin) and [Ordinal Bin](../interface-documentation/ordinal-bin), to ease participant burden.
+
+</BadPractice>

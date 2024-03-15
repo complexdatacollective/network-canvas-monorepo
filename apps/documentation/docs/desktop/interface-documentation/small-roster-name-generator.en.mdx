@@ -1,13 +1,5 @@
 ---
 title: Small Roster Name Generator
-
-bad:
-  - Avoid using this Interface with larger roster datasets that may benefit from the search function only available in the Large Roster Name Generator Interface.
-  - Add needless attributes to the sort options. This will confuse users and may potentially cause display issues on smaller screens. Aim for no more than 3 sortable properties.
-
-good:
-  - Ensure that the roster data file used has `name` attribute to avoid seeing "No name variable!" on your cards. See our article on [node labelling](/en/desktop/reference/node-labelling) for more information on this topic.
-  - Configure the display and sorting options of the cards to help improve a participant's ability to locate nodes within the roster.
 ---
 
 <InterfaceSummary
@@ -53,3 +45,31 @@ When using the "Small Roster Name Generator" Interface, cards representing node 
 By default, cards will display the `name` attribute from the roster data as a card title, and will sort the cards in the order the nodes are defined in the data file. These options can be configured from within architect. Note that you are able to define both the default sorting options, and allow the user to sort themselves by multiple properties.
 
 ![](/assets/img/interface-documentation/name-generators/architect-card.png)
+
+### Best Practices
+
+<GoodPractice>
+
+Ensure that the roster data file used has `name` attribute to avoid seeing "No name variable!" on your cards. See our article on [node labelling](/en/desktop/reference/node-labelling) for more information on this topic.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Configure the display and sorting options of the cards to help improve a participant's ability to locate nodes within the roster.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid using this Interface with larger roster datasets that may benefit from the search function only available in the Large Roster Name Generator Interface.
+
+</BadPractice>
+
+<BadPractice>
+
+Add needless attributes to the sort options. This will confuse users and may potentially cause display issues on smaller screens. Aim for no more than 3 sortable properties.
+
+</BadPractice>

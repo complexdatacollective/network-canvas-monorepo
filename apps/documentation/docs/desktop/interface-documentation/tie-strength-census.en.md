@@ -6,14 +6,6 @@ title: Tie-Strength Census
 type: Edge Generator/Edge Interpreter
 creates: Edges with weight stored on an ordinal variable
 uses_prompts: Yes
-good:
-  - Use this interface in scenarios where you are already using a Dyad Census
-    and wish to also collect data about the strength of a tie.
-bad:
-  - Avoid using this interface in an interview that also uses the Sociogram to
-    create edges.
-  - Do not use ordinal variables with more than 5 options, since this will
-    create a very crowded interface.
 ---
 
 <InterfaceSummary
@@ -35,3 +27,28 @@ To configure this interface in Architect, you will first determine the node type
 - An edge type that will be created
 - An ordinal variable that will receive a value when an edge is confirmed. This ordinal variable will be created on the edge type you specified.
 - A label to be used for the option that indicates that no tie is present
+
+### Best Practices
+
+<GoodPractice>
+
+Use this interface in scenarios where you are already using a Dyad Census
+and wish to also collect data about the strength of a tie.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid using this interface in an interview that also uses the Sociogram to
+create edges.
+
+</BadPractice>
+
+<BadPractice>
+
+Do not use ordinal variables with more than 5 options, since this will
+create a very crowded interface.
+
+</BadPractice>

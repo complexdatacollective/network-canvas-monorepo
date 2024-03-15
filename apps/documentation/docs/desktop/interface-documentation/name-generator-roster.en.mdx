@@ -1,22 +1,5 @@
 ---
 title: Name Generator for Roster Data
-
-good:
-  - Ensure that the roster data file used has `name` attribute to avoid seeing
-    "No name variable!" on your cards. See our article on [node
-    labelling](../reference/node-labelling) for more information on this
-    topic.
-bad:
-  - Avoid using this interface with a large roster (>100 nodes) on devices with
-    a software keyboard, particularly where they also have a small (< 9")
-    screen. The software keyboard will cover a substantial area of the screen,
-    and make the process of searching and nominating more tedious.
-  - When using a large roster, avoid setting all properties to be searchable.
-    This will cause slow performance and less accurate search results. Ensure
-    that you test your search feature thoroughly.
-  - Avoid adding needless attributes to the sort options. This will confuse
-    users and may potentially cause display issues on smaller screens. Aim for
-    no more than 3 sortable properties.
 ---
 
 <InterfaceSummary
@@ -67,3 +50,40 @@ The search function is also heavily configurable, allowing you to choose which a
 As a general rule of thumb search accuracy should increase as roster size increases, and only attributes containing terms participants are likely to search by should be included as indexed attributes.
 
 ![](/assets/img/interface-documentation/name-generators/architect-search.png)
+
+### Best Practices
+
+<GoodPractice>
+
+Ensure that the roster data file used has `name` attribute to avoid seeing "No
+name variable!" on your cards. See our article on [node
+labelling](../reference/node-labelling) for more information on this topic.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid using this interface with a large roster (>100 nodes) on devices with
+a software keyboard, particularly where they also have a small (< 9")
+screen. The software keyboard will cover a substantial area of the screen,
+and make the process of searching and nominating more tedious.
+
+</BadPractice>
+
+<BadPractice>
+
+When using a large roster, avoid setting all properties to be searchable. This
+will cause slow performance and less accurate search results. Ensure that you
+test your search feature thoroughly.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid adding needless attributes to the sort options. This will confuse users
+and may potentially cause display issues on smaller screens. Aim for no more
+than 3 sortable properties.
+
+</BadPractice>
