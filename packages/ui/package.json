@@ -34,10 +34,10 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@codaco/eslint-config": "workspace:^0.2.0",
-    "@codaco/prettier-config": "workspace:^0.1.0",
-    "@codaco/tailwind-config": "workspace:^0.1.0",
-    "@codaco/tsconfig": "workspace:^0.1.0",
+    "@codaco/eslint-config": "workspace:*",
+    "@codaco/prettier-config": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*",
     "@types/react": "^18.2.57",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",

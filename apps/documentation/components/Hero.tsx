@@ -3,7 +3,7 @@ import { HeroBackground } from '~/components/HeroBackground';
 import { useTranslations } from 'next-intl';
 import { Link } from '~/navigation';
 import DocSearchComponent from './DocSearchComponent';
-import BackgroundBlobs from '~/components/BackgroundBlobs/BackgroundBlobs';
+import { BackgroundBlobs } from '@codaco/art';
 
 export function Hero() {
   const t = useTranslations();
