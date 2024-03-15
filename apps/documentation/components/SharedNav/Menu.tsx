@@ -61,7 +61,7 @@ export const NavigationMenuDemo = () => {
 
   return (
     <NavigationMenu.Root asChild>
-      <div className={cn('z-10 hidden grow justify-end', 'md:flex')}>
+      <div className={cn('relative z-10 hidden grow justify-end', 'md:flex')}>
         <NavigationMenu.List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
           {links.map((link, i) => {
             if (link.menu) {
