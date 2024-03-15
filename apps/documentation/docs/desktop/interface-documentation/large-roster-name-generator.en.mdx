@@ -1,15 +1,5 @@
 ---
 title: Large Roster Name Generator
-
-bad:
-  - Avoid using this Interface with roster datasets of 100 nodes or smaller. For smaller rosters, use the Small Roster Name Generator.
-  - Avoid using this interface on devices with a software keyboard, particularly where they also have a small (< 9") screen. The software keyboard will cover a substantial area of the screen, and make the process of searching and nominating more tedious.
-  - Set all properties to be searchable. This will cause slow performance and less accurate search results. Ensure that you test your search feature thoroughly.
-
-good:
-  - Ensure that the roster data file used has `name` attribute to avoid seeing "No name variable!" on your cards. See our article on [node labelling](../reference/node-labelling) for more information on this topic.
-  - Configure the display options of the cards to help improve a participant's ability to identify and disambiguate nodes within the roster.
-  - Define and test appropriate searchable properties and search accuracy criteria to help participants locate nodes within the roster.
 ---
 
 <InterfaceSummary
@@ -68,3 +58,49 @@ The search function is also heavily configurable, allowing you to choose which a
 As a general rule of thumb search accuracy should increase as roster size increases, and only attributes containing terms participants are likely to search by should be included as indexed attributes.
 
 ![](/assets/img/interface-documentation/name-generators/architect-search.png)
+
+### Best Practices
+
+<GoodPractice>
+
+Ensure that the roster data file used has `name` attribute to avoid seeing "No
+name variable!" on your cards. See our article on [node
+labelling](../reference/node-labelling) for more information on this topic.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Configure the display options of the cards to help improve a participant's
+ability to identify and disambiguate nodes within the roster.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Define and test appropriate searchable properties and search accuracy criteria
+to help participants locate nodes within the roster.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid using this Interface with roster datasets of 100 nodes or smaller. For
+smaller rosters, use the Small Roster Name Generator.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid using this interface on devices with a software keyboard, particularly where they also have a small (< 9") screen. The software keyboard will cover a substantial area of the screen, and make the process of searching and nominating more tedious.
+
+</BadPractice>
+
+<BadPractice>
+
+Set all properties to be searchable. This will cause slow performance and less
+accurate search results. Ensure that you test your search feature thoroughly.
+
+</BadPractice>

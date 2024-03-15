@@ -17,7 +17,7 @@ The configurable [form](../key-concepts/forms) determines which variables will b
 
 ![](/assets/img/interface-documentation/ego-form/architect-ego-form.png)
 
-### Good Practices
+### Best Practices
 
 <GoodPractice>
 
@@ -34,5 +34,7 @@ Consider adding this Interface toward the beginning of your survey to capture da
 ### Try to Avoid
 
 <BadPractice>
+
 Avoid overloading the form with too many fields and/or text-heavy prompts which make the Interface burdensome to complete.
+
 </BadPractice>
