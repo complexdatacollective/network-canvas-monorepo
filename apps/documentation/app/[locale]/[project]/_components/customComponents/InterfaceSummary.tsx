@@ -15,23 +15,24 @@ export const InterfaceSummary = ({
   usesprompts: string;
 }) => {
   return (
-    <div className="flex h-96">
+    <div className="flex flex-col sm:flex-row sm:items-center">
       <Image
         width={500}
         height={500}
         src={image}
         alt={title}
-        style={{ marginBlock: '15px' }}
+        className="my-3.5 h-full w-full object-cover sm:w-2/3"
       />
-      <div className="flex flex-col content-center justify-center space-y-6 pl-6">
+      <div className="flex flex-col content-center justify-center space-y-6 sm:pl-6">
         <Paragraph>
-          <strong className="uppercase">Type:</strong> {type}
+          <strong className="uppercase">Type:</strong> <br /> {type}
         </Paragraph>
         <Paragraph>
-          <strong className="uppercase">Creates:</strong> {creates}
+          <strong className="uppercase">Creates:</strong> <br /> {creates}
         </Paragraph>
         <Paragraph>
-          <strong className="uppercase">Uses Prompts:</strong> {usesprompts}
+          <strong className="uppercase">Uses Prompts:</strong> <br />
+          {usesprompts}
         </Paragraph>
       </div>
     </div>
