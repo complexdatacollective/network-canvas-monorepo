@@ -1,7 +1,14 @@
 ---
 title: The Protocol File
-definition: A file with the extension .netcanvas that represents your interview protocol and contains all data and assets used by it.
 ---
+
+<Definition>
+
+A file with the extension .netcanvas that represents your interview protocol and contains all data and assets used by it.
+
+</Definition>
+
+## Details
 
 Network Canvas protocols are stored in a file with the extension .netcanvas. They are just like any other files on your computer, meaning you can move them around, rename them, and you can (and should!) back them up.
 

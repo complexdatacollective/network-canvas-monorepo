@@ -1,9 +1,15 @@
 ---
 title: Input Controls
 toc: true
-
-definition: A flexible way to assign values to variables in [forms](/en/desktop/key-concepts/forms). By separating the visible control from the variable type, you can choose the best possible interview experience for your participant.
 ---
+
+<Definition>
+
+A flexible way to assign values to variables in [forms](/en/desktop/key-concepts/forms). By separating the visible control from the variable type, you can choose the best possible interview experience for your participant.
+
+</Definition>
+
+## Details
 
 Below you will find a summary of each available input control, and advice about when to use them.
 

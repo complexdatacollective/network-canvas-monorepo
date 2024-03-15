@@ -331,6 +331,9 @@ export async function getDocumentForPath({
           creates: string;
           usesprompts: string;
         }) => <InterfaceMeta {...props} />,
+        definition: (props: { children: ReactNode }) => (
+          <div className="text-lg font-normal">{props.children}</div>
+        ),
         table: (props) => (
           <div className="overflow-x-auto">
             <table
