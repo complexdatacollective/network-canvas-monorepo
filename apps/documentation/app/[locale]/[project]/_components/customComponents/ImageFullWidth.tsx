@@ -2,18 +2,17 @@ import Image from 'next/image';
 
 type ImageFullWidthProps = {
   src: string;
-  name?: string;
+  alt: string;
 };
 
-const ImageFullWidth = ({ src, name }: ImageFullWidthProps) => {
+const ImageFullWidth = ({ src, alt }: ImageFullWidthProps) => {
   return (
     <Image
       width={450}
       height={450}
       src={src}
-      alt={name ?? src}
-      style={{ marginBlock: '10px' }}
-      className="h-full w-full object-cover"
+      alt={alt ?? src}
+      className="my-2.5 h-full w-full object-cover"
     />
   );
 };

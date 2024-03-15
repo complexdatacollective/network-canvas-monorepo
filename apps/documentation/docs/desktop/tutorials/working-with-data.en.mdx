@@ -210,7 +210,10 @@ layout the figure with the final coordinates from the sociogram stage.
                             nrow=length(unique(oneEgoNet%v%"name")),
                             ncol=2))
 
-<ImageFullWith src="/assets/img/working-with-data/vis1.png" name="" />
+<ImageFullWidth
+  src="/assets/img/working-with-data/vis1.png"
+  alt="working-with-data/vis1.png"
+/>
 
 As you can see, this only shows a single egocentric network. However,
 the egor package has several functions that facilitate comparison of
@@ -224,7 +227,10 @@ true/false).
          pie_var = "ContactFreq",vertex_label_var="nodeID",
          type = "egogram")
 
-<ImageFullWith src="/assets/img/working-with-data/vis2.png" name="" />
+<ImageFullWidth
+  src="/assets/img/working-with-data/vis2.png"
+  alt="working-with-data/vis2.png"
+/>
 
 ## Data analysis
 
@@ -277,7 +283,10 @@ histogram of alter degrees across all ego networks.
         geom_histogram(color="black", fill="white",bins=5) +
         theme_classic()
 
-<ImageFullWith src="/assets/img/working-with-data/vis4.png" name="" />
+<ImageFullWidth
+  src="/assets/img/working-with-data/vis4.png"
+  alt="working-with-data/vis4.png"
+/>
 
 Finally, we often want to examine how an ego attribute may be associated
 with ego network characteristics. In this example we look at the
@@ -291,4 +300,7 @@ using and the density of their ego network.
         geom_text(label=egorNetworkCanvas$ego$networkCanvasCaseID, aes(vjust=c(-1.5))) +
         ylim(0,1.05) + theme_classic()
 
-<ImageFullWith src="/assets/img/working-with-data/vis5.png" name="" />
+<ImageFullWidth
+  src="/assets/img/working-with-data/vis5.png"
+  alt="working-with-data/vis5.png"
+/>
