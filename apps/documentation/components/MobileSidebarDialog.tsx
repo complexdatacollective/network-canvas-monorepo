@@ -34,7 +34,7 @@ export default function MobileSidebarDialog({
         className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background"
         side={'left'}
       >
-        <div className="sticky top-2 flex items-center justify-between">
+        <div className="sticky top-2 flex items-center justify-between bg-background">
           <LogoComponent className="mx-4 my-2 block w-fit" />
           <Button
             size={'sm'}
