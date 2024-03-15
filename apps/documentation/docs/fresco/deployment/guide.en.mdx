@@ -86,7 +86,7 @@ Sign in to Vercel via your Github account credentials so that you can easily con
    Find your Fresco instance from the list of your git repositories and click **"Import"**.
    ![Import Git Repository](/assets/img/fresco-images/vercel2.png)
 
-3. Configure Environment Variables.
+3. Configure Environment Variables
 
    Copy the template below and paste it into the Environment Variables section in Vercel to prepopulate the form with the required environment variables.
 
@@ -102,29 +102,29 @@ Sign in to Vercel via your Github account credentials so that you can easily con
    | **UPLOADTHING_APP_ID** | The unique identifier for your UploadThing app. This is used along with the secret key to identify your app when making requests from Fresco to the UploadThing API. |
    | **DISABLE_ANALYTICS**  | A flag to disable the analytics microservice for Fresco. If this is set to `false`, the analytics microservice will be enabled.                                      |
 
-<TipBox>
+   <TipBox>
 
-We use analytics to gather error data from instances of Fresco to troubleshoot issues. By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
-
-   </TipBox>
-
-![Configure Environment Variables and Deploy](/assets/img/fresco-images/vercel-configure.png)
-
-<TipBox danger>
-
-When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
+   We use analytics to gather error data from instances of Fresco to troubleshoot issues. By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
 
    </TipBox>
 
-<TipBox danger>
+   ![Configure Environment Variables and Deploy](/assets/img/fresco-images/vercel-configure.png)
 
-When providing the environment variables, do not enclose the variable values in quotes. For example:
+   <TipBox danger>
 
-✅ Correct:
-`sk_live_xxxxxxxxxxxxxxxxxxx`
+   When entering the environment variables, do not include the variable keys in the inputs (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable which starts after `=` symbol (e.g: `sk_live_xxxx`)
 
-❌ Incorrect:
-`'sk_live_xxxxxxxxxxxxxxxxxxx'`
+   </TipBox>
+
+   <TipBox danger>
+
+   When providing the environment variables, do not enclose the variable values in quotes. For example:
+
+   ✅ Correct:
+   `sk_live_xxxxxxxxxxxxxxxxxxx`
+
+   ❌ Incorrect:
+   `'sk_live_xxxxxxxxxxxxxxxxxxx'`
 
    </TipBox>
 
@@ -132,15 +132,22 @@ When providing the environment variables, do not enclose the variable values in 
 
    Click **"Deploy"** and wait for the deployment to finish.
 
-<TipBox>
+   <TipBox>
 
-If you encounter any issues during deployment, check out the [Troubleshooting](../troubleshooting) article or our <a href="https://community.networkcanvas.com/">User Community</a> for a possible solution.
+   The first deployment will fail because the database has not been set up yet. We will set up the database in the next step.
 
-</TipBox>
+   </TipBox>
+
+5. Go to Project
+
+   After the initial deployment fails, select **"Go to Project"** to view your project dashboard.
+
+   ![Initial Deployment Failed. Click Go to Project.](/assets/img/fresco-images/vercel5.png)
 
 ## Step 4: Create your database
 
 1. From your project dashboard, select **"Storage"**. Then, select **Create** within the Postgres row.
+   ![Storage](/assets/img/fresco-images/vercel6.png)
    ![Create a Postgres database](/assets/img/fresco-images/vercel-db-1.png)
 
 2. Review and accept the terms in the modal.
@@ -157,6 +164,12 @@ If you encounter any issues during deployment, check out the [Troubleshooting](.
 5. Select the **"Deployments"** tab. Click on the menu beside the most recent deployment and select **"Redeploy"**. This will redeploy your project with your new connected database.
 
    ![Redeploy app](/assets/img/fresco-images/vercel-db-5.png)
+
+<TipBox>
+
+If you encounter any issues during deployment, check out the [Troubleshooting](../troubleshooting) article or our <a href="https://community.networkcanvas.com/">User Community</a> for a possible solution.
+
+</TipBox>
 
 ## Step 5: Visit your deployed app
 
