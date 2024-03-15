@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from './dialog';
 import { Divider } from './Divider';
-import { Input, inputClasses } from './Input';
+import { Input, inputClasses, inputVariants } from './Input';
 import { Label } from './Label';
 import {
   Select,
@@ -69,6 +69,7 @@ export {
   selectTriggerStyles,
   Input,
   inputClasses,
+  inputVariants,
   Label,
   UnorderedList,
   OrderedList,

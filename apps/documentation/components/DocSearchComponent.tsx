@@ -4,11 +4,17 @@ import { DocSearch } from '@docsearch/react';
 import { useLocale, useTranslations } from 'next-intl';
 import '@docsearch/css';
 import { env } from '~/env.mjs';
-import { inputClasses } from '@codaco/ui';
+import { inputVariants } from '@codaco/ui';
 import { Search } from 'lucide-react';
 import { cn } from '~/lib/utils';
 
-const DocSearchComponent = ({ className }: { className?: string }) => {
+const DocSearchComponent = ({
+  className,
+  large,
+}: {
+  className?: string;
+  large?: boolean;
+}) => {
   const locale = useLocale();
   const t = useTranslations('DocSearch');
 
@@ -28,7 +34,7 @@ const DocSearchComponent = ({ className }: { className?: string }) => {
     <>
       <button
         className={cn(
-          inputClasses,
+          inputVariants({ size: large ? '2xl' : 'default' }),
           'pointer-events-auto flex w-full items-center justify-between px-4',
           'md:w-auto',
           className,
@@ -37,15 +43,26 @@ const DocSearchComponent = ({ className }: { className?: string }) => {
         aria-label={t('button.buttonAriaLabel')}
       >
         <span className="flex items-center">
-          <Search className="mr-2 md:mr-0 lg:mr-2" />
+          <Search
+            className={cn(
+              'adornment-left mr-2 md:mr-0 lg:mr-2',
+              large && '!mr-4',
+            )}
+          />
           <span className="hidden sm:inline md:hidden lg:inline">
             {t('button.buttonText')}
           </span>
           <span className="sm:hidden">{t('button.buttonTextMobile')}</span>
         </span>
 
-        <kbd className="pointer-events-none ml-4 inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-          <span className="text-xs">⌘</span>K
+        <kbd
+          className={cn(
+            'pointer-events-none ml-4 hidden  h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs font-medium text-muted-foreground opacity-100',
+            'sm:inline-flex',
+            large && '!h-6',
+          )}
+        >
+          <span className="text-sm">⌘</span>K
         </kbd>
       </button>
       <div className="hidden">

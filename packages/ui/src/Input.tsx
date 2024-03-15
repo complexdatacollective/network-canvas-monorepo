@@ -2,8 +2,33 @@ import * as React from 'react';
 
 import { Label } from './Label';
 import { cn } from './utils';
+import { type VariantProps, cva } from 'class-variance-authority';
+
+export const inputClasses = cn(
+  'text-input-foreground flex h-10 w-full rounded-input border border-border bg-input ring-offset-background',
+  'disabled:cursor-not-allowed disabled:opacity-50',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+  'placeholder:text-muted-foreground',
+  'file:border-0 file:bg-transparent file:text-sm file:font-medium',
+);
+
+export const inputVariants = cva(inputClasses, {
+  variants: {
+    size: {
+      'default': 'h-10 px-3 py-2 text-sm [&.adornment-left]:mr-2',
+      'lg': 'h-12 px-4 py-3 text-base [&.adornment-left]:mr-4',
+      'xl': 'h-14 px-5 py-4 text-lg [&.adornment-left]:mr-5',
+      '2xl': 'h-16 px-6 py-5 text-xl [&.adornment-left]:mr-6',
+      '3xl': 'h-20 px-8 py-6 text-2xl [&.adornment-left]:mr-8',
+    },
+  },
+  defaultVariants: {
+    size: 'default',
+  },
+});
 
 export type InputProps = {
+  size?: VariantProps<typeof inputVariants>['size'];
   inputClassName?: string;
   label?: string;
   hint?: React.ReactNode;
@@ -13,14 +38,11 @@ export type InputProps = {
   rightAdornment?: React.ReactNode;
 } & React.InputHTMLAttributes<HTMLInputElement>;
 
-export const inputClasses = cn(
-  'text-input-foreground flex h-10 w-full rounded-input border border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-);
-
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
       className,
+      size,
       inputClassName,
       type,
       label,
@@ -47,13 +69,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative flex items-center justify-end">
           {leftAdornment && (
-            <div className="absolute left-2">{leftAdornment}</div>
+            <div className="adornment-left absolute">{leftAdornment}</div>
           )}
           <input
             id={id}
             type={type}
             className={cn(
-              inputClasses,
+              inputVariants({ size }),
               leftAdornment && 'pl-10',
               rightAdornment && 'pr-10',
               inputClassName,
@@ -62,7 +84,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightAdornment && (
-            <div className="absolute right-2">{rightAdornment}</div>
+            <div className="adornment-right absolute">{rightAdornment}</div>
           )}
         </div>
         {error && (

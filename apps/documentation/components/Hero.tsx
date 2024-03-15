@@ -8,6 +8,7 @@ import { BackgroundBlobs } from '@codaco/art';
 import { motion } from 'framer-motion';
 import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
+import { cn } from '~/lib/utils';
 
 export function Hero() {
   const t = useTranslations();
@@ -17,9 +18,20 @@ export function Hero() {
       <motion.div
         className="absolute inset-0 z-[-1] bg-gradient-to-br opacity-30"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
+        animate={{ opacity: 0.2 }}
+        transition={{
+          duration: 2,
+        }}
       >
-        <BackgroundBlobs large={3} medium={0} small={0} speedFactor={0.5} />
+        <BackgroundBlobs
+          large={2}
+          medium={1}
+          small={0}
+          // speedFactor={1}
+          // filter="blur(10rem)"
+          compositeOperation="hard-light"
+          // compositeOperation="lighten"
+        />
       </motion.div>
       <div className="py-20">
         <div className="mx-auto grid grid-cols-1 items-center gap-x-8 gap-y-16 px-4 lg:max-w-6xl lg:grid-cols-2 lg:px-8 xl:gap-x-16 xl:px-12">
@@ -32,24 +44,24 @@ export function Hero() {
                 {t('Hero.tagline')}
               </FancyParagraph>
               <div className="hidden pt-8 lg:block">
-                <DocSearchComponent className="lg:w-3/4" />
+                <DocSearchComponent className="!w-full text-base" large />
               </div>
             </div>
           </div>
-        </div>
-        <div className="mt-8 flex gap-4 md:justify-center lg:justify-start">
-          <Link
-            href="/desktop"
-            className={buttonVariants({ variant: 'accent' })}
-          >
-            {t('ProjectSwitcher.desktop.label')}
-          </Link>
-          <Link
-            href="/fresco"
-            className={buttonVariants({ variant: 'secondary' })}
-          >
-            {t('ProjectSwitcher.fresco.label')}
-          </Link>
+          <div className="flex flex-col items-center gap-6">
+            <Link
+              href="/desktop"
+              className={cn(buttonVariants({ variant: 'accent' }), 'w-full')}
+            >
+              {t('ProjectSwitcher.desktop.label')}
+            </Link>
+            <Link
+              href="/fresco"
+              className={cn(buttonVariants({ variant: 'secondary' }), 'w-full')}
+            >
+              {t('ProjectSwitcher.fresco.label')}
+            </Link>
+          </div>
         </div>
       </div>
     </div>
