@@ -3,10 +3,10 @@
 import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
-import { cn } from '~/utils/shadcn';
-import { buttonVariants } from '~/components/ui/Button';
+import { cn } from './utils';
+import { buttonVariants } from './Button';
 import { type VariantProps } from 'class-variance-authority';
-import { DialogTitle, DialogDescription } from '~/components/ui/dialog';
+import { DialogTitle, DialogDescription } from './dialog';
 
 const AlertDialog = AlertDialogPrimitive.Root;
 

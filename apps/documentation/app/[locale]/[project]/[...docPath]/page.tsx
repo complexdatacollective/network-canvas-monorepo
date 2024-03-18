@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
-
 import type { LocalesEnum } from '~/app/types';
 import Article from '~/components/article';
 import { getDocsForRouteSegment, getDocumentForPath } from '~/lib/docs';

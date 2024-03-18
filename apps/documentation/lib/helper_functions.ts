@@ -12,10 +12,9 @@ import type {
   SidebarFolder,
   SidebarPage,
   SidebarProject,
-  TSidebarFolder,
 } from '~/app/types';
 import { MetadataFileSchema } from '~/app/types';
-import { env } from '../env.mjs';
+import { env } from '~/env.mjs';
 
 export const relativePathToDocs = join(
   process.cwd(),

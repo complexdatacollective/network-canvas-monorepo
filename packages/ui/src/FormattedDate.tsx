@@ -1,7 +1,5 @@
 'use client';
 
-import { withNoSSRWrapper } from '~/utils/NoSSRWrapper';
-
 // Display options for dates: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat#using_options
 export const dateOptions: Intl.DateTimeFormatOptions = {
   year: 'numeric',
@@ -30,4 +28,4 @@ function FormattedDate({
   );
 }
 
-export default withNoSSRWrapper(FormattedDate);
+export default FormattedDate;

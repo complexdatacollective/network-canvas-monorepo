@@ -5,13 +5,9 @@ import {
   CommandInput,
   CommandItem,
   CommandSeparator,
-} from '~/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui/popover';
-import { cn } from '~/utils/shadcn';
+} from './command';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { cn } from './utils';
 import { selectTriggerStyles } from './select';
 import { type ReactNode, useMemo, useRef, useState } from 'react';
 

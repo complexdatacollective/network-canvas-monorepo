@@ -4,13 +4,11 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useLocale } from 'next-intl';
-
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@codaco/ui';
-
 import type {
   LocalesEnum,
   SidebarPage,

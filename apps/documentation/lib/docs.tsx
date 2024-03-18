@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'fs';
-import { join, sep } from 'path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import type { Options } from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 import rehypeReact from 'rehype-react';
@@ -22,7 +22,6 @@ import {
   Summary,
   UnorderedList,
 } from '@codaco/ui';
-
 import {
   locales,
   type LocalesEnum,
@@ -39,26 +38,23 @@ import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
-import TipBox, {
-  type TipBoxProps,
-} from '~/app/[locale]/[project]/_components/customComponents/TipBox';
-import ImageFloatLeft from '~/app/[locale]/[project]/_components/customComponents/ImageFloatLeft';
-import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
-import KeyConcept from '~/app/[locale]/[project]/_components/customComponents/KeyConcept';
-import VideoIFrame from '~/app/[locale]/[project]/_components/customComponents/VideoIFrame';
+import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
+import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
+import KeyConcept from '~/components/customComponents/KeyConcept';
+import VideoIFrame from '~/components/customComponents/VideoIFrame';
 import {
   PrerequisitesSection,
   SummaryCard,
   SummarySection,
-} from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
+} from '~/components/customComponents/SummaryCard';
 import {
   InterfaceMeta,
   InterfaceSummary,
-} from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
+} from '~/components/customComponents/InterfaceSummary';
 import {
   GoodPractice,
   BadPractice,
-} from '~/app/[locale]/[project]/_components/customComponents/BestPractices';
+} from '~/components/customComponents/BestPractices';
 
 export type DocRouteParams = {
   params: {
@@ -244,6 +240,7 @@ export async function getDocumentForPath({
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype, { allowDangerousHtml: true })
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .use(rehypeFigure)
     .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings
@@ -290,7 +287,6 @@ export async function getDocumentForPath({
             </TipBox>
           );
         },
-        imagefloatleft: ImageFloatLeft,
         imagefullwidth: (props: { src: string; alt: string }) => (
           <ImageFullWidth {...props} />
         ),
@@ -306,14 +302,18 @@ export async function getDocumentForPath({
         img: (props) => (
           <img alt={props.alt} {...props} className="my-10 w-full px-8" />
         ),
-        keyconcept: KeyConcept,
+        keyconcept: (props: { title: string; children: ReactNode }) => (
+          <KeyConcept {...props} />
+        ),
         goodpractice: (props: { children: ReactNode }) => (
           <GoodPractice {...props} />
         ),
         badpractice: (props: { children: ReactNode }) => (
           <BadPractice {...props} />
         ),
-        videoiframe: VideoIFrame,
+        videoiframe: (props: { src: string; title: string }) => (
+          <VideoIFrame {...props} />
+        ),
         summarycard: (props: { duration: string; children: ReactNode }) => (
           <SummaryCard {...props} />
         ),

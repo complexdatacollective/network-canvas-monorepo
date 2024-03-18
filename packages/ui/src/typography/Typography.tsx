@@ -2,7 +2,7 @@
 
 import { cva, type VariantProps } from 'class-variance-authority';
 import React from 'react';
-import { cn } from '~/utils/shadcn';
+import { cn } from '../utils';
 import { Slot } from '@radix-ui/react-slot';
 
 const typographyVariants = cva('text-foreground', {
