@@ -1,6 +1,6 @@
 ---
 title: Installation Guide
-nav_order: 3
+navOrder: 3
 last_modified_at: 2021-02-10
 wip: false
 toc: true
@@ -18,7 +18,7 @@ Each application of the Network Canvas Suite can be downloaded and installed ind
 
 Server has been designed specifically for scenarios where a dedicated team member will be responsible for managing data. This team member should be prepared to work with their IT department, or else have good knowledge of computer networking principles, in order to configure Server to send and receive data securely.
 
-Smaller studies, or extremely large studies, may benefit from working directly with data exported from Interviewer. For more information, see our tutorial on [offline data management workflows](./tutorials/offline-data-management-workflow).
+Smaller studies, or extremely large studies, may benefit from working directly with data exported from Interviewer. For more information, see our tutorial on [offline data management workflows](/en/desktop/tutorials/workflows-without-server#option-1-online-workflow).
 
 ## System Requirements
 
@@ -30,7 +30,7 @@ You may install and run the software on devices that do not meet these criteria,
 
 ## Windows
 
-Visit the [download page](https://networkcanvas.com/download.html), and download the Windows version of each app you require.
+Visit the [download page](https://networkcanvas.com/download), and download the Windows version of each app you require.
 
 Open each .exe file. You may be presented with a dialog that says the application cannot be run because it is from an unsigned publisher. This happens because our apps have not yet built up enough trust with Microsoft to automatically pass these filters. This will change as more users install our apps.
 
@@ -38,7 +38,7 @@ In order to continue to install the application simply click the "more info" tex
 
 ## macOS
 
-Visit the [download page](https://networkcanvas.com/download.html), and download the macOS version of each app you require. These are packaged in the form of a DMG disk archive.
+Visit the [download page](https://networkcanvas.com/download), and download the macOS version of each app you require. These are packaged in the form of a DMG disk archive.
 
 When you double-click on the DMG file it will open a new Finder window with the application icon and a folder representing your computer's "Applications" folder. Drag each application into the Applications folder. If you are prompted for authentication and you do not have it, you can simply drag the application to anywhere underneath your home directory.
 
@@ -46,7 +46,7 @@ Once the application is installed you will need to double click on the applicati
 
 ## Linux
 
-We provide Linux packages in a variety of formats, and for both x86 and ARM architectures. Visit the [download page](https://networkcanvas.com/download.html), and click on the link for downloading the apps you need on Linux. You will be redirected to the most recent release on GitHub, where you will find the package files themselves. Please refer to your distribution's documentation on which package formats are supported, and for specific installation instructions.
+We provide Linux packages in a variety of formats, and for both x86 and ARM architectures. Visit the [download page](https://networkcanvas.com/download), and click on the link for downloading the apps you need on Linux. You will be redirected to the most recent release on GitHub, where you will find the package files themselves. Please refer to your distribution's documentation on which package formats are supported, and for specific installation instructions.
 
 If you have difficulties installing or running these packages, please contact the project team.
 

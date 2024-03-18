@@ -1,22 +1,27 @@
 ---
-summary: >-
-  This tutorial describes a workflow for using Network Canvas tools without relying on the Server App. [Server is deprecated](https://community.networkcanvas.com/t/changes-to-interviewer-that-make-server-obsolete/104/2) and is no longer recommended, therefore certain adjustments must be made in the application of Network Canvas tools.
-prerequisites: >-
-  To follow along, you should:
-
-  - Be familiar with Network Canvas and its data collection process.
-
-  - Have access to devices running the Interviewer app.
-
-  - Have the ability to install software or configure your devices, or the support of someone who does (e.g., institutional IT department)
-
-  - Create or obtain the protocol file that you want to deploy using Interviewer. (See "[building a protocol](./building-a-protocol)").
-completion_time: 30 minutes
-nav_order: 3
+navOrder: 3
 title: Protocol and Data Workflows without Server
 wip: false
 toc: true
 ---
+
+<SummaryCard duration="30 minutes">
+<SummarySection>
+
+This tutorial describes a workflow for using Network Canvas tools without relying on the Server App. [Server is deprecated](https://community.networkcanvas.com/t/changes-to-interviewer-that-make-server-obsolete/104/2) and is no longer recommended, therefore certain adjustments must be made in the application of Network Canvas tools.
+
+</SummarySection>
+<PrerequisitesSection>
+
+To follow along, you should:
+
+- Be familiar with Network Canvas and its data collection process.
+- Have access to devices running the Interviewer app.
+- Have the ability to install software or configure your devices, or the support of someone who does (e.g., institutional IT department)
+- Create or obtain the protocol file that you want to deploy using Interviewer. (See "[building a protocol](building-a-protocol)").
+
+</PrerequisitesSection>
+</SummaryCard>
 
 ## Introduction
 
@@ -29,18 +34,20 @@ As a reminder, when we launched the Network Canvas suite of tools we included a 
 We made the decision to deprecate Server in 2023, and it is no longer recommended for use. However, we recognize that many researchers may still wish to use Network Canvas tools in a way that is similar to the Server workflow. This tutorial describes a workflow for using Network Canvas tools without relying on the Server App.
 
 <TipBox>
-  The Network Canvas team is developing Network Canvas Studio, a cloud-based
-  platform that will resolve many of the complexities associated with managing
-  protocols and exporting data.
+
+The Network Canvas team is developing Network Canvas Studio, a cloud-based
+platform that will resolve many of the complexities associated with managing
+protocols and exporting data.
+
 </TipBox>
 
 ## Option 1: Online Workflow
 
 If you are working in a scenario where you have access to a network connection with internet access, you can use the following workflow to deploy protocols and export data.
 
-<ImageFullWith
+<ImageFullWidth
   src="/assets/img/offline-data/online.png"
-  name="Online workflow diagram"
+  alt="Online workflow diagram"
 />
 
 ### Protocol Deployment
@@ -85,9 +92,9 @@ However, if you are comfortable with the potential risks, it should be possible 
 
 If you are working in a scenario where you do not have access to an internet connection, you can use the following workflow to deploy protocols and export data.
 
-<ImageFullWith
+<ImageFullWidth
   src="/assets/img/offline-data/offline.png"
-  name="Offline workflow diagram"
+  alt="Offline workflow diagram"
 />
 
 ### Protocol deployment
@@ -104,10 +111,12 @@ In an offline setting, the only option for deploying protocols is to use a USB f
 8. Navigate to the external storage device's folder, and select the protocol file.
 
 <TipBox>
-  Refer to the documentation from your operating system or device manufacturer
-  (or simply test ahead of time) to ensure that the storage device you are using
-  to transfer the protocol file can be read by the device running the Network
-  Canvas Interviewer App _and_ the device running Architect.
+
+Refer to the documentation from your operating system or device manufacturer
+(or simply test ahead of time) to ensure that the storage device you are using
+to transfer the protocol file can be read by the device running the Network
+Canvas Interviewer App _and_ the device running Architect.
+
 </TipBox>
 
 ### Data Export

@@ -1,36 +1,106 @@
 {
-  "Navbar": {
-    "communityBtn": "Community"
+  "ProjectSwitcher": {
+    "fresco": {
+      "label": "Fresco",
+      "description": "A new project that brings Network Canvas interviews to the web browser. Currently in beta."
+    },
+    "desktop": {
+      "label": "Desktop Suite",
+      "description": "The traditional Network Canvas suite of desktop and tablet applications (Architect and Interviewer)."
+    },
+    "studio": {
+      "label": "Studio",
+      "description": "A web-based platform for creating and sharing network data collection instruments."
+    }
+  },
+  "TipBox": {
+    "info": "Good to know:",
+    "warning": "Take Care!"
+  },
+  "DocSearch": {
+    "button": {
+      "buttonText": "Search documentation",
+      "buttonTextMobile": "Search docs",
+      "buttonAriaLabel": "Open search modal"
+    },
+    "modal": {
+      "searchBox": {
+        "resetButtonTitle": "Clear the query",
+        "resetButtonAriaLabel": "Clear the query",
+        "cancelButtonText": "Cancel",
+        "cancelButtonAriaLabel": "Cancel"
+      },
+      "startScreen": {
+        "recentSearchesTitle": "Recent",
+        "noRecentSearchesText": "No recent searches",
+        "saveRecentSearchButtonTitle": "Save this search",
+        "removeRecentSearchButtonTitle": "Remove this search from history",
+        "favoriteSearchesTitle": "Favorite",
+        "removeFavoriteSearchButtonTitle": "Remove this search from favorites"
+      },
+      "errorScreen": {
+        "titleText": "Unable to fetch results",
+        "helpText": "You might want to check your network connection"
+      },
+      "footer": {
+        "selectText": "to select",
+        "selectKeyAriaLabel": "Enter key",
+        "navigateText": "to navigate",
+        "navigateUpKeyAriaLabel": "Arrow up",
+        "navigateDownKeyAriaLabel": "Arrow down",
+        "closeText": "to close",
+        "closeKeyAriaLabel": "Escape key",
+        "searchByText": "Search by"
+      },
+      "noResultsScreen": {
+        "noResultsText": "No results for",
+        "suggestedQueryText": "Try searching for",
+        "reportMissingResultsText": "Believe this query should return results?",
+        "reportMissingResultsLinkText": "Let us know"
+      }
+    }
+  },
+  "SharedNavigation": {
+    "community": "Community",
+    "documentation": "Documentation",
+    "projects": "Projects",
+    "projectsChildren": {
+      "partner-services": {
+        "label": "Partner Services",
+        "description": "Evaluating Network Canvas in the context of partner notification services."
+      },
+      "fresco": {
+        "label": "Fresco",
+        "description": "A pilot project to bring Network Canvas interviews to the web browser."
+      },
+      "studio": {
+        "label": "Studio",
+        "description": "A web-based platform for creating and sharing network data collection instruments."
+      }
+    },
+    "download": "Download"
   },
   "ThemeTranslations": {
     "light": "Light",
     "dark": "Dark",
     "system": "System"
   },
-  "SearchCommand": {
-    "searchPlaceholder": "Search documentation...",
-    "searchNoResultsFor": "No results for",
-    "searchNoResults": "No results"
-  },
-  "ProductSwitcher": {
-    "selectPlaceholder": "Select software",
-    "fresco": "Fresco",
-    "desktop": "Desktop"
+  "Hero": {
+    "title": "Welcome to our documentation!",
+    "tagline": "A home for tutorials, guides, and information about the Network Canvas project."
   },
   "Home": {
-    "title": "Home Page"
+    "title": "Home",
+    "subtitle": "Welcome to the Network Canvas documentation. This is a place to learn about the project, find tutorials, and get help with using our software."
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
   },
-  "ProjectPage": {
-    "title": "This is an introductory page for"
-  },
   "AIAssistant": {
-    "dialogPlaceholder": "What is the main aim of the Network Canvas project?",
-    "q1": "How does it work?",
-    "q2": "What is Network Canvas?",
-    "popupText": "Hi, how can I help you?",
-    "welcomeMessage": "Hi, I'm an AI assistant trained on documentation. Ask me anything about Network Canvas."
+    "dialogPlaceholder": "What are the main aims of the Network Canvas project?",
+    "q2": "How do I get started with Network Canvas?",
+    "q1": "What is Network Canvas?",
+    "popupText": "Click this button to open our AI assistant. It's a great way to get quick answers to your questions.",
+    "welcomeMessage": "Hi, I'm an AI assistant trained on the Network Canvas documentation. Ask me anything about Network Canvas."
   }
 }

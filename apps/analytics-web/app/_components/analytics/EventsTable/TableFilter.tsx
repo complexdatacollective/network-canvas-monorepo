@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useState, type Dispatch, type SetStateAction } from "react";
-import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
+import { useState, type Dispatch, type SetStateAction } from 'react';
+import { Button } from '~/components/ui/button';
+import { Checkbox } from '~/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { type EventType } from "./EventsTable";
+} from '~/components/ui/dropdown-menu';
+import { type EventType } from './EventsTable';
 
 type TableFilterProps = {
   eventTypes: EventType[];
@@ -23,8 +23,8 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
   const toggleOption = (option: string) => {
     setOptions((prevState) =>
       prevState.map((t) =>
-        t.text === option ? { ...t, isSelected: !t.isSelected } : t
-      )
+        t.text === option ? { ...t, isSelected: !t.isSelected } : t,
+      ),
     );
   };
 
@@ -37,17 +37,21 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="text-sm" size={"sm"} variant="outline">
+        <Button className="text-sm" size={'sm'} variant="outline">
           Type
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-52 ml-12">
+      <DropdownMenuContent className="ml-12 w-52">
         <DropdownMenuLabel>Select events</DropdownMenuLabel>
         <DropdownMenuSeparator />
 
         <div className="space-y-3">
-          <label className="text-sm flex items-center gap-3 pl-2 transition-colors hover:bg-muted p-1 rounded-md">
+          <label
+            htmlFor="all-checkbox"
+            className="flex items-center gap-3 rounded-md p-1 pl-2 text-sm transition-colors hover:bg-muted"
+          >
             <Checkbox
+              id="all-checkbox"
               checked={isAllSelected}
               onCheckedChange={() => toggleAllOptions(!isAllSelected)}
             />
@@ -58,7 +62,7 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
           {options.map((option) => (
             <label
               key={option.text}
-              className="text-sm flex items-center gap-3 pl-2 transition-colors hover:bg-muted p-1 rounded-md"
+              className="flex items-center gap-3 rounded-md p-1 pl-2 text-sm transition-colors hover:bg-muted"
             >
               <Checkbox
                 checked={option.isSelected}
@@ -71,7 +75,7 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
           <Button
             onClick={() => setEventTypes(options)}
             className="float-right"
-            size={"sm"}
+            size={'sm'}
           >
             Apply
           </Button>

@@ -1,14 +1,14 @@
-import { type NextRequest } from "next/server";
-import { ensureError, getBaseUrl } from "./utils";
-import z from "zod";
+import { type NextRequest } from 'next/server';
+import { ensureError, getBaseUrl } from './utils';
+import z from 'zod';
 
 // Todo: it would be great to work out a way to support arbitrary types here.
 export const eventTypes = [
-  "AppSetup",
-  "ProtocolInstalled",
-  "InterviewStarted",
-  "InterviewCompleted",
-  "DataExported",
+  'AppSetup',
+  'ProtocolInstalled',
+  'InterviewStarted',
+  'InterviewCompleted',
+  'DataExported',
 ] as const;
 
 const EventSchema = z.object({
@@ -16,7 +16,7 @@ const EventSchema = z.object({
 });
 
 const ErrorSchema = z.object({
-  type: z.literal("Error"),
+  type: z.literal('Error'),
   message: z.string(),
   name: z.string(),
   stack: z.string().optional(),
@@ -32,7 +32,7 @@ const SharedEventAndErrorSchema = z.object({
  * events or errors. We discriminate on the `type` property to determine which
  * schema to use, and then merge the shared properties.
  */
-export const RawEventSchema = z.discriminatedUnion("type", [
+export const RawEventSchema = z.discriminatedUnion('type', [
   SharedEventAndErrorSchema.merge(EventSchema),
   SharedEventAndErrorSchema.merge(ErrorSchema),
 ]);
@@ -49,7 +49,7 @@ const TrackablePropertiesSchema = z.object({
 
 export const TrackableEventSchema = z.intersection(
   RawEventSchema,
-  TrackablePropertiesSchema
+  TrackablePropertiesSchema,
 );
 export type TrackableEvent = z.infer<typeof TrackableEventSchema>;
 
@@ -69,12 +69,18 @@ const DispatchablePropertiesSchema = z.object({
  */
 export const AnalyticsEventSchema = z.intersection(
   TrackableEventSchema,
-  DispatchablePropertiesSchema
+  DispatchablePropertiesSchema,
 );
 export type analyticsEvent = z.infer<typeof AnalyticsEventSchema>;
 
+type GeoData = {
+  status: 'success' | 'fail';
+  countryCode: string;
+  message: string;
+};
+
 export const createRouteHandler = ({
-  platformUrl = "https://analytics.networkcanvas.com",
+  platformUrl = 'https://analytics.networkcanvas.com',
   installationId,
 }: {
   platformUrl?: string;
@@ -88,11 +94,12 @@ export const createRouteHandler = ({
       const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
       if (!trackableEvent.success) {
-        console.error("Invalid event:", trackableEvent.error);
-        return new Response(JSON.stringify({ error: "Invalid event" }), {
+        // eslint-disable-next-line no-console
+        console.error('Invalid event:', trackableEvent.error);
+        return new Response(JSON.stringify({ error: 'Invalid event' }), {
           status: 400,
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         });
       }
@@ -100,25 +107,28 @@ export const createRouteHandler = ({
       // We don't want failures in third party services to prevent us from
       // tracking analytics events, so we'll catch any errors and log them
       // and continue with an 'Unknown' country code.
-      let countryISOCode = "Unknown";
+      let countryISOCode = 'Unknown';
       try {
-        const ip = await fetch("https://api64.ipify.org").then((res) =>
-          res.text()
+        const ip = await fetch('https://api64.ipify.org').then((res) =>
+          res.text(),
         );
 
         if (!ip) {
-          throw new Error("Could not fetch IP address");
+          throw new Error('Could not fetch IP address');
         }
 
-        const geoData = await fetch(`http://ip-api.com/json/${ip}`).then((res) => res.json());
+        const geoData = (await fetch(`http://ip-api.com/json/${ip}`).then(
+          (res) => res.json(),
+        )) as GeoData;
 
-        if(geoData.status === "success") {
+        if (geoData.status === 'success') {
           countryISOCode = geoData.countryCode;
         } else {
           throw new Error(geoData.message);
         }
       } catch (e) {
-        console.error("Geolocation failed:", e);
+        // eslint-disable-next-line no-console
+        console.error('Geolocation failed:', e);
       }
 
       const analyticsEvent: analyticsEvent = {
@@ -130,9 +140,9 @@ export const createRouteHandler = ({
       // Forward to backend
       const response = await fetch(`${platformUrl}/api/event`, {
         keepalive: true,
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(analyticsEvent),
       });
@@ -152,23 +162,26 @@ export const createRouteHandler = ({
           error = `Analytics platform returned an internal server error. Please check the platform logs.`;
         }
 
+        // eslint-disable-next-line no-console
         console.info(`⚠️ Analytics platform rejected event: ${error}`);
         return Response.json(
           {
             error,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
-      console.info("🚀 Analytics event sent to platform!");
-      return Response.json({ message: "Event forwarded successfully" });
+      // eslint-disable-next-line no-console
+      console.info('🚀 Analytics event sent to platform!');
+      return Response.json({ message: 'Event forwarded successfully' });
     } catch (e) {
       const error = ensureError(e);
-      console.info("🚫 Internal error with sending analytics event.");
+      // eslint-disable-next-line no-console
+      console.info('🚫 Internal error with sending analytics event.');
 
       return Response.json(
         { error: `Error in analytics route handler: ${error.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
   };
@@ -177,19 +190,20 @@ export const createRouteHandler = ({
 export const makeEventTracker =
   ({
     enabled = false,
-    endpoint = "/api/analytics",
+    endpoint = '/api/analytics',
   }: {
     enabled?: boolean;
     endpoint?: string;
   }) =>
   async (
-    event: RawEvent
+    event: RawEvent,
   ): Promise<{
     error: string | null;
     success: boolean;
   }> => {
     if (!enabled) {
-      console.log("Analytics disabled - event not sent.");
+      // eslint-disable-next-line no-console
+      console.log('Analytics disabled - event not sent.');
       return { error: null, success: true };
     }
 
@@ -202,11 +216,11 @@ export const makeEventTracker =
 
     try {
       const response = await fetch(endpointWithHost, {
-        method: "POST",
+        method: 'POST',
         keepalive: true,
         body: JSON.stringify(eventWithTimeStamp),
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 

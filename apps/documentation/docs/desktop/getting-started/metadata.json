@@ -1,7 +1,9 @@
 {
+  "type": "folder",
   "localeLabels": {
-    "en": "Getting Started",
-    "ru": "Начиная"
+    "en": "Getting Started"
   },
-  "folderPagePath": "/desktop"
+  "isExpanded": true,
+  "slug": "getting-started",
+  "navOrder": 1
 }

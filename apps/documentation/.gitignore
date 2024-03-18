@@ -37,3 +37,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dont commit the sidebar
+/public/sidebar.json
+
+# dont commit the sitemap
+/public/sitemap-0.xml
+

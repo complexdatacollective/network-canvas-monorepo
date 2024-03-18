@@ -1,0 +1,39 @@
+---
+title: Upgrading Fresco
+date: 12th March 2024
+navOrder: 5
+wip: false
+---
+
+Fresco is Alpha software and will be continuously improved. As we release new versions of Fresco, you can upgrade your deployed instance using this guide.
+
+## When to Upgrade
+
+You are responsible for upgrading your own instance of Fresco. We recommend upgrading your instance of Fresco when a new version is released. This will ensure that you have the latest features and bug fixes. You can check for new releases in the following places:
+
+- **Network Canvas User Community**: We will notify users of new releases on our [community forum](https://community.networkcanvas.com/).
+- **Your GitHub repository**: You can check for new releases on your GitHub repository. If a new release is available, you will see a message at the top of your repository with the number of commits your branch is behind by.
+- **Settings**: You can check for new releases on the **Settings** page of your Fresco instance dashboard.
+
+## Upgrade Process
+
+To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. This will pull in the latest changes and updates from the main Fresco repository.
+
+From your GitHub repository, click **"Sync Fork"** and select **"Update Branch"**.
+
+![sync-fork](/assets/img/fresco-images/sync-fork.png)
+
+Vercel will automatically begin redeploying your Fresco instance. This process will take a few minutes to complete.
+
+For more information on how to sync your fork, see the [GitHub documentation](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork).
+
+## Versioning
+
+Fresco uses a combination of [semantic versioning](https://semver.org/) and GitHub commit hashes (a.k.a. the ["SHA" or "hash"](https://docs.github.com/en/get-started/learning-about-github/github-glossary#commit)) to manage releases.
+
+This version information is accessible from several places:
+
+- **Main Dashboard**: You can find the version number of your Fresco instance on the main dashboard in the top left corner.
+- **Settings**: You can find the version number and SHA of your Fresco instance on the **Settings** page of your dashboard.
+- **GitHub**: You can find the SHA of your Fresco instance on your GitHub repository.
+- **Exported Data**: The version number and SHA of your Fresco instance are included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.

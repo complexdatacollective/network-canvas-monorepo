@@ -1,7 +1,6 @@
-const withNextIntl = require('next-intl/plugin')(
-  // This is the default (also the `src` folder is supported out of the box)
-  './i18n.ts',
-);
+import createNextIntl from 'next-intl/plugin';
+
+const withNextIntl = createNextIntl();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -10,7 +9,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  /** Enables hot reloading for local packages without a build step */
+  transpilePackages: [
+    "@codaco/ui",
+  ],
+  /** We already do linting and typechecking as separate tasks in CI */
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
 };
 
 // Merge NextIntl config with Next.js config
-module.exports = withNextIntl(nextConfig);
+export default withNextIntl(nextConfig);

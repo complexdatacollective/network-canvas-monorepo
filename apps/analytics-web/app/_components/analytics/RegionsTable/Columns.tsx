@@ -1,13 +1,13 @@
-"use client";
-import { ColumnDef } from "@tanstack/react-table";
-import { RegionTotal } from "~/utils/getRegionsTotals";
+'use client';
+import { type ColumnDef } from '@tanstack/react-table';
+import { type RegionTotal } from '~/utils/getRegionsTotals';
 export const columns: ColumnDef<RegionTotal>[] = [
   {
-    accessorKey: "country",
-    header: "Country",
+    accessorKey: 'country',
+    header: 'Country',
   },
   {
-    accessorKey: "total",
-    header: "Total",
+    accessorKey: 'total',
+    header: 'Total',
   },
 ];

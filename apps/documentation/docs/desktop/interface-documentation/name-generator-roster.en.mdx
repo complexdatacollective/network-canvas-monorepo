@@ -1,31 +1,20 @@
 ---
 title: Name Generator for Roster Data
-layout: interface-documentation
-image: /assets/uploads/stage-namegeneratorroster.png
-type: Name Generator
-creates: Creates nodes of a single type, based on data from a roster
-uses_prompts: true
-good:
-  - Ensure that the roster data file used has `name` attribute to avoid seeing
-    "No name variable!" on your cards. See our article on [node
-    labelling](/en/desktop/reference/node-labelling) for more information on this
-    topic.
-bad:
-  - Avoid using this interface with a large roster (>100 nodes) on devices with
-    a software keyboard, particularly where they also have a small (< 9")
-    screen. The software keyboard will cover a substantial area of the screen,
-    and make the process of searching and nominating more tedious.
-  - When using a large roster, avoid setting all properties to be searchable.
-    This will cause slow performance and less accurate search results. Ensure
-    that you test your search feature thoroughly.
-  - Avoid adding needless attributes to the sort options. This will confuse
-    users and may potentially cause display issues on smaller screens. Aim for
-    no more than 3 sortable properties.
 ---
+
+<InterfaceSummary>
+
+![Name Generator for Roster Data Interface](/assets/uploads/stage-namegeneratorroster.png)
+
+<InterfaceMeta type="Name Generator" creates="Creates nodes of a single type, based on data from a roster" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
 
 Name Generators are one of the fundamental components of a network interview. They allow your participant to create alters, thereby describing one of the two main entities in your study's networks.
 
-There are three name generator [Interfaces](/en/desktop/key-concepts/interfaces) in Network Canvas that can be added to your study, all of which can be configured within Architect.
+There are three name generator [Interfaces](../key-concepts/interfaces) in Network Canvas that can be added to your study, all of which can be configured within Architect.
 
 Each of these Interfaces is designed for a specific type of alter elicitation, with several associated advantages and disadvantages. Although they have some configuration options that are [shared with all other Network Canvas Interfaces](./shared), this article will focus on options specific to the Name Generator for Roster Data.
 
@@ -33,17 +22,19 @@ The Name Generator for Roster Data is useful when you have a known set of networ
 
 ## Defining a Roster
 
-This interface requires you to have a datafile that represents your roster. See our article on [importing roster data](/en/desktop/how-to/importing-roster-data) for more information about how to create such a file. Have this file, or a suitable mock file, ready before you attempt to configure either of these interfaces.
+This interface requires you to have a datafile that represents your roster. See our article on [importing roster data](../how-to/importing-roster-data) for more information about how to create such a file. Have this file, or a suitable mock file, ready before you attempt to configure either of these interfaces.
 
 <KeyConcept title="Roster size constraints">
-  We have tested a 60,000 node roster with success, however, rosters of this
-  size are not without problems. If your study requires such a roster, please be
-  prepared for the loading and search functions to slow down considerably. The
-  upper limit of this interface is largely dependent on both the device you use
-  and your usability threshold, so a powerful laptop might be required
-  particularly for larger datasets. For information on devices, please see our
-  article on [choosing a device for your
-  study](/en/desktop/how-to/choosing-hardware).
+
+We have tested a 60,000 node roster with success, however, rosters of this
+size are not without problems. If your study requires such a roster, please be
+prepared for the loading and search functions to slow down considerably. The
+upper limit of this interface is largely dependent on both the device you use
+and your usability threshold, so a powerful laptop might be required
+particularly for larger datasets. For information on devices, please see our
+article on [choosing a device for your
+study](/en/desktop/getting-started/choosing-hardware).
+
 </KeyConcept>
 
 ## Alter Nomination
@@ -60,4 +51,41 @@ The search function is also heavily configurable, allowing you to choose which a
 
 As a general rule of thumb search accuracy should increase as roster size increases, and only attributes containing terms participants are likely to search by should be included as indexed attributes.
 
-![Image](/assets/img/interface-documentation/name-generators/architect-search.png)
+![](/assets/img/interface-documentation/name-generators/architect-search.png)
+
+### Best Practices
+
+<GoodPractice>
+
+Ensure that the roster data file used has `name` attribute to avoid seeing "No
+name variable!" on your cards. See our article on [node
+labelling](/en/desktop/advanced-topics/node-labeling) for more information on this topic.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid using this interface with a large roster (>100 nodes) on devices with
+a software keyboard, particularly where they also have a small (< 9")
+screen. The software keyboard will cover a substantial area of the screen,
+and make the process of searching and nominating more tedious.
+
+</BadPractice>
+
+<BadPractice>
+
+When using a large roster, avoid setting all properties to be searchable. This
+will cause slow performance and less accurate search results. Ensure that you
+test your search feature thoroughly.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid adding needless attributes to the sort options. This will confuse users
+and may potentially cause display issues on smaller screens. Aim for no more
+than 3 sortable properties.
+
+</BadPractice>

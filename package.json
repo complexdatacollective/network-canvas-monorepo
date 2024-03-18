@@ -10,15 +10,13 @@
     "publish-packages": "turbo run build lint && changeset version && changeset publish"
   },
   "devDependencies": {
-    "eslint": "^8.48.0",
-    "eslint-config-next": "^14.0.2",
-    "prettier": "^3.0.3",
-    "tsconfig": "workspace:*",
-    "turbo": "latest"
+    "@codaco/prettier-config": "workspace:*",
+    "@changesets/cli": "^2.26.2",
+    "prettier": "^3.2.5",
+    "turbo": "^1.12.4",
+    "typescript": "^5.3.3"
   },
-  "packageManager": "pnpm@8.9.0",
-  "name": "analytics-monorepo",
-  "dependencies": {
-    "@changesets/cli": "^2.26.2"
-  }
+  "packageManager": "pnpm@8.15.4+sha256.cea6d0bdf2de3a0549582da3983c70c92ffc577ff4410cbf190817ddc35137c2",
+  "name": "network-canvas-monorepo",
+  "prettier": "@codaco/prettier-config"
 }

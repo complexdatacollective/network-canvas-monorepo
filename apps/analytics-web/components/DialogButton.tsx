@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Button } from "~/components/ui/button";
+import { type ReactNode } from 'react';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,14 +7,14 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from "~/components/ui/dialog";
+} from '~/components/ui/dialog';
 
-interface DialogButtonProps {
+type DialogButtonProps = {
   buttonLabel: string;
   title: string;
   description: string;
   content: ReactNode;
-}
+};
 
 export function DialogButton({
   buttonLabel,
@@ -32,7 +32,7 @@ export function DialogButton({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <DialogDescription>{description}</DialogDescription>
-        <div className="bg-secondary p-2 rounded-sm break-all">
+        <div className="break-all rounded-sm bg-secondary p-2">
           <code>{content}</code>
         </div>
       </DialogContent>

@@ -18,10 +18,10 @@ const useHighlighted = (
     };
 
     observer.current = new IntersectionObserver(handleObserver, {
-      rootMargin: '0% 0% -75% 0px',
+      rootMargin: '0% 0% -75% 0%',
     });
 
-    const elements = document.querySelectorAll('h2, h3, h4, h5, h6');
+    const elements = document.querySelectorAll('h2, h3');
     elements.forEach((elem) => observer.current?.observe(elem));
 
     return () => observer.current?.disconnect();

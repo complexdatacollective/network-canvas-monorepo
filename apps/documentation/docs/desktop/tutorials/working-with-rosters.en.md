@@ -1,27 +1,33 @@
 ---
-summary: 'This tutorial describes a workflow for using roster data within
-  Network Canvas. It includes basic concepts about file formats as well as some
-  strategies for use of rosters in classrooms, whole network studies, and
-  quasi-longitudinal work. '
-prerequisites: >-
-  To follow along, you should:
-
-  - Be familiar with Network Canvas and its data collection process.
-
-  - Have access to a spreadsheet program such as Microsoft Excel or OpenOffice Calc
-    
-  - Have installed Network Canvas Interviewer and Architect
-completion_time: 30 minutes
 title: Working with Roster Data
 wip: false
-toc: true
 ---
+
+<SummaryCard duration="30 minutes">
+<SummarySection>
+
+This tutorial describes a workflow for using roster data within
+Network Canvas. It includes basic concepts about file formats as well as some
+strategies for use of rosters in classrooms, whole network studies, and
+quasi-longitudinal work.
+
+</SummarySection>
+<PrerequisitesSection>
+
+To follow along, you should:
+
+- Be familiar with Network Canvas and its data collection process.
+- Have access to a spreadsheet program such as Microsoft Excel or OpenOffice Calc
+- Have installed Network Canvas Interviewer and Architect
+
+</PrerequisitesSection>
+</SummaryCard>
 
 ## What is a roster?
 
 A roster is a list where each row can potentially become a node in a network. This list might consist of students in a classroom, workers in an office, or people in a team sport. Rosters can also include people mentioned in previous surveys by a specific individual, lists of words related to one's occupation, or any item where it is useful to nominate members of that list in Network Canvas. Commonly, rosters are used in whole network studies since you can merge together all of the ego-alter nominations to create a whole network. Each person in the whole network would make their nominations to others and then the researcher could combine these.
 
-Above we noted rosters for 'people mentioned in a previous survey'. While this is a use for a user-specific roster, this is not yet available in Network Canvas without some workarounds although it is a planned feature for future releases.
+Above we noted rosters for 'people mentioned in a previous survey'. While this is a use for a user-specific roster, this is not yet available in Network Canvas without some workarounds altohugh it is a planned feature for future releases.
 
 ## Rosters in Network Canvas
 

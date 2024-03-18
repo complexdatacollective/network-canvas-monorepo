@@ -1,38 +1,67 @@
-import Link from 'next/link';
+import {
+  Divider,
+  Heading,
+  ListItem,
+  Paragraph,
+  UnorderedList,
+} from '@codaco/ui';
+import { Quicksand } from 'next/font/google';
+
+import Link from '~/components/Link';
+import { ThemeProvider } from '~/components/Providers/theme-provider';
+
+const quicksand = Quicksand({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+});
 
 export default function NotFound() {
   return (
-    <html>
-      <body>
-        <div className="prose prose-sm prose-slate mx-auto my-10 md:prose-base">
-          <h1>404 - Not found</h1>
-          <div className="h-[2px] w-full bg-black" />
-          <h2>The requested page could not be found.</h2>
-          <p>
-            This is probably because the page has been moved or deleted. We
-            apologize for any inconvenience this has caused.
-          </p>
-          <p>Please try the following:</p>
-          <ul>
-            <li>
-              Use the <b>Return Home</b> button (at the bottom of this page) to
-              try to locate to the home page.
-            </li>
-            <li>Check your address bar for spelling mistakes or typos.</li>
-            <li>
-              Contact the project team if you believe you are seeing this page
-              in error, including details of the page you were trying to reach.
-            </li>
-          </ul>
-          <Link
-            className="btn rounded-md bg-slate-100 p-4 text-center text-violet-600 hover:bg-slate-200"
-            style={{ textDecoration: 'none' }}
-            href="/"
-          >
-            Return Home
-          </Link>
-        </div>
-      </body>
+    <html lang="en" className={`${quicksand.className} antialiased`}>
+      <ThemeProvider
+        attribute="class"
+        enableSystem
+        enableColorScheme
+        storageKey="nc-docs-site"
+      >
+        <body className="flex h-screen items-center justify-center">
+          <div className="max-w-lg p-3 sm:p-0">
+            <Heading variant="h1">404 - Not found</Heading>
+            <Divider />
+            <Heading variant="h2">
+              The requested page could not be found.
+            </Heading>
+            <Paragraph>
+              This is most likely to have happened because the page has been
+              moved or deleted. We apologize for any inconvenience this has
+              caused.
+            </Paragraph>
+            <Paragraph>Please try the following:</Paragraph>
+            <UnorderedList>
+              <ListItem>
+                If you typed the page address in the address bar, make sure that
+                it is spelled correctly.
+              </ListItem>
+              <ListItem>
+                Use the &apos;return home&apos; link below to navigate to the
+                home page, and then navigate to the page you are looking for
+                using the menus.
+              </ListItem>
+              <ListItem>
+                Contact the project team if you believe you are seeing this page
+                in error, including details of the page you were trying to
+                reach. Please email us at{' '}
+                <Link href="mailto:info@networkcanvas.com">
+                  info@networkcanvas.com
+                </Link>
+                .
+              </ListItem>
+            </UnorderedList>
+            <Link href="/">Return Home</Link>
+          </div>
+        </body>
+      </ThemeProvider>
     </html>
   );
 }

@@ -1,12 +1,12 @@
-"use client";
-import { UserButton, useUser } from "@clerk/nextjs";
-import { redirect } from "next/navigation";
+'use client';
+import { UserButton, useUser } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
 
 export default function Verification() {
   const { user } = useUser();
   const isVerified = user?.publicMetadata?.verified;
   if (isVerified) {
-    redirect("/");
+    redirect('/');
   }
 
   return (
