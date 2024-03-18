@@ -7,6 +7,7 @@ import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
 import { motion } from 'framer-motion';
 import { Paragraph } from '@codaco/ui';
+import { cn } from '~/lib/utils';
 
 function ProjectCard({
   href,
@@ -22,9 +23,10 @@ function ProjectCard({
   return (
     <Link href={href} className="basis-1/2">
       <motion.div
-        className="flex h-full flex-1 basis-1/2 flex-col gap-2 rounded-xl border border-border bg-card p-6 shadow-xl shadow-platinum-dark/40"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className={cn(
+          'flex h-full cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-xl shadow-platinum-dark/40 transition-colors md:p-6',
+          'hover:border-accent hover:bg-accent hover:text-accent-foreground',
+        )}
       >
         <div className="flex shrink-0 items-center gap-4">
           <img src={icon} className="h-16 w-auto" alt={title} />
@@ -42,7 +44,7 @@ export function Hero() {
   return (
     <>
       <motion.div
-        className="z-10 m-4 flex max-w-5xl flex-1 flex-col items-center justify-center gap-10"
+        className="m-4 flex max-w-5xl flex-col items-center gap-10 sm:m-8 md:-mt-8 md:flex-1 md:justify-center lg:gap-20"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -52,7 +54,10 @@ export function Hero() {
               {t('Hero.title')}
             </FancyHeading>
             <FancyParagraph variant="lead">{t('Hero.tagline')}</FancyParagraph>
-            <DocSearchComponent className="!w-full text-base" large />
+            <DocSearchComponent
+              className="hidden !w-full text-base lg:inline-flex"
+              large
+            />
           </div>
           <div className="hidden shrink-0 items-center justify-center md:flex md:basis-2/5">
             <motion.div

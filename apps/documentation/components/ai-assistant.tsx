@@ -42,7 +42,7 @@ const TriggerButton = () => {
             tabIndex={0}
             className={cn(
               'flex h-16 w-16 flex-col items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl',
-              'sm:h-20 sm:w-20',
+              'sm:h-24 sm:w-24',
             )}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -50,7 +50,7 @@ const TriggerButton = () => {
             animate={{ scale: 1 }}
             transition={{ type: 'spring' }}
           >
-            <span className="text-xl lg:text-2xl">🤖</span>
+            <span className="text-xl sm:text-2xl">🤖</span>
           </motion.div>
         </TooltipTrigger>
         <TooltipContent className="bg-accent text-accent-foreground">
