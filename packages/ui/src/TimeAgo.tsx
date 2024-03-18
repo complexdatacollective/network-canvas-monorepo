@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { withNoSSRWrapper } from '~/utils/NoSSRWrapper';
 import { dateOptions } from './FormattedDate';
 
 type TimeAgoProps = {
@@ -55,4 +54,4 @@ const TimeAgo: React.FC<TimeAgoProps> = ({ date: dateProp }) => {
   );
 };
 
-export default withNoSSRWrapper(TimeAgo);
+export default TimeAgo;

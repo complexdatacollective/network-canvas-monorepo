@@ -9,7 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
   AlertDialogAction,
-} from '~/components/ui/AlertDialog';
+} from './AlertDialog';
 import { Divider } from './Divider';
 
 type ErrorDialogProps = AlertDialogProps & {

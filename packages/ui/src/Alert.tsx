@@ -2,19 +2,19 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '~/utils/shadcn';
+import { cn } from './utils';
 import Heading from './typography/Heading';
 import { paragraphVariants } from './typography/Paragraph';
 
 const alertVariants = cva(
-  'relative w-full bg-card text-foreground rounded-lg border p-4 [&>svg~*]:pl-6 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground',
+  'relative w-full rounded-lg border bg-card p-4 text-foreground [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-6',
   {
     variants: {
       variant: {
         default: '',
         info: 'border-info bg-info/10 [--link:var(--info)]',
         destructive:
-          'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive [--link:var(--destructive)]',
+          'border-destructive/50 text-destructive [--link:var(--destructive)] dark:border-destructive [&>svg]:text-destructive',
       },
     },
     defaultVariants: {

@@ -1,4 +1,4 @@
-import { cn } from '~/utils/shadcn';
+import { cn } from './utils';
 
 export const CloseButton = ({
   onClick,
@@ -26,7 +26,7 @@ export const CloseButton = ({
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="h-4 w-4 fill-current"
+        className="fill-current h-4 w-4"
       >
         <line x1="18" x2="6" y1="6" y2="18"></line>
         <line x1="6" x2="18" y1="6" y2="18"></line>

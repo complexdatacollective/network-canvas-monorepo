@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '~/utils/shadcn';
-import BackgroundBlobs from '../BackgroundBlobs/BackgroundBlobs';
+import { cn } from './utils';
+import { BackgroundBlobs } from '@codaco/art';
 
 const fancyButtonVariants = cva(
-  'inline-flex items-center justify-center rounded-xl text-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 relative overflow-hidden',
+  'relative inline-flex items-center justify-center overflow-hidden rounded-xl text-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground hover:bg-primary/90 border border-primary-foreground hover:border-primary-foreground/90',
+          'border border-primary-foreground bg-primary text-primary-foreground hover:border-primary-foreground/90 hover:bg-primary/90',
       },
       size: {
         default: 'px-8 py-4',
