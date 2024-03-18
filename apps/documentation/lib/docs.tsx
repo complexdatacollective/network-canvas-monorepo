@@ -39,25 +39,23 @@ import slug from 'rehype-slug';
 import { type HeadingNode, headingTree } from './tableOfContents';
 import { type LinkProps } from 'next/link';
 import { type ReactNode } from 'react';
-import TipBox, {
-  type TipBoxProps,
-} from '~/app/[locale]/[project]/_components/customComponents/TipBox';
-import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
-import KeyConcept from '~/app/[locale]/[project]/_components/customComponents/KeyConcept';
-import VideoIFrame from '~/app/[locale]/[project]/_components/customComponents/VideoIFrame';
+import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
+import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
+import KeyConcept from '~/components/customComponents/KeyConcept';
+import VideoIFrame from '~/components/customComponents/VideoIFrame';
 import {
   PrerequisitesSection,
   SummaryCard,
   SummarySection,
-} from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
+} from '~/components/customComponents/SummaryCard';
 import {
   InterfaceMeta,
   InterfaceSummary,
-} from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
+} from '~/components/customComponents/InterfaceSummary';
 import {
   GoodPractice,
   BadPractice,
-} from '~/app/[locale]/[project]/_components/customComponents/BestPractices';
+} from '~/components/customComponents/BestPractices';
 
 export type DocRouteParams = {
   params: {

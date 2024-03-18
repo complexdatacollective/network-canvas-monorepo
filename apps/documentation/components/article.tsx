@@ -5,7 +5,7 @@ import { usePathname } from '~/navigation';
 import TableOfContents from './TableOfContents';
 import type { HeadingNode } from '~/lib/tableOfContents';
 import FancyHeading from './FancyHeading';
-import WorkInProgress from '~/app/[locale]/[project]/_components/customComponents/WorkInProgress';
+import WorkInProgress from '~/components/customComponents/WorkInProgress';
 
 export default function Article({
   content,
