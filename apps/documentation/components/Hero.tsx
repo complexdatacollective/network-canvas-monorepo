@@ -8,6 +8,7 @@ import FancyParagraph from './FancyParagraph';
 import { motion } from 'framer-motion';
 import { Paragraph } from '@codaco/ui';
 import { cn } from '~/lib/utils';
+import { useTheme } from 'next-themes';
 
 function ProjectCard({
   href,
@@ -24,7 +25,7 @@ function ProjectCard({
     <Link href={href} className="basis-1/2">
       <motion.div
         className={cn(
-          'flex h-full cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-xl shadow-platinum-dark/40 transition-colors md:p-6',
+          'flex h-full cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-xl transition-colors md:p-6',
           'hover:border-accent hover:bg-accent hover:text-accent-foreground',
         )}
       >
@@ -40,6 +41,7 @@ function ProjectCard({
 
 export function Hero() {
   const t = useTranslations();
+  const { resolvedTheme } = useTheme();
 
   return (
     <>
@@ -59,23 +61,25 @@ export function Hero() {
               large
             />
           </div>
-          <div className="hidden shrink-0 items-center justify-center md:flex md:basis-2/5">
-            <motion.div
-              initial={{ opacity: 0, y: 200, scale: 0.8 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                type: 'spring',
-                stiffness: 80,
-                delay: 0.25,
-              }}
-            >
-              <img
-                src="images/robot.svg"
-                className="h-auto w-full"
-                alt="Robot"
-              />
-            </motion.div>
-          </div>
+          {resolvedTheme !== 'dark' && (
+            <div className="hidden shrink-0 items-center justify-center md:flex md:basis-2/5">
+              <motion.div
+                initial={{ opacity: 0, y: 200, scale: 0.8 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 80,
+                  delay: 0.25,
+                }}
+              >
+                <img
+                  src="images/robot.svg"
+                  className="h-auto w-full"
+                  alt="Robot"
+                />
+              </motion.div>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-6 md:flex-row">
           <ProjectCard
