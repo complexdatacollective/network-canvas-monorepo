@@ -42,7 +42,6 @@ import { type ReactNode } from 'react';
 import TipBox, {
   type TipBoxProps,
 } from '~/app/[locale]/[project]/_components/customComponents/TipBox';
-import ImageFloatLeft from '~/app/[locale]/[project]/_components/customComponents/ImageFloatLeft';
 import ImageFullWidth from '~/app/[locale]/[project]/_components/customComponents/ImageFullWidth';
 import KeyConcept from '~/app/[locale]/[project]/_components/customComponents/KeyConcept';
 import VideoIFrame from '~/app/[locale]/[project]/_components/customComponents/VideoIFrame';
@@ -290,7 +289,6 @@ export async function getDocumentForPath({
             </TipBox>
           );
         },
-        imagefloatleft: ImageFloatLeft,
         imagefullwidth: (props: { src: string; alt: string }) => (
           <ImageFullWidth {...props} />
         ),
