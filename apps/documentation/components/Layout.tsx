@@ -19,24 +19,24 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
     <>
       <SharedNav />
       <motion.div
-        className="fixed inset-0 z-[-1] bg-gradient-to-br opacity-30"
+        className="fixed inset-0 z-[-1]"
         initial={{ opacity: 0 }}
-        animate={{ opacity: isHomePage ? 0.3 : 0.05 }}
+        animate={{ opacity: isHomePage ? 0.15 : 0.05 }}
         transition={{
-          duration: 2,
+          duration: isHomePage ? 2 : 0,
         }}
       >
         <BackgroundBlobs
-          large={1}
+          large={0}
           medium={3}
-          small={2}
-          // speedFactor={1}
-          // filter="blur(10rem)"
-          // compositeOperation="hard-light"
+          small={3}
+          // speedFactor={20}
+          // filter={isHomePage ? '' : 'blur(10rem)'}
+          compositeOperation="screen"
           // compositeOperation="lighten"
         />
       </motion.div>
-      <main className={cn('mt-4 flex w-full flex-auto justify-center')}>
+      <main className={cn('mt-4 flex h-full w-full flex-auto justify-center')}>
         {!isHomePage && (
           <Sidebar className="hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
         )}
