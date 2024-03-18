@@ -2,13 +2,15 @@
 title: Ordinal Bin
 ---
 
-<InterfaceSummary
-  title="Ordinal Bin"
-  image="/assets/img/interface-documentation/ordinal-bin/example.png"
-  type="Name Interpreter"
-  creates="Ordinal attribute data on a single node type"
-  usesprompts="true"
-/>
+<InterfaceSummary>
+
+![Ordinal Bin Interface](/assets/img/interface-documentation/ordinal-bin/example.png)
+
+<InterfaceMeta type="Name Interpreter" creates="Ordinal attribute data on a single node type" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
 
 The Ordinal Bin is a name interpreter Interface that captures ordinal data on the alters in a participant's network. When using the Ordinal Bin, participants drag and drop alters one-by-one into parallel bins denoting values on an ordinal scale. Once placed, participants can move alters from one bin to another.
 

@@ -51,7 +51,10 @@ import {
   SummaryCard,
   SummarySection,
 } from '~/app/[locale]/[project]/_components/customComponents/SummaryCard';
-import { InterfaceSummary } from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
+import {
+  InterfaceMeta,
+  InterfaceSummary,
+} from '~/app/[locale]/[project]/_components/customComponents/InterfaceSummary';
 import {
   GoodPractice,
   BadPractice,
@@ -288,7 +291,9 @@ export async function getDocumentForPath({
           );
         },
         imagefloatleft: ImageFloatLeft,
-        imagefullwidth: ImageFullWidth,
+        imagefullwidth: (props: { src: string; alt: string }) => (
+          <ImageFullWidth {...props} />
+        ),
         figure: (props) => (
           <figure
             {...props}
@@ -318,17 +323,21 @@ export async function getDocumentForPath({
         summarysection: (props: { children: ReactNode }) => (
           <SummarySection {...props} />
         ),
-        interfacesummary: (props: {
-          title: string;
-          image: string;
+        interfacesummary: (props: { children: ReactNode }) => (
+          <InterfaceSummary {...props} />
+        ),
+        interfacemeta: (props: {
           type: string;
           creates: string;
           usesprompts: string;
-        }) => <InterfaceSummary {...props} />,
+        }) => <InterfaceMeta {...props} />,
+        definition: (props: { children: ReactNode }) => (
+          <div className="text-lg font-normal">{props.children}</div>
+        ),
         table: (props) => (
           <div className="overflow-x-auto">
             <table
-              className="prose my-5 w-full text-pretty break-keep [&>th]:text-nowrap"
+              className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full text-pretty break-keep [&>th]:text-nowrap"
               {...props}
             />
           </div>

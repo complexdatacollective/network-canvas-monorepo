@@ -1,8 +1,14 @@
 ---
 title: Preview Mode
-
-definition: Allows you to test your interview protocol to see how it will appear in Interviewer before deploying it to your interview devices.
 ---
+
+<Definition>
+
+Allows you to test your interview protocol to see how it will appear in Interviewer before deploying it to your interview devices.
+
+</Definition>
+
+## Details
 
 Preview mode is a feature within Architect that allows users to interactively preview their protocols on a per stage basis in real-time. In this mode, users can preview their protocol, by stage or in its entirety, just the way it would display on an Interviewer client in the field. This function is particularly helpful in protocol design and editing phases of a study, where a user may want to preview changes they implement immediately prior to deploying their protocol to the Interviewer app.
 

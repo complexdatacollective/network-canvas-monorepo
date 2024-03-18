@@ -9,7 +9,7 @@ Deploying Fresco can be achieved entirely for free using the free tiers of each 
 
 ## Vercel
 
-- **Hobby Tier (Free)**: Vercel offers a hobby tier which provides sufficient features and database storage for small-scale deployments.
+- **Hobby Tier (Free)**: Vercel offers a hobby tier which provides sufficient features and database storage for small-scale deployments, up to 60 hours of compute time per month and 250 MB of storage.
 
 - **Upgrade Option**: If your project grows or you require additional features, you can upgrade to Vercel's Pro plan for $20/user/month.
 

@@ -2,13 +2,15 @@
 title: Narrative
 ---
 
-<InterfaceSummary
-  title="Narrative"
-  image="/assets/img/interface-documentation/narrative/narrative-example.png"
-  type="Visualization"
-  creates="Does not create data"
-  usesprompts="false"
-/>
+<InterfaceSummary>
+
+![Narrative Interface](/assets/img/interface-documentation/narrative/narrative-example.png)
+
+<InterfaceMeta type="Visualization" creates="Does not create data" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
 
 Sociograms are the visual mapping component of a network interview. On the Sociogram, participants draw ties between alters to signify the relationships between individuals within their personal network.
 
