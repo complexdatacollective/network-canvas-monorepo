@@ -302,14 +302,18 @@ export async function getDocumentForPath({
         img: (props) => (
           <img alt={props.alt} {...props} className="my-10 w-full px-8" />
         ),
-        keyconcept: KeyConcept,
+        keyconcept: (props: { title: string; children: ReactNode }) => (
+          <KeyConcept {...props} />
+        ),
         goodpractice: (props: { children: ReactNode }) => (
           <GoodPractice {...props} />
         ),
         badpractice: (props: { children: ReactNode }) => (
           <BadPractice {...props} />
         ),
-        videoiframe: VideoIFrame,
+        videoiframe: (props: { src: string; title: string }) => (
+          <VideoIFrame {...props} />
+        ),
         summarycard: (props: { duration: string; children: ReactNode }) => (
           <SummaryCard {...props} />
         ),
