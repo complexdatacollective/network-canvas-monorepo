@@ -1,14 +1,14 @@
 'use client';
 
-import { Paragraph, buttonVariants } from '@codaco/ui';
+import { BackgroundBlobs } from '@codaco/art';
+import { buttonVariants } from '@codaco/ui';
+import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { cn } from '~/lib/utils';
 import { Link } from '~/navigation';
 import DocSearchComponent from './DocSearchComponent';
-import { BackgroundBlobs } from '@codaco/art';
-import { motion } from 'framer-motion';
 import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
-import { cn } from '~/lib/utils';
 
 export function Hero() {
   const t = useTranslations();

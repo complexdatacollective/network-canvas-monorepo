@@ -1,6 +1,5 @@
 import { type AbstractIntlMessages } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
-
 import { locales } from './app/types';
 
 export default getRequestConfig(async ({ locale }) => {

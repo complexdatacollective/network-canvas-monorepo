@@ -1,5 +1,5 @@
 import { unstable_setRequestLocale } from 'next-intl/server';
-import type { LocalesEnum } from '../types';
+import type { LocalesEnum } from '~/app/types';
 import { Hero } from '~/components/Hero';
 
 const Page = ({ params: { locale } }: { params: { locale: LocalesEnum } }) => {

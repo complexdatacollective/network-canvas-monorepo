@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'fs';
-import { join, sep } from 'path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import type { Options } from 'rehype-react';
 import * as prod from 'react/jsx-runtime';
 import rehypeReact from 'rehype-react';
@@ -22,7 +22,6 @@ import {
   Summary,
   UnorderedList,
 } from '@codaco/ui';
-
 import {
   locales,
   type LocalesEnum,

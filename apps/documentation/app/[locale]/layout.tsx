@@ -7,7 +7,6 @@ import {
   getTimeZone,
   unstable_setRequestLocale,
 } from 'next-intl/server';
-
 import type { LocalesEnum, Messages } from '~/app/types';
 import { locales } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
