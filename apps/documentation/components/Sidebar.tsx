@@ -115,7 +115,7 @@ const SidebarFolder = ({
     >
       <CollapsibleTrigger
         className={cn(
-          'focusable my-1 flex flex-1 items-center justify-between text-base font-semibold capitalize',
+          'focusable my-1 flex flex-1 items-center justify-between text-balance text-base font-semibold capitalize',
           !alwaysOpen && 'cursor-pointer',
         )}
         asChild
@@ -175,7 +175,7 @@ const SidebarLink = ({ href, label }: { href: string; label: string }) => {
 
   if (href === undefined) {
     return (
-      <div className="focusable flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors">
+      <div className="focusable flex flex-1 text-balance border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors">
         {label}
       </div>
     );
