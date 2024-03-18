@@ -4,7 +4,18 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"],
+      "env": [
+        "NEXT_PUBLIC_DOCS_PATH",
+        "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
+        "NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
+        "NEXT_PUBLIC_ALGOLIA_API_KEY",
+        "NEXT_PUBLIC_MENDABLE_ANON_KEY",
+        "NODE_ENV",
+        "NEXT_PUBLIC_URL",
+        "VERCEL_URL",
+        "POSTGRES_URL"
+      ]
     },
     "test": {},
     "test:watch": {

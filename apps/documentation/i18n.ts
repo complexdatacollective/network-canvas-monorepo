@@ -4,7 +4,7 @@ import { locales } from './app/types';
 
 export default getRequestConfig(async ({ locale }) => {
   // Validate that the incoming `locale` string exists in the locales array
-  if (!locales.includes(locale as 'en' | 'ru')) {
+  if (!locales.includes(locale as 'en')) {
     return {
       messages: {},
     };
