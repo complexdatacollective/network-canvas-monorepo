@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from 'react';
 import * as blobs2 from 'blobs/v2';
-import { interpolatePath as interpolate } from 'd3-interpolate-path';
+import { interpolatePath } from 'd3-interpolate-path';
 import Canvas from './Canvas';
 
 const random = (a = 1, b = 0) => {
@@ -100,24 +100,21 @@ class NCBlob {
     this.positionX += this.velocityX * timeDelta;
     this.positionY += this.velocityY * timeDelta;
 
-    if (this.positionY + this.size < 0) {
-      this.gradient = gradients[randomInt(0, gradients.length - 1)];
-      this.positionY = this.canvasHeight;
-    }
-
-    if (this.positionX + this.size < 0) {
-      this.gradient = gradients[randomInt(0, gradients.length - 1)];
-      this.positionX = this.canvasWidth;
-    }
-
-    if (this.positionY > this.canvasHeight) {
-      this.gradient = gradients[randomInt(0, gradients.length - 1)];
-      this.positionY = -this.size;
+    // Wrap around screen boundaries, taking into account shape size
+    if (this.positionX < 0 - this.size) {
+      this.positionX = this.canvasWidth + this.size;
     }
 
     if (this.positionX > this.canvasWidth) {
-      this.gradient = gradients[randomInt(0, gradients.length - 1)];
       this.positionX = -this.size;
+    }
+
+    if (this.positionY > this.canvasHeight) {
+      this.positionY = -this.size;
+    }
+
+    if (this.positionY < 0 - this.size) {
+      this.positionY = this.canvasHeight + this.size;
     }
   }
 
@@ -126,7 +123,7 @@ class NCBlob {
   }
 
   animationPosition(time: number) {
-    const duration = 30000; // some number of ms?
+    const duration = 20000 * this.speed; // some number of ms?
 
     // Start
     if (!this.startFrameTime) {
@@ -161,8 +158,8 @@ class NCBlob {
     // Create a random blob sized based on layer
     const sizes = {
       1: randomInt(vmin * 0.1, vmin * 0.2),
-      2: randomInt(vmin * 0.3, vmin * 0.8),
-      3: randomInt(vmin, vmin * 1.1),
+      2: randomInt(vmin * 0.5, vmin * 0.8),
+      3: randomInt(vmin, vmin * 1.2),
     };
 
     this.size = sizes[this.layer];
@@ -198,7 +195,7 @@ class NCBlob {
       throw new Error('Shape is not a string');
     }
 
-    this.interpolator = interpolate(this.shape, this.shape2);
+    this.interpolator = interpolatePath(this.shape, this.shape2);
 
     this.firstRender = false;
   }
@@ -221,7 +218,6 @@ class NCBlob {
     this.updatePosition(time);
 
     // Create gradient
-
     const grd = ctx.createLinearGradient(0, 0, this.size, 0);
     grd.addColorStop(0, this.gradient[0]);
     grd.addColorStop(1, this.gradient[1]);
@@ -254,7 +250,7 @@ const BackgroundBlobs = memo(
     medium = 4,
     small = 4,
     speedFactor = DEFAULT_SPEED_FACTOR,
-    compositeOperation = 'screen',
+    compositeOperation = 'source-over',
     filter = '',
   }: BackgroundBlobsProps) => {
     const blobs = useMemo(
