@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -93,7 +93,7 @@ const SidebarFolder = ({
 }) => {
   const pathname = usePathname();
 
-  const [isOpen, setIsOpen] = useState(() => {
+  const memoizedIsOpen = useMemo(() => {
     if (alwaysOpen) return true;
 
     if (defaultOpen) return true;
@@ -101,7 +101,13 @@ const SidebarFolder = ({
     return (children as React.ReactElement<{ href?: string }>[]).some(
       (child) => child.props.href === pathname,
     );
-  });
+  }, [alwaysOpen, defaultOpen, children, pathname]);
+
+  const [isOpen, setIsOpen] = useState(memoizedIsOpen);
+
+  useEffect(() => {
+    setIsOpen(memoizedIsOpen);
+  }, [memoizedIsOpen]);
 
   return (
     <Collapsible
