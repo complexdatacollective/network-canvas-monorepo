@@ -8,8 +8,8 @@ export default function SharedNav() {
   return (
     <motion.nav
       className={cn(
-        'sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 bg-background/80 px-4 py-2 shadow-md backdrop-blur-sm',
-        'lg:relative lg:flex lg:bg-transparent lg:px-6 lg:py-4 lg:shadow-none lg:backdrop-blur-0',
+        'sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 border-b border-border bg-background/50 px-4 py-2 backdrop-blur-sm',
+        'lg:relative lg:flex lg:border-none lg:bg-transparent lg:px-6 lg:py-4 lg:backdrop-blur-0',
       )}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
