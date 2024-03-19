@@ -31,7 +31,9 @@ function ProjectCard({
       >
         <div className="flex shrink-0 items-center gap-4">
           <img src={icon} className="h-16 w-auto" alt={title} />
-          <FancyHeading variant="h2">{title}</FancyHeading>
+          <FancyHeading variant="h2" margin="none">
+            {title}
+          </FancyHeading>
         </div>
         <Paragraph>{description}</Paragraph>
       </motion.div>
@@ -46,12 +48,12 @@ export function Hero() {
   return (
     <>
       <motion.div
-        className="m-4 flex max-w-5xl flex-col items-center gap-10 sm:m-8 md:-mt-8 md:flex-1 md:justify-center lg:gap-20"
+        className="mx-4 flex max-w-5xl flex-col items-center gap-10 sm:mx-8 md:-mt-8 md:flex-1 md:justify-center lg:gap-16"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <div className="flex flex-col-reverse md:flex-row">
-          <div className="flex flex-col items-center justify-center md:basis-3/5">
+        <div className="flex flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
+          <div className="flex flex-col items-center justify-center md:basis-1/2 lg:basis-3/5">
             <FancyHeading variant="h1" className="text-4xl">
               {t('Hero.title')}
             </FancyHeading>
@@ -62,7 +64,7 @@ export function Hero() {
             />
           </div>
           {resolvedTheme !== 'dark' && (
-            <div className="hidden shrink-0 items-center justify-center md:flex md:basis-2/5">
+            <div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
               <motion.div
                 initial={{ opacity: 0, y: 200, scale: 0.8 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -74,7 +76,7 @@ export function Hero() {
               >
                 <img
                   src="images/robot.svg"
-                  className="h-auto w-full"
+                  className="h-auto w-36 md:w-full"
                   alt="Robot"
                 />
               </motion.div>

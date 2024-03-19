@@ -31,10 +31,10 @@ export default function MobileSidebarDialog({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
-        className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background"
+        className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background p-0"
         side={'left'}
       >
-        <div className="sticky top-2 flex items-center justify-between bg-background">
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-background">
           <LogoComponent className="mx-4 my-2 block w-fit" />
           <Button
             size={'sm'}
