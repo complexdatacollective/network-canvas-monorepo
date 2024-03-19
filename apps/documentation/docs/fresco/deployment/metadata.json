@@ -4,8 +4,5 @@
   "localeLabels": {
     "en": "Deployment"
   },
-  "localeIndexFiles": {
-    "en": "index.en.mdx"
-  },
   "isExpanded": true
 }

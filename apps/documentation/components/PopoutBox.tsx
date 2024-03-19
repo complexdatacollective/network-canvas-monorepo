@@ -3,7 +3,7 @@ import { type ReactNode } from 'react';
 import { cn } from '~/lib/utils';
 
 export type PopoutBoxProps = {
-  title: string;
+  title?: string;
   children: ReactNode;
   icon?: ReactNode;
   iconClassName?: string;
@@ -37,7 +37,11 @@ const PopoutBox = ({
         </div>
       )}
       <div className="flex-auto">
-        <Heading variant="h4">{title}</Heading>
+        {title && (
+          <Heading variant="h4" className="mb-5">
+            {title}
+          </Heading>
+        )}
         {children}
       </div>
     </aside>

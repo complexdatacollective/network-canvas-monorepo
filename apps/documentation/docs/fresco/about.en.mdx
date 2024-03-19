@@ -2,35 +2,54 @@
 title: About Fresco
 toc: false
 date: 13th March 2024
+navOrder: 1
 ---
 
-The Fresco project aims to bring Network Canvas interviews to the web browser. It is a pilot project that does not
-add new features to Network Canvas, but rather provides a new way to conduct interviews.
+Fresco is a pilot project that aims to bring Network Canvas interviews to the web browser. It does
+not add new features to Network Canvas, but rather provides a new way to conduct interviews using
+your existing Network Canvas protocols.
 
-<KeyConcept>
+If you have ever wanted be able to be able to conduct interviews remotely, or have participants use their
+own devices to complete an interview, then Fresco is for you.
 
-### Fresco is a web-based platform for administering Network Canvas interviews
+We see Fresco as a way to make Network Canvas more accessible, and to provide a way to conduct interviews
+in a more flexible way. We are actively seeking feedback from users to help us improve it.
 
-In Fresco, **interviews are completed in a browser**. This means that interviews can be conducted remotely, and participants can use their own devices to complete the interview.
+We also see Fresco as a milestone in the development of Network Canvas Studio, which will be a web-based
+platform for designing and conducting interviews.
 
-**Interview management is also conducted in the browser**. Protocols, participants, interviews, and settings configuration can all be managed through the browser interface.
+<KeyConcept title="Key differences between Fresco and the Desktop apps:">
 
-For information about supported devices and browsers for participants and study administrators, see the [FAQ.](/en/fresco/faq)
+- Fresco is a web-based platform for administering Network Canvas interviews. It is not a replacement for the desktop applications, but rather a new way to conduct interviews. Fresco works with all existing Network Canvas protocols, and does not add new features to Network Canvas.
+- In Fresco, **interviews are completed in a browser** by visiting a URL. This means that interviews can be conducted remotely, and participants can use their own devices to complete the interview. **Note that mobile phones are not supported!**
+- **Interview management is also conducted in the browser** via a researcher facing dashboard. Protocols, participants, interviews, and settings configuration can all be managed through the browser interface.
+- **Fresco stores all data in a database**. This means that data is stored on a server on the internet, rather than on a local computer. This has implications for data security and privacy, and means that you will need to consider the legal and ethical implications of using Fresco.
+- You are responsible for **hosting and maintaining Fresco** on your own servers. This means that you will need to have some technical knowledge to deploy and maintain Fresco.
+- Fresco is **a pilot project** and does not yet support all of the features of the desktop apps. For example, custom node label workers are not implemented, and videos and audio cannot autoplay on first load due to browser limitations. For a full list of known issues, see the [Known Limitations](#known-limitations) section below.
 
 </KeyConcept>
 
 ## Getting Started
 
+<TipBox danger>
+
+Fresco is in beta and is not yet recommended for use in critical research studies. We encourage users to test Fresco in non-critical environments, and are actively seeking feedback from users to help us improve it.
+
+</TipBox>
+
 To explore Fresco and learn how to use it, we recommend you start with the following resources:
+
+- (Features and Functionality)[/en/fresco/features] - This article will introduce you to the way that Fresco works, and will describe the features and functionality that are available.
+- (Deployment Guide)[/en/fresco/deployment] - To learn how to deploy Fresco for your own studies, read about the [Deployment Process](/en/fresco/deployment/) and follow the [Deployment Guide](/en/fresco/deployment/guide/).
 - [Fresco Sandbox](/en/fresco/sandbox) - A shared example environment where you can explore the features of Fresco without needing to deploy it on your own.
-- **Deployment** - To learn how to deploy Fresco for your own studies, read about the [Deployment Process](/en/fresco/deployment/) and follow the [Deployment Guide](/en/fresco/deployment/guide/).
-- **Features and Functionality** - To learn about the features and functionality of Fresco, see the [Features](/en/fresco/features) documentaiton.
 
 Should you encounter issues, we encourage you to use the search function at the top of each page, read our [FAQ](/en/fresco/faq), or visit our [community forum](https://community.networkcanvas.com) for support.
 
-## Known Issues
+## Known Limitations
 
-- Custom node label workers are not implemented.
-- Videos and audio cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
-- The 'Use fullscreen forms' visual preference is not supported.
-- When exporting data, the "use screen layout coordinates" feature uses a hardcoded screen size of 1920 x 1080. Please note that this does not correspond to the screen size used by your participants.
+Because of the nature of the web platform, some features from Interviewer could not be implemented. These include:
+
+- [Custom node label workers](/en/desktop/advanced-topics/node-labelling#custom-node-labelling-advanced) are not implemented. This would have posed a potential security risk.
+- Videos and audio on your information screens cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
+- The 'Use fullscreen forms' visual preference is not supported. This preference was useful for devices that have large software keyboards, such as tablets. However, Fresco is designed to be used on a desktop or laptop computer, and so this preference is not necessary.
+- When exporting data, the "use screen layout coordinates" feature uses a hardcoded screen size of 1920 x 1080. Please note that this does not correspond to the screen size used by your participants. This change was neccesary because the screen size can no longer be assumed to be static throughout the interview.
