@@ -153,7 +153,7 @@ const SidebarFolder = ({
         )}
       </CollapsibleTrigger>
       <MotionCollapsibleContent
-        className="ml-4 flex flex-col overflow-y-hidden"
+        className="ml-2 flex flex-col overflow-y-hidden p-2"
         forceMount
         initial={{ height: isOpen ? 'auto' : 0 }}
         animate={{ height: isOpen ? 'auto' : 0 }}
@@ -181,7 +181,7 @@ const SidebarLink = ({ href, label }: { href: string; label: string }) => {
 
   if (href === undefined) {
     return (
-      <div className="focusable flex flex-1 text-balance border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors">
+      <div className="focusable flex flex-1 text-balance border-l-[2px] border-foreground/5 px-4 py-2 text-sm transition-colors">
         {label}
       </div>
     );
@@ -238,11 +238,11 @@ export function Sidebar({ className }: { className?: string }) {
   );
 
   return (
-    <nav className={cn('flex w-full grow flex-col pl-4', className)}>
+    <nav className={cn('flex w-full grow flex-col px-4', className)}>
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-2">
         {sortedSidebarItems.map((item) => renderSidebarItem(item, locale))}
       </div>
     </nav>
