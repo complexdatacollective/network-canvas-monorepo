@@ -3,12 +3,20 @@ import { X as CloseMenu, Menu as HamburgerMenu } from 'lucide-react';
 import DocSearchComponent from './DocSearchComponent';
 import MobileSidebarDialog from './MobileSidebarDialog';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useLocale } from 'next-intl';
+import { cn } from '~/lib/utils';
 
 const MobileNavBar = () => {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const locale = useLocale();
+
+  // Check if we are on the home page by comparing the pathname to our supported locals
+  const isHomePage = pathname === `/${locale}`;
   return (
     <>
-      <div className="flex flex-1 items-center gap-4 lg:hidden">
+      <div className="flex shrink grow basis-auto items-center gap-4 lg:hidden">
         <MobileSidebarDialog open={open} setOpen={setOpen} />
         <DocSearchComponent />
         {open ? (
@@ -25,7 +33,10 @@ const MobileNavBar = () => {
             onClick={() => setOpen(true)}
             variant="ghost"
             size="icon-large"
-            className="shrink-0"
+            className={cn(
+              'flex shrink-0 items-center justify-center',
+              isHomePage && 'md:hidden',
+            )}
           >
             <HamburgerMenu className="h-8 w-8" />
           </Button>

@@ -238,7 +238,7 @@ export function Sidebar({ className }: { className?: string }) {
   );
 
   return (
-    <nav className={cn('flex w-full grow flex-col px-4', className)}>
+    <nav className={cn('flex w-full grow flex-col', className)}>
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 

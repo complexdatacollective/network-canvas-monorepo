@@ -36,7 +36,7 @@ const DocSearchComponent = ({
         className={cn(
           inputVariants({ size: large ? '2xl' : 'default' }),
           'pointer-events-auto flex w-full items-center justify-between px-4',
-          'md:w-auto',
+          // 'md:w-auto',
           className,
         )}
         onClick={madHax}

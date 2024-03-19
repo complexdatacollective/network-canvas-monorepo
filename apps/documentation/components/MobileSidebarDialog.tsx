@@ -31,7 +31,7 @@ export default function MobileSidebarDialog({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
-        className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background p-0"
+        className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background px-4 py-0"
         side={'left'}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between bg-background">

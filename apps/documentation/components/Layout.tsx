@@ -38,7 +38,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       </motion.div>
       <main className={cn('mt-4 flex h-full w-full flex-auto justify-center')}>
         {!isHomePage && (
-          <Sidebar className="hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
+          <Sidebar className="mx-4 hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
         )}
 
         {children}
