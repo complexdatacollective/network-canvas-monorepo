@@ -34,8 +34,8 @@ const TOCLink = ({
       ref={ref}
       href={`#${node.id}`}
       className={cn(
-        'focusable m-2 block text-base transition-colors hover:text-accent',
-        sideBar && 'text-sm',
+        'focusable my-2 block text-base transition-colors hover:text-accent',
+        sideBar && 'm-2 text-sm',
         node.level === 3 && 'ml-4 font-normal',
         sideBar && highlighted && 'font-semibold text-accent',
       )}
@@ -77,10 +77,7 @@ function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
   return (
     <ol>
       {nodes.map((node) => (
-        <li
-          key={node.id}
-          className={cn('list-none', `ml-[${0.5 * node.level}rem]`)}
-        >
+        <li key={node.id} className={cn('list-none')}>
           <TOCLink node={node} sideBar={sideBar} />
           {node.children?.length > 0 && renderNodes(node.children, sideBar)}
         </li>
