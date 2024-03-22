@@ -283,8 +283,6 @@ The toggle control provides participants a switch that can be toggled on or off,
 
 ### Good practices
 
-### Good practices
-
 <GoodPractice>
 Use a toggle to easily collect simple true/false variable values, and specifically to indicate the presence of an attribute.
 </GoodPractice>
