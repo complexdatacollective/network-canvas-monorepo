@@ -15,7 +15,9 @@
     --secondary-foreground: var(--white);
 
     --muted: var(--platinum);
-    --muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%) calc(var(--cyber-grape-lightness) - 10%);
+    --muted-foreground: var(--cyber-grape-hue)
+      calc(var(--cyber-grape-saturation) - 10%)
+      calc(var(--cyber-grape-lightness) - 10%);
 
     --accent: var(--slate-blue);
     --accent-foreground: var(--white);
@@ -48,7 +50,6 @@
 
     --popover: var(--white);
     --popover-foreground: var(--foreground);
-
   }
 
   html.dark {
@@ -63,7 +64,9 @@
     --secondary-foreground: var(--white);
 
     --muted: var(--platinum);
-    --muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%) calc(var(--cyber-grape-lightness) - 10%);
+    --muted-foreground: var(--cyber-grape-hue)
+      calc(var(--cyber-grape-saturation) - 10%)
+      calc(var(--cyber-grape-lightness) - 10%);
 
     --accent: var(--slate-blue);
     --accent-foreground: var(--white);
@@ -97,8 +100,6 @@
     --popover: var(--cyber-grape);
     --popover-foreground: var(--foreground);
   }
-
-
 }
 
 @layer base {
@@ -123,7 +124,6 @@
     @apply focus-visible:outline-mustard;
   }
 }
-
 
 .DocSearch-Button {
   --docsearch-primary-color: hsl(var(--primary));
@@ -156,12 +156,15 @@
   --docsearch-hit-shadow: 0 1px 3px 0 rgb(212, 217, 225);
 
   /* key */
-  --docsearch-key-gradient: linear-gradient(-225deg,
-      rgb(213, 219, 228) 0%,
-      rgb(248, 248, 248) 100%);
+  --docsearch-key-gradient: linear-gradient(
+    -225deg,
+    rgb(213, 219, 228) 0%,
+    rgb(248, 248, 248) 100%
+  );
   --docsearch-key-shadow: inset 0 -2px 0 0 rgb(205, 205, 230),
     inset 0 0 1px 1px #fff, 0 1px 2px 1px rgba(30, 35, 90, 0.4);
-  --docsearch-key-pressed-shadow: inset 0 -2px 0 0 #cdcde6, inset 0 0 1px 1px #fff, 0 1px 1px 0 rgba(30, 35, 90, 0.4);
+  --docsearch-key-pressed-shadow: inset 0 -2px 0 0 #cdcde6,
+    inset 0 0 1px 1px #fff, 0 1px 1px 0 rgba(30, 35, 90, 0.4);
   /* footer */
   --docsearch-footer-height: 44px;
   --docsearch-footer-background: #fff;
@@ -184,6 +187,34 @@
     @apply px-3 !important;
     @apply text-sm !important;
   }
+}
 
+@layer components {
+  .react-select-container .react-select__control {
+    @apply cursor-pointer rounded-xl border border-border bg-input p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-input;
+  }
 
+  .react-select-container .react-select__single-value {
+    @apply text-foreground dark:text-foreground;
+  }
+
+  .react-select-container .react-select__menu {
+    @apply p-1.5 dark:bg-background lg:w-[30rem];
+  }
+
+  .react-select-container .react-select__menu-list {
+    @apply p-0;
+  }
+
+  .react-select-container .react-select__option {
+    @apply text-foreground dark:text-foreground;
+  }
+
+  .react-select-container .react-select__option--is-focused {
+    @apply text-cyber-grape dark:text-cyber-grape;
+  }
+
+  .react-select-container .react-select__option--is-selected {
+    @apply bg-accent text-platinum dark:text-platinum;
+  }
 }
