@@ -38,7 +38,7 @@ const PopoutBox = ({
       )}
       <div className="flex-auto">
         {title && (
-          <Heading variant="h4" className="mb-5">
+          <Heading variant="h4" className="mb-2">
             {title}
           </Heading>
         )}

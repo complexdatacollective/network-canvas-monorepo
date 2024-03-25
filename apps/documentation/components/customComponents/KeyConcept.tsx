@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { type ReactNode } from 'react';
 import PopoutBox from '~/components/PopoutBox';
+import { cn } from '~/lib/utils';
 
 type KeyConceptProps = {
   title: string;
@@ -11,7 +12,10 @@ const KeyConcept = ({ children, title }: KeyConceptProps) => {
   return (
     <PopoutBox
       title={title}
-      className="bg-accent/10 [--link:var(--accent)]"
+      className={cn(
+        'bg-accent/10 [--link:var(--accent)]',
+        '![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--accent)))]',
+      )}
       iconClassName="bg-white"
       icon={
         <Image

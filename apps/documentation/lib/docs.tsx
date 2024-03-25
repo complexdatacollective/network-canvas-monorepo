@@ -260,6 +260,7 @@ export async function getDocumentForPath({
         h3: (props) => <Heading variant="h3" {...props} />,
         h4: (props) => <Heading variant="h4" {...props} />,
         p: Paragraph,
+        paragraph: Paragraph,
         a: Link,
         ul: UnorderedList,
         ol: OrderedList,

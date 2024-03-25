@@ -19,7 +19,7 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
       title={title}
       iconClassName={cn(
         type === 'info' && 'bg-info',
-        type === 'warning' && 'bg-warning',
+        type === 'warning' && 'bg-warning ',
       )}
       icon={
         <Image
@@ -32,8 +32,16 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
         />
       }
       className={cn(
-        type === 'info' && 'bg-info/10 [--link:var(--info)]',
-        type === 'warning' && 'bg-warning/10 [--link:var(--warning)]',
+        type === 'info' &&
+          cn(
+            'bg-info/10 [--link:var(--info)]',
+            '![background-color:color-mix(in_oklab,hsl(var(--background))_90%,hsl(var(--info)))]',
+          ),
+        type === 'warning' &&
+          cn(
+            'bg-warning/10 [--link:var(--warning)]',
+            '![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--warning)))]',
+          ),
       )}
     >
       {children}

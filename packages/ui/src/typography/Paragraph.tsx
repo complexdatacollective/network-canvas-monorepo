@@ -15,7 +15,7 @@ export const paragraphVariants = cva(baseParagraphClasses, {
       blockquote: 'mt-6 border-l-2 pl-6 italic',
       inlineCode:
         'relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold',
-      lead: 'mb-3 text-lg font-semibold leading-6 text-opacity-70 md:text-xl',
+      lead: 'text-lg',
       mutedText: 'text-muted',
       smallText: 'text-sm',
     },
@@ -25,6 +25,13 @@ export const paragraphVariants = cva(baseParagraphClasses, {
       none: 'mt-0',
     },
   },
+  compoundVariants: [
+    {
+      variant: 'lead',
+      margin: 'default',
+      // className: '!my-7',
+    },
+  ],
   defaultVariants: {
     variant: 'default',
     margin: 'default',
