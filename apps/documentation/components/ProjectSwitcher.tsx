@@ -83,7 +83,12 @@ export default function ProjectSwitcher() {
       <SelectTrigger className="my-4 h-16">
         <ProjectValue project={project} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent
+        // This is a workaround for this issue: https://github.com/radix-ui/primitives/issues/1658
+        ref={(ref) =>
+          ref?.addEventListener('touchend', (e) => e.preventDefault())
+        }
+      >
         <SelectGroup>
           {projects.map((p) => (
             <SelectItem key={p} value={p} className="sm:w-[30rem]">
