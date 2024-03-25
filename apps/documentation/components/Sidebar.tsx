@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -164,20 +164,28 @@ const SidebarFolder = ({
   );
 };
 
-const SidebarLink = ({ href, label }: { href: string; label: string }) => {
+const SidebarLink = ({
+  href,
+  label,
+  sidebarContainerRef,
+}: {
+  href: string;
+  label: string;
+  sidebarContainerRef: RefObject<HTMLDivElement>;
+}) => {
   const pathname = usePathname();
   const isActive = pathname === href;
   const ref = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
-    if (isActive && ref.current) {
-      ref.current.scrollIntoView({
-        behavior: 'auto',
-        block: 'nearest',
-        inline: 'nearest',
-      });
+    if (isActive && ref.current && sidebarContainerRef.current) {
+      // Calculate the distance from the top of the sidebar to the active link
+      const top = ref.current.offsetTop - sidebarContainerRef.current.offsetTop;
+
+      // Scroll the sidebar to the active link
+      sidebarContainerRef.current.scrollTop = top;
     }
-  }, [isActive]);
+  }, [isActive, sidebarContainerRef]);
 
   return (
     <Link
@@ -197,6 +205,7 @@ const SidebarLink = ({ href, label }: { href: string; label: string }) => {
 const renderSidebarItem = (
   item: TSidebarFolder | SidebarPage,
   locale: LocalesEnum,
+  sidebarContainerRef: RefObject<HTMLDivElement>,
 ) => {
   const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
   if (item.type === 'folder') {
@@ -208,12 +217,19 @@ const renderSidebarItem = (
         alwaysOpen={item.expanded}
         href={sourceFile}
       >
-        {sortedChildren.map((child) => renderSidebarItem(child, locale))}
+        {sortedChildren.map((child) =>
+          renderSidebarItem(child, locale, sidebarContainerRef),
+        )}
       </SidebarFolder>
     );
   } else {
     return (
-      <SidebarLink key={item.label} href={sourceFile!} label={item.label} />
+      <SidebarLink
+        sidebarContainerRef={sidebarContainerRef}
+        key={item.label}
+        href={sourceFile!}
+        label={item.label}
+      />
     );
   }
 };
@@ -223,6 +239,7 @@ export function Sidebar({ className }: { className?: string }) {
   const locale = useLocale() as LocalesEnum;
   const project = pathname.split('/')[2]!;
   const typedSidebarData = sidebarData as TSideBar;
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
 
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
   const sortedSidebarItems = sortSidebarItems(
@@ -234,8 +251,10 @@ export function Sidebar({ className }: { className?: string }) {
       <DocSearchComponent className="hidden lg:flex" />
       <ProjectSwitcher />
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {sortedSidebarItems.map((item) => renderSidebarItem(item, locale))}
+      <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
+        {sortedSidebarItems.map((item) =>
+          renderSidebarItem(item, locale, sidebarContainerRef),
+        )}
       </div>
     </nav>
   );
