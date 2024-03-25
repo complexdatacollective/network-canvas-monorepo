@@ -240,7 +240,6 @@ export async function getDocumentForPath({
     .use(remarkFrontmatter)
     .use(processYamlMatter)
     .use(remarkRehype, { allowDangerousHtml: true })
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .use(rehypeFigure)
     .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings

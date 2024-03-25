@@ -5,9 +5,11 @@ date: 13th March 2024
 navOrder: 1
 ---
 
+<Paragraph variant="lead">
 Fresco is a pilot project that aims to bring Network Canvas interviews to the web browser. It does
 not add new features to Network Canvas, but rather provides a new way to conduct interviews using
 your existing Network Canvas protocols.
+</Paragraph>
 
 If you have ever wanted be able to be able to conduct interviews remotely, or have participants use their
 own devices to complete an interview, then Fresco is for you.
@@ -49,7 +51,8 @@ Should you encounter issues, we encourage you to use the search function at the 
 
 Because of the nature of the web platform, some features from Interviewer could not be implemented. These include:
 
-- [Custom node label workers](/en/desktop/advanced-topics/node-labelling#custom-node-labelling-advanced) are not implemented. This would have posed a potential security risk.
+- [Custom node label workers](/en/desktop/advanced-topics/node-labelling#custom-node-labelling-advanced) are not implemented. This would have posed a potential security risk, so we made the decision not to implement them. If you were using this feature and need help with an alternative, please contact us.
 - Videos and audio on your information screens cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
 - The 'Use fullscreen forms' visual preference is not supported. This preference was useful for devices that have large software keyboards, such as tablets. However, Fresco is designed to be used on a desktop or laptop computer, and so this preference is not necessary.
+- The interaction sounds feature introduced in the last release of Interviewer has not been brought over to Fresco yet.
 - When exporting data, the "use screen layout coordinates" feature uses a hardcoded screen size of 1920 x 1080. Please note that this does not correspond to the screen size used by your participants. This change was neccesary because the screen size can no longer be assumed to be static throughout the interview.
