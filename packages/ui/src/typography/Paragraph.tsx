@@ -15,7 +15,7 @@ export const paragraphVariants = cva(baseParagraphClasses, {
       blockquote: 'mt-6 border-l-2 pl-6 italic',
       inlineCode:
         'relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold',
-      lead: 'text-lg',
+      lead: 'text-lg font-medium',
       mutedText: 'text-muted',
       smallText: 'text-sm',
     },

@@ -42,7 +42,7 @@ export function ListItem({ children, className }: ListItemProps) {
     <li
       className={cn(
         baseParagraphClasses,
-        'pl-2 [&>ol]:mb-0 [&>ul]:mb-0',
+        'pl-2 [&>ol]:mb-0 [&>ol]:mt-2 [&>ul]:mb-0 [&>ul]:mt-2',
         className,
       )}
     >

@@ -1,28 +1,29 @@
 import PopoutBox from '~/components/PopoutBox';
 import { Paragraph } from '@codaco/ui';
 import Image from 'next/image';
+import { cn } from '~/lib/utils';
+import { useTranslations } from 'next-intl';
 
 const WorkInProgress = () => {
-  // TODO: translations for this
+  const t = useTranslations('WorkInProgress');
   return (
     <PopoutBox
-      title="Work in Progress"
-      className="bg-success/10 [--link:var(--success)]"
+      title={t('title')}
+      className={cn(
+        'bg-success/10 [--link:var(--success)]',
+        '![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--success)))]',
+      )}
       iconClassName="bg-white"
       icon={
         <Image
           src="/images/work-in-progress.svg"
-          alt="Work in progress"
+          alt={t('title')}
           width={22}
           height={22}
         />
       }
     >
-      <Paragraph>
-        This article is currently being written, and is not yet complete. If you
-        require support or assistance with this topic, please contact the
-        project team directly.
-      </Paragraph>
+      <Paragraph>{t('content')}</Paragraph>
     </PopoutBox>
   );
 };

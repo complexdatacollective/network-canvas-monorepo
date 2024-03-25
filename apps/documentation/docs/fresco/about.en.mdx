@@ -1,26 +1,139 @@
 ---
 title: About Fresco
-toc: false
 date: 13th March 2024
 navOrder: 1
 ---
 
 <Paragraph variant="lead">
-Fresco is a pilot project that aims to bring Network Canvas interviews to the web browser. 
+Fresco is an exciting new pilot project that brings Network Canvas interviews to the web browser. 
 </Paragraph>
 
-It does
-not add new features to Network Canvas, but rather provides a new way to conduct interviews using
-your existing Network Canvas protocols. If you have ever wanted be able to be able to conduct interviews remotely, or have participants use their
-own devices to complete an interview, Fresco might be the solution for you.
+It allows you to take any existing Network Canvas protocol file, upload it to a web-based dashboard, and then share a URL with participants to allow them to complete the interview in their own time, on their own device.
 
-We see Fresco as a way to make Network Canvas more accessible, and to provide a way to conduct interviews
-in a more flexible way. We are actively seeking feedback from users to help us improve it.
+Although Fresco does
+not add new features to Network Canvas, it provides an entirely new way to conduct interviews using
+your existing Network Canvas protocols.
+
+![The Fresco Dashboard](/assets/img/fresco-images/features/dashboard.png)
+
+
+## Jump straight In
+
+If you would like to jump straight in and try Fresco, you can visit the [Fresco Sandbox](/en/fresco/sandbox) to explore the features of Fresco without needing to deploy it on your own.
+
+Otherwise, you can read on to learn more about the features and functionality of Fresco, and how it differs from the desktop applications.
+
+## What is Fresco?
+
+We see Fresco as a way to make conducting Network Canvas interviews more accessible, and to provide
+researchers with more flexibility in how they conduct their studies. We heard throughout the development
+of the desktop applications that researchers wanted to be able to conduct interviews remotely, and these
+calls were only amplified by the COVID-19 pandemic. 
+
+We also found that many researchers struggled with the workflow of the desktop applications, and
+in particular with managing protocol deployment and the aggregation of data. 
+
+Fresco is our response to these challenges. 
 
 We also see Fresco as a milestone in the development of Network Canvas Studio, which will be a web-based
-platform for designing and conducting interviews.
+platform for designing and conducting interviews that we hope to complete in the coming years.
 
-<KeyConcept title="Key differences between Fresco and the Desktop apps:">
+## Features and Functionality
+
+Fresco includes features to support participant management, protocol management, and data export. It is
+also designed to be 100% compatible with all existing Network Canvas protocols. Below you can find a
+brief overview of the features and functionality of Fresco.
+
+<TipBox>
+
+Although there are no new features added to the interview experience, there are some [restrictions and omissions](./about#known-limitations) to existing functionality.
+
+</TipBox>
+
+
+
+### Protocol Management
+
+You can upload Network Canvas protocols created in Architect on the **Protocols** page. This page also provides an overview of all protocols uploaded to the study.
+
+If [anonymous recruitment](#anonymous-recruitment) is enabled, you can also generate a unique onboarding URL for each protocol. These URLs can be shared with participants to allow them to self-enroll in your study.
+
+![Protocol Management Page](/assets/img/fresco-images/features/protocols.png)
+
+### Participant Management
+
+The **Participants** page allows you to manage participants in the study.
+
+<KeyConcept>
+
+#### Adding Participants
+
+You can add new participants to the study indiviudally, or in bulk by uploading a CSV file. Your CSV file can contain the following columns:
+
+- **identifier** - must be a unique string, and should not be easy to guess. Used to generate the onboarding URL to allow integration with other survey tools.
+- **label** - can be any text or number. Used to provide a human readable label for the participant.
+
+Either an _identifier_ column or a _label_ column **must be provided** for each participant. The _identifier_ and _label_ columns **must be lowercase**.
+
+</KeyConcept>
+
+You can also view the status of each participant's interview, and generate a unique participation URL for a selected participant and protocol. These URLs can be shared with participants to allow them to self-enroll in your study.
+
+Participants and participation URLs can also be exported in bulk.
+
+![Participant Management Page](/assets/img/fresco-images/features/participants.png)
+
+### Data Export
+
+Data can be managed and exported from the **Interview** page. This page provides an overview of all interviews in the study, and allows you to export data with a variety of export options which are identical to those found in Interviewer.
+
+![Data Export Options](/assets/img/fresco-images/features/data-export.png)
+
+You can also export a CSV of incomplete URLs from the **Interview** page. This can be useful for sending reminders to participants who have not yet completed their interview.
+
+![Interview Management Page](/assets/img/fresco-images/features/interviews.png)
+
+### Settings and Configuration
+
+The **Settings** page allows you to configure your instance of Fresco.
+
+#### Anonymous Recruitment
+
+If enabled, participants can self-enroll in the study using a unique onboarding URL. This URL can be generated for each protocol, and shared with participants.
+
+#### Limit Interviews
+
+If this option is enabled, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once an interview has been completed, attempting to start a new interview or to resume any other in-progress interview, will be prevented.
+
+![Settings Page](/assets/img/fresco-images/features/settings.png)
+
+### Onboarding Methods
+
+There are two distinct methods for onboarding participants in your study. They may be used independently, or in combination.
+
+#### Unique Participant URLs
+
+A unique URL can be generated for each participant per protocol from the [Participants page](#participant-management). This URL can be shared with participants to allow them to self-enroll in your study. You can also generate these URLs in bulk. This method is useful for studies where you have a pre-existing list of participants, or where you are using an external survey tool to recruit participants.
+
+These URLs will be in the format:
+
+```bash
+https://{your-deployment-url}/onboard/{protocolId}/?participantIdentifier={participantIdentifier}
+```
+
+#### Anonymous Participation URLs
+
+If [anonymous recruitment](#anonymous-recruitment) is enabled, participants can self-enroll in the study using a unique onboarding URL. This URL can be generated for each protocol on the [Protocols page](#protocol-management), and shared with participants. Any participant who has the URL can complete an interview, and will be given the label "Anonymous Participant" and a generated unique identifier.
+
+These URLs will be in the format:
+
+```bash
+https://{your-deployment-url}/onboard/{protocolId}/
+```
+
+## Key differences between Fresco and the Desktop apps
+
+There are several key differences between Fresco and the desktop applications that you should be aware of:
 
 - Fresco is a web-based platform for administering Network Canvas interviews. It is not a replacement for the desktop applications, but rather a new way to conduct interviews. Fresco works with all existing Network Canvas protocols, and does not add new features to Network Canvas.
 - In Fresco, **interviews are completed in a browser** by visiting a URL. This means that interviews can be conducted remotely, and participants can use their own devices to complete the interview. **Note that mobile phones are not supported!**
@@ -28,8 +141,6 @@ platform for designing and conducting interviews.
 - **Fresco stores all data in a database**. This means that data is stored on a server on the internet, rather than on a local computer. This has implications for data security and privacy, and means that you will need to consider the legal and ethical implications of using Fresco.
 - You are responsible for **hosting and maintaining Fresco** on your own servers. This means that you will need to have some technical knowledge to deploy and maintain Fresco.
 - Fresco is **a pilot project** and does not yet support all of the features of the desktop apps. For example, custom node label workers are not implemented, and videos and audio cannot autoplay on first load due to browser limitations. For a full list of known issues, see the [Known Limitations](#known-limitations) section below.
-
-</KeyConcept>
 
 ## Getting Started
 

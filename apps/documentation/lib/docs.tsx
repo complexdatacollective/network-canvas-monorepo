@@ -55,6 +55,7 @@ import {
   GoodPractice,
   BadPractice,
 } from '~/components/customComponents/BestPractices';
+import { cn } from './utils';
 
 export type DocRouteParams = {
   params: {
@@ -293,7 +294,11 @@ export async function getDocumentForPath({
         figure: (props) => (
           <figure
             {...props}
-            className="my-10 flex w-full flex-col items-center justify-center [&>img]:m-0 [&>img]:w-full [&>img]:px-4"
+            className={cn(
+              'my-10 flex w-full flex-col items-center justify-center',
+              '[--shadow-color:color-mix(in_lab,hsl(var(--background))_80%,black)]',
+              '[&>img]:m-0 [&>img]:w-full [&>img]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]',
+            )}
           />
         ),
         figcaption: (props) => (

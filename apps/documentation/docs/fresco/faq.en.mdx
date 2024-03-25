@@ -4,23 +4,52 @@ date: 11th March 2024
 navOrder: 3
 ---
 
-### Where will announcements about releases be posted?
+## How much does Fresco cost?
+
+Fresco is free and open source software. You can always 
+download the latest version of Fresco source-code from the [GitHub repository](https://github.com/complexdatacollective/fresco).
+
+We have done our best to make sure that you can deploy Fresco on your own server (if you have one)
+without any additional costs. However, you may need to pay for server hosting, depending on your needs.
+
+We have provided a [Deployment Guide](./deployment) to help you get started with deploying Fresco
+using the hobby (free) tier of a cloud platform called Vercel. Information about the costs of using Vercel can be found on their [pricing page](https://vercel.com/pricing).
+
+## What are the requirements for deploying Fresco?
+
+Fresco is a web application that requires a server to host it. You can deploy Fresco on your own server or use a cloud platform like Vercel. The [Deployment Guide](./deployment) provides detailed instructions on how to deploy Fresco on Vercel, for free.
+
+The core technology stack for Fresco is as follows:
+  - Frontend: Next.js (React)
+  - Backend:
+    - Node 20+ - for running the backend server
+    - Next.js API routes - for handling API requests
+    - tRPC - for defining and handling API routes
+    - PostgreSQL - for storing all data
+    - Prisma - for interacting with the database
+    - UploadThing - for storing protocol assets
+
+To deploy Fresco, you will need to have access to one or more servers that can run these technologies. For example you might have a server that runs the Next.js frontend and another server that runs the PostgreSQL database.
+
+Advanced users can refer to the [advanced deployment guide](./deployment/advanced) for more information on deploying Fresco on their own server.
+
+## Where will announcements about releases be posted?
 
 New versions of Fresco will be announced on our <a href="https://community.networkcanvas.com/" target="_blank">User Community</a>. More information about the upgrade process can be found in the [Upgrade Guide](./deployment/upgrading).
 
-### Which browsers are supported?
+## Which browsers are supported?
 
 Fresco is supported on latest version of Chrome, Safari, and Firefox. This applies to the backend user dashboard and the participant interview experience.
 
-### Which devices and platforms are supported for participants?
+## Which devices and platforms are supported for participants?
 
 Participants can use any computer or tablet with a supported browser for interviews. Smartphones or small-screen devices are not compatible. Tablets should be used in landscape mode for optimal viewing during interviews.
 
-### How do I create another user account for my colleague?
+## How do I create another user account for my colleague?
 
 Only one user account can be created in Fresco. If you need to share access with a colleague, you can share your login credentials with them. We reccomend using a shared username and password for the administrator account to ensure that your team can access the platform.
 
-### How do I reset my password?
+## How do I reset my password?
 
 You cannot reset your password in Fresco. Please make sure to keep your login credentials so that you do not lose access to the platform.
 

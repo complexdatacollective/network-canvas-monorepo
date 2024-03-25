@@ -17,6 +17,10 @@
     "info": "Good to know:",
     "warning": "Take Care!"
   },
+  "WorkInProgress": {
+    "title": "Work in Progress",
+    "content": "This article is actively being worked on, and might not be finished. If you require support or assistance with this topic, please contact the project team directly."
+  },
   "DocSearch": {
     "button": {
       "buttonText": "Search documentation",
