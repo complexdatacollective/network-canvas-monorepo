@@ -33,6 +33,26 @@ To deploy Fresco, you will need to have access to one or more servers that can r
 
 Advanced users can refer to the [advanced deployment guide](./deployment/advanced) for more information on deploying Fresco on their own server.
 
+## How do I set up a custom domain for my Fresco deployment?
+
+Setting up a custom domain for your Fresco deployment will depend on how you have deployed Fresco. If you are using Vercel, you can follow the instructions in the [Vercel documentation](https://vercel.com/guides/how-do-i-add-a-custom-domain-to-my-vercel-project).
+
+If you are using a different deployment method, you will need to follow the instructions for that specific method.
+
+## How do I update Fresco to the latest version?
+
+You can update Fresco to the latest version by following the instructions in the [Upgrade Guide](./deployment/upgrading).
+
+## How do I backup my data?
+
+The specific steps for backing up your data will depend on how you have deployed Fresco. If you are using Vercel, you can follow the instructions under "[External data migration](https://vercel.com/docs/storage/vercel-postgres/faq#external-data-migration)".
+
+If you are using a different deployment method, you will need to follow the backup procedures for the specific technologies you are using.
+
+## Is the data storage HIPAA/GDPR compliant? Is it secure?
+
+Fresco is designed to be self-hosted, which means that you have full control over the data storage and security. You can deploy Fresco on your own server or use a cloud platform like Vercel. If you are using a cloud platform, you should review their security and compliance documentation to ensure that it meets your needs.
+
 ## Why can I only create a single user account?
 
 Fresco is designed to be used by a single user. This is because the platform is intended for small-scale research projects where a single researcher is responsible for managing the data collection process. If you need to share access with a colleague, you can share your login credentials with them.
@@ -47,6 +67,10 @@ New versions of Fresco will be announced on our <a href="https://community.netwo
 
 Fresco is supported on latest version of Chrome, Safari, and Firefox. This applies to the backend user dashboard and the participant interview experience.
 
+We specifically do not support Internet Explorer or Edge Legacy.
+
+If you encounter an issue with a supported browser, or if you need a specific version of a browser to be supported, please use the feedback mechanism within Fresco to contact us.
+
 ## Which devices and platforms are supported for participants?
 
 Participants can use any computer or tablet with a supported browser for interviews. Smartphones or small-screen devices are not compatible. Tablets should be used in landscape mode for optimal viewing during interviews.
@@ -57,10 +81,12 @@ Only one user account can be created in Fresco. If you need to share access with
 
 ## How do I reset my password?
 
-You cannot reset your password in Fresco. Please make sure to keep your login credentials so that you do not lose access to the platform.
+The short answer is that you cannot reset your password in Fresco, because implementing a password recovery feature would have required additional deployment steps and configuration. Please make sure to keep your login credentials so that you do not lose access to the platform.
 
-<TipBox danger>
+If you have lost your login credentials, what you can will depend on if you have access to your database.
 
-If you have lost your login credentials, you will be required to [reset your database](/en/fresco/troubleshooting#instance-expired---reset-your-database). This will result in the loss of all data and unexported interviews.
+If you _do_ have access to your database, please contact us and we may be able to assist you.
 
-</TipBox>
+If you do not have access, you may need to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired---reset-your-database). This will result in the loss of all data and unexported interviews.
+
+
