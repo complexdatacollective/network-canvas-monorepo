@@ -173,7 +173,7 @@ const SidebarLink = ({ href, label }: { href: string; label: string }) => {
     if (isActive && ref.current) {
       ref.current.scrollIntoView({
         behavior: 'auto',
-        block: 'nearest',
+        block: 'start', // aligns the element to the top of the viewport
         inline: 'nearest',
       });
     }
