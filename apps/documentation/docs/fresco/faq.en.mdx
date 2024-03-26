@@ -9,11 +9,21 @@ navOrder: 3
 Fresco is free and open source software. You can always 
 download the latest version of Fresco source-code from the [GitHub repository](https://github.com/complexdatacollective/fresco).
 
-We have done our best to make sure that you can deploy Fresco on your own server (if you have one)
+We have done our best to make sure that you can deploy Fresco on your own server (if you have one) or to a cloud platform like Vercel
 without any additional costs. However, you may need to pay for server hosting, depending on your needs.
 
-We have provided a [Deployment Guide](./deployment) to help you get started with deploying Fresco
-using the hobby (free) tier of a cloud platform called Vercel. Information about the costs of using Vercel can be found on their [pricing page](https://vercel.com/pricing).
+Our [Deployment Guide](./deployment/guide) covers getting started with deploying Fresco
+using the free hobby tier of Vercel, which is sufficient for most small-scale research projects. 
+
+Vercel also offers paid plans with greater features and performance. Information about the costs of using Vercel can be found on their [pricing page](https://vercel.com/pricing).
+
+Our [advanced deployment guide](./deployment/advanced) covers deploying Fresco on your own server, which may require additional costs depending on your server provider.
+
+## How do I get support for Fresco?
+
+We do not offer direct support for Fresco, nor do we have a dedicated support team. However, we are always happy to help you with any questions or issues you may have. You can reach out to us on our [User Community](https://community.networkcanvas.com/). You can also use the feedback mechanism within Fresco to contact us.
+
+If you would like to work more closely with the project team as part of a research collaboration, please contact us at [info@networkcanvas.com](mailto:info@networkcanvas.com).
 
 ## What are the requirements for deploying Fresco?
 
@@ -88,5 +98,9 @@ If you have lost your login credentials, what you can will depend on if you have
 If you _do_ have access to your database, please contact us and we may be able to assist you.
 
 If you do not have access, you may need to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired---reset-your-database). This will result in the loss of all data and unexported interviews.
+
+## I have multiple studies. Should I create a new Fresco instance for each study?
+
+Fresco is designed to be used for a single study at a time. If you have multiple studies, you can create a new Fresco instance for each study. This will allow you to keep the data separate and organized. Please bear in mind that you may need to pay for additional server hosting if you create multiple instances.
 
 

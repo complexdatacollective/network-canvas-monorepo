@@ -1,6 +1,5 @@
 import PopoutBox from '~/components/PopoutBox';
 import { Paragraph } from '@codaco/ui';
-import Image from 'next/image';
 import { cn } from '~/lib/utils';
 import { useTranslations } from 'next-intl';
 
@@ -15,7 +14,7 @@ const WorkInProgress = () => {
       )}
       iconClassName="bg-white"
       icon={
-        <Image
+        <img
           src="/images/work-in-progress.svg"
           alt={t('title')}
           width={22}

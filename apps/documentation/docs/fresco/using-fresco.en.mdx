@@ -26,9 +26,27 @@ We will now walk through each of these steps in more detail.
 
 ## Deployment
 
-Considerations around hosting. Security, IRB, privacy, etc. Your university may be able to host a compliant version of Fresco for you.
+Fresco is designed to be deployed on your own server(s) and infrastructure. This is to ensure that you have full control over the data collected in your study, and to ensure that you can comply with any relevant data protection regulations or IRB requirements that you may have.
+
+For many researchers, using our [basic deployment guide](/en/fresco/deployment/guide) to deploy to the free Vercel hobby plan will be sufficient. However, if you have specific requirements around data security, privacy, or compliance, you may need to deploy Fresco to your own server, or to specialist services.
+
+If you are unable to deploy Fresco yourself, your university may be able to host a compliant version of Fresco for you. Please contact your IT department or research support office for more information, and refer them to our [advanced deployment guide](/en/fresco/deployment/advanced) for more information on the requirements for hosting Fresco.
 
 ## Uploading Protocols
+
+Once you have deployed Fresco and have access to your dashboard, you can begin by uploading one or more protocols for your study.
+
+<TipBox>
+
+If you have not yet designed your protocol in Architect, you should do so before proceeding. You can find a guide to designing a protocol in Architect [here](/en/desktop/tutorials/building-a-protocol).
+
+</TipBox>
+
+In Fresco, protocols exist separately from one another, and you can upload as many as you would like (within the resource limits of your hosting). This allows you to have multiple protocols for different studies, or to have multiple versions of the same protocol for different groups of participants.
+
+We recommend **not** hosting different studies on the same instance of Fresco, as this can lead to confusion and potential data leakage. If you are conducting multiple studies, our suggestion is that you deploy a separate instance of Fresco for each study.
+
+
 
 How to do it. Should I upload loads? One for each study?
 

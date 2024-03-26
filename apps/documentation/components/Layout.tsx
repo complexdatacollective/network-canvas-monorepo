@@ -43,6 +43,11 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
 
         {children}
       </main>
+      <footer>
+        <div className="mt-10 flex justify-center text-balance py-4 text-sm">
+          © {new Date().getFullYear()} Complex Data Collective
+        </div>
+      </footer>
     </>
   );
 }

@@ -67,14 +67,13 @@ Although there are no new features added to the interview experience, there are 
 - **Recruitment modes** - Two types of recruitment are supported, and can be used individually or in combination:
   - **Anonymous recruitment** - Participants can self-enroll in the study using an anonymous onboarding URL. The app will automatically generate a unique participant ID for each participant.
   - **Known participant roster** - You can provide a roster of participants, including a label and an identifier, which will be used to generate unique participation URLs for every participant. This URL can be shared with participants to allow them to self-enroll in your study.
-- **Bulk participant upload** - Participants can be added to the study in bulk by uploading a CSV file.
+- **Bulk participant import and export** - Participants can be added to the study in bulk by uploading a CSV file, and can be exported in the same way allowing interoperability and portability between systems.
 - **Integration with external survey tools** - Fresco allows an identifier to be passed to the app via the onboarding URL, which can be used to link participants to external survey tools. See the advanced topic article on [integration with other survey tools](/en/fresco/advanced-topics/integration) for more information.
-- **Limit interviews** - A configuration option that allows you to limit each participant to a single completed interview for each protocol.
 
 ### Data management
 
-  - **Full data export** - Data can be exported from the interviews page with a variety of export options.
-  - **Incomplete interview export** - A CSV of incomplete URLs can be exported from the interviews page. This can be useful for sending reminders to participants who have not yet completed their interview.
+  - **Full data export** - Data can be exported from the interviews page with a variety of export options that mirror those in Interviewer.
+  - **Incomplete interview export** - A CSV of incomplete interviews can be exported from the interviews page. This can be useful for sending reminders to participants who have not yet completed their interview.
 
 
 
@@ -98,7 +97,7 @@ Because of the nature of the web platform, some features from Interviewer could 
 - Videos and audio on your information screens cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
 - The 'Use fullscreen forms' visual preference is not supported. This preference was useful for devices that have large software keyboards, such as tablets. However, Fresco is designed to be used on a desktop or laptop computer, and so this preference is not necessary.
 - The interaction sounds feature introduced in the last release of Interviewer has not been brought over to Fresco yet.
-- When exporting data, the "use screen layout coordinates" feature uses a hardcoded screen size of 1920 x 1080. Please note that this does not correspond to the screen size used by your participants. This change was neccesary because the screen size can no longer be assumed to be static throughout the interview.
+- When exporting data, the "use screen layout coordinates" feature uses a hardcoded screen size of 1920 x 1080. Please note that this does not correspond to the screen size used by your participants. This change was necessary because the screen size can no longer be assumed to be static throughout the interview.
 
 ## Next steps
 
@@ -106,6 +105,6 @@ To explore Fresco and learn how to use it, we recommend you start with the follo
 
 - [Deployment Guide](/en/fresco/deployment/guide) - To learn how to deploy Fresco for your own studies, read about the deployment process and follow the [Deployment Guide](/en/fresco/deployment/guide/).
 - [Using Fresco](/en/fresco/using-fresco) - To learn how to use Fresco in practice, read the using fresco guide.
-- [Fresco Sandbox](/en/fresco/sandbox) - A shared example deployment hosted by the projhect team, where you can explore the features of Fresco without needing to deploy it on your own.
+- [Fresco Sandbox](/en/fresco/sandbox) - A shared example deployment hosted by the project team, where you can explore the features of Fresco without needing to deploy it on your own.
 
 Should you encounter issues, we encourage you to use the search function at the top of each page, read our [FAQ](/en/fresco/faq), or visit our [community forum](https://community.networkcanvas.com) for support.
