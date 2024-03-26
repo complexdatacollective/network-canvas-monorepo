@@ -1,0 +1,32 @@
+---
+title: Participant Identifiers
+date: 26th March 2024
+wip: true
+---
+
+The **Participants** page allows you to manage participants in the study.
+
+
+<KeyConcept title="Participant Identifiers">
+
+Participant identifiers are unique strings that are used to generate the onboarding URL for each participant. These identifiers should not be easy to guess, and should be unique for each participant. Participant identifiers **must be lowercase**.
+
+</KeyConcept>
+
+<KeyConcept title="Adding Participants">
+
+You can add new participants to the study indiviudally, or in bulk by uploading a CSV file. Your CSV file can contain the following columns:
+
+- **identifier** - must be a unique string, and should not be easy to guess. Used to generate the onboarding URL to allow integration with other survey tools.
+- **label** - can be any text or number. Used to provide a human readable label for the participant.
+
+Either an _identifier_ column or a _label_ column **must be provided** for each participant. The _identifier_ and _label_ columns **must be lowercase**.
+
+</KeyConcept>
+
+You can also view the status of each participant's interview, and generate a unique participation URL for a selected participant and protocol. These URLs can be shared with participants to allow them to self-enroll in your study.
+
+Participants and participation URLs can also be exported in bulk.
+
+![Participant Management Page](/assets/img/fresco-images/features/participants.png)
+

@@ -153,7 +153,7 @@ const SidebarFolder = ({
         )}
       </CollapsibleTrigger>
       <MotionCollapsibleContent
-        className="ml-2 flex flex-col overflow-y-hidden p-2"
+        className="ml-2 flex flex-col overflow-y-hidden"
         forceMount
         initial={{ height: isOpen ? 'auto' : 0 }}
         animate={{ height: isOpen ? 'auto' : 0 }}

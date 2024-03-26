@@ -142,6 +142,7 @@ export default {
     extend: {
       fontSize: {
         'sm': ['var(--font-size-sm)', '1.5'],
+        'base-sm': ['var(--font-size-base-sm)', '1.5'],
         'base': ['var(--font-size-base)', '1.5'],
         'lg': ['var(--font-size-lg)', '1.5'],
         'xl': ['var(--font-size-xl)', '1.4'],

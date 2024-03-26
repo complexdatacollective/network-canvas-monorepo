@@ -107,6 +107,7 @@
 
     /* https: //www.fluid-type-scale.com/calculate?minFontSize=14&minWidth=400&minRatio=1.25&maxFontSize=18&maxWidth=1920&maxRatio=1.25&steps=sm%2Cbase%2Clg%2Cxl%2C2xl%2C3xl%2C4xl%2C5xl%2C6xl&baseStep=base&prefix=font-size&decimals=2&useRems=on&remValue=16&previewFont=Inter&previewText=Almost+before+we+knew+it%2C+we+had+left+the+ground&previewWidth=400 */
   --font-size-sm: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem);
+  --font-size-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
   --font-size-base: clamp(1rem, 0.31vw + 0.88rem, 1.13rem);
   --font-size-lg: clamp(1.25rem, 0.39vw + 1.09rem, 1.41rem);
   --font-size-xl: clamp(1.56rem, 0.49vw + 1.37rem, 1.76rem);

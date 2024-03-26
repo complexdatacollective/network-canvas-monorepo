@@ -6,10 +6,7 @@ export type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
   className?: string;
 };
 
-const listContainerClasses = cn(
-  'my-5 ml-8 text-base [&>li]:mt-2',
-  // '[&:not(:first-child)]:my-0',
-);
+const listContainerClasses = cn('my-5 ml-8 [&>li]:mt-2');
 
 export function UnorderedList({ children, className }: UnorderedListProps) {
   return (

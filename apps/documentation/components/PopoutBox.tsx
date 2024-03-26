@@ -20,7 +20,7 @@ const PopoutBox = ({
   return (
     <aside
       className={cn(
-        'mx-0 mb-8 mt-10 flex items-center gap-2 rounded-lg bg-card p-4',
+        'text-base-sm mx-0 mb-8 mt-10 flex items-center gap-2 rounded-lg bg-card p-4',
         'md:relative md:mx-8 md:mb-8 md:mt-10 md:gap-0 md:px-10 md:py-8',
         className,
       )}

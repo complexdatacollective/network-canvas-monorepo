@@ -297,7 +297,7 @@ export async function getDocumentForPath({
             className={cn(
               'my-10 flex w-full flex-col items-center justify-center',
               '[--shadow-color:color-mix(in_lab,hsl(var(--background))_80%,black)]',
-              '[&>img]:m-0 [&>img]:w-full [&>img]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]',
+              '[&>a]:m-0 [&>a]:w-full [&>a]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]',
             )}
           />
         ),
@@ -305,7 +305,14 @@ export async function getDocumentForPath({
           <figcaption {...props} className="mt-2 text-center text-sm italic" />
         ),
         img: (props) => (
-          <img alt={props.alt} {...props} className="my-10 w-full px-8" />
+          <a
+            href={props.src}
+            target="_blank"
+            rel="noreferrer"
+            className="my-10 w-full px-8"
+          >
+            <img alt={props.alt} {...props} className="w-full" />
+          </a>
         ),
         keyconcept: (props: { title: string; children: ReactNode }) => (
           <KeyConcept {...props} />
