@@ -2,7 +2,6 @@
 
 import { type ReactNode, forwardRef } from 'react';
 import { cn } from '../utils';
-import { headingVariants } from '../typography/Heading';
 import { paragraphVariants } from './Paragraph';
 import { ChevronRight } from 'lucide-react';
 
@@ -18,7 +17,7 @@ export const Details = forwardRef<
       ref={ref}
       className={cn(
         paragraphVariants({ margin: 'forced' }),
-        'rounded-xl border-2 border-border p-4 [&_svg]:open:rotate-90', // Rotate the summary arrow
+        'my-5 rounded-xl border-2 border-border px-5 [&_svg]:open:rotate-90', // Rotate the summary arrow
         className,
       )}
       {...props}
@@ -47,8 +46,8 @@ export const Summary = forwardRef<
     <summary
       ref={ref}
       className={cn(
-        headingVariants({ variant: 'h4', margin: 'none' }),
-        'flex cursor-pointer list-none',
+        'flex cursor-pointer select-none list-none items-center gap-2',
+
         className,
       )}
       {...props}
@@ -57,7 +56,7 @@ export const Summary = forwardRef<
         size={24}
         className="inline-block h-6 w-6 text-accent transition-all"
       />
-      {children}
+      <div className="my-5">{children}</div>
     </summary>
   );
 });

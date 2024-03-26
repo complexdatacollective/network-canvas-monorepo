@@ -10,7 +10,7 @@ export const SummaryCard = ({
   duration: string;
 }) => {
   return (
-    <summary className="my-8 rounded-lg border border-border bg-card p-6">
+    <summary className="text-base-sm my-8 rounded-lg border border-border bg-accent p-6 text-accent-foreground [--link:var(--accent-foreground)]">
       {children}
       <Heading variant={'h4-all-caps'}>Duration:</Heading>
       <Paragraph className="flex items-center gap-2" margin="none">

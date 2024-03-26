@@ -3,21 +3,46 @@ title: Troubleshooting
 date: 12th March 2024
 navOrder: 3
 ---
+<Paragraph variant="lead">
+You may encounter errors during deployment. Below are some common errors along with solutions or workarounds.
+</Paragraph>
 
-## Deployment Build Errors and Fixes
+<details>
 
-You may encounter errors during deployment. Below are some common errors and their solutions to help you troubleshoot effectively.
+<summary>
 
-### Invalid API Key Error
+<h2 className="text-lg">
+"Invalid API Key" error during Vercel deployment
+</h2>
 
-![Invalid API Key Console Error](/assets/img/fresco-images/deploy-error2.png)
+You may encounter an error in your deployment such as "Invalid API Key", or "API keys must start with...".
+
+</summary>
+
 
 This error means that you provided an incorrect environment variable. Make sure to enter the environment variable value correctly. You must enter the value that starts after `=` symbol
 (e.g: `UPLOADTHING_APP_ID=5q5ybg9dwg`, here `UPLOADTHING_APP_ID` is the key of variable and `5q5ybg9dwg` is the value. You should always enter the value.)
 
-## Instance Expired - Reset your Database
 
-If your instance expires, you must delete your database and create a new one.
+![Invalid API Key Console Error](/assets/img/fresco-images/deploy-error2.png)
+
+</details>
+
+<details>
+
+<summary>
+
+<h2 className="text-lg">
+"Instance Expired" message during the setup process
+</h2>
+
+You may be redirected to a page that informs you that your instance has expired.
+
+</summary>
+
+When completing the initial setup for Fresco, you have 30 minutes to complete the process. If you exceed this time, you will be redirected to a page that informs you that your instance has expired. If this happens, you must delete your database and create a new one.
+
+To delete your database:
 
 1. Navigate to your database on the dashboard by selecting _Storage_ and then selecting your database.
 
@@ -35,4 +60,6 @@ If your instance expires, you must delete your database and create a new one.
 
    ![Delete Database](/assets/img/fresco-images/reset-db-4.png)
 
-5. After confirming, you can follow the instructions again to [Create a Database](./deployment/guide#step-4-create-your-database)
+5. After confirming, you can follow the instructions again to [Create a Database](/en/fresco/deployment/guide#step-4-create-your-database)
+
+</details>
