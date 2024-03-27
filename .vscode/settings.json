@@ -8,5 +8,9 @@
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "cSpell.enableFiletypes": [
     "mdx"
+  ],
+  "cSpell.words": [
+    "netcanvas",
+    "Tipbox"
   ]
 }
