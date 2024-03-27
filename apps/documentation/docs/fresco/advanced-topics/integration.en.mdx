@@ -8,4 +8,13 @@ wip: true
 Fresco supports integration with other survey tools via shared participant identifiers. This allows you to link survey data from different sources and create a unified view of your participants.
 </Paragraph>
 
-As with _Interviewer_, Fresco is not intended to replace existing general purpose survey tools - particularly for ego specific data collection.
+As with _Interviewer_, Fresco is not intended to replace existing general purpose survey tools - particularly for ego specific data collection. We suggest that extensive ego-level data collection is done using a general purpose survey tool, and that Fresco is used to collect network data from the same participants. To facilitate this, Fresco supports integration with other survey tools via shared participant identifiers which can be encoded in the survey links.
+
+## Encoding participant identifiers
+
+When creating a survey link in Fresco, the participant identifier can be included in the URL. This identifier will be passed through to the survey tool when the participant clicks on the link. The survey tool can then use this identifier to link the survey data back to the participant in Fresco.
+
+There are two means of encoding this information: GET and POST parameters.
+
+- **GET parameters**: The participant identifier is included in the URL as a query parameter. For example, `https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345`. This is the simplest method, but the participant identifier will be visible in the URL.
+- **POST parameters**: The participant identifier is included in the request body when the participant clicks on the link. This is more secure, but requires more setup on the survey tool side.
