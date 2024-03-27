@@ -1,6 +1,6 @@
 ---
 title: Deployment Guide
-date: 12th March 2024
+date: 27th March 2024
 navOrder: 1
 ---
 
@@ -61,7 +61,7 @@ To deploy Fresco, we use the following services and technologies:
 - **UploadThing**: A cloud-based file storage service that Fresco uses to store media files, such as images and audio recordings.
 
 To make the deployment process as simple as possible, we designed Fresco to be easily deployed on
-the [Vercel](https://vercel.com) platform, which provides both the Node.js and the PostgreSQL
+the <a href="https://vercel.com" target="_blank">Vercel</a> platform, which provides both the Node.js and the PostgreSQL
 services for you (for free). 
 
 Vercel is a cloud platform that specializes in deploying web
@@ -78,11 +78,12 @@ by visiting this URL.
 
 <Tipbox>
 
-Should you run into any issues, please consult the [troubleshooting](../troubleshooting) guide or reach out on the [user community](https://community.networkcanvas.com).
+Should you run into any issues, please consult the [troubleshooting](./troubleshooting) guide or reach out on the
+<a href="https://community.networkcanvas.com" target="_blank">user community</a>.
 
 </Tipbox>
 
-Before continuing, ensure you have created a GitHub account and are signed in. To create a GitHub account, visit [github.com](https://github.com/signup).
+Before continuing, ensure you have created a GitHub account and are signed in. To create a GitHub account, visit <a href="https://github.com/signup" target="_blank">github.com</a>.
 
 ### Step 1: Create an app on UploadThing
 
@@ -130,7 +131,7 @@ To create an app on UploadThing:
 
    ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
 
-For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
+For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing docs</a>.
 
 ### Step 2: Fork Fresco Repository
 
@@ -138,13 +139,14 @@ The next step requires us to create a copy (or "fork") of the Fresco code. This 
 
 To create a fork of the Fresco repository:
 
-1. Visit the [Fresco repository on GitHub](https://github.com/complexdatacollective/Fresco), and click **"Fork"**.
+1. Visit the <a href="https://github.com/complexdatacollective/Fresco" target="_blank">Fresco repository on GitHub</a>, and click **"Fork"**.
 
    ![](/assets/img/fresco-images/github-fork1.png)
 
-2. Create your Fork
+2. Create your fork
 
    Enter a repository name (this will be your Fresco instance name, so you may wish to use your study name or the name of your project), description (optional), and click **"Create Fork"**.
+
    ![](/assets/img/fresco-images/github-fork2.png)
 
 Once you have completed this step, you will be redirected to your forked repository on GitHub. This copy of the Fresco code is now yours to deploy as you wish.
@@ -163,7 +165,7 @@ Next, we will deploy your fork to the Vercel platform. You can use the "hobby" t
 
    </Tipbox>
 
-2. Import Git Repository
+2. Import Git repository
 
    Find your Fresco instance from the list of your git repositories and click **"Import"**.
    ![Import Git Repository](/assets/img/fresco-images/vercel2.png)
@@ -197,7 +199,7 @@ Next, we will deploy your fork to the Vercel platform. You can use the "hobby" t
 
    <TipBox danger>
 
-   When entering the environment variables, do **not** include the variable key (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable _value_, which starts after the equals (`=`) symbol (e.g: `sk_live_xxxx`)
+   When entering the environment variables, do **not** include the variable key (e.g: `UPLOADTHING_SECRET=`). You should enter the value of the variable _value_, which starts after the equals (_=_) symbol (e.g: `sk_live_xxxx`)
 
    Additionally, when providing the environment variables do **not** enclose the variable values in quotes. For example:
 
@@ -209,9 +211,7 @@ Next, we will deploy your fork to the Vercel platform. You can use the "hobby" t
 
    </TipBox>
 
-4. Deploy
-
-   Click **"Deploy"** and wait for the deployment to finish.
+4. Deploy: Click **"Deploy"** and wait for the deployment to finish.
 
    <TipBox>
 
@@ -248,7 +248,7 @@ Next, we will deploy your fork to the Vercel platform. You can use the "hobby" t
 
 <TipBox>
 
-If you encounter any issues during deployment, check out the [Troubleshooting](../troubleshooting) article or our <a href="https://community.networkcanvas.com/">User Community</a> for a possible solution.
+If you encounter any issues during deployment, check out the [troubleshooting](../troubleshooting) article or our <a href="https://community.networkcanvas.com/" target="_blank">user community</a> for a possible solution.
 
 </TipBox>
 
@@ -288,7 +288,7 @@ To use Fresco, you need to set up an administrator account which will enable you
 
 <TipBox danger>
 
-To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](../troubleshooting#instance-expired---reset-your-database).
+To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](./troubleshooting#instance-expired---reset-your-database).
 
 </TipBox>
 
@@ -312,15 +312,15 @@ If you forget your password, you **will not be able to reset it**. We recommend 
 
 ### Upload a protocol
 
-You can optionally upload a protocol. Protocols can also be uploaded from the [Protocols page](../features#protocol-management) once the setup steps are completed.
+You can optionally upload a protocol. Protocols can also be uploaded from the [protocols page](../using-fresco#uploading-protocols) once the setup steps are completed.
 
 ![Upload a protocol](/assets/img/fresco-images/fresco2.png)
 
 ### Configure participation
 
-- **Import participants**: You can optionally upload a CSV file containing participants you wish to recruit to your study. Participants can also be uploaded from the [Participants page](../features#participant-management) once the setup steps are completed.
+- **Import participants**: You can optionally upload a CSV file containing participants you wish to recruit to your study. Participants can also be uploaded from the [participants page](../using-fresco#adding-participants) once the setup steps are completed.
 
-- **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found [here](../features#settings-and-configuration)
+- **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found [here](../concepts/recruitment-methods#anonymous-recruitment)
   ![Import participants and optionally, allow anonymous recruitment](/assets/img/fresco-images/fresco3.png)
 
 ### Visit the Dashboard
