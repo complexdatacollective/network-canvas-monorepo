@@ -15,7 +15,7 @@ Deploying Fresco can be achieved entirely for free using the free tiers of each 
 
 For more information on Vercel's pricing plans and features, you can visit their [pricing page.](https://vercel.com/pricing)
 
-For specific information on Vercel's Postgres Database Storage pricing, you can visit their [Vercel Postgres Pricing page.](https://vercel.com/docs/storage/vercel-postgres/usage-and-pricing)
+For specific information on Vercel's Postgres Database Storage pricing, you can visit their [Vercel Postgres pricing page.](https://vercel.com/docs/storage/vercel-postgres/usage-and-pricing)
 
 ## UploadThing
 
