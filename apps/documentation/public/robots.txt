@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Host
-Host: https://documentation.networkcanvas.dev
+Host: https://documentation.networkcanvas.com
 
 # Sitemaps
-Sitemap: https://documentation.networkcanvas.dev/sitemap.xml
+Sitemap: https://documentation.networkcanvas.com/sitemap.xml
