@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getEvents, type Event } from '~/app/_actions/actions';
 import { DataTable } from '~/components/DataTable/data-table';
 import ExportButton from '~/components/ExportButton';
-import { type Event } from '~/db/getEvents';
 import { getColumns } from './Columns';
 
 export type EventType = {
@@ -11,8 +11,18 @@ export type EventType = {
   isSelected: boolean;
 };
 
-export default function EventsTable({ events }: { events: Event[] }) {
+export default function EventsTable() {
+  const [events, setEvents] = useState<Event[]>([]);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
+
+  const fetchEvents = useCallback(async () => {
+    const data = await getEvents();
+    setEvents(data);
+  }, []);
+
+  useEffect(() => {
+    void fetchEvents();
+  }, [fetchEvents]);
 
   useEffect(() => {
     const eventTypesMap = new Map<string, EventType>();
@@ -32,19 +42,26 @@ export default function EventsTable({ events }: { events: Event[] }) {
   }, [eventTypes, events]);
 
   return (
-    <div>
+    <>
       <div className="mt-2 flex items-center justify-between">
-        <h2>Events</h2>
-        <ExportButton data={events} filename="events.csv" />
+        <div>
+          <h2>Events</h2>
+          {!events.length && <p>Loading...</p>}
+        </div>
+        {!!events.length && (
+          <ExportButton data={events} filename="events.csv" />
+        )}
       </div>
 
-      <div className="mt-2">
-        <DataTable
-          columns={getColumns(eventTypes, setEventTypes)}
-          data={filteredEvents}
-          pagination={true}
-        />
+      <div className="mt-2 rounded-md bg-card">
+        {!!events.length && (
+          <DataTable
+            columns={getColumns(eventTypes, setEventTypes)}
+            data={filteredEvents}
+            pagination={true}
+          />
+        )}
       </div>
-    </div>
+    </>
   );
 }

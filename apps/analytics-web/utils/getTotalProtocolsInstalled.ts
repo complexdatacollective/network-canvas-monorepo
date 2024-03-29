@@ -1,8 +1,6 @@
-import getEvents from '~/db/getEvents';
+import { type Event } from '~/app/_actions/actions';
 
-export const getTotalProtocolsInstalled = async () => {
-  const events = await getEvents();
-
+export const getTotalProtocolsInstalled = (events: Event[]) => {
   const nProtocolsInstalled = events.reduce((count, event) => {
     if (event.type === 'ProtocolInstalled') {
       return count + 1;

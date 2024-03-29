@@ -4,10 +4,10 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { type Dispatch, type SetStateAction } from 'react';
 import { DataTableColumnHeader } from '~/components/DataTable/column-header';
 import { MetadataDialog } from '~/components/MetadataDialog';
-import type { Event } from '~/db/getEvents';
 import { type EventType } from './EventsTable';
 import { StackTraceDialog } from './StackTraceDialog';
 import TableFilter from './TableFilter';
+import { type Event } from '~/app/_actions/actions';
 
 export const getColumns = (
   eventTypes: EventType[],

@@ -1,8 +1,9 @@
 import { getTotalInterviewsStarted } from '~/utils/getTotalInterviewsStarted';
 import { SummaryCard } from '~/components/SummaryCard';
+import { type Event } from '~/app/_actions/actions';
 
-const TotalInterviewsStartedCard = async () => {
-  const totalInterviewsStarted = await getTotalInterviewsStarted();
+const TotalInterviewsStartedCard = ({ events }: { events: Event[] }) => {
+  const totalInterviewsStarted = getTotalInterviewsStarted(events);
   return (
     <SummaryCard
       title="Interviews Started"

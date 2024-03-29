@@ -2,8 +2,8 @@
 
 import { Download } from 'lucide-react';
 import Papa from 'papaparse';
+import { type Event } from '~/app/_actions/actions';
 import { Button } from '~/components/ui/button';
-import { type Event } from '~/db/getEvents';
 
 type ExportButtonProps = {
   data: Event[];

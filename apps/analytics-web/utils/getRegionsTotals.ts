@@ -1,14 +1,12 @@
-import getEvents, { type Event } from '~/db/getEvents';
 import { getName } from 'i18n-iso-countries';
+import { type Event } from '~/app/_actions/actions';
 
 export type RegionTotal = {
   country: string;
   total: number;
 };
 
-export default async function getRegionsTotals(): Promise<RegionTotal[]> {
-  const events: Event[] = await getEvents();
-
+export default function getRegionsTotals(events: Event[]): RegionTotal[] {
   const calculatedTotals: Record<string, number> = {};
 
   for (const event of events) {

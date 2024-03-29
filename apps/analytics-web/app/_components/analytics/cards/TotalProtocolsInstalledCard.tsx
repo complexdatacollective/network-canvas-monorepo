@@ -1,8 +1,9 @@
 import { getTotalProtocolsInstalled } from '~/utils/getTotalProtocolsInstalled';
 import { SummaryCard } from '~/components/SummaryCard';
+import { type Event } from '~/app/_actions/actions';
 
-const TotalProtocolsInstalledCard = async () => {
-  const totalProtocolsInstalled = await getTotalProtocolsInstalled();
+const TotalProtocolsInstalledCard = ({ events }: { events: Event[] }) => {
+  const totalProtocolsInstalled = getTotalProtocolsInstalled(events);
   return (
     <SummaryCard
       title="Protocols Installed"

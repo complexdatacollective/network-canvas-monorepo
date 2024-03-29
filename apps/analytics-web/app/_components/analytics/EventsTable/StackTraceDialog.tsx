@@ -1,5 +1,5 @@
+import { type Event } from '~/app/_actions/actions';
 import { DialogButton } from '~/components/DialogButton';
-import { type Event } from '~/db/getEvents';
 
 export function StackTraceDialog({ error }: { error: Event }) {
   return (

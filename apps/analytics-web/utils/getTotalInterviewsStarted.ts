@@ -1,8 +1,6 @@
-import getEvents from '~/db/getEvents';
+import { type Event } from '~/app/_actions/actions';
 
-export const getTotalInterviewsStarted = async () => {
-  const events = await getEvents();
-
+export const getTotalInterviewsStarted = (events: Event[]) => {
   const nInterviewsStarted = events.reduce((count, event) => {
     if (event.type === 'InterviewStarted') {
       return count + 1;

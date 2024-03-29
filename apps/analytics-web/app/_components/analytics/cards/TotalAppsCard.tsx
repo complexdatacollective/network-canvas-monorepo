@@ -1,8 +1,9 @@
 import { getTotalAppsSetup } from '~/utils/getTotalAppsSetup';
 import { SummaryCard } from '~/components/SummaryCard';
+import { type Event } from '~/app/_actions/actions';
 
-const TotalAppsCard = async () => {
-  const totalAppsSetup = await getTotalAppsSetup();
+const TotalAppsCard = ({ events }: { events: Event[] }) => {
+  const totalAppsSetup = getTotalAppsSetup(events);
   return (
     <SummaryCard
       title="Apps Setup"

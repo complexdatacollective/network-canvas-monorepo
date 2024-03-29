@@ -1,8 +1,9 @@
+import { type Event } from '~/app/_actions/actions';
 import { SummaryCard } from '~/components/SummaryCard';
 import { getTotalErrors } from '~/utils/getTotalErrors';
 
-const TotalErrorsCard = async () => {
-  const totalErrors = await getTotalErrors();
+const TotalErrorsCard = ({ events }: { events: Event[] }) => {
+  const totalErrors = getTotalErrors(events);
   return (
     <SummaryCard
       title="Number of Errors"

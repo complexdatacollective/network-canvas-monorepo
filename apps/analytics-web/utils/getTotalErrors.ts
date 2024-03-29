@@ -1,8 +1,6 @@
-import getEvents from '~/db/getEvents';
+import { type Event } from '~/app/_actions/actions';
 
-export const getTotalErrors = async () => {
-  const events = await getEvents();
-
+export const getTotalErrors = (events: Event[]) => {
   const nErrors = events.reduce((count, event) => {
     if (event.type === 'Error') {
       return count + 1;

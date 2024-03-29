@@ -1,8 +1,6 @@
-import getEvents from '~/db/getEvents';
+import { type Event } from '~/app/_actions/actions';
 
-export const getTotalAppsSetup = async () => {
-  const events = await getEvents();
-
+export const getTotalAppsSetup = (events: Event[]) => {
   const nAppsSetup = events.reduce((count, event) => {
     if (event.type === 'AppSetup') {
       return count + 1;
