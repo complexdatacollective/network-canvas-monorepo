@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import insertEvent from '~/db/insertEvent';
 import { AnalyticsEventSchema } from '@codaco/analytics';
+import { insertEvent } from '~/app/_actions/actions';
 
 // Allow CORS requests from anywhere.
 const corsHeaders = {
