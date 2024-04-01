@@ -33,14 +33,8 @@ const links = [
       {
         titleTranslationKey: 'projectsChildren.fresco.label',
         descriptionTranslationKey: 'projectsChildren.fresco.description',
-        href: '/projects/fresco',
+        href: '/en/fresco',
         image: '/images/fresco.svg',
-      },
-      {
-        titleTranslationKey: 'projectsChildren.studio.label',
-        descriptionTranslationKey: 'projectsChildren.studio.description',
-        href: '/projects/studio',
-        image: '/images/studio.svg',
       },
     ],
   },
@@ -72,7 +66,7 @@ export const NavigationMenuDemo = () => {
                     <ChevronDown className="h-4 w-4" aria-hidden />
                   </NavigationMenu.Trigger>
                   <NavigationMenu.Content className="absolute right-0 top-0 w-full">
-                    <ul className="m-0 grid w-full grid-cols-3 gap-4 p-6">
+                    <ul className="m-0 grid w-full grid-cols-2 gap-4 p-6">
                       {link.menu.map((subLink, i) => (
                         <li key={i} className="col-span-1 grid">
                           <NavigationMenu.Link asChild>
