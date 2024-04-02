@@ -23,6 +23,7 @@ export const env = createEnv({
     NEXT_PUBLIC_ALGOLIA_INDEX_NAME: z.string().min(1),
     NEXT_PUBLIC_ALGOLIA_API_KEY: z.string().min(1),
     NEXT_PUBLIC_MENDABLE_ANON_KEY: z.string().min(1),
+    NEXT_PUBLIC_GA_ID: z.string().min(1),
   },
   shared: {
     NEXT_PUBLIC_URL: z.string().url().optional(),
@@ -44,6 +45,7 @@ export const env = createEnv({
     NEXT_PUBLIC_ALGOLIA_INDEX_NAME: process.env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
     NEXT_PUBLIC_ALGOLIA_API_KEY: process.env.NEXT_PUBLIC_ALGOLIA_API_KEY,
     NEXT_PUBLIC_MENDABLE_ANON_KEY: process.env.NEXT_PUBLIC_MENDABLE_ANON_KEY,
+    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_MENDABLE_ANON_KEY,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,
     VERCEL_URL: process.env.VERCEL_URL,

@@ -12,6 +12,8 @@ import { locales } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
+import { GoogleAnalytics } from '@next/third-parties/google';
+import { env } from '~/env.mjs';
 
 const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'],
@@ -83,6 +85,7 @@ export default async function MainLayout({
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>
+      <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
     </html>
   );
 }
