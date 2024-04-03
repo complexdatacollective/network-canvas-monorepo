@@ -1,16 +1,18 @@
 {
   "name": "@codaco/shared-consts",
+  "private": true,
   "version": "0.0.2",
   "description": "Shared constants and typescript definitions for the Network Canvas project.",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "test": "xv dist",
+    "clean": "rm -rf .turbo node_modules",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
     "lint": "eslint .",
-    "start": "esno src/index.ts",
-    "dev": "tsup --watch",
-    "build": "tsup"
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "typescript",
@@ -29,15 +31,6 @@
     "prettier": "^3.2.5",
     "typescript": "^5.3.3",
     "xv": "^1.0.2"
-  },
-  "files": [
-    "dist",
-    "!dist/**/*.test.*",
-    "!dist/**/*.test.*.map",
-    "!dist/**/*.test.d.ts"
-  ],
-  "publishConfig": {
-    "access": "public"
   },
   "eslintConfig": {
     "extends": [

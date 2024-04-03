@@ -1,5 +1,5 @@
-import { Color } from './colors.js';
-import { VariableDefinition } from './variables.js';
+import { type Color } from './colors.js';
+import { type VariableDefinition } from './variables.js';
 
 // Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/protocol.json#variable-registry
 export enum EntityTypes {
@@ -16,7 +16,7 @@ export type EntityTypeDefinition = {
 
 export type NodeTypeDefinition = EntityTypeDefinition & {
   name: string;
-  color: Color | string;
+  color: Color;
   iconVariant?: string;
 };
 
