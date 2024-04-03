@@ -1,0 +1,49 @@
+{
+  "name": "@codaco/shared-consts",
+  "version": "0.0.2",
+  "description": "Shared constants and typescript definitions for the Network Canvas project.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "test": "xv dist",
+    "lint": "eslint .",
+    "start": "esno src/index.ts",
+    "dev": "tsup --watch",
+    "build": "tsup"
+  },
+  "keywords": [
+    "typescript",
+    "library"
+  ],
+  "author": "Complex Data Collective <developers@coda.co>",
+  "license": "MIT",
+  "devDependencies": {
+    "@codaco/eslint-config": "workspace:*",
+    "@codaco/prettier-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*",
+    "@types/node": "^20.5.2",
+    "esno": "^0.12.1",
+    "tsup": "^8.0.2",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3",
+    "xv": "^1.0.2"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.test.*.map",
+    "!dist/**/*.test.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "eslintConfig": {
+    "extends": [
+      "@codaco/eslint-config/base",
+      "@codaco/eslint-config/react"
+    ]
+  },
+  "prettier": "@codaco/prettier-config"
+}

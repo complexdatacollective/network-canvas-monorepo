@@ -9,6 +9,7 @@
   "description": "Utilities for validating and migrating Network Canvas protocol files.",
   "scripts": {
     "build": "bun run build.mjs",
+    "lint": "eslint .",
     "dev": "bun --watch ./src/index.ts",
     "test": "bun test",
     "prepublishOnly": "bun run build"
