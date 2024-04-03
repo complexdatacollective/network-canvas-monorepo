@@ -1,0 +1,17 @@
+name: Link Checker
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  linkinator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: JustinBeckwith/linkinator-action@v1
+        with:
+          recurse: true
+          paths: https://documentation-git-fix-static-lin-039cd6-network-canvas-f4790d84.vercel.app/
