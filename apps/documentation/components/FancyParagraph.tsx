@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Paragraph, type ParagraphProps } from '@codaco/ui';
 import { Children } from 'react';
+import { isJavaScriptEnabled } from '~/lib/utils';
 
 // FancyParagraph is a component that animates the words in a heading.
 const FancyParagraph = (props: ParagraphProps) => {
@@ -30,7 +31,7 @@ const FancyParagraph = (props: ParagraphProps) => {
         <motion.span
           custom={outerIndex + innerIndex}
           variants={variants}
-          initial="hidden"
+          initial={isJavaScriptEnabled ? 'hidden' : 'visible'}
           animate="visible"
           className="inline-block"
         >
@@ -50,7 +51,7 @@ const FancyParagraph = (props: ParagraphProps) => {
             key={index}
             custom={index}
             variants={variants}
-            initial="hidden"
+            initial={isJavaScriptEnabled ? 'hidden' : 'visible'}
             animate="visible"
             className="inline-block"
           >

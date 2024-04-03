@@ -1,6 +1,9 @@
+'use client';
+
 import { motion } from 'framer-motion';
 import { Heading, type HeadingProps } from '@codaco/ui';
 import { Children } from 'react';
+import { isJavaScriptEnabled } from '~/lib/utils';
 
 // FancyHeading is a component that animates the words in a heading.
 const FancyHeading = (props: HeadingProps) => {
@@ -30,9 +33,10 @@ const FancyHeading = (props: HeadingProps) => {
         <motion.span
           custom={outerIndex + innerIndex}
           variants={variants}
-          initial="hidden"
+          initial={isJavaScriptEnabled ? 'hidden' : 'visible'}
           animate="visible"
           className="inline-block"
+          suppressHydrationWarning
         >
           {segment}&nbsp;
         </motion.span>
@@ -50,9 +54,10 @@ const FancyHeading = (props: HeadingProps) => {
             key={index}
             custom={index}
             variants={variants}
-            initial="hidden"
+            initial={isJavaScriptEnabled ? 'hidden' : 'visible'}
             animate="visible"
             className="inline-block"
+            suppressHydrationWarning
           >
             {word}
           </motion.span>
