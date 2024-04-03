@@ -13,7 +13,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
 
   // Check if we are on the home page by comparing the pathname to our supported locals
-  const isHomePage = pathname === `/${locale}`;
+  const isHomePage = pathname === `/${locale}/`;
 
   return (
     <>

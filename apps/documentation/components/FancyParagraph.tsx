@@ -34,6 +34,7 @@ const FancyParagraph = (props: ParagraphProps) => {
           initial={isJavaScriptEnabled ? 'hidden' : 'visible'}
           animate="visible"
           className="inline-block"
+          suppressHydrationWarning
         >
           {segment}&nbsp;
         </motion.span>
@@ -54,6 +55,7 @@ const FancyParagraph = (props: ParagraphProps) => {
             initial={isJavaScriptEnabled ? 'hidden' : 'visible'}
             animate="visible"
             className="inline-block"
+            suppressHydrationWarning
           >
             {word}
           </motion.span>

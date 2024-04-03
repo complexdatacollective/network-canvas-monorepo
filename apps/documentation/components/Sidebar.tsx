@@ -241,7 +241,12 @@ export function Sidebar({ className }: { className?: string }) {
   const typedSidebarData = sidebarData as TSideBar;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
 
+  // console.log(locale, project, typedSidebarData[locale][project]);
+
   const formattedSidebarData = typedSidebarData[locale]![project]!.children;
+
+  // const formattedSidebarData = {};
+
   const sortedSidebarItems = sortSidebarItems(
     Object.values(formattedSidebarData),
   );

@@ -19,6 +19,7 @@ export default function SharedNav() {
         damping: 30,
         mass: 1,
       }}
+      suppressHydrationWarning
     >
       <LogoComponent />
       <Menu />

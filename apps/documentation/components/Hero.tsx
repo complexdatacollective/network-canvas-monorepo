@@ -51,6 +51,7 @@ export function Hero() {
         className="mx-4 flex max-w-5xl flex-col items-center gap-10 sm:mx-8 md:-mt-8 md:flex-1 md:justify-center lg:gap-16"
         initial={isJavaScriptEnabled ? { opacity: 0 } : { opacity: 1 }}
         animate={{ opacity: 1 }}
+        suppressHydrationWarning
       >
         <div className="flex flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
           <div className="flex flex-col items-center justify-center md:basis-1/2 lg:basis-3/5">
@@ -77,9 +78,10 @@ export function Hero() {
                   stiffness: 80,
                   delay: 0.25,
                 }}
+                suppressHydrationWarning
               >
                 <img
-                  src="images/robot.svg"
+                  src="/images/robot.svg"
                   className="h-auto w-36 md:w-full"
                   alt="Robot"
                 />
@@ -89,16 +91,16 @@ export function Hero() {
         </div>
         <div className="flex flex-col gap-6 md:flex-row">
           <ProjectCard
-            href="en/desktop"
+            href="desktop"
             title={t('ProjectSwitcher.desktop.label')}
             description={t('ProjectSwitcher.desktop.description')}
-            icon="images/desktop.png"
+            icon="/images/desktop.png"
           />
           <ProjectCard
-            href="en/fresco"
+            href="fresco"
             title={t('ProjectSwitcher.fresco.label')}
             description={t('ProjectSwitcher.fresco.description')}
-            icon="images/fresco.png"
+            icon="/images/fresco.png"
           />
         </div>
       </motion.div>
