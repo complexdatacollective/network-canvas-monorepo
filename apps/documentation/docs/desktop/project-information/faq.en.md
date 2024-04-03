@@ -56,9 +56,9 @@ The Network Canvas suite consists of three applications, with each component run
 - Architect and Server are desktop apps, and will run on Windows, macOS, and Linux operating systems.
 - Network Canvas is a hybrid desktop/mobile app, and will run on Windows, Mac, iOS and Android. It will work best with a touch screen device, but will also function well with a conventional computer that uses a keyboard and mouse. Specific functionality may vary by operating system.
 
-Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1", and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
+Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1"), and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
 
-Although Network Canvas has not been tested on all possible hardware configurations, we anticipate that most mid to high-end laptop computers and tablets will be capable of running the software well. Please see our article on [choosing hardware for a study](./how-to/choosing-hardware) for more information. If you are planning data collection and have specific questions, please create a post on our [user community](https://community.networkcanvas.com).
+Although Network Canvas has not been tested on all possible hardware configurations, we anticipate that most mid to high-end laptop computers and tablets will be capable of running the software well. Please see our article on [choosing hardware for a study](/en/desktop/getting-started/choosing-hardware) for more information. If you are planning data collection and have specific questions, please create a post on our [user community](https://community.networkcanvas.com).
 
 ## How do I cite the Network Canvas suite of tools in a paper or grant application?
 
