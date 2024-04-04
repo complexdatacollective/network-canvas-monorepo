@@ -17,7 +17,7 @@ To run the app locally:
 
 ### 1. Product Coverage
 
-- **Network Canvas Core:** The suite includes three applications tailored to assist researchers in social network data collection.
+- **Network Canvas Core:** The desktop suite includes two applications tailored to assist researchers in social network data collection.
 
 - **Fresco (Interviewer in Browser):** Explore detailed documentation on Fresco, a key component of Network Canvas, providing an in-browser interviewer for streamlined data collection.
 

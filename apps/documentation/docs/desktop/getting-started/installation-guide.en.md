@@ -8,18 +8,26 @@ toc: true
 
 ## Which applications do I need?
 
-Each application of the Network Canvas Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
+Each application of the Network Canvas Desktop Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
 
 - Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field.
 - Install **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
 
+<TipBox>
+
+[Fresco](/en/fresco), a new project that brings Network Canvas interviews to the browser, cannot be directly downloaded and installed. See our guide on the [deployment process](/en/fresco/deployment/guide) for more information.
+
+</TipBox>
+
 ## System Requirements
 
-All three applications are supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
+Both desktop applications are supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
 
 For desktop applications, we recommend a modern device, featuring a high resolution screen (greater than 900 pixels effective vertical resolution), ample RAM, and dedicated graphics. Performance may differ considerably depending on the power of the device that you use, and you should be aware that this can negatively impact the interview experience for your research participants, leading to poorer quality data.
 
 You may install and run the software on devices that do not meet these criteria, but we are unfortunately unable to offer support regarding technical issues if you do.
+
+For information on supported browsers, devices, and platforms in Fresco, see the [Fresco FAQ](/en/fresco/faq#which-browsers-are-supported)
 
 ## Windows
 
