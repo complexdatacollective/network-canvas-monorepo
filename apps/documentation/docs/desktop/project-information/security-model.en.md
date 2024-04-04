@@ -9,6 +9,12 @@ Security is an important consideration when handling study data.
 - Studies need to be able to ensure that collected data is genuine to ensure the integrity
   of the research.
 
+<TipBox>
+
+This overview covers the security model for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/fresco/faq#is-the-data-storage-hipaagdpr-compliant-is-it-secure)
+
+</TipBox>
+
 ## What data needs to be secured
 
 ### Protocols

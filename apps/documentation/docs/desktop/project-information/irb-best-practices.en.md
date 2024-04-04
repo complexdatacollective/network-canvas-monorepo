@@ -6,6 +6,12 @@ We recognize that data security is a primary concern for most researchers. Netwo
 
 Network Canvas uses modern security features, and has built on existing technologies and widely used implementations. Our data security approach focuses on data transfer, since we work on the assumption that devices running the Suite will be fully controlled by researchers. This means that data transfer is the most vulnerable step in the workflow.
 
+<TipBox>
+
+These best practices are intended for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/fresco/faq#is-the-data-storage-hipaagdpr-compliant-is-it-secure)
+
+</TipBox>
+
 ## Data Storage
 
 Where Network Canvas data is stored is up to the researcher.
@@ -20,4 +26,3 @@ Since the onus of data storage and device security is on the researcher, we sugg
 - **Use strong passwords/passcodes on devices.** Implement user access controls to prevent multi-user systems from granting access to data from other user accounts.
 - **Restrict physical access to devices.** The use of 'kiosk' modes (or similar), along with full constant supervision of the interview, to prevent research participants from accessing data within the app.
 - **Minimize time study data remains on field devices.** Uploading data to designated secured storage locations as regularly as possible, and then deleting it from field devices, helps limit risk of breach (e.g. a device being stolen).
-- **Periodically re-pair your devices.** Re-pairing allows your devices to refresh their encryption code which helps to minimize the potential for any interception.
