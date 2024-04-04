@@ -7,12 +7,13 @@ navOrder: 5
 
 ## What is Network Canvas?
 
-Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and Fresco for deploying protocols in the web browser.
+Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and [Fresco](/en/fresco) for deploying protocols in the web browser.
 
 We have designed our software to overcome a few distinct barriers to social network data collection:
 
 1. The act of collecting self-reported data is often dull and tedious. Our software is built with an emphasis on user experience, and has been rated highly in usability and satisfaction [testing](http://dl.acm.org/citation.cfm?id=2858368).
 2. There is not enough consistency or capacity for reproducibility across social network data collection. Having reusable, road-tested, and easy to implement instruments in our Architect software should help researchers to begin to standardize and improve the quality and impact of their research.
+3. Managing incoming network data and preparing it for statistical analysis is too difficult. Our Interviewer app will export data in formats that work with most common social network analysis applications and workflows.
 
 ## When can I use the tools in the Network Canvas suite?
 
@@ -53,7 +54,8 @@ Unfortunately we do not have specific support for screen readers, or right-to-le
 The Network Canvas suite consists of three applications, with each component running on a variety of platforms:
 
 - Architect is a desktop app, and will run on Windows, macOS, and Linux operating systems.
-- Network Canvas is a hybrid desktop/mobile app, and will run on Windows, Mac, iOS and Android. It will work best with a touch screen device, but will also function well with a conventional computer that uses a keyboard and mouse. Specific functionality may vary by operating system.
+- Interviewer is a hybrid desktop/mobile app, and will run on Windows, Mac, iOS and Android. It will work best with a touch screen device, but will also function well with a conventional computer that uses a keyboard and mouse. Specific functionality may vary by operating system.
+- Fresco is a web-based application. For information on supported browsers, devices, and platforms, see our [Fresco FAQ](/en/fresco/faq#which-browsers-are-supported).
 
 Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1"), and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
 
@@ -75,6 +77,6 @@ Our software was conceived in the context of research of a highly sensitive natu
 
 We do not transmit, collect or retain any data from or about your study. The data you collect in the field is yours, and is only ever stored on your devices. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](../getting-started/configuring-devices), and [IRB and security best practices](./irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
 
-If you wish to utilize our remote transfer functionality, we use standard encryption techniques implemented by well respected third party libraries to ensure that your data cannot be intercepted as it is sent remotely back to your laboratory or department computer. This transfer can take place on a local network within your institution for added security, or you can implement an entirely [offline workflow](../tutorials/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of the security model we implement can be [found here](./security-model).
+If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/desktop/tutorials/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](../tutorials/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of the security model we implement can be [found here](./security-model).
 
 If you have specific security requirements, please contact us to discuss how we can make our software suite compliant with your needs.

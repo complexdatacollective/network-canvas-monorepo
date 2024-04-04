@@ -50,6 +50,7 @@ URLs for Network Canvas software repositories are:
 
 - [https://github.com/complexdatacollective/Interviewer](https://github.com/complexdatacollective/Interviewer)
 - [https://github.com/complexdatacollective/Architect](https://github.com/complexdatacollective/Architect)
+- [https://github.com/complexdatacollective/Fresco](https://github.com/complexdatacollective/Fresco)
 
 Current downloads for the Network Canvas Software Suite are available at:
 
