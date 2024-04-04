@@ -9,7 +9,7 @@ defaults:
 jobs:
   linkinator:
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.event.deployment_status.environment_url, 'https://documentation') && github.event.deployment_status.state == 'success' }}
+    if: ${{ contains(github.event.deployment_status.repository_url, 'documentation') && github.event.deployment_status.state == 'success' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
