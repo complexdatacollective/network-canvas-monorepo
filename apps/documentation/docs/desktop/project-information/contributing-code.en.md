@@ -32,7 +32,7 @@ CODACO is the sole copyright holder of the Network Canvas Software.
 
 ### The Network Canvas Software
 
-The Network Canvas Software consists of three software applications (Architect, Interviewer, and Server), their associated libraries, and their source code. This software was created by the core Network Canvas project team and their external contracted developers, with support by the National Institute of Health (R01 DA042711).
+The Network Canvas Software consists of three software applications (Architect, Interviewer, and Fresco), their associated libraries, and their source code. This software was created by the core Network Canvas project team and their external contracted developers, with support by the National Institute of Health (R01 DA042711).
 
 The Network Canvas project repositories (“main repositories”) are located under the CODACO GitHub organization: [https://github.com/complexdatacollective](https://github.com/complexdatacollective)
 

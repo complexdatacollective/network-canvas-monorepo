@@ -25,11 +25,6 @@ store metadata, including the date that the session was conducted which may reve
 
 Each app stores a metadata about protocols as well as application-specific settings.
 
-In Server:
-
-- Paired device metadata, including the device name and the device secret key
-- Protocol metadata, such as when they were installed.
-
 In Interviewer:
 
 - Information about application display settings
@@ -66,20 +61,3 @@ For Linux, it will depend on the distribution; Ubuntu comes with out-the-box dis
 Your device(s) should be configured with strong passwords and to lock automatically from inactivity - or
 better yet should be manually locked when not in use. This is to prevent access to data when you or the user
 are not present.
-
-### Data in transit
-
-Data transferred between Server and Interviewer is encrypted using TLS.
-
-- Protocols: when using the "Import from Server" feature in Interviewer
-- Session data: when using the "Export to Server" feature in Interviewer
-
-Additionally, metadata is transferred between Server and Interview when pairing devices. This is done using
-Secretbox from [libsodium](https://doc.libsodium.org/), using the pairing code as an "out of band" key exchange.
-
-#### VPN
-
-It is strongly advised that a VPN is used when using Server in tandem with Interviewer. You may be using one already
-if you use a device managed by an IT department. Using a VPN will provide more comprehensive security for
-the transmission of data, as although every effort has been made to ensure security between the apps, this
-is much more likely to include bugs that the tried and battle tested VPN tools that already exist.

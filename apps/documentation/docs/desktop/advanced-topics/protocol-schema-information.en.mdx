@@ -73,17 +73,7 @@ Migrating a protocol happens within Architect, and is automatic. The process wor
 1. Ensure you are on the latest version of the Architect app. When opening the app with an active internet connection, the app will check for updates automatically, and notify you if any are found. Alternatively, you can manually update the app, by visiting our download page and installing the latest version for your platform.
 2. Once you are running the latest version, open the protocol file that you wish to migrate.
 3. Architect will inform you that the protocol file can be upgraded, which happens by creating a copy (so that your original file is preserved). If you choose to continue, you will be prompted for a location to save your upgraded protocol.
-4. Architect will automatically append "(schema version X)" to the filename, which may help you to keep track of the different versions of your protocol, and to differentiate them within Server and Interviewer.
-
-<TipBox danger>
-
-Schema changes may represent changes to the underlying network data model, and therefore protocols migrated from one schema version to another must be treated as different workspaces within Server.
-
-Users that migrate their protocols to a new schema version will need to create a merging script to handle combining the two data sources from the two workspaces once exported.
-
-Although this process introduces an extra step in a user workflow, it promotes better quality data and greater user control.
-
-</TipBox>
+4. Architect will automatically append "(schema version X)" to the filename, which may help you to keep track of the different versions of your protocol, and to differentiate them within Interviewer.
 
 ## Compatibility Table
 

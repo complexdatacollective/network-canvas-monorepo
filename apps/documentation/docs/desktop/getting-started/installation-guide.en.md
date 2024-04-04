@@ -12,13 +12,6 @@ Each application of the Network Canvas Suite can be downloaded and installed ind
 
 - Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field.
 - Install **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
-- (Optionally) Install **Server** if you wish to use it as a central data storage system, or as a means to deploy interview protocols to your devices. See "do I need Server" (below) for further information.
-
-### Do I need Server?
-
-Server has been designed specifically for scenarios where a dedicated team member will be responsible for managing data. This team member should be prepared to work with their IT department, or else have good knowledge of computer networking principles, in order to configure Server to send and receive data securely.
-
-Smaller studies, or extremely large studies, may benefit from working directly with data exported from Interviewer. For more information, see our tutorial on [offline data management workflows](/en/desktop/tutorials/workflows-without-server#option-1-online-workflow).
 
 ## System Requirements
 
@@ -64,7 +57,7 @@ If you cannot find Interviewer in the Play Store, it is likely because your devi
 
 If your ChromeOS device supports installing Android apps, you can install the Interviewer app as usual through the Google Play Store. To do this, please see the instructions above for installing the app on Android.
 
-Please note that only Interviewer is specifically designed to work with ChromeOS, and only when run as an Android app. Running Interviewer, Architect or Server through Linux app compatibility is not supported at present.
+Please note that only Interviewer is specifically designed to work with ChromeOS, and only when run as an Android app. Running Interviewer or Architect through Linux app compatibility is not supported at present.
 
 ## iOS
 
