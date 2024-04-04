@@ -10,8 +10,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Run Linkinator
-        uses: JustinBeckwith/linkinator-action@v1
+      - name: Setup npm
+        uses: pnpm/action-setup@v2
         with:
-          recurse: true
-          paths: ${{ github.event.deployment_status.environment_url }}
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Linkinator
+        run: pnpm linkinator ${{ github.event.deployment_status.environment_url}} -r
