@@ -93,3 +93,10 @@ export const buildSchemas = async () => {
   const moduleIndex = generateModuleIndex(schemas);
   await writeFile(moduleIndexPath, moduleIndex);
 };
+
+try {
+  await buildSchemas();
+} catch (error) {
+  // eslint-disable-next-line no-console
+  console.error('Error building schemas: ', error);
+}

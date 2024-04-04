@@ -4,6 +4,6 @@
     "baseUrl": ".",
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
-  "include": ["."],
-  "exclude": ["dist", "build", "node_modules"]
+  "include": ["*.ts", "src", "scripts"],
+  "exclude": ["src/compiledSchemas", "node_modules"]
 }

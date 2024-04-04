@@ -448,9 +448,15 @@ importers:
       prettier:
         specifier: ^3.2.5
         version: 3.2.5
+      tsx:
+        specifier: ^4.7.1
+        version: 4.7.1
       typescript:
         specifier: ^5.3.3
         version: 5.4.2
+      zod:
+        specifier: ^3.22.4
+        version: 3.22.4
 
   packages/shared-consts:
     devDependencies:

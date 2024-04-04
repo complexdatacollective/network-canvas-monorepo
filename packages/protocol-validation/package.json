@@ -8,11 +8,9 @@
   "types": "dist/index.d.ts",
   "description": "Utilities for validating and migrating Network Canvas protocol files.",
   "scripts": {
-    "build": "bun run build.mjs",
+    "compileSchema": "tsx ./scripts/buildSchemas.ts",
     "lint": "eslint .",
-    "dev": "bun --watch ./src/index.ts",
-    "test": "bun test",
-    "prepublishOnly": "bun run build"
+    "test": "bun test"
   },
   "files": [
     "dist"
@@ -26,7 +24,9 @@
     "eslint": "^8.57.0",
     "jszip": "^3.10.1",
     "prettier": "^3.2.5",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.1",
+    "zod": "^3.22.4"
   },
   "dependencies": {
     "@codaco/shared-consts": "workspace:*",
@@ -39,6 +39,9 @@
     "extends": [
       "@codaco/eslint-config/base",
       "@codaco/eslint-config/react"
+    ],
+    "ignorePatterns": [
+      "src/compiledSchemas/*"
     ]
   },
   "prettier": "@codaco/prettier-config"

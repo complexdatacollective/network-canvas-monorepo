@@ -1,8 +1,8 @@
-import getMigrationPath from "./getMigrationPath";
-import canUpgrade from "./canUpgrade";
-import getMigrationNotes from "./getMigrationNotes";
-import { MigrationStepError } from "./errors";
-import { Protocol } from "@codaco/shared-consts";
+import getMigrationPath from './getMigrationPath';
+import canUpgrade from './canUpgrade';
+import getMigrationNotes from './getMigrationNotes';
+import { MigrationStepError } from './errors';
+import { type Protocol } from '@codaco/shared-consts';
 
 export type ProtocolMigration = {
   version: number;
