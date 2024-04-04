@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 export const nodeExportIDProperty = 'nodeID';
 export const edgeExportIDProperty = 'edgeID';
 export const egoProperty = 'networkCanvasEgoUUID';

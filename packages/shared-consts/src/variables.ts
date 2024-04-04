@@ -1,5 +1,3 @@
-import { InputControlDefinition } from './controls/index.js';
-
 // This isn't working currently
 export enum VariableType {
   boolean = 'boolean',

@@ -1,18 +1,16 @@
 import type { Codebook } from './codebook.js';
 import type { Stage } from './stages.js';
 
-export interface AssetDefinition {
+export type AssetDefinition = {
   source: string;
   name: string;
   type: 'network' | 'image' | 'audio' | 'video';
   id?: string;
-}
+};
 
-export interface AssetManifest {
-  [key: string]: AssetDefinition;
-}
+export type AssetManifest = Record<string, AssetDefinition>;
 
-export interface Protocol {
+export type Protocol = {
   name: string;
   description?: string;
   lastModified: string;
@@ -20,4 +18,4 @@ export interface Protocol {
   stages: Stage[];
   codebook: Codebook;
   assetManifest?: AssetManifest;
-}
+};
