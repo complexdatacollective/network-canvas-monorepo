@@ -12,7 +12,6 @@
   "devDependencies": {
     "@changesets/cli": "^2.26.2",
     "@codaco/prettier-config": "workspace:*",
-    "linkinator": "^6.0.4",
     "prettier": "^3.2.5",
     "turbo": "^1.12.4",
     "typescript": "^5.3.3"

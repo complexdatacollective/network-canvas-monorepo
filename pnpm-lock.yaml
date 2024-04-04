@@ -14,9 +14,6 @@ importers:
       '@codaco/prettier-config':
         specifier: workspace:*
         version: link:tooling/prettier
-      linkinator:
-        specifier: ^6.0.4
-        version: 6.0.4
       prettier:
         specifier: ^3.2.5
         version: 3.2.5
@@ -268,6 +265,9 @@ importers:
       hast-util-heading-rank:
         specifier: ^3.0.0
         version: 3.0.0
+      linkinator:
+        specifier: ^6.0.4
+        version: 6.0.4
       mdast-util-to-string:
         specifier: ^4.0.0
         version: 4.0.0
