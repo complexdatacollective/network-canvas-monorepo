@@ -1,10 +1,11 @@
-import { readdir, writeFile, exists, mkdir } from "node:fs/promises";
-import { join, extname, basename, resolve } from "node:path";
-import Ajv from "ajv";
-import standaloneCode from "ajv/dist/standalone/index.js";
+import { readdir, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, extname, basename, resolve } from 'node:path';
+import Ajv, { type AnySchema } from 'ajv';
+import standaloneCode from 'ajv/dist/standalone/index.js';
 
-const SCHEMA_SRC_PATH = "./src/schemas";
-const SCHEMA_OUTPUT_PATH = "./dist/schemas";
+const SCHEMA_SRC_PATH = './src/schemas';
+const SCHEMA_OUTPUT_PATH = './src/compiledSchemas';
 
 const ajv = new Ajv({
   code: { source: true, esm: true, lines: true },
@@ -12,19 +13,19 @@ const ajv = new Ajv({
   allowUnionTypes: true,
 });
 
-ajv.addFormat("integer", /\d+/);
-ajv.addFormat("date-time", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+ajv.addFormat('integer', /\d+/);
+ajv.addFormat('date-time', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
 
-const isJsonFile = (fileName: string) => extname(fileName) === ".json";
+const isJsonFile = (fileName: string) => extname(fileName) === '.json';
 const getBaseName = (schemaFileName: string) =>
-  basename(schemaFileName, ".json");
+  basename(schemaFileName, '.json');
 
 const asVariableName = (schemaName: string) =>
-  `version_${schemaName.replace(/\./g, "_")}`;
+  `version_${schemaName.replace(/\./g, '_')}`;
 
-const asIntName = (schemaVersion: string | number) => {
+const asIntName = (schemaVersion: string) => {
   if (isNaN(parseInt(schemaVersion, 10))) {
-    throw Error("Schema version could not be converted to integer");
+    throw Error('Schema version could not be converted to integer');
   }
 
   return parseInt(schemaVersion, 10);
@@ -36,21 +37,21 @@ const getSchemas = async (directory: string) => {
   return files.filter(isJsonFile).map(getBaseName);
 };
 
-const generateModuleIndex = (schemas) => {
-  const formatRequire = (baseSchemaName) => {
+const generateModuleIndex = (schemas: string[]) => {
+  const formatRequire = (baseSchemaName: string) => {
     const relativeModulePath = join(`./${baseSchemaName}.js`);
     return `import ${asVariableName(
       baseSchemaName,
     )} from './${relativeModulePath}';`;
   };
 
-  const formatVersions = (baseSchemaName) =>
+  const formatVersions = (baseSchemaName: string) =>
     `  { version: ${asIntName(baseSchemaName)}, validator: ${asVariableName(
       baseSchemaName,
     )} },`;
 
-  const schemaRequires = schemas.map(formatRequire).join("\n");
-  const schemaVersions = `${schemas.map(formatVersions).join("\n")}`;
+  const schemaRequires = schemas.map(formatRequire).join('\n');
+  const schemaVersions = `${schemas.map(formatVersions).join('\n')}`;
 
   return `${schemaRequires}
 
@@ -66,7 +67,7 @@ export const buildSchemas = async () => {
   const schemaSrcDirectory = resolve(SCHEMA_SRC_PATH);
   const schemaOutputDirectory = resolve(SCHEMA_OUTPUT_PATH);
 
-  if (!(await exists(schemaOutputDirectory))) {
+  if (!existsSync(schemaOutputDirectory)) {
     await mkdir(schemaOutputDirectory, { recursive: true });
   }
 
@@ -76,16 +77,19 @@ export const buildSchemas = async () => {
     const schemaPath = join(schemaSrcDirectory, `${baseSchemaName}.json`);
     const modulePath = join(schemaOutputDirectory, `${baseSchemaName}.js`);
 
-    const schema = await Bun.file(schemaPath).json();
+    const schema: AnySchema = JSON.parse(
+      readFileSync(schemaPath, 'utf8'),
+    ) as AnySchema;
+
     const validateFunction = ajv.compile(schema);
     const moduleCode = standaloneCode(ajv, validateFunction);
 
     await writeFile(modulePath, moduleCode, {});
 
-    console.log(`${baseSchemaName} done.`); // eslint-disable-line
+    console.log(`${baseSchemaName} done.`); // eslint-disable-line no-console
   });
 
-  const moduleIndexPath = join(schemaOutputDirectory, "index.js");
+  const moduleIndexPath = join(schemaOutputDirectory, 'index.js');
   const moduleIndex = generateModuleIndex(schemas);
   await writeFile(moduleIndexPath, moduleIndex);
 };
