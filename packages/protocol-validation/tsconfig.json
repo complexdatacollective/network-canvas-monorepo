@@ -1,9 +1,0 @@
-{
-  "extends": "@codaco/tsconfig/base.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
-  },
-  "include": ["*.ts", "src", "scripts"],
-  "exclude": ["src/compiledSchemas", "node_modules"]
-}
