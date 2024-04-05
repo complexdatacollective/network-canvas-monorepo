@@ -1,0 +1,15 @@
+name: Link Checker
+
+on: deployment_status
+
+defaults:
+  run:
+    working-directory: apps/documentation
+
+jobs:
+  linkinator:
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.event.deployment_status.environment_url, 'https://documentation') && github.event.deployment_status.state == 'success' }}
+    steps:
+      - name: Check for broken links
+        run: npx --yes linkinator ${{ github.event.deployment_status.environment_url}} -r

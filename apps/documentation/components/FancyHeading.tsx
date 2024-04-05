@@ -1,3 +1,5 @@
+'use client';
+
 import { motion } from 'framer-motion';
 import { Heading, type HeadingProps } from '@codaco/ui';
 import { Children } from 'react';

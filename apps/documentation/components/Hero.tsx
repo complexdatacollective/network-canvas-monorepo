@@ -1,7 +1,6 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Link } from '~/navigation';
 import DocSearchComponent from './DocSearchComponent';
 import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
@@ -9,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Paragraph } from '@codaco/ui';
 import { cn } from '~/lib/utils';
 import { useTheme } from 'next-themes';
+import Link from 'next/link';
 
 function ProjectCard({
   href,
@@ -23,7 +23,7 @@ function ProjectCard({
 }) {
   return (
     <Link href={href} className="basis-1/2">
-      <motion.div
+      <div
         className={cn(
           'flex h-full cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-xl transition-colors md:p-6',
           'hover:border-accent hover:bg-accent hover:text-accent-foreground',
@@ -36,7 +36,7 @@ function ProjectCard({
           </FancyHeading>
         </div>
         <Paragraph>{description}</Paragraph>
-      </motion.div>
+      </div>
     </Link>
   );
 }
@@ -66,7 +66,7 @@ export function Hero() {
           {resolvedTheme !== 'dark' && (
             <div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
               <motion.div
-                initial={{ opacity: 0, y: 200, scale: 0.8 }}
+                initial={{ opacity: 1, y: 0, scale: 1 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{
                   type: 'spring',

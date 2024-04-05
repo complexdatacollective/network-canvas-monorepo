@@ -37,15 +37,13 @@ If you are running a large study, or prefer the peace of mind associated with gu
 
 It is also possible to use whatever infrastructure you may have access to in order to deploy Fresco. For information on this, see our [advanced deployment](./advanced) guide.
 
-
-
 ## Required services
 
-Fresco is different from other software that you may have installed previously. It is a "self-hosted" web 
-application, meaning that you do not install it on a laptop or desktop. Instead, you "deploy" it to 
+Fresco is different from other software that you may have installed previously. It is a "self-hosted" web
+application, meaning that you do not install it on a laptop or desktop. Instead, you "deploy" it to
 one or more servers on the Internet (your "infrastructure"), which you can then access from your web browser.
 
-This approach allows researchers to manage their own data and customize the nature of their infrastructure to suit their needs. 
+This approach allows researchers to manage their own data and customize the nature of their infrastructure to suit their needs.
 
 <Tipbox danger>
 
@@ -62,7 +60,7 @@ To deploy Fresco, we use the following services and technologies:
 
 To make the deployment process as simple as possible, we designed Fresco to be easily deployed on
 the [Vercel](https://vercel.com) platform, which provides both the Node.js and the PostgreSQL
-services for you (for free). 
+services for you (for free).
 
 Vercel is a cloud platform that specializes in deploying web
 applications. It is designed to be easy to use and has a generous free tier that is suitable for
@@ -78,7 +76,7 @@ by visiting this URL.
 
 <Tipbox>
 
-Should you run into any issues, please consult the [troubleshooting](../troubleshooting) guide or reach out on the [user community](https://community.networkcanvas.com).
+Should you run into any issues, please consult the [troubleshooting](/en/fresco/deployment/troubleshooting) guide or reach out on the [user community](https://community.networkcanvas.com).
 
 </Tipbox>
 
@@ -92,7 +90,7 @@ that Fresco will use to communicate with the service.
 
 <Tipbox>
 
-Your UploadThing account is unique to you, meaning that no one else will have access to the files you upload within Fresco. 
+Your UploadThing account is unique to you, meaning that no one else will have access to the files you upload within Fresco.
 
 </Tipbox>
 
@@ -154,7 +152,8 @@ Once you have completed this step, you will be redirected to your forked reposit
 Next, we will deploy your fork to the Vercel platform. You can use the "hobby" tier (which is free) or paid plan (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
 
 1. Click <a href="https://vercel.com/new" target="_blank">
-     here
+   here
+
    </a> to create a new project on Vercel.
 
    <Tipbox>
@@ -187,11 +186,13 @@ Next, we will deploy your fork to the Vercel platform. You can use the "hobby" t
    
    If you would like to disable all analytics, add an additional environment variable to your Vercel deployment called `NEXT_PUBLIC_DISABLE_ANALYTICS` and set it to `true`. For example:
 
+
    ```bash
    NEXT_PUBLIC_DISABLE_ANALYTICS=true
    ```
-   
+
    By leaving `NEXT_PUBLIC_DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
+
 
    </TipBox>
 
@@ -248,7 +249,7 @@ Next, we will deploy your fork to the Vercel platform. You can use the "hobby" t
 
 <TipBox>
 
-If you encounter any issues during deployment, check out the [Troubleshooting](../troubleshooting) article or our <a href="https://community.networkcanvas.com/">User Community</a> for a possible solution.
+If you encounter any issues during deployment, check out the [troubleshooting](/en/fresco/deployment/troubleshooting) article or our <a href="https://community.networkcanvas.com/">User Community</a> for a possible solution.
 
 </TipBox>
 
@@ -271,6 +272,7 @@ If you prefer to use a custom domain for your Fresco instance, you can configure
    ![Navigate to domains section](/assets/img/fresco-images/set-domain1.png)
 
 2. In the Domains section, you have two options:
+
    - If you have a purchased domain, you can add it here.
    - Alternatively, you can modify the default Vercel domain to suit your needs.
 
@@ -288,7 +290,7 @@ To use Fresco, you need to set up an administrator account which will enable you
 
 <TipBox danger>
 
-To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](../troubleshooting#instance-expired---reset-your-database).
+To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired-message-during-the-setup-process).
 
 </TipBox>
 
