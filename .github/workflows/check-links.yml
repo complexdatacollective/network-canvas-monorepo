@@ -11,16 +11,5 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.event.deployment_status.environment_url, 'https://documentation') && github.event.deployment_status.state == 'success' }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Run Linkinator
-        run: pnpm linkinator ${{ github.event.deployment_status.environment_url}} -r
+      - name: Check for broken links
+        run: npx --yes linkinator ${{ github.event.deployment_status.environment_url}} -r
