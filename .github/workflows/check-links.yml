@@ -2,10 +2,6 @@ name: Link Checker
 
 on: deployment_status
 
-defaults:
-  run:
-    working-directory: apps/documentation
-
 jobs:
   linkinator:
     runs-on: ubuntu-latest
