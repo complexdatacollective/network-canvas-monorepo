@@ -406,6 +406,30 @@ importers:
         specifier: ^5.3.3
         version: 5.4.2
 
+  packages/shared-consts:
+    devDependencies:
+      '@codaco/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@codaco/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@codaco/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: ^20.5.2
+        version: 20.11.25
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.0
+      prettier:
+        specifier: ^3.2.5
+        version: 3.2.5
+      typescript:
+        specifier: ^5.3.3
+        version: 5.4.2
+
   packages/ui:
     dependencies:
       '@codaco/art':
