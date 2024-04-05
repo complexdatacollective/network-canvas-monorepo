@@ -6,7 +6,7 @@ import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
 import { motion } from 'framer-motion';
 import { Paragraph } from '@codaco/ui';
-import { cn, isJavaScriptEnabled } from '~/lib/utils';
+import { cn } from '~/lib/utils';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 
@@ -49,7 +49,7 @@ export function Hero() {
     <>
       <motion.div
         className="mx-4 flex max-w-5xl flex-col items-center gap-10 sm:mx-8 md:-mt-8 md:flex-1 md:justify-center lg:gap-16"
-        initial={isJavaScriptEnabled ? { opacity: 0 } : { opacity: 1 }}
+        initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
         <div className="flex flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
@@ -66,11 +66,7 @@ export function Hero() {
           {resolvedTheme !== 'dark' && (
             <div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
               <motion.div
-                initial={
-                  isJavaScriptEnabled
-                    ? { opacity: 0, y: 100, scale: 0.5 }
-                    : { opacity: 1, y: 0, scale: 1 }
-                }
+                initial={{ opacity: 1, y: 0, scale: 1 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{
                   type: 'spring',

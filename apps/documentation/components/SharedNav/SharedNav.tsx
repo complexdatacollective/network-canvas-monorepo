@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import MobileNavBar from '../MobileNavBar';
 import LogoComponent from './LogoComponent';
 import { NavigationMenuDemo as Menu } from './Menu';
-import { cn, isJavaScriptEnabled } from '~/lib/utils';
+import { cn } from '~/lib/utils';
 
 export default function SharedNav() {
   return (
@@ -11,7 +11,7 @@ export default function SharedNav() {
         'sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 border-b border-border bg-background/50 px-4 py-2 backdrop-blur-sm',
         'lg:relative lg:flex lg:border-none lg:bg-transparent lg:px-6 lg:py-4 lg:backdrop-blur-0',
       )}
-      initial={isJavaScriptEnabled ? { y: -100 } : { y: 0 }}
+      initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{
         type: 'spring',
