@@ -8,25 +8,26 @@ toc: true
 
 ## Which applications do I need?
 
-Each application of the Network Canvas Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
+Each application of the Network Canvas Desktop Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
 
 - Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field.
 - Install **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
-- (Optionally) Install **Server** if you wish to use it as a central data storage system, or as a means to deploy interview protocols to your devices. See "do I need Server" (below) for further information.
 
-### Do I need Server?
+<TipBox>
 
-Server has been designed specifically for scenarios where a dedicated team member will be responsible for managing data. This team member should be prepared to work with their IT department, or else have good knowledge of computer networking principles, in order to configure Server to send and receive data securely.
+[Fresco](/en/fresco), a new project that brings Network Canvas interviews to the browser, cannot be directly downloaded and installed. See our guide on the [deployment process](/en/fresco/deployment/guide) for more information.
 
-Smaller studies, or extremely large studies, may benefit from working directly with data exported from Interviewer. For more information, see our tutorial on [offline data management workflows](/en/desktop/tutorials/workflows-without-server#option-1-online-workflow).
+</TipBox>
 
 ## System Requirements
 
-All three applications are supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
+Both desktop applications are supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
 
 For desktop applications, we recommend a modern device, featuring a high resolution screen (greater than 900 pixels effective vertical resolution), ample RAM, and dedicated graphics. Performance may differ considerably depending on the power of the device that you use, and you should be aware that this can negatively impact the interview experience for your research participants, leading to poorer quality data.
 
 You may install and run the software on devices that do not meet these criteria, but we are unfortunately unable to offer support regarding technical issues if you do.
+
+For information on supported browsers, devices, and platforms in Fresco, see the [Fresco FAQ](/en/fresco/faq#which-browsers-are-supported)
 
 ## Windows
 
@@ -64,7 +65,7 @@ If you cannot find Interviewer in the Play Store, it is likely because your devi
 
 If your ChromeOS device supports installing Android apps, you can install the Interviewer app as usual through the Google Play Store. To do this, please see the instructions above for installing the app on Android.
 
-Please note that only Interviewer is specifically designed to work with ChromeOS, and only when run as an Android app. Running Interviewer, Architect or Server through Linux app compatibility is not supported at present.
+Please note that only Interviewer is specifically designed to work with ChromeOS, and only when run as an Android app. Running Interviewer or Architect through Linux app compatibility is not supported at present.
 
 ## iOS
 

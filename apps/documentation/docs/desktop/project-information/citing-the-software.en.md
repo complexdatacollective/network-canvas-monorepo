@@ -24,13 +24,11 @@ A BibTeX entry for LaTex users is:
    }
 ```
 
-## Architect and Server
+## Architect
 
-When wishing to specifically reference Architect or Server, you may use:
+When wishing to specifically reference Architect, you may use:
 
 > Complex Data Collective. Network Canvas Architect. 2016. https://doi.org/10.5281/zenodo.6026546
-
-> Complex Data Collective. Network Canvas Server. 2016. https://doi.org/10.5281/zenodo.6240479
 
 ## Citing the Design of the Software
 
@@ -52,7 +50,7 @@ URLs for Network Canvas software repositories are:
 
 - [https://github.com/complexdatacollective/Interviewer](https://github.com/complexdatacollective/Interviewer)
 - [https://github.com/complexdatacollective/Architect](https://github.com/complexdatacollective/Architect)
-- [https://github.com/complexdatacollective/Server](https://github.com/complexdatacollective/Server)
+- [https://github.com/complexdatacollective/Fresco](https://github.com/complexdatacollective/Fresco)
 
 Current downloads for the Network Canvas Software Suite are available at:
 

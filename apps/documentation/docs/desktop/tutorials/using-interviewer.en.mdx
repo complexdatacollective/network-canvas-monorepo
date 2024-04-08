@@ -35,7 +35,7 @@ Network Canvas Interviewer is an interview administration tool that is designed 
 
 Interviewer runs on both tablet devices using touch screens, and desktop computers using either touch or conventional keyboard and mouse inputs. Its interfaces are optimized for the specific needs of network interviews, and are highly flexible and customizable. Interviewer uses Network Canvas protocol files to configure itself to show the screens and stages that you have designed for your study.
 
-Once you have collected data with Interviewer, it can export network datafiles directly to Server, or to your device or computer.
+Once you have collected data with Interviewer, it can export network datafiles to your device or computer.
 
 What follows is an introduction to the software, which describes some of its key features and concepts. To follow along, open Interviewer on your own computer or device.
 
@@ -62,17 +62,13 @@ the top right hand corner.
 
 </TipBox>
 
-The **protocols section** which allows you to quickly import a [Network Canvas protocol file](../key-concepts/the-protocol-file) from a URL, or by choosing a file ( and later, also by importing from Server). Once you have installed one or more protocol files, this section will also allow you to manage your installed protocols.
+The **protocols section** which allows you to quickly import a [Network Canvas protocol file](../key-concepts/the-protocol-file) from a URL, or by choosing a file. Once you have installed one or more protocol files, this section will also allow you to manage your installed protocols.
 
 ![The protocols section](/assets/img/sample-protocol/protocols-section.png)
 
-The **server status section** which initially shows nearby computers running Server that you may wish to pair with and, once paired, shows the communication status of Interviewer with your paired Server.
-
-![The Server status section](/assets/img/sample-protocol/server-section.png)
-
 ## Installing and managing protocols
 
-Interviewer must be configured using one or more Network Canvas interview protocols before it can be used to collect data. There are three ways to import it into your devices running Interviewer. Which one you choose will depend on the needs of your study.
+Interviewer must be configured using one or more Network Canvas interview protocols before it can be used to collect data. There are two ways to import it into your devices running Interviewer. Which one you choose will depend on the needs of your study.
 
 ### Importing a file directly
 
@@ -87,23 +83,12 @@ running Interviewer is also the device used to author protocols in Architect.
 
 ### Importing from a URL
 
-This option allows you to download a protocol file directly from any URL that is accessible from the device running Interviewer. It can be useful in circumstances where you have a study website or internet, and need to quickly install a protocol on a device, but you do not wish to use Server as part of your workflow. It can be accessed from the protocols section of the start screen.
+This option allows you to download a protocol file directly from any URL that is accessible from the device running Interviewer. It can be useful in circumstances where you have a study website or internet, and need to quickly install a protocol on a device. It can be accessed from the protocols section of the start screen.
 
 <TipBox>
 
 We recommend this method for devices using a project website or cloud storage
 provider to distribute protocol files to multiple devices.
-
-</TipBox>
-
-### Importing from Server
-
-This option uses our companion application, Server, to manage the distribution of interview protocols to field devices. The option to import from Server will appear in the protocols section once you have paired your device with a computer running Server.
-
-<TipBox>
-
-We recommend this method for larger studies that have a single dedicated data
-manager or coordinator responsible for study administration.
 
 </TipBox>
 
@@ -115,7 +100,7 @@ Once a protocol has been imported, a new section will appear on the start screen
 
 <KeyConcept title="Anatomy of a protocol card">
 
-The protocol card is a visual device representing a Network Canvas interview protocol. It is used throughout Architect, Server, and Interviewer, whenever a protocol is used.
+The protocol card is a visual device representing a Network Canvas interview protocol. It is used throughout Architect and Interviewer, whenever a protocol is used.
 
 ![A protocol card](/assets/img/sample-protocol/protocol-card.png)
 
@@ -147,7 +132,7 @@ If you have more than one protocol installed in Interviewer, a card stack will a
 
 ### Entering a case ID
 
-When initiating a new interview, you will immediately be presented with a dialog that asks you to enter a 'case ID'. This is a simple mechanism designed to help you keep track of and identify interview sessions in a way that is meaningful to you and your study. The case ID will be visible in Interviewer and Server anywhere that you see interview sessions, and will also be included in all exported data.
+When initiating a new interview, you will immediately be presented with a dialog that asks you to enter a 'case ID'. This is a simple mechanism designed to help you keep track of and identify interview sessions in a way that is meaningful to you and your study. The case ID will be visible in Interviewer anywhere that you see interview sessions, and will also be included in all exported data.
 
 ![The case ID form](/assets/img/sample-protocol/case-id.png)
 
@@ -415,7 +400,7 @@ Managing and exporting interview data takes place in a dedicated **export and ma
 
 ![](/assets/img/sample-protocol/export-section.png)
 
-The data export process consists of selecting one or more sessions from this section, and clicking the "export selected to file" or "export selected to Server" button, as applicable. Settings for exported data can be found in the device settings in the welcome section.
+The data export process consists of selecting one or more sessions from this section, and clicking the "export selected to file". Settings for exported data can be found in the device settings in the welcome section.
 
 ## Next Steps
 
