@@ -4,7 +4,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "author": "Complex Data Collective <developers@coda.co>",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",

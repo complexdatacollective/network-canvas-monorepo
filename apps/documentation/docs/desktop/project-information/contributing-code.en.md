@@ -26,7 +26,7 @@ To submit code for consideration, file a pull request (PR) in the relevant GitHu
 
 ### CODACO 
 
-The Complex Data Collective (CODACO) is a registered nonprofit whose purpose is to design, develop, and promote digital tools that allow researchers to explore complex structural data. See the CODACO By-Laws for specific governance, membership, and regulations: [https://coda.co/docs/codaco-bylaws.pdf](https://coda.co/docs/codaco-bylaws.pdf)
+The Complex Data Collective (CODACO) is a registered nonprofit whose purpose is to design, develop, and promote digital tools that allow researchers to explore complex structural data. See the CODACO By-Laws for specific governance, membership, and regulations: [https://complexdatacollective.org/docs/codaco-bylaws.pdf](https://complexdatacollective.org/docs/codaco-bylaws.pdf)
 
 CODACO is the sole copyright holder of the Network Canvas Software.
 
