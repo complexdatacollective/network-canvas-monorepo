@@ -17,7 +17,7 @@
     "typescript",
     "library"
   ],
-  "author": "Complex Data Collective <developers@coda.co>",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "license": "MIT",
   "devDependencies": {
     "@codaco/eslint-config": "workspace:*",
