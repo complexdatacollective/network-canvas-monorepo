@@ -1,20 +1,21 @@
-import type { Config } from "tailwindcss";
+import type { Config } from 'tailwindcss';
+import typography from '@tailwindcss/typography';
+import sharedConfig from '@codaco/tailwind-config/fresco';
 
-const config: Config = {
+const config: Pick<
+  Config,
+  'content' | 'darkMode' | 'presets' | 'plugins' | 'theme'
+> = {
+  darkMode: 'class',
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    ...sharedConfig.content,
+    './lib/**/*.{ts,tsx}', // For JSX components in MD
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    '../../packages/ui/**/*.{ts,tsx}', // UI package
   ],
-  theme: {
-    extend: {
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic":
-          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-      },
-    },
-  },
-  plugins: [],
+  presets: [sharedConfig],
+  plugins: [typography],
 };
+
 export default config;

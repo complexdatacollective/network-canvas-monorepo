@@ -8,6 +8,18 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240403.0",
-    "wrangler": "^3.47.0"
-  }
+    "wrangler": "^3.47.0",
+    "@codaco/eslint-config": "workspace:*",
+    "@codaco/prettier-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": [
+      "@codaco/eslint-config/base",
+      "@codaco/eslint-config/nextjs",
+      "@codaco/eslint-config/react"
+    ]
+  },
+  "prettier": "@codaco/prettier-config"
 }

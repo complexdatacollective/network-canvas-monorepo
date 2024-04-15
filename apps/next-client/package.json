@@ -26,6 +26,16 @@
     "@codaco/eslint-config": "workspace:*",
     "@codaco/prettier-config": "workspace:*",
     "@codaco/tailwind-config": "workspace:*",
-    "@codaco/tsconfig": "workspace:*"
-  }
+    "@codaco/tsconfig": "workspace:*",
+    "@tailwindcss/typography": "^0.5.10"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": [
+      "@codaco/eslint-config/base",
+      "@codaco/eslint-config/nextjs",
+      "@codaco/eslint-config/react"
+    ]
+  },
+  "prettier": "@codaco/prettier-config"
 }

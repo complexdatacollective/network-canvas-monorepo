@@ -341,6 +341,15 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20240403.0
         version: 4.20240405.0
+      '@codaco/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@codaco/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@codaco/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
       wrangler:
         specifier: ^3.47.0
         version: 3.50.0(@cloudflare/workers-types@4.20240405.0)
@@ -369,6 +378,9 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tailwindcss/typography':
+        specifier: ^0.5.10
+        version: 0.5.10(tailwindcss@3.4.1)
       '@types/node':
         specifier: ^20
         version: 20.11.25

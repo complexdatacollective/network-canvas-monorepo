@@ -1,16 +1,11 @@
 {
+  "extends": "@codaco/tsconfig/base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "lib": [
-      "ESNext"
-    ],
-    "types": [
-      "@cloudflare/workers-types"
-    ],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
+    "baseUrl": ".",
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
+  "types": ["@cloudflare/workers-types"],
+  "jsxImportSource": "hono/jsx",
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"]
 }
