@@ -40,5 +40,6 @@ next-env.d.ts
 .turbo
 
 dist
-
+.wrangler
+.dev.vars
 
