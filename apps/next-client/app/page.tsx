@@ -1,11 +1,21 @@
+import baseUrl from '~/baseUrl';
+
 export default async function Home() {
-  const response = await fetch('http://localhost:8787');
+  const homeRes = await fetch(baseUrl);
+  const postsRes = await fetch(`${baseUrl}/posts/12?page=1`);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {response.ok ? (
+      {homeRes.ok ? (
         <h1 className="text-center text-4xl font-bold">
-          {await response.text()}
+          {await homeRes.text()}
+        </h1>
+      ) : (
+        <h1 className="text-center text-4xl font-bold">Loading...</h1>
+      )}
+      {postsRes.ok ? (
+        <h1 className="text-center text-4xl font-bold">
+          {await postsRes.text()}
         </h1>
       ) : (
         <h1 className="text-center text-4xl font-bold">Loading...</h1>
