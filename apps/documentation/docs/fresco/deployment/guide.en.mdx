@@ -115,23 +115,23 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
 
 1. Visit the <a href="https://vercel.com" target="_blank">Vercel website</a> and click **Continue with GitHub** to sign in. You will be redirected to the Vercel dashboard.
 
-1. From your project dashboard, select **"Storage"** from the top navigation bar. Then, click **Create** next to Postgres ('Serverless SQL').
+2. From your dashboard, select **"Storage"** from the top navigation bar. Then, click **Create** next to Postgres ('Serverless SQL').
 
    ![Create a Postgres database](/assets/img/fresco-images/vercel-db-1.png)
 
-2. Review and accept the terms in the modal.
+3. Review and accept the terms in the modal.
 
    ![Accept terms](/assets/img/fresco-images/vercel-db-2.png)
 
-3. Give your database a name, and then click **"Create"**. Do not change the region. Your database will be generated and you will be redirected to the Getting Started page.
+4. Give your database a name, and then click **"Create"**. Do not change the region. Your database will be generated and you will be redirected to the Getting Started page.
 
    ![Enter a name and create the database](/assets/img/fresco-images/vercel-db-3.png)
 
-4. Under the heading 'quickstart' you will see a connection string for the database. Click the `.env.local` tab, and then click **"Copy Snippet"** to copy the environment variables to your clipboard.
+5. Under the heading 'quickstart' you will see a connection string for the database. Click the `.env.local` tab, and then click **"Copy Snippet"** to copy the environment variables to your clipboard.
 
    ![Click the `.env.local` tab, and copy the environment variables](/assets/img/fresco-images/vercel-storage-env.png)
 
-5. Paste the environment variables on a new line into the same place you pasted the UploadThing variables for safekeeping. The file should now look something like this:
+6. Paste the environment variables on a new line into the same place you pasted the UploadThing variables for safekeeping. The file should now look something like this:
 
    ```bash
    UPLOADTHING_SECRET=sk_live_b9779c445ddaffc45ca4f9c27fd5c9b171d4bc8f6b589c808be29d3262021223
