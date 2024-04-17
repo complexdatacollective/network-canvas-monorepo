@@ -41,7 +41,7 @@ To deploy Fresco, we will use the following services and technologies:
 - **PostgreSQL**: A powerful, open-source relational database system. Fresco uses PostgreSQL to store data about your study, participants, and responses.
 - **UploadThing**: A cloud-based file storage service that Fresco uses to store protocol assets such media files.
 
-To make the deployment process as simple as possible, we designed Fresco to be deployed using [Vercel](https://vercel.com), which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use, and has a generous free tier that is suitable for
+To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://vercel.com" target="_blank">Vercel</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use, and has a generous free tier that is suitable for
 most research projects. It is not a requirement to use Vercel to host Fresco, but it is the simplest way to get started and is the method we will be using in this guide.
 
 ## How much does deploying Fresco cost?
@@ -58,19 +58,19 @@ Deploying Fresco involves setting up your own unique version of the project, whi
 
 To do this, ensure you have a GitHub account and are signed in, and then:
 
-1. Visit the  <a href="https://github.com/complexdatacollective/Fresco" target="_blank">Fresco repository on GitHub</a>, and click **"Fork"**.
+1. Visit the <a href="https://github.com/complexdatacollective/Fresco" target="_blank">Fresco repository on GitHub</a>, and click **"Fork"**.
 
    ![](/assets/img/fresco-images/github-fork1.png)
 
 2. Enter a repository name (this will be your Fresco instance name, so you may wish to use your study name or the name of your project), along with a description, and click **"Create Fork"**. Leave the "copy main branch" option selected.
-   
+
    ![](/assets/img/fresco-images/github-fork2.png)
 
 Once you have completed this step, you will be redirected to your forked repository on GitHub. This copy of the Fresco code is now yours to deploy or modify as you wish.
 
 ## Create a storage bucket using UploadThing
 
-Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it. 
+Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
 
 <Tipbox>
 
@@ -152,10 +152,9 @@ Next, we will deploy your fork to the Vercel platform, using the services we cre
 
 <Tipbox>
 
-Should you run into any issues, please consult the [troubleshooting](/en/fresco/deployment/troubleshooting) guide or reach out on the [user community](https://community.networkcanvas.com).
+Should you run into any issues, please consult the [troubleshooting](/en/fresco/deployment/troubleshooting) guide or reach out on the <a href="https://community.networkcanvas.com" target="_blank">user community</a>.
 
 </Tipbox>
-
 
 1. Click <a href="https://vercel.com/new" target="_blank">here</a> to create a new project on Vercel. Sign in using GitHub, if you are not already signed in.
 
@@ -171,17 +170,15 @@ Should you run into any issues, please consult the [troubleshooting](/en/fresco/
 
    <TipBox>
 
-   We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. 
-   
-   If you would like to disable all analytics, add an additional environment variable to your Vercel deployment called `NEXT_PUBLIC_DISABLE_ANALYTICS` and set it to `true`. For example:
+   We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
 
+   If you would like to disable all analytics, add an additional environment variable to your Vercel deployment called `NEXT_PUBLIC_DISABLE_ANALYTICS` and set it to `true`. For example:
 
    ```bash
    NEXT_PUBLIC_DISABLE_ANALYTICS=true
    ```
 
    By leaving `NEXT_PUBLIC_DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
-
 
    </TipBox>
 
@@ -234,7 +231,7 @@ You can optionally upload a protocol. Protocols can also be uploaded from the pr
 - **Import participants**: You can optionally upload a CSV file containing participants you wish to recruit to your study. Participants can also be uploaded from the participants page once the setup steps are completed.
 
 - **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found in the [using Fresco](/en/fresco/using-fresco) guide.
-  
+
 ![Import participants and optionally allow anonymous recruitment](/assets/img/fresco-images/fresco3.png)
 
 ### Visit the dashboard
