@@ -53,7 +53,7 @@ If you are running a large study, require guaranteed levels of performance, or h
 
 It is also possible to use whatever infrastructure you may have access to in order to deploy Fresco. For information on this, see our [advanced deployment](./advanced) guide.
 
-## Create Fork of Fresco
+## Create fork of Fresco
 
 Deploying Fresco involves setting up your own unique version of the project, which we refer to as your **instance**. The first step in creasing this insance is to create a copy (or "fork") of the Fresco code on GitHub.
 
@@ -68,7 +68,7 @@ To do this, ensure you have a GitHub account and are signed in, and then:
 
 Once you have completed this step, you will be redirected to your forked repository on GitHub. This copy of the Fresco code is now yours to deploy or modify as you wish.
 
-## Create a Storage Bucket using UploadThing
+## Create a storage bucket using UploadThing
 
 Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it. 
 
@@ -145,7 +145,7 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
    POSTGRES_DATABASE="verceldb"
    ```
 
-## Create a Project on Vercel
+## Create a project on Vercel
 
 Next, we will deploy your fork to the Vercel platform, using the services we created previously. You can use the "hobby" tier (which is free) or paid plan (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
 
@@ -196,7 +196,7 @@ Then, click on one of the domain names or the **"Visit"** button.
 
 ![Visit domain](/assets/img/fresco-images/vercel4.png)
 
-## Configuration and Setup
+## Configuration and setup
 
 To use Fresco, you need to set up an administrator account which will enable you to access the protected parts of the app for study management. Only one administrator account can be created.
 
@@ -206,7 +206,7 @@ To ensure the security of your deployment, you have **30 minutes** from when the
 
 </TipBox>
 
-### Create a User Account
+### Create a user account
 
 Visit your deployed app and create an account by entering a username and password. Ensure you make the password as strong as possible!
 
@@ -226,7 +226,7 @@ If you forget your password, you **will not be able to reset it**. We recommend 
 
 </TipBox>
 
-### Upload a Protocol
+### Upload a protocol
 
 You can optionally upload a protocol. Protocols can also be uploaded from the protocols page once the setup steps are completed.
 
@@ -239,11 +239,11 @@ You can optionally upload a protocol. Protocols can also be uploaded from the pr
 - **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found in the [using Fresco](/en/fresco/using-fresco) guide.
   ![Import participants and optionally, allow anonymous recruitment](/assets/img/fresco-images/fresco3.png)
 
-### Visit the Dashboard
+### Visit the dashboard
 
 Click the **"Go to the dashboard"** button and to begin using Fresco!
 
-## Set up a custom domain (Optional)
+## Set up a custom domain (optional)
 
 If you prefer to use a custom domain for your Fresco instance, you can configure this in the Vercel dashboard by following these steps:
 
