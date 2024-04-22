@@ -1,5 +1,5 @@
 import { db } from 'db/index';
-import { users } from 'db/schema';
+import { type UserType, users } from 'db/schema';
 import { Hono } from 'hono';
 
 type User = {
