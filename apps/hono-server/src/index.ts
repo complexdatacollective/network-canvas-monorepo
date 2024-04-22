@@ -1,11 +1,16 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { db } from 'db/index';
+import { users } from 'db/schema';
 
 const app = new Hono();
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!');
+app.get('/', async (c) => {
+  const result = await db.select().from(users);
+  return c.json({
+    users: result,
+  });
 });
 
 app.get('/posts/:id', (c) => {
@@ -41,9 +46,11 @@ const route = app
       message: 'created!',
     });
   })
-  .get((c) => {
+  .get(async (c) => {
+    const result = await db.select().from(users);
     return c.json({
       todos,
+      users: result,
     });
   });
 

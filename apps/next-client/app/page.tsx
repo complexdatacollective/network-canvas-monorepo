@@ -21,6 +21,12 @@ export default async function Home() {
         ))}
       </ul>
 
+      <ul>
+        {data.users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+
       {homeRes.ok ? (
         <h1 className="text-center text-4xl font-bold">
           {await homeRes.text()}
