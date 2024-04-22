@@ -5,8 +5,11 @@ import baseUrl from '~/baseUrl';
 const client = hc<AppType>(baseUrl);
 
 export default async function Home() {
-  const res = await client.todo.$get();
-  const data = await res.json();
+  const todosRes = await client.todos.$get();
+  const { todos } = await todosRes.json();
+
+  const usersRes = await client.users.$get();
+  const { users } = await usersRes.json();
 
   const homeRes = await fetch(baseUrl);
   const postsRes = await fetch(`${baseUrl}/posts/12?page=1`);
@@ -16,13 +19,13 @@ export default async function Home() {
       <h1>Todos</h1>
 
       <ul>
-        {data.todos.map((todo) => (
+        {todos.map((todo) => (
           <li key={todo.id}>{todo.title}</li>
         ))}
       </ul>
 
       <ul>
-        {data.users.map((user) => (
+        {users.map((user) => (
           <li key={user.id}>{user.name}</li>
         ))}
       </ul>
