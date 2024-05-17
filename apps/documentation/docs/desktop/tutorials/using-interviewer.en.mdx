@@ -402,6 +402,32 @@ Managing and exporting interview data takes place in a dedicated **export and ma
 
 The data export process consists of selecting one or more sessions from this section, and clicking the "export selected to file". Settings for exported data can be found in the device settings in the welcome section.
 
+## File types
+
+After clicking "export selected to file," you will be prompted to choose a file type for the export. The two options are:
+
+- **CSV**. A common format for representing network data. This format is readable as a table (or series of tables) in Excel, LibreOffice, Keynote, and other tabular programs. The CSV version also complies with the `egor` package standard. Selecting this option will output multiple files, including node and edge lists for each type, and an ego attribute list that also includes session metadata:
+  - **Ego attribute list**: This file will have one row per ego, with ego-level variables session metadata. The filename will be in the format `caseID_sessionUUID_ego.csv`.
+  - **Alter attribute list**: This file will have one row per alter (i.e. per nominated node). All alters have their own unique ID, as well as an automatically incrementing ID that is only consistent on a per-export basis. The filename will be in the format `caseID_sessionUUID_alterType.csv`.
+  - **Edge attribute list**: This will have one row per relationship, with columns representing edge attributes. Each row will have a key to link to ego (`networkCanvasEgoUUID`), as well as source and target columns that reference both the UUID and the automatically incrementing export ID. The filename will be in the format `caseID_sessionUUID_edgeType.csv`.
+- **GraphML**. An XML based open standard for representing graph data, that is compatible with many social network analysis programs including UCINET, Gephi, NodeXL, Pajek, Visone, and ORA. The filename will be in the format `caseID_sessionUUID.graphml`.
+
+Which file type you should choose depends largely on the needs of your analysis tools. We recommend exporting data in both formats, and experimenting with the data you receive to ensure that it needs your needs.
+
+## Export Options
+
+You may configure a variety of specialized export options that will impact the data you receive in a variety of ways. These options can be left at their default values unless you know that you need to change them.
+
+#### Merge sessions by protocol
+
+The option to "Merge Sessions by Protocol" will produce a consolidated file (or files in the case of CSV) that contains all interviews. Although the file(s) will contain all egos, nodes, and edges across all interviews, the ego networks themselves will not be merged in any way.
+
+If this option is left deselected, the export process will produce separate files for each of the interviews completed.
+
+#### Use screen layout coordinates
+
+Position data from layout variables used on the Sociogram interface in Interviewer is stored on nodes as normalized x/y coordinates, with the origin in the top left of the screen. This allows you to later visualize these layouts on a canvas of arbitrary size, and to compare layouts that were created on screens with different proportions.
+
 ## Next Steps
 
 Now that you have experienced the general flow of an interview in Network Canvas Interviewer from the participant perspective, you may wish to learn about how to begin to create your own protocol. For this, we suggest our article on [building a protocol using Architect](/en/desktop/tutorials/building-a-protocol).
