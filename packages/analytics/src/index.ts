@@ -205,15 +205,20 @@ export const createRouteHandler = ({
   };
 };
 
+type TrackerProps = {
+  endpoint?: string;
+};
+
 export const makeEventTracker =
-  ({ endpoint = '/api/analytics' }: { endpoint?: string }) =>
+  (options?: { endpoint?: string }) =>
   async (
     event: RawEvent,
   ): Promise<{
     error: string | null;
     success: boolean;
   }> => {
-    const endpointWithHost = getBaseUrl() + endpoint;
+    const endpointWithHost =
+      getBaseUrl() + options?.endpoint ?? '/api/analytics';
 
     const eventWithTimeStamp: TrackableEvent = {
       ...event,
