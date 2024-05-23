@@ -217,8 +217,9 @@ export const makeEventTracker =
     error: string | null;
     success: boolean;
   }> => {
-    const endpointWithHost =
-      getBaseUrl() + options?.endpoint ?? '/api/analytics';
+    const endpoint = options?.endpoint ?? '/api/analytics';
+
+    const endpointWithHost = getBaseUrl() + endpoint;
 
     const eventWithTimeStamp: TrackableEvent = {
       ...event,
