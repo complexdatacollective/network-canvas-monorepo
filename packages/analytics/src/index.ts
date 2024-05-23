@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ensureError, getBaseUrl, strictBooleanSchema } from './utils';
+import { ensureError, strictBooleanSchema } from './utils';
 import z from 'zod';
 
 // Todo: it would be great to work out a way to support arbitrary types here.
@@ -219,7 +219,7 @@ export const makeEventTracker =
   }> => {
     const endpoint = options?.endpoint ?? '/api/analytics';
 
-    const endpointWithHost = getBaseUrl() + endpoint;
+    const endpointWithHost = window.location.origin + endpoint;
 
     const eventWithTimeStamp: TrackableEvent = {
       ...event,
