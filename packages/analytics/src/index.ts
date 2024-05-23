@@ -209,10 +209,6 @@ export const createRouteHandler = ({
   };
 };
 
-type TrackerProps = {
-  endpoint?: string;
-};
-
 export const makeEventTracker =
   (options?: { endpoint?: string }) =>
   async (
