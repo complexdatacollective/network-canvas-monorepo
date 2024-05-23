@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { ensureError, getBaseUrl } from './utils';
 import z from 'zod';
 
@@ -90,18 +90,36 @@ export const createRouteHandler = ({
     try {
       const incomingEvent = (await request.json()) as unknown;
 
+      // Check if analytics is disabled
+      // eslint-disable-next-line no-process-env, turbo/no-undeclared-env-vars
+      if (process.env.DISABLE_ANALYTICS) {
+        // eslint-disable-next-line no-console
+        console.info('🛑 Analytics disabled. Payload not sent.');
+        try {
+          // eslint-disable-next-line no-console
+          console.info(
+            'Payload:',
+            '\n',
+            JSON.stringify(incomingEvent, null, 2),
+          );
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error('Error stringifying payload:', e);
+        }
+
+        return NextResponse.json(
+          { message: 'Analytics disabled' },
+          { status: 200 },
+        );
+      }
+
       // Validate the event
       const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
       if (!trackableEvent.success) {
         // eslint-disable-next-line no-console
         console.error('Invalid event:', trackableEvent.error);
-        return new Response(JSON.stringify({ error: 'Invalid event' }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        return NextResponse.json({ error: 'Invalid event' }, { status: 400 });
       }
 
       // We don't want failures in third party services to prevent us from
@@ -188,25 +206,13 @@ export const createRouteHandler = ({
 };
 
 export const makeEventTracker =
-  ({
-    enabled = false,
-    endpoint = '/api/analytics',
-  }: {
-    enabled?: boolean;
-    endpoint?: string;
-  }) =>
+  ({ endpoint = '/api/analytics' }: { endpoint?: string }) =>
   async (
     event: RawEvent,
   ): Promise<{
     error: string | null;
     success: boolean;
   }> => {
-    if (!enabled) {
-      // eslint-disable-next-line no-console
-      console.log('Analytics disabled - event not sent.');
-      return { error: null, success: true };
-    }
-
     const endpointWithHost = getBaseUrl() + endpoint;
 
     const eventWithTimeStamp: TrackableEvent = {

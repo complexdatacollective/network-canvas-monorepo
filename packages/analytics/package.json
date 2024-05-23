@@ -1,6 +1,6 @@
 {
   "name": "@codaco/analytics",
-  "version": "5.1.0",
+  "version": "6.0.0-alpha.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,7 +12,7 @@
     "dev": "npm run build -- --watch"
   },
   "peerDependencies": {
-    "next": "13 || 14"
+    "next": "13 || 14 || 15"
   },
   "devDependencies": {
     "@codaco/eslint-config": "workspace:*",
