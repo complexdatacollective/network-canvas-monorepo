@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ensureError, getBaseUrl } from './utils';
+import { ensureError, getBaseUrl, strictBooleanSchema } from './utils';
 import z from 'zod';
 
 // Todo: it would be great to work out a way to support arbitrary types here.
@@ -90,9 +90,13 @@ export const createRouteHandler = ({
     try {
       const incomingEvent = (await request.json()) as unknown;
 
+      const disableAnalytics = strictBooleanSchema.parse(
+        // eslint-disable-next-line no-process-env
+        process.env.DISABLE_ANALYTICS,
+      );
+
       // Check if analytics is disabled
-      // eslint-disable-next-line no-process-env, turbo/no-undeclared-env-vars
-      if (process.env.DISABLE_ANALYTICS) {
+      if (disableAnalytics) {
         // eslint-disable-next-line no-console
         console.info('🛑 Analytics disabled. Payload not sent.');
         try {
