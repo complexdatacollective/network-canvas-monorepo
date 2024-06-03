@@ -1,6 +1,6 @@
 {
   "name": "@codaco/analytics",
-  "version": "6.0.0-alpha.4",
+  "version": "6.0.0-alpha.5",
   "packageManager": "pnpm@8.15.5+sha256.4b4efa12490e5055d59b9b9fc9438b7d581a6b7af3b5675eb5c5f447cee1a589",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,6 +9,7 @@
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
+    "publish": "pnpm lint && pnpm build && pnpm publish --access public",
     "lint": "eslint .",
     "dev": "npm run build -- --watch"
   },

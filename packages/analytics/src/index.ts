@@ -28,9 +28,9 @@ const SharedEventAndErrorSchema = z.object({
 });
 
 /**
- * Raw events are the events that are sent trackEvent. They are either general
- * events or errors. We discriminate on the `type` property to determine which
- * schema to use, and then merge the shared properties.
+ * Raw events are the payload that is sent to trackEvent, which can be either
+ * general events or errors. We discriminate on the `type` property to determine
+ * which schema to use, and then merge the shared properties.
  */
 export const RawEventSchema = z.discriminatedUnion('type', [
   SharedEventAndErrorSchema.merge(EventSchema),
@@ -39,8 +39,8 @@ export const RawEventSchema = z.discriminatedUnion('type', [
 export type RawEvent = z.infer<typeof RawEventSchema>;
 
 /**
- * Trackable events are the events that are sent to the route handler. The
- * `trackEvent` function adds the timestamp to ensure it is not inaccurate
+ * Trackable events are the events that are sent to the route handler by
+ * `trackEvent`. The function adds the timestamp to ensure it is not inaccurate
  * due to network latency or processing time.
  */
 const TrackablePropertiesSchema = z.object({
@@ -217,9 +217,9 @@ export const makeEventTracker =
     error: string | null;
     success: boolean;
   }> => {
+    // We use a relative path by default, which should automatically use the
+    // same origin as the page that is sending the event.
     const endpoint = options?.endpoint ?? '/api/analytics';
-
-    const endpointWithHost = window.location.origin + endpoint;
 
     const eventWithTimeStamp: TrackableEvent = {
       ...event,
@@ -227,7 +227,7 @@ export const makeEventTracker =
     };
 
     try {
-      const response = await fetch(endpointWithHost, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         keepalive: true,
         body: JSON.stringify(eventWithTimeStamp),
