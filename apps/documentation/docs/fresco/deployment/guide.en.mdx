@@ -23,7 +23,7 @@ Before you get started, you should:
 
 <TipBox danger>
 
-Fresco is in beta and is not yet recommended for use in critical research studies. We encourage users to test Fresco in non-critical environments, and are actively seeking feedback from users to help us improve it.
+Fresco is in beta and is not yet recommended for use in critical research studies. We encourage users to test Fresco in non-critical environments and are actively seeking feedback from users to help us improve it.
 
 </TipBox>
 
@@ -37,11 +37,11 @@ This _also_ means that you are responsible for the security and maintenance of y
 
 To deploy Fresco, we will use the following services and technologies:
 
-- **GitHub**: A platform for hosting and sharing code, which is owned and operated by Microsoft. The Fresco code is shared via GitHub, and you will need a GitHub account to deploy it. If you do not have a GitHub account, you can create one for free at <a href="https://github.com/signup" target="_blank">github.com</a>.
+- **GitHub**: A platform for hosting and sharing code owned and operated by Microsoft. The Fresco code is shared via GitHub, and you will need a GitHub account to deploy it. If you do not have a GitHub account, you can create one for free at <a href="https://github.com/signup" target="_blank">github.com</a>.
 - **PostgreSQL**: A powerful, open-source relational database system. Fresco uses PostgreSQL to store data about your study, participants, and responses.
-- **UploadThing**: A cloud-based file storage service that Fresco uses to store protocol assets such media files.
+- **UploadThing**: A cloud-based file storage service that Fresco uses to store protocol assets such as media files.
 
-To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://vercel.com" target="_blank">Vercel</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use, and has a generous free tier that is suitable for
+To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://vercel.com" target="_blank">Vercel</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use and has a generous free tier that is suitable for
 most research projects. It is not a requirement to use Vercel to host Fresco, but it is the simplest way to get started and is the method we will be using in this guide.
 
 ## How much does deploying Fresco cost?
@@ -52,9 +52,9 @@ If you are running a large study, require guaranteed levels of performance, or h
 
 It is also possible to use whatever infrastructure you may have access to in order to deploy Fresco. For information on this, see our [advanced deployment](./advanced) guide.
 
-## Create fork of Fresco
+## Create a fork of Fresco
 
-Deploying Fresco involves setting up your own unique version of the project, which we refer to as your **instance**. The first step in creasing this insance is to create a copy (or "fork") of the Fresco code on GitHub.
+Deploying Fresco involves setting up your own unique version of the project, which we refer to as your **instance**. The first step in creating this instance is to create a copy (or "fork") of the Fresco code on GitHub.
 
 To do this, ensure you have a GitHub account and are signed in, and then:
 
@@ -152,7 +152,7 @@ Next, we will deploy your fork to the Vercel platform, using the services we cre
 
 <Tipbox>
 
-Should you run into any issues, please consult the [troubleshooting](/en/fresco/deployment/troubleshooting) guide or reach out on the <a href="https://community.networkcanvas.com" target="_blank">user community</a>.
+Should you run into any issues, please consult the [troubleshooting](/en/fresco/deployment/troubleshooting) guide or reach out to the <a href="https://community.networkcanvas.com" target="_blank">user community</a>.
 
 </Tipbox>
 
@@ -172,13 +172,13 @@ Should you run into any issues, please consult the [troubleshooting](/en/fresco/
 
    We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
 
-   If you would like to disable all analytics, add an additional environment variable to your Vercel deployment called `NEXT_PUBLIC_DISABLE_ANALYTICS` and set it to `true`. For example:
+   If you would like to disable all analytics, add an additional environment variable to your Vercel deployment called `DISABLE_ANALYTICS` and set it to `true`. For example:
 
    ```bash
-   NEXT_PUBLIC_DISABLE_ANALYTICS=true
+   DISABLE_ANALYTICS=true
    ```
 
-   By leaving `NEXT_PUBLIC_DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
+   By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
 
    </TipBox>
 
