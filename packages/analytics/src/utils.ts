@@ -1,4 +1,5 @@
-/* eslint-disable no-process-env */
+import { z } from 'zod';
+
 // Helper function that ensures that a value is an Error
 export function ensureError(value: unknown): Error {
   if (!value) return new Error('No value was thrown');
@@ -23,19 +24,11 @@ export function ensureError(value: unknown): Error {
   return error;
 }
 
-export function getBaseUrl() {
-  if (typeof window !== 'undefined')
-    // browser should use relative path
-    return '';
-
-  if (process.env.VERCEL_URL)
-    // reference for vercel.com
-    return `https://${process.env.VERCEL_URL}`;
-
-  if (process.env.NEXT_PUBLIC_URL)
-    // Manually set deployment URL from env
-    return process.env.NEXT_PUBLIC_URL;
-
-  // assume localhost
-  return `http://127.0.0.1:3000`;
-}
+// this is a workaround for this issue:https://github.com/colinhacks/zod/issues/1630
+// z.coerce.boolean() doesn't work as expected
+export const strictBooleanSchema = z
+  .enum(['true', 'false', 'True', 'False', 'TRUE', 'FALSE'])
+  .default('false')
+  .transform(
+    (value) => value === 'true' || value === 'True' || value === 'TRUE',
+  );

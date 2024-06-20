@@ -1,5 +1,5 @@
-import { type NextRequest } from 'next/server';
-import { ensureError, getBaseUrl } from './utils';
+import { NextResponse, type NextRequest } from 'next/server';
+import { ensureError, strictBooleanSchema } from './utils';
 import z from 'zod';
 
 // Todo: it would be great to work out a way to support arbitrary types here.
@@ -28,9 +28,9 @@ const SharedEventAndErrorSchema = z.object({
 });
 
 /**
- * Raw events are the events that are sent trackEvent. They are either general
- * events or errors. We discriminate on the `type` property to determine which
- * schema to use, and then merge the shared properties.
+ * Raw events are the payload that is sent to trackEvent, which can be either
+ * general events or errors. We discriminate on the `type` property to determine
+ * which schema to use, and then merge the shared properties.
  */
 export const RawEventSchema = z.discriminatedUnion('type', [
   SharedEventAndErrorSchema.merge(EventSchema),
@@ -39,8 +39,8 @@ export const RawEventSchema = z.discriminatedUnion('type', [
 export type RawEvent = z.infer<typeof RawEventSchema>;
 
 /**
- * Trackable events are the events that are sent to the route handler. The
- * `trackEvent` function adds the timestamp to ensure it is not inaccurate
+ * Trackable events are the events that are sent to the route handler by
+ * `trackEvent`. The function adds the timestamp to ensure it is not inaccurate
  * due to network latency or processing time.
  */
 const TrackablePropertiesSchema = z.object({
@@ -90,18 +90,40 @@ export const createRouteHandler = ({
     try {
       const incomingEvent = (await request.json()) as unknown;
 
+      const disableAnalytics = strictBooleanSchema.parse(
+        // eslint-disable-next-line no-process-env
+        process.env.DISABLE_ANALYTICS,
+      );
+
+      // Check if analytics is disabled
+      if (disableAnalytics) {
+        // eslint-disable-next-line no-console
+        console.info('🛑 Analytics disabled. Payload not sent.');
+        try {
+          // eslint-disable-next-line no-console
+          console.info(
+            'Payload:',
+            '\n',
+            JSON.stringify(incomingEvent, null, 2),
+          );
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error('Error stringifying payload:', e);
+        }
+
+        return NextResponse.json(
+          { message: 'Analytics disabled' },
+          { status: 200 },
+        );
+      }
+
       // Validate the event
       const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
       if (!trackableEvent.success) {
         // eslint-disable-next-line no-console
         console.error('Invalid event:', trackableEvent.error);
-        return new Response(JSON.stringify({ error: 'Invalid event' }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        return NextResponse.json({ error: 'Invalid event' }, { status: 400 });
       }
 
       // We don't want failures in third party services to prevent us from
@@ -188,26 +210,16 @@ export const createRouteHandler = ({
 };
 
 export const makeEventTracker =
-  ({
-    enabled = false,
-    endpoint = '/api/analytics',
-  }: {
-    enabled?: boolean;
-    endpoint?: string;
-  }) =>
+  (options?: { endpoint?: string }) =>
   async (
     event: RawEvent,
   ): Promise<{
     error: string | null;
     success: boolean;
   }> => {
-    if (!enabled) {
-      // eslint-disable-next-line no-console
-      console.log('Analytics disabled - event not sent.');
-      return { error: null, success: true };
-    }
-
-    const endpointWithHost = getBaseUrl() + endpoint;
+    // We use a relative path by default, which should automatically use the
+    // same origin as the page that is sending the event.
+    const endpoint = options?.endpoint ?? '/api/analytics';
 
     const eventWithTimeStamp: TrackableEvent = {
       ...event,
@@ -215,7 +227,7 @@ export const makeEventTracker =
     };
 
     try {
-      const response = await fetch(endpointWithHost, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         keepalive: true,
         body: JSON.stringify(eventWithTimeStamp),

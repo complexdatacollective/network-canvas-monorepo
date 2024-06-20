@@ -1,6 +1,7 @@
 {
   "name": "@codaco/analytics",
-  "version": "5.1.0",
+  "version": "6.0.0",
+  "packageManager": "pnpm@8.15.5+sha256.4b4efa12490e5055d59b9b9fc9438b7d581a6b7af3b5675eb5c5f447cee1a589",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -8,23 +9,23 @@
   "description": "Utilities for tracking analytics and error reporting in Fresco",
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
+    "publish": "pnpm lint && pnpm build && npm publish --access public",
     "lint": "eslint .",
     "dev": "npm run build -- --watch"
   },
   "peerDependencies": {
-    "next": "13 || 14"
+    "next": "13 || 14 || 15"
   },
   "devDependencies": {
     "@codaco/eslint-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
-    "tailwindcss": "^3.4.1",
     "tsup": "^8.0.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.5"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "zod": "^3.23.8"
   },
   "eslintConfig": {
     "root": true,
