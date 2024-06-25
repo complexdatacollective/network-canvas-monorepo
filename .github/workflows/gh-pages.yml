@@ -68,11 +68,11 @@ jobs:
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
       - name: Build with Next.js
+        env:
+          SKIP_ENV_VALIDATION: true
         run: |
           cd apps/documentation
           pnpm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: 1 # Disable Next.js telemetry if needed
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
