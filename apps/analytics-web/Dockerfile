@@ -14,7 +14,7 @@ COPY db ./db
 COPY package.json pnpm-lock.yaml* ./
 
 # Install pnpm and install dependencies	RUN pnpm install
-RUN corepack enable pnpm && pnpm i --frozen-lockfile
+RUN corepack enable pnpm && pnpm install
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
