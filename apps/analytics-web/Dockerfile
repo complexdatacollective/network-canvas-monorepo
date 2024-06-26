@@ -11,6 +11,7 @@ WORKDIR /app
 RUN corepack enable pnpm
 
 RUN pnpm i turbo@1.12.4
+COPY . .
 
 # Generate a partial monorepo with a pruned lockfile for a target workspace.
 # use the name entered in the project's package.json: { name: "analytics-web" }
