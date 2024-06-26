@@ -1,74 +1,50 @@
 FROM node:lts-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
-
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-# RUN apk add --no-cache libc6-compat
+FROM base AS builder
+RUN apk add --no-cache libc6-compat
+RUN apk update
+# Set working directory
 WORKDIR /app
-
-# db stuff
-COPY db ./db
-
-# Copy package.json and lockfile	# Copy package.json and lockfile
-COPY package.json pnpm-lock.yaml* ./
-
-# Install pnpm and install dependencies	RUN pnpm install
-RUN corepack enable pnpm && pnpm install
+RUN npm install -g turbo
+COPY . .
+RUN turbo prune --scope=docs --docker
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
-RUN apk update
 RUN apk add --no-cache libc6-compat
+RUN apk update
 WORKDIR /app
 
-# Copy package.json and lockfile
-COPY package.json pnpm-lock.yaml* ./
+# First install the dependencies (as they change less often)
+COPY --from=builder /app/out/json/ .
+COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN corepack enable
+RUN pnpm install --frozen-lockfile
 
-RUN pnpm install
+# Build the project
+COPY --from=builder /app/out/full/ .
+RUN pnpm dlx turbo run build --filter=docs
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-ENV SKIP_ENV_VALIDATION=true
-RUN corepack enable pnpm && pnpm run build
-
-# If using npm comment out above and use below instead
-# RUN npm run build
-
-# Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-
-# disable telemetry during runtime.
-ENV NEXT_TELEMETRY_DISABLED 1
-
+# Don't run production as root
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+USER nextjs
 
-COPY --from=builder /app/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+COPY --from=installer /app/analytics-web/docs/next.config.js .
+COPY --from=installer /app/apps/analytics-web/package.json .
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/db ./db
+COPY --from=installer --chown=nextjs:nodejs /app/apps/analytics-web/.next/standalone ./
+COPY --from=installer --chown=nextjs:nodejs /app/apps/analytics-web/.next/static ./apps/analytics-web/.next/static
+COPY --from=installer --chown=nextjs:nodejs /app/apps/analytics-web/public ./apps/analytics-web/public
 
 USER nextjs
-
 EXPOSE 3000
-
 ENV PORT 3000
-
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]
