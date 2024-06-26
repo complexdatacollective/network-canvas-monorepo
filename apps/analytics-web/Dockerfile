@@ -7,18 +7,14 @@ FROM base AS deps
 # RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable pnpm
-
-RUN pnpm i turbo@1.12.4
-COPY . .
-
-# Generate a partial monorepo with a pruned lockfile for a target workspace.
-# use the name entered in the project's package.json: { name: "analytics-web" }
-RUN turbo prune analytics-web --docker
-
 # db stuff
 COPY db ./db
+
+# Copy package.json and lockfile	# Copy package.json and lockfile
+COPY package.json pnpm-lock.yaml* ./
+
+# Install pnpm and install dependencies	RUN pnpm install
+RUN corepack enable pnpm && pnpm i --frozen-lockfile
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
