@@ -42,7 +42,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          cd apps/documentation
+          pnpm install --frozen-lockfile
 
       - name: Get pnpm store directory
         shell: bash
