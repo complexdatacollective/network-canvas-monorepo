@@ -17,11 +17,6 @@ WORKDIR /
 COPY . .
 RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 
-# install project dependencies
-WORKDIR /apps/analytics-web
-RUN pnpm i --no-frozen-lockfile
-
-
 # Copy source code
 COPY . .
 
@@ -38,7 +33,7 @@ USER nodejs
 WORKDIR /
 COPY --from=builder --chown=nodejs:nodejs / .
 
-WORKDIR /apps/./apps/analytics-web
+WORKDIR /apps/analytics-web
 
 EXPOSE 3000
 
