@@ -17,7 +17,10 @@ WORKDIR /
 COPY . .
 RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 
-RUN pnpm install tsup --global
+# install project dependencies
+WORKDIR /apps/analytics-web
+RUN pnpm i --no-frozen-lockfile
+
 
 # Copy source code
 COPY . .
