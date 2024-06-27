@@ -17,6 +17,8 @@ WORKDIR /
 COPY . .
 RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 
+RUN pnpm install tsup --global
+
 # Copy source code
 COPY . .
 
