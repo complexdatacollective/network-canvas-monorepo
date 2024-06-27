@@ -1,53 +1,40 @@
-
-
-# Alpine image
 FROM node:lts-alpine AS base
-RUN apk update
-RUN apk add --no-cache libc6-compat
+RUN apk update && apk add --no-cache libc6-compat
 
-# Setup pnpm and turbo on the alpine base
 RUN npm install pnpm turbo@1.12.4 --global
 RUN pnpm config set store-dir ~/.pnpm-store
 
-# Prune projects
-FROM base AS pruner
-ARG PROJECT=analytics-web
-
+# Copy the project files
 WORKDIR /
 COPY . .
-RUN turbo prune --scope=${PROJECT} --docker
 
 # Build the project
 FROM base AS builder
-ARG PROJECT
+ARG PROJECT=apps/web-analytics
 
 WORKDIR /
 
-# Copy lockfile and package.json's of isolated subworkspace
-COPY --from=pruner /out/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=pruner /out/pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY --from=pruner /out/json/ .
-
-# First install the dependencies (as they change less often)
+# Install dependencies
+COPY . .
 RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 
-# Copy source code of isolated subworkspace
-COPY --from=pruner /out/full/ .
+# Copy source code
+COPY . .
 
+# Build the project
 RUN turbo build --filter=${PROJECT}
-RUN --mount=type=cache,id=pnpm,target=~/.pnpm-store pnpm prune --prod --no-optional
-RUN rm -rf ./**/*/src
 
 # Final image
 FROM alpine AS runner
-ARG PROJECT
+ARG PROJECT=apps/web-analytics
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nodejs
+
 USER nodejs
-
 WORKDIR /
 COPY --from=builder --chown=nodejs:nodejs / .
+
 WORKDIR /apps/${PROJECT}
 
 ARG PORT=3000
