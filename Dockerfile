@@ -10,7 +10,7 @@ COPY . .
 
 # Build the project
 FROM base AS builder
-ARG PROJECT=apps/web-analytics
+ARG PROJECT=apps/analytics-web
 
 WORKDIR /
 
@@ -26,7 +26,7 @@ RUN turbo build --filter=${PROJECT}
 
 # Final image
 FROM alpine AS runner
-ARG PROJECT=apps/web-analytics
+ARG PROJECT=apps/analytics-web
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nodejs
