@@ -10,7 +10,6 @@ COPY . .
 
 # Build the project
 FROM base AS builder
-ARG PROJECT=apps/analytics-web
 
 WORKDIR /
 
@@ -22,11 +21,10 @@ RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 COPY . .
 
 # Build the project
-RUN turbo build --filter=${PROJECT}
+RUN turbo build --filter=./apps/analytics-web
 
 # Final image
 FROM alpine AS runner
-ARG PROJECT=apps/analytics-web
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nodejs
@@ -35,7 +33,7 @@ USER nodejs
 WORKDIR /
 COPY --from=builder --chown=nodejs:nodejs / .
 
-WORKDIR /apps/${PROJECT}
+WORKDIR /apps/./apps/analytics-web
 
 EXPOSE 3000
 
