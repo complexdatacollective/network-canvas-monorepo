@@ -1,7 +1,86 @@
 ---
 title: Advanced Deployment
-date: 13th March 2024
+date: 9th July 2024
 wip: true
 ---
 
-Coming soon!
+Deploying Fresco in a Docker container simplifies the process of setting up and managing the application environment. This article focuses on the essential environment variables required for a successful deployment and outlines the steps for orchestrating a Postgres database container alongside Fresco.
+
+# Environment Variables Explained
+
+Environment variables play a crucial role in configuring Fresco's behavior without altering the code. Here's a breakdown of the variables you'll encounter:
+
+## Optional Variables
+
+- **PUBLIC_URL**: Essential for advanced deployments, this variable should reflect your application's domain name, enabling proper routing and resource loading.
+
+- **DISABLE_ANALYTICS**: When set to true, Fresco will not send anonymous analytics data.
+
+- **INSTALLATION_ID**: A unique identifier for your application, used primarily for analytics. If not set, it's generated automatically.
+
+## Required Variables
+
+- **UPLOADTHING_SECRET** and **UPLOADTHING_APP_ID**: These are necessary for integrating with UploadThing services, handling file uploads and management.
+
+- **POSTGRES_USER**, **POSTGRES_PASSWORD**, **POSTGRES_DATABASE**, **POSTGRES_HOST**: These variables are crucial for setting up the Postgres database connection, ensuring Fresco can store and manage data effectively.
+
+- **POSTGRES_PRISMA_URL** and **POSTGRES_URL_NON_POOLING**: Prisma ORM, uses these URLs for pooled and non-pooling database connections, optimizing database interactions.
+
+# Container Orchestration with Docker Compose
+
+To streamline the deployment process, including setting up a Postgres database alongside Fresco, Docker Compose can be used. Below is a simplified `docker-compose.yml` example that demonstrates how to orchestrate both containers:
+
+```yaml
+services:
+  fresco:
+    image: 'ghcr.io/complexdatacollective/fresco:feature-docker'
+    environment:
+      - PUBLIC_URL=http://yourdomain.com
+      - UPLOADTHING_SECRET=sk_live_xxxxxx
+      - UPLOADTHING_APP_ID=xxxxxxx
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DATABASE=postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PRISMA_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE}?schema=public
+      - POSTGRES_URL_NON_POOLING=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app/next-app
+    restart: always
+    ports:
+      - 0:3000
+    networks:
+      - fresco_network
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    networks:
+      - fresco_network
+
+volumes:
+  postgres:
+
+# Define a network, which allows containers to communicate
+# with each other, by using their container name as a hostname
+networks:
+  fresco_network:
+```
+
+This configuration ensures that both Fresco and Postgres are deployed in tandem, with environment variables passed to the Fresco container to configure its connection to the Postgres container.
+
+By understanding and correctly setting these environment variables, and leveraging Docker Compose for orchestration, deploying Fresco becomes a streamlined and efficient process.
