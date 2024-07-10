@@ -4,31 +4,146 @@ date: 9th July 2024
 wip: true
 ---
 
-Deploying Fresco in a Docker container simplifies the process of setting up and managing the application environment. This article focuses on the essential environment variables required for a successful deployment and outlines the steps for orchestrating a Postgres database container alongside Fresco.
+<SummaryCard duration="60 minutes">
 
-# Environment Variables Explained
+<SummarySection>
 
-Environment variables play a crucial role in configuring Fresco's behavior without altering the code. Here's a breakdown of the variables you'll encounter:
+For most users, the default [deployment process](./guide) will be sufficient. However, if your circumstances require using different cloud infrastructure or a VPS, you can do so by using [Docker](https://www.docker.com/).
 
-## Optional Variables
+</SummarySection>
 
-- **PUBLIC_URL**: Essential for advanced deployments, this variable should reflect your application's domain name, enabling proper routing and resource loading.
+<PrerequisitesSection>
 
-- **DISABLE_ANALYTICS**: When set to true, Fresco will not send anonymous analytics data.
+This guide is intended for advanced, technical users who are already familiar with Docker and cloud infrastructure. It provides a high-level overview of the steps required to deploy Fresco using Docker, but does not provide detailed instructions for each step.
 
-- **INSTALLATION_ID**: A unique identifier for your application, used primarily for analytics. If not set, it's generated automatically.
+If you are not already familiar with these technologies, we recommend following our [default deployment guide](./guide).
 
-## Required Variables
+</PrerequisitesSection>
+</SummaryCard>
 
-- **UPLOADTHING_SECRET** and **UPLOADTHING_APP_ID**: These are necessary for integrating with UploadThing services, handling file uploads and management.
+## Configure Hosting Infrastructure
 
-- **POSTGRES_USER**, **POSTGRES_PASSWORD**, **POSTGRES_DATABASE**, **POSTGRES_HOST**: These variables are crucial for setting up the Postgres database connection, ensuring Fresco can store and manage data effectively.
+### Finding Hosting Services
 
-- **POSTGRES_PRISMA_URL** and **POSTGRES_URL_NON_POOLING**: Prisma ORM, uses these URLs for pooled and non-pooling database connections, optimizing database interactions.
+For advanced deployment, you will need to find a cloud service or VPS provider that supports Docker. Here are a few options:
 
-# Container Orchestration with Docker Compose
+- [Digial Ocean](https://www.digitalocean.com/)
+- [AWS](https://aws.amazon.com/)
+- Your own VPS
 
-To streamline the deployment process, including setting up a Postgres database alongside Fresco, Docker Compose can be used. Below is a simplified `docker-compose.yml` example that demonstrates how to orchestrate both containers:
+### Set up Docker Environment
+
+Ensure that you have Docker installed on your server. You can follow the instructions on the [official Docker website](https://docs.docker.com/install/).
+
+## Prepare Fresco Repository
+
+Clone the [Fresco repository](https://github.com/complexdatacollective/Fresco) to your server. You can do this by running the following command:
+
+```bash
+git clone https://github.com/complexdatacollective/Fresco.git
+```
+
+## Configure Environment Variables
+
+Create an `.env` file in the root of the Fresco repository. You can use the [`.env.example`](https://github.com/complexdatacollective/Fresco/blob/main/.env.example) file as a template, or copy the simplified template below. The next steps will guide you through setting up the environment variables and adding them to this file.
+
+```bash
+# -------------------
+# Optional environment variables
+# -------------------
+
+#DISABLE_ANALYTICS=
+#INSTALLATION_ID=
+#SANDBOX_MODE=
+
+# -------------------
+# Required environment variables
+# -------------------
+
+UPLOADTHING_SECRET=
+UPLOADTHING_APP_ID=
+
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DATABASE=
+POSTGRES_HOST=
+POSTGRES_PRISMA_URL=
+POSTGRES_URL_NON_POOLING=
+PUBLIC_URL=
+
+```
+
+### Optional Variables
+
+| **Variable**          | **Explanation**                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **DISABLE_ANALYTICS** | If true, the app will not send anonymous analytics data to the server. Defaults to false.                                |
+| **INSTALLATION_ID**   | A unique identifier for your application, used primarily for analytics. If not set, it's generated automatically.        |
+| **SANDBOX_MODE**      | If true, the app will use the sandbox mode, which disables resetting the database and other features. Defaults to false. |
+
+<TipBox>
+
+We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
+
+If you would like to disable all analytics, set `DISABLE_ANALYTICS` to `true`.
+
+By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
+
+   </TipBox>
+   
+### Required Variables
+
+| **Variable**                 | **Explanation**                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| **UPLOADTHING_SECRET**       | Your UploadThing secret key                                                          |
+| **UPLOADTHING_APP_ID**       | Your UploadThing app ID                                                              |
+| **POSTGRES_USER**            | Your PostgreSQL username                                                             |
+| **POSTGRES_PASSWORD**        | Your PostgreSQL password                                                             |
+| **POSTGRES_DATABASE**        | Your PostgreSQL database name                                                        |
+| **POSTGRES_HOST**            | Your PostgreSQL host                                                                 |
+| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma.                                                  |
+| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma.                                             |
+| **PUBLIC_URL**               | When using advanced deployment, this is required. Set to the domain name of your app |
+
+### Create a storage bucket using UploadThing
+
+Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
+
+<Tipbox>
+
+Your UploadThing account is unique to you, meaning that no one else will have access to the files stored in your instance of Fresco. For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
+
+</Tipbox>
+
+To create an app on UploadThing:
+
+1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
+
+2. Click **"Get started"**.
+
+   ![Select "Get Started"](/assets/img/fresco-images/uploadthing1.png)
+
+3. Sign in with Github.
+
+4. Authorize UploadThing by clicking **"Authorize pingdotgg"**.
+
+5. You will be prompted to navigate to your dashboard. From the dashboard Click **"Create a new app"**.
+
+   ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
+
+6. Give your app a name and click **"Create App"**. Do not change the region.
+
+   ![Create app](/assets/img/fresco-images/uploadthing5.png)
+
+7. From your dashboard, navigate to the **"API Keys"** section from the sidebar and copy your API keys using the copy button.
+
+   ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
+
+8. Paste your API keys into the `.env` file you created in the previous step.
+
+## Container Orchestration with Docker Compose
+
+To streamline the deployment process, you can use Docker Compose to manage both the Fresco and PostgreSQL containers. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
 
 ```yaml
 services:
@@ -81,6 +196,52 @@ networks:
   fresco_network:
 ```
 
-This configuration ensures that both Fresco and Postgres are deployed in tandem, with environment variables passed to the Fresco container to configure its connection to the Postgres container.
+## Access Fresco
 
-By understanding and correctly setting these environment variables, and leveraging Docker Compose for orchestration, deploying Fresco becomes a streamlined and efficient process.
+You can now access Fresco by visiting the url that you have configured in your hosting service.
+
+## Configuration and setup
+
+To use Fresco, you need to set up an administrator account which will enable you to access the protected parts of the app for study management. Only one administrator account can be created.
+
+<TipBox danger>
+
+To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired-message-during-the-setup-process).
+
+</TipBox>
+
+### Create a user account
+
+Visit your deployed app and create an account by entering a username and password. Ensure you make the password as strong as possible!
+
+<TipBox>
+
+Only **one** user account can be created in Fresco. If you need access for multiple team members, we recommend using a shared username and password for the administrator account to ensure that your team can access the platform.
+
+</TipBox>
+
+![Enter a username and password](/assets/img/fresco-images/fresco1.png)
+
+<TipBox danger>
+
+If you forget your password, you **will not be able to reset it**. We recommend keeping a record of your username and password in a secure location.
+
+</TipBox>
+
+### Upload a protocol
+
+You can optionally upload a protocol. Protocols can also be uploaded from the protocols page once the setup steps are completed.
+
+![Upload a protocol](/assets/img/fresco-images/fresco2.png)
+
+### Configure participation
+
+- **Import participants**: You can optionally upload a CSV file containing participants you wish to recruit to your study. Participants can also be uploaded from the participants page once the setup steps are completed.
+
+- **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found in the [using Fresco](/en/fresco/using-fresco) guide.
+
+![Import participants and optionally allow anonymous recruitment](/assets/img/fresco-images/fresco3.png)
+
+### Visit the dashboard
+
+Click the **"Go to the dashboard"** button and to begin using Fresco!
