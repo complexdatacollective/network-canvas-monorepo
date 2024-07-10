@@ -21,6 +21,13 @@ If you are not already familiar with these technologies, we recommend following 
 </PrerequisitesSection>
 </SummaryCard>
 
+<Tipbox danger>
+  Because of the nature of deploying Dockerized applications to cloud
+  infrastructure, you are responsible for the security and maintenance of your
+  own deployment! The Network Canvas project team by design has no access to
+  your data or infrastructure.
+</Tipbox>
+
 ## Configure Hosting Infrastructure
 
 ### Finding Hosting Services
@@ -33,7 +40,10 @@ For advanced deployment, you will need to find a cloud service or VPS provider t
 
 ### Set up Docker Environment
 
-Ensure that you have Docker installed on your server. You can follow the instructions on the [official Docker website](https://docs.docker.com/install/).
+Ensure that you have Docker installed on your server. Each hosting provider will have different steps for setting up Docker, so please refer to their documentation for more information.
+
+- [Digital Ocean Docker Installation](https://www.digitalocean.com/community/tutorial-collections/how-to-install-and-use-docker)
+- [AWS Docker Installation](https://aws.amazon.com/docker/)
 
 ## Prepare Fresco Repository
 
@@ -143,22 +153,14 @@ To create an app on UploadThing:
 
 ## Container Orchestration with Docker Compose
 
-To streamline the deployment process, you can use Docker Compose to manage both the Fresco and PostgreSQL containers. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
+To streamline the deployment process, you can use [Docker Compose](https://docs.docker.com/compose/) to manage both the Fresco and Postgres containers. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
 
 ```yaml
 services:
   fresco:
+    env_file:
+      - .env
     image: 'ghcr.io/complexdatacollective/fresco:feature-docker'
-    environment:
-      - PUBLIC_URL=http://yourdomain.com
-      - UPLOADTHING_SECRET=sk_live_xxxxxx
-      - UPLOADTHING_APP_ID=xxxxxxx
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DATABASE=postgres
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PRISMA_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE}?schema=public
-      - POSTGRES_URL_NON_POOLING=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE}?schema=public
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,10 +175,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
+    env_file:
+      - .env
     volumes:
       - postgres:/var/lib/postgresql/data
     healthcheck:
@@ -196,9 +196,17 @@ networks:
   fresco_network:
 ```
 
+## Build and Run Fresco with Docker Compose
+
+Start up your application by running the following command:
+
+```bash
+docker-compose up
+```
+
 ## Access Fresco
 
-You can now access Fresco by visiting the url that you have configured in your hosting service.
+You can now access Fresco by visiting the `PUBLIC_URL` that you have configured in your hosting service.
 
 ## Configuration and setup
 
