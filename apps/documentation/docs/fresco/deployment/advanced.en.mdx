@@ -146,9 +146,11 @@ To create an app on UploadThing:
 | **UPLOADTHING_SECRET** | Your UploadThing secret key |
 | **UPLOADTHING_APP_ID** | Your UploadThing app ID     |
 
-### Postgres Env Variables Configuration
+### Postgres Environment Variables Configuration
 
-Fresco uses a PostgreSQL database to store data. We recommend that you use docker-compose to manage the Postgres container in tandem with the Fresco container. You can use the following environment variables to configure your Postgres database:
+Fresco uses a PostgreSQL database to store data. For advanced deployment, you will need to set up a PostgreSQL database on your server.
+
+You will need to set the following environment variables to configure your Postgres database and connect it to Fresco:
 
 | **Variable**                 | **Details**                              |
 | ---------------------------- | ---------------------------------------- |
@@ -163,7 +165,7 @@ Set these variables in your `.env` file. If you are using Docker Compose, these 
 
 ## Container Orchestration with Docker Compose
 
-To streamline the deployment process, use [Docker Compose](https://docs.docker.com/compose/) to manage both the Fresco and Postgres containers. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
+We recommend that you use [Docker Compose](https://docs.docker.com/compose/) to manage the Postgres container in tandem with the Fresco container. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
 
 ```yaml
 services:
@@ -206,7 +208,7 @@ networks:
   fresco_network:
 ```
 
-## Build and Run Fresco with Docker Compose
+### Build and Run Fresco with Docker Compose
 
 Start up your application by running the following command:
 
