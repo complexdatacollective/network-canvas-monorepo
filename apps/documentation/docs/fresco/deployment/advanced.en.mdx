@@ -22,7 +22,7 @@ If you are not already familiar with these technologies, we recommend following 
 </SummaryCard>
 
 <Tipbox danger>
-  Because of the nature of deploying Dockerized applications to cloud
+  Because of the nature of self-hosting Dockerized applications on cloud
   infrastructure, you are responsible for the security and maintenance of your
   own deployment! The Network Canvas project team by design has no access to
   your data or infrastructure.
@@ -85,7 +85,7 @@ PUBLIC_URL=
 
 ### Optional Variables
 
-| **Variable**          | **Explanation**                                                                                                          |
+| **Variable**          | **Details**                                                                                                              |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | **DISABLE_ANALYTICS** | If true, the app will not send anonymous analytics data to the server. Defaults to false.                                |
 | **INSTALLATION_ID**   | A unique identifier for your application, used primarily for analytics. If not set, it's generated automatically.        |
@@ -103,17 +103,7 @@ By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us ide
    
 ### Required Variables
 
-| **Variable**                 | **Explanation**                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| **UPLOADTHING_SECRET**       | Your UploadThing secret key                                                          |
-| **UPLOADTHING_APP_ID**       | Your UploadThing app ID                                                              |
-| **POSTGRES_USER**            | Your PostgreSQL username                                                             |
-| **POSTGRES_PASSWORD**        | Your PostgreSQL password                                                             |
-| **POSTGRES_DATABASE**        | Your PostgreSQL database name                                                        |
-| **POSTGRES_HOST**            | Your PostgreSQL host                                                                 |
-| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma.                                                  |
-| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma.                                             |
-| **PUBLIC_URL**               | When using advanced deployment, this is required. Set to the domain name of your app |
+The following steps will guide you through configuring the required environment variables.
 
 ### Create a storage bucket using UploadThing
 
@@ -149,11 +139,31 @@ To create an app on UploadThing:
 
    ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
 
-8. Paste your API keys into the `.env` file you created in the previous step.
+8. Pate your API keys into the `.env` file you created in the previous step.
+
+| **Variable**           | **Details**                 |
+| ---------------------- | --------------------------- |
+| **UPLOADTHING_SECRET** | Your UploadThing secret key |
+| **UPLOADTHING_APP_ID** | Your UploadThing app ID     |
+
+### Postgres Env Variables Configuration
+
+Fresco uses a PostgreSQL database to store data. We recommend that you use docker-compose to manage the Postgres container in tandem with the Fresco container. You can use the following environment variables to configure your Postgres database:
+
+| **Variable**                 | **Details**                              |
+| ---------------------------- | ---------------------------------------- |
+| **POSTGRES_USER**            | Your PostgreSQL username                 |
+| **POSTGRES_PASSWORD**        | Your PostgreSQL password                 |
+| **POSTGRES_DATABASE**        | Your PostgreSQL database name            |
+| **POSTGRES_HOST**            | Your PostgreSQL host                     |
+| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma.      |
+| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma. |
+
+Set these variables in your `.env` file. If you are using Docker Compose, these variables will be injected into the Postgres container and the Fresco container by specifying the `.env` file path.
 
 ## Container Orchestration with Docker Compose
 
-To streamline the deployment process, you can use [Docker Compose](https://docs.docker.com/compose/) to manage both the Fresco and Postgres containers. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
+To streamline the deployment process, use [Docker Compose](https://docs.docker.com/compose/) to manage both the Fresco and Postgres containers. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
 
 ```yaml
 services:
