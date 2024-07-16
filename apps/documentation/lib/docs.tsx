@@ -1,17 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join, sep } from 'node:path';
-import type { Options } from 'rehype-react';
-import * as prod from 'react/jsx-runtime';
-import rehypeReact from 'rehype-react';
-import remarkFrontmatter from 'remark-frontmatter';
-import remarkParse from 'remark-parse';
-import remarkRehype from 'remark-rehype';
-import rehypeFigure from '@microflash/rehype-figure';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeHighlight from 'rehype-highlight';
-import { unified } from 'unified';
-import { z } from 'zod';
 import {
   Button,
   Details,
@@ -22,6 +8,23 @@ import {
   Summary,
   UnorderedList,
 } from '@codaco/ui';
+import rehypeFigure from '@microflash/rehype-figure';
+import { type LinkProps } from 'next/link';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
+import { type ReactNode } from 'react';
+import * as prod from 'react/jsx-runtime';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import type { Options } from 'rehype-react';
+import rehypeReact from 'rehype-react';
+import slug from 'rehype-slug';
+import remarkFrontmatter from 'remark-frontmatter';
+import remarkGfm from 'remark-gfm';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import { unified } from 'unified';
+import { z } from 'zod';
 import {
   locales,
   type LocalesEnum,
@@ -31,30 +34,29 @@ import {
   type TSideBar,
 } from '~/app/types';
 import Link from '~/components/Link';
-import sidebar from '~/public/sidebar.json';
-import { get } from './helper_functions';
-import processYamlMatter from './processYamlMatter';
-import slug from 'rehype-slug';
-import { type HeadingNode, headingTree } from './tableOfContents';
-import { type LinkProps } from 'next/link';
-import { type ReactNode } from 'react';
-import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
+import {
+  BadPractice,
+  GoodPractice,
+} from '~/components/customComponents/BestPractices';
 import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
+import {
+  InterfaceMeta,
+  InterfaceSummary,
+} from '~/components/customComponents/InterfaceSummary';
 import KeyConcept from '~/components/customComponents/KeyConcept';
-import VideoIFrame from '~/components/customComponents/VideoIFrame';
+import Pre from '~/components/customComponents/Pre';
 import {
   PrerequisitesSection,
   SummaryCard,
   SummarySection,
 } from '~/components/customComponents/SummaryCard';
-import {
-  InterfaceMeta,
-  InterfaceSummary,
-} from '~/components/customComponents/InterfaceSummary';
-import {
-  GoodPractice,
-  BadPractice,
-} from '~/components/customComponents/BestPractices';
+import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
+import VideoIFrame from '~/components/customComponents/VideoIFrame';
+import sidebar from '~/public/sidebar.json';
+import { get } from './helper_functions';
+import processPreTags from './processPreTags';
+import processYamlMatter from './processYamlMatter';
+import { headingTree, type HeadingNode } from './tableOfContents';
 import { cn } from './utils';
 
 export type DocRouteParams = {
@@ -245,6 +247,7 @@ export async function getDocumentForPath({
     .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings
     .use(headingTree) // Create a tree of headings in data.headings
+    .use(processPreTags) // Process `pre` tags
     .use(
       rehypeHighlight, // Highlight code blocks
       {
@@ -271,10 +274,7 @@ export async function getDocumentForPath({
             {props.children}
           </blockquote>
         ),
-        pre: (props) => (
-          <pre className="my-5 overflow-hidden rounded-xl" {...props} />
-        ),
-        code: (props) => <code className="text-small" {...props} />,
+        pre: Pre,
         button: (props) => <Button variant="default" {...props} />,
         link: (
           props: LinkProps & { className?: string; children: ReactNode },
