@@ -7,10 +7,10 @@ type PreProps = React.HTMLAttributes<HTMLPreElement> & {
 
 const Pre = ({ raw, children, ...props }: PreProps) => {
   return (
-    <pre className="relative my-5 overflow-hidden rounded-xl" {...props}>
-      {children}
+    <div className="relative my-5 overflow-hidden rounded-xl">
+      <pre {...props}>{children}</pre>
       {raw && <CodeCopyButton code={raw} />}
-    </pre>
+    </div>
   );
 };
 

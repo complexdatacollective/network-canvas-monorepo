@@ -24,7 +24,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
       className="absolute right-2 top-2 flex gap-1.5"
       onClick={() => copyToClipboard(code)}
     >
-      <CopyCheck className="h-5 w-5" />
+      <CopyCheck className="h-3.5 w-3.5" />
       {isCopied ? 'Copied!' : 'Copy'}
     </Button>
   );
