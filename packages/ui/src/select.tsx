@@ -48,7 +48,7 @@ SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = 'popper', ...props }, ref) => (
+>(({ className, children, position = 'popper', ...props }, _) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       // This is a workaround for this issue: https://github.com/radix-ui/primitives/issues/1658
