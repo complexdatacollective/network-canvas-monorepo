@@ -15,9 +15,13 @@ const CodeCopyButton = ({
   const [isCopied, setIsCopied] = useState(false);
 
   const copyToClipboard = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000); // Reset state after 2 seconds
+    try {
+      await navigator.clipboard.writeText(text);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000); // Reset state after 2 seconds
+    } catch (error) {
+      throw new Error('Failed to copy to clipboard');
+    }
   };
 
   return (
