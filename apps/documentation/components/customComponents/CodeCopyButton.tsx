@@ -3,6 +3,7 @@
 import { Button } from '@codaco/ui';
 import { CopyCheck } from 'lucide-react';
 import { useState } from 'react';
+import { cn } from '~/lib/utils';
 
 const CodeCopyButton = ({
   code,
@@ -23,7 +24,7 @@ const CodeCopyButton = ({
     <Button
       size={'xs'}
       variant={'tableHeader'}
-      className={className}
+      className={cn('rounded-md bg-platinum p-2 text-navy-taupe', className)}
       onClick={() => copyToClipboard(code)}
     >
       <CopyCheck className="h-5 w-5" />
