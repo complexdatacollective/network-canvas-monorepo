@@ -1,7 +1,6 @@
 ---
 title: Advanced Deployment
 date: 9th July 2024
-wip: true
 ---
 
 <SummaryCard duration="60 minutes">
@@ -28,34 +27,30 @@ If you are not already familiar with these technologies, we recommend following 
   your data or infrastructure.
 </Tipbox>
 
-## Configure Hosting Infrastructure
+For an advanced deployment of Fresco, you will need to find a cloud service or a Linux-based VPS provider that supports Docker.
 
-### Finding Hosting Services
-
-For advanced deployment, you will need to find a cloud service or VPS provider that supports Docker. Here are a few options:
+Possible hosting services:
 
 - [Digial Ocean](https://www.digitalocean.com/)
 - [AWS](https://aws.amazon.com/)
 - Your own VPS
 
-### Set up Docker Environment
+## Pulling the Fresco image from the container registry
 
-Ensure that you have Docker installed on your server. Each hosting provider will have different steps for setting up Docker, so please refer to their documentation for more information.
+Pull the Docker image directly from our [container registry](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco). We provide two types of tags for our images:
 
-- [Digital Ocean Docker Installation](https://www.digitalocean.com/community/tutorial-collections/how-to-install-and-use-docker)
-- [AWS Docker Installation](https://aws.amazon.com/docker/)
+- `latest`: This tag always corresponds to the most recent version of Fresco. Use this if you want to stay up-to-date with the latest features and fixes.
+- `vX.Y.Z`: These tags follow semantic versioning. Use this if you need a specific version of Fresco for your project.
 
-## Prepare Fresco Repository
-
-Clone the [Fresco repository](https://github.com/complexdatacollective/Fresco) to your server. You can do this by running the following command:
+To pull the Fresco image from the container registry, use the following command:
 
 ```bash
-git clone https://github.com/complexdatacollective/Fresco.git
+docker pull ghcr.io/complexdatacollective/fresco:latest
 ```
 
 ## Configure Environment Variables
 
-Create an `.env` file in the root of the Fresco repository. You can use the [`.env.example`](https://github.com/complexdatacollective/Fresco/blob/main/.env.example) file as a template, or copy the simplified template below. The next steps will guide you through setting up the environment variables and adding them to this file.
+Create an `.env` file. You can use the simplified template below. The next steps will guide you through setting up the environment variables and adding them to this file.
 
 ```bash
 # -------------------
@@ -220,48 +215,4 @@ docker-compose up
 
 You can now access Fresco by visiting the `PUBLIC_URL` that you have configured in your hosting service.
 
-## Configuration and setup
-
-To use Fresco, you need to set up an administrator account which will enable you to access the protected parts of the app for study management. Only one administrator account can be created.
-
-<TipBox danger>
-
-To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired-message-during-the-setup-process).
-
-</TipBox>
-
-### Create a user account
-
-Visit your deployed app and create an account by entering a username and password. Ensure you make the password as strong as possible!
-
-<TipBox>
-
-Only **one** user account can be created in Fresco. If you need access for multiple team members, we recommend using a shared username and password for the administrator account to ensure that your team can access the platform.
-
-</TipBox>
-
-![Enter a username and password](/assets/img/fresco-images/fresco1.png)
-
-<TipBox danger>
-
-If you forget your password, you **will not be able to reset it**. We recommend keeping a record of your username and password in a secure location.
-
-</TipBox>
-
-### Upload a protocol
-
-You can optionally upload a protocol. Protocols can also be uploaded from the protocols page once the setup steps are completed.
-
-![Upload a protocol](/assets/img/fresco-images/fresco2.png)
-
-### Configure participation
-
-- **Import participants**: You can optionally upload a CSV file containing participants you wish to recruit to your study. Participants can also be uploaded from the participants page once the setup steps are completed.
-
-- **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found in the [using Fresco](/en/fresco/using-fresco) guide.
-
-![Import participants and optionally allow anonymous recruitment](/assets/img/fresco-images/fresco3.png)
-
-### Visit the dashboard
-
-Click the **"Go to the dashboard"** button and to begin using Fresco!
+To learn how to configure Fresco, please refer to the [configuration and setup guide](./guide#configuration-and-setup).
