@@ -1,65 +1,59 @@
 ---
 title: Advanced Deployment
-date: 9th July 2024
+date: 17th July 2024
 ---
 
-<SummaryCard duration="60 minutes">
+<SummaryCard duration="30 minutes">
 
 <SummarySection>
 
-For most users, the default [deployment process](./guide) will be sufficient. However, if your circumstances require using different cloud infrastructure or a VPS, you can do so by using [Docker](https://www.docker.com/).
+This article explains how to deploy Fresco to a VPS or other infrastructure using Docker. For most users, the default [deployment process](./guide) will be sufficient. However, if you are an advanced user, an IT professional, or if you have specific hosting needs, this guide will explain the process.
 
 </SummarySection>
 
 <PrerequisitesSection>
 
-This guide is intended for advanced, technical users who are already familiar with Docker and cloud infrastructure. It provides a high-level overview of the steps required to deploy Fresco using Docker, but does not provide detailed instructions for each step.
+This guide is intended for advanced technical users who are already familiar with Docker and deploying containerised apps. It provides a high-level overview of the steps required to deploy Fresco using Docker, but does not provide detailed instructions for each step.
 
 If you are not already familiar with these technologies, we recommend following our [default deployment guide](./guide).
 
 </PrerequisitesSection>
 </SummaryCard>
 
+
+
+To assist users who have specialized hosting needs, we have created a Docker container which allows Fresco to be deployed across a variety of contexts, including institutional IT infrastructure, privately owned VPSs, and internal networks. This tutorial will guide you through the requirements of deploying Fresco using our docker image, and will outline the necessary steps.
+
 <Tipbox danger>
   Because of the nature of self-hosting Dockerized applications on cloud
   infrastructure, you are responsible for the security and maintenance of your
-  own deployment! The Network Canvas project team by design has no access to
-  your data or infrastructure.
+  own deployment! The Network Canvas project team has no access to
+  your data or infrastructure by design, and updates will not be automatically applied. This may leave your data at risk.
 </Tipbox>
 
-For an advanced deployment of Fresco, you will need to find a cloud service or a Linux-based VPS provider that supports Docker.
+## Requirements for deploying Fresco
 
-Possible hosting services:
+Fresco is a NextJS application, which uses Amazon S3 for storage of protocol assets and PostgreSQL for storage of interview and app data.
 
-- [Digial Ocean](https://www.digitalocean.com/)
-- [AWS](https://aws.amazon.com/)
-- Your own VPS
+To deploy Fresco, you'll need:
+  - A host machine running Docker with at least 1gb of RAM and enough disk space to store your protocol assets and interview data. This machine must at a minimum accept connections from the Internet on port 443 to the `api/uploadthing` endpoint. This endpoint is used as a callback for uploads to Amazon S3. 
+  - A domain name with a TLS certificate. Free certificates can be obtained via services such as LetsEncrypt. Fresco requires the use of HTTPS.
+  - A suitable PostgreSQL 16.x database. This can either be in the form of a commercial service such as PlanetScale or Neon, or a local container via Docker.
+  - A free UploadThing API key. This library provides a wrapper over Amazon S3. Details on obtaining a key are provided later in this article.
 
-## Pulling the Fresco image from the container registry
+## Environment Variables
 
-Pull the Docker image directly from our [container registry](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco). We provide two types of tags for our images:
+Fresco is configured using environment variables. These variables specify how to connect to the PostgreSQL database, the keys for using the UploadThing service, and the URL of the Fresco instance.
 
-- `latest`: This tag always corresponds to the most recent version of Fresco. Use this if you want to stay up-to-date with the latest features and fixes.
-- `vX.Y.Z`: These tags follow semantic versioning. Use this if you need a specific version of Fresco for your project.
-
-To pull the Fresco image from the container registry, use the following command:
-
-```bash
-docker pull ghcr.io/complexdatacollective/fresco:latest
-```
-
-## Configure Environment Variables
-
-Create an `.env` file. You can use the simplified template below. The next steps will guide you through setting up the environment variables and adding them to this file.
+Create an `.env` file somewhere on your host machine using the template below. The next steps will guide you through setting up the environment variables and adding them to this file.
 
 ```bash
 # -------------------
 # Optional environment variables
 # -------------------
 
+# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
 #DISABLE_ANALYTICS=
-#INSTALLATION_ID=
-#SANDBOX_MODE=
 
 # -------------------
 # Required environment variables
@@ -68,23 +62,12 @@ Create an `.env` file. You can use the simplified template below. The next steps
 UPLOADTHING_SECRET=
 UPLOADTHING_APP_ID=
 
-POSTGRES_USER=
-POSTGRES_PASSWORD=
-POSTGRES_DATABASE=
-POSTGRES_HOST=
 POSTGRES_PRISMA_URL=
 POSTGRES_URL_NON_POOLING=
+
 PUBLIC_URL=
 
 ```
-
-### Optional Variables
-
-| **Variable**          | **Details**                                                                                                              |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **DISABLE_ANALYTICS** | If true, the app will not send anonymous analytics data to the server. Defaults to false.                                |
-| **INSTALLATION_ID**   | A unique identifier for your application, used primarily for analytics. If not set, it's generated automatically.        |
-| **SANDBOX_MODE**      | If true, the app will use the sandbox mode, which disables resetting the database and other features. Defaults to false. |
 
 <TipBox>
 
@@ -94,11 +77,7 @@ If you would like to disable all analytics, set `DISABLE_ANALYTICS` to `true`.
 
 By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
 
-   </TipBox>
-   
-### Required Variables
-
-The following steps will guide you through configuring the required environment variables.
+</TipBox>
 
 ### Create a storage bucket using UploadThing
 
@@ -126,7 +105,7 @@ To create an app on UploadThing:
 
    ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
 
-6. Give your app a name and click **"Create App"**. Do not change the region.
+6. Give your app a name and click **"Create App"**. Performance can be improved by selecting a region close to your server, although this will require a paid plan.
 
    ![Create app](/assets/img/fresco-images/uploadthing5.png)
 
@@ -134,40 +113,122 @@ To create an app on UploadThing:
 
    ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
 
-8. Pate your API keys into the `.env` file you created in the previous step.
+8. Pate your API keys into the `.env` file you created in the previous step:
 
-| **Variable**           | **Details**                 |
-| ---------------------- | --------------------------- |
-| **UPLOADTHING_SECRET** | Your UploadThing secret key |
-| **UPLOADTHING_APP_ID** | Your UploadThing app ID     |
+```bash
+# -------------------
+# Optional environment variables
+# -------------------
 
-### Postgres Environment Variables Configuration
+# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
+#DISABLE_ANALYTICS=
 
-Fresco uses a PostgreSQL database to store data. For advanced deployment, you will need to set up a PostgreSQL database on your server.
+# -------------------
+# Required environment variables
+# -------------------
+UPLOADTHING_SECRET=sk-your-secret-key
+UPLOADTHING_APP_ID=your-app-id
 
-You will need to set the following environment variables to configure your Postgres database and connect it to Fresco:
+POSTGRES_PRISMA_URL=
+POSTGRES_URL_NON_POOLING=
+
+PUBLIC_URL=
+```
+
+### Postgres Configuration
+
+Fresco uses a PostgreSQL database to store protocol and interview data. You will need to set up a PostgreSQL database on your server, or provide connection details to an external service.
+
+Fresco requires two connection strings to PostgreSQL:
 
 | **Variable**                 | **Details**                              |
 | ---------------------------- | ---------------------------------------- |
-| **POSTGRES_USER**            | Your PostgreSQL username                 |
-| **POSTGRES_PASSWORD**        | Your PostgreSQL password                 |
-| **POSTGRES_DATABASE**        | Your PostgreSQL database name            |
-| **POSTGRES_HOST**            | Your PostgreSQL host                     |
-| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma.      |
-| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma. |
+| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users.      |
+| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma. This is primarily used for database migrations when upgrading. |
 
-Set these variables in your `.env` file. If you are using Docker Compose, these variables will be injected into the Postgres container and the Fresco container by specifying the `.env` file path.
+If you do not have a connection pooler such as PgBouncer, you can use the same connection string for both variables (although this may lead to database errors under heavy load).
+
+If your database is hosted on a service such as PlanetScale or Neon, use the connection strings provided by these services directly.
+
+Add your connection strings to the `.env` file:
+
+```bash
+# -------------------
+# Optional environment variables
+# -------------------
+
+# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
+#DISABLE_ANALYTICS=
+
+# -------------------
+# Required environment variables
+# -------------------
+UPLOADTHING_SECRET=sk-your-secret-key
+UPLOADTHING_APP_ID=your-app-id
+
+POSTGRES_PRISMA_URL=postgresql://username:password@hostname:port/dbname
+POSTGRES_URL_NON_POOLING=postgresql://username:password@hostname:port/dbname
+
+PUBLIC_URL=
+```
+
+### Setting the Public URL
+
+The `PUBLIC_URL` variable is used to configure the URL of your Fresco instance. This is the URL that users will use to access the application, and is used to generate links for study participation. The URL you provide **must be accessible from the Internet** via HTTPS, with a valid certificate.
+
+If you intend to run your instance on a LAN or private network, **at least the `api/uploadthing` endpoint must be accessible from the Internet**. This is used as a callback for uploads to Amazon S3.
+
+Add your URL to the `.env` file:
+
+```bash
+# -------------------
+# Optional environment variables
+# -------------------
+
+# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
+#DISABLE_ANALYTICS=
+
+# -------------------
+# Required environment variables
+# -------------------
+UPLOADTHING_SECRET=sk-your-secret-key
+UPLOADTHING_APP_ID=your-app-id
+
+POSTGRES_PRISMA_URL=postgresql://username:password@hostname:port/dbname
+POSTGRES_URL_NON_POOLING=postgresql://username:password@hostname:port/dbname
+
+PUBLIC_URL=https://your-public-url.com
+```
+
+## Running the Application
+
+The Fresco docker image is hosted on the GitHub container registry (ghcr.io). You can browse published images on the [Fresco repository](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco/versions). We provide two types of tags for our images:
+
+- `latest`: This tag always corresponds to the most recent version of Fresco. Use this if you want to stay up-to-date with the latest features and fixes. Using this tag will mean that the version of Fresco will change if you recreate your container.
+- `vX.Y.Z`: These tags follow semantic versioning. Use this if you need a specific version of Fresco for your project, or you want to ensure that you remain on the same version of Fresco when recreating your container.
+
+The container starts a NodeJS based server running on port 3000 by default. You can map this port to any port on your host machine (for example if using an ingress manager such as Traefik), although as mentioned above you must ensure that the application itself is accessed via HTTPS when used.
+
+To pull this image and create a container using your `.env` file as a source of environment variables, use the following command:
+
+```bash
+docker run --env-file .env -p 443:3000 ghcr.io/complexdatacollective/fresco:latest
+```
 
 ## Container Orchestration with Docker Compose
 
-We recommend that you use [Docker Compose](https://docs.docker.com/compose/) to manage the Postgres container in tandem with the Fresco container. For your convenience, we have provided a [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/main/docker-compose.prod.yml) file at the root of the Fresco repository.
+You can optionally use [Docker Compose](https://docs.docker.com/compose/) to manage the Postgres container in tandem with the Fresco container. For your convenience, here is a sample `docker-compose.yml` file that you can use to deploy Fresco with Docker Compose:
 
 ```yaml
 services:
   fresco:
-    env_file:
-      - .env
-    image: 'ghcr.io/complexdatacollective/fresco:feature-docker'
+    environment:
+      - UPLOADTHING_SECRET=sk-your-secret-key
+      - UPLOADTHING_APP_ID=your-app-id
+      - POSTGRES_PRISMA_URL=postgresql://username:password@postgres:5432/fresco
+      - POSTGRES_URL_NON_POOLING=postgresql://username:password@postgres:5432/fresco
+      - PUBLIC_URL=https://your-public-url.com
+    image: 'ghcr.io/complexdatacollective/fresco:latest'
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,8 +243,10 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
-    env_file:
-      - .env
+    environment:
+      POSTGRES_DB: fresco
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
     volumes:
       - postgres:/var/lib/postgresql/data
     healthcheck:
@@ -197,22 +260,35 @@ services:
 volumes:
   postgres:
 
-# Define a network, which allows containers to communicate
-# with each other, by using their container name as a hostname
 networks:
   fresco_network:
 ```
 
-### Build and Run Fresco with Docker Compose
-
-Start up your application by running the following command:
+Start up your application using this file by running the following command:
 
 ```bash
-docker-compose up
+docker-compose up -d -f docker-compose.yml
 ```
 
 ## Access Fresco
 
-You can now access Fresco by visiting the `PUBLIC_URL` that you have configured in your hosting service.
+You can now access Fresco by visiting the `PUBLIC_URL` that you have configured. You should be greeted with the onboarding wizard, which will guide you through the process of setting up Fresco.
 
-To learn how to configure Fresco, please refer to the [configuration and setup guide](./guide#configuration-and-setup).
+For details on this process, refer to the [configuration and setup](./guide#configuration-and-setup) section of the basic deployment guide.
+
+## Updating Fresco
+
+To update Fresco, you can pull the latest image from the GitHub container registry and recreate your container. 
+
+```bash
+docker pull ghcr.io/complexdatacollective/fresco:latest
+docker stop fresco
+docker rm fresco
+docker run --env-file .env -p 443:3000 ghcr.io/complexdatacollective/fresco:latest
+```
+
+If you are using Docker Compose, you can use the following command:
+
+```bash
+docker-compose up -d -f docker-compose.yml
+```
