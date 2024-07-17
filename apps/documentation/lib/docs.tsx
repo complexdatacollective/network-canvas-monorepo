@@ -349,7 +349,7 @@ export async function getDocumentForPath({
         table: (props) => (
           <div className="overflow-x-auto">
             <table
-              className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full text-pretty break-keep [&>th]:text-nowrap"
+              className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full !max-w-max text-pretty break-keep [&>th]:text-nowrap"
               {...props}
             />
           </div>
