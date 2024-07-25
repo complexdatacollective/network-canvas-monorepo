@@ -33,13 +33,13 @@ const links = [
       {
         titleTranslationKey: 'projectsChildren.fresco.label',
         descriptionTranslationKey: 'projectsChildren.fresco.description',
-        href: '/projects/fresco',
+        href: 'https://github.com/complexdatacollective/Fresco',
         image: '/images/fresco.svg',
       },
       {
         titleTranslationKey: 'projectsChildren.studio.label',
         descriptionTranslationKey: 'projectsChildren.studio.description',
-        href: '/projects/studio',
+        href: 'https://github.com/complexdatacollective/Studio',
         image: '/images/studio.svg',
       },
     ],
