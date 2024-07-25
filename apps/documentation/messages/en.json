@@ -2,7 +2,7 @@
   "ProjectSwitcher": {
     "fresco": {
       "label": "Fresco",
-      "description": "A new project that brings Network Canvas interviews to the web browser. Currently in beta."
+      "description": "A new project that brings Network Canvas interviews to the web browser."
     },
     "desktop": {
       "label": "Desktop Suite",
