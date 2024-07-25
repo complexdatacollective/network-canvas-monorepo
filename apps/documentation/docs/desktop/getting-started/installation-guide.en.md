@@ -1,7 +1,7 @@
 ---
 title: Installation Guide
 navOrder: 3
-last_modified_at: 2021-02-10
+last_modified_at: 2024-07-25
 wip: false
 toc: true
 ---
@@ -66,9 +66,3 @@ If you cannot find Interviewer in the Play Store, it is likely because your devi
 If your ChromeOS device supports installing Android apps, you can install the Interviewer app as usual through the Google Play Store. To do this, please see the instructions above for installing the app on Android.
 
 Please note that only Interviewer is specifically designed to work with ChromeOS, and only when run as an Android app. Running Interviewer or Architect through Linux app compatibility is not supported at present.
-
-## iOS
-
-Interviewer is available from the [Apple App Store](https://apps.apple.com/us/app/network-canvas/id1538673677), searchable as "Network Canvas Interviewer".
-
-Interviewer was developed on a 12.9" iPad pro, and will work best with larger iOS devices (9.7"+).

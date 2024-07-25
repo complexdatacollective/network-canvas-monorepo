@@ -1,7 +1,8 @@
 'use client';
 
 import { Button } from '@codaco/ui';
-import { CopyCheck } from 'lucide-react';
+import * as Popover from '@radix-ui/react-popover';
+import { ClipboardCheck, ClipboardCopy } from 'lucide-react';
 import { useState } from 'react';
 
 const CodeCopyButton = ({ code }: { code: string }) => {
@@ -19,14 +20,37 @@ const CodeCopyButton = ({ code }: { code: string }) => {
   };
 
   return (
-    <Button
-      size={'xs'}
-      className="absolute right-2 top-2 flex gap-1.5"
-      onClick={() => copyToClipboard(code)}
-    >
-      <CopyCheck className="h-3.5 w-3.5" />
-      {isCopied ? 'Copied!' : 'Copy'}
-    </Button>
+    <div className="absolute right-2 top-2">
+      <Popover.Root open>
+        <Popover.Anchor asChild>
+          {isCopied ? (
+            <Button size={'icon'}>
+              <ClipboardCheck className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              size={'icon'}
+              className="transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+              onClick={() => copyToClipboard(code)}
+            >
+              <ClipboardCopy className="h-4 w-4" />
+            </Button>
+          )}
+        </Popover.Anchor>
+        <Popover.Portal>
+          {isCopied && (
+            <Popover.Content
+              side="left"
+              className="rounded-md bg-background p-1.5 text-sm font-semibold"
+              sideOffset={5}
+            >
+              Copied!
+              <Popover.Arrow className="fill-background" />
+            </Popover.Content>
+          )}
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
   );
 };
 
