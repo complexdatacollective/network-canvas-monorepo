@@ -1,7 +1,6 @@
 ---
 title: Integration with other survey tools
-date: 26th March 2024
-wip: true
+date: 29th July 2024
 ---
 
 <Paragraph variant="lead">
@@ -12,18 +11,21 @@ wip: true
 
 As with _Interviewer_, Fresco is not intended to replace existing general purpose survey tools - particularly for ego specific data collection. We suggest that extensive ego-level data collection is done using a general purpose survey tool, and that Fresco is used to collect network data from the same participants. To facilitate this, Fresco supports integration with other survey tools via shared participant identifiers which can be encoded in the survey links.
 
-## Encoding participant identifiers
+## What is a Participant identifier?
+
+When using Fresco, participant identifiers play a crucial role in managing and tracking the data collection process. These identifiers are unique values assigned to each participant in a study, enabling the seamless integration and management of survey data across different platforms.
+
+Learn more about participant identifiers here in the [Participants](/en/fresco/using-fresco#participants) section.
+
+## Using Participant Identifiers in Survey Links
 
 When creating a survey link in Fresco, the participant identifier can be included in the URL. This identifier will be passed through to the survey tool when the participant clicks on the link. The survey tool can then use this identifier to link the survey data back to the participant in Fresco.
 
-There are two means of encoding this information: GET and POST parameters.
-
-- **GET parameters**: The participant identifier is included in the URL as a query parameter. For example, `https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345`. This is the simplest method, but the participant identifier will be visible in the URL.
-- **POST parameters**: The participant identifier is included in the request body when the participant clicks on the link. This is more secure, but requires more setup on the survey tool side.
+The participant identifier is included in the URL as a query parameter. For example, a survey link might look like **`https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345`**.
 
 ## Integration with other survey tools
 
-In the following sections, we provide a step-by-step instructions on how to integrate Fresco with some of the popular survey tools Qualtrics, via shared participant identifiers.
+In the following sections, we provide step-by-step instructions on how to integrate Fresco with some of the popular survey tools Qualtrics, via shared participant identifiers.
 
 ### Steps to Integrate Fresco with Qualtrics
 
@@ -36,11 +38,13 @@ To link participants across interviews using a shared identifier, especially if 
 2. **Set up your Qualtrics survey to generate or collect an identifier for your participants:**
 
    - Create a new survey in Qualtrics.
-   - Add a question to the survey that will generate or collect an identifier for your participants. This could be a text entry question, a multiple choice question, or any other type of question that will allow you to collect an identifier.
+   - Design your survey based on your study by using text entry questions, a multiple-choice question, or a combination of questions.
 
-3. **Generate a “piped text” code for your identifier in Qualtrics:**
+3. **Generate a [**“piped text”**](https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/piped-text/piped-text-overview/) code for your identifier in Qualtrics:**
 
-   - Use the information from the Qualtrics documentation on [passing information from a survey](https://www.qualtrics.com/support/survey-platform/survey-module/survey-flow/standard-elements/passing-information-through-query-strings/#PassingInformationFromASurvey) to generate a “piped text” code for your identifier.
+   - Generate the piped text code for each piece of data you would like to pass (e.g., answers to survey questions, embedded data, or any other information collected with the response). Copy these codes and save them for later.
+
+     **Example**: We want to pass along the respondent’s answer to two of our survey questions. The piped text for our selected survey questions are `${q://QID7/ChoiceGroup/SelectedChoices} and ${q://QID3/ChoiceGroup/SelectedChoices}`. We will use these piped text codes as the participant identifier.
 
 4. **Add a link at the end of your Qualtrics survey that points to your Fresco survey’s anonymous participation URL:**
 
@@ -65,3 +69,8 @@ The link to the Fresco survey must be in the format shown below to ensure that t
 **`https://your-fresco-instance.com/onboard/{protocolId}/?participantIdentifier=${q://QID7/ChoiceGroup/SelectedChoices}`**
 
 </Tipbox>
+
+There are two means of encoding participant identifiers: GET and POST parameters.
+
+- **GET parameters**: The participant identifier is included in the URL as a query parameter. For example, `https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345`. This is the simplest method, but the participant identifier will be visible in the URL.
+- **POST parameters**: The participant identifier is included in the request body when the participant clicks on the link. This is more secure, but requires more setup on the survey tool side.
