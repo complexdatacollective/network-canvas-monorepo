@@ -13,6 +13,7 @@ import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { GoogleAnalytics } from '@next/third-parties/google';
+import { Analytics } from '@vercel/analytics/react';
 import { env } from '~/env.mjs';
 
 const quicksand = Quicksand({
@@ -86,6 +87,7 @@ export default async function MainLayout({
         </ThemeProvider>
       </body>
       <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
+      <Analytics />;
     </html>
   );
 }
