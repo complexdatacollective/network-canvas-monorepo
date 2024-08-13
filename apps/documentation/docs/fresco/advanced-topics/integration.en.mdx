@@ -1,99 +1,128 @@
 ---
-title: Integration with other survey tools
-date: 29th July 2024
+title: Integration with other survey tools (e.g., Qualtrics)
+date: 13th August 2024
 ---
 
-<Paragraph variant="lead">
-  Fresco supports integration with other survey tools via shared participant
-  identifiers. This allows you to link survey data from different sources and
-  create a unified view of your participants.
-</Paragraph>
+As with _Interviewer_, Fresco is not intended to replace existing general purpose survey tools - particularly for ego specific data collection. We suggest that extensive ego-level data collection is done using a general purpose survey tool, and that Fresco is used to collect network data. 
 
-As with _Interviewer_, Fresco is not intended to replace existing general purpose survey tools - particularly for ego specific data collection. We suggest that extensive ego-level data collection is done using a general purpose survey tool, and that Fresco is used to collect network data from the same participants. To facilitate this, Fresco supports integration with other survey tools via shared participant identifiers which can be encoded in the survey links.
+To facilitate this, Fresco supports integration with other survey tools via shared tokens, called "participant identifiers", which can be passed from your conventional survey tool into Fresco.
+
+This integration will allow your participants to complete a "conventional" survey and then seamlessly transition to the network portion of the interview in Fresco simply by clicking a link. The data collected in Fresco can then be associated to the survey data using the shared participant identifier when conducting your analysis.
+
+This article will explain the process of integrating using Qualtrics as an example, but the process is similar for other survey tools. Please let us know if you would like to see additional documentation for other survey tools.
 
 ## What is a Participant identifier?
 
-When using Fresco, participant identifiers play a crucial role in managing and tracking the data collection process. These identifiers are unique values assigned to each participant in a study, enabling the seamless integration and management of survey data across different platforms.
+In Fresco, every participant in your study must have a unique identifier. When creating participants manually, you must provide this identifier yourself (or use the dedicated button to randomly generate one). When anonymous recruitment is enabled, this identifier will be generated as a participant is created using the anonymous participation URL, or (as we will see later in this tutorial) can be provided as part of the URL.
 
-Learn more about participant identifiers here in the [Participants](/en/fresco/using-fresco#participants) section.
+<Tipbox danger>
+Participant identifiers are sometimes used in URLs that are shared with participants, and are therefore potentially visible to them. Because of this, they <strong>must not contain sensitive information, and must not be easy for other participants to guess</strong> (e.g. sequential numbers, or easily guessable strings). 
+</Tipbox>
 
-## Using Participant Identifiers in Survey Links
+## How Integration Works
 
-When creating a survey link in Fresco, the participant identifier can be included in the URL. This identifier will be passed through to the survey tool when the participant clicks on the link. The survey tool can then use this identifier to link the survey data back to the participant in Fresco.
+<Tipbox>
+It is <em>not</em> currently possible to pass data from Fresco back to the survey tool. This is a one-way integration.
+</Tipbox>
 
-The participant identifier is included in the URL as a query parameter. For example, a survey link might look like **`https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345`**.
+As mentioned previously, the ultimate aim of integration is to be able to have your participant take a "conventional" survey, and then have them click a link that takes them to the network portion of the interview. By itself this would be simple to implement, but the key is to be able to link the data collected in the survey tool back to the data collected in Fresco.
 
-## Integration with Qualtrics survey tool
+Put simply, this is achieved by embedding the participant identifier in the URL that is used to link to the Fresco interview. When present in a URL, Fresco will use this identifier to either create a new participant (if anonymous recruitment is enabled) with the given identifier, or will link to an existing participant, before launching the interview. 
 
-In the following sections, we provide step-by-step instructions on how to integrate Fresco with some of the popular survey tools Qualtrics, via shared participant identifiers.
+There are two ways that the identifier can be included in the onboarding URL:
 
-### Steps to Integrate Fresco with Qualtrics
+### Query Parameters
 
-To link participants across interviews using a shared identifier, especially if you do not have a pre-existing list of respondents, you can achieve this by:
+The participant identifier can be included within what are known as "query parameters". This is a standardized web technology that encodes groups of data and labels in the format `label=value`, separated by ampersands (`&`) and added to the end of a URL following a question mark character (`?`). For example, a search engine may use query parameters to store a search query like this: `http://google.com?query=networkcanvas`.
 
-1. **Set up your Fresco instance to allow anonymous recruitment:**
+In Fresco, the query parameter must be named `participantIdentifier` (this is case-sensitive!), and should be appended to the onboarding URL for your protocol. An example onboarding URL with the participant identifier included as a query parameter might look like:
+  
+```plaintext
+https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345
+```
 
-   - From the protocols page in Fresco, copy the **“anonymous participation URL”** for the protocol you want to use, and save it for later. It should look something like: **`https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98`**.
+Using query parameters is the simplest method, but the participant identifier will be visible in the URL and could be tampered with.
 
-2. **Set up your Qualtrics survey to generate or collect an identifier for your participants:**
+### POST Parameters
 
-   - Create a new survey in Qualtrics.
-   - Design your survey based on your study by using text entry questions, a multiple-choice question, or a combination of questions.
+The participant identifier can also be included in the body of a POST request. This is a more secure method, as the data is not visible in the URL, but it is more complex to implement.
 
-3. **Generate a [**“piped text”**](https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/piped-text/piped-text-overview/) code for your identifier in Qualtrics:**
+Fresco will look at the body of a POST request and try to parse it as JSON. If it finds a key called `participantIdentifier`, it will use the value of that key as the participant identifier.
 
-   - Generate the piped text code for each piece of data you would like to pass (e.g., answers to survey questions, embedded data, or any other information collected with the response). Copy these codes and save them for later.
+This guide will focus on the query parameter method, as it is simpler to implement and should be sufficient for most use cases.
 
-     **Example**: We want to pass along the respondent’s answer to two of our survey questions. The piped text for our selected survey questions are **`${q://QID7/ChoiceGroup/SelectedChoices} and ${q://QID3/ChoiceGroup/SelectedChoices}`**. We will use these piped text codes as the participant identifier for Fresco.
+## Example integration with Qualtrics
 
-4. **Add a link at the end of your Qualtrics survey that points to your Fresco survey’s anonymous participation URL:**
-
-   - In your survey screen find the **"End of Survey"** block
-
-   ![End of Survey](/assets/img/fresco-images/end-of-survey.png)
-
-   - Edit the **"End of Survey"** block to add a link to your Fresco survey with the **“anonymous participation URL”** you copied in the step 1. The link should include the piped text code from step 3 as the value of the **`participantIdentifier`** query parameter, like this:
-
-   ```html
-   Thank you for completing the survey! Please click the link below to continue
-   to the next part of the study:
-
-   <a
-     href="https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=${q://QID7/ChoiceGroup/SelectedChoices}${q://QID3/ChoiceGroup/SelectedChoices}"
-   >
-     Continue to Fresco Survey
-   </a>
-   ```
-
-   The link to the Fresco survey must be in the format shown below to ensure that the participant identifier is passed correctly. If not passed correctly, the participant will not be able to continue to the Fresco survey.
-
-   Format: **`https://your-fresco-instance.com/onboard/{protocolId}/?participantIdentifier=generated-piped-text-code`**
-
-   ![Edit End of Survey](/assets/img/fresco-images/edit-survey-end.png)
-
-   - Test the link by clicking on it to ensure that it leads to your Fresco survey, and creates a new participant with the correct identifier.
-
-   ![Test Survey Link](/assets/img/fresco-images/test-survey-link.png)
+As an example, we will now discuss how to implement this process in [Qualtrics](https://www.qualtrics.com), assuming that you do not have a pre-existing list of participants. The process is similar for other survey tools, but the exact steps may vary.
 
 <Tipbox>
 
-You can always test the Fresco interview link with a dummy participant identifier to ensure that it creates a new participant in your Fresco participants page and a dedicated interview with the passed identifier.
-
-Test link: **`https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=Test123`**
+We will be working on the assumption that you have already set up your Fresco instance and created/uploaded an interview protocol. If you have not done this, please refer to the [deployment documentation](./deployment/guide) for instructions on how to do so.
 
 </Tipbox>
+
+### Set up your Fresco instance to allow anonymous recruitment.
+
+Anonymous recruitment will allow participants to join your study without you needing to add them to Fresco in advance. This simplifies the process for the sake of this example, since it means you do not have to synchronize participant lists between Fresco and your survey tool. It is possible to integrate with external tools without anonymous recruitment enabled, but there are no real advantages to doing so.
+
+To turn on the anonymous recruitment feature, log in to your Fresco instance, and go to the "settings" tab in the top navigation bar. Toggle the switch in the anonymous recruitment section to the "on" position.
+
+Navigate to the "protocols" page, and click the button under the "Anonymous Participation URL" column next to the protocol you want to use. This will copy the anonymous participation URL to your clipboard. Paste this into a text editor for referencing later. It should look something like: `https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98`.
+
+### Set up your Qualtrics survey to generate or collect an identifier
+
+Create your survey in Qualtrics to your specifications. 
+
+You will need to generate a unique identifier for each participant that you want to pass to Fresco. This could be:
+
+- a randomly generated code
+- a combination of answers to survey questions (e.g., a participant's initials and date of birth)
+- an ID defined in an external data file that you uploaded to Qualtrics.
+- the Qualtrics session identifier
+
+For details on how to generate a unique identifier in Qualtrics, consult the [Qualtrics support documentation](https://www.qualtrics.com/support/).
+
+For the purposes of this example, we will use the Qualtrics session identifier. 
+
+### Use piped text to pass the identifier to Fresco
+
+To pass the identifier, we will use the ["piped text"](https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/piped-text/piped-text-overview/) feature in Qualtrics. This allows you to insert dynamic data into your survey questions and responses, or as in this case, into the URL that you will use to link to Fresco.
+
+In your survey screen find the **"End of Survey"** block:
+
+![End of Survey](/assets/img/fresco-images/end-of-survey.png)
+
+Edit the **"End of Survey"** block to add a link to your Fresco survey with the "anonymous participation URL" you pasted into your text editor earlier.
+
+Update the link to include the piped text code for your identifier. In this example, we will use the Qualtrics session identifier as the identifier. The piped text code for the session identifier is `${l://SurveySessionID}`. We add this code to the URL as a query parameter named `participantIdentifier`, which results in the following:
+
+```html
+You have completed the first part of the study. Click the link below to proceed
+to the next section:
+
+<a
+  href="https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=${l://SurveySessionID}"
+>
+  Continue to the next section
+</a>
+```
+
+The link _must_ be in the format shown to ensure that the participant identifier is passed correctly. Test the link by clicking on it to ensure that it leads to your Fresco survey, and creates a new participant with the correct identifier.
 
 <Tipbox>
 
-You can prevent more than one interview being submitted with the same identifier, using the **"LIMIT INTERVIEWS"** option in Fresco settings page. This ensures that each participant can only submit one interview per identifier.
+You can test the Fresco interview link with a dummy participant identifier to ensure that it creates a new participant in your Fresco participants page and a dedicated interview with the passed identifier.
+
+Simply replace the participant identifier in the URL with a test identifier. For example, if your Fresco instance URL is **`https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98`** and you want to test the link with the identifier **`Test123`**, the URL should look like this:
+
+```plaintext
+https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=Test123
+```
 
 </Tipbox>
 
-## Integrating Fresco with various survey softwares
+Assuming that the test was successful, you can now distribute your survey to participants. When they complete the survey, they will be directed to the Fresco interview with the participant identifier in Fresco corresponding to the survey session identifier in Qualtrics.
 
-Fresco can be integrated with various survey tools like Google Forms, SurveyMonkey, and Typeform. The integration process is similar to the one described above for Qualtrics. The key is to include the participant identifier in the survey link.
+### Additional Considerations
 
-There are two means of encoding participant identifiers: GET and POST parameters.
-
-- **GET parameters**: The participant identifier is included in the URL as a query parameter. For example, **`https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345`**. This is the simplest method, but the participant identifier will be visible in the URL.
-- **POST parameters**: The participant identifier is included in the request body when the participant clicks on the link. This is more secure, but requires more setup on the survey tool side.
+- You can prevent more than one interview being submitted with the same identifier, using the **"LIMIT INTERVIEWS"** option in Fresco settings page. This ensures that each participant can only submit one interview per identifier.
