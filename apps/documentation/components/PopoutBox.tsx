@@ -20,7 +20,7 @@ const PopoutBox = ({
   return (
     <aside
       className={cn(
-        'text-base-sm mx-0 mb-8 mt-10 flex items-center gap-2 rounded-lg bg-card p-4',
+        'mx-0 mb-8 mt-10 flex items-center gap-2 rounded-lg bg-card p-4 text-base-sm',
         'md:relative md:mx-8 md:mb-8 md:mt-10 md:gap-0 md:px-10 md:py-8',
         className,
       )}
@@ -36,7 +36,7 @@ const PopoutBox = ({
           {icon}
         </div>
       )}
-      <div className="flex-auto">
+      <div className="max-w-full flex-auto">
         {title && (
           <Heading variant="h4" className="mb-2">
             {title}
