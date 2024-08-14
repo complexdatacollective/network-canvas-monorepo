@@ -112,7 +112,10 @@
   }
 
   code {
-    @apply text-sm;
+    @apply text-base-sm;
+    @apply bg-rich-black/10 dark:bg-white/5;
+    @apply p-[0.2rem];
+    @apply rounded-sm;
   }
 }
 

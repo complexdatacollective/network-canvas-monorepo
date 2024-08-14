@@ -20,30 +20,31 @@ const PopoutBox = ({
   return (
     <aside
       className={cn(
-        'mx-0 mb-8 mt-10 flex items-center gap-2 rounded-lg bg-card p-4 text-base-sm',
-        'md:relative md:mx-8 md:mb-8 md:mt-10 md:gap-0 md:px-10 md:py-8',
+        'relative mx-0 my-5 max-w-full rounded-lg bg-card px-8 py-6 text-base-sm',
+        '@2xl/article:mx-8 @2xl/article:mt-10', // additional margin when icon is shown
+        '@2xl/article:px-8 @2xl/article:py-6',
         className,
       )}
     >
       {icon && (
         <div
           className={cn(
-            'flex h-12 w-12 shrink-0 scale-75 items-center justify-center rounded-full bg-foreground shadow-md',
-            'md:absolute md:-left-6 md:-top-4 md:scale-100',
+            '@2xl/article:flex hidden', // use container query to show/hide
+            'h-12 w-12 shrink-0 items-center justify-center rounded-full bg-foreground shadow-md',
+            'absolute -left-6 -top-4',
             iconClassName,
           )}
         >
           {icon}
         </div>
       )}
-      <div className="max-w-full flex-auto">
-        {title && (
-          <Heading variant="h4" className="mb-2">
-            {title}
-          </Heading>
-        )}
-        {children}
-      </div>
+
+      {title && (
+        <Heading variant="h4" className="!mt-0">
+          {title}
+        </Heading>
+      )}
+      {children}
     </aside>
   );
 };
