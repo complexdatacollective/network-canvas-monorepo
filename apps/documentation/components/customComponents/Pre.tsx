@@ -7,7 +7,7 @@ type PreProps = React.HTMLAttributes<HTMLPreElement> & {
 
 const Pre = ({ raw, children, ...props }: PreProps) => {
   return (
-    <div className="group relative my-5 overflow-hidden rounded-xl bg-rich-black">
+    <div className="group relative my-5 overflow-hidden rounded-xl bg-rich-black last:mb-0">
       <pre {...props} className="[&_code]:bg-transparent">
         {children}
       </pre>

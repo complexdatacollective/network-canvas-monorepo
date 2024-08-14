@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import typography from '@tailwindcss/typography';
+import containers from '@tailwindcss/container-queries';
 import sharedConfig from '@codaco/tailwind-config/fresco';
 
 const config: Pick<
@@ -15,7 +16,7 @@ const config: Pick<
     '../../packages/ui/src/**/*.{ts,tsx}', // UI package
   ],
   presets: [sharedConfig],
-  plugins: [typography],
+  plugins: [typography, containers],
 };
 
 export default config;
