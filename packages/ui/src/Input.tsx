@@ -76,8 +76,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={type}
             className={cn(
               inputVariants({ size }),
-              leftAdornment && 'pl-10',
-              rightAdornment && 'pr-10',
+              !!leftAdornment && 'pl-10',
+              !!rightAdornment && 'pr-10',
               inputClassName,
             )}
             ref={ref}

@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { Paragraph, type ParagraphProps } from '@codaco/ui';
 import { Children } from 'react';
 
-// FancyParagraph is a component that animates the words in a heading.
+// FancyParagraph animates individual words in a paragraph.
 const FancyParagraph = (props: ParagraphProps) => {
-  const words = Children.toArray(props.children);
+  const { children, ...rest } = props;
+
+  const words = Children.toArray(children);
 
   const variants = {
     hidden: { y: '100%' },
@@ -41,7 +43,7 @@ const FancyParagraph = (props: ParagraphProps) => {
   };
 
   return (
-    <Paragraph {...props}>
+    <Paragraph {...rest}>
       {words.map((word, index) =>
         typeof word === 'string' ? (
           renderWord(word, index)

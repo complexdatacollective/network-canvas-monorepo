@@ -1,7 +1,7 @@
-export const entityPrimaryKeyProperty = '_uid' as const;
-export const entityAttributesProperty = 'attributes' as const;
-export const edgeSourceProperty = 'from' as const;
-export const edgeTargetProperty = 'to' as const;
+export const entityPrimaryKeyProperty = '_uid';
+export const entityAttributesProperty = 'attributes';
+export const edgeSourceProperty = 'from';
+export const edgeTargetProperty = 'to';
 
 export type NcEntity = {
   readonly [entityPrimaryKeyProperty]: string;
