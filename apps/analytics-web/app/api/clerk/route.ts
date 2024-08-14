@@ -1,5 +1,5 @@
+import { clerkClient } from '@clerk/nextjs/server';
 import { type NextRequest, NextResponse } from 'next/server';
-import { clerkClient } from '@clerk/nextjs';
 import z from 'zod';
 
 const clerkPayloadSchema = z.object({

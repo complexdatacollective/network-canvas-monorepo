@@ -8,7 +8,7 @@ const config: Pick<Config, 'content' | 'darkMode' | 'presets' | 'plugins'> = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
-    '../../packages/ui/**/*.{ts,tsx}', // UI package
+    '../../packages/ui/src/**/*.{ts,tsx}', // UI package
   ],
   presets: [sharedConfig],
 };
