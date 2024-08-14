@@ -20,15 +20,17 @@ const PopoutBox = ({
   return (
     <aside
       className={cn(
-        'mx-0 mb-8 mt-10 flex items-center gap-2 rounded-lg bg-card p-4 text-base-sm',
-        'md:relative md:mx-8 md:mb-8 md:mt-10 md:gap-0 md:px-10 md:py-8',
+        'my-5',
+        'md:mt-10', // additional margin when icon is shown
+        'mx-0 flex items-center gap-2 rounded-lg bg-card p-4 text-base-sm',
+        'md:relative md:mx-8 md:gap-0 md:px-10 md:py-8',
         className,
       )}
     >
       {icon && (
         <div
           className={cn(
-            'flex h-12 w-12 shrink-0 scale-75 items-center justify-center rounded-full bg-foreground shadow-md',
+            'hidden h-12 w-12 shrink-0 scale-75 items-center justify-center rounded-full bg-foreground shadow-md md:flex',
             'md:absolute md:-left-6 md:-top-4 md:scale-100',
             iconClassName,
           )}
