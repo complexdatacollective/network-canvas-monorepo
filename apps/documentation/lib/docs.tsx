@@ -247,7 +247,7 @@ export async function getDocumentForPath({
     .use(rehypeRaw) // Allow raw HTML
     .use(slug) // Add IDs to headings
     .use(headingTree) // Create a tree of headings in data.headings
-    .use(processPreTags) // Process `pre` tags
+    .use(processPreTags) // Add the raw code content to the pre element
     .use(
       rehypeHighlight, // Highlight code blocks
       {

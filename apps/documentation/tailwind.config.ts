@@ -12,7 +12,7 @@ const config: Pick<
     './lib/**/*.{ts,tsx}', // For JSX components in MD
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
-    '../../packages/ui/**/*.{ts,tsx}', // UI package
+    '../../packages/ui/src/**/*.{ts,tsx}', // UI package
   ],
   presets: [sharedConfig],
   plugins: [typography],
