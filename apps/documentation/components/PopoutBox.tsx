@@ -21,8 +21,8 @@ const PopoutBox = ({
     <aside
       className={cn(
         'relative mx-0 my-5 max-w-full rounded-lg bg-card px-8 py-6 text-base-sm',
-        '@2xl/article:mt-10', // additional margin when icon is shown
-        '@2xl/article:mx-8 @2xl/article:px-8 @2xl/article:py-6',
+        '@2xl/article:mx-8 @2xl/article:mt-10', // additional margin when icon is shown
+        '@2xl/article:px-8 @2xl/article:py-6',
         className,
       )}
     >
