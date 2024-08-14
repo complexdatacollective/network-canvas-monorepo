@@ -15,7 +15,7 @@
     "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^4.29.5",
+    "@clerk/nextjs": "^5.3.1",
     "@codaco/analytics": "workspace:*",
     "@codaco/ui": "workspace:*",
     "@radix-ui/react-checkbox": "^1.0.4",
@@ -26,21 +26,21 @@
     "@radix-ui/react-switch": "^1.0.3",
     "@radix-ui/react-tabs": "^1.0.4",
     "@tanstack/react-table": "^8.10.7",
-    "@vercel/kv": "^0.2.4",
-    "@vercel/postgres": "^0.5.1",
+    "@vercel/kv": "^2.0.0",
+    "@vercel/postgres": "^0.9.0",
     "autoprefixer": "^10.4.17",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "dotenv": "^16.3.1",
-    "drizzle-orm": "^0.29.3",
+    "drizzle-orm": "^0.33.0",
     "i18n-iso-countries": "^7.7.0",
     "lucide-react": "^0.363.0",
     "next": "14.2.5",
     "papaparse": "^5.4.1",
-    "react": "^18.2.0",
-    "react-dom": "^18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tailwind-merge": "^2.0.0",
-    "zod": "^3.22.4"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@codaco/eslint-config": "workspace:*",
@@ -54,14 +54,14 @@
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
-    "drizzle-kit": "^0.20.13",
+    "drizzle-kit": "^0.24.0",
     "eslint": "^8.57.0",
     "jsdom": "^24.0.0",
     "next-test-api-route-handler": "^4.0.3",
-    "prettier": "^3.2.5",
+    "prettier": "^3.3.3",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3",
-    "vitest": "^1.4.0"
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
   },
   "eslintConfig": {
     "root": true,
