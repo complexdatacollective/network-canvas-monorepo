@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ensureError, strictBooleanSchema } from './utils';
+import { ensureError } from './utils';
 import z from 'zod';
 
 // Todo: it would be great to work out a way to support arbitrary types here.
@@ -82,18 +82,15 @@ type GeoData = {
 export const createRouteHandler = ({
   platformUrl = 'https://analytics.networkcanvas.com',
   installationId,
+  disableAnalytics,
 }: {
   platformUrl?: string;
   installationId: string;
+  disableAnalytics?: boolean;
 }) => {
   return async (request: NextRequest) => {
     try {
       const incomingEvent = (await request.json()) as unknown;
-
-      const disableAnalytics = strictBooleanSchema.parse(
-        // eslint-disable-next-line no-process-env
-        process.env.DISABLE_ANALYTICS,
-      );
 
       // Check if analytics is disabled
       if (disableAnalytics) {
