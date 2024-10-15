@@ -61,47 +61,7 @@ To do this, ensure you have a GitHub account and are signed in, and then:
    ![](/assets/img/fresco-images/github-fork2.png)
 
 Once you have completed this step, you will be redirected to your forked repository on GitHub. This copy of the Fresco code is now yours to deploy or modify as you wish.
-
-## Create a storage bucket using UploadThing
-
-Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
-
-<Tipbox>
-
-Your UploadThing account is unique to you, meaning that no one else will have access to the files stored in your instance of Fresco. For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
-
-</Tipbox>
-
-To create an app on UploadThing:
-
-1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
-
-2. Click **"Get started"**.
-
-   ![Select "Get Started"](/assets/img/fresco-images/uploadthing1.png)
-
-3. Sign in with Github.
-
-4. Authorize UploadThing by clicking **"Authorize pingdotgg"**.
-
-5. You will be prompted to navigate to your dashboard. From the dashboard Click **"Create a new app"**.
-
-   ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
-
-6. Give your app a name and click **"Create App"**. Do not change the region.
-
-   ![Create app](/assets/img/fresco-images/uploadthing5.png)
-
-7. From your dashboard, navigate to the **"API Keys"** section from the sidebar, select the **Legacy** tab, and copy your API keys using the copy button.
-
-   ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
-
-8. Paste your API keys into a text file or notes app for safekeeping. They should look something like this:
-
-   ```bash
-   UPLOADTHING_SECRET=sk_live_b9779c445ddaffc45ca4f9c27fd5c9b171d4bc8f6b589c808be29d3262021223
-   UPLOADTHING_APP_ID=dvrldijrm2
-   ```
+``
 
 ## Create a database
 
@@ -128,8 +88,7 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
 6. Paste the environment variables on a new line into the same place you pasted the UploadThing variables for safekeeping. The file should now look something like this:
 
    ```bash
-   UPLOADTHING_SECRET=sk_live_b9779c445ddaffc45ca4f9c27fd5c9b171d4bc8f6b589c808be29d3262021223
-   UPLOADTHING_APP_ID=dvrldijrm2
+
    POSTGRES_URL="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require"
    POSTGRES_PRISMA_URL="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require&pgbouncer=true&connect_timeout=15"
    POSTGRES_URL_NO_SSL="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech:5432/verceldb"
@@ -161,20 +120,6 @@ Should you run into any issues, please consult the [troubleshooting](/en/fresco/
 4. On the "Configure Project" screen, expand the "Environment Variables" section. Paste your variables into the "key" text box (with the `EXAMPLE_NAME` placeholder). Your variables will be automatically added below.
 
    ![When you paste your variables, they will be added automatically](/assets/img/fresco-images/vercel-paste-env.png)
-
-   <TipBox>
-
-   We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
-
-   If you would like to disable all analytics, add an additional environment variable to your Vercel deployment called `DISABLE_ANALYTICS` and set it to `true`. For example:
-
-   ```bash
-   DISABLE_ANALYTICS=true
-   ```
-
-   By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
-
-   </TipBox>
 
 5. Click the **"Deploy"** button, and wait for the deployment to finish. Vercel is now building your Fresco instance! This will take 2-5 minutes.
 
@@ -213,6 +158,53 @@ Only **one** user account can be created in Fresco. If you need access for multi
 If you forget your password, you **will not be able to reset it**. We recommend keeping a record of your username and password in a secure location.
 
 </TipBox>
+
+### Create a storage bucket using UploadThing
+
+Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
+
+<Tipbox>
+
+Your UploadThing account is unique to you, meaning that no one else will have access to the files stored in your instance of Fresco. For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
+
+</Tipbox>
+
+To create an app on UploadThing:
+
+1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
+
+2. Click **"Get started"**.
+
+   ![Select "Get Started"](/assets/img/fresco-images/uploadthing1.png)
+
+3. Sign in with Github.
+
+4. Authorize UploadThing by clicking **"Authorize pingdotgg"**.
+
+5. You will be prompted to navigate to your dashboard. From the dashboard Click **"Create a new app"**.
+
+   ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
+
+6. Give your app a name and click **"Create App"**. Do not change the region.
+
+   ![Create app](/assets/img/fresco-images/uploadthing5.png)
+
+7. From your dashboard, navigate to the **"API Keys"** section from the sidebar and copy your environment variable using the copy button.
+
+   ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
+
+8. Paste your environment variable into the UPLOADTHING_TOKEN field on the form. It should look something like this:
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+### Set Deployment Settings
+
+Use the toggles to configure the deployment settings for your Fresco instance:
+
+- **Sandbox Mode**: This setting is disabled by default. When enabled, the app will be in a sandbox mode, which disables resetting the database and other features. This is not recommended for most users.
+- **Disable Analytics**: Analytics are used to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. If you would like to disable all analytics, enable this setting.
 
 ### Upload a protocol
 

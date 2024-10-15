@@ -37,3 +37,17 @@ This version information is accessible from several places:
 - **Settings**: You can find the version number and SHA of your Fresco instance on the **Settings** page of your dashboard.
 - **GitHub**: You can find the SHA of your Fresco instance on your GitHub repository.
 - **Exported Data**: The version number and SHA of your Fresco instance are included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
+
+## UploadThing Variable Update
+
+If you are upgrading from a version of Fresco prior to XYZ, you will need to update your UploadThing environment variable after the upgrade process is complete. To do this:
+
+1. Visit your UploadThing dashboard.
+2. Navigate to the **API Keys** section from the sidebar and copy your environment variable using the copy button. It should look something like this:
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+3. Visit your Fresco dashboard. A message will appear informing you that your UploadThing environment variable is out of date.
+4. Paste your new environment variable into the **UPLOADTHING_TOKEN** field on the form.
