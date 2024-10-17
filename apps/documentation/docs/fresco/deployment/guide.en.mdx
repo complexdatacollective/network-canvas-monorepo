@@ -4,7 +4,7 @@ date: 17th April 2024
 navOrder: 1
 ---
 
-<SummaryCard duration="20 minutes">
+<SummaryCard duration="60 minutes">
 
 <SummarySection>
 This guide will walk you through the process of deploying your instance of Fresco.
@@ -137,7 +137,7 @@ To use Fresco, you need to set up an administrator account which will enable you
 
 <TipBox danger>
 
-To ensure the security of your deployment, you have **30 minutes** from when the app is deployed to create a user account. If this time elapses without a user account being created, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired-message-during-the-setup-process).
+To ensure the security of your deployment, you have **2 hours** from when the app is deployed to complete the configuration and setup. If this time elapses before completing all setup steps, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/fresco/deployment/troubleshooting#instance-expired-message-during-the-setup-process).
 
 </TipBox>
 
@@ -199,18 +199,23 @@ To create an app on UploadThing:
    UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
    ```
 
-### Set Deployment Settings
+   ![Paste your environment variable into the form](/assets/img/fresco-images/uploadthing7.png)
 
-Use the toggles to configure the deployment settings for your Fresco instance:
+### Configure Analytics
 
-- **Sandbox Mode**: This setting is disabled by default. When enabled, the app will be in a sandbox mode, which disables resetting the database and other features. This is not recommended for most users.
-- **Disable Analytics**: Analytics are used to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. If you would like to disable all analytics, enable this setting.
+We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
+
+If you would like to disable all analytics, toggle the **"Disable Analytics"** setting to **true**.
+
+Leaving Disable Analytics set to **false** (the default) will help us identify bugs and improve the app.
+
+![Optionally disable analytics](/assets/img/fresco-images/fresco2.png)
 
 ### Upload a protocol
 
 You can optionally upload a protocol. Protocols can also be uploaded from the protocols page once the setup steps are completed.
 
-![Upload a protocol](/assets/img/fresco-images/fresco2.png)
+![Upload a protocol](/assets/img/fresco-images/fresco3.png)
 
 ### Configure participation
 
@@ -218,7 +223,7 @@ You can optionally upload a protocol. Protocols can also be uploaded from the pr
 
 - **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found in the [using Fresco](/en/fresco/using-fresco) guide.
 
-![Import participants and optionally allow anonymous recruitment](/assets/img/fresco-images/fresco3.png)
+![Import participants and optionally allow anonymous recruitment](/assets/img/fresco-images/fresco4.png)
 
 ### Visit the dashboard
 

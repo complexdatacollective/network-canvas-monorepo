@@ -49,82 +49,8 @@ Create an `.env` file somewhere on your host machine using the template below. T
 
 ```bash
 # -------------------
-# Optional environment variables
-# -------------------
-
-# If true, the app will not send anonymous analytics and error data. Defaults to false.
-#DISABLE_ANALYTICS=
-
-# -------------------
 # Required environment variables
 # -------------------
-
-POSTGRES_PRISMA_URL=
-POSTGRES_URL_NON_POOLING=
-
-PUBLIC_URL=
-
-```
-
-<TipBox>
-
-We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
-
-If you would like to disable all analytics, set `DISABLE_ANALYTICS` to `true`.
-
-By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
-
-</TipBox>
-
-### Create a storage bucket using UploadThing
-
-Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
-
-<Tipbox>
-
-Your UploadThing account is unique to you, meaning that no one else will have access to the files stored in your instance of Fresco. For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
-
-</Tipbox>
-
-To create an app on UploadThing:
-
-1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
-
-2. Click **"Get started"**.
-
-   ![Select "Get Started"](/assets/img/fresco-images/uploadthing1.png)
-
-3. Sign in with Github.
-
-4. Authorize UploadThing by clicking **"Authorize pingdotgg"**.
-
-5. You will be prompted to navigate to your dashboard. From the dashboard Click **"Create a new app"**.
-
-   ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
-
-6. Give your app a name and click **"Create App"**. Performance can be improved by selecting a region close to your server, although this will require a paid plan.
-
-   ![Create app](/assets/img/fresco-images/uploadthing5.png)
-
-7. From your dashboard, navigate to the **"API Keys"** section from the sidebar and copy your API keys using the copy button.
-
-   ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
-
-8. Pate your API keys into the `.env` file you created in the previous step:
-
-```bash
-# -------------------
-# Optional environment variables
-# -------------------
-
-# If true, the app will not send anonymous analytics and error data. Defaults to false.
-#DISABLE_ANALYTICS=
-
-# -------------------
-# Required environment variables
-# -------------------
-UPLOADTHING_SECRET=sk-your-secret-key
-UPLOADTHING_APP_ID=your-app-id
 
 POSTGRES_PRISMA_URL=
 POSTGRES_URL_NON_POOLING=
@@ -151,13 +77,6 @@ Add your connection strings to the `.env` file:
 
 ```bash
 # -------------------
-# Optional environment variables
-# -------------------
-
-# If true, the app will not send anonymous analytics and error data. Defaults to false.
-#DISABLE_ANALYTICS=
-
-# -------------------
 # Required environment variables
 # -------------------
 UPLOADTHING_SECRET=sk-your-secret-key
@@ -179,18 +98,8 @@ Add your URL to the `.env` file:
 
 ```bash
 # -------------------
-# Optional environment variables
-# -------------------
-
-# If true, the app will not send anonymous analytics and error data. Defaults to false.
-#DISABLE_ANALYTICS=
-
-# -------------------
 # Required environment variables
 # -------------------
-UPLOADTHING_SECRET=sk-your-secret-key
-UPLOADTHING_APP_ID=your-app-id
-
 POSTGRES_PRISMA_URL=postgresql://username:password@hostname:port/dbname
 POSTGRES_URL_NON_POOLING=postgresql://username:password@hostname:port/dbname
 
@@ -220,8 +129,6 @@ You can optionally use [Docker Compose](https://docs.docker.com/compose/) to man
 services:
   fresco:
     environment:
-      - UPLOADTHING_SECRET=sk-your-secret-key
-      - UPLOADTHING_APP_ID=your-app-id
       - POSTGRES_PRISMA_URL=postgresql://username:password@postgres:5432/fresco
       - POSTGRES_URL_NON_POOLING=postgresql://username:password@postgres:5432/fresco
       - PUBLIC_URL=https://your-public-url.com
@@ -269,7 +176,7 @@ docker-compose up -d -f docker-compose.yml
 
 ## Access Fresco
 
-You can now access Fresco by visiting the `PUBLIC_URL` that you have configured. You should be greeted with the onboarding wizard, which will guide you through the process of setting up Fresco.
+You can now access Fresco by visiting the `PUBLIC_URL` that you have configured. You should be greeted with the onboarding wizard, which will guide you through the process of setting up Fresco. This will include configuring UploadThing.
 
 For details on this process, refer to the [configuration and setup](./guide#configuration-and-setup) section of the basic deployment guide.
 
