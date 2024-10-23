@@ -49,6 +49,13 @@ Create an `.env` file somewhere on your host machine using the template below. T
 
 ```bash
 # -------------------
+# Optional environment variables
+# -------------------
+
+# If true, the app will not send anonymous analytics and error data. Defaults to false.
+#DISABLE_ANALYTICS=
+
+# -------------------
 # Required environment variables
 # -------------------
 
@@ -57,6 +64,16 @@ POSTGRES_URL_NON_POOLING=
 
 PUBLIC_URL=
 ```
+
+<TipBox>
+
+We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
+
+If you would like to disable all analytics, set `DISABLE_ANALYTICS` to `true`.
+
+By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us identify bugs and improve the app.
+
+</TipBox>
 
 ### Postgres Configuration
 
@@ -76,6 +93,13 @@ If your database is hosted on a service such as PlanetScale or Neon, use the con
 Add your connection strings to the `.env` file:
 
 ```bash
+# -------------------
+# Optional environment variables
+# -------------------
+
+# If true, the app will not send anonymous analytics and error data. Defaults to false.
+#DISABLE_ANALYTICS=
+
 # -------------------
 # Required environment variables
 # -------------------
@@ -97,6 +121,14 @@ If you intend to run your instance on a LAN or private network, **at least the `
 Add your URL to the `.env` file:
 
 ```bash
+# -------------------
+# Optional environment variables
+# -------------------
+
+# If true, the app will not send anonymous analytics and error data. Defaults to false.
+#DISABLE_ANALYTICS=
+
+
 # -------------------
 # Required environment variables
 # -------------------
