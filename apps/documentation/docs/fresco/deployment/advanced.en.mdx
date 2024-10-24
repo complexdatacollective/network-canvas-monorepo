@@ -20,15 +20,14 @@ If you are not already familiar with these technologies, we recommend following 
 </PrerequisitesSection>
 </SummaryCard>
 
-
-
 To assist users who have specialized hosting needs, we have created a Docker container which allows Fresco to be deployed across a variety of contexts, including institutional IT infrastructure, privately owned VPSs, and internal networks. This tutorial will guide you through the requirements of deploying Fresco using our docker image, and will outline the necessary steps.
 
 <Tipbox danger>
   Because of the nature of self-hosting Dockerized applications on cloud
   infrastructure, you are responsible for the security and maintenance of your
-  own deployment! The Network Canvas project team has no access to
-  your data or infrastructure by design, and updates will not be automatically applied. This may leave your data at risk.
+  own deployment! The Network Canvas project team has no access to your data or
+  infrastructure by design, and updates will not be automatically applied. This
+  may leave your data at risk.
 </Tipbox>
 
 ## Requirements for deploying Fresco
@@ -36,10 +35,11 @@ To assist users who have specialized hosting needs, we have created a Docker con
 Fresco is a NextJS application, which uses Amazon S3 for storage of protocol assets and PostgreSQL for storage of interview and app data.
 
 To deploy Fresco, you'll need:
-  - A host machine running Docker with at least 1gb of RAM and enough disk space to store your protocol assets and interview data. This machine must at a minimum accept connections from the Internet on port 443 to the `api/uploadthing` endpoint. This endpoint is used as a callback for uploads to Amazon S3. 
-  - A domain name with a TLS certificate. Free certificates can be obtained via services such as LetsEncrypt. Fresco requires the use of HTTPS.
-  - A suitable PostgreSQL 16.x database. This can either be in the form of a commercial service such as PlanetScale or Neon, or a local container via Docker.
-  - A free UploadThing API key. This library provides a wrapper over Amazon S3. Details on obtaining a key are provided later in this article.
+
+- A host machine running Docker with at least 1gb of RAM and enough disk space to store your protocol assets and interview data. This machine must at a minimum accept connections from the Internet on port 443 to the `api/uploadthing` endpoint. This endpoint is used as a callback for uploads to Amazon S3.
+- A domain name with a TLS certificate. Free certificates can be obtained via services such as LetsEncrypt. Fresco requires the use of HTTPS.
+- A suitable PostgreSQL 16.x database. This can either be in the form of a commercial service such as PlanetScale or Neon, or a local container via Docker.
+- A free UploadThing API key. This library provides a wrapper over Amazon S3. Details on obtaining a key are provided later in this article.
 
 ## Environment Variables
 
@@ -52,21 +52,17 @@ Create an `.env` file somewhere on your host machine using the template below. T
 # Optional environment variables
 # -------------------
 
-# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
+# If true, the app will not send anonymous analytics and error data. Defaults to false.
 #DISABLE_ANALYTICS=
 
 # -------------------
 # Required environment variables
 # -------------------
 
-UPLOADTHING_SECRET=
-UPLOADTHING_APP_ID=
-
 POSTGRES_PRISMA_URL=
 POSTGRES_URL_NON_POOLING=
 
 PUBLIC_URL=
-
 ```
 
 <TipBox>
@@ -79,72 +75,16 @@ By leaving `DISABLE_ANALYTICS` set to `false` (the default) you will help us ide
 
 </TipBox>
 
-### Create a storage bucket using UploadThing
-
-Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
-
-<Tipbox>
-
-Your UploadThing account is unique to you, meaning that no one else will have access to the files stored in your instance of Fresco. For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
-
-</Tipbox>
-
-To create an app on UploadThing:
-
-1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
-
-2. Click **"Get started"**.
-
-   ![Select "Get Started"](/assets/img/fresco-images/uploadthing1.png)
-
-3. Sign in with Github.
-
-4. Authorize UploadThing by clicking **"Authorize pingdotgg"**.
-
-5. You will be prompted to navigate to your dashboard. From the dashboard Click **"Create a new app"**.
-
-   ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
-
-6. Give your app a name and click **"Create App"**. Performance can be improved by selecting a region close to your server, although this will require a paid plan.
-
-   ![Create app](/assets/img/fresco-images/uploadthing5.png)
-
-7. From your dashboard, navigate to the **"API Keys"** section from the sidebar and copy your API keys using the copy button.
-
-   ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
-
-8. Pate your API keys into the `.env` file you created in the previous step:
-
-```bash
-# -------------------
-# Optional environment variables
-# -------------------
-
-# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
-#DISABLE_ANALYTICS=
-
-# -------------------
-# Required environment variables
-# -------------------
-UPLOADTHING_SECRET=sk-your-secret-key
-UPLOADTHING_APP_ID=your-app-id
-
-POSTGRES_PRISMA_URL=
-POSTGRES_URL_NON_POOLING=
-
-PUBLIC_URL=
-```
-
 ### Postgres Configuration
 
 Fresco uses a PostgreSQL database to store protocol and interview data. You will need to set up a PostgreSQL database on your server, or provide connection details to an external service.
 
 Fresco requires two connection strings to PostgreSQL:
 
-| **Variable**                 | **Details**                              |
-| ---------------------------- | ---------------------------------------- |
-| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users.      |
-| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma. This is primarily used for database migrations when upgrading. |
+| **Variable**                 | **Details**                                                                                                                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users. |
+| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma. This is primarily used for database migrations when upgrading.                                                                     |
 
 If you do not have a connection pooler such as PgBouncer, you can use the same connection string for both variables (although this may lead to database errors under heavy load).
 
@@ -157,7 +97,7 @@ Add your connection strings to the `.env` file:
 # Optional environment variables
 # -------------------
 
-# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
+# If true, the app will not send anonymous analytics and error data. Defaults to false.
 #DISABLE_ANALYTICS=
 
 # -------------------
@@ -185,15 +125,13 @@ Add your URL to the `.env` file:
 # Optional environment variables
 # -------------------
 
-# If true, the app will not send anonymous analytics and error data. Defaults to false.                  
+# If true, the app will not send anonymous analytics and error data. Defaults to false.
 #DISABLE_ANALYTICS=
+
 
 # -------------------
 # Required environment variables
 # -------------------
-UPLOADTHING_SECRET=sk-your-secret-key
-UPLOADTHING_APP_ID=your-app-id
-
 POSTGRES_PRISMA_URL=postgresql://username:password@hostname:port/dbname
 POSTGRES_URL_NON_POOLING=postgresql://username:password@hostname:port/dbname
 
@@ -223,8 +161,6 @@ You can optionally use [Docker Compose](https://docs.docker.com/compose/) to man
 services:
   fresco:
     environment:
-      - UPLOADTHING_SECRET=sk-your-secret-key
-      - UPLOADTHING_APP_ID=your-app-id
       - POSTGRES_PRISMA_URL=postgresql://username:password@postgres:5432/fresco
       - POSTGRES_URL_NON_POOLING=postgresql://username:password@postgres:5432/fresco
       - PUBLIC_URL=https://your-public-url.com
@@ -272,13 +208,13 @@ docker-compose up -d -f docker-compose.yml
 
 ## Access Fresco
 
-You can now access Fresco by visiting the `PUBLIC_URL` that you have configured. You should be greeted with the onboarding wizard, which will guide you through the process of setting up Fresco.
+You can now access Fresco by visiting the `PUBLIC_URL` that you have configured. You should be greeted with the onboarding wizard, which will guide you through the process of setting up Fresco. This will include configuring UploadThing.
 
 For details on this process, refer to the [configuration and setup](./guide#configuration-and-setup) section of the basic deployment guide.
 
 ## Updating Fresco
 
-To update Fresco, you can pull the latest image from the GitHub container registry and recreate your container. 
+To update Fresco, you can pull the latest image from the GitHub container registry and recreate your container.
 
 ```bash
 docker pull ghcr.io/complexdatacollective/fresco:latest
