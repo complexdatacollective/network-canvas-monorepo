@@ -19,7 +19,7 @@ const nextConfig = {
     "@codaco/ui",
   ],
   experimental: {
-    fallbackNodePolyfills: false,
+    fallbackNodePolyfills: false, // Turning this off will cause issues with Nodejs dependencies (such as dotenv) if they get imported into client code.
   }
   /** We already do linting and typechecking as separate tasks in CI */
   // eslint: { ignoreDuringBuilds: true },

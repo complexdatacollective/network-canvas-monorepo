@@ -1,9 +1,9 @@
+import 'dotenv/config'; // This is essential here, because helper functions (below) use env variables, but they are not available in the Node.js environment without dotenv! This file is run directly in Node via tsc.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type fs from 'node:fs';
 import matter from 'gray-matter';
-import type { Locale, TSideBar } from '~/app/types';
-import { locales } from '~/app/types';
+import { locales, type Locale, type TSideBar } from '~/app/types';
 import {
   createFolderEntry,
   createPageEntry,
