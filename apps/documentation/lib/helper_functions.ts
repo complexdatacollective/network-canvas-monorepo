@@ -7,7 +7,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import type {
-  Locales,
+  Locale,
   MetadataFile,
   SidebarFolder,
   SidebarPage,
@@ -143,7 +143,7 @@ export const getMetaDataForDirectory = (directoryPath: string) => {
  */
 export const createProjectEntry = (
   file: fs.Dirent,
-  locale: Locales,
+  locale: Locale,
   metadata: MetadataFile,
 ): SidebarProject => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];
@@ -169,7 +169,7 @@ export const createProjectEntry = (
  */
 export const createFolderEntry = (
   file: fs.Dirent,
-  locale: Locales,
+  locale: Locale,
   metadata: MetadataFile,
 ): SidebarFolder => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];
