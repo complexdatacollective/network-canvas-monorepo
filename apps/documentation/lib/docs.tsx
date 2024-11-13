@@ -27,7 +27,7 @@ import { unified } from 'unified';
 import { z } from 'zod';
 import {
   locales,
-  type LocalesEnum,
+  type Locale,
   type SidebarFolder,
   type SidebarPage,
   type SidebarProject,
@@ -118,7 +118,7 @@ export const processPath = (docPath: string) => {
 //   docPath: [ 'getting-started', 'installation' ]
 // }
 type ReturnType = {
-  locale: LocalesEnum;
+  locale: Locale;
   project: string;
   docPath: string[];
 };
@@ -127,7 +127,7 @@ export const getDocsForRouteSegment = ({
   locale,
   project,
 }: {
-  locale: LocalesEnum;
+  locale: Locale;
   project: string;
 }) => {
   const typedSidebar = sidebar as TSideBar;

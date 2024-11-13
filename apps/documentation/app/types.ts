@@ -6,9 +6,9 @@ export type ProjectsEnum = (typeof projects)[number];
 
 export const locales = ['en'] as const;
 
-const LocalesEnum = z.enum(locales);
+const Locale = z.enum(locales);
 
-export type LocalesEnum = (typeof locales)[number];
+export type Locale = (typeof locales)[number];
 
 export const itemTypes = [
   'project', // Top level projects
@@ -72,10 +72,7 @@ export type SidebarLocaleDefinition = z.infer<
   typeof SidebarLocaleDefinitionSchema
 >;
 
-export const SideBarSchema = z.record(
-  LocalesEnum,
-  SidebarLocaleDefinitionSchema,
-);
+export const SideBarSchema = z.record(Locale, SidebarLocaleDefinitionSchema);
 
 export type TSideBar = z.infer<typeof SideBarSchema>;
 

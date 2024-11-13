@@ -137,6 +137,7 @@ const DocSearchComponent = ({
           insights={true}
           placeholder="Search documentation"
           searchParameters={{
+            indexName: env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
             filters: `lang:${locale}`,
           }}
         />

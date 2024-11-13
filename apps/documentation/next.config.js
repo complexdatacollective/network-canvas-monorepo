@@ -1,6 +1,11 @@
 import createNextIntl from 'next-intl/plugin';
+import NextBundleAnalyzer from '@next/bundle-analyzer';
 
-const withNextIntl = createNextIntl();
+const withNextIntl = createNextIntl('./lib/i18n/request.ts');
+const withBundleAnalyzer = NextBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -13,10 +18,15 @@ const nextConfig = {
   transpilePackages: [
     "@codaco/ui",
   ],
+  experimental: {
+    fallbackNodePolyfills: false,
+  }
   /** We already do linting and typechecking as separate tasks in CI */
   // eslint: { ignoreDuringBuilds: true },
   // typescript: { ignoreBuildErrors: true },
 };
 
+
+
 // Merge NextIntl config with Next.js config
-export default withNextIntl(nextConfig);
+export default withBundleAnalyzer(withNextIntl(nextConfig));

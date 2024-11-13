@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type fs from 'node:fs';
 import dotenv from 'dotenv';
 import matter from 'gray-matter';
-import type { LocalesEnum, TSideBar } from '~/app/types';
+import type { Locale, TSideBar } from '~/app/types';
 import { locales } from '~/app/types';
 import {
   createFolderEntry,
@@ -46,7 +46,7 @@ function generateSidebarData() {
 
       if (metadata.type === 'project') {
         Object.keys(sidebarData).forEach((l) => {
-          const locale = l as LocalesEnum;
+          const locale = l as Locale;
 
           sidebarData[locale] = {
             ...sidebarData[locale],
@@ -63,7 +63,7 @@ function generateSidebarData() {
 
         // Insert folder entry for each locale in the nested path
         Object.keys(sidebarData).forEach((l) => {
-          const locale = l as LocalesEnum;
+          const locale = l as Locale;
           set(
             sidebarData[locale]!,
             [...nestedPath, file.name],
@@ -79,13 +79,13 @@ function generateSidebarData() {
     if (!file.name.endsWith('.md') && !file.name.endsWith('.mdx')) return;
 
     // Determine locale based on file name (format is `index.en.mdx` or `index.en.md`)
-    const locale = file.name.split('.')[1] as LocalesEnum | undefined;
+    const locale = file.name.split('.')[1] as Locale | undefined;
 
     // If there's no locale, or the locale isn't included in the type, ignore it.
-    if (!locale || !locales.includes(locale as LocalesEnum)) {
+    if (!locale || !locales.includes(locale as Locale)) {
       // eslint-disable-next-line no-console
       console.warn(
-        `File ${file.name} is missing a locale or has a locale not defined in LocalesEnum. Locale is ${locale}. Skipping.`,
+        `File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${locale}. Skipping.`,
       );
       return;
     }
