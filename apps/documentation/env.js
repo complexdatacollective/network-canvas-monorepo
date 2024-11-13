@@ -1,9 +1,10 @@
 /* eslint-disable no-process-env */
 import { createEnv } from '@t3-oss/env-nextjs';
-import { z } from 'zod';
-// import dotenv from 'dotenv';
+import { config } from 'dotenv'
 
-// dotenv.config();
+import { z } from 'zod';
+
+config()
 
 export const env = createEnv({
   /**
@@ -46,4 +47,5 @@ export const env = createEnv({
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
     NODE_ENV: process.env.NODE_ENV,
   },
+  skipValidation: true,
 });

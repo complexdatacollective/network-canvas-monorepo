@@ -10,7 +10,7 @@ import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import { Analytics } from '@vercel/analytics/react';
-import { env } from '~/env.mjs';
+import { env } from '~/env';
 
 const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'],

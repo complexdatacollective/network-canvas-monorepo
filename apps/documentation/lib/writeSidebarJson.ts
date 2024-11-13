@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type fs from 'node:fs';
-import dotenv from 'dotenv';
 import matter from 'gray-matter';
 import type { Locale, TSideBar } from '~/app/types';
 import { locales } from '~/app/types';
@@ -15,8 +14,6 @@ import {
   set,
   sortDirectoryListing,
 } from './helper_functions';
-
-dotenv.config();
 
 /**
  * Generate sidebar data based on docs and locales.

@@ -14,7 +14,7 @@ import type {
   SidebarProject,
 } from '~/app/types';
 import { MetadataFileSchema } from '~/app/types';
-import { env } from '~/env.mjs';
+import { env } from '~/env';
 
 export const relativePathToDocs = join(
   process.cwd(),
