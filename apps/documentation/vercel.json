@@ -1,84 +1,84 @@
 {
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/en",
-      "permanent": true
-    },
-    {
-      "source": "/citing-the-software",
-      "destination": "/en/desktop/project-information/citing-the-software",
-      "permanent": true
-    },
-    {
-      "source": "/contributing-code",
-      "destination": "/en/desktop/project-information/contributing-code",
-      "permanent": true
-    },
-    {
-      "source": "/faq",
-      "destination": "/en/desktop/project-information/faq",
-      "permanent": true
-    },
-    {
-      "source": "/project-overview",
-      "destination": "/en/desktop/project-information/project-overview",
-      "permanent": true
-    },
-    {
-      "source": "/requests-for-collaboration",
-      "destination": "/en/desktop/project-information/requests-for-collaboration",
-      "permanent": true
-    },
-    {
-      "source": "/reference/irb-best-practices",
-      "destination": "/en/desktop/project-information/irb-best-practices",
-      "permanent": true
-    },
-    {
-      "source": "/reference/security-model",
-      "destination": "/en/desktop/project-information/security-model",
-      "permanent": true
-    },
-    {
-      "source": "/reference/network-canvas-graphml",
-      "destination": "/en/desktop/advanced-topics/network-canvas-graphml",
-      "permanent": true
-    },
-    {
-      "source": "/reference/node-labelling",
-      "destination": "/en/desktop/advanced-topics/node-labelling",
-      "permanent": true
-    },
-    {
-      "source": "/reference/protocol-file-format",
-      "destination": "/en/desktop/advanced-topics/protocol-file-format",
-      "permanent": true
-    },
-    {
-      "source": "/reference/protocol-schema-information",
-      "destination": "/en/desktop/advanced-topics/protocol-schema-information",
-      "permanent": true
-    },
-    {
-      "source": "/installation-guide",
-      "destination": "/en/desktop/getting-started/installation-guide",
-      "permanent": true
-    },
-    {
-      "source": "/how-to/choosing-hardware",
-      "destination": "/en/desktop/getting-started/choosing-hardware",
-      "permanent": true
-    },
-    {
-      "source": "/how-to/configuring-devices",
-      "destination": "/en/desktop/getting-started/configuring-devices",
-      "permanent": true
-    },
-    {
-      "source": "/:path((?!en|_next/static|_next/image|assets|protocols|favicons|images|.*\\.\\w+.*).*)",
-      "destination": "/en/desktop/:path*",
-      "permanent": true
-    }
-  ]
+	"redirects": [
+		{
+			"source": "/",
+			"destination": "/en",
+			"permanent": true
+		},
+		{
+			"source": "/citing-the-software",
+			"destination": "/en/desktop/project-information/citing-the-software",
+			"permanent": true
+		},
+		{
+			"source": "/contributing-code",
+			"destination": "/en/desktop/project-information/contributing-code",
+			"permanent": true
+		},
+		{
+			"source": "/faq",
+			"destination": "/en/desktop/project-information/faq",
+			"permanent": true
+		},
+		{
+			"source": "/project-overview",
+			"destination": "/en/desktop/project-information/project-overview",
+			"permanent": true
+		},
+		{
+			"source": "/requests-for-collaboration",
+			"destination": "/en/desktop/project-information/requests-for-collaboration",
+			"permanent": true
+		},
+		{
+			"source": "/reference/irb-best-practices",
+			"destination": "/en/desktop/project-information/irb-best-practices",
+			"permanent": true
+		},
+		{
+			"source": "/reference/security-model",
+			"destination": "/en/desktop/project-information/security-model",
+			"permanent": true
+		},
+		{
+			"source": "/reference/network-canvas-graphml",
+			"destination": "/en/desktop/advanced-topics/network-canvas-graphml",
+			"permanent": true
+		},
+		{
+			"source": "/reference/node-labelling",
+			"destination": "/en/desktop/advanced-topics/node-labelling",
+			"permanent": true
+		},
+		{
+			"source": "/reference/protocol-file-format",
+			"destination": "/en/desktop/advanced-topics/protocol-file-format",
+			"permanent": true
+		},
+		{
+			"source": "/reference/protocol-schema-information",
+			"destination": "/en/desktop/advanced-topics/protocol-schema-information",
+			"permanent": true
+		},
+		{
+			"source": "/installation-guide",
+			"destination": "/en/desktop/getting-started/installation-guide",
+			"permanent": true
+		},
+		{
+			"source": "/how-to/choosing-hardware",
+			"destination": "/en/desktop/getting-started/choosing-hardware",
+			"permanent": true
+		},
+		{
+			"source": "/how-to/configuring-devices",
+			"destination": "/en/desktop/getting-started/configuring-devices",
+			"permanent": true
+		},
+		{
+			"source": "/:path((?!en|_next/static|_next/image|assets|protocols|favicons|images|.*\\.\\w+.*).*)",
+			"destination": "/en/desktop/:path*",
+			"permanent": true
+		}
+	]
 }

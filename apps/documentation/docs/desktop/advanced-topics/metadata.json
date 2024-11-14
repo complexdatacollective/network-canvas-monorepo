@@ -1,9 +1,9 @@
 {
-  "type": "folder",
-  "navOrder": 50000,
-  "localeLabels": {
-    "en": "Advanced Topics"
-  },
-  "slug": "advanced-topics",
-  "isExpanded": false
+	"type": "folder",
+	"navOrder": 50000,
+	"localeLabels": {
+		"en": "Advanced Topics"
+	},
+	"slug": "advanced-topics",
+	"isExpanded": false
 }

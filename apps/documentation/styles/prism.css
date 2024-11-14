@@ -1,5 +1,5 @@
-pre[class*='language-'] {
-  color: theme('colors.platinum.DEFAULT');
+pre[class*="language-"] {
+	color: theme("colors.platinum.DEFAULT");
 }
 
 .token.tag,
@@ -8,7 +8,7 @@ pre[class*='language-'] {
 .token.selector .class,
 .token.selector.class,
 .token.function {
-  color: theme('colors.barbie-pink.DEFAULT');
+	color: theme("colors.barbie-pink.DEFAULT");
 }
 
 .token.attr-name,
@@ -16,32 +16,32 @@ pre[class*='language-'] {
 .token.rule,
 .token.pseudo-class,
 .token.important {
-  color: theme('colors.platinum.DEFAULT');
+	color: theme("colors.platinum.DEFAULT");
 }
 
 .token.module {
-  color: theme('colors.barbie-pink.DEFAULT');
+	color: theme("colors.barbie-pink.DEFAULT");
 }
 
 .token.attr-value,
 .token.class,
 .token.string,
 .token.property {
-  color: theme('colors.cerulean-blue.DEFAULT');
+	color: theme("colors.cerulean-blue.DEFAULT");
 }
 
 .token.punctuation,
 .token.attr-equals {
-  color: theme('colors.platinum.dark');
+	color: theme("colors.platinum.dark");
 }
 
 .token.unit,
 .language-css .token.function {
-  color: theme('colors.slate-blue.DEFAULT');
+	color: theme("colors.slate-blue.DEFAULT");
 }
 
 .token.comment,
 .token.operator,
 .token.combinator {
-  color: theme('colors.neon-coral.dark');
+	color: theme("colors.neon-coral.dark");
 }

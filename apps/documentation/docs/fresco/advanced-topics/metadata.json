@@ -1,8 +1,8 @@
 {
-  "type": "folder",
-  "slug": "advanced-topics",
-  "localeLabels": {
-    "en": "Advanced Topics"
-  },
-  "isExpanded": true
+	"type": "folder",
+	"slug": "advanced-topics",
+	"localeLabels": {
+		"en": "Advanced Topics"
+	},
+	"isExpanded": true
 }

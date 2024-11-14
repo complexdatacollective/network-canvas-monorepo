@@ -1,12 +1,12 @@
 {
-  "type": "project",
-  "slug": "desktop",
-  "localeLabels": {
-    "en": "Desktop",
-    "ru": "Desktop"
-  },
-  "localeIndexFiles": {
-    "en": "index.en.mdx",
-    "ru": "index.ru.mdx"
-  }
+	"type": "project",
+	"slug": "desktop",
+	"localeLabels": {
+		"en": "Desktop",
+		"ru": "Desktop"
+	},
+	"localeIndexFiles": {
+		"en": "index.en.mdx",
+		"ru": "index.ru.mdx"
+	}
 }

@@ -1,11 +1,10 @@
 {
-  "typescript.tsdk": "./node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "cSpell.enableFiletypes": [
-    "mdx"
-  ],
-  "cSpell.words": [
-    "netcanvas",
-    "Tipbox"
-  ]
+	"typescript.tsdk": "./node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+	"cSpell.enableFiletypes": ["mdx"],
+	"cSpell.words": ["netcanvas", "Tipbox"],
+	"editor.defaultFormatter": "biomejs.biome",
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	}
 }

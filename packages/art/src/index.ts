@@ -1,4 +1,4 @@
-import useCanvas from './BackgroundBlobs/useCanvas';
-import BackgroundBlobs from './BackgroundBlobs/BackgroundBlobs';
+import BackgroundBlobs from "./BackgroundBlobs/BackgroundBlobs";
+import useCanvas from "./BackgroundBlobs/useCanvas";
 
 export { useCanvas, BackgroundBlobs };

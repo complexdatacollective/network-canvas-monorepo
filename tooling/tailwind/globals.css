@@ -1,119 +1,128 @@
+:root {
+	/* UI Colors */
+	/* To generate dark color variants, subtract 5% from the lightness. */
+	--dark-mod: 5%;
+	--neon-coral-hue: 342;
+	--neon-coral-saturation: 76.9%;
+	--neon-coral-lightness: 50.8%;
+	--neon-coral: var(--neon-coral-hue) var(--neon-coral-saturation) var(--neon-coral-lightness);
+	--neon-coral--dark: var(--neon-coral-hue) var(--neon-coral-saturation)
+		calc(var(--neon-coral-lightness) - var(--dark-mod));
 
-  :root {    
-    /* UI Colors */
-    /* To generate dark color variants, subtract 5% from the lightness. */
-    --dark-mod: 5%;
-    --neon-coral-hue: 342;
-    --neon-coral-saturation: 76.9%;
-    --neon-coral-lightness: 50.8%;
-    --neon-coral: var(--neon-coral-hue) var(--neon-coral-saturation) var(--neon-coral-lightness);
-    --neon-coral--dark: var(--neon-coral-hue) var(--neon-coral-saturation) calc(var(--neon-coral-lightness) - var(--dark-mod));
+	--mustard-hue: 46;
+	--mustard-saturation: 100%;
+	--mustard-lightness: 47%;
+	--mustard: var(--mustard-hue) var(--mustard-saturation) var(--mustard-lightness);
+	--mustard--dark: var(--mustard-hue) var(--mustard-saturation) calc(var(--mustard-lightness) - var(--dark-mod));
 
-    --mustard-hue: 46;
-    --mustard-saturation: 100%;
-    --mustard-lightness: 47%;
-    --mustard: var(--mustard-hue) var(--mustard-saturation) var(--mustard-lightness);
-    --mustard--dark: var(--mustard-hue) var(--mustard-saturation) calc(var(--mustard-lightness) - var(--dark-mod));
+	--sea-green-hue: 168;
+	--sea-green-saturation: 100%;
+	--sea-green-lightness: 40%;
+	--sea-green: var(--sea-green-hue) var(--sea-green-saturation) var(--sea-green-lightness);
+	--sea-green--dark: var(--sea-green-hue) var(--sea-green-saturation) calc(var(--sea-green-lightness) - var(--dark-mod));
 
-    --sea-green-hue: 168;
-    --sea-green-saturation: 100%;
-    --sea-green-lightness: 40%;
-    --sea-green: var(--sea-green-hue) var(--sea-green-saturation) var(--sea-green-lightness);
-    --sea-green--dark: var(--sea-green-hue) var(--sea-green-saturation) calc(var(--sea-green-lightness) - var(--dark-mod));
+	--slate-blue-hue: 237;
+	--slate-blue-saturation: 79%;
+	--slate-blue-lightness: 65%;
+	--slate-blue: var(--slate-blue-hue) var(--slate-blue-saturation) var(--slate-blue-lightness);
+	--slate-blue--dark: var(--slate-blue-hue) var(--slate-blue-saturation)
+		calc(var(--slate-blue-lightness) - var(--dark-mod));
 
-    --slate-blue-hue: 237;
-    --slate-blue-saturation: 79%;
-    --slate-blue-lightness: 65%;
-    --slate-blue: var(--slate-blue-hue) var(--slate-blue-saturation) var(--slate-blue-lightness);
-    --slate-blue--dark: var(--slate-blue-hue) var(--slate-blue-saturation) calc(var(--slate-blue-lightness) - var(--dark-mod));
+	--navy-taupe-hue: 248;
+	--navy-taupe-saturation: 34%;
+	--navy-taupe-lightness: 25%;
+	--navy-taupe: var(--navy-taupe-hue) var(--navy-taupe-saturation) var(--navy-taupe-lightness);
+	--navy-taupe--dark: var(--navy-taupe-hue) var(--navy-taupe-saturation)
+		calc(var(--navy-taupe-lightness) - var(--dark-mod));
 
-    --navy-taupe-hue: 248;
-    --navy-taupe-saturation: 34%;
-    --navy-taupe-lightness: 25%;
-    --navy-taupe: var(--navy-taupe-hue) var(--navy-taupe-saturation) var(--navy-taupe-lightness);
-    --navy-taupe--dark: var(--navy-taupe-hue) var(--navy-taupe-saturation) calc(var(--navy-taupe-lightness) - var(--dark-mod));
+	--cyber-grape-hue: 240;
+	--cyber-grape-saturation: 33%;
+	--cyber-grape-lightness: 29%;
+	--cyber-grape: var(--cyber-grape-hue) var(--cyber-grape-saturation) var(--cyber-grape-lightness);
+	--cyber-grape--dark: var(--cyber-grape-hue) var(--cyber-grape-saturation)
+		calc(var(--cyber-grape-lightness) - var(--dark-mod));
 
-    --cyber-grape-hue: 240;
-    --cyber-grape-saturation: 33%;
-    --cyber-grape-lightness: 29%;
-    --cyber-grape: var(--cyber-grape-hue) var(--cyber-grape-saturation) var(--cyber-grape-lightness);
-    --cyber-grape--dark: var(--cyber-grape-hue) var(--cyber-grape-saturation) calc(var(--cyber-grape-lightness) - var(--dark-mod));
+	--rich-black-hue: 240;
+	--rich-black-saturation: 35%;
+	--rich-black-lightness: 10%;
+	--rich-black: var(--rich-black-hue) var(--rich-black-saturation) var(--rich-black-lightness);
 
-    --rich-black-hue: 240;
-    --rich-black-saturation: 35%;
-    --rich-black-lightness: 10%;
-    --rich-black: var(--rich-black-hue) var(--rich-black-saturation) var(--rich-black-lightness);
+	--charcoal-hue: 231;
+	--charcoal-saturation: 4%;
+	--charcoal-lightness: 43%;
+	--charcoal: var(--charcoal-hue) var(--charcoal-saturation) var(--charcoal-lightness);
 
-    --charcoal-hue: 231;
-    --charcoal-saturation: 4%;
-    --charcoal-lightness: 43%;
-    --charcoal: var(--charcoal-hue) var(--charcoal-saturation) var(--charcoal-lightness);
+	--platinum-hue: 210;
+	--platinum-saturation: 43%;
+	--platinum-lightness: 95%;
+	--platinum: var(--platinum-hue) var(--platinum-saturation) var(--platinum-lightness);
+	--platinum--dark: var(--platinum-hue) var(--platinum-saturation) calc(var(--platinum-lightness) - var(--dark-mod));
 
-    --platinum-hue: 210;
-    --platinum-saturation: 43%;
-    --platinum-lightness: 95%;
-    --platinum: var(--platinum-hue) var(--platinum-saturation) var(--platinum-lightness);
-    --platinum--dark: var(--platinum-hue) var(--platinum-saturation) calc(var(--platinum-lightness) - var(--dark-mod));
+	--sea-serpent-hue: 190;
+	--sea-serpent-saturation: 87%;
+	--sea-serpent-lightness: 47%;
+	--sea-serpent: var(--sea-serpent-hue) var(--sea-serpent-saturation) var(--sea-serpent-lightness);
+	--sea-serpent--dark: var(--sea-serpent-hue) var(--sea-serpent-saturation)
+		calc(var(--sea-serpent-lightness) - var(--dark-mod));
 
-    --sea-serpent-hue: 190;
-    --sea-serpent-saturation: 87%;
-    --sea-serpent-lightness: 47%;
-    --sea-serpent: var(--sea-serpent-hue) var(--sea-serpent-saturation) var(--sea-serpent-lightness);
-    --sea-serpent--dark: var(--sea-serpent-hue) var(--sea-serpent-saturation) calc(var(--sea-serpent-lightness) - var(--dark-mod));
+	--purple-pizazz-hue: 291;
+	--purple-pizazz-saturation: 86%;
+	--purple-pizazz-lightness: 52%;
+	--purple-pizazz: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) var(--purple-pizazz-lightness);
+	--purple-pizazz--dark: var(--purple-pizazz-hue) var(--purple-pizazz-saturation)
+		calc(var(--purple-pizazz-lightness) - var(--dark-mod));
 
-    --purple-pizazz-hue: 291;
-    --purple-pizazz-saturation: 86%;
-    --purple-pizazz-lightness: 52%;
-    --purple-pizazz: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) var(--purple-pizazz-lightness);
-    --purple-pizazz--dark: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) calc(var(--purple-pizazz-lightness) - var(--dark-mod));
+	--paradise-pink-hue: 331;
+	--paradise-pink-saturation: 100%;
+	--paradise-pink-lightness: 57%;
+	--paradise-pink: var(--paradise-pink-hue) var(--paradise-pink-saturation) var(--paradise-pink-lightness);
+	--paradise-pink--dark: var(--paradise-pink-hue) var(--paradise-pink-saturation)
+		calc(var(--paradise-pink-lightness) - var(--dark-mod));
 
-    --paradise-pink-hue: 331;
-    --paradise-pink-saturation: 100%;
-    --paradise-pink-lightness: 57%;
-    --paradise-pink: var(--paradise-pink-hue) var(--paradise-pink-saturation) var(--paradise-pink-lightness);
-    --paradise-pink--dark: var(--paradise-pink-hue) var(--paradise-pink-saturation) calc(var(--paradise-pink-lightness) - var(--dark-mod));
+	--cerulean-blue-hue: 216;
+	--cerulean-blue-saturation: 100%;
+	--cerulean-blue-lightness: 53%;
+	--cerulean-blue: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) var(--cerulean-blue-lightness);
+	--cerulean-blue--dark: var(--cerulean-blue-hue) var(--cerulean-blue-saturation)
+		calc(var(--cerulean-blue-lightness) - var(--dark-mod));
 
-    --cerulean-blue-hue: 216;
-    --cerulean-blue-saturation: 100%;
-    --cerulean-blue-lightness: 53%;
-    --cerulean-blue: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) var(--cerulean-blue-lightness);
-    --cerulean-blue--dark: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) calc(var(--cerulean-blue-lightness) - var(--dark-mod));
+	--kiwi-hue: 103;
+	--kiwi-saturation: 46%;
+	--kiwi-lightness: 56%;
+	--kiwi: var(--kiwi-hue) var(--kiwi-saturation) var(--kiwi-lightness);
+	--kiwi--dark: var(--kiwi-hue) var(--kiwi-saturation) calc(var(--kiwi-lightness) - var(--dark-mod));
 
-    --kiwi-hue: 103;
-    --kiwi-saturation: 46%;
-    --kiwi-lightness: 56%;
-    --kiwi: var(--kiwi-hue) var(--kiwi-saturation) var(--kiwi-lightness);
-    --kiwi--dark: var(--kiwi-hue) var(--kiwi-saturation) calc(var(--kiwi-lightness) - var(--dark-mod));
+	--neon-carrot-hue: 32;
+	--neon-carrot-saturation: 90%;
+	--neon-carrot-lightness: 55%;
+	--neon-carrot: var(--neon-carrot-hue) var(--neon-carrot-saturation) var(--neon-carrot-lightness);
+	--neon-carrot--dark: var(--neon-carrot-hue) var(--neon-carrot-saturation)
+		calc(var(--neon-carrot-lightness) - var(--dark-mod));
 
-    --neon-carrot-hue: 32;
-    --neon-carrot-saturation: 90%;
-    --neon-carrot-lightness: 55%;
-    --neon-carrot: var(--neon-carrot-hue) var(--neon-carrot-saturation) var(--neon-carrot-lightness);
-    --neon-carrot--dark: var(--neon-carrot-hue) var(--neon-carrot-saturation) calc(var(--neon-carrot-lightness) - var(--dark-mod));
+	--barbie-pink-hue: 328;
+	--barbie-pink-saturation: 100%;
+	--barbie-pink-lightness: 47%;
+	--barbie-pink: var(--barbie-pink-hue) var(--barbie-pink-saturation) var(--barbie-pink-lightness);
+	--barbie-pink--dark: var(--barbie-pink-hue) var(--barbie-pink-saturation)
+		calc(var(--barbie-pink-lightness) - var(--dark-mod));
 
-    --barbie-pink-hue: 328;
-    --barbie-pink-saturation: 100%;
-    --barbie-pink-lightness: 47%;
-    --barbie-pink: var(--barbie-pink-hue) var(--barbie-pink-saturation) var(--barbie-pink-lightness);
-    --barbie-pink--dark: var(--barbie-pink-hue) var(--barbie-pink-saturation) calc(var(--barbie-pink-lightness) - var(--dark-mod));
+	--tomato-hue: 356;
+	--tomato-saturation: 77%;
+	--tomato-lightness: 54%;
+	--tomato: var(--tomato-hue) var(--tomato-saturation) var(--tomato-lightness);
+	--tomato--dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
 
-    --tomato-hue: 356;
-    --tomato-saturation: 77%;
-    --tomato-lightness: 54%;
-    --tomato: var(--tomato-hue) var(--tomato-saturation) var(--tomato-lightness);
-    --tomato--dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
+	--white: 0 0% 100%;
 
-    --white: 0 0% 100%;
-
-    /* https: //www.fluid-type-scale.com/calculate?minFontSize=14&minWidth=400&minRatio=1.25&maxFontSize=18&maxWidth=1920&maxRatio=1.25&steps=sm%2Cbase%2Clg%2Cxl%2C2xl%2C3xl%2C4xl%2C5xl%2C6xl&baseStep=base&prefix=font-size&decimals=2&useRems=on&remValue=16&previewFont=Inter&previewText=Almost+before+we+knew+it%2C+we+had+left+the+ground&previewWidth=400 */
-  --font-size-sm: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem);
-  --font-size-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
-  --font-size-base: clamp(1rem, 0.31vw + 0.88rem, 1.13rem);
-  --font-size-lg: clamp(1.25rem, 0.39vw + 1.09rem, 1.41rem);
-  --font-size-xl: clamp(1.56rem, 0.49vw + 1.37rem, 1.76rem);
-  --font-size-2xl: clamp(1.95rem, 0.61vw + 1.71rem, 2.2rem);
-  --font-size-3xl: clamp(2.44rem, 0.76vw + 2.14rem, 2.75rem);
-  --font-size-4xl: clamp(3.05rem, 0.95vw + 2.67rem, 3.43rem);
-  --font-size-5xl: clamp(3.81rem, 1.19vw + 3.34rem, 4.29rem);
-  --font-size-6xl: clamp(4.77rem, 1.49vw + 4.17rem, 5.36rem);
-  }
+	/* https: //www.fluid-type-scale.com/calculate?minFontSize=14&minWidth=400&minRatio=1.25&maxFontSize=18&maxWidth=1920&maxRatio=1.25&steps=sm%2Cbase%2Clg%2Cxl%2C2xl%2C3xl%2C4xl%2C5xl%2C6xl&baseStep=base&prefix=font-size&decimals=2&useRems=on&remValue=16&previewFont=Inter&previewText=Almost+before+we+knew+it%2C+we+had+left+the+ground&previewWidth=400 */
+	--font-size-sm: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem);
+	--font-size-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
+	--font-size-base: clamp(1rem, 0.31vw + 0.88rem, 1.13rem);
+	--font-size-lg: clamp(1.25rem, 0.39vw + 1.09rem, 1.41rem);
+	--font-size-xl: clamp(1.56rem, 0.49vw + 1.37rem, 1.76rem);
+	--font-size-2xl: clamp(1.95rem, 0.61vw + 1.71rem, 2.2rem);
+	--font-size-3xl: clamp(2.44rem, 0.76vw + 2.14rem, 2.75rem);
+	--font-size-4xl: clamp(3.05rem, 0.95vw + 2.67rem, 3.43rem);
+	--font-size-5xl: clamp(3.81rem, 1.19vw + 3.34rem, 4.29rem);
+	--font-size-6xl: clamp(4.77rem, 1.49vw + 4.17rem, 5.36rem);
+}

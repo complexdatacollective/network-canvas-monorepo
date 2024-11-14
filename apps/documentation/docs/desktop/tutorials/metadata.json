@@ -1,10 +1,10 @@
 {
-  "type": "folder",
-  "localeLabels": {
-    "en": "Tutorials",
-    "ru": "Учебники"
-  },
-  "slug": "tutorials",
-  "isExpanded": true,
-  "navOrder": 2
+	"type": "folder",
+	"localeLabels": {
+		"en": "Tutorials",
+		"ru": "Учебники"
+	},
+	"slug": "tutorials",
+	"isExpanded": true,
+	"navOrder": 2
 }
