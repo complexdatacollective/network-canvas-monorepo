@@ -23,7 +23,7 @@
     "@codaco/eslint-config": "workspace:*",
     "@codaco/prettier-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "prettier": "^3.2.5",
     "typescript": "^5.3.3"
   },
