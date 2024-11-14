@@ -55,7 +55,7 @@ const Heading = React.forwardRef<HTMLElement, HeadingProps>(
   ({ className, variant, margin, as, asChild, ...props }, ref) => {
     const Comp = asChild
       ? Slot
-      : as ?? (variant ? variantElementMap[variant] : undefined) ?? 'div';
+      : (as ?? (variant ? variantElementMap[variant] : undefined) ?? 'div');
     return (
       <Comp
         className={cn(headingVariants({ variant, margin, className }))}
@@ -68,6 +68,6 @@ const Heading = React.forwardRef<HTMLElement, HeadingProps>(
 
 Heading.displayName = 'Heading';
 
-export const MotionHeading = motion(Heading);
+export const MotionHeading = motion.create(Heading);
 
 export default Heading;

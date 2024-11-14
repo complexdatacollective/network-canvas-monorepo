@@ -12,7 +12,7 @@ import {
 import { useRouter } from '~/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
-import { type LocalesEnum, type ProjectsEnum, projects } from '~/app/types';
+import { type Locale, type ProjectsEnum, projects } from '~/app/types';
 import { forwardRef } from 'react';
 import { cn } from '~/lib/utils';
 
@@ -71,7 +71,7 @@ export default function ProjectSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   const project = pathname.split('/')[2]! as ProjectsEnum;
-  const locale = useLocale() as LocalesEnum;
+  const locale = useLocale() as Locale;
 
   return (
     <Select

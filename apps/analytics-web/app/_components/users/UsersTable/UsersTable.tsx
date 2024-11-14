@@ -3,7 +3,8 @@ import { columns } from './Columns';
 import { clerkClient } from '@clerk/nextjs/server';
 
 export default async function VerifiedUsersTable() {
-  const clerkUsers = await clerkClient.users.getUserList();
+  const client = await clerkClient();
+  const clerkUsers = await client.users.getUserList();
 
   const users = clerkUsers.data.map((user) => {
     return {

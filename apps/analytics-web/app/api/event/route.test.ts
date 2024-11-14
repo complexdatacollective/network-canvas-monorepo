@@ -1,11 +1,11 @@
-import { describe, expect, vi, it, afterEach } from 'vitest';
 import { testApiHandler } from 'next-test-api-route-handler';
+import { describe, expect, vi, it, afterEach } from 'vitest';
 import * as appHandler from './route';
 import { type analyticsEvent } from '@codaco/analytics';
 
-vi.mock('~/db/insertEvent', () => {
+vi.mock('~/app/_actions/actions', () => {
   return {
-    default: (eventData: unknown) => ({ data: eventData, error: null }),
+    insertEvent: (eventData: unknown) => ({ data: eventData, error: null }),
   };
 });
 

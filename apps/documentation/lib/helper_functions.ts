@@ -7,14 +7,14 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import type {
-  LocalesEnum,
+  Locale,
   MetadataFile,
   SidebarFolder,
   SidebarPage,
   SidebarProject,
 } from '~/app/types';
 import { MetadataFileSchema } from '~/app/types';
-import { env } from '~/env.mjs';
+import { env } from '~/env';
 
 export const relativePathToDocs = join(
   process.cwd(),
@@ -137,13 +137,13 @@ export const getMetaDataForDirectory = (directoryPath: string) => {
  * Given a file, a locale, and metadata, create a project entry for the sidebar.
  *
  * @param file {fs.Dirent}
- * @param locale {LocalesEnum}
+ * @param locale {Locales}
  * @param metadata {MetadataFile}
  * @returns {SidebarProject}
  */
 export const createProjectEntry = (
   file: fs.Dirent,
-  locale: LocalesEnum,
+  locale: Locale,
   metadata: MetadataFile,
 ): SidebarProject => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];
@@ -163,13 +163,13 @@ export const createProjectEntry = (
  * Given a file, a locale, and metadata, create a folder entry for the sidebar.
  *
  * @param file {fs.Dirent}
- * @param locale {LocalesEnum}
+ * @param locale {Locales}
  * @param metadata {MetadataFile}
  * @returns {SidebarFolder}
  */
 export const createFolderEntry = (
   file: fs.Dirent,
-  locale: LocalesEnum,
+  locale: Locale,
   metadata: MetadataFile,
 ): SidebarFolder => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];

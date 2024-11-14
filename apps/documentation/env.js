@@ -1,9 +1,7 @@
 /* eslint-disable no-process-env */
 import { createEnv } from '@t3-oss/env-nextjs';
-import { z } from 'zod';
-import dotenv from 'dotenv';
 
-dotenv.config();
+import { z } from 'zod';
 
 export const env = createEnv({
   /**
@@ -26,8 +24,6 @@ export const env = createEnv({
     NEXT_PUBLIC_GA_ID: z.string().min(1),
   },
   shared: {
-    NEXT_PUBLIC_URL: z.string().url().optional(),
-    VERCEL_URL: z.string().optional(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
@@ -47,7 +43,6 @@ export const env = createEnv({
     NEXT_PUBLIC_MENDABLE_ANON_KEY: process.env.NEXT_PUBLIC_MENDABLE_ANON_KEY,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
     NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,
-    VERCEL_URL: process.env.VERCEL_URL,
   },
+  skipValidation: true,
 });

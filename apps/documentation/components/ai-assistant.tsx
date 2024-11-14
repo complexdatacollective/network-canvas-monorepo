@@ -1,7 +1,6 @@
 'use client';
 
-import { env } from '~/env.mjs';
-import { MendableInPlace } from '@mendable/search';
+import { env } from '~/env';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -17,6 +16,12 @@ import {
 import { cn } from '~/lib/utils';
 import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+
+const MendableSearch = dynamic(
+  () => import('@mendable/search').then((modules) => modules.MendableInPlace),
+  { ssr: false, loading: () => null },
+);
 
 const TriggerButton = () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -77,7 +82,7 @@ const AIAssistant = () => {
       </DialogTrigger>
       <DialogContentEmpty>
         <div className={cn(dialogContentClasses)}>
-          <MendableInPlace
+          <MendableSearch
             style={{ darkMode: false, accentColor: '#5259eb' }}
             anon_key={env.NEXT_PUBLIC_MENDABLE_ANON_KEY}
             hintText={t('dialogPlaceholder')}

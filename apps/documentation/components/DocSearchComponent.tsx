@@ -3,7 +3,7 @@
 import { DocSearch } from '@docsearch/react';
 import { useLocale, useTranslations } from 'next-intl';
 import '@docsearch/css';
-import { env } from '~/env.mjs';
+import { env } from '~/env';
 import { inputVariants } from '@codaco/ui';
 import { Search } from 'lucide-react';
 import { cn } from '~/lib/utils';
@@ -137,6 +137,7 @@ const DocSearchComponent = ({
           insights={true}
           placeholder="Search documentation"
           searchParameters={{
+            indexName: env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
             filters: `lang:${locale}`,
           }}
         />

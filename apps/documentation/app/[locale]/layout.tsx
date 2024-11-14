@@ -2,19 +2,15 @@ import type { Metadata } from 'next';
 import { Quicksand } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
-import {
-  getNow,
-  getTimeZone,
-  unstable_setRequestLocale,
-} from 'next-intl/server';
-import type { LocalesEnum, Messages } from '~/app/types';
+import { getNow, getTimeZone, setRequestLocale } from 'next-intl/server';
+import type { Locale, Messages } from '~/app/types';
 import { locales } from '~/app/types';
 import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import { Analytics } from '@vercel/analytics/react';
-import { env } from '~/env.mjs';
+import { env } from '~/env';
 
 const quicksand = Quicksand({
   weight: ['300', '400', '500', '600', '700'],
@@ -22,12 +18,20 @@ const quicksand = Quicksand({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  other: {
-    'docsearch:language': 'en',
-    'docsearch:version': '1.0.1',
-  },
-};
+export function generateMetadata({
+  params: { locale },
+}: {
+  params: { locale: Locale };
+}) {
+  const metadata: Metadata = {
+    other: {
+      'docsearch:language': locale,
+      'docsearch:version': '1.0.1',
+    },
+  };
+
+  return metadata;
+}
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -35,7 +39,7 @@ export function generateStaticParams() {
 
 type MainLayoutProps = {
   children: React.ReactNode;
-  params: { locale: LocalesEnum };
+  params: { locale: Locale };
 };
 
 export default async function MainLayout({
@@ -47,7 +51,7 @@ export default async function MainLayout({
   if (!isValidLocale) notFound();
 
   // setting setRequestLocale to support next-intl for static rendering
-  unstable_setRequestLocale(locale);
+  setRequestLocale(locale);
 
   const now = await getNow({ locale });
   const timeZone = await getTimeZone({ locale });
@@ -87,7 +91,7 @@ export default async function MainLayout({
         </ThemeProvider>
       </body>
       <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
-      <Analytics />;
+      <Analytics />
     </html>
   );
 }

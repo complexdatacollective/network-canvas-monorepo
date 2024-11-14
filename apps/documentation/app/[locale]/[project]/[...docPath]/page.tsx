@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation';
-import { unstable_setRequestLocale } from 'next-intl/server';
-import type { LocalesEnum } from '~/app/types';
+import { setRequestLocale } from 'next-intl/server';
+import type { Locale } from '~/app/types';
 import Article from '~/components/article';
 import { getDocsForRouteSegment, getDocumentForPath } from '~/lib/docs';
 
 type PageParams = {
-  locale: LocalesEnum;
+  locale: Locale;
   project: string;
   docPath: string[];
 };
@@ -38,7 +38,7 @@ export function generateStaticParams({
 export default async function Page({ params }: { params: PageParams }) {
   const { locale, project, docPath } = params;
   // setting setRequestLocale to support next-intl for static rendering
-  unstable_setRequestLocale(locale);
+  setRequestLocale(locale);
 
   const document = await getDocumentForPath({
     locale,

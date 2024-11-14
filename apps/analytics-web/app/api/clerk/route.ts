@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
 
   const { verified, userId } = parsedPayload.data;
 
-  await clerkClient.users.updateUserMetadata(userId, {
+  const client = await clerkClient();
+
+  await client.users.updateUserMetadata(userId, {
     publicMetadata: {
       verified,
     },

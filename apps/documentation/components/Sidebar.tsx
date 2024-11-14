@@ -10,7 +10,7 @@ import {
   CollapsibleTrigger,
 } from '@codaco/ui';
 import type {
-  LocalesEnum,
+  Locale,
   SidebarPage,
   TSideBar,
   SidebarFolder as TSidebarFolder,
@@ -20,8 +20,8 @@ import sidebarData from '~/public/sidebar.json';
 import DocSearchComponent from './DocSearchComponent';
 import ProjectSwitcher from './ProjectSwitcher';
 
-const MotionCollapsibleContent = motion(CollapsibleContent);
-const MotionChevron = motion(ChevronRight);
+const MotionCollapsibleContent = motion.create(CollapsibleContent);
+const MotionChevron = motion.create(ChevronRight);
 
 /**
  * Given a list of sidebar items (folder/files), sort them based on `navOrder`,
@@ -50,7 +50,7 @@ const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
 // Used by sidebar to process sourceFile values into usable routes
 export const processSourceFile = (
   type: 'folder' | 'page',
-  locale: LocalesEnum,
+  locale: Locale,
   sourceFile?: string,
 ) => {
   if (!sourceFile) return;
@@ -204,7 +204,7 @@ const SidebarLink = ({
 
 const renderSidebarItem = (
   item: TSidebarFolder | SidebarPage,
-  locale: LocalesEnum,
+  locale: Locale,
   sidebarContainerRef: RefObject<HTMLDivElement>,
 ) => {
   const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
@@ -236,7 +236,7 @@ const renderSidebarItem = (
 
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const locale = useLocale() as LocalesEnum;
+  const locale = useLocale() as Locale;
   const project = pathname.split('/')[2]!;
   const typedSidebarData = sidebarData as TSideBar;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);

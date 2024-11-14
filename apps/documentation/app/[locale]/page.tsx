@@ -1,10 +1,10 @@
-import { unstable_setRequestLocale } from 'next-intl/server';
-import type { LocalesEnum } from '~/app/types';
+import { setRequestLocale } from 'next-intl/server';
+import type { Locale } from '~/app/types';
 import { Hero } from '~/components/Hero';
 
-const Page = ({ params: { locale } }: { params: { locale: LocalesEnum } }) => {
+const Page = ({ params: { locale } }: { params: { locale: Locale } }) => {
   // setting setRequestLocale to support next-intl for static rendering
-  unstable_setRequestLocale(locale);
+  setRequestLocale(locale);
 
   return <Hero />;
 };
