@@ -80,7 +80,6 @@ function generateSidebarData() {
 
     // If there's no locale, or the locale isn't included in the type, ignore it.
     if (!locale || !locales.includes(locale as Locale)) {
-      // eslint-disable-next-line no-console
       console.warn(
         `File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${locale}. Skipping.`,
       );
@@ -117,6 +116,5 @@ try {
     'utf-8',
   );
 } catch (e) {
-  // eslint-disable-next-line no-console
   console.log('Error writing sidebar data!', e);
 }

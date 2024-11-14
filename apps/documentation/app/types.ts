@@ -89,5 +89,4 @@ export const MetadataFileSchema = z.object({
 
 export type MetadataFile = z.infer<typeof MetadataFileSchema>;
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 export type Messages = typeof import('../messages/en.json');

@@ -94,17 +94,14 @@ export const createRouteHandler = ({
 
       // Check if analytics is disabled
       if (disableAnalytics) {
-        // eslint-disable-next-line no-console
         console.info('🛑 Analytics disabled. Payload not sent.');
         try {
-          // eslint-disable-next-line no-console
           console.info(
             'Payload:',
             '\n',
             JSON.stringify(incomingEvent, null, 2),
           );
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.error('Error stringifying payload:', e);
         }
 
@@ -118,7 +115,6 @@ export const createRouteHandler = ({
       const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
       if (!trackableEvent.success) {
-        // eslint-disable-next-line no-console
         console.error('Invalid event:', trackableEvent.error);
         return NextResponse.json({ error: 'Invalid event' }, { status: 400 });
       }
@@ -146,7 +142,6 @@ export const createRouteHandler = ({
           throw new Error(geoData.message);
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.error('Geolocation failed:', e);
       }
 
@@ -181,7 +176,6 @@ export const createRouteHandler = ({
           error = `Analytics platform returned an internal server error. Please check the platform logs.`;
         }
 
-        // eslint-disable-next-line no-console
         console.info(`⚠️ Analytics platform rejected event: ${error}`);
         return Response.json(
           {
@@ -190,12 +184,10 @@ export const createRouteHandler = ({
           { status: 500 },
         );
       }
-      // eslint-disable-next-line no-console
       console.info('🚀 Analytics event sent to platform!');
       return Response.json({ message: 'Event forwarded successfully' });
     } catch (e) {
       const error = ensureError(e);
-      // eslint-disable-next-line no-console
       console.info('🚫 Internal error with sending analytics event.');
 
       return Response.json(

@@ -14,7 +14,6 @@ const CodeCopyButton = ({ code }: { code: string }) => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000); // Reset state after 2 seconds
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('Failed to copy to clipboard:', error);
     }
   };

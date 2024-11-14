@@ -131,7 +131,6 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 const DialogClose = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Close>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Close ref={ref} {...props} />
 ));

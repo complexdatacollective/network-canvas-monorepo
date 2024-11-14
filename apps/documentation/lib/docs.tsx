@@ -138,7 +138,6 @@ export const getDocsForRouteSegment = ({
   ) as SidebarProject;
 
   if (!sidebarData) {
-    // eslint-disable-next-line no-console
     console.log(`No sidebar data found for ${locale} and ${project}`);
     return [];
   }
@@ -230,7 +229,6 @@ export async function getDocumentForPath({
   const sourceFile = getSourceFile(locale, project, pathSegment);
 
   if (!sourceFile || (sourceFile && !existsSync(sourceFile))) {
-    // eslint-disable-next-line no-console
     console.log(`File not found: ${sourceFile}`);
     return null;
   }

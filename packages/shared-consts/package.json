@@ -9,8 +9,6 @@
   },
   "scripts": {
     "clean": "rm -rf .turbo node_modules",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
-    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -20,19 +18,8 @@
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "license": "MIT",
   "devDependencies": {
-    "@codaco/eslint-config": "workspace:*",
-    "@codaco/prettier-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@types/node": "^20.5.2",
-    "eslint": "^8.57.1",
-    "prettier": "^3.2.5",
     "typescript": "^5.3.3"
-  },
-  "eslintConfig": {
-    "extends": [
-      "@codaco/eslint-config/base",
-      "@codaco/eslint-config/react"
-    ]
-  },
-  "prettier": "@codaco/prettier-config"
+  }
 }

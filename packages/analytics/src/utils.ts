@@ -12,7 +12,6 @@ export function ensureError(value: unknown): Error {
   try {
     stringified = JSON.stringify(value);
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.error(e);
   }
 

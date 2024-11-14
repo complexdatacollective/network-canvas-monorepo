@@ -24,12 +24,10 @@ export default function VerifyUserSwitch({
 
       if (!response.ok) {
         setLocalVerified(!localVerified);
-        // eslint-disable-next-line no-console
         console.error('Database update failed.');
       }
     } catch (error) {
       setLocalVerified;
-      // eslint-disable-next-line no-console
       console.error('Error updating database:', error);
     }
   };

@@ -12,7 +12,6 @@ for (let i = 0; i < 20; i++) {
 }
 
 async function seedEvents() {
-  // eslint-disable-next-line no-console
   console.info('Starting to seed events');
 
   try {
@@ -56,7 +55,6 @@ async function seedEvents() {
         .returning();
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Error seeding events', error);
   }
 

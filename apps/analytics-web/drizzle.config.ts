@@ -8,7 +8,6 @@ export default defineConfig({
   out: './drizzle',
   driver: 'pg',
   dbCredentials: {
-    // eslint-disable-next-line no-process-env,
     connectionString: process.env.POSTGRES_URL!,
   },
   verbose: true,

@@ -4,6 +4,10 @@
     "**/.env.*local"
   ],
   "tasks": {
+    "//#format-and-lint": {},
+    "//#format-and-lint:fix": {
+      "cache": false
+    },
     "build": {
       "dependsOn": [
         "^build"
@@ -32,7 +36,6 @@
     "test:watch": {
       "cache": false
     },
-    "lint": {},
     "dev": {
       "cache": false,
       "persistent": true
