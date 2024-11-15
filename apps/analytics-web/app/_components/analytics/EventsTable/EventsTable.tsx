@@ -26,7 +26,9 @@ export default function EventsTable() {
 
 	useEffect(() => {
 		const eventTypesMap = new Map<string, EventType>();
-		events.forEach((event) => eventTypesMap.set(event.type, { text: event.type, isSelected: true }));
+		for (const event of events) {
+			eventTypesMap.set(event.type, { text: event.type, isSelected: true });
+		}
 
 		setEventTypes([...Array.from(eventTypesMap.values())]);
 	}, [events]);

@@ -32,19 +32,17 @@ function generateSidebarData() {
 
 	const sortedFiles = sortDirectoryListing(files);
 
-	sortedFiles.forEach((file: fs.Dirent) => {
+	for (const file of sortedFiles) {
 		if (file.isDirectory()) {
 			const metadata = getMetaDataForDirectory(join(file.path, file.name));
 
 			if (metadata.type === "project") {
-				Object.keys(sidebarData).forEach((l) => {
-					const locale = l as Locale;
-
+				for (const locale of Object.keys(sidebarData) as Locale[]) {
 					sidebarData[locale] = {
 						...sidebarData[locale],
 						[file.name]: createProjectEntry(file, locale, metadata),
 					};
-				});
+				}
 
 				return;
 			}
@@ -54,10 +52,9 @@ function generateSidebarData() {
 				const nestedPath = getNestedPath(file.path);
 
 				// Insert folder entry for each locale in the nested path
-				Object.keys(sidebarData).forEach((l) => {
-					const locale = l as Locale;
-					set(sidebarData[locale]!, [...nestedPath, file.name], createFolderEntry(file, locale, metadata));
-				});
+				for (const locale of Object.keys(sidebarData) as Locale[]) {
+					set(sidebarData[locale], [...nestedPath, file.name], createFolderEntry(file, locale, metadata));
+				}
 
 				return;
 			}
@@ -78,18 +75,19 @@ function generateSidebarData() {
 		}
 
 		// create a key based on the filename without the locale or extension
-		const key = file.name.split(".")[0];
+		// biome-ignore lint/style/noNonNullAssertion: filename is known to have a value here
+		const key = file.name.split(".")[0]!;
 
-		const nestedPath = getNestedPath(file.path);
+		const nestedPath = getNestedPath(file.parentPath);
 
-		const markdownFile = readFileSync(join(file.path, file.name), "utf-8");
+		const markdownFile = readFileSync(join(file.parentPath, file.name), "utf-8");
 		const matterResult = matter(markdownFile);
 
 		// If file has "hidden: true" in frontmatter, skip it
 		if (matterResult.data.hidden) return;
 
-		set(sidebarData[locale]!, [...nestedPath, key!], createPageEntry(file, matterResult));
-	});
+		set(sidebarData[locale], [...nestedPath, key], createPageEntry(file, matterResult));
+	}
 
 	return sidebarData;
 }

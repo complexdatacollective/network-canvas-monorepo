@@ -148,15 +148,16 @@ export const createRouteHandler = ({
 				let error = `Analytics platform returned an unexpected error: ${response.statusText}`;
 
 				if (response.status === 400) {
-					error = `Analytics platform rejected the event as invalid. Please check the event schema`;
+					error = "Analytics platform rejected the event as invalid. Please check the event schema";
 				}
 
 				if (response.status === 404) {
-					error = `Analytics platform could not be reached. Please specify a valid platform URL, or check that the platform is online.`;
+					error =
+						"Analytics platform could not be reached. Please specify a valid platform URL, or check that the platform is online.";
 				}
 
 				if (response.status === 500) {
-					error = `Analytics platform returned an internal server error. Please check the platform logs.`;
+					error = "Analytics platform returned an internal server error. Please check the platform logs.";
 				}
 
 				console.info(`⚠️ Analytics platform rejected event: ${error}`);
@@ -208,7 +209,7 @@ export const makeEventTracker =
 			if (!response.ok) {
 				if (response.status === 404) {
 					return {
-						error: `Analytics endpoint not found, did you forget to add the route?`,
+						error: "Analytics endpoint not found, did you forget to add the route?",
 						success: false,
 					};
 				}

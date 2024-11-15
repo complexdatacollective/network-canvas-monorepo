@@ -57,10 +57,15 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
 
 					{options.map((option) => (
 						<label
+							htmlFor={option.text}
 							key={option.text}
 							className="flex items-center gap-3 rounded-md p-1 pl-2 text-sm transition-colors hover:bg-muted"
 						>
-							<Checkbox checked={option.isSelected} onCheckedChange={() => toggleOption(option.text)} />
+							<Checkbox
+								id={option.text}
+								checked={option.isSelected}
+								onCheckedChange={() => toggleOption(option.text)}
+							/>
 							<span>{option.text}</span>
 						</label>
 					))}

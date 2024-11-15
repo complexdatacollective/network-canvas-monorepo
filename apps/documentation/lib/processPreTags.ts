@@ -1,4 +1,4 @@
-import { toString } from "hast-util-to-string";
+import { toString as hastNodeToString } from "hast-util-to-string";
 import { visit } from "unist-util-visit";
 
 type Tree = {
@@ -21,7 +21,7 @@ const processPreTags = () => {
 			if (!codeElement) return;
 
 			// Extract the text content from the `code` element
-			const rawCodeContent = toString(codeElement);
+			const rawCodeContent = hastNodeToString(codeElement);
 
 			// Add the `raw` property with the extracted content to the `pre` element
 			node.properties = { ...(node.properties || {}), raw: rawCodeContent };

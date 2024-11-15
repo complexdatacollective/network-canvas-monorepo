@@ -8,11 +8,11 @@ const useHighlighted = (id: string): [boolean, React.Dispatch<React.SetStateActi
 
 	useEffect(() => {
 		const handleObserver = (entries: IntersectionObserverEntry[]) => {
-			entries.forEach((entry) => {
+			for (const entry of entries) {
 				if (entry.isIntersecting) {
 					setActiveId(entry.target.id);
 				}
-			});
+			}
 		};
 
 		observer.current = new IntersectionObserver(handleObserver, {
@@ -20,7 +20,9 @@ const useHighlighted = (id: string): [boolean, React.Dispatch<React.SetStateActi
 		});
 
 		const elements = document.querySelectorAll("h2, h3");
-		elements.forEach((elem) => observer.current?.observe(elem));
+		for (const elem of elements) {
+			observer.current?.observe(elem);
+		}
 
 		return () => observer.current?.disconnect();
 	}, []);

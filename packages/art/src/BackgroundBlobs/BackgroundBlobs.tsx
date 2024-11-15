@@ -257,7 +257,11 @@ const BackgroundBlobs = memo(
 		const drawBlobs = (ctx: CanvasRenderingContext2D, time: number) => {
 			ctx.globalCompositeOperation = compositeOperation;
 			ctx.filter = filter;
-			blobs.forEach((layer) => layer.forEach((blob) => blob.render(ctx, time)));
+			for (const layer of blobs) {
+				for (const blob of layer) {
+					blob.render(ctx, time);
+				}
+			}
 		};
 
 		return <Canvas draw={drawBlobs} />;

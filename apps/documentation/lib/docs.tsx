@@ -80,6 +80,7 @@ export const processPath = (docPath: string) => {
 		// Process the last item to remove the locale and file extension
 		.map((segment, index, array) => {
 			if (index === array.length - 1) {
+				// biome-ignore lint/style/noNonNullAssertion: we know that the last element is a string
 				return segment.split(".")[0]!;
 			}
 			return segment;
@@ -254,7 +255,7 @@ export async function getDocumentForPath({
 				figcaption: (props) => <figcaption {...props} className="mt-2 text-center text-sm italic" />,
 				img: (props) => (
 					<a href={props.src} target="_blank" rel="noreferrer" className="my-10 w-full px-8">
-						<img alt={props.alt} {...props} className="w-full" />
+						<img {...props} alt={props.alt} className="w-full" />
 					</a>
 				),
 				keyconcept: (props: { title: string; children: ReactNode }) => <KeyConcept {...props} />,

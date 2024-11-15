@@ -63,15 +63,13 @@ export default function FancyBox<TItem extends { value: unknown; id: string; lab
 		<>
 			<Popover open={openCombobox} onOpenChange={onComboboxOpenChange}>
 				<PopoverTrigger asChild>
-					<button
-						role="combobox"
+					<select
 						aria-controls="frameworks"
 						aria-expanded={openCombobox}
 						className={cn(selectTriggerStyles, className)}
 					>
-						<span className="truncate">{triggerLabelText}</span>
-						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-					</button>
+						<option>{triggerLabelText}</option>
+					</select>
 				</PopoverTrigger>
 				<PopoverContent className="p-0">
 					<Command loop>

@@ -5,7 +5,7 @@ import { useLocale } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import type { Locale, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
+import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
 import { cn } from "~/lib/utils";
 import sidebarData from "~/public/sidebar.json";
 import DocSearchComponent from "./DocSearchComponent";
@@ -27,19 +27,23 @@ const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
 		if (a.navOrder !== null && b.navOrder !== null) {
 			return a.navOrder - b.navOrder;
 			// if only 'a' has navOrder, make it first
-		} else if (a.navOrder !== null) {
+		}
+		if (a.navOrder !== null) {
 			return -1;
 			// if only 'b' has navOrder, make it first
-		} else if (b.navOrder !== null) {
-			return 1;
-		} else {
-			// If neither has navOrder, sort alphabetically by label
-			return a.label.localeCompare(b.label);
 		}
+		if (b.navOrder !== null) {
+			return 1;
+		}
+		// If neither has navOrder, sort alphabetically by label
+		return a.label.localeCompare(b.label);
 	});
 
+export function processSourceFile(type: "page", locale: Locale, sourceFile: string): string;
+export function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): string | undefined;
+
 // Used by sidebar to process sourceFile values into usable routes
-export const processSourceFile = (type: "folder" | "page", locale: Locale, sourceFile?: string) => {
+export function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
 	if (!sourceFile) return;
 	// We can't use path.sep because the webpack node shim always returns '/'.
 	// Because this might be running on Windows, we need to use a regex to split
@@ -55,7 +59,7 @@ export const processSourceFile = (type: "folder" | "page", locale: Locale, sourc
 			// Process the last item to remove the locale and file extension
 			.map((segment, index, array) => {
 				if (index === array.length - 1) {
-					return segment.split(".")[0]!;
+					return segment.split(".")[0];
 				}
 				return segment;
 			})
@@ -63,7 +67,7 @@ export const processSourceFile = (type: "folder" | "page", locale: Locale, sourc
 	}
 
 	return `/${locale}/${returnPath}`;
-};
+}
 
 const SidebarFolder = ({
 	label,
@@ -192,29 +196,31 @@ const renderSidebarItem = (
 	locale: Locale,
 	sidebarContainerRef: RefObject<HTMLDivElement>,
 ) => {
-	const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
 	if (item.type === "folder") {
+		const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
 		const sortedChildren = sortSidebarItems(Object.values(item.children));
 		return (
 			<SidebarFolder key={item.label} label={item.label} alwaysOpen={item.expanded} href={sourceFile}>
 				{sortedChildren.map((child) => renderSidebarItem(child, locale, sidebarContainerRef))}
 			</SidebarFolder>
 		);
-	} else {
-		return (
-			<SidebarLink sidebarContainerRef={sidebarContainerRef} key={item.label} href={sourceFile!} label={item.label} />
-		);
 	}
+
+	const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
+	return (
+		<SidebarLink sidebarContainerRef={sidebarContainerRef} key={item.label} href={sourceFile} label={item.label} />
+	);
 };
 
 export function Sidebar({ className }: { className?: string }) {
 	const pathname = usePathname();
 	const locale = useLocale() as Locale;
-	const project = pathname.split("/")[2]!;
+	// biome-ignore lint/style/noNonNullAssertion: path structure is known
+	const project = pathname.split("/")[2]! as Project;
 	const typedSidebarData = sidebarData as TSideBar;
 	const sidebarContainerRef = useRef<HTMLDivElement>(null);
 
-	const formattedSidebarData = typedSidebarData[locale]![project]!.children;
+	const formattedSidebarData = typedSidebarData[locale][project].children;
 	const sortedSidebarItems = sortSidebarItems(Object.values(formattedSidebarData));
 
 	return (

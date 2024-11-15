@@ -12,7 +12,7 @@ import {
 type DialogButtonProps = {
 	buttonLabel: string;
 	title: string;
-	description: string;
+	description: string | null;
 	content: ReactNode;
 };
 

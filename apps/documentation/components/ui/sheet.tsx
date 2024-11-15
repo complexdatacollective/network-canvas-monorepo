@@ -56,6 +56,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
 		<SheetPortal>
 			<SheetOverlay />
 			<SheetPrimitive.Content
+				// biome-ignore lint/a11y/useSemanticElements: doesn't seem appropriate to use footer here
 				role="contentinfo"
 				ref={ref}
 				className={cn(sheetVariants({ side }), className)}

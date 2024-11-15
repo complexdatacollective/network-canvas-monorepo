@@ -9,7 +9,7 @@ export default async function VerifiedUsersTable() {
 	const users = clerkUsers.data.map((user) => {
 		return {
 			id: user.id,
-			fullName: user.firstName + " " + user.lastName,
+			fullName: `${user.firstName} ${user.lastName}`,
 			username: user.username,
 			verified: !!user.publicMetadata.verified,
 		};

@@ -32,7 +32,7 @@ const FancyButton = React.forwardRef<HTMLButtonElement, FancyButtonProps>(
 		return (
 			<button ref={ref} {...props} className={cn(fancyButtonVariants({ variant, size, className }))}>
 				<span className="relative z-10 drop-shadow-[0_1.2px_rgba(0,0,0,0.8)]">{children}</span>
-				<div className={cn(`absolute inset-0 h-full w-full opacity-50`)}>
+				<div className={cn("absolute inset-0 h-full w-full opacity-50")}>
 					<BackgroundBlobs large={5} medium={3} small={0} />
 				</div>
 			</button>

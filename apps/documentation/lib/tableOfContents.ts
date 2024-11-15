@@ -1,6 +1,6 @@
 import type { Nodes, Root } from "hast";
 import { headingRank } from "hast-util-heading-rank";
-import { toString } from "mdast-util-to-string";
+import { toString as hastNodeToString } from "mdast-util-to-string";
 import { visit } from "unist-util-visit";
 import type { VFile } from "vfile";
 
@@ -28,12 +28,12 @@ function getHeadingsForTree(root: Nodes): HeadingNode[] {
 
 	visit(root, "element", (node: SpecialNodes) => {
 		if (headingRank(node) && node.properties.id) {
-			const level = headingRank(node)!;
+			const level = headingRank(node);
 
 			// If this is a level 2 heading, we want to start a new tree
 			if (level === 2) {
 				indexMap.push({
-					value: toString(node),
+					value: hastNodeToString(node),
 					level,
 					id: node.properties.id,
 					children: [],
@@ -46,7 +46,7 @@ function getHeadingsForTree(root: Nodes): HeadingNode[] {
 
 				if (!lastLevel2) {
 					indexMap.push({
-						value: toString(node),
+						value: hastNodeToString(node),
 						level: 2,
 						id: node.properties.id,
 						children: [],
@@ -56,7 +56,7 @@ function getHeadingsForTree(root: Nodes): HeadingNode[] {
 				}
 
 				lastLevel2.children.push({
-					value: toString(node),
+					value: hastNodeToString(node),
 					level,
 					id: node.properties.id,
 					children: [],

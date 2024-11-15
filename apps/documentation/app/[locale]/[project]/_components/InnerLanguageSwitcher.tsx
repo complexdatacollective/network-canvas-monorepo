@@ -11,7 +11,7 @@ type InnerLanguageSwitcherProps = {
 const InnerLanguageSwitcher = async ({ pathSegment, currentLocale, project }: InnerLanguageSwitcherProps) => {
 	const t = await getTranslations("DocPage");
 	const availableLocales = getAvailableLocalesForPath(project, pathSegment);
-	const filePath = `/${project}/` + pathSegment.join("/"); //document file path to navigate to
+	const filePath = `/${project}/${pathSegment.join("/")}`; //document file path to navigate to
 
 	// removes the current locale from availableLocales
 	const supportedLanguages = availableLocales.filter((locale) => locale !== currentLocale);

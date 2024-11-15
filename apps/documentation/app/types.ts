@@ -2,11 +2,13 @@ import { z } from "zod";
 
 export const projects = ["desktop", "fresco"] as const;
 
-export type ProjectsEnum = (typeof projects)[number];
+export type Project = (typeof projects)[number];
 
 export const locales = ["en"] as const;
 
-const Locale = z.enum(locales);
+export const zlocales = z.enum(locales);
+
+export type Locales = typeof locales;
 
 export type Locale = (typeof locales)[number];
 
@@ -16,10 +18,7 @@ export const itemTypes = [
 	"page", // Single page
 ] as const;
 
-const ItemTypesEnum = z.enum(itemTypes);
-
 export const SidebarItemBase = z.object({
-	type: ItemTypesEnum,
 	sourceFile: z.string().optional(),
 	label: z.string(),
 });
@@ -60,13 +59,14 @@ export const SidebarProjectSchema = SidebarItemBase.extend({
 
 export type SidebarProject = z.infer<typeof SidebarProjectSchema>;
 
-export const SidebarLocaleDefinitionSchema = z.record(z.string(), SidebarProjectSchema);
+export const SidebarLocaleDefinitionSchema = z.record(z.enum(projects), SidebarProjectSchema);
 
-export type SidebarLocaleDefinition = z.infer<typeof SidebarLocaleDefinitionSchema>;
+export type SidebarLocaleDefinition = Record<Project, SidebarProject>;
 
-export const SideBarSchema = z.record(Locale, SidebarLocaleDefinitionSchema);
+export const SideBarSchema = z.record(zlocales, SidebarLocaleDefinitionSchema);
 
-export type TSideBar = z.infer<typeof SideBarSchema>;
+// Can't infer this from above because of this: https://github.com/colinhacks/zod/issues/2623
+export type TSideBar = Record<Locale, SidebarLocaleDefinition>;
 
 const metadatatypes = ["folder", "project"] as const;
 

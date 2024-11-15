@@ -4,11 +4,11 @@ import { Heading, Paragraph, Select, SelectContent, SelectGroup, SelectItem, Sel
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
-import { type Locale, type ProjectsEnum, projects } from "~/app/types";
+import { type Locale, type Project, projects } from "~/app/types";
 import { cn } from "~/lib/utils";
 import { useRouter } from "~/navigation";
 
-const getImageForProject = (project: ProjectsEnum) => {
+const getImageForProject = (project: Project) => {
 	if (project === "desktop") {
 		return <img src="/images/desktop.png" alt={project} className="h-10 w-auto" />;
 	}
@@ -21,7 +21,7 @@ const getImageForProject = (project: ProjectsEnum) => {
 const ProjectValue = forwardRef<
 	HTMLDivElement,
 	{
-		project: ProjectsEnum;
+		project: Project;
 		showDescription?: boolean;
 	}
 >(({ project, showDescription }, ref) => {
@@ -51,7 +51,7 @@ export default function ProjectSwitcher() {
 	const router = useRouter();
 	const pathname = usePathname();
 	// biome-ignore lint/style/noNonNullAssertion: path structure is known
-	const project = pathname.split("/")[2]! as ProjectsEnum;
+	const project = pathname.split("/")[2]! as Project;
 	const locale = useLocale() as Locale;
 
 	return (
