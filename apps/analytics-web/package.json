@@ -15,7 +15,7 @@
     "seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.3.3",
+    "@clerk/nextjs": "^6.3.4",
     "@codaco/analytics": "workspace:*",
     "@codaco/ui": "workspace:*",
     "@radix-ui/react-checkbox": "^1.1.2",
