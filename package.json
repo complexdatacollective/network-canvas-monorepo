@@ -13,7 +13,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.27.9",
-		"turbo": "^2.2.3",
+		"turbo": "^2.3.0",
 		"typescript": "^5.6.3"
 	},
 	"packageManager": "pnpm@8.15.5+sha256.4b4efa12490e5055d59b9b9fc9438b7d581a6b7af3b5675eb5c5f447cee1a589",

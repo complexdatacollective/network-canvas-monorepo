@@ -1,8 +1,7 @@
 import "dotenv/config"; // This is essential here, because helper functions (below) use env variables, but they are not available in the Node.js environment without dotenv! This file is run directly in Node via tsc.
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
-import type fs from "node:fs";
-import { join } from "node:path";
 import matter from "gray-matter";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { type Locale, type TSideBar, locales } from "~/app/types";
 import {
 	createFolderEntry,
@@ -26,7 +25,7 @@ function generateSidebarData() {
 
 	// Set up initial structure for sidebar data.
 	const sidebarData: TSideBar = locales.reduce((acc, locale) => {
-		acc[locale] = {};
+		acc[locale] = {} as TSideBar[Locale];
 		return acc;
 	}, {} as TSideBar);
 
