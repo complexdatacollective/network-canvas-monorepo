@@ -4,11 +4,16 @@
 		"enabled": false
 	},
 	"linter": {
+		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"correctness": {
+				"noUnusedImports":"error"
+			}
 		}
 	},
 	"formatter": {
+		"enabled": true,
 		"indentStyle": "tab",
 		"lineWidth": 120
 	},
@@ -16,5 +21,6 @@
 		"enabled": true,
 		"clientKind": "git",
 		"useIgnoreFile": true
-	}
+	},
+	"javascript": { "formatter": { "quoteStyle": "double" } }
 }
