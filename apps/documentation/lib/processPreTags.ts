@@ -18,7 +18,9 @@ const processPreTags = () => {
 	return (tree: Tree) => {
 		visit(tree, { tagName: "pre" }, (node) => {
 			const codeElement = node.children.find((child) => child.tagName === "code");
-			if (!codeElement) return;
+			if (!codeElement) {
+				return;
+			}
 
 			// Extract the text content from the `code` element
 			const rawCodeContent = hastNodeToString(codeElement);

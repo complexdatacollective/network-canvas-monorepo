@@ -85,7 +85,7 @@ const FormLabel = React.forwardRef<
 >(({ className, ...props }, ref) => {
 	const { error, formItemId } = useFormField();
 
-	return <Label ref={ref} className={cn(error && "text-destructive", className)} htmlFor={formItemId} {...props} />;
+	return <Label ref={ref} className={cn(error && "text-destructive", className)} for={formItemId} {...props} />;
 });
 FormLabel.displayName = "FormLabel";
 
@@ -97,7 +97,7 @@ const FormControl = React.forwardRef<React.ElementRef<typeof Slot>, React.Compon
 			<Slot
 				ref={ref}
 				id={formItemId}
-				aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+				aria-describedby={error ? `${formDescriptionId} ${formMessageId}` : `${formDescriptionId}`}
 				aria-invalid={!!error}
 				{...props}
 			/>
@@ -135,4 +135,4 @@ const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<
 );
 FormMessage.displayName = "FormMessage";
 
-export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };
+export { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFormField };

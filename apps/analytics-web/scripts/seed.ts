@@ -12,8 +12,6 @@ for (let i = 0; i < 20; i++) {
 }
 
 async function seedEvents() {
-	console.info("Starting to seed events");
-
 	try {
 		for (let i = 0; i < 100; i++) {
 			const type = faker.helpers.arrayElement([...eventTypes, "Error"]);
@@ -23,7 +21,7 @@ async function seedEvents() {
 				details: faker.lorem.sentence(),
 				path: faker.lorem.sentence(),
 			};
-			const countryISOCode = faker.location.countryCode();
+			const countryIsoCode = faker.location.countryCode();
 			const message = faker.lorem.sentence();
 			const name = faker.lorem.sentence();
 			const stack = faker.lorem.sentence();
@@ -34,7 +32,7 @@ async function seedEvents() {
 				installationId,
 				timestamp,
 				metadata,
-				countryISOCode,
+				countryISOCode: countryIsoCode,
 			};
 
 			const errorEvent: EventInsertType = {
@@ -42,7 +40,7 @@ async function seedEvents() {
 				installationId,
 				timestamp,
 				metadata,
-				countryISOCode,
+				countryISOCode: countryIsoCode,
 				message,
 				name,
 				stack,
@@ -55,7 +53,9 @@ async function seedEvents() {
 				.returning();
 		}
 	} catch (error) {
-		console.error("Error seeding events", error);
+		// biome-ignore lint/suspicious/noConsole: <explanation>
+		console.error(error);
+		process.exit(1);
 	}
 
 	process.exit();

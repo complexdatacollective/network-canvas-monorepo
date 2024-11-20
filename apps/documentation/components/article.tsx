@@ -41,7 +41,7 @@ export default function Article({
 				{showToc && <TableOfContents headings={headings} />}
 				{content}
 			</article>
-			{showToc && <TableOfContents headings={headings} sideBar />}
+			{showToc && <TableOfContents headings={headings} sideBar={true} />}
 		</>
 	);
 }

@@ -2,7 +2,7 @@ import type { Event } from "~/app/_actions/actions";
 import { SummaryCard } from "~/components/SummaryCard";
 import { getTotalAppsSetup } from "~/utils/getTotalAppsSetup";
 
-const TotalAppsCard = ({ events }: { events: Event[] }) => {
+export const TotalAppsCard = ({ events }: { events: Event[] }) => {
 	const totalAppsSetup = getTotalAppsSetup(events);
 	return (
 		<SummaryCard
@@ -12,5 +12,3 @@ const TotalAppsCard = ({ events }: { events: Event[] }) => {
 		/>
 	);
 };
-
-export default TotalAppsCard;

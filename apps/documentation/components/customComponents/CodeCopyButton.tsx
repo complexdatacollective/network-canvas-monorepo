@@ -13,15 +13,13 @@ const CodeCopyButton = ({ code }: { code: string }) => {
 			await navigator.clipboard.writeText(text);
 			setIsCopied(true);
 			setTimeout(() => setIsCopied(false), 2000); // Reset state after 2 seconds
-		} catch (error) {
-			console.error("Failed to copy to clipboard:", error);
-		}
+		} catch (error) {}
 	};
 
 	return (
 		<div className="absolute right-2 top-2">
-			<Popover.Root open>
-				<Popover.Anchor asChild>
+			<Popover.Root open={true}>
+				<Popover.Anchor asChild={true}>
 					{isCopied ? (
 						<Button size={"icon"}>
 							<ClipboardCheck className="h-4 w-4" />

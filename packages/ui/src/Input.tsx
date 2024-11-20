@@ -44,7 +44,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 		return (
 			<div className={cn("relative mt-4 grid items-center gap-2", className)}>
 				{label && (
-					<Label htmlFor={id} required={props.required}>
+					<Label for={id} required={props.required}>
 						{label}
 					</Label>
 				)}

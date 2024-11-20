@@ -1,6 +1,4 @@
-// Inspired by react-hot-toast library
-import * as React from "react";
-
+import { type ReactNode, useEffect, useState } from "react";
 import type { ToastActionElement, ToastProps } from "./toast";
 
 const TOAST_LIMIT = 2;
@@ -8,10 +6,10 @@ const TOAST_REMOVE_DELAY = 1000000;
 
 type ToasterToast = ToastProps & {
 	id: string;
-	title?: React.ReactNode;
-	description?: React.ReactNode;
+	title?: ReactNode;
+	description?: ReactNode;
 	action?: ToastActionElement;
-	icon?: React.ReactNode;
+	icon?: ReactNode;
 };
 
 const actionTypes = {
@@ -109,7 +107,7 @@ export const reducer = (state: State, action: Action): State => {
 				),
 			};
 		}
-		case "REMOVE_TOAST":
+		case "REMOVE_TOAST": {
 			if (action.toastId === undefined) {
 				return {
 					...state,
@@ -120,6 +118,10 @@ export const reducer = (state: State, action: Action): State => {
 				...state,
 				toasts: state.toasts.filter((t) => t.id !== action.toastId),
 			};
+		}
+
+		default:
+			return state;
 	}
 };
 
@@ -153,7 +155,9 @@ function toast({ ...props }: Toast) {
 			id,
 			open: true,
 			onOpenChange: (open) => {
-				if (!open) dismiss();
+				if (!open) {
+					dismiss();
+				}
 			},
 		},
 	});
@@ -166,10 +170,10 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
-	const [state, setState] = React.useState<State>(memoryState);
+	const [state, setState] = useState<State>(memoryState);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: state is a reference, so it's fine
-	React.useEffect(() => {
+	useEffect(() => {
 		listeners.push(setState);
 		return () => {
 			const index = listeners.indexOf(setState);
@@ -186,4 +190,4 @@ function useToast() {
 	};
 }
 
-export { useToast, toast };
+export { toast, useToast };

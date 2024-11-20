@@ -88,12 +88,8 @@ export const createRouteHandler = ({
 
 			// Check if analytics is disabled
 			if (disableAnalytics) {
+				// biome-ignore lint/suspicious/noConsole: <explanation>
 				console.info("🛑 Analytics disabled. Payload not sent.");
-				try {
-					console.info("Payload:", "\n", JSON.stringify(incomingEvent, null, 2));
-				} catch (e) {
-					console.error("Error stringifying payload:", e);
-				}
 
 				return NextResponse.json({ message: "Analytics disabled" }, { status: 200 });
 			}
@@ -102,14 +98,13 @@ export const createRouteHandler = ({
 			const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
 			if (!trackableEvent.success) {
-				console.error("Invalid event:", trackableEvent.error);
 				return NextResponse.json({ error: "Invalid event" }, { status: 400 });
 			}
 
 			// We don't want failures in third party services to prevent us from
 			// tracking analytics events, so we'll catch any errors and log them
 			// and continue with an 'Unknown' country code.
-			let countryISOCode = "Unknown";
+			let countryIsoCode = "Unknown";
 			try {
 				const ip = await fetch("https://api64.ipify.org").then((res) => res.text());
 
@@ -120,18 +115,20 @@ export const createRouteHandler = ({
 				const geoData = (await fetch(`http://ip-api.com/json/${ip}`).then((res) => res.json())) as GeoData;
 
 				if (geoData.status === "success") {
-					countryISOCode = geoData.countryCode;
+					countryIsoCode = geoData.countryCode;
 				} else {
 					throw new Error(geoData.message);
 				}
 			} catch (e) {
-				console.error("Geolocation failed:", e);
+				const error = ensureError(e);
+				// biome-ignore lint/suspicious/noConsole: <explanation>
+				console.error(`Error fetching country code: ${error.message}`);
 			}
 
 			const analyticsEvent: analyticsEvent = {
 				...trackableEvent.data,
 				installationId,
-				countryISOCode,
+				countryISOCode: countryIsoCode,
 			};
 
 			// Forward to backend
@@ -159,8 +156,6 @@ export const createRouteHandler = ({
 				if (response.status === 500) {
 					error = "Analytics platform returned an internal server error. Please check the platform logs.";
 				}
-
-				console.info(`⚠️ Analytics platform rejected event: ${error}`);
 				return Response.json(
 					{
 						error,
@@ -168,11 +163,9 @@ export const createRouteHandler = ({
 					{ status: 500 },
 				);
 			}
-			console.info("🚀 Analytics event sent to platform!");
 			return Response.json({ message: "Event forwarded successfully" });
 		} catch (e) {
 			const error = ensureError(e);
-			console.info("🚫 Internal error with sending analytics event.");
 
 			return Response.json({ error: `Error in analytics route handler: ${error.message}` }, { status: 500 });
 		}

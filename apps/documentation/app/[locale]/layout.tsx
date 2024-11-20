@@ -9,7 +9,6 @@ import type { Locale, Messages } from "~/app/types";
 import { locales } from "~/app/types";
 import { LayoutComponent } from "~/components/Layout";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
-import AIAssistant from "~/components/ai-assistant";
 import { env } from "~/env";
 
 const quicksand = Quicksand({
@@ -45,7 +44,9 @@ type MainLayoutProps = {
 export default async function MainLayout({ children, params: { locale } }: MainLayoutProps) {
 	// Validate that the incoming `locale` parameter is valid
 	const isValidLocale = locales.some((cur) => cur === locale);
-	if (!isValidLocale) notFound();
+	if (!isValidLocale) {
+		notFound();
+	}
 
 	// setting setRequestLocale to support next-intl for static rendering
 	setRequestLocale(locale);
@@ -64,12 +65,12 @@ export default async function MainLayout({ children, params: { locale } }: MainL
 	}
 
 	return (
-		<html lang={locale} suppressHydrationWarning className={`${quicksand.className} antialiased`}>
+		<html lang={locale} suppressHydrationWarning={true} className={`${quicksand.className} antialiased`}>
 			<body className="flex min-h-[100dvh] flex-col text-base">
-				<ThemeProvider enableSystem enableColorScheme attribute="class" storageKey="nc-docs-site">
+				<ThemeProvider enableSystem={true} enableColorScheme={true} attribute="class" storageKey="nc-docs-site">
 					<NextIntlClientProvider timeZone={timeZone} now={now} locale={locale} messages={messages.default}>
 						<LayoutComponent>{children}</LayoutComponent>
-						<AIAssistant />
+						<aiAssistant />
 					</NextIntlClientProvider>
 				</ThemeProvider>
 			</body>

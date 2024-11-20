@@ -10,8 +10,8 @@ type ExportButtonProps = {
 	filename: string;
 };
 
-const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
-	const handleExportCSV = () => {
+export const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
+	const handleExportCsv = () => {
 		const csvData = Papa.unparse(data);
 
 		const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
@@ -29,10 +29,8 @@ const ExportButton: React.FC<ExportButtonProps> = ({ data, filename }) => {
 	};
 
 	return (
-		<Button onClick={handleExportCSV} size="sm">
+		<Button onClick={handleExportCsv} size="sm">
 			<Download className="mr-2 h-4 w-4" /> Download Data
 		</Button>
 	);
 };
-
-export default ExportButton;

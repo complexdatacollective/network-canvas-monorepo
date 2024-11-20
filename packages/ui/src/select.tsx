@@ -32,7 +32,7 @@ const SelectTrigger = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<SelectPrimitive.Trigger ref={ref} className={cn(selectTriggerStyles, className)} {...props}>
 		{children}
-		<SelectPrimitive.Icon asChild>
+		<SelectPrimitive.Icon asChild={true}>
 			<ChevronDown className="h-4 w-4 opacity-50" />
 		</SelectPrimitive.Icon>
 	</SelectPrimitive.Trigger>
@@ -109,4 +109,4 @@ const SelectSeparator = React.forwardRef<
 ));
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator };
+export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue };

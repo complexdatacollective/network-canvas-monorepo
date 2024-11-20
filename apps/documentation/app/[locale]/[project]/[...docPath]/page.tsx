@@ -46,7 +46,9 @@ export default async function Page({ params }: { params: PageParams }) {
 		pathSegment: docPath,
 	});
 
-	if (document === null) notFound();
+	if (document === null) {
+		notFound();
+	}
 
 	return (
 		<Article

@@ -7,8 +7,33 @@
 		"enabled": true,
 		"rules": {
 			"recommended": true,
+			"performance": {
+				"all": true
+			},
+			"security": {
+				"all": true
+			},
+			"style": {
+				"all": true,
+				"useNamingConvention": "off",
+				"useFilenamingConvention": "off",
+				"noDefaultExport": "off"
+			},
+			"suspicious": {
+				"all": true,
+				"noReactSpecificProps": "off"
+			},
 			"correctness": {
 				"noUnusedImports": "error"
+			},
+			"a11y": {
+				"all": true
+			},
+			"nursery": {
+				"useGoogleFontDisplay": "error",
+				"noDocumentImportInPage": "error",
+				"noHeadElement": "error",
+				"noHeadImportInDocument": "error"
 			}
 		}
 	},

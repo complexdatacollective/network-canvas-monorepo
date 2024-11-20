@@ -51,10 +51,16 @@ export default function FancyBox<TItem extends { value: unknown; id: string; lab
 	};
 
 	const triggerLabelText = useMemo(() => {
-		if (value.length === 0) return placeholder;
-		if (value.length === items.length) return `All ${plural} Selected (${items.length})`;
+		if (value.length === 0) {
+			return placeholder;
+		}
+		if (value.length === items.length) {
+			return `All ${plural} Selected (${items.length})`;
+		}
 
-		if (value.length === 1) return `1 ${singular} Selected`;
+		if (value.length === 1) {
+			return `1 ${singular} Selected`;
+		}
 
 		return `${value.length} ${plural} Selected`;
 	}, [value, items, placeholder, plural, singular]);
@@ -62,7 +68,7 @@ export default function FancyBox<TItem extends { value: unknown; id: string; lab
 	return (
 		<>
 			<Popover open={openCombobox} onOpenChange={onComboboxOpenChange}>
-				<PopoverTrigger asChild>
+				<PopoverTrigger asChild={true}>
 					<select
 						aria-controls="frameworks"
 						aria-expanded={openCombobox}
@@ -72,7 +78,7 @@ export default function FancyBox<TItem extends { value: unknown; id: string; lab
 					</select>
 				</PopoverTrigger>
 				<PopoverContent className="p-0">
-					<Command loop>
+					<Command loop={true}>
 						{showSearch && (
 							<CommandInput
 								name="Filter"

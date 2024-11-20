@@ -17,7 +17,9 @@ export default async function Page({ params }: PageProps) {
 		project,
 	});
 
-	if (document === null) notFound();
+	if (document === null) {
+		notFound();
+	}
 
 	return (
 		<Article

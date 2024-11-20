@@ -60,16 +60,15 @@ function generateSidebarData() {
 		}
 
 		// Only process files ending in .md or .mdx
-		if (!file.name.endsWith(".md") && !file.name.endsWith(".mdx")) return;
+		if (!file.name.endsWith(".md") && !file.name.endsWith(".mdx")) {
+			return;
+		}
 
 		// Determine locale based on file name (format is `index.en.mdx` or `index.en.md`)
 		const locale = file.name.split(".")[1] as Locale | undefined;
 
 		// If there's no locale, or the locale isn't included in the type, ignore it.
 		if (!locale || !locales.includes(locale as Locale)) {
-			console.warn(
-				`File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${locale}. Skipping.`,
-			);
 			return;
 		}
 
@@ -83,7 +82,9 @@ function generateSidebarData() {
 		const matterResult = matter(markdownFile);
 
 		// If file has "hidden: true" in frontmatter, skip it
-		if (matterResult.data.hidden) return;
+		if (matterResult.data.hidden) {
+			return;
+		}
 
 		set(sidebarData[locale], [...nestedPath, key], createPageEntry(file, matterResult));
 	}
@@ -96,5 +97,7 @@ try {
 
 	writeFileSync(join(process.cwd(), "public", "sidebar.json"), JSON.stringify(sidebarData, null, 2), "utf-8");
 } catch (e) {
-	console.log("Error writing sidebar data!", e);
+	// biome-ignore lint/suspicious/noConsole: <explanation>
+	console.error(e);
+	process.exit(1);
 }

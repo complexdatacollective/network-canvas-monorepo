@@ -13,7 +13,7 @@ const quicksand = Quicksand({
 export default function NotFound() {
 	return (
 		<html lang="en" className={`${quicksand.className} antialiased`}>
-			<ThemeProvider attribute="class" enableSystem enableColorScheme storageKey="nc-docs-site">
+			<ThemeProvider attribute="class" enableSystem={true} enableColorScheme={true} storageKey="nc-docs-site">
 				<body className="flex h-screen items-center justify-center">
 					<div className="max-w-lg p-3 sm:p-0">
 						<Heading variant="h1">404 - Not found</Heading>

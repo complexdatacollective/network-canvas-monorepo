@@ -41,7 +41,7 @@ const TriggerButton = () => {
 	return (
 		<TooltipProvider>
 			<Tooltip>
-				<TooltipTrigger asChild>
+				<TooltipTrigger asChild={true}>
 					<motion.div
 						ref={ref}
 						tabIndex={0}

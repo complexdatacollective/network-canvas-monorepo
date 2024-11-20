@@ -1,9 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join, sep } from "node:path";
 import { Button, Details, Heading, ListItem, OrderedList, Paragraph, Summary, UnorderedList } from "@codaco/ui";
 import rehypeFigure from "@microflash/rehype-figure";
 import type { LinkProps } from "next/link";
+import { existsSync, readFileSync } from "node:fs";
+import { join, sep } from "node:path";
 import type { ReactNode } from "react";
+// biome-ignore lint/style/noNamespaceImport: workaround
 import * as prod from "react/jsx-runtime";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
@@ -32,7 +33,6 @@ import KeyConcept from "~/components/customComponents/KeyConcept";
 import Pre from "~/components/customComponents/Pre";
 import { PrerequisitesSection, SummaryCard, SummarySection } from "~/components/customComponents/SummaryCard";
 import TipBox, { type TipBoxProps } from "~/components/customComponents/TipBox";
-import VideoIFrame from "~/components/customComponents/VideoIFrame";
 import sidebar from "~/public/sidebar.json";
 import { get } from "./helper_functions";
 import processPreTags from "./processPreTags";
@@ -113,7 +113,6 @@ export const getDocsForRouteSegment = ({
 	const sidebarData = get(typedSidebar, [locale, project], null) as SidebarProject;
 
 	if (!sidebarData) {
-		console.log(`No sidebar data found for ${locale} and ${project}`);
 		return [];
 	}
 
@@ -159,7 +158,9 @@ export const getDocsForRouteSegment = ({
 export const getSourceFile = (locale: string, project: string, pathSegment?: string[]) => {
 	const projectSourceFile = get(sidebar, [locale, project, "sourceFile"], null) as string;
 
-	if (!pathSegment) return join(process.cwd(), projectSourceFile);
+	if (!pathSegment) {
+		return join(process.cwd(), projectSourceFile);
+	}
 
 	const pathSegmentWithChildren = pathSegment.flatMap((segment, index) => {
 		if (index === 0) {
@@ -175,7 +176,9 @@ export const getSourceFile = (locale: string, project: string, pathSegment?: str
 		null,
 	) as string | null;
 
-	if (!folderSourceFile) return null;
+	if (!folderSourceFile) {
+		return null;
+	}
 
 	return join(process.cwd(), folderSourceFile);
 };
@@ -192,7 +195,6 @@ export async function getDocumentForPath({
 	const sourceFile = getSourceFile(locale, project, pathSegment);
 
 	if (!sourceFile || (sourceFile && !existsSync(sourceFile))) {
-		console.log(`File not found: ${sourceFile}`);
 		return null;
 	}
 
@@ -261,7 +263,7 @@ export async function getDocumentForPath({
 				keyconcept: (props: { title: string; children: ReactNode }) => <KeyConcept {...props} />,
 				goodpractice: (props: { children: ReactNode }) => <GoodPractice {...props} />,
 				badpractice: (props: { children: ReactNode }) => <BadPractice {...props} />,
-				videoiframe: (props: { src: string; title: string }) => <VideoIFrame {...props} />,
+				videoiframe: (props: { src: string; title: string }) => <videoIFrame {...props} />,
 				summarycard: (props: { duration: string; children: ReactNode }) => <SummaryCard {...props} />,
 				prerequisitessection: (props: { children: ReactNode }) => <PrerequisitesSection {...props} />,
 				summarysection: (props: { children: ReactNode }) => <SummarySection {...props} />,

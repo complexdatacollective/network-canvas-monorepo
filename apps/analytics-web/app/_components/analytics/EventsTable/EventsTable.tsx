@@ -44,13 +44,13 @@ export default function EventsTable() {
 			<div className="mt-2 flex items-center justify-between">
 				<div>
 					<h2>Events</h2>
-					{!events.length && <p>Loading...</p>}
+					{events.length === 0 && <p>Loading...</p>}
 				</div>
-				{!!events.length && <ExportButton data={events} filename="events.csv" />}
+				{events.length > 0 && <ExportButton data={events} filename="events.csv" />}
 			</div>
 
 			<div className="mt-2 rounded-md bg-card">
-				{!!events.length && (
+				{events.length > 0 && (
 					<DataTable columns={getColumns(eventTypes, setEventTypes)} data={filteredEvents} pagination={true} />
 				)}
 			</div>

@@ -52,7 +52,7 @@ export function DataTable<TData, TValue>({ columns, data, pagination }: DataTabl
 					))}
 				</TableHeader>
 				<TableBody>
-					{table.getRowModel().rows?.length ? (
+					{table.getRowModel().rows?.length > 0 ? (
 						table.getRowModel().rows.map((row) => (
 							<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
 								{row.getVisibleCells().map((cell) => (

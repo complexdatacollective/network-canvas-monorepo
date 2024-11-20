@@ -58,7 +58,7 @@ export function Hero() {
 							{t("Hero.title")}
 						</FancyHeading>
 						<FancyParagraph variant="lead">{t("Hero.tagline")}</FancyParagraph>
-						<DocSearchComponent className="hidden !w-full text-base lg:inline-flex" large />
+						<DocSearchComponent className="hidden !w-full text-base lg:inline-flex" large={true} />
 					</div>
 					{resolvedTheme !== "dark" && (
 						<div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
