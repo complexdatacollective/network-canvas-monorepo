@@ -1,4 +1,4 @@
-import { AnalyticsEventSchema } from "@codaco/analytics";
+import { AnalyticsEventSchema } from "@codaco/analytics/src";
 import { type NextRequest, NextResponse } from "next/server";
 import { insertEvent } from "~/app/_actions/actions";
 

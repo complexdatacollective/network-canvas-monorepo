@@ -23,7 +23,9 @@
 				"POSTGRES_URL"
 			]
 		},
-		"test": {},
+		"test": {
+			"cache": false
+		},
 		"test:watch": {
 			"cache": false
 		},

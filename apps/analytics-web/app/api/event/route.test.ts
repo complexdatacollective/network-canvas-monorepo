@@ -1,4 +1,4 @@
-import type { analyticsEvent } from "@codaco/analytics";
+import type { analyticsEvent } from "@codaco/analytics/src";
 import { testApiHandler } from "next-test-api-route-handler";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as appHandler from "./route";
