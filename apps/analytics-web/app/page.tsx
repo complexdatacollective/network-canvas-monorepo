@@ -10,7 +10,7 @@ export default function DashboardPage() {
 					<h2 className="flex flex-row text-3xl font-bold">Dashboard</h2>
 					<div className="flex flex-row">
 						<UserManagementDialog />
-						<UserButton afterSignOutUrl="/" />
+						<UserButton />
 					</div>
 				</div>
 
