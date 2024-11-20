@@ -9,7 +9,5 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
-      - name: Install Linkinator
-        run: npm install -g linkinator
-      - name: Run Linkinator against the preview URL
-        run: linkinator ${{ github.event.deployment_status.environment_url }} -r
+      - name: Run dead-link-checker
+        run: npx @jthrilly/dead-link-checker ${{ github.event.deployment_status.environment_url }} -v --yes
