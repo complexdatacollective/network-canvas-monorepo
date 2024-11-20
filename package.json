@@ -16,6 +16,6 @@
 		"turbo": "^2.3.0",
 		"typescript": "^5.6.3"
 	},
-	"packageManager": "pnpm@8.15.5+sha256.4b4efa12490e5055d59b9b9fc9438b7d581a6b7af3b5675eb5c5f447cee1a589",
+	"packageManager": "pnpm@9.14.2+sha256.06e65a4965baff6d6097f9c8f75c35f6d420974dbc03d775009056a69edfd271",
 	"name": "network-canvas-monorepo"
 }
