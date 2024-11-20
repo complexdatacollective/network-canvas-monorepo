@@ -1,6 +1,6 @@
 "use client";
 
-import { svgPath } from "blobs/v2";
+import * as blobs2 from "blobs/v2";
 import { interpolatePath } from "d3-interpolate-path";
 import { memo, useMemo } from "react";
 import Canvas from "./Canvas";
@@ -32,7 +32,7 @@ const gradients = [
 
 const DEFAULT_SPEED_FACTOR = 1;
 
-class NcBlob {
+class NCBlob {
 	layer: 1 | 2 | 3;
 	speed: number;
 	angle: number;
@@ -168,14 +168,14 @@ class NcBlob {
 		this.positionY = randomInt(0 - this.size / 2, this.canvasHeight - this.size / 2);
 
 		// Create two random shapes to interpolate between for visual variation
-		this.shape = svgPath({
+		this.shape = blobs2.svgPath({
 			seed: Math.random(),
 			extraPoints: 6,
 			randomness: 6,
 			size: this.size,
 		});
 
-		this.shape2 = svgPath({
+		this.shape2 = blobs2.svgPath({
 			seed: Math.random(),
 			extraPoints: 8,
 			randomness: 8,
@@ -200,9 +200,7 @@ class NcBlob {
 			this.initialize(ctx);
 		}
 
-		if (!this.interpolator) {
-			return;
-		}
+		if (!this.interpolator) return;
 
 		if (!this.gradient?.[0] || !this.gradient[1]) {
 			return;
@@ -249,9 +247,9 @@ const BackgroundBlobs = memo(
 	}: BackgroundBlobsProps) => {
 		const blobs = useMemo(
 			() => [
-				new Array(large).fill(null).map(() => new NcBlob(3, speedFactor)),
-				new Array(medium).fill(null).map(() => new NcBlob(2, speedFactor)),
-				new Array(small).fill(null).map(() => new NcBlob(1, speedFactor)),
+				new Array(large).fill(null).map(() => new NCBlob(3, speedFactor)),
+				new Array(medium).fill(null).map(() => new NCBlob(2, speedFactor)),
+				new Array(small).fill(null).map(() => new NCBlob(1, speedFactor)),
 			],
 			[large, medium, small, speedFactor],
 		);

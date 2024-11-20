@@ -7,7 +7,9 @@ import { db } from "~/db/db";
 export async function runMigration() {
 	try {
 		await migrate(db, { migrationsFolder: "./drizzle" });
-	} catch (error) {}
+	} catch (error) {
+		console.error("Error running migration:", error);
+	}
 }
 
 await runMigration();

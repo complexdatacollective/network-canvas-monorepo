@@ -2,7 +2,7 @@ import type { Event } from "~/app/_actions/actions";
 import { SummaryCard } from "~/components/SummaryCard";
 import { getTotalErrors } from "~/utils/getTotalErrors";
 
-export const TotalErrorsCard = ({ events }: { events: Event[] }) => {
+const TotalErrorsCard = ({ events }: { events: Event[] }) => {
 	const totalErrors = getTotalErrors(events);
 	return (
 		<SummaryCard
@@ -12,3 +12,5 @@ export const TotalErrorsCard = ({ events }: { events: Event[] }) => {
 		/>
 	);
 };
+
+export default TotalErrorsCard;

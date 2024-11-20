@@ -31,12 +31,12 @@ Details.displayName = "Details";
 
 // It seems like HTMLSummaryElement was removed from lib dom at some point,
 // but I can't find any information about it.
-type HtmlSummaryElement = HTMLElement & {
+type HTMLSummaryElement = HTMLElement & {
 	open: boolean;
 };
 
 export const Summary = forwardRef<
-	HtmlSummaryElement,
+	HTMLSummaryElement,
 	{
 		children: ReactNode;
 		className?: string;

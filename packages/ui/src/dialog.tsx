@@ -40,7 +40,7 @@ export const DialogContentEmpty = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<DialogPortal>
 		<DialogOverlay />
-		<DialogPrimitive.Content ref={ref} className={cn(dialogContentClasses, className)} {...props} asChild={true}>
+		<DialogPrimitive.Content ref={ref} className={cn(dialogContentClasses, className)} {...props} asChild>
 			{children}
 		</DialogPrimitive.Content>
 	</DialogPortal>
@@ -101,11 +101,11 @@ DialogClose.displayName = DialogPrimitive.Title.displayName;
 
 export {
 	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
 	DialogTrigger,
+	DialogContent,
+	DialogHeader,
+	DialogFooter,
+	DialogTitle,
+	DialogDescription,
+	DialogClose,
 };

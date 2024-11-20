@@ -19,7 +19,7 @@ function FormattedDate({
 	const formattedDate = Intl.DateTimeFormat(navigator.languages as string[], options).format(new Date(date));
 
 	return (
-		<time dateTime={formattedDate} suppressHydrationWarning={true}>
+		<time dateTime={formattedDate} suppressHydrationWarning>
 			{formattedDate}
 		</time>
 	);

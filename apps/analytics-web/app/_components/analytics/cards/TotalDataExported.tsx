@@ -2,7 +2,7 @@ import type { Event } from "~/app/_actions/actions";
 import { SummaryCard } from "~/components/SummaryCard";
 import { getTotalDataExported } from "~/utils/getTotalDataExported";
 
-export const TotalDataExported = ({ events }: { events: Event[] }) => {
+const TotalDataExported = ({ events }: { events: Event[] }) => {
 	const totalDataExported = getTotalDataExported(events);
 	return (
 		<SummaryCard
@@ -12,3 +12,5 @@ export const TotalDataExported = ({ events }: { events: Event[] }) => {
 		/>
 	);
 };
+
+export default TotalDataExported;

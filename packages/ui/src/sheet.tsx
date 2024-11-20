@@ -97,13 +97,13 @@ SheetDescription.displayName = SheetPrimitive.Description.displayName;
 
 export {
 	Sheet,
+	SheetPortal,
+	SheetOverlay,
+	SheetTrigger,
 	SheetClose,
 	SheetContent,
-	SheetDescription,
-	SheetFooter,
 	SheetHeader,
-	SheetOverlay,
-	SheetPortal,
+	SheetFooter,
 	SheetTitle,
-	SheetTrigger,
+	SheetDescription,
 };

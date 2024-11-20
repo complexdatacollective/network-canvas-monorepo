@@ -1,6 +1,5 @@
 import type { Config } from "tailwindcss";
 
-// biome-ignore lint/style/noDefaultExport: <explanation>
 export default {
 	darkMode: ["class"],
 	content: ["./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],

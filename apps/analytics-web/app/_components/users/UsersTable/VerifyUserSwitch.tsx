@@ -6,7 +6,7 @@ type VerifyUserSwitchProps = {
 	verified: boolean;
 };
 
-export function VerifyUserSwitch({ id, verified: initialVerified }: VerifyUserSwitchProps) {
+export default function VerifyUserSwitch({ id, verified: initialVerified }: VerifyUserSwitchProps) {
 	const [localVerified, setLocalVerified] = useState(initialVerified);
 
 	const updateMetadata = async () => {
@@ -21,9 +21,11 @@ export function VerifyUserSwitch({ id, verified: initialVerified }: VerifyUserSw
 
 			if (!response.ok) {
 				setLocalVerified(!localVerified);
+				console.error("Database update failed.");
 			}
 		} catch (error) {
 			setLocalVerified;
+			console.error("Error updating database:", error);
 		}
 	};
 

@@ -5,7 +5,7 @@ import { useLocale } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as tSidebarFolder } from "~/app/types";
+import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
 import { cn } from "~/lib/utils";
 import sidebarData from "~/public/sidebar.json";
 import DocSearchComponent from "./DocSearchComponent";
@@ -21,7 +21,7 @@ const MotionChevron = motion.create(ChevronRight);
  * @param sidebarItems {(TSidebarFolder | SidebarPage)[]}
  * @returns {(TSidebarFolder | SidebarPage)[]}
  */
-const sortSidebarItems = (sidebarItems: (tSidebarFolder | SidebarPage)[]) =>
+const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
 	sidebarItems.sort((a, b) => {
 		// If both items have navOrder, sort by that
 		if (a.navOrder !== null && b.navOrder !== null) {
@@ -39,20 +39,16 @@ const sortSidebarItems = (sidebarItems: (tSidebarFolder | SidebarPage)[]) =>
 		return a.label.localeCompare(b.label);
 	});
 
-const pathSeparatorRegex = /[\\/]/;
-
 export function processSourceFile(type: "page", locale: Locale, sourceFile: string): string;
 export function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): string | undefined;
 
 // Used by sidebar to process sourceFile values into usable routes
 export function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
-	if (!sourceFile) {
-		return;
-	}
+	if (!sourceFile) return;
 	// We can't use path.sep because the webpack node shim always returns '/'.
 	// Because this might be running on Windows, we need to use a regex to split
 	// by either / or \.
-	const pathSegments = sourceFile.split(pathSeparatorRegex).slice(2);
+	const pathSegments = sourceFile.split(/[\\/]/).slice(2);
 
 	let returnPath = "";
 
@@ -89,13 +85,9 @@ const SidebarFolder = ({
 	const pathname = usePathname();
 
 	const memoizedIsOpen = useMemo(() => {
-		if (alwaysOpen) {
-			return true;
-		}
+		if (alwaysOpen) return true;
 
-		if (defaultOpen) {
-			return true;
-		}
+		if (defaultOpen) return true;
 
 		return (children as React.ReactElement<{ href?: string }>[]).some((child) => child.props.href === pathname);
 	}, [alwaysOpen, defaultOpen, children, pathname]);
@@ -111,9 +103,7 @@ const SidebarFolder = ({
 			defaultOpen={defaultOpen ?? alwaysOpen}
 			open={isOpen}
 			onOpenChange={() => {
-				if (alwaysOpen) {
-					return;
-				}
+				if (alwaysOpen) return;
 				setIsOpen(!isOpen);
 			}}
 			className={cn("my-4 flex flex-col")}
@@ -123,7 +113,7 @@ const SidebarFolder = ({
 					"focusable my-1 flex flex-1 items-center justify-between text-balance text-base font-semibold capitalize",
 					!alwaysOpen && "cursor-pointer",
 				)}
-				asChild={true}
+				asChild
 			>
 				{href ? (
 					<Link href={href}>
@@ -133,7 +123,7 @@ const SidebarFolder = ({
 								className="h-4 w-4"
 								initial={{ rotate: isOpen ? 90 : 0 }}
 								animate={{ rotate: isOpen ? 90 : 0 }}
-								aria-hidden={true}
+								aria-hidden
 							/>
 						)}
 					</Link>
@@ -145,7 +135,7 @@ const SidebarFolder = ({
 								className="h-4 w-4"
 								initial={{ rotate: isOpen ? 90 : 0 }}
 								animate={{ rotate: isOpen ? 90 : 0 }}
-								aria-hidden={true}
+								aria-hidden
 							/>
 						)}
 					</div>
@@ -153,7 +143,7 @@ const SidebarFolder = ({
 			</CollapsibleTrigger>
 			<MotionCollapsibleContent
 				className="ml-2 flex flex-col overflow-y-hidden"
-				forceMount={true}
+				forceMount
 				initial={{ height: isOpen ? "auto" : 0 }}
 				animate={{ height: isOpen ? "auto" : 0 }}
 			>
@@ -202,7 +192,7 @@ const SidebarLink = ({
 };
 
 const renderSidebarItem = (
-	item: tSidebarFolder | SidebarPage,
+	item: TSidebarFolder | SidebarPage,
 	locale: Locale,
 	sidebarContainerRef: RefObject<HTMLDivElement>,
 ) => {

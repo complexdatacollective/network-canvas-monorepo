@@ -7,7 +7,7 @@ import useHighlighted from "~/hooks/useHighlighted";
 import type { HeadingNode } from "~/lib/tableOfContents";
 import { cn } from "~/lib/utils";
 
-const tocLink = ({
+const TOCLink = ({
 	node,
 	sideBar,
 }: {
@@ -18,9 +18,7 @@ const tocLink = ({
 	const [highlighted] = useHighlighted(node.id);
 
 	useEffect(() => {
-		if (!sideBar) {
-			return;
-		}
+		if (!sideBar) return;
 
 		if (highlighted && ref.current) {
 			ref.current.scrollIntoView({
@@ -75,7 +73,7 @@ function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
 		<ol>
 			{nodes.map((node) => (
 				<li key={node.id} className={cn("list-none")}>
-					<tocLink node={node} sideBar={sideBar} />
+					<TOCLink node={node} sideBar={sideBar} />
 					{node.children?.length > 0 && renderNodes(node.children, sideBar)}
 				</li>
 			))}

@@ -1,30 +1,30 @@
 "use client";
 
-// biome-ignore lint/style/noNamespaceImport: Correct way to import radix ui primitive
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
+import * as React from "react";
 
 import { cn } from "~/utils/shadcn";
 
 const Tabs = TabsPrimitive.Root;
 
-const TabsList = forwardRef<ElementRef<typeof TabsPrimitive.List>, ComponentPropsWithoutRef<typeof TabsPrimitive.List>>(
-	({ className, ...props }, ref) => (
-		<TabsPrimitive.List
-			ref={ref}
-			className={cn(
-				"inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-				className,
-			)}
-			{...props}
-		/>
-	),
-);
+const TabsList = React.forwardRef<
+	React.ElementRef<typeof TabsPrimitive.List>,
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+	<TabsPrimitive.List
+		ref={ref}
+		className={cn(
+			"inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+			className,
+		)}
+		{...props}
+	/>
+));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
-const TabsTrigger = forwardRef<
-	ElementRef<typeof TabsPrimitive.Trigger>,
-	ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+const TabsTrigger = React.forwardRef<
+	React.ElementRef<typeof TabsPrimitive.Trigger>,
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
 >(({ className, ...props }, ref) => (
 	<TabsPrimitive.Trigger
 		ref={ref}
@@ -37,9 +37,9 @@ const TabsTrigger = forwardRef<
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 
-const TabsContent = forwardRef<
-	ElementRef<typeof TabsPrimitive.Content>,
-	ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+const TabsContent = React.forwardRef<
+	React.ElementRef<typeof TabsPrimitive.Content>,
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 >(({ className, ...props }, ref) => (
 	<TabsPrimitive.Content
 		ref={ref}
@@ -52,4 +52,4 @@ const TabsContent = forwardRef<
 ));
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 
-export { Tabs, TabsContent, TabsList, TabsTrigger };
+export { Tabs, TabsList, TabsTrigger, TabsContent };

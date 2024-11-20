@@ -2,7 +2,7 @@
 import { UserButton, useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 
-export function Verification() {
+export default function Verification() {
 	const { user } = useUser();
 	const isVerified = user?.publicMetadata?.verified;
 	if (isVerified) {
@@ -16,7 +16,7 @@ export function Verification() {
 				<p>Please contact the site administrator to be verified.</p>
 			</div>
 
-			<UserButton />
+			<UserButton afterSignOutUrl="/" />
 		</main>
 	);
 }

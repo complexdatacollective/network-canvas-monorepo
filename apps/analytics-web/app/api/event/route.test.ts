@@ -1,7 +1,6 @@
 import type { analyticsEvent } from "@codaco/analytics/src";
 import { testApiHandler } from "next-test-api-route-handler";
 import { afterEach, describe, expect, it, vi } from "vitest";
-// biome-ignore lint/style/noNamespaceImport: intended way to import route handler with test framework
 import * as appHandler from "./route";
 
 vi.mock("~/app/_actions/actions", () => {

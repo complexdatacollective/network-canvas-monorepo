@@ -54,7 +54,7 @@ export const NavigationMenuDemo = () => {
 	const t = useTranslations("SharedNavigation");
 
 	return (
-		<NavigationMenu.Root asChild={true}>
+		<NavigationMenu.Root asChild>
 			<div className={cn("relative z-10 hidden grow justify-end", "md:flex")}>
 				<NavigationMenu.List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
 					{links.map((link, i) => {
@@ -62,13 +62,13 @@ export const NavigationMenuDemo = () => {
 							return (
 								<NavigationMenu.Item key={link.translationKey}>
 									<NavigationMenu.Trigger className={cn(linkClasses, "gap-2")}>
-										{t(link.translationKey)} <ChevronDown className="h-4 w-4" aria-hidden={true} />
+										{t(link.translationKey)} <ChevronDown className="h-4 w-4" aria-hidden />
 									</NavigationMenu.Trigger>
 									<NavigationMenu.Content className="absolute right-0 top-0 w-full">
 										<ul className="m-0 grid w-full grid-cols-3 gap-4 p-6">
 											{link.menu.map((subLink, i) => (
 												<li key={subLink.titleTranslationKey} className="col-span-1 grid">
-													<NavigationMenu.Link asChild={true}>
+													<NavigationMenu.Link asChild>
 														<a
 															className={cn(
 																"flex h-full w-full select-none flex-col justify-end rounded-md bg-accent p-4 text-accent-foreground no-underline outline-none",
@@ -136,7 +136,7 @@ export const NavigationMenuMobile = () => {
 	const t = useTranslations("SharedNavigation");
 	const [submenu, setSubmenu] = useState<SubMenu>([]);
 
-	if (submenu.length === 0) {
+	if (!submenu.length) {
 		return (
 			<ul className={"flex flex-col items-center justify-center gap-4 md:hidden"}>
 				{links.map((link, i) => {

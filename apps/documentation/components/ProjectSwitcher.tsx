@@ -68,7 +68,7 @@ export default function ProjectSwitcher() {
 				<SelectGroup>
 					{projects.map((p) => (
 						<SelectItem key={p} value={p} className="sm:w-[25rem]">
-							<ProjectValue project={p} showDescription={true} />
+							<ProjectValue project={p} showDescription />
 						</SelectItem>
 					))}
 				</SelectGroup>

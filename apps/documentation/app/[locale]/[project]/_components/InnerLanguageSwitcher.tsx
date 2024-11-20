@@ -16,9 +16,7 @@ const InnerLanguageSwitcher = async ({ pathSegment, currentLocale, project }: In
 	// removes the current locale from availableLocales
 	const supportedLanguages = availableLocales.filter((locale) => locale !== currentLocale);
 
-	if (supportedLanguages.length === 0) {
-		return null;
-	}
+	if (!supportedLanguages.length) return null;
 
 	return (
 		<div className="my-1 flex gap-2">

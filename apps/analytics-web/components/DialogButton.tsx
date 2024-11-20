@@ -19,7 +19,7 @@ type DialogButtonProps = {
 export function DialogButton({ buttonLabel, title, description, content }: DialogButtonProps) {
 	return (
 		<Dialog>
-			<DialogTrigger asChild={true}>
+			<DialogTrigger asChild>
 				<Button variant="outline">{buttonLabel}</Button>
 			</DialogTrigger>
 			<DialogContent className="max-h-screen overflow-y-auto">

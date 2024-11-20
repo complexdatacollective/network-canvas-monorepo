@@ -32,7 +32,7 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild={true}>
+			<DropdownMenuTrigger asChild>
 				<Button className="text-sm" size={"sm"} variant="outline">
 					Type
 				</Button>
@@ -43,7 +43,7 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
 
 				<div className="space-y-3">
 					<label
-						for="all-checkbox"
+						htmlFor="all-checkbox"
 						className="flex items-center gap-3 rounded-md p-1 pl-2 text-sm transition-colors hover:bg-muted"
 					>
 						<Checkbox
@@ -57,7 +57,7 @@ const TableFilter = ({ eventTypes, setEventTypes }: TableFilterProps) => {
 
 					{options.map((option) => (
 						<label
-							for={option.text}
+							htmlFor={option.text}
 							key={option.text}
 							className="flex items-center gap-3 rounded-md p-1 pl-2 text-sm transition-colors hover:bg-muted"
 						>

@@ -13,7 +13,7 @@ import VerifiedUsersTable from "./UsersTable/UsersTable";
 export default function UserManagementDialog() {
 	return (
 		<Dialog>
-			<DialogTrigger asChild={true}>
+			<DialogTrigger asChild>
 				<Button variant="ghost" size="icon" className="mr-4">
 					<UsersIcon />
 				</Button>
