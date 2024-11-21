@@ -1,37 +1,24 @@
 {
-  "name": "@codaco/tailwind-config",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    "./fresco": "./fresco.ts",
-    "./globals.css": "./globals.css"
-  },
-  "license": "MIT",
-  "scripts": {
-    "clean": "rm -rf .turbo node_modules",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.15",
-    "tailwindcss-animate": "^1.0.7"
-  },
-  "devDependencies": {
-    "@codaco/eslint-config": "workspace:*",
-    "@codaco/prettier-config": "workspace:*",
-    "@codaco/tsconfig": "workspace:*",
-    "eslint": "^8.57.1",
-    "prettier": "^3.2.5",
-    "typescript": "^5.3.3"
-  },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "@codaco/eslint-config/base"
-    ]
-  },
-  "prettier": "@codaco/prettier-config"
+	"name": "@codaco/tailwind-config",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./fresco": "./fresco.ts",
+		"./globals.css": "./globals.css"
+	},
+	"license": "MIT",
+	"scripts": {
+		"clean": "rm -rf .turbo node_modules",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"postcss": "^8.4.35",
+		"tailwindcss": "^3.4.1",
+		"tailwindcss-animate": "^1.0.7"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"typescript": "^5.6.3"
+	}
 }

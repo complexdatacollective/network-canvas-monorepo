@@ -1,9 +1,9 @@
 {
-  "type": "folder",
-  "localeLabels": {
-    "en": "Interface documentation",
-    "ru": "Документация интерфейса"
-  },
-  "isExpanded": false,
-  "slug": "interface-documentation"
+	"type": "folder",
+	"localeLabels": {
+		"en": "Interface documentation",
+		"ru": "Документация интерфейса"
+	},
+	"isExpanded": false,
+	"slug": "interface-documentation"
 }

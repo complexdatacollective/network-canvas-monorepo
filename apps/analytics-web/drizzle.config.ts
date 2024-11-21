@@ -1,16 +1,17 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
-import { defineConfig } from 'drizzle-kit';
+import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-  schema: './db/schema.ts',
-  out: './drizzle',
-  driver: 'pg',
-  dbCredentials: {
-    // eslint-disable-next-line no-process-env,
-    connectionString: process.env.POSTGRES_URL!,
-  },
-  verbose: true,
-  strict: true,
+	dialect: "postgresql",
+	schema: "./db/schema.ts",
+	out: "./drizzle",
+	driver: "pglite",
+	dbCredentials: {
+		// biome-ignore lint/style/noNonNullAssertion: env variable must be defined
+		url: process.env.POSTGRES_URL!,
+	},
+	verbose: true,
+	strict: true,
 });

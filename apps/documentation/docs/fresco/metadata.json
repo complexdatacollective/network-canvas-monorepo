@@ -1,10 +1,10 @@
 {
-  "type": "project",
-  "slug": "fresco",
-  "localeLabels": {
-    "en": "Fresco"
-  },
-  "localeIndexFiles": {
-    "en": "about.en.mdx"
-  }
+	"type": "project",
+	"slug": "fresco",
+	"localeLabels": {
+		"en": "Fresco"
+	},
+	"localeIndexFiles": {
+		"en": "about.en.mdx"
+	}
 }

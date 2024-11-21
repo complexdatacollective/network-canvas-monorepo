@@ -1,25 +1,25 @@
-import { type ReactNode } from 'react';
-import { projects } from '~/app/types';
+import type { ReactNode } from "react";
+import { projects } from "~/app/types";
 
 export function generateStaticParams({
-  params,
+	params,
 }: {
-  params: { locale: string };
+	params: { locale: string };
 }) {
-  const { locale } = params;
+	const { locale } = params;
 
-  return projects.map((project) => {
-    return {
-      locale,
-      project,
-    };
-  });
+	return projects.map((project) => {
+		return {
+			locale,
+			project,
+		};
+	});
 }
 
 type Props = {
-  children: ReactNode;
+	children: ReactNode;
 };
 
 export default function Layout({ children }: Props) {
-  return children;
+	return children;
 }

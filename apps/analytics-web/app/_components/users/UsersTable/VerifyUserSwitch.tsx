@@ -1,43 +1,38 @@
-import { useState } from 'react';
-import { Switch } from '~/components/ui/switch';
+import { useState } from "react";
+import { Switch } from "~/components/ui/switch";
 
 type VerifyUserSwitchProps = {
-  id: string;
-  verified: boolean;
+	id: string;
+	verified: boolean;
 };
 
-export default function VerifyUserSwitch({
-  id,
-  verified: initialVerified,
-}: VerifyUserSwitchProps) {
-  const [localVerified, setLocalVerified] = useState(initialVerified);
+export default function VerifyUserSwitch({ id, verified: initialVerified }: VerifyUserSwitchProps) {
+	const [localVerified, setLocalVerified] = useState(initialVerified);
 
-  const updateMetadata = async () => {
-    try {
-      const response = await fetch('/api/clerk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId: id, verified: !localVerified }),
-      });
+	const updateMetadata = async () => {
+		try {
+			const response = await fetch("/api/clerk", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ userId: id, verified: !localVerified }),
+			});
 
-      if (!response.ok) {
-        setLocalVerified(!localVerified);
-        // eslint-disable-next-line no-console
-        console.error('Database update failed.');
-      }
-    } catch (error) {
-      setLocalVerified;
-      // eslint-disable-next-line no-console
-      console.error('Error updating database:', error);
-    }
-  };
+			if (!response.ok) {
+				setLocalVerified(!localVerified);
+				console.error("Database update failed.");
+			}
+		} catch (error) {
+			setLocalVerified;
+			console.error("Error updating database:", error);
+		}
+	};
 
-  const handleToggle = async () => {
-    setLocalVerified(!localVerified);
-    await updateMetadata();
-  };
+	const handleToggle = async () => {
+		setLocalVerified(!localVerified);
+		await updateMetadata();
+	};
 
-  return <Switch checked={localVerified} onCheckedChange={handleToggle} />;
+	return <Switch checked={localVerified} onCheckedChange={handleToggle} />;
 }

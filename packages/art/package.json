@@ -1,43 +1,30 @@
 {
-  "name": "@codaco/art",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "license": "MIT",
-  "scripts": {
-    "clean": "rm -rf .turbo node_modules",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "blobs": "2.3.0-beta.2",
-    "d3-interpolate-path": "^2.3.0"
-  },
-  "devDependencies": {
-    "@codaco/eslint-config": "workspace:*",
-    "@codaco/prettier-config": "workspace:*",
-    "@codaco/tailwind-config": "workspace:*",
-    "@codaco/tsconfig": "workspace:*",
-    "@types/d3-interpolate-path": "^2.0.3",
-    "@types/react": "^18.2.64",
-    "eslint": "^8.57.1",
-    "prettier": "^3.3.2",
-    "react": "18.3.1",
-    "tailwindcss": "^3.4.15",
-    "typescript": "^5.5.2"
-  },
-  "peerDependencies": {
-    "react": "18.3.1"
-  },
-  "eslintConfig": {
-    "extends": [
-      "@codaco/eslint-config/base",
-      "@codaco/eslint-config/react"
-    ]
-  },
-  "prettier": "@codaco/prettier-config"
+	"name": "@codaco/art",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"license": "MIT",
+	"scripts": {
+		"clean": "rm -rf .turbo node_modules",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"blobs": "2.3.0-beta.2",
+		"d3-interpolate-path": "^2.3.0"
+	},
+	"devDependencies": {
+		"@codaco/tailwind-config": "workspace:*",
+		"@codaco/tsconfig": "workspace:*",
+		"@types/d3-interpolate-path": "^2.0.3",
+		"@types/react": "^18.2.64",
+		"react": "18.3.1",
+		"tailwindcss": "^3.4.15",
+		"typescript": "^5.6.3"
+	},
+	"peerDependencies": {
+		"react": "18.3.1"
+	}
 }
