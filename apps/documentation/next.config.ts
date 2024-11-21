@@ -1,4 +1,5 @@
 import NextBundleAnalyzer from "@next/bundle-analyzer";
+import type { NextConfig } from "next";
 import createNextIntl from "next-intl/plugin";
 
 const withNextIntl = createNextIntl("./lib/i18n/request.ts");
@@ -6,8 +7,7 @@ const withBundleAnalyzer = NextBundleAnalyzer({
 	enabled: process.env.ANALYZE === "true",
 });
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
 	reactStrictMode: true,
 	output: "export",
 	images: {

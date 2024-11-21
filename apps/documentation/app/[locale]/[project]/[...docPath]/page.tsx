@@ -10,7 +10,8 @@ type PageParams = {
 	docPath: string[];
 };
 
-export async function generateMetadata({ params }: { params: PageParams }) {
+export async function generateMetadata(props: { params: Promise<PageParams> }) {
+	const params = await props.params;
 	const { locale, project, docPath } = params;
 	const document = await getDocumentForPath({
 		locale,
@@ -35,7 +36,8 @@ export function generateStaticParams({
 	return docPathSegmentsForRoute;
 }
 
-export default async function Page({ params }: { params: PageParams }) {
+export default async function Page(props: { params: Promise<PageParams> }) {
+	const params = await props.params;
 	const { locale, project, docPath } = params;
 	// setting setRequestLocale to support next-intl for static rendering
 	setRequestLocale(locale);

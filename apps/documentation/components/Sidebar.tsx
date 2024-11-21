@@ -160,7 +160,7 @@ const SidebarLink = ({
 }: {
 	href: string;
 	label: string;
-	sidebarContainerRef: RefObject<HTMLDivElement>;
+	sidebarContainerRef: RefObject<HTMLDivElement | null>;
 }) => {
 	const pathname = usePathname();
 	const isActive = pathname === href;
@@ -194,7 +194,7 @@ const SidebarLink = ({
 const renderSidebarItem = (
 	item: TSidebarFolder | SidebarPage,
 	locale: Locale,
-	sidebarContainerRef: RefObject<HTMLDivElement>,
+	sidebarContainerRef: RefObject<HTMLDivElement | null>,
 ) => {
 	if (item.type === "folder") {
 		const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
