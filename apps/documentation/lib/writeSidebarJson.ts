@@ -103,7 +103,7 @@ function generateSidebarData() {
 try {
 	const sidebarData = generateSidebarData();
 
-	writeFileSync(join(process.cwd(), "public", "sidebar.json"), JSON.stringify(sidebarData, null, 2), "utf-8");
+	writeFileSync(join(process.cwd(), "public", "sidebar.json"), JSON.stringify(sidebarData, null, "\t"), "utf-8");
 } catch (e) {
 	// eslint-disable-next-line no-console
 	console.log("Error writing sidebar data!", e);

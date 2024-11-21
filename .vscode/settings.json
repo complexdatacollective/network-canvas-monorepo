@@ -1,7 +1,10 @@
 {
 	"typescript.tsdk": "./node_modules/typescript/lib",
 	"typescript.enablePromptUseWorkspaceTsdk": true,
-	"cSpell.words": ["netcanvas", "Tipbox"],
+	"cSpell.words": [
+		"netcanvas",
+		"Tipbox"
+	],
 	"editor.defaultFormatter": "biomejs.biome",
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
@@ -12,5 +15,8 @@
 	"editor.codeActionsOnSave": {
 		"source.organizeImports": "always",
 		"source.fixAll": "always"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
 	}
 }
