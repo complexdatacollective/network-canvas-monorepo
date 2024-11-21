@@ -18,11 +18,13 @@ const quicksand = Quicksand({
 	display: "swap",
 });
 
-export function generateMetadata({
-	params: { locale },
-}: {
-	params: { locale: Locale };
+export async function generateMetadata(props: {
+	params: Promise<{ locale: Locale }>;
 }) {
+	const params = await props.params;
+
+	const { locale } = params;
+
 	const metadata: Metadata = {
 		other: {
 			"docsearch:language": locale,
@@ -39,10 +41,16 @@ export function generateStaticParams() {
 
 type MainLayoutProps = {
 	children: React.ReactNode;
-	params: { locale: Locale };
+	params: Promise<{ locale: Locale }>;
 };
 
-export default async function MainLayout({ children, params: { locale } }: MainLayoutProps) {
+export default async function MainLayout(props: MainLayoutProps) {
+	const params = await props.params;
+
+	const { locale } = params;
+
+	const { children } = props;
+
 	// Validate that the incoming `locale` parameter is valid
 	const isValidLocale = locales.some((cur) => cur === locale);
 	if (!isValidLocale) notFound();

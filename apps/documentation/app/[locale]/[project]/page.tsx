@@ -4,9 +4,10 @@ import type { Locale } from "~/app/types";
 import Article from "~/components/article";
 import { getDocumentForPath } from "~/lib/docs";
 
-type PageProps = { params: { locale: Locale; project: string } };
+type PageProps = { params: Promise<{ locale: Locale; project: string }> };
 
-export default async function Page({ params }: PageProps) {
+export default async function Page(props: PageProps) {
+	const params = await props.params;
 	const { locale, project } = params;
 
 	// setting setRequestLocale to support next-intl for static rendering

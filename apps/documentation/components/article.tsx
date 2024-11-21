@@ -1,11 +1,12 @@
 "use client";
-
 import { Heading } from "@codaco/ui";
 import WorkInProgress from "~/components/customComponents/WorkInProgress";
 import type { HeadingNode } from "~/lib/tableOfContents";
 import { usePathname } from "~/navigation";
 import FancyHeading from "./FancyHeading";
 import TableOfContents from "./TableOfContents";
+
+import type { JSX } from "react";
 
 export default function Article({
 	content,
