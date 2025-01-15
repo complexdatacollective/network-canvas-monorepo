@@ -29,14 +29,16 @@ For more information on how to sync your fork, see the [GitHub documentation](ht
 
 ## Versioning
 
-Fresco uses a combination of [semantic versioning](https://semver.org/) and GitHub commit hashes (a.k.a. the ["SHA" or "hash"](https://docs.github.com/en/get-started/learning-about-github/github-glossary#commit)) to manage releases.
+Fresco uses [semantic versioning](https://semver.org/) to manage releases, meaning that versions are specified using three numbers separated by a period. The numbers are ordered according to significance, with the first number being a major version, the second being a minor version, and the third being a "patch". In general, major versions are not backwards compatible with the previous version (so 3.x.x is not compatible with 2.x.x). Minor versions are used to add new features in a backwards compatible way (for example, 2.2.x might introduce a new feature that is compatible with 2.x.x). Patch versions are used for fixing bugs or addressing other issues that don't change the behaviour or functionality of the software.
+
+This means that it should always be clear if a new version of Fresco is safe to install while you are collecting data, or if you should wait.
 
 This version information is accessible from several places:
 
 - **Main Dashboard**: You can find the version number of your Fresco instance on the main dashboard in the top left corner.
-- **Settings**: You can find the version number and SHA of your Fresco instance on the **Settings** page of your dashboard.
-- **GitHub**: You can find the SHA of your Fresco instance on your GitHub repository.
-- **Exported Data**: The version number and SHA of your Fresco instance are included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
+- **Settings**: You can find the version number of your Fresco instance on the **Settings** page of your dashboard.
+- **GitHub**: You can find the version of your Fresco instance on your GitHub repository, inside the `package.json` file.
+- **Exported Data**: The version number of your Fresco instance is included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
 
 ## UploadThing Variable Update
 
