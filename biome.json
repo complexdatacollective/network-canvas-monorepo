@@ -23,7 +23,7 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignore": ["public/**/*.*"]
+		"ignore": ["public/**/*.*", "packages/protocol-validation/src/schemas/compiled/"]
 	},
 	"javascript": { "formatter": { "quoteStyle": "double" } }
 }

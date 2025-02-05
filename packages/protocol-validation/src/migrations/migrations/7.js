@@ -11,9 +11,9 @@ const notes = `
 `;
 
 const v7 = {
-  version: 7,
-  notes,
-  migration,
+	version: 7,
+	notes,
+	migration,
 };
 
 export default v7;

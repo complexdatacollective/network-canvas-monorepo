@@ -12,7 +12,7 @@ const schema195 = {"type":"object","additionalProperties":false,"properties":{"n
 const schema196 = {"type":"object","additionalProperties":false,"title":"Variables","patternProperties":{".+":{"$ref":"#/definitions/Variable"}}};
 const schema197 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},"type":{"type":"string","enum":["boolean","text","number","datetime","ordinal","scalar","categorical","layout","location"]},"component":{"type":"string","enum":["Boolean","CheckboxGroup","Number","RadioGroup","Text","TextArea","Toggle","ToggleButtonGroup","Slider","VisualAnalogScale","LikertScale","DatePicker","RelativeDatePicker"]},"options":{"type":"array","items":{"$ref":"#/definitions/OptionElement"}},"parameters":{"type":"object"},"validation":{"$ref":"#/definitions/Validation"}},"required":["type","name"],"title":"Variable"};
 const schema201 = {"type":"object","additionalProperties":false,"properties":{"required":{"type":"boolean"},"requiredAcceptsNull":{"type":"boolean"},"minLength":{"type":"integer"},"maxLength":{"type":"integer"},"minValue":{"type":"integer"},"maxValue":{"type":"integer"},"minSelected":{"type":"integer"},"maxSelected":{"type":"integer"},"unique":{"type":"boolean"},"differentFrom":{"type":"string"},"sameAs":{"type":"string"}},"title":"Validation"};
-const pattern16 = new RegExp("^[a-zA-Z0-9._:-]+$", "u");
+const pattern22 = new RegExp("^[a-zA-Z0-9._:-]+$", "u");
 const schema198 = {"anyOf":[{"$ref":"#/definitions/OptionClass"},{"type":"integer"},{"type":"string"}],"title":"Variable Option"};
 const schema199 = {"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"value":{"$ref":"#/definitions/Value"},"negative":{"type":"boolean"}},"required":["label","value"],"title":"OptionClass"};
 const schema200 = {"anyOf":[{"type":"integer"},{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},{"type":"boolean"}],"title":"Value"};
@@ -85,7 +85,7 @@ valid2 = valid2 || _valid0;
 if(!valid2){
 const _errs9 = errors;
 if(typeof data1 === "string"){
-if(!pattern16.test(data1)){
+if(!pattern22.test(data1)){
 const err5 = {instancePath:instancePath+"/value",schemaPath:"#/definitions/Value/anyOf/1/pattern",keyword:"pattern",params:{pattern: "^[a-zA-Z0-9._:-]+$"},message:"must match pattern \""+"^[a-zA-Z0-9._:-]+$"+"\""};
 if(vErrors === null){
 vErrors = [err5];
@@ -282,7 +282,7 @@ errors++;
 if(data.name !== undefined){
 let data0 = data.name;
 if(typeof data0 === "string"){
-if(!pattern16.test(data0)){
+if(!pattern22.test(data0)){
 const err3 = {instancePath:instancePath+"/name",schemaPath:"#/properties/name/pattern",keyword:"pattern",params:{pattern: "^[a-zA-Z0-9._:-]+$"},message:"must match pattern \""+"^[a-zA-Z0-9._:-]+$"+"\""};
 if(vErrors === null){
 vErrors = [err3];

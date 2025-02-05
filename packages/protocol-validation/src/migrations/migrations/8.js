@@ -15,9 +15,9 @@ const notes = `
 `;
 
 const v8 = {
-  version: 8,
-  notes,
-  migration,
+	version: 8,
+	notes,
+	migration,
 };
 
 export default v8;

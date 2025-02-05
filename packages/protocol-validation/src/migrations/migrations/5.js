@@ -12,9 +12,9 @@ const notes = `
 `;
 
 const v5 = {
-  version: 5,
-  notes,
-  migration,
+	version: 5,
+	notes,
+	migration,
 };
 
 export default v5;

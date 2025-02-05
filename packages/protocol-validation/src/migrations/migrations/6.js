@@ -3,25 +3,22 @@
  */
 
 const migrateStages = (stages = []) =>
-  stages.map((stage) => {
-    if (
-      stage.type !== "NameGeneratorAutoComplete" &&
-      stage.type !== "NameGeneratorList"
-    ) {
-      return stage;
-    }
+	stages.map((stage) => {
+		if (stage.type !== "NameGeneratorAutoComplete" && stage.type !== "NameGeneratorList") {
+			return stage;
+		}
 
-    return {
-      ...stage,
-      type: "NameGeneratorRoster",
-    };
-  });
+		return {
+			...stage,
+			type: "NameGeneratorRoster",
+		};
+	});
 
 const migration = (protocol) => {
-  return {
-    ...protocol,
-    stages: migrateStages(protocol.stages),
-  };
+	return {
+		...protocol,
+		stages: migrateStages(protocol.stages),
+	};
 };
 
 // Markdown format
@@ -31,9 +28,9 @@ const notes = `
 `;
 
 const v6 = {
-  version: 6,
-  notes,
-  migration,
+	version: 6,
+	notes,
+	migration,
 };
 
 export default v6;

@@ -1,28 +1,20 @@
-import getMigrationPath from './getMigrationPath';
+import getMigrationPath from "./getMigrationPath";
 
-const getMigrationNotes = (
-  sourceSchemaVersion: number,
-  targetSchemaVersion: number,
-) => {
-  try {
-    const migrationPath = getMigrationPath(
-      sourceSchemaVersion,
-      targetSchemaVersion,
-    );
+const getMigrationNotes = (sourceSchemaVersion: number, targetSchemaVersion: number) => {
+	try {
+		const migrationPath = getMigrationPath(sourceSchemaVersion, targetSchemaVersion);
 
-    const notes = migrationPath.reduce(
-      (acc: { notes?: string; version: number }[], migration) => {
-        if (!migration.notes) {
-          return acc;
-        }
-        return [...acc, { notes: migration.notes, version: migration.version }];
-      },
-      [],
-    );
-    return notes;
-  } catch (e) {
-    return undefined;
-  }
+		const notes = migrationPath.reduce((acc: { notes?: string; version: number }[], migration) => {
+			if (!migration.notes) {
+				return acc;
+			}
+			acc.push({ notes: migration.notes, version: migration.version });
+			return acc;
+		}, []);
+		return notes;
+	} catch (e) {
+		return undefined;
+	}
 };
 
 export default getMigrationNotes;
