@@ -22,6 +22,7 @@
     "dist"
   ],
   "devDependencies": {
+    "@codaco/tsconfig": "workspace:*",
     "@types/lodash-es": "^4.17.12",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
