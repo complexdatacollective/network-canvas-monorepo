@@ -28,10 +28,10 @@ const getUniqueAttributes = (items: Item[]) => {
 	return Array.from(uniqueSet);
 };
 
-const getVariableNamesFromNetwork = (network: Network) =>
+export const getVariableNamesFromNetwork = (network: Network) =>
 	(["nodes", "edges"] as Array<keyof Network>).flatMap((entity) => getUniqueAttributes(network[entity] || []));
 
-const validateNames = (items = []) => {
+export const validateNames = (items = []) => {
 	const errors = items.filter((item) => allowedVariableName(item) !== undefined);
 
 	if (errors.length === 0) {
@@ -40,5 +40,3 @@ const validateNames = (items = []) => {
 
 	return `Variable name not allowed ("${errors.join('", "')}"). Only letters, numbers and the symbols ._-: are supported.`;
 };
-
-module.exports = { validateNames, getVariableNamesFromNetwork };
