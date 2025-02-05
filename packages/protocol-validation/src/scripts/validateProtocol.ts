@@ -8,10 +8,10 @@ import chalk from 'chalk';
 import JSZip from 'jszip';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { ensureError } from '~/utils/ensureError'; //TODO: bring this
-import { getProtocolJson } from '~/utils/protocolImport'; // TODO: bring this
 import { validateProtocol } from '..';
 import { Protocol } from '../schemas/src/8.zod';
+import { ensureError } from '../utils/ensureError';
+import { getProtocolJson } from '../utils/protocolImport';
 import { errToString } from '../validation/helpers';
 
 // eslint-disable-next-line no-console

@@ -15,8 +15,8 @@
     "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"dev": "npm run build -- --watch",
     "test": "vitest",
-    "validate-protocol": "tsx ./lib/protocol-validation/scripts/validateProtocol.ts",
-    "compile-schemas": "tsx ./lib/protocol-validation/scripts/compileSchemas.ts"
+    "validate-protocol": "tsx ./src/scripts/validateProtocol.ts",
+    "compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
   },
   "files": [
     "dist"
@@ -37,7 +37,8 @@
     "prettier": "^3.3.3",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "zod": "^3.24.1"
   },
   "dependencies": {}
 }

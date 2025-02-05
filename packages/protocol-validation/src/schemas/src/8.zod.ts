@@ -84,13 +84,13 @@ const variableSchema = z
     validation: validationSchema.optional(),
   })
   .strict();
-type Variable = z.infer<typeof variableSchema>;
+// type Variable = z.infer<typeof variableSchema>;
 
 const VariablesSchema = z.record(
   z.string().regex(validVariableName),
   variableSchema,
 );
-type Variables = z.infer<typeof VariablesSchema>;
+// type Variables = z.infer<typeof VariablesSchema>;
 
 // Node, Edge, and Ego Schemas
 const nodeSchema = z
@@ -103,7 +103,7 @@ const nodeSchema = z
   })
   .strict();
 
-type Node = z.infer<typeof nodeSchema>;
+// type Node = z.infer<typeof nodeSchema>;
 
 const edgeSchema = z
   .object({

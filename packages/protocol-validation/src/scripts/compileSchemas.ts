@@ -3,8 +3,8 @@ import standaloneCode from 'ajv/dist/standalone/index.js';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 
-const SCHEMA_SRC_PATH = './lib/protocol-validation/schemas/src';
-const SCHEMA_OUTPUT_PATH = './lib/protocol-validation/schemas/compiled';
+const SCHEMA_SRC_PATH = './src/schemas/src';
+const SCHEMA_OUTPUT_PATH = './src/schemas/compiled';
 
 const ajv = new Ajv({
   code: { source: true, esm: true, lines: true },
