@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "tsx ./lib/writeSidebarJson.ts && pnpm next dev --turbopack",
+		"dev": "tsx ./lib/writeSidebarJson.ts && pnpm next dev",
 		"build": "pnpm next build",
 		"postbuild": "pnpm next-sitemap",
 		"prebuild": "tsx ./lib/writeSidebarJson.ts",
