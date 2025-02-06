@@ -15,7 +15,6 @@
 		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"dev": "npm run build -- --watch",
 		"test": "vitest",
-		"validate-protocol": "tsx ./src/scripts/validateProtocol.ts",
 		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
 	},
 	"files": ["dist"],

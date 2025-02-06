@@ -2,9 +2,11 @@ import type Zip from "jszip";
 import JSZip from "jszip";
 import { execSync } from "node:child_process";
 import { createDecipheriv } from "node:crypto";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
 
 // Utility functions for encryption handling
@@ -76,33 +78,30 @@ let tempDir: string;
 describe("Test protocols", () => {
 	it.todo("should validate all test protocols");
 
-	// beforeAll(async () => {
-	//   // Create temporary directory
-	//   tempDir = mkdtempSync(join(tmpdir(), 'test-protocols-'));
+	beforeAll(async () => {
+		// Create temporary directory
+		tempDir = mkdtempSync(join(tmpdir(), "test-protocols-"));
 
-	//   // Skip download in CI if protocols are already present
-	//   if (process.env.CI && process.env.SKIP_PROTOCOL_DOWNLOAD) {
-	//     console.log('Skipping protocol download in CI');
-	//     return;
-	//   }
+		// Skip download in CI if protocols are already present
+		if (process.env.CI && process.env.SKIP_PROTOCOL_DOWNLOAD) {
+			console.log("Skipping protocol download in CI");
+			return;
+		}
 
-	//   await downloadAndDecryptProtocols(tempDir);
-	// });
+		await downloadAndDecryptProtocols(tempDir);
+	});
 
-	// afterAll(() => {
-	//   // Clean up temporary directory
-	//   rmSync(tempDir, { recursive: true, force: true });
-	// });
+	afterAll(() => {
+		// Clean up temporary directory
+		rmSync(tempDir, { recursive: true, force: true });
+	});
 
-	// it.each(readdirSync(tempDir).filter((file) => file.endsWith('.netcanvas')))(
-	//   '%s',
-	//   async (protocol) => {
-	//     const protocolPath = join(tempDir, protocol);
-	//     const result = await extractAndValidate(protocolPath);
+	it.each(readdirSync(tempDir).filter((file) => file.endsWith(".netcanvas")))("%s", async (protocol) => {
+		const protocolPath = join(tempDir, protocol);
+		const result = await extractAndValidate(protocolPath);
 
-	//     expect(result.isValid).toBe(true);
-	//     expect(result.schemaErrors).toEqual([]);
-	//     expect(result.logicErrors).toEqual([]);
-	//   },
-	// );
+		expect(result.isValid).toBe(true);
+		expect(result.schemaErrors).toEqual([]);
+		expect(result.logicErrors).toEqual([]);
+	});
 });
