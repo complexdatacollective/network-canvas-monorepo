@@ -10,10 +10,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
 
-// Load environment variables only if they are not already set in CI environment
-if (!process.env.CI) {
-	dotenv.config();
-}
+dotenv.config();
 
 // Utility functions for encryption handling
 const decryptFile = async (encryptedBuffer: Buffer, key: string, iv: string): Promise<Buffer> => {

@@ -24,9 +24,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Create .env file
+        run: |
+          echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > .env
+          echo "PROTOCOL_ENCRYPTION_IV=${{ secrets.PROTOCOL_ENCRYPTION_IV }}" >> .env
+          echo "ENCRYPTED_PROTOCOLS_URL=${{ secrets.ENCRYPTED_PROTOCOLS_URL }}" >> .env
+
       - name: Run All Tests
-        env:
-          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
-          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
-          ENCRYPTED_PROTOCOLS_URL: ${{ secrets.ENCRYPTED_PROTOCOLS_URL }}
         run: pnpm test
