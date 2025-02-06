@@ -25,8 +25,8 @@ jobs:
         run: pnpm install
 
       - name: Run All Tests
-        run: pnpm test
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
           PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
           ENCRYPTED_PROTOCOLS_URL: ${{ secrets.ENCRYPTED_PROTOCOLS_URL }}
+        run: pnpm test
