@@ -23,6 +23,10 @@ const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
 	const encryptionIv = process.env.PROTOCOL_ENCRYPTION_IV;
 	const githubUrl = process.env.ENCRYPTED_PROTOCOLS_URL;
 
+	if (!githubUrl) {
+		throw new Error("Encrypted protocols URL must be set in environment variables");
+	}
+
 	if (!encryptionKey || !encryptionIv) {
 		throw new Error("Encryption key and IV must be set in environment variables");
 	}
