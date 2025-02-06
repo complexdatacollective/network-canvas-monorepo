@@ -34,11 +34,14 @@ const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
 
 	try {
 		console.log("Downloading encrypted protocols...");
-		execSync(`curl -L -o ${join(tempDir, "protocols.tar.gz.enc")} ${githubUrl}`);
+		// execSync(`curl -L -o ${join(tempDir, "protocols_20250206_141329.tar.gz.enc")} ${githubUrl}`);
+		// TESTING- REMOVE: get the encrypted file from the local file system
+		const encryptedData = await readFile(join(process.cwd(), "/src/__tests__/protocols_20250206_141329.tar.gz.enc"));
+		// const encryptedData = await readFile(join(tempDir, "protocols_20250206_141329.tar.gz.enc"));
 
 		// Decrypt the file
 		console.log("Decrypting protocols...");
-		const encryptedData = await readFile(join(tempDir, "protocols.tar.gz.enc"));
+
 		const decryptedData = await decryptFile(encryptedData, encryptionKey, encryptionIv);
 		await writeFile(join(tempDir, "protocols.tar.gz"), decryptedData);
 
@@ -101,12 +104,14 @@ describe("Test protocols", () => {
 	});
 
 	it("should validate each protocol file", async () => {
-		const files = readdirSync(tempDir).filter((file) => file.endsWith(".netcanvas"));
+		const protocolFolder = join(tempDir, "protocols");
+		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas"));
+		console.log("Found", files.length, "protocol files");
 
 		expect(files.length).toBeGreaterThan(0);
 
 		for (const protocol of files) {
-			const protocolPath = join(tempDir, protocol);
+			const protocolPath = join(protocolFolder, protocol);
 			const result = await extractAndValidate(protocolPath);
 
 			expect(result.isValid).toBe(true);

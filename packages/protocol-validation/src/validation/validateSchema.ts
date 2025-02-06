@@ -20,7 +20,7 @@ export const validateSchema = async (protocol: Protocol, forceVersion?: number) 
 	let validator: ValidateFunction;
 
 	try {
-		const result = (await import(`~/lib/protocol-validation/schemas/compiled/${version}.js`)) as {
+		const result = (await import(`../schemas/compiled/${version}.js`)) as {
 			default: ValidateFunction;
 		};
 
