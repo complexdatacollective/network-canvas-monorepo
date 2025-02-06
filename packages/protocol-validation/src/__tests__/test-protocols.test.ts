@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import type Zip from "jszip";
 import JSZip from "jszip";
 import { execSync } from "node:child_process";
@@ -8,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
+dotenv.config();
 
 // Utility functions for encryption handling
 const decryptFile = async (encryptedBuffer: Buffer, key: string, iv: string): Promise<Buffer> => {
@@ -19,14 +21,11 @@ const decryptFile = async (encryptedBuffer: Buffer, key: string, iv: string): Pr
 const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
 	const encryptionKey = process.env.PROTOCOL_ENCRYPTION_KEY;
 	const encryptionIv = process.env.PROTOCOL_ENCRYPTION_IV;
+	const githubUrl = process.env.ENCRYPTED_PROTOCOLS_URL;
 
 	if (!encryptionKey || !encryptionIv) {
 		throw new Error("Encryption key and IV must be set in environment variables");
 	}
-
-	// Download encrypted protocols from GitHub LFS
-	// Replace with your actual GitHub repository URL
-	const githubUrl = "https://github.com/YOUR_ORG/YOUR_REPO/raw/main/test-protocols.tar.gz.enc";
 
 	try {
 		console.log("Downloading encrypted protocols...");
@@ -96,12 +95,18 @@ describe("Test protocols", () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	it.each(readdirSync(tempDir).filter((file) => file.endsWith(".netcanvas")))("%s", async (protocol) => {
-		const protocolPath = join(tempDir, protocol);
-		const result = await extractAndValidate(protocolPath);
+	it("should validate each protocol file", async () => {
+		const files = readdirSync(tempDir).filter((file) => file.endsWith(".netcanvas"));
 
-		expect(result.isValid).toBe(true);
-		expect(result.schemaErrors).toEqual([]);
-		expect(result.logicErrors).toEqual([]);
+		expect(files.length).toBeGreaterThan(0);
+
+		for (const protocol of files) {
+			const protocolPath = join(tempDir, protocol);
+			const result = await extractAndValidate(protocolPath);
+
+			expect(result.isValid).toBe(true);
+			expect(result.schemaErrors).toEqual([]);
+			expect(result.logicErrors).toEqual([]);
+		}
 	});
 });

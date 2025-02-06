@@ -400,6 +400,9 @@ importers:
       chalk:
         specifier: ^5.3.0
         version: 5.4.1
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.4.5
       es-toolkit:
         specifier: ^1.31.0
         version: 1.32.0

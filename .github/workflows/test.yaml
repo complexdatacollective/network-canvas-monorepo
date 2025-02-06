@@ -23,5 +23,10 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
       - name: Install dependencies
         run: pnpm install
+
       - name: Run All Tests
         run: pnpm test
+        env:
+          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+          GITHUB_PROTOCOL_URL: ${{ secrets.ENCRYPTED_PROTOCOLS_URL }}
