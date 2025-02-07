@@ -8,7 +8,16 @@ import { errToString } from "./validation/helpers";
 import { validateLogic } from "./validation/validateLogic";
 import { validateSchema } from "./validation/validateSchema";
 
-export { canUpgrade, errToString, getMigrationNotes, getVariableNamesFromNetwork, migrateProtocol, validateNames };
+export {
+	canUpgrade,
+	errToString,
+	getMigrationNotes,
+	getVariableNamesFromNetwork,
+	migrateProtocol,
+	validateLogic,
+	validateNames,
+	validateSchema,
+};
 
 export type ValidationError = {
 	path: string;
