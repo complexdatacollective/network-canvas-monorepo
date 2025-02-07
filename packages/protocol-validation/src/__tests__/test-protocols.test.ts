@@ -12,6 +12,14 @@ import { validateProtocol } from "../index";
 
 dotenv.config();
 
+const checkEnvVariable = (varName: string): string => {
+	const value = process.env[varName];
+	if (!value) {
+		throw new Error(`Missing environment variable: ${varName}`);
+	}
+	return value;
+};
+
 // Utility functions for encryption handling
 const decryptFile = async (encryptedBuffer: Buffer, key: string, iv: string): Promise<Buffer> => {
 	const decipher = createDecipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.from(iv, "hex"));
@@ -20,28 +28,27 @@ const decryptFile = async (encryptedBuffer: Buffer, key: string, iv: string): Pr
 };
 
 const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
-	const encryptionKey = process.env.PROTOCOL_ENCRYPTION_KEY;
-	const encryptionIv = process.env.PROTOCOL_ENCRYPTION_IV;
-	const githubUrl = process.env.ENCRYPTED_PROTOCOLS_URL;
+	const encryptionKey = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
+	const encryptionIv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
+	const githubUrl = checkEnvVariable("ENCRYPTED_PROTOCOLS_URL");
 
-	if (!githubUrl) {
-		throw new Error("Encrypted protocols URL must be set in environment variables");
-	}
-
-	if (!encryptionKey || !encryptionIv) {
-		throw new Error("Encryption key and IV must be set in environment variables");
+	const githubToken = process.env.GITHUB_TOKEN;
+	if (!githubToken) {
+		console.warn(
+			"Warning: Missing GITHUB_TOKEN environment variable. If authentication is needed for accessing encrypted files, please provide it.",
+		);
 	}
 
 	try {
 		console.log("Downloading encrypted protocols...");
 		execSync(
-			`curl -L --fail --retry 3 -o ${join(tempDir, "protocols_20250206_141329.tar.gz.enc")} \
+			`curl -L --fail --retry 3 -o ${join(tempDir, "protocols.tar.gz.enc")} \
 			-H "Authorization: token ${process.env.GITHUB_TOKEN}" \
 			"${githubUrl}"`,
 			{ stdio: "inherit" },
 		);
 
-		const encryptedData = await readFile(join(tempDir, "protocols_20250206_141329.tar.gz.enc"));
+		const encryptedData = await readFile(join(tempDir, "protocols.tar.gz.enc"));
 
 		// Decrypt the file
 		console.log("Decrypting protocols...");
@@ -93,12 +100,6 @@ describe("Test protocols", () => {
 		// Create temporary directory
 		tempDir = mkdtempSync(join(tmpdir(), "test-protocols-"));
 
-		// Skip download in CI if protocols are already present
-		if (process.env.CI && process.env.SKIP_PROTOCOL_DOWNLOAD) {
-			console.log("Skipping protocol download in CI");
-			return;
-		}
-
 		await downloadAndDecryptProtocols(tempDir);
 	});
 
@@ -109,9 +110,9 @@ describe("Test protocols", () => {
 
 	it("should validate each protocol file", async () => {
 		const protocolFolder = join(tempDir, "protocols");
-		// filter out apple's ._ files
+		// filter for .netcanvas files and remove apple's ._ AppleDouble files
 		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas") && !file.startsWith("._"));
-		console.log("Found", files.length, "protocol files: ");
+		console.log("Found", files.length, "protocol files");
 		expect(files.length).toBeGreaterThan(0);
 
 		for (const protocol of files) {
