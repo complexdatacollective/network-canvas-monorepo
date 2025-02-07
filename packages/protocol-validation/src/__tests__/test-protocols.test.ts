@@ -6,7 +6,7 @@ import { createDecipheriv } from "node:crypto";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import path, { join } from "node:path";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
 
@@ -35,11 +35,12 @@ const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
 	try {
 		console.log("Downloading encrypted protocols...");
 		execSync(
-			`curl -L --fail --retry 3 -o ${path.join(tempDir, "protocols_20250206_141329.tar.gz.enc")} \
+			`curl -L --fail --retry 3 -o ${join(tempDir, "protocols_20250206_141329.tar.gz.enc")} \
 			-H "Authorization: token ${process.env.GITHUB_TOKEN}" \
 			"${githubUrl}"`,
 			{ stdio: "inherit" },
 		);
+
 		const encryptedData = await readFile(join(tempDir, "protocols_20250206_141329.tar.gz.enc"));
 
 		// Decrypt the file
@@ -90,13 +91,8 @@ describe("Test protocols", () => {
 
 	beforeAll(async () => {
 		// Create temporary directory
-		if (process.env.GITHUB_ACTIONS) {
-			// GitHub actions: use RUNNER_TEMP directory
-			tempDir = path.join(process.env.RUNNER_TEMP, "test-protocols-temp");
-		} else {
-			// Locally: use system temp directory
-			tempDir = mkdtempSync(path.join(tmpdir(), "test-protocols-"));
-		}
+		tempDir = mkdtempSync(join(tmpdir(), "test-protocols-"));
+
 		// Skip download in CI if protocols are already present
 		if (process.env.CI && process.env.SKIP_PROTOCOL_DOWNLOAD) {
 			console.log("Skipping protocol download in CI");
@@ -114,7 +110,14 @@ describe("Test protocols", () => {
 	it("should validate each protocol file", async () => {
 		const protocolFolder = join(tempDir, "protocols");
 		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas"));
-		console.log("Found", files.length, "protocol files");
+		console.log("Found", files.length, "protocol files: ", files);
+		// log the size of each file
+		for (const file of files) {
+			const stats = execSync(`stat -f %z ${join(protocolFolder, file)}`)
+				.toString()
+				.trim();
+			console.log(file, "size:", stats, "bytes");
+		}
 
 		expect(files.length).toBeGreaterThan(0);
 
