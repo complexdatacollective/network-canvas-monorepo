@@ -90,8 +90,13 @@ describe("Test protocols", () => {
 
 	beforeAll(async () => {
 		// Create temporary directory
-		tempDir = mkdtempSync(join(tmpdir(), "test-protocols-"));
-
+		if (process.env.GITHUB_ACTIONS) {
+			// GitHub actions: use RUNNER_TEMP directory
+			tempDir = path.join(process.env.RUNNER_TEMP, "test-protocols-temp");
+		} else {
+			// Locally: use system temp directory
+			tempDir = mkdtempSync(path.join(tmpdir(), "test-protocols-"));
+		}
 		// Skip download in CI if protocols are already present
 		if (process.env.CI && process.env.SKIP_PROTOCOL_DOWNLOAD) {
 			console.log("Skipping protocol download in CI");
