@@ -2,7 +2,7 @@
 
 This npm package implements methods for validating Network Canvas protocol files against an appropriate JSON schema.
 
-It exports three methods:
+It exports three primary methods for protocol validation:
 
 1. validateSchema - validates a schema against the JSON schema
 
@@ -31,8 +31,38 @@ try {
 }
 ```
 
-It also exports migration functionality for migrating protocols from one version to another.
+It also exports several utility methods for managing protocol validation.
+
+1. migrateProtocol - migrates protocols from one version to another
 
 ```js
 const migratedProtocol = migrateProtocol(8, protocolJson);
+```
+2. canUpgrade - checks if protocol can be upgraded from one schema version to another
+
+```js
+const canProtocolUpgrade = canUpgrade(7, 8);
+```
+
+3. errToString - converts a validation error object into a string
+
+```js
+const errString = errToString(errObj);
+```
+
+4. getMigrationNotes - returns migration notes on the changes between a source schema version and a target schema version.
+
+```js
+const migrationNotes = getMigrationNotes(7, 8);
+```
+
+5. getVariableNamesFromNetwork - returns variable names from an external network data source
+
+```js
+const variableNames = getVariableNamesFromNetwork(network);
+```
+
+6. validateNames - validates variable names to ensure they only contain letters, numbers, and the symbols ._-:
+```js
+const validationResult = validateNames(variableNamesArray);
 ```
