@@ -6,7 +6,7 @@ import { createDecipheriv } from "node:crypto";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path, { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
 
@@ -34,10 +34,13 @@ const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
 
 	try {
 		console.log("Downloading encrypted protocols...");
-		// execSync(`curl -L -o ${join(tempDir, "protocols_20250206_141329.tar.gz.enc")} ${githubUrl}`);
-		// TESTING- REMOVE: get the encrypted file from the local file system
-		const encryptedData = await readFile(join(process.cwd(), "/src/__tests__/protocols_20250206_141329.tar.gz.enc"));
-		// const encryptedData = await readFile(join(tempDir, "protocols_20250206_141329.tar.gz.enc"));
+		execSync(
+			`curl -L --fail --retry 3 -o ${path.join(tempDir, "protocols_20250206_141329.tar.gz.enc")} \
+			-H "Authorization: token ${process.env.GITHUB_TOKEN}" \
+			"${githubUrl}"`,
+			{ stdio: "inherit" },
+		);
+		const encryptedData = await readFile(join(tempDir, "protocols_20250206_141329.tar.gz.enc"));
 
 		// Decrypt the file
 		console.log("Decrypting protocols...");
