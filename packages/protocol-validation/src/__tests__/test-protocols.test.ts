@@ -109,7 +109,8 @@ describe("Test protocols", () => {
 
 	it("should validate each protocol file", async () => {
 		const protocolFolder = join(tempDir, "protocols");
-		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas"));
+		// filter out apple's ._ files
+		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas") && !file.startsWith("._"));
 		console.log("Found", files.length, "protocol files: ", files);
 		// log the size of each file
 		for (const file of files) {
