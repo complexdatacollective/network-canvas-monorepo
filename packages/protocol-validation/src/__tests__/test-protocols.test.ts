@@ -1,12 +1,11 @@
 import dotenv from "dotenv";
 import type Zip from "jszip";
 import JSZip from "jszip";
-import { execSync } from "node:child_process";
 import { createDecipheriv } from "node:crypto";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import * as tar from "tar";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
 
@@ -24,65 +23,55 @@ const checkEnvVariable = (varName: string): string => {
 const decryptFile = async (encryptedBuffer: Buffer) => {
 	const key = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
 	const iv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
-	const decipher = createDecipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.from(iv, "hex"));
-	const decrypted = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
-	return decrypted;
+  const decipher = createDecipheriv("aes-256-cbc", key, iv);
+  return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 };
-
 
 async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
 	const githubToken = checkEnvVariable("GITHUB_TOKEN");
 
 	try {
-		console.log("Downloading encrypted protocols...");
-// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
-	const res = await fetch(
-		"https://api.github.com/repos/complexdatacollective/test-protocols/releases/latest",
-		{
+		// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
+		const res = await fetch("https://api.github.com/repos/complexdatacollective/test-protocols/releases/latest", {
 			headers: {
-				Authorization: `token ${githubToken}`,
+				Authorization: `Bearer ${githubToken}`,
 			},
-		},
-	);
+		});
 
-	const release = await res.json();
+		const release = await res.json();
 
-	console.log(release);
+		// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
+		const asset = release.assets.find((asset) => asset.name === "protocols.tar.gz.enc");
 
-	// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
-	const asset = release.assets.find((asset) => asset.name === "protocols.tar.gz.enc");
-
-	console.log('Found asset:', asset);
-
-	// Fetch the asset into a Buffer
-	const assetRes = await fetch(
-		asset.browser_download_url,
-		{
+		// Fetch the asset into a Buffer
+		const assetRes = await fetch(asset.url, {
 			headers: {
-				Authorization: `token ${githubToken}`,
+				Authorization: `Bearer ${githubToken}`,
+				Accept: 'application/octet-stream' 
 			},
-		},
-	);
-
-	console.log('Fetched asset:', assetRes);
+		});
 
 		const encryptedData = await assetRes.arrayBuffer();
+		console.log(encryptedData);
 		const encryptedBuffer = Buffer.from(encryptedData);
 
 		// Decrypt the file
-		console.log("Decrypting protocols...");
-
 		const decryptedData = await decryptFile(encryptedBuffer);
+		console.log(`${tmpdir}/protocols.tar.gz`);
 		await writeFile(join(tempDir, "protocols.tar.gz"), decryptedData);
 
 		// Extract the tar.gz file
 		console.log("Extracting protocols...");
-		execSync(`tar -xzf ${join(tempDir, "protocols.tar.gz")} -C ${tempDir}`);
+
+		await tar.x({
+			file: join(tempDir, "protocols.tar.gz"),
+			cwd: tempDir,
+		});
 	} catch (error) {
 		console.error("Error preparing protocols:", error);
 		throw error;
 	}
-};
+}
 
 const getProtocolJsonAsObject = async (zip: Zip) => {
 	const protocolString = await zip.file("protocol.json")?.async("string");
@@ -113,24 +102,23 @@ const extractAndValidate = async (protocolPath: string) => {
 let tempDir: string;
 
 describe("Test protocols", () => {
-	it.todo("should validate all test protocols");
-
 	beforeAll(async () => {
 		// Create temporary directory
-		tempDir = mkdtempSync(join(tmpdir(), "test-protocols-"));
+		tempDir = await mkdtemp(join(tmpdir(), "test-protocols-"));
 
 		await downloadAndDecryptProtocols(tempDir);
 	});
 
-	afterAll(() => {
+	afterAll(async () => {
 		// Clean up temporary directory
-		rmSync(tempDir, { recursive: true, force: true });
+		await rm(tempDir, { recursive: true, force: true });
 	});
 
 	it("should validate each protocol file", async () => {
 		const protocolFolder = join(tempDir, "protocols");
 		// filter for .netcanvas files and remove apple's ._ AppleDouble files
-		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas") && !file.startsWith("._"));
+		const unfilteredFiles = await readdir(protocolFolder);
+		const files = unfilteredFiles.filter((file) => file.endsWith(".netcanvas") && !file.startsWith("._"));
 		console.log("Found", files.length, "protocol files");
 		expect(files.length).toBeGreaterThan(0);
 
