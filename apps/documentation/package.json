@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "tsx ./lib/writeSidebarJson.ts && pnpm next dev --turbopack",
+		"dev": "tsx ./lib/writeSidebarJson.ts && pnpm next dev",
 		"build": "pnpm next build",
 		"postbuild": "pnpm next-sitemap",
 		"prebuild": "tsx ./lib/writeSidebarJson.ts",
@@ -42,8 +42,6 @@
 		"@tailwindcss/typography": "^0.5.15",
 		"@types/hast": "^3.0.4",
 		"@types/node": "^20.17.6",
-		"@types/react": "npm:types-react@19.0.0-rc.1",
-		"@types/react-dom": "npm:types-react-dom@19.0.0-rc.1",
 		"@types/unist": "^3.0.3",
 		"gray-matter": "^4.0.3",
 		"hast-util-heading-rank": "^3.0.0",
