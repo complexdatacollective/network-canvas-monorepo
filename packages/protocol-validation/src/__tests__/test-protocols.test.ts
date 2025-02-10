@@ -52,7 +52,6 @@ async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
 		});
 
 		const encryptedData = await assetRes.arrayBuffer();
-		console.log(encryptedData);
 		const encryptedBuffer = Buffer.from(encryptedData);
 
 		// Decrypt the file
@@ -107,7 +106,7 @@ describe("Test protocols", () => {
 		tempDir = await mkdtemp(join(tmpdir(), "test-protocols-"));
 
 		await downloadAndDecryptProtocols(tempDir);
-	});
+	}, 300000);
 
 	afterAll(async () => {
 		// Clean up temporary directory
