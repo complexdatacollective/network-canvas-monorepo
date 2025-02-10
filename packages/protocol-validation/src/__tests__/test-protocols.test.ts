@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import type Zip from "jszip";
 import JSZip from "jszip";
 import { createDecipheriv } from "node:crypto";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readdirSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as tar from "tar";
@@ -23,8 +24,8 @@ const checkEnvVariable = (varName: string): string => {
 const decryptFile = async (encryptedBuffer: Buffer) => {
 	const key = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
 	const iv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
-  const decipher = createDecipheriv("aes-256-cbc", key, iv);
-  return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+	const decipher = createDecipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.from(iv, "hex"));
+	return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 };
 
 async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
@@ -47,7 +48,7 @@ async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
 		const assetRes = await fetch(asset.url, {
 			headers: {
 				Authorization: `Bearer ${githubToken}`,
-				Accept: 'application/octet-stream' 
+				Accept: "application/octet-stream",
 			},
 		});
 
@@ -114,10 +115,8 @@ describe("Test protocols", () => {
 	});
 
 	it("should validate each protocol file", async () => {
-		const protocolFolder = join(tempDir, "protocols");
-		// filter for .netcanvas files and remove apple's ._ AppleDouble files
-		const unfilteredFiles = await readdir(protocolFolder);
-		const files = unfilteredFiles.filter((file) => file.endsWith(".netcanvas") && !file.startsWith("._"));
+		const protocolFolder = join(tempDir, "data");
+		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas"));
 		console.log("Found", files.length, "protocol files");
 		expect(files.length).toBeGreaterThan(0);
 
