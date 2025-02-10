@@ -42,7 +42,7 @@ async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
 		const release = await res.json();
 
 		// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
-		const asset = release.assets.find((asset) => asset.name === "protocols.tar.gz.enc");
+		const asset = release.assets.find((asset: { name: string }) => asset.name === "protocols.tar.gz.enc");
 
 		// Fetch the asset into a Buffer
 		const assetRes = await fetch(asset.url, {
