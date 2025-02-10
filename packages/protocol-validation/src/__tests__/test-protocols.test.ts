@@ -1,13 +1,10 @@
 import dotenv from "dotenv";
+import gunzipMaybe from "gunzip-maybe";
 import type Zip from "jszip";
 import JSZip from "jszip";
 import { createDecipheriv } from "node:crypto";
-import { readdirSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import * as tar from "tar";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import tar from "tar-stream";
+import { describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
 
 dotenv.config();
@@ -28,7 +25,7 @@ const decryptFile = async (encryptedBuffer: Buffer) => {
 	return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 };
 
-async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
+async function downloadAndDecryptProtocols(): Promise<Buffer> {
 	const githubToken = checkEnvVariable("GITHUB_TOKEN");
 
 	try {
@@ -56,17 +53,7 @@ async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
 		const encryptedBuffer = Buffer.from(encryptedData);
 
 		// Decrypt the file
-		const decryptedData = await decryptFile(encryptedBuffer);
-		console.log(`${tmpdir}/protocols.tar.gz`);
-		await writeFile(join(tempDir, "protocols.tar.gz"), decryptedData);
-
-		// Extract the tar.gz file
-		console.log("Extracting protocols...");
-
-		await tar.x({
-			file: join(tempDir, "protocols.tar.gz"),
-			cwd: tempDir,
-		});
+		return await decryptFile(encryptedBuffer);
 	} catch (error) {
 		console.error("Error preparing protocols:", error);
 		throw error;
@@ -84,49 +71,57 @@ const getProtocolJsonAsObject = async (zip: Zip) => {
 	return protocol;
 };
 
-const extractAndValidate = async (protocolPath: string) => {
-	const buffer = await readFile(protocolPath);
-	const zip = await JSZip.loadAsync(buffer);
+const extractAndValidate = async (protocolBuffer: Buffer) => {
+	const zip = await JSZip.loadAsync(protocolBuffer);
 	const protocol = await getProtocolJsonAsObject(zip);
 
 	let schemaVersion = undefined;
 	if (!protocol.schemaVersion || protocol.schemaVersion === "1.0.0") {
-		console.log('schemaVersion is missing or "1.0.0" for', protocolPath);
+		console.log('schemaVersion is missing or "1.0.0" for', protocol.name);
 		schemaVersion = 1;
 	}
 
 	return await validateProtocol(protocol, schemaVersion);
 };
 
-// Create temporary directory for test protocols
-let tempDir: string;
-
 describe("Test protocols", () => {
-	beforeAll(async () => {
-		// Create temporary directory
-		tempDir = await mkdtemp(join(tmpdir(), "test-protocols-"));
-
-		await downloadAndDecryptProtocols(tempDir);
-	}, 300000);
-
-	afterAll(async () => {
-		// Clean up temporary directory
-		await rm(tempDir, { recursive: true, force: true });
-	});
-
 	it("should validate each protocol file", async () => {
-		const protocolFolder = join(tempDir, "data");
-		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas"));
-		console.log("Found", files.length, "protocol files");
-		expect(files.length).toBeGreaterThan(0);
+		const decryptedData = await downloadAndDecryptProtocols();
+		const gunzipStream = gunzipMaybe();
+		const extractStream = tar.extract();
+		const protocolBuffers: Buffer[] = [];
 
-		for (const protocol of files) {
-			const protocolPath = join(protocolFolder, protocol);
-			const result = await extractAndValidate(protocolPath);
+		// extraction
+		extractStream.on("entry", async (header, stream, next) => {
+			if (header.name.endsWith(".netcanvas")) {
+				let protocolData = Buffer.alloc(0);
 
-			expect(result.isValid).toBe(true);
-			expect(result.schemaErrors).toEqual([]);
-			expect(result.logicErrors).toEqual([]);
-		}
-	});
+				stream.on("data", (chunk) => {
+					protocolData = Buffer.concat([protocolData, chunk]);
+				});
+
+				stream.on("end", async () => {
+					protocolBuffers.push(protocolData);
+					next();
+				});
+			} else {
+				stream.resume();
+				next();
+			}
+		});
+
+		// validation
+		extractStream.on("finish", async () => {
+			expect(protocolBuffers.length).toBeGreaterThan(0);
+			for (const protocolBuffer of protocolBuffers) {
+				const result = await extractAndValidate(protocolBuffer);
+				expect(result.isValid).toBe(true);
+				expect(result.schemaErrors).toEqual([]);
+				expect(result.logicErrors).toEqual([]);
+			}
+		});
+
+		gunzipStream.end(decryptedData);
+		gunzipStream.pipe(extractStream);
+	}, 300000);
 });
