@@ -21,39 +21,58 @@ const checkEnvVariable = (varName: string): string => {
 };
 
 // Utility functions for encryption handling
-const decryptFile = async (encryptedBuffer: Buffer, key: string, iv: string): Promise<Buffer> => {
+const decryptFile = async (encryptedBuffer: Buffer) => {
+	const key = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
+	const iv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
 	const decipher = createDecipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.from(iv, "hex"));
 	const decrypted = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 	return decrypted;
 };
 
-const downloadAndDecryptProtocols = async (tempDir: string): Promise<void> => {
-	const encryptionKey = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
-	const encryptionIv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
-	const githubUrl = checkEnvVariable("ENCRYPTED_PROTOCOLS_URL");
 
-	const githubToken = process.env.GITHUB_TOKEN;
-	if (!githubToken) {
-		console.warn(
-			"Warning: Missing GITHUB_TOKEN environment variable. If authentication is needed for accessing encrypted files, please provide it.",
-		);
-	}
+async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
+	const githubToken = checkEnvVariable("GITHUB_TOKEN");
 
 	try {
 		console.log("Downloading encrypted protocols...");
-		execSync(
-			`curl -L --fail --retry 3 -o ${join(tempDir, "protocols.tar.gz.enc")} \
-			-H "Authorization: token ${process.env.GITHUB_TOKEN}" \
-			"${githubUrl}"`,
-			{ stdio: "inherit" },
-		);
+// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
+	const res = await fetch(
+		"https://api.github.com/repos/complexdatacollective/test-protocols/releases/latest",
+		{
+			headers: {
+				Authorization: `token ${githubToken}`,
+			},
+		},
+	);
 
-		const encryptedData = await readFile(join(tempDir, "protocols.tar.gz.enc"));
+	const release = await res.json();
+
+	console.log(release);
+
+	// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
+	const asset = release.assets.find((asset) => asset.name === "protocols.tar.gz.enc");
+
+	console.log('Found asset:', asset);
+
+	// Fetch the asset into a Buffer
+	const assetRes = await fetch(
+		asset.browser_download_url,
+		{
+			headers: {
+				Authorization: `token ${githubToken}`,
+			},
+		},
+	);
+
+	console.log('Fetched asset:', assetRes);
+
+		const encryptedData = await assetRes.arrayBuffer();
+		const encryptedBuffer = Buffer.from(encryptedData);
 
 		// Decrypt the file
 		console.log("Decrypting protocols...");
 
-		const decryptedData = await decryptFile(encryptedData, encryptionKey, encryptionIv);
+		const decryptedData = await decryptFile(encryptedBuffer);
 		await writeFile(join(tempDir, "protocols.tar.gz"), decryptedData);
 
 		// Extract the tar.gz file
