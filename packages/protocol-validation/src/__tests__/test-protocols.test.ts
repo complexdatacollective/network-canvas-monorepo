@@ -1,15 +1,13 @@
-import type { Protocol } from "@codaco/shared-consts";
 import dotenv from "dotenv";
+import gunzip from "gunzip-maybe";
 import type Zip from "jszip";
 import JSZip from "jszip";
 import { createDecipheriv } from "node:crypto";
-import { readdirSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import * as tar from "tar";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Readable } from "node:stream";
+import tarStream from "tar-stream";
+import { beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
+import type { Protocol } from "../schemas/src/8.zod";
 
 dotenv.config();
 
@@ -29,8 +27,9 @@ const decryptFile = async (encryptedBuffer: Buffer) => {
 	return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 };
 
-async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
+async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
 	const githubToken = checkEnvVariable("GITHUB_TOKEN");
+	const protocols = new Map<string, Buffer>();
 
 	try {
 		// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
@@ -54,38 +53,51 @@ async function downloadAndDecryptProtocols(tempDir: string): Promise<void> {
 		});
 
 		const encryptedData = await assetRes.arrayBuffer();
-		const encryptedBuffer = Buffer.from(encryptedData);
+		const decryptedData = await decryptFile(Buffer.from(encryptedData));
 
-		// Decrypt the file
-		const decryptedData = await decryptFile(encryptedBuffer);
-		console.log(`${tmpdir}/protocols.tar.gz`);
-		await writeFile(join(tempDir, "protocols.tar.gz"), decryptedData);
+		const readStream = Readable.from(decryptedData);
+		const extract = tarStream.extract();
 
-		// Extract the tar.gz file
-		console.log("Extracting protocols...");
+		await new Promise((resolve, reject) => {
+			extract.on("entry", (header, stream, next) => {
+				if (header.name.startsWith("data/") && header.name.endsWith(".netcanvas")) {
+					const chunks: Buffer[] = [];
+					stream.on("data", (chunk) => chunks.push(chunk));
+					stream.on("end", () => {
+						const fileName = header.name.split("/").pop() as string;
+						protocols.set(fileName, Buffer.concat(chunks));
+						next();
+					});
+				} else {
+					stream.on("end", next);
+				}
+				stream.resume();
+			});
 
-		await tar.x({
-			file: join(tempDir, "protocols.tar.gz"),
-			cwd: tempDir,
+			extract.on("finish", resolve);
+			extract.on("error", reject);
+
+			readStream.pipe(gunzip()).pipe(extract);
 		});
+
+		return protocols;
 	} catch (error) {
 		console.error("Error preparing protocols:", error);
 		throw error;
 	}
 }
 
-const getProtocolJsonAsObject = async (zip: Zip) => {
+const getProtocolJsonAsObject = async (zip: Zip): Promise<Protocol> => {
 	const protocolString = await zip.file("protocol.json")?.async("string");
 
 	if (!protocolString) {
 		throw new Error("protocol.json not found in zip");
 	}
 
-	const protocol = await JSON.parse(protocolString);
-	return protocol;
+	return JSON.parse(protocolString);
 };
 
-const validate = async (protocol) => {
+const validate = async (protocol: Protocol) => {
 	let schemaVersion = undefined;
 	if (!protocol.schemaVersion || protocol.schemaVersion === "1.0.0") {
 		console.log('schemaVersion is missing or "1.0.0" for protocol');
@@ -95,41 +107,24 @@ const validate = async (protocol) => {
 	return await validateProtocol(protocol, schemaVersion);
 };
 
-const extractProtocol = async (protocolPath: string) => {
-	const buffer = await readFile(protocolPath);
-	const zip = await JSZip.loadAsync(buffer);
+const extractProtocol = async (protocolBuffer: Buffer): Promise<Protocol> => {
+	const zip = await JSZip.loadAsync(protocolBuffer);
 	return await getProtocolJsonAsObject(zip);
 };
 
-let tempDir: string;
-let protocols = [] as Protocol[];
+let protocols: Protocol[] = [];
 
 describe("Test protocols", () => {
 	beforeAll(async () => {
-		// Create temporary directory
-		tempDir = await mkdtemp(join(tmpdir(), "test-protocols-"));
+		const protocolBuffers = await downloadAndDecryptProtocols();
 
-		await downloadAndDecryptProtocols(tempDir);
-
-		// Load all the protocols into the context (with parsing and validation data)
-		const protocolFolder = join(tempDir, "data");
-		const files = readdirSync(protocolFolder).filter((file) => file.endsWith(".netcanvas"));
-		expect(files.length).toBeGreaterThan(0);
-
-		// Load all protocols into context
+		// set protocols in context so that they can be accessed in tests
 		protocols = await Promise.all(
-			files.map(async (protocol) => {
-				const protocolPath = join(protocolFolder, protocol);
-				const extracted = await extractProtocol(protocolPath);
-				return extracted;
+			Array.from(protocolBuffers.values()).map(async (buffer) => {
+				return await extractProtocol(buffer);
 			}),
 		);
 	}, 300000);
-
-	afterAll(async () => {
-		// Clean up temporary directory
-		await rm(tempDir, { recursive: true, force: true });
-	});
 
 	it("should have loaded all protocols", () => {
 		expect(protocols.length).toBeGreaterThan(0);
