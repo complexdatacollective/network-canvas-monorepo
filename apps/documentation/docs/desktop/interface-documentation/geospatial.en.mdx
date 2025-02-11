@@ -1,0 +1,78 @@
+---
+title: Geospatial
+---
+
+<InterfaceSummary>
+
+![Geospatial Interface](/assets/uploads/stage-namegeneratorroster.png)
+
+<InterfaceMeta type="Name Interpreter" creates="Geospatial attribute data by allowing the user to select items on a map" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+The Geospatial Interface is a name interpreter Interface that captures geospatial data on the alters in a participant's network.
+When using the Geospatial Interface, participants can select an outlined area on a map, which are defined by a GeoJSON file.
+
+
+## Mapbox Configuration
+
+This interface uses a third-party service called [Mapbox](https://www.mapbox.com/) to provide map functionality.
+To use this service, you need to create an account with Mapbox and generate an API key for communication with Architect, Interviewer, and Fresco.
+
+To create an account on Mapbox, visit https://account.mapbox.com/auth/signup/.
+
+After creating an account, go to https://console.mapbox.com/account/access-tokens/ to copy your access token.
+Tokens are stored as assets and can be viewed, copied, and deleted from the Resource Library in Architect.
+
+
+<TipBox>
+
+Mapbox offers a free tier which provides sufficient features and usage limits for small-scale projects. More information about pricing can be found on the [Mapbox pricing page](https://www.mapbox.com/pricing).
+
+</TipBox>
+
+
+## Defining a Data Source
+This interface requires a GeoJSON source for configuring map layers. These layers provide selectable areas for prompts. 
+
+After uploading a GeoJSON file, select a property from the file to use for map selection. This property’s values will be assigned to the prompt variables.
+
+## Map Style
+You can choose a color for the map outlines and selections. The map style is also customizable. You can select from standard or classic Mapbox styles. Examples can be found in the [Mapbox documentation](https://docs.mapbox.com/api/maps/styles/)
+
+## Configuring Initial Map View
+Use the Edit Map View feature to configure the initial map view. Pan and zoom the map to set the initial view. The map will be centered based on the initial coordinates and zoom level as set here. Resetting the map will return it to this view.
+
+<TipBox danger>
+
+Make sure the selectable areas from your GeoJSON file are visible within the initial map view.
+
+</TipBox>
+
+## Prompts
+
+The Geospatial Interface can include multiple [prompts](/en/desktop/key-concepts/prompts), each corresponding to a single variable.
+The value of each variable is determined by the property of the selected map area from the GeoJSON file.
+
+If a response is made outside the selectable areas on the map, the variable will be assigned 'outside-map-area'.
+
+### Best Practices
+
+<GoodPractice>
+
+Use [network filtering](/en/desktop/key-concepts/network-filtering) to narrow down nodes to only those that fall within the
+selectable map areas. Prior name interpreters, such as categorical bins or node forms, can be used to filter out nodes
+who are outside the map area. This ensures participants are only prompted to select an area on the map for relevant nodes,
+reducing the chances of assigning "outside-map-area" and minimizing response burden.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Bad practice here
+
+</BadPractice>
