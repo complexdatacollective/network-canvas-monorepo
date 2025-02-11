@@ -1,13 +1,14 @@
 import canUpgrade from "./migrations/canUpgrade";
 import getMigrationNotes from "./migrations/getMigrationNotes";
 import { migrateProtocol } from "./migrations/migrateProtocol";
-import type { Protocol } from "./schemas/src/8.zod";
+import type { MapOptions, Protocol } from "./schemas/src/8.zod";
 import { ensureError } from "./utils/ensureError";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
 import { errToString } from "./validation/helpers";
 import { validateLogic } from "./validation/validateLogic";
 import { validateSchema } from "./validation/validateSchema";
 
+// helper methods
 export {
 	canUpgrade,
 	errToString,
@@ -18,6 +19,9 @@ export {
 	validateNames,
 	validateSchema,
 };
+
+// types
+export type { MapOptions, Protocol };
 
 export type ValidationError = {
 	path: string;

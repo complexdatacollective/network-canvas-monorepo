@@ -17,7 +17,9 @@
 		"test": "vitest",
 		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"@codaco/shared-consts": "^0.0.2",
 		"@codaco/tsconfig": "workspace:*",
@@ -32,7 +34,6 @@
 		"gunzip-maybe": "^1.4.2",
 		"jszip": "^3.10.1",
 		"lodash-es": "^4.17.21",
-		"tar": "^7.4.3",
 		"tar-stream": "^3.1.7",
 		"tsup": "^8.3.5",
 		"tsx": "^4.19.2",
