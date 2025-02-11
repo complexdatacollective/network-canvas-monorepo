@@ -152,8 +152,7 @@ const getProtocolJsonAsObject = async (zip: Zip): Promise<Protocol> => {
 
 const validate = async (protocol: Protocol) => {
 	let schemaVersion = undefined;
-	if (!protocol.schemaVersion || protocol.schemaVersion === "1.0.0") {
-		console.log('schemaVersion is missing or "1.0.0" for protocol');
+	if (!protocol.schemaVersion || protocol.schemaVersion.toString() === "1.0.0") {
 		schemaVersion = 1;
 	}
 
