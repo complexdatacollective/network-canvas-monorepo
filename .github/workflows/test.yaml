@@ -2,16 +2,15 @@ name: Dependency Update Tests
 
 on:
   pull_request:
-    branches:
-      - main
-
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     env: 
       PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
       PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
-      ENCRYPTED_PROTOCOLS_URL: ${{ secrets.ENCRYPTED_PROTOCOLS_URL }}
       GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +31,6 @@ jobs:
         run: |
           echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
           echo "PROTOCOL_ENCRYPTION_IV=${{ secrets.PROTOCOL_ENCRYPTION_IV }}" >> packages/protocol-validation/.env
-          echo "ENCRYPTED_PROTOCOLS_URL=${{ secrets.ENCRYPTED_PROTOCOLS_URL }}" >> packages/protocol-validation/.env
           echo "GITHUB_TOKEN=${{ secrets.TEST_PROTOCOL_TOKEN }}" >> packages/protocol-validation/.env
           pnpm test
 
