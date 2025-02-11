@@ -3,6 +3,8 @@ import gunzip from "gunzip-maybe";
 import type Zip from "jszip";
 import JSZip from "jszip";
 import { createDecipheriv } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { Readable } from "node:stream";
 import tarStream from "tar-stream";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -19,6 +21,26 @@ const checkEnvVariable = (varName: string): string => {
 	return value;
 };
 
+const ensureFolderExists = (folderPath: string) => {
+	if (!fs.existsSync(folderPath)) {
+		fs.mkdirSync(folderPath);
+	}
+};
+
+const checkCache = (): number => {
+	const cacheFilePath = path.join(__dirname, ".cache");
+	if (!fs.existsSync(cacheFilePath)) {
+		return 0;
+	}
+	const cache = fs.readFileSync(cacheFilePath, "utf8");
+	return Number.parseInt(cache);
+};
+
+const updateCache = (size: number) => {
+	const cacheFilePath = path.join(__dirname, ".cache");
+	fs.writeFileSync(cacheFilePath, size.toString());
+};
+
 // Utility functions for encryption handling
 const decryptFile = async (encryptedBuffer: Buffer) => {
 	const key = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
@@ -30,6 +52,9 @@ const decryptFile = async (encryptedBuffer: Buffer) => {
 async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
 	const githubToken = checkEnvVariable("GITHUB_TOKEN");
 	const protocols = new Map<string, Buffer>();
+
+	const downloadFolder = path.join(__dirname, "data");
+	ensureFolderExists(downloadFolder);
 
 	try {
 		// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
@@ -44,6 +69,42 @@ async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
 		// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
 		const asset = release.assets.find((asset: { name: string }) => asset.name === "protocols.tar.gz.enc");
 
+		const assetSize = asset.size;
+
+		// Check the cache size and compare it with the current asset size
+		const cacheSize = checkCache();
+		if (cacheSize !== assetSize) {
+			console.log("Cache size mismatch. Downloading new protocols...");
+
+			// If sizes are different, delete the existing data directory
+			const dataFolder = path.join(__dirname, "data");
+			if (fs.existsSync(dataFolder)) {
+				fs.rmSync(dataFolder, { recursive: true, force: true });
+			}
+
+			// Fetch the asset into a Buffer
+			const assetRes = await fetch(asset.url, {
+				headers: {
+					Authorization: `Bearer ${githubToken}`,
+					Accept: "application/octet-stream",
+				},
+			});
+
+			const encryptedData = await assetRes.arrayBuffer();
+			const encryptedBuffer = Buffer.from(encryptedData);
+
+			const decryptedData = await decryptFile(encryptedBuffer);
+
+			// Save the decrypted data to the /data folder
+			ensureFolderExists(dataFolder);
+			const decryptedFilePath = path.join(dataFolder, "protocols.tar.gz");
+			fs.writeFileSync(decryptedFilePath, decryptedData);
+
+			updateCache(assetSize);
+		} else {
+			console.log("Cache is up to date. Skipping download.");
+		}
+
 		// Fetch the asset into a Buffer
 		const assetRes = await fetch(asset.url, {
 			headers: {
@@ -53,7 +114,13 @@ async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
 		});
 
 		const encryptedData = await assetRes.arrayBuffer();
-		const decryptedData = await decryptFile(Buffer.from(encryptedData));
+		const encryptedBuffer = Buffer.from(encryptedData);
+
+		const decryptedData = await decryptFile(encryptedBuffer);
+
+		// save the decryped data to the /data folder
+		const decryptedFilePath = path.join(downloadFolder, "protocols.tar.gz");
+		fs.writeFileSync(decryptedFilePath, decryptedData);
 
 		const readStream = Readable.from(decryptedData);
 		const extract = tarStream.extract();
