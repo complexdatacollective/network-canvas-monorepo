@@ -105,22 +105,8 @@ async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
 			console.log("Cache is up to date. Skipping download.");
 		}
 
-		// Fetch the asset into a Buffer
-		const assetRes = await fetch(asset.url, {
-			headers: {
-				Authorization: `Bearer ${githubToken}`,
-				Accept: "application/octet-stream",
-			},
-		});
-
-		const encryptedData = await assetRes.arrayBuffer();
-		const encryptedBuffer = Buffer.from(encryptedData);
-
-		const decryptedData = await decryptFile(encryptedBuffer);
-
-		// save the decryped data to the /data folder
 		const decryptedFilePath = path.join(downloadFolder, "protocols.tar.gz");
-		fs.writeFileSync(decryptedFilePath, decryptedData);
+		const decryptedData = fs.readFileSync(decryptedFilePath);
 
 		const readStream = Readable.from(decryptedData);
 		const extract = tarStream.extract();
