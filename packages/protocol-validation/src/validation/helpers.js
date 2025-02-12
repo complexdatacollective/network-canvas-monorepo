@@ -15,7 +15,7 @@ export const errToString = (errorObj) => {
 	if (addlInfo) {
 		str += ` '${addlInfo}'`;
 	}
-	return `${str} \n\n`;
+	return str;
 };
 
 const undefinedFormVariables = (form, codebook) =>

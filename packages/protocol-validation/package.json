@@ -17,6 +17,9 @@
 		"test": "vitest",
 		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
 	},
+	"bin": {
+    "@codaco/protocol-validation": "./cli.js"
+  },
 	"files": ["dist"],
 	"devDependencies": {
 		"@codaco/shared-consts": "^0.0.2",
