@@ -15,7 +15,8 @@
 		"build": "tsup src/index.ts --format esm,cjs --target es6 --dts --clean --sourcemap",
 		"dev": "npm run build -- --watch",
 		"test": "vitest",
-		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
+		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts",
+		"zod-to-json": "tsx ./src/scripts/zodToJson.ts"
 	},
 	"files": ["dist"],
 	"devDependencies": {
