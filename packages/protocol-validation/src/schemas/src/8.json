@@ -2,6 +2,15 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$ref": "#/definitions/Protocol",
 	"definitions": {
+		"Experiments": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"encryptNames": {
+					"type": "boolean"
+				}
+			}
+		},
 		"Protocol": {
 			"type": "object",
 			"additionalProperties": false,
@@ -18,6 +27,9 @@
 				},
 				"schemaVersion": {
 					"type": "number"
+				},
+				"experiments": {
+					"$ref": "#/definitions/Experiments"
 				},
 				"codebook": {
 					"$ref": "#/definitions/codebook"
@@ -56,18 +68,11 @@
 		"BaseAsset": {
 			"type": "object",
 			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"type": {
-					"type": "string",
-					"enum": ["image", "video", "network", "geojson", "apikey"]
-				},
 				"name": {
 					"type": "string"
 				}
 			},
-			"required": ["id", "type", "name"]
+			"required": ["name"]
 		},
 		"FileAsset": {
 			"allOf": [
@@ -79,13 +84,13 @@
 					"properties": {
 						"type": {
 							"type": "string",
-							"enum": ["image", "video", "network", "geojson"]
+							"enum": ["audio", "image", "video", "network", "geojson"]
 						},
 						"source": {
 							"type": "string"
 						}
 					},
-					"required": ["source"]
+					"required": ["source", "type"]
 				}
 			]
 		},
@@ -105,7 +110,7 @@
 							"type": "string"
 						}
 					},
-					"required": ["value"]
+					"required": ["value", "type"]
 				}
 			]
 		},
@@ -254,11 +259,30 @@
 				},
 				"mapOptions": {
 					"$ref": "#/definitions/MapOptions"
+				},
+				"validation": {
+					"$ref": "#/definitions/AnonymisationValidation"
 				}
 			},
 			"required": ["id", "label", "type"],
 			"title": "Interface",
 			"anyOf": [
+				{
+					"properties": {
+						"type": {
+							"const": "Anonymisation"
+						}
+					},
+					"required": ["introductionPanel", "validation"]
+				},
+				{
+					"properties": {
+						"type": {
+							"const": "OneToManyDyadCensus"
+						}
+					},
+					"required": ["subject", "behaviours", "prompts"]
+				},
 				{
 					"properties": {
 						"type": {
@@ -326,7 +350,6 @@
 								"OrdinalBin",
 								"CategoricalBin",
 								"DyadCensus",
-								"Anonymisation",
 								"OneToManyDyadCensus",
 								"FamilyTreeCensus"
 							]
@@ -1108,6 +1131,18 @@
 			"type": "string",
 			"enum": ["desc", "asc"],
 			"title": "Direction"
+		},
+		"AnonymisationValidation": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"minLength": {
+					"type": "integer"
+				},
+				"maxLength": {
+					"type": "integer"
+				}
+			}
 		},
 		"MapOptions": {
 			"type": "object",

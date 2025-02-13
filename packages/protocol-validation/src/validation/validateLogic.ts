@@ -327,14 +327,23 @@ export const validateLogic = (protocol: Protocol) => {
 					.join(" ");
 			}
 
-			return `Layout variable "${variable}" not defined in codebook[${subject?.entity}][${subject?.type}].variables.`;
+			if (!subject) {
+				return `Subject not defined for stage. Variable: "${variable}"`;
+			}
+
+			if (subject.entity === "ego") {
+				return `"Ego" not defined in codebook, but referenced by layoutVariable "${variable}".`;
+			}
+
+			return `Layout variable "${variable}" not defined in codebook[${subject.entity}][${subject.type}].variables.`;
 		},
 	);
 
 	v.addValidation<AdditionalAttributes>(
 		"prompts[].additionalAttributes",
 		(additionalAttributes, subject) =>
-			additionalAttributes.every(({ variable }) => getVariablesForSubject(codebook, subject)[variable]),
+			// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
+			additionalAttributes.every(({ variable }) => getVariablesForSubject(codebook, subject!)[variable]),
 		(additionalAttributes) =>
 			`One or more sortable properties not defined in codebook: ${additionalAttributes.map(
 				({ variable }) => variable,

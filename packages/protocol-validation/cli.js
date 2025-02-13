@@ -44,6 +44,7 @@ async function main() {
 			process.exit(0);
 		} else {
 			error("❌ Protocol validation failed:");
+			console.log(result.schemaErrors);
 			const errors = [...result.logicErrors, ...result.schemaErrors];
 
 			for (const e of errors) {

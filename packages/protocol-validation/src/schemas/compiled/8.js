@@ -1,20 +1,21 @@
 "use strict";
 export const validate = validate405;
 export default validate405;
-const schema328 = {"$schema":"http://json-schema.org/draft-07/schema#","$ref":"#/definitions/Protocol","definitions":{"Protocol":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"description":{"type":"string"},"lastModified":{"type":"string","format":"date-time"},"schemaVersion":{"type":"number"},"codebook":{"$ref":"#/definitions/codebook"},"assetManifest":{"$ref":"#/definitions/AssetManifest"},"stages":{"type":"array","items":{"$ref":"#/definitions/Stage"}}},"required":["stages","codebook"],"title":"Protocol"},"AssetManifest":{"type":"object","title":"AssetManifest","additionalProperties":{"$ref":"#/definitions/Asset"}},"Asset":{"type":"object","oneOf":[{"$ref":"#/definitions/FileAsset"},{"$ref":"#/definitions/ApiKeyAsset"}]},"BaseAsset":{"type":"object","properties":{"id":{"type":"string"},"type":{"type":"string","enum":["image","video","network","geojson","apikey"]},"name":{"type":"string"}},"required":["id","type","name"]},"FileAsset":{"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["image","video","network","geojson"]},"source":{"type":"string"}},"required":["source"]}]},"ApiKeyAsset":{"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["apikey"]},"value":{"type":"string"}},"required":["value"]}]},"Form":{"type":["object","null"],"additionalProperties":false,"properties":{"title":{"type":"string"},"fields":{"type":"array","items":{"$ref":"#/definitions/Field"}}},"required":["fields"],"title":"Form"},"Field":{"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"prompt":{"type":"string"}},"required":["variable","prompt"],"title":"Field"},"Stage":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"interviewScript":{"type":"string"},"type":{"type":"string","enum":["Narrative","AlterForm","AlterEdgeForm","EgoForm","NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","DyadCensus","TieStrengthCensus","Information","OrdinalBin","CategoricalBin","Anonymisation","OneToManyDyadCensus","FamilyTreeCensus","Geospatial"]},"label":{"type":"string"},"form":{"$ref":"#/definitions/Form"},"quickAdd":{"type":["string","null"]},"createEdge":{"type":"string"},"dataSource":{"type":["string","null"]},"subject":{"$ref":"#/definitions/Subject"},"panels":{"type":"array","items":{"$ref":"#/definitions/Panel"}},"prompts":{"type":"array","items":{"$ref":"#/definitions/Prompt"},"minItems":1},"presets":{"type":"array","items":{"$ref":"#/definitions/Preset"},"minItems":1},"background":{"type":"object","$ref":"#/definitions/Background","minProperties":1},"sortOptions":{"$ref":"#/definitions/SortOptions"},"cardOptions":{"type":"object","$ref":"#/definitions/CardOptions"},"searchOptions":{"type":"object","$ref":"#/definitions/SearchOptions"},"behaviours":{"type":"object","$ref":"#/definitions/Behaviours","minProperties":1},"showExistingNodes":{"type":"boolean"},"title":{"type":"string"},"items":{"type":"array","items":{"$ref":"#/definitions/Item"}},"introductionPanel":{"$ref":"#/definitions/IntroductionPanel"},"skipLogic":{"$ref":"#/definitions/SkipLogic"},"filter":{"$ref":"#/definitions/Filter"},"mapOptions":{"$ref":"#/definitions/MapOptions"}},"required":["id","label","type"],"title":"Interface","anyOf":[{"properties":{"type":{"const":"EgoForm"}},"required":["form"]},{"properties":{"type":{"const":"DyadCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"TieStrengthCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"AlterForm"}},"required":["form"]},{"properties":{"type":{"const":"AlterEdgeForm"}},"required":["form"]},{"properties":{"type":{"const":"Information"}},"required":["items"]},{"properties":{"type":{"const":"Narrative"}},"required":["presets","background"]},{"properties":{"type":{"enum":["NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","OrdinalBin","CategoricalBin","DyadCensus","Anonymisation","OneToManyDyadCensus","FamilyTreeCensus"]}},"required":["prompts"]},{"properties":{"type":{"const":"Geospatial"}},"required":["mapOptions","prompts"]}]},"Item":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"type":{"type":"string","enum":["text","asset"]},"content":{"type":"string"},"description":{"type":"string"},"size":{"type":"string"},"loop":{"type":"boolean"}},"required":["content","id","type"],"title":"Item"},"IntroductionPanel":{"type":"object","additionalProperties":false,"properties":{"title":{"type":"string"},"text":{"type":"string"}},"required":["title","text"]},"Panel":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"title":{"type":"string"},"filter":{"$ref":"#/definitions/Filter"},"dataSource":{"type":["string","null"]}},"required":["id","title","dataSource"],"title":"Panel"},"Filter":{"type":["object","null"],"additionalProperties":false,"properties":{"join":{"type":"string","enum":["OR","AND"]},"rules":{"type":"array","items":{"$ref":"#/definitions/Rule"}}},"title":"Filter"},"Rule":{"type":"object","additionalProperties":false,"properties":{"type":{"type":"string","enum":["alter","ego","edge"]},"id":{"type":"string"},"options":{"$ref":"#/definitions/Options"}},"required":["id","options","type"],"title":"Rule"},"Options":{"type":"object","additionalProperties":false,"properties":{"type":{"type":"string"},"attribute":{"type":"string"},"operator":{"type":"string","enum":["EXISTS","NOT_EXISTS","EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]},"value":{"type":["integer","string","boolean","array"]}},"required":["operator"],"title":"Rule Options","allOf":[{"if":{"properties":{"operator":{"enum":["EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]}}},"then":{"required":["value"]}}]},"Prompt":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"text":{"type":"string"},"additionalAttributes":{"$ref":"#/definitions/AdditionalAttributes"},"variable":{"type":"string"},"edgeVariable":{"type":"string"},"negativeLabel":{"type":"string"},"otherVariable":{"type":"string"},"otherVariablePrompt":{"type":"string"},"otherOptionLabel":{"type":"string"},"bucketSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"binSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"color":{"type":"string"},"layout":{"$ref":"#/definitions/Layout"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/Highlight"},"createEdge":{"type":"string"}},"required":["id","text"],"title":"Prompt"},"Preset":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"label":{"type":"string"},"layoutVariable":{"type":"string"},"groupVariable":{"type":"string"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/NarrativeHighlight"}},"required":["id","label","layoutVariable"],"title":"Preset"},"Behaviours":{"type":"object","additionalProperties":true,"properties":{"minNodes":{"type":"integer"},"maxNodes":{"type":"integer"},"freeDraw":{"type":"boolean"},"featureNode":{"type":"boolean"},"allowRepositioning":{"type":"boolean"},"automaticLayout":{"type":"object","$ref":"#/definitions/AutomaticLayout"}},"required":[],"title":"Behaviours"},"AdditionalAttributes":{"type":"array","title":"AdditionalAttributes","items":{"$ref":"#/definitions/AdditionalAttribute"}},"AdditionalAttribute":{"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"value":{"type":["boolean"]}},"required":["variable","value"],"title":"AdditionalAttribute"},"Background":{"type":"object","additionalProperties":false,"properties":{"image":{"type":"string"},"concentricCircles":{"type":"integer"},"skewedTowardCenter":{"type":"boolean"}},"title":"Background"},"AutomaticLayout":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"title":"AutomaticLayout"},"SortOrder":{"type":"object","additionalProperties":false,"properties":{"property":{"type":"string"},"direction":{"$ref":"#/definitions/Direction"},"type":{"enum":["string","number","boolean","date","hierarchy"]},"hierarchy":{"type":"array","items":{"type":["string","number","boolean"]}}},"required":["property"],"title":"SortOrder"},"CardOptions":{"type":"object","additionalProperties":false,"properties":{"displayLabel":{"type":"string"},"additionalProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"title":"CardOptions"},"Property":{"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"variable":{"type":"string"}},"required":["label","variable"],"title":"Property"},"Edges":{"type":"object","additionalProperties":false,"properties":{"display":{"type":"array","items":{"type":"string"}},"create":{"type":"string"},"restrict":{"type":"object","properties":{"origin":{"type":"string"},"destination":{"type":"string","enum":["same","different","all"]}}}},"required":[],"title":"Edges"},"NarrativeHighlight":{"type":"array","items":{"type":"string"},"title":"NarrativeHighlight"},"Highlight":{"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"allowHighlighting":{"type":"boolean"}},"required":["allowHighlighting"],"title":"Highlight"},"Layout":{"type":"object","additionalProperties":false,"properties":{"layoutVariable":{"anyOf":[{"type":"string"},{"type":"object"}]},"allowPositioning":{"type":"boolean"}},"required":["layoutVariable"],"title":"Layout"},"SearchOptions":{"type":"object","additionalProperties":false,"properties":{"fuzziness":{"type":"number"},"matchProperties":{"type":"array","items":{"type":"string"}}},"required":["fuzziness","matchProperties"],"title":"SearchOptions"},"SortOptions":{"type":"object","additionalProperties":false,"properties":{"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortableProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"required":["sortOrder","sortableProperties"],"title":"SortOptions"},"Subject":{"type":"object","additionalProperties":false,"properties":{"entity":{"$ref":"#/definitions/Entity"},"type":{"type":"string"}},"required":["entity","type"],"title":"Subject"},"SkipLogic":{"type":"object","additionalProperties":false,"properties":{"action":{"type":"string","enum":["SHOW","SKIP"]},"filter":{"$ref":"#/definitions/Filter"}},"required":["action","filter"],"title":"SkipLogic"},"codebook":{"type":"object","additionalProperties":false,"properties":{"node":{"$ref":"#/definitions/Node"},"edge":{"$ref":"#/definitions/Edge"},"ego":{"$ref":"#/definitions/Ego"}},"required":[],"title":"codebook"},"Edge":{"type":"object","additionalProperties":false,"title":"Edge","patternProperties":{".+":{"$ref":"#/definitions/EdgeTypeDef"}}},"EdgeTypeDef":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"color":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"}},"required":["name","color"],"title":"EdgeTypeDef"},"Variables":{"type":"object","additionalProperties":false,"title":"Variables","patternProperties":{".+":{"$ref":"#/definitions/Variable"}}},"Variable":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},"type":{"type":"string","enum":["boolean","text","number","datetime","ordinal","scalar","categorical","layout","location"]},"component":{"type":"string","enum":["Boolean","CheckboxGroup","Number","RadioGroup","Text","TextArea","Toggle","ToggleButtonGroup","Slider","VisualAnalogScale","LikertScale","DatePicker","RelativeDatePicker"]},"options":{"type":"array","items":{"$ref":"#/definitions/OptionElement"}},"parameters":{"type":"object"},"validation":{"$ref":"#/definitions/Validation"}},"required":["type","name"],"title":"Variable"},"OptionClass":{"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"value":{"$ref":"#/definitions/Value"},"negative":{"type":"boolean"}},"required":["label","value"],"title":"OptionClass"},"Validation":{"type":"object","additionalProperties":false,"properties":{"required":{"type":"boolean"},"requiredAcceptsNull":{"type":"boolean"},"minLength":{"type":"integer"},"maxLength":{"type":"integer"},"minValue":{"type":"integer"},"maxValue":{"type":"integer"},"minSelected":{"type":"integer"},"maxSelected":{"type":"integer"},"unique":{"type":"boolean"},"differentFrom":{"type":"string"},"sameAs":{"type":"string"},"greaterThanVariable":{"type":"string"},"lessThanVariable":{"type":"string"}},"title":"Validation"},"Node":{"type":"object","additionalProperties":false,"title":"Node","patternProperties":{".+":{"$ref":"#/definitions/NodeTypeDef"}}},"NodeTypeDef":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"displayVariable":{"type":"string"},"iconVariant":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"},"color":{"type":"string"}},"required":["name","color"],"title":"NodeTypeDef"},"Ego":{"type":"object","additionalProperties":false,"properties":{"variables":{"$ref":"#/definitions/Variables"}}},"OptionElement":{"anyOf":[{"$ref":"#/definitions/OptionClass"},{"type":"integer"},{"type":"string"}],"title":"Variable Option"},"Value":{"anyOf":[{"type":"integer"},{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},{"type":"boolean"}],"title":"Value"},"Entity":{"type":"string","enum":["edge","node","ego"],"title":"Entity"},"Direction":{"type":"string","enum":["desc","asc"],"title":"Direction"},"MapOptions":{"type":"object","additionalProperties":false,"properties":{"tokenAssetId":{"type":"string"},"style":{"type":"string","enum":["mapbox://styles/mapbox/standard","mapbox://styles/mapbox/standard-satellite","mapbox://styles/mapbox/streets-v12","mapbox://styles/mapbox/outdoors-v12","mapbox://styles/mapbox/light-v11","mapbox://styles/mapbox/dark-v11","mapbox://styles/mapbox/satellite-v9","mapbox://styles/mapbox/satellite-streets-v12","mapbox://styles/mapbox/navigation-day-v1","mapbox://styles/mapbox/navigation-night-v1"]},"center":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},"initialZoom":{"type":"number","minimum":0,"maximum":22},"dataSourceAssetId":{"type":"string"},"color":{"type":"string"},"targetFeatureProperty":{"type":"string"}},"required":["tokenAssetId","style","center","initialZoom","dataSourceAssetId","color","targetFeatureProperty"]}}};
-const schema329 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"description":{"type":"string"},"lastModified":{"type":"string","format":"date-time"},"schemaVersion":{"type":"number"},"codebook":{"$ref":"#/definitions/codebook"},"assetManifest":{"$ref":"#/definitions/AssetManifest"},"stages":{"type":"array","items":{"$ref":"#/definitions/Stage"}}},"required":["stages","codebook"],"title":"Protocol"};
+const schema328 = {"$schema":"http://json-schema.org/draft-07/schema#","$ref":"#/definitions/Protocol","definitions":{"Experiments":{"type":"object","additionalProperties":false,"properties":{"encryptNames":{"type":"boolean"}}},"Protocol":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"description":{"type":"string"},"lastModified":{"type":"string","format":"date-time"},"schemaVersion":{"type":"number"},"experiments":{"$ref":"#/definitions/Experiments"},"codebook":{"$ref":"#/definitions/codebook"},"assetManifest":{"$ref":"#/definitions/AssetManifest"},"stages":{"type":"array","items":{"$ref":"#/definitions/Stage"}}},"required":["stages","codebook"],"title":"Protocol"},"AssetManifest":{"type":"object","title":"AssetManifest","additionalProperties":{"$ref":"#/definitions/Asset"}},"Asset":{"type":"object","oneOf":[{"$ref":"#/definitions/FileAsset"},{"$ref":"#/definitions/ApiKeyAsset"}]},"BaseAsset":{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]},"FileAsset":{"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["audio","image","video","network","geojson"]},"source":{"type":"string"}},"required":["source","type"]}]},"ApiKeyAsset":{"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["apikey"]},"value":{"type":"string"}},"required":["value","type"]}]},"Form":{"type":["object","null"],"additionalProperties":false,"properties":{"title":{"type":"string"},"fields":{"type":"array","items":{"$ref":"#/definitions/Field"}}},"required":["fields"],"title":"Form"},"Field":{"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"prompt":{"type":"string"}},"required":["variable","prompt"],"title":"Field"},"Stage":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"interviewScript":{"type":"string"},"type":{"type":"string","enum":["Narrative","AlterForm","AlterEdgeForm","EgoForm","NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","DyadCensus","TieStrengthCensus","Information","OrdinalBin","CategoricalBin","Anonymisation","OneToManyDyadCensus","FamilyTreeCensus","Geospatial"]},"label":{"type":"string"},"form":{"$ref":"#/definitions/Form"},"quickAdd":{"type":["string","null"]},"createEdge":{"type":"string"},"dataSource":{"type":["string","null"]},"subject":{"$ref":"#/definitions/Subject"},"panels":{"type":"array","items":{"$ref":"#/definitions/Panel"}},"prompts":{"type":"array","items":{"$ref":"#/definitions/Prompt"},"minItems":1},"presets":{"type":"array","items":{"$ref":"#/definitions/Preset"},"minItems":1},"background":{"type":"object","$ref":"#/definitions/Background","minProperties":1},"sortOptions":{"$ref":"#/definitions/SortOptions"},"cardOptions":{"type":"object","$ref":"#/definitions/CardOptions"},"searchOptions":{"type":"object","$ref":"#/definitions/SearchOptions"},"behaviours":{"type":"object","$ref":"#/definitions/Behaviours","minProperties":1},"showExistingNodes":{"type":"boolean"},"title":{"type":"string"},"items":{"type":"array","items":{"$ref":"#/definitions/Item"}},"introductionPanel":{"$ref":"#/definitions/IntroductionPanel"},"skipLogic":{"$ref":"#/definitions/SkipLogic"},"filter":{"$ref":"#/definitions/Filter"},"mapOptions":{"$ref":"#/definitions/MapOptions"},"validation":{"$ref":"#/definitions/AnonymisationValidation"}},"required":["id","label","type"],"title":"Interface","anyOf":[{"properties":{"type":{"const":"Anonymisation"}},"required":["introductionPanel","validation"]},{"properties":{"type":{"const":"OneToManyDyadCensus"}},"required":["subject","behaviours","prompts"]},{"properties":{"type":{"const":"EgoForm"}},"required":["form"]},{"properties":{"type":{"const":"DyadCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"TieStrengthCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"AlterForm"}},"required":["form"]},{"properties":{"type":{"const":"AlterEdgeForm"}},"required":["form"]},{"properties":{"type":{"const":"Information"}},"required":["items"]},{"properties":{"type":{"const":"Narrative"}},"required":["presets","background"]},{"properties":{"type":{"enum":["NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","OrdinalBin","CategoricalBin","DyadCensus","OneToManyDyadCensus","FamilyTreeCensus"]}},"required":["prompts"]},{"properties":{"type":{"const":"Geospatial"}},"required":["mapOptions","prompts"]}]},"Item":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"type":{"type":"string","enum":["text","asset"]},"content":{"type":"string"},"description":{"type":"string"},"size":{"type":"string"},"loop":{"type":"boolean"}},"required":["content","id","type"],"title":"Item"},"IntroductionPanel":{"type":"object","additionalProperties":false,"properties":{"title":{"type":"string"},"text":{"type":"string"}},"required":["title","text"]},"Panel":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"title":{"type":"string"},"filter":{"$ref":"#/definitions/Filter"},"dataSource":{"type":["string","null"]}},"required":["id","title","dataSource"],"title":"Panel"},"Filter":{"type":["object","null"],"additionalProperties":false,"properties":{"join":{"type":"string","enum":["OR","AND"]},"rules":{"type":"array","items":{"$ref":"#/definitions/Rule"}}},"title":"Filter"},"Rule":{"type":"object","additionalProperties":false,"properties":{"type":{"type":"string","enum":["alter","ego","edge"]},"id":{"type":"string"},"options":{"$ref":"#/definitions/Options"}},"required":["id","options","type"],"title":"Rule"},"Options":{"type":"object","additionalProperties":false,"properties":{"type":{"type":"string"},"attribute":{"type":"string"},"operator":{"type":"string","enum":["EXISTS","NOT_EXISTS","EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]},"value":{"type":["integer","string","boolean","array"]}},"required":["operator"],"title":"Rule Options","allOf":[{"if":{"properties":{"operator":{"enum":["EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]}}},"then":{"required":["value"]}}]},"Prompt":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"text":{"type":"string"},"additionalAttributes":{"$ref":"#/definitions/AdditionalAttributes"},"variable":{"type":"string"},"edgeVariable":{"type":"string"},"negativeLabel":{"type":"string"},"otherVariable":{"type":"string"},"otherVariablePrompt":{"type":"string"},"otherOptionLabel":{"type":"string"},"bucketSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"binSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"color":{"type":"string"},"layout":{"$ref":"#/definitions/Layout"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/Highlight"},"createEdge":{"type":"string"}},"required":["id","text"],"title":"Prompt"},"Preset":{"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"label":{"type":"string"},"layoutVariable":{"type":"string"},"groupVariable":{"type":"string"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/NarrativeHighlight"}},"required":["id","label","layoutVariable"],"title":"Preset"},"Behaviours":{"type":"object","additionalProperties":true,"properties":{"minNodes":{"type":"integer"},"maxNodes":{"type":"integer"},"freeDraw":{"type":"boolean"},"featureNode":{"type":"boolean"},"allowRepositioning":{"type":"boolean"},"automaticLayout":{"type":"object","$ref":"#/definitions/AutomaticLayout"}},"required":[],"title":"Behaviours"},"AdditionalAttributes":{"type":"array","title":"AdditionalAttributes","items":{"$ref":"#/definitions/AdditionalAttribute"}},"AdditionalAttribute":{"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"value":{"type":["boolean"]}},"required":["variable","value"],"title":"AdditionalAttribute"},"Background":{"type":"object","additionalProperties":false,"properties":{"image":{"type":"string"},"concentricCircles":{"type":"integer"},"skewedTowardCenter":{"type":"boolean"}},"title":"Background"},"AutomaticLayout":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"title":"AutomaticLayout"},"SortOrder":{"type":"object","additionalProperties":false,"properties":{"property":{"type":"string"},"direction":{"$ref":"#/definitions/Direction"},"type":{"enum":["string","number","boolean","date","hierarchy"]},"hierarchy":{"type":"array","items":{"type":["string","number","boolean"]}}},"required":["property"],"title":"SortOrder"},"CardOptions":{"type":"object","additionalProperties":false,"properties":{"displayLabel":{"type":"string"},"additionalProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"title":"CardOptions"},"Property":{"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"variable":{"type":"string"}},"required":["label","variable"],"title":"Property"},"Edges":{"type":"object","additionalProperties":false,"properties":{"display":{"type":"array","items":{"type":"string"}},"create":{"type":"string"},"restrict":{"type":"object","properties":{"origin":{"type":"string"},"destination":{"type":"string","enum":["same","different","all"]}}}},"required":[],"title":"Edges"},"NarrativeHighlight":{"type":"array","items":{"type":"string"},"title":"NarrativeHighlight"},"Highlight":{"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"allowHighlighting":{"type":"boolean"}},"required":["allowHighlighting"],"title":"Highlight"},"Layout":{"type":"object","additionalProperties":false,"properties":{"layoutVariable":{"anyOf":[{"type":"string"},{"type":"object"}]},"allowPositioning":{"type":"boolean"}},"required":["layoutVariable"],"title":"Layout"},"SearchOptions":{"type":"object","additionalProperties":false,"properties":{"fuzziness":{"type":"number"},"matchProperties":{"type":"array","items":{"type":"string"}}},"required":["fuzziness","matchProperties"],"title":"SearchOptions"},"SortOptions":{"type":"object","additionalProperties":false,"properties":{"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortableProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"required":["sortOrder","sortableProperties"],"title":"SortOptions"},"Subject":{"type":"object","additionalProperties":false,"properties":{"entity":{"$ref":"#/definitions/Entity"},"type":{"type":"string"}},"required":["entity","type"],"title":"Subject"},"SkipLogic":{"type":"object","additionalProperties":false,"properties":{"action":{"type":"string","enum":["SHOW","SKIP"]},"filter":{"$ref":"#/definitions/Filter"}},"required":["action","filter"],"title":"SkipLogic"},"codebook":{"type":"object","additionalProperties":false,"properties":{"node":{"$ref":"#/definitions/Node"},"edge":{"$ref":"#/definitions/Edge"},"ego":{"$ref":"#/definitions/Ego"}},"required":[],"title":"codebook"},"Edge":{"type":"object","additionalProperties":false,"title":"Edge","patternProperties":{".+":{"$ref":"#/definitions/EdgeTypeDef"}}},"EdgeTypeDef":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"color":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"}},"required":["name","color"],"title":"EdgeTypeDef"},"Variables":{"type":"object","additionalProperties":false,"title":"Variables","patternProperties":{".+":{"$ref":"#/definitions/Variable"}}},"Variable":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},"type":{"type":"string","enum":["boolean","text","number","datetime","ordinal","scalar","categorical","layout","location"]},"component":{"type":"string","enum":["Boolean","CheckboxGroup","Number","RadioGroup","Text","TextArea","Toggle","ToggleButtonGroup","Slider","VisualAnalogScale","LikertScale","DatePicker","RelativeDatePicker"]},"options":{"type":"array","items":{"$ref":"#/definitions/OptionElement"}},"parameters":{"type":"object"},"validation":{"$ref":"#/definitions/Validation"}},"required":["type","name"],"title":"Variable"},"OptionClass":{"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"value":{"$ref":"#/definitions/Value"},"negative":{"type":"boolean"}},"required":["label","value"],"title":"OptionClass"},"Validation":{"type":"object","additionalProperties":false,"properties":{"required":{"type":"boolean"},"requiredAcceptsNull":{"type":"boolean"},"minLength":{"type":"integer"},"maxLength":{"type":"integer"},"minValue":{"type":"integer"},"maxValue":{"type":"integer"},"minSelected":{"type":"integer"},"maxSelected":{"type":"integer"},"unique":{"type":"boolean"},"differentFrom":{"type":"string"},"sameAs":{"type":"string"},"greaterThanVariable":{"type":"string"},"lessThanVariable":{"type":"string"}},"title":"Validation"},"Node":{"type":"object","additionalProperties":false,"title":"Node","patternProperties":{".+":{"$ref":"#/definitions/NodeTypeDef"}}},"NodeTypeDef":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"displayVariable":{"type":"string"},"iconVariant":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"},"color":{"type":"string"}},"required":["name","color"],"title":"NodeTypeDef"},"Ego":{"type":"object","additionalProperties":false,"properties":{"variables":{"$ref":"#/definitions/Variables"}}},"OptionElement":{"anyOf":[{"$ref":"#/definitions/OptionClass"},{"type":"integer"},{"type":"string"}],"title":"Variable Option"},"Value":{"anyOf":[{"type":"integer"},{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},{"type":"boolean"}],"title":"Value"},"Entity":{"type":"string","enum":["edge","node","ego"],"title":"Entity"},"Direction":{"type":"string","enum":["desc","asc"],"title":"Direction"},"AnonymisationValidation":{"type":"object","additionalProperties":false,"properties":{"minLength":{"type":"integer"},"maxLength":{"type":"integer"}}},"MapOptions":{"type":"object","additionalProperties":false,"properties":{"tokenAssetId":{"type":"string"},"style":{"type":"string","enum":["mapbox://styles/mapbox/standard","mapbox://styles/mapbox/standard-satellite","mapbox://styles/mapbox/streets-v12","mapbox://styles/mapbox/outdoors-v12","mapbox://styles/mapbox/light-v11","mapbox://styles/mapbox/dark-v11","mapbox://styles/mapbox/satellite-v9","mapbox://styles/mapbox/satellite-streets-v12","mapbox://styles/mapbox/navigation-day-v1","mapbox://styles/mapbox/navigation-night-v1"]},"center":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},"initialZoom":{"type":"number","minimum":0,"maximum":22},"dataSourceAssetId":{"type":"string"},"color":{"type":"string"},"targetFeatureProperty":{"type":"string"}},"required":["tokenAssetId","style","center","initialZoom","dataSourceAssetId","color","targetFeatureProperty"]}}};
+const schema329 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"description":{"type":"string"},"lastModified":{"type":"string","format":"date-time"},"schemaVersion":{"type":"number"},"experiments":{"$ref":"#/definitions/Experiments"},"codebook":{"$ref":"#/definitions/codebook"},"assetManifest":{"$ref":"#/definitions/AssetManifest"},"stages":{"type":"array","items":{"$ref":"#/definitions/Stage"}}},"required":["stages","codebook"],"title":"Protocol"};
+const schema330 = {"type":"object","additionalProperties":false,"properties":{"encryptNames":{"type":"boolean"}}};
 const formats0 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/;
-const schema330 = {"type":"object","additionalProperties":false,"properties":{"node":{"$ref":"#/definitions/Node"},"edge":{"$ref":"#/definitions/Edge"},"ego":{"$ref":"#/definitions/Ego"}},"required":[],"title":"codebook"};
-const schema331 = {"type":"object","additionalProperties":false,"title":"Node","patternProperties":{".+":{"$ref":"#/definitions/NodeTypeDef"}}};
+const schema331 = {"type":"object","additionalProperties":false,"properties":{"node":{"$ref":"#/definitions/Node"},"edge":{"$ref":"#/definitions/Edge"},"ego":{"$ref":"#/definitions/Ego"}},"required":[],"title":"codebook"};
+const schema332 = {"type":"object","additionalProperties":false,"title":"Node","patternProperties":{".+":{"$ref":"#/definitions/NodeTypeDef"}}};
 const pattern0 = new RegExp(".+", "u");
-const schema332 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"displayVariable":{"type":"string"},"iconVariant":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"},"color":{"type":"string"}},"required":["name","color"],"title":"NodeTypeDef"};
-const schema333 = {"type":"object","additionalProperties":false,"title":"Variables","patternProperties":{".+":{"$ref":"#/definitions/Variable"}}};
-const schema334 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},"type":{"type":"string","enum":["boolean","text","number","datetime","ordinal","scalar","categorical","layout","location"]},"component":{"type":"string","enum":["Boolean","CheckboxGroup","Number","RadioGroup","Text","TextArea","Toggle","ToggleButtonGroup","Slider","VisualAnalogScale","LikertScale","DatePicker","RelativeDatePicker"]},"options":{"type":"array","items":{"$ref":"#/definitions/OptionElement"}},"parameters":{"type":"object"},"validation":{"$ref":"#/definitions/Validation"}},"required":["type","name"],"title":"Variable"};
-const schema338 = {"type":"object","additionalProperties":false,"properties":{"required":{"type":"boolean"},"requiredAcceptsNull":{"type":"boolean"},"minLength":{"type":"integer"},"maxLength":{"type":"integer"},"minValue":{"type":"integer"},"maxValue":{"type":"integer"},"minSelected":{"type":"integer"},"maxSelected":{"type":"integer"},"unique":{"type":"boolean"},"differentFrom":{"type":"string"},"sameAs":{"type":"string"},"greaterThanVariable":{"type":"string"},"lessThanVariable":{"type":"string"}},"title":"Validation"};
+const schema333 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"displayVariable":{"type":"string"},"iconVariant":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"},"color":{"type":"string"}},"required":["name","color"],"title":"NodeTypeDef"};
+const schema334 = {"type":"object","additionalProperties":false,"title":"Variables","patternProperties":{".+":{"$ref":"#/definitions/Variable"}}};
+const schema335 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},"type":{"type":"string","enum":["boolean","text","number","datetime","ordinal","scalar","categorical","layout","location"]},"component":{"type":"string","enum":["Boolean","CheckboxGroup","Number","RadioGroup","Text","TextArea","Toggle","ToggleButtonGroup","Slider","VisualAnalogScale","LikertScale","DatePicker","RelativeDatePicker"]},"options":{"type":"array","items":{"$ref":"#/definitions/OptionElement"}},"parameters":{"type":"object"},"validation":{"$ref":"#/definitions/Validation"}},"required":["type","name"],"title":"Variable"};
+const schema339 = {"type":"object","additionalProperties":false,"properties":{"required":{"type":"boolean"},"requiredAcceptsNull":{"type":"boolean"},"minLength":{"type":"integer"},"maxLength":{"type":"integer"},"minValue":{"type":"integer"},"maxValue":{"type":"integer"},"minSelected":{"type":"integer"},"maxSelected":{"type":"integer"},"unique":{"type":"boolean"},"differentFrom":{"type":"string"},"sameAs":{"type":"string"},"greaterThanVariable":{"type":"string"},"lessThanVariable":{"type":"string"}},"title":"Validation"};
 const pattern22 = new RegExp("^[a-zA-Z0-9._:-]+$", "u");
-const schema335 = {"anyOf":[{"$ref":"#/definitions/OptionClass"},{"type":"integer"},{"type":"string"}],"title":"Variable Option"};
-const schema336 = {"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"value":{"$ref":"#/definitions/Value"},"negative":{"type":"boolean"}},"required":["label","value"],"title":"OptionClass"};
-const schema337 = {"anyOf":[{"type":"integer"},{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},{"type":"boolean"}],"title":"Value"};
+const schema336 = {"anyOf":[{"$ref":"#/definitions/OptionClass"},{"type":"integer"},{"type":"string"}],"title":"Variable Option"};
+const schema337 = {"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"value":{"$ref":"#/definitions/Value"},"negative":{"type":"boolean"}},"required":["label","value"],"title":"OptionClass"};
+const schema338 = {"anyOf":[{"type":"integer"},{"type":"string","pattern":"^[a-zA-Z0-9._:-]+$"},{"type":"boolean"}],"title":"Value"};
 
 function validate413(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -316,7 +317,7 @@ vErrors.push(err5);
 errors++;
 }
 if(!(((((((((data1 === "boolean") || (data1 === "text")) || (data1 === "number")) || (data1 === "datetime")) || (data1 === "ordinal")) || (data1 === "scalar")) || (data1 === "categorical")) || (data1 === "layout")) || (data1 === "location"))){
-const err6 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema334.properties.type.enum},message:"must be equal to one of the allowed values"};
+const err6 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema335.properties.type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -339,7 +340,7 @@ vErrors.push(err7);
 errors++;
 }
 if(!(((((((((((((data2 === "Boolean") || (data2 === "CheckboxGroup")) || (data2 === "Number")) || (data2 === "RadioGroup")) || (data2 === "Text")) || (data2 === "TextArea")) || (data2 === "Toggle")) || (data2 === "ToggleButtonGroup")) || (data2 === "Slider")) || (data2 === "VisualAnalogScale")) || (data2 === "LikertScale")) || (data2 === "DatePicker")) || (data2 === "RelativeDatePicker"))){
-const err8 = {instancePath:instancePath+"/component",schemaPath:"#/properties/component/enum",keyword:"enum",params:{allowedValues: schema334.properties.component.enum},message:"must be equal to one of the allowed values"};
+const err8 = {instancePath:instancePath+"/component",schemaPath:"#/properties/component/enum",keyword:"enum",params:{allowedValues: schema335.properties.component.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err8];
 }
@@ -388,7 +389,7 @@ if(data.validation !== undefined){
 let data6 = data.validation;
 if(data6 && typeof data6 == "object" && !Array.isArray(data6)){
 for(const key1 in data6){
-if(!(func2.call(schema338.properties, key1))){
+if(!(func2.call(schema339.properties, key1))){
 const err11 = {instancePath:instancePath+"/validation",schemaPath:"#/definitions/Validation/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key1},message:"must NOT have additional properties"};
 if(vErrors === null){
 vErrors = [err11];
@@ -774,8 +775,8 @@ validate408.errors = vErrors;
 return errors === 0;
 }
 
-const schema339 = {"type":"object","additionalProperties":false,"title":"Edge","patternProperties":{".+":{"$ref":"#/definitions/EdgeTypeDef"}}};
-const schema340 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"color":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"}},"required":["name","color"],"title":"EdgeTypeDef"};
+const schema340 = {"type":"object","additionalProperties":false,"title":"Edge","patternProperties":{".+":{"$ref":"#/definitions/EdgeTypeDef"}}};
+const schema341 = {"type":"object","additionalProperties":false,"properties":{"name":{"type":"string"},"color":{"type":"string"},"variables":{"$ref":"#/definitions/Variables"}},"required":["name","color"],"title":"EdgeTypeDef"};
 
 function validate421(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -898,7 +899,7 @@ validate420.errors = vErrors;
 return errors === 0;
 }
 
-const schema341 = {"type":"object","additionalProperties":false,"properties":{"variables":{"$ref":"#/definitions/Variables"}}};
+const schema342 = {"type":"object","additionalProperties":false,"properties":{"variables":{"$ref":"#/definitions/Variables"}}};
 
 function validate425(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -987,17 +988,17 @@ validate407.errors = vErrors;
 return errors === 0;
 }
 
-const schema342 = {"type":"object","title":"AssetManifest","additionalProperties":{"$ref":"#/definitions/Asset"}};
-const schema343 = {"type":"object","oneOf":[{"$ref":"#/definitions/FileAsset"},{"$ref":"#/definitions/ApiKeyAsset"}]};
-const schema344 = {"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["image","video","network","geojson"]},"source":{"type":"string"}},"required":["source"]}]};
-const schema345 = {"type":"object","properties":{"id":{"type":"string"},"type":{"type":"string","enum":["image","video","network","geojson","apikey"]},"name":{"type":"string"}},"required":["id","type","name"]};
+const schema343 = {"type":"object","title":"AssetManifest","additionalProperties":{"$ref":"#/definitions/Asset"}};
+const schema344 = {"type":"object","oneOf":[{"$ref":"#/definitions/FileAsset"},{"$ref":"#/definitions/ApiKeyAsset"}]};
+const schema345 = {"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["audio","image","video","network","geojson"]},"source":{"type":"string"}},"required":["source","type"]}]};
+const schema346 = {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]};
 
 function validate431(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
 let errors = 0;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.id === undefined){
-const err0 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "id"},message:"must have required property '"+"id"+"'"};
+if(data.name === undefined){
+const err0 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "name"},message:"must have required property '"+"name"+"'"};
 if(vErrors === null){
 vErrors = [err0];
 }
@@ -1006,8 +1007,9 @@ vErrors.push(err0);
 }
 errors++;
 }
-if(data.type === undefined){
-const err1 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
+if(data.name !== undefined){
+if(typeof data.name !== "string"){
+const err1 = {instancePath:instancePath+"/name",schemaPath:"#/definitions/BaseAsset/properties/name/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err1];
 }
@@ -1016,8 +1018,10 @@ vErrors.push(err1);
 }
 errors++;
 }
-if(data.name === undefined){
-const err2 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "name"},message:"must have required property '"+"name"+"'"};
+}
+}
+else {
+const err2 = {instancePath,schemaPath:"#/definitions/BaseAsset/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err2];
 }
@@ -1026,9 +1030,9 @@ vErrors.push(err2);
 }
 errors++;
 }
-if(data.id !== undefined){
-if(typeof data.id !== "string"){
-const err3 = {instancePath:instancePath+"/id",schemaPath:"#/definitions/BaseAsset/properties/id/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data && typeof data == "object" && !Array.isArray(data)){
+if(data.source === undefined){
+const err3 = {instancePath,schemaPath:"#/allOf/1/required",keyword:"required",params:{missingProperty: "source"},message:"must have required property '"+"source"+"'"};
 if(vErrors === null){
 vErrors = [err3];
 }
@@ -1037,11 +1041,8 @@ vErrors.push(err3);
 }
 errors++;
 }
-}
-if(data.type !== undefined){
-let data1 = data.type;
-if(typeof data1 !== "string"){
-const err4 = {instancePath:instancePath+"/type",schemaPath:"#/definitions/BaseAsset/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.type === undefined){
+const err4 = {instancePath,schemaPath:"#/allOf/1/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -1050,8 +1051,10 @@ vErrors.push(err4);
 }
 errors++;
 }
-if(!(((((data1 === "image") || (data1 === "video")) || (data1 === "network")) || (data1 === "geojson")) || (data1 === "apikey"))){
-const err5 = {instancePath:instancePath+"/type",schemaPath:"#/definitions/BaseAsset/properties/type/enum",keyword:"enum",params:{allowedValues: schema345.properties.type.enum},message:"must be equal to one of the allowed values"};
+if(data.type !== undefined){
+let data1 = data.type;
+if(typeof data1 !== "string"){
+const err5 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err5];
 }
@@ -1060,10 +1063,8 @@ vErrors.push(err5);
 }
 errors++;
 }
-}
-if(data.name !== undefined){
-if(typeof data.name !== "string"){
-const err6 = {instancePath:instancePath+"/name",schemaPath:"#/definitions/BaseAsset/properties/name/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(!(((((data1 === "audio") || (data1 === "image")) || (data1 === "video")) || (data1 === "network")) || (data1 === "geojson"))){
+const err6 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/enum",keyword:"enum",params:{allowedValues: schema345.allOf[1].properties.type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -1073,9 +1074,9 @@ vErrors.push(err6);
 errors++;
 }
 }
-}
-else {
-const err7 = {instancePath,schemaPath:"#/definitions/BaseAsset/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data.source !== undefined){
+if(typeof data.source !== "string"){
+const err7 = {instancePath:instancePath+"/source",schemaPath:"#/allOf/1/properties/source/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err7];
 }
@@ -1084,60 +1085,15 @@ vErrors.push(err7);
 }
 errors++;
 }
-if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.source === undefined){
-const err8 = {instancePath,schemaPath:"#/allOf/1/required",keyword:"required",params:{missingProperty: "source"},message:"must have required property '"+"source"+"'"};
+}
+}
+else {
+const err8 = {instancePath,schemaPath:"#/allOf/1/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err8];
 }
 else {
 vErrors.push(err8);
-}
-errors++;
-}
-if(data.type !== undefined){
-let data3 = data.type;
-if(typeof data3 !== "string"){
-const err9 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err9];
-}
-else {
-vErrors.push(err9);
-}
-errors++;
-}
-if(!((((data3 === "image") || (data3 === "video")) || (data3 === "network")) || (data3 === "geojson"))){
-const err10 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/enum",keyword:"enum",params:{allowedValues: schema344.allOf[1].properties.type.enum},message:"must be equal to one of the allowed values"};
-if(vErrors === null){
-vErrors = [err10];
-}
-else {
-vErrors.push(err10);
-}
-errors++;
-}
-}
-if(data.source !== undefined){
-if(typeof data.source !== "string"){
-const err11 = {instancePath:instancePath+"/source",schemaPath:"#/allOf/1/properties/source/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err11];
-}
-else {
-vErrors.push(err11);
-}
-errors++;
-}
-}
-}
-else {
-const err12 = {instancePath,schemaPath:"#/allOf/1/type",keyword:"type",params:{type: "object"},message:"must be object"};
-if(vErrors === null){
-vErrors = [err12];
-}
-else {
-vErrors.push(err12);
 }
 errors++;
 }
@@ -1145,14 +1101,14 @@ validate431.errors = vErrors;
 return errors === 0;
 }
 
-const schema346 = {"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["apikey"]},"value":{"type":"string"}},"required":["value"]}]};
+const schema347 = {"allOf":[{"$ref":"#/definitions/BaseAsset"},{"type":"object","properties":{"type":{"type":"string","enum":["apikey"]},"value":{"type":"string"}},"required":["value","type"]}]};
 
 function validate433(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
 let errors = 0;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.id === undefined){
-const err0 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "id"},message:"must have required property '"+"id"+"'"};
+if(data.name === undefined){
+const err0 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "name"},message:"must have required property '"+"name"+"'"};
 if(vErrors === null){
 vErrors = [err0];
 }
@@ -1161,8 +1117,9 @@ vErrors.push(err0);
 }
 errors++;
 }
-if(data.type === undefined){
-const err1 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
+if(data.name !== undefined){
+if(typeof data.name !== "string"){
+const err1 = {instancePath:instancePath+"/name",schemaPath:"#/definitions/BaseAsset/properties/name/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err1];
 }
@@ -1171,8 +1128,10 @@ vErrors.push(err1);
 }
 errors++;
 }
-if(data.name === undefined){
-const err2 = {instancePath,schemaPath:"#/definitions/BaseAsset/required",keyword:"required",params:{missingProperty: "name"},message:"must have required property '"+"name"+"'"};
+}
+}
+else {
+const err2 = {instancePath,schemaPath:"#/definitions/BaseAsset/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err2];
 }
@@ -1181,9 +1140,9 @@ vErrors.push(err2);
 }
 errors++;
 }
-if(data.id !== undefined){
-if(typeof data.id !== "string"){
-const err3 = {instancePath:instancePath+"/id",schemaPath:"#/definitions/BaseAsset/properties/id/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data && typeof data == "object" && !Array.isArray(data)){
+if(data.value === undefined){
+const err3 = {instancePath,schemaPath:"#/allOf/1/required",keyword:"required",params:{missingProperty: "value"},message:"must have required property '"+"value"+"'"};
 if(vErrors === null){
 vErrors = [err3];
 }
@@ -1192,11 +1151,8 @@ vErrors.push(err3);
 }
 errors++;
 }
-}
-if(data.type !== undefined){
-let data1 = data.type;
-if(typeof data1 !== "string"){
-const err4 = {instancePath:instancePath+"/type",schemaPath:"#/definitions/BaseAsset/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.type === undefined){
+const err4 = {instancePath,schemaPath:"#/allOf/1/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -1205,8 +1161,10 @@ vErrors.push(err4);
 }
 errors++;
 }
-if(!(((((data1 === "image") || (data1 === "video")) || (data1 === "network")) || (data1 === "geojson")) || (data1 === "apikey"))){
-const err5 = {instancePath:instancePath+"/type",schemaPath:"#/definitions/BaseAsset/properties/type/enum",keyword:"enum",params:{allowedValues: schema345.properties.type.enum},message:"must be equal to one of the allowed values"};
+if(data.type !== undefined){
+let data1 = data.type;
+if(typeof data1 !== "string"){
+const err5 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err5];
 }
@@ -1215,10 +1173,8 @@ vErrors.push(err5);
 }
 errors++;
 }
-}
-if(data.name !== undefined){
-if(typeof data.name !== "string"){
-const err6 = {instancePath:instancePath+"/name",schemaPath:"#/definitions/BaseAsset/properties/name/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(!(data1 === "apikey")){
+const err6 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/enum",keyword:"enum",params:{allowedValues: schema347.allOf[1].properties.type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -1228,9 +1184,9 @@ vErrors.push(err6);
 errors++;
 }
 }
-}
-else {
-const err7 = {instancePath,schemaPath:"#/definitions/BaseAsset/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data.value !== undefined){
+if(typeof data.value !== "string"){
+const err7 = {instancePath:instancePath+"/value",schemaPath:"#/allOf/1/properties/value/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err7];
 }
@@ -1239,60 +1195,15 @@ vErrors.push(err7);
 }
 errors++;
 }
-if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.value === undefined){
-const err8 = {instancePath,schemaPath:"#/allOf/1/required",keyword:"required",params:{missingProperty: "value"},message:"must have required property '"+"value"+"'"};
+}
+}
+else {
+const err8 = {instancePath,schemaPath:"#/allOf/1/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err8];
 }
 else {
 vErrors.push(err8);
-}
-errors++;
-}
-if(data.type !== undefined){
-let data3 = data.type;
-if(typeof data3 !== "string"){
-const err9 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err9];
-}
-else {
-vErrors.push(err9);
-}
-errors++;
-}
-if(!(data3 === "apikey")){
-const err10 = {instancePath:instancePath+"/type",schemaPath:"#/allOf/1/properties/type/enum",keyword:"enum",params:{allowedValues: schema346.allOf[1].properties.type.enum},message:"must be equal to one of the allowed values"};
-if(vErrors === null){
-vErrors = [err10];
-}
-else {
-vErrors.push(err10);
-}
-errors++;
-}
-}
-if(data.value !== undefined){
-if(typeof data.value !== "string"){
-const err11 = {instancePath:instancePath+"/value",schemaPath:"#/allOf/1/properties/value/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err11];
-}
-else {
-vErrors.push(err11);
-}
-errors++;
-}
-}
-}
-else {
-const err12 = {instancePath,schemaPath:"#/allOf/1/type",keyword:"type",params:{type: "object"},message:"must be object"};
-if(vErrors === null){
-vErrors = [err12];
-}
-else {
-vErrors.push(err12);
 }
 errors++;
 }
@@ -1394,20 +1305,21 @@ validate429.errors = vErrors;
 return errors === 0;
 }
 
-const schema348 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"interviewScript":{"type":"string"},"type":{"type":"string","enum":["Narrative","AlterForm","AlterEdgeForm","EgoForm","NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","DyadCensus","TieStrengthCensus","Information","OrdinalBin","CategoricalBin","Anonymisation","OneToManyDyadCensus","FamilyTreeCensus","Geospatial"]},"label":{"type":"string"},"form":{"$ref":"#/definitions/Form"},"quickAdd":{"type":["string","null"]},"createEdge":{"type":"string"},"dataSource":{"type":["string","null"]},"subject":{"$ref":"#/definitions/Subject"},"panels":{"type":"array","items":{"$ref":"#/definitions/Panel"}},"prompts":{"type":"array","items":{"$ref":"#/definitions/Prompt"},"minItems":1},"presets":{"type":"array","items":{"$ref":"#/definitions/Preset"},"minItems":1},"background":{"type":"object","$ref":"#/definitions/Background","minProperties":1},"sortOptions":{"$ref":"#/definitions/SortOptions"},"cardOptions":{"type":"object","$ref":"#/definitions/CardOptions"},"searchOptions":{"type":"object","$ref":"#/definitions/SearchOptions"},"behaviours":{"type":"object","$ref":"#/definitions/Behaviours","minProperties":1},"showExistingNodes":{"type":"boolean"},"title":{"type":"string"},"items":{"type":"array","items":{"$ref":"#/definitions/Item"}},"introductionPanel":{"$ref":"#/definitions/IntroductionPanel"},"skipLogic":{"$ref":"#/definitions/SkipLogic"},"filter":{"$ref":"#/definitions/Filter"},"mapOptions":{"$ref":"#/definitions/MapOptions"}},"required":["id","label","type"],"title":"Interface","anyOf":[{"properties":{"type":{"const":"EgoForm"}},"required":["form"]},{"properties":{"type":{"const":"DyadCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"TieStrengthCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"AlterForm"}},"required":["form"]},{"properties":{"type":{"const":"AlterEdgeForm"}},"required":["form"]},{"properties":{"type":{"const":"Information"}},"required":["items"]},{"properties":{"type":{"const":"Narrative"}},"required":["presets","background"]},{"properties":{"type":{"enum":["NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","OrdinalBin","CategoricalBin","DyadCensus","Anonymisation","OneToManyDyadCensus","FamilyTreeCensus"]}},"required":["prompts"]},{"properties":{"type":{"const":"Geospatial"}},"required":["mapOptions","prompts"]}]};
-const schema368 = {"type":"object","additionalProperties":false,"properties":{"image":{"type":"string"},"concentricCircles":{"type":"integer"},"skewedTowardCenter":{"type":"boolean"}},"title":"Background"};
-const schema373 = {"type":"object","additionalProperties":false,"properties":{"fuzziness":{"type":"number"},"matchProperties":{"type":"array","items":{"type":"string"}}},"required":["fuzziness","matchProperties"],"title":"SearchOptions"};
-const schema376 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"type":{"type":"string","enum":["text","asset"]},"content":{"type":"string"},"description":{"type":"string"},"size":{"type":"string"},"loop":{"type":"boolean"}},"required":["content","id","type"],"title":"Item"};
-const schema377 = {"type":"object","additionalProperties":false,"properties":{"title":{"type":"string"},"text":{"type":"string"}},"required":["title","text"]};
-const schema379 = {"type":"object","additionalProperties":false,"properties":{"tokenAssetId":{"type":"string"},"style":{"type":"string","enum":["mapbox://styles/mapbox/standard","mapbox://styles/mapbox/standard-satellite","mapbox://styles/mapbox/streets-v12","mapbox://styles/mapbox/outdoors-v12","mapbox://styles/mapbox/light-v11","mapbox://styles/mapbox/dark-v11","mapbox://styles/mapbox/satellite-v9","mapbox://styles/mapbox/satellite-streets-v12","mapbox://styles/mapbox/navigation-day-v1","mapbox://styles/mapbox/navigation-night-v1"]},"center":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},"initialZoom":{"type":"number","minimum":0,"maximum":22},"dataSourceAssetId":{"type":"string"},"color":{"type":"string"},"targetFeatureProperty":{"type":"string"}},"required":["tokenAssetId","style","center","initialZoom","dataSourceAssetId","color","targetFeatureProperty"]};
-const schema349 = {"type":["object","null"],"additionalProperties":false,"properties":{"title":{"type":"string"},"fields":{"type":"array","items":{"$ref":"#/definitions/Field"}}},"required":["fields"],"title":"Form"};
-const schema350 = {"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"prompt":{"type":"string"}},"required":["variable","prompt"],"title":"Field"};
+const schema349 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"interviewScript":{"type":"string"},"type":{"type":"string","enum":["Narrative","AlterForm","AlterEdgeForm","EgoForm","NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","DyadCensus","TieStrengthCensus","Information","OrdinalBin","CategoricalBin","Anonymisation","OneToManyDyadCensus","FamilyTreeCensus","Geospatial"]},"label":{"type":"string"},"form":{"$ref":"#/definitions/Form"},"quickAdd":{"type":["string","null"]},"createEdge":{"type":"string"},"dataSource":{"type":["string","null"]},"subject":{"$ref":"#/definitions/Subject"},"panels":{"type":"array","items":{"$ref":"#/definitions/Panel"}},"prompts":{"type":"array","items":{"$ref":"#/definitions/Prompt"},"minItems":1},"presets":{"type":"array","items":{"$ref":"#/definitions/Preset"},"minItems":1},"background":{"type":"object","$ref":"#/definitions/Background","minProperties":1},"sortOptions":{"$ref":"#/definitions/SortOptions"},"cardOptions":{"type":"object","$ref":"#/definitions/CardOptions"},"searchOptions":{"type":"object","$ref":"#/definitions/SearchOptions"},"behaviours":{"type":"object","$ref":"#/definitions/Behaviours","minProperties":1},"showExistingNodes":{"type":"boolean"},"title":{"type":"string"},"items":{"type":"array","items":{"$ref":"#/definitions/Item"}},"introductionPanel":{"$ref":"#/definitions/IntroductionPanel"},"skipLogic":{"$ref":"#/definitions/SkipLogic"},"filter":{"$ref":"#/definitions/Filter"},"mapOptions":{"$ref":"#/definitions/MapOptions"},"validation":{"$ref":"#/definitions/AnonymisationValidation"}},"required":["id","label","type"],"title":"Interface","anyOf":[{"properties":{"type":{"const":"Anonymisation"}},"required":["introductionPanel","validation"]},{"properties":{"type":{"const":"OneToManyDyadCensus"}},"required":["subject","behaviours","prompts"]},{"properties":{"type":{"const":"EgoForm"}},"required":["form"]},{"properties":{"type":{"const":"DyadCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"TieStrengthCensus"}},"required":["subject","prompts"]},{"properties":{"type":{"const":"AlterForm"}},"required":["form"]},{"properties":{"type":{"const":"AlterEdgeForm"}},"required":["form"]},{"properties":{"type":{"const":"Information"}},"required":["items"]},{"properties":{"type":{"const":"Narrative"}},"required":["presets","background"]},{"properties":{"type":{"enum":["NameGenerator","NameGeneratorQuickAdd","NameGeneratorRoster","Sociogram","OrdinalBin","CategoricalBin","DyadCensus","OneToManyDyadCensus","FamilyTreeCensus"]}},"required":["prompts"]},{"properties":{"type":{"const":"Geospatial"}},"required":["mapOptions","prompts"]}]};
+const schema369 = {"type":"object","additionalProperties":false,"properties":{"image":{"type":"string"},"concentricCircles":{"type":"integer"},"skewedTowardCenter":{"type":"boolean"}},"title":"Background"};
+const schema374 = {"type":"object","additionalProperties":false,"properties":{"fuzziness":{"type":"number"},"matchProperties":{"type":"array","items":{"type":"string"}}},"required":["fuzziness","matchProperties"],"title":"SearchOptions"};
+const schema377 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"type":{"type":"string","enum":["text","asset"]},"content":{"type":"string"},"description":{"type":"string"},"size":{"type":"string"},"loop":{"type":"boolean"}},"required":["content","id","type"],"title":"Item"};
+const schema378 = {"type":"object","additionalProperties":false,"properties":{"title":{"type":"string"},"text":{"type":"string"}},"required":["title","text"]};
+const schema380 = {"type":"object","additionalProperties":false,"properties":{"tokenAssetId":{"type":"string"},"style":{"type":"string","enum":["mapbox://styles/mapbox/standard","mapbox://styles/mapbox/standard-satellite","mapbox://styles/mapbox/streets-v12","mapbox://styles/mapbox/outdoors-v12","mapbox://styles/mapbox/light-v11","mapbox://styles/mapbox/dark-v11","mapbox://styles/mapbox/satellite-v9","mapbox://styles/mapbox/satellite-streets-v12","mapbox://styles/mapbox/navigation-day-v1","mapbox://styles/mapbox/navigation-night-v1"]},"center":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},"initialZoom":{"type":"number","minimum":0,"maximum":22},"dataSourceAssetId":{"type":"string"},"color":{"type":"string"},"targetFeatureProperty":{"type":"string"}},"required":["tokenAssetId","style","center","initialZoom","dataSourceAssetId","color","targetFeatureProperty"]};
+const schema381 = {"type":"object","additionalProperties":false,"properties":{"minLength":{"type":"integer"},"maxLength":{"type":"integer"}}};
+const schema350 = {"type":["object","null"],"additionalProperties":false,"properties":{"title":{"type":"string"},"fields":{"type":"array","items":{"$ref":"#/definitions/Field"}}},"required":["fields"],"title":"Form"};
+const schema351 = {"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"prompt":{"type":"string"}},"required":["variable","prompt"],"title":"Field"};
 
 function validate438(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
 let errors = 0;
 if((!(data && typeof data == "object" && !Array.isArray(data))) && (data !== null)){
-const err0 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: schema349.type},message:"must be object,null"};
+const err0 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: schema350.type},message:"must be object,null"};
 if(vErrors === null){
 vErrors = [err0];
 }
@@ -1543,8 +1455,8 @@ validate438.errors = vErrors;
 return errors === 0;
 }
 
-const schema351 = {"type":"object","additionalProperties":false,"properties":{"entity":{"$ref":"#/definitions/Entity"},"type":{"type":"string"}},"required":["entity","type"],"title":"Subject"};
-const schema352 = {"type":"string","enum":["edge","node","ego"],"title":"Entity"};
+const schema352 = {"type":"object","additionalProperties":false,"properties":{"entity":{"$ref":"#/definitions/Entity"},"type":{"type":"string"}},"required":["entity","type"],"title":"Subject"};
+const schema353 = {"type":"string","enum":["edge","node","ego"],"title":"Entity"};
 
 function validate440(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -1595,7 +1507,7 @@ vErrors.push(err3);
 errors++;
 }
 if(!(((data0 === "edge") || (data0 === "node")) || (data0 === "ego"))){
-const err4 = {instancePath:instancePath+"/entity",schemaPath:"#/definitions/Entity/enum",keyword:"enum",params:{allowedValues: schema352.enum},message:"must be equal to one of the allowed values"};
+const err4 = {instancePath:instancePath+"/entity",schemaPath:"#/definitions/Entity/enum",keyword:"enum",params:{allowedValues: schema353.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -1632,10 +1544,10 @@ validate440.errors = vErrors;
 return errors === 0;
 }
 
-const schema353 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"title":{"type":"string"},"filter":{"$ref":"#/definitions/Filter"},"dataSource":{"type":["string","null"]}},"required":["id","title","dataSource"],"title":"Panel"};
-const schema354 = {"type":["object","null"],"additionalProperties":false,"properties":{"join":{"type":"string","enum":["OR","AND"]},"rules":{"type":"array","items":{"$ref":"#/definitions/Rule"}}},"title":"Filter"};
-const schema355 = {"type":"object","additionalProperties":false,"properties":{"type":{"type":"string","enum":["alter","ego","edge"]},"id":{"type":"string"},"options":{"$ref":"#/definitions/Options"}},"required":["id","options","type"],"title":"Rule"};
-const schema356 = {"type":"object","additionalProperties":false,"properties":{"type":{"type":"string"},"attribute":{"type":"string"},"operator":{"type":"string","enum":["EXISTS","NOT_EXISTS","EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]},"value":{"type":["integer","string","boolean","array"]}},"required":["operator"],"title":"Rule Options","allOf":[{"if":{"properties":{"operator":{"enum":["EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]}}},"then":{"required":["value"]}}]};
+const schema354 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"title":{"type":"string"},"filter":{"$ref":"#/definitions/Filter"},"dataSource":{"type":["string","null"]}},"required":["id","title","dataSource"],"title":"Panel"};
+const schema355 = {"type":["object","null"],"additionalProperties":false,"properties":{"join":{"type":"string","enum":["OR","AND"]},"rules":{"type":"array","items":{"$ref":"#/definitions/Rule"}}},"title":"Filter"};
+const schema356 = {"type":"object","additionalProperties":false,"properties":{"type":{"type":"string","enum":["alter","ego","edge"]},"id":{"type":"string"},"options":{"$ref":"#/definitions/Options"}},"required":["id","options","type"],"title":"Rule"};
+const schema357 = {"type":"object","additionalProperties":false,"properties":{"type":{"type":"string"},"attribute":{"type":"string"},"operator":{"type":"string","enum":["EXISTS","NOT_EXISTS","EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]},"value":{"type":["integer","string","boolean","array"]}},"required":["operator"],"title":"Rule Options","allOf":[{"if":{"properties":{"operator":{"enum":["EXACTLY","NOT","GREATER_THAN","GREATER_THAN_OR_EQUAL","LESS_THAN","LESS_THAN_OR_EQUAL","INCLUDES","EXCLUDES","OPTIONS_GREATER_THAN","OPTIONS_LESS_THAN","OPTIONS_EQUALS","OPTIONS_NOT_EQUALS","CONTAINS","DOES NOT CONTAIN"]}}},"then":{"required":["value"]}}]};
 
 function validate444(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -1696,7 +1608,7 @@ vErrors.push(err4);
 errors++;
 }
 if(!(((data0 === "alter") || (data0 === "ego")) || (data0 === "edge"))){
-const err5 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema355.properties.type.enum},message:"must be equal to one of the allowed values"};
+const err5 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema356.properties.type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err5];
 }
@@ -1835,7 +1747,7 @@ vErrors.push(err14);
 errors++;
 }
 if(!((((((((((((((((data6 === "EXISTS") || (data6 === "NOT_EXISTS")) || (data6 === "EXACTLY")) || (data6 === "NOT")) || (data6 === "GREATER_THAN")) || (data6 === "GREATER_THAN_OR_EQUAL")) || (data6 === "LESS_THAN")) || (data6 === "LESS_THAN_OR_EQUAL")) || (data6 === "INCLUDES")) || (data6 === "EXCLUDES")) || (data6 === "OPTIONS_GREATER_THAN")) || (data6 === "OPTIONS_LESS_THAN")) || (data6 === "OPTIONS_EQUALS")) || (data6 === "OPTIONS_NOT_EQUALS")) || (data6 === "CONTAINS")) || (data6 === "DOES NOT CONTAIN"))){
-const err15 = {instancePath:instancePath+"/options/operator",schemaPath:"#/definitions/Options/properties/operator/enum",keyword:"enum",params:{allowedValues: schema356.properties.operator.enum},message:"must be equal to one of the allowed values"};
+const err15 = {instancePath:instancePath+"/options/operator",schemaPath:"#/definitions/Options/properties/operator/enum",keyword:"enum",params:{allowedValues: schema357.properties.operator.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err15];
 }
@@ -1848,7 +1760,7 @@ errors++;
 if(data2.value !== undefined){
 let data7 = data2.value;
 if((((!(((typeof data7 == "number") && (!(data7 % 1) && !isNaN(data7))) && (isFinite(data7)))) && (typeof data7 !== "string")) && (typeof data7 !== "boolean")) && (!(Array.isArray(data7)))){
-const err16 = {instancePath:instancePath+"/options/value",schemaPath:"#/definitions/Options/properties/value/type",keyword:"type",params:{type: schema356.properties.value.type},message:"must be integer,string,boolean,array"};
+const err16 = {instancePath:instancePath+"/options/value",schemaPath:"#/definitions/Options/properties/value/type",keyword:"type",params:{type: schema357.properties.value.type},message:"must be integer,string,boolean,array"};
 if(vErrors === null){
 vErrors = [err16];
 }
@@ -1890,7 +1802,7 @@ function validate443(data, {instancePath="", parentData, parentDataProperty, roo
 let vErrors = null;
 let errors = 0;
 if((!(data && typeof data == "object" && !Array.isArray(data))) && (data !== null)){
-const err0 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: schema354.type},message:"must be object,null"};
+const err0 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: schema355.type},message:"must be object,null"};
 if(vErrors === null){
 vErrors = [err0];
 }
@@ -1925,7 +1837,7 @@ vErrors.push(err2);
 errors++;
 }
 if(!((data0 === "OR") || (data0 === "AND"))){
-const err3 = {instancePath:instancePath+"/join",schemaPath:"#/properties/join/enum",keyword:"enum",params:{allowedValues: schema354.properties.join.enum},message:"must be equal to one of the allowed values"};
+const err3 = {instancePath:instancePath+"/join",schemaPath:"#/properties/join/enum",keyword:"enum",params:{allowedValues: schema355.properties.join.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err3];
 }
@@ -2042,7 +1954,7 @@ errors = vErrors.length;
 if(data.dataSource !== undefined){
 let data3 = data.dataSource;
 if((typeof data3 !== "string") && (data3 !== null)){
-const err6 = {instancePath:instancePath+"/dataSource",schemaPath:"#/properties/dataSource/type",keyword:"type",params:{type: schema353.properties.dataSource.type},message:"must be string,null"};
+const err6 = {instancePath:instancePath+"/dataSource",schemaPath:"#/properties/dataSource/type",keyword:"type",params:{type: schema354.properties.dataSource.type},message:"must be string,null"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -2067,12 +1979,12 @@ validate442.errors = vErrors;
 return errors === 0;
 }
 
-const schema357 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"text":{"type":"string"},"additionalAttributes":{"$ref":"#/definitions/AdditionalAttributes"},"variable":{"type":"string"},"edgeVariable":{"type":"string"},"negativeLabel":{"type":"string"},"otherVariable":{"type":"string"},"otherVariablePrompt":{"type":"string"},"otherOptionLabel":{"type":"string"},"bucketSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"binSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"color":{"type":"string"},"layout":{"$ref":"#/definitions/Layout"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/Highlight"},"createEdge":{"type":"string"}},"required":["id","text"],"title":"Prompt"};
-const schema362 = {"type":"object","additionalProperties":false,"properties":{"layoutVariable":{"anyOf":[{"type":"string"},{"type":"object"}]},"allowPositioning":{"type":"boolean"}},"required":["layoutVariable"],"title":"Layout"};
-const schema363 = {"type":"object","additionalProperties":false,"properties":{"display":{"type":"array","items":{"type":"string"}},"create":{"type":"string"},"restrict":{"type":"object","properties":{"origin":{"type":"string"},"destination":{"type":"string","enum":["same","different","all"]}}}},"required":[],"title":"Edges"};
-const schema364 = {"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"allowHighlighting":{"type":"boolean"}},"required":["allowHighlighting"],"title":"Highlight"};
-const schema358 = {"type":"array","title":"AdditionalAttributes","items":{"$ref":"#/definitions/AdditionalAttribute"}};
-const schema359 = {"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"value":{"type":["boolean"]}},"required":["variable","value"],"title":"AdditionalAttribute"};
+const schema358 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"text":{"type":"string"},"additionalAttributes":{"$ref":"#/definitions/AdditionalAttributes"},"variable":{"type":"string"},"edgeVariable":{"type":"string"},"negativeLabel":{"type":"string"},"otherVariable":{"type":"string"},"otherVariablePrompt":{"type":"string"},"otherOptionLabel":{"type":"string"},"bucketSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"binSortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"color":{"type":"string"},"layout":{"$ref":"#/definitions/Layout"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/Highlight"},"createEdge":{"type":"string"}},"required":["id","text"],"title":"Prompt"};
+const schema363 = {"type":"object","additionalProperties":false,"properties":{"layoutVariable":{"anyOf":[{"type":"string"},{"type":"object"}]},"allowPositioning":{"type":"boolean"}},"required":["layoutVariable"],"title":"Layout"};
+const schema364 = {"type":"object","additionalProperties":false,"properties":{"display":{"type":"array","items":{"type":"string"}},"create":{"type":"string"},"restrict":{"type":"object","properties":{"origin":{"type":"string"},"destination":{"type":"string","enum":["same","different","all"]}}}},"required":[],"title":"Edges"};
+const schema365 = {"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"allowHighlighting":{"type":"boolean"}},"required":["allowHighlighting"],"title":"Highlight"};
+const schema359 = {"type":"array","title":"AdditionalAttributes","items":{"$ref":"#/definitions/AdditionalAttribute"}};
+const schema360 = {"type":"object","additionalProperties":false,"properties":{"variable":{"type":"string"},"value":{"type":["boolean"]}},"required":["variable","value"],"title":"AdditionalAttribute"};
 
 function validate449(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -2128,7 +2040,7 @@ errors++;
 }
 if(data0.value !== undefined){
 if(typeof data0.value !== "boolean"){
-const err4 = {instancePath:instancePath+"/" + i0+"/value",schemaPath:"#/definitions/AdditionalAttribute/properties/value/type",keyword:"type",params:{type: schema359.properties.value.type},message:"must be boolean"};
+const err4 = {instancePath:instancePath+"/" + i0+"/value",schemaPath:"#/definitions/AdditionalAttribute/properties/value/type",keyword:"type",params:{type: schema360.properties.value.type},message:"must be boolean"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -2165,8 +2077,8 @@ validate449.errors = vErrors;
 return errors === 0;
 }
 
-const schema360 = {"type":"object","additionalProperties":false,"properties":{"property":{"type":"string"},"direction":{"$ref":"#/definitions/Direction"},"type":{"enum":["string","number","boolean","date","hierarchy"]},"hierarchy":{"type":"array","items":{"type":["string","number","boolean"]}}},"required":["property"],"title":"SortOrder"};
-const schema361 = {"type":"string","enum":["desc","asc"],"title":"Direction"};
+const schema361 = {"type":"object","additionalProperties":false,"properties":{"property":{"type":"string"},"direction":{"$ref":"#/definitions/Direction"},"type":{"enum":["string","number","boolean","date","hierarchy"]},"hierarchy":{"type":"array","items":{"type":["string","number","boolean"]}}},"required":["property"],"title":"SortOrder"};
+const schema362 = {"type":"string","enum":["desc","asc"],"title":"Direction"};
 
 function validate451(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -2219,7 +2131,7 @@ vErrors.push(err3);
 errors++;
 }
 if(!((data1 === "desc") || (data1 === "asc"))){
-const err4 = {instancePath:instancePath+"/direction",schemaPath:"#/definitions/Direction/enum",keyword:"enum",params:{allowedValues: schema361.enum},message:"must be equal to one of the allowed values"};
+const err4 = {instancePath:instancePath+"/direction",schemaPath:"#/definitions/Direction/enum",keyword:"enum",params:{allowedValues: schema362.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -2232,7 +2144,7 @@ errors++;
 if(data.type !== undefined){
 let data2 = data.type;
 if(!(((((data2 === "string") || (data2 === "number")) || (data2 === "boolean")) || (data2 === "date")) || (data2 === "hierarchy"))){
-const err5 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema360.properties.type.enum},message:"must be equal to one of the allowed values"};
+const err5 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema361.properties.type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err5];
 }
@@ -2249,7 +2161,7 @@ const len0 = data3.length;
 for(let i0=0; i0<len0; i0++){
 let data4 = data3[i0];
 if(((typeof data4 !== "string") && (!((typeof data4 == "number") && (isFinite(data4))))) && (typeof data4 !== "boolean")){
-const err6 = {instancePath:instancePath+"/hierarchy/" + i0,schemaPath:"#/properties/hierarchy/items/type",keyword:"type",params:{type: schema360.properties.hierarchy.items.type},message:"must be string,number,boolean"};
+const err6 = {instancePath:instancePath+"/hierarchy/" + i0,schemaPath:"#/properties/hierarchy/items/type",keyword:"type",params:{type: schema361.properties.hierarchy.items.type},message:"must be string,number,boolean"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -2312,7 +2224,7 @@ vErrors.push(err1);
 errors++;
 }
 for(const key0 in data){
-if(!(func2.call(schema357.properties, key0))){
+if(!(func2.call(schema358.properties, key0))){
 const err2 = {instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"};
 if(vErrors === null){
 vErrors = [err2];
@@ -2689,7 +2601,7 @@ vErrors.push(err27);
 errors++;
 }
 if(!(((data25 === "same") || (data25 === "different")) || (data25 === "all"))){
-const err28 = {instancePath:instancePath+"/edges/restrict/destination",schemaPath:"#/definitions/Edges/properties/restrict/properties/destination/enum",keyword:"enum",params:{allowedValues: schema363.properties.restrict.properties.destination.enum},message:"must be equal to one of the allowed values"};
+const err28 = {instancePath:instancePath+"/edges/restrict/destination",schemaPath:"#/definitions/Edges/properties/restrict/properties/destination/enum",keyword:"enum",params:{allowedValues: schema364.properties.restrict.properties.destination.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err28];
 }
@@ -2811,8 +2723,8 @@ validate448.errors = vErrors;
 return errors === 0;
 }
 
-const schema365 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"label":{"type":"string"},"layoutVariable":{"type":"string"},"groupVariable":{"type":"string"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/NarrativeHighlight"}},"required":["id","label","layoutVariable"],"title":"Preset"};
-const schema367 = {"type":"array","items":{"type":"string"},"title":"NarrativeHighlight"};
+const schema366 = {"type":"object","additionalProperties":false,"properties":{"id":{"type":"string"},"label":{"type":"string"},"layoutVariable":{"type":"string"},"groupVariable":{"type":"string"},"edges":{"$ref":"#/definitions/Edges"},"highlight":{"$ref":"#/definitions/NarrativeHighlight"}},"required":["id","label","layoutVariable"],"title":"Preset"};
+const schema368 = {"type":"array","items":{"type":"string"},"title":"NarrativeHighlight"};
 
 function validate456(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -2991,7 +2903,7 @@ vErrors.push(err13);
 errors++;
 }
 if(!(((data10 === "same") || (data10 === "different")) || (data10 === "all"))){
-const err14 = {instancePath:instancePath+"/edges/restrict/destination",schemaPath:"#/definitions/Edges/properties/restrict/properties/destination/enum",keyword:"enum",params:{allowedValues: schema363.properties.restrict.properties.destination.enum},message:"must be equal to one of the allowed values"};
+const err14 = {instancePath:instancePath+"/edges/restrict/destination",schemaPath:"#/definitions/Edges/properties/restrict/properties/destination/enum",keyword:"enum",params:{allowedValues: schema364.properties.restrict.properties.destination.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err14];
 }
@@ -3068,8 +2980,8 @@ validate456.errors = vErrors;
 return errors === 0;
 }
 
-const schema369 = {"type":"object","additionalProperties":false,"properties":{"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortableProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"required":["sortOrder","sortableProperties"],"title":"SortOptions"};
-const schema370 = {"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"variable":{"type":"string"}},"required":["label","variable"],"title":"Property"};
+const schema370 = {"type":"object","additionalProperties":false,"properties":{"sortOrder":{"type":"array","items":{"$ref":"#/definitions/SortOrder"}},"sortableProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"required":["sortOrder","sortableProperties"],"title":"SortOptions"};
+const schema371 = {"type":"object","additionalProperties":false,"properties":{"label":{"type":"string"},"variable":{"type":"string"}},"required":["label","variable"],"title":"Property"};
 
 function validate458(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -3231,7 +3143,7 @@ validate458.errors = vErrors;
 return errors === 0;
 }
 
-const schema371 = {"type":"object","additionalProperties":false,"properties":{"displayLabel":{"type":"string"},"additionalProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"title":"CardOptions"};
+const schema372 = {"type":"object","additionalProperties":false,"properties":{"displayLabel":{"type":"string"},"additionalProperties":{"type":"array","items":{"$ref":"#/definitions/Property"}}},"title":"CardOptions"};
 
 function validate461(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -3363,8 +3275,8 @@ validate461.errors = vErrors;
 return errors === 0;
 }
 
-const schema374 = {"type":"object","additionalProperties":true,"properties":{"minNodes":{"type":"integer"},"maxNodes":{"type":"integer"},"freeDraw":{"type":"boolean"},"featureNode":{"type":"boolean"},"allowRepositioning":{"type":"boolean"},"automaticLayout":{"type":"object","$ref":"#/definitions/AutomaticLayout"}},"required":[],"title":"Behaviours"};
-const schema375 = {"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"title":"AutomaticLayout"};
+const schema375 = {"type":"object","additionalProperties":true,"properties":{"minNodes":{"type":"integer"},"maxNodes":{"type":"integer"},"freeDraw":{"type":"boolean"},"featureNode":{"type":"boolean"},"allowRepositioning":{"type":"boolean"},"automaticLayout":{"type":"object","$ref":"#/definitions/AutomaticLayout"}},"required":[],"title":"Behaviours"};
+const schema376 = {"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"title":"AutomaticLayout"};
 
 function validate463(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -3506,7 +3418,7 @@ validate463.errors = vErrors;
 return errors === 0;
 }
 
-const schema378 = {"type":"object","additionalProperties":false,"properties":{"action":{"type":"string","enum":["SHOW","SKIP"]},"filter":{"$ref":"#/definitions/Filter"}},"required":["action","filter"],"title":"SkipLogic"};
+const schema379 = {"type":"object","additionalProperties":false,"properties":{"action":{"type":"string","enum":["SHOW","SKIP"]},"filter":{"$ref":"#/definitions/Filter"}},"required":["action","filter"],"title":"SkipLogic"};
 
 function validate465(data, {instancePath="", parentData, parentDataProperty, rootData=data}={}){
 let vErrors = null;
@@ -3557,7 +3469,7 @@ vErrors.push(err3);
 errors++;
 }
 if(!((data0 === "SHOW") || (data0 === "SKIP"))){
-const err4 = {instancePath:instancePath+"/action",schemaPath:"#/properties/action/enum",keyword:"enum",params:{allowedValues: schema378.properties.action.enum},message:"must be equal to one of the allowed values"};
+const err4 = {instancePath:instancePath+"/action",schemaPath:"#/properties/action/enum",keyword:"enum",params:{allowedValues: schema379.properties.action.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -3596,8 +3508,8 @@ const _errs1 = errors;
 let valid0 = false;
 const _errs2 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.form === undefined){
-const err0 = {instancePath,schemaPath:"#/anyOf/0/required",keyword:"required",params:{missingProperty: "form"},message:"must have required property '"+"form"+"'"};
+if(data.introductionPanel === undefined){
+const err0 = {instancePath,schemaPath:"#/anyOf/0/required",keyword:"required",params:{missingProperty: "introductionPanel"},message:"must have required property '"+"introductionPanel"+"'"};
 if(vErrors === null){
 vErrors = [err0];
 }
@@ -3606,14 +3518,24 @@ vErrors.push(err0);
 }
 errors++;
 }
-if(data.type !== undefined){
-if("EgoForm" !== data.type){
-const err1 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/0/properties/type/const",keyword:"const",params:{allowedValue: "EgoForm"},message:"must be equal to constant"};
+if(data.validation === undefined){
+const err1 = {instancePath,schemaPath:"#/anyOf/0/required",keyword:"required",params:{missingProperty: "validation"},message:"must have required property '"+"validation"+"'"};
 if(vErrors === null){
 vErrors = [err1];
 }
 else {
 vErrors.push(err1);
+}
+errors++;
+}
+if(data.type !== undefined){
+if("Anonymisation" !== data.type){
+const err2 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/0/properties/type/const",keyword:"const",params:{allowedValue: "Anonymisation"},message:"must be equal to constant"};
+if(vErrors === null){
+vErrors = [err2];
+}
+else {
+vErrors.push(err2);
 }
 errors++;
 }
@@ -3625,17 +3547,7 @@ if(!valid0){
 const _errs4 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
 if(data.subject === undefined){
-const err2 = {instancePath,schemaPath:"#/anyOf/1/required",keyword:"required",params:{missingProperty: "subject"},message:"must have required property '"+"subject"+"'"};
-if(vErrors === null){
-vErrors = [err2];
-}
-else {
-vErrors.push(err2);
-}
-errors++;
-}
-if(data.prompts === undefined){
-const err3 = {instancePath,schemaPath:"#/anyOf/1/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
+const err3 = {instancePath,schemaPath:"#/anyOf/1/required",keyword:"required",params:{missingProperty: "subject"},message:"must have required property '"+"subject"+"'"};
 if(vErrors === null){
 vErrors = [err3];
 }
@@ -3644,14 +3556,34 @@ vErrors.push(err3);
 }
 errors++;
 }
-if(data.type !== undefined){
-if("DyadCensus" !== data.type){
-const err4 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/1/properties/type/const",keyword:"const",params:{allowedValue: "DyadCensus"},message:"must be equal to constant"};
+if(data.behaviours === undefined){
+const err4 = {instancePath,schemaPath:"#/anyOf/1/required",keyword:"required",params:{missingProperty: "behaviours"},message:"must have required property '"+"behaviours"+"'"};
 if(vErrors === null){
 vErrors = [err4];
 }
 else {
 vErrors.push(err4);
+}
+errors++;
+}
+if(data.prompts === undefined){
+const err5 = {instancePath,schemaPath:"#/anyOf/1/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
+if(vErrors === null){
+vErrors = [err5];
+}
+else {
+vErrors.push(err5);
+}
+errors++;
+}
+if(data.type !== undefined){
+if("OneToManyDyadCensus" !== data.type){
+const err6 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/1/properties/type/const",keyword:"const",params:{allowedValue: "OneToManyDyadCensus"},message:"must be equal to constant"};
+if(vErrors === null){
+vErrors = [err6];
+}
+else {
+vErrors.push(err6);
 }
 errors++;
 }
@@ -3662,34 +3594,24 @@ valid0 = valid0 || _valid0;
 if(!valid0){
 const _errs6 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.subject === undefined){
-const err5 = {instancePath,schemaPath:"#/anyOf/2/required",keyword:"required",params:{missingProperty: "subject"},message:"must have required property '"+"subject"+"'"};
-if(vErrors === null){
-vErrors = [err5];
-}
-else {
-vErrors.push(err5);
-}
-errors++;
-}
-if(data.prompts === undefined){
-const err6 = {instancePath,schemaPath:"#/anyOf/2/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
-if(vErrors === null){
-vErrors = [err6];
-}
-else {
-vErrors.push(err6);
-}
-errors++;
-}
-if(data.type !== undefined){
-if("TieStrengthCensus" !== data.type){
-const err7 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/2/properties/type/const",keyword:"const",params:{allowedValue: "TieStrengthCensus"},message:"must be equal to constant"};
+if(data.form === undefined){
+const err7 = {instancePath,schemaPath:"#/anyOf/2/required",keyword:"required",params:{missingProperty: "form"},message:"must have required property '"+"form"+"'"};
 if(vErrors === null){
 vErrors = [err7];
 }
 else {
 vErrors.push(err7);
+}
+errors++;
+}
+if(data.type !== undefined){
+if("EgoForm" !== data.type){
+const err8 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/2/properties/type/const",keyword:"const",params:{allowedValue: "EgoForm"},message:"must be equal to constant"};
+if(vErrors === null){
+vErrors = [err8];
+}
+else {
+vErrors.push(err8);
 }
 errors++;
 }
@@ -3700,19 +3622,8 @@ valid0 = valid0 || _valid0;
 if(!valid0){
 const _errs8 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.form === undefined){
-const err8 = {instancePath,schemaPath:"#/anyOf/3/required",keyword:"required",params:{missingProperty: "form"},message:"must have required property '"+"form"+"'"};
-if(vErrors === null){
-vErrors = [err8];
-}
-else {
-vErrors.push(err8);
-}
-errors++;
-}
-if(data.type !== undefined){
-if("AlterForm" !== data.type){
-const err9 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/3/properties/type/const",keyword:"const",params:{allowedValue: "AlterForm"},message:"must be equal to constant"};
+if(data.subject === undefined){
+const err9 = {instancePath,schemaPath:"#/anyOf/3/required",keyword:"required",params:{missingProperty: "subject"},message:"must have required property '"+"subject"+"'"};
 if(vErrors === null){
 vErrors = [err9];
 }
@@ -3721,15 +3632,8 @@ vErrors.push(err9);
 }
 errors++;
 }
-}
-}
-var _valid0 = _errs8 === errors;
-valid0 = valid0 || _valid0;
-if(!valid0){
-const _errs10 = errors;
-if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.form === undefined){
-const err10 = {instancePath,schemaPath:"#/anyOf/4/required",keyword:"required",params:{missingProperty: "form"},message:"must have required property '"+"form"+"'"};
+if(data.prompts === undefined){
+const err10 = {instancePath,schemaPath:"#/anyOf/3/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
 if(vErrors === null){
 vErrors = [err10];
 }
@@ -3739,8 +3643,8 @@ vErrors.push(err10);
 errors++;
 }
 if(data.type !== undefined){
-if("AlterEdgeForm" !== data.type){
-const err11 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/4/properties/type/const",keyword:"const",params:{allowedValue: "AlterEdgeForm"},message:"must be equal to constant"};
+if("DyadCensus" !== data.type){
+const err11 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/3/properties/type/const",keyword:"const",params:{allowedValue: "DyadCensus"},message:"must be equal to constant"};
 if(vErrors === null){
 vErrors = [err11];
 }
@@ -3751,13 +3655,13 @@ errors++;
 }
 }
 }
-var _valid0 = _errs10 === errors;
+var _valid0 = _errs8 === errors;
 valid0 = valid0 || _valid0;
 if(!valid0){
-const _errs12 = errors;
+const _errs10 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.items === undefined){
-const err12 = {instancePath,schemaPath:"#/anyOf/5/required",keyword:"required",params:{missingProperty: "items"},message:"must have required property '"+"items"+"'"};
+if(data.subject === undefined){
+const err12 = {instancePath,schemaPath:"#/anyOf/4/required",keyword:"required",params:{missingProperty: "subject"},message:"must have required property '"+"subject"+"'"};
 if(vErrors === null){
 vErrors = [err12];
 }
@@ -3766,9 +3670,8 @@ vErrors.push(err12);
 }
 errors++;
 }
-if(data.type !== undefined){
-if("Information" !== data.type){
-const err13 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/5/properties/type/const",keyword:"const",params:{allowedValue: "Information"},message:"must be equal to constant"};
+if(data.prompts === undefined){
+const err13 = {instancePath,schemaPath:"#/anyOf/4/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
 if(vErrors === null){
 vErrors = [err13];
 }
@@ -3777,15 +3680,9 @@ vErrors.push(err13);
 }
 errors++;
 }
-}
-}
-var _valid0 = _errs12 === errors;
-valid0 = valid0 || _valid0;
-if(!valid0){
-const _errs14 = errors;
-if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.presets === undefined){
-const err14 = {instancePath,schemaPath:"#/anyOf/6/required",keyword:"required",params:{missingProperty: "presets"},message:"must have required property '"+"presets"+"'"};
+if(data.type !== undefined){
+if("TieStrengthCensus" !== data.type){
+const err14 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/4/properties/type/const",keyword:"const",params:{allowedValue: "TieStrengthCensus"},message:"must be equal to constant"};
 if(vErrors === null){
 vErrors = [err14];
 }
@@ -3794,8 +3691,15 @@ vErrors.push(err14);
 }
 errors++;
 }
-if(data.background === undefined){
-const err15 = {instancePath,schemaPath:"#/anyOf/6/required",keyword:"required",params:{missingProperty: "background"},message:"must have required property '"+"background"+"'"};
+}
+}
+var _valid0 = _errs10 === errors;
+valid0 = valid0 || _valid0;
+if(!valid0){
+const _errs12 = errors;
+if(data && typeof data == "object" && !Array.isArray(data)){
+if(data.form === undefined){
+const err15 = {instancePath,schemaPath:"#/anyOf/5/required",keyword:"required",params:{missingProperty: "form"},message:"must have required property '"+"form"+"'"};
 if(vErrors === null){
 vErrors = [err15];
 }
@@ -3805,8 +3709,8 @@ vErrors.push(err15);
 errors++;
 }
 if(data.type !== undefined){
-if("Narrative" !== data.type){
-const err16 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/6/properties/type/const",keyword:"const",params:{allowedValue: "Narrative"},message:"must be equal to constant"};
+if("AlterForm" !== data.type){
+const err16 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/5/properties/type/const",keyword:"const",params:{allowedValue: "AlterForm"},message:"must be equal to constant"};
 if(vErrors === null){
 vErrors = [err16];
 }
@@ -3817,13 +3721,13 @@ errors++;
 }
 }
 }
-var _valid0 = _errs14 === errors;
+var _valid0 = _errs12 === errors;
 valid0 = valid0 || _valid0;
 if(!valid0){
-const _errs16 = errors;
+const _errs14 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.prompts === undefined){
-const err17 = {instancePath,schemaPath:"#/anyOf/7/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
+if(data.form === undefined){
+const err17 = {instancePath,schemaPath:"#/anyOf/6/required",keyword:"required",params:{missingProperty: "form"},message:"must have required property '"+"form"+"'"};
 if(vErrors === null){
 vErrors = [err17];
 }
@@ -3833,9 +3737,8 @@ vErrors.push(err17);
 errors++;
 }
 if(data.type !== undefined){
-let data7 = data.type;
-if(!((((((((((data7 === "NameGenerator") || (data7 === "NameGeneratorQuickAdd")) || (data7 === "NameGeneratorRoster")) || (data7 === "Sociogram")) || (data7 === "OrdinalBin")) || (data7 === "CategoricalBin")) || (data7 === "DyadCensus")) || (data7 === "Anonymisation")) || (data7 === "OneToManyDyadCensus")) || (data7 === "FamilyTreeCensus"))){
-const err18 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/7/properties/type/enum",keyword:"enum",params:{allowedValues: schema348.anyOf[7].properties.type.enum},message:"must be equal to one of the allowed values"};
+if("AlterEdgeForm" !== data.type){
+const err18 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/6/properties/type/const",keyword:"const",params:{allowedValue: "AlterEdgeForm"},message:"must be equal to constant"};
 if(vErrors === null){
 vErrors = [err18];
 }
@@ -3846,13 +3749,13 @@ errors++;
 }
 }
 }
-var _valid0 = _errs16 === errors;
+var _valid0 = _errs14 === errors;
 valid0 = valid0 || _valid0;
 if(!valid0){
-const _errs18 = errors;
+const _errs16 = errors;
 if(data && typeof data == "object" && !Array.isArray(data)){
-if(data.mapOptions === undefined){
-const err19 = {instancePath,schemaPath:"#/anyOf/8/required",keyword:"required",params:{missingProperty: "mapOptions"},message:"must have required property '"+"mapOptions"+"'"};
+if(data.items === undefined){
+const err19 = {instancePath,schemaPath:"#/anyOf/7/required",keyword:"required",params:{missingProperty: "items"},message:"must have required property '"+"items"+"'"};
 if(vErrors === null){
 vErrors = [err19];
 }
@@ -3861,8 +3764,9 @@ vErrors.push(err19);
 }
 errors++;
 }
-if(data.prompts === undefined){
-const err20 = {instancePath,schemaPath:"#/anyOf/8/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
+if(data.type !== undefined){
+if("Information" !== data.type){
+const err20 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/7/properties/type/const",keyword:"const",params:{allowedValue: "Information"},message:"must be equal to constant"};
 if(vErrors === null){
 vErrors = [err20];
 }
@@ -3871,9 +3775,15 @@ vErrors.push(err20);
 }
 errors++;
 }
-if(data.type !== undefined){
-if("Geospatial" !== data.type){
-const err21 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/8/properties/type/const",keyword:"const",params:{allowedValue: "Geospatial"},message:"must be equal to constant"};
+}
+}
+var _valid0 = _errs16 === errors;
+valid0 = valid0 || _valid0;
+if(!valid0){
+const _errs18 = errors;
+if(data && typeof data == "object" && !Array.isArray(data)){
+if(data.presets === undefined){
+const err21 = {instancePath,schemaPath:"#/anyOf/8/required",keyword:"required",params:{missingProperty: "presets"},message:"must have required property '"+"presets"+"'"};
 if(vErrors === null){
 vErrors = [err21];
 }
@@ -3882,9 +3792,97 @@ vErrors.push(err21);
 }
 errors++;
 }
+if(data.background === undefined){
+const err22 = {instancePath,schemaPath:"#/anyOf/8/required",keyword:"required",params:{missingProperty: "background"},message:"must have required property '"+"background"+"'"};
+if(vErrors === null){
+vErrors = [err22];
+}
+else {
+vErrors.push(err22);
+}
+errors++;
+}
+if(data.type !== undefined){
+if("Narrative" !== data.type){
+const err23 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/8/properties/type/const",keyword:"const",params:{allowedValue: "Narrative"},message:"must be equal to constant"};
+if(vErrors === null){
+vErrors = [err23];
+}
+else {
+vErrors.push(err23);
+}
+errors++;
+}
 }
 }
 var _valid0 = _errs18 === errors;
+valid0 = valid0 || _valid0;
+if(!valid0){
+const _errs20 = errors;
+if(data && typeof data == "object" && !Array.isArray(data)){
+if(data.prompts === undefined){
+const err24 = {instancePath,schemaPath:"#/anyOf/9/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
+if(vErrors === null){
+vErrors = [err24];
+}
+else {
+vErrors.push(err24);
+}
+errors++;
+}
+if(data.type !== undefined){
+let data9 = data.type;
+if(!(((((((((data9 === "NameGenerator") || (data9 === "NameGeneratorQuickAdd")) || (data9 === "NameGeneratorRoster")) || (data9 === "Sociogram")) || (data9 === "OrdinalBin")) || (data9 === "CategoricalBin")) || (data9 === "DyadCensus")) || (data9 === "OneToManyDyadCensus")) || (data9 === "FamilyTreeCensus"))){
+const err25 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/9/properties/type/enum",keyword:"enum",params:{allowedValues: schema349.anyOf[9].properties.type.enum},message:"must be equal to one of the allowed values"};
+if(vErrors === null){
+vErrors = [err25];
+}
+else {
+vErrors.push(err25);
+}
+errors++;
+}
+}
+}
+var _valid0 = _errs20 === errors;
+valid0 = valid0 || _valid0;
+if(!valid0){
+const _errs22 = errors;
+if(data && typeof data == "object" && !Array.isArray(data)){
+if(data.mapOptions === undefined){
+const err26 = {instancePath,schemaPath:"#/anyOf/10/required",keyword:"required",params:{missingProperty: "mapOptions"},message:"must have required property '"+"mapOptions"+"'"};
+if(vErrors === null){
+vErrors = [err26];
+}
+else {
+vErrors.push(err26);
+}
+errors++;
+}
+if(data.prompts === undefined){
+const err27 = {instancePath,schemaPath:"#/anyOf/10/required",keyword:"required",params:{missingProperty: "prompts"},message:"must have required property '"+"prompts"+"'"};
+if(vErrors === null){
+vErrors = [err27];
+}
+else {
+vErrors.push(err27);
+}
+errors++;
+}
+if(data.type !== undefined){
+if("Geospatial" !== data.type){
+const err28 = {instancePath:instancePath+"/type",schemaPath:"#/anyOf/10/properties/type/const",keyword:"const",params:{allowedValue: "Geospatial"},message:"must be equal to constant"};
+if(vErrors === null){
+vErrors = [err28];
+}
+else {
+vErrors.push(err28);
+}
+errors++;
+}
+}
+}
+var _valid0 = _errs22 === errors;
 valid0 = valid0 || _valid0;
 }
 }
@@ -3894,13 +3892,15 @@ valid0 = valid0 || _valid0;
 }
 }
 }
+}
+}
 if(!valid0){
-const err22 = {instancePath,schemaPath:"#/anyOf",keyword:"anyOf",params:{},message:"must match a schema in anyOf"};
+const err29 = {instancePath,schemaPath:"#/anyOf",keyword:"anyOf",params:{},message:"must match a schema in anyOf"};
 if(vErrors === null){
-vErrors = [err22];
+vErrors = [err29];
 }
 else {
-vErrors.push(err22);
+vErrors.push(err29);
 }
 errors++;
 }
@@ -3917,85 +3917,7 @@ vErrors = null;
 }
 if(data && typeof data == "object" && !Array.isArray(data)){
 if(data.id === undefined){
-const err23 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "id"},message:"must have required property '"+"id"+"'"};
-if(vErrors === null){
-vErrors = [err23];
-}
-else {
-vErrors.push(err23);
-}
-errors++;
-}
-if(data.label === undefined){
-const err24 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "label"},message:"must have required property '"+"label"+"'"};
-if(vErrors === null){
-vErrors = [err24];
-}
-else {
-vErrors.push(err24);
-}
-errors++;
-}
-if(data.type === undefined){
-const err25 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
-if(vErrors === null){
-vErrors = [err25];
-}
-else {
-vErrors.push(err25);
-}
-errors++;
-}
-for(const key0 in data){
-if(!(func2.call(schema348.properties, key0))){
-const err26 = {instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"};
-if(vErrors === null){
-vErrors = [err26];
-}
-else {
-vErrors.push(err26);
-}
-errors++;
-}
-}
-if(data.id !== undefined){
-if(typeof data.id !== "string"){
-const err27 = {instancePath:instancePath+"/id",schemaPath:"#/properties/id/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err27];
-}
-else {
-vErrors.push(err27);
-}
-errors++;
-}
-}
-if(data.interviewScript !== undefined){
-if(typeof data.interviewScript !== "string"){
-const err28 = {instancePath:instancePath+"/interviewScript",schemaPath:"#/properties/interviewScript/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err28];
-}
-else {
-vErrors.push(err28);
-}
-errors++;
-}
-}
-if(data.type !== undefined){
-let data11 = data.type;
-if(typeof data11 !== "string"){
-const err29 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err29];
-}
-else {
-vErrors.push(err29);
-}
-errors++;
-}
-if(!(((((((((((((((((data11 === "Narrative") || (data11 === "AlterForm")) || (data11 === "AlterEdgeForm")) || (data11 === "EgoForm")) || (data11 === "NameGenerator")) || (data11 === "NameGeneratorQuickAdd")) || (data11 === "NameGeneratorRoster")) || (data11 === "Sociogram")) || (data11 === "DyadCensus")) || (data11 === "TieStrengthCensus")) || (data11 === "Information")) || (data11 === "OrdinalBin")) || (data11 === "CategoricalBin")) || (data11 === "Anonymisation")) || (data11 === "OneToManyDyadCensus")) || (data11 === "FamilyTreeCensus")) || (data11 === "Geospatial"))){
-const err30 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema348.properties.type.enum},message:"must be equal to one of the allowed values"};
+const err30 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "id"},message:"must have required property '"+"id"+"'"};
 if(vErrors === null){
 vErrors = [err30];
 }
@@ -4004,15 +3926,93 @@ vErrors.push(err30);
 }
 errors++;
 }
-}
-if(data.label !== undefined){
-if(typeof data.label !== "string"){
-const err31 = {instancePath:instancePath+"/label",schemaPath:"#/properties/label/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.label === undefined){
+const err31 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "label"},message:"must have required property '"+"label"+"'"};
 if(vErrors === null){
 vErrors = [err31];
 }
 else {
 vErrors.push(err31);
+}
+errors++;
+}
+if(data.type === undefined){
+const err32 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
+if(vErrors === null){
+vErrors = [err32];
+}
+else {
+vErrors.push(err32);
+}
+errors++;
+}
+for(const key0 in data){
+if(!(func2.call(schema349.properties, key0))){
+const err33 = {instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"};
+if(vErrors === null){
+vErrors = [err33];
+}
+else {
+vErrors.push(err33);
+}
+errors++;
+}
+}
+if(data.id !== undefined){
+if(typeof data.id !== "string"){
+const err34 = {instancePath:instancePath+"/id",schemaPath:"#/properties/id/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err34];
+}
+else {
+vErrors.push(err34);
+}
+errors++;
+}
+}
+if(data.interviewScript !== undefined){
+if(typeof data.interviewScript !== "string"){
+const err35 = {instancePath:instancePath+"/interviewScript",schemaPath:"#/properties/interviewScript/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err35];
+}
+else {
+vErrors.push(err35);
+}
+errors++;
+}
+}
+if(data.type !== undefined){
+let data13 = data.type;
+if(typeof data13 !== "string"){
+const err36 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err36];
+}
+else {
+vErrors.push(err36);
+}
+errors++;
+}
+if(!(((((((((((((((((data13 === "Narrative") || (data13 === "AlterForm")) || (data13 === "AlterEdgeForm")) || (data13 === "EgoForm")) || (data13 === "NameGenerator")) || (data13 === "NameGeneratorQuickAdd")) || (data13 === "NameGeneratorRoster")) || (data13 === "Sociogram")) || (data13 === "DyadCensus")) || (data13 === "TieStrengthCensus")) || (data13 === "Information")) || (data13 === "OrdinalBin")) || (data13 === "CategoricalBin")) || (data13 === "Anonymisation")) || (data13 === "OneToManyDyadCensus")) || (data13 === "FamilyTreeCensus")) || (data13 === "Geospatial"))){
+const err37 = {instancePath:instancePath+"/type",schemaPath:"#/properties/type/enum",keyword:"enum",params:{allowedValues: schema349.properties.type.enum},message:"must be equal to one of the allowed values"};
+if(vErrors === null){
+vErrors = [err37];
+}
+else {
+vErrors.push(err37);
+}
+errors++;
+}
+}
+if(data.label !== undefined){
+if(typeof data.label !== "string"){
+const err38 = {instancePath:instancePath+"/label",schemaPath:"#/properties/label/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err38];
+}
+else {
+vErrors.push(err38);
 }
 errors++;
 }
@@ -4024,39 +4024,39 @@ errors = vErrors.length;
 }
 }
 if(data.quickAdd !== undefined){
-let data14 = data.quickAdd;
-if((typeof data14 !== "string") && (data14 !== null)){
-const err32 = {instancePath:instancePath+"/quickAdd",schemaPath:"#/properties/quickAdd/type",keyword:"type",params:{type: schema348.properties.quickAdd.type},message:"must be string,null"};
+let data16 = data.quickAdd;
+if((typeof data16 !== "string") && (data16 !== null)){
+const err39 = {instancePath:instancePath+"/quickAdd",schemaPath:"#/properties/quickAdd/type",keyword:"type",params:{type: schema349.properties.quickAdd.type},message:"must be string,null"};
 if(vErrors === null){
-vErrors = [err32];
+vErrors = [err39];
 }
 else {
-vErrors.push(err32);
+vErrors.push(err39);
 }
 errors++;
 }
 }
 if(data.createEdge !== undefined){
 if(typeof data.createEdge !== "string"){
-const err33 = {instancePath:instancePath+"/createEdge",schemaPath:"#/properties/createEdge/type",keyword:"type",params:{type: "string"},message:"must be string"};
+const err40 = {instancePath:instancePath+"/createEdge",schemaPath:"#/properties/createEdge/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
-vErrors = [err33];
+vErrors = [err40];
 }
 else {
-vErrors.push(err33);
+vErrors.push(err40);
 }
 errors++;
 }
 }
 if(data.dataSource !== undefined){
-let data16 = data.dataSource;
-if((typeof data16 !== "string") && (data16 !== null)){
-const err34 = {instancePath:instancePath+"/dataSource",schemaPath:"#/properties/dataSource/type",keyword:"type",params:{type: schema348.properties.dataSource.type},message:"must be string,null"};
+let data18 = data.dataSource;
+if((typeof data18 !== "string") && (data18 !== null)){
+const err41 = {instancePath:instancePath+"/dataSource",schemaPath:"#/properties/dataSource/type",keyword:"type",params:{type: schema349.properties.dataSource.type},message:"must be string,null"};
 if(vErrors === null){
-vErrors = [err34];
+vErrors = [err41];
 }
 else {
-vErrors.push(err34);
+vErrors.push(err41);
 }
 errors++;
 }
@@ -4068,122 +4068,18 @@ errors = vErrors.length;
 }
 }
 if(data.panels !== undefined){
-let data18 = data.panels;
-if(Array.isArray(data18)){
-const len0 = data18.length;
+let data20 = data.panels;
+if(Array.isArray(data20)){
+const len0 = data20.length;
 for(let i0=0; i0<len0; i0++){
-if(!(validate442(data18[i0], {instancePath:instancePath+"/panels/" + i0,parentData:data18,parentDataProperty:i0,rootData}))){
+if(!(validate442(data20[i0], {instancePath:instancePath+"/panels/" + i0,parentData:data20,parentDataProperty:i0,rootData}))){
 vErrors = vErrors === null ? validate442.errors : vErrors.concat(validate442.errors);
 errors = vErrors.length;
 }
 }
 }
 else {
-const err35 = {instancePath:instancePath+"/panels",schemaPath:"#/properties/panels/type",keyword:"type",params:{type: "array"},message:"must be array"};
-if(vErrors === null){
-vErrors = [err35];
-}
-else {
-vErrors.push(err35);
-}
-errors++;
-}
-}
-if(data.prompts !== undefined){
-let data20 = data.prompts;
-if(Array.isArray(data20)){
-if(data20.length < 1){
-const err36 = {instancePath:instancePath+"/prompts",schemaPath:"#/properties/prompts/minItems",keyword:"minItems",params:{limit: 1},message:"must NOT have fewer than 1 items"};
-if(vErrors === null){
-vErrors = [err36];
-}
-else {
-vErrors.push(err36);
-}
-errors++;
-}
-const len1 = data20.length;
-for(let i1=0; i1<len1; i1++){
-if(!(validate448(data20[i1], {instancePath:instancePath+"/prompts/" + i1,parentData:data20,parentDataProperty:i1,rootData}))){
-vErrors = vErrors === null ? validate448.errors : vErrors.concat(validate448.errors);
-errors = vErrors.length;
-}
-}
-}
-else {
-const err37 = {instancePath:instancePath+"/prompts",schemaPath:"#/properties/prompts/type",keyword:"type",params:{type: "array"},message:"must be array"};
-if(vErrors === null){
-vErrors = [err37];
-}
-else {
-vErrors.push(err37);
-}
-errors++;
-}
-}
-if(data.presets !== undefined){
-let data22 = data.presets;
-if(Array.isArray(data22)){
-if(data22.length < 1){
-const err38 = {instancePath:instancePath+"/presets",schemaPath:"#/properties/presets/minItems",keyword:"minItems",params:{limit: 1},message:"must NOT have fewer than 1 items"};
-if(vErrors === null){
-vErrors = [err38];
-}
-else {
-vErrors.push(err38);
-}
-errors++;
-}
-const len2 = data22.length;
-for(let i2=0; i2<len2; i2++){
-if(!(validate456(data22[i2], {instancePath:instancePath+"/presets/" + i2,parentData:data22,parentDataProperty:i2,rootData}))){
-vErrors = vErrors === null ? validate456.errors : vErrors.concat(validate456.errors);
-errors = vErrors.length;
-}
-}
-}
-else {
-const err39 = {instancePath:instancePath+"/presets",schemaPath:"#/properties/presets/type",keyword:"type",params:{type: "array"},message:"must be array"};
-if(vErrors === null){
-vErrors = [err39];
-}
-else {
-vErrors.push(err39);
-}
-errors++;
-}
-}
-if(data.background !== undefined){
-let data24 = data.background;
-if(data24 && typeof data24 == "object" && !Array.isArray(data24)){
-for(const key1 in data24){
-if(!(((key1 === "image") || (key1 === "concentricCircles")) || (key1 === "skewedTowardCenter"))){
-const err40 = {instancePath:instancePath+"/background",schemaPath:"#/definitions/Background/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key1},message:"must NOT have additional properties"};
-if(vErrors === null){
-vErrors = [err40];
-}
-else {
-vErrors.push(err40);
-}
-errors++;
-}
-}
-if(data24.image !== undefined){
-if(typeof data24.image !== "string"){
-const err41 = {instancePath:instancePath+"/background/image",schemaPath:"#/definitions/Background/properties/image/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err41];
-}
-else {
-vErrors.push(err41);
-}
-errors++;
-}
-}
-if(data24.concentricCircles !== undefined){
-let data26 = data24.concentricCircles;
-if(!(((typeof data26 == "number") && (!(data26 % 1) && !isNaN(data26))) && (isFinite(data26)))){
-const err42 = {instancePath:instancePath+"/background/concentricCircles",schemaPath:"#/definitions/Background/properties/concentricCircles/type",keyword:"type",params:{type: "integer"},message:"must be integer"};
+const err42 = {instancePath:instancePath+"/panels",schemaPath:"#/properties/panels/type",keyword:"type",params:{type: "array"},message:"must be array"};
 if(vErrors === null){
 vErrors = [err42];
 }
@@ -4193,9 +4089,11 @@ vErrors.push(err42);
 errors++;
 }
 }
-if(data24.skewedTowardCenter !== undefined){
-if(typeof data24.skewedTowardCenter !== "boolean"){
-const err43 = {instancePath:instancePath+"/background/skewedTowardCenter",schemaPath:"#/definitions/Background/properties/skewedTowardCenter/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
+if(data.prompts !== undefined){
+let data22 = data.prompts;
+if(Array.isArray(data22)){
+if(data22.length < 1){
+const err43 = {instancePath:instancePath+"/prompts",schemaPath:"#/properties/prompts/minItems",keyword:"minItems",params:{limit: 1},message:"must NOT have fewer than 1 items"};
 if(vErrors === null){
 vErrors = [err43];
 }
@@ -4204,10 +4102,16 @@ vErrors.push(err43);
 }
 errors++;
 }
+const len1 = data22.length;
+for(let i1=0; i1<len1; i1++){
+if(!(validate448(data22[i1], {instancePath:instancePath+"/prompts/" + i1,parentData:data22,parentDataProperty:i1,rootData}))){
+vErrors = vErrors === null ? validate448.errors : vErrors.concat(validate448.errors);
+errors = vErrors.length;
+}
 }
 }
 else {
-const err44 = {instancePath:instancePath+"/background",schemaPath:"#/definitions/Background/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err44 = {instancePath:instancePath+"/prompts",schemaPath:"#/properties/prompts/type",keyword:"type",params:{type: "array"},message:"must be array"};
 if(vErrors === null){
 vErrors = [err44];
 }
@@ -4216,9 +4120,12 @@ vErrors.push(err44);
 }
 errors++;
 }
-if(data24 && typeof data24 == "object" && !Array.isArray(data24)){
-if(Object.keys(data24).length < 1){
-const err45 = {instancePath:instancePath+"/background",schemaPath:"#/properties/background/minProperties",keyword:"minProperties",params:{limit: 1},message:"must NOT have fewer than 1 properties"};
+}
+if(data.presets !== undefined){
+let data24 = data.presets;
+if(Array.isArray(data24)){
+if(data24.length < 1){
+const err45 = {instancePath:instancePath+"/presets",schemaPath:"#/properties/presets/minItems",keyword:"minItems",params:{limit: 1},message:"must NOT have fewer than 1 items"};
 if(vErrors === null){
 vErrors = [err45];
 }
@@ -4227,14 +4134,107 @@ vErrors.push(err45);
 }
 errors++;
 }
+const len2 = data24.length;
+for(let i2=0; i2<len2; i2++){
+if(!(validate456(data24[i2], {instancePath:instancePath+"/presets/" + i2,parentData:data24,parentDataProperty:i2,rootData}))){
+vErrors = vErrors === null ? validate456.errors : vErrors.concat(validate456.errors);
+errors = vErrors.length;
+}
+}
 }
 else {
-const err46 = {instancePath:instancePath+"/background",schemaPath:"#/properties/background/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err46 = {instancePath:instancePath+"/presets",schemaPath:"#/properties/presets/type",keyword:"type",params:{type: "array"},message:"must be array"};
 if(vErrors === null){
 vErrors = [err46];
 }
 else {
 vErrors.push(err46);
+}
+errors++;
+}
+}
+if(data.background !== undefined){
+let data26 = data.background;
+if(data26 && typeof data26 == "object" && !Array.isArray(data26)){
+for(const key1 in data26){
+if(!(((key1 === "image") || (key1 === "concentricCircles")) || (key1 === "skewedTowardCenter"))){
+const err47 = {instancePath:instancePath+"/background",schemaPath:"#/definitions/Background/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key1},message:"must NOT have additional properties"};
+if(vErrors === null){
+vErrors = [err47];
+}
+else {
+vErrors.push(err47);
+}
+errors++;
+}
+}
+if(data26.image !== undefined){
+if(typeof data26.image !== "string"){
+const err48 = {instancePath:instancePath+"/background/image",schemaPath:"#/definitions/Background/properties/image/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err48];
+}
+else {
+vErrors.push(err48);
+}
+errors++;
+}
+}
+if(data26.concentricCircles !== undefined){
+let data28 = data26.concentricCircles;
+if(!(((typeof data28 == "number") && (!(data28 % 1) && !isNaN(data28))) && (isFinite(data28)))){
+const err49 = {instancePath:instancePath+"/background/concentricCircles",schemaPath:"#/definitions/Background/properties/concentricCircles/type",keyword:"type",params:{type: "integer"},message:"must be integer"};
+if(vErrors === null){
+vErrors = [err49];
+}
+else {
+vErrors.push(err49);
+}
+errors++;
+}
+}
+if(data26.skewedTowardCenter !== undefined){
+if(typeof data26.skewedTowardCenter !== "boolean"){
+const err50 = {instancePath:instancePath+"/background/skewedTowardCenter",schemaPath:"#/definitions/Background/properties/skewedTowardCenter/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
+if(vErrors === null){
+vErrors = [err50];
+}
+else {
+vErrors.push(err50);
+}
+errors++;
+}
+}
+}
+else {
+const err51 = {instancePath:instancePath+"/background",schemaPath:"#/definitions/Background/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err51];
+}
+else {
+vErrors.push(err51);
+}
+errors++;
+}
+if(data26 && typeof data26 == "object" && !Array.isArray(data26)){
+if(Object.keys(data26).length < 1){
+const err52 = {instancePath:instancePath+"/background",schemaPath:"#/properties/background/minProperties",keyword:"minProperties",params:{limit: 1},message:"must NOT have fewer than 1 properties"};
+if(vErrors === null){
+vErrors = [err52];
+}
+else {
+vErrors.push(err52);
+}
+errors++;
+}
+}
+else {
+const err53 = {instancePath:instancePath+"/background",schemaPath:"#/properties/background/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err53];
+}
+else {
+vErrors.push(err53);
 }
 errors++;
 }
@@ -4246,99 +4246,9 @@ errors = vErrors.length;
 }
 }
 if(data.cardOptions !== undefined){
-let data29 = data.cardOptions;
-if(!(data29 && typeof data29 == "object" && !Array.isArray(data29))){
-const err47 = {instancePath:instancePath+"/cardOptions",schemaPath:"#/properties/cardOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
-if(vErrors === null){
-vErrors = [err47];
-}
-else {
-vErrors.push(err47);
-}
-errors++;
-}
-if(!(validate461(data29, {instancePath:instancePath+"/cardOptions",parentData:data,parentDataProperty:"cardOptions",rootData}))){
-vErrors = vErrors === null ? validate461.errors : vErrors.concat(validate461.errors);
-errors = vErrors.length;
-}
-}
-if(data.searchOptions !== undefined){
-let data30 = data.searchOptions;
-if(!(data30 && typeof data30 == "object" && !Array.isArray(data30))){
-const err48 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/properties/searchOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
-if(vErrors === null){
-vErrors = [err48];
-}
-else {
-vErrors.push(err48);
-}
-errors++;
-}
-if(data30 && typeof data30 == "object" && !Array.isArray(data30)){
-if(data30.fuzziness === undefined){
-const err49 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/required",keyword:"required",params:{missingProperty: "fuzziness"},message:"must have required property '"+"fuzziness"+"'"};
-if(vErrors === null){
-vErrors = [err49];
-}
-else {
-vErrors.push(err49);
-}
-errors++;
-}
-if(data30.matchProperties === undefined){
-const err50 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/required",keyword:"required",params:{missingProperty: "matchProperties"},message:"must have required property '"+"matchProperties"+"'"};
-if(vErrors === null){
-vErrors = [err50];
-}
-else {
-vErrors.push(err50);
-}
-errors++;
-}
-for(const key2 in data30){
-if(!((key2 === "fuzziness") || (key2 === "matchProperties"))){
-const err51 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key2},message:"must NOT have additional properties"};
-if(vErrors === null){
-vErrors = [err51];
-}
-else {
-vErrors.push(err51);
-}
-errors++;
-}
-}
-if(data30.fuzziness !== undefined){
-let data31 = data30.fuzziness;
-if(!((typeof data31 == "number") && (isFinite(data31)))){
-const err52 = {instancePath:instancePath+"/searchOptions/fuzziness",schemaPath:"#/definitions/SearchOptions/properties/fuzziness/type",keyword:"type",params:{type: "number"},message:"must be number"};
-if(vErrors === null){
-vErrors = [err52];
-}
-else {
-vErrors.push(err52);
-}
-errors++;
-}
-}
-if(data30.matchProperties !== undefined){
-let data32 = data30.matchProperties;
-if(Array.isArray(data32)){
-const len3 = data32.length;
-for(let i3=0; i3<len3; i3++){
-if(typeof data32[i3] !== "string"){
-const err53 = {instancePath:instancePath+"/searchOptions/matchProperties/" + i3,schemaPath:"#/definitions/SearchOptions/properties/matchProperties/items/type",keyword:"type",params:{type: "string"},message:"must be string"};
-if(vErrors === null){
-vErrors = [err53];
-}
-else {
-vErrors.push(err53);
-}
-errors++;
-}
-}
-}
-else {
-const err54 = {instancePath:instancePath+"/searchOptions/matchProperties",schemaPath:"#/definitions/SearchOptions/properties/matchProperties/type",keyword:"type",params:{type: "array"},message:"must be array"};
+let data31 = data.cardOptions;
+if(!(data31 && typeof data31 == "object" && !Array.isArray(data31))){
+const err54 = {instancePath:instancePath+"/cardOptions",schemaPath:"#/properties/cardOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err54];
 }
@@ -4347,10 +4257,15 @@ vErrors.push(err54);
 }
 errors++;
 }
+if(!(validate461(data31, {instancePath:instancePath+"/cardOptions",parentData:data,parentDataProperty:"cardOptions",rootData}))){
+vErrors = vErrors === null ? validate461.errors : vErrors.concat(validate461.errors);
+errors = vErrors.length;
 }
 }
-else {
-const err55 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data.searchOptions !== undefined){
+let data32 = data.searchOptions;
+if(!(data32 && typeof data32 == "object" && !Array.isArray(data32))){
+const err55 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/properties/searchOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err55];
 }
@@ -4359,16 +4274,9 @@ vErrors.push(err55);
 }
 errors++;
 }
-}
-if(data.behaviours !== undefined){
-let data34 = data.behaviours;
-if(!(validate463(data34, {instancePath:instancePath+"/behaviours",parentData:data,parentDataProperty:"behaviours",rootData}))){
-vErrors = vErrors === null ? validate463.errors : vErrors.concat(validate463.errors);
-errors = vErrors.length;
-}
-if(data34 && typeof data34 == "object" && !Array.isArray(data34)){
-if(Object.keys(data34).length < 1){
-const err56 = {instancePath:instancePath+"/behaviours",schemaPath:"#/properties/behaviours/minProperties",keyword:"minProperties",params:{limit: 1},message:"must NOT have fewer than 1 properties"};
+if(data32 && typeof data32 == "object" && !Array.isArray(data32)){
+if(data32.fuzziness === undefined){
+const err56 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/required",keyword:"required",params:{missingProperty: "fuzziness"},message:"must have required property '"+"fuzziness"+"'"};
 if(vErrors === null){
 vErrors = [err56];
 }
@@ -4377,9 +4285,8 @@ vErrors.push(err56);
 }
 errors++;
 }
-}
-else {
-const err57 = {instancePath:instancePath+"/behaviours",schemaPath:"#/properties/behaviours/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data32.matchProperties === undefined){
+const err57 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/required",keyword:"required",params:{missingProperty: "matchProperties"},message:"must have required property '"+"matchProperties"+"'"};
 if(vErrors === null){
 vErrors = [err57];
 }
@@ -4388,10 +4295,9 @@ vErrors.push(err57);
 }
 errors++;
 }
-}
-if(data.showExistingNodes !== undefined){
-if(typeof data.showExistingNodes !== "boolean"){
-const err58 = {instancePath:instancePath+"/showExistingNodes",schemaPath:"#/properties/showExistingNodes/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
+for(const key2 in data32){
+if(!((key2 === "fuzziness") || (key2 === "matchProperties"))){
+const err58 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key2},message:"must NOT have additional properties"};
 if(vErrors === null){
 vErrors = [err58];
 }
@@ -4401,9 +4307,10 @@ vErrors.push(err58);
 errors++;
 }
 }
-if(data.title !== undefined){
-if(typeof data.title !== "string"){
-const err59 = {instancePath:instancePath+"/title",schemaPath:"#/properties/title/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data32.fuzziness !== undefined){
+let data33 = data32.fuzziness;
+if(!((typeof data33 == "number") && (isFinite(data33)))){
+const err59 = {instancePath:instancePath+"/searchOptions/fuzziness",schemaPath:"#/definitions/SearchOptions/properties/fuzziness/type",keyword:"type",params:{type: "number"},message:"must be number"};
 if(vErrors === null){
 vErrors = [err59];
 }
@@ -4413,15 +4320,13 @@ vErrors.push(err59);
 errors++;
 }
 }
-if(data.items !== undefined){
-let data37 = data.items;
-if(Array.isArray(data37)){
-const len4 = data37.length;
-for(let i4=0; i4<len4; i4++){
-let data38 = data37[i4];
-if(data38 && typeof data38 == "object" && !Array.isArray(data38)){
-if(data38.content === undefined){
-const err60 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/required",keyword:"required",params:{missingProperty: "content"},message:"must have required property '"+"content"+"'"};
+if(data32.matchProperties !== undefined){
+let data34 = data32.matchProperties;
+if(Array.isArray(data34)){
+const len3 = data34.length;
+for(let i3=0; i3<len3; i3++){
+if(typeof data34[i3] !== "string"){
+const err60 = {instancePath:instancePath+"/searchOptions/matchProperties/" + i3,schemaPath:"#/definitions/SearchOptions/properties/matchProperties/items/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err60];
 }
@@ -4430,8 +4335,10 @@ vErrors.push(err60);
 }
 errors++;
 }
-if(data38.id === undefined){
-const err61 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/required",keyword:"required",params:{missingProperty: "id"},message:"must have required property '"+"id"+"'"};
+}
+}
+else {
+const err61 = {instancePath:instancePath+"/searchOptions/matchProperties",schemaPath:"#/definitions/SearchOptions/properties/matchProperties/type",keyword:"type",params:{type: "array"},message:"must be array"};
 if(vErrors === null){
 vErrors = [err61];
 }
@@ -4440,8 +4347,10 @@ vErrors.push(err61);
 }
 errors++;
 }
-if(data38.type === undefined){
-const err62 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
+}
+}
+else {
+const err62 = {instancePath:instancePath+"/searchOptions",schemaPath:"#/definitions/SearchOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err62];
 }
@@ -4450,9 +4359,16 @@ vErrors.push(err62);
 }
 errors++;
 }
-for(const key3 in data38){
-if(!((((((key3 === "id") || (key3 === "type")) || (key3 === "content")) || (key3 === "description")) || (key3 === "size")) || (key3 === "loop"))){
-const err63 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key3},message:"must NOT have additional properties"};
+}
+if(data.behaviours !== undefined){
+let data36 = data.behaviours;
+if(!(validate463(data36, {instancePath:instancePath+"/behaviours",parentData:data,parentDataProperty:"behaviours",rootData}))){
+vErrors = vErrors === null ? validate463.errors : vErrors.concat(validate463.errors);
+errors = vErrors.length;
+}
+if(data36 && typeof data36 == "object" && !Array.isArray(data36)){
+if(Object.keys(data36).length < 1){
+const err63 = {instancePath:instancePath+"/behaviours",schemaPath:"#/properties/behaviours/minProperties",keyword:"minProperties",params:{limit: 1},message:"must NOT have fewer than 1 properties"};
 if(vErrors === null){
 vErrors = [err63];
 }
@@ -4462,9 +4378,8 @@ vErrors.push(err63);
 errors++;
 }
 }
-if(data38.id !== undefined){
-if(typeof data38.id !== "string"){
-const err64 = {instancePath:instancePath+"/items/" + i4+"/id",schemaPath:"#/definitions/Item/properties/id/type",keyword:"type",params:{type: "string"},message:"must be string"};
+else {
+const err64 = {instancePath:instancePath+"/behaviours",schemaPath:"#/properties/behaviours/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err64];
 }
@@ -4474,10 +4389,9 @@ vErrors.push(err64);
 errors++;
 }
 }
-if(data38.type !== undefined){
-let data40 = data38.type;
-if(typeof data40 !== "string"){
-const err65 = {instancePath:instancePath+"/items/" + i4+"/type",schemaPath:"#/definitions/Item/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.showExistingNodes !== undefined){
+if(typeof data.showExistingNodes !== "boolean"){
+const err65 = {instancePath:instancePath+"/showExistingNodes",schemaPath:"#/properties/showExistingNodes/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
 if(vErrors === null){
 vErrors = [err65];
 }
@@ -4486,8 +4400,10 @@ vErrors.push(err65);
 }
 errors++;
 }
-if(!((data40 === "text") || (data40 === "asset"))){
-const err66 = {instancePath:instancePath+"/items/" + i4+"/type",schemaPath:"#/definitions/Item/properties/type/enum",keyword:"enum",params:{allowedValues: schema376.properties.type.enum},message:"must be equal to one of the allowed values"};
+}
+if(data.title !== undefined){
+if(typeof data.title !== "string"){
+const err66 = {instancePath:instancePath+"/title",schemaPath:"#/properties/title/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err66];
 }
@@ -4497,9 +4413,15 @@ vErrors.push(err66);
 errors++;
 }
 }
-if(data38.content !== undefined){
-if(typeof data38.content !== "string"){
-const err67 = {instancePath:instancePath+"/items/" + i4+"/content",schemaPath:"#/definitions/Item/properties/content/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.items !== undefined){
+let data39 = data.items;
+if(Array.isArray(data39)){
+const len4 = data39.length;
+for(let i4=0; i4<len4; i4++){
+let data40 = data39[i4];
+if(data40 && typeof data40 == "object" && !Array.isArray(data40)){
+if(data40.content === undefined){
+const err67 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/required",keyword:"required",params:{missingProperty: "content"},message:"must have required property '"+"content"+"'"};
 if(vErrors === null){
 vErrors = [err67];
 }
@@ -4508,10 +4430,8 @@ vErrors.push(err67);
 }
 errors++;
 }
-}
-if(data38.description !== undefined){
-if(typeof data38.description !== "string"){
-const err68 = {instancePath:instancePath+"/items/" + i4+"/description",schemaPath:"#/definitions/Item/properties/description/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data40.id === undefined){
+const err68 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/required",keyword:"required",params:{missingProperty: "id"},message:"must have required property '"+"id"+"'"};
 if(vErrors === null){
 vErrors = [err68];
 }
@@ -4520,10 +4440,8 @@ vErrors.push(err68);
 }
 errors++;
 }
-}
-if(data38.size !== undefined){
-if(typeof data38.size !== "string"){
-const err69 = {instancePath:instancePath+"/items/" + i4+"/size",schemaPath:"#/definitions/Item/properties/size/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data40.type === undefined){
+const err69 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/required",keyword:"required",params:{missingProperty: "type"},message:"must have required property '"+"type"+"'"};
 if(vErrors === null){
 vErrors = [err69];
 }
@@ -4532,10 +4450,9 @@ vErrors.push(err69);
 }
 errors++;
 }
-}
-if(data38.loop !== undefined){
-if(typeof data38.loop !== "boolean"){
-const err70 = {instancePath:instancePath+"/items/" + i4+"/loop",schemaPath:"#/definitions/Item/properties/loop/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
+for(const key3 in data40){
+if(!((((((key3 === "id") || (key3 === "type")) || (key3 === "content")) || (key3 === "description")) || (key3 === "size")) || (key3 === "loop"))){
+const err70 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key3},message:"must NOT have additional properties"};
 if(vErrors === null){
 vErrors = [err70];
 }
@@ -4545,9 +4462,9 @@ vErrors.push(err70);
 errors++;
 }
 }
-}
-else {
-const err71 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data40.id !== undefined){
+if(typeof data40.id !== "string"){
+const err71 = {instancePath:instancePath+"/items/" + i4+"/id",schemaPath:"#/definitions/Item/properties/id/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err71];
 }
@@ -4557,9 +4474,10 @@ vErrors.push(err71);
 errors++;
 }
 }
-}
-else {
-const err72 = {instancePath:instancePath+"/items",schemaPath:"#/properties/items/type",keyword:"type",params:{type: "array"},message:"must be array"};
+if(data40.type !== undefined){
+let data42 = data40.type;
+if(typeof data42 !== "string"){
+const err72 = {instancePath:instancePath+"/items/" + i4+"/type",schemaPath:"#/definitions/Item/properties/type/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err72];
 }
@@ -4568,12 +4486,8 @@ vErrors.push(err72);
 }
 errors++;
 }
-}
-if(data.introductionPanel !== undefined){
-let data45 = data.introductionPanel;
-if(data45 && typeof data45 == "object" && !Array.isArray(data45)){
-if(data45.title === undefined){
-const err73 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/required",keyword:"required",params:{missingProperty: "title"},message:"must have required property '"+"title"+"'"};
+if(!((data42 === "text") || (data42 === "asset"))){
+const err73 = {instancePath:instancePath+"/items/" + i4+"/type",schemaPath:"#/definitions/Item/properties/type/enum",keyword:"enum",params:{allowedValues: schema377.properties.type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err73];
 }
@@ -4582,8 +4496,10 @@ vErrors.push(err73);
 }
 errors++;
 }
-if(data45.text === undefined){
-const err74 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/required",keyword:"required",params:{missingProperty: "text"},message:"must have required property '"+"text"+"'"};
+}
+if(data40.content !== undefined){
+if(typeof data40.content !== "string"){
+const err74 = {instancePath:instancePath+"/items/" + i4+"/content",schemaPath:"#/definitions/Item/properties/content/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err74];
 }
@@ -4592,9 +4508,10 @@ vErrors.push(err74);
 }
 errors++;
 }
-for(const key4 in data45){
-if(!((key4 === "title") || (key4 === "text"))){
-const err75 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key4},message:"must NOT have additional properties"};
+}
+if(data40.description !== undefined){
+if(typeof data40.description !== "string"){
+const err75 = {instancePath:instancePath+"/items/" + i4+"/description",schemaPath:"#/definitions/Item/properties/description/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err75];
 }
@@ -4604,9 +4521,9 @@ vErrors.push(err75);
 errors++;
 }
 }
-if(data45.title !== undefined){
-if(typeof data45.title !== "string"){
-const err76 = {instancePath:instancePath+"/introductionPanel/title",schemaPath:"#/definitions/IntroductionPanel/properties/title/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data40.size !== undefined){
+if(typeof data40.size !== "string"){
+const err76 = {instancePath:instancePath+"/items/" + i4+"/size",schemaPath:"#/definitions/Item/properties/size/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err76];
 }
@@ -4616,9 +4533,9 @@ vErrors.push(err76);
 errors++;
 }
 }
-if(data45.text !== undefined){
-if(typeof data45.text !== "string"){
-const err77 = {instancePath:instancePath+"/introductionPanel/text",schemaPath:"#/definitions/IntroductionPanel/properties/text/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data40.loop !== undefined){
+if(typeof data40.loop !== "boolean"){
+const err77 = {instancePath:instancePath+"/items/" + i4+"/loop",schemaPath:"#/definitions/Item/properties/loop/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
 if(vErrors === null){
 vErrors = [err77];
 }
@@ -4630,12 +4547,95 @@ errors++;
 }
 }
 else {
-const err78 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err78 = {instancePath:instancePath+"/items/" + i4,schemaPath:"#/definitions/Item/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
 vErrors = [err78];
 }
 else {
 vErrors.push(err78);
+}
+errors++;
+}
+}
+}
+else {
+const err79 = {instancePath:instancePath+"/items",schemaPath:"#/properties/items/type",keyword:"type",params:{type: "array"},message:"must be array"};
+if(vErrors === null){
+vErrors = [err79];
+}
+else {
+vErrors.push(err79);
+}
+errors++;
+}
+}
+if(data.introductionPanel !== undefined){
+let data47 = data.introductionPanel;
+if(data47 && typeof data47 == "object" && !Array.isArray(data47)){
+if(data47.title === undefined){
+const err80 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/required",keyword:"required",params:{missingProperty: "title"},message:"must have required property '"+"title"+"'"};
+if(vErrors === null){
+vErrors = [err80];
+}
+else {
+vErrors.push(err80);
+}
+errors++;
+}
+if(data47.text === undefined){
+const err81 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/required",keyword:"required",params:{missingProperty: "text"},message:"must have required property '"+"text"+"'"};
+if(vErrors === null){
+vErrors = [err81];
+}
+else {
+vErrors.push(err81);
+}
+errors++;
+}
+for(const key4 in data47){
+if(!((key4 === "title") || (key4 === "text"))){
+const err82 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key4},message:"must NOT have additional properties"};
+if(vErrors === null){
+vErrors = [err82];
+}
+else {
+vErrors.push(err82);
+}
+errors++;
+}
+}
+if(data47.title !== undefined){
+if(typeof data47.title !== "string"){
+const err83 = {instancePath:instancePath+"/introductionPanel/title",schemaPath:"#/definitions/IntroductionPanel/properties/title/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err83];
+}
+else {
+vErrors.push(err83);
+}
+errors++;
+}
+}
+if(data47.text !== undefined){
+if(typeof data47.text !== "string"){
+const err84 = {instancePath:instancePath+"/introductionPanel/text",schemaPath:"#/definitions/IntroductionPanel/properties/text/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err84];
+}
+else {
+vErrors.push(err84);
+}
+errors++;
+}
+}
+}
+else {
+const err85 = {instancePath:instancePath+"/introductionPanel",schemaPath:"#/definitions/IntroductionPanel/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err85];
+}
+else {
+vErrors.push(err85);
 }
 errors++;
 }
@@ -4653,81 +4653,10 @@ errors = vErrors.length;
 }
 }
 if(data.mapOptions !== undefined){
-let data50 = data.mapOptions;
-if(data50 && typeof data50 == "object" && !Array.isArray(data50)){
-if(data50.tokenAssetId === undefined){
-const err79 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "tokenAssetId"},message:"must have required property '"+"tokenAssetId"+"'"};
-if(vErrors === null){
-vErrors = [err79];
-}
-else {
-vErrors.push(err79);
-}
-errors++;
-}
-if(data50.style === undefined){
-const err80 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "style"},message:"must have required property '"+"style"+"'"};
-if(vErrors === null){
-vErrors = [err80];
-}
-else {
-vErrors.push(err80);
-}
-errors++;
-}
-if(data50.center === undefined){
-const err81 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "center"},message:"must have required property '"+"center"+"'"};
-if(vErrors === null){
-vErrors = [err81];
-}
-else {
-vErrors.push(err81);
-}
-errors++;
-}
-if(data50.initialZoom === undefined){
-const err82 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "initialZoom"},message:"must have required property '"+"initialZoom"+"'"};
-if(vErrors === null){
-vErrors = [err82];
-}
-else {
-vErrors.push(err82);
-}
-errors++;
-}
-if(data50.dataSourceAssetId === undefined){
-const err83 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "dataSourceAssetId"},message:"must have required property '"+"dataSourceAssetId"+"'"};
-if(vErrors === null){
-vErrors = [err83];
-}
-else {
-vErrors.push(err83);
-}
-errors++;
-}
-if(data50.color === undefined){
-const err84 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "color"},message:"must have required property '"+"color"+"'"};
-if(vErrors === null){
-vErrors = [err84];
-}
-else {
-vErrors.push(err84);
-}
-errors++;
-}
-if(data50.targetFeatureProperty === undefined){
-const err85 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "targetFeatureProperty"},message:"must have required property '"+"targetFeatureProperty"+"'"};
-if(vErrors === null){
-vErrors = [err85];
-}
-else {
-vErrors.push(err85);
-}
-errors++;
-}
-for(const key5 in data50){
-if(!(((((((key5 === "tokenAssetId") || (key5 === "style")) || (key5 === "center")) || (key5 === "initialZoom")) || (key5 === "dataSourceAssetId")) || (key5 === "color")) || (key5 === "targetFeatureProperty"))){
-const err86 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key5},message:"must NOT have additional properties"};
+let data52 = data.mapOptions;
+if(data52 && typeof data52 == "object" && !Array.isArray(data52)){
+if(data52.tokenAssetId === undefined){
+const err86 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "tokenAssetId"},message:"must have required property '"+"tokenAssetId"+"'"};
 if(vErrors === null){
 vErrors = [err86];
 }
@@ -4736,10 +4665,8 @@ vErrors.push(err86);
 }
 errors++;
 }
-}
-if(data50.tokenAssetId !== undefined){
-if(typeof data50.tokenAssetId !== "string"){
-const err87 = {instancePath:instancePath+"/mapOptions/tokenAssetId",schemaPath:"#/definitions/MapOptions/properties/tokenAssetId/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data52.style === undefined){
+const err87 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "style"},message:"must have required property '"+"style"+"'"};
 if(vErrors === null){
 vErrors = [err87];
 }
@@ -4748,11 +4675,8 @@ vErrors.push(err87);
 }
 errors++;
 }
-}
-if(data50.style !== undefined){
-let data52 = data50.style;
-if(typeof data52 !== "string"){
-const err88 = {instancePath:instancePath+"/mapOptions/style",schemaPath:"#/definitions/MapOptions/properties/style/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data52.center === undefined){
+const err88 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "center"},message:"must have required property '"+"center"+"'"};
 if(vErrors === null){
 vErrors = [err88];
 }
@@ -4761,8 +4685,8 @@ vErrors.push(err88);
 }
 errors++;
 }
-if(!((((((((((data52 === "mapbox://styles/mapbox/standard") || (data52 === "mapbox://styles/mapbox/standard-satellite")) || (data52 === "mapbox://styles/mapbox/streets-v12")) || (data52 === "mapbox://styles/mapbox/outdoors-v12")) || (data52 === "mapbox://styles/mapbox/light-v11")) || (data52 === "mapbox://styles/mapbox/dark-v11")) || (data52 === "mapbox://styles/mapbox/satellite-v9")) || (data52 === "mapbox://styles/mapbox/satellite-streets-v12")) || (data52 === "mapbox://styles/mapbox/navigation-day-v1")) || (data52 === "mapbox://styles/mapbox/navigation-night-v1"))){
-const err89 = {instancePath:instancePath+"/mapOptions/style",schemaPath:"#/definitions/MapOptions/properties/style/enum",keyword:"enum",params:{allowedValues: schema379.properties.style.enum},message:"must be equal to one of the allowed values"};
+if(data52.initialZoom === undefined){
+const err89 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "initialZoom"},message:"must have required property '"+"initialZoom"+"'"};
 if(vErrors === null){
 vErrors = [err89];
 }
@@ -4771,12 +4695,8 @@ vErrors.push(err89);
 }
 errors++;
 }
-}
-if(data50.center !== undefined){
-let data53 = data50.center;
-if(Array.isArray(data53)){
-if(data53.length > 2){
-const err90 = {instancePath:instancePath+"/mapOptions/center",schemaPath:"#/definitions/MapOptions/properties/center/maxItems",keyword:"maxItems",params:{limit: 2},message:"must NOT have more than 2 items"};
+if(data52.dataSourceAssetId === undefined){
+const err90 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "dataSourceAssetId"},message:"must have required property '"+"dataSourceAssetId"+"'"};
 if(vErrors === null){
 vErrors = [err90];
 }
@@ -4785,8 +4705,8 @@ vErrors.push(err90);
 }
 errors++;
 }
-if(data53.length < 2){
-const err91 = {instancePath:instancePath+"/mapOptions/center",schemaPath:"#/definitions/MapOptions/properties/center/minItems",keyword:"minItems",params:{limit: 2},message:"must NOT have fewer than 2 items"};
+if(data52.color === undefined){
+const err91 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "color"},message:"must have required property '"+"color"+"'"};
 if(vErrors === null){
 vErrors = [err91];
 }
@@ -4795,11 +4715,8 @@ vErrors.push(err91);
 }
 errors++;
 }
-const len5 = data53.length;
-for(let i5=0; i5<len5; i5++){
-let data54 = data53[i5];
-if(!((typeof data54 == "number") && (isFinite(data54)))){
-const err92 = {instancePath:instancePath+"/mapOptions/center/" + i5,schemaPath:"#/definitions/MapOptions/properties/center/items/type",keyword:"type",params:{type: "number"},message:"must be number"};
+if(data52.targetFeatureProperty === undefined){
+const err92 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/required",keyword:"required",params:{missingProperty: "targetFeatureProperty"},message:"must have required property '"+"targetFeatureProperty"+"'"};
 if(vErrors === null){
 vErrors = [err92];
 }
@@ -4808,10 +4725,9 @@ vErrors.push(err92);
 }
 errors++;
 }
-}
-}
-else {
-const err93 = {instancePath:instancePath+"/mapOptions/center",schemaPath:"#/definitions/MapOptions/properties/center/type",keyword:"type",params:{type: "array"},message:"must be array"};
+for(const key5 in data52){
+if(!(((((((key5 === "tokenAssetId") || (key5 === "style")) || (key5 === "center")) || (key5 === "initialZoom")) || (key5 === "dataSourceAssetId")) || (key5 === "color")) || (key5 === "targetFeatureProperty"))){
+const err93 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key5},message:"must NOT have additional properties"};
 if(vErrors === null){
 vErrors = [err93];
 }
@@ -4821,11 +4737,9 @@ vErrors.push(err93);
 errors++;
 }
 }
-if(data50.initialZoom !== undefined){
-let data55 = data50.initialZoom;
-if((typeof data55 == "number") && (isFinite(data55))){
-if(data55 > 22 || isNaN(data55)){
-const err94 = {instancePath:instancePath+"/mapOptions/initialZoom",schemaPath:"#/definitions/MapOptions/properties/initialZoom/maximum",keyword:"maximum",params:{comparison: "<=", limit: 22},message:"must be <= 22"};
+if(data52.tokenAssetId !== undefined){
+if(typeof data52.tokenAssetId !== "string"){
+const err94 = {instancePath:instancePath+"/mapOptions/tokenAssetId",schemaPath:"#/definitions/MapOptions/properties/tokenAssetId/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err94];
 }
@@ -4834,8 +4748,11 @@ vErrors.push(err94);
 }
 errors++;
 }
-if(data55 < 0 || isNaN(data55)){
-const err95 = {instancePath:instancePath+"/mapOptions/initialZoom",schemaPath:"#/definitions/MapOptions/properties/initialZoom/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"};
+}
+if(data52.style !== undefined){
+let data54 = data52.style;
+if(typeof data54 !== "string"){
+const err95 = {instancePath:instancePath+"/mapOptions/style",schemaPath:"#/definitions/MapOptions/properties/style/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err95];
 }
@@ -4844,9 +4761,8 @@ vErrors.push(err95);
 }
 errors++;
 }
-}
-else {
-const err96 = {instancePath:instancePath+"/mapOptions/initialZoom",schemaPath:"#/definitions/MapOptions/properties/initialZoom/type",keyword:"type",params:{type: "number"},message:"must be number"};
+if(!((((((((((data54 === "mapbox://styles/mapbox/standard") || (data54 === "mapbox://styles/mapbox/standard-satellite")) || (data54 === "mapbox://styles/mapbox/streets-v12")) || (data54 === "mapbox://styles/mapbox/outdoors-v12")) || (data54 === "mapbox://styles/mapbox/light-v11")) || (data54 === "mapbox://styles/mapbox/dark-v11")) || (data54 === "mapbox://styles/mapbox/satellite-v9")) || (data54 === "mapbox://styles/mapbox/satellite-streets-v12")) || (data54 === "mapbox://styles/mapbox/navigation-day-v1")) || (data54 === "mapbox://styles/mapbox/navigation-night-v1"))){
+const err96 = {instancePath:instancePath+"/mapOptions/style",schemaPath:"#/definitions/MapOptions/properties/style/enum",keyword:"enum",params:{allowedValues: schema380.properties.style.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err96];
 }
@@ -4856,9 +4772,11 @@ vErrors.push(err96);
 errors++;
 }
 }
-if(data50.dataSourceAssetId !== undefined){
-if(typeof data50.dataSourceAssetId !== "string"){
-const err97 = {instancePath:instancePath+"/mapOptions/dataSourceAssetId",schemaPath:"#/definitions/MapOptions/properties/dataSourceAssetId/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data52.center !== undefined){
+let data55 = data52.center;
+if(Array.isArray(data55)){
+if(data55.length > 2){
+const err97 = {instancePath:instancePath+"/mapOptions/center",schemaPath:"#/definitions/MapOptions/properties/center/maxItems",keyword:"maxItems",params:{limit: 2},message:"must NOT have more than 2 items"};
 if(vErrors === null){
 vErrors = [err97];
 }
@@ -4867,10 +4785,8 @@ vErrors.push(err97);
 }
 errors++;
 }
-}
-if(data50.color !== undefined){
-if(typeof data50.color !== "string"){
-const err98 = {instancePath:instancePath+"/mapOptions/color",schemaPath:"#/definitions/MapOptions/properties/color/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data55.length < 2){
+const err98 = {instancePath:instancePath+"/mapOptions/center",schemaPath:"#/definitions/MapOptions/properties/center/minItems",keyword:"minItems",params:{limit: 2},message:"must NOT have fewer than 2 items"};
 if(vErrors === null){
 vErrors = [err98];
 }
@@ -4879,10 +4795,11 @@ vErrors.push(err98);
 }
 errors++;
 }
-}
-if(data50.targetFeatureProperty !== undefined){
-if(typeof data50.targetFeatureProperty !== "string"){
-const err99 = {instancePath:instancePath+"/mapOptions/targetFeatureProperty",schemaPath:"#/definitions/MapOptions/properties/targetFeatureProperty/type",keyword:"type",params:{type: "string"},message:"must be string"};
+const len5 = data55.length;
+for(let i5=0; i5<len5; i5++){
+let data56 = data55[i5];
+if(!((typeof data56 == "number") && (isFinite(data56)))){
+const err99 = {instancePath:instancePath+"/mapOptions/center/" + i5,schemaPath:"#/definitions/MapOptions/properties/center/items/type",keyword:"type",params:{type: "number"},message:"must be number"};
 if(vErrors === null){
 vErrors = [err99];
 }
@@ -4894,7 +4811,7 @@ errors++;
 }
 }
 else {
-const err100 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err100 = {instancePath:instancePath+"/mapOptions/center",schemaPath:"#/definitions/MapOptions/properties/center/type",keyword:"type",params:{type: "array"},message:"must be array"};
 if(vErrors === null){
 vErrors = [err100];
 }
@@ -4904,14 +4821,150 @@ vErrors.push(err100);
 errors++;
 }
 }
-}
-else {
-const err101 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data52.initialZoom !== undefined){
+let data57 = data52.initialZoom;
+if((typeof data57 == "number") && (isFinite(data57))){
+if(data57 > 22 || isNaN(data57)){
+const err101 = {instancePath:instancePath+"/mapOptions/initialZoom",schemaPath:"#/definitions/MapOptions/properties/initialZoom/maximum",keyword:"maximum",params:{comparison: "<=", limit: 22},message:"must be <= 22"};
 if(vErrors === null){
 vErrors = [err101];
 }
 else {
 vErrors.push(err101);
+}
+errors++;
+}
+if(data57 < 0 || isNaN(data57)){
+const err102 = {instancePath:instancePath+"/mapOptions/initialZoom",schemaPath:"#/definitions/MapOptions/properties/initialZoom/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"};
+if(vErrors === null){
+vErrors = [err102];
+}
+else {
+vErrors.push(err102);
+}
+errors++;
+}
+}
+else {
+const err103 = {instancePath:instancePath+"/mapOptions/initialZoom",schemaPath:"#/definitions/MapOptions/properties/initialZoom/type",keyword:"type",params:{type: "number"},message:"must be number"};
+if(vErrors === null){
+vErrors = [err103];
+}
+else {
+vErrors.push(err103);
+}
+errors++;
+}
+}
+if(data52.dataSourceAssetId !== undefined){
+if(typeof data52.dataSourceAssetId !== "string"){
+const err104 = {instancePath:instancePath+"/mapOptions/dataSourceAssetId",schemaPath:"#/definitions/MapOptions/properties/dataSourceAssetId/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err104];
+}
+else {
+vErrors.push(err104);
+}
+errors++;
+}
+}
+if(data52.color !== undefined){
+if(typeof data52.color !== "string"){
+const err105 = {instancePath:instancePath+"/mapOptions/color",schemaPath:"#/definitions/MapOptions/properties/color/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err105];
+}
+else {
+vErrors.push(err105);
+}
+errors++;
+}
+}
+if(data52.targetFeatureProperty !== undefined){
+if(typeof data52.targetFeatureProperty !== "string"){
+const err106 = {instancePath:instancePath+"/mapOptions/targetFeatureProperty",schemaPath:"#/definitions/MapOptions/properties/targetFeatureProperty/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err106];
+}
+else {
+vErrors.push(err106);
+}
+errors++;
+}
+}
+}
+else {
+const err107 = {instancePath:instancePath+"/mapOptions",schemaPath:"#/definitions/MapOptions/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err107];
+}
+else {
+vErrors.push(err107);
+}
+errors++;
+}
+}
+if(data.validation !== undefined){
+let data61 = data.validation;
+if(data61 && typeof data61 == "object" && !Array.isArray(data61)){
+for(const key6 in data61){
+if(!((key6 === "minLength") || (key6 === "maxLength"))){
+const err108 = {instancePath:instancePath+"/validation",schemaPath:"#/definitions/AnonymisationValidation/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key6},message:"must NOT have additional properties"};
+if(vErrors === null){
+vErrors = [err108];
+}
+else {
+vErrors.push(err108);
+}
+errors++;
+}
+}
+if(data61.minLength !== undefined){
+let data62 = data61.minLength;
+if(!(((typeof data62 == "number") && (!(data62 % 1) && !isNaN(data62))) && (isFinite(data62)))){
+const err109 = {instancePath:instancePath+"/validation/minLength",schemaPath:"#/definitions/AnonymisationValidation/properties/minLength/type",keyword:"type",params:{type: "integer"},message:"must be integer"};
+if(vErrors === null){
+vErrors = [err109];
+}
+else {
+vErrors.push(err109);
+}
+errors++;
+}
+}
+if(data61.maxLength !== undefined){
+let data63 = data61.maxLength;
+if(!(((typeof data63 == "number") && (!(data63 % 1) && !isNaN(data63))) && (isFinite(data63)))){
+const err110 = {instancePath:instancePath+"/validation/maxLength",schemaPath:"#/definitions/AnonymisationValidation/properties/maxLength/type",keyword:"type",params:{type: "integer"},message:"must be integer"};
+if(vErrors === null){
+vErrors = [err110];
+}
+else {
+vErrors.push(err110);
+}
+errors++;
+}
+}
+}
+else {
+const err111 = {instancePath:instancePath+"/validation",schemaPath:"#/definitions/AnonymisationValidation/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err111];
+}
+else {
+vErrors.push(err111);
+}
+errors++;
+}
+}
+}
+else {
+const err112 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err112];
+}
+else {
+vErrors.push(err112);
 }
 errors++;
 }
@@ -4945,7 +4998,7 @@ vErrors.push(err1);
 errors++;
 }
 for(const key0 in data){
-if(!(((((((key0 === "name") || (key0 === "description")) || (key0 === "lastModified")) || (key0 === "schemaVersion")) || (key0 === "codebook")) || (key0 === "assetManifest")) || (key0 === "stages"))){
+if(!((((((((key0 === "name") || (key0 === "description")) || (key0 === "lastModified")) || (key0 === "schemaVersion")) || (key0 === "experiments")) || (key0 === "codebook")) || (key0 === "assetManifest")) || (key0 === "stages"))){
 const err2 = {instancePath,schemaPath:"#/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key0},message:"must NOT have additional properties"};
 if(vErrors === null){
 vErrors = [err2];
@@ -5018,6 +5071,45 @@ vErrors.push(err7);
 errors++;
 }
 }
+if(data.experiments !== undefined){
+let data4 = data.experiments;
+if(data4 && typeof data4 == "object" && !Array.isArray(data4)){
+for(const key1 in data4){
+if(!(key1 === "encryptNames")){
+const err8 = {instancePath:instancePath+"/experiments",schemaPath:"#/definitions/Experiments/additionalProperties",keyword:"additionalProperties",params:{additionalProperty: key1},message:"must NOT have additional properties"};
+if(vErrors === null){
+vErrors = [err8];
+}
+else {
+vErrors.push(err8);
+}
+errors++;
+}
+}
+if(data4.encryptNames !== undefined){
+if(typeof data4.encryptNames !== "boolean"){
+const err9 = {instancePath:instancePath+"/experiments/encryptNames",schemaPath:"#/definitions/Experiments/properties/encryptNames/type",keyword:"type",params:{type: "boolean"},message:"must be boolean"};
+if(vErrors === null){
+vErrors = [err9];
+}
+else {
+vErrors.push(err9);
+}
+errors++;
+}
+}
+}
+else {
+const err10 = {instancePath:instancePath+"/experiments",schemaPath:"#/definitions/Experiments/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err10];
+}
+else {
+vErrors.push(err10);
+}
+errors++;
+}
+}
 if(data.codebook !== undefined){
 if(!(validate407(data.codebook, {instancePath:instancePath+"/codebook",parentData:data,parentDataProperty:"codebook",rootData}))){
 vErrors = vErrors === null ? validate407.errors : vErrors.concat(validate407.errors);
@@ -5031,35 +5123,35 @@ errors = vErrors.length;
 }
 }
 if(data.stages !== undefined){
-let data6 = data.stages;
-if(Array.isArray(data6)){
-const len0 = data6.length;
+let data8 = data.stages;
+if(Array.isArray(data8)){
+const len0 = data8.length;
 for(let i0=0; i0<len0; i0++){
-if(!(validate437(data6[i0], {instancePath:instancePath+"/stages/" + i0,parentData:data6,parentDataProperty:i0,rootData}))){
+if(!(validate437(data8[i0], {instancePath:instancePath+"/stages/" + i0,parentData:data8,parentDataProperty:i0,rootData}))){
 vErrors = vErrors === null ? validate437.errors : vErrors.concat(validate437.errors);
 errors = vErrors.length;
 }
 }
 }
 else {
-const err8 = {instancePath:instancePath+"/stages",schemaPath:"#/properties/stages/type",keyword:"type",params:{type: "array"},message:"must be array"};
+const err11 = {instancePath:instancePath+"/stages",schemaPath:"#/properties/stages/type",keyword:"type",params:{type: "array"},message:"must be array"};
 if(vErrors === null){
-vErrors = [err8];
+vErrors = [err11];
 }
 else {
-vErrors.push(err8);
+vErrors.push(err11);
 }
 errors++;
 }
 }
 }
 else {
-const err9 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err12 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
 if(vErrors === null){
-vErrors = [err9];
+vErrors = [err12];
 }
 else {
-vErrors.push(err9);
+vErrors.push(err12);
 }
 errors++;
 }

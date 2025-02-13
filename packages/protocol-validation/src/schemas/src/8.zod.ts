@@ -542,11 +542,16 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 
 const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema]);
 
+const experimentsSchema = z.object({
+	encryptNames: z.boolean().optional(),
+});
+
 // Main Protocol Schema
 export const Protocol = z
 	.object({
 		name: z.string().optional(),
 		description: z.string().optional(),
+		experiments: experimentsSchema.optional(),
 		lastModified: z.string().datetime().optional(),
 		schemaVersion: z.literal(8),
 		codebook: codebookSchema,

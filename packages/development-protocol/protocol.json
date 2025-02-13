@@ -1,5 +1,5 @@
 {
-  "experimentalBehaviours": {
+  "experiments": {
     "encryptNames": true
   },
   "stages": [
@@ -88,7 +88,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "d88fa70b-cbfa-4f4b-8536-85d1dc14de1e"
+        "type": "person_node_type"
       },
       "prompts": [
         {
