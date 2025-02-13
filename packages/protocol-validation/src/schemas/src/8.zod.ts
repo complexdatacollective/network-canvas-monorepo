@@ -418,25 +418,27 @@ const informationStage = baseStageSchema.extend({
 
 const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
-	items: z.array(
-		z
-			.object({
-				id: z.string(),
-				type: z.enum(["text", "asset"]),
-				content: z.string(),
-				size: z.string().optional(),
-			})
-			.strict(),
-	),
+	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
+	validation: z
+		.object({
+			minLength: z.number().int().optional(),
+			maxLength: z.number().int().optional(),
+		})
+		.optional(),
 });
 
 const oneToManyDyadCensusStage = baseStageSchema.extend({
 	type: z.literal("OneToManyDyadCensus"),
 	subject: subjectSchema,
+	behaviours: z.object({
+		removeAfterConsideration: z.boolean(),
+	}),
 	prompts: z
 		.array(
 			promptSchema.extend({
 				createEdge: z.string(),
+				bucketSortOrder: sortOrderSchema.optional(),
+				binSortOrder: sortOrderSchema.optional(),
 			}),
 		)
 		.min(1),

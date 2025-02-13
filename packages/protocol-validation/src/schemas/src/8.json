@@ -625,7 +625,7 @@
 		},
 		"Behaviours": {
 			"type": "object",
-			"additionalProperties": true,
+			"additionalProperties": false,
 			"properties": {
 				"minNodes": {
 					"type": "integer"
@@ -645,6 +645,9 @@
 				"automaticLayout": {
 					"type": "object",
 					"$ref": "#/definitions/AutomaticLayout"
+				},
+				"removeAfterConsideration": {
+					"type": "boolean"
 				}
 			},
 			"required": [],
