@@ -1,7 +1,6 @@
-import type { FormField, StageSubject } from "@codaco/shared-consts";
+import type { Protocol, StageSubject } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import type { ValidationError } from "..";
-import type { Protocol } from "../schemas/src/8.zod";
 
 /**
  * See addValidation().
@@ -72,8 +71,6 @@ type ValidationItemBase = {
 
 type Validation<T> = ValidationItemBase & (ValidationItemSingle<T> | ValidationItemSequence<T>);
 
-type LogicError = Record<string, never>;
-
 /**
  * @class
  * Support data validations on a protocol.
@@ -86,8 +83,6 @@ type LogicError = Record<string, never>;
  *
  * Validations are added with `addValidation()` or `addValidationSequence()`.
  */
-
-type ValidationFragment = StageSubject | FormField;
 class Validator {
 	private protocol: Protocol;
 	errors: ValidationError[];
