@@ -1,10 +1,10 @@
 import Ajv from "ajv";
 import standaloneCode from "ajv/dist/standalone/index.js";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 
 const SCHEMA_SRC_PATH = "./src/schemas/src";
-const SCHEMA_OUTPUT_PATH = "./src/schemas/compiled";
+const SCHEMA_OUTPUT_PATH = "./dist/schemas";
 
 const ajv = new Ajv({
 	code: { source: true, esm: true, lines: true },
@@ -60,9 +60,7 @@ const buildSchemas = async () => {
 	const schemaSrcDirectory = resolve(SCHEMA_SRC_PATH);
 	const schemaOutputDirectory = resolve(SCHEMA_OUTPUT_PATH);
 
-	if (!(await stat(schemaOutputDirectory)).isDirectory()) {
-		await mkdir(schemaOutputDirectory, { recursive: true });
-	}
+	await mkdir(schemaOutputDirectory, { recursive: true });
 
 	const schemas = await getSchemas(schemaSrcDirectory);
 
