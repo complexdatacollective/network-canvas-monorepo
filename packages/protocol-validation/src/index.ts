@@ -1,3 +1,4 @@
+import type { DefinedError } from "ajv";
 import canUpgrade from "./migrations/canUpgrade";
 import getMigrationNotes from "./migrations/getMigrationNotes";
 import { migrateProtocol } from "./migrations/migrateProtocol";
@@ -17,13 +18,13 @@ export {
 	migrateProtocol,
 	validateLogic,
 	validateNames,
-	validateSchema,
+	validateSchema
 };
 
 // types
-export type { MapOptions, Protocol };
+	export type { MapOptions, Protocol };
 
-export type ValidationError = {
+export type ValidationError = Partial<DefinedError> & {
 	path: string;
 	message: string;
 };

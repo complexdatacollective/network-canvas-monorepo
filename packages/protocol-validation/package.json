@@ -22,7 +22,7 @@
   },
 	"files": ["dist"],
 	"devDependencies": {
-		"@codaco/shared-consts": "^0.0.2",
+		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@types/gunzip-maybe": "^1.4.2",
 		"@types/lodash-es": "^4.17.12",

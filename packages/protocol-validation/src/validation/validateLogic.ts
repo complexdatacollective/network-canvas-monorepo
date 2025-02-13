@@ -3,7 +3,11 @@ import type {
 	Codebook,
 	FilterRule,
 	FormField,
+	ItemDefinition,
 	NcNode,
+	Panel,
+	Prompt,
+	Stage,
 	StageSubject,
 	VariableDefinition,
 	VariableValidation,
@@ -12,7 +16,7 @@ import { get, isObject } from "es-toolkit/compat";
 import type { Protocol } from "../schemas/src/8.zod";
 import Validator from "./Validator";
 import {
-	duplicateId,
+	checkDuplicateNestedId,
 	duplicateInArray,
 	entityDefFromRule,
 	getEntityNames,
@@ -149,32 +153,32 @@ export const validateLogic = (protocol: Protocol) => {
 
 	v.addValidation(
 		"protocol.stages",
-		(stages) => !duplicateId(stages),
-		(stages) => `Stages contain duplicate ID "${duplicateId(stages)}"`,
+		(stages: Stage[]) => !checkDuplicateNestedId(stages),
+		(stages) => `Stages contain duplicate ID "${checkDuplicateNestedId(stages)}"`,
 	);
 
 	v.addValidation(
 		"stages[].panels",
-		(panels) => !duplicateId(panels),
-		(panels) => `Panels contain duplicate ID "${duplicateId(panels)}"`,
+		(panels: Panel[]) => !checkDuplicateNestedId(panels),
+		(panels) => `Panels contain duplicate ID "${checkDuplicateNestedId(panels)}"`,
 	);
 
 	v.addValidation(
 		".rules",
-		(rules) => !duplicateId(rules),
-		(rules) => `Rules contain duplicate ID "${duplicateId(rules)}"`,
+		(rules: FilterRule[]) => !checkDuplicateNestedId(rules),
+		(rules) => `Rules contain duplicate ID "${checkDuplicateNestedId(rules)}"`,
 	);
 
 	v.addValidation(
 		"stages[].prompts",
-		(prompts) => !duplicateId(prompts),
-		(prompts) => `Prompts contain duplicate ID "${duplicateId(prompts)}"`,
+		(prompts: Prompt[]) => !checkDuplicateNestedId(prompts),
+		(prompts) => `Prompts contain duplicate ID "${checkDuplicateNestedId(prompts)}"`,
 	);
 
 	v.addValidation(
 		"stages[].items",
-		(items) => !duplicateId(items),
-		(items) => `Items contain duplicate ID "${duplicateId(items)}"`,
+		(items: ItemDefinition[]) => !checkDuplicateNestedId(items),
+		(items) => `Items contain duplicate ID "${checkDuplicateNestedId(items)}"`,
 	);
 
 	v.addValidation(

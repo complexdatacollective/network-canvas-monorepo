@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import type { ValidateFunction } from "ajv";
+import type { DefinedError, ValidateFunction } from "ajv";
 import type { Protocol } from "../schemas/src/8.zod";
 
 export const validateSchema = async (protocol: Protocol, forceVersion?: number) => {
@@ -33,9 +33,11 @@ export const validateSchema = async (protocol: Protocol, forceVersion?: number) 
 
 	// Validate
 	if (!result) {
+		const errors = validator.errors as DefinedError[];
 		// If we get here, validator has validator.errors.
-		const errorMessages = validator.errors?.map((error) => {
+		const errorMessages = errors.map((error) => {
 			return {
+				...error,
 				path: error.instancePath,
 				message: error.message,
 			};

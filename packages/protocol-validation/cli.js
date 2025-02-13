@@ -11,11 +11,20 @@ async function main() {
 
 	if (!filePath) {
 		console.error("Error: Please provide a file path");
-		console.log("Usage: npx @codaco/protocol-validation <file-path>");
+		console.log("Usage: npx @codaco/protocol-validation <file-path> [schema-version]");
 		process.exit(1);
 	}
 
+	/**
+	 * @param {string} msg
+	 * @returns
+	 */
 	const error = (msg) => console.log(chalk.red(msg));
+
+	/**
+	 * @param {string} msg
+	 * @returns
+	 */
 	const success = (msg) => console.log(chalk.green(msg));
 
 	const absolutePath = path.resolve(filePath);

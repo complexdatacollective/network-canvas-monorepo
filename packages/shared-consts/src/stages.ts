@@ -128,6 +128,13 @@ export type Form = {
 	fields: FormField[];
 };
 
+export type Panel = {
+	id: string;
+	title: string;
+	filter?: FilterDefinition;
+	dataSource?: string;
+}
+
 export type Stage = {
 	id: string;
 	type: string;
@@ -137,7 +144,7 @@ export type Stage = {
 	form?: Form;
 	introductionPanel?: object; // Todo: create a Panel type
 	subject?: StageSubject | StageSubject[];
-	panels?: object[];
+	panels?: Panel[];
 	prompts?: Prompt[];
 	quickAdd?: string;
 	behaviours?: object;
