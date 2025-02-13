@@ -18,8 +18,8 @@
 		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
 	},
 	"bin": {
-    "@codaco/protocol-validation": "./cli.js"
-  },
+		"@codaco/protocol-validation": "./cli.js"
+	},
 	"files": ["dist"],
 	"devDependencies": {
 		"@codaco/shared-consts": "workspace:*",
