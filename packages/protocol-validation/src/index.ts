@@ -18,11 +18,11 @@ export {
 	migrateProtocol,
 	validateLogic,
 	validateNames,
-	validateSchema
+	validateSchema,
 };
 
 // types
-	export type { MapOptions, Protocol };
+export type { MapOptions, Protocol };
 
 export type ValidationError = Partial<DefinedError> & {
 	path: string;

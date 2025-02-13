@@ -27,6 +27,8 @@
  * @return {string|Promise} a label for the input node, or
  *                          a promise that resolves to the label
  */
+
+// biome-ignore lint/correctness/noUnusedVariables: worker function
 function nodeLabelWorker({ node, network }) {
 	// Examples:
 	//

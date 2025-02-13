@@ -71,8 +71,6 @@ type ValidationItemBase = {
 
 type Validation<T> = ValidationItemBase & (ValidationItemSingle<T> | ValidationItemSequence<T>);
 
-type LogicError = Record<string, never>;
-
 /**
  * @class
  * Support data validations on a protocol.

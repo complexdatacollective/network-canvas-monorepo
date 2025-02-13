@@ -25,7 +25,7 @@ export const validateSchema = async (protocol: Protocol, forceVersion?: number) 
 		};
 
 		validator = result.default;
-	} catch (e) {
+	} catch (_e) {
 		throw new Error(`Couldn't find validator for schema version ${version}.`);
 	}
 

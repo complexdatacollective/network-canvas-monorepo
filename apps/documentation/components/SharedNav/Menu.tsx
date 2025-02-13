@@ -57,7 +57,7 @@ export const NavigationMenuDemo = () => {
 		<NavigationMenu.Root asChild>
 			<div className={cn("relative z-10 hidden grow justify-end", "md:flex")}>
 				<NavigationMenu.List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
-					{links.map((link, i) => {
+					{links.map((link, _i) => {
 						if (link.menu) {
 							return (
 								<NavigationMenu.Item key={link.translationKey}>
@@ -66,7 +66,7 @@ export const NavigationMenuDemo = () => {
 									</NavigationMenu.Trigger>
 									<NavigationMenu.Content className="absolute right-0 top-0 w-full">
 										<ul className="m-0 grid w-full grid-cols-3 gap-4 p-6">
-											{link.menu.map((subLink, i) => (
+											{link.menu.map((subLink, _i) => (
 												<li key={subLink.titleTranslationKey} className="col-span-1 grid">
 													<NavigationMenu.Link asChild>
 														<a
@@ -139,7 +139,7 @@ export const NavigationMenuMobile = () => {
 	if (!submenu.length) {
 		return (
 			<ul className={"flex flex-col items-center justify-center gap-4 md:hidden"}>
-				{links.map((link, i) => {
+				{links.map((link, _i) => {
 					if (link.style === "button") {
 						return (
 							<li key={link.translationKey}>
@@ -180,7 +180,7 @@ export const NavigationMenuMobile = () => {
 
 	return (
 		<ul className={"flex flex-col items-center justify-center gap-4"}>
-			{submenu.map((subLink, i) => (
+			{submenu.map((subLink, _i) => (
 				<li key={subLink.titleTranslationKey}>
 					<Link className={linkClasses} href={subLink.href}>
 						{t(subLink.titleTranslationKey)}

@@ -60,24 +60,25 @@ export type Prompt = {
 	otherOptionLabel?: string;
 };
 
-type Operator = "EXISTS"
-			| "NOT_EXISTS"
-			| "EXACTLY"
-			| "NOT"
-			| "GREATER_THAN"
-			| "GREATER_THAN_OR_EQUAL"
-			| "LESS_THAN"
-			| "LESS_THAN_OR_EQUAL"
-			| "INCLUDES"
-			| "EXCLUDES"
-			| "OPTIONS_GREATER_THAN"
-			| "OPTIONS_LESS_THAN"
-			| "OPTIONS_EQUALS"
-			| "OPTIONS_NOT_EQUALS";
+type Operator =
+	| "EXISTS"
+	| "NOT_EXISTS"
+	| "EXACTLY"
+	| "NOT"
+	| "GREATER_THAN"
+	| "GREATER_THAN_OR_EQUAL"
+	| "LESS_THAN"
+	| "LESS_THAN_OR_EQUAL"
+	| "INCLUDES"
+	| "EXCLUDES"
+	| "OPTIONS_GREATER_THAN"
+	| "OPTIONS_LESS_THAN"
+	| "OPTIONS_EQUALS"
+	| "OPTIONS_NOT_EQUALS";
 
 type BaseFilterRule = {
-	id: string
-}
+	id: string;
+};
 
 type EgoFilterRule = BaseFilterRule & {
 	type: "ego";
@@ -85,7 +86,7 @@ type EgoFilterRule = BaseFilterRule & {
 		attribute?: string;
 		operator: Operator;
 		value: boolean | number | string;
-	}
+	};
 };
 
 type NodeOrAlterFilterRule = BaseFilterRule & {
@@ -95,7 +96,7 @@ type NodeOrAlterFilterRule = BaseFilterRule & {
 		attribute?: string;
 		operator: Operator;
 		value: boolean | number | string;
-	}
+	};
 };
 
 export type FilterRule = EgoFilterRule | NodeOrAlterFilterRule;
@@ -159,7 +160,7 @@ export type Panel = {
 	title: string;
 	filter?: FilterDefinition;
 	dataSource?: string;
-}
+};
 
 export type Stage = {
 	id: string;

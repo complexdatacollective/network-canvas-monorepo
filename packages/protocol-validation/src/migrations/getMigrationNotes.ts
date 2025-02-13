@@ -12,7 +12,7 @@ const getMigrationNotes = (sourceSchemaVersion: number, targetSchemaVersion: num
 			return acc;
 		}, []);
 		return notes;
-	} catch (e) {
+	} catch (_e) {
 		return undefined;
 	}
 };

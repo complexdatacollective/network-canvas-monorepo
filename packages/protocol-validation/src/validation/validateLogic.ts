@@ -135,7 +135,7 @@ export const validateLogic = (protocol: Protocol) => {
 
 			return `Validation configuration for the variable "${getVariableNameFromID(
 				codebook,
-				{ entity: keypath[2] as 'node' | 'edge', type: keypath[3] as string },
+				{ entity: keypath[2] as "node" | "edge", type: keypath[3] as string },
 				// biome-ignore lint/style/noNonNullAssertion: We know this keypath will exist due to the validation pattern.
 				keypath[5]!,
 			)}" is invalid! The variable "${variable}" does not exist in the codebook for this type.`;
@@ -148,10 +148,10 @@ export const validateLogic = (protocol: Protocol) => {
 			(rule) => !!getRuleEntityCodebookDefinition(rule, codebook),
 			(rule) => {
 				if (rule.type === "ego") {
-					return `Entity type "Ego" is not defined in codebook`
+					return `Entity type "Ego" is not defined in codebook`;
 				}
 
-				return `Rule option type "${rule.options.type}" is not defined in codebook`
+				return `Rule option type "${rule.options.type}" is not defined in codebook`;
 			},
 		],
 		[
@@ -213,11 +213,11 @@ export const validateLogic = (protocol: Protocol) => {
 				return `Subject not defined for stage. Variable: "${variable}"`;
 			}
 
-			if (subject.entity === 'ego') {
+			if (subject.entity === "ego") {
 				return `"Ego" not defined in codebook, but referenced by variable "${variable}".`;
 			}
 
-			return `"${variable}" not defined in codebook[${subject.entity}][${subject.type}].variables`
+			return `"${variable}" not defined in codebook[${subject.entity}][${subject.type}].variables`;
 		},
 	);
 
@@ -232,13 +232,12 @@ export const validateLogic = (protocol: Protocol) => {
 				return `Subject not defined for stage. Variable: "${otherVariable}"`;
 			}
 
-			if (subject.entity === 'ego') {
+			if (subject.entity === "ego") {
 				return `"Ego" not defined in codebook, but referenced by otherVariable "${otherVariable}".`;
 			}
 
-			return `"${otherVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables`
-		}
-			
+			return `"${otherVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables`;
+		},
 	);
 
 	// Sociogram and TieStrengthCensus use createEdge to know which edge type to create.
@@ -308,9 +307,8 @@ export const validateLogic = (protocol: Protocol) => {
 				);
 			}
 
-			
 			// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
-						return getVariablesForSubject(codebook, subject!)[variable];
+			return getVariablesForSubject(codebook, subject!)[variable];
 		},
 		(variable, subject) => {
 			if (isObject(variable)) {

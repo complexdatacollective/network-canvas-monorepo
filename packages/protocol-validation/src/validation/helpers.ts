@@ -36,9 +36,9 @@ export const nodeVarsIncludeDisplayVar = (node: NcNode) =>
 
 /**
  * Check that the entity referenced in a FilterRule is defined in the codebook
- * @param rule 
- * @param codebook 
- * @returns 
+ * @param rule
+ * @param codebook
+ * @returns
  */
 export const getRuleEntityCodebookDefinition = (rule: FilterRule, codebook: Codebook) => {
 	if (rule.type === "ego") {
@@ -58,12 +58,13 @@ export const getVariablesForSubject = (codebook: Codebook, subject: StageSubject
 	return get(codebook, [subject.entity, subject.type, "variables"], {});
 };
 
-export const getVariableNameFromID = (codebook: Codebook, subject:StageSubject, variableID: string) => {
+export const getVariableNameFromID = (codebook: Codebook, subject: StageSubject, variableID: string) => {
 	const variables = getVariablesForSubject(codebook, subject);
 	return get(variables, [variableID, "name"], variableID);
 };
 
-export const getVariableNames = (registryVars: EntityTypeDefinition['variables']) => Object.values(registryVars).map((vari) => vari.name);
+export const getVariableNames = (registryVars: EntityTypeDefinition["variables"]) =>
+	Object.values(registryVars).map((vari) => vari.name);
 
 export const getEntityNames = (codebook: Codebook) => [
 	...Object.values(codebook.node || {}).map((entity) => entity.name),
@@ -73,7 +74,7 @@ export const getEntityNames = (codebook: Codebook) => [
 /**
  * Check for duplicate IDs in an array of objects
  * @param elements An array of objects with an 'id' key
- * @returns 
+ * @returns
  */
 export const checkDuplicateNestedId = <A extends { id: string }[]>(elements: A) => {
 	const set = new Set();
@@ -94,8 +95,8 @@ export const checkDuplicateNestedId = <A extends { id: string }[]>(elements: A) 
 
 /**
  * Check for duplicate items in an array
- * @param items 
- * @returns 
+ * @param items
+ * @returns
  */
 export const duplicateInArray = (items: unknown[]) => {
 	const set = new Set();
