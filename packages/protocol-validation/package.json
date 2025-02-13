@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/protocol-validation",
-	"version": "4.0.0",
+	"version": "3.1.0-alpha.1",
 	"main": "./dist/index.js",
 	"license": "GPL-3.0-or-later",
 	"repository": {
@@ -15,6 +15,7 @@
 		"prebuild": "tsx ./src/scripts/compileSchemas.ts",
 		"build": "tsup src/index.ts --format esm,cjs --target es6 --dts --sourcemap",
 		"dev": "npm run build -- --watch",
+		"pretest": "npm run build",
 		"test": "vitest"
 	},
 	"bin": {
