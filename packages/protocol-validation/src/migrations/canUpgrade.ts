@@ -3,7 +3,7 @@ import getMigrationPath from "./getMigrationPath";
 const canUpgrade = (sourceSchemaVersion: number, targetSchemaVersion: number) => {
 	try {
 		getMigrationPath(sourceSchemaVersion, targetSchemaVersion);
-	} catch (e) {
+	} catch (_e) {
 		return false;
 	}
 

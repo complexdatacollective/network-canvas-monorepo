@@ -1,7 +1,9 @@
+import type { Protocol } from "@codaco/shared-consts";
+import type { DefinedError } from "ajv";
 import canUpgrade from "./migrations/canUpgrade";
 import getMigrationNotes from "./migrations/getMigrationNotes";
 import { migrateProtocol } from "./migrations/migrateProtocol";
-import type { MapOptions, Protocol } from "./schemas/src/8.zod";
+import type { MapOptions } from "./schemas/src/8.zod";
 import { ensureError } from "./utils/ensureError";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
 import { errToString } from "./validation/helpers";
@@ -23,7 +25,7 @@ export {
 // types
 export type { MapOptions, Protocol };
 
-export type ValidationError = {
+export type ValidationError = Partial<DefinedError> & {
 	path: string;
 	message: string;
 };

@@ -1,1509 +1,1768 @@
 {
-	"$ref": "#/definitions/Protocol",
-	"definitions": {
-		"Protocol": {
-			"type": "object",
-			"properties": {
-				"name": {
-					"type": "string"
-				},
-				"description": {
-					"type": "string"
-				},
-				"lastModified": {
-					"type": "string",
-					"format": "date-time"
-				},
-				"schemaVersion": {
-					"type": "number",
-					"const": 8
-				},
-				"codebook": {
-					"type": "object",
-					"properties": {
-						"node": {
-							"type": "object",
-							"additionalProperties": {
-								"anyOf": [
-									{
-										"type": "object",
-										"properties": {
-											"name": {
-												"type": "string"
-											},
-											"displayVariable": {
-												"type": "string"
-											},
-											"iconVariant": {
-												"type": "string"
-											},
-											"variables": {
-												"type": "object",
-												"additionalProperties": {
-													"type": "object",
-													"properties": {
-														"name": {
-															"type": "string",
-															"pattern": "^[a-zA-Z0-9._:-]+$"
-														},
-														"type": {
-															"type": "string",
-															"enum": [
-																"boolean",
-																"text",
-																"number",
-																"datetime",
-																"ordinal",
-																"scalar",
-																"categorical",
-																"layout",
-																"location"
-															]
-														},
-														"encrypted": {
-															"type": "boolean"
-														},
-														"component": {
-															"type": "string",
-															"enum": [
-																"Boolean",
-																"CheckboxGroup",
-																"Number",
-																"RadioGroup",
-																"Text",
-																"TextArea",
-																"Toggle",
-																"ToggleButtonGroup",
-																"Slider",
-																"VisualAnalogScale",
-																"LikertScale",
-																"DatePicker",
-																"RelativeDatePicker"
-															]
-														},
-														"options": {
-															"type": "array",
-															"items": {
-																"anyOf": [
-																	{
-																		"type": "object",
-																		"properties": {
-																			"label": {
-																				"type": "string"
-																			},
-																			"value": {
-																				"anyOf": [
-																					{
-																						"type": "integer"
-																					},
-																					{
-																						"type": "string",
-																						"pattern": "^[a-zA-Z0-9._:-]+$"
-																					},
-																					{
-																						"type": "boolean"
-																					}
-																				]
-																			},
-																			"negative": {
-																				"type": "boolean"
-																			}
-																		},
-																		"required": ["label", "value"],
-																		"additionalProperties": false
-																	},
-																	{
-																		"type": "integer"
-																	},
-																	{
-																		"type": "string"
-																	}
-																]
-															}
-														},
-														"parameters": {
-															"type": "object",
-															"additionalProperties": {}
-														},
-														"validation": {
-															"type": "object",
-															"properties": {
-																"required": {
-																	"type": "boolean"
-																},
-																"requiredAcceptsNull": {
-																	"type": "boolean"
-																},
-																"minLength": {
-																	"type": "integer"
-																},
-																"maxLength": {
-																	"type": "integer"
-																},
-																"minValue": {
-																	"type": "integer"
-																},
-																"maxValue": {
-																	"type": "integer"
-																},
-																"minSelected": {
-																	"type": "integer"
-																},
-																"maxSelected": {
-																	"type": "integer"
-																},
-																"unique": {
-																	"type": "boolean"
-																},
-																"differentFrom": {
-																	"type": "string"
-																},
-																"sameAs": {
-																	"type": "string"
-																},
-																"greaterThanVariable": {
-																	"type": "string"
-																},
-																"lessThanVariable": {
-																	"type": "string"
-																}
-															},
-															"additionalProperties": false
-														}
-													},
-													"required": ["name", "type"],
-													"additionalProperties": false
-												},
-												"propertyNames": {
-													"pattern": "^[a-zA-Z0-9._:-]+$"
-												}
-											},
-											"color": {
-												"type": "string"
-											}
-										},
-										"required": ["name", "variables", "color"],
-										"additionalProperties": false
-									},
-									{
-										"not": {}
-									}
-								]
-							}
-						},
-						"edge": {
-							"type": "object",
-							"additionalProperties": {
-								"anyOf": [
-									{
-										"type": "object",
-										"properties": {
-											"name": {
-												"type": "string"
-											},
-											"color": {
-												"type": "string"
-											},
-											"variables": {
-												"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
-											}
-										},
-										"required": ["name", "color", "variables"],
-										"additionalProperties": false
-									},
-									{
-										"not": {}
-									}
-								]
-							}
-						},
-						"ego": {
-							"type": "object",
-							"properties": {
-								"variables": {
-									"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
-								}
-							},
-							"required": ["variables"],
-							"additionalProperties": false
-						}
-					},
-					"required": ["node"],
-					"additionalProperties": false
-				},
-				"assetManifest": {
-					"type": "object",
-					"additionalProperties": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"type": "string"
-									},
-									"type": {
-										"type": "string",
-										"enum": ["image", "video", "network", "geojson"]
-									},
-									"name": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									}
-								},
-								"required": ["id", "type", "name", "source"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/id"
-									},
-									"type": {
-										"type": "string",
-										"enum": ["apikey"]
-									},
-									"name": {
-										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"required": ["id", "type", "name", "value"],
-								"additionalProperties": false
-							}
-						]
-					}
-				},
-				"stages": {
-					"type": "array",
-					"items": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"type": "string"
-									},
-									"interviewScript": {
-										"type": "string"
-									},
-									"label": {
-										"type": "string"
-									},
-									"filter": {
-										"anyOf": [
-											{
-												"anyOf": [
-													{
-														"not": {}
-													},
-													{
-														"type": "object",
-														"properties": {
-															"join": {
-																"type": "string",
-																"enum": ["OR", "AND"]
-															},
-															"rules": {
-																"type": "array",
-																"items": {
-																	"type": "object",
-																	"properties": {
-																		"type": {
-																			"type": "string",
-																			"enum": ["alter", "ego", "edge"]
-																		},
-																		"id": {
-																			"type": "string"
-																		},
-																		"options": {
-																			"allOf": [
-																				{
-																					"type": "object",
-																					"properties": {
-																						"type": {
-																							"type": "string"
-																						},
-																						"attribute": {
-																							"type": "string"
-																						},
-																						"operator": {
-																							"type": "string",
-																							"enum": [
-																								"EXISTS",
-																								"NOT_EXISTS",
-																								"EXACTLY",
-																								"NOT",
-																								"GREATER_THAN",
-																								"GREATER_THAN_OR_EQUAL",
-																								"LESS_THAN",
-																								"LESS_THAN_OR_EQUAL",
-																								"INCLUDES",
-																								"EXCLUDES",
-																								"OPTIONS_GREATER_THAN",
-																								"OPTIONS_LESS_THAN",
-																								"OPTIONS_EQUALS",
-																								"OPTIONS_NOT_EQUALS",
-																								"CONTAINS",
-																								"DOES NOT CONTAIN"
-																							]
-																						},
-																						"value": {
-																							"anyOf": [
-																								{
-																									"type": "integer"
-																								},
-																								{
-																									"type": "string"
-																								},
-																								{
-																									"type": "boolean"
-																								},
-																								{
-																									"type": "array"
-																								}
-																							]
-																						}
-																					},
-																					"required": ["operator"]
-																				},
-																				{}
-																			]
-																		}
-																	},
-																	"required": ["type", "id", "options"],
-																	"additionalProperties": false
-																}
-															}
-														},
-														"additionalProperties": false
-													}
-												]
-											},
-											{
-												"type": "null"
-											}
-										]
-									},
-									"skipLogic": {
-										"type": "object",
-										"properties": {
-											"action": {
-												"type": "string",
-												"enum": ["SHOW", "SKIP"]
-											},
-											"filter": {
-												"anyOf": [
-													{
-														"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0"
-													},
-													{
-														"type": "null"
-													}
-												]
-											}
-										},
-										"required": ["action"],
-										"additionalProperties": false
-									},
-									"introductionPanel": {
-										"type": "object",
-										"properties": {
-											"title": {
-												"type": "string"
-											},
-											"text": {
-												"type": "string"
-											}
-										},
-										"required": ["title", "text"],
-										"additionalProperties": false
-									},
-									"type": {
-										"type": "string",
-										"const": "EgoForm"
-									},
-									"form": {
-										"type": "object",
-										"properties": {
-											"title": {
-												"type": "string"
-											},
-											"fields": {
-												"type": "array",
-												"items": {
-													"type": "object",
-													"properties": {
-														"variable": {
-															"type": "string"
-														},
-														"prompt": {
-															"type": "string"
-														}
-													},
-													"required": ["variable", "prompt"],
-													"additionalProperties": false
-												}
-											}
-										},
-										"required": ["fields"],
-										"additionalProperties": false
-									}
-								},
-								"required": ["id", "label", "type", "form"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "AlterForm"
-									},
-									"subject": {
-										"type": "object",
-										"properties": {
-											"entity": {
-												"type": "string",
-												"enum": ["edge", "node", "ego"]
-											},
-											"type": {
-												"type": "string"
-											}
-										},
-										"required": ["entity", "type"],
-										"additionalProperties": false
-									},
-									"form": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
-									}
-								},
-								"required": ["id", "label", "type", "form"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "AlterEdgeForm"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"form": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
-									}
-								},
-								"required": ["id", "label", "type", "form"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "NameGenerator"
-									},
-									"form": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"panels": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"type": "string"
-												},
-												"title": {
-													"type": "string"
-												},
-												"filter": {
-													"anyOf": [
-														{
-															"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0"
-														},
-														{
-															"type": "null"
-														}
-													]
-												},
-												"dataSource": {
-													"type": ["string", "null"]
-												}
-											},
-											"required": ["id", "title", "dataSource"],
-											"additionalProperties": false
-										}
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"type": "string"
-												},
-												"text": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "text"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "form", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "NameGeneratorQuickAdd"
-									},
-									"quickAdd": {
-										"type": "string"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"panels": {
-										"type": "array",
-										"items": {
-											"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/panels/items"
-										}
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
-										},
-										"minItems": 1
-									},
-									"behaviours": {
-										"type": "object",
-										"properties": {
-											"minNodes": {
-												"type": "integer"
-											},
-											"maxNodes": {
-												"type": "integer"
-											}
-										},
-										"additionalProperties": false
-									}
-								},
-								"required": ["id", "label", "type", "quickAdd", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "NameGeneratorRoster"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"dataSource": {
-										"type": "string"
-									},
-									"cardOptions": {
-										"type": "object",
-										"properties": {
-											"displayLabel": {
-												"type": "string"
-											},
-											"additionalProperties": {
-												"type": "array",
-												"items": {
-													"type": "object",
-													"properties": {
-														"label": {
-															"type": "string"
-														},
-														"variable": {
-															"type": "string"
-														}
-													},
-													"required": ["label", "variable"],
-													"additionalProperties": false
-												}
-											}
-										},
-										"additionalProperties": false
-									},
-									"searchOptions": {
-										"type": "object",
-										"properties": {
-											"fuzziness": {
-												"type": "number"
-											},
-											"matchProperties": {
-												"type": "array",
-												"items": {
-													"type": "string"
-												}
-											}
-										},
-										"required": ["fuzziness", "matchProperties"],
-										"additionalProperties": false
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "dataSource", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "Sociogram"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"background": {
-										"type": "object",
-										"properties": {
-											"image": {
-												"type": "string"
-											},
-											"concentricCircles": {
-												"type": "integer"
-											},
-											"skewedTowardCenter": {
-												"type": "boolean"
-											}
-										},
-										"additionalProperties": false
-									},
-									"behaviours": {
-										"type": "object",
-										"properties": {
-											"automaticLayout": {
-												"type": "object",
-												"properties": {
-													"enabled": {
-														"type": "boolean"
-													}
-												},
-												"required": ["enabled"],
-												"additionalProperties": false
-											}
-										},
-										"additionalProperties": {}
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "DyadCensus"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
-												},
-												"text": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
-												},
-												"createEdge": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "text", "createEdge"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "TieStrengthCensus"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
-												},
-												"text": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
-												},
-												"createEdge": {
-													"type": "string"
-												},
-												"edgeVariable": {
-													"type": "string"
-												},
-												"negativeLabel": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "text", "createEdge", "edgeVariable", "negativeLabel"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "OrdinalBin"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
-												},
-												"text": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
-												},
-												"variable": {
-													"type": "string"
-												},
-												"bucketSortOrder": {
-													"type": "array",
-													"items": {
-														"type": "object",
-														"properties": {
-															"property": {
-																"type": "string"
-															},
-															"direction": {
-																"type": "string",
-																"enum": ["desc", "asc"]
-															},
-															"type": {
-																"type": "string",
-																"enum": ["string", "number", "boolean", "date", "hierarchy"]
-															},
-															"hierarchy": {
-																"type": "array",
-																"items": {
-																	"type": ["string", "number", "boolean"]
-																}
-															}
-														},
-														"required": ["property"],
-														"additionalProperties": false
-													}
-												},
-												"binSortOrder": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
-												},
-												"color": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "text", "variable"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "CategoricalBin"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
-												},
-												"text": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
-												},
-												"variable": {
-													"type": "string"
-												},
-												"otherVariable": {
-													"type": "string"
-												},
-												"otherVariablePrompt": {
-													"type": "string"
-												},
-												"otherOptionLabel": {
-													"type": "string"
-												},
-												"bucketSortOrder": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
-												},
-												"binSortOrder": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
-												}
-											},
-											"required": ["id", "text", "variable"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "Narrative"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"presets": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"type": "string"
-												},
-												"label": {
-													"type": "string"
-												},
-												"layoutVariable": {
-													"type": "string"
-												},
-												"groupVariable": {
-													"type": "string"
-												},
-												"edges": {
-													"type": "object",
-													"properties": {
-														"display": {
-															"type": "array",
-															"items": {
-																"type": "string"
-															}
-														}
-													},
-													"additionalProperties": false
-												},
-												"highlight": {
-													"type": "array",
-													"items": {
-														"type": "string"
-													}
-												}
-											},
-											"required": ["id", "label", "layoutVariable"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									},
-									"background": {
-										"type": "object",
-										"properties": {
-											"concentricCircles": {
-												"type": "integer"
-											},
-											"skewedTowardCenter": {
-												"type": "boolean"
-											}
-										},
-										"additionalProperties": false
-									},
-									"behaviours": {
-										"type": "object",
-										"properties": {
-											"freeDraw": {
-												"type": "boolean"
-											},
-											"allowRepositioning": {
-												"type": "boolean"
-											}
-										},
-										"additionalProperties": false
-									}
-								},
-								"required": ["id", "label", "type", "presets"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "Information"
-									},
-									"title": {
-										"type": "string"
-									},
-									"items": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"type": "string"
-												},
-												"type": {
-													"type": "string",
-													"enum": ["text", "asset"]
-												},
-												"content": {
-													"type": "string"
-												},
-												"description": {
-													"type": "string"
-												},
-												"size": {
-													"type": "string"
-												},
-												"loop": {
-													"type": "boolean"
-												}
-											},
-											"required": ["id", "type", "content"],
-											"additionalProperties": false
-										}
-									}
-								},
-								"required": ["id", "label", "type", "items"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "Anonymisation"
-									},
-									"items": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"type": "string"
-												},
-												"type": {
-													"type": "string",
-													"enum": ["text", "asset"]
-												},
-												"content": {
-													"type": "string"
-												},
-												"size": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "type", "content"],
-											"additionalProperties": false
-										}
-									}
-								},
-								"required": ["id", "label", "type", "items"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "OneToManyDyadCensus"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
-												},
-												"text": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
-												},
-												"createEdge": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "text", "createEdge"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "prompts"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "FamilyTreeCensus"
-									}
-								},
-								"required": ["id", "label", "type"],
-								"additionalProperties": false
-							},
-							{
-								"type": "object",
-								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
-									},
-									"interviewScript": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
-									},
-									"label": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
-									},
-									"filter": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-									},
-									"skipLogic": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
-									},
-									"introductionPanel": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
-									},
-									"type": {
-										"type": "string",
-										"const": "Geospatial"
-									},
-									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
-									},
-									"mapOptions": {
-										"type": "object",
-										"properties": {
-											"tokenAssetId": {
-												"type": "string"
-											},
-											"style": {
-												"type": "string",
-												"enum": [
-													"mapbox://styles/mapbox/standard",
-													"mapbox://styles/mapbox/standard-satellite",
-													"mapbox://styles/mapbox/streets-v12",
-													"mapbox://styles/mapbox/outdoors-v12",
-													"mapbox://styles/mapbox/light-v11",
-													"mapbox://styles/mapbox/dark-v11",
-													"mapbox://styles/mapbox/satellite-v9",
-													"mapbox://styles/mapbox/satellite-streets-v12",
-													"mapbox://styles/mapbox/navigation-day-v1",
-													"mapbox://styles/mapbox/navigation-night-v1"
-												]
-											},
-											"center": {
-												"type": "array",
-												"minItems": 2,
-												"maxItems": 2,
-												"items": [
-													{
-														"type": "number"
-													},
-													{
-														"type": "number"
-													}
-												]
-											},
-											"initialZoom": {
-												"type": "number",
-												"minimum": 0,
-												"maximum": 22
-											},
-											"dataSourceAssetId": {
-												"type": "string"
-											},
-											"color": {
-												"type": "string"
-											},
-											"targetFeatureProperty": {
-												"type": "string"
-											}
-										},
-										"required": [
-											"tokenAssetId",
-											"style",
-											"center",
-											"initialZoom",
-											"dataSourceAssetId",
-											"color",
-											"targetFeatureProperty"
-										],
-										"additionalProperties": false
-									},
-									"prompts": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"id": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
-												},
-												"text": {
-													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
-												},
-												"variable": {
-													"type": "string"
-												}
-											},
-											"required": ["id", "text", "variable"],
-											"additionalProperties": false
-										},
-										"minItems": 1
-									}
-								},
-								"required": ["id", "label", "type", "mapOptions", "prompts"],
-								"additionalProperties": false
-							}
-						]
-					}
-				}
-			},
-			"required": ["schemaVersion", "codebook", "stages"],
-			"additionalProperties": false
-		}
-	},
-	"$schema": "http://json-schema.org/draft-07/schema#"
+  "$ref": "#/definitions/Protocol",
+  "definitions": {
+    "Protocol": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "experiments": {
+          "type": "object",
+          "properties": {
+            "encryptNames": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 8
+        },
+        "codebook": {
+          "type": "object",
+          "properties": {
+            "node": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "displayVariable": {
+                        "type": "string"
+                      },
+                      "iconVariant": {
+                        "type": "string"
+                      },
+                      "variables": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9._:-]+$"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "boolean",
+                                "text",
+                                "number",
+                                "datetime",
+                                "ordinal",
+                                "scalar",
+                                "categorical",
+                                "layout",
+                                "location"
+                              ]
+                            },
+                            "encrypted": {
+                              "type": "boolean"
+                            },
+                            "component": {
+                              "type": "string",
+                              "enum": [
+                                "Boolean",
+                                "CheckboxGroup",
+                                "Number",
+                                "RadioGroup",
+                                "Text",
+                                "TextArea",
+                                "Toggle",
+                                "ToggleButtonGroup",
+                                "Slider",
+                                "VisualAnalogScale",
+                                "LikertScale",
+                                "DatePicker",
+                                "RelativeDatePicker"
+                              ]
+                            },
+                            "options": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "label": {
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9._:-]+$"
+                                          },
+                                          {
+                                            "type": "boolean"
+                                          }
+                                        ]
+                                      },
+                                      "negative": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "label",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            "parameters": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            "validation": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "requiredAcceptsNull": {
+                                  "type": "boolean"
+                                },
+                                "minLength": {
+                                  "type": "integer"
+                                },
+                                "maxLength": {
+                                  "type": "integer"
+                                },
+                                "minValue": {
+                                  "type": "integer"
+                                },
+                                "maxValue": {
+                                  "type": "integer"
+                                },
+                                "minSelected": {
+                                  "type": "integer"
+                                },
+                                "maxSelected": {
+                                  "type": "integer"
+                                },
+                                "unique": {
+                                  "type": "boolean"
+                                },
+                                "differentFrom": {
+                                  "type": "string"
+                                },
+                                "sameAs": {
+                                  "type": "string"
+                                },
+                                "greaterThanVariable": {
+                                  "type": "string"
+                                },
+                                "lessThanVariable": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "propertyNames": {
+                          "pattern": "^[a-zA-Z0-9._:-]+$"
+                        }
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "variables",
+                      "color"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "not": {}
+                  }
+                ]
+              }
+            },
+            "edge": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "color": {
+                        "type": "string"
+                      },
+                      "variables": {
+                        "$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "color",
+                      "variables"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "not": {}
+                  }
+                ]
+              }
+            },
+            "ego": {
+              "type": "object",
+              "properties": {
+                "variables": {
+                  "$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
+                }
+              },
+              "required": [
+                "variables"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "node"
+          ],
+          "additionalProperties": false
+        },
+        "assetManifest": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "image",
+                      "video",
+                      "network",
+                      "geojson"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "type",
+                  "name",
+                  "source"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/id"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "apikey"
+                    ]
+                  },
+                  "name": {
+                    "$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "type",
+                  "name",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "interviewScript": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "filter": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "not": {}
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "join": {
+                                "type": "string",
+                                "enum": [
+                                  "OR",
+                                  "AND"
+                                ]
+                              },
+                              "rules": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "alter",
+                                        "ego",
+                                        "edge"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "options": {
+                                      "allOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string"
+                                            },
+                                            "attribute": {
+                                              "type": "string"
+                                            },
+                                            "operator": {
+                                              "type": "string",
+                                              "enum": [
+                                                "EXISTS",
+                                                "NOT_EXISTS",
+                                                "EXACTLY",
+                                                "NOT",
+                                                "GREATER_THAN",
+                                                "GREATER_THAN_OR_EQUAL",
+                                                "LESS_THAN",
+                                                "LESS_THAN_OR_EQUAL",
+                                                "INCLUDES",
+                                                "EXCLUDES",
+                                                "OPTIONS_GREATER_THAN",
+                                                "OPTIONS_LESS_THAN",
+                                                "OPTIONS_EQUALS",
+                                                "OPTIONS_NOT_EQUALS",
+                                                "CONTAINS",
+                                                "DOES NOT CONTAIN"
+                                              ]
+                                            },
+                                            "value": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "integer"
+                                                },
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "boolean"
+                                                },
+                                                {
+                                                  "type": "array"
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "operator"
+                                          ]
+                                        },
+                                        {}
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "type",
+                                    "id",
+                                    "options"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "skipLogic": {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "SHOW",
+                          "SKIP"
+                        ]
+                      },
+                      "filter": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "introductionPanel": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "EgoForm"
+                  },
+                  "form": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      },
+                      "fields": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "variable": {
+                              "type": "string"
+                            },
+                            "prompt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "variable",
+                            "prompt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "fields"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "form"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "AlterForm"
+                  },
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string",
+                        "enum": [
+                          "edge",
+                          "node",
+                          "ego"
+                        ]
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "entity",
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "form": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "form"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "AlterEdgeForm"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "form": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "form"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "NameGenerator"
+                  },
+                  "form": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "panels": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "filter": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "dataSource": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dataSource"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "form",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "NameGeneratorQuickAdd"
+                  },
+                  "quickAdd": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "panels": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/panels/items"
+                    }
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
+                    },
+                    "minItems": 1
+                  },
+                  "behaviours": {
+                    "type": "object",
+                    "properties": {
+                      "minNodes": {
+                        "type": "integer"
+                      },
+                      "maxNodes": {
+                        "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "quickAdd",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "NameGeneratorRoster"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "dataSource": {
+                    "type": "string"
+                  },
+                  "cardOptions": {
+                    "type": "object",
+                    "properties": {
+                      "displayLabel": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string"
+                            },
+                            "variable": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "label",
+                            "variable"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "searchOptions": {
+                    "type": "object",
+                    "properties": {
+                      "fuzziness": {
+                        "type": "number"
+                      },
+                      "matchProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fuzziness",
+                      "matchProperties"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "dataSource",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "Sociogram"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "background": {
+                    "type": "object",
+                    "properties": {
+                      "image": {
+                        "type": "string"
+                      },
+                      "concentricCircles": {
+                        "type": "integer"
+                      },
+                      "skewedTowardCenter": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "behaviours": {
+                    "type": "object",
+                    "properties": {
+                      "automaticLayout": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "enabled"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": {}
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "DyadCensus"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "createEdge": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "createEdge"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "TieStrengthCensus"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "createEdge": {
+                          "type": "string"
+                        },
+                        "edgeVariable": {
+                          "type": "string"
+                        },
+                        "negativeLabel": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "createEdge",
+                        "edgeVariable",
+                        "negativeLabel"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "OrdinalBin"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "variable": {
+                          "type": "string"
+                        },
+                        "bucketSortOrder": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "property": {
+                                "type": "string"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "desc",
+                                  "asc"
+                                ]
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "date",
+                                  "hierarchy"
+                                ]
+                              },
+                              "hierarchy": {
+                                "type": "array",
+                                "items": {
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "property"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "binSortOrder": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                        },
+                        "color": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "variable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "CategoricalBin"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "variable": {
+                          "type": "string"
+                        },
+                        "otherVariable": {
+                          "type": "string"
+                        },
+                        "otherVariablePrompt": {
+                          "type": "string"
+                        },
+                        "otherOptionLabel": {
+                          "type": "string"
+                        },
+                        "bucketSortOrder": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                        },
+                        "binSortOrder": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "variable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "Narrative"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "presets": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "layoutVariable": {
+                          "type": "string"
+                        },
+                        "groupVariable": {
+                          "type": "string"
+                        },
+                        "edges": {
+                          "type": "object",
+                          "properties": {
+                            "display": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "highlight": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "layoutVariable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  },
+                  "background": {
+                    "type": "object",
+                    "properties": {
+                      "concentricCircles": {
+                        "type": "integer"
+                      },
+                      "skewedTowardCenter": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "behaviours": {
+                    "type": "object",
+                    "properties": {
+                      "freeDraw": {
+                        "type": "boolean"
+                      },
+                      "allowRepositioning": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "presets"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "Information"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "text",
+                            "asset"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        },
+                        "loop": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "content"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "items"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "Anonymisation"
+                  },
+                  "validation": {
+                    "type": "object",
+                    "properties": {
+                      "minLength": {
+                        "type": "integer"
+                      },
+                      "maxLength": {
+                        "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "OneToManyDyadCensus"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "behaviours": {
+                    "type": "object",
+                    "properties": {
+                      "removeAfterConsideration": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "removeAfterConsideration"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "createEdge": {
+                          "type": "string"
+                        },
+                        "bucketSortOrder": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                        },
+                        "binSortOrder": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "createEdge"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "behaviours",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "FamilyTreeCensus"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/id"
+                  },
+                  "interviewScript": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/interviewScript"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/label"
+                  },
+                  "filter": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
+                  },
+                  "skipLogic": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
+                  },
+                  "introductionPanel": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "Geospatial"
+                  },
+                  "subject": {
+                    "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+                  },
+                  "mapOptions": {
+                    "type": "object",
+                    "properties": {
+                      "tokenAssetId": {
+                        "type": "string"
+                      },
+                      "style": {
+                        "type": "string",
+                        "enum": [
+                          "mapbox://styles/mapbox/standard",
+                          "mapbox://styles/mapbox/standard-satellite",
+                          "mapbox://styles/mapbox/streets-v12",
+                          "mapbox://styles/mapbox/outdoors-v12",
+                          "mapbox://styles/mapbox/light-v11",
+                          "mapbox://styles/mapbox/dark-v11",
+                          "mapbox://styles/mapbox/satellite-v9",
+                          "mapbox://styles/mapbox/satellite-streets-v12",
+                          "mapbox://styles/mapbox/navigation-day-v1",
+                          "mapbox://styles/mapbox/navigation-night-v1"
+                        ]
+                      },
+                      "center": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      "initialZoom": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 22
+                      },
+                      "dataSourceAssetId": {
+                        "type": "string"
+                      },
+                      "color": {
+                        "type": "string"
+                      },
+                      "targetFeatureProperty": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "tokenAssetId",
+                      "style",
+                      "center",
+                      "initialZoom",
+                      "dataSourceAssetId",
+                      "color",
+                      "targetFeatureProperty"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "prompts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "variable": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "variable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "type",
+                  "mapOptions",
+                  "prompts"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "codebook",
+        "stages"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
 }
