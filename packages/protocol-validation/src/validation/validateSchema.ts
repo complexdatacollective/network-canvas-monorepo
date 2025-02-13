@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import type { Protocol } from "@codaco/shared-consts";
 import type { DefinedError, ValidateFunction } from "ajv";
-import { resolve } from "node:path";
+import path from "node:path";
 
 export const validateSchema = async (protocol: Protocol, forceVersion?: number) => {
 	if (!protocol) {
@@ -21,7 +21,7 @@ export const validateSchema = async (protocol: Protocol, forceVersion?: number) 
 	let validator: ValidateFunction;
 
 	try {
-		const schemaPath = resolve(__dirname, `../../dist/schemas/${version}.js`);
+		const schemaPath = path.resolve(process.cwd(), "dist", "schemas", `${version}.js`);
 
 		const result = (await import(schemaPath)) as {
 			default: ValidateFunction;
