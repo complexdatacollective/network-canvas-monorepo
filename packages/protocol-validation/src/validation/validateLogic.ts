@@ -101,7 +101,9 @@ export const validateLogic = (protocol: Protocol) => {
 		(_, __, keypath) =>
 			`The 'unique' variable validation cannot be used on ego variables. Was used on ego variable "${getVariableNameFromID(
 				codebook,
-				{ entity: "ego" },
+				{
+					entity: "ego",
+				},
 				// biome-ignore lint/style/noNonNullAssertion: We know this keypath will exist due to the validation pattern.
 				keypath[4]!,
 			)}".`,
@@ -127,7 +129,9 @@ export const validateLogic = (protocol: Protocol) => {
 			if (keypath[2] === "ego") {
 				return `Validation configuration for the variable "${getVariableNameFromID(
 					codebook,
-					{ entity: "ego" },
+					{
+						entity: "ego",
+					},
 					// biome-ignore lint/style/noNonNullAssertion: We know this keypath will exist due to the validation pattern.
 					keypath[4]!,
 				)}" is invalid! The variable "${variable}" does not exist in the codebook for this type.`;

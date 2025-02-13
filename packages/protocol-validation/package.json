@@ -12,10 +12,10 @@
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
-		"build": "tsup src/index.ts --format esm,cjs --target es6 --dts --clean --sourcemap",
+		"prebuild": "tsx ./src/scripts/compileSchemas.ts",
+		"build": "tsup src/index.ts --format esm,cjs --target es6 --dts --sourcemap",
 		"dev": "npm run build -- --watch",
-		"test": "vitest",
-		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
+		"test": "vitest"
 	},
 	"bin": {
 		"@codaco/protocol-validation": "./cli.js"

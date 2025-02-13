@@ -47,7 +47,7 @@ export const getRuleEntityCodebookDefinition = (rule: FilterRule, codebook: Code
 
 	// We need to do this because FilterRule uses 'edge'|'alter' and the codebook uses 'edge'|'node'
 	const entityType = rule.type === "edge" ? "edge" : "node";
-	return codebook[entityType]?.[rule.options.type];
+	return rule.options.type ? codebook[entityType]?.[rule.options.type] : undefined;
 };
 
 export const getVariablesForSubject = (codebook: Codebook, subject: StageSubject) => {
