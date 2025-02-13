@@ -60,13 +60,7 @@ export type Prompt = {
 	otherOptionLabel?: string;
 };
 
-export type FilterRule = {
-	id: string;
-	type: "alter" | "ego" | "edge";
-	options: {
-		type?: string;
-		operator:
-			| "EXISTS"
+type Operator = "EXISTS"
 			| "NOT_EXISTS"
 			| "EXACTLY"
 			| "NOT"
@@ -80,10 +74,31 @@ export type FilterRule = {
 			| "OPTIONS_LESS_THAN"
 			| "OPTIONS_EQUALS"
 			| "OPTIONS_NOT_EQUALS";
+
+type BaseFilterRule = {
+	id: string
+}
+
+type EgoFilterRule = BaseFilterRule & {
+	type: "ego";
+	options: {
 		attribute?: string;
-		value?: boolean | number | string;
-	};
+		operator: Operator;
+		value: boolean | number | string;
+	}
 };
+
+type NodeOrAlterFilterRule = BaseFilterRule & {
+	type: "edge" | "alter";
+	options: {
+		type: string;
+		attribute?: string;
+		operator: Operator;
+		value: boolean | number | string;
+	}
+};
+
+export type FilterRule = EgoFilterRule | NodeOrAlterFilterRule;
 
 export type FilterDefinition = {
 	join: "AND" | "OR";
@@ -113,10 +128,21 @@ export type ItemDefinition = {
 	size: "SMALL" | "MEDIUM" | "LARGE";
 };
 
-export type StageSubject = {
-	entity: "ego" | "node" | "edge";
+type EgoStageSubject = {
+	entity: "ego";
+};
+
+type NodeStageSubject = {
+	entity: "node";
 	type: string;
 };
+
+type EdgeStageSubject = {
+	entity: "edge";
+	type: string;
+};
+
+export type StageSubject = EgoStageSubject | NodeStageSubject | EdgeStageSubject;
 
 export type FormField = {
 	variable: string;

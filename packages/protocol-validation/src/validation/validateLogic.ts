@@ -1,25 +1,26 @@
 import type {
 	AdditionalAttributes,
 	Codebook,
+	EntityTypeDefinition,
 	FilterRule,
 	FormField,
 	ItemDefinition,
 	NcNode,
 	Panel,
 	Prompt,
+	Protocol,
 	Stage,
 	StageSubject,
 	VariableDefinition,
 	VariableValidation,
 } from "@codaco/shared-consts";
 import { get, isObject } from "es-toolkit/compat";
-import type { Protocol } from "../schemas/src/8.zod";
 import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,
 	duplicateInArray,
-	entityDefFromRule,
 	getEntityNames,
+	getRuleEntityCodebookDefinition,
 	getVariableNameFromID,
 	getVariableNames,
 	getVariablesForSubject,
@@ -51,6 +52,11 @@ export const validateLogic = (protocol: Protocol) => {
 		"stages[].subject",
 		(subject) => {
 			const entity = subject.entity;
+
+			if (entity === "ego") {
+				return codebook.ego !== undefined;
+			}
+
 			const type = subject.type as keyof Codebook[typeof entity];
 			return codebook?.[entity]?.[type] !== undefined;
 		},
@@ -96,7 +102,8 @@ export const validateLogic = (protocol: Protocol) => {
 			`The 'unique' variable validation cannot be used on ego variables. Was used on ego variable "${getVariableNameFromID(
 				codebook,
 				{ entity: "ego" },
-				keypath[4],
+				// biome-ignore lint/style/noNonNullAssertion: We know this keypath will exist due to the validation pattern.
+				keypath[4]!,
 			)}".`,
 	);
 
@@ -121,14 +128,16 @@ export const validateLogic = (protocol: Protocol) => {
 				return `Validation configuration for the variable "${getVariableNameFromID(
 					codebook,
 					{ entity: "ego" },
-					keypath[4],
+					// biome-ignore lint/style/noNonNullAssertion: We know this keypath will exist due to the validation pattern.
+					keypath[4]!,
 				)}" is invalid! The variable "${variable}" does not exist in the codebook for this type.`;
 			}
 
 			return `Validation configuration for the variable "${getVariableNameFromID(
 				codebook,
-				{ entity: keypath[2], type: keypath[3] },
-				keypath[5],
+				{ entity: keypath[2] as 'node' | 'edge', type: keypath[3] as string },
+				// biome-ignore lint/style/noNonNullAssertion: We know this keypath will exist due to the validation pattern.
+				keypath[5]!,
 			)}" is invalid! The variable "${variable}" does not exist in the codebook for this type.`;
 		},
 	);
@@ -136,16 +145,22 @@ export const validateLogic = (protocol: Protocol) => {
 	v.addValidationSequence<FilterRule>(
 		"filter.rules[]",
 		[
-			(rule) => entityDefFromRule(rule, codebook),
-			(rule) => `Rule option type "${rule.options.type}" is not defined in codebook`,
+			(rule) => !!getRuleEntityCodebookDefinition(rule, codebook),
+			(rule) => {
+				if (rule.type === "ego") {
+					return `Entity type "Ego" is not defined in codebook`
+				}
+
+				return `Rule option type "${rule.options.type}" is not defined in codebook`
+			},
 		],
 		[
 			(rule) => {
 				if (!rule.options.attribute) {
 					return true;
 				} // Entity type rules do not have an attribute
-				const variables = entityDefFromRule(rule, codebook).variables;
-				return variables?.[rule.options.attribute];
+				const codebookEntityDefinition = getRuleEntityCodebookDefinition(rule, codebook);
+				return !!codebookEntityDefinition?.variables?.[rule.options.attribute];
 			},
 			(rule) => `"${rule.options.attribute}" is not a valid variable ID`,
 		],
@@ -157,31 +172,31 @@ export const validateLogic = (protocol: Protocol) => {
 		(stages) => `Stages contain duplicate ID "${checkDuplicateNestedId(stages)}"`,
 	);
 
-	v.addValidation(
+	v.addValidation<Panel[]>(
 		"stages[].panels",
-		(panels: Panel[]) => !checkDuplicateNestedId(panels),
+		(panels) => !checkDuplicateNestedId(panels),
 		(panels) => `Panels contain duplicate ID "${checkDuplicateNestedId(panels)}"`,
 	);
 
-	v.addValidation(
+	v.addValidation<FilterRule[]>(
 		".rules",
-		(rules: FilterRule[]) => !checkDuplicateNestedId(rules),
+		(rules) => !checkDuplicateNestedId(rules),
 		(rules) => `Rules contain duplicate ID "${checkDuplicateNestedId(rules)}"`,
 	);
 
-	v.addValidation(
+	v.addValidation<Prompt[]>(
 		"stages[].prompts",
-		(prompts: Prompt[]) => !checkDuplicateNestedId(prompts),
+		(prompts) => !checkDuplicateNestedId(prompts),
 		(prompts) => `Prompts contain duplicate ID "${checkDuplicateNestedId(prompts)}"`,
 	);
 
-	v.addValidation(
+	v.addValidation<ItemDefinition[]>(
 		"stages[].items",
-		(items: ItemDefinition[]) => !checkDuplicateNestedId(items),
+		(items) => !checkDuplicateNestedId(items),
 		(items) => `Items contain duplicate ID "${checkDuplicateNestedId(items)}"`,
 	);
 
-	v.addValidation(
+	v.addValidation<EntityTypeDefinition["variables"]>(
 		/codebook\..*\.variables/,
 		(variableMap) => !duplicateInArray(getVariableNames(variableMap)),
 		(variableMap) => `Duplicate variable name "${duplicateInArray(getVariableNames(variableMap))}"`,
@@ -191,17 +206,39 @@ export const validateLogic = (protocol: Protocol) => {
 	// Check this variable exists in the stage subject codebook
 	v.addValidation<string>(
 		"prompts[].variable",
-		(variable, subject) => getVariablesForSubject(codebook, subject)[variable],
-		(variable, subject) => `"${variable}" not defined in codebook[${subject?.entity}][${subject?.type}].variables`,
+		// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
+		(variable, subject) => getVariablesForSubject(codebook, subject!)[variable],
+		(variable, subject) => {
+			if (!subject) {
+				return `Subject not defined for stage. Variable: "${variable}"`;
+			}
+
+			if (subject.entity === 'ego') {
+				return `"Ego" not defined in codebook, but referenced by variable "${variable}".`;
+			}
+
+			return `"${variable}" not defined in codebook[${subject.entity}][${subject.type}].variables`
+		},
 	);
 
 	// 'otherVariable' is used by categorical bin for 'other' responses. Check this variable
 	// exists in the stage subject codebook
 	v.addValidation<string>(
 		"prompts[].otherVariable",
-		(otherVariable, subject) => getVariablesForSubject(codebook, subject)[otherVariable],
-		(otherVariable, subject) =>
-			`"${otherVariable}" not defined in codebook[${subject?.entity}][${subject?.type}].variables`,
+		// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
+		(otherVariable, subject) => getVariablesForSubject(codebook, subject!)[otherVariable],
+		(otherVariable, subject) => {
+			if (!subject) {
+				return `Subject not defined for stage. Variable: "${otherVariable}"`;
+			}
+
+			if (subject.entity === 'ego') {
+				return `"Ego" not defined in codebook, but referenced by otherVariable "${otherVariable}".`;
+			}
+
+			return `"${otherVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables`
+		}
+			
 	);
 
 	// Sociogram and TieStrengthCensus use createEdge to know which edge type to create.
@@ -271,7 +308,9 @@ export const validateLogic = (protocol: Protocol) => {
 				);
 			}
 
-			return getVariablesForSubject(codebook, subject)[variable];
+			
+			// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
+						return getVariablesForSubject(codebook, subject!)[variable];
 		},
 		(variable, subject) => {
 			if (isObject(variable)) {

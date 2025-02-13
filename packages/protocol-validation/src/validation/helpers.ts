@@ -4,6 +4,10 @@ import type { ValidationError } from "src";
 
 // For some error types, AJV returns info separate from message
 const additionalErrorInfo = (errorObj: ValidationError) => {
+	if (!errorObj.params) {
+		return undefined;
+	}
+
 	return "additionalProperty" in errorObj.params
 		? errorObj.params.additionalProperty
 		: "allowedValues" in errorObj.params
@@ -30,12 +34,20 @@ export const nodeVarsIncludeDisplayVar = (node: NcNode) =>
 	!node.displayVariable || // displayVariable is optional
 	Object.keys(node.attributes).some((variableId) => variableId === node.displayVariable);
 
-export const entityDefFromRule = (rule: FilterRule, codebook: Codebook) => {
+/**
+ * Check that the entity referenced in a FilterRule is defined in the codebook
+ * @param rule 
+ * @param codebook 
+ * @returns 
+ */
+export const getRuleEntityCodebookDefinition = (rule: FilterRule, codebook: Codebook) => {
 	if (rule.type === "ego") {
 		return codebook.ego;
-	} // Ego is always defined
-	// biome-ignore lint/style/noNonNullAssertion: non ego rules always have a type - need to update FilterRule
-	return codebook[rule.type === "edge" ? "edge" : "node"]?.[rule.options.type!];
+	}
+
+	// We need to do this because FilterRule uses 'edge'|'alter' and the codebook uses 'edge'|'node'
+	const entityType = rule.type === "edge" ? "edge" : "node";
+	return codebook[entityType]?.[rule.options.type];
 };
 
 export const getVariablesForSubject = (codebook: Codebook, subject: StageSubject) => {
@@ -49,18 +61,6 @@ export const getVariablesForSubject = (codebook: Codebook, subject: StageSubject
 export const getVariableNameFromID = (codebook: Codebook, subject:StageSubject, variableID: string) => {
 	const variables = getVariablesForSubject(codebook, subject);
 	return get(variables, [variableID, "name"], variableID);
-};
-
-const getSubjectTypeName = (codebook: Codebook, subject:StageSubject) => {
-	if (!subject) {
-		return "entity";
-	}
-
-	if (subject.entity === "ego") {
-		return "ego";
-	}
-
-	return get(codebook, [subject.entity, subject.type, "name"], subject.type);
 };
 
 export const getVariableNames = (registryVars: EntityTypeDefinition['variables']) => Object.values(registryVars).map((vari) => vari.name);
@@ -92,8 +92,12 @@ export const checkDuplicateNestedId = <A extends { id: string }[]>(elements: A) 
 	return dupe?.id;
 };
 
-// @return the item which is a duplicate, undefined otherwise
-export const duplicateInArray = (items) => {
+/**
+ * Check for duplicate items in an array
+ * @param items 
+ * @returns 
+ */
+export const duplicateInArray = (items: unknown[]) => {
 	const set = new Set();
 	const dupe = items.find((item) => {
 		if (set.has(item)) {
