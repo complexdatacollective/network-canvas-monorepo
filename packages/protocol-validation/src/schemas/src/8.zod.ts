@@ -527,7 +527,7 @@ const stageSchema = z.discriminatedUnion("type", [
 ]);
 
 const baseAssetSchema = z.object({
-	id: z.string(),
+	id: z.string().optional(),
 	type: z.enum(["image", "video", "network", "geojson", "apikey"]),
 	name: z.string(),
 });

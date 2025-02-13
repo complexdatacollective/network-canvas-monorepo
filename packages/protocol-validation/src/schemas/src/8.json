@@ -285,7 +285,6 @@
                   }
                 },
                 "required": [
-                  "id",
                   "type",
                   "name",
                   "source"
@@ -312,7 +311,6 @@
                   }
                 },
                 "required": [
-                  "id",
                   "type",
                   "name",
                   "value"
