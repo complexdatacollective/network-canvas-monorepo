@@ -56,7 +56,7 @@ export default versions;
 \r\n`;
 };
 
-const buildSchemas = async () => {
+export const buildSchemas = async () => {
 	const schemaSrcDirectory = resolve(SCHEMA_SRC_PATH);
 	const schemaOutputDirectory = resolve(SCHEMA_OUTPUT_PATH);
 
@@ -84,5 +84,3 @@ const buildSchemas = async () => {
 	const moduleIndex = generateModuleIndex(schemas);
 	await writeFile(moduleIndexPath, moduleIndex);
 };
-
-buildSchemas();
