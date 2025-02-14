@@ -7,6 +7,7 @@ export default defineConfig({
 	format: ["esm", "cjs"],
 	target: "es6",
 	dts: true,
+	clean: true,
 	sourcemap: true,
 	esbuildPlugins: [
 		{
