@@ -91,7 +91,7 @@ const nodeSchema = z
 		name: z.string(),
 		displayVariable: z.string().optional(),
 		iconVariant: z.string().optional(),
-		variables: VariablesSchema,
+		variables: VariablesSchema.optional(),
 		color: z.string(),
 	})
 	.strict();
@@ -102,13 +102,13 @@ const edgeSchema = z
 	.object({
 		name: z.string(),
 		color: z.string(),
-		variables: VariablesSchema,
+		variables: VariablesSchema.optional(),
 	})
 	.strict();
 
 const egoSchema = z
 	.object({
-		variables: VariablesSchema,
+		variables: VariablesSchema.optional(),
 	})
 	.strict();
 
@@ -191,6 +191,10 @@ const promptSchema = z
 	})
 	.strict();
 
+const nameGeneratorPromptSchema = promptSchema.extend({
+	additionalAttributes: z.array(z.object({ variable: z.string(), value: z.boolean() })).optional(),
+});
+
 const subjectSchema = z
 	.object({
 		entity: z.enum(["edge", "node", "ego"]),
@@ -245,7 +249,13 @@ const nameGeneratorStage = baseStageSchema.extend({
 	form: formFieldsSchema,
 	subject: subjectSchema,
 	panels: z.array(panelSchema).optional(),
-	prompts: z.array(promptSchema).min(1),
+	prompts: z.array(nameGeneratorPromptSchema).min(1),
+	behaviours: z
+		.object({
+			minNodes: z.number().int().optional(),
+			maxNodes: z.number().int().optional(),
+		})
+		.optional(),
 });
 
 const nameGeneratorQuickAddStage = baseStageSchema.extend({
@@ -253,7 +263,7 @@ const nameGeneratorQuickAddStage = baseStageSchema.extend({
 	quickAdd: z.string(),
 	subject: subjectSchema,
 	panels: z.array(panelSchema).optional(),
-	prompts: z.array(promptSchema).min(1),
+	prompts: z.array(nameGeneratorPromptSchema).min(1),
 	behaviours: z
 		.object({
 			minNodes: z.number().int().optional(),
@@ -273,6 +283,12 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 		})
 		.strict()
 		.optional(),
+	sortOptions: z
+		.object({
+			sortOrder: sortOrderSchema.optional(),
+			sortableProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
+		})
+		.optional(),
 	searchOptions: z
 		.object({
 			fuzziness: z.number(),
@@ -280,7 +296,13 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 		})
 		.strict()
 		.optional(),
-	prompts: z.array(promptSchema).min(1),
+	prompts: z.array(nameGeneratorPromptSchema).min(1),
+	behaviours: z
+		.object({
+			minNodes: z.number().int().optional(),
+			maxNodes: z.number().int().optional(),
+		})
+		.optional(),
 });
 
 const sociogramStage = baseStageSchema.extend({
@@ -300,7 +322,30 @@ const sociogramStage = baseStageSchema.extend({
 		})
 		.catchall(z.any())
 		.optional(),
-	prompts: z.array(promptSchema).min(1),
+	prompts: z
+		.array(
+			promptSchema.extend({
+				sortOrder: sortOrderSchema.optional(),
+				layout: z
+					.object({
+						layoutVariable: z.string().optional(),
+					})
+					.optional(),
+				edges: z
+					.object({
+						display: z.array(z.string()).optional(),
+						create: z.string().optional(),
+					})
+					.optional(),
+				highlight: z
+					.object({
+						allowHighlighting: z.boolean().optional(),
+						variable: z.string().optional(),
+					})
+					.optional(),
+			}),
+		)
+		.min(1),
 });
 
 const dyadCensusStage = baseStageSchema.extend({
@@ -528,13 +573,14 @@ const stageSchema = z.discriminatedUnion("type", [
 
 const baseAssetSchema = z.object({
 	id: z.string().optional(),
-	type: z.enum(["image", "video", "network", "geojson", "apikey"]),
+	type: z.enum(["image", "video", "network", "geojson", "audio", "apikey"]),
 	name: z.string(),
 });
 
 const fileAssetSchema = baseAssetSchema.extend({
-	type: z.enum(["image", "video", "network", "geojson"]),
+	type: z.enum(["image", "video", "network", "geojson", "audio"]),
 	source: z.string(),
+	loop: z.boolean().optional(),
 });
 
 const apiKeyAssetSchema = baseAssetSchema.extend({

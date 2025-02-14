@@ -199,7 +199,6 @@
                     },
                     "required": [
                       "name",
-                      "variables",
                       "color"
                     ],
                     "additionalProperties": false
@@ -229,8 +228,7 @@
                     },
                     "required": [
                       "name",
-                      "color",
-                      "variables"
+                      "color"
                     ],
                     "additionalProperties": false
                   },
@@ -247,9 +245,6 @@
                   "$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
                 }
               },
-              "required": [
-                "variables"
-              ],
               "additionalProperties": false
             }
           },
@@ -274,7 +269,8 @@
                       "image",
                       "video",
                       "network",
-                      "geojson"
+                      "geojson",
+                      "audio"
                     ]
                   },
                   "name": {
@@ -282,6 +278,9 @@
                   },
                   "source": {
                     "type": "string"
+                  },
+                  "loop": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -705,6 +704,25 @@
                         },
                         "text": {
                           "type": "string"
+                        },
+                        "additionalAttributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "variable": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "variable",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -714,6 +732,18 @@
                       "additionalProperties": false
                     },
                     "minItems": 1
+                  },
+                  "behaviours": {
+                    "type": "object",
+                    "properties": {
+                      "minNodes": {
+                        "type": "integer"
+                      },
+                      "maxNodes": {
+                        "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -850,6 +880,73 @@
                     },
                     "additionalProperties": false
                   },
+                  "sortOptions": {
+                    "type": "object",
+                    "properties": {
+                      "sortOrder": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "property": {
+                              "type": "string"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "desc",
+                                "asc"
+                              ]
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "date",
+                                "hierarchy"
+                              ]
+                            },
+                            "hierarchy": {
+                              "type": "array",
+                              "items": {
+                                "type": [
+                                  "string",
+                                  "number",
+                                  "boolean"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "property"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "sortableProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string"
+                            },
+                            "variable": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "label",
+                            "variable"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  },
                   "searchOptions": {
                     "type": "object",
                     "properties": {
@@ -875,6 +972,18 @@
                       "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
                     },
                     "minItems": 1
+                  },
+                  "behaviours": {
+                    "type": "object",
+                    "properties": {
+                      "minNodes": {
+                        "type": "integer"
+                      },
+                      "maxNodes": {
+                        "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -950,7 +1059,59 @@
                   "prompts": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items"
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/id"
+                        },
+                        "text": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/3/properties/prompts/items/properties/text"
+                        },
+                        "sortOrder": {
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
+                        },
+                        "layout": {
+                          "type": "object",
+                          "properties": {
+                            "layoutVariable": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "edges": {
+                          "type": "object",
+                          "properties": {
+                            "display": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "create": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "highlight": {
+                          "type": "object",
+                          "properties": {
+                            "allowHighlighting": {
+                              "type": "boolean"
+                            },
+                            "variable": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": false
                     },
                     "minItems": 1
                   }
@@ -1136,49 +1297,10 @@
                           "type": "string"
                         },
                         "bucketSortOrder": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "property": {
-                                "type": "string"
-                              },
-                              "direction": {
-                                "type": "string",
-                                "enum": [
-                                  "desc",
-                                  "asc"
-                                ]
-                              },
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "string",
-                                  "number",
-                                  "boolean",
-                                  "date",
-                                  "hierarchy"
-                                ]
-                              },
-                              "hierarchy": {
-                                "type": "array",
-                                "items": {
-                                  "type": [
-                                    "string",
-                                    "number",
-                                    "boolean"
-                                  ]
-                                }
-                              }
-                            },
-                            "required": [
-                              "property"
-                            ],
-                            "additionalProperties": false
-                          }
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
                         },
                         "binSortOrder": {
-                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
                         },
                         "color": {
                           "type": "string"
@@ -1254,10 +1376,10 @@
                           "type": "string"
                         },
                         "bucketSortOrder": {
-                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
                         },
                         "binSortOrder": {
-                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
                         }
                       },
                       "required": [
@@ -1570,10 +1692,10 @@
                           "type": "string"
                         },
                         "bucketSortOrder": {
-                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
                         },
                         "binSortOrder": {
-                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/9/properties/prompts/items/properties/bucketSortOrder"
+                          "$ref": "#/definitions/Protocol/properties/stages/items/anyOf/5/properties/sortOptions/properties/sortOrder"
                         }
                       },
                       "required": [
