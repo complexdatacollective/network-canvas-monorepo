@@ -12,8 +12,7 @@
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
-		"prebuild": "tsx ./src/scripts/compileSchemas.ts",
-		"build": "tsup src/index.ts --format esm,cjs --target es6 --dts --sourcemap",
+		"build": "tsup src/index.ts --format esm,cjs --target es6 --clean --dts --sourcemap",
 		"dev": "npm run build -- --watch",
 		"pretest": "npm run build",
 		"test": "vitest"
@@ -37,7 +36,7 @@
 		"jszip": "^3.10.1",
 		"lodash-es": "^4.17.21",
 		"tar-stream": "^3.1.7",
-		"tsup": "^8.3.5",
+		"tsup": "^8.3.6",
 		"tsx": "^4.19.2",
 		"typescript": "^5.6.3",
 		"vitest": "^2.1.8",
