@@ -1,7 +1,25 @@
 /* eslint-disable no-console */
 import type { Protocol } from "@codaco/shared-consts";
-import type { DefinedError, ValidateFunction } from "ajv";
-import path from "node:path";
+import type { DefinedError } from "ajv";
+import Ajv from "ajv";
+
+const ajv = new Ajv({
+	code: { source: true, esm: true, lines: true },
+	allErrors: true,
+	allowUnionTypes: true,
+});
+
+ajv.addFormat("integer", /\d+/);
+ajv.addFormat("date-time", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+
+const loadJSONSchema = async (version: number) => {
+	try {
+		const schema = await import(`../schemas/${version}.json`);
+		return schema.default;
+	} catch (error) {
+		throw new Error(`Error loading schema version ${version}: ${error}`);
+	}
+};
 
 export const validateSchema = async (protocol: Protocol, forceVersion?: number) => {
 	if (!protocol) {
@@ -18,19 +36,8 @@ export const validateSchema = async (protocol: Protocol, forceVersion?: number) 
 		console.log(`Forcing validation against schema version ${version}...`);
 	}
 
-	let validator: ValidateFunction;
-
-	try {
-		const schemaPath = path.resolve(process.cwd(), "dist", "schemas", `${version}.js`);
-
-		const result = (await import(schemaPath)) as {
-			default: ValidateFunction;
-		};
-
-		validator = result.default;
-	} catch (_e) {
-		throw new Error(`Couldn't find validator for schema version ${version}.`);
-	}
+	const schema = await loadJSONSchema(version);
+	const validator = ajv.compile(schema);
 
 	const result = validator(protocol);
 
