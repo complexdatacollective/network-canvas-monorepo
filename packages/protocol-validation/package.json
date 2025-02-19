@@ -16,12 +16,15 @@
 		"dev": "npm run build -- --watch",
 		"pretest": "npm run build",
 		"test": "vitest",
-		"zod-to-json": "tsx ./src/scripts/zodToJson.ts"
+		"zod-to-json": "tsx ./src/scripts/zodToJson.ts",
+		"json-to-zod": "tsx ./src/scripts/jsonToZod.ts"
 	},
 	"bin": {
 		"@codaco/protocol-validation": "./cli.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
@@ -34,6 +37,8 @@
 		"dotenv": "^16.4.5",
 		"es-toolkit": "^1.31.0",
 		"gunzip-maybe": "^1.4.2",
+		"json-refs": "^3.0.15",
+		"json-schema-to-zod": "^2.6.0",
 		"jszip": "^3.10.1",
 		"lodash-es": "^4.17.21",
 		"tar-stream": "^3.1.7",

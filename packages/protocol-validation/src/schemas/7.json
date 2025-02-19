@@ -550,7 +550,7 @@
 					"type": "string"
 				},
 				"value": {
-					"type": ["boolean"]
+					"type": "boolean"
 				}
 			},
 			"required": ["variable", "value"],

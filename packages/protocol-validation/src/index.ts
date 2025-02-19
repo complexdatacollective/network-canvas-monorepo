@@ -1,9 +1,9 @@
-import type { Protocol } from "@codaco/shared-consts";
 import type { DefinedError } from "ajv";
 import canUpgrade from "./migrations/canUpgrade";
 import getMigrationNotes from "./migrations/getMigrationNotes";
 import { migrateProtocol } from "./migrations/migrateProtocol";
 import type { MapOptions } from "./schemas/8.zod";
+import type { Protocol } from "./types/protocol";
 import { ensureError } from "./utils/ensureError";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
 import { errToString } from "./validation/helpers";

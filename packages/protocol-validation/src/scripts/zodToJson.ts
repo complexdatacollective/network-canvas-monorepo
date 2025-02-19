@@ -1,11 +1,12 @@
 import chalk from "chalk";
 import { writeFile } from "node:fs/promises";
 import { basename } from "node:path";
+import { ensureError } from "src/utils/ensureError";
 import type { ZodType } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 
 const schemaArg = process.argv[2];
-const SCHEMA_DIR = "./src/schemas/src";
+const SCHEMA_DIR = "./src/schemas";
 
 if (!schemaArg) {
 	console.error("You must specify a zod schema file to convert to json schema");
@@ -28,7 +29,8 @@ export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: 
 	try {
 		await writeFile(outputPath, jsonSchemaString);
 		logSuccess(`Successfully converted zod schema to json schema: ${outputPath}`);
-	} catch (error) {
+	} catch (e) {
+		const error = ensureError(e);
 		logError(`Error saving json schema to file: ${error.message}`);
 	}
 };
@@ -36,7 +38,8 @@ export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: 
 try {
 	const { Protocol } = await import(schemaPath);
 	convertZodToJson(Protocol, "Protocol");
-} catch (error) {
+} catch (e) {
+	const error = ensureError(e);
 	logError(`Error converting zod schema to json schema: ${error.message}`);
 	process.exit(1);
 }

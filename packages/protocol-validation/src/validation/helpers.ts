@@ -1,6 +1,7 @@
-import type { Codebook, EntityTypeDefinition, FilterRule, NcNode, StageSubject } from "@codaco/shared-consts";
+import type { EntityTypeDefinition, FilterRule, NcNode, StageSubject } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import type { ValidationError } from "src";
+import type { Codebook } from "src/types/protocol";
 
 // For some error types, AJV returns info separate from message
 const additionalErrorInfo = (errorObj: ValidationError) => {

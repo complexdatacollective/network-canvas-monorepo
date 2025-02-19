@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/shared-consts";
+import type { Protocol } from "../types/protocol";
 import { MigrationStepError } from "./errors";
 import getMigrationPath from "./getMigrationPath";
 

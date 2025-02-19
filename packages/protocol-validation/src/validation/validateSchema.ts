@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import type { Protocol } from "@codaco/shared-consts";
 import type { DefinedError } from "ajv";
 import Ajv from "ajv";
+import type { Protocol } from "../types/protocol";
 
 const ajv = new Ajv({
 	code: { source: true, esm: true, lines: true },
