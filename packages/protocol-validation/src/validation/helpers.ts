@@ -2,32 +2,20 @@ import type { EntityTypeDefinition, FilterRule, NcNode, StageSubject } from "@co
 import { get } from "es-toolkit/compat";
 import type { ValidationError } from "src";
 import type { Codebook } from "src/types/protocol";
+import { ZodError } from "zod";
 
-// For some error types, AJV returns info separate from message
-const additionalErrorInfo = (errorObj: ValidationError) => {
-	if (!errorObj.params) {
-		return undefined;
+export const errToString = (errorObj: ValidationError): string => {
+	let str = "";
+
+	if (errorObj instanceof ZodError) {
+		str += `${errorObj.message}\n`;
+		for (const issue of errorObj.issues) {
+			str += `${issue.path.join(".")} ${issue.message}\n`;
+		}
+	} else {
+		str += `${errorObj.path} ${errorObj.message}\n`;
 	}
 
-	return "additionalProperty" in errorObj.params
-		? errorObj.params.additionalProperty
-		: "allowedValues" in errorObj.params
-			? errorObj.params.allowedValues
-			: "allowedValue" in errorObj.params
-				? errorObj.params.allowedValue
-				: undefined;
-};
-
-export const errToString = (errorObj: ValidationError | string) => {
-	if (typeof errorObj === "string") {
-		return errorObj;
-	}
-
-	let str = `${errorObj.path} ${errorObj.message}`;
-	const additionalInfo = additionalErrorInfo(errorObj);
-	if (additionalInfo) {
-		str += `: ${additionalInfo}`;
-	}
 	return str;
 };
 

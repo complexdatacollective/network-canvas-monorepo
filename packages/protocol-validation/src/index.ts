@@ -1,4 +1,4 @@
-import type { DefinedError } from "ajv";
+import type { ZodError } from "zod";
 import canUpgrade from "./migrations/canUpgrade";
 import getMigrationNotes from "./migrations/getMigrationNotes";
 import { migrateProtocol } from "./migrations/migrateProtocol";
@@ -25,10 +25,12 @@ export {
 // types
 export type { MapOptions, Protocol };
 
-export type ValidationError = Partial<DefinedError> & {
-	path: string;
-	message: string;
-};
+export type ValidationError =
+	| ZodError
+	| {
+			path: string;
+			message: string;
+	  };
 
 type ValidationResult = {
 	isValid: boolean;
