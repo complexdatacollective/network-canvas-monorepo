@@ -22,9 +22,7 @@
 	"bin": {
 		"@codaco/protocol-validation": "./cli.js"
 	},
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"devDependencies": {
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
