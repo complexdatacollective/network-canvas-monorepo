@@ -1,6 +1,6 @@
-import type { EntityTypeDefinition } from "../types/codebook";
+import type { Codebook, EntityTypeDefinition } from "../types/codebook";
 import type { NcNode } from "../types/network";
-import type { Codebook, Protocol } from "../types/protocol";
+import type { Protocol } from "../types/protocol";
 import type {
 	AdditionalAttributes,
 	FilterRule,

@@ -17,5 +17,3 @@ export type Protocol =
 	| (Schema6Protocol & { schemaVersion: 6 })
 	| (Schema7Protocol & { schemaVersion: 7 })
 	| (Schema8Protocol & { schemaVersion: 8 });
-
-export type Codebook = Protocol["codebook"];

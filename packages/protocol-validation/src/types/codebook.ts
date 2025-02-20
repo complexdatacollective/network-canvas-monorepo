@@ -1,23 +1,9 @@
-import type { Color } from "./colors.js";
-import type { VariableDefinition } from "./variables.js";
+import type { Protocol } from "./protocol";
 
-// Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/protocol.json#variable-registry
-export enum EntityTypes {
-	edge = "edge",
-	node = "node",
-}
+export type Codebook = Protocol["codebook"];
 
-export type EntityTypeDefinition = {
-	name?: string;
-	color?: Color;
-	iconVariant?: string;
-	variables: Record<string, VariableDefinition>;
-};
+export type EntityTypeDefinition = Codebook["ego"];
 
-export type NodeTypeDefinition = EntityTypeDefinition & {
-	name: string;
-	color: Color;
-	iconVariant?: string;
-};
+export type NodeTypeDefinition = Codebook["node"];
 
-export type EdgeTypeDefinition = NodeTypeDefinition;
+export type EdgeTypeDefinition = Codebook["edge"];

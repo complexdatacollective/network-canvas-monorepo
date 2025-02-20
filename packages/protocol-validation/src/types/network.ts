@@ -1,25 +1,12 @@
-import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
+import type { Codebook } from "./codebook";
 
-export type NcEntity = {
-	readonly [entityPrimaryKeyProperty]: string;
-	type?: string;
-	[entityAttributesProperty]: Record<string, unknown>;
-};
+export type NcNode = Codebook["node"];
 
-export type NcNode = NcEntity & {
-	type: string;
-	stageId?: string;
-	promptIDs?: string[];
-	displayVariable?: string; // @deprecated
-};
+export type NcEdge = Codebook["edge"];
 
-export type NcEdge = NcEntity & {
-	type: string;
-	from: string;
-	to: string;
-};
+export type NcEgo = Codebook["ego"];
 
-export type NcEgo = NcEntity;
+export type NcEntity = NcNode | NcEdge | NcEgo;
 
 export type NcNetwork = {
 	nodes: NcNode[];

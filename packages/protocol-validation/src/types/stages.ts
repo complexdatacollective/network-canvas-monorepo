@@ -1,4 +1,4 @@
-import type { Color } from "./colors.js";
+import type { Color } from "./colors";
 
 export enum StageTypes {
 	NameGenerator = "NameGenerator",
