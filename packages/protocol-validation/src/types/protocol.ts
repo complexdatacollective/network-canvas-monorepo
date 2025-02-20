@@ -18,12 +18,4 @@ export type Protocol =
 	| (Schema7Protocol & { schemaVersion: 7 })
 	| (Schema8Protocol & { schemaVersion: 8 });
 
-export type Codebook =
-	| Schema1Protocol["codebook"]
-	| Schema2Protocol["codebook"]
-	| Schema3Protocol["codebook"]
-	| Schema4Protocol["codebook"]
-	| Schema5Protocol["codebook"]
-	| Schema6Protocol["codebook"]
-	| Schema7Protocol["codebook"]
-	| Schema8Protocol["codebook"];
+export type Codebook = Protocol["codebook"];

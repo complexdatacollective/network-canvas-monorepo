@@ -1,5 +1,5 @@
-import type { StageSubject } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
+import type { StageSubject } from "src/types/stages";
 import type { ValidationError } from "..";
 import type { Protocol } from "../types/protocol";
 

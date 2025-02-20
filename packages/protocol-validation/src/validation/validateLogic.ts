@@ -1,19 +1,19 @@
+import type { EntityTypeDefinition } from "../types/codebook";
+import type { NcNode } from "../types/network";
+import type { Codebook, Protocol } from "../types/protocol";
 import type {
 	AdditionalAttributes,
-	EntityTypeDefinition,
 	FilterRule,
 	FormField,
 	ItemDefinition,
-	NcNode,
 	Panel,
 	Prompt,
 	Stage,
 	StageSubject,
-	VariableDefinition,
-	VariableValidation,
-} from "@codaco/shared-consts";
+} from "../types/stages";
+import type { VariableDefinition, VariableValidation } from "../types/variables";
+
 import { get, isObject } from "es-toolkit/compat";
-import type { Codebook, Protocol } from "../types/protocol";
 import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,

@@ -1,7 +1,9 @@
-import type { EntityTypeDefinition, FilterRule, NcNode, StageSubject } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import type { ValidationError } from "src";
+import type { EntityTypeDefinition } from "src/types/codebook";
+import type { NcNode } from "src/types/network";
 import type { Codebook } from "src/types/protocol";
+import type { FilterRule, StageSubject } from "src/types/stages";
 import { ZodError } from "zod";
 
 export const errToString = (errorObj: ValidationError): string => {

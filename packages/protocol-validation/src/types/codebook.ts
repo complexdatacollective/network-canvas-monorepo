@@ -21,9 +21,3 @@ export type NodeTypeDefinition = EntityTypeDefinition & {
 };
 
 export type EdgeTypeDefinition = NodeTypeDefinition;
-
-export type Codebook = {
-	node?: Record<string, NodeTypeDefinition>;
-	edge?: Record<string, EdgeTypeDefinition>;
-	ego?: EntityTypeDefinition;
-};
