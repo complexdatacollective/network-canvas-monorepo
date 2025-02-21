@@ -8,4 +8,7 @@ export enum AssetType {
 	image = "image",
 	video = "video",
 	audio = "audio",
+	network = "network",
+	geojson = "geojson",
+	apikey = "apikey",
 }

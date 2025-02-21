@@ -54,7 +54,7 @@ export const getVariableNameFromID = (codebook: Codebook, subject: StageSubject,
 };
 
 export const getVariableNames = (registryVars: EntityTypeDefinition["variables"]) =>
-	Object.values(registryVars).map((vari) => vari.name);
+	registryVars ? Object.values(registryVars).map((vari) => vari.name) : [];
 
 export const getEntityNames = (codebook: Codebook) => [
 	...Object.values(codebook.node || {}).map((entity) => entity.name),

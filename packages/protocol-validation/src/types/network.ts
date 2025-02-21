@@ -11,15 +11,22 @@ export type NcNode = NcEntity & {
 	stageId?: string;
 	promptIDs?: string[];
 	displayVariable?: string; // @deprecated
+	iconVariant?: string;
+	color?: string;
+	variables?: Record<string, unknown>;
 };
 
 export type NcEdge = NcEntity & {
 	type: string;
 	from: string;
 	to: string;
+	color?: string;
+	variables?: Record<string, unknown>;
 };
 
-export type NcEgo = NcEntity;
+export type NcEgo = NcEntity & {
+	variables?: Record<string, unknown>;
+};
 
 export type NcNetwork = {
 	nodes: NcNode[];
