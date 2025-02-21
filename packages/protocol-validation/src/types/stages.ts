@@ -1,5 +1,7 @@
 import type { Color } from "./colors";
+import type { Protocol } from "./protocol";
 
+// these have changed across schemas. should we just use the latest schema, or should we use the union of all schemas?
 export enum StageTypes {
 	NameGenerator = "NameGenerator",
 	NameGeneratorQuickAdd = "NameGeneratorQuickAdd",
@@ -162,36 +164,4 @@ export type Panel = {
 	dataSource?: string;
 };
 
-export type Stage = {
-	id: string;
-	type: string;
-	label: string;
-	title?: string; // Todo: remove this
-	interviewScript?: string;
-	form?: Form;
-	introductionPanel?: object; // Todo: create a Panel type
-	subject?: StageSubject | StageSubject[];
-	panels?: Panel[];
-	prompts?: Prompt[];
-	quickAdd?: string;
-	behaviours?: object;
-	filter?: FilterDefinition;
-	skipLogic?: SkipDefinition;
-	dataSource?: string;
-	cardOptions?: object; // Todo: create a CardOptions type
-	sortOptions?: {
-		sortOrder: SortOption[];
-		sortableProperties: object[]; // Todo: create a SortableProperty type
-	};
-	background?: {
-		image?: string;
-		concentricCircles?: number;
-		skewedTowardCenter?: boolean;
-	};
-	searchOptions?: {
-		fuzziness?: number;
-		matchProperties?: string[];
-	};
-	presets?: PresetDefinition[];
-	items?: ItemDefinition[];
-};
+export type Stage = Protocol["stages"][number];
