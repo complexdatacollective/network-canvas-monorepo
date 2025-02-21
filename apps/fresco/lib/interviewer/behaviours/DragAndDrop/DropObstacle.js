@@ -1,12 +1,12 @@
 /* eslint-disable react/no-find-dom-node, react/jsx-props-no-spreading */
 
+import PropTypes from "prop-types";
 import { Component } from "react";
 import { findDOMNode } from "react-dom";
-import PropTypes from "prop-types";
 import getAbsoluteBoundingRect from "../../utils/getAbsoluteBoundingRect";
+import { maxFramesPerSecond } from "./DropTarget";
 import { actionCreators as actions } from "./reducer";
 import store from "./store";
-import { maxFramesPerSecond } from "./DropTarget";
 
 const dropObstacle = (WrappedComponent) =>
 	class DropObstacle extends Component {

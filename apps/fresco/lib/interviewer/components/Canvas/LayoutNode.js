@@ -1,8 +1,8 @@
-import { useRef, useEffect } from "react";
-import ReactDOM from "react-dom";
 import { entityPrimaryKeyProperty } from "@codaco/shared-consts";
-import UINode from "../Node";
+import { useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import DragManager from "../../behaviours/DragAndDrop/DragManager";
+import UINode from "../Node";
 
 const LayoutNode = ({
 	node,
@@ -18,6 +18,7 @@ const LayoutNode = ({
 }) => {
 	const dragManager = useRef();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Can't include `nodes` here as it is mutated by the drag and drop system
 	useEffect(() => {
 		const uuid = node[entityPrimaryKeyProperty];
 
@@ -33,7 +34,6 @@ const LayoutNode = ({
 				dragManager.current.unmount();
 			}
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [portal, onDragStart, onDragMove, onDragEnd, index]); // Can't include `nodes` here as it is mutated by the drag and drop system
 
 	useEffect(() => {

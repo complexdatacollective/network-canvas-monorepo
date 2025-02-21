@@ -17,14 +17,14 @@ const ConvexHull = ({ color = "cat-color-seq-1", nodePoints, layoutVariable, win
 			let hullPointsAsSVG = "";
 
 			// See: https://github.com/mapbox/concaveman
-			ConcaveMan(groupAsCoords, 0.6, 0).forEach((item) => {
+			for (const item of ConcaveMan(groupAsCoords, 0.6, 0)) {
 				// Scale each hull point from ratio to window coordinate.
 				const itemX = item[0] * windowDimensions.width;
 				const itemY = item[1] * windowDimensions.height;
 
 				// SVG points structured as string: "value1,value2 value3,value4"
 				hullPointsAsSVG += `${itemX},${itemY} `;
-			});
+			}
 
 			return hullPointsAsSVG;
 		};
@@ -36,6 +36,7 @@ const ConvexHull = ({ color = "cat-color-seq-1", nodePoints, layoutVariable, win
 
 	return (
 		<svg className={hullClasses} xmlns="http://www.w3.org/2000/svg">
+			<title>Convex Hull</title>
 			<polygon points={hullPoints} />
 		</svg>
 	);

@@ -27,7 +27,7 @@ let options = { ...DEFAULT_OPTIONS };
 const cloneLinks = (ls) => ls.map((link) => ({ ...link }));
 
 const updateOptions = (newOptions) => {
-	Object.keys(newOptions).forEach((option) => {
+	for (const option of Object.keys(newOptions)) {
 		const value = newOptions[option];
 		switch (option) {
 			case "decay":
@@ -45,13 +45,14 @@ const updateOptions = (newOptions) => {
 				break;
 			default:
 		}
-	});
+	}
 
 	options = { ...options, ...newOptions }; // Update saved options
 
 	simulation.alpha(0.3).restart();
 };
 
+// biome-ignore lint/suspicious/noGlobalAssign: <explanation>
 onmessage = ({ data }) => {
 	switch (data.type) {
 		case "initialize": {

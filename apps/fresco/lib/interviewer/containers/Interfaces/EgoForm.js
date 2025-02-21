@@ -97,7 +97,7 @@ const EgoForm = (props) => {
 		updateEgo({}, formData);
 	};
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const updateReadyStatus = useCallback(
 		debounce((progress) => {
 			const nextIsReady = isFormValid && progress === 1;
@@ -106,6 +106,7 @@ const EgoForm = (props) => {
 		[isFormValid, setIsReadyForNext],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const handleScroll = useCallback(
 		(_, progress) => {
 			setShowScrollStatus(false);

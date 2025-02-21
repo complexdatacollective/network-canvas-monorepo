@@ -1,9 +1,9 @@
 "use client";
 
-import { cn } from "~/utils/shadcn";
-import { useToast } from "./ui/use-toast";
 import { Check, ClipboardCopy } from "lucide-react";
+import { cn } from "~/utils/shadcn";
 import { Button } from "./ui/Button";
+import { useToast } from "./ui/use-toast";
 
 export default function CopyDebugInfoButton({
 	debugInfo,

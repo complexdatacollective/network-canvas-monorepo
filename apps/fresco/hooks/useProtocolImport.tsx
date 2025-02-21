@@ -173,13 +173,13 @@ export const useProtocolImport = () => {
 			try {
 				const newAssetIds = await getExistingAssetIds(assets.map((asset) => asset.assetId));
 
-				assets.forEach((asset) => {
+				for (const asset of assets) {
 					if (newAssetIds.includes(asset.assetId)) {
 						newAssets.push(asset);
 					} else {
 						existingAssetIds.push(asset.assetId);
 					}
-				});
+				}
 			} catch (e) {
 				throw new Error("Error checking for existing assets");
 			}
@@ -214,7 +214,7 @@ export const useProtocolImport = () => {
 					onUploadProgress({ progress, file }) {
 						const thisFileSize = newAssets.find((asset) => asset.name === file.name)?.file.size; // eg. 1000
 
-						const thisCompletedBytes = thisFileSize * (progress / 100);
+						const thisCompletedBytes = thisFileSize ? thisFileSize * (progress / 100) : 0;
 
 						if (!currentBytesUploaded[file.name]) {
 							currentBytesUploaded[file.name] = 0;
@@ -354,14 +354,14 @@ export const useProtocolImport = () => {
 	const jobQueue = useRef(queue(processJob, 2));
 
 	const importProtocols = (files: File[]) => {
-		files.forEach((file) => {
+		for (const file of files) {
 			// Test if there is already a job in the jobQueue with this name
 			const jobAlreadyExists = jobs.find((job) => job.id === file.name);
 
 			if (jobAlreadyExists) {
 				// eslint-disable-next-line no-console
 				console.warn(`Skipping duplicate job: ${file.name}`);
-				return;
+				continue;
 			}
 
 			dispatch({
@@ -375,7 +375,7 @@ export const useProtocolImport = () => {
 				// eslint-disable-next-line no-console
 				console.log("jobQueue error", error);
 			});
-		});
+		}
 	};
 
 	const cancelAllJobs = useCallback(() => {

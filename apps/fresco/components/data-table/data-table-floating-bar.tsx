@@ -1,10 +1,10 @@
 "use client";
 
-import type React from "react";
 import type { Table } from "@tanstack/react-table";
+import { CrossIcon } from "lucide-react";
+import type React from "react";
 import { Button } from "~/components/ui/Button";
 import { cn } from "~/utils/shadcn";
-import { CrossIcon } from "lucide-react";
 
 type DataTableFloatingBarProps<TData> = {
 	table: Table<TData>;

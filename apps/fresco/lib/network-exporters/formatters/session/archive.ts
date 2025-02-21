@@ -40,7 +40,7 @@ const archive = async (exportResults: ExportResult[]) => {
 		zip.on("warning", reject);
 		zip.on("error", reject);
 
-		exportResults.forEach((exportResult) => {
+		for (const exportResult of exportResults) {
 			if (exportResult.success) {
 				const { filePath } = exportResult;
 				zip.file(filePath, { name: basename(filePath) });
@@ -48,7 +48,7 @@ const archive = async (exportResults: ExportResult[]) => {
 			} else {
 				rejected.push(exportResult);
 			}
-		});
+		}
 
 		void zip.finalize(); // Will trigger writeStream close event
 	});

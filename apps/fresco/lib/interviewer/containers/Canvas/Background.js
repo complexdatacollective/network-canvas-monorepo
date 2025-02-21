@@ -1,7 +1,7 @@
-import { PureComponent } from "react";
 import PropTypes from "prop-types";
-import Radar from "./Radar";
+import { PureComponent } from "react";
 import BackgroundImage from "../../components/BackgroundImage";
+import Radar from "./Radar";
 
 class Background extends PureComponent {
 	render() {

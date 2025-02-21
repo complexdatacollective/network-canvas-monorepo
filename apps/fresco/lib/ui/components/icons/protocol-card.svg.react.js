@@ -4,7 +4,7 @@ export default class SVG extends React.PureComponent {
 	render() {
 		return (
 			<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236.5 310.9" {...this.props}>
-				{" "}
+				<title>Protocol Card</title>{" "}
 				<g id="Server">
 					{" "}
 					<path

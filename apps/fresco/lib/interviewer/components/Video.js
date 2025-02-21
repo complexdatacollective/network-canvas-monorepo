@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect } from "react";
-import PropTypes from "prop-types";
 import { Loader2 } from "lucide-react";
+import PropTypes from "prop-types";
+import { useEffect, useRef, useState } from "react";
 
 const Video = (props) => {
 	const { url, description = "A video that explains the task.", ...rest } = props;
@@ -24,6 +24,7 @@ const Video = (props) => {
 		setLoading(false);
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies:
 	useEffect(() => {
 		if (!video.current) {
 			return;

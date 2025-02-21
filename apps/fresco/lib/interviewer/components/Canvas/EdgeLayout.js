@@ -17,23 +17,23 @@ const EdgeLayout = () => {
 	const edgeDefinitions = useSelector((state) => getProtocolCodebook(state).edge);
 
 	const update = useRef(() => {
-		lines.current.forEach(({ link, el }) => {
+		for (const { link, el } of lines.current) {
 			if (!link) {
-				return;
+				continue;
 			}
 
 			const from = getPosition.current(link.source);
 			const to = getPosition.current(link.target);
 
 			if (!from || !to) {
-				return;
+				continue;
 			}
 
 			el.setAttributeNS(null, "x1", from.x * 100);
 			el.setAttributeNS(null, "y1", from.y * 100);
 			el.setAttributeNS(null, "x2", to.x * 100);
 			el.setAttributeNS(null, "y2", to.y * 100);
-		});
+		}
 
 		timer.current = requestAnimationFrame(() => update.current());
 	});
@@ -53,12 +53,18 @@ const EdgeLayout = () => {
 			return { edge, el, link: links[index] };
 		});
 
-		lines.current.forEach(({ el }) => currentSvg.appendChild(el));
+		for (const { el } of lines.current) {
+			currentSvg.appendChild(el);
+		}
 
 		timer.current = requestAnimationFrame(() => update.current());
-
+		for (const { el } of lines.current) {
+			currentSvg.removeChild(el);
+		}
 		return () => {
-			lines.current.forEach(({ el }) => currentSvg.removeChild(el));
+			for (const { el } of lines.current) {
+				currentSvg.removeChild(el);
+			}
 			cancelAnimationFrame(timer.current);
 		};
 	}, [edges, links, edgeDefinitions]);

@@ -1,5 +1,5 @@
 import { AlertCircle } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "~/components/ui/Alert";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/Alert";
 
 const ActionError = ({
 	errorTitle,

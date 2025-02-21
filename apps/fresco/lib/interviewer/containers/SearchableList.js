@@ -83,6 +83,7 @@ const SearchableList = (props) => {
 		initialSortOrder,
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		if (hasQuery) {
 			setSortByProperty(["relevance"]);
@@ -92,7 +93,6 @@ const SearchableList = (props) => {
 		}
 
 		setSortByProperty();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [hasQuery, setSortDirection, setSortType]);
 
 	const filteredResults = useMemo(() => {

@@ -1,6 +1,5 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
-import { operators } from "./predicate";
-import predicate from "./predicate";
+import predicate, { operators } from "./predicate";
 
 const singleEdgeRule =
 	({ type, attribute, operator, value: other }) =>

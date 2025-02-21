@@ -38,38 +38,38 @@ export const getAllVariableUUIDsByEntity = createSelector(
 		const variables = {};
 
 		// Nodes
-		Object.keys(nodeTypes).forEach((nodeType) => {
+		for (const nodeType of Object.keys(nodeTypes)) {
 			const nodeVariables = get(nodeTypes, [nodeType, "variables"], {});
-			Object.keys(nodeVariables).forEach((variable) => {
+			for (const variable of Object.keys(nodeVariables)) {
 				variables[variable] = {
 					entity: "node",
 					entityType: nodeType,
 					...nodeVariables[variable],
 				};
-			});
-		});
+			}
+		}
 
 		// Edges
-		Object.keys(edgeTypes).forEach((edgeType) => {
+		for (const edgeType of Object.keys(edgeTypes)) {
 			const edgeVariables = get(edgeTypes, [edgeType, "variables"], {});
-			Object.keys(edgeVariables).forEach((variable) => {
+			for (const variable of Object.keys(edgeVariables)) {
 				variables[variable] = {
 					entity: "edge",
 					entityType: edgeType,
 					...edgeVariables[variable],
 				};
-			});
-		});
+			}
+		}
 
 		// Ego
 		const egoVariables = get(ego, "variables", {});
-		Object.keys(egoVariables).forEach((variable) => {
+		for (const variable of Object.keys(egoVariables)) {
 			variables[variable] = {
 				entity: "ego",
 				entityType: null,
 				...egoVariables[variable],
 			};
-		});
+		}
 
 		return variables;
 	},

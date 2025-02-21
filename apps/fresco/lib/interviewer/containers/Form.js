@@ -1,11 +1,11 @@
-import { Component } from "react";
 import { compose } from "@reduxjs/toolkit";
-import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { reduxForm, getFormValues, getFormMeta, initialize } from "redux-form";
+import { Component } from "react";
+import { connect } from "react-redux";
+import { getFormMeta, getFormValues, initialize, reduxForm } from "redux-form";
 import autoInitialisedForm from "../behaviours/autoInitialisedForm";
-import Field from "./Field";
 import { makeRehydrateFields } from "../selectors/forms";
+import Field from "./Field";
 
 const getScrollParent = (node) => {
 	const regex = /(auto|scroll)/;

@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise,max-classes-per-file */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
-import { Readable } from "node:stream";
 import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from "@codaco/shared-consts";
+import { Readable } from "node:stream";
 import { csvEOL } from "./csv";
 
 /**
@@ -103,12 +103,12 @@ class AdjacencyMatrix {
 			return acc;
 		}, {});
 
-		(this.network.edges || []).forEach((edge) => {
+		for (const edge of this.network.edges || []) {
 			this.setAdjacent(edge[ncSourceUUID], edge[ncTargetUUID]);
 			if (directed === false) {
 				this.setAdjacent(edge[ncTargetUUID], edge[ncSourceUUID]);
 			}
-		});
+		}
 	}
 
 	/**
@@ -230,7 +230,8 @@ class AdjacencyMatrix {
 			return "";
 		}
 		const str = Array.from(matrixView).reduce((acc, val) => {
-			acc = `${acc}${val.toString(2).padStart(8, "0")}`; // eslint-disable-line no-param-reassign
+			// biome-ignore lint/style/noParameterAssign:
+			acc = `${acc}${val.toString(2).padStart(8, "0")}`;
 			return acc;
 		}, "");
 		return str.substr(0, this.dimension * this.dimension);

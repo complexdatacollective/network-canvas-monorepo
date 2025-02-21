@@ -7,11 +7,11 @@ const formatXml = (xml, tab = "\t") => {
 	let formatted = "";
 	let indent = "";
 
-	xml.split(/>\s*</).forEach((node) => {
+	for (const node of xml.split(/>\s*</)) {
 		if (node.match(/^\/\w/)) indent = indent.substring(tab.length); // decrease indent by one 'tab'
 		formatted += `${indent}<${node}>\r\n`;
 		if (node.match(/^<?\w[^>]*[^/]$/)) indent += tab; // increase indent
-	});
+	}
 	return formatted.substring(1, formatted.length - 3);
 };
 
@@ -51,9 +51,9 @@ const getGraphMLTypeForKey = (data, key) =>
 
 const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
 	const element = xmlDoc.createElement(tagName);
-	Object.entries(attrs).forEach(([key, val]) => {
+	for (const [key, val] of Object.entries(attrs)) {
 		element.setAttribute(key, val);
-	});
+	}
 	if (child) {
 		element.appendChild(child);
 	}

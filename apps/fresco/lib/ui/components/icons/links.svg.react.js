@@ -4,6 +4,7 @@ export default class SVG extends React.PureComponent {
 	render() {
 		return (
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" {...this.props}>
+				<title>Links</title>
 				<circle className="cls-1" cx="49" cy="11" r="11" />
 				<circle className="cls-1" cx="49" cy="49" r="11" />
 				<circle className="cls-1" cx="11" cy="30" r="11" />

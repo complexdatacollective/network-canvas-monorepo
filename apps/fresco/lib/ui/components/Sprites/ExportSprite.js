@@ -1,5 +1,5 @@
-import { useRef, useEffect } from "react";
 import PropTypes from "prop-types";
+import { useEffect, useRef } from "react";
 import ProgressCircle from "../ProgressCircle";
 
 const NODE_COUNT = 10;
@@ -75,7 +75,7 @@ class ExportAnimation {
 
 	loop() {
 		// render
-		this.nodes.forEach((node) => {
+		for (const node of this.nodes) {
 			const displaySize = node.s * 0.5 + (node.s * node.h) / this.maxRange();
 
 			node.el.style.opacity = 1 - node.h / this.maxRange();
@@ -85,7 +85,7 @@ class ExportAnimation {
 
 			node.el.style.width = px(displaySize);
 			node.el.style.height = px(displaySize);
-		});
+		}
 
 		this.nodes = this.nodes.reduce((nodes, node) => {
 			const a = node.a - node.d * ROTATIONAL_SPEED * node.f;
@@ -120,9 +120,9 @@ class ExportAnimation {
 	destroy() {
 		window.cancelAnimationFrame(this.animation);
 
-		this.nodes.forEach(({ el }) => {
+		for (const { el } of this.nodes) {
 			this.el.removeChild(el);
-		});
+		}
 
 		this.nodes = [];
 	}
@@ -132,6 +132,7 @@ const ExportSprite = ({ size = 500, percentProgress, statusText = "Exporting ite
 	const el = useRef();
 	const animation = useRef();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: we want this to run when el or size changes
 	useEffect(() => {
 		animation.current = new ExportAnimation(el.current, {
 			size,

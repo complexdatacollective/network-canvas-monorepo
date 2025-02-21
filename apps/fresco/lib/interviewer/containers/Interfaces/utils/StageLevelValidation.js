@@ -53,6 +53,7 @@ const SelfDismissingNote = (Wrapped) => {
 			}
 		}, [mouseOver, handleHide, timeoutDuration, visible]);
 
+		// biome-ignore lint/correctness/useExhaustiveDependencies: need to run when deps change
 		useEffect(() => {
 			if (visible) {
 				if (timeoutDuration && timeoutDuration > 0) {

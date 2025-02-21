@@ -4,6 +4,7 @@ export default class SVG extends React.PureComponent {
 	render() {
 		return (
 			<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 111.2 126" {...this.props}>
+				<title>Add a person</title>
 				<polygon className="cls-4" points="16.6,68 0,126 26.5,126 84.6,68 " />
 				<polygon className="cls-5" points="94.6,68 84.6,68 26.6,126 111.2,126 " />
 				<path

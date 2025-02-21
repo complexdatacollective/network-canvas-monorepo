@@ -61,7 +61,7 @@ export default function ProtocolScreen() {
 	const prevCurrentStep = usePrevious(currentStep);
 	const { nextValidStageIndex, previousValidStageIndex, isCurrentStepValid } = useSelector(getNavigableStages);
 
-	const [progress, setProgress] = useState(makeFakeSessionProgress(currentStep, promptIndex));
+	const [progress, setProgress] = useState(makeFakeSessionProgress(currentStep ?? 0, promptIndex ?? 0));
 
 	// Refs
 	const beforeNextFunction = useRef<BeforeNextFunction | null>(null);
@@ -91,6 +91,7 @@ export default function ProtocolScreen() {
 		return beforeNextResult;
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const moveForward = useCallback(async () => {
 		setForceNavigationDisabled(true);
 
@@ -108,7 +109,9 @@ export default function ProtocolScreen() {
 			}
 
 			// from this point on we are definitely navigating, so set up the animation
-			setProgress(makeFakeSessionProgress(nextValidStageIndex, 0));
+			if (nextValidStageIndex !== null) {
+				setProgress(makeFakeSessionProgress(nextValidStageIndex, 0));
+			}
 			await animate(scope.current, { y: "-100vh" }, animationOptions);
 			// If the result is true or 'FORCE' we can reset the function here:
 			registerBeforeNext(null);
@@ -127,6 +130,7 @@ export default function ProtocolScreen() {
 		makeFakeSessionProgress,
 	]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const moveBackward = useCallback(async () => {
 		setForceNavigationDisabled(true);
 
@@ -143,7 +147,9 @@ export default function ProtocolScreen() {
 				return;
 			}
 
-			setProgress(makeFakeSessionProgress(previousValidStageIndex, 0));
+			if (previousValidStageIndex !== null) {
+				setProgress(makeFakeSessionProgress(previousValidStageIndex, 0));
+			}
 
 			// from this point on we are definitely navigating, so set up the animation
 			await animate(scope.current, { y: "100vh" }, animationOptions);

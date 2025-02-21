@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Fuse from "fuse.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const MIN_QUERY_LENGTH = 1;
 const DEBOUNCE_DELAY = 500;
@@ -93,13 +93,14 @@ const useSearch = (list, options, initialQuery = "") => {
 		[fuse, isLargeList],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		if (!hasQuery) {
 			return;
 		}
 
 		search(query);
-	}, [query, hasQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [query, hasQuery]);
 
 	const returnResults = useMemo(() => (hasQuery ? results : list), [hasQuery, list, results]);
 

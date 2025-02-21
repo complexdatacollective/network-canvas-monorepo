@@ -1,27 +1,28 @@
 import type { Stage } from "@codaco/shared-consts";
-import { getProtocolStages } from "./protocol";
 import { createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
+import { getProtocolStages } from "./protocol";
 
 const getActiveSessionId = (state: RootState) => state.activeSessionId;
 
 const getSessions = (state: RootState) => state.sessions;
 
 export const getActiveSession = createSelector(getActiveSessionId, getSessions, (activeSessionId, sessions) => {
-	return sessions[activeSessionId]!;
+	return sessions[activeSessionId] ?? null;
 });
 
 export const getStageIndex = createSelector(getActiveSession, (session) => {
-	return session.currentStep;
+	return session?.currentStep ?? null;
 });
 
 // Stage stage is temporary storage for stages used by TieStrengthCensus and DyadCensus
 export const getStageMetadata = createSelector(getActiveSession, getStageIndex, (session, stageIndex) => {
-	return session.stageMetadata?.[stageIndex] ?? undefined;
+	return stageIndex !== null ? session?.stageMetadata?.[stageIndex] : undefined;
 });
 
 export const getCurrentStage = createSelector(getProtocolStages, getStageIndex, (stages: Stage[], currentStep) => {
-	return stages[currentStep]!;
+	if (currentStep === null) return undefined;
+	return stages[currentStep];
 });
 
 export const getPromptIndex = createSelector(getActiveSession, (session) => session?.promptIndex ?? 0);

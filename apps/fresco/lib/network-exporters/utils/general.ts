@@ -94,7 +94,7 @@ export const getAttributePropertyFromCodebook = (
 	key: string,
 	attributeProperty = "type",
 ) => {
-	let variableInfo;
+	let variableInfo: VariableDefinition | undefined;
 	if (type === "ego") {
 		variableInfo = getEgoVariableInfo(codebook, key);
 	} else {

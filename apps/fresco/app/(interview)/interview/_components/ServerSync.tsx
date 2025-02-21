@@ -23,7 +23,7 @@ const ServerSync = ({
 	const currentSession = useSelector(getActiveSession);
 	const prevCurrentSession = usePrevious(currentSession);
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	const debouncedSessionSync = useCallback(
 		debounce(serverSync, 2000, {
 			edges: ["trailing", "leading"],

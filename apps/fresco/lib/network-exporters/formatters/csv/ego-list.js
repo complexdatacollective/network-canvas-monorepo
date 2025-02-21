@@ -65,9 +65,9 @@ const attributeHeaders = (egos) => {
 
 	const headerSet = egos.reduce((headers, ego) => {
 		// Add headers for attributes
-		Object.keys(ego?.[entityAttributesProperty] || {}).forEach((key) => {
+		for (const key of Object.keys(ego?.[entityAttributesProperty] || {})) {
 			headers.add(key);
-		});
+		}
 
 		return headers;
 	}, initialHeaderSet);
@@ -156,4 +156,4 @@ class EgoListFormatter {
 	}
 }
 
-export { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream };
+export { asEgoAndSessionVariablesList, EgoListFormatter, toCSVStream };

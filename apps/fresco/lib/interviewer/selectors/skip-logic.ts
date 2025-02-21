@@ -1,9 +1,9 @@
-import getQuery from "~/lib/network-query/query";
-import { getProtocolStages } from "./protocol";
-import { getNetwork } from "./network";
-import { SkipLogicAction } from "../protocol-consts";
-import { createSelector } from "@reduxjs/toolkit";
 import type { NcNetwork, SkipDefinition, Stage } from "@codaco/shared-consts";
+import { createSelector } from "@reduxjs/toolkit";
+import getQuery from "~/lib/network-query/query";
+import { SkipLogicAction } from "../protocol-consts";
+import { getNetwork } from "./network";
+import { getProtocolStages } from "./protocol";
 import { getStageIndex } from "./session";
 
 const formatQueryParameters = (params: Record<string, unknown>) => ({
@@ -44,15 +44,19 @@ const getSkipMap = createSelector(
 // Selector that uses the skipMap to determine the idex of the next and previous
 // valid stages.
 export const getNavigableStages = createSelector(getSkipMap, getStageIndex, (skipMap, currentStep) => {
-	const isCurrentStepValid = !skipMap[currentStep];
+	const isCurrentStepValid = currentStep !== null && !skipMap[currentStep];
 
 	const nextStage = Object.keys(skipMap).find(
-		(stage) => Number.parseInt(stage) > currentStep && skipMap[Number.parseInt(stage)] === false,
+		(stage) =>
+			currentStep !== null && Number.parseInt(stage) > currentStep && skipMap[Number.parseInt(stage)] === false,
 	);
 
 	const previousStage = Object.keys(skipMap)
 		.reverse()
-		.find((stage) => Number.parseInt(stage) < currentStep && skipMap[Number.parseInt(stage)] === false);
+		.find(
+			(stage) =>
+				currentStep !== null && Number.parseInt(stage) < currentStep && skipMap[Number.parseInt(stage)] === false,
+		);
 
 	return {
 		isCurrentStepValid,

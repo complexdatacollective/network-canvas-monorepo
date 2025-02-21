@@ -114,6 +114,7 @@ class CategoricalList extends Component {
 		return bins.map((bin, index) => (
 			<CategoricalListItem
 				id={`CATBIN_ITEM_${stage.id}_${prompt.id}_${index}`}
+				// biome-ignore lint/suspicious/noArrayIndexKey: won't change
 				key={index}
 				index={index}
 				bin={bin}

@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { useCallback, useState } from "react";
 
 /**
  * Renders a side panel, with a title and `props.children`.
@@ -16,6 +16,7 @@ const Panel = ({
 }) => {
 	const [collapsed, setCollapsed] = useState(false);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies:
 	const toggleCollapsed = useCallback(() => {
 		if (noCollapse) {
 			return;

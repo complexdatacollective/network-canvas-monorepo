@@ -1,7 +1,7 @@
-import ProgressBar from "~/lib/ui/components/ProgressBar";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "~/utils/shadcn";
 import { useSelector } from "react-redux";
+import ProgressBar from "~/lib/ui/components/ProgressBar";
+import { cn } from "~/utils/shadcn";
 import { getNavigationInfo } from "../selectors/session";
 
 const NavigationButton = ({

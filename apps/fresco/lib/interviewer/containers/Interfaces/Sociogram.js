@@ -22,24 +22,24 @@ const withResetInterfaceHandler = withHandlers({
 	handleResetInterface:
 		({ resetPropertyForAllNodes, resetEdgesOfType, prompts }) =>
 		() => {
-			prompts.forEach((prompt) => {
+			for (const prompt of prompts) {
 				if (prompt.edges) {
 					resetEdgesOfType(prompt.edges.creates);
 				}
 
 				const layoutVariable = get(prompt, "layout.layoutVariable", null);
 				if (!layoutVariable) {
-					return;
+					continue;
 				}
 
 				if (typeof layoutVariable === "string") {
 					resetPropertyForAllNodes(layoutVariable);
 				} else {
-					Object.keys(layoutVariable).forEach((type) => {
+					for (const type of Object.keys(layoutVariable)) {
 						resetPropertyForAllNodes(layoutVariable[type]);
-					});
+					}
 				}
-			});
+			}
 		},
 });
 

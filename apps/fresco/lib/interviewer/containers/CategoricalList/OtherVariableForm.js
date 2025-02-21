@@ -1,10 +1,10 @@
-import { useEffect } from "react";
 import PropTypes from "prop-types";
-import { reduxForm, initialize } from "redux-form";
+import { useEffect } from "react";
 import { useDispatch } from "react-redux";
+import { initialize, reduxForm } from "redux-form";
 import Button from "~/lib/ui/components/Button";
-import Node from "~/lib/ui/components/Node";
 import { MarkdownLabel } from "~/lib/ui/components/Fields";
+import Node from "~/lib/ui/components/Node";
 import Field from "../Field";
 
 const stopClickPropagation = (e) => e.stopPropagation();

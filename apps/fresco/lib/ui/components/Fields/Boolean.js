@@ -1,8 +1,8 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
-import MarkdownLabel from "./MarkdownLabel";
+import PropTypes from "prop-types";
 import Boolean from "../Boolean/Boolean";
 import Icon from "../Icon";
+import MarkdownLabel from "./MarkdownLabel";
 
 const BooleanField = ({
 	label,

@@ -1,12 +1,12 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcEdge } from "@codaco/shared-consts";
+import type { AnyAction } from "@reduxjs/toolkit";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { usePrompts } from "~/lib/interviewer/behaviours/withPrompt";
 import { edgeExists } from "~/lib/interviewer/ducks/modules/network";
 import { getStageMetadata } from "~/lib/interviewer/selectors/session";
-import { actionCreators as sessionActions } from "../../../ducks/modules/session";
 import type { StageMetadata, StageMetadataEntry } from "~/lib/interviewer/store";
-import type { AnyAction } from "@reduxjs/toolkit";
-import { useEffect, useState } from "react";
+import { actionCreators as sessionActions } from "../../../ducks/modules/session";
 
 const matchEntry =
 	(promptIndex: number, pair: Pair) =>
@@ -34,7 +34,7 @@ export default function useEdgeState(pair: Pair | null, edges: NcEdgeWithId[], d
 	const [isTouched, setIsTouched] = useState(false);
 	const [isChanged, setIsChanged] = useState(false);
 	const { prompt, promptIndex } = usePrompts();
-	const edgeType = prompt.createEdge!;
+	const edgeType = prompt.createEdge ?? "";
 	const edgeVariable = prompt.edgeVariable;
 
 	const existingEdgeId = (pair && edgeExists(edges, pair[0], pair[1], edgeType)) ?? false;
@@ -115,7 +115,7 @@ export default function useEdgeState(pair: Pair | null, edges: NcEdgeWithId[], d
 						existingEdgeId,
 						{},
 						{
-							[edgeVariable!]: value,
+							[edgeVariable]: value,
 						},
 					) as unknown as AnyAction,
 				);
@@ -128,7 +128,7 @@ export default function useEdgeState(pair: Pair | null, edges: NcEdgeWithId[], d
 							type: edgeType,
 						},
 						{
-							[edgeVariable!]: value,
+							[edgeVariable]: value,
 						},
 					) as unknown as AnyAction,
 				);
@@ -136,6 +136,7 @@ export default function useEdgeState(pair: Pair | null, edges: NcEdgeWithId[], d
 		}
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: need this to run when deps change
 	useEffect(() => {
 		setIsTouched(false);
 		setIsChanged(false);

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import { entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { clamp, noop } from "es-toolkit";
 import { get } from "es-toolkit/compat";
@@ -55,6 +54,7 @@ const getLinks = ({ nodes, edges }) => {
 export const LayoutProvider = ({ children, nodes, edges, layout, twoMode, allowAutomaticLayout }) => {
 	const dispatch = useDispatch();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const updateNetworkInStore = useCallback(() => {
 		if (!forceSimulation.current) {
 			return;
@@ -99,6 +99,7 @@ export const LayoutProvider = ({ children, nodes, edges, layout, twoMode, allowA
 
 	// TODO: this seems like a misguided approach, mixing "reactive"
 	// and "constant" values. Any other ideas?
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		getPosition.current = (index) => {
 			if (allowAutomaticLayout && simulationEnabled) {
@@ -120,6 +121,7 @@ export const LayoutProvider = ({ children, nodes, edges, layout, twoMode, allowA
 		}
 	}, [isRunning, updateNetworkInStore]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const toggleSimulation = useCallback(() => {
 		if (!simulationEnabled) {
 			setSimulationEnabled(true);
@@ -141,6 +143,7 @@ export const LayoutProvider = ({ children, nodes, edges, layout, twoMode, allowA
 		setLinks(nextLinks);
 	}, [edges, nodes]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		if (!allowAutomaticLayout) {
 			return;
@@ -153,6 +156,7 @@ export const LayoutProvider = ({ children, nodes, edges, layout, twoMode, allowA
 		start();
 	}, [allowAutomaticLayout]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		if (!allowAutomaticLayout || !simulationEnabled) {
 			return;
@@ -166,6 +170,7 @@ export const LayoutProvider = ({ children, nodes, edges, layout, twoMode, allowA
 		updateNetwork({ nodes: simulationNodes });
 	}, [allowAutomaticLayout, simulationEnabled, nodes, layout, twoMode]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		if (!allowAutomaticLayout || !simulationEnabled) {
 			return;

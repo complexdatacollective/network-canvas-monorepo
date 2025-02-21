@@ -1,7 +1,7 @@
-import { compose, withProps, withState } from "recompose";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
 import { Flipped } from "react-flip-toolkit";
+import { compose, withProps, withState } from "recompose";
 import { MarkdownLabel } from "~/lib/ui/components/Fields";
 import { DropTarget, MonitorDropTarget } from "../behaviours/DragAndDrop";
 import NodeList from "./NodeList";

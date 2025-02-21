@@ -180,6 +180,7 @@ const SlidesForm = (props) => {
 		[isIntroScreen, isLastItem],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const handleScroll = useCallback(
 		() =>
 			debounce((_, progress) => {
@@ -191,6 +192,7 @@ const SlidesForm = (props) => {
 		[setIsReadyForNext, setScrollProgress, currentFormIsValid],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		setIsReadyForNext(false);
 	}, [activeIndex, setIsReadyForNext]);

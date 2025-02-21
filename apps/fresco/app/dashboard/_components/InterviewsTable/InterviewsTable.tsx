@@ -60,7 +60,7 @@ export const InterviewsTable = ({
 				key={objectHash(selectedInterviews)}
 				open={showExportModal}
 				handleCancel={handleResetExport}
-				interviewsToExport={selectedInterviews!}
+				interviewsToExport={selectedInterviews ?? []}
 			/>
 			<DeleteInterviewsDialog
 				open={showDeleteModal}

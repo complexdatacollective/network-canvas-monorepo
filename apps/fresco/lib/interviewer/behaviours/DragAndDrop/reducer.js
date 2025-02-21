@@ -105,10 +105,10 @@ const triggerDrag = (state, source) => {
 		return;
 	}
 
-	filter(hits.targets, { isOver: true, willAccept: true }).forEach((target) => {
+	for (const target of filter(hits.targets, { isOver: true, willAccept: true })) {
 		source.setValidMove(true);
 		target.onDrag?.(hits.source);
-	});
+	}
 };
 
 const triggerDrop = (state, source) => {
@@ -120,17 +120,17 @@ const triggerDrop = (state, source) => {
 		},
 	});
 
-	filter(hits.targets, { willAccept: true }).forEach((target) => {
+	for (const target of filter(hits.targets, { willAccept: true })) {
 		target.onDragEnd?.(hits.source);
-	});
+	}
 
 	if (some(hits.obstacles, { isOver: true })) {
 		return;
 	}
 
-	filter(hits.targets, { isOver: true, willAccept: true }).forEach((target) => {
+	for (const target of filter(hits.targets, { isOver: true, willAccept: true })) {
 		target.onDrop(hits.source);
-	});
+	}
 };
 
 const reducer = (state, action) => {

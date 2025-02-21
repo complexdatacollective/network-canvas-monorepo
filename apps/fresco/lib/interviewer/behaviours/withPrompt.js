@@ -17,10 +17,10 @@ const processSortRules = (prompts, codebookVariables) => {
 
 	return prompts.map((prompt) => {
 		const sortOptions = {};
-		sortProperties.forEach((property) => {
+		for (const property of sortProperties) {
 			const sortRules = get(prompt, property, []);
 			sortOptions[property] = sortRules.map(processProtocolSortRule(codebookVariables));
-		});
+		}
 		return {
 			...prompt,
 			...sortOptions,

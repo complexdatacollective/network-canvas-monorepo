@@ -1,5 +1,5 @@
-import Scroller from "~/lib/ui/components/Scroller";
 import { compose } from "@reduxjs/toolkit";
+import Scroller from "~/lib/ui/components/Scroller";
 
 const scrollable = (WrappedComponent) => {
 	const Scrollable = (props) => {

@@ -1,13 +1,13 @@
-import type * as React from "react";
 import { flexRender, type ColumnDef, type Table as TanstackTable } from "@tanstack/react-table";
+import type * as React from "react";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 
+import type { DataTableFilterableColumn, DataTableSearchableColumn } from "~/lib/data-table/types";
 import { DataTableAdvancedToolbar } from "./advanced/data-table-advanced-toolbar";
 import { DataTableFloatingBar } from "./data-table-floating-bar";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
-import type { DataTableFilterableColumn, DataTableSearchableColumn } from "~/lib/data-table/types";
 
 type DataTableProps<TData, TValue> = {
 	/**

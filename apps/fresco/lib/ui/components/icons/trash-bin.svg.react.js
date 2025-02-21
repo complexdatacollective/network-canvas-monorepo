@@ -4,6 +4,7 @@ export default class SVG extends React.PureComponent {
 	render() {
 		return (
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" {...this.props}>
+				<title>Trash Bin</title>
 				<rect className="cls-1" x="64.33" y="43.16" width="16" height="16" rx="7.91" ry="7.91" />
 				<rect className="cls-1" x="97.68" y="29.16" width="16" height="16" rx="7.91" ry="7.91" />
 				<path className="cls-2" d="M93.62 140H26.38L10 52h100l-16.38 88z" />

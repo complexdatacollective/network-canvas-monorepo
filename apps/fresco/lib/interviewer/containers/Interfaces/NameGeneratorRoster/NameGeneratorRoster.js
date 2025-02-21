@@ -79,6 +79,7 @@ const NameGeneratorRoster = (props) => {
 
 	registerBeforeNext(nameGeneratorHandleBeforeLeaving(isLastPrompt, stageNodeCount, minNodes, setShowMinWarning));
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: need to run when deps change
 	useEffect(() => {
 		setShowMinWarning(false);
 	}, [stageNodeCount, promptIndex]);

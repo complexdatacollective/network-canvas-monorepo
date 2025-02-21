@@ -15,20 +15,23 @@ export const generateOutputFiles =
 
 		const exportPromises: Promise<ExportResult>[] = [];
 
-		Object.entries(unifiedSessions).forEach(([protocolUID, sessions]) => {
-			sessions.forEach((session) => {
+		for (const [protocolUID, sessions] of Object.entries(unifiedSessions)) {
+			for (const session of sessions) {
 				// Skip if sessions don't have required sessionVariables
 
-				const protocol = protocols[protocolUID]!;
+				const protocol = protocols[protocolUID];
+				if (!protocol) {
+					continue;
+				}
 				const prefix = getFilePrefix(session);
 
-				exportFormats.forEach((format) => {
+				for (const format of exportFormats) {
 					const codebook = protocol.codebook as unknown as Codebook; // Needed due to prisma.Json type
 
 					// Split each network into separate files based on format and entity type.
 					const partitionedNetworks = partitionByType(codebook, session, format);
 
-					partitionedNetworks.forEach((partitionedNetwork) => {
+					for (const partitionedNetwork of partitionedNetworks) {
 						const exportPromise = exportFile({
 							prefix,
 							exportFormat: format,
@@ -38,10 +41,10 @@ export const generateOutputFiles =
 						});
 
 						exportPromises.push(exportPromise);
-					});
-				});
-			});
-		});
+					}
+				}
+			}
+		}
 
 		const result = await Promise.all(exportPromises);
 

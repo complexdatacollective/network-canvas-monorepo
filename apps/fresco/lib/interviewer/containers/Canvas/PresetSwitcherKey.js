@@ -72,6 +72,7 @@ class PresetSwitcherKey extends Component {
 					{!isEmpty(edges) && (
 						<Accordion label="Links" onAccordionToggle={toggleEdges}>
 							{edges.map((edge, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: won't change
 								<div className="accordion-item" key={index}>
 									<Icon name="links" color={edge.color} />
 									{edge.label}
@@ -82,6 +83,7 @@ class PresetSwitcherKey extends Component {
 					{!isEmpty(convexOptions) && (
 						<Accordion label="Groups" onAccordionToggle={toggleHulls}>
 							{convexOptions.map((option, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: won't change
 								<div className="accordion-item" key={index}>
 									<Icon name="contexts" color={`nc-cat-color-seq-${index + 1}`} />
 									<MarkdownLabel inline label={option.label} />

@@ -22,6 +22,7 @@ const CollapsablePrompts = (props) => {
 	};
 
 	// Reset the minimization when the prompt changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: we want this to run when currentPromptIndex changes
 	useEffect(() => {
 		setMinimized(false);
 	}, [currentPromptIndex]);

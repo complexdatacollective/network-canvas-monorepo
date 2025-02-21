@@ -48,7 +48,7 @@ export const partitionByType = (
 			return Object.entries(partitionedNodeMap).map(([nodeType, nodes]) => ({
 				...session,
 				nodes,
-				partitionEntity: getEntityName(nodeType, "node")!,
+				partitionEntity: getEntityName(nodeType, "node") || "",
 			}));
 		}
 
@@ -70,7 +70,7 @@ export const partitionByType = (
 			return Object.entries(partitionedEdgeMap).map(([edgeType, edges]) => ({
 				...session,
 				edges,
-				partitionEntity: getEntityName(edgeType, "edge")!,
+				partitionEntity: getEntityName(edgeType, "edge") || "",
 			}));
 		}
 	}

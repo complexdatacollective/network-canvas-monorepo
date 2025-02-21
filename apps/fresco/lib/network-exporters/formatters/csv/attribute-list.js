@@ -30,9 +30,9 @@ const attributeHeaders = (nodes) => {
 	initialHeaderSet.add(entityPrimaryKeyProperty);
 
 	const headerSet = nodes.reduce((headers, node) => {
-		Object.keys(node[entityAttributesProperty]).forEach((key) => {
+		for (const key of Object.keys(node[entityAttributesProperty])) {
 			headers.add(key);
-		});
+		}
 		return headers;
 	}, initialHeaderSet);
 	return [...headerSet];
@@ -107,4 +107,4 @@ class AttributeListFormatter {
 	}
 }
 
-export { AttributeListFormatter, asAttributeList, toCSVStream };
+export { asAttributeList, AttributeListFormatter, toCSVStream };

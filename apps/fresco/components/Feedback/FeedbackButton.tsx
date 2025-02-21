@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import FeedbackModal from "./FeedbackModal";
-import { Button, type ButtonProps } from "../ui/Button";
 import { MessageCircleMore } from "lucide-react";
+import { useState } from "react";
+import { Button, type ButtonProps } from "../ui/Button";
+import FeedbackModal from "./FeedbackModal";
 
 const FeedbackButton = (props: ButtonProps) => {
 	const [open, setOpen] = useState(false);

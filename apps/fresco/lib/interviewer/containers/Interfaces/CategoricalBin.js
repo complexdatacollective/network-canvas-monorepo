@@ -1,14 +1,14 @@
-import { compose } from "@reduxjs/toolkit";
-import { withStateHandlers } from "recompose";
-import PropTypes from "prop-types";
 import { entityAttributesProperty } from "@codaco/shared-consts";
-import Prompts from "../../components/Prompts";
-import CategoricalList from "../CategoricalList";
-import { getNetworkNodesForType } from "../../selectors/interface";
-import MultiNodeBucket from "../../components/MultiNodeBucket";
-import { getPromptVariable, getPromptOtherVariable } from "../../selectors/prop";
+import { compose } from "@reduxjs/toolkit";
+import PropTypes from "prop-types";
+import { withStateHandlers } from "recompose";
 import { usePrompts } from "../../behaviours/withPrompt";
+import MultiNodeBucket from "../../components/MultiNodeBucket";
+import Prompts from "../../components/Prompts";
 import usePropSelector from "../../hooks/usePropSelector";
+import { getNetworkNodesForType } from "../../selectors/interface";
+import { getPromptOtherVariable, getPromptVariable } from "../../selectors/prop";
+import CategoricalList from "../CategoricalList";
 
 const categoricalBinStateHandler = withStateHandlers(
 	{

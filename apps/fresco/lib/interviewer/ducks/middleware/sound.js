@@ -1,16 +1,16 @@
-import { playSound } from "../../utils/playSound";
-import { actionTypes as networkActionTypes } from "../modules/network";
+import addEdgeSound from "~/public/interviewer/interaction-sounds/create-edge.mp3";
 import createNodeSound from "~/public/interviewer/interaction-sounds/create-node.mp3";
 import removeNodeSound from "~/public/interviewer/interaction-sounds/discard.mp3";
-import toggleOnSound from "~/public/interviewer/interaction-sounds/toggle-on.mp3";
-import toggleOffSound from "~/public/interviewer/interaction-sounds/toggle-off.mp3";
-import openAppSound from "~/public/interviewer/interaction-sounds/open-app.mp3";
-import addEdgeSound from "~/public/interviewer/interaction-sounds/create-edge.mp3";
-import errorSound from "~/public/interviewer/interaction-sounds/error.mp3";
-import edgeLinkingSound from "~/public/interviewer/interaction-sounds/node-linking-mode.mp3";
-import finishSessionSound from "~/public/interviewer/interaction-sounds/finish-interview.mp3";
 import dropSound from "~/public/interviewer/interaction-sounds/drop-node.mp3";
+import errorSound from "~/public/interviewer/interaction-sounds/error.mp3";
+import finishSessionSound from "~/public/interviewer/interaction-sounds/finish-interview.mp3";
+import edgeLinkingSound from "~/public/interviewer/interaction-sounds/node-linking-mode.mp3";
+import openAppSound from "~/public/interviewer/interaction-sounds/open-app.mp3";
+import toggleOffSound from "~/public/interviewer/interaction-sounds/toggle-off.mp3";
+import toggleOnSound from "~/public/interviewer/interaction-sounds/toggle-on.mp3";
 import { getNetworkEdges } from "../../selectors/network";
+import { playSound } from "../../utils/playSound";
+import { actionTypes as networkActionTypes } from "../modules/network";
 
 const sounds = {
 	open: playSound({ src: openAppSound }),

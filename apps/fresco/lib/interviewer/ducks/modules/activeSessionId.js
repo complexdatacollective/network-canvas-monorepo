@@ -1,5 +1,5 @@
-import { actionTypes as SessionsActionTypes } from "./session";
 import { actionTypes as installedProtocolsActionTypes } from "./installedProtocols";
+import { actionTypes as SessionsActionTypes } from "./session";
 import { SET_SERVER_SESSION } from "./setServerSession";
 
 const { ADD_SESSION } = SessionsActionTypes;

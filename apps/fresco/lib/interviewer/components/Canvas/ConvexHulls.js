@@ -17,23 +17,23 @@ const getColor = (group, options) => {
 const getNodesByGroup = (nodes, categoricalVariable) => {
 	const groupedList = {};
 
-	nodes.forEach((node) => {
+	for (const node of nodes) {
 		const categoricalValues = node[entityAttributesProperty][categoricalVariable];
 
 		// Filter out nodes with no value for this variable.
 		if (!categoricalValues) {
-			return;
+			continue;
 		}
 
-		categoricalValues.forEach((categoricalValue) => {
+		for (const categoricalValue of categoricalValues) {
 			if (groupedList[categoricalValue]) {
 				groupedList[categoricalValue].nodes.push(node);
 			} else {
 				groupedList[categoricalValue] = { group: categoricalValue, nodes: [] };
 				groupedList[categoricalValue].nodes.push(node);
 			}
-		});
-	});
+		}
+	}
 
 	return groupedList;
 };
@@ -57,6 +57,7 @@ const ConvexHulls = ({ nodes, groupVariable, layoutVariable }) => {
 		});
 	});
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: This effect should only run when hullRef changes.
 	useEffect(() => {
 		setSize({
 			width: hullRef.current.clientWidth,
@@ -73,6 +74,7 @@ const ConvexHulls = ({ nodes, groupVariable, layoutVariable }) => {
 						windowDimensions={size}
 						color={color}
 						nodePoints={nodes}
+						// biome-ignore lint/suspicious/noArrayIndexKey: index won't change
 						key={index}
 						layoutVariable={layoutVariable}
 					/>

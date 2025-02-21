@@ -1,5 +1,5 @@
+import { bindActionCreators, compose } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
-import { compose, bindActionCreators } from "@reduxjs/toolkit";
 import Dialogs from "~/lib/ui/components/Dialogs";
 import { actionCreators as dialogsActions } from "../ducks/modules/dialogs";
 

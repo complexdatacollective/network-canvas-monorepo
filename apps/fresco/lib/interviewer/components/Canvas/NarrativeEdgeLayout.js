@@ -1,5 +1,5 @@
-import { PureComponent } from "react";
 import PropTypes from "prop-types";
+import { PureComponent } from "react";
 import Edge from "../Edge";
 
 const viewBoxScale = 100;
@@ -25,6 +25,7 @@ class NarrativeEdgeLayout extends PureComponent {
 					xmlns="http://www.w3.org/2000/svg"
 					preserveAspectRatio="none"
 				>
+					<title>Edge Layout</title>
 					{edges.map(this.renderEdge)}
 				</svg>
 			</div>

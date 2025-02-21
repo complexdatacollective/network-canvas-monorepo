@@ -44,7 +44,9 @@ export const formatExportableSessions = (sessions: Awaited<ReturnType<typeof get
 			[sessionStartTimeProperty]: session.startTime ? new Date(session.startTime).toISOString() : undefined,
 			[sessionFinishTimeProperty]: session.finishTime ? new Date(session.finishTime).toISOString() : undefined,
 			[sessionExportTimeProperty]: new Date().toISOString(),
+			// biome-ignore lint/style/noNonNullAssertion: env.COMMIT_HASH and env.APP_VERSION are set in next.config.js during build
 			COMMIT_HASH: env.COMMIT_HASH!,
+			// biome-ignore lint/style/noNonNullAssertion: same as above
 			APP_VERSION: env.APP_VERSION!,
 		};
 

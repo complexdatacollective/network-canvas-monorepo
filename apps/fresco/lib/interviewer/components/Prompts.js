@@ -1,5 +1,5 @@
-import UIPrompts from "~/lib/ui/components/Prompts/Prompts";
 import { useSelector } from "react-redux";
+import UIPrompts from "~/lib/ui/components/Prompts/Prompts";
 import { usePrompts } from "../behaviours/withPrompt";
 
 const Prompts = () => {

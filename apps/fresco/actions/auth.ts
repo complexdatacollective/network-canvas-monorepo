@@ -107,7 +107,7 @@ export const login = async (
 		};
 	}
 
-	let key;
+	let key: { userId: string };
 	try {
 		key = await auth.useKey("username", username, password);
 	} catch (e) {

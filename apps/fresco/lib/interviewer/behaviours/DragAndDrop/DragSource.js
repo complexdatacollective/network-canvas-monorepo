@@ -95,6 +95,7 @@ const dragSource = (WrappedComponent) => {
 			store.dispatch(actions.dragEnd(movement));
 		};
 
+		// biome-ignore lint/correctness/useExhaustiveDependencies: adding full list of deps causes unexpected side effects
 		useEffect(() => {
 			if (node.current && allowDrag) {
 				dragManagerRef.current = new DragManager({
@@ -110,7 +111,6 @@ const dragSource = (WrappedComponent) => {
 				cleanupPreview();
 				cleanupDragManager();
 			};
-			// eslint-disable-next-line react-hooks/exhaustive-deps
 		}, [node, allowDrag]);
 
 		const styles = () => (isDragging ? { visibility: "hidden" } : {});

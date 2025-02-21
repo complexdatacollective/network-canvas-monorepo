@@ -33,6 +33,7 @@ const useDropMonitor = (id, props = defaultProps) => {
 		setState(newState);
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies:
 	const updateMonitorProps = useCallback(() => {
 		const status = getMonitorProps(store.getState(), id, props);
 		updateState(status);

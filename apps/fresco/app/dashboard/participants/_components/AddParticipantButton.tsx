@@ -1,9 +1,9 @@
 import { Button } from "~/components/ui/Button";
 
 import type { Participant } from "@prisma/client";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import ParticipantModal from "~/app/dashboard/participants/_components/ParticipantModal";
-import { Plus } from "lucide-react";
 
 type AddParticipantButtonProps = {
 	existingParticipants: Participant[];

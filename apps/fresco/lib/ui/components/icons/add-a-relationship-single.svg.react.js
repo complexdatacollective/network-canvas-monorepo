@@ -4,6 +4,7 @@ export default class SVG extends React.PureComponent {
 	render() {
 		return (
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 174.3 162.5" {...this.props}>
+				<title>Add a relationship</title>
 				<rect
 					x="120.8"
 					y="32.4"

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import { get } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef } from "react";
 import screenManager from "../components/Canvas/ScreenManager";
@@ -27,6 +26,7 @@ const useForceSimulation = (callback) => {
 		[],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const initialize = useCallback(
 		(network = {}, options = {}) => {
 			if (worker.current) {
@@ -84,6 +84,7 @@ const useForceSimulation = (callback) => {
 		[callback],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const updateOptions = useCallback(
 		(options) => {
 			if (!worker.current) {
@@ -121,6 +122,7 @@ const useForceSimulation = (callback) => {
 	}, []);
 
 	// TODO: separate update nodes and update links?
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const updateNetwork = useCallback((network) => {
 		if (!worker.current) {
 			return;
@@ -167,6 +169,7 @@ const useForceSimulation = (callback) => {
 		});
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const moveNode = useCallback(
 		({ x, y }, nodeIndex) => {
 			const layoutCoords = calculateLayoutCoords({ x, y });

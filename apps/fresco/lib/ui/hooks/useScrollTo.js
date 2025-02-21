@@ -52,12 +52,12 @@ const scrollFocus = (destination, delay = 0) => {
 const useScrollTo = (ref, condition, watch, delay = 0) => {
 	const timer = useRef();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		if (ref?.current && condition(...watch)) {
 			clearTimeout(timer.current);
 			timer.current = scrollFocus(ref.current, delay);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, watch);
 };
 

@@ -1,13 +1,13 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
-import { Checkbox } from "~/components/ui/checkbox";
-import { DataTableColumnHeader } from "~/components/DataTable/ColumnHeader";
-import { Progress } from "~/components/ui/progress";
 import type { Stage } from "@codaco/shared-consts";
-import { Badge } from "~/components/ui/badge";
-import TimeAgo from "~/components/ui/TimeAgo";
+import type { ColumnDef } from "@tanstack/react-table";
 import Image from "next/image";
+import { DataTableColumnHeader } from "~/components/DataTable/ColumnHeader";
+import { Badge } from "~/components/ui/badge";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Progress } from "~/components/ui/progress";
+import TimeAgo from "~/components/ui/TimeAgo";
 import type { GetInterviewsReturnType } from "~/queries/interviews";
 
 export const InterviewColumns = (): ColumnDef<Awaited<GetInterviewsReturnType>[0]>[] => [
@@ -103,7 +103,7 @@ export const InterviewColumns = (): ColumnDef<Awaited<GetInterviewsReturnType>[0
 			return <DataTableColumnHeader column={column} title="Progress" />;
 		},
 		cell: ({ row }) => {
-			const stages = row.original.protocol.stages! as unknown as Stage[];
+			const stages = (row.original.protocol.stages ?? []) as unknown as Stage[];
 			const progress = (row.original.currentStep / stages.length) * 100;
 			return (
 				<div className="flex whitespace-nowrap">

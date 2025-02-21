@@ -10,7 +10,7 @@ export default function useSteps(steps: Steps) {
 	const totalSteps = steps.reduce((acc, val) => acc + val, 0);
 
 	const next = () => {
-		if (currentSubStep < steps[currentStep]! - 1) {
+		if (currentSubStep < (steps[currentStep] ?? 0) - 1) {
 			setCurrentSubStep((prev) => prev + 1);
 		} else if (currentStep < steps.length - 1) {
 			setCurrentStep((prev) => prev + 1);
@@ -23,11 +23,11 @@ export default function useSteps(steps: Steps) {
 			setCurrentSubStep((prev) => prev - 1);
 		} else if (currentStep > 0) {
 			setCurrentStep((prev) => prev - 1);
-			setCurrentSubStep(steps[currentStep - 1]! - 1);
+			setCurrentSubStep((steps[currentStep - 1] ?? 0) - 1);
 		}
 	};
 
-	const isStepEnd = currentSubStep === steps[currentStep]! - 1;
+	const isStepEnd = currentSubStep === (steps[currentStep] ?? 0) - 1;
 	const isEnd = currentStep === steps.length - 1 && isStepEnd;
 	const isStepStart = currentSubStep === 0;
 	const isStart = currentStep === 0 && isStepStart;

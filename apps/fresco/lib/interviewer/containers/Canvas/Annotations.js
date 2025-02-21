@@ -1,15 +1,17 @@
+import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
 import Fade from "~/lib/ui/components/Transitions/Fade";
 import DragManager, { NO_SCROLL } from "../../behaviours/DragAndDrop/DragManager";
 
 const AnnotationLines = ({ lines, isDrawing, isFrozen, linesShowing, linesToFade, onLineFaded }) => (
 	<svg className="annotations__lines" width="100%" height="100%" viewBox="0 0 1 1" preserveAspectRatio="none">
+		<title>Annotation lines</title>
 		{lines.map((line, index) => {
 			const handleLineGone = () => onLineFaded(index);
 			return (
 				<AnnotationLine
+					// biome-ignore lint/suspicious/noArrayIndexKey: index won't change
 					key={index}
 					line={line}
 					showLine={(isDrawing && index === lines.length - 1) || !!linesToFade[index]}
@@ -225,9 +227,9 @@ class Annotations extends Component {
 
 	resetRemoveLineTimers = () => {
 		if (this.removeLineTimers) {
-			this.removeLineTimers.forEach((timer) => {
+			for (const timer of this.removeLineTimers) {
 				clearTimeout(timer);
-			});
+			}
 			this.removeLineTimers = [];
 		}
 	};

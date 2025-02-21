@@ -1,5 +1,5 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import Icon from "~/lib/ui/components/Icon";
 
 class StageErrorBoundary extends Component {

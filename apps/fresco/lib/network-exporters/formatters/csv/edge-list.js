@@ -67,9 +67,9 @@ const attributeHeaders = (edges) => {
 	initialHeaderSet.add(ncTargetUUID);
 
 	const headerSet = edges.reduce((headers, edge) => {
-		Object.keys(edge[entityAttributesProperty] || []).forEach((key) => {
+		for (const key of Object.keys(edge[entityAttributesProperty] || [])) {
 			headers.add(key);
-		});
+		}
 		return headers;
 	}, initialHeaderSet);
 	return [...headerSet];
@@ -160,4 +160,4 @@ class EdgeListFormatter {
 	}
 }
 
-export { EdgeListFormatter, asEdgeList, toCSVStream };
+export { asEdgeList, EdgeListFormatter, toCSVStream };

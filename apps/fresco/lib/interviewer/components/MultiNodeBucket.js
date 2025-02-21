@@ -17,6 +17,7 @@ const MultiNodeBucket = (props) => {
 	const [stagger] = useState(true);
 	const [sortedNodes, setSortedNodes] = useState([]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: we want this to run when listId changes
 	useEffect(() => {
 		const sorter = createSorter(sortOrder); // Uses the new sortOrder via withPrompt
 		const sorted = sorter(nodes);

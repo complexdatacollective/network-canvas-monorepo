@@ -1,7 +1,7 @@
-import Icon from "~/lib/ui/components/Icon";
-import dynamic from "next/dynamic";
-import { StageType } from "../../protocol-consts";
 import { Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
+import Icon from "~/lib/ui/components/Icon";
+import { StageType } from "../../protocol-consts";
 
 const StageLoading = () => (
 	<div className="h-full w-full flex items-center justify-center">

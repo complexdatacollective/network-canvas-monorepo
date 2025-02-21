@@ -21,7 +21,7 @@ const resetPropertyForAllNodes = (property) => (dispatch, getState) => {
 		},
 	} = getState();
 
-	nodes.forEach((node) => {
+	for (const node of nodes) {
 		// Node definition may not have any variables
 		const registryForType = get(nodeRegistry, [node.type, "variables"], {});
 
@@ -37,7 +37,7 @@ const resetPropertyForAllNodes = (property) => (dispatch, getState) => {
 				),
 			);
 		}
-	});
+	}
 };
 
 const resetEdgesOfType = (edgeType) => (dispatch, getState) => {
@@ -50,11 +50,11 @@ const resetEdgesOfType = (edgeType) => (dispatch, getState) => {
 		},
 	} = getState();
 
-	edges.forEach((edge) => {
+	for (const edge of edges) {
 		if (edge.type !== edgeType) {
 			dispatch(sessionActions.removeEdge(edge[entityPrimaryKeyProperty]));
 		}
-	});
+	}
 };
 
 const resetAppState = () => (dispatch) => {

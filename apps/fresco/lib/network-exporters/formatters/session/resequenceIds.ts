@@ -36,8 +36,8 @@ const resequenceEntities = (target: SessionWithNetworkEgo[]) => {
 					[ncSourceUUID]: edge[edgeSourceProperty],
 					[ncTargetUUID]: edge[edgeTargetProperty],
 					[edgeExportIDProperty]: resequencedEdgeId,
-					from: IDLookupMap[edge[edgeSourceProperty]]!,
-					to: IDLookupMap[edge[edgeTargetProperty]]!,
+					from: IDLookupMap[edge[edgeSourceProperty]] ?? "",
+					to: IDLookupMap[edge[edgeTargetProperty]] ?? "",
 				};
 			}),
 		};
@@ -51,9 +51,9 @@ const resequenceEntities = (target: SessionWithNetworkEgo[]) => {
 export const resequenceIds = (sessionsByProtocol: SessionsByProtocol) => {
 	const result: Record<string, SessionWithResequencedIDs[]> = {};
 
-	Object.entries(sessionsByProtocol).forEach(([protocol, sessions]) => {
+	for (const [protocol, sessions] of Object.entries(sessionsByProtocol)) {
 		result[protocol] = resequenceEntities(sessions);
-	});
+	}
 
 	return result;
 };

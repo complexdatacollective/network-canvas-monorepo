@@ -47,11 +47,8 @@ const getValidation = (validation, store) =>
 const Field = ({ label = "", name, validation = {}, ...rest }) => {
 	const store = useStore();
 	const component = useMemo(() => getInputComponent(rest.component), [rest.component]);
-	const validate = useMemo(
-		() => rest.validate || getValidation(validation, store),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[store],
-	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies:
+	const validate = useMemo(() => rest.validate || getValidation(validation, store), [store]);
 
 	return <ReduxFormField {...rest} name={name} label={label} component={component} validate={validate} />;
 };

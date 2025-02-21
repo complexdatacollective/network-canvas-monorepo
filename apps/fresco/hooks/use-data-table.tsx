@@ -68,9 +68,9 @@ export function useDataTable<TData, TValue>({
 	data,
 	columns,
 	pageCount, // Todo: the below should be used to filter filter/search terms before setting search params
-	// searchableColumns = [],
-	// filterableColumns = [],
-}: UseDataTableProps<TData, TValue>) {
+}: // searchableColumns = [],
+// filterableColumns = [],
+UseDataTableProps<TData, TValue>) {
 	const { searchParams, setSearchParams } = useTableStateFromSearchParams();
 
 	// Table states
@@ -93,7 +93,6 @@ export function useDataTable<TData, TValue>({
 		[pageIndex, pageSize],
 	);
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	const debouncedUpdateFilterParams = useCallback(
 		debounce(
 			(columnFilters: FilterParam[]) => {

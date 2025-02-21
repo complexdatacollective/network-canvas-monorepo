@@ -1,8 +1,8 @@
-import { PureComponent } from "react";
+import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import PropTypes from "prop-types";
+import { PureComponent } from "react";
 import { withProps } from "recompose";
 import Scroller from "~/lib/ui/components/Scroller";
-import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import Node from "../../components/Node";
 import Form from "../Form";
 

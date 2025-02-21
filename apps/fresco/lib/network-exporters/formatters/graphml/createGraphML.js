@@ -173,14 +173,14 @@ const generateKeyElements = (
 	}
 
 	// Main loop over entities
-	entities.forEach((element) => {
+	for (const element of entities) {
 		const elementAttributes = getEntityAttributes(element);
 
 		// nodes and edges have for="node|edge" but ego has for="graph"
 		const keyTarget = type === "ego" ? "graph" : type;
 
 		// Loop over attributes for this entity
-		Object.keys(elementAttributes).forEach((key) => {
+		for (const key of Object.keys(elementAttributes)) {
 			// transpose ids to names based on codebook; fall back to the raw key
 			const keyName = getAttributePropertyFromCodebook(codebook, type, element, key, "name") || key;
 
@@ -267,7 +267,7 @@ const generateKeyElements = (
 						// fetch options property for this variable
 						const options = getAttributePropertyFromCodebook(codebook, type, element, key, "options");
 
-						options.forEach((option, index) => {
+						for (const [index, option] of options.entries()) {
 							// Hash the value to ensure that it is NKTOKEN compliant
 							const hashedOptionValue = sha1(option.value);
 
@@ -283,7 +283,7 @@ const generateKeyElements = (
 								keyElement2.setAttribute("for", keyTarget);
 								fragment += `${serialize(keyElement2)}`;
 							}
-						});
+						}
 						break;
 					}
 					case VariableType.scalar:
@@ -297,8 +297,8 @@ const generateKeyElements = (
 				fragment += `${serialize(keyElement)}`;
 				done.push(key);
 			}
-		});
-	});
+		}
+	}
 	return fragment;
 };
 
@@ -322,7 +322,7 @@ const generateEgoDataElements = (document, ego, excludeList, codebook, exportOpt
 	fragment += formatAndSerialize(createDataElement(document, { key: ncUUIDProperty }, ego[entityPrimaryKeyProperty]));
 
 	// Add entity attributes
-	Object.keys(entityAttributes).forEach((key) => {
+	for (const key of Object.keys(entityAttributes)) {
 		let keyName = getAttributePropertyFromCodebook(codebook, "ego", null, key, "name");
 		const keyType = getAttributePropertyFromCodebook(codebook, "ego", null, key, "type");
 
@@ -335,7 +335,7 @@ const generateEgoDataElements = (document, ego, excludeList, codebook, exportOpt
 		if (!excludeList.includes(keyName) && entityAttributes[key] !== null) {
 			if (keyType === "categorical") {
 				const options = getAttributePropertyFromCodebook(codebook, "ego", null, key, "options");
-				options.forEach((option) => {
+				for (const option of options) {
 					const hashedOptionValue = sha1(option.value);
 					const optionKey = `${key}_${hashedOptionValue}`;
 					fragment += formatAndSerialize(
@@ -345,7 +345,7 @@ const generateEgoDataElements = (document, ego, excludeList, codebook, exportOpt
 							!!entityAttributes[key] && includes(entityAttributes[key], option.value),
 						),
 					);
-				});
+				}
 			} else if (keyType && typeof entityAttributes[key] !== "object") {
 				fragment += formatAndSerialize(createDataElement(document, { key }, entityAttributes[key]));
 			} else if (keyType === "layout") {
@@ -373,7 +373,7 @@ const generateEgoDataElements = (document, ego, excludeList, codebook, exportOpt
 				fragment += formatAndSerialize(createDataElement(document, { key: keyName }, entityAttributes[key]));
 			}
 		}
-	});
+	}
 
 	return fragment;
 };
@@ -390,7 +390,7 @@ const generateDataElements = (
 	let fragment = "";
 
 	// Iterate entities
-	entities.forEach((entity) => {
+	for (const entity of entities) {
 		// Create an element representing the entity (<node> or <edge>)
 		const domElement = document.createElement(type);
 
@@ -437,7 +437,7 @@ const generateDataElements = (
 		}
 
 		// Add entity attributes
-		Object.keys(entityAttributes).forEach((key) => {
+		for (const key of Object.keys(entityAttributes)) {
 			let keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, "name");
 			const keyType = getAttributePropertyFromCodebook(codebook, type, entity, key, "type");
 
@@ -450,7 +450,7 @@ const generateDataElements = (
 				// Handle categorical variables
 				if (keyType === "categorical") {
 					const options = getAttributePropertyFromCodebook(codebook, type, entity, key, "options");
-					options.forEach((option) => {
+					for (const option of options) {
 						const hashedOptionValue = sha1(option.value);
 						const optionKey = `${key}_${hashedOptionValue}`;
 						domElement.appendChild(
@@ -460,7 +460,7 @@ const generateDataElements = (
 								!!entityAttributes[key] && includes(entityAttributes[key], option.value),
 							),
 						);
-					});
+					}
 					// Handle all codebook variables apart from layout variables
 				} else if (keyType && typeof entityAttributes[key] !== "object") {
 					domElement.appendChild(createDataElement(document, { key }, entityAttributes[key]));
@@ -490,10 +490,10 @@ const generateDataElements = (
 					domElement.appendChild(createDataElement(document, { key: keyName }, entityAttributes[key]));
 				}
 			}
-		});
+		}
 
 		fragment += `${formatAndSerialize(domElement)}`;
-	});
+	}
 
 	return fragment;
 };

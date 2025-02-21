@@ -78,9 +78,9 @@ export const prepareExportData = async (interviewIds: Interview["id"][]) => {
 	const interviewsSessions = await getInterviewsForExport(interviewIds);
 
 	const protocolsMap = new Map<string, Protocol>();
-	interviewsSessions.forEach((session) => {
+	for (const session of interviewsSessions) {
 		protocolsMap.set(session.protocol.hash, session.protocol);
-	});
+	}
 
 	const formattedProtocols: InstalledProtocols = Object.fromEntries(protocolsMap);
 	const formattedSessions = formatExportableSessions(interviewsSessions);

@@ -1,8 +1,8 @@
 import { useSelector } from "react-redux";
+import { getEntityAttributes } from "~/lib/interviewer/ducks/modules/network";
 import UINode from "~/lib/ui/components/Node";
 import { getNodeColor, labelLogic } from "../selectors/network";
 import { getProtocolCodebook } from "../selectors/protocol";
-import { getEntityAttributes } from "~/lib/interviewer/ducks/modules/network";
 
 /**
  * Renders a Node.

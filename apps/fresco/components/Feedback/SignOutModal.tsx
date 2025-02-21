@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { logout } from "~/actions/auth";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,7 +12,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../ui/AlertDialog";
-import { logout } from "~/actions/auth";
 
 type SignOutModalProps = {
 	openSignOutModal: boolean;
