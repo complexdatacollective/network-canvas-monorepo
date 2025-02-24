@@ -93,7 +93,7 @@ const useSearch = (list, options, initialQuery = "") => {
 		[fuse, isLargeList],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	useEffect(() => {
 		if (!hasQuery) {
 			return;

@@ -19,6 +19,7 @@ const DatePickerInput = ({ onChange: onChangeInput, value, parameters, parentRef
 
 	const [panelsOpen, setPanelsOpen] = useState(false);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: could lead to unexpected side effects
 	const handleChange = useCallback(
 		(newValue) => {
 			if (newValue !== "") {
@@ -42,6 +43,7 @@ const DatePickerInput = ({ onChange: onChangeInput, value, parameters, parentRef
 
 	useScrollTo(parentRef, (open) => open, [panelsOpen, parentRef]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: could lead to unexpected side effects
 	useEffect(() => {
 		if (panelsOpen) {
 			document.addEventListener("mousedown", handleClickOutside);

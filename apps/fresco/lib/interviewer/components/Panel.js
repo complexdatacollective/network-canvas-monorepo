@@ -16,13 +16,12 @@ const Panel = ({
 }) => {
 	const [collapsed, setCollapsed] = useState(false);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies:
 	const toggleCollapsed = useCallback(() => {
 		if (noCollapse) {
 			return;
 		}
 		setCollapsed((value) => !value);
-	}, [setCollapsed, noCollapse]);
+	}, [noCollapse]);
 
 	const panelClasses = cx("panel", {
 		"panel--no-highlight": noHighlight,

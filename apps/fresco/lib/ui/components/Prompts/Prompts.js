@@ -15,6 +15,7 @@ const Prompts = (props) => {
 
 	const currentIndex = findIndex(prompts, (prompt) => prompt.id === currentPromptId);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: could lead to unexpected side effects
 	useEffect(() => {
 		prevPromptRef.current = currentIndex;
 	}, [currentPromptId, currentIndex]);

@@ -21,6 +21,7 @@ const HoverMarquee = ({ speed = 100, children }) => {
 		[],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: could lead to unexpected side effects
 	useEffect(() => {
 		const delta = contentRef.current.offsetWidth - containerRef.current.offsetWidth;
 		contentVariants.hover.left = `-${delta}px`;

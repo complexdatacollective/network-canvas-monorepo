@@ -10,46 +10,56 @@ import { getActiveSession } from "~/lib/interviewer/selectors/session";
 // The job of ServerSync is to listen to actions in the redux store, and to sync
 // data with the server.
 const ServerSync = ({
-	interviewId,
-	children,
-	serverSync,
+  interviewId,
+  children,
+  serverSync,
 }: {
-	interviewId: string;
-	children: ReactNode;
-	serverSync: SyncInterviewType;
+  interviewId: string;
+  children: ReactNode;
+  serverSync: SyncInterviewType;
 }) => {
-	const [init, setInit] = useState(false);
-	// Current stage
-	const currentSession = useSelector(getActiveSession);
-	const prevCurrentSession = usePrevious(currentSession);
+  const [init, setInit] = useState(false);
+  // Current stage
+  const currentSession = useSelector(getActiveSession);
+  const prevCurrentSession = usePrevious(currentSession);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-	const debouncedSessionSync = useCallback(
-		debounce(serverSync, 2000, {
-			edges: ["trailing", "leading"],
-		}),
-		[serverSync],
-	);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run when serverSync changes
+  const debouncedSessionSync = useCallback(
+    debounce(serverSync, 2000, {
+      edges: ["trailing", "leading"],
+    }),
+    [serverSync]
+  );
 
-	useEffect(() => {
-		if (!init) {
-			setInit(true);
-			return;
-		}
+  useEffect(() => {
+    if (!init) {
+      setInit(true);
+      return;
+    }
 
-		if (isEqual(currentSession, prevCurrentSession) || !currentSession || !prevCurrentSession) {
-			return;
-		}
+    if (
+      isEqual(currentSession, prevCurrentSession) ||
+      !currentSession ||
+      !prevCurrentSession
+    ) {
+      return;
+    }
 
-		void debouncedSessionSync({
-			id: interviewId,
-			network: currentSession.network,
-			currentStep: currentSession.currentStep ?? 0,
-			stageMetadata: currentSession.stageMetadata, // Temporary storage used by tiestrengthcensus/dyadcensus to store negative responses
-		});
-	}, [currentSession, prevCurrentSession, interviewId, init, debouncedSessionSync]);
+    void debouncedSessionSync({
+      id: interviewId,
+      network: currentSession.network,
+      currentStep: currentSession.currentStep ?? 0,
+      stageMetadata: currentSession.stageMetadata, // Temporary storage used by tiestrengthcensus/dyadcensus to store negative responses
+    });
+  }, [
+    currentSession,
+    prevCurrentSession,
+    interviewId,
+    init,
+    debouncedSessionSync,
+  ]);
 
-	return children;
+  return children;
 };
 
 export default ServerSync;

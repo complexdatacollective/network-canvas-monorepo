@@ -32,6 +32,7 @@ const RangePicker = ({ type, range, today, value, onSelect, offset = 0 }) => {
 	const scrollRefKey = scrollRef.current?.getAttribute("data-value");
 	const rangeKey = range.toString();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: could lead to unexpected side effects
 	useEffect(() => {
 		// only scroll year
 		if (type !== "year") {

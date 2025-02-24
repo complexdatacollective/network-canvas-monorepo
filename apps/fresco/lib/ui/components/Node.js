@@ -1,6 +1,6 @@
-import { Component } from "react";
-import PropTypes from "prop-types";
 import classNames from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
 
 /**
  * Renders a Node.
@@ -43,6 +43,7 @@ class Node extends Component {
 					className="node__node"
 					preserveAspectRatio="xMidYMid meet"
 				>
+					<title>Node</title>
 					<circle cx="250" cy="270" r="200" className="node__node-shadow" opacity="0.25" />
 					<circle cx="250" cy="250" r="250" className="node__node-outer-trim" />
 					<circle cx="250" cy="250" r="200" fill={nodeBaseColor} className="node__node-base" />

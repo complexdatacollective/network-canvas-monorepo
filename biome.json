@@ -11,7 +11,8 @@
 				"noUnusedImports": "error"
 			},
 			"suspicious": {
-				"noShadowRestrictedNames": "off"
+				"noShadowRestrictedNames": "off",
+				"noArrayIndexKey": "off"
 			},
 			"a11y": {
 				"useKeyWithClickEvents": "off",
@@ -21,6 +22,9 @@
 			},
 			"performance": {
 				"noAccumulatingSpread": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off"
 			}
 		}
 	},
@@ -35,7 +39,7 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignore": ["public/**/*.*"]
+		"ignore": ["public/**/*.*", "globals.css"]
 	},
 	"javascript": { "formatter": { "quoteStyle": "double" } }
 }

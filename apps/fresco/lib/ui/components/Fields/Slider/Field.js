@@ -1,8 +1,8 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
 import Icon from "../../Icon";
-import Slider from "./Slider";
 import MarkdownLabel from "../MarkdownLabel";
+import Slider from "./Slider";
 
 const getSliderType = (variableType) => {
 	switch (variableType) {

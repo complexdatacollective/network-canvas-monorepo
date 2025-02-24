@@ -1,5 +1,5 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
 import Icon from "../Icon";
 
 const RoundCheckbox = ({ checked = false, negative = false }) => {

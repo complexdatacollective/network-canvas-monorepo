@@ -52,7 +52,7 @@ const InterviewShell = ({
 		});
 
 		setInitialized(true);
-	}, [initialized, setInitialized, currentStage, setCurrentStage, interview]);
+	}, [initialized, currentStage, setCurrentStage, interview]);
 
 	if (!initialized || !interview) {
 		return null;

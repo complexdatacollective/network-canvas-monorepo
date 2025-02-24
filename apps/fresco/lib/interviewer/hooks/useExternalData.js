@@ -51,6 +51,7 @@ const useExternalData = (dataSource, subject) => {
 	const [status, setStatus] = useState({ isLoading: false, error: null });
 	const updateStatus = (newStatus) => setStatus((s) => ({ ...s, ...newStatus }));
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: could lead to unexpected side effects
 	useEffect(() => {
 		if (!dataSource) {
 			return;

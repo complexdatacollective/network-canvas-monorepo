@@ -195,9 +195,9 @@ const getDefaultAttributesForEntityType = (registryForType = {}) => {
 	const defaultAttributesObject = {};
 
 	// ALL variables initialised as `null`
-	Object.keys(registryForType).forEach((variableUUID) => {
+	for (const variableUUID of Object.keys(registryForType)) {
 		defaultAttributesObject[variableUUID] = null;
-	});
+	}
 
 	return defaultAttributesObject;
 };

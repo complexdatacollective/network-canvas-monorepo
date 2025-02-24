@@ -24,7 +24,7 @@ const Video = (props) => {
 		setLoading(false);
 	};
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies:
+	// biome-ignore lint/correctness/useExhaustiveDependencies: want to run when video changes
 	useEffect(() => {
 		if (!video.current) {
 			return;

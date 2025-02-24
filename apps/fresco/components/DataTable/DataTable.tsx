@@ -124,6 +124,7 @@ export function DataTable<TData, TValue>({
 
 	const hasSelectedRows = table.getSelectedRowModel().rows.length > 0;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unexpected side effects
 	const exportHandler = useCallback(() => {
 		const selectedData = table.getSelectedRowModel().rows.map((r) => r.original);
 
