@@ -1,5 +1,6 @@
 {
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"build": "turbo run build",
 		"dev": "turbo run dev",
@@ -8,7 +9,8 @@
 		"test:watch": "turbo run test:watch",
 		"publish-packages": "turbo run build lint && changeset version && changeset publish",
 		"format-and-lint": "biome check .",
-		"format-and-lint:fix": "biome check . --write"
+		"format-and-lint:fix": "biome check . --write",
+		"sync-fresco": "node scripts/syncFresco.js"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

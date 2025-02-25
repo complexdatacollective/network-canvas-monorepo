@@ -18,7 +18,7 @@
 		"load-test": "docker run -i grafana/k6 run - <load-test.js"
 	},
 	"dependencies": {
-		"@codaco/analytics": "7.0.0",
+		"@codaco/analytics": "workspace:*",
 		"@codaco/protocol-validation": "3.0.0",
 		"@codaco/shared-consts": "^0.0.2",
 		"@codaco/tsconfig": "workspace:*",

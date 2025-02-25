@@ -1,0 +1,58 @@
+name: Sync Fresco
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/fresco/**'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  SYNC_OUTPUT_DIR: sync-output
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+
+      - name: Create sync output directory
+        run: mkdir -p $SYNC_OUTPUT_DIR
+
+      - name: Run sync script
+        run: node scripts/sync-fresco.js
+        env:
+          SYNC_OUTPUT_DIR: ${{ env.SYNC_OUTPUT_DIR }}
+      
+      - name: Set up Git for target repository
+        run: |
+          cd $SYNC_OUTPUT_DIR
+          git init
+          git config user.name "GitHub Action"
+          git config user.email "actions@github.com"
+      
+      - name: Commit changes
+        run: |
+          cd $SYNC_OUTPUT_DIR
+          git add .
+          git commit -m "Sync from monorepo [GitHub Action]"
+      
+      - name: Push to deployment repository
+        run: |
+          cd $SYNC_OUTPUT_DIR
+          git remote add origin https://${{ secrets.GITHUB_TOKEN }}@github.com/complexdatacollective/fresco.git
+          git push -f origin HEAD:main
