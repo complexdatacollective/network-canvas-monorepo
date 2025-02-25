@@ -111,7 +111,7 @@ importers:
         version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       '@faker-js/faker':
         specifier: ^8.2.0
         version: 8.4.1
@@ -232,7 +232,7 @@ importers:
         version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       '@microflash/rehype-figure':
         specifier: ^2.1.1
         version: 2.1.1
@@ -330,8 +330,8 @@ importers:
   apps/fresco:
     dependencies:
       '@codaco/analytics':
-        specifier: 7.0.0
-        version: 7.0.0(next@14.2.24(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.0))
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@codaco/protocol-validation':
         specifier: 3.0.0
         version: 3.0.0
@@ -340,7 +340,7 @@ importers:
         version: 0.0.2
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.54.2(react@18.3.1))
@@ -678,7 +678,7 @@ importers:
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       tsup:
         specifier: ^8.3.5
         version: 8.3.5(jiti@2.4.2)(postcss@8.4.49)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.6.0)
@@ -700,7 +700,7 @@ importers:
         version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       '@types/d3-interpolate-path':
         specifier: ^2.0.3
         version: 2.0.3
@@ -721,7 +721,7 @@ importers:
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       '@types/node':
         specifier: ^20.5.2
         version: 20.17.6
@@ -824,7 +824,7 @@ importers:
         version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../../tooling/typescript
+        version: link:../../tooling/tsconfig
       '@types/react':
         specifier: npm:types-react@19.0.0-rc.1
         version: types-react@19.0.0-rc.1
@@ -857,12 +857,12 @@ importers:
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
-        version: link:../typescript
+        version: link:../tsconfig
       typescript:
         specifier: ^5.6.3
         version: 5.6.3
 
-  tooling/typescript: {}
+  tooling/tsconfig: {}
 
 packages:
 
@@ -1375,11 +1375,6 @@ packages:
   '@clerk/types@4.34.0':
     resolution: {integrity: sha512-4ghDvf80/sFlpx5HnmIl3vW7SOqEaTDwyKAw64H/E2ahgGUMk+qLVpxnBumTpowq+bGjfMVwbneDQOhtmYidoQ==}
     engines: {node: '>=18.17.0'}
-
-  '@codaco/analytics@7.0.0':
-    resolution: {integrity: sha512-Cig7fyEC6rFFlkMXHw5+wFFl8f1Wj2qwv2+af/ugn/8f0jHoq5UABPnAivLyTjOWq52vyvzjNmxDdrywoulGPA==}
-    peerDependencies:
-      next: 13 || 14 || 15
 
   '@codaco/protocol-validation@3.0.0':
     resolution: {integrity: sha512-23/nKuVKyKzHfEzQKVFFpCIibe+j3biLPuYKK+Ly7kyNygeEO/MydMGHWYTQUoAKUjIlBXRryGhdHt5uen9/8A==}
@@ -8707,11 +8702,6 @@ snapshots:
   '@clerk/types@4.34.0':
     dependencies:
       csstype: 3.1.1
-
-  '@codaco/analytics@7.0.0(next@14.2.24(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.0))':
-    dependencies:
-      next: 14.2.24(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.0)
-      zod: 3.24.2
 
   '@codaco/protocol-validation@3.0.0': {}
 
