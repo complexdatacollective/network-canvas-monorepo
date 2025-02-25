@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import type { DefinedError } from "ajv";
 import Ajv from "ajv";
-import type { Protocol } from "../types/protocol";
+import type { Protocol } from "../schemas/8.zod";
 
 const ajv = new Ajv({
 	code: { source: true, esm: true, lines: true },

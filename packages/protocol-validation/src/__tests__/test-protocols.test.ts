@@ -9,7 +9,7 @@ import { Readable } from "node:stream";
 import tarStream from "tar-stream";
 import { beforeAll, describe, expect, it } from "vitest";
 import { validateProtocol } from "../index";
-import type { Protocol } from "../types/protocol";
+import type { Protocol } from "../schemas/8.zod";
 
 dotenv.config();
 

@@ -405,9 +405,6 @@ importers:
       json-refs:
         specifier: ^3.0.15
         version: 3.0.15
-      json-schema-to-zod:
-        specifier: ^2.6.0
-        version: 2.6.0
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -3841,10 +3838,6 @@ packages:
   json-refs@3.0.15:
     resolution: {integrity: sha512-0vOQd9eLNBL18EGl5yYaO44GhixmImes2wiYn9Z3sag3QnehWrYWlB9AFtMxCL2Bj3fyxgDYkxGFEU/chlYssw==}
     engines: {node: '>=0.8'}
-    hasBin: true
-
-  json-schema-to-zod@2.6.0:
-    resolution: {integrity: sha512-6sFZqOzHZeON8g2ZW5HJ114Hb/FffNCjWh8dgulJaKFkUqKCEWZAzF4+g07SQpfBZF7HXemwedtdLypZzmnVpQ==}
     hasBin: true
 
   json-schema-traverse@1.0.0:
@@ -8749,8 +8742,6 @@ snapshots:
       uri-js: 4.4.1
     transitivePeerDependencies:
       - supports-color
-
-  json-schema-to-zod@2.6.0: {}
 
   json-schema-traverse@1.0.0: {}
 

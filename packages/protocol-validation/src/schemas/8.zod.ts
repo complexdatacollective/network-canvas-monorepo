@@ -121,6 +121,8 @@ const codebookSchema = z
 	})
 	.strict();
 
+export type Codebook = z.infer<typeof codebookSchema>;
+
 // Filter and Sort Options Schemas
 const filterRuleSchema = z
 	.object({

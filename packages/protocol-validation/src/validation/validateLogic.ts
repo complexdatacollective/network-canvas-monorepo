@@ -13,7 +13,7 @@ import type {
 	VariableValidation,
 } from "@codaco/shared-consts";
 import { get, isObject } from "es-toolkit/compat";
-import type { Codebook, Protocol } from "../types/protocol";
+import type { Codebook, Protocol } from "../schemas/8.zod";
 import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,
