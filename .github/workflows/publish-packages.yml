@@ -30,7 +30,12 @@ jobs:
     - name: Install dependencies
       run: pnpm install
 
-    - name: Version and publish packages with changesets
-      run: pnpm run publish-packages
+    - name: Create Release Pull Request
+      uses: changesets/action@v1
+      with:
+        # builds packages and runs changesets publish. versioning is done by changesets action
+        publish: pnpm run publish-packages
+        createGithubReleases: true
       env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
