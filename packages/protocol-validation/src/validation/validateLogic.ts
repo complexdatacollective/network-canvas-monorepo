@@ -1,6 +1,5 @@
 import type {
 	AdditionalAttributes,
-	Codebook,
 	EntityTypeDefinition,
 	FilterRule,
 	FormField,
@@ -8,13 +7,13 @@ import type {
 	NcNode,
 	Panel,
 	Prompt,
-	Protocol,
 	Stage,
 	StageSubject,
 	VariableDefinition,
 	VariableValidation,
 } from "@codaco/shared-consts";
 import { get, isObject } from "es-toolkit/compat";
+import type { Codebook, Protocol } from "../schemas/8.zod";
 import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,

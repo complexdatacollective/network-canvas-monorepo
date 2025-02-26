@@ -24,12 +24,7 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignore": [
-			"public/**/*.*",
-			"packages/protocol-validation/src/schemas/compiled/",
-			"packages/development-protocol/assets",
-			"packages/development-protocol/protocol.json"
-		]
+		"ignore": ["public/**/*.*", "packages/development-protocol/assets", "packages/development-protocol/protocol.json"]
 	},
 	"javascript": { "formatter": { "quoteStyle": "double" } }
 }
