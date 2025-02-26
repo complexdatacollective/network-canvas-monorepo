@@ -8,14 +8,4 @@ export default defineConfig({
 	dts: true,
 	clean: true,
 	sourcemap: true,
-	esbuildPlugins: [
-		// {
-		// 	name: "build-schemas",
-		// 	setup(build) {
-		// 		build.onStart(async () => {
-		// 			await buildSchemas();
-		// 		});
-		// 	},
-		// },
-	],
 });
