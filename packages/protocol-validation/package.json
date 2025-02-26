@@ -14,6 +14,7 @@
 	"scripts": {
 		"build": "tsup src/index.ts",
 		"dev": "npm run build -- --watch",
+		"pretest": "pnpm run build",
 		"test": "vitest",
 		"zod-to-json": "tsx ./src/scripts/zodToJson.ts"
 	},

@@ -4,7 +4,6 @@
 		"build": "turbo run build",
 		"dev": "turbo run dev",
 		"lint": "turbo run lint",
-		"pretest": "pnpm run build",
 		"test": "turbo run test",
 		"test:watch": "turbo run test:watch",
 		"publish-packages": "turbo run build lint && changeset publish",
