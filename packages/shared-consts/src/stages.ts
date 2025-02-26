@@ -60,30 +60,46 @@ export type Prompt = {
 	otherOptionLabel?: string;
 };
 
-export type FilterRule = {
+type Operator =
+	| "EXISTS"
+	| "NOT_EXISTS"
+	| "EXACTLY"
+	| "NOT"
+	| "GREATER_THAN"
+	| "GREATER_THAN_OR_EQUAL"
+	| "LESS_THAN"
+	| "LESS_THAN_OR_EQUAL"
+	| "INCLUDES"
+	| "EXCLUDES"
+	| "OPTIONS_GREATER_THAN"
+	| "OPTIONS_LESS_THAN"
+	| "OPTIONS_EQUALS"
+	| "OPTIONS_NOT_EQUALS";
+
+type BaseFilterRule = {
 	id: string;
-	type: "alter" | "ego" | "edge";
+};
+
+type EgoFilterRule = BaseFilterRule & {
+	type: "ego";
 	options: {
-		type?: string;
-		operator:
-			| "EXISTS"
-			| "NOT_EXISTS"
-			| "EXACTLY"
-			| "NOT"
-			| "GREATER_THAN"
-			| "GREATER_THAN_OR_EQUAL"
-			| "LESS_THAN"
-			| "LESS_THAN_OR_EQUAL"
-			| "INCLUDES"
-			| "EXCLUDES"
-			| "OPTIONS_GREATER_THAN"
-			| "OPTIONS_LESS_THAN"
-			| "OPTIONS_EQUALS"
-			| "OPTIONS_NOT_EQUALS";
 		attribute?: string;
-		value?: boolean | number | string;
+		operator: Operator;
+		value: boolean | number | string;
 	};
 };
+
+type NodeOrAlterFilterRule = BaseFilterRule & {
+	type: "edge" | "alter";
+	options: {
+		type: string;
+		attribute?: string;
+		operator: Operator;
+		value: boolean | number | string;
+	};
+};
+
+export type FilterRule = EgoFilterRule | NodeOrAlterFilterRule;
 
 export type FilterDefinition = {
 	join: "AND" | "OR";
@@ -113,10 +129,21 @@ export type ItemDefinition = {
 	size: "SMALL" | "MEDIUM" | "LARGE";
 };
 
-export type StageSubject = {
-	entity: "ego" | "node" | "edge";
+type EgoStageSubject = {
+	entity: "ego";
+};
+
+type NodeStageSubject = {
+	entity: "node";
 	type: string;
 };
+
+type EdgeStageSubject = {
+	entity: "edge";
+	type: string;
+};
+
+export type StageSubject = EgoStageSubject | NodeStageSubject | EdgeStageSubject;
 
 export type FormField = {
 	variable: string;
@@ -128,6 +155,13 @@ export type Form = {
 	fields: FormField[];
 };
 
+export type Panel = {
+	id: string;
+	title: string;
+	filter?: FilterDefinition;
+	dataSource?: string;
+};
+
 export type Stage = {
 	id: string;
 	type: string;
@@ -137,7 +171,7 @@ export type Stage = {
 	form?: Form;
 	introductionPanel?: object; // Todo: create a Panel type
 	subject?: StageSubject | StageSubject[];
-	panels?: object[];
+	panels?: Panel[];
 	prompts?: Prompt[];
 	quickAdd?: string;
 	behaviours?: object;
