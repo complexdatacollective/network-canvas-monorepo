@@ -28,7 +28,6 @@ const asIntName = (schemaVersion: string | number) => {
 	return Number.parseInt(schemaVersion as string, 10);
 };
 
-// get schemas,
 const getSchemas = async (directory: string) => {
 	const files = await readdir(directory);
 	return files.filter(isJsonFile).map(getBaseName);
@@ -47,6 +46,7 @@ const generateModuleIndex = (schemas: string[]) => {
 	const schemaVersions = `${schemas.map(formatVersions).join("\n")}`;
 
 	return `${schemaRequires}
+
 const versions = [
 ${schemaVersions}
 ];
@@ -54,7 +54,7 @@ export default versions;
 \r\n`;
 };
 
-export const compileSchemas = async () => {
+const compileSchemas = async () => {
 	const schemaSrcDirectory = resolve(SCHEMA_SRC_PATH);
 	const schemaOutputDirectory = resolve(SCHEMA_OUTPUT_PATH);
 
@@ -62,7 +62,7 @@ export const compileSchemas = async () => {
 
 	const schemas = await getSchemas(schemaSrcDirectory);
 
-	console.log("Compiling schemas..."); // eslint-disable-line
+	console.log("Compiling schemas...");
 
 	for (const baseSchemaName of schemas) {
 		const schemaPath = join(schemaSrcDirectory, `${baseSchemaName}.json`);
@@ -75,10 +75,15 @@ export const compileSchemas = async () => {
 
 		await writeFile(modulePath, moduleCode, {});
 
-		console.log(`${baseSchemaName} done.`); // eslint-disable-line
+		console.log(`${baseSchemaName} done.`);
 	}
 
 	const moduleIndexPath = join(schemaOutputDirectory, "index.js");
 	const moduleIndex = generateModuleIndex(schemas);
 	await writeFile(moduleIndexPath, moduleIndex);
 };
+
+compileSchemas().catch((err) => {
+	console.error("Error compiling schemas:", err);
+	process.exit(1);
+});

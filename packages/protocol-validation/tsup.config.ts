@@ -1,5 +1,4 @@
 import { defineConfig } from "tsup";
-import { compileSchemas } from "./src/scripts/compileSchemas";
 
 export default defineConfig({
 	entry: ["src/index.ts"],
@@ -7,16 +6,6 @@ export default defineConfig({
 	format: ["esm", "cjs"],
 	target: "es6",
 	dts: true,
-	clean: true,
+	clean: false,
 	sourcemap: true,
-	esbuildPlugins: [
-		{
-			name: "build-schemas",
-			setup(build) {
-				build.onStart(async () => {
-					await compileSchemas();
-				});
-			},
-		},
-	],
 });
