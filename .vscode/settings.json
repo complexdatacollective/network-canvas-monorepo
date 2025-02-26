@@ -6,5 +6,14 @@
 	"editor.codeActionsOnSave": {
 		"source.organizeImports": "always",
 		"source.fixAll": "always"
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
 	}
 }
