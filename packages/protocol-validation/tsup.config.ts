@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup";
+import { compileSchemas } from "./src/scripts/compileSchemas";
 
 export default defineConfig({
 	entry: ["src/index.ts"],
@@ -8,4 +9,14 @@ export default defineConfig({
 	dts: true,
 	clean: true,
 	sourcemap: true,
+	esbuildPlugins: [
+		{
+			name: "build-schemas",
+			setup(build) {
+				build.onStart(async () => {
+					await compileSchemas();
+				});
+			},
+		},
+	],
 });
