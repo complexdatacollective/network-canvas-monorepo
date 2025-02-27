@@ -4,7 +4,7 @@
 import chalk from "chalk";
 import fs from "node:fs";
 import path from "node:path";
-import { errToString, validateProtocol } from "../dist/index.js";
+import { errToString, validateProtocol } from "../src/index.js";
 
 async function main() {
 	const [, , filePath, forceSchema = undefined] = process.argv;

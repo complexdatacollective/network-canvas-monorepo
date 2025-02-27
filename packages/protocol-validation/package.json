@@ -12,11 +12,13 @@
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
+		"prebuild": "pnpm run compile-schemas",
 		"build": "rollup -c",
 		"dev": "npm run build -- --watch",
 		"pretest": "pnpm run build",
 		"test": "vitest",
-		"zod-to-json": "tsx ./scripts/zodToJson.ts"
+		"zod-to-json": "tsx ./scripts/zodToJson.ts",
+		"compile-schemas": "tsx ./scripts/compileSchemas.ts"
 	},
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"

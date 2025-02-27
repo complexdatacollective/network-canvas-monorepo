@@ -18,40 +18,9 @@ ajv.addFormat("date-time", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
 const isJsonFile = (fileName: string) => extname(fileName) === ".json";
 const getBaseName = (schemaFileName: string) => basename(schemaFileName, ".json");
 
-const asVariableName = (schemaName: string) => `version_${schemaName.replace(/\./g, "_")}`;
-
-const asIntName = (schemaVersion: string | number) => {
-	if (Number.isNaN(Number.parseInt(schemaVersion as string, 10))) {
-		throw Error("Schema version could not be converted to integer");
-	}
-
-	return Number.parseInt(schemaVersion as string, 10);
-};
-
 const getSchemas = async (directory: string) => {
 	const files = await readdir(directory);
 	return files.filter(isJsonFile).map(getBaseName);
-};
-
-const generateModuleIndex = (schemas: string[]) => {
-	const formatRequire = (baseSchemaName: string) => {
-		const relativeModulePath = join(`./${baseSchemaName}.js`);
-		return `import ${asVariableName(baseSchemaName)} from './${relativeModulePath}';`;
-	};
-
-	const formatVersions = (baseSchemaName: string) =>
-		`  { version: ${asIntName(baseSchemaName)}, validator: ${asVariableName(baseSchemaName)} },`;
-
-	const schemaRequires = schemas.map(formatRequire).join("\n");
-	const schemaVersions = `${schemas.map(formatVersions).join("\n")}`;
-
-	return `${schemaRequires}
-
-const versions = [
-${schemaVersions}
-];
-export default versions;
-\r\n`;
 };
 
 const compileSchemas = async () => {
@@ -77,10 +46,6 @@ const compileSchemas = async () => {
 
 		console.log(`${baseSchemaName} done.`);
 	}
-
-	// const moduleIndexPath = join(schemaOutputDirectory, "index.js");
-	// const moduleIndex = generateModuleIndex(schemas);
-	// await writeFile(moduleIndexPath, moduleIndex);
 };
 
 compileSchemas().catch((err) => {
