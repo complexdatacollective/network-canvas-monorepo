@@ -13,7 +13,7 @@
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
 		"prebuild": "pnpm run compile-schemas",
-		"build": "tsup src/index.ts",
+		"build": "rollup -c",
 		"dev": "npm run build -- --watch",
 		"pretest": "pnpm run build",
 		"test": "vitest",
@@ -23,10 +23,16 @@
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
+		"@rollup/plugin-dynamic-import-vars": "^2.1.5",
+		"@rollup/plugin-json": "^6.1.0",
+		"@rollup/plugin-node-resolve": "^16.0.0",
+		"@rollup/plugin-typescript": "^12.1.2",
 		"@types/gunzip-maybe": "^1.4.2",
 		"@types/lodash-es": "^4.17.12",
 		"@types/tar": "^6.1.13",
@@ -34,12 +40,13 @@
 		"ajv": "^8.17.1",
 		"chalk": "^5.3.0",
 		"dotenv": "^16.4.5",
-		"es-toolkit": "^1.31.0",
+		"es-toolkit": "^1.32.0",
 		"gunzip-maybe": "^1.4.2",
 		"jszip": "^3.10.1",
 		"lodash-es": "^4.17.21",
+		"rollup": "^4.34.8",
+		"rollup-plugin-dts": "^6.1.1",
 		"tar-stream": "^3.1.7",
-		"tsup": "^8.3.6",
 		"tsx": "^4.19.2",
 		"typescript": "^5.6.3",
 		"vitest": "^2.1.8",

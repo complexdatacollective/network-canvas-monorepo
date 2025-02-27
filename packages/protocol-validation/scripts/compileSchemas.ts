@@ -78,9 +78,9 @@ const compileSchemas = async () => {
 		console.log(`${baseSchemaName} done.`);
 	}
 
-	const moduleIndexPath = join(schemaOutputDirectory, "index.js");
-	const moduleIndex = generateModuleIndex(schemas);
-	await writeFile(moduleIndexPath, moduleIndex);
+	// const moduleIndexPath = join(schemaOutputDirectory, "index.js");
+	// const moduleIndex = generateModuleIndex(schemas);
+	// await writeFile(moduleIndexPath, moduleIndex);
 };
 
 compileSchemas().catch((err) => {
