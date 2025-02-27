@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { execSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { ensureError } from "src/utils/ensureError";
@@ -20,7 +21,6 @@ const logError = (msg: string) => console.log(chalk.red(msg));
 const logSuccess = (msg: string) => console.log(chalk.green(msg));
 
 export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: string) => {
-	console.log("zodSchema", zodSchema);
 	const convertedSchema = zodToJsonSchema(zodSchema, schemaName);
 
 	const outputPath = `${SCHEMA_DIR}/${schemaFileName}.json`;
@@ -29,6 +29,10 @@ export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: 
 	try {
 		await writeFile(outputPath, jsonSchemaString);
 		logSuccess(`Successfully converted zod schema to json schema: ${outputPath}`);
+
+		// format the json schema with biome
+		execSync(`npx biome check ${outputPath} --write `);
+		logSuccess(`Successfully linted json schema: ${outputPath}`);
 	} catch (e) {
 		const error = ensureError(e);
 		logError(`Error saving json schema to file: ${error.message}`);
