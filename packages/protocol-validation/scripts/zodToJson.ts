@@ -21,7 +21,10 @@ const logError = (msg: string) => console.log(chalk.red(msg));
 const logSuccess = (msg: string) => console.log(chalk.green(msg));
 
 export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: string) => {
-	const convertedSchema = zodToJsonSchema(zodSchema, schemaName);
+	const convertedSchema = zodToJsonSchema(zodSchema, {
+		name: schemaName,
+		// $refStrategy: "seen", // this reduces the size of the schema but is possibly too permissive
+	});
 
 	const outputPath = `${SCHEMA_DIR}/${schemaFileName}.json`;
 

@@ -4,6 +4,7 @@ import typescript from "@rollup/plugin-typescript";
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { defineConfig } from "rollup";
+import del from "rollup-plugin-delete";
 import dts from "rollup-plugin-dts";
 
 const schemaPlugin = () => {
@@ -42,9 +43,9 @@ const config = defineConfig([
 		],
 		external: ["ajv"], // Add ajv as an external dependency
 		plugins: [
-			schemaPlugin(),
-
-			// Order matters here - TypeScript should process files first
+			// clean the dist folder of schema files
+			del({ targets: "dist/*.js. 'dist/*.js.map" }),
+			// Order matters here - TypeScript should process files first (after deleting the dist folder)
 			typescript({
 				declaration: true,
 				declarationDir: "./dist/types",
@@ -57,6 +58,8 @@ const config = defineConfig([
 				include: ["src/**/*.ts"],
 				exclude: ["**/*.d.ts"],
 			}),
+
+			schemaPlugin(),
 		],
 	},
 	// Type definitions bundle
