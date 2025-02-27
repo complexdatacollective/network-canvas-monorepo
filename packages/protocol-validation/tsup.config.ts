@@ -3,9 +3,9 @@ import { defineConfig } from "tsup";
 export default defineConfig({
 	entry: ["src/index.ts"],
 	outDir: "dist",
-	format: ["esm", "cjs"],
-	target: "es6",
+	format: ["esm"],
 	dts: true,
-	clean: false,
+	clean: true,
 	sourcemap: true,
+	splitting: true,
 });

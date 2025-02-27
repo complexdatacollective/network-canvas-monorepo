@@ -17,11 +17,11 @@
 		"dev": "npm run build -- --watch",
 		"pretest": "pnpm run build",
 		"test": "vitest",
-		"zod-to-json": "tsx ./src/scripts/zodToJson.ts",
-		"compile-schemas": "tsx ./src/scripts/compileSchemas.ts"
+		"zod-to-json": "tsx ./scripts/zodToJson.ts",
+		"compile-schemas": "tsx ./scripts/compileSchemas.ts"
 	},
 	"bin": {
-		"@codaco/protocol-validation": "./cli.js"
+		"@codaco/protocol-validation": "./scripts/cli.js"
 	},
 	"files": ["dist"],
 	"devDependencies": {
