@@ -23,7 +23,7 @@ Throughout the remaining duration of our funding we will be working through a ba
 
 ## How much does the software cost? What is your funding model?
 
-The Network Canvas suite is free! It is licensed under the GPLv3 open source license. The project team has a strong ideological commitment to producing high quality free academic software for the benefit of researchers, students, and any other interested parties. We were funded to produce this software via [a grant from the National Institutes for Health](https://projectreporter.nih.gov/project_info_description.cfm?aid=9306043&icde=35540823&ddparam=&ddvalue=&ddsub=&cr=1&csb=default&cs=ASC&pball=), for which we are extremely grateful.
+The Network Canvas suite is free! It is licensed under the GPLv3 open source license. The project team has a strong ideological commitment to producing high quality free academic software for the benefit of researchers, students, and any other interested parties. We were funded to produce this software via [a grant from the National Institutes for Health](https://reporter.nih.gov/search/My1lXoKhnEyzXX5kIyl7Mw/project-details/9306043), for which we are extremely grateful.
 
 Our license means that you are free to use, modify, and extend the software however you wish. It is our intention to foster a community to support the ongoing development of these tools, and we welcome collaboration. If you do extend or improve the software, we welcome contributions back into our main [GitHub repositories](https://github.com/complexdatacollective) in the form of pull requests.
 
@@ -31,7 +31,7 @@ We can also provide development and consultancy services to support ideas you ha
 
 ## Who is developing the Network Canvas suite?
 
-The software is being developed by a team of researchers and developers based at Northwestern University and the University of Oxford, as well as several external contracted developers. We are grateful to be funded through a grant from the [National Institutes of Health](https://projectreporter.nih.gov/project_info_description.cfm?aid=9306043&icde=35540823&ddparam=&ddvalue=&ddsub=&cr=1&csb=default&cs=ASC&pball=).
+The software is being developed by a team of researchers and developers based at Northwestern University and the University of Oxford, as well as several external contracted developers. We are grateful to be funded through a grant from the [National Institutes of Health](https://reporter.nih.gov/search/My1lXoKhnEyzXX5kIyl7Mw/project-details/9306043).
 
 The intellectual property and copyright associated with the software is controlled by a registered not-for-profit, the Complex Data Collective, comprising the core project staff.
 
