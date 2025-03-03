@@ -64,7 +64,7 @@ importers:
         version: 0.10.0
       autoprefixer:
         specifier: ^10.4.20
-        version: 10.4.20(postcss@8.5.3)
+        version: 10.4.20(postcss@8.5.1)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -368,6 +368,13 @@ importers:
         version: 5.7.3
 
   packages/protocol-validation:
+    dependencies:
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
     devDependencies:
       '@codaco/shared-consts':
         specifier: workspace:*
@@ -399,9 +406,6 @@ importers:
       '@types/tar-stream':
         specifier: ^3.1.3
         version: 3.1.3
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
       chalk:
         specifier: ^5.3.0
         version: 5.4.1
@@ -429,6 +433,9 @@ importers:
       rollup-plugin-dts:
         specifier: ^6.1.1
         version: 6.1.1(rollup@4.34.8)(typescript@5.7.3)
+      rollup-plugin-sizes:
+        specifier: ^1.1.0
+        version: 1.1.0(rollup@4.34.8)
       tar-stream:
         specifier: ^3.1.7
         version: 3.1.7
@@ -441,9 +448,6 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.13.1)(jsdom@25.0.1(bufferutil@4.0.9))(lightningcss@1.29.1)
-      zod:
-        specifier: ^3.24.1
-        version: 3.24.1
       zod-to-json-schema:
         specifier: ^3.24.1
         version: 3.24.1(zod@3.24.1)
@@ -3603,6 +3607,10 @@ packages:
   fflate@0.4.8:
     resolution: {integrity: sha512-FJqqoDBR00Mdj9ppamLa/Y7vxm+PRmNWA67N846RvsoYVMKB4q3y/de5PA7gUmRMYK/8CMz2GDZQmCRN1wBcWA==}
 
+  filesize@9.0.11:
+    resolution: {integrity: sha512-gTAiTtI0STpKa5xesyTA9hA3LX4ga8sm2nWRcffEa1L/5vQwb4mj2MdzMkoHoGv4QzfDshQZuYscQSf8c4TKOA==}
+    engines: {node: '>= 0.4.0'}
+
   fill-range@7.1.1:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
@@ -4300,6 +4308,9 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
+  module-details-from-path@1.0.3:
+    resolution: {integrity: sha512-ySViT69/76t8VhE1xXHK6Ch4NcDd26gx0MzKXLO+F7NOtnqH68d9zF94nT8ZWSxXh8ELOERsnJO/sWt1xZYw5A==}
+
   motion-dom@11.18.1:
     resolution: {integrity: sha512-g76KvA001z+atjfxczdRtw/RXOM3OMSdd1f4DL77qCTF/+avrRJiawSG4yDibEQ215sr9kpinSlX2pCTJ9zbhw==}
 
@@ -4848,6 +4859,11 @@ packages:
     peerDependencies:
       rollup: ^3.29.4 || ^4
       typescript: ^4.5 || ^5.0
+
+  rollup-plugin-sizes@1.1.0:
+    resolution: {integrity: sha512-AEYZTYlWfPEIKpjOyL3wxhGZkdVkgmheHatW2xiMNet1MrGws5NszWSKXyiGi2fK0kSbx/X1f3sZqdc1laK1dA==}
+    peerDependencies:
+      rollup: ^2 || ^3 || ^4
 
   rollup@4.34.6:
     resolution: {integrity: sha512-wc2cBWqJgkU3Iz5oztRkQbfVkbxoz5EhnCGOrnJvnLnQ7O0WhQUYyv18qQI79O8L7DdHrrlJNeCHd4VGpnaXKQ==}
@@ -7944,14 +7960,14 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  autoprefixer@10.4.20(postcss@8.5.3):
+  autoprefixer@10.4.20(postcss@8.5.1):
     dependencies:
       browserslist: 4.24.4
       caniuse-lite: 1.0.30001699
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.1.1
-      postcss: 8.5.3
+      postcss: 8.5.1
       postcss-value-parser: 4.2.0
 
   b4a@1.6.7: {}
@@ -8470,6 +8486,8 @@ snapshots:
       picomatch: 4.0.2
 
   fflate@0.4.8: {}
+
+  filesize@9.0.11: {}
 
   fill-range@7.1.1:
     dependencies:
@@ -9420,6 +9438,8 @@ snapshots:
 
   minipass@7.1.2: {}
 
+  module-details-from-path@1.0.3: {}
+
   motion-dom@11.18.1:
     dependencies:
       motion-utils: 11.18.1
@@ -9744,6 +9764,7 @@ snapshots:
       nanoid: 3.3.8
       picocolors: 1.1.1
       source-map-js: 1.2.1
+    optional: true
 
   postgres-array@3.0.2: {}
 
@@ -10018,6 +10039,12 @@ snapshots:
       typescript: 5.7.3
     optionalDependencies:
       '@babel/code-frame': 7.26.2
+
+  rollup-plugin-sizes@1.1.0(rollup@4.34.8):
+    dependencies:
+      filesize: 9.0.11
+      module-details-from-path: 1.0.3
+      rollup: 4.34.8
 
   rollup@4.34.6:
     dependencies:

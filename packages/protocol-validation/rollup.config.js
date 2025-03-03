@@ -6,6 +6,7 @@ import path from "node:path";
 import { defineConfig } from "rollup";
 import del from "rollup-plugin-delete";
 import dts from "rollup-plugin-dts";
+import size from "rollup-plugin-sizes";
 
 const schemaPlugin = () => {
 	return {
@@ -41,25 +42,21 @@ const config = defineConfig([
 				sourcemap: true,
 			},
 		],
-		external: ["ajv"], // Add ajv as an external dependency
 		plugins: [
 			// clean the dist folder of schema files
-			del({ targets: "dist/*.js. 'dist/*.js.map" }),
-			// Order matters here - TypeScript should process files first (after deleting the dist folder)
+			del({ targets: "dist" }),
 			typescript({
 				declaration: true,
 				declarationDir: "./dist/types",
-				// Make sure TypeScript handles the type imports
 				tsconfig: "./tsconfig.json",
 			}),
 			nodeResolve(),
-			// Configure dynamicImportVars to exclude type-only imports
 			dynamicImportVars({
 				include: ["src/**/*.ts"],
 				exclude: ["**/*.d.ts"],
 			}),
-
 			schemaPlugin(),
+			size(),
 		],
 	},
 	// Type definitions bundle
@@ -69,7 +66,10 @@ const config = defineConfig([
 			file: "dist/index.d.ts",
 			format: "esm",
 		},
-		plugins: [nodeResolve(), dts()],
+		plugins: [
+			nodeResolve(), // dts says not to do this, but without it it can't resolve workspace packages
+			dts(),
+		],
 	},
 ]);
 
