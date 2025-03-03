@@ -1,8 +1,13 @@
 import type { ProtocolMigration } from "../migrateProtocol";
+// @ts-ignore
 import version4 from "./4";
+// @ts-ignore
 import version5 from "./5";
+// @ts-ignore
 import version6 from "./6";
+// @ts-ignore
 import version7 from "./7";
+// @ts-ignore
 import version8 from "./8";
 
 /**

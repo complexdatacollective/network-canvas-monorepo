@@ -2,8 +2,10 @@
 	"extends": "@codaco/tsconfig/base.json",
 	"compilerOptions": {
 		"baseUrl": ".",
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+		"allowJs": false,
+		"incremental": false
 	},
 	"include": ["."],
-	"exclude": ["dist", "build", "node_modules"]
+	"exclude": ["dist", "node_modules"]
 }
