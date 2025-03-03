@@ -32,6 +32,7 @@ jobs:
     needs: lint
     env: 
       NEXT_PUBLIC_DOCS_PATH: "docs"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v3
       - name: Install Node.js
