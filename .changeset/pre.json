@@ -10,7 +10,8 @@
 		"@codaco/shared-consts": "0.0.2",
 		"@codaco/ui": "0.1.0",
 		"@codaco/tailwind-config": "0.1.0",
-		"@codaco/tsconfig": "0.1.0"
+		"@codaco/tsconfig": "0.1.0",
+		"@codaco/github": "0.0.0"
 	},
 	"changesets": []
 }

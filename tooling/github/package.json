@@ -1,3 +1,5 @@
 {
-	"name": "@codaco/github"
+	"name": "@codaco/github",
+	"version": "0.0.0",
+	"private": true
 }
