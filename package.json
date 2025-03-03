@@ -6,7 +6,7 @@
 		"lint": "turbo run lint",
 		"test": "turbo run test",
 		"test:watch": "turbo run test:watch",
-		"publish-packages": "turbo run build lint && changeset version && changeset publish",
+		"publish-packages": "turbo run build lint && changeset publish",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write"
 	},

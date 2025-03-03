@@ -8,7 +8,8 @@
 		"rules": {
 			"recommended": true,
 			"correctness": {
-				"noUnusedImports": "error"
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error"
 			}
 		}
 	},
@@ -23,7 +24,12 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignore": ["public/**/*.*"]
+		"ignore": [
+			"public/**/*.*",
+			"packages/development-protocol/assets",
+			"packages/development-protocol/protocol.json",
+			"packages/protocol-validation/src/schemas/compiled"
+		]
 	},
 	"javascript": { "formatter": { "quoteStyle": "double" } }
 }
