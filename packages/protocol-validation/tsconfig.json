@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
-		"allowJs": false
+		"allowJs": false,
+		"incremental": false
 	},
 	"include": ["."],
 	"exclude": ["dist", "node_modules"]
