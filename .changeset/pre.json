@@ -1,19 +1,17 @@
 {
-  "mode": "pre",
-  "tag": "alpha",
-  "initialVersions": {
-    "analytics-web": "1.0.0",
-    "@codaco/documentation": "0.1.0",
-    "@codaco/analytics": "7.0.0",
-    "@codaco/art": "0.1.0",
-    "@codaco/protocol-validation": "3.1.0-alpha.1",
-    "@codaco/shared-consts": "0.0.2",
-    "@codaco/ui": "0.1.0",
-    "@codaco/tailwind-config": "0.1.0",
-    "@codaco/tsconfig": "0.1.0",
-    "@codaco/github": "0.0.0"
-  },
-  "changesets": [
-    "twenty-turkeys-bathe"
-  ]
+	"mode": "pre",
+	"tag": "alpha",
+	"initialVersions": {
+		"analytics-web": "1.0.0",
+		"@codaco/documentation": "0.1.0",
+		"@codaco/analytics": "7.0.0",
+		"@codaco/art": "0.1.0",
+		"@codaco/protocol-validation": "3.1.0-alpha.1",
+		"@codaco/shared-consts": "0.0.2",
+		"@codaco/ui": "0.1.0",
+		"@codaco/tailwind-config": "0.1.0",
+		"@codaco/tsconfig": "0.1.0",
+		"@codaco/github": "0.0.0"
+	},
+	"changesets": ["twenty-turkeys-bathe"]
 }

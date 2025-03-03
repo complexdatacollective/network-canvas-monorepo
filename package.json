@@ -3,10 +3,9 @@
 	"scripts": {
 		"build": "turbo run build",
 		"dev": "turbo run dev",
-		"lint": "turbo run lint",
 		"test": "turbo run test",
 		"test:watch": "turbo run test:watch",
-		"publish-packages": "turbo run build lint && changeset publish",
+		"publish-packages": "turbo run format-and-lint:fix build && pnpm changeset publish",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write"
 	},
