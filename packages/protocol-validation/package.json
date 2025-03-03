@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/protocol-validation",
-	"version": "4.0.0-alpha.1",
+	"version": "3.1.0-alpha.0",
 	"main": "./dist/index.js",
 	"license": "GPL-3.0-or-later",
 	"repository": {
@@ -23,9 +23,7 @@
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"
 	},
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"dependencies": {
 		"ajv": "^8.17.1",
 		"zod": "^3.24.1"
