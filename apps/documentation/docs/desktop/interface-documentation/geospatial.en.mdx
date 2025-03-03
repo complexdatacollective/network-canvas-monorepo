@@ -1,0 +1,108 @@
+---
+title: Geospatial
+---
+
+<InterfaceSummary>
+
+![Geospatial Interface](/assets/img/interface-documentation/geospatial/geospatial.png)
+
+<InterfaceMeta type="Name Interpreter" creates="Geospatial attribute data by allowing the user to select areas on a map" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+The Geospatial Interface is a name interpreter Interface that captures geospatial data on the alters in a participant's network.
+When using the Geospatial Interface, participants can select an outlined area on a map, which are defined by a GeoJSON file.
+
+
+## Mapbox Configuration
+
+This interface uses a third-party service called [Mapbox](https://www.mapbox.com/) to provide map functionality.
+To use this service, you need to create an account with Mapbox and retrieve an API key for communication with Architect, Interviewer, and Fresco.
+
+<TipBox>
+
+Mapbox offers a free tier which provides sufficient features and usage limits for small-scale projects. More information about pricing can be found on the [Mapbox pricing page](https://www.mapbox.com/pricing).
+
+</TipBox>
+
+To create a Mapbox account and retrieve an API Key:
+
+1. [Create an account](https://account.mapbox.com/auth/signup/) on Mapbox.
+
+2. Go to the [account overview](https://console.mapbox.com/).
+
+3. In the tokens section, click the copy button to copy the token.
+
+![Mapbox Token](/assets/img/interface-documentation/geospatial/mapbox-token.png)
+
+Once you have copied your API token from Mapbox, you can add it to your protocol in the API Key section of the interface configuration.
+Tokens can be reused across interfaces. They are accessible via the Resource Library and can be copied, deleted, or replaced if needed.
+
+![Enter your API Key and select it](/assets/img/interface-documentation/geospatial/upload-api-key.png)
+
+
+## Defining a Data Source
+This interface requires a [GeoJSON](https://geojson.org/) source for configuring map layers, which provide selectable areas for prompts. GeoJSON is a standard file format for representing geographic features, including areas or boundaries, along with their associated properties (such as names or categories).
+
+For example, a GeoJSON file might contain areas representing census tracts, with each area containing additional properties like the `zipcode` or `neighborhood`.
+
+![Upload a GeoJSON file](/assets/img/interface-documentation/geospatial/geojson.png)
+
+After uploading a GeoJSON file in the Data Source for Map Layers section, select a property (e.g., census tract or zip code) to define the selectable areas on the map. The values of this property will be used to assign variables for the prompts.
+
+For example, if your GeoJSON file contains a `TRACTID` property, selecting an area on the map will assign the `TRACTID` value to the prompt variable.
+
+![Select a property for map selection](/assets/img/interface-documentation/geospatial/selection-property.png)
+
+## Map Style
+You can customize the map's appearance by choosing from a variety of standard or classic [Mapbox styles](https://docs.mapbox.com/api/maps/styles/) and selecting the color for the map's outlines and selections.
+
+## Configuring Initial Map View
+Configure the initial map view by panning and zooming the map in Architect. The map will be centered based on the initial coordinates and zoom level as set here. Resetting the map will return it to this view.
+
+![Configure initial map view](/assets/img/interface-documentation/geospatial/initial-map-view.png)
+<TipBox danger>
+
+Make sure the selectable areas from your GeoJSON file are visible within the initial map view.
+
+</TipBox>
+
+## Prompts
+
+The Geospatial Interface can include multiple [prompts](/en/desktop/key-concepts/prompts), each corresponding to a single text variable.
+The value of each variable is determined by the property of the selected map area from the GeoJSON file.
+
+If a response is made outside the selectable areas on the map, the variable will be assigned `outside-map-area`.
+
+### Best Practices
+
+<GoodPractice>
+
+Consider using [network filtering](/en/desktop/key-concepts/network-filtering) to narrow down nodes to only those that fall within the
+selectable map areas. Prior name interpreters, such as [Categorical Bins](/en/desktop/interface-documentation/categorical-bin) or [Per Alter Forms](/en/desktop/interface-documentation/per-alter-form), can be used to
+capture additional variables that can be used to filter out nodes who are outside the map area. This ensures participants are only prompted to select an area on the map for relevant nodes,
+reducing the chances of assigning `outside-map-area` and minimizing response burden.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Choose a unique property (e.g., `zipcode` or `census_tract`) for map selection to ensure each area is clearly distinguishable.
+
+</GoodPractice>
+
+<GoodPractice>
+
+You can optionally merge all GeoJSON properties with your alter data during data cleaning and analysis. For example, you can match the `zipcode` to other attributes like `population` or other data contained in the GeoJSON file. 
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid using excessively large GeoJSON files that contain layers or areas far outside the intended selection areas. This can lead to slower performance when loading the map.
+
+</BadPractice>
