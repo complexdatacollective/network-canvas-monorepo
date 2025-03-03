@@ -13,5 +13,5 @@
 		"@codaco/tsconfig": "0.1.0",
 		"@codaco/github": "0.0.0"
 	},
-	"changesets": []
+	"changesets": ["twenty-turkeys-bathe"]
 }
