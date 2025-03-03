@@ -26,4 +26,3 @@ jobs:
         run: pnpm install
       - name: Run Biome
         run: pnpm biome check .
-
