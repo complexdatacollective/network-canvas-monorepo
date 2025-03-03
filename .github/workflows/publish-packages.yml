@@ -8,11 +8,12 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-
+    env:
+      NEXT_PUBLIC_DOCS_PATH: "docs"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
     - name: Check out the code
       uses: actions/checkout@v4
-
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
