@@ -20,7 +20,7 @@
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@types/node": "^20.5.2",
-		"typescript": "^5.6.3"
+		"typescript": "^5.8.2"
 	},
 	"dependencies": {
 		"zod": "^3.24.2"
