@@ -1,3 +1,5 @@
+// TODO: should be part of Fresco/Interviewer?
+
 export const caseProperty = "caseId";
 export const sessionProperty = "sessionId";
 export const protocolProperty = "protocolUID";

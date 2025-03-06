@@ -1,19 +1,19 @@
+import { get, isObject } from "es-toolkit/compat";
 import type {
 	AdditionalAttributes,
-	EntityTypeDefinition,
+	Codebook,
+	EntityDefinition,
 	FilterRule,
 	FormField,
-	ItemDefinition,
-	NcNode,
+	Item,
 	Panel,
 	Prompt,
+	Protocol,
 	Stage,
 	StageSubject,
-	VariableDefinition,
-	VariableValidation,
-} from "@codaco/shared-consts";
-import { get, isObject } from "es-toolkit/compat";
-import type { Codebook, Protocol } from "../schemas/8.zod";
+	Validation,
+	Variable,
+} from "../schemas/8.zod";
 import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,
@@ -23,7 +23,6 @@ import {
 	getVariableNameFromID,
 	getVariableNames,
 	getVariablesForSubject,
-	nodeVarsIncludeDisplayVar,
 } from "./helpers";
 
 /**
@@ -39,12 +38,6 @@ export const validateLogic = (protocol: Protocol) => {
 		"codebook",
 		(codebook) => !duplicateInArray(getEntityNames(codebook)),
 		(codebook) => `Duplicate entity name "${duplicateInArray(getEntityNames(codebook))}"`,
-	);
-
-	v.addValidation<NcNode>(
-		"codebook.node.*",
-		(nodeType) => nodeVarsIncludeDisplayVar(nodeType),
-		(nodeType) => `node displayVariable "${nodeType.displayVariable}" did not match any node variable`,
 	);
 
 	v.addValidation<StageSubject>(
@@ -93,7 +86,7 @@ export const validateLogic = (protocol: Protocol) => {
 	//   1. Check that any variables referenced by a validation exist in the codebook
 	//   2. Check that validation is not applied on a variable that is on an inappropriate
 	//      entity type.
-	v.addValidation<VariableValidation>(
+	v.addValidation<Validation>(
 		"codebook.ego.variables.*.validation",
 		// First, check that unique is not applied on any ego variables
 		(validation) => !Object.keys(validation).includes("unique"),
@@ -111,7 +104,7 @@ export const validateLogic = (protocol: Protocol) => {
 	v.addValidation<string>(
 		/codebook\..*\.variables\..*\.validation\.(sameAs|differentFrom|greaterThanVariable|lessThanVariable)/,
 		(variable, _, keypath) => {
-			let variablesForType: Record<string, VariableDefinition>;
+			let variablesForType: Record<string, Variable>;
 
 			if (keypath[2] === "ego") {
 				// Get variable registryfor the current variable's entity type
@@ -193,13 +186,13 @@ export const validateLogic = (protocol: Protocol) => {
 		(prompts) => `Prompts contain duplicate ID "${checkDuplicateNestedId(prompts)}"`,
 	);
 
-	v.addValidation<ItemDefinition[]>(
+	v.addValidation<Item[]>(
 		"stages[].items",
 		(items) => !checkDuplicateNestedId(items),
 		(items) => `Items contain duplicate ID "${checkDuplicateNestedId(items)}"`,
 	);
 
-	v.addValidation<EntityTypeDefinition["variables"]>(
+	v.addValidation<EntityDefinition["variables"]>(
 		/codebook\..*\.variables/,
 		(variableMap) => !duplicateInArray(getVariableNames(variableMap)),
 		(variableMap) => `Duplicate variable name "${duplicateInArray(getVariableNames(variableMap))}"`,
