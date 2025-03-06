@@ -11,10 +11,7 @@
 		"clean": "rm -rf .turbo node_modules",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": [
-		"typescript",
-		"library"
-	],
+	"keywords": ["typescript", "library"],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "MIT",
 	"devDependencies": {
