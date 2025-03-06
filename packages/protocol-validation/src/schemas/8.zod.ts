@@ -1,7 +1,5 @@
+import { VariableNameSchema } from "@codaco/shared-consts";
 import { z } from "zod";
-
-// Constants for repeated values
-export const VariableNameSchema = z.string().regex(/^[a-zA-Z0-9._:-]+$/);
 
 export const ComponentTypes = {
 	Boolean: "Boolean",

@@ -1,7 +1,6 @@
-import type { EntityTypeDefinition, FilterRule, NcNode, StageSubject } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import type { ValidationError } from "../";
-import type { Codebook } from "../schemas/8.zod";
+import type { Codebook, EntityDefinition, FilterRule, StageSubject } from "../schemas/8.zod";
 
 // For some error types, AJV returns info separate from message
 const additionalErrorInfo = (errorObj: ValidationError) => {
@@ -30,10 +29,6 @@ export const errToString = (errorObj: ValidationError | string) => {
 	}
 	return str;
 };
-
-export const nodeVarsIncludeDisplayVar = (node: NcNode) =>
-	!node.displayVariable || // displayVariable is optional
-	Object.keys(node.attributes).some((variableId) => variableId === node.displayVariable);
 
 /**
  * Check that the entity referenced in a FilterRule is defined in the codebook
@@ -64,8 +59,8 @@ export const getVariableNameFromID = (codebook: Codebook, subject: StageSubject,
 	return get(variables, [variableID, "name"], variableID);
 };
 
-export const getVariableNames = (registryVars: EntityTypeDefinition["variables"]) =>
-	Object.values(registryVars).map((vari) => vari.name);
+export const getVariableNames = (registryVars: EntityDefinition["variables"]) =>
+	registryVars ? Object.values(registryVars).map((vari) => vari.name) : [];
 
 export const getEntityNames = (codebook: Codebook) => [
 	...Object.values(codebook.node || {}).map((entity) => entity.name),

@@ -2,7 +2,19 @@
  * Migration from v7 to v8
  */
 
-const migration = (protocol) => protocol;
+const migration = (protocol) => {
+	// Iterate node and edge types in codebook, and remove 'displayVariable' property
+	for (const type of ["nodes", "edges"]) {
+		if (protocol.codebook[type]) {
+			for (const node of protocol.codebook[type]) {
+				if (node.displayVariable) {
+					// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
+					delete node.displayVariable;
+				}
+			}
+		}
+	}
+};
 
 // Markdown format
 const notes = `
@@ -12,6 +24,7 @@ const notes = `
 - Add new validation options for form fields: \`greaterThanVariable\` and \`lessThanVariable\`.
 - Add new comparator options for skip logic and filter: \`contains\` and \`does not contain\`.
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
+- Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 `;
 
 const v8 = {
