@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.2
+
+### Patch Changes
+
+- Improve types for variables
+
 ## 4.0.0-alpha.1
 
 ### Major Changes
