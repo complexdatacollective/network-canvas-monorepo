@@ -13,5 +13,5 @@
 		"@codaco/tsconfig": "0.1.0",
 		"@codaco/github": "0.0.0"
 	},
-	"changesets": ["common-eagles-walk", "twenty-turkeys-bathe"]
+	"changesets": ["twenty-turkeys-bathe"]
 }
