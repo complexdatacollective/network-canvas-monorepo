@@ -3,16 +3,15 @@
 	"scripts": {
 		"build": "turbo run build",
 		"dev": "turbo run dev",
-		"lint": "turbo run lint",
 		"test": "turbo run test",
 		"test:watch": "turbo run test:watch",
-		"publish-packages": "turbo run build lint && changeset publish",
+		"publish-packages": "turbo run format-and-lint:fix build && pnpm changeset publish",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@changesets/cli": "^2.27.9",
+		"@changesets/cli": "^2.28.1",
 		"turbo": "^2.3.0",
 		"typescript": "^5.6.3"
 	},
