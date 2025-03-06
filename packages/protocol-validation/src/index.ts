@@ -2,7 +2,7 @@ import type { DefinedError } from "ajv";
 import canUpgrade from "./migrations/canUpgrade";
 import getMigrationNotes from "./migrations/getMigrationNotes";
 import { migrateProtocol } from "./migrations/migrateProtocol";
-import type { MapOptions, Protocol } from "./schemas/8.zod";
+import type { Protocol } from "./schemas/8.zod";
 import { ensureError } from "./utils/ensureError";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
 import { errToString } from "./validation/helpers";
@@ -21,8 +21,8 @@ export {
 	validateSchema,
 };
 
-// types
-export type { MapOptions, Protocol };
+// Export schema types (Protocol, Codebook, etc)
+export type * from "./schemas/8.zod";
 
 export type ValidationError = Partial<DefinedError> & {
 	path: string;

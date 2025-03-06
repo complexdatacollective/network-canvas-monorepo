@@ -1,3 +1,5 @@
+// TODO: should be with network-exporters package
+
 export const nodeExportIDProperty = "nodeID";
 export const edgeExportIDProperty = "edgeID";
 export const egoProperty = "networkCanvasEgoUUID";
