@@ -1,7 +1,7 @@
 {
 	"name": "@codaco/shared-consts",
 	"private": true,
-	"version": "0.0.2",
+	"version": "1.0.0-alpha.0",
 	"description": "Shared constants and typescript definitions for the Network Canvas project.",
 	"type": "module",
 	"exports": {
@@ -11,7 +11,10 @@
 		"clean": "rm -rf .turbo node_modules",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["typescript", "library"],
+	"keywords": [
+		"typescript",
+		"library"
+	],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "MIT",
 	"devDependencies": {
