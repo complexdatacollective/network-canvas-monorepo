@@ -431,17 +431,23 @@ const egoFormStage = baseStageSchema.extend({
 	form: FormSchema,
 });
 
+export type EgoFormStage = z.infer<typeof egoFormStage>;
+
 const alterFormStage = baseStageSchema.extend({
 	type: z.literal("AlterForm"),
 	subject: StageSubjectSchema,
 	form: FormSchema,
 });
 
+export type AlterFormStage = z.infer<typeof alterFormStage>;
+
 const alterEdgeFormStage = baseStageSchema.extend({
 	type: z.literal("AlterEdgeForm"),
 	subject: StageSubjectSchema,
 	form: FormSchema,
 });
+
+export type AlterEdgeFormStage = z.infer<typeof alterEdgeFormStage>;
 
 const nameGeneratorStage = baseStageSchema.extend({
 	type: z.literal("NameGenerator"),
@@ -457,6 +463,8 @@ const nameGeneratorStage = baseStageSchema.extend({
 		.optional(),
 });
 
+export type NameGeneratorStage = z.infer<typeof nameGeneratorStage>;
+
 const nameGeneratorQuickAddStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorQuickAdd"),
 	quickAdd: z.string(),
@@ -470,6 +478,8 @@ const nameGeneratorQuickAddStage = baseStageSchema.extend({
 		})
 		.optional(),
 });
+
+export type NameGeneratorQuickAddStage = z.infer<typeof nameGeneratorQuickAddStage>;
 
 const nameGeneratorRosterStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorRoster"),
@@ -503,6 +513,8 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 		})
 		.optional(),
 });
+
+export type NameGeneratorRosterStage = z.infer<typeof nameGeneratorRosterStage>;
 
 const sociogramStage = baseStageSchema.extend({
 	type: z.literal("Sociogram"),
@@ -547,6 +559,8 @@ const sociogramStage = baseStageSchema.extend({
 		.min(1),
 });
 
+export type SociogramStage = z.infer<typeof sociogramStage>;
+
 const dyadCensusStage = baseStageSchema.extend({
 	type: z.literal("DyadCensus"),
 	subject: StageSubjectSchema,
@@ -558,6 +572,8 @@ const dyadCensusStage = baseStageSchema.extend({
 		)
 		.min(1),
 });
+
+export type DyadCensusStage = z.infer<typeof dyadCensusStage>;
 
 const tieStrengthCensusStage = baseStageSchema.extend({
 	type: z.literal("TieStrengthCensus"),
@@ -573,6 +589,8 @@ const tieStrengthCensusStage = baseStageSchema.extend({
 		.min(1),
 });
 
+export type TieStrengthCensusStage = z.infer<typeof tieStrengthCensusStage>;
+
 const ordinalBinStage = baseStageSchema.extend({
 	type: z.literal("OrdinalBin"),
 	subject: StageSubjectSchema,
@@ -587,6 +605,8 @@ const ordinalBinStage = baseStageSchema.extend({
 		)
 		.min(1),
 });
+
+export type OrdinalBinStage = z.infer<typeof ordinalBinStage>;
 
 const categoricalBinStage = baseStageSchema.extend({
 	type: z.literal("CategoricalBin"),
@@ -604,6 +624,8 @@ const categoricalBinStage = baseStageSchema.extend({
 		)
 		.min(1),
 });
+
+export type CategoricalBinStage = z.infer<typeof categoricalBinStage>;
 
 const narrativeStage = baseStageSchema.extend({
 	type: z.literal("Narrative"),
@@ -643,6 +665,8 @@ const narrativeStage = baseStageSchema.extend({
 		.optional(),
 });
 
+export type NarrativeStage = z.infer<typeof narrativeStage>;
+
 // TODO: Should be narrowed based on type
 const ItemSchema = z
 	.object({
@@ -663,6 +687,8 @@ const informationStage = baseStageSchema.extend({
 	items: z.array(ItemSchema),
 });
 
+export type InformationStage = z.infer<typeof informationStage>;
+
 const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
 	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
@@ -673,6 +699,8 @@ const anonymisationStage = baseStageSchema.extend({
 		})
 		.optional(),
 });
+
+export type AnonymisationStage = z.infer<typeof anonymisationStage>;
 
 const oneToManyDyadCensusStage = baseStageSchema.extend({
 	type: z.literal("OneToManyDyadCensus"),
@@ -691,9 +719,13 @@ const oneToManyDyadCensusStage = baseStageSchema.extend({
 		.min(1),
 });
 
+export type OneToManyDyadCensusStage = z.infer<typeof oneToManyDyadCensusStage>;
+
 const familyTreeCensusStage = baseStageSchema.extend({
 	type: z.literal("FamilyTreeCensus"),
 });
+
+export type FamilyTreeCensusStage = z.infer<typeof familyTreeCensusStage>;
 
 const mapboxStyleOptions = [
 	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },
