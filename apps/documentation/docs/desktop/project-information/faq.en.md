@@ -11,7 +11,7 @@ Network Canvas is a suite of three applications designed to assist researchers i
 
 We have designed our software to overcome a few distinct barriers to social network data collection:
 
-1. The act of collecting self-reported data is often dull and tedious. Our software is built with an emphasis on user experience, and has been rated highly in usability and satisfaction [testing](http://dl.acm.org/citation.cfm?id=2858368).
+1. The act of collecting self-reported data is often dull and tedious. Our software is built with an emphasis on user experience, and has been rated highly in usability and satisfaction [testing](https://doi.org/10.1145/2858036.2858368).
 2. There is not enough consistency or capacity for reproducibility across social network data collection. Having reusable, road-tested, and easy to implement instruments in our Architect software should help researchers to begin to standardize and improve the quality and impact of their research.
 3. Managing incoming network data and preparing it for statistical analysis is too difficult. Our Interviewer app will export data in formats that work with most common social network analysis applications and workflows.
 
