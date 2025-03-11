@@ -691,7 +691,7 @@ export type InformationStage = z.infer<typeof informationStage>;
 
 const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
-	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
+	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict(),
 	validation: z
 		.object({
 			minLength: z.number().int().optional(),
