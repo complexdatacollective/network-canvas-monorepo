@@ -1,5 +1,5 @@
 import type { DefinedError, ValidateFunction } from "ajv";
-import type { Protocol } from "../schemas/8.zod";
+import type { Protocol } from "src/schemas/8.zod";
 
 export const validateSchema = async (protocol: Protocol, forceVersion?: number) => {
 	if (!protocol) {

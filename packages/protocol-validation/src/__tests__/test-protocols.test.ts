@@ -1,196 +1,84 @@
-import dotenv from "dotenv";
-import gunzip from "gunzip-maybe";
-import type Zip from "jszip";
-import JSZip from "jszip";
-import { createDecipheriv } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-import { Readable } from "node:stream";
-import tarStream from "tar-stream";
+import { extractProtocol } from "src/utils/extractProtocol";
 import { beforeAll, describe, expect, it } from "vitest";
-import { validateProtocol } from "../index";
-import type { Protocol } from "../schemas/8.zod";
+import { type Protocol, validateProtocol } from "../";
+import { downloadAndDecryptProtocols } from "./utils";
 
-dotenv.config();
-
-const checkEnvVariable = (varName: string): string => {
-	const value = process.env[varName];
-	if (!value) {
-		throw new Error(`Missing environment variable: ${varName}`);
-	}
-	return value;
-};
-
-const ensureFolderExists = (folderPath: string) => {
-	if (!fs.existsSync(folderPath)) {
-		fs.mkdirSync(folderPath);
-	}
-};
-
-const checkCache = (): number => {
-	const cacheFilePath = path.join(__dirname, ".cache");
-	if (!fs.existsSync(cacheFilePath)) {
-		return 0;
-	}
-	const cache = fs.readFileSync(cacheFilePath, "utf8");
-	return Number.parseInt(cache);
-};
-
-const updateCache = (size: number) => {
-	const cacheFilePath = path.join(__dirname, ".cache");
-	fs.writeFileSync(cacheFilePath, size.toString());
-};
-
-// Utility functions for encryption handling
-const decryptFile = async (encryptedBuffer: Buffer) => {
-	const key = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
-	const iv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
-	const decipher = createDecipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.from(iv, "hex"));
-	return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
-};
-
-async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
-	const githubToken = checkEnvVariable("GITHUB_TOKEN");
-	const protocols = new Map<string, Buffer>();
-
-	const downloadFolder = path.join(__dirname, "data");
-	ensureFolderExists(downloadFolder);
-
-	try {
-		// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
-		const res = await fetch("https://api.github.com/repos/complexdatacollective/test-protocols/releases/latest", {
-			headers: {
-				Authorization: `Bearer ${githubToken}`,
-			},
-		});
-
-		const release = await res.json();
-
-		// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
-		const asset = release.assets.find((asset: { name: string }) => asset.name === "protocols.tar.gz.enc");
-
-		const assetSize = asset.size;
-
-		// Check the cache size and compare it with the current asset size
-		const cacheSize = checkCache();
-		if (cacheSize !== assetSize) {
-			console.log("Cache size mismatch. Downloading new protocols...");
-
-			// If sizes are different, delete the existing data directory
-			const dataFolder = path.join(__dirname, "data");
-			if (fs.existsSync(dataFolder)) {
-				fs.rmSync(dataFolder, { recursive: true, force: true });
-			}
-
-			// Fetch the asset into a Buffer
-			const assetRes = await fetch(asset.url, {
-				headers: {
-					Authorization: `Bearer ${githubToken}`,
-					Accept: "application/octet-stream",
-				},
-			});
-
-			const encryptedData = await assetRes.arrayBuffer();
-			const encryptedBuffer = Buffer.from(encryptedData);
-
-			const decryptedData = await decryptFile(encryptedBuffer);
-
-			// Save the decrypted data to the /data folder
-			ensureFolderExists(dataFolder);
-			const decryptedFilePath = path.join(dataFolder, "protocols.tar.gz");
-			fs.writeFileSync(decryptedFilePath, decryptedData);
-
-			updateCache(assetSize);
-		} else {
-			console.log("Cache is up to date. Skipping download.");
-		}
-
-		const decryptedFilePath = path.join(downloadFolder, "protocols.tar.gz");
-		const decryptedData = fs.readFileSync(decryptedFilePath);
-
-		const readStream = Readable.from(decryptedData);
-		const extract = tarStream.extract();
-
-		await new Promise((resolve, reject) => {
-			extract.on("entry", (header, stream, next) => {
-				if (header.name.startsWith("data/") && header.name.endsWith(".netcanvas")) {
-					const chunks: Buffer[] = [];
-					stream.on("data", (chunk) => chunks.push(chunk));
-					stream.on("end", () => {
-						const fileName = header.name.split("/").pop() as string;
-						protocols.set(fileName, Buffer.concat(chunks));
-						next();
-					});
-				} else {
-					stream.on("end", next);
-				}
-				stream.resume();
-			});
-
-			extract.on("finish", resolve);
-			extract.on("error", reject);
-
-			readStream.pipe(gunzip()).pipe(extract);
-		});
-
-		return protocols;
-	} catch (error) {
-		console.error("Error preparing protocols:", error);
-		throw error;
-	}
-}
-
-const getProtocolJsonAsObject = async (zip: Zip): Promise<Protocol> => {
-	const protocolString = await zip.file("protocol.json")?.async("string");
-
-	if (!protocolString) {
-		throw new Error("protocol.json not found in zip");
-	}
-
-	return JSON.parse(protocolString);
-};
-
-const validate = async (protocol: Protocol) => {
-	let schemaVersion = undefined;
-	if (!protocol.schemaVersion || protocol.schemaVersion.toString() === "1.0.0") {
-		schemaVersion = 1;
-	}
-
-	return await validateProtocol(protocol, schemaVersion);
-};
-
-const extractProtocol = async (protocolBuffer: Buffer): Promise<Protocol> => {
-	const zip = await JSZip.loadAsync(protocolBuffer);
-	return await getProtocolJsonAsObject(zip);
-};
-
-let protocols: Protocol[] = [];
+// Store protocols and their filenames separately
+const protocols: Protocol[] = [];
+const protocolFilenames: string[] = [];
 
 describe("Test protocols", () => {
 	beforeAll(async () => {
 		const protocolBuffers = await downloadAndDecryptProtocols();
 
-		// set protocols in context so that they can be accessed in tests
-		protocols = await Promise.all(
-			Array.from(protocolBuffers.values()).map(async (buffer) => {
-				return await extractProtocol(buffer);
-			}),
-		);
+		// Extract all protocols and keep track of filenames separately
+		for (const [filename, buffer] of protocolBuffers.entries()) {
+			const protocol = await extractProtocol(buffer);
+			protocols.push(protocol);
+			protocolFilenames.push(filename);
+		}
+
+		console.log(`Loaded ${protocols.length} protocols for testing`);
 	}, 300000);
 
-	it("should have loaded all protocols", () => {
+	it("should have loaded protocols", () => {
 		expect(protocols.length).toBeGreaterThan(0);
 	});
 
-	it("should validate each protocol file", async () => {
-		await Promise.all(
+	// Use a single test with detailed logging for each protocol
+	it("should validate each protocol individually with detailed logging", async () => {
+		const totalCount = protocols.length;
+
+		for (let i = 0; i < protocols.length; i++) {
+			// biome-ignore lint/style/noNonNullAssertion: <explanation>
+			const protocol = protocols[i]!;
+			const filename = protocolFilenames[i];
+
+			console.log(`\n[${i + 1}/${totalCount}] Validating protocol: ${filename}`);
+
+			// Get protocol name or ID for better logging
+			const protocolName = protocol.name || "Unknown";
+			console.log(`Protocol name: ${protocolName}`);
+
+			const startTime = Date.now();
+			const result = await validateProtocol(protocol);
+			const duration = Date.now() - startTime;
+
+			console.log(`Validation completed in ${duration}ms`);
+			console.log(`Result: ${result.isValid ? "✅ Valid" : "❌ Invalid"}`);
+
+			// If there are errors, log them
+			if (result.schemaErrors.length > 0) {
+				console.log(`Schema errors: ${JSON.stringify(result.schemaErrors, null, 2)}`);
+			}
+
+			if (result.logicErrors.length > 0) {
+				console.log(`Logic errors: ${JSON.stringify(result.logicErrors, null, 2)}`);
+			}
+
+			// Test each protocol individually but within the same test
+			expect(result.isValid).toBe(true);
+			expect(result.schemaErrors).toEqual([]);
+			expect(result.logicErrors).toEqual([]);
+		}
+	});
+
+	// Keep the original test as a summary test
+	it("should validate all protocols successfully", async () => {
+		console.log(`Validating all ${protocols.length} protocols in a batch test`);
+
+		const results = await Promise.all(
 			protocols.map(async (protocol) => {
-				const result = await validate(protocol);
-				expect(result.isValid).toBe(true);
-				expect(result.schemaErrors).toEqual([]);
-				expect(result.logicErrors).toEqual([]);
+				return await validateProtocol(protocol);
 			}),
 		);
-		console.log("All protocols validated successfully", protocols.length);
+
+		const validCount = results.filter((r) => r.isValid).length;
+		console.log(`Validation summary: ${validCount}/${results.length} protocols validated successfully`);
+
+		// Check if all protocols are valid
+		expect(results.every((r) => r.isValid)).toBe(true);
+		expect(results.every((r) => r.schemaErrors.length === 0)).toBe(true);
+		expect(results.every((r) => r.logicErrors.length === 0)).toBe(true);
 	});
 });

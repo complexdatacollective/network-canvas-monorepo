@@ -33,62 +33,282 @@
 						"node": {
 							"type": "object",
 							"additionalProperties": {
-								"anyOf": [
-									{
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"displayVariable": {
+										"type": "string"
+									},
+									"iconVariant": {
+										"type": "string"
+									},
+									"variables": {
 										"type": "object",
-										"properties": {
-											"name": {
-												"type": "string"
-											},
-											"displayVariable": {
-												"type": "string"
-											},
-											"iconVariant": {
-												"type": "string"
-											},
-											"variables": {
-												"type": "object",
-												"additionalProperties": {
+										"additionalProperties": {
+											"anyOf": [
+												{
 													"type": "object",
 													"properties": {
 														"name": {
 															"type": "string",
 															"pattern": "^[a-zA-Z0-9._:-]+$"
 														},
-														"type": {
-															"type": "string",
-															"enum": [
-																"boolean",
-																"text",
-																"number",
-																"datetime",
-																"ordinal",
-																"scalar",
-																"categorical",
-																"layout",
-																"location"
-															]
-														},
 														"encrypted": {
 															"type": "boolean"
 														},
+														"type": {
+															"type": "string",
+															"const": "text"
+														},
 														"component": {
 															"type": "string",
-															"enum": [
-																"Boolean",
-																"CheckboxGroup",
-																"Number",
-																"RadioGroup",
-																"Text",
-																"TextArea",
-																"Toggle",
-																"ToggleButtonGroup",
-																"Slider",
-																"VisualAnalogScale",
-																"LikertScale",
-																"DatePicker",
-																"RelativeDatePicker"
-															]
+															"enum": ["Text", "TextArea"]
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"type": "boolean"
+																},
+																"minLength": {
+																	"type": "integer"
+																},
+																"maxLength": {
+																	"type": "integer"
+																},
+																"sameAs": {
+																	"type": "string"
+																},
+																"unique": {
+																	"type": "boolean"
+																},
+																"differentFrom": {
+																	"type": "string"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "number"
+														},
+														"component": {
+															"type": "string",
+															"const": "Number"
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"minValue": {
+																	"type": "integer"
+																},
+																"maxValue": {
+																	"type": "integer"
+																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
+																"unique": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
+																},
+																"differentFrom": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
+																},
+																"greaterThanVariable": {
+																	"type": "string"
+																},
+																"lessThanVariable": {
+																	"type": "string"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "scalar"
+														},
+														"component": {
+															"type": "string",
+															"const": "VisualAnalogScale"
+														},
+														"parameters": {
+															"type": "object",
+															"properties": {
+																"minLabel": {
+																	"type": "string"
+																},
+																"maxLabel": {
+																	"type": "string"
+																}
+															},
+															"additionalProperties": false
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"minValue": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/minValue"
+																},
+																"maxValue": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/maxValue"
+																},
+																"greaterThanVariable": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/greaterThanVariable"
+																},
+																"lessThanVariable": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/lessThanVariable"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "boolean"
+														},
+														"component": {
+															"type": "string",
+															"const": "Boolean"
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
+																"unique": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
+																},
+																"differentFrom": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
+																}
+															},
+															"additionalProperties": false
+														},
+														"options": {
+															"type": "array",
+															"items": {
+																"type": "object",
+																"properties": {
+																	"label": {
+																		"type": "string"
+																	},
+																	"value": {
+																		"type": "boolean"
+																	}
+																},
+																"required": ["label", "value"],
+																"additionalProperties": false
+															}
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "boolean"
+														},
+														"component": {
+															"type": "string",
+															"const": "Toggle"
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
+																"unique": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
+																},
+																"differentFrom": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "ordinal"
+														},
+														"component": {
+															"type": "string",
+															"enum": ["RadioGroup", "LikertScale"]
 														},
 														"options": {
 															"type": "array",
@@ -106,8 +326,7 @@
 																						"type": "integer"
 																					},
 																					{
-																						"type": "string",
-																						"pattern": "^[a-zA-Z0-9._:-]+$"
+																						"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
 																					},
 																					{
 																						"type": "boolean"
@@ -130,30 +349,11 @@
 																]
 															}
 														},
-														"parameters": {
-															"type": "object",
-															"additionalProperties": {}
-														},
 														"validation": {
 															"type": "object",
 															"properties": {
 																"required": {
-																	"type": "boolean"
-																},
-																"requiredAcceptsNull": {
-																	"type": "boolean"
-																},
-																"minLength": {
-																	"type": "integer"
-																},
-																"maxLength": {
-																	"type": "integer"
-																},
-																"minValue": {
-																	"type": "integer"
-																},
-																"maxValue": {
-																	"type": "integer"
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
 																},
 																"minSelected": {
 																	"type": "integer"
@@ -161,20 +361,14 @@
 																"maxSelected": {
 																	"type": "integer"
 																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
 																"unique": {
-																	"type": "boolean"
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
 																},
 																"differentFrom": {
-																	"type": "string"
-																},
-																"sameAs": {
-																	"type": "string"
-																},
-																"greaterThanVariable": {
-																	"type": "string"
-																},
-																"lessThanVariable": {
-																	"type": "string"
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
 																}
 															},
 															"additionalProperties": false
@@ -183,60 +377,255 @@
 													"required": ["name", "type"],
 													"additionalProperties": false
 												},
-												"propertyNames": {
-													"pattern": "^[a-zA-Z0-9._:-]+$"
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "categorical"
+														},
+														"component": {
+															"type": "string",
+															"enum": ["CheckboxGroup", "ToggleButtonGroup"]
+														},
+														"options": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/5/properties/options"
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"minSelected": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/5/properties/validation/properties/minSelected"
+																},
+																"maxSelected": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/5/properties/validation/properties/maxSelected"
+																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
+																"unique": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
+																},
+																"differentFrom": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "datetime"
+														},
+														"component": {
+															"type": "string",
+															"const": "DatePicker"
+														},
+														"parameters": {
+															"type": "object",
+															"properties": {
+																"type": {
+																	"type": "string",
+																	"enum": ["full", "month", "year"]
+																},
+																"min": {
+																	"type": "string"
+																},
+																"max": {
+																	"type": "string"
+																}
+															},
+															"additionalProperties": false
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
+																"unique": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
+																},
+																"differentFrom": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
+																},
+																"greaterThanVariable": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/greaterThanVariable"
+																},
+																"lessThanVariable": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/lessThanVariable"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "datetime"
+														},
+														"component": {
+															"type": "string",
+															"const": "RelativeDatePicker"
+														},
+														"parameters": {
+															"type": "object",
+															"properties": {
+																"before": {
+																	"type": "integer"
+																},
+																"after": {
+																	"type": "integer"
+																}
+															},
+															"additionalProperties": false
+														},
+														"validation": {
+															"type": "object",
+															"properties": {
+																"required": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/required"
+																},
+																"sameAs": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/sameAs"
+																},
+																"unique": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/unique"
+																},
+																"differentFrom": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/validation/properties/differentFrom"
+																},
+																"greaterThanVariable": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/greaterThanVariable"
+																},
+																"lessThanVariable": {
+																	"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/1/properties/validation/properties/lessThanVariable"
+																}
+															},
+															"additionalProperties": false
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "layout"
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
+												},
+												{
+													"type": "object",
+													"properties": {
+														"name": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
+														},
+														"encrypted": {
+															"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/encrypted"
+														},
+														"type": {
+															"type": "string",
+															"const": "location"
+														}
+													},
+													"required": ["name", "type"],
+													"additionalProperties": false
 												}
-											},
-											"color": {
-												"type": "string"
-											}
+											]
 										},
-										"required": ["name", "color"],
-										"additionalProperties": false
+										"propertyNames": {
+											"pattern": "^[a-zA-Z0-9._:-]+$"
+										}
 									},
-									{
-										"not": {}
+									"color": {
+										"type": "string"
 									}
-								]
+								},
+								"required": ["name", "color"],
+								"additionalProperties": false
+							},
+							"propertyNames": {
+								"pattern": "^[a-zA-Z0-9._:-]+$"
 							}
 						},
 						"edge": {
 							"type": "object",
 							"additionalProperties": {
-								"anyOf": [
-									{
-										"type": "object",
-										"properties": {
-											"name": {
-												"type": "string"
-											},
-											"color": {
-												"type": "string"
-											},
-											"variables": {
-												"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
-											}
-										},
-										"required": ["name", "color"],
-										"additionalProperties": false
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string"
 									},
-									{
-										"not": {}
+									"color": {
+										"type": "string"
+									},
+									"variables": {
+										"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables"
 									}
-								]
+								},
+								"required": ["name", "color"],
+								"additionalProperties": false
+							},
+							"propertyNames": {
+								"pattern": "^[a-zA-Z0-9._:-]+$"
 							}
 						},
 						"ego": {
 							"type": "object",
 							"properties": {
 								"variables": {
-									"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/anyOf/0/properties/variables"
+									"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables"
 								}
 							},
 							"additionalProperties": false
 						}
 					},
-					"required": ["node"],
 					"additionalProperties": false
 				},
 				"assetManifest": {
@@ -494,24 +883,39 @@
 										"const": "AlterForm"
 									},
 									"subject": {
-										"type": "object",
-										"properties": {
-											"entity": {
-												"type": "string",
-												"enum": ["edge", "node", "ego"]
+										"anyOf": [
+											{
+												"type": "object",
+												"properties": {
+													"entity": {
+														"type": "string",
+														"enum": ["edge", "node"]
+													},
+													"type": {
+														"type": "string"
+													}
+												},
+												"required": ["entity", "type"],
+												"additionalProperties": false
 											},
-											"type": {
-												"type": "string"
+											{
+												"type": "object",
+												"properties": {
+													"entity": {
+														"type": "string",
+														"const": "ego"
+													}
+												},
+												"required": ["entity"],
+												"additionalProperties": false
 											}
-										},
-										"required": ["entity", "type"],
-										"additionalProperties": false
+										]
 									},
 									"form": {
 										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
 									}
 								},
-								"required": ["id", "label", "type", "form"],
+								"required": ["id", "label", "type", "subject", "form"],
 								"additionalProperties": false
 							},
 							{
@@ -546,7 +950,7 @@
 										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
 									}
 								},
-								"required": ["id", "label", "type", "form"],
+								"required": ["id", "label", "type", "subject", "form"],
 								"additionalProperties": false
 							},
 							{
@@ -626,7 +1030,7 @@
 														"type": "object",
 														"properties": {
 															"variable": {
-																"type": "string"
+																"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
 															},
 															"value": {
 																"type": "boolean"
@@ -655,7 +1059,7 @@
 										"additionalProperties": false
 									}
 								},
-								"required": ["id", "label", "type", "form", "prompts"],
+								"required": ["id", "label", "type", "form", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -715,7 +1119,7 @@
 										"additionalProperties": false
 									}
 								},
-								"required": ["id", "label", "type", "quickAdd", "prompts"],
+								"required": ["id", "label", "type", "quickAdd", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -859,7 +1263,7 @@
 										"additionalProperties": false
 									}
 								},
-								"required": ["id", "label", "type", "dataSource", "prompts"],
+								"required": ["id", "label", "type", "subject", "dataSource", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -978,7 +1382,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "prompts"],
+								"required": ["id", "label", "type", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -1030,7 +1434,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "prompts"],
+								"required": ["id", "label", "type", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -1088,7 +1492,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "prompts"],
+								"required": ["id", "label", "type", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -1149,7 +1553,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "prompts"],
+								"required": ["id", "label", "type", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -1216,7 +1620,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "prompts"],
+								"required": ["id", "label", "type", "subject", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -1313,7 +1717,7 @@
 										"additionalProperties": false
 									}
 								},
-								"required": ["id", "label", "type", "presets"],
+								"required": ["id", "label", "type", "subject", "presets"],
 								"additionalProperties": false
 							},
 							{
@@ -1493,7 +1897,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "behaviours", "prompts"],
+								"required": ["id", "label", "type", "subject", "behaviours", "prompts"],
 								"additionalProperties": false
 							},
 							{
@@ -1634,7 +2038,7 @@
 										"minItems": 1
 									}
 								},
-								"required": ["id", "label", "type", "mapOptions", "prompts"],
+								"required": ["id", "label", "type", "subject", "mapOptions", "prompts"],
 								"additionalProperties": false
 							}
 						]

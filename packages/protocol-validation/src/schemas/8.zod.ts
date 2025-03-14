@@ -77,7 +77,7 @@ const baseVariableSchema = z
 
 const numberVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.number),
-	component: z.literal(ComponentTypes.Number),
+	component: z.literal(ComponentTypes.Number).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -95,7 +95,7 @@ const numberVariableSchema = baseVariableSchema.extend({
 
 const scalarVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.scalar),
-	component: z.literal(ComponentTypes.VisualAnalogScale),
+	component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
 	parameters: z
 		.object({
 			minLabel: z.string().optional(),
@@ -131,7 +131,7 @@ export type DateFormat = (typeof DATE_FORMATS_KEYS)[number];
 
 const dateTimeDatePickerSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.DatePicker),
+	component: z.literal(ComponentTypes.DatePicker).optional(),
 	parameters: z
 		.object({
 			type: z.enum(["full", "month", "year"]).optional(),
@@ -139,7 +139,7 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
 			max: z.string().optional(),
 		})
 		.optional(),
-	validations: z
+	validation: z
 		.object(validations)
 		.pick({
 			required: true,
@@ -154,14 +154,14 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.RelativeDatePicker),
+	component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
 	parameters: z
 		.object({
 			before: z.number().int().optional(),
 			after: z.number().int().optional(),
 		})
 		.optional(),
-	validations: z
+	validation: z
 		.object(validations)
 		.pick({
 			required: true,
@@ -174,11 +174,9 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const datetimeVariableSchema = z.union([dateTimeDatePickerSchema, dateTimeRelativeDatePickerSchema]);
-
 const textVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.text),
-	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]),
+	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -192,9 +190,24 @@ const textVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const booleanVariableSchema = baseVariableSchema.extend({
+const booleanBooleanVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.boolean),
-	component: z.enum([ComponentTypes.Boolean, ComponentTypes.Toggle]),
+	component: z.literal(ComponentTypes.Boolean).optional(),
+	validation: z
+		.object(validations)
+		.pick({
+			required: true,
+			sameAs: true,
+			unique: true,
+			differentFrom: true,
+		})
+		.optional(),
+	options: z.array(z.object({ label: z.string(), value: z.boolean() })).optional(),
+});
+
+const booleanToggleVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.boolean),
+	component: z.literal(ComponentTypes.Toggle).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -205,10 +218,9 @@ const booleanVariableSchema = baseVariableSchema.extend({
 		})
 		.optional(),
 });
-
 const ordinalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.ordinal),
-	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]),
+	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]).optional(),
 	options: optionsSchema,
 	validation: z
 		.object(validations)
@@ -225,7 +237,7 @@ const ordinalVariableSchema = baseVariableSchema.extend({
 
 const categoricalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.categorical),
-	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]),
+	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]).optional(),
 	options: optionsSchema,
 	validation: z
 		.object(validations)
@@ -240,14 +252,26 @@ const categoricalVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
+const layoutVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.layout),
+});
+
+const locationVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.location),
+});
+
 export const VariableSchema = z.union([
 	textVariableSchema,
 	numberVariableSchema,
 	scalarVariableSchema,
-	datetimeVariableSchema,
-	booleanVariableSchema,
+	booleanBooleanVariableSchema,
+	booleanToggleVariableSchema,
 	ordinalVariableSchema,
 	categoricalVariableSchema,
+	dateTimeDatePickerSchema,
+	dateTimeRelativeDatePickerSchema,
+	layoutVariableSchema,
+	locationVariableSchema,
 ]);
 
 export type Variable = z.infer<typeof VariableSchema>;
@@ -431,23 +455,17 @@ const egoFormStage = baseStageSchema.extend({
 	form: FormSchema,
 });
 
-export type EgoFormStage = z.infer<typeof egoFormStage>;
-
 const alterFormStage = baseStageSchema.extend({
 	type: z.literal("AlterForm"),
 	subject: StageSubjectSchema,
 	form: FormSchema,
 });
 
-export type AlterFormStage = z.infer<typeof alterFormStage>;
-
 const alterEdgeFormStage = baseStageSchema.extend({
 	type: z.literal("AlterEdgeForm"),
 	subject: StageSubjectSchema,
 	form: FormSchema,
 });
-
-export type AlterEdgeFormStage = z.infer<typeof alterEdgeFormStage>;
 
 const nameGeneratorStage = baseStageSchema.extend({
 	type: z.literal("NameGenerator"),
@@ -463,8 +481,6 @@ const nameGeneratorStage = baseStageSchema.extend({
 		.optional(),
 });
 
-export type NameGeneratorStage = z.infer<typeof nameGeneratorStage>;
-
 const nameGeneratorQuickAddStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorQuickAdd"),
 	quickAdd: z.string(),
@@ -478,8 +494,6 @@ const nameGeneratorQuickAddStage = baseStageSchema.extend({
 		})
 		.optional(),
 });
-
-export type NameGeneratorQuickAddStage = z.infer<typeof nameGeneratorQuickAddStage>;
 
 const nameGeneratorRosterStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorRoster"),
@@ -513,8 +527,6 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 		})
 		.optional(),
 });
-
-export type NameGeneratorRosterStage = z.infer<typeof nameGeneratorRosterStage>;
 
 const sociogramStage = baseStageSchema.extend({
 	type: z.literal("Sociogram"),
@@ -559,8 +571,6 @@ const sociogramStage = baseStageSchema.extend({
 		.min(1),
 });
 
-export type SociogramStage = z.infer<typeof sociogramStage>;
-
 const dyadCensusStage = baseStageSchema.extend({
 	type: z.literal("DyadCensus"),
 	subject: StageSubjectSchema,
@@ -572,8 +582,6 @@ const dyadCensusStage = baseStageSchema.extend({
 		)
 		.min(1),
 });
-
-export type DyadCensusStage = z.infer<typeof dyadCensusStage>;
 
 const tieStrengthCensusStage = baseStageSchema.extend({
 	type: z.literal("TieStrengthCensus"),
@@ -589,8 +597,6 @@ const tieStrengthCensusStage = baseStageSchema.extend({
 		.min(1),
 });
 
-export type TieStrengthCensusStage = z.infer<typeof tieStrengthCensusStage>;
-
 const ordinalBinStage = baseStageSchema.extend({
 	type: z.literal("OrdinalBin"),
 	subject: StageSubjectSchema,
@@ -605,8 +611,6 @@ const ordinalBinStage = baseStageSchema.extend({
 		)
 		.min(1),
 });
-
-export type OrdinalBinStage = z.infer<typeof ordinalBinStage>;
 
 const categoricalBinStage = baseStageSchema.extend({
 	type: z.literal("CategoricalBin"),
@@ -624,8 +628,6 @@ const categoricalBinStage = baseStageSchema.extend({
 		)
 		.min(1),
 });
-
-export type CategoricalBinStage = z.infer<typeof categoricalBinStage>;
 
 const narrativeStage = baseStageSchema.extend({
 	type: z.literal("Narrative"),
@@ -665,8 +667,6 @@ const narrativeStage = baseStageSchema.extend({
 		.optional(),
 });
 
-export type NarrativeStage = z.infer<typeof narrativeStage>;
-
 // TODO: Should be narrowed based on type
 const ItemSchema = z
 	.object({
@@ -687,11 +687,9 @@ const informationStage = baseStageSchema.extend({
 	items: z.array(ItemSchema),
 });
 
-export type InformationStage = z.infer<typeof informationStage>;
-
 const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
-	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict(),
+	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
 	validation: z
 		.object({
 			minLength: z.number().int().optional(),
@@ -699,8 +697,6 @@ const anonymisationStage = baseStageSchema.extend({
 		})
 		.optional(),
 });
-
-export type AnonymisationStage = z.infer<typeof anonymisationStage>;
 
 const oneToManyDyadCensusStage = baseStageSchema.extend({
 	type: z.literal("OneToManyDyadCensus"),
@@ -719,13 +715,9 @@ const oneToManyDyadCensusStage = baseStageSchema.extend({
 		.min(1),
 });
 
-export type OneToManyDyadCensusStage = z.infer<typeof oneToManyDyadCensusStage>;
-
 const familyTreeCensusStage = baseStageSchema.extend({
 	type: z.literal("FamilyTreeCensus"),
 });
-
-export type FamilyTreeCensusStage = z.infer<typeof familyTreeCensusStage>;
 
 const mapboxStyleOptions = [
 	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },
@@ -831,7 +823,7 @@ const experimentsSchema = z.object({
 });
 
 // Main Protocol Schema
-export const Protocol = z
+const ProtocolSchema = z
 	.object({
 		name: z.string().optional(),
 		description: z.string().optional(),
@@ -844,4 +836,6 @@ export const Protocol = z
 	})
 	.strict();
 
-export type Protocol = z.infer<typeof Protocol>;
+export default ProtocolSchema;
+
+export type Protocol = z.infer<typeof ProtocolSchema>;
