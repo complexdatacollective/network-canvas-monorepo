@@ -10,7 +10,8 @@
 	"scripts": {
 		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"publish": "pnpm lint && pnpm build && npm publish --access public",
-		"dev": "npm run build -- --watch"
+		"dev": "npm run build -- --watch",
+		"typecheck": "tsc --noEmit"
 	},
 	"peerDependencies": {
 		"next": "13 || 14 || 15"

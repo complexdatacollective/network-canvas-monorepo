@@ -11,7 +11,8 @@
 		"test:watch": "vitest watch",
 		"generate": "npx drizzle-kit generate:pg",
 		"migrate": "npx tsx scripts/migrate.ts",
-		"seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts"
+		"seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@clerk/nextjs": "^6.3.4",

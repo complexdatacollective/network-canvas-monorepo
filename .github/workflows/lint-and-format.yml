@@ -14,7 +14,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
       - name: Install pnpm
         uses: pnpm/action-setup@v4
       - name: Cache pnpm
@@ -26,3 +26,5 @@ jobs:
         run: pnpm install
       - name: Run Biome
         run: pnpm biome check .
+      - name: Typecheck
+        run: pnpm typecheck-all
