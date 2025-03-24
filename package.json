@@ -6,6 +6,7 @@
 		"test": "turbo run test",
 		"test:watch": "turbo run test:watch",
 		"publish-packages": "turbo run format-and-lint:fix build && pnpm changeset publish",
+		"version-packages": "pnpm changeset version pnpm run format-and-lint:fix",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write"
 	},
