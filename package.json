@@ -8,7 +8,7 @@
 		"publish-packages": "turbo run format-and-lint:fix build && pnpm changeset publish",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write",
-		"typecheck-all": "pnpm -r run typecheck"
+		"typecheck-all": "pnpm -r run typecheck --no-bail"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
