@@ -30,6 +30,8 @@ jobs:
     - name: Create Release Pull Request
       uses: changesets/action@v1
       with:
+        # command used to version packages. allows for fixing formatting issues caused by versioning
+        version: pnpm run version-packages
         # builds packages and runs changesets publish. versioning is done by changesets action
         publish: pnpm run publish-packages
         createGithubReleases: true
