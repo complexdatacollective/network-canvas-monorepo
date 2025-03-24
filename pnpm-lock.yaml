@@ -346,6 +346,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.27
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.0.12
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.0.4(@types/react@19.0.12)
       '@types/unist':
         specifier: ^3.0.3
         version: 3.0.3
