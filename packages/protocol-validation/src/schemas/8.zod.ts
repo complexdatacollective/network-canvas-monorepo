@@ -51,21 +51,15 @@ const ValidationsSchema = z.object(validations);
 export type Validation = z.infer<typeof ValidationsSchema>;
 
 // Options Schema
-const optionsSchema = z
-	.array(
-		z.union([
-			z
-				.object({
-					label: z.string(),
-					value: z.union([z.number().int(), VariableNameSchema, z.boolean()]),
-					negative: z.boolean().optional(),
-				})
-				.strict(),
-			z.number().int(),
-			z.string(),
-		]),
-	)
-	.optional();
+const optionsSchema = z.array(
+	z
+		.object({
+			label: z.string(),
+			value: z.union([z.number().int(), z.string(), z.boolean()]),
+			negative: z.boolean().optional(),
+		})
+		.strict(),
+);
 
 // Variable Schema
 const baseVariableSchema = z
@@ -276,18 +270,26 @@ export const VariableSchema = z.union([
 
 export type Variable = z.infer<typeof VariableSchema>;
 
+type AllKeys<T> = T extends unknown ? keyof T : never;
+export type VariablePropertyKey = AllKeys<Variable>;
+
+type AllValues<T> = T extends unknown ? T[keyof T] : never;
+export type VariablePropertyValue = AllValues<Variable>;
+
 export const VariablesSchema = z.record(VariableNameSchema, VariableSchema);
 
 // Node, Edge, and Ego Schemas
 const NodeDefinitionSchema = z
 	.object({
 		name: z.string(),
-		displayVariable: z.string().optional(),
 		iconVariant: z.string().optional(),
 		variables: VariablesSchema.optional(),
 		color: z.string(),
 	})
 	.strict();
+
+export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
+export type NodeDefinitionKeys = AllKeys<NodeDefinition>;
 
 const EdgeDefinitionSchema = z
 	.object({
@@ -297,15 +299,22 @@ const EdgeDefinitionSchema = z
 	})
 	.strict();
 
+export type EdgeDefinition = z.infer<typeof EdgeDefinitionSchema>;
+export type EdgeDefinitionKeys = AllKeys<EdgeDefinition>;
+
 const EgoDefinitionSchema = z
 	.object({
 		variables: VariablesSchema.optional(),
 	})
 	.strict();
 
+export type EgoDefinition = z.infer<typeof EgoDefinitionSchema>;
+export type EgoDefinitionKeys = AllKeys<EgoDefinition>;
+
 const EntityDefinition = z.union([NodeDefinitionSchema, EdgeDefinitionSchema, EgoDefinitionSchema]);
 
 export type EntityDefinition = z.infer<typeof EntityDefinition>;
+export type EntityDefinitionKeys = AllKeys<EntityDefinition>;
 
 // Codebook Schema
 const CodebookSchema = z
@@ -328,7 +337,7 @@ const filterRuleSchema = z
 				type: z.string().optional(),
 				attribute: z.string().optional(),
 				operator: z.enum([
-					// TODO: this can be married based on `type` and `attribute`
+					// TODO: this can be narrowed based on `type` and `attribute`
 					"EXISTS",
 					"NOT_EXISTS",
 					"EXACTLY",
@@ -355,13 +364,21 @@ const filterRuleSchema = z
 
 export type FilterRule = z.infer<typeof filterRuleSchema>;
 
-const filterSchema = z
+const singleFilterRuleSchema = z
 	.object({
 		join: z.enum(["OR", "AND"]).optional(),
-		rules: z.array(filterRuleSchema).optional(),
+		rules: z.array(filterRuleSchema).max(1),
 	})
-	.strict()
-	.optional();
+	.strict();
+
+const multipleFilterRuleSchema = z
+	.object({
+		join: z.enum(["OR", "AND"]),
+		rules: z.array(filterRuleSchema).min(2),
+	})
+	.strict();
+
+const filterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
 const sortOrderSchema = z.array(
 	z
@@ -801,14 +818,18 @@ export type Stage = z.infer<typeof stageSchema>;
 
 const baseAssetSchema = z.object({
 	id: z.string().optional(),
-	type: z.enum(["image", "video", "network", "geojson", "audio", "apikey"]),
 	name: z.string(),
 });
 
-const fileAssetSchema = baseAssetSchema.extend({
-	type: z.enum(["image", "video", "network", "geojson", "audio"]),
+const videoAudioAssetSchema = baseAssetSchema.extend({
+	type: z.enum(["video", "audio"]),
 	source: z.string(),
 	loop: z.boolean().optional(),
+});
+
+const fileAssetSchema = baseAssetSchema.extend({
+	type: z.enum(["image", "network", "geojson"]),
+	source: z.string(),
 });
 
 const apiKeyAssetSchema = baseAssetSchema.extend({
@@ -816,7 +837,7 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 	value: z.string(),
 });
 
-const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema]);
+const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
 
 const experimentsSchema = z.object({
 	encryptNames: z.boolean().optional(),

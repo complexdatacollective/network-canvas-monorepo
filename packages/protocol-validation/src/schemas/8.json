@@ -38,9 +38,6 @@
 									"name": {
 										"type": "string"
 									},
-									"displayVariable": {
-										"type": "string"
-									},
 									"iconVariant": {
 										"type": "string"
 									},
@@ -313,40 +310,30 @@
 														"options": {
 															"type": "array",
 															"items": {
-																"anyOf": [
-																	{
-																		"type": "object",
-																		"properties": {
-																			"label": {
+																"type": "object",
+																"properties": {
+																	"label": {
+																		"type": "string"
+																	},
+																	"value": {
+																		"anyOf": [
+																			{
+																				"type": "integer"
+																			},
+																			{
 																				"type": "string"
 																			},
-																			"value": {
-																				"anyOf": [
-																					{
-																						"type": "integer"
-																					},
-																					{
-																						"$ref": "#/definitions/Protocol/properties/codebook/properties/node/additionalProperties/properties/variables/additionalProperties/anyOf/0/properties/name"
-																					},
-																					{
-																						"type": "boolean"
-																					}
-																				]
-																			},
-																			"negative": {
+																			{
 																				"type": "boolean"
 																			}
-																		},
-																		"required": ["label", "value"],
-																		"additionalProperties": false
+																		]
 																	},
-																	{
-																		"type": "integer"
-																	},
-																	{
-																		"type": "string"
+																	"negative": {
+																		"type": "boolean"
 																	}
-																]
+																},
+																"required": ["label", "value"],
+																"additionalProperties": false
 															}
 														},
 														"validation": {
@@ -374,7 +361,7 @@
 															"additionalProperties": false
 														}
 													},
-													"required": ["name", "type"],
+													"required": ["name", "type", "options"],
 													"additionalProperties": false
 												},
 												{
@@ -422,7 +409,7 @@
 															"additionalProperties": false
 														}
 													},
-													"required": ["name", "type"],
+													"required": ["name", "type", "options"],
 													"additionalProperties": false
 												},
 												{
@@ -638,21 +625,18 @@
 									"id": {
 										"type": "string"
 									},
-									"type": {
-										"type": "string",
-										"enum": ["image", "video", "network", "geojson", "audio"]
-									},
 									"name": {
 										"type": "string"
 									},
+									"type": {
+										"type": "string",
+										"enum": ["image", "network", "geojson"]
+									},
 									"source": {
 										"type": "string"
-									},
-									"loop": {
-										"type": "boolean"
 									}
 								},
-								"required": ["type", "name", "source"],
+								"required": ["name", "type", "source"],
 								"additionalProperties": false
 							},
 							{
@@ -661,18 +645,41 @@
 									"id": {
 										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/id"
 									},
+									"name": {
+										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
+									},
 									"type": {
 										"type": "string",
 										"enum": ["apikey"]
-									},
-									"name": {
-										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
 									},
 									"value": {
 										"type": "string"
 									}
 								},
-								"required": ["type", "name", "value"],
+								"required": ["name", "type", "value"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"id": {
+										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/id"
+									},
+									"name": {
+										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
+									},
+									"type": {
+										"type": "string",
+										"enum": ["video", "audio"]
+									},
+									"source": {
+										"type": "string"
+									},
+									"loop": {
+										"type": "boolean"
+									}
+								},
+								"required": ["name", "type", "source"],
 								"additionalProperties": false
 							}
 						]
@@ -698,9 +705,6 @@
 										"anyOf": [
 											{
 												"anyOf": [
-													{
-														"not": {}
-													},
 													{
 														"type": "object",
 														"properties": {
@@ -777,9 +781,29 @@
 																	},
 																	"required": ["type", "id", "options"],
 																	"additionalProperties": false
-																}
+																},
+																"maxItems": 1
 															}
 														},
+														"required": ["rules"],
+														"additionalProperties": false
+													},
+													{
+														"type": "object",
+														"properties": {
+															"join": {
+																"type": "string",
+																"enum": ["OR", "AND"]
+															},
+															"rules": {
+																"type": "array",
+																"items": {
+																	"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0/anyOf/0/properties/rules/items"
+																},
+																"minItems": 2
+															}
+														},
+														"required": ["join", "rules"],
 														"additionalProperties": false
 													}
 												]
@@ -807,7 +831,7 @@
 												]
 											}
 										},
-										"required": ["action"],
+										"required": ["action", "filter"],
 										"additionalProperties": false
 									},
 									"introductionPanel": {

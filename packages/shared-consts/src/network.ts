@@ -13,6 +13,10 @@ const variableValueSchema = z
 		encryptedValueSchema,
 		z.array(z.union([z.string(), z.number(), z.boolean()])), // Ordinal
 		z.record(z.string(), z.union([z.string(), z.boolean(), z.number()])), // Categorical
+		z.object({
+			x: z.number(),
+			y: z.number(),
+		}), // layout
 	])
 	.nullable();
 
@@ -27,7 +31,7 @@ export type EntityAttributesProperty = typeof entityAttributesProperty;
 export const edgeSourceProperty = "from";
 export const edgeTargetProperty = "to";
 
-const NcEntitySchema = z.object({
+const BaseNcEntitySchema = z.object({
 	[entityPrimaryKeyProperty]: z.string().readonly(),
 	[entityAttributesProperty]: z.record(VariableNameSchema, variableValueSchema),
 	[entitySecureAttributesMeta]: z
@@ -40,9 +44,7 @@ const NcEntitySchema = z.object({
 		.optional(),
 });
 
-export type NcEntity = z.infer<typeof NcEntitySchema>;
-
-const NcNodeSchema = NcEntitySchema.extend({
+const NcNodeSchema = BaseNcEntitySchema.extend({
 	type: z.string(),
 	stageId: z.string().optional(),
 	promptIDs: z.array(z.string()).optional(),
@@ -50,7 +52,7 @@ const NcNodeSchema = NcEntitySchema.extend({
 
 export type NcNode = z.infer<typeof NcNodeSchema>;
 
-export const NcEdgeSchema = NcEntitySchema.extend({
+export const NcEdgeSchema = BaseNcEntitySchema.extend({
 	type: z.string(),
 	from: z.string(),
 	to: z.string(),
@@ -58,12 +60,15 @@ export const NcEdgeSchema = NcEntitySchema.extend({
 
 export type NcEdge = z.infer<typeof NcEdgeSchema>;
 
-export type NcEgo = NcEntity;
+export const NcEntity = z.union([NcNodeSchema, NcEdgeSchema, BaseNcEntitySchema]);
+export type NcEntity = z.infer<typeof NcEntity>;
+
+export type NcEgo = z.infer<typeof BaseNcEntitySchema>;
 
 export const NcNetworkSchema = z.object({
 	nodes: z.array(NcNodeSchema),
 	edges: z.array(NcEdgeSchema),
-	ego: NcEntitySchema.optional(),
+	ego: BaseNcEntitySchema.optional(),
 });
 
 export type NcNetwork = {
