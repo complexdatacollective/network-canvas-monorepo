@@ -4,7 +4,7 @@
 import chalk from "chalk";
 import fs from "node:fs";
 import path from "node:path";
-import { errToString, validateProtocol } from "../dist/index.js";
+import { errToString, extractProtocol, validateProtocol } from "../dist/index.js";
 
 async function main() {
 	const [, , filePath, forceSchema = undefined] = process.argv;
@@ -34,10 +34,25 @@ async function main() {
 			throw new Error(`File not found: ${absolutePath}`);
 		}
 
-		// Read as JSON
-		const protocol = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+		// Check if the file is a .netcanvas or a .json file
+		if (!absolutePath.endsWith(".netcanvas") && !absolutePath.endsWith(".json")) {
+			error("File must be a .netcanvas or .json file");
+			process.exit(1);
+		}
+
+		let protocol;
+
+		// If it is a .netcanvas, extract the protocol.json inside it to os temp folder
+		if (absolutePath.endsWith(".netcanvas")) {
+			const fileBuffer = fs.readFileSync(absolutePath);
+			protocol = await extractProtocol(fileBuffer);
+		} else {
+			// Read as JSON
+			protocol = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+		}
 
 		const result = await validateProtocol(protocol, forceSchema ? Number.parseInt(forceSchema) : undefined);
+		// const result = await validateProtocolZod(protocol);
 
 		if (result.isValid) {
 			success("✅ Protocol is valid");

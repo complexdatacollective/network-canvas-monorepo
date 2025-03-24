@@ -51,21 +51,15 @@ const ValidationsSchema = z.object(validations);
 export type Validation = z.infer<typeof ValidationsSchema>;
 
 // Options Schema
-const optionsSchema = z
-	.array(
-		z.union([
-			z
-				.object({
-					label: z.string(),
-					value: z.union([z.number().int(), VariableNameSchema, z.boolean()]),
-					negative: z.boolean().optional(),
-				})
-				.strict(),
-			z.number().int(),
-			z.string(),
-		]),
-	)
-	.optional();
+const optionsSchema = z.array(
+	z
+		.object({
+			label: z.string(),
+			value: z.union([z.number().int(), z.string(), z.boolean()]),
+			negative: z.boolean().optional(),
+		})
+		.strict(),
+);
 
 // Variable Schema
 const baseVariableSchema = z
@@ -77,7 +71,7 @@ const baseVariableSchema = z
 
 const numberVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.number),
-	component: z.literal(ComponentTypes.Number),
+	component: z.literal(ComponentTypes.Number).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -95,7 +89,7 @@ const numberVariableSchema = baseVariableSchema.extend({
 
 const scalarVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.scalar),
-	component: z.literal(ComponentTypes.VisualAnalogScale),
+	component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
 	parameters: z
 		.object({
 			minLabel: z.string().optional(),
@@ -131,7 +125,7 @@ export type DateFormat = (typeof DATE_FORMATS_KEYS)[number];
 
 const dateTimeDatePickerSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.DatePicker),
+	component: z.literal(ComponentTypes.DatePicker).optional(),
 	parameters: z
 		.object({
 			type: z.enum(["full", "month", "year"]).optional(),
@@ -139,7 +133,7 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
 			max: z.string().optional(),
 		})
 		.optional(),
-	validations: z
+	validation: z
 		.object(validations)
 		.pick({
 			required: true,
@@ -154,14 +148,14 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.RelativeDatePicker),
+	component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
 	parameters: z
 		.object({
 			before: z.number().int().optional(),
 			after: z.number().int().optional(),
 		})
 		.optional(),
-	validations: z
+	validation: z
 		.object(validations)
 		.pick({
 			required: true,
@@ -174,11 +168,9 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const datetimeVariableSchema = z.union([dateTimeDatePickerSchema, dateTimeRelativeDatePickerSchema]);
-
 const textVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.text),
-	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]),
+	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -192,9 +184,24 @@ const textVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const booleanVariableSchema = baseVariableSchema.extend({
+const booleanBooleanVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.boolean),
-	component: z.enum([ComponentTypes.Boolean, ComponentTypes.Toggle]),
+	component: z.literal(ComponentTypes.Boolean).optional(),
+	validation: z
+		.object(validations)
+		.pick({
+			required: true,
+			sameAs: true,
+			unique: true,
+			differentFrom: true,
+		})
+		.optional(),
+	options: z.array(z.object({ label: z.string(), value: z.boolean() })).optional(),
+});
+
+const booleanToggleVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.boolean),
+	component: z.literal(ComponentTypes.Toggle).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -205,10 +212,9 @@ const booleanVariableSchema = baseVariableSchema.extend({
 		})
 		.optional(),
 });
-
 const ordinalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.ordinal),
-	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]),
+	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]).optional(),
 	options: optionsSchema,
 	validation: z
 		.object(validations)
@@ -225,7 +231,7 @@ const ordinalVariableSchema = baseVariableSchema.extend({
 
 const categoricalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.categorical),
-	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]),
+	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]).optional(),
 	options: optionsSchema,
 	validation: z
 		.object(validations)
@@ -240,17 +246,35 @@ const categoricalVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
+const layoutVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.layout),
+});
+
+const locationVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.location),
+});
+
 export const VariableSchema = z.union([
 	textVariableSchema,
 	numberVariableSchema,
 	scalarVariableSchema,
-	datetimeVariableSchema,
-	booleanVariableSchema,
+	booleanBooleanVariableSchema,
+	booleanToggleVariableSchema,
 	ordinalVariableSchema,
 	categoricalVariableSchema,
+	dateTimeDatePickerSchema,
+	dateTimeRelativeDatePickerSchema,
+	layoutVariableSchema,
+	locationVariableSchema,
 ]);
 
 export type Variable = z.infer<typeof VariableSchema>;
+
+type AllKeys<T> = T extends unknown ? keyof T : never;
+export type VariablePropertyKey = AllKeys<Variable>;
+
+type AllValues<T> = T extends unknown ? T[keyof T] : never;
+export type VariablePropertyValue = AllValues<Variable>;
 
 export const VariablesSchema = z.record(VariableNameSchema, VariableSchema);
 
@@ -258,12 +282,14 @@ export const VariablesSchema = z.record(VariableNameSchema, VariableSchema);
 const NodeDefinitionSchema = z
 	.object({
 		name: z.string(),
-		displayVariable: z.string().optional(),
 		iconVariant: z.string().optional(),
 		variables: VariablesSchema.optional(),
 		color: z.string(),
 	})
 	.strict();
+
+export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
+export type NodeDefinitionKeys = AllKeys<NodeDefinition>;
 
 const EdgeDefinitionSchema = z
 	.object({
@@ -273,15 +299,22 @@ const EdgeDefinitionSchema = z
 	})
 	.strict();
 
+export type EdgeDefinition = z.infer<typeof EdgeDefinitionSchema>;
+export type EdgeDefinitionKeys = AllKeys<EdgeDefinition>;
+
 const EgoDefinitionSchema = z
 	.object({
 		variables: VariablesSchema.optional(),
 	})
 	.strict();
 
+export type EgoDefinition = z.infer<typeof EgoDefinitionSchema>;
+export type EgoDefinitionKeys = AllKeys<EgoDefinition>;
+
 const EntityDefinition = z.union([NodeDefinitionSchema, EdgeDefinitionSchema, EgoDefinitionSchema]);
 
 export type EntityDefinition = z.infer<typeof EntityDefinition>;
+export type EntityDefinitionKeys = AllKeys<EntityDefinition>;
 
 // Codebook Schema
 const CodebookSchema = z
@@ -304,7 +337,7 @@ const filterRuleSchema = z
 				type: z.string().optional(),
 				attribute: z.string().optional(),
 				operator: z.enum([
-					// TODO: this can be married based on `type` and `attribute`
+					// TODO: this can be narrowed based on `type` and `attribute`
 					"EXISTS",
 					"NOT_EXISTS",
 					"EXACTLY",
@@ -331,13 +364,21 @@ const filterRuleSchema = z
 
 export type FilterRule = z.infer<typeof filterRuleSchema>;
 
-const filterSchema = z
+const singleFilterRuleSchema = z
 	.object({
 		join: z.enum(["OR", "AND"]).optional(),
-		rules: z.array(filterRuleSchema).optional(),
+		rules: z.array(filterRuleSchema).max(1),
 	})
-	.strict()
-	.optional();
+	.strict();
+
+const multipleFilterRuleSchema = z
+	.object({
+		join: z.enum(["OR", "AND"]),
+		rules: z.array(filterRuleSchema).min(2),
+	})
+	.strict();
+
+const filterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
 const sortOrderSchema = z.array(
 	z
@@ -777,14 +818,18 @@ export type Stage = z.infer<typeof stageSchema>;
 
 const baseAssetSchema = z.object({
 	id: z.string().optional(),
-	type: z.enum(["image", "video", "network", "geojson", "audio", "apikey"]),
 	name: z.string(),
 });
 
-const fileAssetSchema = baseAssetSchema.extend({
-	type: z.enum(["image", "video", "network", "geojson", "audio"]),
+const videoAudioAssetSchema = baseAssetSchema.extend({
+	type: z.enum(["video", "audio"]),
 	source: z.string(),
 	loop: z.boolean().optional(),
+});
+
+const fileAssetSchema = baseAssetSchema.extend({
+	type: z.enum(["image", "network", "geojson"]),
+	source: z.string(),
 });
 
 const apiKeyAssetSchema = baseAssetSchema.extend({
@@ -792,14 +837,14 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 	value: z.string(),
 });
 
-const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema]);
+const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
 
 const experimentsSchema = z.object({
 	encryptNames: z.boolean().optional(),
 });
 
 // Main Protocol Schema
-export const Protocol = z
+const ProtocolSchema = z
 	.object({
 		name: z.string().optional(),
 		description: z.string().optional(),
@@ -812,4 +857,6 @@ export const Protocol = z
 	})
 	.strict();
 
-export type Protocol = z.infer<typeof Protocol>;
+export default ProtocolSchema;
+
+export type Protocol = z.infer<typeof ProtocolSchema>;

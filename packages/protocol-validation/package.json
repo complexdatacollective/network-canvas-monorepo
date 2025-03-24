@@ -12,7 +12,7 @@
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
-		"prebuild": "pnpm run compile-schemas",
+		"prebuild": "pnpm run zod-to-json && pnpm run compile-schemas",
 		"build": "tsc --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"pretest": "pnpm run build",
