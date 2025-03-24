@@ -16,7 +16,8 @@
 		"build": "tsc --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"pretest": "pnpm run build",
-		"test": "vitest",
+		"test": "vitest --run",
+		"test:watch": "vitest",
 		"zod-to-json": "tsx ./scripts/zodToJson.ts",
 		"compile-schemas": "tsx ./scripts/compileSchemas.ts",
 		"typecheck": "tsc --noEmit"

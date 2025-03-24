@@ -1,11 +1,11 @@
 {
 	"private": true,
 	"scripts": {
-		"build": "turbo run build",
-		"dev": "turbo run dev",
-		"test": "turbo run test",
-		"test:watch": "turbo run test:watch",
-		"publish-packages": "turbo run format-and-lint:fix build && pnpm changeset publish",
+		"build": "pnpm -r build",
+		"dev": "pnpm -r dev",
+		"test": "pnpm -r test",
+		"test:watch": "pnpm -r test:watch",
+		"publish-packages": "pnpm run format-and-lint:fix && pnpm run build && pnpm changeset publish",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write",
 		"typecheck-all": "pnpm -r --no-bail run typecheck"
