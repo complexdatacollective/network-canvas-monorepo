@@ -10,17 +10,18 @@
 	"scripts": {
 		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"publish": "pnpm lint && pnpm build && npm publish --access public",
-		"dev": "npm run build -- --watch"
+		"dev": "npm run build -- --watch",
+		"typecheck": "tsc --noEmit"
 	},
 	"peerDependencies": {
 		"next": "13 || 14 || 15"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
-		"tsup": "^8.3.5",
-		"typescript": "^5.6.3"
+		"tsup": "^8.4.0",
+		"typescript": "catalog:"
 	},
 	"dependencies": {
-		"zod": "^3.23.8"
+		"zod": "catalog:"
 	}
 }

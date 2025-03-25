@@ -13,12 +13,12 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"postcss": "^8.4.35",
-		"tailwindcss": "^3.4.1",
-		"tailwindcss-animate": "^1.0.7"
+		"postcss": "catalog:",
+		"tailwindcss": "catalog:",
+		"tailwindcss-animate": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
-		"typescript": "^5.6.3"
+		"typescript": "catalog:"
 	}
 }
