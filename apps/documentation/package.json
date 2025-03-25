@@ -4,10 +4,11 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "tsx ./lib/writeSidebarJson.ts && pnpm next dev",
+		"dev": "pnpm writeSidebarJson && pnpm next dev",
 		"build": "pnpm next build",
 		"postbuild": "pnpm next-sitemap",
-		"prebuild": "tsx ./lib/writeSidebarJson.ts",
+		"prebuild": "pnpm writeSidebarJson",
+		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
 		"start": "pnpm next start",
 		"typecheck": "tsc --noEmit"
 	},
