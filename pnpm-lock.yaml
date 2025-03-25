@@ -81,6 +81,9 @@ catalogs:
     cmdk:
       specifier: ^1.0.4
       version: 1.1.1
+    dotenv:
+      specifier: ^16.4.7
+      version: 16.4.7
     lucide-react:
       specifier: ^0.483.0
       version: 0.483.0
@@ -111,6 +114,9 @@ catalogs:
     typescript:
       specifier: ^5.8.2
       version: 5.8.2
+    vitest:
+      specifier: ^3.0.9
+      version: 3.0.9
     zod:
       specifier: ^3.24.2
       version: 3.24.2
@@ -180,7 +186,7 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       dotenv:
-        specifier: ^16.4.7
+        specifier: 'catalog:'
         version: 16.4.7
       drizzle-orm:
         specifier: ^0.41.0
@@ -253,7 +259,7 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.2.3(@types/node@20.17.27)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0))
       vitest:
-        specifier: ^3.0.9
+        specifier: 'catalog:'
         version: 3.0.9(@types/debug@4.1.12)(@types/node@20.17.27)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
 
   apps/documentation:
@@ -304,7 +310,7 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       dotenv:
-        specifier: ^16.4.5
+        specifier: 'catalog:'
         version: 16.4.7
       framer-motion:
         specifier: ^11.11.15
@@ -509,7 +515,7 @@ importers:
         specifier: ^5.3.0
         version: 5.4.1
       dotenv:
-        specifier: ^16.4.5
+        specifier: 'catalog:'
         version: 16.4.7
       es-toolkit:
         specifier: ^1.32.0
@@ -539,7 +545,7 @@ importers:
         specifier: ^4.5.3
         version: 4.5.3(@types/node@22.13.13)(rollup@4.37.0)(typescript@5.8.2)(vite@6.2.3(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0))
       vitest:
-        specifier: ^3.0.7
+        specifier: 'catalog:'
         version: 3.0.9(@types/debug@4.1.12)(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
       zod-to-json-schema:
         specifier: ^3.24.3

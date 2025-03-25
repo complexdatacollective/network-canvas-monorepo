@@ -27,7 +27,7 @@
 		"@vercel/analytics": "^1.4.0",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.1",
-		"dotenv": "^16.4.5",
+		"dotenv": "catalog:",
 		"framer-motion": "^11.11.15",
 		"lucide-react": "catalog:",
 		"next": "catalog:",
