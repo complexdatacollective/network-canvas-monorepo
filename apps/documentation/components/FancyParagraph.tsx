@@ -1,5 +1,5 @@
 import { Paragraph, type ParagraphProps } from "@codaco/ui";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Children } from "react";
 
 // FancyParagraph animates individual words in a paragraph.

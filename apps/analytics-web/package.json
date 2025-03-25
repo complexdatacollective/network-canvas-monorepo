@@ -34,7 +34,7 @@
 		"dotenv": "catalog:",
 		"drizzle-orm": "^0.41.0",
 		"i18n-iso-countries": "^7.14.0",
-		"lucide-react": "^0.475.0",
+		"lucide-react": "catalog:",
 		"next": "catalog:",
 		"papaparse": "^5.5.2",
 		"react": "catalog:",

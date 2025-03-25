@@ -1,7 +1,7 @@
 "use client";
 
 import { Paragraph } from "@codaco/ui";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import Link from "next/link";
