@@ -1,6 +1,6 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@codaco/ui";
-import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
+import { motion } from "motion/react";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

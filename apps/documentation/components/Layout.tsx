@@ -1,7 +1,7 @@
 "use client";
 
 import { BackgroundBlobs } from "@codaco/art";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useLocale } from "next-intl";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "~/components/Sidebar";
