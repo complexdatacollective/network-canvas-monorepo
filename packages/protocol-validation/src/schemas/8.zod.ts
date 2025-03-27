@@ -50,6 +50,9 @@ const ValidationsSchema = z.object(validations);
 
 export type Validation = z.infer<typeof ValidationsSchema>;
 
+// Validation keys
+export type ValidationName = keyof Validation;
+
 // Options Schema
 const optionsSchema = z.array(
 	z
@@ -60,6 +63,8 @@ const optionsSchema = z.array(
 		})
 		.strict(),
 );
+
+export type VariableOptions = z.infer<typeof optionsSchema>;
 
 // Variable Schema
 const baseVariableSchema = z
@@ -278,6 +283,8 @@ export type VariablePropertyValue = AllValues<Variable>;
 
 export const VariablesSchema = z.record(VariableNameSchema, VariableSchema);
 
+export type Variables = z.infer<typeof VariablesSchema>;
+
 // Node, Edge, and Ego Schemas
 const NodeDefinitionSchema = z
 	.object({
@@ -357,8 +364,7 @@ const filterRuleSchema = z
 				]),
 				value: z.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())]).optional(),
 			})
-			.strict()
-			.and(z.any()),
+			.strict(),
 	})
 	.strict();
 
@@ -378,7 +384,7 @@ const multipleFilterRuleSchema = z
 	})
 	.strict();
 
-const filterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
+const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
 const sortOrderSchema = z.array(
 	z
@@ -396,7 +402,7 @@ const panelSchema = z
 	.object({
 		id: z.string(),
 		title: z.string(),
-		filter: z.union([filterSchema, z.null()]).optional(),
+		filter: z.union([FilterSchema, z.null()]).optional(),
 		dataSource: z.union([z.string(), z.null()]),
 	})
 	.strict();
@@ -437,19 +443,25 @@ const StageSubjectSchema = z.union([EntityStageSubjectSchema, EgoStageSubjectSch
 
 export type StageSubject = z.infer<typeof StageSubjectSchema>;
 
+const SkipLogicActionSchema = z.enum(["SHOW", "SKIP"]);
+export type SkipLogicAction = z.infer<typeof SkipLogicActionSchema>;
+
+const SkipLogicSchema = z
+	.object({
+		action: SkipLogicActionSchema,
+		filter: FilterSchema,
+	})
+	.strict();
+
+export type SkipLogic = z.infer<typeof SkipLogicSchema>;
+
 // Common schemas used across different stage types
 const baseStageSchema = z.object({
 	id: z.string(),
 	interviewScript: z.string().optional(),
 	label: z.string(),
-	filter: z.union([filterSchema, z.null()]).optional(),
-	skipLogic: z
-		.object({
-			action: z.enum(["SHOW", "SKIP"]),
-			filter: z.union([filterSchema, z.null()]),
-		})
-		.strict()
-		.optional(),
+	filter: FilterSchema.optional(),
+	skipLogic: SkipLogicSchema.optional(),
 	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
 });
 
@@ -706,7 +718,7 @@ const informationStage = baseStageSchema.extend({
 
 const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
-	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
+	explanationText: z.object({ title: z.string(), body: z.string() }).strict(),
 	validation: z
 		.object({
 			minLength: z.number().int().optional(),
@@ -813,6 +825,9 @@ const stageSchema = z.discriminatedUnion("type", [
 	familyTreeCensusStage,
 	geospatialStage,
 ]);
+
+// Extract all the 'type' values from stageSchema
+export type StageType = z.infer<typeof stageSchema>["type"];
 
 export type Stage = z.infer<typeof stageSchema>;
 

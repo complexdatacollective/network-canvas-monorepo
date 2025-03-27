@@ -704,112 +704,101 @@
 									"filter": {
 										"anyOf": [
 											{
-												"anyOf": [
-													{
-														"type": "object",
-														"properties": {
-															"join": {
-																"type": "string",
-																"enum": ["OR", "AND"]
-															},
-															"rules": {
-																"type": "array",
-																"items": {
+												"type": "object",
+												"properties": {
+													"join": {
+														"type": "string",
+														"enum": ["OR", "AND"]
+													},
+													"rules": {
+														"type": "array",
+														"items": {
+															"type": "object",
+															"properties": {
+																"type": {
+																	"type": "string",
+																	"enum": ["alter", "ego", "edge"]
+																},
+																"id": {
+																	"type": "string"
+																},
+																"options": {
 																	"type": "object",
 																	"properties": {
 																		"type": {
-																			"type": "string",
-																			"enum": ["alter", "ego", "edge"]
-																		},
-																		"id": {
 																			"type": "string"
 																		},
-																		"options": {
-																			"allOf": [
+																		"attribute": {
+																			"type": "string"
+																		},
+																		"operator": {
+																			"type": "string",
+																			"enum": [
+																				"EXISTS",
+																				"NOT_EXISTS",
+																				"EXACTLY",
+																				"NOT",
+																				"GREATER_THAN",
+																				"GREATER_THAN_OR_EQUAL",
+																				"LESS_THAN",
+																				"LESS_THAN_OR_EQUAL",
+																				"INCLUDES",
+																				"EXCLUDES",
+																				"OPTIONS_GREATER_THAN",
+																				"OPTIONS_LESS_THAN",
+																				"OPTIONS_EQUALS",
+																				"OPTIONS_NOT_EQUALS",
+																				"CONTAINS",
+																				"DOES NOT CONTAIN"
+																			]
+																		},
+																		"value": {
+																			"anyOf": [
 																				{
-																					"type": "object",
-																					"properties": {
-																						"type": {
-																							"type": "string"
-																						},
-																						"attribute": {
-																							"type": "string"
-																						},
-																						"operator": {
-																							"type": "string",
-																							"enum": [
-																								"EXISTS",
-																								"NOT_EXISTS",
-																								"EXACTLY",
-																								"NOT",
-																								"GREATER_THAN",
-																								"GREATER_THAN_OR_EQUAL",
-																								"LESS_THAN",
-																								"LESS_THAN_OR_EQUAL",
-																								"INCLUDES",
-																								"EXCLUDES",
-																								"OPTIONS_GREATER_THAN",
-																								"OPTIONS_LESS_THAN",
-																								"OPTIONS_EQUALS",
-																								"OPTIONS_NOT_EQUALS",
-																								"CONTAINS",
-																								"DOES NOT CONTAIN"
-																							]
-																						},
-																						"value": {
-																							"anyOf": [
-																								{
-																									"type": "integer"
-																								},
-																								{
-																									"type": "string"
-																								},
-																								{
-																									"type": "boolean"
-																								},
-																								{
-																									"type": "array"
-																								}
-																							]
-																						}
-																					},
-																					"required": ["operator"]
+																					"type": "integer"
 																				},
-																				{}
+																				{
+																					"type": "string"
+																				},
+																				{
+																					"type": "boolean"
+																				},
+																				{
+																					"type": "array"
+																				}
 																			]
 																		}
 																	},
-																	"required": ["type", "id", "options"],
+																	"required": ["operator"],
 																	"additionalProperties": false
-																},
-																"maxItems": 1
-															}
-														},
-														"required": ["rules"],
-														"additionalProperties": false
-													},
-													{
-														"type": "object",
-														"properties": {
-															"join": {
-																"type": "string",
-																"enum": ["OR", "AND"]
+																}
 															},
-															"rules": {
-																"type": "array",
-																"items": {
-																	"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0/anyOf/0/properties/rules/items"
-																},
-																"minItems": 2
-															}
+															"required": ["type", "id", "options"],
+															"additionalProperties": false
 														},
-														"required": ["join", "rules"],
-														"additionalProperties": false
+														"maxItems": 1
 													}
-												]
+												},
+												"required": ["rules"],
+												"additionalProperties": false
 											},
 											{
-												"type": "null"
+												"type": "object",
+												"properties": {
+													"join": {
+														"type": "string",
+														"enum": ["OR", "AND"]
+													},
+													"rules": {
+														"type": "array",
+														"items": {
+															"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0/properties/rules/items"
+														},
+														"minItems": 2
+													}
+												},
+												"required": ["join", "rules"],
+												"additionalProperties": false
 											}
 										]
 									},
@@ -821,14 +810,7 @@
 												"enum": ["SHOW", "SKIP"]
 											},
 											"filter": {
-												"anyOf": [
-													{
-														"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0"
-													},
-													{
-														"type": "null"
-													}
-												]
+												"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
 											}
 										},
 										"required": ["action", "filter"],
@@ -1022,7 +1004,7 @@
 												"filter": {
 													"anyOf": [
 														{
-															"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter/anyOf/0"
+															"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
 														},
 														{
 															"type": "null"
@@ -1824,21 +1806,24 @@
 										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/skipLogic"
 									},
 									"introductionPanel": {
+										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/introductionPanel"
+									},
+									"type": {
+										"type": "string",
+										"const": "Anonymisation"
+									},
+									"explanationText": {
 										"type": "object",
 										"properties": {
 											"title": {
 												"type": "string"
 											},
-											"text": {
+											"body": {
 												"type": "string"
 											}
 										},
-										"required": ["title", "text"],
+										"required": ["title", "body"],
 										"additionalProperties": false
-									},
-									"type": {
-										"type": "string",
-										"const": "Anonymisation"
 									},
 									"validation": {
 										"type": "object",
@@ -1853,7 +1838,7 @@
 										"additionalProperties": false
 									}
 								},
-								"required": ["id", "label", "type"],
+								"required": ["id", "label", "type", "explanationText"],
 								"additionalProperties": false
 							},
 							{

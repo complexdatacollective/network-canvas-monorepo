@@ -74,5 +74,5 @@ export const NcNetworkSchema = z.object({
 export type NcNetwork = {
 	nodes: NcNode[];
 	edges: NcEdge[];
-	ego?: NcEgo;
+	ego: NcEgo; // I've been back and forth on if ego should be optional, but Interviewers redux store defines it, so non-optional for now.
 };
