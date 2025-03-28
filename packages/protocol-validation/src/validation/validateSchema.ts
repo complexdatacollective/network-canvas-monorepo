@@ -1,6 +1,9 @@
 import type { DefinedError, ValidateFunction } from "ajv";
 import type { Protocol } from "src/schemas/8.zod";
 
+const warning = (message: string) => `\u001B[33m⚠️ ${message}\u001B[39m`;
+const info = (message: string) => `\u001B[34mℹ️ ${message}\u001B[39m`;
+
 export const validateSchema = async (protocol: Protocol, forceVersion?: number) => {
 	if (!protocol) {
 		throw new Error("Protocol is undefined");
@@ -13,7 +16,9 @@ export const validateSchema = async (protocol: Protocol, forceVersion?: number) 
 	}
 
 	if (forceVersion) {
-		console.log(`Forcing validation against schema version ${version}...`);
+		warning(`⚠️ Forcing validation against schema version ${version}.`);
+	} else {
+		info(`Validating against schema version ${version}.`);
 	}
 
 	const validator = await import(`../schemas/compiled/${version}.js`).then(

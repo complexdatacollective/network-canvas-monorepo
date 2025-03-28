@@ -10,6 +10,7 @@ const schemaArg = process.argv[2];
 const SCHEMA_DIR = "./src/schemas";
 
 const logError = (msg: string) => console.log(chalk.red(msg));
+const logInfo = (msg: string) => console.log(chalk.blue(msg));
 const logSuccess = (msg: string) => console.log(chalk.green(msg));
 
 export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: string, outputFileName: string) => {
@@ -22,11 +23,10 @@ export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: 
 	const jsonSchemaString = JSON.stringify(convertedSchema, null, 2);
 	try {
 		await writeFile(outputPath, jsonSchemaString);
-		logSuccess(`Successfully converted zod schema to json schema: ${outputPath}`);
 
 		// format the json schema with biome
 		execSync(`npx biome check ${outputPath} --write `);
-		logSuccess(`Successfully linted json schema: ${outputPath}`);
+		logInfo(`Successfully converted zod schema to json schema: ${outputPath}`);
 	} catch (e) {
 		const error = ensureError(e);
 		logError(`Error saving json schema to file: ${error.message}`);
@@ -59,7 +59,7 @@ const convertAllSchemas = async () => {
 			return false;
 		}
 
-		logSuccess(`Found ${zodFiles.length} zod schema files to convert`);
+		logInfo(`Found ${zodFiles.length} zod schema file${zodFiles.length > 1 ? "s" : ""} to convert`);
 
 		let successCount = 0;
 		for (const file of zodFiles) {
@@ -68,7 +68,7 @@ const convertAllSchemas = async () => {
 			if (success) successCount++;
 		}
 
-		logSuccess(`Successfully converted ${successCount}/${zodFiles.length} zod schemas`);
+		logSuccess(`Successfully converted ${successCount}/${zodFiles.length} zod schemas!`);
 		return successCount > 0;
 	} catch (e) {
 		const error = ensureError(e);

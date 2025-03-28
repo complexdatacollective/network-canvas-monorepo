@@ -53,18 +53,17 @@ export type Validation = z.infer<typeof ValidationsSchema>;
 // Validation keys
 export type ValidationName = keyof Validation;
 
-// Options Schema
-const optionsSchema = z.array(
+// Options Schema for categorical and ordinal variables
+const categoricalOptionsSchema = z.array(
 	z
 		.object({
 			label: z.string(),
 			value: z.union([z.number().int(), z.string(), z.boolean()]),
-			negative: z.boolean().optional(),
 		})
 		.strict(),
 );
 
-export type VariableOptions = z.infer<typeof optionsSchema>;
+export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 
 // Variable Schema
 const baseVariableSchema = z
@@ -189,6 +188,10 @@ const textVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
+const booleanOptionsSchema = z.array(
+	z.object({ label: z.string(), value: z.boolean(), negative: z.boolean().optional() }),
+);
+
 const booleanBooleanVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.boolean),
 	component: z.literal(ComponentTypes.Boolean).optional(),
@@ -201,7 +204,7 @@ const booleanBooleanVariableSchema = baseVariableSchema.extend({
 			differentFrom: true,
 		})
 		.optional(),
-	options: z.array(z.object({ label: z.string(), value: z.boolean() })).optional(),
+	options: booleanOptionsSchema.optional(), // This is different from the categorical options!
 });
 
 const booleanToggleVariableSchema = baseVariableSchema.extend({
@@ -220,7 +223,7 @@ const booleanToggleVariableSchema = baseVariableSchema.extend({
 const ordinalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.ordinal),
 	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]).optional(),
-	options: optionsSchema,
+	options: categoricalOptionsSchema,
 	validation: z
 		.object(validations)
 		.pick({
@@ -237,7 +240,7 @@ const ordinalVariableSchema = baseVariableSchema.extend({
 const categoricalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.categorical),
 	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]).optional(),
-	options: optionsSchema,
+	options: categoricalOptionsSchema,
 	validation: z
 		.object(validations)
 		.pick({
@@ -861,7 +864,6 @@ const experimentsSchema = z.object({
 // Main Protocol Schema
 const ProtocolSchema = z
 	.object({
-		name: z.string().optional(),
 		description: z.string().optional(),
 		experiments: experimentsSchema.optional(),
 		lastModified: z.string().datetime().optional(),

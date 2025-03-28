@@ -4,9 +4,6 @@
 		"Protocol": {
 			"type": "object",
 			"properties": {
-				"name": {
-					"type": "string"
-				},
 				"description": {
 					"type": "string"
 				},
@@ -241,6 +238,9 @@
 																	},
 																	"value": {
 																		"type": "boolean"
+																	},
+																	"negative": {
+																		"type": "boolean"
 																	}
 																},
 																"required": ["label", "value"],
@@ -327,9 +327,6 @@
 																				"type": "boolean"
 																			}
 																		]
-																	},
-																	"negative": {
-																		"type": "boolean"
 																	}
 																},
 																"required": ["label", "value"],
