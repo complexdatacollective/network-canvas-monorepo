@@ -1,10 +1,12 @@
+/// <reference types="vitest" />
+
 import { execSync } from "node:child_process";
 import path, { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import dts from "vite-plugin-dts";
 
-const schemaPlugin = () => {
+const schemaPlugin = (): Plugin => {
 	return {
 		name: "schema",
 
@@ -45,4 +47,7 @@ export default defineConfig({
 			rollupTypes: true,
 		}),
 	],
+	test: {
+		disableConsoleIntercept: true,
+	},
 });
