@@ -3,6 +3,8 @@ import { z } from "zod";
 // Constants for repeated values
 export const VariableNameSchema = z.string().regex(/^[a-zA-Z0-9._:-]+$/); // TODO: think about using branding here
 
+// TODO: Should be with protocol definitions.
+
 export type InputControlDefinition = {
 	label: string;
 	description: string;
