@@ -50,22 +50,20 @@ const ValidationsSchema = z.object(validations);
 
 export type Validation = z.infer<typeof ValidationsSchema>;
 
-// Options Schema
-const optionsSchema = z
-	.array(
-		z.union([
-			z
-				.object({
-					label: z.string(),
-					value: z.union([z.number().int(), VariableNameSchema, z.boolean()]),
-					negative: z.boolean().optional(),
-				})
-				.strict(),
-			z.number().int(),
-			z.string(),
-		]),
-	)
-	.optional();
+// Validation keys
+export type ValidationName = keyof Validation;
+
+// Options Schema for categorical and ordinal variables
+const categoricalOptionsSchema = z.array(
+	z
+		.object({
+			label: z.string(),
+			value: z.union([z.number().int(), z.string(), z.boolean()]),
+		})
+		.strict(),
+);
+
+export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 
 // Variable Schema
 const baseVariableSchema = z
@@ -77,7 +75,7 @@ const baseVariableSchema = z
 
 const numberVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.number),
-	component: z.literal(ComponentTypes.Number),
+	component: z.literal(ComponentTypes.Number).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -95,7 +93,7 @@ const numberVariableSchema = baseVariableSchema.extend({
 
 const scalarVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.scalar),
-	component: z.literal(ComponentTypes.VisualAnalogScale),
+	component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
 	parameters: z
 		.object({
 			minLabel: z.string().optional(),
@@ -131,7 +129,7 @@ export type DateFormat = (typeof DATE_FORMATS_KEYS)[number];
 
 const dateTimeDatePickerSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.DatePicker),
+	component: z.literal(ComponentTypes.DatePicker).optional(),
 	parameters: z
 		.object({
 			type: z.enum(["full", "month", "year"]).optional(),
@@ -139,7 +137,7 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
 			max: z.string().optional(),
 		})
 		.optional(),
-	validations: z
+	validation: z
 		.object(validations)
 		.pick({
 			required: true,
@@ -154,14 +152,14 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.RelativeDatePicker),
+	component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
 	parameters: z
 		.object({
 			before: z.number().int().optional(),
 			after: z.number().int().optional(),
 		})
 		.optional(),
-	validations: z
+	validation: z
 		.object(validations)
 		.pick({
 			required: true,
@@ -174,11 +172,9 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const datetimeVariableSchema = z.union([dateTimeDatePickerSchema, dateTimeRelativeDatePickerSchema]);
-
 const textVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.text),
-	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]),
+	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -192,9 +188,28 @@ const textVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const booleanVariableSchema = baseVariableSchema.extend({
+const booleanOptionsSchema = z.array(
+	z.object({ label: z.string(), value: z.boolean(), negative: z.boolean().optional() }),
+);
+
+const booleanBooleanVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.boolean),
-	component: z.enum([ComponentTypes.Boolean, ComponentTypes.Toggle]),
+	component: z.literal(ComponentTypes.Boolean).optional(),
+	validation: z
+		.object(validations)
+		.pick({
+			required: true,
+			sameAs: true,
+			unique: true,
+			differentFrom: true,
+		})
+		.optional(),
+	options: booleanOptionsSchema.optional(), // This is different from the categorical options!
+});
+
+const booleanToggleVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.boolean),
+	component: z.literal(ComponentTypes.Toggle).optional(),
 	validation: z
 		.object(validations)
 		.pick({
@@ -205,11 +220,10 @@ const booleanVariableSchema = baseVariableSchema.extend({
 		})
 		.optional(),
 });
-
 const ordinalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.ordinal),
-	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]),
-	options: optionsSchema,
+	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]).optional(),
+	options: categoricalOptionsSchema,
 	validation: z
 		.object(validations)
 		.pick({
@@ -225,8 +239,8 @@ const ordinalVariableSchema = baseVariableSchema.extend({
 
 const categoricalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.categorical),
-	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]),
-	options: optionsSchema,
+	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]).optional(),
+	options: categoricalOptionsSchema,
 	validation: z
 		.object(validations)
 		.pick({
@@ -240,30 +254,52 @@ const categoricalVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
+const layoutVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.layout),
+});
+
+const locationVariableSchema = baseVariableSchema.extend({
+	type: z.literal(VariableTypes.location),
+});
+
 export const VariableSchema = z.union([
 	textVariableSchema,
 	numberVariableSchema,
 	scalarVariableSchema,
-	datetimeVariableSchema,
-	booleanVariableSchema,
+	booleanBooleanVariableSchema,
+	booleanToggleVariableSchema,
 	ordinalVariableSchema,
 	categoricalVariableSchema,
+	dateTimeDatePickerSchema,
+	dateTimeRelativeDatePickerSchema,
+	layoutVariableSchema,
+	locationVariableSchema,
 ]);
 
 export type Variable = z.infer<typeof VariableSchema>;
 
+type AllKeys<T> = T extends unknown ? keyof T : never;
+export type VariablePropertyKey = AllKeys<Variable>;
+
+type AllValues<T> = T extends unknown ? T[keyof T] : never;
+export type VariablePropertyValue = AllValues<Variable>;
+
 export const VariablesSchema = z.record(VariableNameSchema, VariableSchema);
+
+export type Variables = z.infer<typeof VariablesSchema>;
 
 // Node, Edge, and Ego Schemas
 const NodeDefinitionSchema = z
 	.object({
 		name: z.string(),
-		displayVariable: z.string().optional(),
 		iconVariant: z.string().optional(),
 		variables: VariablesSchema.optional(),
 		color: z.string(),
 	})
 	.strict();
+
+export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
+export type NodeDefinitionKeys = AllKeys<NodeDefinition>;
 
 const EdgeDefinitionSchema = z
 	.object({
@@ -273,15 +309,22 @@ const EdgeDefinitionSchema = z
 	})
 	.strict();
 
+export type EdgeDefinition = z.infer<typeof EdgeDefinitionSchema>;
+export type EdgeDefinitionKeys = AllKeys<EdgeDefinition>;
+
 const EgoDefinitionSchema = z
 	.object({
 		variables: VariablesSchema.optional(),
 	})
 	.strict();
 
+export type EgoDefinition = z.infer<typeof EgoDefinitionSchema>;
+export type EgoDefinitionKeys = AllKeys<EgoDefinition>;
+
 const EntityDefinition = z.union([NodeDefinitionSchema, EdgeDefinitionSchema, EgoDefinitionSchema]);
 
 export type EntityDefinition = z.infer<typeof EntityDefinition>;
+export type EntityDefinitionKeys = AllKeys<EntityDefinition>;
 
 // Codebook Schema
 const CodebookSchema = z
@@ -304,7 +347,7 @@ const filterRuleSchema = z
 				type: z.string().optional(),
 				attribute: z.string().optional(),
 				operator: z.enum([
-					// TODO: this can be married based on `type` and `attribute`
+					// TODO: this can be narrowed based on `type` and `attribute`
 					"EXISTS",
 					"NOT_EXISTS",
 					"EXACTLY",
@@ -324,20 +367,27 @@ const filterRuleSchema = z
 				]),
 				value: z.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())]).optional(),
 			})
-			.strict()
-			.and(z.any()),
+			.strict(),
 	})
 	.strict();
 
 export type FilterRule = z.infer<typeof filterRuleSchema>;
 
-const filterSchema = z
+const singleFilterRuleSchema = z
 	.object({
 		join: z.enum(["OR", "AND"]).optional(),
-		rules: z.array(filterRuleSchema).optional(),
+		rules: z.array(filterRuleSchema).max(1),
 	})
-	.strict()
-	.optional();
+	.strict();
+
+const multipleFilterRuleSchema = z
+	.object({
+		join: z.enum(["OR", "AND"]),
+		rules: z.array(filterRuleSchema).min(2),
+	})
+	.strict();
+
+const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
 const sortOrderSchema = z.array(
 	z
@@ -355,7 +405,7 @@ const panelSchema = z
 	.object({
 		id: z.string(),
 		title: z.string(),
-		filter: z.union([filterSchema, z.null()]).optional(),
+		filter: z.union([FilterSchema, z.null()]).optional(),
 		dataSource: z.union([z.string(), z.null()]),
 	})
 	.strict();
@@ -396,19 +446,25 @@ const StageSubjectSchema = z.union([EntityStageSubjectSchema, EgoStageSubjectSch
 
 export type StageSubject = z.infer<typeof StageSubjectSchema>;
 
+const SkipLogicActionSchema = z.enum(["SHOW", "SKIP"]);
+export type SkipLogicAction = z.infer<typeof SkipLogicActionSchema>;
+
+const SkipLogicSchema = z
+	.object({
+		action: SkipLogicActionSchema,
+		filter: FilterSchema,
+	})
+	.strict();
+
+export type SkipLogic = z.infer<typeof SkipLogicSchema>;
+
 // Common schemas used across different stage types
 const baseStageSchema = z.object({
 	id: z.string(),
 	interviewScript: z.string().optional(),
 	label: z.string(),
-	filter: z.union([filterSchema, z.null()]).optional(),
-	skipLogic: z
-		.object({
-			action: z.enum(["SHOW", "SKIP"]),
-			filter: z.union([filterSchema, z.null()]),
-		})
-		.strict()
-		.optional(),
+	filter: FilterSchema.optional(),
+	skipLogic: SkipLogicSchema.optional(),
 	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
 });
 
@@ -665,7 +721,7 @@ const informationStage = baseStageSchema.extend({
 
 const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
-	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
+	explanationText: z.object({ title: z.string(), body: z.string() }).strict(),
 	validation: z
 		.object({
 			minLength: z.number().int().optional(),
@@ -773,18 +829,25 @@ const stageSchema = z.discriminatedUnion("type", [
 	geospatialStage,
 ]);
 
+// Extract all the 'type' values from stageSchema
+export type StageType = z.infer<typeof stageSchema>["type"];
+
 export type Stage = z.infer<typeof stageSchema>;
 
 const baseAssetSchema = z.object({
 	id: z.string().optional(),
-	type: z.enum(["image", "video", "network", "geojson", "audio", "apikey"]),
 	name: z.string(),
 });
 
-const fileAssetSchema = baseAssetSchema.extend({
-	type: z.enum(["image", "video", "network", "geojson", "audio"]),
+const videoAudioAssetSchema = baseAssetSchema.extend({
+	type: z.enum(["video", "audio"]),
 	source: z.string(),
 	loop: z.boolean().optional(),
+});
+
+const fileAssetSchema = baseAssetSchema.extend({
+	type: z.enum(["image", "network", "geojson"]),
+	source: z.string(),
 });
 
 const apiKeyAssetSchema = baseAssetSchema.extend({
@@ -792,16 +855,15 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 	value: z.string(),
 });
 
-const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema]);
+const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
 
 const experimentsSchema = z.object({
 	encryptNames: z.boolean().optional(),
 });
 
 // Main Protocol Schema
-export const Protocol = z
+const ProtocolSchema = z
 	.object({
-		name: z.string().optional(),
 		description: z.string().optional(),
 		experiments: experimentsSchema.optional(),
 		lastModified: z.string().datetime().optional(),
@@ -812,4 +874,6 @@ export const Protocol = z
 	})
 	.strict();
 
-export type Protocol = z.infer<typeof Protocol>;
+export default ProtocolSchema;
+
+export type Protocol = z.infer<typeof ProtocolSchema>;

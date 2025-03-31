@@ -2,11 +2,29 @@ name: Documentation Check for Broken Links
 
 on:
   deployment_status
+
 jobs:
-  linkinator:
+  check_paths:
     runs-on: ubuntu-latest
-    # Runs if the deployment environment starts with 'preview' and the deployment status is 'success', and if the url does not contain 'analytics'
     if: ${{ startsWith(github.event.deployment_status.environment, 'preview') && github.event.deployment_status.state == 'success' && !contains(github.event.deployment_status.environment_url, 'analytics')}}
+    outputs:
+      docs_changed: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper path filtering
+      
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docs:
+              - 'apps/documentation/**'
+  
+  linkinator:
+    needs: check_paths
+    if: ${{ needs.check_paths.outputs.docs_changed == 'true' }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4

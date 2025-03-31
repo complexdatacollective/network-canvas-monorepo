@@ -70,9 +70,9 @@
       "id": "anonymisation-interface",
       "label": "Anonymisation Interface",
       "type": "Anonymisation",
-      "introductionPanel": {
-        "title": "Introduction to the Anonymisation Interface",
-        "text": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button."
+      "explanationText": {
+        "title": "This interview uses enhanced privacy protection",
+        "body": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button."
       },
       "validation": {
         "minLength": 4,

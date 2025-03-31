@@ -11,33 +11,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      # Set node version
-      - uses: actions/setup-node@v2
-        with:
-          node-version: "12.14.1"
-      - name: Set NPM 7
-        run: npm install -g npm@7.6.3
+      - uses: actions/checkout@v4
 
       - name: ZIP development protocol
-        run: zip Development.netcanvas * -r -0
-
-      - name: Checkout protocol validation
-        uses: actions/checkout@v2
-        with:
-          repository: complexdatacollective/protocol-validation
-          ref: feature/schema-version-8
-          path: protocol-validation
-
-      - name: Install protocol validation
         run: |
-          cd protocol-validation
-          npm install
-
-      - name: Validate protocol
-        run: |
-          cd protocol-validation
-          npm run validate-protocol ../Development.netcanvas
+          cd packages/development-protocol
+          zip Development.netcanvas * -r -0
 
       - name: Tag release
         run: git tag $(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)
@@ -47,7 +26,7 @@ jobs:
         run: echo ::set-output name=RELEASE_NAME::$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.getReleaseName.outputs.RELEASE_NAME }}
           name: ${{ steps.getReleaseName.outputs.RELEASE_NAME }}
