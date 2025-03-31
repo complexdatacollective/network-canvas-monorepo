@@ -6,7 +6,6 @@
 		"allowJs": true,
 		"skipLibCheck": true,
 		"strict": true,
-		"exactOptionalPropertyTypes": true,
 		"noEmit": true,
 		"esModuleInterop": true,
 		"module": "esnext",
@@ -16,7 +15,8 @@
 		"moduleDetection": "force",
 		"jsx": "preserve",
 		"incremental": true,
-		"noUncheckedIndexedAccess": true
+		"noUncheckedIndexedAccess": true,
+		"erasableSyntaxOnly": true
 	},
 	"exclude": ["node_modules", "build", "dist", ".next", ".expo"]
 }

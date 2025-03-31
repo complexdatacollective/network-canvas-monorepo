@@ -15,10 +15,10 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
-		"@types/node": "^20.5.2",
-		"typescript": "^5.8.2"
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
 	},
 	"dependencies": {
-		"zod": "^3.24.2"
+		"zod": "catalog:"
 	}
 }

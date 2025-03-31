@@ -1,20 +1,21 @@
 {
 	"private": true,
 	"scripts": {
-		"build": "turbo run build",
-		"dev": "turbo run dev",
-		"test": "turbo run test",
-		"test:watch": "turbo run test:watch",
-		"publish-packages": "turbo run format-and-lint:fix build && pnpm changeset publish",
+		"build": "pnpm -r build",
+		"dev": "pnpm -r dev",
+		"test": "pnpm -r test",
+		"test:watch": "pnpm -r test:watch",
+		"publish-packages": "pnpm run format-and-lint:fix && pnpm run build && pnpm changeset publish",
+		"version-packages": "pnpm changeset version && pnpm run format-and-lint:fix",
 		"format-and-lint": "biome check .",
-		"format-and-lint:fix": "biome check . --write"
+		"format-and-lint:fix": "biome check . --write",
+		"typecheck-all": "pnpm -r --no-bail run typecheck"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.28.1",
-		"turbo": "^2.3.0",
-		"typescript": "^5.6.3"
+		"typescript": "catalog:"
 	},
-	"packageManager": "pnpm@9.14.2+sha256.06e65a4965baff6d6097f9c8f75c35f6d420974dbc03d775009056a69edfd271",
+	"packageManager": "pnpm@10.6.5+sha512.cdf928fca20832cd59ec53826492b7dc25dc524d4370b6b4adbf65803d32efaa6c1c88147c0ae4e8d579a6c9eec715757b50d4fa35eea179d868eada4ed043af",
 	"name": "network-canvas-monorepo"
 }
