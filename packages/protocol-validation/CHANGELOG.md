@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.4
+
+### Patch Changes
+
+- 3605f81: export even more types
+
 ## 4.0.0-alpha.3
 
 ### Patch Changes
