@@ -15,6 +15,7 @@
 		"prebuild": "pnpm run zod-to-json && pnpm run compile-schemas",
 		"build": "tsc --noEmit && vite build",
 		"dev": "npm run build -- --watch",
+		"pretest": "pnpm run build",
 		"test": "vitest --run",
 		"test:watch": "vitest",
 		"zod-to-json": "tsx ./scripts/zodToJson.ts",

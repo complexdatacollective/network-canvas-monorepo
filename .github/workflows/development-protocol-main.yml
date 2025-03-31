@@ -1,4 +1,4 @@
-name: Development Protocol CI
+name: Development Protocol Validate
 on:
   pull_request:
     paths:
@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Set node version (using the latest LTS version)
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -26,22 +25,12 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-      - name: ZIP development protocol
-        run: zip Development.netcanvas * -r -0
-
-      - name: Checkout protocol validation
-        uses: actions/checkout@v4
-        with:
-          repository: complexdatacollective/protocol-validation
-          ref: feature/schema-version-8
-          path: protocol-validation
-
-      - name: Install protocol validation with pnpm
+      # Build protocol-validation
+      - name: Build protocol validation
         run: |
-          cd protocol-validation
+          cd packages/protocol-validation
           pnpm install
+          pnpm build
 
       - name: Validate protocol
-        run: |
-          cd protocol-validation
-          pnpm run validate-protocol ../Development.netcanvas
+        run: node ./scipts/cli.js ../development-protocol/protocol.json
