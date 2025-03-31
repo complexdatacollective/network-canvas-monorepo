@@ -24,8 +24,8 @@ export {
 	validateSchema,
 };
 
-// Export schema types (Protocol, Codebook, etc)
-export type * from "./schemas/8.zod";
+// Export schema types and constants (Protocol, Codebook, etc)
+export * from "./schemas/8.zod";
 
 export type ValidationError = Partial<DefinedError> & {
 	path: string;
