@@ -1,5 +1,13 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.3
+
+### Patch Changes
+
+- 4ea6b33: Ensure development protocol can validate
+- 37df451: Export stage types
+- ec38a8a: change anonymisation schema
+
 ## 4.0.0-alpha.2
 
 ### Patch Changes
