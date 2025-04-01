@@ -35,4 +35,4 @@ jobs:
           pnpm build
 
       - name: Validate protocol
-        run: node ./scipts/cli.js ../development-protocol/protocol.json
+        run: node scripts/cli.js ../development-protocol/protocol.json
