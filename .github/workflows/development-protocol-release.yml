@@ -9,14 +9,15 @@ on:
 
 jobs:
   deploy:
+    defaults:
+      run:
+        working-directory: ./packages/development-protocol
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: ZIP development protocol
-        run: |
-          cd packages/development-protocol
-          zip Development.netcanvas * -r -0
+        run: zip Development.netcanvas * -r -0
 
       - name: Tag release
         run: git tag $(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)
