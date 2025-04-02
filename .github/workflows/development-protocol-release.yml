@@ -9,28 +9,27 @@ on:
 
 jobs:
   deploy:
-    defaults:
-      run:
-        working-directory: ./packages/development-protocol
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: ZIP development protocol
-        run: zip Development.netcanvas * -r -0
+        run: |
+          cd packages/development-protocol
+          zip Development.netcanvas * -r -0
 
       - name: Tag release
         run: git tag $(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)
 
       - name: Get release name
         id: getReleaseName
-        run: echo ::set-output name=RELEASE_NAME::$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)
+        run: echo "RELEASE_NAME=$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)" >> $GITHUB_OUTPUT
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.getReleaseName.outputs.RELEASE_NAME }}
           name: ${{ steps.getReleaseName.outputs.RELEASE_NAME }}
-          files: Development.netcanvas
+          files: packages/development-protocol/Development.netcanvas
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
