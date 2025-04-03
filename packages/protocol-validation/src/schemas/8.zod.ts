@@ -46,7 +46,7 @@ export const validations = {
 	lessThanVariable: z.string().optional(),
 };
 
-const ValidationsSchema = z.object(validations);
+export const ValidationsSchema = z.object(validations);
 
 export type Validation = z.infer<typeof ValidationsSchema>;
 
@@ -327,7 +327,7 @@ export type EntityDefinition = z.infer<typeof EntityDefinition>;
 export type EntityDefinitionKeys = AllKeys<EntityDefinition>;
 
 // Codebook Schema
-const CodebookSchema = z
+export const CodebookSchema = z
 	.object({
 		node: z.record(VariableNameSchema, NodeDefinitionSchema).optional(),
 		edge: z.record(VariableNameSchema, EdgeDefinitionSchema).optional(),
@@ -338,7 +338,7 @@ const CodebookSchema = z
 export type Codebook = z.infer<typeof CodebookSchema>;
 
 // Filter and Sort Options Schemas
-const filterRuleSchema = z
+export const filterRuleSchema = z
 	.object({
 		type: z.enum(["alter", "ego", "edge"]),
 		id: z.string(),
@@ -387,7 +387,7 @@ const multipleFilterRuleSchema = z
 	})
 	.strict();
 
-const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
+export const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
 const sortOrderSchema = z.array(
 	z
@@ -442,14 +442,14 @@ const EgoStageSubjectSchema = z
 	})
 	.strict();
 
-const StageSubjectSchema = z.union([EntityStageSubjectSchema, EgoStageSubjectSchema]);
+export const StageSubjectSchema = z.union([EntityStageSubjectSchema, EgoStageSubjectSchema]);
 
 export type StageSubject = z.infer<typeof StageSubjectSchema>;
 
 const SkipLogicActionSchema = z.enum(["SHOW", "SKIP"]);
 export type SkipLogicAction = z.infer<typeof SkipLogicActionSchema>;
 
-const SkipLogicSchema = z
+export const SkipLogicSchema = z
 	.object({
 		action: SkipLogicActionSchema,
 		filter: FilterSchema,
@@ -472,7 +472,7 @@ const FormFieldSchema = z.object({ variable: z.string(), prompt: z.string() }).s
 
 export type FormField = z.infer<typeof FormFieldSchema>;
 
-const FormSchema = z
+export const FormSchema = z
 	.object({
 		title: z.string().optional(),
 		fields: z.array(FormFieldSchema),
@@ -809,7 +809,7 @@ const geospatialStage = baseStageSchema.extend({
 });
 
 // Combine all stage types
-const stageSchema = z.discriminatedUnion("type", [
+export const stageSchema = z.discriminatedUnion("type", [
 	egoFormStage,
 	alterFormStage,
 	alterEdgeFormStage,
@@ -855,14 +855,14 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 	value: z.string(),
 });
 
-const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
+export const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
 
 const experimentsSchema = z.object({
 	encryptNames: z.boolean().optional(),
 });
 
 // Main Protocol Schema
-const ProtocolSchema = z
+export const ProtocolSchema = z
 	.object({
 		description: z.string().optional(),
 		experiments: experimentsSchema.optional(),
@@ -874,6 +874,7 @@ const ProtocolSchema = z
 	})
 	.strict();
 
+// Must be default export for zod schema conversion
 export default ProtocolSchema;
 
 export type Protocol = z.infer<typeof ProtocolSchema>;
