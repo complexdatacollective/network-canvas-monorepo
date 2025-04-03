@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.5
+
+### Patch Changes
+
+- ceda2af: Export additional schemas to support prisma json transformer extension
+
 ## 4.0.0-alpha.4
 
 ### Patch Changes
