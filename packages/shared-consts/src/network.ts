@@ -68,11 +68,7 @@ export type NcEgo = z.infer<typeof BaseNcEntitySchema>;
 export const NcNetworkSchema = z.object({
 	nodes: z.array(NcNodeSchema),
 	edges: z.array(NcEdgeSchema),
-	ego: BaseNcEntitySchema.optional(),
+	ego: BaseNcEntitySchema,
 });
 
-export type NcNetwork = {
-	nodes: NcNode[];
-	edges: NcEdge[];
-	ego: NcEgo; // I've been back and forth on if ego should be optional, but Interviewers redux store defines it, so non-optional for now.
-};
+export type NcNetwork = z.infer<typeof NcNetworkSchema>;
