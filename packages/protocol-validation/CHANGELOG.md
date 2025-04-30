@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.7
+
+### Patch Changes
+
+- 86aa8c0: separate out node and edge based stage subjects so that they can be extracted
+
 ## 4.0.0-alpha.6
 
 ### Patch Changes
