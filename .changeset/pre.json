@@ -14,6 +14,7 @@
 		"@codaco/github": "0.0.0"
 	},
 	"changesets": [
+		"clean-clowns-shake",
 		"common-eagles-walk",
 		"common-heads-mix",
 		"fast-oranges-judge",

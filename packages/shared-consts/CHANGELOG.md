@@ -1,5 +1,11 @@
 # @codaco/shared-consts
 
+## 1.0.0-alpha.3
+
+### Patch Changes
+
+- a4969c4: small changes
+
 ## 1.0.0-alpha.2
 
 ### Patch Changes
