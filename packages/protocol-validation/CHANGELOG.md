@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.6
+
+### Patch Changes
+
+- a4969c4: small changes
+
 ## 4.0.0-alpha.5
 
 ### Patch Changes
