@@ -29,6 +29,11 @@ export const VariableTypes = {
 	location: "location",
 } as const;
 
+export const ComponentTypesKeys = Object.keys(ComponentTypes) as (keyof typeof ComponentTypes)[];
+export const VariableTypesKeys = Object.keys(VariableTypes) as (keyof typeof VariableTypes)[];
+export type VariableType = (typeof VariableTypesKeys)[number];
+export type ComponentType = (typeof ComponentTypesKeys)[number];
+
 // Validation Schema
 export const validations = {
 	required: z.boolean().optional(),
@@ -389,7 +394,7 @@ const multipleFilterRuleSchema = z
 
 export const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
-const sortOrderSchema = z.array(
+export const SortOrderSchema = z.array(
 	z
 		.object({
 			property: z.string(),
@@ -399,6 +404,8 @@ const sortOrderSchema = z.array(
 		})
 		.strict(),
 );
+
+export type SortOrder = z.infer<typeof SortOrderSchema>;
 
 // Stage and Related Schemas
 const panelSchema = z
@@ -540,7 +547,7 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 		.optional(),
 	sortOptions: z
 		.object({
-			sortOrder: sortOrderSchema.optional(),
+			sortOrder: SortOrderSchema.optional(),
 			sortableProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
 		})
 		.optional(),
@@ -580,7 +587,7 @@ const sociogramStage = baseStageSchema.extend({
 	prompts: z
 		.array(
 			promptSchema.extend({
-				sortOrder: sortOrderSchema.optional(),
+				sortOrder: SortOrderSchema.optional(),
 				layout: z
 					.object({
 						layoutVariable: z.string().optional(),
@@ -636,8 +643,8 @@ const ordinalBinStage = baseStageSchema.extend({
 		.array(
 			promptSchema.extend({
 				variable: z.string(),
-				bucketSortOrder: sortOrderSchema.optional(),
-				binSortOrder: sortOrderSchema.optional(),
+				bucketSortOrder: SortOrderSchema.optional(),
+				binSortOrder: SortOrderSchema.optional(),
 				color: z.string().optional(),
 			}),
 		)
@@ -654,8 +661,8 @@ const categoricalBinStage = baseStageSchema.extend({
 				otherVariable: z.string().optional(),
 				otherVariablePrompt: z.string().optional(),
 				otherOptionLabel: z.string().optional(),
-				bucketSortOrder: sortOrderSchema.optional(),
-				binSortOrder: sortOrderSchema.optional(),
+				bucketSortOrder: SortOrderSchema.optional(),
+				binSortOrder: SortOrderSchema.optional(),
 			}),
 		)
 		.min(1),
@@ -740,8 +747,8 @@ const oneToManyDyadCensusStage = baseStageSchema.extend({
 		.array(
 			promptSchema.extend({
 				createEdge: z.string(),
-				bucketSortOrder: sortOrderSchema.optional(),
-				binSortOrder: sortOrderSchema.optional(),
+				bucketSortOrder: SortOrderSchema.optional(),
+				binSortOrder: SortOrderSchema.optional(),
 			}),
 		)
 		.min(1),
@@ -857,22 +864,20 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 
 export const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
 
-const experimentsSchema = z.object({
-	encryptNames: z.boolean().optional(),
+export const ExperimentsSchema = z.object({
+	encryptedVariables: z.boolean().optional(),
 });
 
 // Main Protocol Schema
-export const ProtocolSchema = z
-	.object({
-		description: z.string().optional(),
-		experiments: experimentsSchema.optional(),
-		lastModified: z.string().datetime().optional(),
-		schemaVersion: z.literal(8),
-		codebook: CodebookSchema,
-		assetManifest: z.record(z.string(), assetSchema).optional(),
-		stages: z.array(stageSchema),
-	})
-	.strict();
+export const ProtocolSchema = z.object({
+	description: z.string().optional(),
+	experiments: ExperimentsSchema.optional(),
+	lastModified: z.string().datetime().optional(),
+	schemaVersion: z.literal(8),
+	codebook: CodebookSchema,
+	assetManifest: z.record(z.string(), assetSchema).optional(),
+	stages: z.array(stageSchema),
+});
 
 // Must be default export for zod schema conversion
 export default ProtocolSchema;

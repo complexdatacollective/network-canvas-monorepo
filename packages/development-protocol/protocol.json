@@ -1,8 +1,21 @@
 {
   "experiments": {
-    "encryptNames": true
+    "encryptedVariables": true
   },
   "stages": [
+    {
+      "id": "anonymisation-interface",
+      "label": "Anonymisation Interface",
+      "type": "Anonymisation",
+      "explanationText": {
+        "title": "This interview uses enhanced privacy protection",
+        "body": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button."
+      },
+      "validation": {
+        "minLength": 4,
+        "maxLength": 12
+      }
+    },
     {
       "id": "ego-form-1",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
@@ -67,17 +80,20 @@
       }
     },
     {
-      "id": "anonymisation-interface",
-      "label": "Anonymisation Interface",
-      "type": "Anonymisation",
-      "explanationText": {
-        "title": "This interview uses enhanced privacy protection",
-        "body": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button."
+      "id": "quick-add-ng-encryption",
+      "label": "Quick Add NG with Encryption",
+      "type": "NameGeneratorQuickAdd",
+      "subject": {
+        "entity": "node",
+        "type": "person_node_type"
       },
-      "validation": {
-        "minLength": 4,
-        "maxLength": 12
-      }
+      "quickAdd": "name_variable",
+      "prompts": [
+        {
+          "id": "quick-add-ng-encryption",
+          "text": "This is a quick add name generator with encryption",
+        }
+      ]
     },
     {
       "id": "one-to-many-dyad-census",
@@ -97,17 +113,13 @@
           "createEdge": "friend_edge_type",
           "bucketSortOrder": [
             {
-              "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
+              "property": "*",
               "direction": "desc"
             }
           ],
           "binSortOrder": [
             {
-              "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
-              "direction": "desc"
-            },
-            {
-              "property": "c5fee926-855d-4419-b5bb-54e89010cea6",
+              "property": "name_variable",
               "direction": "desc"
             }
           ]
@@ -1169,6 +1181,7 @@
         "iconVariant": "add-a-person",
         "variables": {
           "name_variable": {
+            "encrypted": true,
             "name": "name",
             "component": "Text",
             "type": "text",
