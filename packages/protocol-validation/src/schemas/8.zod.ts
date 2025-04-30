@@ -436,9 +436,16 @@ const nameGeneratorPromptSchema = promptSchema.extend({
 	additionalAttributes: AdditionalAttributesSchema.optional(),
 });
 
-const EntityStageSubjectSchema = z
+const NodeStageSubjectSchema = z
 	.object({
-		entity: z.enum(["edge", "node"]),
+		entity: z.literal("node"),
+		type: z.string(),
+	})
+	.strict();
+
+const EdgeStageSubjectSchema = z
+	.object({
+		entity: z.literal("edge"),
 		type: z.string(),
 	})
 	.strict();
@@ -449,7 +456,7 @@ const EgoStageSubjectSchema = z
 	})
 	.strict();
 
-export const StageSubjectSchema = z.union([EntityStageSubjectSchema, EgoStageSubjectSchema]);
+export const StageSubjectSchema = z.union([EgoStageSubjectSchema, NodeStageSubjectSchema, EdgeStageSubjectSchema]);
 
 export type StageSubject = z.infer<typeof StageSubjectSchema>;
 
