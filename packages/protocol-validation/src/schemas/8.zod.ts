@@ -408,14 +408,12 @@ export const SortOrderSchema = z.array(
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 
 // Stage and Related Schemas
-const panelSchema = z
-	.object({
-		id: z.string(),
-		title: z.string(),
-		filter: z.union([FilterSchema, z.null()]).optional(),
-		dataSource: z.union([z.string(), z.null()]),
-	})
-	.strict();
+const panelSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	filter: FilterSchema.optional(),
+	dataSource: z.union([z.string(), z.literal("existing")]),
+});
 
 export type Panel = z.infer<typeof panelSchema>;
 
