@@ -503,20 +503,20 @@ const egoFormStage = baseStageSchema.extend({
 
 const alterFormStage = baseStageSchema.extend({
 	type: z.literal("AlterForm"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	form: FormSchema,
 });
 
 const alterEdgeFormStage = baseStageSchema.extend({
 	type: z.literal("AlterEdgeForm"),
-	subject: StageSubjectSchema,
+	subject: EdgeStageSubjectSchema,
 	form: FormSchema,
 });
 
 const nameGeneratorStage = baseStageSchema.extend({
 	type: z.literal("NameGenerator"),
 	form: FormSchema,
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	panels: z.array(panelSchema).optional(),
 	prompts: z.array(nameGeneratorPromptSchema).min(1),
 	behaviours: z
@@ -530,7 +530,7 @@ const nameGeneratorStage = baseStageSchema.extend({
 const nameGeneratorQuickAddStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorQuickAdd"),
 	quickAdd: z.string(),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	panels: z.array(panelSchema).optional(),
 	prompts: z.array(nameGeneratorPromptSchema).min(1),
 	behaviours: z
@@ -543,7 +543,7 @@ const nameGeneratorQuickAddStage = baseStageSchema.extend({
 
 const nameGeneratorRosterStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorRoster"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	dataSource: z.string(),
 	cardOptions: z
 		.object({
@@ -576,7 +576,7 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 
 const sociogramStage = baseStageSchema.extend({
 	type: z.literal("Sociogram"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	background: z
 		.object({
 			image: z.string().optional(),
@@ -619,7 +619,7 @@ const sociogramStage = baseStageSchema.extend({
 
 const dyadCensusStage = baseStageSchema.extend({
 	type: z.literal("DyadCensus"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	prompts: z
 		.array(
 			promptSchema.extend({
@@ -631,7 +631,7 @@ const dyadCensusStage = baseStageSchema.extend({
 
 const tieStrengthCensusStage = baseStageSchema.extend({
 	type: z.literal("TieStrengthCensus"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	prompts: z
 		.array(
 			promptSchema.extend({
@@ -645,7 +645,7 @@ const tieStrengthCensusStage = baseStageSchema.extend({
 
 const ordinalBinStage = baseStageSchema.extend({
 	type: z.literal("OrdinalBin"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	prompts: z
 		.array(
 			promptSchema.extend({
@@ -660,7 +660,7 @@ const ordinalBinStage = baseStageSchema.extend({
 
 const categoricalBinStage = baseStageSchema.extend({
 	type: z.literal("CategoricalBin"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	prompts: z
 		.array(
 			promptSchema.extend({
@@ -677,7 +677,7 @@ const categoricalBinStage = baseStageSchema.extend({
 
 const narrativeStage = baseStageSchema.extend({
 	type: z.literal("Narrative"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	presets: z
 		.array(
 			z
@@ -746,7 +746,7 @@ const anonymisationStage = baseStageSchema.extend({
 
 const oneToManyDyadCensusStage = baseStageSchema.extend({
 	type: z.literal("OneToManyDyadCensus"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	behaviours: z.object({
 		removeAfterConsideration: z.boolean(),
 	}),
@@ -809,7 +809,7 @@ export type MapOptions = z.infer<typeof mapOptions>;
 
 const geospatialStage = baseStageSchema.extend({
 	type: z.literal("Geospatial"),
-	subject: StageSubjectSchema,
+	subject: NodeStageSubjectSchema,
 	mapOptions: mapOptions,
 	prompts: z
 		.array(
