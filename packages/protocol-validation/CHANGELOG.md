@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.8
+
+### Patch Changes
+
+- 3e394d5: use specific stage subject types
+
 ## 4.0.0-alpha.7
 
 ### Patch Changes
