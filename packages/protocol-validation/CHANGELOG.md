@@ -1,5 +1,12 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.9
+
+### Patch Changes
+
+- 43c3304: make data source required property in panel schema
+- 04aff9d: Correct SortOrderSchema
+
 ## 4.0.0-alpha.8
 
 ### Patch Changes
