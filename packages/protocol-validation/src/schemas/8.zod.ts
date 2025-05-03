@@ -395,14 +395,10 @@ const multipleFilterRuleSchema = z
 export const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
 
 export const SortOrderSchema = z.array(
-	z
-		.object({
-			property: z.string(),
-			direction: z.enum(["desc", "asc"]).optional(),
-			type: z.enum(["string", "number", "boolean", "date", "hierarchy"]).optional(),
-			hierarchy: z.array(z.union([z.string(), z.number(), z.boolean()])).optional(),
-		})
-		.strict(),
+	z.object({
+		property: z.string(),
+		direction: z.enum(["desc", "asc"]),
+	}),
 );
 
 export type SortOrder = z.infer<typeof SortOrderSchema>;
