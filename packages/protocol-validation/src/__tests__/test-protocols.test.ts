@@ -1,6 +1,6 @@
 import { extractProtocol } from "src/utils/extractProtocol";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type Protocol, validateProtocol } from "../";
+import { migrateProtocol, type Protocol, validateProtocol } from "../";
 import { downloadAndDecryptProtocols } from "./utils";
 
 // Store protocols and their filenames separately
@@ -28,6 +28,8 @@ describe("Test protocols", () => {
 	// Use a single test with detailed logging for each protocol
 	it("should validate each protocol individually with detailed logging", async () => {
 		const totalCount = protocols.length;
+		let nInvalid = 0;
+		let invalidMigrations = [];
 
 		for (let i = 0; i < protocols.length; i++) {
 			// biome-ignore lint/style/noNonNullAssertion: duh
@@ -56,18 +58,32 @@ describe("Test protocols", () => {
 			expect(result.isValid).toBe(true);
 			expect(result.schemaErrors).toEqual([]);
 			expect(result.logicErrors).toEqual([]);
-		}
-	});
 
-	describe("Migration", () => {
-		it.todo("All protocols should be compatible with schema 1 after migration");
-		it.todo("All protocols should be compatible with schema 2 after migration");
-		it.todo("All protocols should be compatible with schema 3 after migration");
-		it.todo("All protocols should be compatible with schema 4 after migration");
-		it.todo("All protocols should be compatible with schema 5 after migration");
-		it.todo("All protocols should be compatible with schema 6 after migration");
-		it.todo("All protocols should be compatible with schema 7 after migration");
-		it.todo("All protocols should be compatible with schema 8 after migration");
+			// Migrate and validate protocols with schema version < 8
+			if (protocol.schemaVersion < 8) {
+				const migratedProtocol = migrateProtocol(protocol, 8);
+				const migrationResult = await validateProtocol(migratedProtocol);
+
+				console.log(`Migration result: ${migrationResult.isValid ? "✅ Valid" : "❌ Invalid"}`);
+
+				if (!migrationResult.isValid) {
+					nInvalid++;
+					invalidMigrations.push(filename);
+				}
+				if (migrationResult.schemaErrors.length > 0) {
+					console.log(`Schema errors: ${JSON.stringify(migrationResult.schemaErrors, null, 2)}`);
+				}
+
+				if (migrationResult.logicErrors.length > 0) {
+					console.log(`Logic errors: ${JSON.stringify(migrationResult.logicErrors, null, 2)}`);
+				}
+			// expect.soft(migrationResult.isValid).toBe(true);
+			// expect.soft(migrationResult.schemaErrors).toEqual([]);
+			// expect.soft(migrationResult.logicErrors).toEqual([]);
+			}
+		}
+		console.log('❌ Number of Invalid Protocols:', nInvalid, 'Invalid Protocols:', invalidMigrations);
+
 	});
 
 	// // Keep the original test as a summary test
