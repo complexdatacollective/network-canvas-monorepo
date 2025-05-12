@@ -194,7 +194,11 @@ const textVariableSchema = baseVariableSchema.extend({
 });
 
 const booleanOptionsSchema = z.array(
-	z.object({ label: z.string(), value: z.boolean(), negative: z.boolean().optional() }),
+	z.object({
+		label: z.string(),
+		value: z.boolean(),
+		negative: z.boolean().optional(),
+	}),
 );
 
 const booleanBooleanVariableSchema = baseVariableSchema.extend({
@@ -420,7 +424,7 @@ const promptSchema = z
 	})
 	.strict();
 
-export type Prompt = z.infer<typeof promptSchema>;
+export type BasePrompt = z.infer<typeof promptSchema>;
 
 const AdditionalAttributesSchema = z.array(z.object({ variable: VariableNameSchema, value: z.boolean() }));
 
@@ -841,6 +845,7 @@ export const stageSchema = z.discriminatedUnion("type", [
 export type StageType = z.infer<typeof stageSchema>["type"];
 
 export type Stage = z.infer<typeof stageSchema>;
+export type Prompt = Extract<Stage, { prompts: unknown }>["prompts"][number];
 
 const baseAssetSchema = z.object({
 	id: z.string().optional(),

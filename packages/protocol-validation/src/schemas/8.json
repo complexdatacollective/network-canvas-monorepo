@@ -10,7 +10,7 @@
 				"experiments": {
 					"type": "object",
 					"properties": {
-						"encryptNames": {
+						"encryptedVariables": {
 							"type": "boolean"
 						}
 					},
@@ -886,33 +886,18 @@
 										"const": "AlterForm"
 									},
 									"subject": {
-										"anyOf": [
-											{
-												"type": "object",
-												"properties": {
-													"entity": {
-														"type": "string",
-														"enum": ["edge", "node"]
-													},
-													"type": {
-														"type": "string"
-													}
-												},
-												"required": ["entity", "type"],
-												"additionalProperties": false
+										"type": "object",
+										"properties": {
+											"entity": {
+												"type": "string",
+												"const": "node"
 											},
-											{
-												"type": "object",
-												"properties": {
-													"entity": {
-														"type": "string",
-														"const": "ego"
-													}
-												},
-												"required": ["entity"],
-												"additionalProperties": false
+											"type": {
+												"type": "string"
 											}
-										]
+										},
+										"required": ["entity", "type"],
+										"additionalProperties": false
 									},
 									"form": {
 										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
@@ -947,7 +932,18 @@
 										"const": "AlterEdgeForm"
 									},
 									"subject": {
-										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/1/properties/subject"
+										"type": "object",
+										"properties": {
+											"entity": {
+												"type": "string",
+												"const": "edge"
+											},
+											"type": {
+												"type": "string"
+											}
+										},
+										"required": ["entity", "type"],
+										"additionalProperties": false
 									},
 									"form": {
 										"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/form"
@@ -999,17 +995,18 @@
 													"type": "string"
 												},
 												"filter": {
-													"anyOf": [
-														{
-															"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
-														},
-														{
-															"type": "null"
-														}
-													]
+													"$ref": "#/definitions/Protocol/properties/stages/items/anyOf/0/properties/filter"
 												},
 												"dataSource": {
-													"type": ["string", "null"]
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "string",
+															"const": "existing"
+														}
+													]
 												}
 											},
 											"required": ["id", "title", "dataSource"],
@@ -1195,19 +1192,9 @@
 														"direction": {
 															"type": "string",
 															"enum": ["desc", "asc"]
-														},
-														"type": {
-															"type": "string",
-															"enum": ["string", "number", "boolean", "date", "hierarchy"]
-														},
-														"hierarchy": {
-															"type": "array",
-															"items": {
-																"type": ["string", "number", "boolean"]
-															}
 														}
 													},
-													"required": ["property"],
+													"required": ["property", "direction"],
 													"additionalProperties": false
 												}
 											},

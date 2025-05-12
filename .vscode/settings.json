@@ -3,6 +3,7 @@
 	"typescript.enablePromptUseWorkspaceTsdk": true,
 	"cSpell.words": ["netcanvas", "Tipbox"],
 	"editor.defaultFormatter": "biomejs.biome",
+	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
 		"source.organizeImports": "always",
 		"source.fixAll": "always"
