@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.10
+
+### Patch Changes
+
+- 551b473: Improve prompt type
+
 ## 4.0.0-alpha.9
 
 ### Patch Changes
