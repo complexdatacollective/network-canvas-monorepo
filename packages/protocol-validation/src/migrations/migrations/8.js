@@ -14,6 +14,7 @@ const migration = (protocol) => {
 			}
 		}
 	}
+	return protocol;
 };
 
 // Markdown format
