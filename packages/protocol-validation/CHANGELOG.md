@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 4.0.0-alpha.11
+
+### Patch Changes
+
+- df6da79: Make migration for schema 8 return proocol object
+
 ## 4.0.0-alpha.10
 
 ### Patch Changes
