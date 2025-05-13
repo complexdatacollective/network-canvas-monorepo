@@ -28,8 +28,6 @@ describe("Test protocols", () => {
 	// Use a single test with detailed logging for each protocol
 	it("should validate each protocol individually with detailed logging", async () => {
 		const totalCount = protocols.length;
-		let nInvalid = 0;
-		let invalidMigrations = [];
 
 		for (let i = 0; i < protocols.length; i++) {
 			// biome-ignore lint/style/noNonNullAssertion: duh
@@ -61,15 +59,11 @@ describe("Test protocols", () => {
 
 			// Migrate and validate protocols with schema version < 8
 			if (protocol.schemaVersion < 8) {
-				const migratedProtocol = migrateProtocol(protocol, 8);
+				const migratedProtocol = migrateProtocol(protocol, 8) as Protocol;
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				console.log(`Migration result: ${migrationResult.isValid ? "✅ Valid" : "❌ Invalid"}`);
 
-				if (!migrationResult.isValid) {
-					nInvalid++;
-					invalidMigrations.push(filename);
-				}
 				if (migrationResult.schemaErrors.length > 0) {
 					console.log(`Schema errors: ${JSON.stringify(migrationResult.schemaErrors, null, 2)}`);
 				}
@@ -77,13 +71,11 @@ describe("Test protocols", () => {
 				if (migrationResult.logicErrors.length > 0) {
 					console.log(`Logic errors: ${JSON.stringify(migrationResult.logicErrors, null, 2)}`);
 				}
-			// expect.soft(migrationResult.isValid).toBe(true);
-			// expect.soft(migrationResult.schemaErrors).toEqual([]);
-			// expect.soft(migrationResult.logicErrors).toEqual([]);
+				expect.soft(migrationResult.isValid).toBe(true);
+				expect.soft(migrationResult.schemaErrors).toEqual([]);
+				expect.soft(migrationResult.logicErrors).toEqual([]);
 			}
 		}
-		console.log('❌ Number of Invalid Protocols:', nInvalid, 'Invalid Protocols:', invalidMigrations);
-
 	});
 
 	// // Keep the original test as a summary test
