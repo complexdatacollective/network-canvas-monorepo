@@ -5,9 +5,11 @@
 const migration = (protocol) => {
 	// Iterate node and edge types in codebook, and remove 'displayVariable' property
 	for (const type of ["node", "edge"]) {
-		for (const entityDefinition of Object.values(protocol.codebook[type])) {
-			// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
-			delete entityDefinition.displayVariable;
+		if (protocol.codebook[type]) {
+			for (const entityDefinition of Object.values(protocol.codebook[type])) {
+				// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
+				delete entityDefinition.displayVariable;
+			}
 		}
 	}
 	return protocol;
