@@ -12,6 +12,18 @@ const migration = (protocol) => {
 			}
 		}
 	}
+	// Remove options from Toggle variables
+	for (const type of ["ego", "node", "edge"]) {
+		const variables = protocol.codebook[type]?.variables;
+		if (!variables) continue;
+
+		for (const [, variable] of Object.entries(variables)) {
+			if (variable.type === "boolean" && variable.component === "Toggle") {
+				// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
+				delete variable.options;
+			}
+		}
+	}
 	return protocol;
 };
 
