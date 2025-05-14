@@ -9,12 +9,12 @@ const removeToggleOptions = (variables?: Variables) => {
 	if (!variables) return;
 	for (const variable of Object.values(variables)) {
 		if (variable.type === "boolean" && variable.component === "Toggle") {
-			// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
 			// @ts-expect-error deleting invalid property
+			// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
 			delete variable.options;
 		}
 	}
-}
+};
 
 const migration = (protocol: Protocol) => {
 	const codebook = protocol.codebook;
@@ -24,8 +24,8 @@ const migration = (protocol: Protocol) => {
 		const entityRecord = codebook[type];
 		if (entityRecord) {
 			for (const entityDefinition of Object.values(entityRecord)) {
-				// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
 				// @ts-expect-error deleting invalid property
+				// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
 				delete entityDefinition.displayVariable;
 				removeToggleOptions(entityDefinition.variables);
 			}
@@ -38,7 +38,6 @@ const migration = (protocol: Protocol) => {
 
 	return protocol;
 };
-
 
 // Markdown format
 const notes = `
