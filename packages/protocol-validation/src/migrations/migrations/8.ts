@@ -2,30 +2,43 @@
  * Migration from v7 to v8
  */
 
-const migration = (protocol) => {
-	// Iterate node and edge types in codebook, and remove 'displayVariable' property
-	for (const type of ["node", "edge"]) {
-		if (protocol.codebook[type]) {
-			for (const entityDefinition of Object.values(protocol.codebook[type])) {
-				// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
-				delete entityDefinition.displayVariable;
-			}
-		}
-	}
-	// Remove options from Toggle variables
-	for (const type of ["ego", "node", "edge"]) {
-		const variables = protocol.codebook[type]?.variables;
-		if (!variables) continue;
+import type { Protocol, Variables } from "src/schemas/8.zod";
 
-		for (const [, variable] of Object.entries(variables)) {
-			if (variable.type === "boolean" && variable.component === "Toggle") {
+// Remove `options` from Toggle boolean variables
+const removeToggleOptions = (variables?: Variables) => {
+	if (!variables) return;
+	for (const variable of Object.values(variables)) {
+		if (variable.type === "boolean" && variable.component === "Toggle") {
+			// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
+			// @ts-expect-error deleting invalid property
+			delete variable.options;
+		}
+	}
+}
+
+const migration = (protocol: Protocol) => {
+	const codebook = protocol.codebook;
+
+	// Iterate node and edge types in codebook, and remove 'displayVariable' property
+	for (const type of ["node", "edge"] as const) {
+		const entityRecord = codebook[type];
+		if (entityRecord) {
+			for (const entityDefinition of Object.values(entityRecord)) {
 				// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
-				delete variable.options;
+				// @ts-expect-error deleting invalid property
+				delete entityDefinition.displayVariable;
+				removeToggleOptions(entityDefinition.variables);
 			}
 		}
 	}
+
+	if (codebook.ego) {
+		removeToggleOptions(codebook.ego.variables);
+	}
+
 	return protocol;
 };
+
 
 // Markdown format
 const notes = `
@@ -36,6 +49,7 @@ const notes = `
 - Add new comparator options for skip logic and filter: \`contains\` and \`does not contain\`.
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
+- Removed 'options' property for boolean Toggle variables. This property was not used.
 `;
 
 const v8 = {
