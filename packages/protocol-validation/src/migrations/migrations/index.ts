@@ -1,3 +1,4 @@
+import type { Protocol } from "src/schemas/8.zod";
 import type { ProtocolMigration } from "../migrateProtocol";
 // @ts-ignore
 import version4 from "./4";
@@ -13,7 +14,7 @@ import version8 from "./8";
 /**
  * These must be in order
  */
-export const migrations: ProtocolMigration[] = [
+export const migrations: ProtocolMigration<Protocol, Protocol>[] = [
 	{ version: 1, migration: (protocol) => protocol },
 	{ version: 2, migration: (protocol) => protocol },
 	{ version: 3, migration: (protocol) => protocol },

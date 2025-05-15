@@ -16,7 +16,7 @@ const removeToggleOptions = (variables?: Variables) => {
 	}
 };
 
-const migration = (protocol: Protocol) => {
+const migration = (protocol: Protocol): Protocol => {
 	const codebook = protocol.codebook;
 
 	// Iterate node and edge types in codebook, and remove 'displayVariable' property
