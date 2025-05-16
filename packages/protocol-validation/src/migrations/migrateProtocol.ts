@@ -2,13 +2,18 @@ import type { Protocol } from "src/schemas/8.zod";
 import { MigrationStepError } from "./errors";
 import getMigrationPath from "./getMigrationPath";
 
-export type ProtocolMigration = {
+export type MigrationFunction<SourceProtocol, TargetProtocol> = (protocol: SourceProtocol) => TargetProtocol;
+
+export type ProtocolMigration<SourceProtocol, TargetProtocol> = {
 	version: number;
 	notes?: string;
-	migration: (protocol: Protocol) => Protocol;
+	migration: MigrationFunction<SourceProtocol, TargetProtocol>;
 };
 
-const migrateStep = (protocol: Protocol, step: ProtocolMigration) => {
+const migrateStep = <SourceProtocol, TargetProtocol>(
+	protocol: SourceProtocol,
+	step: ProtocolMigration<SourceProtocol, TargetProtocol>,
+) => {
 	const { version, migration } = step;
 	try {
 		return migration(protocol);
