@@ -3,6 +3,7 @@
  */
 
 import type { Protocol, Variables } from "src/schemas/8.zod";
+import type { MigrationFunction } from "../migrateProtocol";
 
 // Remove `options` from Toggle boolean variables
 const removeToggleOptions = (variables?: Variables) => {
@@ -16,7 +17,7 @@ const removeToggleOptions = (variables?: Variables) => {
 	}
 };
 
-const migration = (protocol: Protocol): Protocol => {
+const migration: MigrationFunction<Protocol, Protocol> = (protocol) => {
 	const codebook = protocol.codebook;
 
 	// Iterate node and edge types in codebook, and remove 'displayVariable' property
@@ -42,7 +43,7 @@ const migration = (protocol: Protocol): Protocol => {
 // Markdown format
 const notes = `
 - New interface: "geospatial interface". Allows the participant to select a location on a map based on a geojson shapefile.
-- New experimental interface: "anonymisation interface". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default.
+- New experimental interface: "anonymisation interface". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.
 - New interface: "one-to-many dyad-census". Allows the participant to link multiple alters at a time.
 - Add new validation options for form fields: \`greaterThanVariable\` and \`lessThanVariable\`.
 - Add new comparator options for skip logic and filter: \`contains\` and \`does not contain\`.
