@@ -663,6 +663,12 @@ const categoricalBinStage = baseStageSchema.extend({
 		.array(
 			promptSchema.extend({
 				variable: z.string(),
+				// TODO: This should be structured this way:
+				// otherOption: z.object({
+				// 	binLabel: z.string(),
+				// 	variable: z.string(),
+				// 	prompt: z.string(),
+				// }).optional(),
 				otherVariable: z.string().optional(),
 				otherVariablePrompt: z.string().optional(),
 				otherOptionLabel: z.string().optional(),
