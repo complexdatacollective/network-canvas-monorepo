@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
 import type { Locale } from "~/app/types";
 import Article from "~/components/article";
 import { getDocsForRouteSegment, getDocumentForPath } from "~/lib/docs";
@@ -22,7 +22,11 @@ export async function generateMetadata(props: { params: Promise<PageParams> }) {
 	return { title: document?.frontmatter.title };
 }
 
-export function generateStaticParams({ params }: { params: Omit<PageParams, "docPath"> }) {
+export function generateStaticParams({
+	params,
+}: {
+	params: Omit<PageParams, "docPath">;
+}) {
 	const { locale, project } = params;
 	const docPathSegmentsForRoute = getDocsForRouteSegment({
 		locale,

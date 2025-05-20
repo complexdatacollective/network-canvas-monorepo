@@ -10,8 +10,7 @@
 		"prebuild": "pnpm writeSidebarJson",
 		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
 		"start": "pnpm next start",
-		"typecheck": "tsc --noEmit",
-		"lint": "biome check ."
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@codaco/art": "workspace:*",
@@ -39,8 +38,6 @@
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "catalog:",
-		"@codaco/biome": "workspace:*",
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@microflash/rehype-figure": "^2.1.1",

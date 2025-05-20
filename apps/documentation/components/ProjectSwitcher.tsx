@@ -1,8 +1,8 @@
 "use client";
 
 import { Heading, Paragraph, Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@codaco/ui";
-import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
 import { type Locale, type Project, projects } from "~/app/types";
 import { cn } from "~/lib/utils";

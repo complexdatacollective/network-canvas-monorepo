@@ -5,13 +5,14 @@
 		"dev": "pnpm -r dev",
 		"test": "pnpm -r test",
 		"test:watch": "pnpm -r test:watch",
-		"publish-packages": "pnpm run lint:fix && pnpm run build && pnpm changeset publish",
-		"version-packages": "pnpm changeset version && pnpm run lint:fix",
-		"lint": "pnpm -r lint",
-		"lint:fix": "pnpm -r lint --write",
+		"publish-packages": "pnpm run format-and-lint:fix && pnpm run build && pnpm changeset publish",
+		"version-packages": "pnpm changeset version && pnpm run format-and-lint:fix",
+		"format-and-lint": "biome check .",
+		"format-and-lint:fix": "biome check . --write",
 		"typecheck-all": "pnpm -r --no-bail run typecheck"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.28.1",
 		"typescript": "catalog:"
 	},

@@ -1,9 +1,9 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@codaco/ui";
 import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
+import { useLocale } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
 import { cn } from "~/lib/utils";

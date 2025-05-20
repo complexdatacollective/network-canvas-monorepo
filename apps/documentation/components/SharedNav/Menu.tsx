@@ -1,8 +1,8 @@
-import { buttonVariants, Heading, headingVariants, Paragraph } from "@codaco/ui";
+import { Heading, Paragraph, buttonVariants, headingVariants } from "@codaco/ui";
 import * as NavigationMenu from "@radix-ui/react-navigation-menu";
 import { ArrowLeftCircle, ChevronDown } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 

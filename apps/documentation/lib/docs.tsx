@@ -18,12 +18,13 @@ import { unified } from "unified";
 import { z } from "zod";
 import {
 	type Locale,
-	locales,
 	type SidebarFolder,
 	type SidebarPage,
 	type SidebarProject,
 	type TSideBar,
+	locales,
 } from "~/app/types";
+import Link from "~/components/Link";
 import { BadPractice, GoodPractice } from "~/components/customComponents/BestPractices";
 import ImageFullWidth from "~/components/customComponents/ImageFullWidth";
 import { InterfaceMeta, InterfaceSummary } from "~/components/customComponents/InterfaceSummary";
@@ -32,7 +33,6 @@ import Pre from "~/components/customComponents/Pre";
 import { PrerequisitesSection, SummaryCard, SummarySection } from "~/components/customComponents/SummaryCard";
 import TipBox, { type TipBoxProps } from "~/components/customComponents/TipBox";
 import VideoIFrame from "~/components/customComponents/VideoIFrame";
-import Link from "~/components/Link";
 import sidebar from "~/public/sidebar.json";
 import { get } from "./helper_functions";
 import processPreTags from "./processPreTags";
@@ -102,7 +102,13 @@ type ReturnType = {
 	docPath: string[];
 };
 
-export const getDocsForRouteSegment = ({ locale, project }: { locale: Locale; project: string }) => {
+export const getDocsForRouteSegment = ({
+	locale,
+	project,
+}: {
+	locale: Locale;
+	project: string;
+}) => {
 	const typedSidebar = sidebar as TSideBar;
 	const sidebarData = get(typedSidebar, [locale, project], null) as SidebarProject;
 
@@ -260,7 +266,11 @@ export async function getDocumentForPath({
 				prerequisitessection: (props: { children: ReactNode }) => <PrerequisitesSection {...props} />,
 				summarysection: (props: { children: ReactNode }) => <SummarySection {...props} />,
 				interfacesummary: (props: { children: ReactNode }) => <InterfaceSummary {...props} />,
-				interfacemeta: (props: { type: string; creates: string; usesprompts: string }) => <InterfaceMeta {...props} />,
+				interfacemeta: (props: {
+					type: string;
+					creates: string;
+					usesprompts: string;
+				}) => <InterfaceMeta {...props} />,
 				definition: (props: { children: ReactNode }) => <div className="text-lg font-normal">{props.children}</div>,
 				table: (props) => (
 					<div className="overflow-x-auto">

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { getAvailableLocalesForPath } from "~/lib/docs";
 
 type InnerLanguageSwitcherProps = {

@@ -5,7 +5,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { selectTriggerStyles } from "./select";
 import { cn } from "./utils";
 
-const DefaultItemComponent = (item: { value: unknown; id: string; label: string }) => {
+const DefaultItemComponent = (item: {
+	value: unknown;
+	id: string;
+	label: string;
+}) => {
 	return <div>{item.label}</div>;
 };
 

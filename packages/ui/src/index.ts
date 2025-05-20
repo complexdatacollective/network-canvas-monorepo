@@ -1,6 +1,8 @@
 import { Button, buttonVariants } from "./Button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./collapsible";
 import { Divider } from "./Divider";
+import { Input, inputClasses, inputVariants } from "./Input";
+import { Label } from "./Label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./collapsible";
 import {
 	Dialog,
 	DialogClose,
@@ -15,8 +17,6 @@ import {
 	DialogTrigger,
 	dialogContentClasses,
 } from "./dialog";
-import { Input, inputClasses, inputVariants } from "./Input";
-import { Label } from "./Label";
 import {
 	Select,
 	SelectContent,
@@ -30,9 +30,9 @@ import {
 } from "./select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 import { Details, Summary } from "./typography/Details";
-import Heading, { type HeadingProps, headingVariants } from "./typography/Heading";
+import Heading, { headingVariants, type HeadingProps } from "./typography/Heading";
 import { ListItem, OrderedList, UnorderedList } from "./typography/Lists";
-import Paragraph, { type ParagraphProps, paragraphVariants } from "./typography/Paragraph";
+import Paragraph, { paragraphVariants, type ParagraphProps } from "./typography/Paragraph";
 
 export type { HeadingProps, ParagraphProps };
 

@@ -8,8 +8,7 @@
 		"build": "tsc && vite build",
 		"preview": "vite preview",
 		"tauri": "tauri",
-		"typecheck": "tsc --noEmit",
-		"lint": "biome check ."
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"react": "catalog:",
@@ -18,15 +17,13 @@
 		"@tauri-apps/plugin-opener": "^2"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "catalog:",
-		"@codaco/biome": "workspace:*",
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "^4.3.4",
 		"typescript": "catalog:",
-		"vite": "catalog:",
+		"vite": "^6.0.3",
 		"@tauri-apps/cli": "^2"
 	}
 }

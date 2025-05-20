@@ -1,5 +1,5 @@
 import NextLink, { type LinkProps } from "next/link";
-import { forwardRef, type ReactNode } from "react";
+import { type ReactNode, forwardRef } from "react";
 import { cn } from "~/lib/utils";
 
 const Link = forwardRef<HTMLAnchorElement, LinkProps & { children: ReactNode; className?: string }>((props, ref) => {

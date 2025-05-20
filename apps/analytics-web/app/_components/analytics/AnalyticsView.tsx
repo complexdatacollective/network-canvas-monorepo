@@ -1,13 +1,13 @@
 import { getEvents } from "~/app/_actions/actions";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import EventsTable from "./EventsTable/EventsTable";
+import RegionsTable from "./RegionsTable/RegionsTable";
 import TotalAppsCard from "./cards/TotalAppsCard";
 import TotalDataExported from "./cards/TotalDataExported";
 import TotalErrorsCard from "./cards/TotalErrorsCard";
 import TotalInterviewsCompletedCard from "./cards/TotalInterviewsCompletedCard";
 import TotalInterviewsStartedCard from "./cards/TotalInterviewsStartedCard";
 import TotalProtocolsInstalledCard from "./cards/TotalProtocolsInstalledCard";
-import EventsTable from "./EventsTable/EventsTable";
-import RegionsTable from "./RegionsTable/RegionsTable";
 
 export default async function AnalyticsView() {
 	const events = await getEvents();

@@ -2,7 +2,13 @@ import { Heading, Paragraph } from "@codaco/ui";
 import { Clock } from "lucide-react";
 import type { ReactNode } from "react";
 
-export const SummaryCard = ({ duration, children }: { children: ReactNode; duration: string }) => {
+export const SummaryCard = ({
+	duration,
+	children,
+}: {
+	children: ReactNode;
+	duration: string;
+}) => {
 	return (
 		<summary className="text-base-sm my-8 rounded-lg border border-border bg-accent p-6 text-accent-foreground [--link:var(--accent-foreground)]">
 			{children}

@@ -11,7 +11,11 @@ export const metadata: Metadata = {
 	description: "This is the analytics dashboard for Fresco.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
 	return (
 		<ClerkProvider afterSignOutUrl="/">
 			<html lang="en">

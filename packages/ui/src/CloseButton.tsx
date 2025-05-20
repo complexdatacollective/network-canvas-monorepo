@@ -1,6 +1,12 @@
 import { cn } from "./utils";
 
-export const CloseButton = ({ onClick, className }: { onClick: () => void; className?: string }) => {
+export const CloseButton = ({
+	onClick,
+	className,
+}: {
+	onClick: () => void;
+	className?: string;
+}) => {
 	return (
 		<button
 			type="button"
