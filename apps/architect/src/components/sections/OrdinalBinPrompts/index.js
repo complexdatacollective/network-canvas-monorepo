@@ -1,1 +1,1 @@
-export { default } from './OrdinalBinPrompts';
+export { default } from "./OrdinalBinPrompts";

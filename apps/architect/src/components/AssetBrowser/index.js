@@ -1,1 +1,1 @@
-export { default } from './AssetBrowser';
+export { default } from "./AssetBrowser";

@@ -5,8 +5,8 @@ const preview = jest.fn();
 const close = jest.fn();
 
 const driver = {
-  preview,
-  close,
+	preview,
+	close,
 };
 
 export default driver;

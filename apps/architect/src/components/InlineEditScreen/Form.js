@@ -1,11 +1,10 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { reduxForm } from 'redux-form';
-import stopPropagationFromHandler from '@app/utils/stopPropagationFromHandler';
+import PropTypes from "prop-types";
+import { reduxForm } from "redux-form";
+import stopPropagationFromHandler from "@app/utils/stopPropagationFromHandler";
 
 const formOptions = {
-  touchOnBlur: false,
-  touchOnChange: true,
+	touchOnBlur: false,
+	touchOnChange: true,
 };
 
 /**
@@ -13,18 +12,16 @@ const formOptions = {
  * Would like to wrap this component up into InlineEditScreen if possible
  */
 const Form = ({ handleSubmit, children }) => (
-  <form onSubmit={stopPropagationFromHandler(handleSubmit)}>
-    {children}
-  </form>
+	<form onSubmit={stopPropagationFromHandler(handleSubmit)}>{children}</form>
 );
 
 Form.propTypes = {
-  handleSubmit: PropTypes.func.isRequired,
-  children: PropTypes.node,
+	handleSubmit: PropTypes.func.isRequired,
+	children: PropTypes.node,
 };
 
 Form.defaultProps = {
-  children: null,
+	children: null,
 };
 
 export default reduxForm(formOptions)(Form);

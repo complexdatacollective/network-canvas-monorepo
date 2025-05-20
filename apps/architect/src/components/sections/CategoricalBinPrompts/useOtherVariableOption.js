@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 const useOtherVariableOption = ({ variableOptions }) => {
-  const [otherVariableToggle, setOtherVariableToggle] = useState(false);
+	const [otherVariableToggle, setOtherVariableToggle] = useState(false);
 
-  const otherVariableOptions = variableOptions
-    .filter(({ type: variableType }) => variableType === 'text');
+	const otherVariableOptions = variableOptions.filter(({ type: variableType }) => variableType === "text");
 
-  return [otherVariableToggle, setOtherVariableToggle, otherVariableOptions];
+	return [otherVariableToggle, setOtherVariableToggle, otherVariableOptions];
 };
 
 export default useOtherVariableOption;

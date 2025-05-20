@@ -1,1 +1,1 @@
-export { default } from './GridManager';
+export { default } from "./GridManager";

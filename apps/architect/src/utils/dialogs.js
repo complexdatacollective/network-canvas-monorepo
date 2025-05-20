@@ -1,32 +1,32 @@
-import { remote } from 'electron';
+import { remote } from "electron";
 
 const defaultOpenDialogOptions = {
-  buttonLabel: 'Open',
-  nameFieldLabel: 'Open:',
-  defaultPath: 'Protocol.netcanvas',
-  filters: [{ name: 'Network Canvas', extensions: ['netcanvas'] }],
-  properties: ['openFile'],
+	buttonLabel: "Open",
+	nameFieldLabel: "Open:",
+	defaultPath: "Protocol.netcanvas",
+	filters: [{ name: "Network Canvas", extensions: ["netcanvas"] }],
+	properties: ["openFile"],
 };
 
 const defaultSaveDialogOptions = {
-  buttonLabel: 'Save',
-  nameFieldLabel: 'Save:',
-  filters: [{ name: 'Network Canvas', extensions: ['netcanvas'] }],
-  properties: ['saveFile'],
+	buttonLabel: "Save",
+	nameFieldLabel: "Save:",
+	filters: [{ name: "Network Canvas", extensions: ["netcanvas"] }],
+	properties: ["saveFile"],
 };
 
 const defaultSaveCopyDialogOptions = {
-  buttonLabel: 'Save Copy',
-  nameFieldLabel: 'Save:',
-  filters: [{ name: 'Network Canvas', extensions: ['netcanvas'] }],
-  properties: ['saveFile'],
+	buttonLabel: "Save Copy",
+	nameFieldLabel: "Save:",
+	filters: [{ name: "Network Canvas", extensions: ["netcanvas"] }],
+	properties: ["saveFile"],
 };
 
 const createDialogOptions = {
-  buttonLabel: 'Create',
-  nameFieldLabel: 'Create as:',
-  defaultPath: 'Protocol.netcanvas',
-  filters: [{ name: 'Protocols', extensions: ['netcanvas'] }],
+	buttonLabel: "Create",
+	nameFieldLabel: "Create as:",
+	defaultPath: "Protocol.netcanvas",
+	filters: [{ name: "Protocols", extensions: ["netcanvas"] }],
 };
 
 /**
@@ -34,15 +34,12 @@ const createDialogOptions = {
  * versions of electron.
  */
 const openDialog = (openDialogOptions = {}) => {
-  const options = {
-    ...defaultOpenDialogOptions,
-    ...openDialogOptions,
-  };
+	const options = {
+		...defaultOpenDialogOptions,
+		...openDialogOptions,
+	};
 
-  return remote.dialog.showOpenDialog(
-    remote.getCurrentWindow(),
-    options,
-  );
+	return remote.dialog.showOpenDialog(remote.getCurrentWindow(), options);
 };
 
 /**
@@ -50,25 +47,17 @@ const openDialog = (openDialogOptions = {}) => {
  * versions of electron.
  */
 const saveDialog = (saveDialogOptions = {}) => {
-  const options = {
-    ...defaultSaveDialogOptions,
-    ...saveDialogOptions,
-  };
+	const options = {
+		...defaultSaveDialogOptions,
+		...saveDialogOptions,
+	};
 
-  return remote.dialog.showSaveDialog(
-    remote.getCurrentWindow(),
-    options,
-  );
+	return remote.dialog.showSaveDialog(remote.getCurrentWindow(), options);
 };
 
 const saveCopyDialog = (saveCopyOptions = {}) => {
-  const options = { ...defaultSaveCopyDialogOptions, ...saveCopyOptions };
-  return saveDialog(options);
+	const options = { ...defaultSaveCopyDialogOptions, ...saveCopyOptions };
+	return saveDialog(options);
 };
 
-export {
-  saveDialog,
-  saveCopyDialog,
-  openDialog,
-  createDialogOptions,
-};
+export { saveDialog, saveCopyDialog, openDialog, createDialogOptions };

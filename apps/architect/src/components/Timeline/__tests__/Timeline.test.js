@@ -1,22 +1,22 @@
-/* eslint-env jest */
-
-import React from 'react';
-import { shallow } from 'enzyme';
-import { Timeline } from '../Timeline';
+import { shallow } from "enzyme";
+import { Timeline } from "../Timeline";
 
 const mockProps = {
-  deleteStage: () => {},
-  openDialog: () => {},
-  openScreen: () => {},
-  locus: 0,
+	deleteStage: () => {},
+	openDialog: () => {},
+	openScreen: () => {},
+	locus: 0,
 };
 
-describe('<Timeline />', () => {
-  it('renders stages', () => {
-    const mockStages = [{ id: 1, type: 'NameGenerator' }, { id: 2, type: 'Sociogram' }];
+describe("<Timeline />", () => {
+	it("renders stages", () => {
+		const mockStages = [
+			{ id: 1, type: "NameGenerator" },
+			{ id: 2, type: "Sociogram" },
+		];
 
-    const component = shallow(<Timeline {...mockProps} stages={mockStages} />);
+		const component = shallow(<Timeline {...mockProps} stages={mockStages} />);
 
-    expect(component.find('sortableElement(Stage)').length).toEqual(2);
-  });
+		expect(component.find("sortableElement(Stage)").length).toEqual(2);
+	});
 });

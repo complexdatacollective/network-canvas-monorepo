@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
-import { getValidations } from '@app/utils/validations';
+import { useMemo } from "react";
+import { getValidations } from "@app/utils/validations";
 
 const useValidate = (validation) => {
-  const validate = useMemo(() => getValidations(validation), []);
+	const validate = useMemo(() => getValidations(validation), []);
 
-  return validate;
+	return validate;
 };
 
 export default useValidate;

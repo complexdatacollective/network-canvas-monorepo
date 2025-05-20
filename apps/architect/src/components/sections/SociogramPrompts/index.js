@@ -1,1 +1,1 @@
-export { default } from './SociogramPrompts';
+export { default } from "./SociogramPrompts";

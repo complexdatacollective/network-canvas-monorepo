@@ -1,1 +1,1 @@
-export { default } from './CategoricalBinPrompts';
+export { default } from "./CategoricalBinPrompts";

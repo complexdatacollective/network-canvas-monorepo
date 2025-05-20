@@ -1,5 +1,5 @@
-import fs from 'fs-extra';
-import path from 'path';
+import fs from "fs-extra";
+import path from "path";
 
 /**
  * Given a folder containing a `protocol.json`,
@@ -8,9 +8,9 @@ import path from 'path';
  * @returns {object} The protocol as an object
  */
 const loadProtocolConfiguration = (protocolPath) => {
-  const protocolFile = path.join(protocolPath, 'protocol.json');
+	const protocolFile = path.join(protocolPath, "protocol.json");
 
-  return fs.readJson(protocolFile);
+	return fs.readJson(protocolFile);
 };
 
 export default loadProtocolConfiguration;

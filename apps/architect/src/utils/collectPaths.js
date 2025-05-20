@@ -1,4 +1,4 @@
-import { get, reduce, isArray } from 'lodash';
+import { get, reduce, isArray } from "lodash";
 
 /**
  * Collect _values_ that match path from `obj`. We are using this
@@ -36,58 +36,55 @@ import { get, reduce, isArray } from 'lodash';
  * @returns {object} in format: { [path]: value }
  */
 const collectPath = (objPath, obj, memoPath) => {
-  // We expect a string notation for objPath, but it's actually converted to array automatically:
-  // 'stages[].prompts[].subject.type' => ['stages', 'prompts', 'subject.type']
-  const parsedPath = isArray(objPath)
-    ? objPath
-    : objPath.split('[].');
-  const [, ...rest] = parsedPath;
-  let [next] = parsedPath;
-  let scanArray = false;
+	// We expect a string notation for objPath, but it's actually converted to array automatically:
+	// 'stages[].prompts[].subject.type' => ['stages', 'prompts', 'subject.type']
+	const parsedPath = isArray(objPath) ? objPath : objPath.split("[].");
+	const [, ...rest] = parsedPath;
+	let [next] = parsedPath;
+	let scanArray = false;
 
-  // if end is array then we wanted to parse it as one
-  if (next.slice(-2) === '[]') {
-    next = next.slice(0, -2);
-    scanArray = true;
-  }
+	// if end is array then we wanted to parse it as one
+	if (next.slice(-2) === "[]") {
+		next = next.slice(0, -2);
+		scanArray = true;
+	}
 
-  const path = memoPath
-    ? `${memoPath}.${next}` : `${next}`;
+	const path = memoPath ? `${memoPath}.${next}` : `${next}`;
 
-  const nextObj = get(obj, next);
+	const nextObj = get(obj, next);
 
-  if (rest.length > 0) {
-    return reduce(
-      nextObj || [],
-      (memo, item, index) => ({
-        ...memo,
-        ...collectPath(rest, item, `${path}[${index}]`),
-      }),
-      {},
-    );
-  }
+	if (rest.length > 0) {
+		return reduce(
+			nextObj || [],
+			(memo, item, index) => ({
+				...memo,
+				...collectPath(rest, item, `${path}[${index}]`),
+			}),
+			{},
+		);
+	}
 
-  // special case to parse end array
-  if (Array.isArray(nextObj) && scanArray) {
-    const result = reduce(
-      nextObj || [],
-      (memo, item, index) => ({
-        ...memo,
-        [`${path}[${index}]`]: item,
-      }),
-      {},
-    );
+	// special case to parse end array
+	if (Array.isArray(nextObj) && scanArray) {
+		const result = reduce(
+			nextObj || [],
+			(memo, item, index) => ({
+				...memo,
+				[`${path}[${index}]`]: item,
+			}),
+			{},
+		);
 
-    return result;
-  }
+		return result;
+	}
 
-  if (nextObj) {
-    return {
-      [path]: nextObj,
-    };
-  }
+	if (nextObj) {
+		return {
+			[path]: nextObj,
+		};
+	}
 
-  return {};
+	return {};
 };
 
 /**
@@ -120,28 +117,35 @@ const collectPath = (objPath, obj, memoPath) => {
  * ```
  */
 export const collectMappedPath = (paths, obj, mapFunc) => {
-  const collectedPaths = collectPath(paths, obj);
+	const collectedPaths = collectPath(paths, obj);
 
-  return reduce(collectedPaths, (acc, value, path) => {
-    const result = mapFunc(value, path);
+	return reduce(
+		collectedPaths,
+		(acc, value, path) => {
+			const result = mapFunc(value, path);
 
-    if (result === undefined) { return acc; }
-    return {
-      ...acc,
-      [result[1]]: result[0],
-    };
-  }, {});
+			if (result === undefined) {
+				return acc;
+			}
+			return {
+				...acc,
+				[result[1]]: result[0],
+			};
+		},
+		{},
+	);
 };
 
-export const collectPaths = (objPaths, object) => objPaths.reduce((acc, objPath) => {
-  const next = Array.isArray(objPath)
-    ? collectMappedPath(objPath[0], object, objPath[1])
-    : collectPath(objPath, object);
+export const collectPaths = (objPaths, object) =>
+	objPaths.reduce((acc, objPath) => {
+		const next = Array.isArray(objPath)
+			? collectMappedPath(objPath[0], object, objPath[1])
+			: collectPath(objPath, object);
 
-  return {
-    ...acc,
-    ...next,
-  };
-}, {});
+		return {
+			...acc,
+			...next,
+		};
+	}, {});
 
 export default collectPath;

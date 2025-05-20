@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer } from "electron";
 
 /**
  * Connect a listener to the IPC channel 'ACTION'. These events are treated
@@ -13,22 +13,22 @@ import { ipcRenderer } from 'electron';
  * dispatch({ type: 'UPDATE_FOO', foo: 'bar', meta: { sender: referenceToIPCSender} });
  */
 const ipc = (store) => {
-  ipcRenderer.on('ACTION', (event, { target, ...action }) => {
-    const ipcAction = {
-      ...action,
-      meta: { ...action.meta, sender: event.sender },
-    };
+	ipcRenderer.on("ACTION", (event, { target, ...action }) => {
+		const ipcAction = {
+			...action,
+			meta: { ...action.meta, sender: event.sender },
+		};
 
-    store.dispatch(ipcAction);
-  });
+		store.dispatch(ipcAction);
+	});
 
-  return (next) => (action) => {
-    if (action.ipc === true) {
-      ipcRenderer.send('ACTION', action);
-    }
+	return (next) => (action) => {
+		if (action.ipc === true) {
+			ipcRenderer.send("ACTION", action);
+		}
 
-    return next(action);
-  };
+		return next(action);
+	};
 };
 
 export default ipc;

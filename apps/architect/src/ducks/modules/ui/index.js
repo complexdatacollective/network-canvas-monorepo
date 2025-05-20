@@ -1,18 +1,18 @@
-import { combineReducers } from 'redux';
-import screens, { actionCreators as screenActionCreators } from './screens';
-import status, { selectors as statusSelectors } from './status';
+import { combineReducers } from "redux";
+import screens, { actionCreators as screenActionCreators } from "./screens";
+import status, { selectors as statusSelectors } from "./status";
 
 const ui = combineReducers({
-  screens,
-  status,
+	screens,
+	status,
 });
 
 export const selectors = {
-  ...statusSelectors,
+	...statusSelectors,
 };
 
 export const actionCreators = {
-  ...screenActionCreators,
+	...screenActionCreators,
 };
 
 export default ui;

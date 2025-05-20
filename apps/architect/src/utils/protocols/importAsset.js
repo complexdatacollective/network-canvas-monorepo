@@ -1,8 +1,8 @@
-import path from 'path';
-import uuid from 'uuid/v1';
-import { findKey, toLower } from 'lodash';
-import { copy } from 'fs-extra';
-import { SUPPORTED_EXTENSION_TYPE_MAP } from '@app/config';
+import path from "path";
+import uuid from "uuid/v1";
+import { findKey, toLower } from "lodash";
+import { copy } from "fs-extra";
+import { SUPPORTED_EXTENSION_TYPE_MAP } from "@app/config";
 
 /**
  * Function that determines the type of an asset file when importing. Types are defined
@@ -15,11 +15,11 @@ import { SUPPORTED_EXTENSION_TYPE_MAP } from '@app/config';
  * type is unsupported
  */
 export const getSupportedAssetType = (filePath) => {
-  const extension = toLower(path.extname(filePath));
+	const extension = toLower(path.extname(filePath));
 
-  const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) => type.includes(extension));
+	const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) => type.includes(extension));
 
-  return typeFromMap || false;
+	return typeFromMap || false;
 };
 
 /**
@@ -27,14 +27,15 @@ export const getSupportedAssetType = (filePath) => {
  * @param {string} protocolPath - The destination directory.
  * @param {string} filePath - The file buffer to copy.
  */
-const importAsset = (protocolPath, filePath) => new Promise((resolve) => {
-  const destinationName = `${uuid()}${path.extname(filePath)}`;
-  const destinationPath = path.join(protocolPath, 'assets', destinationName);
-  const assetType = getSupportedAssetType(filePath);
+const importAsset = (protocolPath, filePath) =>
+	new Promise((resolve) => {
+		const destinationName = `${uuid()}${path.extname(filePath)}`;
+		const destinationPath = path.join(protocolPath, "assets", destinationName);
+		const assetType = getSupportedAssetType(filePath);
 
-  copy(filePath, destinationPath)
-    .then(() => ({ filePath: destinationName, assetType }))
-    .then(resolve);
-});
+		copy(filePath, destinationPath)
+			.then(() => ({ filePath: destinationName, assetType }))
+			.then(resolve);
+	});
 
 export default importAsset;
