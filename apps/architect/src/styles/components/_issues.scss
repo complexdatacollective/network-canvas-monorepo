@@ -1,0 +1,84 @@
+@use '~@codaco/ui/src/styles/global/core/units';
+
+.issues {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background-color: var(--color-sea-serpent);
+  transform-origin: 0 100%;
+  overflow: hidden;
+  color: var(--text-light);
+  z-index: var(--z-default);
+  max-height: auto;
+
+  &__title-bar {
+    background-color: var(--color-sea-serpent--dark);
+    padding: units.unit(1) units.unit(2);
+    cursor: pointer;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+
+    &-icon {
+      .icon {
+        position: relative;
+        top: units.unit(.25);
+        height: units.unit(4);
+        width: units.unit(4);
+      }
+    }
+
+    &-text {
+      @extend .small-heading; // sass-lint:disable-line placeholder-in-extend
+
+      margin: 0 units.unit(2);
+      flex: 1 0 auto;
+    }
+
+    &-toggle {
+      .issues-toggle {
+        height: units.unit(2);
+        width: units.unit(2);
+      }
+    }
+  }
+
+  &__issues {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: issue;
+    transition-property: max-height;
+    transition-timing-function: var(--animation-easing);
+    transition-duration: var(--animation-duration-standard);
+    overflow: hidden auto;
+  }
+
+  &__issue {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    transition-property: background-color;
+    transition-timing-function: var(--animation-easing);
+    transition-duration: var(--animation-duration-standard);
+
+    a {
+      display: block;
+      width: 100%;
+      padding: units.unit(2) units.unit(4);
+      text-decoration: none;
+      color: var(--text-light);
+
+      &::before {
+        counter-increment: issue;
+        content: counter(issue) '.';
+        margin-right: units.unit(2);
+      }
+    }
+
+    &:hover {
+      background-color: var(--color-sea-green);
+    }
+  }
+}

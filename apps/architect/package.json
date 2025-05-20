@@ -11,19 +11,21 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@reduxjs/toolkit": "^2.8.2",
+		"@tauri-apps/api": "^2",
+		"@tauri-apps/plugin-opener": "^2",
 		"react": "catalog:",
 		"react-dom": "catalog:",
-		"@tauri-apps/api": "^2",
-		"@tauri-apps/plugin-opener": "^2"
+		"react-redux": "^9.2.0"
 	},
 	"devDependencies": {
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
+		"@tauri-apps/cli": "^2",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "^4.3.4",
 		"typescript": "catalog:",
-		"vite": "^6.0.3",
-		"@tauri-apps/cli": "^2"
+		"vite": "^6.0.3"
 	}
 }

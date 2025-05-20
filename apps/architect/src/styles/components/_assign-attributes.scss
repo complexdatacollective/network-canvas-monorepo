@@ -1,0 +1,83 @@
+@use '~@codaco/ui/src/styles/global/core/units';
+
+$field-color: #c7ced0;
+
+.assign-attributes {
+  &__empty {
+    margin-top: units.unit(2);
+    font-style: italic;
+  }
+
+  &__add {
+    margin-top: units.unit(2);
+
+    button {
+      margin: 0;
+    }
+  }
+}
+
+.assign-attributes-attribute {
+  --section-background-color: var(--architect-panel-grey--dark);
+
+  display: flex;
+  margin: units.unit(2) 0;
+  padding: units.unit(2);
+  border-radius: var(--border-radius);
+  background: var(--section-background-color);
+
+
+  .form-field {
+    background: var(--architect-panel-grey);
+    margin-bottom: 0;
+  }
+
+  &__wrapper {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+  }
+
+  &__variable {
+    flex: 1 0 auto;
+
+    .form-fields-variable-picker {
+      margin-top: 0;
+      margin-bottom: units.unit(2);
+
+      fieldset {
+        border-color: $field-color;
+      }
+    }
+  }
+
+  &__value {
+    flex: 1 0 auto;
+    border: 2px dashed $field-color;
+    padding: units.unit(2);
+    border-radius: var(--border-radius);
+
+    legend {
+      @extend .small-heading; // sass-lint:disable-line placeholder-in-extend
+
+      padding: 0 units.unit(2);
+    }
+  }
+
+  &__delete {
+    flex: 0 0 5rem;
+    padding-left: units.unit(2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .icon {
+      height: units.unit(2);
+      cursor: pointer;
+
+      .cls-1 {
+        fill: var(--text-dark);
+      }
+    }
+  }
+}
