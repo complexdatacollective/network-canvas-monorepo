@@ -265,6 +265,46 @@ importers:
         specifier: 'catalog:'
         version: 3.1.1(@types/debug@4.1.12)(@types/node@20.17.48)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
 
+  apps/architect:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2
+        version: 2.5.0
+      '@tauri-apps/plugin-opener':
+        specifier: ^2
+        version: 2.2.7
+      react:
+        specifier: 'catalog:'
+        version: 19.0.0
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.0.0(react@19.0.0)
+    devDependencies:
+      '@codaco/tailwind-config':
+        specifier: workspace:*
+        version: link:../../tooling/tailwind
+      '@codaco/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@tauri-apps/cli':
+        specifier: ^2
+        version: 2.5.0
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.0.12
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.0.4(@types/react@19.0.12)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.2.3(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0))
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.2
+      vite:
+        specifier: ^6.0.3
+        version: 6.2.3(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
+
   apps/documentation:
     dependencies:
       '@codaco/art':
@@ -436,46 +476,6 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.24.2
-
-  apps/editor:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2
-        version: 2.5.0
-      '@tauri-apps/plugin-opener':
-        specifier: ^2
-        version: 2.2.7
-      react:
-        specifier: 'catalog:'
-        version: 19.0.0
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.0.0(react@19.0.0)
-    devDependencies:
-      '@codaco/tailwind-config':
-        specifier: workspace:*
-        version: link:../../tooling/tailwind
-      '@codaco/tsconfig':
-        specifier: workspace:*
-        version: link:../../tooling/typescript
-      '@tauri-apps/cli':
-        specifier: ^2
-        version: 2.5.0
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.0.12
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.0.4(@types/react@19.0.12)
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.2.3(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0))
-      typescript:
-        specifier: 'catalog:'
-        version: 5.8.2
-      vite:
-        specifier: ^6.0.3
-        version: 6.2.3(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
 
   packages/analytics:
     dependencies:
