@@ -10,9 +10,12 @@
 	"scripts": {
 		"add": "pnpm dlx shadcn-ui add",
 		"clean": "rm -rf .turbo node_modules",
+		"lint": "biome check .",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@biomejs/biome": "catalog:",
+		"@codaco/biome": "workspace:*",
 		"@codaco/art": "workspace:*",
 		"@hookform/resolvers": "^4.1.3",
 		"@radix-ui/react-accordion": "catalog:",

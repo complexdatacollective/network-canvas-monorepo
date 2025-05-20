@@ -1,7 +1,7 @@
 import { Button } from "@codaco/ui";
 import { X as CloseMenu, Menu as HamburgerMenu } from "lucide-react";
-import { useLocale } from "next-intl";
 import { usePathname } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 import DocSearchComponent from "./DocSearchComponent";

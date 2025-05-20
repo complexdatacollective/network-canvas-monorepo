@@ -9,13 +9,16 @@
 	"license": "MIT",
 	"scripts": {
 		"clean": "rm -rf .turbo node_modules",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
 	},
 	"dependencies": {
 		"blobs": "^2.3.0-beta.2",
 		"d3-interpolate-path": "^2.3.0"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@codaco/biome": "workspace:*",
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@types/d3-interpolate-path": "^2.0.3",

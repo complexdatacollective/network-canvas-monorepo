@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+
 dotenv.config();
 
 import { migrate } from "drizzle-orm/vercel-postgres/migrator";

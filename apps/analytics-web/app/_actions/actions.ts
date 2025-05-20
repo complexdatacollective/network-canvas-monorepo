@@ -1,6 +1,6 @@
 "use server";
 
-import { type EventInsertType, db } from "~/db/db";
+import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
 
 export async function getEvents() {

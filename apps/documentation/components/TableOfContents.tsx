@@ -7,13 +7,7 @@ import useHighlighted from "~/hooks/useHighlighted";
 import type { HeadingNode } from "~/lib/tableOfContents";
 import { cn } from "~/lib/utils";
 
-const TOCLink = ({
-	node,
-	sideBar,
-}: {
-	node: HeadingNode;
-	sideBar: boolean;
-}) => {
+const TOCLink = ({ node, sideBar }: { node: HeadingNode; sideBar: boolean }) => {
 	const ref = useRef<HTMLAnchorElement>(null);
 	const [highlighted] = useHighlighted(node.id);
 
@@ -45,13 +39,7 @@ const TOCLink = ({
 	);
 };
 
-const TableOfContents = ({
-	headings,
-	sideBar = false,
-}: {
-	headings: HeadingNode[];
-	sideBar?: boolean;
-}) => {
+const TableOfContents = ({ headings, sideBar = false }: { headings: HeadingNode[]; sideBar?: boolean }) => {
 	return (
 		<aside
 			className={cn(

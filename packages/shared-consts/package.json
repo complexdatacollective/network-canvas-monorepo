@@ -8,12 +8,18 @@
 	},
 	"scripts": {
 		"clean": "rm -rf .turbo node_modules",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
 	},
-	"keywords": ["typescript", "library"],
+	"keywords": [
+		"typescript",
+		"library"
+	],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "MIT",
 	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@codaco/biome": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"typescript": "catalog:"

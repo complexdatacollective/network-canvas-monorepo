@@ -1,6 +1,6 @@
 "use client";
 
-import { type VariantProps, cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import Heading from "./typography/Heading";
 import { paragraphVariants } from "./typography/Paragraph";

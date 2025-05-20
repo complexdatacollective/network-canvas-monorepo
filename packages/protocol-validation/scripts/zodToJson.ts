@@ -1,7 +1,7 @@
-import chalk from "chalk";
 import { execSync } from "node:child_process";
 import { readdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import chalk from "chalk";
 import { ensureError } from "src/utils/ensureError";
 import type { ZodType } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";

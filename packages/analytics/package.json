@@ -10,12 +10,15 @@
 		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"publish": "pnpm lint && pnpm build && npm publish --access public",
 		"dev": "npm run build -- --watch",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
 	},
 	"peerDependencies": {
 		"next": "catalog:"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@codaco/biome": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"tsup": "^8.4.0",
 		"typescript": "catalog:"

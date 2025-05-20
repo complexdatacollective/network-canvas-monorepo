@@ -2,9 +2,9 @@
 
 import { Paragraph } from "@codaco/ui";
 import { motion } from "motion/react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import Link from "next/link";
 import { cn } from "~/lib/utils";
 import DocSearchComponent from "./DocSearchComponent";
 import FancyHeading from "./FancyHeading";

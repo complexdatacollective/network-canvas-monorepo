@@ -20,17 +20,22 @@
 		"test:watch": "vitest",
 		"zod-to-json": "tsx ./scripts/zodToJson.ts",
 		"compile-schemas": "tsx ./scripts/compileSchemas.ts",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
 	},
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"dependencies": {
 		"ajv": "^8.17.1",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@codaco/biome": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@types/gunzip-maybe": "^1.4.2",
@@ -46,7 +51,7 @@
 		"tar-stream": "^3.1.7",
 		"tsx": "^4.19.3",
 		"typescript": "catalog:",
-		"vite": "^6.2.0",
+		"vite": "catalog:",
 		"vite-plugin-dts": "^4.5.3",
 		"vitest": "catalog:",
 		"zod-to-json-schema": "^3.24.3"

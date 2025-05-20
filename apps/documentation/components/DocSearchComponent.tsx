@@ -8,13 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { env } from "~/env";
 import { cn } from "~/lib/utils";
 
-const DocSearchComponent = ({
-	className,
-	large,
-}: {
-	className?: string;
-	large?: boolean;
-}) => {
+const DocSearchComponent = ({ className, large }: { className?: string; large?: boolean }) => {
 	const locale = useLocale();
 	const t = useTranslations("DocSearch");
 

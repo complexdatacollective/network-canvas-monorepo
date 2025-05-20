@@ -1,0 +1,10 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.0.0-beta.5/schema.json",
+	"extends": ["@codaco/biome/base.json"],
+	"linter": {
+		"domains": {
+			"react": "recommended",
+			"next": "recommended"
+		}
+	}
+}

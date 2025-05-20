@@ -14,7 +14,6 @@ import type {
 	Validation,
 	Variable,
 } from "../schemas/8.zod";
-import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,
 	duplicateInArray,
@@ -24,6 +23,7 @@ import {
 	getVariableNames,
 	getVariablesForSubject,
 } from "./helpers";
+import Validator from "./Validator";
 
 /**
  * Define and run all dynamic validations (which aren't covered by the JSON Schema).

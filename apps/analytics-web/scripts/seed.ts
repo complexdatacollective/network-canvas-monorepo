@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
+
 dotenv.config();
 
 import { eventTypes } from "@codaco/analytics/src";
 import { faker } from "@faker-js/faker";
-import { type EventInsertType, db } from "~/db/db";
+import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
 
 const installationIds: string[] = [];

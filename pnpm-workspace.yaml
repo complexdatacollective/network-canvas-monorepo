@@ -3,6 +3,7 @@ packages:
   - packages/*
   - tooling/*
 catalog:
+  "@biomejs/biome": 2.0.0-beta.5
   "@radix-ui/react-accordion": ^1.2.1
   "@radix-ui/react-alert-dialog": ^1.1.2
   "@radix-ui/react-checkbox": ^1.1.2
@@ -41,6 +42,7 @@ catalog:
   tailwind-merge: ^3.0.2
   typescript: ^5.8.2
   zod: ^3.24.2
-  vitest: ^3.0.9
+  vite: ^6.3.5
+  vitest: ^3.1.4
   dotenv: ^16.4.7
 
