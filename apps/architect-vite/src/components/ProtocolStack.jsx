@@ -1,4 +1,4 @@
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";

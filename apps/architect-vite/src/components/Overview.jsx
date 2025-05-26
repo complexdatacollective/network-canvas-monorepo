@@ -1,10 +1,7 @@
 import { Button, Icon } from "@codaco/ui";
 import * as Fields from "@codaco/ui/lib/components/Fields";
-import MenuBookIcon from "@material-ui/icons/MenuBook";
-import PermMediaIcon from "@material-ui/icons/PermMedia";
-import PrintIcon from "@material-ui/icons/Print";
+import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import path from "path";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";

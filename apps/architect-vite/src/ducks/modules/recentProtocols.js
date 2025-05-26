@@ -1,4 +1,4 @@
-import { uniqBy } from "lodash";
+import { uniqBy } from "es-toolkit";
 import path from "path";
 import { actionTypes as sessionActionTypes } from "~/src/ducks/modules/session";
 

@@ -1,5 +1,6 @@
-import { find, get, has, isEmpty, omit } from "lodash";
-import uuid from "uuid";
+import { omit } from "es-toolkit";
+import { find, get, has, isEmpty } from "es-toolkit/compat";
+import { v4 as uuid } from "uuid";
 import prune from "~/src/utils/prune";
 import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "../../../selectors/codebook";
 import { makeGetIsUsed } from "../../../selectors/codebook/isUsed";

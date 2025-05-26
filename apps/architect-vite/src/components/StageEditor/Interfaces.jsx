@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import {
 	AnonymisationExplanation,
 	AnonymisationValidation,

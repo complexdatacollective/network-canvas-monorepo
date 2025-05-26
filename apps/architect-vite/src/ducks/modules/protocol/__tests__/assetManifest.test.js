@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { getThunkMocks, toHaveDispatched } from "~/src/__tests__/helpers";
 import testState from "~/src/__tests__/testState.json";
 import { importAsset } from "~/src/utils/protocols";

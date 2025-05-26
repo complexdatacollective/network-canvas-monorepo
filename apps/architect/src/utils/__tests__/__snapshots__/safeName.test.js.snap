@@ -1,3 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`safeName() allows alphanumerics, dashes, and underscore 1`] = `" !\\"#%&'()*+,-/0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ\\\\^_\`abcdefghijklmnopqrstuvwxyz|~"`;

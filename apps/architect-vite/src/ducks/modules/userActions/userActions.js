@@ -1,10 +1,7 @@
 /* eslint-disable import/prefer-default-export */
-import { getMigrationNotes } from "@codaco/protocol-validation";
+import { getMigrationNotes, validateProtocol } from "@codaco/protocol-validation";
 import axios from "axios";
-import { remote } from "electron";
-import { outputFile, remove, rename } from "fs-extra";
-import path from "path";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { UnsavedChanges } from "~/src/components/Dialogs";
 import { APP_SCHEMA_VERSION, SAMPLE_PROTOCOL_URL } from "~/src/config";
 import { actionCreators as dialogsActions } from "~/src/ducks/modules/dialogs";
@@ -24,7 +21,6 @@ import CancellationError from "~/src/utils/cancellationError";
 import { createDialogOptions, openDialog, saveCopyDialog, saveDialog } from "~/src/utils/dialogs";
 import * as netcanvasFile from "~/src/utils/netcanvasFile";
 import { getNewFileName } from "~/src/utils/netcanvasFile/netcanvasFile";
-import validateProtocol from "~/src/utils/validateProtocol";
 import { createImportToast, updateDownloadProgress } from "./userActionToasts";
 
 const protocolsLock = createLock("PROTOCOLS");

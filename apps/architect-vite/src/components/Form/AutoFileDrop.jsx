@@ -1,4 +1,4 @@
-import { has } from "lodash";
+import { has } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps } from "recompose";
 import { bindActionCreators } from "redux";

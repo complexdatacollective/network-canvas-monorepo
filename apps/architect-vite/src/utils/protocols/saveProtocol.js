@@ -1,6 +1,3 @@
-import log from "electron-log";
-import { writeFile } from "fs-extra";
-import path from "path";
 import pruneAssets from "~/src/utils/protocols/pruneAssets";
 
 const getStringifiedProtocol = (protocol) =>

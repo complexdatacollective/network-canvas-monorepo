@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { get, isString } from "lodash";
+import { get, isString } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps, withStateHandlers } from "recompose";

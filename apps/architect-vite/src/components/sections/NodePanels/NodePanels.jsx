@@ -1,11 +1,11 @@
 import { Button } from "@codaco/ui";
-import { has } from "lodash";
+import { has } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect, useDispatch } from "react-redux";
 import { bindActionCreators } from "redux";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { Section } from "~/src/components/EditorLayout";
 import OrderedList from "~/src/components/OrderedList";
 import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";

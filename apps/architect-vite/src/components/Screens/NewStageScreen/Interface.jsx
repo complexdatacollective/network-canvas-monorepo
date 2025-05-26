@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { find, get } from "lodash";
+import { find, get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useRef } from "react";

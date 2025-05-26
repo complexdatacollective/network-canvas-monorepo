@@ -1,6 +1,6 @@
 import { Button } from "@codaco/ui";
 import cx from "classnames";
-import { keys as getKeys, isNull, toPairs } from "lodash";
+import { keys as getKeys, isNull, toPairs } from "es-toolkit";
 import PropTypes from "prop-types";
 import { Field } from "redux-form";
 import FieldError from "~/src/components/Form/FieldError";

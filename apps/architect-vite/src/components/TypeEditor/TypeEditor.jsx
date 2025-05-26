@@ -1,5 +1,5 @@
 import * as Fields from "@codaco/ui/lib/components/Fields";
-import { capitalize, toPairs } from "lodash";
+import { capitalize, toPairs } from "es-toolkit";
 import PropTypes from "prop-types";
 import { useEffect } from "react";
 import { connect, useDispatch, useSelector } from "react-redux";

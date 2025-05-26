@@ -1,4 +1,4 @@
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import path from "path";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";

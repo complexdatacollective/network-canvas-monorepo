@@ -1,4 +1,4 @@
-import { toPairs } from "lodash";
+import { toPairs } from "es-toolkit";
 import { connect } from "react-redux";
 import { formValueSelector } from "redux-form";
 import { getVariablesForSubject } from "~/src/selectors/codebook";

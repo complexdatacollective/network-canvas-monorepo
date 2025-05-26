@@ -1,7 +1,7 @@
 import { Icon } from "@codaco/ui";
 import RichTextField from "@codaco/ui/lib/components/Fields/RichText";
 import TextField from "@codaco/ui/lib/components/Fields/Text";
-import { toNumber } from "lodash";
+import { toNumber } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { SortableElement, SortableHandle } from "react-sortable-hoc";

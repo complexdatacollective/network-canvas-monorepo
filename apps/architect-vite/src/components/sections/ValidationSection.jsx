@@ -1,4 +1,4 @@
-import { get, pickBy } from "lodash";
+import { get, pickBy } from "es-toolkit";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";

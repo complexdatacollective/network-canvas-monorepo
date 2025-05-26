@@ -1,7 +1,5 @@
-import log from "electron-log";
-import { omit } from "lodash";
-import path from "path";
-import uuid from "uuid";
+import { omit } from "es-toolkit";
+import { v4 as uuid } from "uuid";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/src/ducks/modules/protocol/utils/dialogs";
 import { getWorkingPath } from "~/src/selectors/session";
 import { importAsset as fsImportAsset } from "~/src/utils/protocols";

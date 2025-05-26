@@ -1,7 +1,7 @@
 import Button from "@codaco/ui/lib/components/Button";
 import RadioGroup from "@codaco/ui/lib/components/Fields/RadioGroup";
 import cx from "classnames";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { compose } from "recompose";
 import DetachedField from "~/src/components/DetachedField";

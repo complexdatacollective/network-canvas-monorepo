@@ -1,4 +1,4 @@
-import { isEmpty, map, reduce } from "lodash";
+import { isEmpty, map, reduce } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { getCodebook } from "~/src/selectors/codebook";

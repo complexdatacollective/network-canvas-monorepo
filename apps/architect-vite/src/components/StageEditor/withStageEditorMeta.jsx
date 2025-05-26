@@ -1,4 +1,4 @@
-import { has } from "lodash";
+import { has } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { getFormValues, isDirty as isFormDirty, isInvalid as isFormInvalid } from "redux-form";
 import { getStage, getStageIndex } from "~/src/selectors/protocol";

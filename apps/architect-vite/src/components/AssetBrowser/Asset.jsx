@@ -1,7 +1,5 @@
-import DeleteIcon from "@material-ui/icons/Delete";
-import DownloadIcon from "@material-ui/icons/GetApp";
-import PreviewIcon from "@material-ui/icons/Visibility";
 import cx from "classnames";
+import { DeleteIcon, DownloadIcon, FrameIcon as PreviewIcon } from "lucide-react";
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import * as Thumbnails from "~/src/components/Thumbnail";

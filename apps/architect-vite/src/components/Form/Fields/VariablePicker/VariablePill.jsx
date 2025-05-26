@@ -2,7 +2,7 @@ import { Icon } from "@codaco/ui";
 import TextInput from "@codaco/ui/lib/components/Fields/Text";
 import Tippy from "@tippyjs/react";
 import cx from "classnames";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import React, { useMemo, useRef, useState } from "react";

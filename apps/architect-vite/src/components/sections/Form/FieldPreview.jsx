@@ -1,5 +1,5 @@
 import { Markdown } from "@codaco/ui/lib/components/Fields";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 import Badge from "~/src/components/Badge";

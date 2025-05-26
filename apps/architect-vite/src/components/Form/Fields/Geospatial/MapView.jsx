@@ -1,5 +1,5 @@
 import Button from "@codaco/ui/lib/components/Button";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { AnimatePresence, motion } from "motion/react";

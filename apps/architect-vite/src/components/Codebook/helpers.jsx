@@ -1,4 +1,4 @@
-import { compact, get, map, reduce, uniq } from "lodash";
+import { compact, get, map, reduce, uniq } from "es-toolkit/compat";
 import { getAllVariablesByUUID, getType } from "~/src/selectors/codebook";
 import { makeGetIsUsed } from "~/src/selectors/codebook/isUsed";
 import { getVariableIndex } from "~/src/selectors/indexes";

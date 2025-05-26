@@ -1,6 +1,6 @@
 import { Button } from "@codaco/ui";
 import TextField from "@codaco/ui/lib/components/Fields/Text";
-import { get, values } from "lodash";
+import { get, values } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";

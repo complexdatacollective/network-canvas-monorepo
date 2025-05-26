@@ -1,12 +1,10 @@
 /* eslint-env jest */
 
-import { canUpgrade, migrateProtocol } from "@codaco/protocol-validation";
-import fse from "fs-extra";
-import uuid from "uuid";
+import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
+import { v4 as uuid } from "uuid";
 import { APP_SCHEMA_VERSION } from "~/src/config";
 import { archive, extract } from "~/src/utils/protocols/lib/archive";
 import { pruneProtocol } from "~/src/utils/prune";
-import validateProtocol from "~/src/utils/validateProtocol";
 import { errors } from "../errors";
 import {
 	commitNetcanvas,

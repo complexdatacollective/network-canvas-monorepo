@@ -5,7 +5,7 @@ import { Section } from "~/src/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
 import { getNodeTypes } from "~/src/selectors/codebook";
 
-import { omit } from "lodash";
+import { omit } from "es-toolkit";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import Tip from "../../Tip";

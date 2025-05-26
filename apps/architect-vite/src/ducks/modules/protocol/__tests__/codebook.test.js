@@ -1,9 +1,9 @@
 /* eslint-env jest */
 
-import { set } from "lodash";
+import { set } from "es-toolkit";
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { getThunkMocks } from "~/src/__tests__/helpers";
 import testState from "../../../../__tests__/testState.json";
 import reducer, { actionCreators, actionTypes, test } from "../codebook";

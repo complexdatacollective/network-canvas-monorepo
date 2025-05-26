@@ -2,9 +2,7 @@
 
 import { getVariableNamesFromNetwork, validateNames } from "@codaco/protocol-validation";
 import csv from "csvtojson";
-import fs from "fs-extra";
-import { get } from "lodash";
-import path from "path";
+import { get } from "es-toolkit/compat";
 import { getSupportedAssetType } from "~/src/utils/protocols/importAsset";
 
 /**

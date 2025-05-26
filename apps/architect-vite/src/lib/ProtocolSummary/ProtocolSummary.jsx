@@ -1,7 +1,4 @@
 import Button from "@codaco/ui/lib/components/Button";
-import { remote } from "electron";
-import fs from "fs-extra";
-import path from "path";
 import PropTypes from "prop-types";
 import { saveDialog } from "~/src/utils/dialogs";
 import AssetManifest from "./components/AssetManifest";

@@ -1,5 +1,5 @@
 import { Number } from "@codaco/ui/lib/components/Fields";
-import { get, isNull, isUndefined } from "lodash";
+import { get, isNull, isUndefined } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";

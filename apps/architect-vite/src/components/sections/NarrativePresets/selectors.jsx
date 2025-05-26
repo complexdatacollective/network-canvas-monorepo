@@ -1,4 +1,4 @@
-import { map } from "lodash";
+import { map } from "es-toolkit";
 import { getVariableOptionsForSubject } from "~/src/selectors/codebook";
 import { getCodebook } from "~/src/selectors/protocol";
 

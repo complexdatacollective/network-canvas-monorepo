@@ -1,4 +1,3 @@
-import { ipcRenderer } from "electron";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { compose, defaultProps } from "recompose";

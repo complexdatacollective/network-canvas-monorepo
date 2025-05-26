@@ -1,4 +1,4 @@
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import path from "path";
 import { getGeoJsonVariables, getNetworkVariables } from "~/src/utils/protocols/assetTools";
 import { getAssetManifest } from "./protocol";

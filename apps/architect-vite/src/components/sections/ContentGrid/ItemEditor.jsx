@@ -1,6 +1,6 @@
 import RadioGroup from "@codaco/ui/lib/components/Fields/RadioGroup";
 import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Row, Section } from "~/src/components/EditorLayout";
 import { getFieldId } from "../../../utils/issues";

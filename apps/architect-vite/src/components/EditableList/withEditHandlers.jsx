@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers, withStateHandlers } from "recompose";
 import { bindActionCreators } from "redux";
 import { change, formValueSelector } from "redux-form";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { actionCreators as timelineActions } from "~/src/ducks/middleware/timeline";
 import { getLocus } from "~/src/selectors/timeline";
 

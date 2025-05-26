@@ -1,8 +1,8 @@
 import Button from "@codaco/ui/lib/components/Button";
 import Search from "@codaco/ui/lib/components/Fields/Search";
 import cx from "classnames";
+import { get } from "es-toolkit/compat";
 import Fuse from "fuse.js";
-import { get } from "lodash";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect, useDispatch, useSelector } from "react-redux";

@@ -1,4 +1,4 @@
-import { difference, get, keys } from "lodash";
+import { difference, get, keys } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";

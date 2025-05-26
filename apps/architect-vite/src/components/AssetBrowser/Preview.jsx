@@ -1,7 +1,6 @@
 import { Button } from "@codaco/ui";
-import ContentCopyIcon from "@material-ui/icons/FileCopy";
-import DownloadIcon from "@material-ui/icons/GetApp";
 import cx from "classnames";
+import { CopyIcon as ContentCopyIcon, DownloadIcon } from "lucide-react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { compose } from "redux";

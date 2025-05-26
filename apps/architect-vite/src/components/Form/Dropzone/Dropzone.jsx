@@ -1,6 +1,6 @@
 import { Icon, Spinner } from "@codaco/ui";
 import cx from "classnames";
-import { times } from "lodash";
+import { times } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { openDialog } from "~/src/utils/dialogs";

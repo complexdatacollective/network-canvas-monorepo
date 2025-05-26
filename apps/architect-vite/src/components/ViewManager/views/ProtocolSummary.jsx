@@ -1,4 +1,3 @@
-import { ipcRenderer } from "electron";
 import { useEffect, useState } from "react";
 import ProtocolSummary from "~/src/lib/ProtocolSummary/ProtocolSummary";
 import ProtocolSummaryErrorBoundary from "../../Errors/ProtocolSummaryErrorBoundary";

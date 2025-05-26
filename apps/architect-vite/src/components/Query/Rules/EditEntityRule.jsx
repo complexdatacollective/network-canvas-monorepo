@@ -1,5 +1,5 @@
 import RadioGroup from "@codaco/ui/lib/components/Fields/RadioGroup";
-import { isArray, isNil } from "lodash";
+import { isArray, isNil } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { compose } from "recompose";
 import DetachedField from "~/src/components/DetachedField";

@@ -1,6 +1,6 @@
 import { GraphicButton } from "@codaco/ui";
 import { ProtocolCard } from "@codaco/ui/lib/components/Cards";
-import { first, get } from "lodash";
+import { first, get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { actionCreators as userActions } from "~/src/ducks/modules/userActions";

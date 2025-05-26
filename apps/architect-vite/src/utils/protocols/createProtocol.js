@@ -1,6 +1,3 @@
-import { remote } from "electron";
-import fse from "fs-extra";
-import path from "path";
 import { APP_SCHEMA_VERSION } from "~/src/config";
 import { saveDialog } from "~/src/utils/dialogs";
 import getLocalDirectoryFromArchivePath from "./lib/getLocalDirectoryFromArchivePath";

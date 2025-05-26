@@ -1,4 +1,4 @@
-import { omit } from "lodash";
+import { omit } from "es-toolkit";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { actionCreators as stageActions } from "~/src/ducks/modules/protocol/stages";

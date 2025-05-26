@@ -1,5 +1,5 @@
 import * as Fields from "@codaco/ui/lib/components/Fields";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect, useSelector } from "react-redux";
 import { getFormValues } from "redux-form";

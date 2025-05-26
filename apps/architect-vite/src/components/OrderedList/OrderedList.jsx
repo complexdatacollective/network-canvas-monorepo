@@ -1,4 +1,4 @@
-import { isArray, isPlainObject } from "lodash";
+import { isArray, isPlainObject } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { memo } from "react";
 import { connect } from "react-redux";

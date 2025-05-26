@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import * as Fields from "@codaco/ui/lib/components/Fields";
-import { union } from "lodash";
+import { union } from "es-toolkit";
 import PropTypes from "prop-types";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";

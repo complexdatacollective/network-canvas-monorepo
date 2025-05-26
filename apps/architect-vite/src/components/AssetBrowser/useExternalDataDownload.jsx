@@ -1,7 +1,4 @@
-import { remote } from "electron";
-import fse from "fs-extra";
-import { get } from "lodash";
-import path from "path";
+import { get } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
 import { getAssetManifest } from "~/src/selectors/protocol";

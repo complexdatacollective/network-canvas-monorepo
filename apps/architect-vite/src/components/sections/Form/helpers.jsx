@@ -1,4 +1,4 @@
-import { get, omit, reduce } from "lodash";
+import { get, omit, reduce } from "es-toolkit";
 import { formValueSelector } from "redux-form";
 import { getVariablesForSubject } from "~/src/selectors/codebook";
 

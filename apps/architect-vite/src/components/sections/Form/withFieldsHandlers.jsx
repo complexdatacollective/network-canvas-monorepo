@@ -1,4 +1,4 @@
-import { find, get, has } from "lodash";
+import { find, get, has } from "es-toolkit";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";

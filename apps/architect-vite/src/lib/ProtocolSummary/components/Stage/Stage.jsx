@@ -1,4 +1,4 @@
-import { get, isEmpty, sortBy } from "lodash";
+import { get, isEmpty, sortBy } from "es-toolkit";
 import PropTypes from "prop-types";
 import React, { useContext } from "react";
 import interfaceImage from "~/src/images/timeline";

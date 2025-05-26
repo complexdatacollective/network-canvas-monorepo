@@ -1,7 +1,6 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
 import { Button } from "@codaco/ui";
-import DeleteIcon from "@material-ui/icons/DeleteRounded";
 import cx from "classnames";
+import { DeleteIcon } from "lucide-react";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useRef } from "react";

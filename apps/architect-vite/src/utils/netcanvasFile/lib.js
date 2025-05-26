@@ -1,7 +1,4 @@
-import { remote } from "electron";
-import fse from "fs-extra";
-import path from "path";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { archive, extract } from "~/src/utils/protocols/lib/archive";
 import { pruneProtocol } from "~/src/utils/prune";
 import pruneProtocolAssets from "~/src/utils/pruneProtocolAssets";

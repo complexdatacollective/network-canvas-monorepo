@@ -1,7 +1,7 @@
 /* eslint-disable react/no-array-index-key */
 
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
-import { find, get, isEmpty, sortBy, toPairs } from "lodash";
+import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit";
 import PropTypes from "prop-types";
 import React, { useContext } from "react";
 import { SimpleVariablePill } from "~/src/components/Form/Fields/VariablePicker/VariablePill";

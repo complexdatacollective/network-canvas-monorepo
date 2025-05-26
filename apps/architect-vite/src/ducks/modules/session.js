@@ -1,8 +1,8 @@
+import { validateProtocol } from "@codaco/protocol-validation";
 import { actionCreators as timelineActions } from "~/src/ducks/middleware/timeline";
 import { actionCreators as previewActions } from "~/src/ducks/modules/preview";
 import { getProtocol } from "~/src/selectors/protocol";
 import * as netcanvasFile from "~/src/utils/netcanvasFile";
-import validateProtocol from "~/src/utils/validateProtocol";
 
 const RESET_SESSION = "SESSION/RESET";
 const PROTOCOL_CHANGED = "SESSION/PROTOCOL_CHANGED";

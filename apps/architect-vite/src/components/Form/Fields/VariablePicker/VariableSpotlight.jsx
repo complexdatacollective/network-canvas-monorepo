@@ -1,7 +1,7 @@
 import { Icon, Scroller } from "@codaco/ui";
 import Search from "@codaco/ui/lib/components/Fields/Search";
 import cx from "classnames";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef, useState } from "react";

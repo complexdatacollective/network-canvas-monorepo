@@ -1,14 +1,10 @@
-import { canUpgrade, migrateProtocol } from "@codaco/protocol-validation";
-import log from "electron-log";
-import fse from "fs-extra";
-import { isEqual } from "lodash";
-import path from "path";
-import uuid from "uuid";
+import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
+import { isEqual } from "es-toolkit";
+import { v4 as uuid } from "uuid";
 import { APP_SCHEMA_VERSION } from "~/src/config";
 import { saveDialog } from "~/src/utils/dialogs";
 import protocolTemplate from "~/src/utils/protocolTemplate.json";
 import { pruneProtocol } from "~/src/utils/prune";
-import validateProtocol from "~/src/utils/validateProtocol";
 import { errors, handleError } from "./errors";
 import {
 	commitNetcanvas,
