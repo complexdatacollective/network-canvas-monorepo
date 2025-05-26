@@ -2,7 +2,7 @@ import { Button } from "@codaco/ui";
 import { Text } from "@codaco/ui/lib/components/Fields";
 import Icon from "@codaco/ui/lib/components/Icon";
 import cx from "classnames";
-import { sortBy } from "es-toolkit";
+import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useMemo, useState } from "react";

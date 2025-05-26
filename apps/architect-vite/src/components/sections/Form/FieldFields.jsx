@@ -1,5 +1,5 @@
 import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
-import { omit } from "es-toolkit";
+import { omit } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { compose } from "recompose";
 import { Row, Section } from "~/src/components/EditorLayout";

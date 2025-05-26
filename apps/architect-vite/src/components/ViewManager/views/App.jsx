@@ -20,9 +20,7 @@ const appVariants = {
 };
 
 const AppView = () => {
-	const appClasses = cx("app", {
-		"app--macos": isMacOS(),
-	});
+	const appClasses = cx("app");
 
 	useUpdater("https://api.github.com/repos/complexdatacollective/Architect/releases/latest", 2500);
 

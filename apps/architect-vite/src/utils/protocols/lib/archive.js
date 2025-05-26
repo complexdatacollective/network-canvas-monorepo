@@ -1,12 +1,3 @@
-import archiver from "archiver";
-import decompress from "decompress";
-
-// Since this will be compressed over the wire, we choose uncompressed for speed
-const archiveOptions = {
-	// zlib: { level: 9 },
-	store: true,
-};
-
 /**
  * Extract bundled (zip) protocol from sourcePath to destinationPath
  * @param {string} sourcePath

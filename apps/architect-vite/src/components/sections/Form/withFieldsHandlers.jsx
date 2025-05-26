@@ -1,4 +1,4 @@
-import { find, get, has } from "es-toolkit";
+import { find, get, has } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";

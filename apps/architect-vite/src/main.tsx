@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import ViewManager from './components/ViewManager/ViewManager'
 import { store } from './ducks/store'
-import './index.css'
 import './styles/main.scss'
 
 createRoot(document.getElementById('root') as Element).render(

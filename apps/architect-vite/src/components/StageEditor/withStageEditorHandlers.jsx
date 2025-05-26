@@ -1,4 +1,4 @@
-import { omit } from "es-toolkit";
+import { omit } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { actionCreators as stageActions } from "~/src/ducks/modules/protocol/stages";

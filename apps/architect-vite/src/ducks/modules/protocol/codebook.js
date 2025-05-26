@@ -1,5 +1,4 @@
-import { omit } from "es-toolkit";
-import { find, get, has, isEmpty } from "es-toolkit/compat";
+import { find, get, has, isEmpty, omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import prune from "~/src/utils/prune";
 import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "../../../selectors/codebook";

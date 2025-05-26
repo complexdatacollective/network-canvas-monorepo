@@ -1,4 +1,4 @@
-import { get, omit, reduce } from "es-toolkit";
+import { get, omit, reduce } from "es-toolkit/compat";
 import { formValueSelector } from "redux-form";
 import { getVariablesForSubject } from "~/src/selectors/codebook";
 

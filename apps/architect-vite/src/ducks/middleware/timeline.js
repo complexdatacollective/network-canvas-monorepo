@@ -1,4 +1,4 @@
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 
 const defaultOptions = {

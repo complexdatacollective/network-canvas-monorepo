@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { Button } from "@codaco/ui";
 import { Markdown } from "@codaco/ui/lib/components/Fields";
-import { find } from "es-toolkit";
+import { find } from "es-toolkit/compat";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { isLinux, isMacOS, isWindows } from "~/src/utils/platform";

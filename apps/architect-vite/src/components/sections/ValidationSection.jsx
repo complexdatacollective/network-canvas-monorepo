@@ -1,4 +1,4 @@
-import { get, pickBy } from "es-toolkit";
+import { get, pickBy } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";

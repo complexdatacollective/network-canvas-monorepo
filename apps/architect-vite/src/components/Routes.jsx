@@ -2,7 +2,6 @@ import { useSelector } from "react-redux";
 import Home from "~/src/components/Home/Home";
 import Loading from "~/src/components/Loading";
 import Protocol from "~/src/components/Protocol";
-import Screens from "~/src/components/Screens";
 import { getActiveProtocol } from "~/src/selectors/session";
 import { getScreensStack } from "~/src/selectors/ui";
 
@@ -18,10 +17,16 @@ const Routes = () => {
 	const screens = useSelector(getScreensStack);
 	const route = getRoute({ activeProtocol, screens });
 
+	console.log({
+		activeProtocol,
+		screens,
+		route,
+	});
+
 	return (
 		<>
 			{route}
-			<Screens />
+			{/* <Screens /> */}
 			<Loading />
 		</>
 	);

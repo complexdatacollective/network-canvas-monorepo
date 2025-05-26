@@ -1,4 +1,4 @@
-import { map } from "es-toolkit";
+import { map } from "es-toolkit/compat";
 import { getVariableOptionsForSubject } from "~/src/selectors/codebook";
 import { getCodebook } from "~/src/selectors/protocol";
 

@@ -1,5 +1,5 @@
 import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
-import { isEqual } from "es-toolkit";
+import { isEqual } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import { APP_SCHEMA_VERSION } from "~/src/config";
 import { saveDialog } from "~/src/utils/dialogs";

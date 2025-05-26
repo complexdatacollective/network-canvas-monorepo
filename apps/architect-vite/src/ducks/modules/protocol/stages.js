@@ -1,5 +1,4 @@
-import { compact, omit } from "es-toolkit";
-import { get } from "es-toolkit/compat";
+import { compact, get, omit } from "es-toolkit/compat";
 import { arrayMove } from "react-sortable-hoc";
 import { v1 as uuid } from "uuid";
 import { getStage } from "~/src/selectors/protocol";

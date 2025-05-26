@@ -1,4 +1,4 @@
-import { isEqual } from "es-toolkit";
+import { isEqual } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { compose, defaultProps } from "recompose";

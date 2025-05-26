@@ -1,4 +1,4 @@
-import { uniqBy } from "es-toolkit";
+import { uniqBy } from "es-toolkit/compat";
 import path from "path";
 import { actionTypes as sessionActionTypes } from "~/src/ducks/modules/session";
 

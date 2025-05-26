@@ -1,4 +1,4 @@
-import { omit } from "es-toolkit";
+import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/src/ducks/modules/protocol/utils/dialogs";
 import { getWorkingPath } from "~/src/selectors/session";

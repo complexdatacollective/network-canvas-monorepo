@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { set } from "es-toolkit";
+import { set } from "es-toolkit/compat";
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
 import { v4 as uuid } from "uuid";

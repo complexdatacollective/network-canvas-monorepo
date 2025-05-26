@@ -1,4 +1,4 @@
-import { get, isEmpty, sortBy } from "es-toolkit";
+import { get, isEmpty, sortBy } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import React, { useContext } from "react";
 import interfaceImage from "~/src/images/timeline";

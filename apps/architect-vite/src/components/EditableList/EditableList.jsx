@@ -1,5 +1,5 @@
 import { Button } from "@codaco/ui";
-import { startCase } from "es-toolkit";
+import { startCase } from "es-toolkit/compat";
 import { AnimateSharedLayout } from "motion/react";
 import PropTypes from "prop-types";
 import { compose, defaultProps } from "recompose";
