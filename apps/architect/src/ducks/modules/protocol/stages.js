@@ -1,8 +1,8 @@
-import uuid from "uuid/v1";
-import { get, compact, omit } from "lodash";
+import { compact, get, omit } from "lodash";
 import { arrayMove } from "react-sortable-hoc";
-import prune from "@app/utils/prune";
-import { getStage } from "@selectors/protocol";
+import { v1 as uuid } from "uuid";
+import { getStage } from "~/src/selectors/protocol";
+import prune from "~/src/utils/prune";
 import { saveableChange } from "../session";
 
 import { getNodeTypes } from "../../../selectors/codebook";

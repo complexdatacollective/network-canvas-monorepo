@@ -1,0 +1,40 @@
+@use '~@codaco/ui/src/styles/global/core/units';
+
+.code-view {
+  position: absolute;
+  z-index: var(--z-fx);
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--settings);
+  color: var(--text-light);
+  font-weight: 600;
+  user-select: text !important; // sass-lint:disable-line no-important
+
+  > * {
+    user-select: text !important; // sass-lint:disable-line no-important
+  }
+
+  pre {
+    white-space: pre-wrap;
+
+    > * {
+      user-select: text !important; // sass-lint:disable-line no-important
+    }
+  }
+
+  &__content {
+    padding: units.unit(4);
+    height: 65vh;
+    width: 100%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    cursor: text;
+  }
+
+  &__controls {
+    padding: units.unit(2) units.unit(4);
+    background: var(--color-mustard--dark);
+    cursor: pointer;
+  }
+}

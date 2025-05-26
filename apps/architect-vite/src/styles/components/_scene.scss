@@ -1,0 +1,147 @@
+@use '~@codaco/ui/src/styles/global/core/units';
+
+.scene {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+
+  &__loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  &__brand {
+    position: absolute;
+    top: units.unit(4);
+    right: units.unit(3);
+    width: 12rem;
+    z-index: var(--z-global-ui);
+    transition-duration: var(--animation-duration-standard);
+    transition-timing-function: var(--animation-easing);
+    transition-property: opacity;
+  }
+
+  &__home {
+    z-index: var(--z-global-ui);
+    position: fixed;
+    width: units.unit(12);
+    height: units.unit(12);
+    top: units.unit(8);
+    left: units.unit(4);
+    cursor: pointer;
+    transition-duration: var(--animation-duration-standard);
+    transition-timing-function: var(--animation-easing);
+    transition-property: transform, opacity;
+    will-change: transform, opacity;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(calc(-100% - #{units.unit(2)}));
+    color: var(--text-light);
+    background: var(--color-sea-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: units.unit(3);
+
+    svg {
+      height: 100%;
+    }
+
+  }
+
+  &__background {
+    @extend %wave;
+
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    z-index: 1;
+    transition-duration: var(--animation-duration-standard);
+    transition-timing-function: var(--animation-easing);
+    transition-property: transform, opacity;
+    will-change: transform;
+
+    &--top {
+      opacity: 0;
+      transform: translateZ(0) translateY(-75vh);
+
+      &::after {
+        transform: rotate(180deg);
+      }
+    }
+
+    &--bottom {
+      transform: translateZ(0);
+    }
+  }
+
+  &__start {
+    width: 100%;
+    margin-top: 20vh;
+    transition-duration: var(--animation-duration-standard);
+    transition-timing-function: var(--animation-easing);
+    transition-property: transform, opacity;
+    will-change: transform;
+    position: relative;
+    z-index: 2;
+  }
+
+  &__recent-protocols {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+    z-index: 2;
+    margin: 0 auto;
+  }
+
+  &__protocol {
+    flex: 1 1 auto;
+    overflow-y: scroll;
+  }
+
+  &--protocol {
+    .scene {
+      &__brand {
+        opacity: 0;
+      }
+
+      &__start {
+        opacity: 0;
+      }
+
+      &__home {
+        transform: translateY(0);
+        pointer-events: auto;
+        opacity: 1;
+      }
+
+      &__protocol {
+        visibility: visible;
+      }
+
+      &__background--top {
+        visibility: visible;
+        opacity: 1;
+        transform: translateY(-20vh);
+      }
+
+      &__background--bottom {
+        transform: translateY(50vh);
+        opacity: 0;
+      }
+    }
+  }
+}

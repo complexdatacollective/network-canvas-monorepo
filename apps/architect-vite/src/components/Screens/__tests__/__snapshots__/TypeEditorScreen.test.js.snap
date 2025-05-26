@@ -1,0 +1,16 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<TypeEditorScreen /> can render 1`] = `
+<Connect(EditorScreen)
+  editor={
+    Object {
+      "$$typeof": Symbol(react.memo),
+      "WrappedComponent": [Function],
+      "compare": null,
+      "displayName": "Connect(withProps(withHandlers(withStateHandlers(ReduxForm))))",
+      "type": [Function],
+    }
+  }
+  form="TYPE_EDITOR"
+/>
+`;

@@ -1,0 +1,31 @@
+@use '~@codaco/ui/src/styles/global/core/units';
+
+.attributes-table {
+  margin: 0 0 units.unit(4);
+
+  &__variables {
+    display: flex;
+    width: 100%;
+    background: var(--architect-table-background);
+    border-radius: 10px;
+    overflow: hidden;
+    flex-direction: column;
+    margin: 0 0 units.unit(1);
+  }
+
+  &__variable {
+    &:nth-child(even) {
+      background: var(--architect-table-background--alt);
+    }
+  }
+
+  &__add {
+    &::before {
+      content: '+';
+      color: var(--text-light);
+      display: block;
+      position: relative;
+      top: units.unit(-.2);
+    }
+  }
+}
