@@ -1,9 +1,9 @@
-import { motion } from "framer-motion";
 import cx from "classnames";
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { SortableElement } from "react-sortable-hoc";
-import Handle from "./Handle";
 import DeleteButton from "./DeleteButton";
+import Handle from "./Handle";
 
 const ListItem = ({ children, onDelete, onClick, className, sortable }) => {
 	const componentClasses = cx("list-item", { "list-item--clickable": onClick }, className);

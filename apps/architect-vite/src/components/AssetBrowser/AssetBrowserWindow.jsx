@@ -1,5 +1,5 @@
 import Button from "@codaco/ui/lib/components/Button";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { createPortal } from "react-dom";
 import { Layout } from "~/src/components/EditorLayout";

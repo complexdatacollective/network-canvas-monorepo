@@ -1,7 +1,7 @@
-import PropTypes from "prop-types";
-import cx from "classnames";
 import Icon from "@codaco/ui/lib/components/Icon";
-import { motion, useAnimation } from "framer-motion";
+import cx from "classnames";
+import { motion, useAnimation } from "motion/react";
+import PropTypes from "prop-types";
 
 const Tip = ({ type, icon, children }) => {
 	const classes = cx("tip", `tip__${type}`);

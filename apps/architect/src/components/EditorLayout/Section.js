@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from "react";
-import PropTypes from "prop-types";
-import { AnimatePresence, motion } from "framer-motion";
-import cx from "classnames";
 import { Toggle } from "@codaco/ui/lib/components/Fields";
+import cx from "classnames";
+import { AnimatePresence, motion } from "motion/react";
+import PropTypes from "prop-types";
+import { useCallback, useEffect, useState } from "react";
 import IssueAnchor from "../IssueAnchor";
 
 const animations = {

@@ -2,7 +2,7 @@
 import { Button } from "@codaco/ui";
 import DeleteIcon from "@material-ui/icons/DeleteRounded";
 import cx from "classnames";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useRef } from "react";
 import { SortableElement } from "react-sortable-hoc";

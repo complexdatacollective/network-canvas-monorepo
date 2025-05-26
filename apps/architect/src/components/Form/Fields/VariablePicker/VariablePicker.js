@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@codaco/ui";
+import { get, has } from "lodash";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
-import { has, get } from "lodash";
+import { useState } from "react";
+import SpotlightModal from "./SpotlightModal";
 import EditableVariablePill, { SimpleVariablePill } from "./VariablePill";
 import VariableSpotlight from "./VariableSpotlight";
-import SpotlightModal from "./SpotlightModal";
 
 const VariablePicker = (props) => {
 	const [showPicker, setShowPicker] = useState(false);

@@ -1,5 +1,5 @@
 import { Spinner } from "@codaco/ui";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { selectors as statusSelectors } from "~/src/ducks/modules/ui/status";

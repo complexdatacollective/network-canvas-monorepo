@@ -1,5 +1,5 @@
 import * as Fields from "@codaco/ui/lib/components/Fields";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import DialogManager from "~/src/components/DialogManager";
 import { AppErrorBoundary } from "~/src/components/Errors";
 import Routes from "~/src/components/Routes";

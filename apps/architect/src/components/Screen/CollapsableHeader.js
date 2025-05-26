@@ -1,6 +1,6 @@
-import { useEffect, useState, useContext } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
+import { useContext, useEffect, useState } from "react";
 import { ScreenContext } from "./Screen";
 
 const variants = {

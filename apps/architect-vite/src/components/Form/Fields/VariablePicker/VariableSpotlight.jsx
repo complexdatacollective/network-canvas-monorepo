@@ -1,8 +1,8 @@
 import { Icon, Scroller } from "@codaco/ui";
 import Search from "@codaco/ui/lib/components/Fields/Search";
 import cx from "classnames";
-import { motion } from "framer-motion";
 import { get } from "lodash";
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";

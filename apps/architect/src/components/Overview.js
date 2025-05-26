@@ -3,7 +3,7 @@ import * as Fields from "@codaco/ui/lib/components/Fields";
 import MenuBookIcon from "@material-ui/icons/MenuBook";
 import PermMediaIcon from "@material-ui/icons/PermMedia";
 import PrintIcon from "@material-ui/icons/Print";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import path from "path";
 import PropTypes from "prop-types";
 import { useCallback } from "react";

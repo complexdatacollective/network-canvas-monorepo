@@ -1,6 +1,6 @@
-import { motion } from "framer-motion";
-import WelcomeHeader from "./WelcomeHeader";
+import { motion } from "motion/react";
 import LaunchPad from "./LaunchPad";
+import WelcomeHeader from "./WelcomeHeader";
 
 const variants = {
 	show: {

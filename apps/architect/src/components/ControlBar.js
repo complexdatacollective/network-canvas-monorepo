@@ -1,6 +1,6 @@
-import { AnimatePresence, motion } from "framer-motion";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import { AnimatePresence, motion } from "motion/react";
+import PropTypes from "prop-types";
 
 const barVariants = {
 	visible: {

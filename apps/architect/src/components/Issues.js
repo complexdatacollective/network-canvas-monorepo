@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { Icon } from "@codaco/ui";
+import { isEmpty, map } from "lodash";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
-import { map, isEmpty } from "lodash";
-import { Icon } from "@codaco/ui";
 import { flattenIssues, getFieldId } from "../utils/issues";
 import scrollTo from "../utils/scrollTo";
 

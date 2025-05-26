@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { compose } from "redux";

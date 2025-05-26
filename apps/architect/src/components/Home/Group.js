@@ -1,7 +1,7 @@
-import PropTypes from "prop-types";
-import cx from "classnames";
-import { motion } from "framer-motion";
 import { Icon } from "@codaco/ui";
+import cx from "classnames";
+import { motion } from "motion/react";
+import PropTypes from "prop-types";
 
 const baseVariant = {
 	initial: { opacity: 0 },

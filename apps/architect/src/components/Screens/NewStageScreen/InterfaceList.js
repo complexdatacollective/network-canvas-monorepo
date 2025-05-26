@@ -1,6 +1,6 @@
-import PropTypes from "prop-types";
-import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@codaco/ui";
+import { AnimatePresence, motion } from "motion/react";
+import PropTypes from "prop-types";
 import Interface from "./Interface";
 import { PropTypes as InterfacePropTypes } from "./interfaceOptions";
 

@@ -1,6 +1,6 @@
 import cx from "classnames";
-import { motion } from "framer-motion";
 import { find, get } from "lodash";
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import Tag from "~/src/components/Tag";

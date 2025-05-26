@@ -1,5 +1,5 @@
 import { Button } from "@codaco/ui";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { appVersion } from "~/src/utils/appVersion";
 import ExternalLink, { openExternalLink } from "../ExternalLink";
 import ButtonStack from "./ButtonStack";

@@ -1,6 +1,6 @@
 import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import cx from "classnames";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";

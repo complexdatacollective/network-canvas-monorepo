@@ -1,5 +1,5 @@
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
-import { motion } from "framer-motion";
 
 const Sprite = ({ src, animate, ...styles }) => {
 	const style = {

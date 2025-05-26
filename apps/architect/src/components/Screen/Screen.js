@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { motion, useElementScroll } from "framer-motion";
+import { motion, useElementScroll } from "motion/react";
 import PropTypes from "prop-types";
 import React, { useEffect, useRef } from "react";
 import { ScreenErrorBoundary } from "~/src/components/Errors";

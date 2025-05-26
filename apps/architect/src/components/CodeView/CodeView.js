@@ -1,8 +1,8 @@
+import { motion } from "motion/react";
 import PropTypes from "prop-types";
-import { useSelector } from "react-redux";
-import { motion } from "framer-motion";
-import { getFormValues } from "redux-form";
 import { createPortal } from "react-dom";
+import { useSelector } from "react-redux";
+import { getFormValues } from "redux-form";
 
 const variants = {
 	hide: { translateY: "-100%", transition: { stiffness: 1000 } },

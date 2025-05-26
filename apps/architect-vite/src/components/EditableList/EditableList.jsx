@@ -1,6 +1,6 @@
 import { Button } from "@codaco/ui";
-import { AnimateSharedLayout } from "framer-motion";
 import { startCase } from "lodash";
+import { AnimateSharedLayout } from "motion/react";
 import PropTypes from "prop-types";
 import { compose, defaultProps } from "recompose";
 import { Section } from "~/src/components/EditorLayout";

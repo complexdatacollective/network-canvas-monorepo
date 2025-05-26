@@ -1,8 +1,8 @@
 import Button from "@codaco/ui/lib/components/Button";
-import { AnimatePresence, motion } from "framer-motion";
 import { get } from "lodash";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";

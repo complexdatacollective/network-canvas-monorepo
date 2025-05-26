@@ -1,6 +1,6 @@
 import { Button } from "@codaco/ui";
 import cx from "classnames";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { useDispatch } from "react-redux";
 import Version from "~/src/components/Version";
 import headerGraphic from "~/src/images/Arc-Flat.svg";

@@ -1,16 +1,16 @@
+import Button from "@codaco/ui/lib/components/Button";
+import { AnimatePresence, motion } from "motion/react";
+import PropTypes from "prop-types";
 import { Component } from "react";
 import { createPortal } from "react-dom";
-import PropTypes from "prop-types";
-import { AnimatePresence, motion } from "framer-motion";
-import Button from "@codaco/ui/lib/components/Button";
-import EditEntityRule from "./EditEntityRule";
-import EditEgoRule from "./EditEgoRule";
 import ControlBar from "../../ControlBar";
-import Screen from "../../Screen/Screen";
-import { screenVariants } from "../../Screens/Screens";
 import Layout from "../../EditorLayout/Layout";
 import ExternalLink from "../../ExternalLink";
 import CollapsableHeader from "../../Screen/CollapsableHeader";
+import Screen from "../../Screen/Screen";
+import { screenVariants } from "../../Screens/Screens";
+import EditEgoRule from "./EditEgoRule";
+import EditEntityRule from "./EditEntityRule";
 
 class EditRule extends Component {
 	get TypeComponent() {

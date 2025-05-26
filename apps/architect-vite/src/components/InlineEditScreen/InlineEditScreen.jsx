@@ -1,6 +1,6 @@
 import Button from "@codaco/ui/lib/components/Button";
 import window from "@codaco/ui/lib/components/window";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";
