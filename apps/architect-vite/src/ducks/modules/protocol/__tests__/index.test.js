@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { getThunkMocks } from "~/__tests__/helpers";
-import reducer, { actionCreators, test } from "../index";
+import reducer, { actionCreators, test } from "../../protocol";
 
 describe("protocol", () => {
 	describe("reducer", () => {

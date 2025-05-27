@@ -8,7 +8,7 @@ import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import { actionLocks as protocolsLocks, actionCreators as userActions } from "~/ducks/modules/userActions";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button, Spinner } from "~/lib/legacy-ui/components";
-import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/session";
+import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/protocol";
 
 const unsavedChangesDialog = UnsavedChanges({
 	message: <p>Your protocol has changes that have not yet been saved. Continuing will discard these changes!</p>,

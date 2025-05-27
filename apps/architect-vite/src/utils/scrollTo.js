@@ -1,6 +1,6 @@
 import anime from "animejs";
 import scrollparent from "scrollparent";
-import { getCSSVariableAsNumber, getCSSVariableAsObject } from "~/lib/legacy-ui/lib/utils/CSSVariables";
+import { getCSSVariableAsNumber, getCSSVariableAsObject } from "~/lib/legacy-ui/utils/CSSVariables";
 
 const scrollTo = (destination, offset = 0) => {
 	if (!destination) {

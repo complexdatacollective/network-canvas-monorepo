@@ -34,9 +34,8 @@ const StageEditor = (props) => {
 	}, [handleKeyDown]);
 
 	useEffect(() => {
-		ipcRenderer.on("REFRESH_PREVIEW", previewStage);
-
-		return () => ipcRenderer.removeListener("REFRESH_PREVIEW", previewStage);
+		// ipcRenderer.on("REFRESH_PREVIEW", previewStage);
+		// return () => ipcRenderer.removeListener("REFRESH_PREVIEW", previewStage);
 	}, []);
 
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);

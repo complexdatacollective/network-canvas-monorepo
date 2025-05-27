@@ -1,6 +1,5 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, withHandlers } from "recompose";
 import { FieldArray } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
@@ -34,7 +33,6 @@ export const OptionsField = compose(
 			({ oldIndex, newIndex }) =>
 				fields.move(oldIndex, newIndex),
 	}),
-	SortableContainer,
 )(({ fields, meta: { error, submitFailed }, ...rest }) => {
 	const classes = cx("options", { "options--has-error": submitFailed && error });
 

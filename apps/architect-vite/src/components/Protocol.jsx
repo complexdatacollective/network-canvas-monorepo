@@ -9,7 +9,7 @@ import Timeline from "~/components/Timeline";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
-import { getHasUnsavedChanges } from "~/selectors/session";
+import { getHasUnsavedChanges, getProtocol } from "~/selectors/protocol";
 
 const Protocol = ({ isLoading, hasProtocol }) => {
 	const sceneClasses = cx("scene", { "scene--protocol": hasProtocol }, { "scene--loading": isLoading });
@@ -56,7 +56,7 @@ Protocol.defaultProps = {
 };
 
 const mapStateToProps = (state) => {
-	const activeProtocol = state.session.filePath;
+	const activeProtocol = getProtocol(state);
 
 	return {
 		hasUnsavedChanges: getHasUnsavedChanges(state),

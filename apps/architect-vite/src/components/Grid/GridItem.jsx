@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { Flipped } from "react-flip-toolkit";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 const GridItem = ({ fields, editField, onEditItem, previewComponent: PreviewComponent, index, id, ...rest }) => {
 	const fieldId = `${fields.name}[${index}]`;

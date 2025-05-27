@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { compose } from "recompose";
 import ValidatedField from "~/components/Form/ValidatedField";
 import * as Fields from "~/lib/legacy-ui/components/Fields";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import withCreateVariableHandler from "../enhancers/withCreateVariableHandler";
 import VariablePicker from "../Form/Fields/VariablePicker/VariablePicker";
 import withAttributeHandlers from "./withAttributeHandlers";

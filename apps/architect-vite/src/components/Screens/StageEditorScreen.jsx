@@ -6,7 +6,8 @@ import { Button } from "~/lib/legacy-ui/components";
 import { actionCreators as previewActions } from "../../ducks/modules/preview";
 import EditorScreen from "../Screen/EditorScreen";
 import StageEditor, { formName } from "../StageEditor";
-import withTooltip from "../enhancers/withTooltip";
+
+// const EditorScreen = () => <div>hello</div>;
 
 const mapStateToProps = (state) => ({
 	invalid: isFormInvalid(formName)(state),
@@ -44,13 +45,13 @@ const invalidStageMessage = (invalid) =>
 		? ["Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."]
 		: [];
 
-const TooltipButton = withTooltip(Button);
+// const TooltipButton = withTooltip(Button);
 
 const stageEditorProps = withProps(({ handlePreview, invalid }) => ({
 	editor: StageEditor,
 	form: formName,
 	secondaryButtons: [
-		<TooltipButton
+		<Button
 			key="preview"
 			onClick={handlePreview}
 			color="paradise-pink"
@@ -58,7 +59,7 @@ const stageEditorProps = withProps(({ handlePreview, invalid }) => ({
 			tooltip={invalid ? invalidStageMessage(invalid) : null}
 		>
 			Preview
-		</TooltipButton>,
+		</Button>,
 	],
 }));
 

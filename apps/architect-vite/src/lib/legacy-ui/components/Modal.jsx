@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { Component } from "react";
+import { createPortal } from "react-dom";
 import { getCSSVariableAsNumber } from "../utils/CSSVariables";
 import Drop from "./Transitions/Drop";
-import window from "./window";
+// import window from "./window";
 
 class Modal extends Component {
 	render() {
@@ -30,7 +31,7 @@ class Modal extends Component {
 			},
 		};
 
-		return (
+		return createPortal(
 			<AnimatePresence>
 				{show && (
 					<motion.div
@@ -47,7 +48,8 @@ class Modal extends Component {
 						</div>
 					</motion.div>
 				)}
-			</AnimatePresence>
+			</AnimatePresence>,
+			document.body,
 		);
 	}
 }
@@ -68,4 +70,4 @@ Modal.defaultProps = {
 
 export { Modal };
 
-export default window(Modal);
+export default Modal;

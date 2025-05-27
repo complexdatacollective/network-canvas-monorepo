@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
-import { SortableElement } from "react-sortable-hoc";
 import DeleteButton from "./DeleteButton";
 import Handle from "./Handle";
 
@@ -40,4 +39,4 @@ ListItem.defaultProps = {
 	onClick: null,
 };
 
-export default SortableElement(ListItem);
+export default ListItem;

@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
+import { createPortal } from "react-dom";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { submit } from "redux-form";
 import { Layout } from "~/components/EditorLayout";
 import Button from "~/lib/legacy-ui/components/Button";
-import window from "~/lib/legacy-ui/window";
 import Form from "./Form";
 
 const screenVariants = {
@@ -33,7 +33,7 @@ const InlineEditScreen = ({ show, form, submitForm, title, layoutId, onSubmit, o
 		submitForm(form);
 	}, [form, submitForm]);
 
-	return (
+	return createPortal(
 		<AnimatePresence>
 			{show && (
 				<div className="inline-edit-screen" onClick={(e) => e.stopPropagation()}>
@@ -70,7 +70,8 @@ const InlineEditScreen = ({ show, form, submitForm, title, layoutId, onSubmit, o
 					</motion.div>
 				</div>
 			)}
-		</AnimatePresence>
+		</AnimatePresence>,
+		document.body,
 	);
 };
 
@@ -96,4 +97,4 @@ const mapDispatchToProps = {
 	submitForm: submit,
 };
 
-export default compose(window, connect(null, mapDispatchToProps))(InlineEditScreen);
+export default compose(connect(null, mapDispatchToProps))(InlineEditScreen);

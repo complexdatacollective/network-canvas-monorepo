@@ -2,7 +2,7 @@ import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";
-import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import { actionCreators as sessionActions } from "~/ducks/modules/session";
 import protocolCover from "~/images/NC-File.svg";
 
 const getFilename = (path = "") => get(path.match(/([^/\\]+)$/), 1, path);
@@ -32,7 +32,7 @@ ProtocolStack.propTypes = {
 };
 
 const mapDispatchToProps = {
-	openNetcanvas: userActions.openNetcanvas,
+	openNetcanvas: sessionActions.openNetcanvas,
 };
 
 export default connect(null, mapDispatchToProps)(ProtocolStack);

@@ -1,7 +1,6 @@
 import { toNumber } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { SortableElement, SortableHandle } from "react-sortable-hoc";
 import { compose, withHandlers } from "recompose";
 import ValidatedField from "~/components/Form/ValidatedField";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
@@ -25,11 +24,11 @@ const deleteOption =
 		});
 	};
 
-const OptionHandle = compose(SortableHandle)(() => (
+const OptionHandle = () => (
 	<div className="options__option-handle">
 		<Icon name="move" />
 	</div>
-));
+);
 
 const DeleteOption = (props) => (
 	<div
@@ -91,5 +90,4 @@ export default compose(
 	withHandlers({
 		handleDelete: deleteOption,
 	}),
-	SortableElement,
 )(Option);

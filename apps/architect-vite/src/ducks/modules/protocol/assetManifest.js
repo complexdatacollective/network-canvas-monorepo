@@ -1,7 +1,6 @@
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
-import { getWorkingPath } from "~/selectors/session";
 import { importAsset as fsImportAsset } from "~/utils/protocols";
 import { validateAsset } from "~/utils/protocols/assetTools";
 import { saveableChange } from "../session";
@@ -53,8 +52,9 @@ const importAssetFailed = (filename, error) => ({
  */
 const importAssetThunk = (filePath) => (dispatch, getState) => {
 	const state = getState();
-	const workingPath = getWorkingPath(state);
 	const name = getNameFromFilename(filePath);
+
+	const workingPath = null;
 
 	dispatch(importAsset(name));
 	log.info("Import asset", filePath);

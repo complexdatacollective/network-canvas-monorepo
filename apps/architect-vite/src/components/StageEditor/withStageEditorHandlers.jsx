@@ -1,7 +1,7 @@
 import { omit } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
-import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
+import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 
 const mapDispatchToProps = {
 	updateStage: stageActions.updateStage,

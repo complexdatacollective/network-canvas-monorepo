@@ -1,9 +1,9 @@
-import { memo, useMemo } from "react";
-// import ReactMarkdown from 'react-markdown';
-// import rehypeRaw from 'rehype-raw';
-// import rehypeSanitize from 'rehype-sanitize';
+import emoji from "emoji-dictionary";
 import PropTypes from "prop-types";
-// import emoji from 'emoji-dictionary';
+import { memo, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import { ALLOWED_MARKDOWN_TAGS } from "../../utils/config";
 import { escapeAngleBracket } from "./RichText/lib/parse";
 
@@ -46,19 +46,17 @@ const Markdown = ({ label, className, allowedElements = ALLOWED_MARKDOWN_TAGS, m
 		return escapeAngleBracket(label);
 	}, [label]);
 
-	return <>{rawText}</>;
-
-	// return (
-	//   <ReactMarkdown
-	//     className={className}
-	//     allowedElements={allowedElements}
-	//     components={combinedRenderers}
-	//     rehypePlugins={[rehypeRaw, rehypeSanitize]}
-	//     unwrapDisallowed
-	//   >
-	//     {rawText}
-	//   </ReactMarkdown>
-	// );
+	return (
+		<ReactMarkdown
+			className={className}
+			allowedElements={allowedElements}
+			components={combinedRenderers}
+			rehypePlugins={[rehypeRaw, rehypeSanitize]}
+			unwrapDisallowed
+		>
+			{rawText}
+		</ReactMarkdown>
+	);
 };
 
 Markdown.propTypes = {

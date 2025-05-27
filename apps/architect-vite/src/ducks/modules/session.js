@@ -1,8 +1,10 @@
 import { validateProtocol } from "@codaco/protocol-validation";
+import { navigate } from "wouter/use-browser-location";
 import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";
 import { actionCreators as previewActions } from "~/ducks/modules/preview";
 import { getProtocol } from "~/selectors/protocol";
 import * as netcanvasFile from "~/utils/netcanvasFile";
+import { validationErrorDialog } from "./userActions/dialogs";
 
 const RESET_SESSION = "SESSION/RESET";
 const PROTOCOL_CHANGED = "SESSION/PROTOCOL_CHANGED";
@@ -16,38 +18,24 @@ const SAVE_NETCANVAS_COPY = "SESSION/SAVE_NETCANVAS_COPY";
 const SAVE_NETCANVAS_COPY_SUCCESS = "SESSION/SAVE_NETCANVAS_COPY_SUCCESS";
 const SAVE_NETCANVAS_COPY_ERROR = "SESSION/SAVE_NETCANVAS_COPY_ERROR";
 
-// TODO: This should handle validation rather than in userActions
-const openNetcanvas =
-	(filePath, protocolIsValid = false) =>
-	(dispatch) =>
-		Promise.resolve()
-			.then(() => dispatch({ type: OPEN_NETCANVAS, payload: { filePath } }))
-			// export protocol to random temp location
-			.then(() => netcanvasFile.importNetcanvas(filePath))
-			.then((workingPath) =>
-				netcanvasFile.readProtocol(workingPath).then((protocol) =>
-					dispatch({
-						type: OPEN_NETCANVAS_SUCCESS,
-						payload: {
-							protocol,
-							filePath,
-							workingPath,
-							protocolIsValid,
-						},
-						ipc: true,
-					}),
-				),
-			)
-			.then(() => dispatch(timelineActions.reset()))
-			.then(() => filePath)
-			.catch((error) => {
-				switch (error.code) {
-					default:
-						dispatch({ type: OPEN_NETCANVAS_ERROR, payload: { error, filePath } });
-				}
+const openNetcanvas = (protocol) => async (dispatch) => {
+	const result = await validateProtocol(protocol);
 
-				throw error;
-			});
+	if (!result.isValid) {
+		dispatch(validationErrorDialog(e));
+		return;
+	}
+
+	dispatch({
+		type: OPEN_NETCANVAS_SUCCESS,
+		payload: {
+			protocol,
+			protocolIsValid: result.isValid,
+		},
+	});
+	dispatch(timelineActions.reset());
+	navigate("/protocol");
+};
 
 const saveNetcanvas = () => (dispatch, getState) => {
 	const state = getState();
@@ -120,7 +108,6 @@ const resetSession = () => (dispatch) => {
 
 	dispatch({
 		type: RESET_SESSION,
-		ipc: true,
 	});
 };
 
@@ -130,16 +117,7 @@ const resetSession = () => (dispatch) => {
 export const protocolChanged = (protocolIsValid) => ({
 	type: PROTOCOL_CHANGED,
 	protocolIsValid,
-	ipc: true,
 });
-
-const initialState = {
-	workingPath: null,
-	filePath: null,
-	lastSaved: 0,
-	lastChanged: 0,
-	protocolIsValid: false,
-};
 
 export const checkChanged = (dispatch, getState) => {
 	const protocol = getProtocol(getState());
@@ -162,41 +140,6 @@ export const saveableChange =
 
 		return dispatch(checkChanged);
 	};
-
-export default function reducer(state = initialState, action = {}) {
-	switch (action.type) {
-		case OPEN_NETCANVAS_SUCCESS: {
-			const { filePath, workingPath, protocolIsValid } = action.payload;
-
-			return {
-				...state,
-				filePath,
-				workingPath,
-				lastSaved: 0,
-				lastChanged: 0,
-				protocolIsValid,
-			};
-		}
-		case SAVE_NETCANVAS_SUCCESS:
-			return {
-				...state,
-				filePath: action.payload.savePath,
-				lastSaved: new Date().getTime(),
-			};
-		case PROTOCOL_CHANGED:
-			return {
-				...state,
-				lastChanged: new Date().getTime(),
-				protocolIsValid: action.protocolIsValid,
-			};
-		case RESET_SESSION:
-			return {
-				...initialState,
-			};
-		default:
-			return state;
-	}
-}
 
 const actionCreators = {
 	resetSession,

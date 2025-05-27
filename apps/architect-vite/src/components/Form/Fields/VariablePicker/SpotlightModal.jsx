@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { compose } from "redux";
-import window from "~/behaviours/window";
+import { createPortal } from "react-dom";
 
 class SpotlightModal extends Component {
 	render() {
@@ -29,7 +28,7 @@ class SpotlightModal extends Component {
 			},
 		};
 
-		return (
+		return createPortal(
 			<AnimatePresence>
 				{show && (
 					<motion.div
@@ -44,7 +43,8 @@ class SpotlightModal extends Component {
 						<div className="spotlight-modal__content">{children}</div>
 					</motion.div>
 				)}
-			</AnimatePresence>
+			</AnimatePresence>,
+			document.body,
 		);
 	}
 }
@@ -63,4 +63,4 @@ SpotlightModal.defaultProps = {
 	onBlur: () => {},
 };
 
-export default compose(window(document.body))(SpotlightModal);
+export default SpotlightModal;

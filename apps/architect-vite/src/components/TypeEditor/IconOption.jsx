@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import Radio from "../Form/Fields/Radio";
 
 const IconOption = (props) => (

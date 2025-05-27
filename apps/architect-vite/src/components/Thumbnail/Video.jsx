@@ -1,7 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 const VideoThumbnail = ({ id, meta }) => (
 	<div className={cx("thumbnail thumbnail--video", { "thumbnail--existing": id === "existing" })}>

@@ -6,7 +6,7 @@ import { compose } from "redux";
 import * as Assets from "~/components/Assets";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import withAssetPath from "~/components/Assets/withAssetPath";
-import Window from "~/components/Window";
+import WindowFrame from "~/components/Window";
 import { Button } from "~/lib/legacy-ui/components";
 
 const getRenderer = (meta) => {
@@ -66,7 +66,7 @@ const Preview = ({ id, meta, assetPath, onDownload, onClose }) => {
 	const className = cx("asset-browser-preview", `asset-browser-preview--type-${meta.type}`);
 
 	return (
-		<Window
+		<WindowFrame
 			title={meta.name}
 			className={className}
 			leftControls={secondaryButtons}
@@ -74,7 +74,7 @@ const Preview = ({ id, meta, assetPath, onDownload, onClose }) => {
 			windowRoot={document.body}
 		>
 			<AssetRenderer id={id} />
-		</Window>
+		</WindowFrame>
 	);
 };
 

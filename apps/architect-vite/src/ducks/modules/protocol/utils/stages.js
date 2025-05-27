@@ -1,11 +1,10 @@
 import { compact, get, omit } from "es-toolkit/compat";
-import { arrayMove } from "react-sortable-hoc";
 import { v1 as uuid } from "uuid";
 import { getStage } from "~/selectors/protocol";
 import prune from "~/utils/prune";
-import { saveableChange } from "../session";
+import { saveableChange } from "../../session";
 
-import { getNodeTypes } from "../../../selectors/codebook";
+import { getNodeTypes } from "../../../../selectors/codebook";
 
 const CREATE_STAGE = "PROTOCOL/CREATE_STAGE";
 const UPDATE_STAGE = "PROTOCOL/UPDATE_STAGE";
@@ -42,7 +41,8 @@ export default function reducer(state = initialState, action = {}) {
 				return prune(newStage);
 			});
 		case MOVE_STAGE:
-			return arrayMove(state, action.oldIndex, action.newIndex);
+			return console.warn("MOVE_STAGE is not implemented yet, this will not work as expected.");
+		// return arrayMove(state, action.oldIndex, action.newIndex);
 		case DELETE_STAGE:
 			return state.filter((stage) => stage.id !== action.id);
 		case DELETE_PROMPT:

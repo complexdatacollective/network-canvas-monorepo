@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { SortableContainer, SortableElement, SortableHandle } from "react-sortable-hoc";
 import { compose, defaultProps, withHandlers, withProps } from "recompose";
 import { bindActionCreators } from "redux";
 import { change, FieldArray, formValueSelector } from "redux-form";
@@ -9,11 +8,11 @@ import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 import NativeSelect from "./Fields/NativeSelect";
 import ValidatedField from "./ValidatedField";
 
-const ItemHandle = compose(SortableHandle)(() => (
+const ItemHandle = () => (
 	<div className="form-fields-multi-select__handle">
 		<Icon name="move" />
 	</div>
-));
+);
 
 const ItemDelete = (props) => (
 	<div
@@ -73,7 +72,6 @@ const Item = compose(
 					.forEach(({ fieldName: propertyFieldName }) => resetField(`${field}.${propertyFieldName}`));
 			},
 	}),
-	SortableElement,
 )(({ field, properties, options, rowValues, allValues, handleDelete, handleChange }) => (
 	<div className="form-fields-multi-select__rule">
 		<div className="form-fields-multi-select__rule-control">
@@ -110,7 +108,6 @@ const Items = compose(
 	withProps(({ fields }) => ({
 		onSortEnd: ({ oldIndex, newIndex }) => fields.move(oldIndex, newIndex),
 	})),
-	SortableContainer,
 )(({ fields, maxItems, ...rest }) => {
 	const hasSpace = maxItems === null || fields.length < maxItems;
 	const showAdd = hasSpace;

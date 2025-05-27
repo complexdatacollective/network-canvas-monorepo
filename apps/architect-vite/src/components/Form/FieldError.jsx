@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 const FieldError = ({ error, show }) => {
 	const errorClasses = cx("form-field-error", { "form-field-error--show": show });

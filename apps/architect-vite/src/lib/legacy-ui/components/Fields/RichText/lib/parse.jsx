@@ -1,14 +1,14 @@
-import slate from 'remark-slate';
-import unified from 'unified';
-import markdown from 'remark-parse';
-import { isEmpty } from 'lodash';
+import { isEmpty } from "es-toolkit/compat";
+import markdown from "remark-parse";
+import slate from "remark-slate";
+import { unified } from "unified";
 
-export const defaultValue = [{
-  type: 'paragraph',
-  children: [
-    { text: '' },
-  ],
-}];
+export const defaultValue = [
+	{
+		type: "paragraph",
+		children: [{ text: "" }],
+	},
+];
 
 /**
  * Hack for `>` characters that already exist in some protocols
@@ -22,24 +22,24 @@ export const defaultValue = [{
  * rather than a single regex, because Safari does not support
  * lookbehind.
  */
-export const escapeAngleBracket = (value = '') => value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
+export const escapeAngleBracket = (value = "") => value.replace(/>/g, "&gt;").replace(/<br&gt;/g, "<br>");
 
 // TODO: Can we make this synchronous? JM - yes, use `processSync` below
 const parse = (value) => {
-  // If for some reason we encounter 'content' with no content,
-  // Slate rendering will be messed up. Instead, return a
-  // 'proper' empty node.
-  //
-  // The regex tests for presence of only space/tab/break
-  if (!value || isEmpty(value) || !/\S/.test(value)) {
-    return Promise.resolve(defaultValue);
-  }
+	// If for some reason we encounter 'content' with no content,
+	// Slate rendering will be messed up. Instead, return a
+	// 'proper' empty node.
+	//
+	// The regex tests for presence of only space/tab/break
+	if (!value || isEmpty(value) || !/\S/.test(value)) {
+		return Promise.resolve(defaultValue);
+	}
 
-  return unified()
-    .use(markdown)
-    .use(slate)
-    .process(escapeAngleBracket(value))
-    .then(({ result }) => (result));
+	return unified()
+		.use(markdown)
+		.use(slate)
+		.process(escapeAngleBracket(value))
+		.then(({ result }) => result);
 };
 
 export default parse;

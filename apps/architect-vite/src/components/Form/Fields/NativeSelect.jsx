@@ -7,7 +7,7 @@ import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
 import { Button } from "~/lib/legacy-ui/components";
 import { Text } from "~/lib/legacy-ui/components/Fields";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import { getValidator } from "~/utils/validations";
 
 const NativeSelect = ({

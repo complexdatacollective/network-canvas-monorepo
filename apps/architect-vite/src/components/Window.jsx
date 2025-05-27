@@ -1,18 +1,17 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { compose } from "redux";
-import window from "~/behaviours/window";
 import Stackable from "~/components/Stackable";
-import { getCSSVariableAsNumber } from "~/lib/legacy-ui/lib/utils/CSSVariables";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
-const Window = ({ show, title, children, leftControls, rightControls, className }) => {
+// TODO: This is so confusingly named. Was 'Window', but we also had `window` and there were collisions with vite globals.
+const WindowFrame = ({ show, title, children, leftControls, rightControls, className }) => {
 	if (!show) {
 		return null;
 	}
 
 	const dialogZIndex = getCSSVariableAsNumber("--z-dialog");
 
-	return (
+	return createPortal(
 		<Stackable stackKey>
 			{({ stackIndex }) => (
 				<div
@@ -40,11 +39,12 @@ const Window = ({ show, title, children, leftControls, rightControls, className 
 					</div>
 				</div>
 			)}
-		</Stackable>
+		</Stackable>,
+		document.body,
 	);
 };
 
-Window.propTypes = {
+WindowFrame.propTypes = {
 	children: PropTypes.node,
 	className: PropTypes.string,
 	leftControls: PropTypes.arrayOf(PropTypes.node),
@@ -53,7 +53,7 @@ Window.propTypes = {
 	title: PropTypes.string,
 };
 
-Window.defaultProps = {
+WindowFrame.defaultProps = {
 	children: null,
 	className: null,
 	leftControls: [],
@@ -62,4 +62,4 @@ Window.defaultProps = {
 	title: null,
 };
 
-export default compose(window(document.body))(Window);
+export default WindowFrame;

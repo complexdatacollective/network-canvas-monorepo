@@ -6,8 +6,8 @@ import { makeGetIsUsed } from "../../../selectors/codebook/isUsed";
 import { makeGetUsageForType } from "../../../selectors/usage";
 import safeName from "../../../utils/safeName";
 import { checkChanged, saveableChange } from "../session";
-import { actionCreators as stageActions } from "./stages";
 import { getNextCategoryColor } from "./utils/helpers";
+import { actionCreators as stageActions } from "./utils/stages";
 
 const UPDATE_TYPE = "PROTOCOL/UPDATE_TYPE";
 const CREATE_TYPE = "PROTOCOL/CREATE_TYPE";

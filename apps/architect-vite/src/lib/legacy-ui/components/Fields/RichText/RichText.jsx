@@ -1,44 +1,40 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-} from 'react';
-import PropTypes from 'prop-types';
-import { Editable, withReact, Slate } from 'slate-react';
-import { createEditor } from 'slate';
-import { withHistory } from 'slate-history';
-import isHotkey from 'is-hotkey';
-import { compose, isEmpty } from 'lodash/fp';
-import { EditListPlugin } from '@productboard/slate-edit-list';
-import withNormalize from './lib/withNormalize';
-import withVoids from './lib/withVoids';
-import { toggleMark } from './lib/actions';
-import serialize from './lib/serialize';
-import parse, { defaultValue } from './lib/parse';
-import { INLINE_DISALLOWED_ITEMS, ALWAYS_DISALLOWED } from './lib/options';
-import Element from './Element';
-import Leaf from './Leaf';
-import Toolbar from './Toolbar';
-import RichTextContainer from './RichTextContainer';
+import { EditListPlugin } from "@productboard/slate-edit-list";
+import { isEmpty } from "es-toolkit/compat";
+import isHotkey from "is-hotkey";
+import PropTypes from "prop-types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { compose } from "redux";
+import { createEditor } from "slate";
+import { withHistory } from "slate-history";
+import { Editable, Slate, withReact } from "slate-react";
+import Element from "./Element";
+import Leaf from "./Leaf";
+import { toggleMark } from "./lib/actions";
+import { ALWAYS_DISALLOWED, INLINE_DISALLOWED_ITEMS } from "./lib/options";
+import parse, { defaultValue } from "./lib/parse";
+import serialize from "./lib/serialize";
+import withNormalize from "./lib/withNormalize";
+import withVoids from "./lib/withVoids";
+import RichTextContainer from "./RichTextContainer";
+import Toolbar from "./Toolbar";
 
 const HOTKEYS = {
-  'mod+b': 'bold',
-  'mod+i': 'italic',
+	"mod+b": "bold",
+	"mod+i": "italic",
 };
 
 const [withEditList, listOnKeyDown, { Editor, Transforms }] = EditListPlugin({
-  maxDepth: 1, // Restrict list depth to one, for now.
+	maxDepth: 1, // Restrict list depth to one, for now.
 });
 
 const hotkeyOnKeyDown = (editor) => (event) => {
-  Object.keys(HOTKEYS).forEach((hotkey) => {
-    if (isHotkey(hotkey, event)) {
-      event.preventDefault();
-      const mark = HOTKEYS[hotkey];
-      toggleMark(editor, mark, Transforms, Editor);
-    }
-  });
+	Object.keys(HOTKEYS).forEach((hotkey) => {
+		if (isHotkey(hotkey, event)) {
+			event.preventDefault();
+			const mark = HOTKEYS[hotkey];
+			toggleMark(editor, mark, Transforms, Editor);
+		}
+	});
 };
 
 /**
@@ -84,140 +80,134 @@ const hotkeyOnKeyDown = (editor) => (event) => {
  * subsequently as state is managed internally.
  */
 
-const RichText = ({
-  autoFocus,
-  inline,
-  disallowedTypes,
-  onChange,
-  value: initialValue,
-  placeholder,
-}) => {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [value, setValue] = useState(defaultValue);
-  const [lastChange, setLastChange] = useState(initialValue);
+const RichText = ({ autoFocus, inline, disallowedTypes, onChange, value: initialValue, placeholder }) => {
+	const [isInitialized, setIsInitialized] = useState(false);
+	const [value, setValue] = useState(defaultValue);
+	const [lastChange, setLastChange] = useState(initialValue);
 
-  // Use the inline prop to optionally merge additional disallowed items
-  const disallowedTypesWithDefaults = [
-    ...disallowedTypes,
-    ...[...(inline ? INLINE_DISALLOWED_ITEMS : [])],
-    ...ALWAYS_DISALLOWED,
-  ];
+	// Use the inline prop to optionally merge additional disallowed items
+	const disallowedTypesWithDefaults = [
+		...disallowedTypes,
+		...[...(inline ? INLINE_DISALLOWED_ITEMS : [])],
+		...ALWAYS_DISALLOWED,
+	];
 
-  const withOptions = (e) => Object.assign(e, {
-    inline,
-    disallowedTypes: disallowedTypesWithDefaults,
-  });
+	const withOptions = (e) =>
+		Object.assign(e, {
+			inline,
+			disallowedTypes: disallowedTypesWithDefaults,
+		});
 
-  const editor = useMemo(
-    () => compose(
-      withVoids,
-      withNormalize,
-      withOptions,
-      withEditList,
-      withHistory,
-      withReact,
-    )(createEditor()),
-    [disallowedTypesWithDefaults.join()],
-  );
+	const editor = useMemo(
+		() => compose(withVoids, withNormalize, withOptions, withEditList, withHistory, withReact)(createEditor()),
+		[disallowedTypesWithDefaults.join()],
+	);
 
-  // Test if there is no text content in the tree
-  const childrenAreEmpty = (children) => children.every((child) => {
-    // Thematic break has no text, but still counts as content.
-    if (child.type === 'thematic_break') {
-      return false;
-    }
+	// Test if there is no text content in the tree
+	const childrenAreEmpty = (children) =>
+		children.every((child) => {
+			// Thematic break has no text, but still counts as content.
+			if (child.type === "thematic_break") {
+				return false;
+			}
 
-    if (child.children) {
-      return childrenAreEmpty(child.children);
-    }
+			if (child.children) {
+				return childrenAreEmpty(child.children);
+			}
 
-    // The regexp here means that content only containing spaces or
-    // tabs will be considered empty!
-    return isEmpty(child.text) || !/\S/.test(child.text);
-  });
+			// The regexp here means that content only containing spaces or
+			// tabs will be considered empty!
+			return isEmpty(child.text) || !/\S/.test(child.text);
+		});
 
-  const getSerializedValue = () => {
-    if (childrenAreEmpty(editor.children)) {
-      return '';
-    }
-    return serialize(value);
-  };
+	const getSerializedValue = () => {
+		if (childrenAreEmpty(editor.children)) {
+			return "";
+		}
+		return serialize(value);
+	};
 
-  const setInitialValue = () => parse(initialValue)
-    .then((parsedValue) => {
-      // we need to reset the cursor state because the value length may have changed
-      Transforms.deselect(editor);
-      setValue(parsedValue);
-    });
+	const setInitialValue = () =>
+		parse(initialValue).then((parsedValue) => {
+			// we need to reset the cursor state because the value length may have changed
+			Transforms.deselect(editor);
+			setValue(parsedValue);
+		});
 
-  // Set starting state from prop value on start up
-  useEffect(() => {
-    setInitialValue()
-      .then(() => setIsInitialized(true));
-  }, []);
+	// Set starting state from prop value on start up
+	useEffect(() => {
+		setInitialValue().then(() => setIsInitialized(true));
+	}, []);
 
-  // Set value again when initial value changes
-  useEffect(() => {
-    // If value matches the last reported change do not set value;
-    if (initialValue === lastChange) { return; }
-    setInitialValue();
-  }, [initialValue]);
+	// Set value again when initial value changes
+	useEffect(() => {
+		// If value matches the last reported change do not set value;
+		if (initialValue === lastChange) {
+			return;
+		}
+		setInitialValue();
+	}, [initialValue]);
 
-  // Update upstream on change
-  useEffect(() => {
-    if (!isInitialized) { return; }
+	// Update upstream on change
+	useEffect(() => {
+		if (!isInitialized) {
+			return;
+		}
 
-    const nextValue = getSerializedValue();
+		const nextValue = getSerializedValue();
 
-    // Is this optimization necessary?
-    if (nextValue === lastChange) {
-      return;
-    }
+		// Is this optimization necessary?
+		if (nextValue === lastChange) {
+			return;
+		}
 
-    setLastChange(nextValue);
-    onChange(nextValue);
-  }, [value]);
+		setLastChange(nextValue);
+		onChange(nextValue);
+	}, [value]);
 
-  const handleKeyDown = useCallback((event) => {
-    hotkeyOnKeyDown(editor)(event);
-    listOnKeyDown(editor)(event);
-  }, [editor]);
+	const handleKeyDown = useCallback(
+		(event) => {
+			hotkeyOnKeyDown(editor)(event);
+			listOnKeyDown(editor)(event);
+		},
+		[editor],
+	);
 
-  return (
-    <Slate editor={editor} value={value} onChange={setValue}>
-      <RichTextContainer>
-        <Toolbar />
-        <div className={`rich-text__editable ${inline ? 'rich-text__editable--inline' : ''}`}>
-          <Editable
-            renderElement={Element}
-            renderLeaf={Leaf}
-            placeholder={(<em style={{ userSelect: 'none' }}>{placeholder}</em>)}
-            spellCheck
-            autoFocus={autoFocus}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
-      </RichTextContainer>
-    </Slate>
-  );
+	return (
+		<Slate editor={editor} value={value} onChange={setValue}>
+			<RichTextContainer>
+				<Toolbar />
+				<div className={`rich-text__editable ${inline ? "rich-text__editable--inline" : ""}`}>
+					<Editable
+						renderElement={Element}
+						renderLeaf={Leaf}
+						placeholder={<em style={{ userSelect: "none" }}>{placeholder}</em>}
+						spellCheck
+						autoFocus={autoFocus}
+						onKeyDown={handleKeyDown}
+					/>
+				</div>
+			</RichTextContainer>
+		</Slate>
+	);
 };
 
 RichText.propTypes = {
-  value: PropTypes.string,
-  placeholder: PropTypes.string,
-  onChange: PropTypes.func,
-  inline: PropTypes.bool,
-  disallowedTypes: PropTypes.array,
-  autoFocus: PropTypes.bool,
+	value: PropTypes.string,
+	placeholder: PropTypes.string,
+	onChange: PropTypes.func,
+	inline: PropTypes.bool,
+	disallowedTypes: PropTypes.array,
+	autoFocus: PropTypes.bool,
 };
 
 RichText.defaultProps = {
-  value: '',
-  placeholder: 'Enter some text...',
-  onChange: () => {},
-  inline: false,
-  disallowedTypes: [],
-  autoFocus: false,
+	value: "",
+	placeholder: "Enter some text...",
+	onChange: () => {},
+	inline: false,
+	disallowedTypes: [],
+	autoFocus: false,
 };
 
 export default RichText;

@@ -1,10 +1,9 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
-import { compose } from "redux";
-import window from "~/behaviours/window";
+import { createPortal } from "react-dom";
 import Stackable from "~/components/Stackable";
-import { getCSSVariableAsNumber } from "~/lib/legacy-ui/lib/utils/CSSVariables";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
 export const Controls = ({ children }) => <div className="contextual-dialog__controls">{children}</div>;
 
@@ -41,7 +40,7 @@ const Dialog = ({ show, children, className, onBlur }) => {
 		[onBlur],
 	);
 
-	return (
+	return createPortal(
 		<Stackable stackKey>
 			{({ stackIndex }) => (
 				<div
@@ -58,7 +57,8 @@ const Dialog = ({ show, children, className, onBlur }) => {
 					</div>
 				</div>
 			)}
-		</Stackable>
+		</Stackable>,
+		document.body,
 	);
 };
 
@@ -76,4 +76,4 @@ Dialog.defaultProps = {
 	onBlur: () => {},
 };
 
-export default compose(window(document.body))(Dialog);
+export default Dialog;

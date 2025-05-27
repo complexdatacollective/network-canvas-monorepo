@@ -3,7 +3,6 @@ import { DeleteIcon } from "lucide-react";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useRef } from "react";
-import { SortableElement } from "react-sortable-hoc";
 import { Button } from "~/lib/legacy-ui/components";
 import getAbsoluteBoundingRect from "~/utils/getAbsoluteBoundingRect";
 import EditStageButton from "./EditStageButton";
@@ -100,4 +99,4 @@ Stage.defaultProps = {
 
 export { Stage as UnconnectedStage };
 
-export default SortableElement(Stage);
+export default Stage;

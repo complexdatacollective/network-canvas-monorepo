@@ -14,9 +14,9 @@ const ProtocolSummaryView = () => {
 	});
 
 	useEffect(() => {
-		ipcRenderer.once("SUMMARY_DATA", (event, _data) => {
-			setData(_data);
-		});
+		// ipcRenderer.once("SUMMARY_DATA", (event, _data) => {
+		// 	setData(_data);
+		// });
 	}, []);
 
 	return (

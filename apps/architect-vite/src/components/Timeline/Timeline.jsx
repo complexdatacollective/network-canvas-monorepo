@@ -3,14 +3,12 @@ import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import { SortableContainer } from "react-sortable-hoc";
-import { compose, defaultProps, withStateHandlers } from "recompose";
-import { bindActionCreators } from "redux";
+import { bindActionCreators, compose } from "redux";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
-import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
+import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
-import { getCSSVariableAsNumber } from "~/lib/legacy-ui/lib/utils/CSSVariables";
-import { getStageList } from "~/selectors/protocol";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
+import { getProtocol, getStageList } from "~/selectors/protocol";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 
@@ -109,7 +107,7 @@ const Timeline = (props) => {
 
 const mapStateToProps = (state) => ({
 	locus: state.protocol.timeline[state.protocol.timeline.length - 1],
-	activeProtocol: state.session.activeProtocol,
+	activeProtocol: getProtocol(state),
 	stages: getStageList(state),
 	transitionDuration: getCSSVariableAsNumber("--animation-duration-standard-ms"), // Re-order transition
 });
@@ -146,22 +144,24 @@ Timeline.defaultProps = {
 
 export { Timeline };
 
-export default compose(
-	withStateHandlers(
-		({ sorting = false }) => ({
-			sorting,
-		}),
-		{
-			setSorting: () => (sortingState) => ({
-				sorting: sortingState,
-			}),
-		},
-	),
-	defaultProps({
-		lockAxis: "y",
-		distance: 5,
-		helperClass: "timeline__sortable-element",
-	}),
-	connect(mapStateToProps, mapDispatchToProps),
-	SortableContainer,
-)(Timeline);
+// export default compose(
+// 	withStateHandlers(
+// 		({ sorting = false }) => ({
+// 			sorting,
+// 		}),
+// 		{
+// 			setSorting: () => (sortingState) => ({
+// 				sorting: sortingState,
+// 			}),
+// 		},
+// 	),
+// 	defaultProps({
+// 		lockAxis: "y",
+// 		distance: 5,
+// 		helperClass: "timeline__sortable-element",
+// 	}),
+// 	connect(mapStateToProps, mapDispatchToProps),
+// 	SortableContainer,
+// )(Timeline);
+
+export default compose(connect(mapStateToProps, mapDispatchToProps))(Timeline);

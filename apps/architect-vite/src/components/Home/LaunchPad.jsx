@@ -63,7 +63,7 @@ const LaunchPad = ({ openNetcanvas, createNetcanvas, lastEditedProtocol, otherRe
 							graphicPosition="0 bottom"
 							color="slate-blue--dark"
 							graphicSize="auto 115%"
-							onClick={() => openNetcanvas()}
+							onClick={openNetcanvas}
 						>
 							<h2>Open</h2>
 							<h3>Existing Protocol</h3>

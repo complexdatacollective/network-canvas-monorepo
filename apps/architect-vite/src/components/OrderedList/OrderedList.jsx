@@ -2,7 +2,6 @@ import { isArray, isPlainObject } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { memo } from "react";
 import { connect } from "react-redux";
-import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, renameProp } from "recompose";
 import { arrayMove, arrayRemove } from "redux-form";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
@@ -103,5 +102,4 @@ export default compose(
 	}),
 	renameProp("sortable", "disabled"),
 	connect(null, mapDispatchToProps),
-	SortableContainer,
 )(OrderedList);

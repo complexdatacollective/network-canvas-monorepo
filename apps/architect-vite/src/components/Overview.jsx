@@ -9,8 +9,7 @@ import { actionCreators as uiActions } from "~/ducks/modules/ui";
 import { actionCreators as userActions } from "~/ducks/modules/userActions";
 import { Button, Icon } from "~/lib/legacy-ui/components";
 import * as Fields from "~/lib/legacy-ui/components/Fields";
-import { getProtocol } from "~/selectors/protocol";
-import { getActiveProtocol, getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/session";
+import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
 import withTooltip from "./enhancers/withTooltip";
 
 const panelVariants = {
@@ -160,13 +159,11 @@ const mapDispatchToProps = {
 
 const mapStateToProps = (state) => {
 	const protocol = getProtocol(state);
-	const filePath = getActiveProtocol(state);
-	const fileName = filePath && path.basename(filePath);
 	const protocolIsValid = getIsProtocolValid(state);
 	const hasUnsavedChanges = getHasUnsavedChanges(state);
 
 	return {
-		name: fileName,
+		name: "TEST",
 		description: protocol && protocol.description,
 		codebook: protocol && protocol.codebook,
 		protocolIsValid,

@@ -3,7 +3,7 @@ import { throttle } from "lodash";
 import PropTypes from "prop-types";
 import React, { Component } from "react";
 import GridLayout from "react-grid-layout";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import GridItem from "./GridItem";
 import { convertSize, getLayout, trimSize } from "./helpers";
 import withItems from "./withItems";

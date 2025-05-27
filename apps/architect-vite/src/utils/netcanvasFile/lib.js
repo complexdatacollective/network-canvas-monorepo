@@ -1,5 +1,3 @@
-import { v4 as uuid } from "uuid";
-import { archive, extract } from "~/utils/protocols/lib/archive";
 import { pruneProtocol } from "~/utils/prune";
 import pruneProtocolAssets from "~/utils/pruneProtocolAssets";
 import { errors, handleError } from "./errors";
@@ -52,36 +50,6 @@ const writeProtocol = (workingPath, protocol) => {
 		);
 };
 
-/**
- * Move a netcanvas file located in temporary directory into user space.
- * If the destination exists, make a backup copy of that file.
- *
- * @param netcanvasExportPath .netcanvas file path in temp
- * @param destinationUserPath Destination path
- * @returns {Promise} Resolves to { savePath, backupPath } if successful
- */
-const deployNetcanvas = (netcanvasExportPath, destinationUserPath) => {
-	const createBackup = true;
-	const f = path.parse(destinationUserPath);
-	const backupPath = path.join(f.dir, `${f.name}.backup-${new Date().getTime()}${f.ext}`);
-
-	return fse
-		.pathExists(destinationUserPath)
-		.then((exists) => {
-			if (!exists || !createBackup) {
-				return false;
-			}
-
-			return fse.rename(destinationUserPath, backupPath).then(() => true);
-		})
-		.then((createdBackup) =>
-			fse.copy(netcanvasExportPath, destinationUserPath).then(() => ({
-				savePath: destinationUserPath,
-				backupPath: createdBackup ? backupPath : null,
-			})),
-		);
-};
-
 const commitNetcanvas = ({ savePath, backupPath }) => {
 	if (!backupPath) {
 		return Promise.resolve(savePath);
@@ -111,50 +79,4 @@ const revertNetcanvas = ({ savePath, backupPath }) => {
 	});
 };
 
-/**
- * @param {string} workingPath - working path in application /tmp/protocols/ dir
- * @param {object} protocol - The protocol object (optional)
- * @returns {Promise} Resolves to a path in temp (random)
- */
-const createNetcanvasExport = (workingPath, protocol) => {
-	if (!protocol) {
-		return Promise.reject();
-	}
-
-	return writeProtocol(workingPath, protocol)
-		.then(() => getTempDir("exports"))
-		.then((exportDir) => {
-			const exportPath = path.join(exportDir, uuid());
-
-			return archive(workingPath, exportPath).then(() => exportPath);
-		});
-};
-
-/**
- * Create a working copy of a protocol in the application
- * tmp directory. If bundled, extract it, if not, copy it.
- *
- * @param filePath .netcanvas file path
- * @returns {Promise} Resolves to a path in temp (random)
- */
-const importNetcanvas = (filePath) =>
-	getTempDir("protocols").then((protocolsDir) => {
-		const destinationPath = path.join(protocolsDir, uuid());
-
-		return fse
-			.access(filePath, fse.constants.W_OK)
-			.then(() => extract(filePath, destinationPath))
-			.then(() => destinationPath)
-			.catch(handleError(errors.OpenFailed));
-	});
-
-export {
-	commitNetcanvas,
-	createNetcanvasExport,
-	deployNetcanvas,
-	getTempDir,
-	importNetcanvas,
-	readProtocol,
-	revertNetcanvas,
-	writeProtocol,
-};
+export { commitNetcanvas, getTempDir, readProtocol, revertNetcanvas, writeProtocol };

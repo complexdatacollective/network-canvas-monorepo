@@ -1,8 +1,6 @@
 import { get } from "es-toolkit/compat";
-import path from "path";
 import { getGeoJsonVariables, getNetworkVariables } from "~/utils/protocols/assetTools";
 import { getAssetManifest } from "./protocol";
-import { getWorkingPath } from "./session";
 
 /**
  * Generate asset path using the assetManifest and protocol meta
@@ -11,7 +9,6 @@ import { getWorkingPath } from "./session";
  * @param {string} dataSource id of entry in assetManifest
  */
 export const getAssetPath = (state, dataSource) => {
-	const workingPath = getWorkingPath(state);
 	const assetManifest = getAssetManifest(state);
 	const asset = get(assetManifest, dataSource);
 
@@ -19,7 +16,7 @@ export const getAssetPath = (state, dataSource) => {
 		return null;
 	}
 
-	const assetPath = path.join(workingPath, "assets", asset.source);
+	const assetPath = `assets/${asset.source}`;
 	return assetPath;
 };
 

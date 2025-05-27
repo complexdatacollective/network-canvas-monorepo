@@ -2,7 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { PureComponent } from "react";
 import ReactSelect from "react-select";
-import Icon from "~/lib/legacy-ui/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import DefaultSelectOption from "./DefaultSelectOption";
 
 const getValue = (options, value) => {

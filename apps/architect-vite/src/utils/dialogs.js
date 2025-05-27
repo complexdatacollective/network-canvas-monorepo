@@ -1,3 +1,5 @@
+import devProtocol from "../../../../packages/development-protocol/protocol.json";
+
 const defaultOpenDialogOptions = {
 	buttonLabel: "Open",
 	nameFieldLabel: "Open:",
@@ -37,7 +39,15 @@ const openDialog = (openDialogOptions = {}) => {
 		...openDialogOptions,
 	};
 
-	return remote.dialog.showOpenDialog(remote.getCurrentWindow(), options);
+	// return remote.dialog.showOpenDialog(remote.getCurrentWindow(), options);
+	return new Promise((resolve) => {
+		const result = window.prompt("This is an open dialog");
+
+		resolve({
+			cancelled: !!result,
+			protocol: devProtocol,
+		});
+	});
 };
 
 /**
@@ -50,7 +60,15 @@ const saveDialog = (saveDialogOptions = {}) => {
 		...saveDialogOptions,
 	};
 
-	return remote.dialog.showSaveDialog(remote.getCurrentWindow(), options);
+	return new Promise((resolve) => {
+		const result = window.prompt("This is a save dialog");
+
+		resolve({
+			cancelled: !!result,
+		});
+	});
+
+	// return remote.dialog.showSaveDialog(remote.getCurrentWindow(), options);
 };
 
 const saveCopyDialog = (saveCopyOptions = {}) => {

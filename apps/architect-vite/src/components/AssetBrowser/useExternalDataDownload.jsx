@@ -2,7 +2,6 @@ import { get } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
 import { getAssetManifest } from "~/selectors/protocol";
-import { getWorkingPath } from "~/selectors/session";
 
 const defaultMeta = {
 	name: "Interview network",
@@ -10,36 +9,21 @@ const defaultMeta = {
 
 const useExternalDataDownload = () => {
 	const assetManifest = useSelector(getAssetManifest);
-	const workingPath = useSelector(getWorkingPath);
 
 	const getAssetInfo = useCallback(
 		(id) => {
 			const source = get(assetManifest, [id, "source"], "");
 			const meta = get(assetManifest, id, defaultMeta);
-			const assetPath = path.join(workingPath, "assets", path.basename(source));
+			const assetPath = `assets/${source}`;
 			return [assetPath, meta];
 		},
-		[assetManifest, workingPath],
+		[assetManifest],
 	);
 
 	const handleDownload = useCallback((id) => {
 		const [assetPath, meta] = getAssetInfo(id);
-		remote.dialog
-			.showSaveDialog(
-				{
-					buttonLabel: "Save Asset",
-					nameFieldLabel: "Save As:",
-					properties: ["saveFile"],
-					defaultPath: meta.source,
-				},
-				remote.getCurrentWindow(),
-			)
-			.then(({ canceled, filePath }) => {
-				if (canceled) {
-					return;
-				}
-				fse.copy(assetPath, filePath);
-			});
+
+		console.log("handleDownload not implemented");
 	}, []);
 
 	return handleDownload;

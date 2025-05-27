@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { PureComponent } from "react";
 import ReactDOM from "react-dom";
 import { compose, getContext } from "recompose";
-import { getCSSVariableAsNumber } from "~/lib/legacy-ui/lib/utils/CSSVariables";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
 function getDisplayName(WrappedComponent) {
 	return WrappedComponent.displayName || WrappedComponent.name || "Component";
@@ -16,7 +16,7 @@ const Zoom = (WrappedComponent) => {
 		componentDidMount() {
 			const [root] = document.getElementsByTagName("body");
 			this.root = root;
-			this.node = ReactDOM.findDOMNode(this); // eslint-disable-line react/no-find-dom-node
+			this.node = ReactDOM.findDOMNode(this);
 			this.node.addEventListener("click", this.onClick);
 		}
 

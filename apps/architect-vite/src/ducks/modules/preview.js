@@ -1,6 +1,5 @@
 import { getFormValues } from "redux-form";
 import { getProtocol } from "~/selectors/protocol";
-import { getWorkingPath } from "~/selectors/session";
 import previewDriver from "~/utils/previewDriver";
 
 const getStageIndex = (protocol, stageMeta) => {
@@ -64,8 +63,6 @@ const clearPreview = () => (dispatch) => {
 const previewDraft = (draft, stageIndex) => (dispatch, getState) => {
 	const state = getState();
 
-	const workingPath = getWorkingPath(state);
-
 	const draftProtocol = {
 		...draft,
 		/**
@@ -76,7 +73,7 @@ const previewDraft = (draft, stageIndex) => (dispatch, getState) => {
 		 * `assets://${protocolUID}/assets/${asset}` this allows us to load files
 		 * from the correct location.
 		 */
-		uid: workingPath,
+		// uid: workingPath,
 	};
 
 	dispatch({

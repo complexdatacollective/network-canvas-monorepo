@@ -1,5 +1,4 @@
 import { uniqBy } from "es-toolkit/compat";
-import path from "path";
 import { actionTypes as sessionActionTypes } from "~/ducks/modules/session";
 
 const initialState = [];
@@ -14,23 +13,11 @@ export default function reducer(state = initialState, action = {}) {
 		case sessionActionTypes.OPEN_NETCANVAS_ERROR:
 			return state.filter((protocol) => protocol.filePath !== action.payload.filePath);
 		case sessionActionTypes.OPEN_NETCANVAS_SUCCESS: {
-			const { filePath, protocol } = action.payload;
+			const { protocol } = action.payload;
 			return addProtocol(state, {
-				filePath,
+				protocol,
 				lastModified: protocol.lastModified,
-				name: path.basename(filePath, ".netcanvas"),
-				description: protocol.description,
-				schemaVersion: protocol.schemaVersion,
-			});
-		}
-		// We saved it, we know everything about the protocol
-		case sessionActionTypes.SAVE_NETCANVAS_SUCCESS: {
-			const { savePath: filePath, protocol } = action.payload;
-
-			return addProtocol(state, {
-				filePath,
-				lastModified: new Date().getTime(),
-				name: path.basename(filePath, ".netcanvas"),
+				name: "TEST",
 				description: protocol.description,
 				schemaVersion: protocol.schemaVersion,
 			});
