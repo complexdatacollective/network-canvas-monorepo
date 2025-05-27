@@ -25,7 +25,7 @@ const externalLinkRenderer = ({ href, children }) => (
 );
 
 const defaultMarkdownRenderers = {
-	p: emojiTextRenderer,
+	// p: emojiTextRenderer,
 	a: externalLinkRenderer,
 };
 
@@ -47,15 +47,16 @@ const Markdown = ({ label, className, allowedElements = ALLOWED_MARKDOWN_TAGS, m
 	}, [label]);
 
 	return (
-		<ReactMarkdown
-			className={className}
-			allowedElements={allowedElements}
-			components={combinedRenderers}
-			rehypePlugins={[rehypeRaw, rehypeSanitize]}
-			unwrapDisallowed
-		>
-			{rawText}
-		</ReactMarkdown>
+		<span className={className}>
+			<ReactMarkdown
+				allowedElements={allowedElements}
+				components={combinedRenderers}
+				rehypePlugins={[rehypeRaw, rehypeSanitize]}
+				unwrapDisallowed
+			>
+				{rawText}
+			</ReactMarkdown>
+		</span>
 	);
 };
 

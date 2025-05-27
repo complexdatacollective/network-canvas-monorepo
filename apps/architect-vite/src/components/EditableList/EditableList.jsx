@@ -1,5 +1,5 @@
 import { startCase } from "es-toolkit/compat";
-import { AnimateSharedLayout } from "motion/react";
+import { LayoutGroup } from "motion/react";
 import PropTypes from "prop-types";
 import { compose, defaultProps } from "recompose";
 import { Section } from "~/components/EditorLayout";
@@ -50,7 +50,7 @@ const EditableList = ({
 	...rest
 }) => (
 	<Section disabled={disabled} contentId={contentId} summary={sectionSummary} title={sectionTitle}>
-		<AnimateSharedLayout>
+		<LayoutGroup>
 			<div id={getFieldId(`${fieldName}._error`)} data-name={startCase(fieldName)} />
 			{children}
 			<div className="editable-list">
@@ -94,7 +94,7 @@ const EditableList = ({
 					fieldId={editField}
 				/>
 			</InlineEditScreen>
-		</AnimateSharedLayout>
+		</LayoutGroup>
 	</Section>
 );
 

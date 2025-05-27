@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { AnimatePresence, AnimateSharedLayout, motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import useScrollTo from "../../../hooks/useScrollTo";
@@ -100,7 +100,7 @@ const DatePickerInput = ({ onChange: onChangeInput, value, parameters, parentRef
 					};
 
 					return (
-						<AnimateSharedLayout>
+						<LayoutGroup>
 							<motion.div
 								className={datePickerClasses}
 								onBlur={handleBlur}
@@ -163,7 +163,7 @@ const DatePickerInput = ({ onChange: onChangeInput, value, parameters, parentRef
 									</AnimatePresence>
 								</motion.div>
 							</motion.div>
-						</AnimateSharedLayout>
+						</LayoutGroup>
 					);
 				}}
 			</Date>
