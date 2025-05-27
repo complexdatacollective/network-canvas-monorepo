@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import RuleText from "~/src/components/Query/Rules/PreviewText";
-import withDisplayOptions from "~/src/components/Query/Rules/withDisplayOptions";
+import RuleText from "~/components/Query/Rules/PreviewText";
+import withDisplayOptions from "~/components/Query/Rules/withDisplayOptions";
 
 const Rule = ({ type, options }) => <RuleText type={type} options={options} />;
 

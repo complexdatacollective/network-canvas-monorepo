@@ -1,5 +1,5 @@
-import { APP_SCHEMA_VERSION } from "~/src/config";
-import { saveDialog } from "~/src/utils/dialogs";
+import { APP_SCHEMA_VERSION } from "~/config";
+import { saveDialog } from "~/utils/dialogs";
 import getLocalDirectoryFromArchivePath from "./lib/getLocalDirectoryFromArchivePath";
 
 const saveDialogOptions = {

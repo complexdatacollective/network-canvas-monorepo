@@ -1,13 +1,13 @@
-import { Icon } from "@codaco/ui";
-import RichTextField from "@codaco/ui/lib/components/Fields/RichText";
-import TextField from "@codaco/ui/lib/components/Fields/Text";
 import { toNumber } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { SortableElement, SortableHandle } from "react-sortable-hoc";
 import { compose, withHandlers } from "recompose";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import { actionCreators as dialogsActions } from "~/src/ducks/modules/dialogs";
+import ValidatedField from "~/components/Form/ValidatedField";
+import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import { Icon } from "~/lib/legacy-ui/components";
+import RichTextField from "~/lib/legacy-ui/components/Fields/RichText";
+import TextField from "~/lib/legacy-ui/components/Fields/Text";
 
 const isNumberLike = (value) => Number.parseInt(value, 10) == value; // eslint-disable-line
 

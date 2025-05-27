@@ -1,9 +1,9 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .list-group {
   border-top: 2px solid var(--color-shadow);
-  margin: units.unit(4) 0;
-  padding: units.unit(2) 0 0;
+  margin: 2.4rem 0;
+  padding: 1.2rem 0 0;
 
   .list-row {
     &:last-child {

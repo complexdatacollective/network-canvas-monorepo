@@ -1,9 +1,9 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 @use "sass:math";
 
 $stage-height: math.div(9, 16) * 15vw;
-$stage-padding: units.unit(5);
-$bottom-spacing: units.unit(12);
+$stage-padding: 3.2rem;
+$bottom-spacing: 7.2rem;
 
 .timeline {
   position: relative;
@@ -17,8 +17,8 @@ $bottom-spacing: units.unit(12);
 
     // position: relative;
     left: 50%;
-    padding-left: units.unit(6);
-    height: units.unit(5);
+    padding-left: 3.6rem;
+    height: 3.2rem;
     display: inline-flex;
     align-items: center;
     font-family: var(--heading-font-family);
@@ -36,9 +36,9 @@ $bottom-spacing: units.unit(12);
       position: absolute;
       left: 0;
       top: 0;
-      width: units.unit(5);
-      height: units.unit(5);
-      border-radius: units.unit(5);
+      width: 3.2rem;
+      height: 3.2rem;
+      border-radius: 3.2rem;
       background-color: var(--architect-timeline-line);
       display: inline-flex;
       justify-content: center;
@@ -85,7 +85,7 @@ $bottom-spacing: units.unit(12);
     }
 
     &--new {
-      margin-top: units.unit(3);
+      margin-top: 1.8rem;
       position: relative;
     }
   }
@@ -100,13 +100,13 @@ $bottom-spacing: units.unit(12);
     top: 0;
     left: 50%;
     width: 0;
-    height: calc(100% - #{units.unit(5)});
-    border-left: units.unit(.6) solid var(--architect-timeline-line);
+    height: calc(100% - #{3.2rem});
+    border-left: 0.36rem solid var(--architect-timeline-line);
   }
 
   &__stages {
     position: relative;
-    padding: units.unit(6) 0 0;
+    padding: 3.6rem 0 0;
 
     &--show {
       opacity: 1;

@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .screen {
   &.new-stage {
@@ -18,7 +18,7 @@
 
   &__filter {
     .form-field-container {
-      margin: units.unit(1) 0;
+      margin: 0.6rem 0;
 
       .form-field-text__input {
         margin-bottom: 0;
@@ -35,7 +35,7 @@
         flex: 0 0;
         display: flex;
         align-items: center;
-        margin-right: units.unit(1);
+        margin-right: 0.6rem;
       }
 
       &__tags {
@@ -54,7 +54,7 @@
   &__interfaces {
     display: flex;
     flex-direction: column;
-    margin: units.unit(2) 0;
+    margin: 1.2rem 0;
 
     &--empty {
       position: absolute;
@@ -73,7 +73,7 @@
   &__interface {
     flex: 1 0 100%;
     cursor: pointer;
-    padding: units.unit(2) units.unit(8);
+    padding: 1.2rem 4.8rem;
     border-bottom: 2px solid var(--architect-divider);
 
     &-content {
@@ -89,7 +89,7 @@
 
     &-image {
       flex: 0 0 15rem;
-      margin-right: units.unit(4);
+      margin-right: 2.4rem;
     }
 
     &-preview {
@@ -103,7 +103,7 @@
     }
 
     &-description {
-      margin: 0 0 units.unit(1);
+      margin: 0 0 0.6rem;
     }
   }
 }

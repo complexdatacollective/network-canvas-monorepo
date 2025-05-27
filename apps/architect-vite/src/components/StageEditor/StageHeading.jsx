@@ -1,10 +1,10 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect, useSelector } from "react-redux";
 import { getFormValues } from "redux-form";
-import timelineImages from "~/src/images/timeline";
-import { getStageIndex } from "~/src/selectors/protocol";
+import timelineImages from "~/images/timeline";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
+import { getStageIndex } from "~/selectors/protocol";
 import { getFieldId } from "../../utils/issues";
 import ExternalLink from "../ExternalLink";
 import { ValidatedField } from "../Form";

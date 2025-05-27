@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { compose, defaultProps } from "recompose";
-import Editor from "~/src/components/Editor";
-import { Layout } from "~/src/components/EditorLayout";
+import Editor from "~/components/Editor";
+import { Layout } from "~/components/EditorLayout";
 import CodeView from "../CodeView";
 import CollapsableHeader from "../Screen/CollapsableHeader";
 import { formName } from "./configuration";

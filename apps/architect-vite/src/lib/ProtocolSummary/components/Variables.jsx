@@ -1,10 +1,10 @@
 /* eslint-disable react/no-array-index-key */
 
-import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import React, { useContext } from "react";
-import { SimpleVariablePill } from "~/src/components/Form/Fields/VariablePicker/VariablePill";
+import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
+import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
 import DualLink from "./DualLink";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";

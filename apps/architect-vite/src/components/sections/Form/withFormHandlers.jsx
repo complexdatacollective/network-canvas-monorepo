@@ -1,8 +1,8 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, SubmissionError } from "redux-form";
-import { getTypeForComponent } from "~/src/config/variables";
-import { actionCreators as codebookActions } from "~/src/ducks/modules/protocol/codebook";
+import { getTypeForComponent } from "~/config/variables";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 import { makeGetVariable } from "../../../selectors/codebook";
 import { getCodebookProperties } from "./helpers";
 

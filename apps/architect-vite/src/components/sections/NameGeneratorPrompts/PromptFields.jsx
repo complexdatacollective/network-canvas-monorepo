@@ -1,10 +1,10 @@
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import AssignAttributes from "~/src/components/AssignAttributes";
-import { Row, Section } from "~/src/components/EditorLayout";
-import PromptText from "~/src/components/sections/PromptText";
-import Tip from "~/src/components/Tip";
+import AssignAttributes from "~/components/AssignAttributes";
+import { Row, Section } from "~/components/EditorLayout";
+import PromptText from "~/components/sections/PromptText";
+import Tip from "~/components/Tip";
 
 const PromptFields = ({ form, entity, type }) => {
 	const dispatch = useDispatch();

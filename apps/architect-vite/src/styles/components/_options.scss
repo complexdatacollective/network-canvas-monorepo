@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 $component-name: 'options';
 
@@ -37,11 +37,11 @@ $component-name: 'options';
     }
 
     &-value {
-      margin: units.unit(2) 0;
+      margin: 1.2rem 0;
       flex: 1;
 
       &:last-of-type {
-        margin-left: units.unit(2);
+        margin-left: 1.2rem;
       }
     }
 
@@ -61,8 +61,8 @@ $component-name: 'options';
       color: var(--architect-sortable-text);
 
       .icon {
-        width: units.unit(2);
-        height: units.unit(2);
+        width: 1.2rem;
+        height: 1.2rem;
 
         .cls-1,
         .cls-2 {
@@ -83,7 +83,7 @@ $component-name: 'options';
   &--has-error {
     .form-field-error {
       margin: 1rem 0;
-      border-radius: units.unit(1);
+      border-radius: 0.6rem;
     }
 
     .#{$component-name}__option {

@@ -2,7 +2,7 @@ import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { compose, setPropTypes } from "recompose";
-import { getAssetManifest } from "~/src/selectors/protocol";
+import { getAssetManifest } from "~/selectors/protocol";
 
 const existingMeta = {
 	name: "Interview network",

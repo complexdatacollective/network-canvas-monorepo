@@ -1,10 +1,10 @@
-import { Button } from "@codaco/ui";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, withHandlers } from "recompose";
 import { FieldArray } from "redux-form";
-import FieldError from "~/src/components/Form/FieldError";
+import FieldError from "~/components/Form/FieldError";
+import { Button } from "~/lib/legacy-ui/components";
 import Option from "./Option";
 
 const minTwoOptions = (value) =>

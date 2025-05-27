@@ -1,7 +1,7 @@
-import RadioGroup from "@codaco/ui/lib/components/Fields/RadioGroup";
-import { Row } from "~/src/components/EditorLayout";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import { Query, ruleValidator, withFieldConnector, withStoreConnector } from "~/src/components/Query";
+import { Row } from "~/components/EditorLayout";
+import ValidatedField from "~/components/Form/ValidatedField";
+import { Query, ruleValidator, withFieldConnector, withStoreConnector } from "~/components/Query";
+import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
 import { getFieldId } from "../../../utils/issues";
 import IssueAnchor from "../../IssueAnchor";
 

@@ -1,7 +1,7 @@
 import { v4 as uuid } from "uuid";
-import { archive, extract } from "~/src/utils/protocols/lib/archive";
-import { pruneProtocol } from "~/src/utils/prune";
-import pruneProtocolAssets from "~/src/utils/pruneProtocolAssets";
+import { archive, extract } from "~/utils/protocols/lib/archive";
+import { pruneProtocol } from "~/utils/prune";
+import pruneProtocolAssets from "~/utils/pruneProtocolAssets";
 import { errors, handleError } from "./errors";
 
 /**

@@ -1,13 +1,13 @@
-import { Button } from "@codaco/ui";
 import { startCase } from "es-toolkit/compat";
 import { AnimateSharedLayout } from "motion/react";
 import PropTypes from "prop-types";
 import { compose, defaultProps } from "recompose";
-import { Section } from "~/src/components/EditorLayout";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import InlineEditScreen from "~/src/components/InlineEditScreen";
-import OrderedList from "~/src/components/OrderedList";
-import { getFieldId, scrollToFirstIssue } from "~/src/utils/issues";
+import { Section } from "~/components/EditorLayout";
+import ValidatedField from "~/components/Form/ValidatedField";
+import InlineEditScreen from "~/components/InlineEditScreen";
+import OrderedList from "~/components/OrderedList";
+import { Button } from "~/lib/legacy-ui/components";
+import { getFieldId, scrollToFirstIssue } from "~/utils/issues";
 import withEditHandlers from "./withEditHandlers";
 
 const formName = "editable-list-form";

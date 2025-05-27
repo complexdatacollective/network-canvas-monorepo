@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 $component-name: app;
 
@@ -12,7 +12,7 @@ $component-name: app;
   top: 0;
   left: 0;
   right: 0;
-  height: units.unit(2.5);
+  height: 1.5rem;
   width: 100%;
   -webkit-app-region: drag;
 }

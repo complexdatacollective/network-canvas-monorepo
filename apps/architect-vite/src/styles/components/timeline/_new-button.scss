@@ -1,8 +1,8 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .list-new-button {
-  width: units.unit(10);
-  height: units.unit(10);
+  width: 6rem;
+  height: 6rem;
   cursor: pointer;
   overflow: hidden;
   display: flex;
@@ -13,8 +13,8 @@
   transform: translateY(-1px);
 
   .icon {
-    width: units.unit(2);
-    height: units.unit(2);
+    width: 1.2rem;
+    height: 1.2rem;
 
     .cls-1 {
       fill: var(--architect-edit-button-fill);

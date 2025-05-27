@@ -1,8 +1,8 @@
-import { Toggle } from "@codaco/ui/lib/components/Fields";
 import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useState } from "react";
+import { Toggle } from "~/lib/legacy-ui/components/Fields";
 import IssueAnchor from "../IssueAnchor";
 
 const animations = {

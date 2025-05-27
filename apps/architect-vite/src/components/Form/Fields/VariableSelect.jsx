@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { compose, withProps } from "recompose";
-import { getVariableOptionsForSubject } from "~/src/selectors/codebook";
+import { getVariableOptionsForSubject } from "~/selectors/codebook";
 import NativeSelect from "./NativeSelect";
 
 const withVariableValidator = withProps(({ validation }) => ({

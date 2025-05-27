@@ -34,8 +34,8 @@ import {
 	SortOptionsForExternalData,
 	TieStrengthCensusPrompts,
 	Title,
-} from "~/src/components/sections";
-import { FilteredNodeType } from "~/src/components/sections/NodeType";
+} from "~/components/sections";
+import { FilteredNodeType } from "~/components/sections/NodeType";
 
 const AlterEdgeForm = {
 	sections: [FilteredEdgeType, IntroductionPanel, Form, SkipLogic, InterviewScript],

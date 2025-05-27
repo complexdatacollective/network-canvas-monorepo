@@ -1,11 +1,11 @@
-import { Button } from "@codaco/ui";
 import cx from "classnames";
 import { DeleteIcon } from "lucide-react";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useRef } from "react";
 import { SortableElement } from "react-sortable-hoc";
-import getAbsoluteBoundingRect from "~/src/utils/getAbsoluteBoundingRect";
+import { Button } from "~/lib/legacy-ui/components";
+import getAbsoluteBoundingRect from "~/utils/getAbsoluteBoundingRect";
 import EditStageButton from "./EditStageButton";
 
 const findPos = (node) => {

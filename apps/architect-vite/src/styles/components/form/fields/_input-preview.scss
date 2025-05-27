@@ -1,12 +1,12 @@
 .input-preview {
   display: flex;
-  padding: units.unit(2);
+  padding: 1.2rem;
   border-radius: var(--border-radius);
   background: var(--color-platinum);
 
   &__description {
     flex: 0 0 50%;
-    padding-left: units.unit(4);
+    padding-left: 2.4rem;
   }
 
   &__image {

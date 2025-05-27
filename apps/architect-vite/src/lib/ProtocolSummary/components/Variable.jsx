@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useContext } from "react";
-import { SimpleVariablePill } from "~/src/components/Form/Fields/VariablePicker/VariablePill";
+import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
 import DualLink from "./DualLink";
 import { getVariableMeta, getVariableName } from "./helpers";
 import SummaryContext from "./SummaryContext";

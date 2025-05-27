@@ -4,8 +4,8 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose, defaultProps } from "recompose";
 import { Field, change, getFormValues } from "redux-form";
-import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "~/src/components/Query";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
+import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "~/components/Query";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import Section from "../../EditorLayout/Section";
 import { handleFilterDeactivate } from "../Filter";
 

@@ -1,9 +1,9 @@
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import withDisabledAPIKeyRequired from "~/src/components/enhancers/withDisabledAPIKeyRequired";
-import NativeSelect from "~/src/components/Form/Fields/NativeSelect";
+import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
+import NativeSelect from "~/components/Form/Fields/NativeSelect";
 
-import withMapFormToProps from "~/src/components/enhancers/withMapFormToProps";
+import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Row, Section } from "../EditorLayout";
 import ValidatedField from "../Form/ValidatedField";
 

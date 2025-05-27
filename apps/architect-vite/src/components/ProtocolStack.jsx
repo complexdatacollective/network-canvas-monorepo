@@ -2,8 +2,8 @@ import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";
-import { actionCreators as userActions } from "~/src/ducks/modules/userActions";
-import protocolCover from "~/src/images/NC-File.svg";
+import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import protocolCover from "~/images/NC-File.svg";
 
 const getFilename = (path = "") => get(path.match(/([^/\\]+)$/), 1, path);
 

@@ -1,7 +1,7 @@
-$font-path: '@codaco/ui/lib/assets/fonts';
+$font-path: '../lib/legacy-ui/assets/fonts';
 
 @import 'react-grid-layout/css/styles.css';
-@import '@codaco/ui/lib/styles/all';
+@import '../lib/legacy-ui/styles/all';
 @import './hotfix';
 @import './ui';
 @import './theme';

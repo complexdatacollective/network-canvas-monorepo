@@ -1,13 +1,13 @@
-import { Button } from "@codaco/ui";
 import cx from "classnames";
 import { CopyIcon as ContentCopyIcon, DownloadIcon } from "lucide-react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { compose } from "redux";
-import * as Assets from "~/src/components/Assets";
-import withAssetMeta from "~/src/components/Assets/withAssetMeta";
-import withAssetPath from "~/src/components/Assets/withAssetPath";
-import Window from "~/src/components/Window";
+import * as Assets from "~/components/Assets";
+import withAssetMeta from "~/components/Assets/withAssetMeta";
+import withAssetPath from "~/components/Assets/withAssetPath";
+import Window from "~/components/Window";
+import { Button } from "~/lib/legacy-ui/components";
 
 const getRenderer = (meta) => {
 	switch (meta.type) {

@@ -1,9 +1,9 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
-import DataSource from "~/src/components/Form/Fields/DataSource";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import NetworkFilter from "~/src/components/sections/fields/NetworkFilter";
-import { getFieldId } from "~/src/utils/issues";
+import DataSource from "~/components/Form/Fields/DataSource";
+import ValidatedField from "~/components/Form/ValidatedField";
+import NetworkFilter from "~/components/sections/fields/NetworkFilter";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
+import { getFieldId } from "~/utils/issues";
 import Section from "../../EditorLayout/Section";
 
 const NodePanel = ({ fieldId, form }) => (

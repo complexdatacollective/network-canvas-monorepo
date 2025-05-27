@@ -1,12 +1,12 @@
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import PromptText from "~/src/components/sections/PromptText";
+import PromptText from "~/components/sections/PromptText";
 
-import { Row, Section } from "~/src/components/EditorLayout";
-import { ValidatedField } from "~/src/components/Form";
-import NewVariableWindow, { useNewVariableWindowState } from "~/src/components/NewVariableWindow";
-import withVariableHandlers from "~/src/components/sections/CategoricalBinPrompts/withVariableHandlers"; // TODO: should these be moved somewhere more general?
-import withVariableOptions from "~/src/components/sections/CategoricalBinPrompts/withVariableOptions";
+import { Row, Section } from "~/components/EditorLayout";
+import { ValidatedField } from "~/components/Form";
+import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
+import withVariableHandlers from "~/components/sections/CategoricalBinPrompts/withVariableHandlers"; // TODO: should these be moved somewhere more general?
+import withVariableOptions from "~/components/sections/CategoricalBinPrompts/withVariableOptions";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 
 const VARIABLE_TYPE = "location";

@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 $component-name: list-item;
 
@@ -13,12 +13,12 @@ $component-name: list-item;
   flex-direction: row;
   align-items: stretch;
   border-radius: var(--border-radius);
-  margin-bottom: units.unit(1);
+  margin-bottom: 0.6rem;
 
 
 
   &__control {
-    padding: units.unit(2);
+    padding: 1.2rem;
     flex-grow: 0;
     display: flex;
     align-items: center;
@@ -32,7 +32,7 @@ $component-name: list-item;
   }
 
   &__content {
-    padding: units.unit(2);
+    padding: 1.2rem;
     flex-grow: 1;
 
     > .stage-editor-section {

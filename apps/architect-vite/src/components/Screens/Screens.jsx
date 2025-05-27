@@ -2,8 +2,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { actionCreators as uiActions } from "~/src/ducks/modules/ui";
-import { getScreensStack } from "~/src/selectors/ui";
+import { actionCreators as uiActions } from "~/ducks/modules/ui";
+import { getScreensStack } from "~/selectors/ui";
 import { getScreenComponent } from "./screenIndex";
 
 export const screenVariants = {

@@ -1,7 +1,7 @@
 import { has } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { getFormValues, isDirty as isFormDirty, isInvalid as isFormInvalid } from "redux-form";
-import { getStage, getStageIndex } from "~/src/selectors/protocol";
+import { getStage, getStageIndex } from "~/selectors/protocol";
 import { getInterface } from "./Interfaces";
 import { formName } from "./configuration";
 

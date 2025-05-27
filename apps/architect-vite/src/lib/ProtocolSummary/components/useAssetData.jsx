@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import { useContext, useEffect, useState } from "react";
-import { getAssetPath, makeGetNetworkAssetVariables } from "~/src/selectors/assets";
+import { getAssetPath, makeGetNetworkAssetVariables } from "~/selectors/assets";
 import SummaryContext from "./SummaryContext";
 
 const stubState = (assetManifest, workingPath) => ({

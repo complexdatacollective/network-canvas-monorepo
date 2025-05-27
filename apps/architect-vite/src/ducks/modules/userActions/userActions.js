@@ -2,25 +2,25 @@
 import { getMigrationNotes, validateProtocol } from "@codaco/protocol-validation";
 import axios from "axios";
 import { v4 as uuid } from "uuid";
-import { UnsavedChanges } from "~/src/components/Dialogs";
-import { APP_SCHEMA_VERSION, SAMPLE_PROTOCOL_URL } from "~/src/config";
-import { actionCreators as dialogsActions } from "~/src/ducks/modules/dialogs";
-import { actionCreators as sessionActions, actionTypes as sessionActionTypes } from "~/src/ducks/modules/session";
-import { actionCreators as toastActions } from "~/src/ducks/modules/toasts";
-import { createLock } from "~/src/ducks/modules/ui/status";
+import { UnsavedChanges } from "~/components/Dialogs";
+import { APP_SCHEMA_VERSION, SAMPLE_PROTOCOL_URL } from "~/config";
+import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import { actionCreators as sessionActions, actionTypes as sessionActionTypes } from "~/ducks/modules/session";
+import { actionCreators as toastActions } from "~/ducks/modules/toasts";
+import { createLock } from "~/ducks/modules/ui/status";
 import {
 	appUpgradeRequiredDialog,
 	importErrorDialog,
 	mayUpgradeProtocolDialog,
 	netcanvasFileErrorHandler,
 	validationErrorDialog,
-} from "~/src/ducks/modules/userActions/dialogs";
-import { getProtocol } from "~/src/selectors/protocol";
-import { getHasUnsavedChanges } from "~/src/selectors/session";
-import CancellationError from "~/src/utils/cancellationError";
-import { createDialogOptions, openDialog, saveCopyDialog, saveDialog } from "~/src/utils/dialogs";
-import * as netcanvasFile from "~/src/utils/netcanvasFile";
-import { getNewFileName } from "~/src/utils/netcanvasFile/netcanvasFile";
+} from "~/ducks/modules/userActions/dialogs";
+import { getProtocol } from "~/selectors/protocol";
+import { getHasUnsavedChanges } from "~/selectors/session";
+import CancellationError from "~/utils/cancellationError";
+import { createDialogOptions, openDialog, saveCopyDialog, saveDialog } from "~/utils/dialogs";
+import * as netcanvasFile from "~/utils/netcanvasFile";
+import { getNewFileName } from "~/utils/netcanvasFile/netcanvasFile";
 import { createImportToast, updateDownloadProgress } from "./userActionToasts";
 
 const protocolsLock = createLock("PROTOCOLS");

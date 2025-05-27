@@ -1,4 +1,3 @@
-import { Button } from "@codaco/ui";
 import { has } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
@@ -6,9 +5,10 @@ import { connect, useDispatch } from "react-redux";
 import { bindActionCreators } from "redux";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
-import { Section } from "~/src/components/EditorLayout";
-import OrderedList from "~/src/components/OrderedList";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
+import { Section } from "~/components/EditorLayout";
+import OrderedList from "~/components/OrderedList";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Button } from "~/lib/legacy-ui/components";
 import IssueAnchor from "../../IssueAnchor";
 import NodePanel from "./NodePanel";
 

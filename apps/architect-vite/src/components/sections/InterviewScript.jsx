@@ -1,10 +1,10 @@
-import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
-import { Section } from "~/src/components/EditorLayout";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
-import { getFieldId } from "~/src/utils/issues";
+import { Section } from "~/components/EditorLayout";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import { getFieldId } from "~/utils/issues";
 
 const InterviewerScript = () => {
 	const getFormValue = formValueSelector("edit-stage");

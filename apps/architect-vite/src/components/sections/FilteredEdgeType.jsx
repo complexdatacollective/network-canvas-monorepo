@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
+import { Row, Section } from "~/components/EditorLayout";
 import { makeScreenMessageListener } from "../../selectors/ui";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";

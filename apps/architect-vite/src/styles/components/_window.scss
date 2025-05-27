@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .window {
   position: absolute;
@@ -15,7 +15,7 @@
   &__container {
     width: 80%;
     max-width: 120rem;
-    height: calc(100% - #{units.unit(12)});
+    height: calc(100% - #{7.2rem});
     max-height: 90%;
     background-color: var(--color-white);
     border-radius: var(--border-radius);
@@ -28,7 +28,7 @@
     position: relative;
     text-align: center;
     color: var(--color-white);
-    padding: units.unit(2) units.unit(4);
+    padding: 1.2rem 2.4rem;
     margin-bottom: 0 !important; // sass-lint:disable-line no-important
   }
 
@@ -40,13 +40,13 @@
   }
 
   &__content {
-    padding: units.unit(2);
+    padding: 1.2rem;
     display: inline-block;
   }
 
   &__controls {
     display: flex;
-    padding: units.unit(2) units.unit(4);
+    padding: 1.2rem 2.4rem;
     flex-direction: row;
     background: var(--color-cyber-grape);
     color: var(--color-white);

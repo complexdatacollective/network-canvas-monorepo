@@ -1,5 +1,3 @@
-import { Icon } from "@codaco/ui";
-import TextInput from "@codaco/ui/lib/components/Fields/Text";
 import Tippy from "@tippyjs/react";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
@@ -7,8 +5,10 @@ import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionCreators as codebookActions } from "~/src/ducks/modules/protocol/codebook";
-import { allowedVariableName, required as requiredValidation, uniqueByList } from "~/src/utils/validations";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { Icon } from "~/lib/legacy-ui/components";
+import TextInput from "~/lib/legacy-ui/components/Fields/Text";
+import { allowedVariableName, required as requiredValidation, uniqueByList } from "~/utils/validations";
 import { getColorForType, getIconForType } from "../../../../config/variables";
 import { getVariablesForSubject, makeGetVariableWithEntity } from "../../../../selectors/codebook";
 

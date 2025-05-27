@@ -1,11 +1,11 @@
-import { GraphicButton } from "@codaco/ui";
-import { ProtocolCard } from "@codaco/ui/lib/components/Cards";
 import { first, get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { actionCreators as userActions } from "~/src/ducks/modules/userActions";
-import createButtonGraphic from "~/src/images/home/create-button.svg";
-import openButtonGraphic from "~/src/images/home/open-button.svg";
+import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import createButtonGraphic from "~/images/home/create-button.svg";
+import openButtonGraphic from "~/images/home/open-button.svg";
+import { GraphicButton } from "~/lib/legacy-ui/components";
+import { ProtocolCard } from "~/lib/legacy-ui/components/Cards";
 import Group from "./Group";
 import Section from "./Section";
 

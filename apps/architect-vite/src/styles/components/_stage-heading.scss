@@ -1,11 +1,11 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .stage-heading {
   --text: var(--color-white);
 
   display: flex;
   flex-direction: column;
-  padding: units.unit(2) units.unit(8);
+  padding: 1.2rem 4.8rem;
   margin: 0;
   background: var(--color-slate-blue--dark);
   color: var(--text);
@@ -21,7 +21,7 @@
     display: flex;
     align-items: center;
     max-width: 75rem;
-    padding: 0 units.unit(4);
+    padding: 0 2.4rem;
     margin: auto;
     width: 100%;
 
@@ -60,24 +60,24 @@
 
 
   &--inline {
-    margin-bottom: units.unit(4);
+    margin-bottom: 2.4rem;
   }
 
   &--shadow {
-    box-shadow: 0 units.unit(1) .2rem 0 var(--architect-panel-shadow);
+    box-shadow: 0 0.6rem .2rem 0 var(--architect-panel-shadow);
   }
 
   &.stage-heading--collapsed {
     flex-direction: row;
-    padding: units.unit(1) units.unit(4);
+    padding: 0.6rem 2.4rem;
 
     .stage-meta {
       width: initial;
       padding: 0;
-      margin-right: units.unit(4);
+      margin-right: 2.4rem;
 
       img {
-        width: units.unit(10);
+        width: 6rem;
 
       }
     }
@@ -111,7 +111,7 @@
     display: flex;
     flex: 1 auto;
     flex-direction: column;
-    padding: units.unit(2) units.unit(4);
+    padding: 1.2rem 2.4rem;
     background: var(--color-slate-blue);
     color: var(--color-white);
 

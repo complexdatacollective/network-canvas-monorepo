@@ -1,9 +1,9 @@
 import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import React from "react";
-import timelineImages from "~/src/images/timeline";
-import filterIcon from "~/src/images/timeline/filter-icon.svg";
-import skipLogicIcon from "~/src/images/timeline/skip-logic-icon.svg";
+import timelineImages from "~/images/timeline";
+import filterIcon from "~/images/timeline/filter-icon.svg";
+import skipLogicIcon from "~/images/timeline/skip-logic-icon.svg";
 
 const getTimelineImage = (type) => get(timelineImages, type, timelineImages.Default);
 

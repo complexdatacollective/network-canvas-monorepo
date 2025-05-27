@@ -3,13 +3,13 @@ import { motion, useElementScroll } from "motion/react";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState } from "react";
 import { connect } from "react-redux";
-import Overview from "~/src/components/Overview";
-import ProtocolControlBar from "~/src/components/ProtocolControlBar";
-import Timeline from "~/src/components/Timeline";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
-import { selectors as statusSelectors } from "~/src/ducks/modules/ui/status";
-import { actionLocks as protocolsLocks } from "~/src/ducks/modules/userActions";
-import { getHasUnsavedChanges } from "~/src/selectors/session";
+import Overview from "~/components/Overview";
+import ProtocolControlBar from "~/components/ProtocolControlBar";
+import Timeline from "~/components/Timeline";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
+import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
+import { getHasUnsavedChanges } from "~/selectors/session";
 
 const Protocol = ({ isLoading, hasProtocol }) => {
 	const sceneClasses = cx("scene", { "scene--protocol": hasProtocol }, { "scene--loading": isLoading });

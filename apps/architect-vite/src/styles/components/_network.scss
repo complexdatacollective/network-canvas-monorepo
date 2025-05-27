@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .network {
   --table-color: rgb(58 106 117 / 5%); // sass-lint:disable-line no-color-literals
@@ -12,12 +12,12 @@
 
     word-break: keep-all;
     white-space: nowrap;
-    padding: units.unit(1) units.unit(2);
-    line-height: units.unit(4);
+    padding: 0.6rem 1.2rem;
+    line-height: 2.4rem;
 
     svg {
-      height: units.unit(4);
-      width: units.unit(4);
+      height: 2.4rem;
+      width: 2.4rem;
       position: relative;
       top: -.1rem;
       vertical-align: middle;
@@ -30,7 +30,7 @@
   }
 
   td {
-    padding: units.unit(2);
+    padding: 1.2rem;
 
     &:not(:last-child) {
       border-right: 3px solid var(--color-white);

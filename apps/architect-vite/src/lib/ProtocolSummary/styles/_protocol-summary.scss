@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 @page {
   margin: 2cm;
@@ -53,7 +53,7 @@
   }
 
   &__rule:not(:last-child) {
-    margin-bottom: units.unit(1);
+    margin-bottom: 0.6rem;
   }
 }
 
@@ -61,10 +61,10 @@
 
 .section {
   border: 2px solid var(--color-platinum);
-  padding: units.unit(1) units.unit(2);
+  padding: 0.6rem 1.2rem;
   border-radius: var(--border-radius);
   position: relative;
-  padding-top: units.unit(4);
+  padding-top: 2.4rem;
 
   h2.section-heading {
     @extend .small-heading;
@@ -74,7 +74,7 @@
     left: 0;
     width: 100%;
     margin: 0;
-    padding: units.unit(1) units.unit(2);
+    padding: 0.6rem 1.2rem;
     background: var(--color-platinum);
   }
 }
@@ -149,7 +149,7 @@
 
   &__print-buttons {
     > :first-child {
-      margin-right: units.unit(2);
+      margin-right: 1.2rem;
     }
   }
 

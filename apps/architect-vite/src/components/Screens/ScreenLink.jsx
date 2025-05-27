@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import InternalLink from "~/src/components/Link";
-import { actionCreators as screenActions } from "~/src/ducks/modules/ui/screens";
+import InternalLink from "~/components/Link";
+import { actionCreators as screenActions } from "~/ducks/modules/ui/screens";
 
 const ScreenLink = ({ children, screen, openScreen, closeExisting, closeScreen, onClick, ...options }) => {
 	const handleOpenStage = useCallback(() => {

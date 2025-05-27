@@ -1,13 +1,13 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
-import withDisabledAssetRequired from "~/src/components/enhancers/withDisabledAssetRequired";
-import withMapFormToProps from "~/src/components/enhancers/withMapFormToProps";
-import MultiSelect from "~/src/components/Form/MultiSelect";
-import useVariablesFromExternalData from "~/src/hooks/useVariablesFromExternalData";
+import { Row, Section } from "~/components/EditorLayout";
+import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
+import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
+import MultiSelect from "~/components/Form/MultiSelect";
+import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import Tip from "../../Tip";
 import getVariableOptionsGetter from "../SortOptionsForExternalData/getVariableOptionsGetter";
 

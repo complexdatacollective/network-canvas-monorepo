@@ -1,11 +1,11 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import Tip from "~/src/components/Tip";
+import { Row, Section } from "~/components/EditorLayout";
+import ValidatedField from "~/components/Form/ValidatedField";
+import Tip from "~/components/Tip";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";

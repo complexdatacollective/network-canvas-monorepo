@@ -1,8 +1,8 @@
-import Button from "@codaco/ui/lib/components/Button";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { createPortal } from "react-dom";
+import Button from "~/lib/legacy-ui/components/Button";
 import ControlBar from "../../ControlBar";
 import Layout from "../../EditorLayout/Layout";
 import ExternalLink from "../../ExternalLink";

@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+@use '../lib/legacy-ui/styles/global/core/units';
 
 :root {
   --text: var(--color-charcoal);
@@ -34,7 +34,7 @@ a {
 .form-fields-textarea__error {
   max-height: initial;
   opacity: 1;
-  margin: units.unit(1) 0 0;
+  margin: 0.6rem 0 0;
   color: var(--error);
 }
 
@@ -51,7 +51,7 @@ a {
 }
 
 .form-field {
-  padding: 1em units.unit(2);
+  padding: 1em 1.2rem;
 
   &.boolean {
     background: transparent;
@@ -68,7 +68,7 @@ a {
 
   .migration-panel {
     background: var(--color-navy-taupe);
-    padding: 0 units.unit(2);
+    padding: 0 1.2rem;
     border-radius: .75rem;
     overflow-y: auto;
     max-height: 18rem;
@@ -143,7 +143,7 @@ a {
   }
 
   .tippy-content {
-    padding: units.unit(1) units.unit(1.5);
+    padding: 0.6rem 0.9rem;
   }
 
   // theme for validation error
@@ -171,7 +171,7 @@ a {
 
     button {
       &:not(:last-child) {
-        margin-right: units.unit(1);
+        margin-right: 0.6rem;
       }
     }
   }
@@ -182,8 +182,8 @@ a {
 }
 
 .form-field-label {
-  margin-top: units.unit(4);
-  margin-bottom: units.unit(2);
+  margin-top: 2.4rem;
+  margin-bottom: 1.2rem;
   font-weight: 600;
 
   p {

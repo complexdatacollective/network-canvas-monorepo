@@ -1,7 +1,7 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .attributes-table {
-  margin: 0 0 units.unit(4);
+  margin: 0 0 2.4rem;
 
   &__variables {
     display: flex;
@@ -10,7 +10,7 @@
     border-radius: 10px;
     overflow: hidden;
     flex-direction: column;
-    margin: 0 0 units.unit(1);
+    margin: 0 0 0.6rem;
   }
 
   &__variable {
@@ -25,7 +25,7 @@
       color: var(--text-light);
       display: block;
       position: relative;
-      top: units.unit(-.2);
+      top: 0.12rem;
     }
   }
 }

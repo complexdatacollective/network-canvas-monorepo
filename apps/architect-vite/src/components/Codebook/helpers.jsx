@@ -1,8 +1,8 @@
 import { compact, get, map, reduce, uniq } from "es-toolkit/compat";
-import { getAllVariablesByUUID, getType } from "~/src/selectors/codebook";
-import { makeGetIsUsed } from "~/src/selectors/codebook/isUsed";
-import { getVariableIndex } from "~/src/selectors/indexes";
-import { getCodebook, getProtocol } from "~/src/selectors/protocol";
+import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
+import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
+import { getVariableIndex } from "~/selectors/indexes";
+import { getCodebook, getProtocol } from "~/selectors/protocol";
 
 const getIsUsed = makeGetIsUsed({ formNames: [] });
 

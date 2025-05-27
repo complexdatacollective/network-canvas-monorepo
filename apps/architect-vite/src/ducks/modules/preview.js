@@ -1,7 +1,7 @@
 import { getFormValues } from "redux-form";
-import { getProtocol } from "~/src/selectors/protocol";
-import { getWorkingPath } from "~/src/selectors/session";
-import previewDriver from "~/src/utils/previewDriver";
+import { getProtocol } from "~/selectors/protocol";
+import { getWorkingPath } from "~/selectors/session";
+import previewDriver from "~/utils/previewDriver";
 
 const getStageIndex = (protocol, stageMeta) => {
 	if (stageMeta.id) {

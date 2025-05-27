@@ -1,6 +1,6 @@
 /* stylelint-disable no-descending-specificity */
 .rule {
-  @include flex-inline;
+  display: inline-flex;
   @include flex-align(left, middle);
 
   color: var(--text-light);
@@ -10,8 +10,8 @@
   $drag-button-size: 30px;
 
   .rule-drag-handle {
-    @include flex-inline;
-    @include flex-align(center, middle);
+    display: inline-flex;
+    align-items: center; justify-content: center;
 
     background-color: var(--architect-rule-control);
     color: var(--text-light);
@@ -28,8 +28,8 @@
   $delete-button-size: 20px;
 
   &__delete {
-    @include flex-inline;
-    @include flex-align(center, middle);
+    display: inline-flex;
+    align-items: center; justify-content: center;
 
     background-color: var(--architect-rule-delete);
     color: var(--text-light);
@@ -52,7 +52,7 @@
   }
 
   &__options {
-    @include flex-inline;
+    display: inline-flex;
     @include flex-align(left, middle);
 
     padding: 0;
@@ -61,7 +61,7 @@
   }
 
   &__option {
-    @include flex-inline;
+    display: inline-flex;
     @include flex-align(left, middle);
 
     height: 100%;

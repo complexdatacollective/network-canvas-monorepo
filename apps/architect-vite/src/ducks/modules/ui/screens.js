@@ -1,4 +1,4 @@
-import { actionTypes as sessionActionTypes } from "~/src/ducks/modules/session";
+import { actionTypes as sessionActionTypes } from "~/ducks/modules/session";
 
 const OPEN_SCREEN = "UI/OPEN_SCREEN";
 const UPDATE_SCREEN = "UI/UPDATE_SCREEN";

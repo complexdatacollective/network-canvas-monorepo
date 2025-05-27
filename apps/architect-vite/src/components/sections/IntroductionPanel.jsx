@@ -1,7 +1,7 @@
-import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
-import TextField from "@codaco/ui/lib/components/Fields/Text";
 import PropTypes from "prop-types";
-import { Row, Section } from "~/src/components/EditorLayout";
+import { Row, Section } from "~/components/EditorLayout";
+import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import TextField from "~/lib/legacy-ui/components/Fields/Text";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 

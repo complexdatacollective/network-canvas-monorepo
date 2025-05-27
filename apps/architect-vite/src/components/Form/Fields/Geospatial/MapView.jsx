@@ -1,4 +1,3 @@
-import Button from "@codaco/ui/lib/components/Button";
 import { get } from "es-toolkit/compat";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -6,11 +5,12 @@ import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import ControlBar from "~/src/components/ControlBar";
-import { Layout, Section } from "~/src/components/EditorLayout";
-import Screen from "~/src/components/Screen/Screen";
-import { screenVariants } from "~/src/components/Screens/Screens";
-import { getAssetManifest } from "~/src/selectors/protocol";
+import ControlBar from "~/components/ControlBar";
+import { Layout, Section } from "~/components/EditorLayout";
+import Screen from "~/components/Screen/Screen";
+import { screenVariants } from "~/components/Screens/Screens";
+import Button from "~/lib/legacy-ui/components/Button";
+import { getAssetManifest } from "~/selectors/protocol";
 
 const MapView = ({ mapOptions, onChange, close }) => {
 	const { tokenAssetId, style } = mapOptions;

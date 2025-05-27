@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
+import { Row, Section } from "~/components/EditorLayout";
 import { getFieldId } from "../../utils/issues";
 import DataSource from "../Form/Fields/DataSource";
 import ValidatedField from "../Form/ValidatedField";

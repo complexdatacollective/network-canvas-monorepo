@@ -1,6 +1,6 @@
 import { get, omit, reduce } from "es-toolkit/compat";
 import { formValueSelector } from "redux-form";
-import { getVariablesForSubject } from "~/src/selectors/codebook";
+import { getVariablesForSubject } from "~/selectors/codebook";
 
 export const CODEBOOK_PROPERTIES = ["options", "parameters", "component", "validation"];
 

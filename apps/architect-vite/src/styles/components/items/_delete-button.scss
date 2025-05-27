@@ -1,8 +1,8 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .items-delete-button {
-  width: units.unit(4);
-  height: units.unit(4);
+  width: 2.4rem;
+  height: 2.4rem;
   cursor: pointer;
   overflow: hidden;
   display: flex;
@@ -10,6 +10,6 @@
   align-items: center;
 
   .icon {
-    width: units.unit(2);
+    width: 1.2rem;
   }
 }

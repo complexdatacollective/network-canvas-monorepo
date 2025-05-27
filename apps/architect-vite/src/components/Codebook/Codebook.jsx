@@ -1,9 +1,9 @@
 import { isEmpty, map, reduce } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { getCodebook } from "~/src/selectors/codebook";
-import { getEdgeIndex, getNodeIndex, utils } from "~/src/selectors/indexes";
-import { getNetworkAssets } from "~/src/selectors/protocol";
+import { getCodebook } from "~/selectors/codebook";
+import { getEdgeIndex, getNodeIndex, utils } from "~/selectors/indexes";
+import { getNetworkAssets } from "~/selectors/protocol";
 import CodebookCategory from "./CodebookCategory";
 import EgoType from "./EgoType";
 import EntityType from "./EntityType";

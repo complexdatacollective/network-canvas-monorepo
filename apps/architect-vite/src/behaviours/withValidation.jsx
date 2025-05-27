@@ -1,5 +1,5 @@
 import { withPropsOnChange } from "recompose";
-import { getValidations } from "~/src/utils/validations";
+import { getValidations } from "~/utils/validations";
 
 const withValidation = withPropsOnChange(["validation"], ({ validation }) => ({
 	validate: getValidations(validation),

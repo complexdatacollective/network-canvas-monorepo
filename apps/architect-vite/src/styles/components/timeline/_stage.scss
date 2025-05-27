@@ -1,15 +1,15 @@
 @use "sass:math";
-@use '@codaco/ui/src/styles/global/core/units';
 
-$preview-offset: units.unit(12);
-$preview-width: units.unit(26);
+
+$preview-offset: 7.2rem;
+$preview-width: 15.6rem;
 $preview-ratio: math.div(10, 16);
 $component-name: timeline-stage;
 
 .#{$component-name} {
-  padding: units.unit(5) 0;
+  padding: 3.2rem 0;
   position: relative;
-  margin-top: units.unit(5);
+  margin-top: 3.2rem;
 
   &__notch {
     @include typography('title-2');
@@ -17,9 +17,9 @@ $component-name: timeline-stage;
     font-family: var(--heading-font-family);
     font-weight: 600;
     left: 50%;
-    width: units.unit(5);
-    height: units.unit(5);
-    border-radius: units.unit(5);
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 3.2rem;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
@@ -44,7 +44,7 @@ $component-name: timeline-stage;
     transition: opacity var(--animation-duration-fast) var(--animation-easing),
     transform var(--animation-duration-fast) var(--animation-easing);
     opacity: 0;
-    transform: translateZ(0) translateX(units.unit(-10));
+    transform: translateZ(0) translateX(-6rem);
   }
 
   &__edit-stage {
@@ -96,16 +96,16 @@ $component-name: timeline-stage;
   }
 
   &__icon {
-    margin-right: units.unit(1);
+    margin-right: 0.6rem;
     font-size: 1rem;
     font-style: italic;
     display: flex;
     align-items: center;
 
     img {
-      width: units.unit(2.5);
-      height: units.unit(2.5);
-      margin-right: units.unit(1);
+      width: 1.5rem;
+      height: 1.5rem;
+      margin-right: 0.6rem;
     }
 
     &:last-child {

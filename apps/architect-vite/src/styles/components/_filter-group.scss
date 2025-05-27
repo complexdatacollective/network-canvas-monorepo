@@ -3,8 +3,8 @@ $background-gradient-end: rgb(255 255 255 / 5%);
 $background-gradient: linear-gradient($background-gradient-start, $background-gradient-end);
 
 .filter-group {
-  @include flex-inline;
-  @include flex-align(center, middle);
+  display: inline-flex;
+  align-items: center; justify-content: center;
 
   background-color: var(--architect-rules);
   color: var(--text-light);
@@ -13,8 +13,8 @@ $background-gradient: linear-gradient($background-gradient-start, $background-gr
   padding: 10px;
 
   &__join {
-    @include flex-inline;
-    @include flex-align(center, middle);
+    display: inline-flex;
+    align-items: center; justify-content: center;
 
     flex: 0 0 50px;
     padding-right: 10px;

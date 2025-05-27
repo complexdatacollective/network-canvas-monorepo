@@ -1,7 +1,7 @@
-import { Icon } from "@codaco/ui";
 import cx from "classnames";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
+import { Icon } from "~/lib/legacy-ui/components";
 
 const baseVariant = {
 	initial: { opacity: 0 },

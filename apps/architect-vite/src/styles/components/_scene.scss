@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .scene {
   width: 100%;
@@ -22,8 +22,8 @@
 
   &__brand {
     position: absolute;
-    top: units.unit(4);
-    right: units.unit(3);
+    top: 2.4rem;
+    right: 1.8rem;
     width: 12rem;
     z-index: var(--z-global-ui);
     transition-duration: var(--animation-duration-standard);
@@ -34,10 +34,10 @@
   &__home {
     z-index: var(--z-global-ui);
     position: fixed;
-    width: units.unit(12);
-    height: units.unit(12);
-    top: units.unit(8);
-    left: units.unit(4);
+    width: 7.2rem;
+    height: 7.2rem;
+    top: 4.8rem;
+    left: 2.4rem;
     cursor: pointer;
     transition-duration: var(--animation-duration-standard);
     transition-timing-function: var(--animation-easing);
@@ -45,14 +45,14 @@
     will-change: transform, opacity;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(calc(-100% - #{units.unit(2)}));
+    transform: translateY(calc(-100% - #{1.2rem}));
     color: var(--text-light);
     background: var(--color-sea-green);
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    padding: units.unit(3);
+    padding: 1.8rem;
 
     svg {
       height: 100%;

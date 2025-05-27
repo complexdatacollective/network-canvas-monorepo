@@ -1,8 +1,8 @@
-import ProtocolCard from "@codaco/ui/lib/components/Cards/ProtocolCard";
 import { DateTime } from "luxon";
 import path from "path";
 import { useContext } from "react";
-import networkCanvasLogo from "~/src/images/NC-Mark.svg";
+import networkCanvasLogo from "~/images/NC-Mark.svg";
+import ProtocolCard from "~/lib/legacy-ui/components/Cards/ProtocolCard";
 import SummaryContext from "./SummaryContext";
 
 const Cover = () => {

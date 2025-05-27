@@ -22,7 +22,7 @@
   }
 
   &__action {
-    @include flex-inline;
+    display: inline-flex;
 
     background: var(--architect-rule-operator);
     border-radius: 10px;

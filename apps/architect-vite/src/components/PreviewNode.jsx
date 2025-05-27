@@ -1,7 +1,7 @@
-import Node from "@codaco/ui/lib/components/Node";
 import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import Node from "~/lib/legacy-ui/Node";
 import { getNodeTypes } from "../selectors/codebook";
 
 const mapStateToProps = (state) => ({

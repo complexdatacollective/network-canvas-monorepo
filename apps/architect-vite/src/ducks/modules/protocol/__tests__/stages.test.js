@@ -1,6 +1,6 @@
 /* eslint-env jest */
-import { getThunkMocks, toHaveDispatched } from "~/src/__tests__/helpers";
-import testState from "~/src/__tests__/testState.json";
+import { getThunkMocks, toHaveDispatched } from "~/__tests__/helpers";
+import testState from "~/__tests__/testState.json";
 import reducer, { actionCreators, test } from "../stages";
 
 expect.extend({

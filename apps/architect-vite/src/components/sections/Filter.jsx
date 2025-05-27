@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
-import { Section } from "~/src/components/EditorLayout";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
+import { Section } from "~/components/EditorLayout";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { getFieldId } from "../../utils/issues";
 import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "../Query";
 import Tip from "../Tip";

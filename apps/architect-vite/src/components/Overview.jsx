@@ -1,16 +1,16 @@
-import { Button, Icon } from "@codaco/ui";
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
-import { actionCreators as protocolActions } from "~/src/ducks/modules/protocol";
-import { actionCreators as uiActions } from "~/src/ducks/modules/ui";
-import { actionCreators as userActions } from "~/src/ducks/modules/userActions";
-import { getProtocol } from "~/src/selectors/protocol";
-import { getActiveProtocol, getHasUnsavedChanges, getIsProtocolValid } from "~/src/selectors/session";
+import { actionCreators as protocolActions } from "~/ducks/modules/protocol";
+import { actionCreators as uiActions } from "~/ducks/modules/ui";
+import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import { Button, Icon } from "~/lib/legacy-ui/components";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
+import { getProtocol } from "~/selectors/protocol";
+import { getActiveProtocol, getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/session";
 import withTooltip from "./enhancers/withTooltip";
 
 const panelVariants = {

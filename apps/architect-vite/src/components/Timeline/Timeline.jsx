@@ -1,4 +1,3 @@
-import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import cx from "classnames";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
@@ -7,10 +6,11 @@ import { connect } from "react-redux";
 import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, withStateHandlers } from "recompose";
 import { bindActionCreators } from "redux";
-import { actionCreators as dialogsActions } from "~/src/ducks/modules/dialogs";
-import { actionCreators as stageActions } from "~/src/ducks/modules/protocol/stages";
-import { actionCreators as uiActions } from "~/src/ducks/modules/ui";
-import { getStageList } from "~/src/selectors/protocol";
+import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
+import { actionCreators as uiActions } from "~/ducks/modules/ui";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/lib/utils/CSSVariables";
+import { getStageList } from "~/selectors/protocol";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 

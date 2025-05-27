@@ -1,9 +1,9 @@
-import Button from "@codaco/ui/lib/components/Button";
 import PropTypes from "prop-types";
-import AssetBrowser from "~/src/components/AssetBrowser";
-import Layout from "~/src/components/EditorLayout/Layout";
-import ExternalLink from "~/src/components/ExternalLink";
-import Screen from "~/src/components/Screen/Screen";
+import AssetBrowser from "~/components/AssetBrowser";
+import Layout from "~/components/EditorLayout/Layout";
+import ExternalLink from "~/components/ExternalLink";
+import Screen from "~/components/Screen/Screen";
+import Button from "~/lib/legacy-ui/components/Button";
 import ControlBar from "../ControlBar";
 import CollapsableHeader from "../Screen/CollapsableHeader";
 

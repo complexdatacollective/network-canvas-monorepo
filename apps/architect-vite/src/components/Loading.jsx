@@ -1,9 +1,9 @@
-import { Spinner } from "@codaco/ui";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { selectors as statusSelectors } from "~/src/ducks/modules/ui/status";
-import { actionLocks as protocolsLocks } from "~/src/ducks/modules/userActions";
+import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
+import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
+import { Spinner } from "~/lib/legacy-ui/components";
 
 const variants = {
 	hidden: { opacity: 0, transition: { delay: 0.5, duration: 0.5 } },

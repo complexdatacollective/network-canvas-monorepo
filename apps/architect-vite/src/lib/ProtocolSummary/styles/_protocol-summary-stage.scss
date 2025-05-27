@@ -1,11 +1,11 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .protocol-summary-stage {
   page-break-before: always;
 
   &__wrapper {
     display: flex;
-    padding-bottom: units.unit(4);
+    padding-bottom: 2.4rem;
     align-items: center;
   }
 
@@ -32,11 +32,11 @@
   }
 
   &__summary {
-    margin-right: units.unit(2);
+    margin-right: 1.2rem;
     flex: 1;
 
     .stage-label {
-      --size: #{units.unit(8)};
+      --size: #{4.8rem};
 
       font-size: 24px;
       font-weight: bold;
@@ -44,7 +44,7 @@
       align-items: center;
 
       &::before {
-        margin-right: units.unit(2);
+        margin-right: 1.2rem;
         display: flex;
         flex: 0 0 var(--size);
         width: var(--size);
@@ -65,12 +65,12 @@
   &__panels-content {
     > ol {
       margin: 0;
-      padding: 0 0 0 units.unit(2);
-      padding-inline-start: units.unit(4);
+      padding: 0 0 0 1.2rem;
+      padding-inline-start: 2.4rem;
 
       > li {
-        margin: units.unit(2) 0;
-        padding-left: units.unit(2);
+        margin: 1.2rem 0;
+        padding-left: 1.2rem;
       }
     }
   }

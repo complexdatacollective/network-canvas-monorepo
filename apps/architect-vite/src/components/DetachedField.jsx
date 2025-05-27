@@ -2,7 +2,7 @@ import { isEqual } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { compose, defaultProps } from "recompose";
-import { getValidations } from "~/src/utils/validations";
+import { getValidations } from "~/utils/validations";
 
 const getValue = (eventOrValue) => {
 	if (!eventOrValue || !eventOrValue.target) {

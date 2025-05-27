@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { motion } from "motion/react";
-import DialogManager from "~/src/components/DialogManager";
-import { AppErrorBoundary } from "~/src/components/Errors";
-import Routes from "~/src/components/Routes";
-import ToastManager from "~/src/components/ToastManager";
-import useUpdater from "~/src/hooks/useUpdater";
-import { isMacOS } from "~/src/utils/platform";
+import DialogManager from "~/components/DialogManager";
+import { AppErrorBoundary } from "~/components/Errors";
+import Routes from "~/components/Routes";
+import ToastManager from "~/components/ToastManager";
+import useUpdater from "~/hooks/useUpdater";
+import { isMacOS } from "~/utils/platform";
 
 const appVariants = {
 	show: {

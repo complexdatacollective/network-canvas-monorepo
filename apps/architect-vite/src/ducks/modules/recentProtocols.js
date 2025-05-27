@@ -1,6 +1,6 @@
 import { uniqBy } from "es-toolkit/compat";
 import path from "path";
-import { actionTypes as sessionActionTypes } from "~/src/ducks/modules/session";
+import { actionTypes as sessionActionTypes } from "~/ducks/modules/session";
 
 const initialState = [];
 

@@ -1,8 +1,8 @@
-import { Button } from "@codaco/ui/lib/components";
 import PropTypes from "prop-types";
-import Codebook from "~/src/components/Codebook/Codebook";
-import { Layout } from "~/src/components/EditorLayout";
-import Screen from "~/src/components/Screen/Screen";
+import Codebook from "~/components/Codebook/Codebook";
+import { Layout } from "~/components/EditorLayout";
+import Screen from "~/components/Screen/Screen";
+import { Button } from "~/lib/legacy-ui/components";
 import ControlBar from "../ControlBar";
 import CollapsableHeader from "../Screen/CollapsableHeader";
 

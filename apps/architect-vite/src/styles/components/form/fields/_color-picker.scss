@@ -1,5 +1,5 @@
 $component-name: form-fields-color-picker;
-$color-picker-size: units.unit(7);
+$color-picker-size: 4.2rem;
 $color-picker-border-size: 5px;
 
 .#{$component-name} {
@@ -7,15 +7,15 @@ $color-picker-border-size: 5px;
     background: var(--input-background);
     color: var(--input-text);
     border-radius: 1rem 1rem 0 0;
-    padding: units.unit(1) 0 0 units.unit(1);
+    padding: 0.6rem 0 0 0.6rem;
   }
 
   &__label {
     font-family: var(--heading-font-family);
     font-size: inherit;
     color: var(--text);
-    margin-top: units.unit(4);
-    margin-bottom: units.unit(2);
+    margin-top: 2.4rem;
+    margin-bottom: 1.2rem;
     font-weight: 600;
   }
 
@@ -29,7 +29,7 @@ $color-picker-border-size: 5px;
     width: $color-picker-size;
     height: $color-picker-size;
     border-radius: $color-picker-size;
-    margin: 0 units.unit(1) units.unit(1) 0;
+    margin: 0 0.6rem 0.6rem 0;
     overflow: hidden;
     cursor: pointer;
     justify-content: center;

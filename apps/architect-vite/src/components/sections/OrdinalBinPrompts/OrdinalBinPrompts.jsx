@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import EditableList from "~/src/components/EditableList";
-import withDisabledSubjectRequired from "~/src/components/enhancers/withDisabledSubjectRequired";
-import withSubject from "~/src/components/enhancers/withSubject";
-import { itemSelector } from "~/src/components/sections/CategoricalBinPrompts/helpers";
-import withPromptChangeHandler from "~/src/components/sections/CategoricalBinPrompts/withPromptChangeHandler";
-import { PromptPreview } from "~/src/components/sections/NameGeneratorPrompts";
+import EditableList from "~/components/EditableList";
+import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubjectRequired";
+import withSubject from "~/components/enhancers/withSubject";
+import { itemSelector } from "~/components/sections/CategoricalBinPrompts/helpers";
+import withPromptChangeHandler from "~/components/sections/CategoricalBinPrompts/withPromptChangeHandler";
+import { PromptPreview } from "~/components/sections/NameGeneratorPrompts";
 import PromptFields from "./PromptFields";
 
 const template = () => ({ color: "ord-color-seq-1" });

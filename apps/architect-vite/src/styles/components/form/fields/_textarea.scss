@@ -14,9 +14,9 @@ $component-name: form-fields-textarea;
   &__input {
     @include preset('copy-large');
 
-    border: units.unit(.2) solid var(--architect-panel-background);
-    padding: units.unit(1);
-    min-height: units.unit(8);
+    border: 0.12rem solid var(--architect-panel-background);
+    padding: 0.6rem;
+    min-height: 4.8rem;
     width: 100%;
     vertical-align: top;
     resize: vertical;

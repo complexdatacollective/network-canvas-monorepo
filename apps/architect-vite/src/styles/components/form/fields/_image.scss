@@ -3,7 +3,7 @@ $component-name: form-fields-image;
 .#{$component-name} {
   width: 100%;
   background: var(--color-rich-black);
-  padding: units.unit(2);
+  padding: 1.2rem;
   border-radius: var(--border-radius);
 
   &__image {

@@ -1,6 +1,3 @@
-import { Button } from "@codaco/ui";
-import { Text } from "@codaco/ui/lib/components/Fields";
-import Icon from "@codaco/ui/lib/components/Icon";
 import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
@@ -8,7 +5,10 @@ import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
-import { getValidator } from "~/src/utils/validations";
+import { Button } from "~/lib/legacy-ui/components";
+import { Text } from "~/lib/legacy-ui/components/Fields";
+import Icon from "~/lib/legacy-ui/Icon";
+import { getValidator } from "~/utils/validations";
 
 const NativeSelect = ({
 	label,

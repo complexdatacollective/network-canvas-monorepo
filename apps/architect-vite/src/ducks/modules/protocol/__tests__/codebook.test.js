@@ -4,7 +4,7 @@ import { set } from "es-toolkit/compat";
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
 import { v4 as uuid } from "uuid";
-import { getThunkMocks } from "~/src/__tests__/helpers";
+import { getThunkMocks } from "~/__tests__/helpers";
 import testState from "../../../../__tests__/testState.json";
 import reducer, { actionCreators, actionTypes, test } from "../codebook";
 import { test as stageActions } from "../stages";

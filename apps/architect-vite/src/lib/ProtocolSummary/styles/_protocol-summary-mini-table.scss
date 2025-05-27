@@ -1,5 +1,5 @@
 /* stylelint-disable no-descending-specificity */
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .small-heading {
   text-transform: uppercase;
@@ -39,7 +39,7 @@
           border-right: 3px solid var(--color-white);
         }
 
-        padding: units.unit(1) units.unit(2);
+        padding: 0.6rem 1.2rem;
 
         p {
           &:first-child {

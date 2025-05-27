@@ -1,8 +1,8 @@
 import { compact, get, omit } from "es-toolkit/compat";
 import { arrayMove } from "react-sortable-hoc";
 import { v1 as uuid } from "uuid";
-import { getStage } from "~/src/selectors/protocol";
-import prune from "~/src/utils/prune";
+import { getStage } from "~/selectors/protocol";
+import prune from "~/utils/prune";
 import { saveableChange } from "../session";
 
 import { getNodeTypes } from "../../../selectors/codebook";

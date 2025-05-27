@@ -3,8 +3,8 @@ import { compose, defaultProps, withHandlers, withStateHandlers } from "recompos
 import { bindActionCreators } from "redux";
 import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
-import { actionCreators as timelineActions } from "~/src/ducks/middleware/timeline";
-import { getLocus } from "~/src/selectors/timeline";
+import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";
+import { getLocus } from "~/selectors/timeline";
 
 const mapStateToProps = (state, { form, fieldName }) => {
 	const items = formValueSelector(form)(state, fieldName);

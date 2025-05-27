@@ -1,5 +1,5 @@
 import { compose } from "recompose";
-import PromptText from "~/src/components/sections/PromptText";
+import PromptText from "~/components/sections/PromptText";
 import DisplayEdgesSection from "./PromptFieldsEdges";
 import FieldsLayout from "./PromptFieldsLayout";
 import TapBehaviourSection from "./PromptFieldsTapBehaviour";

@@ -1,11 +1,11 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import { union } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
+import { Row, Section } from "~/components/EditorLayout";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import Tip from "../../Tip";
 import { getEdgeFilters, getEdgesForSubject } from "./selectors";
 import getEdgeFilteringWarning from "./utils";

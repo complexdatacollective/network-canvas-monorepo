@@ -1,9 +1,9 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
 import { PureComponent } from "react";
 import { compose } from "recompose";
 import { Field } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
+import { Row, Section } from "~/components/EditorLayout";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getFieldId } from "../../../utils/issues";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";

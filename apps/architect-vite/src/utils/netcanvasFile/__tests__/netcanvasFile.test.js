@@ -2,9 +2,9 @@
 
 import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
 import { v4 as uuid } from "uuid";
-import { APP_SCHEMA_VERSION } from "~/src/config";
-import { archive, extract } from "~/src/utils/protocols/lib/archive";
-import { pruneProtocol } from "~/src/utils/prune";
+import { APP_SCHEMA_VERSION } from "~/config";
+import { archive, extract } from "~/utils/protocols/lib/archive";
+import { pruneProtocol } from "~/utils/prune";
 import { errors } from "../errors";
 import {
 	commitNetcanvas,
@@ -28,12 +28,12 @@ import {
 import { mockProtocol, mockProtocolPath } from "./helpers";
 
 jest.mock("fs-extra");
-jest.mock("~/src/utils/protocols/lib/archive");
+jest.mock("~/utils/protocols/lib/archive");
 jest.mock("@codaco/protocol-validation");
-jest.mock("~/src/utils/pruneProtocolAssets");
-jest.mock("~/src/utils/prune");
+jest.mock("~/utils/pruneProtocolAssets");
+jest.mock("~/utils/prune");
 jest.mock("../lib");
-jest.mock("~/src/utils/validateProtocol");
+jest.mock("~/utils/validateProtocol");
 
 const { verifyNetcanvas } = utils;
 

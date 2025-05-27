@@ -79,17 +79,17 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
     &-warning {
       display: inline-flex;
       align-items: center;
-      flex: 0 0 units.unit(2);
+      flex: 0 0 1.2rem;
     }
 
     &-add {
       .icon {
-        height: units.unit(2);
-        line-height: units.unit(2);
+        height: 1.2rem;
+        line-height: 1.2rem;
         padding: .3rem;
-        margin-right: units.unit(1);
+        margin-right: 0.6rem;
         background: var(--color-sea-green);
-        border-radius: units.unit(2);
+        border-radius: 1.2rem;
 
         .cls-1 {
           fill: var(--text-light);
@@ -99,16 +99,16 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
 
     &-delete {
       .icon {
-        height: units.unit(2);
+        height: 1.2rem;
       }
     }
 
     &-warning {
       .icon {
-        height: units.unit(4);
-        width: units.unit(4);
-        padding: units.unit(1);
-        margin-right: units.unit(1);
+        height: 2.4rem;
+        width: 2.4rem;
+        padding: 0.6rem;
+        margin-right: 0.6rem;
       }
     }
 

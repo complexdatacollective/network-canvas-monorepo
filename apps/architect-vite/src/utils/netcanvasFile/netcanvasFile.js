@@ -1,10 +1,10 @@
 import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
 import { isEqual } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import { APP_SCHEMA_VERSION } from "~/src/config";
-import { saveDialog } from "~/src/utils/dialogs";
-import protocolTemplate from "~/src/utils/protocolTemplate.json";
-import { pruneProtocol } from "~/src/utils/prune";
+import { APP_SCHEMA_VERSION } from "~/config";
+import { saveDialog } from "~/utils/dialogs";
+import protocolTemplate from "~/utils/protocolTemplate.json";
+import { pruneProtocol } from "~/utils/prune";
 import { errors, handleError } from "./errors";
 import {
 	commitNetcanvas,

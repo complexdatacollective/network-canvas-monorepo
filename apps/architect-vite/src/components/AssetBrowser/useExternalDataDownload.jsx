@@ -1,8 +1,8 @@
 import { get } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
-import { getAssetManifest } from "~/src/selectors/protocol";
-import { getWorkingPath } from "~/src/selectors/session";
+import { getAssetManifest } from "~/selectors/protocol";
+import { getWorkingPath } from "~/selectors/session";
 
 const defaultMeta = {
 	name: "Interview network",

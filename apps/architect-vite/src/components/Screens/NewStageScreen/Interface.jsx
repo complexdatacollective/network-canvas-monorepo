@@ -3,8 +3,8 @@ import { find, get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import Tag from "~/src/components/Tag";
-import timelineImages from "~/src/images/timeline";
+import Tag from "~/components/Tag";
+import timelineImages from "~/images/timeline";
 import { INTERFACE_TYPES, TAG_COLORS } from "./interfaceOptions";
 
 const getTimelineImage = (type) => get(timelineImages, type);

@@ -2,7 +2,7 @@ import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, lifecycle } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import { getVariableOptionsForSubject, getVariablesForSubject } from "~/src/selectors/codebook";
+import { getVariableOptionsForSubject, getVariablesForSubject } from "~/selectors/codebook";
 
 const mapStateToProps = (state, { form, type, entity }) => {
 	const variableOptions = getVariableOptionsForSubject(state, { type, entity });

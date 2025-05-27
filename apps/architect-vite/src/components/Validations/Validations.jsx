@@ -1,9 +1,9 @@
-import { Button } from "@codaco/ui";
 import cx from "classnames";
 import { keys as getKeys, isNull, toPairs } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Field } from "redux-form";
-import FieldError from "~/src/components/Form/FieldError";
+import FieldError from "~/components/Form/FieldError";
+import { Button } from "~/lib/legacy-ui/components";
 import Validation from "./Validation";
 
 const validate = (validations) => {

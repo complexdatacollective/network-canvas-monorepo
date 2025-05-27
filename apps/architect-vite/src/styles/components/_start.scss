@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .start {
   margin: 0 auto;
@@ -34,7 +34,7 @@
       font-size: 5.6vmin;
       font-weight: bold;
       margin-top: 0;
-      margin-bottom: units.unit(2);
+      margin-bottom: 1.2rem;
     }
 
     &-lead {
@@ -45,12 +45,12 @@
   }
 
   &__call-to-action {
-    padding: 0 0 units.unit(8);
+    padding: 0 0 4.8rem;
 
     .button {
-      margin: 0 units.unit(2) 0 0;
+      margin: 0 1.2rem 0 0;
       padding: 1.8em;
-      width: units.unit(30);
+      width: 18rem;
       transition: transform 5s ease-in;
     }
   }

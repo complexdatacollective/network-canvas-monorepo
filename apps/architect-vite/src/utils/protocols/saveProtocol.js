@@ -1,4 +1,4 @@
-import pruneAssets from "~/src/utils/protocols/pruneAssets";
+import pruneAssets from "~/utils/protocols/pruneAssets";
 
 const getStringifiedProtocol = (protocol) =>
 	new Promise((resolve, reject) => {

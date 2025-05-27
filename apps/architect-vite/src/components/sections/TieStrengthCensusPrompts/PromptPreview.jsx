@@ -1,13 +1,10 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { Markdown } from '@codaco/ui/lib/components/Fields';
+import PropTypes from "prop-types";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
 
-const PromptPreview = ({ text }) => (
-  <Markdown label={text} />
-);
+const PromptPreview = ({ text }) => <Markdown label={text} />;
 
 PromptPreview.propTypes = {
-  text: PropTypes.string.isRequired,
+	text: PropTypes.string.isRequired,
 };
 
 export default PromptPreview;

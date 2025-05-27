@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import ScreenLink from "~/src/components/Screens/ScreenLink";
+import ScreenLink from "~/components/Screens/ScreenLink";
 import Tag from "./Tag";
 
 const UsageColumn = ({ inUse, usage }) => {

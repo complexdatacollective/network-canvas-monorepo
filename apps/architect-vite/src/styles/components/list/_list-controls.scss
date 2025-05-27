@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .list-controls {
   display: flex;
@@ -7,7 +7,7 @@
   &__section {
     display: flex;
     align-items: center;
-    padding-right: units.unit(4);
+    padding-right: 2.4rem;
 
     .form-field-container,
     .form-field {
@@ -25,7 +25,7 @@
     }
 
     &-name {
-      padding-right: units.unit(1);
+      padding-right: 0.6rem;
     }
   }
 }

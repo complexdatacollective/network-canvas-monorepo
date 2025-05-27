@@ -1,7 +1,7 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 :root {
-  --variable-pill-width: #{units.unit(55)};
+  --variable-pill-width: 33rem;
   --variable-pill-background: var(--color-white);
   --variable-pill-shadow-color: var(--color-platinum--dark);
 }
@@ -11,9 +11,9 @@
   display: inline-flex;
   flex-wrap: nowrap;
   background-color: var(--variable-pill-background);
-  border-radius: units.unit(4);
+  border-radius: 2.4rem;
   overflow: hidden;
-  box-shadow: 0 0 units.unit(1) var(--variable-pill-shadow-color);
+  box-shadow: 0 0 0.6rem var(--variable-pill-shadow-color);
 
   &--disabled {
     opacity: .35;
@@ -21,23 +21,23 @@
 
   &__edit-tooltip {
     cursor: pointer;
-    padding: units.unit(1);
+    padding: 0.6rem;
     border-radius: var(--border-radius);
     display: flex;
 
     .icon {
-      height: units.unit(2);
-      width: units.unit(2);
+      height: 1.2rem;
+      width: 1.2rem;
     }
   }
 
   &__icon {
     background-color: var(--color-platinum);
-    flex: 0 0 units.unit(6);
+    flex: 0 0 3.6rem;
 
     .icon {
-      width: units.unit(2.5);
-      height: units.unit(2.5);
+      width: 1.5rem;
+      height: 1.5rem;
     }
   }
 
@@ -50,8 +50,8 @@
 
   &__container {
     flex: 1;
-    width: calc(100% - #{units.unit(6)});
-    height: units.unit(7);
+    width: calc(100% - #{3.6rem});
+    height: 4.2rem;
     display: flex;
     justify-content: space-between;
 
@@ -82,7 +82,7 @@
       margin: 0;
       color: var(--text-dark);
       flex: 1 0 auto;
-      padding: units.unit(1.5) units.unit(2);
+      padding: 0.9rem 1.2rem;
       word-break: keep-all;
     }
 
@@ -101,12 +101,12 @@
         }
 
         .icon {
-          width: units.unit(2.5);
-          height: units.unit(2.5);
+          width: 1.5rem;
+          height: 1.5rem;
         }
 
         &--cancel {
-          margin-left: units.unit(1);
+          margin-left: 0.6rem;
         }
       }
     }

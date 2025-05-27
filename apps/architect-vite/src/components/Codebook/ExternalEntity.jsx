@@ -1,8 +1,8 @@
-import { Button } from "@codaco/ui";
 import PropTypes from "prop-types";
-import useExternalDataDownload from "~/src/components/AssetBrowser/useExternalDataDownload";
-import useExternalDataPreview from "~/src/components/AssetBrowser/useExternalDataPreview";
-import useVariablesFromExternalData from "~/src/hooks/useVariablesFromExternalData";
+import useExternalDataDownload from "~/components/AssetBrowser/useExternalDataDownload";
+import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
+import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import { Button } from "~/lib/legacy-ui/components";
 import EntityIcon from "./EntityIcon";
 import VariableList from "./VariableList";
 

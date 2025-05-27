@@ -1,14 +1,14 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import { Section } from "~/src/components/EditorLayout";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import Tip from "~/src/components/Tip";
-import withDisabledAssetRequired from "~/src/components/enhancers/withDisabledAssetRequired";
-import withMapFormToProps from "~/src/components/enhancers/withMapFormToProps";
-import useVariablesFromExternalData from "~/src/hooks/useVariablesFromExternalData";
+import { Section } from "~/components/EditorLayout";
+import ValidatedField from "~/components/Form/ValidatedField";
+import Tip from "~/components/Tip";
+import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
+import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
+import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 
 const SearchOptions = ({ dataSource, disabled }) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);

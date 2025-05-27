@@ -2,7 +2,7 @@ import { shallow } from "enzyme";
 import { v4 as uuid } from "uuid";
 import { UnconnectedStage } from "../Stage";
 
-jest.mock("@codaco/ui/lib/utils/CSSVariables");
+jest.mock("~/lib/legacy-ui/lib/utils/CSSVariables");
 
 const mockProps = {
 	id: uuid(),

@@ -1,16 +1,16 @@
-import * as Fields from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { Field } from "redux-form";
-import { Section } from "~/src/components/EditorLayout";
-import Select from "~/src/components/Form/Fields/Select";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import InlineEditScreen from "~/src/components/InlineEditScreen";
-import Options from "~/src/components/Options";
-import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/src/config/variables";
-import { getFieldId } from "~/src/utils/issues";
-import safeName from "~/src/utils/safeName";
-import { allowedVariableName, required, uniqueByList } from "~/src/utils/validations";
+import { Section } from "~/components/EditorLayout";
+import Select from "~/components/Form/Fields/Select";
+import ValidatedField from "~/components/Form/ValidatedField";
+import InlineEditScreen from "~/components/InlineEditScreen";
+import Options from "~/components/Options";
+import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
+import { getFieldId } from "~/utils/issues";
+import safeName from "~/utils/safeName";
+import { allowedVariableName, required, uniqueByList } from "~/utils/validations";
 import withNewVariableHandler, { form } from "./withNewVariableHandler";
 
 const isRequired = required();

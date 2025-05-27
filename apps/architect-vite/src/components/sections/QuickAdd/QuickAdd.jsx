@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import { Section } from "~/src/components/EditorLayout";
+import { Section } from "~/components/EditorLayout";
 import withCreateVariableHandler from "../../enhancers/withCreateVariableHandler";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";

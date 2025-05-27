@@ -1,8 +1,8 @@
-import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
-import { Row, Section } from "~/src/components/EditorLayout";
-import ValidatedField from "~/src/components/Form/ValidatedField";
-import Tip from "~/src/components/Tip";
-import { getFieldId } from "~/src/utils/issues";
+import { Row, Section } from "~/components/EditorLayout";
+import ValidatedField from "~/components/Form/ValidatedField";
+import Tip from "~/components/Tip";
+import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import { getFieldId } from "~/utils/issues";
 import EntitySelectField from "../fields/EntitySelectField/EntitySelectField";
 
 const PromptFields = () => (

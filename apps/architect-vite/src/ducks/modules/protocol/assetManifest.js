@@ -1,9 +1,9 @@
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/src/ducks/modules/protocol/utils/dialogs";
-import { getWorkingPath } from "~/src/selectors/session";
-import { importAsset as fsImportAsset } from "~/src/utils/protocols";
-import { validateAsset } from "~/src/utils/protocols/assetTools";
+import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
+import { getWorkingPath } from "~/selectors/session";
+import { importAsset as fsImportAsset } from "~/utils/protocols";
+import { validateAsset } from "~/utils/protocols/assetTools";
 import { saveableChange } from "../session";
 
 const IMPORT_ASSET = "PROTOCOL/IMPORT_ASSET";

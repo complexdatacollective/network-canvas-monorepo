@@ -1,9 +1,9 @@
 import { useSelector } from "react-redux";
-import Home from "~/src/components/Home/Home";
-import Loading from "~/src/components/Loading";
-import Protocol from "~/src/components/Protocol";
-import { getActiveProtocol } from "~/src/selectors/session";
-import { getScreensStack } from "~/src/selectors/ui";
+import Home from "~/components/Home/Home";
+import Loading from "~/components/Loading";
+import Protocol from "~/components/Protocol";
+import { getActiveProtocol } from "~/selectors/session";
+import { getScreensStack } from "~/selectors/ui";
 
 const getRoute = ({ activeProtocol }) => {
 	if (activeProtocol) {

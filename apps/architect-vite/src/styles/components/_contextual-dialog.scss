@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .contextual-dialog {
   position: absolute;
@@ -29,13 +29,13 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: units.unit(4);
+    padding: 2.4rem;
   }
 
   &__title {
     text-transform: uppercase;
     font-weight: 700;
-    margin-bottom: units.unit(2);
+    margin-bottom: 1.2rem;
   }
 
   &__content {
@@ -46,7 +46,7 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    padding-top: units.unit(2);
+    padding-top: 1.2rem;
 
     button {
       margin-left: 1rem;

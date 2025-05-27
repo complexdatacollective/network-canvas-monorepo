@@ -11,7 +11,7 @@
   }
 
   &__browse {
-    margin: units.unit(2) 0 0;
+    margin: 1.2rem 0 0;
   }
 
   &--replace {
@@ -25,14 +25,14 @@
     color: var(--error);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
-    padding: units.unit(1) units.unit(.5);
+    padding: 0.6rem 0.3rem;
     display: flex;
     align-items: center;
 
     .icon {
-      height: units.unit(2);
-      width: units.unit(2);
-      margin-right: units.unit(1);
+      height: 1.2rem;
+      width: 1.2rem;
+      margin-right: 0.6rem;
     }
   }
 

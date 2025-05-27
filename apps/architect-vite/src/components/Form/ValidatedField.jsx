@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { Field } from "redux-form";
-import useValidate from "~/src/hooks/useValidate";
+import useValidate from "~/hooks/useValidate";
 
 const ValidatedField = ({ validation, ...rest }) => {
 	const validations = useValidate(validation);

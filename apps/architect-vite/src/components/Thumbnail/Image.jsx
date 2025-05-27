@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import withAssetUrl from "~/src/components/Assets/withAssetUrl";
+import withAssetUrl from "~/components/Assets/withAssetUrl";
 
 const ImageThumbnail = ({ url, contain, ...props }) => {
 	const className = cx("thumbnail", "thumbnail--image", { "thumbnail--contain": contain });

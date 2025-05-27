@@ -1,10 +1,10 @@
 /* eslint-disable no-nested-ternary */
-import { Button } from "@codaco/ui";
-import { Markdown } from "@codaco/ui/lib/components/Fields";
 import { find } from "es-toolkit/compat";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { isLinux, isMacOS, isWindows } from "~/src/utils/platform";
+import { Button } from "~/lib/legacy-ui/components";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
+import { isLinux, isMacOS, isWindows } from "~/utils/platform";
 import ExternalLink, { openExternalLink } from "../components/ExternalLink";
 import useAppState from "../components/Home/useAppState";
 import { actionCreators as dialogActions } from "../ducks/modules/dialogs";

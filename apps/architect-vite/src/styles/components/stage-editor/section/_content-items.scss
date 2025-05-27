@@ -1,8 +1,8 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .stage-editor-section-content-items {
   &__controls {
-    margin-top: units.unit(2);
+    margin-top: 1.2rem;
 
     .button {
       &:first-child {
@@ -12,7 +12,7 @@
   }
 
   &__control {
-    margin-right: units.unit(1);
+    margin-right: 0.6rem;
     color: var(--text-light);
 
     &::before {
@@ -20,8 +20,8 @@
       font-size: 1.75rem;
       line-height: 100%;
       position: relative;
-      top: units.unit(-.25);
-      margin-right: units.unit(1);
+      top: -0.2rem;
+      margin-right: 0.6rem;
 
     }
 

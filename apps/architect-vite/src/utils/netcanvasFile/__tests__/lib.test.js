@@ -1,9 +1,9 @@
 /* eslint-env jest */
 
 import fse from "fs-extra";
-import { archive, extract } from "~/src/utils/protocols/lib/archive";
-import { pruneProtocol } from "~/src/utils/prune";
-import pruneProtocolAssets from "~/src/utils/pruneProtocolAssets";
+import { archive, extract } from "~/utils/protocols/lib/archive";
+import { pruneProtocol } from "~/utils/prune";
+import pruneProtocolAssets from "~/utils/pruneProtocolAssets";
 import { errors } from "../errors";
 import {
 	commitNetcanvas,
@@ -17,10 +17,10 @@ import {
 import { mockProtocolPath } from "./helpers";
 
 jest.mock("fs-extra");
-jest.mock("~/src/utils/protocols/lib/archive");
+jest.mock("~/utils/protocols/lib/archive");
 jest.mock("@codaco/protocol-validation");
-jest.mock("~/src/utils/pruneProtocolAssets");
-jest.mock("~/src/utils/prune");
+jest.mock("~/utils/pruneProtocolAssets");
+jest.mock("~/utils/prune");
 
 describe("netcanvasFile/lib", () => {
 	beforeEach(() => {

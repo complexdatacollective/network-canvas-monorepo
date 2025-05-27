@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, renameProp } from "recompose";
 import { arrayMove, arrayRemove } from "redux-form";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import ListItem from "./ListItem";
 
 const OrderedList = memo((props) => {

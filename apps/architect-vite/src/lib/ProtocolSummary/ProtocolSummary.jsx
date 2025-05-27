@@ -1,6 +1,6 @@
-import Button from "@codaco/ui/lib/components/Button";
 import PropTypes from "prop-types";
-import { saveDialog } from "~/src/utils/dialogs";
+import Button from "~/lib/legacy-ui/components/Button";
+import { saveDialog } from "~/utils/dialogs";
 import AssetManifest from "./components/AssetManifest";
 import Codebook from "./components/Codebook";
 import Contents from "./components/Contents";

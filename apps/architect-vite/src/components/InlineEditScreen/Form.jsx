@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { reduxForm } from "redux-form";
-import stopPropagationFromHandler from "~/src/utils/stopPropagationFromHandler";
+import stopPropagationFromHandler from "~/utils/stopPropagationFromHandler";
 
 const formOptions = {
 	touchOnBlur: false,

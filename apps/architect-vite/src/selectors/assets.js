@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import path from "path";
-import { getGeoJsonVariables, getNetworkVariables } from "~/src/utils/protocols/assetTools";
+import { getGeoJsonVariables, getNetworkVariables } from "~/utils/protocols/assetTools";
 import { getAssetManifest } from "./protocol";
 import { getWorkingPath } from "./session";
 

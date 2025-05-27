@@ -1,14 +1,14 @@
-import { Button, Spinner } from "@codaco/ui";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import ControlBar from "~/src/components/ControlBar";
-import { UnsavedChanges } from "~/src/components/Dialogs";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
-import { actionCreators as sessionActions } from "~/src/ducks/modules/session";
-import { selectors as statusSelectors } from "~/src/ducks/modules/ui/status";
-import { actionLocks as protocolsLocks, actionCreators as userActions } from "~/src/ducks/modules/userActions";
-import logoutIcon from "~/src/images/home/log-out.svg";
-import { getHasUnsavedChanges, getIsProtocolValid } from "~/src/selectors/session";
+import ControlBar from "~/components/ControlBar";
+import { UnsavedChanges } from "~/components/Dialogs";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { actionCreators as sessionActions } from "~/ducks/modules/session";
+import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
+import { actionLocks as protocolsLocks, actionCreators as userActions } from "~/ducks/modules/userActions";
+import logoutIcon from "~/images/home/log-out.svg";
+import { Button, Spinner } from "~/lib/legacy-ui/components";
+import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/session";
 
 const unsavedChangesDialog = UnsavedChanges({
 	message: <p>Your protocol has changes that have not yet been saved. Continuing will discard these changes!</p>,

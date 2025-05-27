@@ -1,8 +1,8 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .editable-list {
   &__items {
-    margin: 0 0 units.unit(2);
+    margin: 0 0 1.2rem;
   }
 
   .button {

@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import path from "path";
-import { APP_SCHEMA_VERSION } from "~/src/config";
+import { APP_SCHEMA_VERSION } from "~/config";
 
 const mockProtocolPath = path.join(
 	__dirname,

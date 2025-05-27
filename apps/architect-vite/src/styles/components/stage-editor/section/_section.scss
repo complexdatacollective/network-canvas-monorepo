@@ -1,12 +1,12 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 :root {
   --section-background-color: var(--architect-panel-grey);
 }
 
 .stage-editor-section {
-  margin: units.unit(4) units.unit(8);
-  padding: units.unit(2) units.unit(4);
+  margin: 2.4rem 4.8rem;
+  padding: 1.2rem 2.4rem;
   background: var(--section-background-color);
   border-radius: var(--border-radius);
   position: relative;
@@ -15,7 +15,7 @@
   &--toggleable {
     &:not(.stage-editor-section--open) {
       .summary {
-        margin-top: -#{units.unit(2)};
+        margin-top: -#{1.2rem};
       }
     }
   }
@@ -31,7 +31,7 @@
 
     font-family: var(--heading-font-family);
     font-size: 1rem;
-    padding: units.unit(1) units.unit(3);
+    padding: 0.6rem 1.8rem;
     background: var(--section-background-color);
     border-radius: var(--border-radius);
     display: flex;
@@ -49,9 +49,9 @@
     }
 
     .icon {
-      height: units.unit(1);
-      width: units.unit(1);
-      margin-right: units.unit(1);
+      height: 0.6rem;
+      width: 0.6rem;
+      margin-right: 0.6rem;
 
       .cls-2 {
         fill: var(--color-charcoal);
@@ -75,7 +75,7 @@
     --input-background: var(--color-platinum--dark);
     --slider-color: var(--color-charcoal);
 
-    margin: units.unit(4) 0;
+    margin: 2.4rem 0;
 
     .form-field-slider {
       --slider-color: var(--color-charcoal);
@@ -84,7 +84,7 @@
 
   > .stage-editor-section {
     background: var(--section-background-color);
-    border-radius: units.unit(1);
+    border-radius: 0.6rem;
   }
 
   &--compact-next {

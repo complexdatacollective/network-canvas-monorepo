@@ -1,6 +1,6 @@
 import { findKey, toLower } from "es-toolkit/compat";
 import { v1 as uuid } from "uuid";
-import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/src/config";
+import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
 
 /**
  * Function that determines the type of an asset file when importing. Types are defined

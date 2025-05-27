@@ -2,8 +2,8 @@ import { get, pickBy } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { Row, Section } from "~/src/components/EditorLayout";
-import Validations from "~/src/components/Validations";
+import { Row, Section } from "~/components/EditorLayout";
+import Validations from "~/components/Validations";
 import { getFieldId } from "../../utils/issues";
 
 const ValidationSection = ({ disabled, form, entity, variableType, existingVariables }) => {

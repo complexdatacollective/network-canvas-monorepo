@@ -1,16 +1,16 @@
-import { Button } from "@codaco/ui";
-import TextField from "@codaco/ui/lib/components/Fields/Text";
 import { get, values } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { Field } from "redux-form";
-import BasicForm from "~/src/components/BasicForm";
-import ContextualDialog, { Controls, Title } from "~/src/components/ContextualDialog";
-import { actionCreators as codebookActions } from "~/src/ducks/modules/protocol/codebook";
-import { getType, getVariablesForSubject } from "~/src/selectors/codebook";
-import safeName from "~/src/utils/safeName";
-import { allowedVariableName, required, uniqueByList } from "~/src/utils/validations";
+import BasicForm from "~/components/BasicForm";
+import ContextualDialog, { Controls, Title } from "~/components/ContextualDialog";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { Button } from "~/lib/legacy-ui/components";
+import TextField from "~/lib/legacy-ui/components/Fields/Text";
+import { getType, getVariablesForSubject } from "~/selectors/codebook";
+import safeName from "~/utils/safeName";
+import { allowedVariableName, required, uniqueByList } from "~/utils/validations";
 
 const isRequired = required();
 

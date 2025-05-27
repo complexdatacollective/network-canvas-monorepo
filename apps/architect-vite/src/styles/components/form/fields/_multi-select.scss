@@ -12,7 +12,7 @@ $component-name: 'form-fields-multi-select';
 
     font-weight: 600;
     display: block;
-    margin: 0 0 units.unit(1);
+    margin: 0 0 0.6rem;
   }
 
   button {
@@ -20,39 +20,39 @@ $component-name: 'form-fields-multi-select';
   }
 
   &__rules {
-    margin: 0 0 units.unit(2);
+    margin: 0 0 1.2rem;
   }
 
   &__rule {
     display: flex;
     background-color: var(--form-control);
     color: var(--architect-sortable-text);
-    border-radius: units.unit(1);
+    border-radius: 0.6rem;
     z-index: var(--z-fx);
     transition: background-color var(--animation-easing) var(--animation-duration-standard);
 
     &:not(:last-of-type) {
-      margin-bottom: units.unit(1);
+      margin-bottom: 0.6rem;
     }
 
     &-control {
       flex-grow: 0;
       display: flex;
       align-items: center;
-      padding: 0 units.unit(2);
+      padding: 0 1.2rem;
     }
 
     &-options {
       flex: 1;
       display: flex;
       align-items: flex-start;
-      padding: units.unit(1) units.unit(2);
+      padding: 0.6rem 1.2rem;
     }
 
     &-option {
       display: flex;
       align-items: center;
-      margin-left: units.unit(1);
+      margin-left: 0.6rem;
       flex: 1 1 100%;
 
       &:first-child {
@@ -60,7 +60,7 @@ $component-name: 'form-fields-multi-select';
       }
 
       &-label {
-        margin-right: units.unit(1);
+        margin-right: 0.6rem;
         transition: color var(--animation-easing) var(--animation-duration-standard);
       }
 
@@ -96,16 +96,16 @@ $component-name: 'form-fields-multi-select';
   &__handle {
     cursor: pointer;
     background-color: transparent;
-    width: units.unit(3);
-    height: units.unit(3);
+    width: 1.8rem;
+    height: 1.8rem;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--architect-sortable-text);
 
     .icon {
-      width: units.unit(2);
-      height: units.unit(2);
+      width: 1.2rem;
+      height: 1.2rem;
 
       .cls-1,
       .cls-2 {
@@ -121,21 +121,21 @@ $component-name: 'form-fields-multi-select';
   &__add {
     display: inline-flex;
     width: auto;
-    height: units.unit(4);
-    border-radius: units.unit(2);
-    padding: 0 units.unit(2);
+    height: 2.4rem;
+    border-radius: 1.2rem;
+    padding: 0 1.2rem;
 
     .icon {
-      width: units.unit(2);
-      height: units.unit(2);
-      margin-right: units.unit(1);
+      width: 1.2rem;
+      height: 1.2rem;
+      margin-right: 0.6rem;
     }
   }
 
   &__field--has-error {
     .form-field-error {
-      margin: units.unit(1) 0;
-      border-radius: units.unit(1);
+      margin: 0.6rem 0;
+      border-radius: 0.6rem;
     }
 
     .#{$component-name}__rule {

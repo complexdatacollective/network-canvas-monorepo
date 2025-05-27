@@ -4,7 +4,7 @@ $component-name: form-fields-variable-picker;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: units.unit(4) 0;
+  margin: 2.4rem 0;
 
   fieldset {
     --variable-pill-background: var(--color-white);
@@ -13,17 +13,17 @@ $component-name: form-fields-variable-picker;
     background: var(--section-background-color);
     flex: 1;
     border: 2px dashed var(--architect-panel-divider);
-    padding: units.unit(2);
+    padding: 1.2rem;
     border-radius: var(--border-radius);
 
     > legend {
       @extend .small-heading; // sass-lint:disable-line placeholder-in-extend
 
-      padding: 0 units.unit(2);
+      padding: 0 1.2rem;
     }
 
     .variable-pill {
-      margin-bottom: units.unit(2);
+      margin-bottom: 1.2rem;
     }
   }
 

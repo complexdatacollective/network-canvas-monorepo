@@ -9,7 +9,7 @@
     cursor: text;
     background: var(--background);
     color: var(--text);
-    border-radius: units.unit(1);
+    border-radius: 0.6rem;
   }
 
   &__input {
@@ -18,16 +18,16 @@
     background-color: var(--input-background);
     border: 0;
     width: 100%;
-    min-height: units.unit(8);
+    min-height: 4.8rem;
     vertical-align: top;
     resize: none;
     overflow: hidden;
 
     &-container {
       background-color: var(--input-background);
-      padding: units.unit(1);
+      padding: 0.6rem;
       flex: 1 0 50%;
-      border-radius: 0 units.unit(1) units.unit(1) 0;
+      border-radius: 0 0.6rem 0.6rem 0;
     }
   }
 
@@ -35,7 +35,7 @@
     @include preset('copy-standard');
 
     flex: 1 0 50%;
-    padding: units.unit(1);
+    padding: 0.6rem;
     transition: width 200ms;
     vertical-align: top;
   }
@@ -44,7 +44,7 @@
     opacity: 0;
     max-height: 0;
     color: var(--error);
-    margin: units.unit(1) 0 0;
+    margin: 0.6rem 0 0;
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
   }

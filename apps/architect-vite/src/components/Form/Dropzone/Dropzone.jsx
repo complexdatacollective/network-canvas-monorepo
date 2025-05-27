@@ -1,9 +1,9 @@
-import { Icon, Spinner } from "@codaco/ui";
 import cx from "classnames";
 import { times } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
-import { openDialog } from "~/src/utils/dialogs";
+import { Icon, Spinner } from "~/lib/legacy-ui/components";
+import { openDialog } from "~/utils/dialogs";
 import { acceptsPaths, getAcceptsExtensions, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";
 

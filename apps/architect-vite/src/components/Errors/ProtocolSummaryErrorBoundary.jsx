@@ -1,6 +1,6 @@
-import Button from "@codaco/ui/lib/components/Button";
 import PropTypes from "prop-types";
 import { Component } from "react";
+import Button from "~/lib/legacy-ui/components/Button";
 
 const closeWindow = () => remote.getCurrentWindow().hide();
 

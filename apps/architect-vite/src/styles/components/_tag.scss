@@ -1,11 +1,11 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .tag {
   display: inline-flex;
   padding: 3px;
-  border-radius: units.unit(5);
+  border-radius: 3.2rem;
   width: auto;
-  margin: units.unit(.5);
+  margin: 0.3rem;
   cursor: pointer;
   align-items: center;
   justify-content: flex-start;
@@ -50,7 +50,7 @@
     align-items: center;
 
     svg {
-      font-size: units.unit(2);
+      font-size: 1.2rem;
     }
   }
 

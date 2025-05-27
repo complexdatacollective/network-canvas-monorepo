@@ -1,11 +1,11 @@
-import { Markdown } from "@codaco/ui/lib/components/Fields";
 import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
-import Badge from "~/src/components/Badge";
-import withSubject from "~/src/components/enhancers/withSubject";
-import { getColorForType } from "~/src/config/variables";
-import { getVariablesForSubject } from "~/src/selectors/codebook";
+import Badge from "~/components/Badge";
+import withSubject from "~/components/enhancers/withSubject";
+import { getColorForType } from "~/config/variables";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
+import { getVariablesForSubject } from "~/selectors/codebook";
 
 const FieldPreview = ({ variable, prompt, entity, type }) => {
 	const subjectVariables = useSelector((state) => getVariablesForSubject(state, { entity, type }));

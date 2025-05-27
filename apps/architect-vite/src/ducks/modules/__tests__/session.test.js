@@ -2,10 +2,10 @@
 /* eslint-env jest */
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
-import { importNetcanvas, readProtocol, saveNetcanvas } from "~/src/utils/netcanvasFile";
+import { importNetcanvas, readProtocol, saveNetcanvas } from "~/utils/netcanvasFile";
 import reducer, { actionCreators } from "../session";
 
-jest.mock("~/src/utils/netcanvasFile");
+jest.mock("~/utils/netcanvasFile");
 
 const middlewares = [thunk];
 const mockStore = configureStore(middlewares);

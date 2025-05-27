@@ -1,8 +1,8 @@
-import { Button } from "@codaco/ui/lib/components";
 import PropTypes from "prop-types";
 import { compose, defaultProps, withState } from "recompose";
-import { Section } from "~/src/components/EditorLayout";
-import InlineEditScreen from "~/src/components/InlineEditScreen";
+import { Section } from "~/components/EditorLayout";
+import InlineEditScreen from "~/components/InlineEditScreen";
+import { Button } from "~/lib/legacy-ui/components";
 import { getFieldId, scrollToFirstIssue } from "../../utils/issues";
 import ValidatedFieldArray from "../Form/ValidatedFieldArray";
 import Grid from "./Grid";

@@ -1,8 +1,8 @@
-import Button from "@codaco/ui/lib/components/Button";
 import cx from "classnames";
 import { useState } from "react";
 import { fieldPropTypes } from "redux-form";
-import APIKeyThumbnail from "~/src/components/Thumbnail/APIKey";
+import APIKeyThumbnail from "~/components/Thumbnail/APIKey";
+import Button from "~/lib/legacy-ui/components/Button";
 import APIKeyBrowser from "./APIKeyBrowser";
 
 const GeoAPIKey = (props) => {

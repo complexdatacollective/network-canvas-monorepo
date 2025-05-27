@@ -3,7 +3,7 @@
 import { getVariableNamesFromNetwork, validateNames } from "@codaco/protocol-validation";
 import csv from "csvtojson";
 import { get } from "es-toolkit/compat";
-import { getSupportedAssetType } from "~/src/utils/protocols/importAsset";
+import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 
 /**
  * Generate a switching function that takes a filepath as an argument

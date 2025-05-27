@@ -1,11 +1,11 @@
 import { ipcRenderer } from "electron";
 import { isDirty } from "redux-form";
-import { UnsavedChanges } from "~/src/components/Dialogs";
-import { formName } from "~/src/components/StageEditor/StageEditor";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
-import { actionCreators as userActions } from "~/src/ducks/modules/userActions";
-import { store } from "~/src/ducks/store";
-import { getHasUnsavedChanges } from "~/src/selectors/session";
+import { UnsavedChanges } from "~/components/Dialogs";
+import { formName } from "~/components/StageEditor/StageEditor";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import { store } from "~/ducks/store";
+import { getHasUnsavedChanges } from "~/selectors/session";
 
 const initIPCListeners = () => {
 	ipcRenderer.on("SAVE_COPY", () => {

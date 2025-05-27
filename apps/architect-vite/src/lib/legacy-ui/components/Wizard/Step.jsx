@@ -1,27 +1,16 @@
-/* eslint-disable react/jsx-props-no-spreading */
+import { motion } from "motion/react";
+import PropTypes from "prop-types";
 
-import React from 'react';
-import PropTypes from 'prop-types';
-import { motion } from 'framer-motion';
-
-const Step = ({
-  children,
-  component: Container,
-  ...props
-}) => (
-  <Container {...props}>
-    {children}
-  </Container>
-);
+const Step = ({ children, component: Container, ...props }) => <Container {...props}>{children}</Container>;
 
 Step.propTypes = {
-  children: PropTypes.node,
-  component: PropTypes.object,
+	children: PropTypes.node,
+	component: PropTypes.object,
 };
 
 Step.defaultProps = {
-  children: null,
-  component: motion.div,
+	children: null,
+	component: motion.div,
 };
 
 export default Step;

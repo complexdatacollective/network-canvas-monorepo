@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 
 .form-dropzone {
@@ -6,8 +6,8 @@
 
   cursor: pointer;
   position: relative;
-  border-radius: units.unit(2);
-  height: units.unit(12);
+  border-radius: 1.2rem;
+  height: 7.2rem;
   border-width: 2px;
   border-style: solid;
   transition-duration: var(--animation-duration-slow);
@@ -16,7 +16,7 @@
   border-color: transparent;
   background-color: var(--background-dark);
   overflow: hidden;
-  padding: units.unit(4);
+  padding: 2.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,13 +41,13 @@
     transition-duration: var(--animation-duration-standard);
     transition-timing-function: var(--animation-easing);
     transition-property: opacity;
-    line-height: units.unit(2);
+    line-height: 1.2rem;
   }
 
   &__link {
     display: inline-block;
     border-bottom: 2px solid var(--notice);
-    line-height: units.unit(2);
+    line-height: 1.2rem;
     cursor: pointer;
   }
 
@@ -97,10 +97,10 @@
   }
 
   &__error {
-    margin-top: units.unit(1);
+    margin-top: 0.6rem;
     overflow: hidden;
-    padding: units.unit(1) units.unit(2);
-    border-radius: units.unit(1);
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.6rem;
     background-color: var(--warning);
     opacity: 0;
     transform-origin: top center;
@@ -112,9 +112,9 @@
     // justify-content: flex-end;
 
     .icon {
-      width: units.unit(2);
-      height: units.unit(2);
-      margin-right: units.unit(1);
+      width: 1.2rem;
+      height: 1.2rem;
+      margin-right: 0.6rem;
     }
 
     &--show {

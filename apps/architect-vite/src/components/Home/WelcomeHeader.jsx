@@ -1,10 +1,10 @@
-import { Button } from "@codaco/ui";
 import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import { useDispatch } from "react-redux";
-import Version from "~/src/components/Version";
-import headerGraphic from "~/src/images/Arc-Flat.svg";
-import networkCanvasLogo from "~/src/images/NC-Mark.svg";
+import Version from "~/components/Version";
+import headerGraphic from "~/images/Arc-Flat.svg";
+import networkCanvasLogo from "~/images/NC-Mark.svg";
+import { Button } from "~/lib/legacy-ui/components";
 import { actionCreators as userActions } from "../../ducks/modules/userActions/userActions";
 import { openExternalLink } from "../ExternalLink";
 import Group from "./Group";

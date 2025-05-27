@@ -1,8 +1,8 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .simple-list {
   &:first-child {
-    border-top: units.unit(.25) solid var(--architect-divider);
+    border-top: 0.2rem solid var(--architect-divider);
   }
 
   &__item {
@@ -16,7 +16,7 @@
     flex-basis: auto;
     justify-content: flex-start;
     align-items: center;
-    padding: units.unit(2) units.unit(1);
+    padding: 1.2rem 0.6rem;
 
     a {
       text-decoration: none;

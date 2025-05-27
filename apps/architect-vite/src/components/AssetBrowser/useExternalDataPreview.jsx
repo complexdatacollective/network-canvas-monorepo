@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import Preview from "~/src/components/AssetBrowser/Preview";
+import Preview from "~/components/AssetBrowser/Preview";
 import useExternalDataDownload from "./useExternalDataDownload";
 
 const useExternalDataPreview = () => {

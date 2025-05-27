@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useContext } from "react";
-import { Join } from "~/src/components/Query/Rules/PreviewText";
+import { Join } from "~/components/Query/Rules/PreviewText";
 import Rule from "./Rule";
 import SummaryContext from "./SummaryContext";
 

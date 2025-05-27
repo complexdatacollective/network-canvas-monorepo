@@ -1,4 +1,4 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 $component-name: stage-editor-section-sociogram-prompt;
 
@@ -17,10 +17,10 @@ $component-name: stage-editor-section-sociogram-prompt;
     }
 
     &-text {
-      margin: 0 0 0 units.unit(2);
+      margin: 0 0 0 1.2rem;
 
       & > * {
-        margin: units.unit(2) 0 0;
+        margin: 1.2rem 0 0;
 
         &:first-child {
           margin: 0;

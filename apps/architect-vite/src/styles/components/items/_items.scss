@@ -1,13 +1,13 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .items {
   &__error {
-    margin: units.unit(2) 0;
+    margin: 1.2rem 0;
     color: var(--error);
   }
 
   &__item {
-    margin: units.unit(2) 0 0;
+    margin: 1.2rem 0 0;
     z-index: var(--z-fx);
   }
 }

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { getValidations } from "~/src/utils/validations";
+import { getValidations } from "~/utils/validations";
 
 const useValidate = (validation) => {
 	const validate = useMemo(() => getValidations(validation), []);

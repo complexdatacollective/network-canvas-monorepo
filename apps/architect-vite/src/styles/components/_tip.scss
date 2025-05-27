@@ -1,22 +1,22 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .tip {
   background-color: var(--color-mid-grey);
   border-radius: var(--border-radius);
-  padding: units.unit(.5) units.unit(4);
-  margin: units.unit(2) 0;
+  padding: 0.3rem 2.4rem;
+  margin: 1.2rem 0;
   font-size: .9rem;
   display: flex;
   align-items: center;
 
   .icon {
-    flex: 0 0 units.unit(4);
-    height: units.unit(4);
-    width: units.unit(4);
+    flex: 0 0 2.4rem;
+    height: 2.4rem;
+    width: 2.4rem;
   }
 
   &__content {
-    margin-left: units.unit(2);
+    margin-left: 1.2rem;
   }
 
   &__info {

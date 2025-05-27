@@ -1,7 +1,7 @@
-import { Button } from "@codaco/ui";
 import path from "path";
-import ExternalLink from "~/src/components/ExternalLink";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
+import ExternalLink from "~/components/ExternalLink";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Button } from "~/lib/legacy-ui/components";
 
 const genericAssetMessage = (
 	<>

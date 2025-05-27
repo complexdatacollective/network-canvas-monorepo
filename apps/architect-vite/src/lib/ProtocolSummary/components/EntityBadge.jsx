@@ -2,7 +2,7 @@ import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useContext } from "react";
-import EntityIcon from "~/src/components/Codebook/EntityIcon";
+import EntityIcon from "~/components/Codebook/EntityIcon";
 import DualLink from "./DualLink";
 import SummaryContext from "./SummaryContext";
 

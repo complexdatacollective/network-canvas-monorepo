@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { getMockState } from "~/src/__tests__/helpers";
+import { getMockState } from "~/__tests__/helpers";
 
 import { getAssetIndex, getEdgeIndex, getNodeIndex, getVariableIndex, utils } from "../indexes";
 

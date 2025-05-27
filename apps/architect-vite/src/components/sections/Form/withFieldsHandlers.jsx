@@ -8,9 +8,9 @@ import {
 	getTypeForComponent,
 	INPUT_OPTIONS,
 	VARIABLE_TYPES_WITH_COMPONENTS,
-} from "~/src/config/variables";
-import { actionCreators as codebookActions } from "~/src/ducks/modules/protocol/codebook";
-import { getVariableOptionsForSubject, getVariablesForSubject } from "~/src/selectors/codebook";
+} from "~/config/variables";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { getVariableOptionsForSubject, getVariablesForSubject } from "~/selectors/codebook";
 
 const mapStateToProps = (state, { form, entity, type }) => {
 	const formSelector = formValueSelector(form);

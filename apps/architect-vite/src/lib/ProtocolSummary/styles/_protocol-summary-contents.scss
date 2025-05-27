@@ -1,15 +1,13 @@
-@use '@codaco/ui/src/styles/global/core/units';
-
 .protocol-summary-contents {
   .heading {
     @extend .small-heading;
 
-    margin: units.unit(2) 0;
+    margin: 1.2rem 0;
   }
 
   &__section {
     li {
-      margin: units.unit(1) 0;
+      margin: 0.6rem 0;
     }
 
     > ol {
@@ -22,7 +20,7 @@
         @extend .small-heading;
 
         font-size: 14px !important;
-        margin: units.unit(2) 0;
+        margin: 1.2rem 0;
       }
     }
 

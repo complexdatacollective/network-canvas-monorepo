@@ -1,10 +1,10 @@
-import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { compose } from "redux";
-import window from "~/src/behaviours/window";
-import Stackable from "~/src/components/Stackable";
+import window from "~/behaviours/window";
+import Stackable from "~/components/Stackable";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/lib/utils/CSSVariables";
 
 export const Controls = ({ children }) => <div className="contextual-dialog__controls">{children}</div>;
 

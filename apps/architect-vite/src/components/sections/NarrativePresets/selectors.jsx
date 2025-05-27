@@ -1,6 +1,6 @@
 import { map } from "es-toolkit/compat";
-import { getVariableOptionsForSubject } from "~/src/selectors/codebook";
-import { getCodebook } from "~/src/selectors/protocol";
+import { getVariableOptionsForSubject } from "~/selectors/codebook";
+import { getCodebook } from "~/selectors/protocol";
 
 export const getNarrativeVariables = (state, subject) => {
 	const variables = getVariableOptionsForSubject(state, subject);

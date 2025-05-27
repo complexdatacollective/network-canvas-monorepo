@@ -1,8 +1,8 @@
 import { isArray, isNil } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import DetachedField from "~/src/components/DetachedField";
-import NativeSelect from "~/src/components/Form/Fields/NativeSelect";
+import DetachedField from "~/components/DetachedField";
+import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import Section from "../../EditorLayout/Section";
 import EditValue from "./EditValue";
 import {

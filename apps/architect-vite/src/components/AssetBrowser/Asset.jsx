@@ -2,7 +2,7 @@ import cx from "classnames";
 import { DeleteIcon, DownloadIcon, FrameIcon as PreviewIcon } from "lucide-react";
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
-import * as Thumbnails from "~/src/components/Thumbnail";
+import * as Thumbnails from "~/components/Thumbnail";
 
 const FallBackAssetComponent = () => <div>No preview component available for this asset type.</div>;
 

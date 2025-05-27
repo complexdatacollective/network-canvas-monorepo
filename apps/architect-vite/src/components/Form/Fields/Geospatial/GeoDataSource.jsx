@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { withState } from "recompose";
 import { fieldPropTypes } from "redux-form";
-import GeoJSONThumbnail from "~/src/components/Thumbnail/GeoJSON";
+import GeoJSONThumbnail from "~/components/Thumbnail/GeoJSON";
 import File from "../File";
 
 const withSelectGeoAsset = withState("selectGeoAsset", "setSelectGeoAsset", false);

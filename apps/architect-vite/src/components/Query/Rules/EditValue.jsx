@@ -1,13 +1,13 @@
+import PropTypes from "prop-types";
+import { withProps } from "recompose";
+import DetachedField from "~/components/DetachedField";
 import {
 	Number,
 	// CheckboxGroup,
 	RadioGroup,
 	Text,
 	Toggle,
-} from "@codaco/ui/lib/components/Fields";
-import PropTypes from "prop-types";
-import { withProps } from "recompose";
-import DetachedField from "~/src/components/DetachedField";
+} from "~/lib/legacy-ui/components/Fields";
 
 // Todo: reinstate CheckboxGroup support when we switch to schema 8
 const INPUT_TYPES = {

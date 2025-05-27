@@ -1,10 +1,10 @@
-@use '@codaco/ui/src/styles/global/core/units';
+
 
 .asset-browser-assets {
   &__controls {
     --input-background: transparent;
 
-    margin-bottom: units.unit(2);
+    margin-bottom: 1.2rem;
 
     .form-field-container {
       display: flex;
@@ -22,7 +22,7 @@
 
         .form-field-radio {
           margin-bottom: 0;
-          margin-right: units.unit(2);
+          margin-right: 1.2rem;
         }
       }
 
@@ -34,7 +34,7 @@
   &__assets {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    grid-gap: units.unit(2);
+    grid-gap: 1.2rem;
   }
 
 }

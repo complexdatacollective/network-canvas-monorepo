@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { Section } from "~/src/components/EditorLayout";
-import SkipLogicFields from "~/src/components/sections/fields/SkipLogicFields";
-import { actionCreators as dialogActions } from "~/src/ducks/modules/dialogs";
+import { Section } from "~/components/EditorLayout";
+import SkipLogicFields from "~/components/sections/fields/SkipLogicFields";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 
 export const handleDeactivateSkipLogic = async (openDialog) => {
 	const result = await openDialog({
