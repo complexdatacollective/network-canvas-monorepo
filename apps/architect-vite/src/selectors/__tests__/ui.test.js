@@ -1,8 +1,8 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { makeScreenMessageListener } from '../ui';
 
-jest.mock('fs-extra');
+vi.mock('fs-extra');
 
 const getStateWithMessage = (message = {}) => ({ ui: { screens: { message } } });
 

@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, vi } from 'vitest';
 import fs from 'fs-extra';
 import getAssetData from '../getAssetData';
 
@@ -7,41 +7,32 @@ const mockData = {
   edges: [],
 };
 
-fs.readFile = jest.fn(
+fs.readFile = vi.fn(
   (path, format, resolve) => resolve(null, JSON.stringify(mockData)),
 );
 
 describe('getAssetData', () => {
-  it('can load a json network', (done) => {
+  it('can load a json network', async () => {
     const source = '/dev/null/myMockSource.json';
     const type = 'network';
 
-    getAssetData(source, type).then(
-      (data) => {
-        expect(data).toEqual(mockData);
-
-        done();
-      },
-    );
+    const data = await getAssetData(source, type);
+    expect(data).toEqual(mockData);
   });
 
-  it('it caches responses', (done) => {
+  it('it caches responses', async () => {
     const source = '/dev/null/myMockSource.json';
     const type = 'network';
 
-    Promise.all([
+    const results = await Promise.all([
       getAssetData(source, type),
       getAssetData(source, type),
-    ]).then(
-      (results) => {
-        const isSameObject = results.every(
-          (result, index, all) => result === all[0],
-        );
-
-        expect(isSameObject).toBe(true);
-
-        done();
-      },
+    ]);
+    
+    const isSameObject = results.every(
+      (result, index, all) => result === all[0],
     );
+
+    expect(isSameObject).toBe(true);
   });
 });

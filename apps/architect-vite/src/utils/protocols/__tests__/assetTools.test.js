@@ -1,9 +1,9 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { readFile, readJson } from 'fs-extra';
 import { getNetworkVariables, validateAsset } from '../assetTools';
 
-jest.mock('fs-extra');
+vi.mock('fs-extra');
 
 const mockNodes = [
   { attributes: { name: 'foo' } },

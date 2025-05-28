@@ -1,5 +1,4 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import collectPath, { collectMappedPath } from '../collectPaths';
 
 const testObject = {

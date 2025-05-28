@@ -1,0 +1,12 @@
+{
+  "name": "Development Protocol",
+  "description": "A test protocol for development",
+  "schemaVersion": 8,
+  "stages": [],
+  "codebook": {
+    "node": {},
+    "edge": {},
+    "ego": {}
+  },
+  "assetManifest": {}
+}

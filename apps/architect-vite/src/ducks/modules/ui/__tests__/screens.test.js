@@ -1,5 +1,4 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import thunk from 'redux-thunk';
 import configureStore from 'redux-mock-store';
 import reducer, { actionCreators, actionTypes } from '../screens';

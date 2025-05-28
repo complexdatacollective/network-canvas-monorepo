@@ -1,5 +1,4 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import { range } from 'lodash';
 import safeName from '../safeName';
 

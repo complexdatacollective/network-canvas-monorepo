@@ -1,10 +1,10 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { readFile, readJson } from 'fs-extra';
 import * as assets from '../assets';
 import mockState from '../../__tests__/testState.json';
 
-jest.mock('fs-extra');
+vi.mock('fs-extra');
 
 const fs = {
   fileData: '',

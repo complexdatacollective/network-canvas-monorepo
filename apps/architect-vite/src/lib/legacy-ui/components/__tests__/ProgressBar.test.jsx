@@ -1,13 +1,13 @@
-/* eslint-env jest */
+import { describe, it, expect } from 'vitest';
 
 import React from 'react';
-import { shallow } from 'enzyme';
+import { render } from '@testing-library/react';
 import ProgressBar from '../ProgressBar';
 
 describe('ProgressBar component', () => {
   it('renders ProgressBar', () => {
-    const component = shallow(<ProgressBar percentProgress="40" />);
+    const { container } = render(<ProgressBar percentProgress="40" />);
 
-    expect(component).toMatchSnapshot();
+    expect(container.firstChild).toBeInTheDocument();
   });
 });

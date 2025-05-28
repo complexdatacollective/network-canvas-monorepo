@@ -1,7 +1,6 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import React from 'react';
-import { shallow } from 'enzyme';
+import { render } from '@testing-library/react';
 import { UnconnectedRecentProtocols } from '../RecentProtocols';
 
 const mockProps = {
@@ -10,8 +9,8 @@ const mockProps = {
 
 describe('<RecentProtocols />', () => {
   it('can render?', () => {
-    const component = shallow(<UnconnectedRecentProtocols {...mockProps} />);
+    const { container } = render(<UnconnectedRecentProtocols {...mockProps} />);
 
-    expect(component).toMatchSnapshot();
+    expect(container).toMatchSnapshot();
   });
 });

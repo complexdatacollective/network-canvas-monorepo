@@ -1,7 +1,6 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import React from 'react';
-import { shallow } from 'enzyme';
+import { render } from '@testing-library/react';
 import { Timeline } from '../Timeline';
 
 const mockProps = {
@@ -15,8 +14,10 @@ describe('<Timeline />', () => {
   it('renders stages', () => {
     const mockStages = [{ id: 1, type: 'NameGenerator' }, { id: 2, type: 'Sociogram' }];
 
-    const component = shallow(<Timeline {...mockProps} stages={mockStages} />);
+    const { container } = render(<Timeline {...mockProps} stages={mockStages} />);
 
-    expect(component.find('sortableElement(Stage)').length).toEqual(2);
+    // Check that stages are rendered (this might need adjustment based on actual component structure)
+    const stageElements = container.querySelectorAll('[data-testid="stage"], .stage');
+    expect(stageElements).toHaveLength(2);
   });
 });

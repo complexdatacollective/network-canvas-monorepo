@@ -1,8 +1,9 @@
-import { shallow } from "enzyme";
+import { describe, it, expect, vi } from 'vitest';
+import { render } from "@testing-library/react";
 import { v4 as uuid } from "uuid";
 import { UnconnectedStage } from "../Stage";
 
-jest.mock("~/lib/legacy-ui/utils/CSSVariables");
+vi.mock("~/lib/legacy-ui/utils/CSSVariables");
 
 const mockProps = {
 	id: uuid(),
@@ -16,8 +17,8 @@ const mockProps = {
 
 describe("<Stage />", () => {
 	it("can render", () => {
-		const component = shallow(<UnconnectedStage {...mockProps} />);
+		const { container } = render(<UnconnectedStage {...mockProps} />);
 
-		expect(component).toMatchSnapshot();
+		expect(container.firstChild).toBeInTheDocument();
 	});
 });

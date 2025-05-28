@@ -1,8 +1,8 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import React from 'react';
 import { createStore } from 'redux';
-import { shallow } from 'enzyme';
+import { render } from '@testing-library/react';
 import CodebookScreen from '../CodebookScreen';
 
 const mockState = {
@@ -19,8 +19,8 @@ const mockProps = {
 
 describe('<CodebookScreen />', () => {
   it('can render', () => {
-    const component = shallow(<CodebookScreen {...mockProps} />);
+    const { container } = render(<CodebookScreen {...mockProps} />);
 
-    expect(component).toMatchSnapshot();
+    expect(container).toMatchSnapshot();
   });
 });

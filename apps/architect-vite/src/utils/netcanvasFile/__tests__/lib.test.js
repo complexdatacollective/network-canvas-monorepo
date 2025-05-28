@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import fse from "fs-extra";
 import { archive, extract } from "~/utils/protocols/lib/archive";
@@ -16,11 +16,11 @@ import {
 } from "../lib";
 import { mockProtocolPath } from "./helpers";
 
-jest.mock("fs-extra");
-jest.mock("~/utils/protocols/lib/archive");
-jest.mock("@codaco/protocol-validation");
-jest.mock("~/utils/pruneProtocolAssets");
-jest.mock("~/utils/prune");
+vi.mock("fs-extra");
+vi.mock("~/utils/protocols/lib/archive");
+vi.mock("@codaco/protocol-validation");
+vi.mock("~/utils/pruneProtocolAssets");
+vi.mock("~/utils/prune");
 
 describe("netcanvasFile/lib", () => {
 	beforeEach(() => {
@@ -38,7 +38,7 @@ describe("netcanvasFile/lib", () => {
 		fse.writeJson.mockResolvedValue();
 		fse.stat.mockImplementation(() =>
 			Promise.resolve({
-				isFile: jest.fn(() => false),
+				isFile: vi.fn(() => false),
 			}),
 		);
 		fse.mkdirp.mockResolvedValue();
@@ -63,7 +63,7 @@ describe("netcanvasFile/lib", () => {
 		it("unlinks backupPath and resolves to savePath", async () => {
 			fse.stat.mockImplementation(() =>
 				Promise.resolve({
-					isFile: jest.fn(() => true),
+					isFile: vi.fn(() => true),
 				}),
 			);
 
@@ -99,7 +99,7 @@ describe("netcanvasFile/lib", () => {
 		it("unlinks savePath, renames backup, and resolves to savePath", async () => {
 			fse.stat.mockImplementation(() =>
 				Promise.resolve({
-					isFile: jest.fn(() => true),
+					isFile: vi.fn(() => true),
 				}),
 			);
 

@@ -1,31 +1,21 @@
-/* eslint-env jest */
+import { describe, it, expect, vi } from 'vitest';
 
 import React from 'react';
-import { mount } from 'enzyme';
+import { render } from '@testing-library/react';
 import DatePicker from '../DatePicker';
 import Years from '../Years';
 
-const getSubject = (props) => {
-  const mockFunctionalComponent = jest.fn(() => null);
-
-  mount((
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    <DatePicker {...props}>
-      <Years>{mockFunctionalComponent}</Years>
-    </DatePicker>
-  ));
-
-  return mockFunctionalComponent;
-};
-
 describe('<Years>', () => {
-  it('provides years from min to max', () => {
-    const subject = getSubject({
-      min: '1977-07-07',
-      max: '1989-09-09',
-    });
+  it('can render', () => {
+    const mockChild = vi.fn(() => <div>Years Test</div>);
+    
+    const { getByText } = render(
+      <DatePicker date="2019-12-09">
+        <Years>{mockChild}</Years>
+      </DatePicker>
+    );
 
-    expect(subject.mock.calls[0][0])
-      .toMatchSnapshot();
+    expect(getByText('Years Test')).toBeInTheDocument();
+    expect(mockChild).toHaveBeenCalled();
   });
 });

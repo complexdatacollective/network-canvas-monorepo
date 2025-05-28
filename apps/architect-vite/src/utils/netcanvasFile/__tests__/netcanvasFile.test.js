@@ -1,4 +1,5 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as fse from 'fs-extra';
 
 import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
 import { v4 as uuid } from "uuid";
@@ -27,21 +28,21 @@ import {
 } from "../netcanvasFile";
 import { mockProtocol, mockProtocolPath } from "./helpers";
 
-jest.mock("fs-extra");
-jest.mock("~/utils/protocols/lib/archive");
-jest.mock("@codaco/protocol-validation");
-jest.mock("~/utils/pruneProtocolAssets");
-jest.mock("~/utils/prune");
-jest.mock("../lib");
-jest.mock("~/utils/validateProtocol");
+vi.mock("fs-extra");
+vi.mock("~/utils/protocols/lib/archive");
+vi.mock("@codaco/protocol-validation");
+vi.mock("~/utils/pruneProtocolAssets");
+vi.mock("~/utils/prune");
+vi.mock("../lib");
+vi.mock("~/utils/validateProtocol");
 
 const { verifyNetcanvas } = utils;
 
 describe("netcanvasFile/netcanvasFile", () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
-		uuid.mockImplementation(jest.fn(() => "809895df-bbd7-4c76-ac58-e6ada2625f9b"));
+		uuid.mockImplementation(vi.fn(() => "809895df-bbd7-4c76-ac58-e6ada2625f9b"));
 
 		fse.access.mockResolvedValue(Promise.resolve());
 		archive.mockImplementation(() => Promise.resolve());

@@ -1,9 +1,27 @@
-import { shallow } from "enzyme";
+import { describe, it, expect, afterAll, vi } from 'vitest'
+import { render } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { configureStore } from '@reduxjs/toolkit'
 import App from "../ViewManager/views/App";
 
-const mockProps = {
-	location: { pathname: "" },
-};
+// Mock the components that App renders
+vi.mock('~/components/Routes', () => ({
+	default: () => <div data-testid="routes" />
+}))
+vi.mock('~/components/DialogManager', () => ({
+	default: () => <div data-testid="dialog-manager" />
+}))
+vi.mock('~/components/ToastManager', () => ({
+	default: () => <div data-testid="toast-manager" />
+}))
+
+const mockStore = configureStore({
+	reducer: {
+		app: () => ({}),
+		ui: () => ({}),
+		protocols: () => ({}),
+	},
+});
 
 const { process } = global;
 
@@ -12,19 +30,15 @@ describe("<App />", () => {
 		global.process = process;
 	});
 
-	it("renders with titlebar on darwin", () => {
-		global.process = { ...global.process, platform: "darwin" };
+	it("renders main app components", () => {
+		const { getByTestId } = render(
+			<Provider store={mockStore}>
+				<App />
+			</Provider>
+		);
 
-		const component = shallow(<App {...mockProps} />);
-		expect(component.find(".app").hasClass("app--macos")).toBe(true);
-		expect(component.find(".electron-titlebar").length).toBe(1);
-	});
-
-	it("renders without titlebar on not darwin", () => {
-		global.process = { ...global.process, platform: "windows" };
-
-		const component = shallow(<App {...mockProps} />);
-		expect(component.find(".app").hasClass("app--macos")).toBe(false);
-		expect(component.find(".electron-titlebar").length).toBe(0);
+		expect(getByTestId('routes')).toBeInTheDocument();
+		expect(getByTestId('dialog-manager')).toBeInTheDocument();
+		expect(getByTestId('toast-manager')).toBeInTheDocument();
 	});
 });

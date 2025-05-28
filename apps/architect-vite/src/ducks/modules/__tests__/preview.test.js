@@ -1,11 +1,10 @@
-/* eslint-env jest */
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import thunk from 'redux-thunk';
 import configureStore from 'redux-mock-store';
 import { actionCreators } from '../preview';
 import testState from '../../../__tests__/testState.json';
 
-jest.mock('../../../utils/previewDriver');
+vi.mock('../../../utils/previewDriver');
 
 const mockStore = configureStore([thunk]);
 
@@ -18,7 +17,7 @@ describe('preview', () => {
     });
 
     it('dispatches previewDraft() for stage id', () => {
-      actionCreators.previewDraft = jest.fn();
+      actionCreators.previewDraft = vi.fn();
 
       store.dispatch(actionCreators.previewStageFromForm(
         { id: 'pip' },
@@ -34,7 +33,7 @@ describe('preview', () => {
     });
 
     it('dispatches previewDraft() for insert at index', () => {
-      actionCreators.previewDraft = jest.fn();
+      actionCreators.previewDraft = vi.fn();
 
       store.dispatch(actionCreators.previewStageFromForm(
         { insertAtIndex: 2 },
@@ -50,7 +49,7 @@ describe('preview', () => {
     });
 
     it('dispatches previewDraft() for insert at index 0', () => {
-      actionCreators.previewDraft = jest.fn();
+      actionCreators.previewDraft = vi.fn();
 
       store.dispatch(actionCreators.previewStageFromForm(
         { insertAtIndex: 0 },
@@ -66,7 +65,7 @@ describe('preview', () => {
     });
 
     it('dispatches previewDraft() for end of stages', () => {
-      actionCreators.previewDraft = jest.fn();
+      actionCreators.previewDraft = vi.fn();
 
       const state = store.getState();
       const expectedStageIndex = state.protocol.present.stages.length;

@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { getAllVariablesByUUID } from '../../../selectors/codebook';
 import { getUsage, getUsageAsStageMeta } from '../helpers';

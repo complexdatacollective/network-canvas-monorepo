@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import testState from '../../../__tests__/testState.json';
 import {

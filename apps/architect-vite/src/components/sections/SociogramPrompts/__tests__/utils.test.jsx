@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import getEdgeFilteringWarning from '../utils';
 
 describe('getEdgeFilteringWarning', () => {

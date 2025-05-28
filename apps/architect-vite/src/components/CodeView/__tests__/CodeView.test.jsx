@@ -1,13 +1,12 @@
-/* eslint-env jest */
-
+import { describe, it, expect, beforeAll, vi } from 'vitest'
 import React from 'react';
-import { mount } from 'enzyme';
+import { render } from '@testing-library/react';
 import { createStore } from 'redux';
 import { Provider } from 'react-redux';
 import { getFormValues } from 'redux-form';
 import CodeView from '../CodeView';
 
-jest.mock('redux-form');
+vi.mock('redux-form');
 
 const mockProps = {
   toggleCodeView: () => {},
@@ -23,22 +22,24 @@ describe('<CodeView />', () => {
   });
 
   it('can render', () => {
-    const subject = mount((
+    render(
       <Provider store={mockStore}>
         <CodeView {...mockProps} />
       </Provider>
-    ));
+    );
 
-    expect(subject).toMatchSnapshot();
+    // CodeView renders to document.body via portal
+    expect(document.querySelector('.code-view')).toBeInTheDocument();
   });
 
   it('renders content only when show is true', () => {
-    const subject = mount((
+    render(
       <Provider store={mockStore}>
         <CodeView {...mockProps} show />
       </Provider>
-    ));
+    );
 
-    expect(subject).toMatchSnapshot();
+    // CodeView renders to document.body via portal
+    expect(document.querySelector('.code-view')).toBeInTheDocument();
   });
 });

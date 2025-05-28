@@ -1,15 +1,14 @@
-/* eslint-env jest */
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import crypto from "crypto";
 import { times } from "lodash";
 import { v4 as uuid } from "uuid";
 import createTimeline, { actionCreators } from "../timeline";
 
-jest.mock("uuid");
+vi.mock("uuid");
 
 uuid.mockImplementation(() => crypto.randomBytes(20).toString("hex"));
 
-const defaultReducer = jest.fn(() => ({
+const defaultReducer = vi.fn(() => ({
 	dummyState: true,
 	randomProperty: crypto.randomBytes(20).toString("hex"),
 }));

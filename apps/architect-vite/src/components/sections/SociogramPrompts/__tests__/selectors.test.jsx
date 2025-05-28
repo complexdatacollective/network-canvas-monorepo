@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import mockState from '../../../../__tests__/testState.json';
 import {
@@ -7,7 +7,7 @@ import {
   getEdgesForSubject,
 } from '../selectors';
 
-jest.mock('redux-form', () => ({
+vi.mock('redux-form', () => ({
   formValueSelector: () => () => '1234-1234-4',
   getFormValues: () => () => ({}),
 }));

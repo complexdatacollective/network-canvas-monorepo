@@ -1,5 +1,4 @@
-/* eslint-env jest */
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createStore, applyMiddleware } from 'redux';
 import thunks from 'redux-thunk';
 import reducer, { actionCreators } from '../dialogs';
@@ -49,8 +48,8 @@ describe('dialogs', () => {
     let store;
     const getDialog = () => ({
       foo: 'bar',
-      onCancel: jest.fn(),
-      onConfirm: jest.fn(),
+      onCancel: vi.fn(),
+      onConfirm: vi.fn(),
     });
 
     beforeEach(() => {

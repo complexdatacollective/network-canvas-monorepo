@@ -1,7 +1,6 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import React from 'react';
-import { mount } from 'enzyme';
+import { render } from '@testing-library/react';
 import { createStore } from 'redux';
 import { Provider } from 'react-redux';
 import ProtocolControlBar from '../ProtocolControlBar';
@@ -21,12 +20,12 @@ const mockStore = createStore(() => testState);
 
 describe('<ProtocolControlBar />', () => {
   it('can render', () => {
-    const component = mount(
+    const { container } = render(
       <Provider store={mockStore}>
         <ProtocolControlBar {...mockProps} />
       </Provider>,
     );
 
-    expect(component.html()).toMatchSnapshot();
+    expect(container).toMatchSnapshot();
   });
 });

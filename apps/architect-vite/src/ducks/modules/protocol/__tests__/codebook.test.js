@@ -1,4 +1,4 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { set } from "es-toolkit/compat";
 import configureStore from "redux-mock-store";
@@ -9,7 +9,7 @@ import testState from "../../../../__tests__/testState.json";
 import reducer, { actionCreators, actionTypes, test } from "../codebook";
 import { test as stageActions } from "../utils/stages";
 
-jest.mock("uuid");
+vi.mock("uuid");
 
 const mockStore = configureStore([thunk]);
 

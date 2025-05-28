@@ -1,7 +1,6 @@
-/* eslint-env jest */
-
+import { describe, it, expect } from 'vitest';
 import React from 'react';
-import { shallow } from 'enzyme';
+import { render } from '@testing-library/react';
 import { OrderedList } from '../OrderedList';
 
 const mockProps = {
@@ -25,9 +24,9 @@ describe('<OrderedList />', () => {
           error: null,
         },
       };
-      const component = shallow(<OrderedList {...mockProps} {...props} />);
+      const { container } = render(<OrderedList {...mockProps} {...props} />);
 
-      expect(component.exists(`.${className}__error`)).toBe(false);
+      expect(container.querySelector(`.${className}__error`)).not.toBeInTheDocument();
     });
 
     it('shows error on submit', () => {
@@ -37,9 +36,9 @@ describe('<OrderedList />', () => {
           error: 'foo',
         },
       };
-      const component = shallow(<OrderedList {...mockProps} {...props} />);
+      const { container } = render(<OrderedList {...mockProps} {...props} />);
 
-      expect(component.exists(`.${className}__error`)).toBe(true);
+      expect(container.querySelector(`.${className}__error`)).toBeInTheDocument();
     });
 
     it('shows error on changed', () => {
@@ -49,9 +48,9 @@ describe('<OrderedList />', () => {
           error: 'foo',
         },
       };
-      const component = shallow(<OrderedList {...mockProps} {...props} />);
+      const { container } = render(<OrderedList {...mockProps} {...props} />);
 
-      expect(component.exists(`.${className}__error`)).toBe(true);
+      expect(container.querySelector(`.${className}__error`)).toBeInTheDocument();
     });
   });
 });

@@ -1,13 +1,26 @@
-/* eslint-env jest */
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { reduxForm, change } from 'redux-form';
-import { mount } from 'enzyme';
-import { getStore } from '../../../../ducks/store';
-import Options from '../../../Options/Options';
-import Option from '../../../Options/Option';
+import { render } from '@testing-library/react';
+import { configureStore } from '@reduxjs/toolkit';
+import { rootReducer } from '../../../../ducks/modules/root';
 import { actionCreators as codebookActions } from '../../../../ducks/modules/protocol/codebook';
 import PromptFields from '../PromptFields';
+
+// Mock the Option component to include test ID
+vi.mock('../../../Options/Option', () => ({
+  default: ({ children, ...props }) => <div data-testid="option" {...props}>{children}</div>
+}));
+
+// Mock other components that cause issues
+vi.mock('../../PromptText', () => ({
+  default: () => <div data-testid="prompt-text" />
+}));
+
+vi.mock('../../../Form/ValidatedField', () => ({
+  default: ({ children, ...props }) => <div data-testid="validated-field" {...props}>{children}</div>
+}));
 
 const mockFormName = 'foo';
 
@@ -53,20 +66,30 @@ const MockForm = reduxForm({
   ),
 );
 
-const getSubject = (node, store, { form }) => mount((
+const getSubject = (node, store, { form }) => render(
   <Provider store={store}>
     <MockForm {...form}>
       {node}
     </MockForm>
   </Provider>
-));
+);
+
+// Create a store factory function
+const createTestStore = (initialState) => configureStore({
+  reducer: rootReducer,
+  preloadedState: initialState,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
+});
 
 // eslint-disable-next-line import/prefer-default-export
 export const testPromptFields = (PromptFieldsComponent, name = '') => {
   let mockStore;
 
   beforeEach(() => {
-    mockStore = getStore(initialState);
+    mockStore = createTestStore(initialState);
   });
 
   // FIXME This seems to test the wrong part of codebook
@@ -91,15 +114,15 @@ export const testPromptFields = (PromptFieldsComponent, name = '') => {
               form={mockFormName}
               entity="node"
               type="person"
-              handleDeleteVariable={jest.fn()}
-              handleUpdate={jest.fn()}
+              handleDeleteVariable={vi.fn()}
+              handleUpdate={vi.fn()}
             />
           ),
           mockStore,
           additionalProps,
         );
 
-        expect(subject.find(Options).find(Option).length).toBe(2);
+        expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
 
         mockStore.dispatch(codebookActions.createVariable(
           'node',
@@ -117,9 +140,21 @@ export const testPromptFields = (PromptFieldsComponent, name = '') => {
           '809895df-bbd7-4c76-ac58-e6ada2625f9b',
         ));
 
-        subject.update();
+        subject.rerender(
+          <Provider store={mockStore}>
+            <MockForm {...formProps}>
+              <PromptFieldsComponent
+                form={mockFormName}
+                entity="node"
+                type="person"
+                handleDeleteVariable={vi.fn()}
+                handleUpdate={vi.fn()}
+              />
+            </MockForm>
+          </Provider>
+        );
 
-        expect(subject.find(Options).find(Option).length).toBe(3);
+        expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(3);
       });
 
       it('when variable is changed, variable options are updated', () => {
@@ -140,15 +175,15 @@ export const testPromptFields = (PromptFieldsComponent, name = '') => {
               form={mockFormName}
               entity="node"
               type="person"
-              handleDeleteVariable={jest.fn()}
-              handleUpdate={jest.fn()}
+              handleDeleteVariable={vi.fn()}
+              handleUpdate={vi.fn()}
             />
           ),
           mockStore,
           additionalProps,
         );
 
-        expect(subject.find(Options).find(Option).length).toBe(2);
+        expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
 
         mockStore.dispatch(change(
           mockFormName,
@@ -156,9 +191,21 @@ export const testPromptFields = (PromptFieldsComponent, name = '') => {
           'buzz',
         ));
 
-        subject.update();
+        subject.rerender(
+          <Provider store={mockStore}>
+            <MockForm {...formProps}>
+              <PromptFieldsComponent
+                form={mockFormName}
+                entity="node"
+                type="person"
+                handleDeleteVariable={vi.fn()}
+                handleUpdate={vi.fn()}
+              />
+            </MockForm>
+          </Provider>
+        );
 
-        expect(subject.find(Options).find(Option).length).toBe(2);
+        expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
       });
     });
   });
