@@ -1,0 +1,25 @@
+
+
+.rules-preview-text {
+  &__join {
+    padding: 1.2rem 2.4rem;
+    border-top: 4px solid var(--section-background-color);
+    width: 100%;
+    height: 0;
+
+    > legend {
+      @extend .small-heading; // sass-lint:disable-line placeholder-in-extend
+
+      text-align: center;
+      font-style: italic;
+      color: var(--text);
+      padding: 0.6rem 1.2rem;
+    }
+  }
+
+  &__value {
+    border-bottom: 3px dotted var(--architect-rules-assert);
+    margin: 0 .4rem -3px;
+    font-weight: 600;
+  }
+}
