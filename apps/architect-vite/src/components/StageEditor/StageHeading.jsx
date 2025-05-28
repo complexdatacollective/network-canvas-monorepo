@@ -26,7 +26,7 @@ export const CondensedStageHeading = ({ id }) => {
 			</div>
 			<div className="stage-name-container">
 				<h2>
-					{stageNumber && <span>Stage {stageNumber}: </span>} {formValues.label || <em>No Stage Name</em>}
+					{stageNumber && <span>Stage {stageNumber}: </span>} {formValues?.label ?? <em>No Stage Name</em>}
 				</h2>
 			</div>
 			{type && documentationLinkForType && (
@@ -87,6 +87,13 @@ const mapStateToProps = (state, props) => {
 	const stageIndex = getStageIndex(state, id);
 	const stageNumber = stageIndex !== -1 ? stageIndex + 1 : null;
 	const formValues = getFormValues("edit-stage")(state);
+
+	console.log("StageHeading: mapStateToProps", {
+		id,
+		stageIndex,
+		stageNumber,
+		formValues,
+	});
 
 	return {
 		stageNumber,

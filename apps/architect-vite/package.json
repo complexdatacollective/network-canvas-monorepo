@@ -84,6 +84,7 @@
 	"devDependencies": {
 		"@types/react": "^19.1.2",
 		"@types/react-dom": "^19.1.2",
+		"@types/redux-form": "^8.3.11",
 		"@vitejs/plugin-react-swc": "^3.9.0",
 		"globals": "^16.0.0",
 		"prop-types": "^15.8.1",

@@ -22,6 +22,15 @@ const mapStateToProps = (state, props) => {
 	const formValues = getFormValues(formName)(state);
 	const hasSkipLogic = has(formValues, "skipLogic.action");
 
+	console.log("withStageEditorMeta: mapStateToProps", {
+		stage,
+		stagePath,
+		type,
+		initialValues,
+		formValues,
+		hasSkipLogic,
+	});
+
 	return {
 		initialValues,
 		stagePath,

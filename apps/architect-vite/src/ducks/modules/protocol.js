@@ -21,7 +21,6 @@ const setProtocol = (meta, protocol) => ({
 });
 
 function protocolReducer(state = initialState, action = {}) {
-	console.log("protocolReducer", action.type, action, state);
 	switch (action.type) {
 		case "SESSION/RESET_SESSION":
 			return initialState;
@@ -57,7 +56,6 @@ const reduceReducers =
 		reducers.reduce((state, reducer) => reducer(state, action), previousState);
 
 export default reduceReducers(protocolReducer, (state, action) => {
-	console.log("protocolReducer combined", action.type, action, state);
 	return {
 		...state,
 		stages: stages(state.stages, action),

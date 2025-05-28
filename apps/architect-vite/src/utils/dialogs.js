@@ -41,10 +41,8 @@ const openDialog = (openDialogOptions = {}) => {
 
 	// return remote.dialog.showOpenDialog(remote.getCurrentWindow(), options);
 	return new Promise((resolve) => {
-		const result = window.prompt("This is an open dialog");
-
 		resolve({
-			cancelled: !!result,
+			cancelled: false,
 			protocol: devProtocol,
 		});
 	});
@@ -61,10 +59,8 @@ const saveDialog = (saveDialogOptions = {}) => {
 	};
 
 	return new Promise((resolve) => {
-		const result = window.prompt("This is a save dialog");
-
 		resolve({
-			cancelled: !!result,
+			cancelled: false,
 		});
 	});
 

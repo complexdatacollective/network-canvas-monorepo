@@ -40,6 +40,8 @@ const StageEditor = (props) => {
 
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
+	console.log("StageEditor: passing rest", rest);
+
 	const renderSections = (sectionsList, { submitFailed }) =>
 		sectionsList.map((SectionComponent, sectionIndex) => {
 			const sectionKey = `${interfaceType}-${sectionIndex}`;
@@ -55,11 +57,7 @@ const StageEditor = (props) => {
 		});
 
 	return (
-		<Editor
-			formName={formName}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		>
+		<Editor formName={formName} {...rest}>
 			{({ submitFailed }) => (
 				<>
 					<CodeView form={formName} show={showCodeView} toggleCodeView={toggleCodeView} />
@@ -77,7 +75,6 @@ StageEditor.propTypes = {
 	interfaceType: PropTypes.string.isRequired,
 	id: PropTypes.string,
 	previewStage: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	stagePath: PropTypes.any,
 	hasSkipLogic: PropTypes.bool,
 };

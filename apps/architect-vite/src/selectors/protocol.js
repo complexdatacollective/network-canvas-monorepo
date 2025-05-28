@@ -70,7 +70,7 @@ export const getHasUnsavedChanges = (state) => {
 	return activeProtocol.lastChanged > activeProtocol.lastSaved;
 };
 
-export const getIsProtocolValid = async (state) => {
+export const getIsProtocolValid = (state) => {
 	const protocol = getProtocol(state);
 	if (!protocol) {
 		return false;

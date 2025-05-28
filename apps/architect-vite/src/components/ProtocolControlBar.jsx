@@ -17,10 +17,9 @@ const unsavedChangesDialog = UnsavedChanges({
 
 const ProtocolControlBar = () => {
 	const dispatch = useDispatch();
-
-	const hasUnsavedChanges = useSelector((state) => getHasUnsavedChanges(state));
+	const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
 	const isSaving = useSelector((state) => statusSelectors.getIsBusy(state, protocolsLocks.saving));
-	const protocolIsValid = useSelector((state) => getIsProtocolValid(state));
+	const protocolIsValid = useSelector(getIsProtocolValid);
 	const saveNetcanvas = useCallback(() => dispatch(userActions.saveNetcanvas()), [dispatch]);
 
 	const handleClickStart = useCallback(

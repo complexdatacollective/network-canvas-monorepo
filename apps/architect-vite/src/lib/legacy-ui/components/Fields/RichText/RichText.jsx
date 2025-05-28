@@ -173,8 +173,10 @@ const RichText = ({ autoFocus, inline, disallowedTypes, onChange, value: initial
 		[editor],
 	);
 
+	console.log("slate vakue", value);
+
 	return (
-		<Slate editor={editor} value={value} onChange={setValue}>
+		<Slate editor={editor} initialValue={value} onChange={setValue}>
 			<RichTextContainer>
 				<Toolbar />
 				<div className={`rich-text__editable ${inline ? "rich-text__editable--inline" : ""}`}>
