@@ -1,3 +1,4 @@
+import Button from "@codaco/legacy-ui/components/Button";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
@@ -6,7 +7,6 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { submit } from "redux-form";
 import { Layout } from "~/components/EditorLayout";
-import Button from "~/lib/legacy-ui/components/Button";
 import Form from "./Form";
 
 const screenVariants = {

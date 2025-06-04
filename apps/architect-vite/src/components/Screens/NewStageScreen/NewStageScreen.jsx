@@ -1,3 +1,5 @@
+import Button from "@codaco/legacy-ui/components/Button";
+import Search from "@codaco/legacy-ui/components/Fields/Search";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import Fuse from "fuse.js";
@@ -7,8 +9,6 @@ import { connect, useDispatch, useSelector } from "react-redux";
 import Screen from "~/components/Screen/Screen";
 import Tag from "~/components/Tag";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
-import Button from "~/lib/legacy-ui/components/Button";
-import Search from "~/lib/legacy-ui/components/Fields/Search";
 import { getExperiments } from "~/selectors/protocol";
 import ControlBar from "../../ControlBar";
 import Row from "../../EditorLayout/Row";

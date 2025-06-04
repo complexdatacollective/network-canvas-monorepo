@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import { noop } from "lodash";
-import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import VariablePicker from "../VariablePicker";
 
 // Mock the components that VariablePicker renders
@@ -11,7 +11,7 @@ vi.mock("../VariablePill", () => ({
 	SimpleVariablePill: () => <div data-testid="simple-variable-pill">SimpleVariablePill</div>,
 }));
 
-vi.mock("~/lib/legacy-ui/components", () => ({
+vi.mock("@codaco/legacy-ui/components", () => ({
 	Button: ({ children, ...props }) => <button {...props}>{children}</button>,
 }));
 

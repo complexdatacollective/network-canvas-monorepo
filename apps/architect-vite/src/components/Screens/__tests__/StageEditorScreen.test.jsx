@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
 import StageEditorScreen from "../StageEditorScreen";
 
 // Mock the StageEditor component
@@ -21,7 +21,7 @@ vi.mock("../../Screen/EditorScreen", () => ({
 }));
 
 // Mock the legacy Button component
-vi.mock("~/lib/legacy-ui/components", () => ({
+vi.mock("@codaco/legacy-ui/components", () => ({
 	Button: ({ children, ...props }) => <button {...props}>{children}</button>,
 }));
 

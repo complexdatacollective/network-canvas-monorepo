@@ -1,6 +1,6 @@
+import { Node } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Node } from "~/lib/legacy-ui/components";
 
 const PreviewNode = ({ label, color, onClick, selected }) => (
 	<div

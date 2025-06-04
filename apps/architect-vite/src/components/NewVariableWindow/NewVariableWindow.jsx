@@ -1,3 +1,4 @@
+import * as Fields from "@codaco/legacy-ui/components/Fields";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { Field } from "redux-form";
@@ -7,7 +8,6 @@ import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import Options from "~/components/Options";
 import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getFieldId } from "~/utils/issues";
 import safeName from "~/utils/safeName";
 import { allowedVariableName, required, uniqueByList } from "~/utils/validations";

@@ -1,3 +1,4 @@
+import Button from "@codaco/legacy-ui/components/Button";
 import { get } from "es-toolkit/compat";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -9,7 +10,6 @@ import ControlBar from "~/components/ControlBar";
 import { Layout, Section } from "~/components/EditorLayout";
 import Screen from "~/components/Screen/Screen";
 import { screenVariants } from "~/components/Screens/Screens";
-import Button from "~/lib/legacy-ui/components/Button";
 import { getAssetManifest } from "~/selectors/protocol";
 
 const MapView = ({ mapOptions, onChange, close }) => {

@@ -1,8 +1,8 @@
+import RadioGroup from "@codaco/legacy-ui/components/Fields/RadioGroup";
+import { Field as RichText } from "@codaco/legacy-ui/components/Fields/RichText";
 import { get } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { Row, Section } from "~/components/EditorLayout";
-import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
 import { getFieldId } from "../../../utils/issues";
 import Audio from "../../Form/Fields/Audio";
 import Image from "../../Form/Fields/Image";

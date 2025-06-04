@@ -1,8 +1,8 @@
+import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getNodeTypes } from "~/selectors/codebook";
 
 import { omit } from "es-toolkit/compat";

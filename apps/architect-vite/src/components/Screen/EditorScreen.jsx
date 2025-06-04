@@ -1,3 +1,4 @@
+import { Button } from "@codaco/legacy-ui/components";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -5,7 +6,6 @@ import { bindActionCreators } from "redux";
 import { isDirty, isSubmitting, startSubmit, submit } from "redux-form";
 import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { Button } from "~/lib/legacy-ui/components";
 import { hasChanges as timelineHasChanges } from "~/selectors/timeline";
 import ControlBar from "../ControlBar";
 import Screen from "./Screen";

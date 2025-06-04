@@ -1,5 +1,5 @@
+import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { ValidatedField } from "../../Form";
 import IssueAnchor from "../../IssueAnchor";
 

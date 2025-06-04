@@ -1,8 +1,8 @@
+import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import { range } from "lodash";
 import PropTypes from "prop-types";
 import { fieldPropTypes } from "redux-form";
-import Icon from "~/lib/legacy-ui/components/Icon";
 
 const asColorOption = (name) => ({
 	label: name,

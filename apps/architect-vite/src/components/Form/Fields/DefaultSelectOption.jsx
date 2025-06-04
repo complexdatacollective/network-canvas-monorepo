@@ -1,7 +1,7 @@
+import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { components as ReactSelectComponents } from "react-select";
-import Icon from "~/lib/legacy-ui/components/Icon";
 
 const DefaultSelectOption = (props) => {
 	const { data, onDeleteOption } = props;

@@ -1,5 +1,5 @@
+import { Markdown } from "@codaco/legacy-ui/components/Fields";
 import PropTypes from "prop-types";
-import { Markdown } from "~/lib/legacy-ui/components/Fields";
 
 const PromptPreview = ({ text }) => <Markdown label={text} />;
 

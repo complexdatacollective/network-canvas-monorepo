@@ -1,3 +1,4 @@
+import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { CopyIcon as ContentCopyIcon, DownloadIcon } from "lucide-react";
 import PropTypes from "prop-types";
@@ -7,7 +8,6 @@ import * as Assets from "~/components/Assets";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import withAssetPath from "~/components/Assets/withAssetPath";
 import WindowFrame from "~/components/Window";
-import { Button } from "~/lib/legacy-ui/components";
 
 const getRenderer = (meta) => {
 	switch (meta.type) {

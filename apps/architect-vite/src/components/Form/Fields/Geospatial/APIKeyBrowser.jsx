@@ -1,8 +1,9 @@
+import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
 
+import Button from "@codaco/legacy-ui/components/Button";
 import { createPortal } from "react-dom";
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
@@ -11,7 +12,6 @@ import { Layout, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Screen from "~/components/Screen/Screen";
 import { screenVariants } from "~/components/Screens/Screens";
-import Button from "~/lib/legacy-ui/components/Button";
 
 import { useDispatch } from "react-redux";
 

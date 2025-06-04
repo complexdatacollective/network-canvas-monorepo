@@ -1,8 +1,8 @@
+import Radio from "@codaco/legacy-ui/components/Fields/Radio";
 import PropTypes from "prop-types";
 import { withState } from "recompose";
 import { fieldPropTypes } from "redux-form";
 import NetworkThumbnail from "~/components/Thumbnail/Network";
-import Radio from "~/lib/legacy-ui/components/Fields/Radio";
 import File from "./File";
 
 const withSelectNetworkAsset = withState("selectNetworkAsset", "setSelectNetworkAsset", false);

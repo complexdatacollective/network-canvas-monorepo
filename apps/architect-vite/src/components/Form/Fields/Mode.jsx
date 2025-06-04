@@ -1,7 +1,7 @@
+import { asOptionObject, getValue } from "@codaco/legacy-ui/components/Fields/utils/options";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { PureComponent } from "react";
-import { asOptionObject, getValue } from "~/lib/legacy-ui/components/Fields/utils/options";
 
 class Mode extends PureComponent {
 	handleClickMode = (index) => {

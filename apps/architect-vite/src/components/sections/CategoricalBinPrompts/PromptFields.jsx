@@ -1,3 +1,4 @@
+import RichTextField from "@codaco/legacy-ui/components/Fields/RichText";
 import PropTypes from "prop-types";
 import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
@@ -6,7 +7,6 @@ import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVa
 import Options from "~/components/Options";
 import Tip from "~/components/Tip";
 import PromptText from "~/components/sections/PromptText";
-import RichTextField from "~/lib/legacy-ui/components/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import BinSortOrderSection from "../BinSortOrderSection";

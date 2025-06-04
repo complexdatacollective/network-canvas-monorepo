@@ -1,6 +1,6 @@
+import { RadioGroup } from "@codaco/legacy-ui/components/Fields";
 import PropTypes from "prop-types";
 import { compose } from "recompose";
-import { RadioGroup } from "~/lib/legacy-ui/components/Fields";
 import Asset from "./Asset";
 import withAssets from "./withAssets";
 

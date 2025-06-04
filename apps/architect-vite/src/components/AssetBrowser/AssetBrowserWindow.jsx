@@ -1,8 +1,8 @@
+import Button from "@codaco/legacy-ui/components/Button";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
 import { createPortal } from "react-dom";
 import { Layout } from "~/components/EditorLayout";
-import Button from "~/lib/legacy-ui/components/Button";
 import ControlBar from "../ControlBar";
 import Screen from "../Screen/Screen";
 import { screenVariants } from "../Screens/Screens";

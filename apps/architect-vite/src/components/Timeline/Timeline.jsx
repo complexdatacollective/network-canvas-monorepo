@@ -1,3 +1,4 @@
+import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import cx from "classnames";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
@@ -7,7 +8,6 @@ import { bindActionCreators, compose } from "redux";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
-import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 import { getProtocol, getStageList } from "~/selectors/protocol";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";

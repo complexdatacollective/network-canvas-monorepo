@@ -1,8 +1,8 @@
+import Button from "@codaco/legacy-ui/components/Button";
+import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { withState } from "recompose";
-import Button from "~/lib/legacy-ui/components/Button";
-import Icon from "~/lib/legacy-ui/components/Icon";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
 
 const withShowBrowser = withState("showBrowser", "setShowBrowser", ({ showBrowser }) => !!showBrowser);

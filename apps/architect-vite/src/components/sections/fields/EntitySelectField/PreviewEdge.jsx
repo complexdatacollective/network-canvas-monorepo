@@ -1,6 +1,6 @@
+import { Icon } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Icon } from "~/lib/legacy-ui/components";
 
 const PreviewEdge = ({ label, color, onClick, selected }) => (
 	<div

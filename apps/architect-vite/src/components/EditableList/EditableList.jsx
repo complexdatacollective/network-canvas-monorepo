@@ -1,3 +1,4 @@
+import { Button } from "@codaco/legacy-ui/components";
 import { startCase } from "es-toolkit/compat";
 import { LayoutGroup } from "motion/react";
 import PropTypes from "prop-types";
@@ -6,7 +7,6 @@ import { Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import OrderedList from "~/components/OrderedList";
-import { Button } from "~/lib/legacy-ui/components";
 import { getFieldId, scrollToFirstIssue } from "~/utils/issues";
 import withEditHandlers from "./withEditHandlers";
 

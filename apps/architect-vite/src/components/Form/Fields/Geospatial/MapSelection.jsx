@@ -1,7 +1,7 @@
+import Button from "@codaco/legacy-ui/components/Button";
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import Button from "~/lib/legacy-ui/components/Button";
 
 import MapView from "./MapView";
 

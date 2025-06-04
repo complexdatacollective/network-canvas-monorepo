@@ -1,3 +1,4 @@
+import { Button } from "@codaco/legacy-ui/components";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
@@ -5,7 +6,6 @@ import ScreenLink from "~/components/Screens/ScreenLink";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { actionCreators as codebookActionCreators } from "~/ducks/modules/protocol/codebook";
 import { actionCreators as screenActionsCreators } from "~/ducks/modules/ui/screens";
-import { Button } from "~/lib/legacy-ui/components";
 import EntityIcon from "./EntityIcon";
 import { getEntityProperties } from "./helpers";
 import Tag from "./Tag";

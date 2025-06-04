@@ -1,9 +1,9 @@
+import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { DeleteIcon } from "lucide-react";
 import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useRef } from "react";
-import { Button } from "~/lib/legacy-ui/components";
 import getAbsoluteBoundingRect from "~/utils/getAbsoluteBoundingRect";
 import EditStageButton from "./EditStageButton";
 

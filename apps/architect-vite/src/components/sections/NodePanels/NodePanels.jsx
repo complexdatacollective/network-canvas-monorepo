@@ -1,3 +1,4 @@
+import { Button } from "@codaco/legacy-ui/components";
 import { has } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
@@ -8,7 +9,6 @@ import { v4 as uuid } from "uuid";
 import { Section } from "~/components/EditorLayout";
 import OrderedList from "~/components/OrderedList";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { Button } from "~/lib/legacy-ui/components";
 import IssueAnchor from "../../IssueAnchor";
 import NodePanel from "./NodePanel";
 

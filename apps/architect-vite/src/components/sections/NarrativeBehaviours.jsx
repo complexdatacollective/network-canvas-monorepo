@@ -1,6 +1,6 @@
+import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { Field, FormSection } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getFieldId } from "../../utils/issues";
 
 const NarrativeBehaviours = () => (

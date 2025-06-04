@@ -1,6 +1,6 @@
+import Button from "@codaco/legacy-ui/components/Button";
 import { DeleteIcon } from "lucide-react";
 import PropTypes from "prop-types";
-import Button from "~/lib/legacy-ui/components/Button";
 
 const ControlsColumn = ({ id, inUse, onDelete }) => (
 	<>

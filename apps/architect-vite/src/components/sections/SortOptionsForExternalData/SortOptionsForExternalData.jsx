@@ -1,3 +1,4 @@
+import { Text } from "@codaco/legacy-ui/components/Fields";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
@@ -7,7 +8,6 @@ import MultiSelect from "~/components/Form/MultiSelect";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
-import { Text } from "~/lib/legacy-ui/components/Fields";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
 

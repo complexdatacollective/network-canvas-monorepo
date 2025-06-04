@@ -1,6 +1,6 @@
+import { Button } from "@codaco/legacy-ui/components";
 import { AnimatePresence, motion } from "motion/react";
 import PropTypes from "prop-types";
-import { Button } from "~/lib/legacy-ui/components";
 import Interface from "./Interface";
 import { PropTypes as InterfacePropTypes } from "./interfaceOptions";
 
