@@ -25,7 +25,9 @@ const openScreen =
 	(screen, params = {}, root = false) =>
 	(dispatch, getState) => {
 		const state = getState();
-		const latestLocus = state.protocol.timeline[state.protocol.timeline.length - 1];
+		// Safely access timeline to prevent circular references
+		const timeline = state.protocol?.timeline || [];
+		const latestLocus = timeline.length > 0 ? timeline[timeline.length - 1] : null;
 		const locus = params.locus || latestLocus;
 
 		dispatch({
@@ -86,11 +88,24 @@ export default (state = initialState, { type, payload } = { type: null, payload:
 				message: {},
 			};
 		case CLOSE_SCREEN: {
+			// Sanitize params to prevent circular references and functions
+			const sanitizeParams = (params) => {
+				if (!params || typeof params !== 'object') return params;
+				try {
+					// Deep clone and stringify to remove functions and circular refs
+					return JSON.parse(JSON.stringify(params));
+				} catch (e) {
+					// If serialization fails, return null
+					console.warn('Screen close params contain circular references, sanitizing:', e);
+					return null;
+				}
+			};
+			
 			const message = payload.params
 				? {
 						...state.message,
 						screen: payload.screen,
-						params: payload.params,
+						params: sanitizeParams(payload.params),
 					}
 				: state.message;
 

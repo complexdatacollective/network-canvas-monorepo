@@ -47,7 +47,14 @@ const Screens = () => {
 			screens.map(({ screen, params }) => {
 				const ScreenComponent = getScreenComponent(screen);
 
-				const onComplete = (result) => closeScreen(screen, result);
+				const onComplete = (result) => {
+					// If result is an event object (has target, currentTarget, etc.), ignore it
+					if (result && typeof result === 'object' && ('target' in result || 'currentTarget' in result)) {
+						closeScreen(screen);
+					} else {
+						closeScreen(screen, result);
+					}
+				};
 
 				return (
 					<motion.div
