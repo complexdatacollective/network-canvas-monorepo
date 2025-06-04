@@ -1,4 +1,4 @@
-import { combineReducers } from "redux";
+import { combineReducers } from "@reduxjs/toolkit";
 import screens, { actionCreators as screenActionCreators } from "./screens";
 import status, { selectors as statusSelectors } from "./status";
 

@@ -3,7 +3,7 @@ import { has } from "es-toolkit/compat";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect, useDispatch } from "react-redux";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import { Section } from "~/components/EditorLayout";

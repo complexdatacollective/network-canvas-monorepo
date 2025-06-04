@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { actionCreators, selectors } from "~/ducks/modules/app";
 
-const useAppState = <T>(key: string, defaultValue: T): [T, (newValue: T) => void] => {
+const useAppState = <T,>(key: string, defaultValue: T): [T, (newValue: T) => void] => {
 	const value = useSelector(selectors.getProperty(key));
 	const dispatch = useDispatch();
 

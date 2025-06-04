@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import { bindActionCreators, compose } from "redux";
+import { bindActionCreators, compose } from "@reduxjs/toolkit";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";

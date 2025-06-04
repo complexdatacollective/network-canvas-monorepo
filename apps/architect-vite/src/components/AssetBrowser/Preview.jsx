@@ -3,7 +3,7 @@ import cx from "classnames";
 import { CopyIcon as ContentCopyIcon, DownloadIcon } from "lucide-react";
 import PropTypes from "prop-types";
 import { useCallback } from "react";
-import { compose } from "redux";
+import { compose } from "@reduxjs/toolkit";
 import * as Assets from "~/components/Assets";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import withAssetPath from "~/components/Assets/withAssetPath";

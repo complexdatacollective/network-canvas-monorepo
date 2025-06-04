@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers, withStateHandlers } from "recompose";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";

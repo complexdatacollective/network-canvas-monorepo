@@ -3,7 +3,7 @@ import Toggle from "@codaco/legacy-ui/components/Fields/Toggle";
 import { isEmpty, isNull } from "lodash";
 import { useEffect } from "react";
 import { connect } from "react-redux";
-import { compose } from "redux";
+import { compose } from "@reduxjs/toolkit";
 import { change, Field, formValueSelector } from "redux-form";
 import ValidatedField from "./Form/ValidatedField";
 

@@ -1,6 +1,6 @@
 import Dialogs from "@codaco/legacy-ui/components/Dialogs";
 import { connect } from "react-redux";
-import { bindActionCreators, compose } from "redux";
+import { bindActionCreators, compose } from "@reduxjs/toolkit";
 import { actionCreators as dialogsActions } from "../ducks/modules/dialogs";
 
 type RootState = {

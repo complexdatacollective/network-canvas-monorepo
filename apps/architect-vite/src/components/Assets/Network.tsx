@@ -2,7 +2,7 @@
 import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
 import { get } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
-import { compose } from "redux";
+import { compose } from "@reduxjs/toolkit";
 import { networkReader } from "../../utils/protocols/assetTools";
 import Table from "./Table";
 import withAssetPath from "./withAssetPath";

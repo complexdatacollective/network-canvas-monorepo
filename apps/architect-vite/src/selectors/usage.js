@@ -1,5 +1,5 @@
 import { map, compact, flatMap, uniqBy, memoize } from "lodash";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getProtocol } from "./protocol";
 
 /**

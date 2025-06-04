@@ -153,6 +153,7 @@ pnpm typecheck   # TypeScript check
 
 ## Important Notes
 
+- Do not run linting or typechecking tasks unless specifically instructed to do so, as they may fail due to the current state of the codebase.
 - do not use recompose or HOCs in new components, and remove them from existing components where possible.
 - prioritize completing modifications for a single file so that you do not run out of context mid way through complex tasks.
 - framer-motion (now '@motion') is used for animations and transitions. Other animation systems are present, but should be phased out

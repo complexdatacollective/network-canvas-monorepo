@@ -1,5 +1,5 @@
 import { find, findIndex, get, reduce } from "es-toolkit/compat";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 const propStageId = (_, props) => props.stageId;
 

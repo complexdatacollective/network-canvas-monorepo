@@ -1,5 +1,5 @@
 import RichText from "@codaco/legacy-ui/components/Fields/RichText/Field";
-import { compose } from "redux";
+import { compose } from "@reduxjs/toolkit";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import ValidatedField from "~/components/Form/ValidatedField";

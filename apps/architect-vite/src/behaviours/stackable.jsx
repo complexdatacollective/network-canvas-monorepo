@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import { compose, lifecycle } from "recompose";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { v4 as uuid } from "uuid";
 import { actionCreators as stackActions } from "../ducks/modules/stacks";
 

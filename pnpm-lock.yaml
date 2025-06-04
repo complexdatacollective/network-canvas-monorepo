@@ -287,7 +287,7 @@ importers:
         version: 0.21.5(slate-react@0.114.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(slate-dom@0.114.0(slate@0.114.0))(slate@0.114.0))(slate@0.114.0)
       '@reduxjs/toolkit':
         specifier: ^2.8.2
-        version: 2.8.2(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1))(react@19.1.0)
+        version: 2.8.2(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1))(react@19.1.0)
       '@tailwindcss/vite':
         specifier: ^4.1.7
         version: 4.1.7(vite@6.3.5(@types/node@22.13.13)(jiti@2.4.2)(lightningcss@1.30.1)(sass@1.89.0)(terser@5.40.0)(tsx@4.19.3)(yaml@2.7.0))
@@ -374,7 +374,7 @@ importers:
         version: 10.1.0(@types/react@19.1.5)(react@19.1.0)
       react-redux:
         specifier: ^9.2.0
-        version: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1)
+        version: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1)
       react-resize-aware:
         specifier: ^4.0.0
         version: 4.0.0(react@19.1.0)
@@ -399,24 +399,18 @@ importers:
       recompose:
         specifier: npm:react-recompose@^0.33.0
         version: react-recompose@0.33.0(react@19.1.0)
-      redux:
-        specifier: ^4.0.5
-        version: 4.2.1
       redux-form:
         specifier: ^8.3.6
-        version: 8.3.10(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1))(react@19.1.0)(redux@4.2.1)
+        version: 8.3.10(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1))(react@19.1.0)(redux@5.0.1)
       redux-logger:
-        specifier: ^2.7.4
-        version: 2.10.2
+        specifier: ^3.0.6
+        version: 3.0.6
       redux-mock-store:
         specifier: ^1.5.4
-        version: 1.5.5(redux@4.2.1)
+        version: 1.5.5(redux@5.0.1)
       redux-remember:
         specifier: ^5.2.0
-        version: 5.2.0(redux@4.2.1)
-      redux-thunk:
-        specifier: ^2.3.0
-        version: 2.4.2(redux@4.2.1)
+        version: 5.2.0(redux@5.0.1)
       rehype-raw:
         specifier: ^7.0.0
         version: 7.0.0
@@ -429,9 +423,6 @@ importers:
       remark-slate:
         specifier: ^1.8.6
         version: 1.8.6
-      reselect:
-        specifier: ^3.0.0
-        version: 3.0.1
       rxjs:
         specifier: ^6.6.6
         version: 6.6.7
@@ -757,9 +748,6 @@ importers:
       emoji-dictionary:
         specifier: ^1.0.11
         version: 1.0.12
-      framer-motion:
-        specifier: ^2.9.1
-        version: 2.9.5
       is-hotkey:
         specifier: ^0.2.0
         version: 0.2.0
@@ -787,6 +775,9 @@ importers:
       recompose:
         specifier: npm:react-recompose@^0.33.0
         version: react-recompose@0.33.0(react@19.1.0)
+      redux:
+        specifier: ^5.0.1
+        version: 5.0.1
       rehype-raw:
         specifier: ^5.1.0
         version: 5.1.0
@@ -4236,8 +4227,8 @@ packages:
     resolution: {integrity: sha512-e48kc2IjU+2Zw8cTb6VZcJQ3lgVbS4uuB1TfCHbiZIP/haNXm+SVyhu+87jts5/3ROpd82GSVCoNs/z8l4ZOaQ==}
     engines: {node: '>=4'}
 
-  deep-diff@0.3.4:
-    resolution: {integrity: sha512-Q2QODPwxBnMRbT8tUw1afL8PRY4mbMlJDU6HnLnDBNl/sAatNDG5vyk1pRt2bv3i60OY7X9ETXrH80SWX939EA==}
+  deep-diff@0.3.8:
+    resolution: {integrity: sha512-yVn6RZmHiGnxRKR9sJb3iVV2XTF1Ghh2DiWRZ3dMnGc43yUdWWF/kX6lQyk3+P84iprfWKU/8zFTrlkvtFm1ug==}
 
   deep-eql@5.0.2:
     resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
@@ -4696,15 +4687,6 @@ packages:
       react-dom:
         optional: true
 
-  framer-motion@2.9.5:
-    resolution: {integrity: sha512-epSX4Co1YbDv0mjfHouuY0q361TpHE7WQzCp/xMTilxy4kXd+Z23uJzPVorfzbm1a/9q1Yu8T5bndaw65NI4Tg==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  framesync@4.1.0:
-    resolution: {integrity: sha512-MmgZ4wCoeVxNbx2xp5hN/zPDCbLSKiDt4BbbslK7j/pM2lg5S0vhTNv1v8BCVb99JPIo6hXBFdwzU7Q4qcAaoQ==}
-
   fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
 
@@ -4913,9 +4895,6 @@ packages:
 
   header-case@1.0.1:
     resolution: {integrity: sha512-i0q9mkOeSuhXw6bGgiQCCBgY/jlZuV/7dZXyZ9c6LcBrqwvT8eT719E9uxE5LiZftdl+z81Ugbg/VvXV4OJOeQ==}
-
-  hey-listen@1.0.8:
-    resolution: {integrity: sha512-COpmrF2NOg4TBWUJ5UVyaCU2A88wEMkUPK4hNqyCkqHbxT92BbvfjoSozkAIIm6XhicGlJHhFdullInrdhwU8Q==}
 
   highlight.js@11.11.1:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
@@ -6016,9 +5995,6 @@ packages:
   pkg-types@2.1.0:
     resolution: {integrity: sha512-wmJwA+8ihJixSoHKxZJRBQG1oY8Yr9pGLzRmSsNms0iNWyHHAlZCa7mmKiFR10YPZuz/2k169JiS/inOjBCZ2A==}
 
-  popmotion@9.0.0-rc.20:
-    resolution: {integrity: sha512-f98sny03WuA+c8ckBjNNXotJD4G2utG/I3Q23NU69OEafrXtxxSukAaJBxzbtxwDvz3vtZK69pu9ojdkMoBNTg==}
-
   popper.js@1.16.1-lts:
     resolution: {integrity: sha512-Kjw8nKRl1m+VrSFCoVGPph93W/qrSO7ZkqPpTf7F4bk/sqcfWK019dWBUpE/fBOsOQY1dks/Bmcbfn1heM/IsA==}
 
@@ -6395,8 +6371,8 @@ packages:
       immutable:
         optional: true
 
-  redux-logger@2.10.2:
-    resolution: {integrity: sha512-Pfl6EPSjM5IJ23Jl/FpGos+zCnMfIdepY4CUOeaNOymVucKKa2XIrPQfYeGfZwRmiTbcZ6XdqYZ0it4GE3kT8w==}
+  redux-logger@3.0.6:
+    resolution: {integrity: sha512-JoCIok7bg/XpqA1JqCqXFypuqBbQzGQySrhFzewB7ThcnysTO30l4VCst86AuB9T9tuT03MAA56Jw2PNhRSNCg==}
 
   redux-mock-store@1.5.5:
     resolution: {integrity: sha512-YxX+ofKUTQkZE4HbhYG4kKGr7oCTJfB0GLy7bSeqx86GLpGirrbUWstMnqXkqHNaQpcnbMGbof2dYs5KsPE6Zg==}
@@ -6407,11 +6383,6 @@ packages:
     resolution: {integrity: sha512-HqXx9V+DKzgBzpiIT5dyiXZgiiSB6zaMs4sIscwQ+Z0zVwUvJh20mqPEQWo4wbthuo5+5jGrS7Yfvv4HyOuAFw==}
     peerDependencies:
       redux: '>=5.0.0'
-
-  redux-thunk@2.4.2:
-    resolution: {integrity: sha512-+P3TjtnP0k/FEjcBL5FZpoovtvrTNT/UXd4/sluaSyrURlSlhLSzEdfsTBW7WsKB6yPvgd7q/iZPICFjW4o57Q==}
-    peerDependencies:
-      redux: ^4
 
   redux-thunk@3.1.0:
     resolution: {integrity: sha512-NW2r5T6ksUKXCabzhL9z+h206HQw/NJkcLm1GPImRQ8IzfXwRGqjVhKJGauHirT0DAuyy6hjdnMZaRoAcy0Klw==}
@@ -6501,9 +6472,6 @@ packages:
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
-
-  reselect@3.0.1:
-    resolution: {integrity: sha512-b/6tFZCmRhtBMa4xGqiiRp9jh9Aqi2A687Lo265cN0/QohJQEBPiQ52f4QB6i0eF3yp3hmLL21LSGBcML2dlxA==}
 
   reselect@5.1.1:
     resolution: {integrity: sha512-K/BG6eIky/SBpzfHZv/dd+9JBFiS4SWV7FIujVyJRux6e45+73RaUHXLmIR1f7WOMaQ0U1km6qwklRQxpJJY0w==}
@@ -6822,9 +6790,6 @@ packages:
 
   style-to-object@1.0.8:
     resolution: {integrity: sha512-xT47I/Eo0rwJmaXC4oilDGDWLohVhR6o/xAQcPQN8q6QBuZVL8qMYL85kLmST5cPjAorwvqIA4qXTRQoYHaL6g==}
-
-  style-value-types@3.2.0:
-    resolution: {integrity: sha512-ih0mGsrYYmVvdDi++/66O6BaQPRPRMQHoZevNNdMMcPlP/cH28Rnfsqf1UEba/Bwfuw9T8BmIMwbGdzsPwQKrQ==}
 
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
@@ -9422,7 +9387,7 @@ snapshots:
 
   '@radix-ui/rect@1.1.0': {}
 
-  '@reduxjs/toolkit@2.8.2(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1))(react@19.1.0)':
+  '@reduxjs/toolkit@2.8.2(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1))(react@19.1.0)':
     dependencies:
       '@standard-schema/spec': 1.0.0
       '@standard-schema/utils': 0.3.0
@@ -9432,7 +9397,7 @@ snapshots:
       reselect: 5.1.1
     optionalDependencies:
       react: 19.1.0
-      react-redux: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1)
+      react-redux: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1)
 
   '@rolldown/pluginutils@1.0.0-beta.9': {}
 
@@ -10646,7 +10611,7 @@ snapshots:
       pify: 2.3.0
       strip-dirs: 2.1.0
 
-  deep-diff@0.3.4: {}
+  deep-diff@0.3.8: {}
 
   deep-eql@5.0.2: {}
 
@@ -11045,20 +11010,6 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
 
-  framer-motion@2.9.5:
-    dependencies:
-      framesync: 4.1.0
-      hey-listen: 1.0.8
-      popmotion: 9.0.0-rc.20
-      style-value-types: 3.2.0
-      tslib: 1.14.1
-    optionalDependencies:
-      '@emotion/is-prop-valid': 0.8.8
-
-  framesync@4.1.0:
-    dependencies:
-      hey-listen: 1.0.8
-
   fs-constants@1.0.0: {}
 
   fs-extra@11.3.0:
@@ -11395,8 +11346,6 @@ snapshots:
     dependencies:
       no-case: 2.3.2
       upper-case: 1.1.3
-
-  hey-listen@1.0.8: {}
 
   highlight.js@11.11.1: {}
 
@@ -12700,13 +12649,6 @@ snapshots:
       exsolve: 1.0.4
       pathe: 2.0.3
 
-  popmotion@9.0.0-rc.20:
-    dependencies:
-      framesync: 4.1.0
-      hey-listen: 1.0.8
-      style-value-types: 3.2.0
-      tslib: 1.14.1
-
   popper.js@1.16.1-lts: {}
 
   postcss-import@15.1.0(postcss@8.5.3):
@@ -12956,14 +12898,14 @@ snapshots:
       react-lifecycles-compat: 3.0.4
       symbol-observable: 4.0.0
 
-  react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1):
+  react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1):
     dependencies:
       '@types/use-sync-external-store': 0.0.6
       react: 19.1.0
       use-sync-external-store: 1.4.0(react@19.1.0)
     optionalDependencies:
       '@types/react': 19.1.5
-      redux: 4.2.1
+      redux: 5.0.1
 
   react-refresh@0.14.2: {}
 
@@ -13092,7 +13034,7 @@ snapshots:
       indent-string: 4.0.0
       strip-indent: 3.0.0
 
-  redux-form@8.3.10(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1))(react@19.1.0)(redux@4.2.1):
+  redux-form@8.3.10(react-redux@9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1))(react@19.1.0)(redux@5.0.1):
     dependencies:
       '@babel/runtime': 7.27.0
       es6-error: 4.1.1
@@ -13103,25 +13045,21 @@ snapshots:
       prop-types: 15.8.1
       react: 19.1.0
       react-is: 16.13.1
-      react-redux: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@4.2.1)
-      redux: 4.2.1
+      react-redux: 9.2.0(@types/react@19.1.5)(react@19.1.0)(redux@5.0.1)
+      redux: 5.0.1
 
-  redux-logger@2.10.2:
+  redux-logger@3.0.6:
     dependencies:
-      deep-diff: 0.3.4
+      deep-diff: 0.3.8
 
-  redux-mock-store@1.5.5(redux@4.2.1):
+  redux-mock-store@1.5.5(redux@5.0.1):
     dependencies:
       lodash.isplainobject: 4.0.6
-      redux: 4.2.1
+      redux: 5.0.1
 
-  redux-remember@5.2.0(redux@4.2.1):
+  redux-remember@5.2.0(redux@5.0.1):
     dependencies:
-      redux: 4.2.1
-
-  redux-thunk@2.4.2(redux@4.2.1):
-    dependencies:
-      redux: 4.2.1
+      redux: 5.0.1
 
   redux-thunk@3.1.0(redux@5.0.1):
     dependencies:
@@ -13272,8 +13210,6 @@ snapshots:
   repeat-string@1.6.1: {}
 
   require-from-string@2.0.2: {}
-
-  reselect@3.0.1: {}
 
   reselect@5.1.1: {}
 
@@ -13641,11 +13577,6 @@ snapshots:
   style-to-object@1.0.8:
     dependencies:
       inline-style-parser: 0.2.4
-
-  style-value-types@3.2.0:
-    dependencies:
-      hey-listen: 1.0.8
-      tslib: 1.14.1
 
   styled-jsx@5.1.6(@babel/core@7.26.10)(react@19.1.0):
     dependencies:

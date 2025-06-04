@@ -2,7 +2,7 @@ import { Button, Icon } from "@codaco/legacy-ui/components";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers, withProps } from "recompose";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { change, FieldArray, formValueSelector } from "redux-form";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 import NativeSelect from "./Fields/NativeSelect";

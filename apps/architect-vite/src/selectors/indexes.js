@@ -1,5 +1,5 @@
 import { isArray, values } from "lodash";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getProtocol } from "./protocol";
 import collectPath, { collectPaths } from "../utils/collectPaths";
 

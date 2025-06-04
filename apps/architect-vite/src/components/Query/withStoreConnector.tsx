@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { getCodebook } from "../../selectors/protocol";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 

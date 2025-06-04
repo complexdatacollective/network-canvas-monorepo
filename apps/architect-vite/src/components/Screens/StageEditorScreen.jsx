@@ -1,7 +1,7 @@
 import { Button } from "@codaco/legacy-ui/components";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps } from "recompose";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { isInvalid as isFormInvalid } from "redux-form";
 import { actionCreators as previewActions } from "../../ducks/modules/preview";
 import EditorScreen from "../Screen/EditorScreen";

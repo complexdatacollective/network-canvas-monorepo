@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { createStore } from "redux";
+import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import CodebookScreen from "../CodebookScreen";
 
