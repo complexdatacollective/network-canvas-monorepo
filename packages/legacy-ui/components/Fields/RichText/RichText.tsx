@@ -204,8 +204,6 @@ const RichText = ({
 		[editor],
 	);
 
-	console.log("slate vakue", value);
-
 	return (
 		<Slate editor={editor} initialValue={value} value={value} onChange={setValue}>
 			<RichTextContainer>

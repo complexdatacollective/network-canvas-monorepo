@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
-import thunks from "redux-thunk";
 import reducer, { actionCreators } from "../dialogs";
 
 describe("dialogs", () => {
 	it("initialState", () => {
-		expect(reducer()).toEqual({
+		expect(reducer(undefined, { type: "@@INIT" })).toEqual({
 			dialogs: [],
 		});
 	});
@@ -14,7 +13,16 @@ describe("dialogs", () => {
 		let store;
 
 		beforeEach(() => {
-			store = createStore(reducer, undefined, applyMiddleware(thunks));
+			store = configureStore({ 
+				reducer,
+				middleware: (getDefaultMiddleware) =>
+					getDefaultMiddleware({
+						serializableCheck: {
+							ignoredPaths: ['dialogs'],
+							ignoredActions: ['dialogs/addDialog']
+						}
+					})
+			});
 		});
 
 		it("OPEN and CLOSE_DIALOG", () => {
@@ -45,7 +53,16 @@ describe("dialogs", () => {
 		});
 
 		beforeEach(() => {
-			store = createStore(reducer, undefined, applyMiddleware(thunks));
+			store = configureStore({ 
+				reducer,
+				middleware: (getDefaultMiddleware) =>
+					getDefaultMiddleware({
+						serializableCheck: {
+							ignoredPaths: ['dialogs'],
+							ignoredActions: ['dialogs/addDialog', 'dialogs/openDialog/pending', 'dialogs/openDialog/fulfilled']
+						}
+					})
+			});
 		});
 
 		it("Returns a promise", () => {
@@ -53,33 +70,36 @@ describe("dialogs", () => {
 
 			expect.assertions(1);
 
-			expect(store.dispatch(actionCreators.openDialog(dialog))).toBeInstanceOf(Promise);
+			const result = store.dispatch(actionCreators.openDialog(dialog));
+			expect(result).toBeInstanceOf(Promise);
 		});
 
-		it("Promise resolves to `false` when onCancel is called", () => {
+		it("Promise resolves to `false` when onCancel is called", async () => {
 			const dialog = getDialog();
 
 			expect.assertions(1);
 
-			const subject = expect(store.dispatch(actionCreators.openDialog(dialog))).resolves.toBe(false);
+			const resultPromise = store.dispatch(actionCreators.openDialog(dialog));
 
 			const state = store.getState();
 			state.dialogs[0].onCancel();
 
-			return subject;
+			const result = await resultPromise;
+			expect(result.payload).toBe(false);
 		});
 
-		it("Promise resolves to `true` when onConfirm is called", () => {
+		it("Promise resolves to `true` when onConfirm is called", async () => {
 			const dialog = getDialog();
 
 			expect.assertions(1);
 
-			const subject = expect(store.dispatch(actionCreators.openDialog(dialog))).resolves.toBe(true);
+			const resultPromise = store.dispatch(actionCreators.openDialog(dialog));
 
 			const state = store.getState();
 			state.dialogs[0].onConfirm();
 
-			return subject;
+			const result = await resultPromise;
+			expect(result.payload).toBe(true);
 		});
 	});
 });

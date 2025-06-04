@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
-import thunk from "redux-thunk";
 import configureStore from "redux-mock-store";
 import reducer, { actionCreators, actionTypes } from "../screens";
 import { actionTypes as sessionActionTypes } from "../../session";
 
-const mockStore = configureStore([thunk]);
+const mockStore = configureStore([]);
 
 const initialState = {
 	root: {

@@ -11,7 +11,7 @@ import stacks from "./stacks";
 import toasts from "./toasts";
 import ui from "./ui/index";
 
-const protocolPattern = /^PROTOCOL\//;
+const protocolPattern = /^(PROTOCOL\/|protocol\/)/;
 
 const timelineOptions = {
 	exclude: ({ type }) => !protocolPattern.test(type.toString()),

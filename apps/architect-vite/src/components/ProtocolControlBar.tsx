@@ -1,5 +1,6 @@
 import { Button, Spinner } from "@codaco/legacy-ui/components";
-import { useCallback } from "react";
+import { createSelector } from "@reduxjs/toolkit";
+import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ControlBar from "~/components/ControlBar";
 import { UnsavedChanges } from "~/components/Dialogs";
@@ -10,6 +11,11 @@ import { actionLocks as protocolsLocks, actionCreators as userActions } from "~/
 import logoutIcon from "~/images/home/log-out.svg";
 import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/protocol";
 
+const getIsSaving = createSelector(
+	[(state) => state],
+	(state) => statusSelectors.getIsBusy(state, protocolsLocks.saving),
+);
+
 const unsavedChangesDialog = UnsavedChanges({
 	message: <p>Your protocol has changes that have not yet been saved. Continuing will discard these changes!</p>,
 	confirmLabel: "Discard Changes",
@@ -18,7 +24,7 @@ const unsavedChangesDialog = UnsavedChanges({
 const ProtocolControlBar = () => {
 	const dispatch = useDispatch();
 	const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
-	const isSaving = useSelector((state) => statusSelectors.getIsBusy(state, protocolsLocks.saving));
+	const isSaving = useSelector(getIsSaving);
 	const protocolIsValid = useSelector(getIsProtocolValid);
 	const saveNetcanvas = useCallback(() => dispatch(userActions.saveNetcanvas()), [dispatch]);
 
@@ -41,47 +47,55 @@ const ProtocolControlBar = () => {
 		[dispatch, hasUnsavedChanges],
 	);
 
+	const secondaryButtons = useMemo(
+		() => [
+			<Button
+				key="return-button"
+				color="platinum"
+				icon={
+					<div>
+						<img src={logoutIcon} alt="Return to start screen" />
+					</div>
+				}
+				onClick={handleClickStart}
+			>
+				Return to start screen
+			</Button>,
+		],
+		[handleClickStart],
+	);
+
+	const buttons = useMemo(() => {
+		if (protocolIsValid && hasUnsavedChanges) {
+			return [
+				<Button
+					key="save-button"
+					onClick={saveNetcanvas}
+					color="primary"
+					data-variant="save"
+					disabled={isSaving}
+					content={isSaving ? "Saving..." : "Save Changes"}
+					iconPosition="right"
+					icon={
+						isSaving ? (
+							<div>
+								<Spinner size="0.5rem" />
+							</div>
+						) : (
+							"arrow-right"
+						)
+					}
+				/>,
+			];
+		}
+		return [];
+	}, [protocolIsValid, hasUnsavedChanges, saveNetcanvas, isSaving]);
+
 	return (
 		<ControlBar
 			show
-			secondaryButtons={[
-				<Button
-					key="return-button"
-					color="platinum"
-					icon={
-						<div>
-							<img src={logoutIcon} alt="Return to start screen" />
-						</div>
-					}
-					onClick={handleClickStart}
-				>
-					Return to start screen
-				</Button>,
-			]}
-			buttons={[
-				...(protocolIsValid && hasUnsavedChanges
-					? [
-							<Button
-								key="save-button"
-								onClick={saveNetcanvas}
-								color="primary"
-								data-variant="save"
-								disabled={isSaving}
-								content={isSaving ? "Saving..." : "Save Changes"}
-								iconPosition="right"
-								icon={
-									isSaving ? (
-										<div>
-											<Spinner size="0.5rem" />
-										</div>
-									) : (
-										"arrow-right"
-									)
-								}
-							/>,
-						]
-					: []),
-			]}
+			secondaryButtons={secondaryButtons}
+			buttons={buttons}
 		/>
 	);
 };

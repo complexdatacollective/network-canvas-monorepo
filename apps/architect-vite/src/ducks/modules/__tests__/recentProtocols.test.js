@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
 import { configureStore } from "@reduxjs/toolkit";
-import thunk from "redux-thunk";
 import { actionTypes as sessionActionTypes } from "../session";
 import reducer from "../recentProtocols";
 
@@ -15,7 +14,10 @@ describe("recentProtocols", () => {
 		let store;
 
 		beforeEach(() => {
-			store = createStore(reducer, applyMiddleware(thunk));
+			store = configureStore({
+				reducer: { recentProtocols: reducer },
+				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
+			});
 		});
 
 		it("Removes protocol on open error", () => {

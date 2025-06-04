@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 
 import { set } from "es-toolkit/compat";
 import configureStore from "redux-mock-store";
-import thunk from "redux-thunk";
 import { v4 as uuid } from "uuid";
 import { getThunkMocks } from "~/__tests__/helpers";
 import testState from "../../../../__tests__/testState.json";
@@ -11,7 +10,7 @@ import { test as stageActions } from "../utils/stages";
 
 vi.mock("uuid");
 
-const mockStore = configureStore([thunk]);
+const mockStore = configureStore([]);
 
 describe("protocol.codebook", () => {
 	describe("reducer", () => {

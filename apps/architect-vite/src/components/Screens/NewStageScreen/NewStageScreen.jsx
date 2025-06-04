@@ -6,6 +6,7 @@ import Fuse from "fuse.js";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect, useDispatch, useSelector } from "react-redux";
+import { createSelector } from "@reduxjs/toolkit";
 import Screen from "~/components/Screen/Screen";
 import Tag from "~/components/Tag";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
@@ -23,6 +24,11 @@ const fuseOptions = {
 	distance: 10000, // Needed because keywords are long strings
 	keys: ["title", "description", "keywords"],
 };
+
+const getLatestLocus = createSelector(
+	[(state) => state.protocol.timeline],
+	(timeline) => (timeline && timeline.length > 0 ? timeline[timeline.length - 1] : null),
+);
 
 const fuse = new Fuse(INTERFACE_TYPES, fuseOptions);
 
@@ -49,7 +55,7 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments }) => {
 	const [cursorActive, setCursorActive] = useState(false);
 	const [mouseMoved, setMouseMoved] = useState(false);
 
-	const locus = useSelector((state) => state.protocol.timeline[state.protocol.timeline.length - 1]);
+	const locus = useSelector(getLatestLocus);
 
 	const filteredInterfaces = useMemo(() => {
 		let interfaces = search(query, selectedTags).filter(({ tags: interfaceTags }) =>

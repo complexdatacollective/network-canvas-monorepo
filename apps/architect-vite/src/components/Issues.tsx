@@ -2,7 +2,7 @@ import { Icon } from "@codaco/legacy-ui/components";
 import { isEmpty, map } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
 import { flattenIssues, getFieldId } from "../utils/issues";
@@ -26,7 +26,8 @@ type IssuesProps = {
 };
 
 const Issues = ({ show = true, form, hideIssues }: IssuesProps) => {
-	const issues = useSelector(getFormSyncErrors(form));
+	const formSyncErrorsSelector = useMemo(() => getFormSyncErrors(form), [form]);
+	const issues = useSelector(formSyncErrorsSelector);
 	const [open, setOpen] = useState(true);
 	const flatIssues = flattenIssues(issues);
 	const issueRefs = useRef<Record<string, HTMLElement | null>>({});

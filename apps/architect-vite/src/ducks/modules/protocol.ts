@@ -18,8 +18,8 @@ interface ProtocolState {
 
 const initialState: ProtocolState = {};
 
-// Create the protocol slice
-const protocolSlice = createSlice({
+// Enhanced protocol slice with all necessary actions
+const enhancedProtocolSlice = createSlice({
 	name: "protocol",
 	initialState,
 	reducers: {
@@ -40,44 +40,63 @@ const protocolSlice = createSlice({
 				...action.payload.protocol,
 			};
 		},
+		// Legacy actions for backward compatibility
+		legacySet: (state, action: PayloadAction<{ protocol: ProtocolState }>) => {
+			return { ...action.payload.protocol };
+		},
+		legacyUpdateOptions: (
+			state,
+			action: PayloadAction<{ options: { name?: string; version?: string; description?: string } }>,
+		) => {
+			return {
+				...state,
+				...pick(action.payload.options, ["name", "version", "description"]),
+			};
+		},
 	},
-});
-
-// Extract actions
-const { setProtocol: setProtocolAction, updateOptions: updateOptionsAction, resetSession, openNetcanvasSuccess } = protocolSlice.actions;
-
-// Create the main protocol reducer function
-const protocolReducer = (state: ProtocolState = initialState, action: any = {}): ProtocolState => {
-	// Handle our slice actions
-	if (action.type?.startsWith("protocol/")) {
-		return protocolSlice.reducer(state, action);
-	}
-
-	// Handle legacy action types for backward compatibility
-	switch (action.type) {
-		case "SESSION/RESET_SESSION":
+	extraReducers: (builder) => {
+		// Handle session actions from other modules
+		builder.addCase("SESSION/RESET_SESSION" as any, () => {
 			return initialState;
-		case "PROTOCOL/SET":
-			return { ...action.protocol };
-		case "SESSION/OPEN_NETCANVAS_SUCCESS":
+		});
+		builder.addCase("SESSION/OPEN_NETCANVAS_SUCCESS" as any, (state, action: any) => {
 			return {
 				...action.payload.protocol,
 			};
-		case "PROTOCOL/UPDATE_OPTIONS":
+		});
+		// Handle legacy protocol actions
+		builder.addCase("PROTOCOL/SET" as any, (state, action: any) => {
+			return { ...action.protocol };
+		});
+		builder.addCase("PROTOCOL/UPDATE_OPTIONS" as any, (state, action: any) => {
 			return {
 				...state,
 				...pick(action.options, ["name", "version", "description"]),
 			};
-		default:
-			return state;
-	}
-};
+		});
+	},
+});
+
+// Extract actions from enhanced slice
+const {
+	setProtocol: setProtocolAction,
+	updateOptions: updateOptionsAction,
+	resetSession,
+	openNetcanvasSuccess,
+	legacySet,
+	legacyUpdateOptions,
+} = enhancedProtocolSlice.actions;
 
 // Utility function to combine multiple reducers (preserving the original pattern)
 const reduceReducers =
-	<T,>(...reducers: Array<(state: T, action: any) => T>) =>
+	<T>(...reducers: Array<(state: T, action: any) => T>) =>
 	(previousState: T, action: any): T =>
 		reducers.reduce((state, reducer) => reducer(state, action), previousState);
+
+// Create the main protocol reducer function using RTK slice
+const protocolReducer = (state: ProtocolState = initialState, action: any): ProtocolState => {
+	return enhancedProtocolSlice.reducer(state, action);
+};
 
 // Export the combined reducer with sub-reducers (maintaining the original structure)
 export default reduceReducers(protocolReducer, (state: ProtocolState, action: any) => {
@@ -89,33 +108,45 @@ export default reduceReducers(protocolReducer, (state: ProtocolState, action: an
 	};
 });
 
-// Action creators (maintaining compatibility)
-const updateOptions = (options: { name?: string; version?: string; description?: string }) => ({
+// Legacy action creators for backward compatibility
+const updateOptionsLegacy = (options: { name?: string; version?: string; description?: string }) => ({
 	type: "PROTOCOL/UPDATE_OPTIONS",
 	options,
 });
 
-const setProtocol = (meta: unknown, protocol: ProtocolState) => ({
+const setProtocolLegacy = (meta: unknown, protocol: ProtocolState) => ({
 	type: "PROTOCOL/SET",
 	meta,
 	protocol,
 });
 
-// Export action creators and types for compatibility
+// Modern RTK action creators
+const updateOptions = (options: { name?: string; version?: string; description?: string }) =>
+	updateOptionsAction(options);
+
+const setProtocol = (meta: unknown, protocol: ProtocolState) => setProtocolAction({ meta, protocol });
+
+// Export action creators with both legacy and modern versions
 export const actionCreators = {
+	// Modern RTK actions (preferred)
 	updateOptions: saveableChange(updateOptions),
 	setProtocol,
-	// Also export RTK versions for new code
-	updateOptionsRTK: (options: { name?: string; version?: string; description?: string }) => updateOptionsAction(options),
-	setProtocolRTK: (meta: unknown, protocol: ProtocolState) => setProtocolAction({ meta, protocol }),
+	resetSession,
+	openNetcanvasSuccess,
+	// Legacy actions for backward compatibility
+	updateOptionsLegacy: saveableChange(updateOptionsLegacy),
+	setProtocolLegacy,
 };
 
 export const actionTypes = {
-	UPDATE_OPTIONS: "PROTOCOL/UPDATE_OPTIONS",
-	SET_PROTOCOL: "PROTOCOL/SET",
-	// RTK action types
-	UPDATE_OPTIONS_RTK: "protocol/updateOptions",
-	SET_PROTOCOL_RTK: "protocol/setProtocol",
+	// Modern RTK action types (preferred)
+	UPDATE_OPTIONS: "protocol/updateOptions",
+	SET_PROTOCOL: "protocol/setProtocol",
+	RESET_SESSION: "protocol/resetSession",
+	OPEN_NETCANVAS_SUCCESS: "protocol/openNetcanvasSuccess",
+	// Legacy action types for backward compatibility
+	UPDATE_OPTIONS_LEGACY: "PROTOCOL/UPDATE_OPTIONS",
+	SET_PROTOCOL_LEGACY: "PROTOCOL/SET",
 };
 
 // Export types for use in other parts of the application

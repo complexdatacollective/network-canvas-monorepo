@@ -1,5 +1,5 @@
 import * as Fields from "@codaco/legacy-ui/components/Fields";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
@@ -60,8 +60,23 @@ const EncryptedVariables = () => {
 				</>
 			}
 		>
-			{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
+{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
 				const hasEncryptedVariable = Object.values(nodeType.variables || {}).some((variable) => variable.encrypted);
+				
+				// Memoize these calculations to avoid recreating arrays on every render
+				const variables = nodeType.variables || {};
+				const variableOptions = useMemo(() => 
+					Object.entries(variables).map(([variableId, variable]) => ({
+						value: variableId,
+						label: variable.name,
+					})), [variables]
+				);
+				
+				const encryptedVariableIds = useMemo(() => 
+					Object.entries(variables)
+						.filter(([, variable]) => variable.encrypted)
+						.map(([variableId]) => variableId), [variables]
+				);
 
 				return (
 					<Section
@@ -81,15 +96,10 @@ const EncryptedVariables = () => {
 						>
 							<DetachedField
 								component={Fields.CheckboxGroup}
-								options={Object.entries(nodeType.variables || {}).map(([variableId, variable]) => ({
-									value: variableId,
-									label: variable.name,
-								}))}
-								value={Object.entries(nodeType.variables || {})
-									.filter(([, variable]) => variable.encrypted)
-									.map(([variableId]) => variableId)}
+								options={variableOptions}
+								value={encryptedVariableIds}
 								onChange={(selectedValues) => {
-									Object.entries(nodeType.variables || {}).forEach(([variableId, variable]) => {
+									Object.entries(variables).forEach(([variableId, variable]) => {
 										const shouldEncrypt = selectedValues.includes(variableId);
 										if (variable.encrypted !== shouldEncrypt) {
 											handleEncryptionToggle(variableId, shouldEncrypt, variable);
