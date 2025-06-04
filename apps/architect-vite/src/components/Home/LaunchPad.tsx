@@ -93,7 +93,6 @@ const LaunchPad = ({
 	</>
 );
 
-
 const mapStateToProps = (state) => {
 	const recentProtocols = get(state, "recentProtocols", []).filter((meta) => !!meta.schemaVersion);
 

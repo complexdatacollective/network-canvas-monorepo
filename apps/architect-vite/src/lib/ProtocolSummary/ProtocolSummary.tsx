@@ -15,7 +15,8 @@ declare const remote: any;
 const closeWindow = () => remote.getCurrentWindow().hide();
 
 // Create a formatted date string that can be used in a filename (no illegal chars)
-const dateWithSafeChars = (date: string, replaceWith = "-") => date.replace(/[^a-zA-Z\d\s]/gi, replaceWith).toLowerCase();
+const dateWithSafeChars = (date: string, replaceWith = "-") =>
+	date.replace(/[^a-zA-Z\d\s]/gi, replaceWith).toLowerCase();
 
 type ProtocolSummaryProps = {
 	data?: {
@@ -118,6 +119,5 @@ const ProtocolSummary = ({ data = {} }: ProtocolSummaryProps) => {
 		</SummaryContext.Provider>
 	);
 };
-
 
 export default ProtocolSummary;

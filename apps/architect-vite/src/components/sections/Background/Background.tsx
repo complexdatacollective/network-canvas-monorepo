@@ -95,7 +95,6 @@ class Background extends PureComponent<BackgroundProps> {
 	}
 }
 
-
 export { Background };
 
 export default compose(withBackgroundChangeHandler)(Background);

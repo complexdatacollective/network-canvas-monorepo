@@ -1,7 +1,8 @@
 import { Icon } from "@codaco/legacy-ui/components";
 import { isEmpty, map } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
-import React, { useEffect, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
 import { flattenIssues, getFieldId } from "../utils/issues";
@@ -141,6 +142,5 @@ const Issues = ({ show = true, form, hideIssues }: IssuesProps) => {
 		</AnimatePresence>
 	);
 };
-
 
 export default Issues;

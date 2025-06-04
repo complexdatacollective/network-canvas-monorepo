@@ -1,7 +1,7 @@
 import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { keys as getKeys, isNull, toPairs } from "es-toolkit/compat";
-import React from "react";
+import type React from "react";
 import { Field } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
 import Validation from "./Validation";
@@ -156,6 +156,5 @@ const Validations = ({
 		</div>
 	);
 };
-
 
 export default Validations;

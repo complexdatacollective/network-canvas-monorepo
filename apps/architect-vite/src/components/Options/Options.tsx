@@ -1,8 +1,8 @@
 import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
-import React from "react";
+import type React from "react";
 import { compose, defaultProps, withHandlers } from "recompose";
-import { FieldArray, FieldArrayRenderProps } from "redux-form";
+import { FieldArray } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
 import Option from "./Option";
 
@@ -73,6 +73,5 @@ const Options = ({ name, label = "", ...rest }: OptionsProps) => (
 		{...rest}
 	/>
 );
-
 
 export default Options;

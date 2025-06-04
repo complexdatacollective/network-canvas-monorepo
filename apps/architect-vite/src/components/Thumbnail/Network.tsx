@@ -18,5 +18,4 @@ const NetworkThumbnail = ({ id, meta = { name: "" } }: NetworkThumbnailProps) =>
 	</div>
 );
 
-
 export default withAssetMeta(NetworkThumbnail);

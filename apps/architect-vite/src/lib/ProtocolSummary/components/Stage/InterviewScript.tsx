@@ -13,5 +13,4 @@ const InterviewScript = ({ interviewScript = null }: InterviewScriptProps) => (
 	</div>
 );
 
-
 export default InterviewScript;

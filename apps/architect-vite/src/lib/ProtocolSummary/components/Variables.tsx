@@ -81,5 +81,4 @@ const Variables = ({ variables }: VariablesProps) => {
 	);
 };
 
-
 export default Variables;

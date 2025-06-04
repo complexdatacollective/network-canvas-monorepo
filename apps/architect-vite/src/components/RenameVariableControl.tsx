@@ -1,7 +1,8 @@
 import { Button } from "@codaco/legacy-ui/components";
 import TextField from "@codaco/legacy-ui/components/Fields/Text";
 import { get, values } from "es-toolkit/compat";
-import React, { useCallback, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { Field } from "redux-form";
 import BasicForm from "~/components/BasicForm";
@@ -19,7 +20,13 @@ type RenameVariableControlProps = {
 	id: string;
 	entity: string;
 	type?: string | null;
-	updateVariable: (entity: string, type: string | null, id: string, data: { name: string }, shouldNotify?: boolean) => void;
+	updateVariable: (
+		entity: string,
+		type: string | null,
+		id: string,
+		data: { name: string },
+		shouldNotify?: boolean,
+	) => void;
 	name?: string | null;
 	existingVariableNames?: string[];
 	children: ({ onClick }: { onClick: () => void }) => React.ReactNode;
@@ -103,7 +110,6 @@ const RenameVariableControl = ({
 		</>
 	);
 };
-
 
 const mapStateToProps = (state, { entity, type, id }) => {
 	const entityDefinition = getType(state, { entity, type });

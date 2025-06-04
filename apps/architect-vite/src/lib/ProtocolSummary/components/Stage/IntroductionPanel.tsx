@@ -23,5 +23,4 @@ const IntroductionPanel = ({ introductionPanel = null }: IntroductionPanelProps)
 	);
 };
 
-
 export default IntroductionPanel;

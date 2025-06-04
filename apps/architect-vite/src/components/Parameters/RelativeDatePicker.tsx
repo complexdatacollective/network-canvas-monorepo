@@ -2,7 +2,8 @@ import { DatePicker } from "@codaco/legacy-ui/components/Fields";
 import { DATE_FORMATS } from "@codaco/legacy-ui/components/Fields/DatePicker";
 import Number from "@codaco/legacy-ui/components/Fields/Number";
 import Toggle from "@codaco/legacy-ui/components/Fields/Toggle";
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
@@ -14,11 +15,7 @@ type RelativeDatePickerParametersProps = {
 	anchorValue?: string | null;
 };
 
-const RelativeDatePickerParameters = ({
-	name,
-	anchorValue = null,
-	resetField,
-}: RelativeDatePickerParametersProps) => {
+const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: RelativeDatePickerParametersProps) => {
 	const dateFormat = DATE_FORMATS.full;
 	const [useInterviewDate, setUseInterviewDate] = useState(!anchorValue);
 	return (
@@ -72,7 +69,6 @@ const RelativeDatePickerParameters = ({
 		</>
 	);
 };
-
 
 const mapStateToProps = (state, { name, form }) => ({
 	anchorValue: formValueSelector(form)(state, `${name}.anchor`),

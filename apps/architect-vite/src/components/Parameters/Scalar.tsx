@@ -26,5 +26,4 @@ const ScalarParameters = ({ name }: ScalarParametersProps) => (
 	</>
 );
 
-
 export default ScalarParameters;

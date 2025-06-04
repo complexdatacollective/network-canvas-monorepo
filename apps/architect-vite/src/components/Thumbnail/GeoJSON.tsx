@@ -18,5 +18,4 @@ const GeoJSONThumbnail = ({ id, meta = { name: "" } }: GeoJSONThumbnailProps) =>
 	</div>
 );
 
-
 export default withAssetMeta(GeoJSONThumbnail);

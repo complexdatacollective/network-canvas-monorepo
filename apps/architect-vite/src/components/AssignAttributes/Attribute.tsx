@@ -61,5 +61,4 @@ const Attribute = ({
 	</div>
 );
 
-
 export default compose(withAttributeHandlers, withCreateVariableHandler)(Attribute);

@@ -51,7 +51,6 @@ const AssetBrowserScreen = ({ layoutId = null, onComplete }: AssetBrowserScreenP
 	);
 };
 
-
 export { AssetBrowserScreen };
 
 export default AssetBrowserScreen;

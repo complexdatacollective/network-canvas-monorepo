@@ -41,5 +41,4 @@ const Form = ({ form = null }: FormProps) => {
 	);
 };
 
-
 export default Form;

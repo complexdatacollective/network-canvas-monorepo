@@ -49,5 +49,4 @@ const Items = ({ items = null }: ItemsProps) => {
 	);
 };
 
-
 export default Items;

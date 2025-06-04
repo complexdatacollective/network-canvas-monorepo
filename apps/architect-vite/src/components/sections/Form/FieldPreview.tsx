@@ -32,5 +32,4 @@ const FieldPreview = ({ variable, prompt, entity, type = null }: FieldPreviewPro
 	);
 };
 
-
 export default withSubject(FieldPreview);

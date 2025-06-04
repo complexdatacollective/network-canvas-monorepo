@@ -32,7 +32,8 @@ const Validation = ({
 }: ValidationProps) => {
 	const handleKeyChange = (option: string) => onUpdate(option, itemValue, itemKey || "");
 
-	const handleValueChange = (newValue: boolean | number | string | null) => onUpdate(itemKey || "", newValue, itemKey || "");
+	const handleValueChange = (newValue: boolean | number | string | null) =>
+		onUpdate(itemKey || "", newValue, itemKey || "");
 
 	const keyInputProps = {
 		value: itemKey,
@@ -83,6 +84,5 @@ const Validation = ({
 		</div>
 	);
 };
-
 
 export default Validation;

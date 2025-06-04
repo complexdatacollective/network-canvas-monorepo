@@ -124,7 +124,6 @@ const GridManager = ({
 	</Section>
 );
 
-
 const withDefaultFieldName = defaultProps({
 	fieldName: "items",
 });

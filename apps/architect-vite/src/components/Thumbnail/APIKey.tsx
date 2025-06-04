@@ -18,5 +18,4 @@ const APIKeyThumbnail = ({ id, meta = { name: "" } }: APIKeyThumbnailProps) => (
 	</div>
 );
 
-
 export default withAssetMeta(APIKeyThumbnail);

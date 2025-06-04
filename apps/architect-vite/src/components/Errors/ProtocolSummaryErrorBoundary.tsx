@@ -1,6 +1,6 @@
 import Button from "@codaco/legacy-ui/components/Button";
 import { remote } from "electron";
-import React, { Component, ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 const closeWindow = () => remote.getCurrentWindow().hide();
 
@@ -12,7 +12,10 @@ type ProtocolSummaryErrorBoundaryState = {
 	error: Error | null;
 };
 
-class ProtocolSummaryErrorBoundary extends Component<ProtocolSummaryErrorBoundaryProps, ProtocolSummaryErrorBoundaryState> {
+class ProtocolSummaryErrorBoundary extends Component<
+	ProtocolSummaryErrorBoundaryProps,
+	ProtocolSummaryErrorBoundaryState
+> {
 	constructor(props: ProtocolSummaryErrorBoundaryProps) {
 		super(props);
 		this.state = { error: null };
@@ -57,6 +60,5 @@ class ProtocolSummaryErrorBoundary extends Component<ProtocolSummaryErrorBoundar
 		return children;
 	}
 }
-
 
 export default ProtocolSummaryErrorBoundary;

@@ -19,12 +19,7 @@ type DateTimeParametersProps = {
 	resetRangeFields: () => void;
 };
 
-const DateTimeParameters = ({
-	name,
-	type = "full",
-	setSelectDefault,
-	resetRangeFields,
-}: DateTimeParametersProps) => {
+const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeFields }: DateTimeParametersProps) => {
 	const dateFormat = type ? DATE_FORMATS[type] : DATE_FORMATS.full;
 	const [useDateFormat, setUseDateFormat] = useState(type);
 
@@ -92,7 +87,6 @@ const DateTimeParameters = ({
 		</>
 	);
 };
-
 
 const mapDispatchToProps = (dispatch, { name, form }) => ({
 	setSelectDefault: () => dispatch(change(form, `${name}.type`, "full")),

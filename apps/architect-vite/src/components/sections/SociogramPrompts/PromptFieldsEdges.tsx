@@ -100,5 +100,4 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 	);
 };
 
-
 export default DisplayEdges;

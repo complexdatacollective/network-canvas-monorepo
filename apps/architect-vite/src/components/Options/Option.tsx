@@ -2,7 +2,7 @@ import { Icon } from "@codaco/legacy-ui/components";
 import RichTextField from "@codaco/legacy-ui/components/Fields/RichText";
 import TextField from "@codaco/legacy-ui/components/Fields/Text";
 import { toNumber } from "es-toolkit/compat";
-import React from "react";
+import type React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import ValidatedField from "~/components/Form/ValidatedField";
@@ -80,7 +80,6 @@ const Option = ({ field, handleDelete }: OptionProps) => (
 		</div>
 	</div>
 );
-
 
 const mapDispatchToItemProps = {
 	openDialog: dialogsActions.openDialog,

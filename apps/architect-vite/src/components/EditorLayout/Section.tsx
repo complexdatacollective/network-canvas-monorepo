@@ -1,7 +1,8 @@
 import { Toggle } from "@codaco/legacy-ui/components/Fields";
 import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
-import React, { useCallback, useEffect, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import IssueAnchor from "../IssueAnchor";
 
 const animations = {
@@ -105,6 +106,5 @@ const Section = ({
 		</fieldset>
 	);
 };
-
 
 export default Section;

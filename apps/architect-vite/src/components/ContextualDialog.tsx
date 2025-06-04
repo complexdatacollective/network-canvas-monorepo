@@ -1,6 +1,7 @@
-import React, { useCallback } from "react";
 import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import cx from "classnames";
+import type React from "react";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import Stackable from "~/components/Stackable";
 
@@ -16,9 +17,7 @@ type TitleProps = {
 	children?: React.ReactNode;
 };
 
-export const Title = ({ children = null }: TitleProps) => (
-	<h2 className="contextual-dialog__title">{children}</h2>
-);
+export const Title = ({ children = null }: TitleProps) => <h2 className="contextual-dialog__title">{children}</h2>;
 
 type DialogProps = {
 	children?: React.ReactNode;

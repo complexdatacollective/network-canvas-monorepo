@@ -25,7 +25,6 @@ const SortOrder = ({ rules }: SortOrderProps) => {
 	return <ol className="protocol-summary-stage__prompts-sort">{result}</ol>;
 };
 
-
 const attributes = [
 	["layout.layoutVariable", "Layout variable", (id) => <Variable id={id} />],
 	["variable", "Variable", (id) => <Variable id={id} />],
@@ -86,6 +85,5 @@ const Prompt = ({ text, additionalAttributes = [], ...prompt }: PromptProps) => 
 		</div>
 	);
 };
-
 
 export default Prompt;

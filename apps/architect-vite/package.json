@@ -32,7 +32,6 @@
 		"es-toolkit": "^1.38.0",
 		"fuse.js": "^3.6.1",
 		"history": "^4.7.2",
-		"is-hotkey": "^0.2.0",
 		"jszip": "^3.10.1",
 		"lodash": "^4.17.19",
 		"lucide-react": "catalog:",

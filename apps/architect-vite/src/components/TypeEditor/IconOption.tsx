@@ -15,5 +15,4 @@ const IconOption = (props: IconOptionProps) => (
 	/>
 );
 
-
 export default IconOption;

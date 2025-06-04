@@ -1,7 +1,7 @@
 import { Icon } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { motion } from "motion/react";
-import React from "react";
+import type React from "react";
 
 const baseVariant = {
 	initial: { opacity: 0 },
@@ -58,6 +58,5 @@ const Group = ({
 		</motion.div>
 	);
 };
-
 
 export default Group;

@@ -1,5 +1,5 @@
 import { Button } from "@codaco/legacy-ui/components";
-import React, { Component, ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 type CardErrorBoundaryProps = {
 	children?: ReactNode;
@@ -51,6 +51,5 @@ class CardErrorBoundary extends Component<CardErrorBoundaryProps, CardErrorBound
 		return children;
 	}
 }
-
 
 export default CardErrorBoundary;

@@ -21,7 +21,14 @@ type FormProps = {
 	entity?: string | null;
 };
 
-const Form = ({ handleChangeFields, form, disabled = false, type = null, entity = null, disableFormTitle = false }: FormProps) => (
+const Form = ({
+	handleChangeFields,
+	form,
+	disabled = false,
+	type = null,
+	entity = null,
+	disableFormTitle = false,
+}: FormProps) => (
 	<Section
 		disabled={disabled}
 		group
@@ -69,7 +76,6 @@ const Form = ({ handleChangeFields, form, disabled = false, type = null, entity 
 		/>
 	</Section>
 );
-
 
 export { Form };
 

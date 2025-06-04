@@ -61,5 +61,4 @@ const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
 	);
 };
 
-
 export default RemoveAfterConsideration;

@@ -1,5 +1,5 @@
 import Button from "@codaco/legacy-ui/components/Button";
-import { FieldArrayFieldsProps } from "redux-form";
+import type { FieldArrayFieldsProps } from "redux-form";
 import Attribute from "./Attribute";
 import withAssignAttributesHandlers from "./withAssignAttributesHandlers";
 
@@ -57,6 +57,5 @@ const AssignAttributes = ({
 		</div>
 	</div>
 );
-
 
 export default withAssignAttributesHandlers(AssignAttributes);

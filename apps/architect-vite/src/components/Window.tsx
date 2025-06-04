@@ -1,6 +1,6 @@
 import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import cx from "classnames";
-import React from "react";
+import type React from "react";
 import { createPortal } from "react-dom";
 import Stackable from "~/components/Stackable";
 
@@ -60,6 +60,5 @@ const WindowFrame = ({
 		document.body,
 	);
 };
-
 
 export default WindowFrame;

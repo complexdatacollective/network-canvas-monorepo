@@ -40,7 +40,7 @@ type MapOptionsProps = {
 	disabled: boolean;
 };
 
-const getDefaultMapOptions = () => ({
+const defaultMapOptions = {
 	center: [0, 0],
 	tokenAssetId: "",
 	initialZoom: 0,
@@ -48,11 +48,9 @@ const getDefaultMapOptions = () => ({
 	color: "",
 	targetFeatureProperty: "",
 	style: "",
-});
+};
 
-const MapOptions = ({ mapOptions = getDefaultMapOptions(), disabled, ...props }: MapOptionsProps) => {
-	const { mapOptions, disabled } = props;
-
+const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(mapOptions?.dataSourceAssetId, true, "geojson");
 
 	const { paletteName, paletteSize } = { paletteName: ["ord-color-seq"], paletteSize: 8 };

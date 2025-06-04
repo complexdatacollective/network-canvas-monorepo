@@ -13,7 +13,15 @@ type GridItemProps = {
 	id: string;
 } & Record<string, any>;
 
-const GridItem = ({ fields, editField = null, onEditItem, previewComponent: PreviewComponent, index, id, ...rest }: GridItemProps) => {
+const GridItem = ({
+	fields,
+	editField = null,
+	onEditItem,
+	previewComponent: PreviewComponent,
+	index,
+	id,
+	...rest
+}: GridItemProps) => {
 	const fieldId = `${fields.name}[${index}]`;
 	const flipId = editField === fieldId ? `_${fieldId}` : fieldId;
 
@@ -45,6 +53,5 @@ const GridItem = ({ fields, editField = null, onEditItem, previewComponent: Prev
 		</div>
 	);
 };
-
 
 export default GridItem;

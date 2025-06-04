@@ -34,5 +34,4 @@ const ItemPreview = ({ content = null, assetType = null }: ItemPreviewProps) => 
 	}
 };
 
-
 export default connect(mapStateToProps)(ItemPreview);

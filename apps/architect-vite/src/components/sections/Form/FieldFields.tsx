@@ -187,7 +187,6 @@ const PromptFields = ({
 	</>
 );
 
-
 export { PromptFields };
 
 export default compose(withFieldsHandlers)(PromptFields);

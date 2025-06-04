@@ -144,7 +144,6 @@ const Overview = ({
 	);
 };
 
-
 const mapDispatchToProps = {
 	updateOptions: protocolActions.updateOptions,
 	printOverview: userActions.printOverview,

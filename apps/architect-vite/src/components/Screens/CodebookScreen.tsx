@@ -15,7 +15,6 @@ type CodebookScreenProps = {
  * and links to the EditType.
  */
 const CodebookScreen = ({ layoutId = null, onComplete = () => {} }: CodebookScreenProps) => {
-
 	const buttons = [
 		<Button key="done" onClick={onComplete} color="platinum">
 			Close
@@ -49,6 +48,5 @@ const CodebookScreen = ({ layoutId = null, onComplete = () => {} }: CodebookScre
 		</Screen>
 	);
 };
-
 
 export default CodebookScreen;

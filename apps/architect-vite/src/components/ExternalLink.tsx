@@ -1,6 +1,4 @@
-import React from "react";
-
-const { shell } = window.require("electron");
+import type React from "react";
 
 export const openExternalLink = (href: string) => {
 	shell.openExternal(href);

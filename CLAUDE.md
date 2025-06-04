@@ -153,7 +153,8 @@ pnpm typecheck   # TypeScript check
 
 ## Important Notes
 
-- prioritise completing modifications for a single file so that you do not run out of context mid way through complex tasks.
+- do not use recompose or HOCs in new components, and remove them from existing components where possible.
+- prioritize completing modifications for a single file so that you do not run out of context mid way through complex tasks.
 - framer-motion (now '@motion') is used for animations and transitions. Other animation systems are present, but should be phased out
 - Currently on `editor` branch, PRs should target `main`
 - React StrictMode disabled pending redux-form removal
