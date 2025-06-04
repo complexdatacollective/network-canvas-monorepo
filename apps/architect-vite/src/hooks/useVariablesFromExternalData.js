@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { makeGetGeoJsonAssetVariables, makeGetNetworkAssetVariables } from "~/selectors/assets";
+import { getAssetManifest } from "~/selectors/protocol";
 
 const initialState = {
 	isVariablesLoading: false,
@@ -11,8 +12,13 @@ const initialState = {
 const useVariablesFromExternalData = (dataSource, asOptions = false, type = "network") => {
 	const [state, setState] = useState(initialState);
 
-	const getNetworkAssetVariables = useSelector(makeGetNetworkAssetVariables);
-	const getGeojsonAssetVariables = useSelector(makeGetGeoJsonAssetVariables);
+	// Only select the asset manifest (which is what the functions actually need)
+	const assetManifest = useSelector(getAssetManifest);
+	
+	// Create a minimal state object containing only what's needed
+	const partialState = useMemo(() => ({ 
+		protocol: { present: { assetManifest } } 
+	}), [assetManifest]);
 
 	useEffect(() => {
 		if (!dataSource) {
@@ -21,9 +27,12 @@ const useVariablesFromExternalData = (dataSource, asOptions = false, type = "net
 
 		setState({ isVariablesLoading: true, variables: [], variablesError: null });
 
-		const getVariables = type === "geojson" ? getGeojsonAssetVariables : getNetworkAssetVariables;
+		// Create the appropriate function based on type
+		const getVariablesFn = type === "geojson" 
+			? makeGetGeoJsonAssetVariables(partialState) 
+			: makeGetNetworkAssetVariables(partialState);
 
-		getVariables(dataSource, asOptions)
+		getVariablesFn(dataSource, asOptions)
 			.then((variables) => {
 				setState((s) => ({ ...s, isVariablesLoading: false, variables }));
 			})
@@ -34,7 +43,7 @@ const useVariablesFromExternalData = (dataSource, asOptions = false, type = "net
 					variablesError: e.toString(),
 				}));
 			});
-	}, [dataSource, type]);
+	}, [dataSource, type, asOptions, partialState]);
 
 	return state;
 };

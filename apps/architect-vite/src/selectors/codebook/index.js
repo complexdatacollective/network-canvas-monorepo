@@ -1,4 +1,5 @@
 import { get, find, isObject } from "lodash";
+import { createSelector } from "@reduxjs/toolkit";
 import { getCodebook } from "../protocol";
 import { asOptions } from "../utils";
 import { makeOptionsWithIsUsed } from "./isUsed";
@@ -111,12 +112,16 @@ const getAllVariableUUIDsByEntity = ({ node: nodeTypes = {}, edge: edgeTypes = {
 	return [...variables]; // Spread converts Set to Array
 };
 
-const makeGetVariableWithEntity = (uuid) => (state) => {
-	const codebook = getCodebook(state);
-	const variables = getAllVariableUUIDsByEntity(codebook);
-	const found = find(variables, { uuid });
-	return found;
-};
+// Memoized selector for getting all variables with entity info
+const getAllVariablesByEntitySelector = createSelector(
+	[getCodebook],
+	(codebook) => getAllVariableUUIDsByEntity(codebook)
+);
+
+const makeGetVariableWithEntity = (uuid) => createSelector(
+	[getAllVariablesByEntitySelector],
+	(variables) => find(variables, { uuid })
+);
 
 const makeGetVariable = (uuid) => (state) => {
 	const codebook = getCodebook(state);

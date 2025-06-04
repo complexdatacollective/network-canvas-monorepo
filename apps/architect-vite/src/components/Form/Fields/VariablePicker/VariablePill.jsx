@@ -58,7 +58,8 @@ const EditableVariablePill = ({ uuid }) => {
 	const [canSubmit, setCanSubmit] = useState(false);
 	const [validation, setValidation] = useState(null);
 
-	const { name, type, entity, entityType } = useSelector(makeGetVariableWithEntity(uuid));
+	const variableSelector = useMemo(() => makeGetVariableWithEntity(uuid), [uuid]);
+	const { name, type, entity, entityType } = useSelector(variableSelector);
 
 	const [newName, setNewName] = useState(name);
 
@@ -86,10 +87,15 @@ const EditableVariablePill = ({ uuid }) => {
 		setIsEditing(false);
 	};
 
-	const existingVariables = useSelector((state) => getVariablesForSubject(state, { entity, type: entityType }));
+	const existingVariablesSelector = useMemo(() => 
+		(state) => getVariablesForSubject(state, { entity, type: entityType }),
+		[entity, entityType]
+	);
+	const existingVariables = useSelector(existingVariablesSelector);
 
 	const existingVariableNames = useMemo(() =>
 		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
+		[existingVariables]
 	);
 
 	const handleUpdateName = (event) => {

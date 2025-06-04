@@ -7,20 +7,20 @@ export const getProtocol = (state) => state.protocol.present;
 export const getAssetManifest = (state) => get(state, "protocol.present.assetManifest", {});
 export const getCodebook = (state) => get(state, "protocol.present.codebook", null);
 
-export const getStageList = (state) => {
-	const protocol = getProtocol(state);
-	const stages = protocol ? protocol.stages : [];
+export const getStageList = createSelector(
+	[getProtocol],
+	(protocol) => {
+		const stages = protocol ? protocol.stages : [];
 
-	const stagesWithMeta = stages.map((stage) => ({
-		id: stage.id,
-		type: stage.type,
-		label: stage.label,
-		hasFilter: !!stage.filter,
-		hasSkipLogic: !!stage.skipLogic,
-	}));
-
-	return stagesWithMeta;
-};
+		return stages.map((stage) => ({
+			id: stage.id,
+			type: stage.type,
+			label: stage.label,
+			hasFilter: !!stage.filter,
+			hasSkipLogic: !!stage.skipLogic,
+		}));
+	}
+);
 
 export const getStage = (state, id) => {
 	const protocol = getProtocol(state);
