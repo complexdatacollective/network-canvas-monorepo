@@ -1,56 +1,56 @@
-import { describe, it, expect } from 'vitest';
-import React from 'react';
-import { render } from '@testing-library/react';
-import { OrderedList } from '../OrderedList';
+import { describe, it, expect } from "vitest";
+
+import { render } from "@testing-library/react";
+import { OrderedList } from "../OrderedList";
 
 const mockProps = {
-  input: {
-    value: '',
-  },
-  form: 'form',
-  item: () => {},
-  disabled: false,
+	input: {
+		value: "",
+	},
+	form: "form",
+	item: () => {},
+	disabled: false,
 };
 
-const className = 'list';
+const className = "list";
 
-describe('<OrderedList />', () => {
-  describe('errors', () => {
-    it('shows no errors by default', () => {
-      const props = {
-        meta: {
-          dirty: false,
-          submitFailed: false,
-          error: null,
-        },
-      };
-      const { container } = render(<OrderedList {...mockProps} {...props} />);
+describe("<OrderedList />", () => {
+	describe("errors", () => {
+		it("shows no errors by default", () => {
+			const props = {
+				meta: {
+					dirty: false,
+					submitFailed: false,
+					error: null,
+				},
+			};
+			const { container } = render(<OrderedList {...mockProps} {...props} />);
 
-      expect(container.querySelector(`.${className}__error`)).not.toBeInTheDocument();
-    });
+			expect(container.querySelector(`.${className}__error`)).not.toBeInTheDocument();
+		});
 
-    it('shows error on submit', () => {
-      const props = {
-        meta: {
-          submitFailed: true,
-          error: 'foo',
-        },
-      };
-      const { container } = render(<OrderedList {...mockProps} {...props} />);
+		it("shows error on submit", () => {
+			const props = {
+				meta: {
+					submitFailed: true,
+					error: "foo",
+				},
+			};
+			const { container } = render(<OrderedList {...mockProps} {...props} />);
 
-      expect(container.querySelector(`.${className}__error`)).toBeInTheDocument();
-    });
+			expect(container.querySelector(`.${className}__error`)).toBeInTheDocument();
+		});
 
-    it('shows error on changed', () => {
-      const props = {
-        meta: {
-          dirty: true,
-          error: 'foo',
-        },
-      };
-      const { container } = render(<OrderedList {...mockProps} {...props} />);
+		it("shows error on changed", () => {
+			const props = {
+				meta: {
+					dirty: true,
+					error: "foo",
+				},
+			};
+			const { container } = render(<OrderedList {...mockProps} {...props} />);
 
-      expect(container.querySelector(`.${className}__error`)).toBeInTheDocument();
-    });
-  });
+			expect(container.querySelector(`.${className}__error`)).toBeInTheDocument();
+		});
+	});
 });

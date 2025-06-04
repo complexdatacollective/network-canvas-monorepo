@@ -1,4 +1,4 @@
-import { withProps } from 'recompose';
+import { withProps } from "recompose";
 
 const withDisabledAssetRequired = withProps(({ dataSource }) => ({ disabled: !dataSource }));
 

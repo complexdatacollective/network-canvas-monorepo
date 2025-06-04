@@ -1,1 +1,1 @@
-export { default } from './ContentGrid';
+export { default } from "./ContentGrid";

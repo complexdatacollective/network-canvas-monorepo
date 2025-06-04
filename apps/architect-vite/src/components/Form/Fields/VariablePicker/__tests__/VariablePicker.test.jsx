@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
-
-import React from "react";
 import { render } from "@testing-library/react";
 import { noop } from "lodash";
 import { configureStore } from "@reduxjs/toolkit";
@@ -10,19 +8,19 @@ import VariablePicker from "../VariablePicker";
 // Mock the components that VariablePicker renders
 vi.mock("../VariablePill", () => ({
 	default: () => <div data-testid="editable-variable-pill">EditableVariablePill</div>,
-	SimpleVariablePill: () => <div data-testid="simple-variable-pill">SimpleVariablePill</div>
+	SimpleVariablePill: () => <div data-testid="simple-variable-pill">SimpleVariablePill</div>,
 }));
 
 vi.mock("~/lib/legacy-ui/components", () => ({
-	Button: ({ children, ...props }) => <button {...props}>{children}</button>
+	Button: ({ children, ...props }) => <button {...props}>{children}</button>,
 }));
 
 vi.mock("../SpotlightModal", () => ({
-	default: () => <div data-testid="spotlight-modal">SpotlightModal</div>
+	default: () => <div data-testid="spotlight-modal">SpotlightModal</div>,
 }));
 
 vi.mock("../VariableSpotlight", () => ({
-	default: () => <div data-testid="variable-spotlight">VariableSpotlight</div>
+	default: () => <div data-testid="variable-spotlight">VariableSpotlight</div>,
 }));
 
 const mockStore = configureStore({

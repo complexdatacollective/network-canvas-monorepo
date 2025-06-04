@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { v4 as uuid } from "uuid";
 import { UnconnectedStage } from "../Stage";

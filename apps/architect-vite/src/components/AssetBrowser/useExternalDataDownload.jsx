@@ -21,7 +21,7 @@ const useExternalDataDownload = () => {
 	);
 
 	const handleDownload = useCallback((id) => {
-		const [assetPath, meta] = getAssetInfo(id);
+		const [_assetPath, _meta] = getAssetInfo(id);
 
 		console.log("handleDownload not implemented");
 	}, []);

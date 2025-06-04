@@ -107,7 +107,7 @@ const Dropzone = ({ onDrop, className, accepts, disabled }) => {
 
 			// If the user drags a file attachment from a browser, we get a url instead of a file
 			if (!files || filePaths.length < 1) {
-				const urlName = e.dataTransfer.getData && e.dataTransfer.getData("URL");
+				const urlName = e.dataTransfer.getData?.("URL");
 
 				if (urlName) {
 					const errorMessage =

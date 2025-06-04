@@ -163,7 +163,7 @@ const saveNetcanvas = () => (dispatch, getState) => {
 		.catch((e) => dispatch(netcanvasFileErrorHandler(e, { filePath: null })));
 };
 
-const printOverview = () => (dispatch, getState) => {
+const printOverview = () => (dispatch, _getState) => {
 	// const payload = ((state) => ({
 	// 	filePath: state.session.filePath,
 	// 	workingPath: state.session.workingPath,

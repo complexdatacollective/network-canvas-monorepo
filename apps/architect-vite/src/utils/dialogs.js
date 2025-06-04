@@ -34,7 +34,7 @@ const createDialogOptions = {
  * versions of electron.
  */
 const openDialog = (openDialogOptions = {}) => {
-	const options = {
+	const _options = {
 		...defaultOpenDialogOptions,
 		...openDialogOptions,
 	};
@@ -53,7 +53,7 @@ const openDialog = (openDialogOptions = {}) => {
  * versions of electron.
  */
 const saveDialog = (saveDialogOptions = {}) => {
-	const options = {
+	const _options = {
 		...defaultSaveDialogOptions,
 		...saveDialogOptions,
 	};

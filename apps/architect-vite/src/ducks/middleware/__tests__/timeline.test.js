@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import crypto from "crypto";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import crypto from "node:crypto";
 import { times } from "lodash";
 import { v4 as uuid } from "uuid";
 import createTimeline, { actionCreators } from "../timeline";

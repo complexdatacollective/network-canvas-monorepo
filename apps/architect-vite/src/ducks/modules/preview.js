@@ -61,7 +61,7 @@ const clearPreview = () => (dispatch) => {
 };
 
 const previewDraft = (draft, stageIndex) => (dispatch, getState) => {
-	const state = getState();
+	const _state = getState();
 
 	const draftProtocol = {
 		...draft,

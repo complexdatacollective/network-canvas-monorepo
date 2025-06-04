@@ -1,5 +1,5 @@
-import { compose, withContext, withState } from 'recompose';
-import PropTypes from 'prop-types';
+import { compose, withContext, withState } from "recompose";
+import PropTypes from "prop-types";
 
 /**
  * A settable windowRoot `Element` context provider.
@@ -34,17 +34,17 @@ import PropTypes from 'prop-types';
  */
 
 const windowRootProvider = compose(
-  withState('windowRoot', 'setWindowRoot', document.body),
-  withContext(
-    {
-      windowRoot: PropTypes.instanceOf(Element),
-      setWindowRoot: PropTypes.func,
-    },
-    (props) => ({
-      windowRoot: props.windowRoot,
-      setWindowRoot: props.setWindowRoot,
-    }),
-  ),
+	withState("windowRoot", "setWindowRoot", document.body),
+	withContext(
+		{
+			windowRoot: PropTypes.instanceOf(Element),
+			setWindowRoot: PropTypes.func,
+		},
+		(props) => ({
+			windowRoot: props.windowRoot,
+			setWindowRoot: props.setWindowRoot,
+		}),
+	),
 );
 
 export default windowRootProvider;

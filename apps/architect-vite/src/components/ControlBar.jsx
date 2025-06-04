@@ -26,7 +26,7 @@ const buttonVariants = {
 };
 
 const animatedButton = (button, index) => (
-	<motion.div key={(button && button.key) || index} variants={buttonVariants} exit="hidden" layout>
+	<motion.div key={button?.key || index} variants={buttonVariants} exit="hidden" layout>
 		{button}
 	</motion.div>
 );

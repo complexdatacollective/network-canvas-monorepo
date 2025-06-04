@@ -41,7 +41,7 @@ class Grid extends Component {
 		fields.swap(oldIndex, newIndex);
 	};
 
-	handleResizeStop = (layout, from, to) => {
+	handleResizeStop = (_layout, from, to) => {
 		const { fields, items, capacity } = this.props;
 		const index = items.findIndex(({ id }) => id === from.i);
 		const size = convertSize(trimSize(from.h, to.h, items, capacity));

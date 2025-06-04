@@ -42,10 +42,7 @@ const Filter = () => {
 	}, [prompts]);
 	const shouldShowWarning = useMemo(() => {
 		if (edgeCreationValues.length > 0 || edgeDisplayValues.length > 0) {
-			return getEdgeFilteringWarning((currentValue && currentValue.rules) || [], [
-				...edgeCreationValues,
-				...edgeDisplayValues,
-			]);
+			return getEdgeFilteringWarning(currentValue?.rules || [], [...edgeCreationValues, ...edgeDisplayValues]);
 		}
 		return false;
 	}, [currentValue, edgeCreationValues, edgeDisplayValues]);

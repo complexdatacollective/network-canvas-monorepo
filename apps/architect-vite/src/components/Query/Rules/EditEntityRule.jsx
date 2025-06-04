@@ -30,7 +30,7 @@ const EditEntityRule = ({
 	handleRuleChange,
 }) => {
 	const { type: entityType } = rule;
-	const options = rule && rule.options;
+	const options = rule?.options;
 	const getOptionsWithDefaults = makeGetOptionsWithDefaults(variableType, ["type", "operator", "attributes", "value"]);
 	const optionsWithDefaults = getOptionsWithDefaults(options);
 	const operatorNeedsValue = operatorsWithValue.has(optionsWithDefaults.operator);

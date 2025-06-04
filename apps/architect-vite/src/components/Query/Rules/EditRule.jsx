@@ -83,7 +83,7 @@ class EditRule extends Component {
 									</Layout>
 								</div>
 							</CollapsableHeader>
-							{rule && rule.options && <this.TypeComponent rule={rule} codebook={codebook} onChange={onChange} />}
+							{rule?.options && <this.TypeComponent rule={rule} codebook={codebook} onChange={onChange} />}
 						</Screen>
 					</motion.div>
 				)}

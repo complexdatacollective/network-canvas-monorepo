@@ -36,7 +36,7 @@ const PromptFields = ({ changeForm, entity, form, type, variable, variableOption
 
 	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
 
-	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length;
+	const totalOptionsLength = optionsForVariableDraft?.length;
 
 	const showVariableOptionsTip = totalOptionsLength > 5;
 

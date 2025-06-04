@@ -1,4 +1,4 @@
-const preview = (protocol = {}, stageId = 0) => {
+const preview = (_protocol = {}, _stageId = 0) => {
 	// ipcRenderer.send("preview:preview", protocol, stageId);
 };
 

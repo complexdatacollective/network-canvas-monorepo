@@ -7,7 +7,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { ALLOWED_MARKDOWN_TAGS } from "../../utils/config";
 import { escapeAngleBracket } from "./RichText/lib/parse";
 
-const emojiTextRenderer = ({ node, ...props }) => (
+const _emojiTextRenderer = ({ node, ...props }) => (
 	<p>
 		{props.children.map((child) => {
 			if (typeof child === "string") {

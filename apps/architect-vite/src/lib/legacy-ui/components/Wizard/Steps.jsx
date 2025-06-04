@@ -1,24 +1,19 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 
 const Steps = ({ index, children }) => {
-  const step = children[index - 1];
+	const step = children[index - 1];
 
-  return (
-    <>
-      {step}
-    </>
-  );
+	return <>{step}</>;
 };
 
 Steps.propTypes = {
-  index: PropTypes.number,
-  children: PropTypes.node,
+	index: PropTypes.number,
+	children: PropTypes.node,
 };
 
 Steps.defaultProps = {
-  index: 1,
-  children: null,
+	index: 1,
+	children: null,
 };
 
 export default Steps;

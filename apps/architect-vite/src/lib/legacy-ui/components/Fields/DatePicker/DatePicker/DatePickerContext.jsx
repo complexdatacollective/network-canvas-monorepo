@@ -1,10 +1,10 @@
-import React from 'react';
+import { createContext } from "react";
 
-const DatePickerContext = React.createContext({
-  onChange: () => {},
-  range: null,
-  date: {},
-  type: null,
+const DatePickerContext = createContext({
+	onChange: () => {},
+	range: null,
+	date: {},
+	type: null,
 });
 
 export default DatePickerContext;

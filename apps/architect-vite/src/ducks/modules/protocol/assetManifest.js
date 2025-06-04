@@ -51,7 +51,7 @@ const importAssetFailed = (filename, error) => ({
  * @param {File} filePath - File path to import
  */
 const importAssetThunk = (filePath) => (dispatch, getState) => {
-	const state = getState();
+	const _state = getState();
 	const name = getNameFromFilename(filePath);
 
 	const workingPath = null;

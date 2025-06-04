@@ -20,7 +20,7 @@ const getNewFileName = (filePath) =>
 		}),
 	);
 
-const ProtocolsDidNotMatchError = new Error("Protocols did not match");
+const _ProtocolsDidNotMatchError = new Error("Protocols did not match");
 
 /**
  * Create a new .netcanvas file at the target location.
@@ -77,7 +77,7 @@ const checkSchemaVersion = (protocol, referenceVersion = APP_SCHEMA_VERSION) =>
  * @param filePath .netcanvas file path
  * @returns {Promise} Resolves to { savePath, backupPath }
  */
-const saveNetcanvas = (workingPath, protocol, filePath) => {
+const saveNetcanvas = (_workingPath, _protocol, _filePath) => {
 	console.log("save netcanvas not implemented");
 };
 

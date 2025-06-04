@@ -8,7 +8,7 @@ import { Icon } from "~/lib/legacy-ui/components";
 import RichTextField from "~/lib/legacy-ui/components/Fields/RichText";
 import TextField from "~/lib/legacy-ui/components/Fields/Text";
 
-const isNumberLike = (value) => Number.parseInt(value, 10) == value; // eslint-disable-line
+const isNumberLike = (value) => Number.parseInt(value, 10) === value; // eslint-disable-line
 
 const deleteOption =
 	({ fields, openDialog, index }) =>

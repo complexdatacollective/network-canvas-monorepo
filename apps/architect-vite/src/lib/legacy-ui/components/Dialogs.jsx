@@ -1,7 +1,7 @@
-import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import { omit } from 'lodash';
-import * as DialogVariants from './Dialog';
+import { Component } from "react";
+import PropTypes from "prop-types";
+import { omit } from "lodash";
+import * as DialogVariants from "./Dialog";
 
 /*
  * Displays a stack of Dialogs.
@@ -30,7 +30,7 @@ import * as DialogVariants from './Dialog';
  *     message: 'More detail...',
  *     onConfirm: () => {},
  *   },
-*   {
+ *   {
  *     id: '1234-1234-3',
  *     type: 'Warning',
  *     title: 'Something to warn the user about, maybe a non-failing error',
@@ -47,53 +47,57 @@ import * as DialogVariants from './Dialog';
  * ]
  */
 class Dialogs extends Component {
-  get dialogs() {
-    const { dialogs } = this.props;
-    return dialogs;
-  }
+	get dialogs() {
+		const { dialogs } = this.props;
+		return dialogs;
+	}
 
-  handleConfirm = (dialog) => {
-    const { closeDialog } = this.props;
-    if (dialog.onConfirm) { dialog.onConfirm(dialog); }
-    closeDialog(dialog.id);
-  }
+	handleConfirm = (dialog) => {
+		const { closeDialog } = this.props;
+		if (dialog.onConfirm) {
+			dialog.onConfirm(dialog);
+		}
+		closeDialog(dialog.id);
+	};
 
-  handleCancel = (dialog) => {
-    const { closeDialog } = this.props;
-    if (dialog.onCancel) { dialog.onCancel(dialog); }
-    closeDialog(dialog.id);
-  }
+	handleCancel = (dialog) => {
+		const { closeDialog } = this.props;
+		if (dialog.onCancel) {
+			dialog.onCancel(dialog);
+		}
+		closeDialog(dialog.id);
+	};
 
-  renderDialog = (dialog) => {
-    const Dialog = DialogVariants[dialog.type];
+	renderDialog = (dialog) => {
+		const Dialog = DialogVariants[dialog.type];
 
-    const onConfirm = () => this.handleConfirm(dialog);
-    const onCancel = () => this.handleCancel(dialog);
+		const onConfirm = () => this.handleConfirm(dialog);
+		const onCancel = () => this.handleCancel(dialog);
 
-    return (
-      <Dialog
-        show
-        key={dialog.id}
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-        // eslint-disable-next-line react/jsx-props-no-spreading
-        {...omit(dialog, ['onConfirm', 'onCancel'])}
-      />
-    );
-  }
+		return (
+			<Dialog
+				show
+				key={dialog.id}
+				onConfirm={onConfirm}
+				onCancel={onCancel}
+				// eslint-disable-next-line react/jsx-props-no-spreading
+				{...omit(dialog, ["onConfirm", "onCancel"])}
+			/>
+		);
+	};
 
-  render() {
-    return this.dialogs.map(this.renderDialog);
-  }
+	render() {
+		return this.dialogs.map(this.renderDialog);
+	}
 }
 
 Dialogs.propTypes = {
-  dialogs: PropTypes.array,
-  closeDialog: PropTypes.func.isRequired,
+	dialogs: PropTypes.array,
+	closeDialog: PropTypes.func.isRequired,
 };
 
 Dialogs.defaultProps = {
-  dialogs: [],
+	dialogs: [],
 };
 
 export { Dialogs };

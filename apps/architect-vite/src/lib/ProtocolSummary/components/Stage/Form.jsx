@@ -13,13 +13,11 @@ const Form = ({ form }) => {
 		return null;
 	}
 
-	const fieldRows =
-		form.fields &&
-		form.fields.map(({ prompt, variable }) => {
-			const meta = getVariableMeta(index, variable);
+	const fieldRows = form.fields?.map(({ prompt, variable }) => {
+		const meta = getVariableMeta(index, variable);
 
-			return [<Variable id={variable} />, meta.component, <Markdown label={prompt} />];
-		});
+		return [<Variable id={variable} />, meta.component, <Markdown label={prompt} />];
+	});
 
 	return (
 		<div className="protocol-summary-stage__form">

@@ -1,8 +1,7 @@
 import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
-import PropTypes from "prop-types";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
 import { Button } from "~/lib/legacy-ui/components";
@@ -10,38 +9,88 @@ import { Text } from "~/lib/legacy-ui/components/Fields";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import { getValidator } from "~/utils/validations";
 
-const NativeSelect = ({
-	label,
-	options,
-	placeholder,
-	className,
-	// To create a new option, one or the other of the following:
-	onCreateOption, // Creating options inline, receives value for option (promise)
-	onCreateNew, // Call a function immediately (typically opening a window with a form)
-	createLabelText,
-	createInputLabel,
-	createInputPlaceholder,
-	allowPlaceholderSelect,
-	sortOptionsByLabel,
-	reserved,
-	validation,
-	disabled,
-	input: { onBlur, ...input },
-	meta: { invalid, error, touched, form },
+interface Option {
+	label: string;
+	value: string;
+	disabled?: boolean;
+}
+
+interface InputProps {
+	onChange: (value: string | null) => void;
+	onBlur?: () => void;
+	value?: string | null;
+	name: string;
+}
+
+interface MetaProps {
+	invalid?: boolean;
+	error?: string | null;
+	touched?: boolean;
+	form: string;
+}
+
+interface NativeSelectProps {
+	className?: string;
+	label?: string | null;
+	options?: Option[];
+	placeholder?: string;
+	onCreateOption?: (value: string) => Promise<void> | void;
+	onCreateNew?: () => void;
+	createLabelText?: string;
+	createInputLabel?: string;
+	createInputPlaceholder?: string;
+	allowPlaceholderSelect?: boolean;
+	sortOptionsByLabel?: boolean;
+	reserved?: Option[];
+	validation?: Record<string, unknown> | null;
+	disabled?: boolean;
+	input: InputProps;
+	meta?: MetaProps;
+	entity?: string;
+}
+
+const NativeSelect: React.FC<NativeSelectProps> = ({
+	label = null,
+	options = [],
+	placeholder = "Select an option",
+	className = "",
+	onCreateOption = null,
+	onCreateNew = null,
+	createLabelText = "✨ Create new ✨",
+	createInputLabel = "New variable name",
+	createInputPlaceholder = "Enter a variable name...",
+	allowPlaceholderSelect = false,
+	sortOptionsByLabel = true,
+	reserved = [],
+	validation = null,
+	disabled = false,
+	input,
+	meta = {
+		invalid: false,
+		error: null,
+		touched: false,
+		form: "",
+	},
+	entity,
 	...rest
 }) => {
 	const [showCreateOptionForm, setShowCreateOptionForm] = useState(false);
-	const [newOptionValue, setNewOptionValue] = useState(null);
-	const [newOptionError, setNewOptionError] = useState(false);
+	const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
+	const [newOptionError, setNewOptionError] = useState<string | false>(false);
 	const dispatch = useDispatch();
 
-	const handleChange = (option) => {
-		if (option.target.value === "_create") {
-			input.onChange(null);
+	const { onBlur, ...inputProps } = input;
+	const { invalid = false, error = null, touched = false, form } = meta;
+
+	const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+		const value = event.target.value;
+
+		if (value === "_create") {
+			inputProps.onChange(null);
 
 			// Setting input to null above will 'touch' the select, triggering validation
 			// which we don't want yet. We 'un-touch' the input to resolve this.
-			dispatch(untouch(form, input.name));
+			dispatch(untouch(form, inputProps.name));
 			if (onCreateNew) {
 				onCreateNew();
 				return;
@@ -51,12 +100,12 @@ const NativeSelect = ({
 			return;
 		}
 
-		if (option.target.value === "_placeholder") {
-			input.onChange(null);
+		if (value === "_placeholder") {
+			inputProps.onChange(null);
 			return;
 		}
 
-		input.onChange(option.target.value);
+		inputProps.onChange(value);
 	};
 
 	const resetForm = () => {
@@ -66,36 +115,41 @@ const NativeSelect = ({
 	};
 
 	const handleCreateOption = () => {
+		if (!onCreateOption || !newOptionValue) return;
+
 		const newValue = newOptionValue;
-
 		resetForm();
-
 		return onCreateOption(newValue);
 	};
 
-	const isValidCreateOption = () => {
-		const validationErrors = getValidator(validation)(newOptionValue);
+	const isValidCreateOption = useCallback(
+		(value?: string | null): boolean => {
+			if (!value) return true;
 
-		if (validationErrors) {
-			setNewOptionError(validationErrors);
-			return false;
-		}
+			const validationErrors = getValidator(validation || {})(value);
 
-		// True if option matches the label prop of the supplied object
-		const matchLabel = ({ label: variableLabel }) =>
-			variableLabel && newOptionValue && variableLabel.toLowerCase() === newOptionValue.toLowerCase();
+			if (validationErrors) {
+				setNewOptionError(validationErrors);
+				return false;
+			}
 
-		const alreadyExists = options.some(matchLabel);
-		const isReserved = reserved.some(matchLabel);
+			// True if option matches the label prop of the supplied object
+			const matchLabel = ({ label: variableLabel }: Option) =>
+				variableLabel && value && variableLabel.toLowerCase() === value.toLowerCase();
 
-		if (alreadyExists || isReserved) {
-			setNewOptionError(`Variable name "${newOptionValue}" is already defined on entity type ${rest.entity}`);
-			return false;
-		}
+			const alreadyExists = options.some(matchLabel);
+			const isReserved = reserved.some(matchLabel);
 
-		setNewOptionError(false);
-		return true;
-	};
+			if (alreadyExists || isReserved) {
+				setNewOptionError(`Variable name "${value}" is already defined on entity type ${entity}`);
+				return false;
+			}
+
+			setNewOptionError(false);
+			return true;
+		},
+		[validation, options, reserved, entity],
+	);
 
 	// Do we have a value in the create new Text field that is not submitted?
 	const valueButNotSubmitted = newOptionValue !== null && showCreateOptionForm;
@@ -131,7 +185,16 @@ const NativeSelect = ({
 			localInvalid: !isValidCreateOption(newOptionValue),
 			error: newOptionError || notSubmittedError || error,
 		}),
-		[touched, invalid, error, newOptionValue, newOptionError, valueButNotSubmitted, notSubmittedError],
+		[
+			touched,
+			invalid,
+			error,
+			newOptionValue,
+			newOptionError,
+			valueButNotSubmitted,
+			notSubmittedError,
+			isValidCreateOption,
+		],
 	);
 
 	const sortedOptions = useMemo(
@@ -152,7 +215,7 @@ const NativeSelect = ({
 
 	return (
 		<motion.div className="form-fields-select-native__wrapper">
-			<AnimatePresence initial={false} exitBeforeEnter>
+			<AnimatePresence initial={false} mode="wait">
 				{showCreateOptionForm ? (
 					<motion.div
 						className="form-fields-select-native__new-section"
@@ -168,8 +231,8 @@ const NativeSelect = ({
 							input={{
 								// Make interaction with this input also touch the parent so we can control
 								// validation better.
-								onChange: (event) => {
-									dispatch(untouch(form, input.name));
+								onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+									dispatch(untouch(form, inputProps.name));
 									setNewOptionValue(event.target.value);
 								},
 							}}
@@ -197,13 +260,10 @@ const NativeSelect = ({
 						{label && <h4>{label}</h4>}
 						<select
 							className="form-fields-select-native__component"
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...input}
-							value={input.value || "_placeholder"}
+							{...inputProps}
+							value={inputProps.value ?? "_placeholder"}
 							onChange={handleChange}
-							validation={validation}
 							disabled={!!disabled}
-							// eslint-disable-next-line react/jsx-props-no-spreading
 							{...rest}
 						>
 							<option disabled={!allowPlaceholderSelect} value="_placeholder">
@@ -227,49 +287,6 @@ const NativeSelect = ({
 			</AnimatePresence>
 		</motion.div>
 	);
-};
-
-NativeSelect.propTypes = {
-	className: PropTypes.string,
-	placeholder: PropTypes.string,
-	createLabelText: PropTypes.string,
-	createInputLabel: PropTypes.string,
-	createInputPlaceholder: PropTypes.string,
-	allowPlaceholderSelect: PropTypes.bool,
-	sortOptionsByLabel: PropTypes.bool,
-	// eslint-disable-next-line react/forbid-prop-types
-	options: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
-	input: PropTypes.object,
-	label: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
-	meta: PropTypes.object,
-	disabled: PropTypes.bool,
-	onCreateOption: PropTypes.func,
-	onCreateNew: PropTypes.func,
-	// eslint-disable-next-line react/forbid-prop-types
-	reserved: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
-	validation: PropTypes.any,
-};
-
-NativeSelect.defaultProps = {
-	className: "",
-	placeholder: "Select an option",
-	createLabelText: "✨ Create new ✨",
-	createInputLabel: "New variable name",
-	createInputPlaceholder: "Enter a variable name...",
-	allowPlaceholderSelect: false,
-	sortOptionsByLabel: true,
-	options: [],
-	input: { value: "" },
-	label: null,
-	disabled: false,
-	meta: { invalid: false, error: null, touched: false },
-	onCreateOption: null,
-	onCreateNew: null,
-	reserved: [],
-	validation: null,
 };
 
 export default NativeSelect;

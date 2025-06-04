@@ -40,7 +40,7 @@ const PromptFields = ({
 	const handleNewVariable = (name) =>
 		openNewVariableWindow({ initialValues: { name, type: "ordinal" } }, { field: "edgeVariable" });
 
-	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length;
+	const totalOptionsLength = optionsForVariableDraft?.length;
 	const showVariableOptionsTip = totalOptionsLength > 5;
 
 	return (

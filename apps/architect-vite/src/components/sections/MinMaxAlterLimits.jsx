@@ -70,15 +70,11 @@ const MinMaxAlterLimits = () => {
 	return (
 		<Section
 			title="Set minimum or maximum alter numbers"
-			summary={
-				<>
-					<p>
-						This feature allows you to specify a minimum or maximum number of alters that can be named on this stage.
-						Please note that these limits apply to the <strong>stage as a whole</strong>, regardless of the number of
-						prompts you have created.
-					</p>
-				</>
-			}
+			summary=<p>
+				This feature allows you to specify a minimum or maximum number of alters that can be named on this stage. Please
+				note that these limits apply to the <strong>stage as a whole</strong>, regardless of the number of prompts you
+				have created.
+			</p>
 			toggleable
 			startExpanded={startExpanded}
 			handleToggleChange={handleToggleChange}

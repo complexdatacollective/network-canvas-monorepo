@@ -1,51 +1,47 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 
-import mockState from '../../../../__tests__/testState.json';
-import {
-  getLayoutVariablesForSubject,
-  getHighlightVariablesForSubject,
-  getEdgesForSubject,
-} from '../selectors';
+import mockState from "../../../../__tests__/testState.json";
+import { getLayoutVariablesForSubject, getHighlightVariablesForSubject, getEdgesForSubject } from "../selectors";
 
-vi.mock('redux-form', () => ({
-  formValueSelector: () => () => '1234-1234-4',
-  getFormValues: () => () => ({}),
+vi.mock("redux-form", () => ({
+	formValueSelector: () => () => "1234-1234-4",
+	getFormValues: () => () => ({}),
 }));
 
 const subject = {
-  entity: 'node',
-  type: '1234-1234-1234',
+	entity: "node",
+	type: "1234-1234-1234",
 };
-const form = 'edit-prompt';
+const form = "edit-prompt";
 
-describe('SociogramPrompts', () => {
-  describe('selectors', () => {
-    it('get layout variables for node type', () => {
-      const result = getLayoutVariablesForSubject(mockState, subject);
+describe("SociogramPrompts", () => {
+	describe("selectors", () => {
+		it("get layout variables for node type", () => {
+			const result = getLayoutVariablesForSubject(mockState, subject);
 
-      expect(result).toMatchSnapshot();
-    });
+			expect(result).toMatchSnapshot();
+		});
 
-    it('get highlight variables for node type', () => {
-      const result = getHighlightVariablesForSubject(mockState, {
-        form,
-        ...subject,
-        formUsedVariableIndex: ['1234-1234-3'],
-      });
+		it("get highlight variables for node type", () => {
+			const result = getHighlightVariablesForSubject(mockState, {
+				form,
+				...subject,
+				formUsedVariableIndex: ["1234-1234-3"],
+			});
 
-      expect(result).toMatchSnapshot();
-    });
+			expect(result).toMatchSnapshot();
+		});
 
-    it('get edges for node type', () => {
-      const result = getEdgesForSubject(mockState, subject);
+		it("get edges for node type", () => {
+			const result = getEdgesForSubject(mockState, subject);
 
-      expect(result).toMatchSnapshot();
-    });
+			expect(result).toMatchSnapshot();
+		});
 
-    it('get edge filters', () => {
-      const result = getEdgesForSubject(mockState, subject);
+		it("get edge filters", () => {
+			const result = getEdgesForSubject(mockState, subject);
 
-      expect(result).toMatchSnapshot();
-    });
-  });
+			expect(result).toMatchSnapshot();
+		});
+	});
 });

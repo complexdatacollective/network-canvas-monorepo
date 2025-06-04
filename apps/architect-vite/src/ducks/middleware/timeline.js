@@ -1,22 +1,11 @@
 import { get } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
+import { createSlice } from "@reduxjs/toolkit";
 
 const defaultOptions = {
 	limit: 1000,
 	exclude: () => false,
 };
-
-const JUMP = "TIMELINE/JUMP";
-const RESET = "TIMELINE/RESET";
-
-const jump = (locus) => ({
-	type: JUMP,
-	payload: { locus },
-});
-
-const reset = () => ({
-	type: RESET,
-});
 
 const createTimelineReducer = (reducer, customOptions) => {
 	const options = {
@@ -30,43 +19,68 @@ const createTimelineReducer = (reducer, customOptions) => {
 		timeline: [],
 	};
 
+	const timelineSlice = createSlice({
+		name: 'timeline',
+		initialState,
+		reducers: {
+			jump: (state, action) => {
+				const { past, timeline } = state;
+				const { locus } = action.payload;
+
+				if (!locus) {
+					return state;
+				}
+
+				const locusIndex = timeline.indexOf(locus);
+
+				// If point in timeline cannot be found do nothing
+				if (locusIndex === -1) {
+					return;
+				}
+
+				// no events in timeline yet
+				if (timeline.length === 1) {
+					return;
+				}
+
+				// the last point in the timeline is the present
+				if (locusIndex === timeline.length - 1) {
+					return;
+				}
+
+				const newPresent = past[locusIndex];
+
+				state.past = past.slice(0, locusIndex);
+				state.present = newPresent;
+				state.timeline = timeline.slice(0, locusIndex + 1);
+			},
+			reset: (state) => {
+				const locus = uuid();
+
+				const newPresent = reducer(state.present);
+
+				state.past = [];
+				state.present = newPresent;
+				state.timeline = [locus];
+			},
+		},
+	});
+
 	const timelineReducer = (state = initialState, action) => {
-		const { past, present, timeline } = state;
-
-		if (get(action, "type") === JUMP) {
-			if (!action.payload.locus) {
-				return state;
-			}
-			const locusIndex = timeline.indexOf(action.payload.locus);
-
-			// If point in timeline cannot be found do nothing
-			if (locusIndex === -1) {
-				return state;
-			}
-
-			// no events in timeline yet
-			if (timeline.length === 1) {
-				return state;
-			}
-
-			// the last point in the timeline is the present
-			if (locusIndex === timeline.length - 1) {
-				return state;
-			}
-
-			const newPresent = past[locusIndex];
-
-			return {
-				past: past.slice(0, locusIndex),
-				present: newPresent,
-				timeline: timeline.slice(0, locusIndex + 1),
-			};
+		// Handle timeline-specific actions
+		if (action.type === timelineSlice.actions.jump.type) {
+			return timelineSlice.reducer(state, action);
 		}
 
+		if (action.type === timelineSlice.actions.reset.type) {
+			return timelineSlice.reducer(state, action);
+		}
+
+		const { past, present, timeline } = state;
 		const newPresent = reducer(present, action);
 
-		// This is the first run or we are resetting
-		if (timeline.length === 0 || get(action, "type") === RESET) {
+		// This is the first run
+		if (timeline.length === 0) {
 			const locus = uuid();
 
 			return {
@@ -104,12 +118,12 @@ const createTimelineReducer = (reducer, customOptions) => {
 };
 
 export const actionTypes = {
-	RESET,
+	RESET: 'timeline/reset',
 };
 
 export const actionCreators = {
-	jump,
-	reset,
+	jump: (locus) => ({ type: 'timeline/jump', payload: { locus } }),
+	reset: () => ({ type: 'timeline/reset' }),
 };
 
 export default createTimelineReducer;

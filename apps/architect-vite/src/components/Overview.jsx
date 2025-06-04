@@ -164,8 +164,8 @@ const mapStateToProps = (state) => {
 
 	return {
 		name: "TEST",
-		description: protocol && protocol.description,
-		codebook: protocol && protocol.codebook,
+		description: protocol?.description,
+		codebook: protocol?.codebook,
 		protocolIsValid,
 		hasUnsavedChanges,
 	};

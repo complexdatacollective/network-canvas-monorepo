@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import path from "path";
+import path from "node:path";
 import { useContext } from "react";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
 import ProtocolCard from "~/lib/legacy-ui/components/Cards/ProtocolCard";

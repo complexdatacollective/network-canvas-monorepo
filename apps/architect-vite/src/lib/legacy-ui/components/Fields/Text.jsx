@@ -57,8 +57,7 @@ const TextInput = ({
 					id={id.current}
 					name={input.name}
 					className="form-field form-field-text__input"
-					placeholder={placeholder}
-					autoFocus={autoFocus} // eslint-disable-line
+					placeholder={placeholder} // eslint-disable-line
 					type={type}
 					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...input}

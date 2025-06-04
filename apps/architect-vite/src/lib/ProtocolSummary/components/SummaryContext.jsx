@@ -1,5 +1,5 @@
-import React from 'react';
+import { createContext } from "react";
 
-const SummaryContext = React.createContext({ protocol: null, index: null });
+const SummaryContext = createContext({ protocol: null, index: null });
 
 export default SummaryContext;

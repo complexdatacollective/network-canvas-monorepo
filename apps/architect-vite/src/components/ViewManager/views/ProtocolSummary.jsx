@@ -3,7 +3,7 @@ import ProtocolSummary from "~/lib/ProtocolSummary/ProtocolSummary";
 import ProtocolSummaryErrorBoundary from "../../Errors/ProtocolSummaryErrorBoundary";
 
 const ProtocolSummaryView = () => {
-	const [data, setData] = useState(null);
+	const [data, _setData] = useState(null);
 
 	useEffect(() => {
 		document.documentElement.classList.add("print");

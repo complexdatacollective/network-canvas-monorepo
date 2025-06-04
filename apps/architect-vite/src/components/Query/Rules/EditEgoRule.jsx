@@ -28,7 +28,7 @@ const EditEgoRule = ({
 	operatorOptions,
 	handleRuleChange,
 }) => {
-	const options = rule && rule.options;
+	const options = rule?.options;
 	const optionsWithDefaults = { ...defaultOptions, ...options };
 	const operatorNeedsValue = operatorsWithValue.has(optionsWithDefaults.operator);
 	// const operatorNeedsRegExp = operatorsWithRegExp.has(optionsWithDefaults.operator);

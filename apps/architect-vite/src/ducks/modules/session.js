@@ -33,7 +33,7 @@ const openNetcanvas = (protocol) => async (dispatch) => {
 			protocolIsValid: result.isValid,
 		},
 	});
-	dispatch(timelineActions.reset());
+
 	navigate("/protocol");
 };
 

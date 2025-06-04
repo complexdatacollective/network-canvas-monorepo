@@ -1,19 +1,19 @@
-import { describe, it, expect, afterAll, vi } from 'vitest'
-import { render } from '@testing-library/react'
-import { Provider } from 'react-redux'
-import { configureStore } from '@reduxjs/toolkit'
+import { describe, it, expect, afterAll, vi } from "vitest";
+import { render } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
 import App from "../ViewManager/views/App";
 
 // Mock the components that App renders
-vi.mock('~/components/Routes', () => ({
-	default: () => <div data-testid="routes" />
-}))
-vi.mock('~/components/DialogManager', () => ({
-	default: () => <div data-testid="dialog-manager" />
-}))
-vi.mock('~/components/ToastManager', () => ({
-	default: () => <div data-testid="toast-manager" />
-}))
+vi.mock("~/components/Routes", () => ({
+	default: () => <div data-testid="routes" />,
+}));
+vi.mock("~/components/DialogManager", () => ({
+	default: () => <div data-testid="dialog-manager" />,
+}));
+vi.mock("~/components/ToastManager", () => ({
+	default: () => <div data-testid="toast-manager" />,
+}));
 
 const mockStore = configureStore({
 	reducer: {
@@ -34,11 +34,11 @@ describe("<App />", () => {
 		const { getByTestId } = render(
 			<Provider store={mockStore}>
 				<App />
-			</Provider>
+			</Provider>,
 		);
 
-		expect(getByTestId('routes')).toBeInTheDocument();
-		expect(getByTestId('dialog-manager')).toBeInTheDocument();
-		expect(getByTestId('toast-manager')).toBeInTheDocument();
+		expect(getByTestId("routes")).toBeInTheDocument();
+		expect(getByTestId("dialog-manager")).toBeInTheDocument();
+		expect(getByTestId("toast-manager")).toBeInTheDocument();
 	});
 });

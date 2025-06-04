@@ -1,45 +1,44 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
-import React from 'react';
-import { render } from '@testing-library/react';
-import { createStore } from 'redux';
-import { Provider } from 'react-redux';
-import { getFormValues } from 'redux-form';
-import CodeView from '../CodeView';
+import { describe, it, expect, beforeAll, vi } from "vitest";
 
-vi.mock('redux-form');
+import { render } from "@testing-library/react";
+import { createStore } from "redux";
+import { Provider } from "react-redux";
+import { getFormValues } from "redux-form";
+import CodeView from "../CodeView";
+
+vi.mock("redux-form");
 
 const mockProps = {
-  toggleCodeView: () => {},
-  form: 'test',
+	toggleCodeView: () => {},
+	form: "test",
 };
 
-const mockStore = createStore(() => ({
-}));
+const mockStore = createStore(() => ({}));
 
-describe('<CodeView />', () => {
-  beforeAll(() => {
-    getFormValues.mockImplementation(() => () => ({ name: 'example name' }));
-  });
+describe("<CodeView />", () => {
+	beforeAll(() => {
+		getFormValues.mockImplementation(() => () => ({ name: "example name" }));
+	});
 
-  it('can render', () => {
-    render(
-      <Provider store={mockStore}>
-        <CodeView {...mockProps} />
-      </Provider>
-    );
+	it("can render", () => {
+		render(
+			<Provider store={mockStore}>
+				<CodeView {...mockProps} />
+			</Provider>,
+		);
 
-    // CodeView renders to document.body via portal
-    expect(document.querySelector('.code-view')).toBeInTheDocument();
-  });
+		// CodeView renders to document.body via portal
+		expect(document.querySelector(".code-view")).toBeInTheDocument();
+	});
 
-  it('renders content only when show is true', () => {
-    render(
-      <Provider store={mockStore}>
-        <CodeView {...mockProps} show />
-      </Provider>
-    );
+	it("renders content only when show is true", () => {
+		render(
+			<Provider store={mockStore}>
+				<CodeView {...mockProps} show />
+			</Provider>,
+		);
 
-    // CodeView renders to document.body via portal
-    expect(document.querySelector('.code-view')).toBeInTheDocument();
-  });
+		// CodeView renders to document.body via portal
+		expect(document.querySelector(".code-view")).toBeInTheDocument();
+	});
 });

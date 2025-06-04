@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import ExternalLink from "~/components/ExternalLink";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Button } from "~/lib/legacy-ui/components";

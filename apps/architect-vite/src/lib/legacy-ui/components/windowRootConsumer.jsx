@@ -1,5 +1,5 @@
-import { getContext } from 'recompose';
-import PropTypes from 'prop-types';
+import { getContext } from "recompose";
+import PropTypes from "prop-types";
 
 /**
  * A `windowRoot` (Element) context consumer
@@ -29,8 +29,8 @@ import PropTypes from 'prop-types';
  * export windowRootConsumer(MyConsumingComponent);
  */
 const windowRootConsumer = getContext({
-  windowRoot: PropTypes.instanceOf(Element),
-  setWindowRoot: PropTypes.func,
+	windowRoot: PropTypes.instanceOf(Element),
+	setWindowRoot: PropTypes.func,
 });
 
 export default windowRootConsumer;
