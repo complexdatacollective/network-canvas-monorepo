@@ -1,5 +1,5 @@
 import * as Fields from "@codaco/legacy-ui/components/Fields";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
@@ -18,7 +18,8 @@ type RootState = {
 
 const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
 	const dispatch = useDispatch();
-	const formValue = useSelector((state: RootState) => !!formValueSelector(form)(state, FORM_PROPERTY));
+	const formSelector = useMemo(() => formValueSelector(form), [form]);
+	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 
 	const [useAutomaticLayout, setUseAutomaticLayout] = useState(formValue);
 

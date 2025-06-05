@@ -1,5 +1,5 @@
 import * as Fields from "@codaco/legacy-ui/components/Fields";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
@@ -13,7 +13,8 @@ const FORM_PROPERTY = "behaviours.removeAfterConsideration";
 
 const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
 	const dispatch = useDispatch();
-	const formValue = useSelector((state) => !!formValueSelector(form)(state, FORM_PROPERTY));
+	const formSelector = useMemo(() => formValueSelector(form), [form]);
+	const formValue = useSelector((state) => !!formSelector(state, FORM_PROPERTY));
 
 	const [removeAfterConsideration, setRemoveAfterConsideration] = useState(formValue);
 

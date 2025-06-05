@@ -1,4 +1,4 @@
-import { Component } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 import { compose, withState } from "recompose";
 import { bindActionCreators } from "@reduxjs/toolkit";
@@ -22,7 +22,7 @@ const withStackableId = withState("stackableId", "setStackableId", null);
 // TODO: Make functional component or potentially could be handled
 // by screens module
 class Stackable extends Component<StackableProps> {
-	constructor(props) {
+	constructor(props: StackableProps) {
 		super(props);
 		const { group, registerStackable, setStackableId } = this.props;
 		const id = uuid();
@@ -31,7 +31,7 @@ class Stackable extends Component<StackableProps> {
 	}
 
 	// eslint-disable-next-line camelcase
-	UNSAFE_componentWillReceiveProps(newProps) {
+	UNSAFE_componentWillReceiveProps(newProps: StackableProps) {
 		const { stackKey, moveToTop } = this.props;
 
 		if (newProps.stackKey !== stackKey) {
@@ -53,11 +53,8 @@ class Stackable extends Component<StackableProps> {
 	}
 }
 
-Stackable.defaultProps = {
-	group: null,
-	stackKey: null,
-	stackableId: null,
-};
+// Using TypeScript default props via destructuring instead
+// Group, stackKey, and stackableId are already optional in the type definition
 
 const mapStateToProps = (state, { stackableId }) => {
 	const stackIndex = state.stacks[stackableId] ? state.stacks[stackableId].index : 0;

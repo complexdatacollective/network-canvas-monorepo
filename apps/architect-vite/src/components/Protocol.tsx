@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { motion, useElementScroll } from "motion/react";
-import PropTypes from "prop-types";
 import { useEffect, useRef, useState } from "react";
 import { connect } from "react-redux";
 import Overview from "~/components/Overview";
@@ -11,7 +10,12 @@ import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
 import { getHasUnsavedChanges, getProtocol } from "~/selectors/protocol";
 
-const Protocol = ({ isLoading, hasProtocol }) => {
+type ProtocolProps = {
+	isLoading?: boolean;
+	hasProtocol?: boolean;
+};
+
+const Protocol = ({ isLoading = false, hasProtocol = false }: ProtocolProps) => {
 	const sceneClasses = cx("scene", { "scene--protocol": hasProtocol }, { "scene--loading": isLoading });
 
 	const variants = {
@@ -45,15 +49,6 @@ const Protocol = ({ isLoading, hasProtocol }) => {
 	);
 };
 
-Protocol.propTypes = {
-	isLoading: PropTypes.bool,
-	hasProtocol: PropTypes.bool,
-};
-
-Protocol.defaultProps = {
-	isLoading: false,
-	hasProtocol: false,
-};
 
 const mapStateToProps = (state) => {
 	const activeProtocol = getProtocol(state);

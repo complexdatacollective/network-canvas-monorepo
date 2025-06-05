@@ -1,6 +1,8 @@
 import { get, pickBy } from "es-toolkit/compat";
+import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
+import { createSelector } from "@reduxjs/toolkit";
 import { Row, Section } from "~/components/EditorLayout";
 import Validations from "~/components/Validations";
 import { getFieldId } from "../../utils/issues";
@@ -19,11 +21,17 @@ type ValidationSectionProps = {
 
 const ValidationSection = ({ disabled = false, form, entity, variableType = "", existingVariables }: ValidationSectionProps) => {
 	const dispatch = useDispatch();
-	const getFormValue = formValueSelector(form);
-	const hasValidation = useSelector((state) => {
-		const validation = getFormValue(state, "validation");
-		return validation && Object.keys(validation).length > 0;
-	});
+	
+	// Create memoized selector for hasValidation
+	const hasValidationSelector = useMemo(() => {
+		const formSelector = formValueSelector(form);
+		return createSelector(
+			[(state) => formSelector(state, "validation")],
+			(validation) => validation && Object.keys(validation).length > 0
+		);
+	}, [form]);
+	
+	const hasValidation = useSelector(hasValidationSelector);
 
 	const handleToggleValidation = (nextState) => {
 		if (nextState === false) {

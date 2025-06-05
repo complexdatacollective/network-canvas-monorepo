@@ -2,7 +2,6 @@
 
 import cx from "classnames";
 import { useRef } from "react";
-import { fieldPropTypes } from "redux-form";
 import { v4 as uuid } from "uuid";
 
 type RadioProps = {
@@ -11,7 +10,7 @@ type RadioProps = {
 	input: any;
 	disabled?: boolean;
 	fieldLabel?: string;
-} & typeof fieldPropTypes & Record<string, any>;
+} & Record<string, any>;
 
 const Radio = ({ label = null, className = "", input, disabled = false, fieldLabel = null, ...rest }: RadioProps) => {
 	const id = useRef(uuid());

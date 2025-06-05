@@ -20,7 +20,7 @@
 		"motion": "catalog:",
 		"react-compound-slider": "^2.4.0",
 		"react-markdown": "^6.0.2",
-		"react-resize-aware": "^3.0.1",
+		"react-resize-aware": "^4.0.0",
 		"react-transition-group": "^4.3.0",
 		"recompose": "npm:react-recompose@^0.33.0",
 		"redux": "^5.0.1",

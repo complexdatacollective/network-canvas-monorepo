@@ -1,13 +1,12 @@
 import cx from "classnames";
 import { useRef } from "react";
-import { fieldPropTypes } from "redux-form";
 import { v4 as uuid } from "uuid";
 
 type TextAreaProps = {
 	meta: any;
 	label?: string;
 	input: any;
-} & typeof fieldPropTypes;
+};
 
 const TextArea = ({ meta, label, input }: TextAreaProps) => {
 	const id = useRef(uuid());

@@ -1,11 +1,10 @@
-import StandardPropTypes from "prop-types";
 
 export const CATEGORIES = {
 	GENERATORS: "Name and Edge Generators",
 	SOCIOGRAMS: "Sociograms",
 	INTERPRETERS: "Name and Edge Interpreters",
 	UTILITIES: "Utilities",
-};
+} as const;
 
 export const TAGS = {
 	CREATE_NODES: "Create nodes",
@@ -16,7 +15,7 @@ export const TAGS = {
 	ROSTER_DATA: "Use Roster Data",
 	SHOW_MEDIA: "Display Media",
 	PROVIDE_INFORMATION: "Display Data",
-};
+} as const;
 
 export const TAG_COLORS = {
 	[TAGS.CREATE_NODES]: "neon-coral",
@@ -27,9 +26,43 @@ export const TAG_COLORS = {
 	[TAGS.ROSTER_DATA]: "paradise-pink",
 	[TAGS.SHOW_MEDIA]: "neon-carrot",
 	[TAGS.PROVIDE_INFORMATION]: "barbie-pink",
+} as const;
+
+// Define the interface types as a const array first
+export const INTERFACE_TYPE_NAMES = [
+	"NameGenerator",
+	"NameGeneratorQuickAdd",
+	"NameGeneratorRoster",
+	"DyadCensus",
+	"OneToManyDyadCensus",
+	"TieStrengthCensus",
+	"Sociogram",
+	"Narrative",
+	"OrdinalBin",
+	"CategoricalBin",
+	"AlterForm",
+	"Geospatial",
+	"AlterEdgeForm",
+	"EgoForm",
+	"Information",
+	"Anonymisation",
+] as const;
+
+// Type helpers
+export type InterfaceTypeName = typeof INTERFACE_TYPE_NAMES[number];
+export type Category = typeof CATEGORIES[keyof typeof CATEGORIES];
+export type Tag = typeof TAGS[keyof typeof TAGS];
+
+export type InterfaceType = {
+	type: InterfaceTypeName;
+	tags: Tag[];
+	category: Category;
+	title: string;
+	keywords: string;
+	description: string;
 };
 
-export const INTERFACE_TYPES = [
+export const INTERFACE_TYPES: InterfaceType[] = [
 	{
 		category: CATEGORIES.GENERATORS,
 		tags: [TAGS.CREATE_NODES, TAGS.NODE_ATTRIBUTES, TAGS.ROSTER_DATA],
@@ -168,14 +201,5 @@ export const INTERFACE_TYPES = [
 		description: "An interface that allows the participant to set a passphrase for node anonymisation.",
 	},
 ];
-
-export const PropTypes = {
-	interface: StandardPropTypes.shape({
-		type: StandardPropTypes.string,
-		tags: StandardPropTypes.arrayOf(StandardPropTypes.string),
-		category: StandardPropTypes.string,
-		title: StandardPropTypes.string,
-	}),
-};
 
 export default INTERFACE_TYPES;

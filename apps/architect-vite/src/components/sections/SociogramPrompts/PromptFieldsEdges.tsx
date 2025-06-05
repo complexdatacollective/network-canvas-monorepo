@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { union } from "es-toolkit/compat";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
@@ -17,19 +17,27 @@ type DisplayEdgesProps = {
 
 const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 	const dispatch = useDispatch();
-	const edgesForSubject = useSelector((state) => getEdgesForSubject(state, { entity, type }));
-	const createEdge = useSelector((state) => formValueSelector(form)(state, "edges.create"));
-	const displayEdges = useSelector((state) => formValueSelector(form)(state, "edges.display"));
+	
+	// Fix 1: Use the already memoized selector directly
+	const edgesForSubject = useSelector(getEdgesForSubject);
+	
+	// Fix 2: Memoize form selectors
+	const formSelector = useMemo(() => formValueSelector(form), [form]);
+	const createEdge = useSelector((state) => formSelector(state, "edges.create"));
+	const displayEdges = useSelector((state) => formSelector(state, "edges.display"));
 
-	const displayEdgesOptions = edgesForSubject.map((edge) => {
-		if (edge.value !== createEdge) {
-			return edge;
-		}
-		return {
-			...edge,
-			disabled: true,
-		};
-	});
+	// Fix 3: Memoize the mapped array
+	const displayEdgesOptions = useMemo(() => 
+		edgesForSubject.map((edge) => {
+			if (edge.value !== createEdge) {
+				return edge;
+			}
+			return {
+				...edge,
+				disabled: true,
+			};
+		}), [edgesForSubject, createEdge]
+	);
 
 	const hasDisabledEdgeOption = displayEdgesOptions.some((option) => option.disabled);
 

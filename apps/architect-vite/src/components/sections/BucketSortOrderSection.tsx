@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
@@ -22,8 +23,8 @@ const getDefaultSummary = () => (
 
 const BucketSortOrderSection = ({ form, disabled = false, maxItems = 5, optionGetter, summary = getDefaultSummary() }: BucketSortOrderSectionProps) => {
 	const dispatch = useDispatch();
-	const getFormValue = formValueSelector(form);
-	const hasBucketSortOrder = useSelector((state) => getFormValue(state, "bucketSortOrder"));
+	const formSelector = useMemo(() => formValueSelector(form), [form]);
+	const hasBucketSortOrder = useSelector((state) => formSelector(state, "bucketSortOrder"));
 
 	const handleToggleChange = (nextState) => {
 		if (nextState === false) {

@@ -1,0 +1,52 @@
+import { Button } from "@codaco/legacy-ui/components";
+import useExternalDataDownload from "~/components/AssetBrowser/useExternalDataDownload";
+import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
+import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import EntityIcon from "./EntityIcon";
+import VariableList from "./VariableList";
+
+type ExternalEntityProps = {
+	name: string;
+	id: string;
+};
+
+const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
+	const { variables } = useVariablesFromExternalData(id);
+
+	const [preview, handleShowPreview] = useExternalDataPreview();
+	const handleDownloadAsset = useExternalDataDownload();
+
+	return (
+		<>
+			<div className="codebook__entity">
+				<div className="codebook__entity-detail">
+					<div className="codebook__entity-icon">
+						<EntityIcon entity="asset" />
+					</div>
+					<div className="codebook__entity-name">
+						<h2>{name}</h2>
+					</div>
+					<div className="codebook__entity-meta" />
+					<div className="codebook__entity-control">
+						<Button size="small" onClick={() => handleShowPreview(id)}>
+							Preview
+						</Button>
+						<Button size="small" onClick={() => handleDownloadAsset(id)} color="sea-serpent">
+							Download
+						</Button>
+					</div>
+				</div>
+				{variables.length > 0 && (
+					<div className="codebook__entity-variables">
+						<h3>Variables:</h3>
+						<VariableList variables={variables} />
+					</div>
+				)}
+			</div>
+			{preview}
+		</>
+	);
+};
+
+
+export default ExternalEntity;

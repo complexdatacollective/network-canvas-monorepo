@@ -1,4 +1,5 @@
 import { formValueSelector } from "redux-form";
+import { createSelector } from "@reduxjs/toolkit";
 import { getVariableOptionsForSubject } from "~/selectors/codebook";
 import { getCodebook } from "~/selectors/protocol";
 import { asOptions } from "~/selectors/utils";
@@ -20,12 +21,12 @@ export const getHighlightVariablesForSubject = (state: any, { type, entity }: { 
 	return highlightVariables;
 };
 
-export const getEdgesForSubject = (state: any) => {
-	const codebook = getCodebook(state);
-	const codebookOptions = asOptions(codebook.edge);
-
-	return codebookOptions;
-};
+export const getEdgesForSubject = createSelector(
+	[getCodebook],
+	(codebook) => {
+		return asOptions(codebook.edge);
+	}
+);
 
 export const getEdgeFilters = (state: any) => {
 	const getStageValue = formValueSelector("edit-stage");

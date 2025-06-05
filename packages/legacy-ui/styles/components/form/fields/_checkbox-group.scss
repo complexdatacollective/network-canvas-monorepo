@@ -1,8 +1,13 @@
 $component-name: form-field-checkbox-group;
 
 .#{$component-name} {
-  @include form-field;
+  // @include form-field;
   display: block;
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+  }
 
   &__option {
     &:last-child {

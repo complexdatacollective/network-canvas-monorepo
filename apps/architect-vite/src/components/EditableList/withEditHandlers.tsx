@@ -1,6 +1,6 @@
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers, withStateHandlers } from "recompose";
-import { bindActionCreators } from "@reduxjs/toolkit";
 import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";
@@ -24,7 +24,7 @@ const mapDispatchToProps = (dispatch, { form }) => ({
 
 const mapItemStateToProps = (state, { form, itemSelector, editField, template }) => {
 	const item = itemSelector(state, { form, editField });
-	const initialValues = item || { ...template(), id: uuid() };
+	const initialValues = item || { ...template, id: uuid() };
 
 	return { initialValues };
 };

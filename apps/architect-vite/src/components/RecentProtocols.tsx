@@ -66,9 +66,7 @@ const mapStateToProps = (state) => ({
 	recentProtocols: getRecentProtocols(state),
 });
 
-RecentProtocols.defaultProps = {
-	show: true,
-};
+// Default props handled via TypeScript default parameter values
 
 export { RecentProtocols as UnconnectedRecentProtocols };
 
