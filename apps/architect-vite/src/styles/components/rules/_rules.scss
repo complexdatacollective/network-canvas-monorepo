@@ -1,0 +1,23 @@
+
+
+.rules-rules {
+  &__join {
+    --input-border: var(--text);
+
+    margin-top: 2.4rem;
+  }
+
+  &__add-new {
+    margin-top: 1.2rem;
+
+    button {
+      margin: 0 1.2rem 0 0;
+    }
+  }
+
+  &--has-error {
+    .rules-preview-rules {
+      border-color: var(--error);
+    }
+  }
+}

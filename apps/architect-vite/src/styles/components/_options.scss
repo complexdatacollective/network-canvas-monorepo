@@ -1,0 +1,104 @@
+
+
+$component-name: 'options';
+
+.#{$component-name} {
+  display: block;
+
+  &__options {
+    margin-bottom: 1rem;
+  }
+
+  &__option {
+    display: flex;
+    background-color: var(--form-control);
+    color: var(--architect-sortable-text);
+    z-index: var(--z-fx);
+    transition: background-color var(--animation-easing) var(--animation-duration-standard);
+    border-radius: 1rem;
+
+    &:not(:last-of-type) {
+      margin-bottom: 1rem;
+    }
+
+    &-controls {
+      flex-grow: 0;
+      display: flex;
+      padding: 1rem;
+
+      &--center {
+        align-items: center;
+      }
+    }
+
+    &-values {
+      flex: 1;
+      display: flex;
+    }
+
+    &-value {
+      margin: 1.2rem 0;
+      flex: 1;
+
+      &:last-of-type {
+        margin-left: 1.2rem;
+      }
+    }
+
+    &-label {
+      margin: 0 0 1rem;
+      transition: color var(--animation-easing) var(--animation-duration-standard);
+    }
+
+    &-delete,
+    &-handle {
+      cursor: pointer;
+      background-color: transparent;
+      width: 3rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--architect-sortable-text);
+
+      .icon {
+        width: 1.2rem;
+        height: 1.2rem;
+
+        .cls-1,
+        .cls-2 {
+          fill: var(--architect-sortable-text);
+        }
+      }
+    }
+
+    &-handle {
+      cursor: grab;
+    }
+
+    .form-field-container {
+      margin: 0;
+    }
+  }
+
+  &--has-error {
+    .form-field-error {
+      margin: 1rem 0;
+      border-radius: 0.6rem;
+    }
+
+    .#{$component-name}__option {
+      background-color: var(--error);
+
+      &-label {
+        color: var(--text-light);
+      }
+    }
+
+    .#{$component-name}__delete,
+    .#{$component-name}__handle {
+      background-color: transparent;
+      filter: brightness(100);
+    }
+  }
+
+}

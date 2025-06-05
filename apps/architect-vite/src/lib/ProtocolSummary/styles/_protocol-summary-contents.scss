@@ -1,0 +1,37 @@
+.protocol-summary-contents {
+  .heading {
+    @extend .small-heading;
+
+    margin: 1.2rem 0;
+  }
+
+  &__section {
+    li {
+      margin: 0.6rem 0;
+    }
+
+    > ol {
+      padding-inline-start: 0;
+
+      // Top level
+      > li {
+        list-style: none;
+
+        @extend .small-heading;
+
+        font-size: 14px !important;
+        margin: 1.2rem 0;
+      }
+    }
+
+    ul {
+      li {
+        padding-inline-start: 0;
+        display: flex;
+        align-items: center;
+      }
+    }
+
+
+  }
+}

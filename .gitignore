@@ -24,8 +24,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 **/.vercel
@@ -39,4 +42,10 @@ next-env.d.ts
 
 dist
 
+# biome doesn't support nested .gitignore files, so these need to be added here.
+**/src-tauri/target
+**/src-tauri/gen/schemas
 
+**/src/__tests__/data
+**/src/__tests__/.cache
+**/src/schemas/compiled

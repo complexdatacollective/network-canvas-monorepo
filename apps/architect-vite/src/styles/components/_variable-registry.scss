@@ -1,0 +1,30 @@
+
+
+.variable-registry {
+  .simple-list {
+    &__attribute {
+      &--icon {
+        flex-grow: 0;
+
+        .node {
+          font-size: 60px;
+        }
+      }
+
+      &--options {
+        flex-grow: 0;
+      }
+    }
+
+    &__tag {
+      @include typography('copy-small');
+
+      display: inline-block;
+      border-radius: 0.3rem;
+      padding: 0.3rem;
+      margin-left: 0.6rem;
+      color: var(--text-light);
+      background-color: var(--architect-warning);
+    }
+  }
+}

@@ -1,0 +1,7 @@
+@mixin button-background($color: red) { // sass-lint:disable-line no-color-keywords
+  background-color: $color;
+
+  &:hover {
+    background-color: $color;
+  }
+}
