@@ -1,41 +1,36 @@
-import { get } from "es-toolkit/compat";
 import { Flipped } from "react-flip-toolkit";
-import { connect } from "react-redux";
-import { actionCreators as sessionActions } from "~/ducks/modules/session";
+import { useLocation } from "wouter";
+import { type StoredProtocol } from "~/ducks/modules/protocols";
 import protocolCover from "~/images/NC-File.svg";
 
-type Protocol = {
-	filePath: string;
-};
-
 type ProtocolStackProps = {
-	protocol: Protocol;
-	openNetcanvas: (filePath: string) => void;
+	protocol: StoredProtocol;
 };
 
-const getFilename = (path = "") => get(path.match(/([^/\\]+)$/), 1, path);
-
-const ProtocolStack = ({ openNetcanvas, protocol: { filePath } }: ProtocolStackProps) => (
-	<div className="protocol-stack" onClick={() => openNetcanvas(filePath)}>
-		<div className="protocol-stack__preview">
-			<Flipped flipId={encodeURIComponent(filePath)}>
-				<div className="protocol-stack__stack">
-					<div className="protocol-stack__stack-cover">
-						<img src={protocolCover} alt="" />
+const ProtocolStack = ({ protocol }: ProtocolStackProps) => {
+	const [, navigate] = useLocation();
+	
+	const handleClick = () => {
+		navigate(`/protocol/${protocol.id}`);
+	};
+	
+	return (
+		<div className="protocol-stack" onClick={handleClick}>
+			<div className="protocol-stack__preview">
+				<Flipped flipId={protocol.id}>
+					<div className="protocol-stack__stack">
+						<div className="protocol-stack__stack-cover">
+							<img src={protocolCover} alt="" />
+						</div>
 					</div>
-				</div>
-			</Flipped>
+				</Flipped>
+			</div>
+			<h4 className="protocol-stack__label">{protocol.name}</h4>
+			<p className="protocol-stack__filepath" alt={protocol.description || "No description"}>
+				{protocol.description || "No description"}
+			</p>
 		</div>
-		<h4 className="protocol-stack__label">{getFilename(filePath)}</h4>
-		<p className="protocol-stack__filepath" alt={filePath}>
-			{filePath}
-		</p>
-	</div>
-);
-
-
-const mapDispatchToProps = {
-	openNetcanvas: sessionActions.openNetcanvas,
+	);
 };
 
-export default connect(null, mapDispatchToProps)(ProtocolStack);
+export default ProtocolStack;

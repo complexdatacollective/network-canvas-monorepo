@@ -9,6 +9,7 @@ import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
 import { getHasUnsavedChanges, getProtocol } from "~/selectors/protocol";
+import useProtocolLoader from "~/hooks/useProtocolLoader";
 
 type ProtocolProps = {
 	isLoading?: boolean;
@@ -16,6 +17,9 @@ type ProtocolProps = {
 };
 
 const Protocol = ({ isLoading = false, hasProtocol = false }: ProtocolProps) => {
+	// Use the protocol loader hook to handle URL-based protocol loading
+	useProtocolLoader();
+	
 	const sceneClasses = cx("scene", { "scene--protocol": hasProtocol }, { "scene--loading": isLoading });
 
 	const variants = {
@@ -50,7 +54,7 @@ const Protocol = ({ isLoading = false, hasProtocol = false }: ProtocolProps) => 
 };
 
 
-const mapStateToProps = (state) => {
+const mapStateToProps = (state: any) => {
 	const activeProtocol = getProtocol(state);
 
 	return {

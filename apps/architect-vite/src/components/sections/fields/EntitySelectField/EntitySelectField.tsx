@@ -1,9 +1,9 @@
 import { Icon } from "@codaco/legacy-ui/components";
 import Button from "@codaco/legacy-ui/components/Button";
+import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createSelector } from "@reduxjs/toolkit";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as screenActions } from "~/ducks/modules/ui/screens";
 import { getEdgeTypes, getNodeTypes } from "../../../../selectors/codebook";
@@ -37,7 +37,6 @@ const EntitySelectField = ({
 	meta: { error, invalid, touched },
 	promptBeforeChange = null,
 }: EntitySelectFieldProps) => {
-
 	const dispatch = useDispatch();
 	const openScreen = (screen, params) => dispatch(screenActions.openScreen(screen, params));
 	const edgeOptions = useSelector(getEdgeOptions);
@@ -110,7 +109,7 @@ const EntitySelectField = ({
 	return (
 		<div className={classes}>
 			{label && <h4 className="form-field-label">{label}</h4>}
-			<div className="form-field form-fields-entity-select__field">
+			<div className="form-field flex-wrap flex">
 				{renderOptions()}
 				{options.length === 0 && (
 					<p className="form-fields-entity-select__empty">
@@ -130,6 +129,5 @@ const EntitySelectField = ({
 		</div>
 	);
 };
-
 
 export default EntitySelectField;

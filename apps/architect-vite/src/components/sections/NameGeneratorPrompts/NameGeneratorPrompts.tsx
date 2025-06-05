@@ -1,10 +1,9 @@
 import { compose } from "recompose";
 import EditableList from "../../EditableList";
-import withSubject from "../../enhancers/withSubject";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
-import PromptPreview from "./PromptPreview";
+import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
-// import Tip from '../../Tip';
+import PromptPreview from "./PromptPreview";
 
 const NameGeneratorPrompts = (props) => (
 	<EditableList

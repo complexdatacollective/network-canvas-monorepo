@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import * as fse from "fs-extra";
+/* eslint-env vitest */
 
 import { canUpgrade, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
 import { v4 as uuid } from "uuid";
+import { vi } from "vitest";
 import { APP_SCHEMA_VERSION } from "~/config";
 import { archive, extract } from "~/utils/protocols/lib/archive";
 import { pruneProtocol } from "~/utils/prune";
@@ -54,7 +54,7 @@ describe("netcanvasFile/netcanvasFile", () => {
 			return Promise.resolve(`/dev/null/working/path/${count}`);
 		});
 		writeProtocol.mockResolvedValue();
-		deployNetcanvas.mockImplementation((_sourcePath, savePath) =>
+		deployNetcanvas.mockImplementation((sourcePath, savePath) =>
 			Promise.resolve({
 				savePath,
 				backupPath: `${savePath}.backup`,
@@ -240,7 +240,7 @@ describe("netcanvasFile/netcanvasFile", () => {
 
 		describe("when path does not already exist", () => {
 			beforeEach(() => {
-				deployNetcanvas.mockImplementation((_sourcePath, savePath) =>
+				deployNetcanvas.mockImplementation((sourcePath, savePath) =>
 					Promise.resolve({
 						savePath,
 						backupPath: null,

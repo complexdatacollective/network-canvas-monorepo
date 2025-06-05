@@ -1,6 +1,5 @@
-import { get } from "es-toolkit/compat";
-import { v4 as uuid } from "uuid";
 import { createSlice } from "@reduxjs/toolkit";
+import { v4 as uuid } from "uuid";
 
 const defaultOptions = {
 	limit: 1000,
@@ -20,7 +19,7 @@ const createTimelineReducer = (reducer, customOptions) => {
 	};
 
 	const timelineSlice = createSlice({
-		name: 'timeline',
+		name: "timeline",
 		initialState,
 		reducers: {
 			jump: (state, action) => {
@@ -118,12 +117,12 @@ const createTimelineReducer = (reducer, customOptions) => {
 };
 
 export const actionTypes = {
-	RESET: 'timeline/reset',
+	RESET: "timeline/reset",
 };
 
 export const actionCreators = {
-	jump: (locus) => ({ type: 'timeline/jump', payload: { locus } }),
-	reset: () => ({ type: 'timeline/reset' }),
+	jump: (locus) => ({ type: "timeline/jump", payload: { locus } }),
+	reset: () => ({ type: "timeline/reset" }),
 };
 
 export default createTimelineReducer;

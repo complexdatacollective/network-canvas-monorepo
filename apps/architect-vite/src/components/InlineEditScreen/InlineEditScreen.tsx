@@ -2,8 +2,7 @@ import Button from "@codaco/legacy-ui/components/Button";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import { createPortal } from "react-dom";
-import { connect } from "react-redux";
-import { compose } from "recompose";
+import { useDispatch } from "react-redux";
 import { submit } from "redux-form";
 import { Layout } from "~/components/EditorLayout";
 import Form from "./Form";
@@ -30,19 +29,25 @@ const item = {
 interface InlineEditScreenProps {
 	show?: boolean;
 	form: string;
-	submitForm: (form: string) => void;
 	title?: string | null;
-	layoutId?: string | null;
 	onSubmit: (values: any) => void;
 	onCancel: () => void;
 	children?: React.ReactNode;
-	[key: string]: any;
 }
 
-const InlineEditScreen = ({ show = false, form, submitForm, title = null, layoutId = null, onSubmit, onCancel, children = null, ...rest }: InlineEditScreenProps) => {
+const InlineEditScreen = ({
+	show = false,
+	form,
+	title = null,
+	onSubmit,
+	onCancel,
+	children = null,
+}: InlineEditScreenProps) => {
+	const dispatch = useDispatch();
+
 	const handleSubmit = useCallback(() => {
-		submitForm(form);
-	}, [form, submitForm]);
+		dispatch(submit(form));
+	}, [form, dispatch]);
 
 	return createPortal(
 		<AnimatePresence>
@@ -60,12 +65,7 @@ const InlineEditScreen = ({ show = false, form, submitForm, title = null, layout
 						</motion.div>
 						<motion.div variants={item} className="inline-edit-screen__content">
 							<Layout>
-								<Form
-									form={form}
-									onSubmit={onSubmit}
-									// eslint-disable-next-line react/jsx-props-no-spreading
-									{...rest}
-								>
+								<Form form={form} onSubmit={onSubmit}>
 									{children}
 								</Form>
 							</Layout>
@@ -86,9 +86,4 @@ const InlineEditScreen = ({ show = false, form, submitForm, title = null, layout
 	);
 };
 
-
-const mapDispatchToProps = {
-	submitForm: submit,
-};
-
-export default compose(connect(null, mapDispatchToProps))(InlineEditScreen);
+export default InlineEditScreen;

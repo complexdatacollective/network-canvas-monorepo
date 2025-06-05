@@ -1,33 +1,45 @@
 import { GraphicButton } from "@codaco/legacy-ui/components";
 import { ProtocolCard } from "@codaco/legacy-ui/components/Cards";
-import { first, get } from "es-toolkit/compat";
+import { first } from "es-toolkit/compat";
 import { connect } from "react-redux";
-import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import { useLocation, useRoute } from "wouter";
+import { useDispatch } from "react-redux";
+// Use webUserActions during transition
+import { actionCreators as userActions } from "~/ducks/modules/userActions/webUserActions";
+import { selectRecentProtocols, type StoredProtocol } from "~/ducks/modules/protocols";
+import type { RootState } from "~/ducks/modules/root";
+import { installDevelopmentProtocols, clearAllStorage } from "~/utils/developmentSetup";
 import createButtonGraphic from "~/images/home/create-button.svg";
 import openButtonGraphic from "~/images/home/open-button.svg";
 import Group from "./Group";
 import Section from "./Section";
 
-type RecentProtocol = {
-	filePath: string;
-	lastModified: string;
-	name: string;
-	schemaVersion: string;
-};
-
 type LaunchPadProps = {
-	openNetcanvas: (filePath?: string) => void;
+	openNetcanvas: () => void;
 	createNetcanvas: () => void;
-	lastEditedProtocol?: RecentProtocol | null;
-	otherRecentProtocols?: RecentProtocol[];
+	navigateToProtocol: (protocolId: string) => void;
+	lastEditedProtocol?: StoredProtocol | null;
+	otherRecentProtocols?: StoredProtocol[];
 };
 
 const LaunchPad = ({
 	openNetcanvas,
 	createNetcanvas,
+	navigateToProtocol,
 	lastEditedProtocol = null,
 	otherRecentProtocols = [],
-}: LaunchPadProps) => (
+}: LaunchPadProps) => {
+	const dispatch = useDispatch();
+	
+	const handleInstallDevProtocols = async () => {
+		await installDevelopmentProtocols(dispatch);
+	};
+	
+	const handleClearStorage = () => {
+		clearAllStorage(dispatch);
+	};
+	
+	return (
 	<>
 		{lastEditedProtocol && (
 			<Section className="launch-pad">
@@ -35,24 +47,24 @@ const LaunchPad = ({
 					<div className="launch-pad__resume">
 						<h2>Resume Editing</h2>
 						<ProtocolCard
-							description={lastEditedProtocol.filePath}
-							lastModified={lastEditedProtocol.lastModified}
+							description={lastEditedProtocol.description || "No description"}
+							lastModified={lastEditedProtocol.lastModified.toString()}
 							name={lastEditedProtocol.name}
-							onClickHandler={() => openNetcanvas(lastEditedProtocol.filePath)}
-							schemaVersion={lastEditedProtocol.schemaVersion}
+							onClickHandler={() => navigateToProtocol(lastEditedProtocol.id)}
+							schemaVersion={lastEditedProtocol.protocol.schemaVersion.toString()}
 						/>
 					</div>
 					<div className="launch-pad__action-divider" />
 					<div className="launch-pad__resume">
 						{otherRecentProtocols.map((protocol) => (
 							<ProtocolCard
-								key={protocol.filePath}
+								key={protocol.id}
 								condensed
-								description={protocol.filePath}
-								lastModified={protocol.lastModified}
+								description={protocol.description || "No description"}
+								lastModified={protocol.lastModified.toString()}
 								name={protocol.name}
-								onClickHandler={() => openNetcanvas(protocol.filePath)}
-								schemaVersion={protocol.schemaVersion}
+								onClickHandler={() => navigateToProtocol(protocol.id)}
+								schemaVersion={protocol.protocol.schemaVersion.toString()}
 							/>
 						))}
 					</div>
@@ -87,26 +99,82 @@ const LaunchPad = ({
 							<h3>Existing Protocol</h3>
 						</GraphicButton>
 					</div>
+					<div className="launch-pad__action-divider" />
+					<div className="launch-pad__action">
+						<GraphicButton
+							graphic={openButtonGraphic}
+							graphicPosition="0 bottom"
+							color="mustard"
+							graphicSize="auto 115%"
+							onClick={handleClearStorage}
+						>
+							<h2>Clear</h2>
+							<h3>All Storage</h3>
+						</GraphicButton>
+					</div>
 				</div>
 			</Group>
 		</Section>
+		{process.env.NODE_ENV === 'development' && (
+			<Section className="launch-pad">
+				<Group>
+					<h2>Development Tools</h2>
+					<div className="launch-pad__actions">
+						<div className="launch-pad__action">
+							<GraphicButton
+								graphic={createButtonGraphic}
+								graphicPosition="20% bottom"
+								graphicSize="auto 90%"
+								onClick={handleInstallDevProtocols}
+								color="neon-coral"
+							>
+								<h2>Install</h2>
+								<h3>Sample Protocols</h3>
+							</GraphicButton>
+						</div>
+					</div>
+				</Group>
+			</Section>
+		)}
 	</>
 );
+};
 
-const mapStateToProps = (state) => {
-	const recentProtocols = get(state, "recentProtocols", []).filter((meta) => !!meta.schemaVersion);
+const mapStateToProps = (state: RootState) => {
+	// Use the new protocols store
+	const recentProtocols = selectRecentProtocols(10)(state);
 
 	return {
-		lastEditedProtocol: first(recentProtocols),
+		lastEditedProtocol: first(recentProtocols) || null,
 		otherRecentProtocols: recentProtocols.slice(1, 4),
 	};
 };
 
-const mapDispatchToProps = {
-	createNetcanvas: userActions.createNetcanvas,
-	openNetcanvas: userActions.openNetcanvas,
+const mapDispatchToProps = (dispatch: any, ownProps: any) => ({
+	createNetcanvas: () => dispatch(userActions.createNetcanvas()),
+	openNetcanvas: () => dispatch(userActions.openNetcanvas()),
+	navigateToProtocol: (protocolId: string) => {
+		// Get navigate function from component
+		const [, navigate] = useLocation();
+		navigate(`/protocol/${protocolId}`);
+	},
+});
+
+// Create a wrapper component to handle navigation
+const LaunchPadWithNavigation = (props: Omit<LaunchPadProps, 'navigateToProtocol'>) => {
+	const [, navigate] = useLocation();
+	
+	return (
+		<LaunchPad
+			{...props}
+			navigateToProtocol={(protocolId) => navigate(`/protocol/${protocolId}`)}
+		/>
+	);
 };
 
-const withState = connect(mapStateToProps, mapDispatchToProps);
+const withState = connect(mapStateToProps, {
+	createNetcanvas: userActions.createNetcanvas,
+	openNetcanvas: userActions.openNetcanvas,
+});
 
-export default withState(LaunchPad);
+export default withState(LaunchPadWithNavigation);

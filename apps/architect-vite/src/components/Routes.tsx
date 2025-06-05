@@ -23,6 +23,11 @@ const Routes = () => {
 		<motion.div className="app" variants={appVariants} initial="hide" animate="show">
 			<Loading />
 			<Switch>
+				{/* New route with protocol ID parameter */}
+				<Route path="/protocol/:protocolId" component={Protocol}>
+					<Route path="/summary" component={ProtocolSummary} />
+				</Route>
+				{/* Keep legacy route during transition */}
 				<Route path="/protocol" component={Protocol}>
 					<Route path="/summary" component={ProtocolSummary} />
 				</Route>

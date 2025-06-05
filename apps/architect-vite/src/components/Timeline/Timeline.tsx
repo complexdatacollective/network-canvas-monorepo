@@ -7,7 +7,7 @@ import { bindActionCreators, compose } from "@reduxjs/toolkit";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
-import { getProtocol, getStageList } from "~/selectors/protocol";
+import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 
@@ -115,7 +115,7 @@ const Timeline = (props: TimelineProps) => {
 };
 
 const mapStateToProps = (state) => ({
-	locus: state.protocol.timeline[state.protocol.timeline.length - 1],
+	locus: getTimelineLocus(state),
 	activeProtocol: getProtocol(state),
 	stages: getStageList(state),
 	transitionDuration: getCSSVariableAsNumber("--animation-duration-standard-ms"), // Re-order transition

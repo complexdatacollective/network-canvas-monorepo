@@ -4,7 +4,8 @@ import logger from "./middleware/logger";
 import { rootReducer } from "./modules/root";
 import type { RootState } from "./modules/root";
 
-const rememberedKeys = ["protocols", "recentProtocols", "app"];
+// Remember both old and new stores during transition
+const rememberedKeys = ["protocols", "activeProtocol", "recentProtocols", "app"];
 
 const reducer = rememberReducer(rootReducer);
 
@@ -24,6 +25,7 @@ const store = configureStore({
 			rememberEnhancer(window.localStorage, rememberedKeys) as any
 		),
 });
+
 
 export { store };
 

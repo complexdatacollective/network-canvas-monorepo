@@ -1,25 +1,16 @@
 import { Button } from "@codaco/legacy-ui/components";
 import { startCase } from "es-toolkit/compat";
 import { LayoutGroup } from "motion/react";
-import React from "react";
-import { compose } from "recompose";
+import type React from "react";
 import { Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import OrderedList from "~/components/OrderedList";
-import { getFieldId, scrollToFirstIssue } from "~/utils/issues";
-import withEditHandlers from "./withEditHandlers";
+import { getFieldId } from "~/utils/issues";
+import { useEditHandlers } from "./useEditHandlers";
 
-const formName = "editable-list-form";
-
-const sortModes = ["manual"];
-
-const notEmpty = (value) => (value && value.length > 0 ? undefined : "You must create at least one item.");
-
-const handleSubmitFail = (issues) => {
-	scrollToFirstIssue(issues);
-};
-
+const notEmpty = (value: unknown) =>
+	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item.";
 
 type EditableListProps = {
 	sectionTitle: string;
@@ -28,100 +19,79 @@ type EditableListProps = {
 	disabled?: boolean;
 	sortMode?: "manual";
 	fieldName?: string;
-	contentId?: string;
-	title?: string;
+	title?: string | null;
 	children?: React.ReactNode;
-	previewComponent: React.ComponentType<any>;
-	editComponent: React.ComponentType<any>;
+	previewComponent: React.ComponentType<unknown>;
+	editComponent: React.ComponentType<unknown>;
 	validation?: Record<string, unknown>;
-	editField?: string;
-	handleEditField: (field: string) => void;
-	handleCancelEditField: () => void;
-	handleCompleteEditField?: () => void;
-	handleUpdate: (values: any) => void;
-	handleAddNew: () => void;
-	upsert: (values: any) => void;
-	itemCount: any;
-	setEditField: (field: string) => void;
-	initialValues?: any;
-	editProps?: any;
+	editProps?: Record<string, unknown>;
+	// Optional props for customizing hook behavior
+	normalize?: (value: unknown) => unknown;
+	template?: () => Record<string, unknown>;
+	itemSelector?: (state: unknown, options: { form: string; editField: string }) => unknown;
+	onChange?: (value: unknown) => Promise<unknown>;
 };
 
 const EditableList = ({
 	sectionTitle,
 	sectionSummary = null,
-	editField = null,
-	handleEditField,
-	handleCancelEditField,
-	handleCompleteEditField = () => {},
-	handleUpdate,
+	form,
 	disabled = false,
-	sortMode = "manual",
-	handleAddNew,
 	fieldName = "prompts",
-	contentId = null,
 	children = null,
-	upsert,
 	title = null,
 	validation = { notEmpty },
-	itemCount,
-	setEditField,
-	initialValues = null,
 	editComponent: EditComponent,
 	previewComponent: PreviewComponent,
-	editProps = null,
-	...rest
-}: EditableListProps) => (
-	<Section disabled={disabled} contentId={contentId} summary={sectionSummary} title={sectionTitle}>
-		<LayoutGroup>
-			<div id={getFieldId(`${fieldName}._error`)} data-name={startCase(fieldName)} />
-			{children}
-			<div className="editable-list">
-				<div className="editable-list__items">
-					<ValidatedField
-						name={fieldName}
-						component={OrderedList}
-						item={PreviewComponent}
-						validation={validation}
-						onClickItem={handleEditField}
-						editField={editField}
-						form={formName}
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						// {...rest}
-					/>
+	editProps = {},
+	normalize,
+	template,
+	itemSelector,
+	onChange,
+}: EditableListProps) => {
+	const { editField, handleEditField, handleCancelEditField, handleAddNew, handleUpdate } = useEditHandlers({
+		form,
+		fieldName,
+		normalize,
+		template,
+		itemSelector,
+		onChange,
+	});
+
+	return (
+		<Section disabled={disabled} summary={sectionSummary} title={sectionTitle}>
+			<LayoutGroup>
+				<div id={getFieldId(`${fieldName}._error`)} data-name={startCase(fieldName)} />
+				{children}
+				<div className="editable-list">
+					<div className="editable-list__items">
+						<ValidatedField
+							name={fieldName}
+							component={OrderedList}
+							item={PreviewComponent}
+							validation={validation}
+							onClickItem={handleEditField}
+							editField={editField}
+							form={form}
+						/>
+					</div>
+					<Button onClick={handleAddNew} size="small" icon="add">
+						Create new
+					</Button>
 				</div>
-				<Button onClick={handleAddNew} size="small" icon="add">
-					Create new
-				</Button>
-			</div>
 
-			<InlineEditScreen
-				show={!!editField}
-				initialValues={initialValues}
-				title={title}
-				onSubmit={handleUpdate}
-				onSubmitFail={handleSubmitFail}
-				onCancel={handleCancelEditField}
-				layoutId={editField}
-				form={formName}
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...editProps}
-			>
-				<EditComponent
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...rest}
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...editProps}
-					form={formName}
-					initialValues={initialValues}
-					fieldId={editField}
-				/>
-			</InlineEditScreen>
-		</LayoutGroup>
-	</Section>
-);
+				<InlineEditScreen
+					show={!!editField}
+					title={title}
+					onSubmit={handleUpdate}
+					onCancel={handleCancelEditField}
+					form={form}
+				>
+					<EditComponent {...editProps} />
+				</InlineEditScreen>
+			</LayoutGroup>
+		</Section>
+	);
+};
 
-
-export { EditableList };
-
-export default compose(withEditHandlers)(EditableList);
+export default EditableList;

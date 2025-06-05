@@ -1,5 +1,5 @@
 import { isArray, isPlainObject } from "es-toolkit/compat";
-import React, { memo } from "react";
+import type React from "react";
 import { connect } from "react-redux";
 import { compose, renameProp } from "recompose";
 import { arrayMove, arrayRemove } from "redux-form";
@@ -30,9 +30,9 @@ type OrderedListProps = OrderedListBaseProps & {
 	onSortEnd?: (params: { oldIndex: number; newIndex: number }) => void;
 };
 
-const OrderedList = memo((props: OrderedListBaseProps) => {
+const OrderedList = (props: OrderedListBaseProps) => {
 	const {
-		input: { value: values, name },
+		input: { value: values = [], name },
 		meta: { error, dirty, submitFailed },
 		item: Item,
 		disabled: sortable,
@@ -71,8 +71,7 @@ const OrderedList = memo((props: OrderedListBaseProps) => {
 			})}
 		</div>
 	);
-});
-
+};
 
 const mapDispatchToProps = (dispatch, { input: { name }, meta: { form } }) => ({
 	removeItem: (index) => {
@@ -97,22 +96,10 @@ const mapDispatchToProps = (dispatch, { input: { name }, meta: { form } }) => ({
 export { OrderedList };
 
 const withDefaults = (Component: React.ComponentType<OrderedListBaseProps>) => {
-	return (props: Omit<OrderedListProps, 'removeItem' | 'onSortEnd'>) => {
-		const {
-			lockAxis = "y",
-			useDragHandle = true,
-			sortable = true,
-			onClickItem = null,
-			...rest
-		} = props;
-		
-		return (
-			<Component
-				{...rest}
-				onClickItem={onClickItem}
-				disabled={!sortable}
-			/>
-		);
+	return (props: Omit<OrderedListProps, "removeItem" | "onSortEnd">) => {
+		const { lockAxis = "y", useDragHandle = true, sortable = true, onClickItem = null, ...rest } = props;
+
+		return <Component {...rest} onClickItem={onClickItem} disabled={!sortable} />;
 	};
 };
 
