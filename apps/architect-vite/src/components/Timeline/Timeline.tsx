@@ -3,11 +3,13 @@ import cx from "classnames";
 import { motion } from "motion/react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import { bindActionCreators, compose } from "@reduxjs/toolkit";
+import { bindActionCreators } from "@reduxjs/toolkit";
+import { compose } from "recompose";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
 import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";
+import type { RootState } from "~/ducks/modules/root";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 
@@ -114,14 +116,14 @@ const Timeline = (props: TimelineProps) => {
 	);
 };
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: RootState) => ({
 	locus: getTimelineLocus(state),
 	activeProtocol: getProtocol(state),
 	stages: getStageList(state),
 	transitionDuration: getCSSVariableAsNumber("--animation-duration-standard-ms"), // Re-order transition
 });
 
-const mapDispatchToProps = (dispatch, props) => ({
+const mapDispatchToProps = (dispatch: any, props: any) => ({
 	deleteStage: bindActionCreators(stageActions.deleteStage, dispatch),
 	openDialog: bindActionCreators(dialogsActions.openDialog, dispatch),
 	openScreen: bindActionCreators(uiActions.openScreen, dispatch),

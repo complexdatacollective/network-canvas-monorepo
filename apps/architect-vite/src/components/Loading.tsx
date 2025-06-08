@@ -2,7 +2,7 @@ import { Spinner } from "@codaco/legacy-ui/components";
 import { AnimatePresence, motion } from "motion/react";
 import { connect } from "react-redux";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
-import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
+import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions/webUserActions";
 
 const variants = {
 	hidden: { opacity: 0, transition: { delay: 0.5, duration: 0.5 } },
@@ -41,9 +41,7 @@ const Loading = ({ isLoading }: LoadingProps) => (
 	</AnimatePresence>
 );
 
-type RootState = {
-	[key: string]: any;
-};
+import type { RootState } from "~/ducks/modules/root";
 
 const mapStateToProps = (state: RootState) => ({
 	isLoading: statusSelectors.getIsBusy(state, protocolsLocks.loading),

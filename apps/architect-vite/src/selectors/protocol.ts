@@ -135,10 +135,6 @@ export const getTimelineLocus = (state: RootState) => {
 };
 
 // New selectors for the activeProtocol store
-export const getActiveProtocolId = (state: RootState): string | undefined => {
-  return selectActiveProtocolId(state as any);
-};
-
 export const hasActiveProtocol = (state: RootState): boolean => {
-  return Boolean(selectActiveProtocol(state as any));
+  return Boolean(selectActiveProtocol(state as { activeProtocol: { present: Protocol } }));
 };

@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import Version from "~/components/Version";
 import headerGraphic from "~/images/Arc-Flat.svg";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
-import { actionCreators as userActions } from "../../ducks/modules/userActions/userActions";
+import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
 import { openExternalLink } from "../ExternalLink";
 import Group from "./Group";
 import Section from "./Section";
@@ -16,7 +16,7 @@ const WelcomeHeader = () => {
 	const [isOpen, setIsOpen] = useAppState("showWelcome", true);
 
 	const dispatch = useDispatch();
-	const downloadSampleProtocol = () => dispatch(userActions.importSampleProtocol());
+	const downloadSampleProtocol = () => dispatch(webUserActions.importSampleProtocol());
 
 	const classes = cx("home-section", "welcome-header", { "welcome-header--is-open": isOpen });
 

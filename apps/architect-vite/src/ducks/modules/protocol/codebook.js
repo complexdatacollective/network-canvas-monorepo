@@ -5,7 +5,7 @@ import prune from "~/utils/prune";
 import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "../../../selectors/codebook";
 import { makeGetUsageForType } from "../../../selectors/usage";
 import safeName from "../../../utils/safeName";
-import { checkChanged, saveableChange } from "../session";
+import { checkChanged, saveableChange } from "../saveableChange";
 import { getNextCategoryColor } from "./utils/helpers";
 import { actionCreators as stageActions } from "./utils/stages";
 

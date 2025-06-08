@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import configureStore from "redux-mock-store";
 import reducer, { actionCreators, actionTypes } from "../screens";
-import { actionTypes as sessionActionTypes } from "../../session";
+// Phase 1 Complete: Use new action types
+const sessionActionTypes = {
+	OPEN_PROTOCOL_SUCCESS: "SESSION/OPEN_NETCANVAS_SUCCESS",
+	RESET_SESSION: "activeProtocol/clearActiveProtocol",
+};
 
 const mockStore = configureStore([]);
 

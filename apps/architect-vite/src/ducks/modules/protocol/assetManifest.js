@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
 import { importAsset as fsImportAsset } from "~/utils/protocols";
 import { validateAsset } from "~/utils/protocols/assetTools";
-import { saveableChange } from "../session";
+import { saveableChange } from "../saveableChange";
 
 const IMPORT_ASSET = "PROTOCOL/IMPORT_ASSET";
 const IMPORT_ASSET_COMPLETE = "PROTOCOL/IMPORT_ASSET_COMPLETE";

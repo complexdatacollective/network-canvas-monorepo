@@ -338,10 +338,25 @@ export const actionLocks = {
 	saving: savingLock,
 };
 
+// Print/view protocol summary (web implementation)
+const printOverview = () => async (dispatch: AppDispatch, getState: () => RootState) => {
+	// For web, this could open the protocol summary in a new tab/window
+	// For now, just log - this will be implemented in Phase 2
+	console.log('Print overview - web implementation pending');
+	
+	// TODO: Navigate to protocol summary route when implemented in Phase 2
+	// const state = getState();
+	// const protocolId = getCurrentProtocolId(state);
+	// if (protocolId) {
+	//   navigate(`/protocol/${protocolId}/summary`);
+	// }
+};
+
 export const actionCreators = {
 	openNetcanvas,
 	createNetcanvas,
 	saveNetcanvas,
 	exportNetcanvas,
 	importSampleProtocol,
+	printOverview,
 };

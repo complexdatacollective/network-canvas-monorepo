@@ -4,8 +4,8 @@ import logger from "./middleware/logger";
 import { rootReducer } from "./modules/root";
 import type { RootState } from "./modules/root";
 
-// Remember both old and new stores during transition
-const rememberedKeys = ["protocols", "activeProtocol", "recentProtocols", "app"];
+// Phase 1 Complete: Only remember new stores
+const rememberedKeys = ["protocols", "activeProtocol", "app"];
 
 const reducer = rememberReducer(rootReducer);
 

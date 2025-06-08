@@ -1,8 +1,8 @@
 import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps } from "recompose";
-import { actionCreators as codebookActions } from "../../ducks/modules/protocol/codebook";
-import { getProtocol } from "../../selectors/protocol";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { getProtocol } from "~/selectors/protocol";
 import Editor from "../Editor";
 import { format, parse } from "./convert";
 import getNewTypeTemplate from "./getNewTypeTemplate";

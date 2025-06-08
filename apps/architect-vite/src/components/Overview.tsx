@@ -5,9 +5,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
-import { actionCreators as protocolActions } from "~/ducks/modules/protocol";
+import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
+import { selectProtocolById } from "~/ducks/modules/protocols";
+import type { RootState } from "~/ducks/modules/root";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
-import { actionCreators as userActions } from "~/ducks/modules/userActions";
+import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
 import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
 import withTooltip from "./enhancers/withTooltip";
 
@@ -70,8 +72,9 @@ const Overview = ({
 					color="slate-blue"
 					icon={<PrintIcon />}
 					disabled={!protocolIsValid || hasUnsavedChanges}
-					tooltip={hasUnsavedChanges ? "You must save your protocol before you can view the printable summary." : null}
-					content={collapsed ? null : "Printable Summary"}
+					tooltip={hasUnsavedChanges ? "You must save your protocol before you can view the printable summary." : undefined}
+					content={collapsed ? undefined : "Printable Summary"}
+					tippyProps={{}}
 				/>
 			</motion.div>
 			<motion.div variants={buttonVariants} className="action-buttons__button" title="Resource Library">
@@ -79,7 +82,7 @@ const Overview = ({
 					onClick={() => openScreen("assets", { id: "resource-library" })}
 					color="neon-coral"
 					icon={<PermMediaIcon />}
-					content={collapsed ? null : "Resource Library"}
+					content={collapsed ? undefined : "Resource Library"}
 				/>
 			</motion.div>
 			<motion.div variants={buttonVariants} className="action-buttons__button" title="Manage Codebook">
@@ -87,11 +90,11 @@ const Overview = ({
 					onClick={() => openScreen("codebook", { id: "manage-codebook" })}
 					color="sea-serpent"
 					icon={<MenuBookIcon />}
-					content={collapsed ? null : "Manage Codebook"}
+					content={collapsed ? undefined : "Manage Codebook"}
 				/>
 			</motion.div>
 		</div>
-	));
+	), [printOverview, openScreen, protocolIsValid, hasUnsavedChanges]);
 
 	const renderSummary = useCallback(() => (
 		<motion.div
@@ -107,7 +110,7 @@ const Overview = ({
 			</div>
 			{renderActionButtons(true)}
 		</motion.div>
-	));
+	), [name, renderActionButtons]);
 
 	return (
 		<AnimatePresence>
@@ -145,19 +148,26 @@ const Overview = ({
 };
 
 const mapDispatchToProps = {
-	updateOptions: protocolActions.updateOptions,
-	printOverview: userActions.printOverview,
+	updateOptions: activeProtocolActions.updateOptions,
+	printOverview: webUserActions.printOverview,
 	openScreen: uiActions.openScreen,
 };
 
-const mapStateToProps = (state) => {
+const mapStateToProps = (state: RootState) => {
 	const protocol = getProtocol(state);
 	const protocolIsValid = getIsProtocolValid(state);
 	const hasUnsavedChanges = getHasUnsavedChanges(state);
+	
+	// Get protocol ID from URL params via props or window location
+	const urlPath = window.location.pathname;
+	const protocolId = urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
+	
+	// Get stored protocol info for name
+	const storedProtocol = protocolId ? selectProtocolById(protocolId)(state) : null;
 
 	return {
-		name: "TEST",
-		description: protocol?.description,
+		name: storedProtocol?.name || "Untitled Protocol",
+		description: protocol?.description || "",
 		codebook: protocol?.codebook,
 		protocolIsValid,
 		hasUnsavedChanges,

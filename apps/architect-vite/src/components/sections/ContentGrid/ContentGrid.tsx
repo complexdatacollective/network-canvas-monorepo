@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import { formValueSelector } from "redux-form";
-import { getAssetManifest } from "../../../selectors/protocol";
+import { getAssetManifest } from "~/selectors/protocol";
 import Grid from "../../Grid";
 import ItemEditor from "./ItemEditor";
 import ItemPreview from "./ItemPreview";

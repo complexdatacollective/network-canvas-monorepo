@@ -5,11 +5,9 @@ import { reducer as formReducer } from "redux-form";
 import createTimeline from "../middleware/timeline";
 import app from "./app";
 import dialogs from "./dialogs";
-// Phase 1: Import new modules alongside old ones
+// Phase 1 Complete: Using new modules only
 import activeProtocol from "./activeProtocol";
 import protocols from "./protocols";
-import protocol from "./protocol";
-import recentProtocols from "./recentProtocols";
 import stacks from "./stacks";
 import toasts from "./toasts";
 import ui from "./ui/index";
@@ -24,11 +22,9 @@ export const rootReducer = combineReducers({
 	app,
 	dialogs,
 	form: formReducer,
-	// Phase 1: Keep both old and new reducers during transition
-	protocol: createTimeline(protocol, timelineOptions),
+	// Phase 1 Complete: Using new modules only
 	activeProtocol: createTimeline(activeProtocol, timelineOptions),
 	protocols,
-	recentProtocols,
 	stacks,
 	ui,
 	toasts,

@@ -2,7 +2,7 @@ import { compact, get, omit } from "es-toolkit/compat";
 import { v1 as uuid } from "uuid";
 import { getStage } from "~/selectors/protocol";
 import prune from "~/utils/prune";
-import { saveableChange } from "../../session";
+import { saveableChange } from "../../saveableChange";
 
 import { getNodeTypes } from "../../../../selectors/codebook";
 

@@ -1,4 +1,6 @@
-import { actionTypes as sessionActionTypes } from "~/ducks/modules/session";
+// Phase 1 Complete: Use new activeProtocol action types
+const OPEN_PROTOCOL_SUCCESS = "SESSION/OPEN_NETCANVAS_SUCCESS";
+const RESET_SESSION = "activeProtocol/clearActiveProtocol";
 
 const OPEN_SCREEN = "UI/OPEN_SCREEN";
 const UPDATE_SCREEN = "UI/UPDATE_SCREEN";
@@ -69,8 +71,8 @@ const getUpdatedScreen = (screen, params) => ({
 
 export default (state = initialState, { type, payload } = { type: null, payload: null }) => {
 	switch (type) {
-		case sessionActionTypes.OPEN_PROTOCOL_SUCCESS:
-		case sessionActionTypes.RESET_SESSION:
+		case OPEN_PROTOCOL_SUCCESS:
+		case RESET_SESSION:
 			return {
 				...initialState,
 			};

@@ -4,7 +4,7 @@ import { pick } from "es-toolkit/compat";
 import assetManifest from "./protocol/assetManifest";
 import codebook from "./protocol/codebook";
 import stages from "./protocol/utils/stages";
-import { saveableChange } from "./session";
+import { saveableChange } from "./saveableChange";
 
 // The activeProtocol state should just contain the protocol data
 // The ID is available from the URL, so we don't need to store it here

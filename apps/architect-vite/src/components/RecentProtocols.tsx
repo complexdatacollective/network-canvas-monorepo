@@ -1,27 +1,29 @@
-import { get } from "es-toolkit/compat";
 import { Component } from "react";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";
+import { selectRecentProtocols, type StoredProtocol } from "~/ducks/modules/protocols";
+import type { RootState } from "~/ducks/modules/root";
 import ProtocolStack from "./ProtocolStack";
 
-type RecentProtocol = {
-	filePath: string;
-	lastModified: string;
-	name: string;
-	schemaVersion: string;
-};
+// Use StoredProtocol type instead
+// type RecentProtocol = {
+//   filePath: string;
+//   lastModified: string;
+//   name: string;
+//   schemaVersion: string;
+// };
 
 type RecentProtocolsProps = {
-	recentProtocols: RecentProtocol[];
+	recentProtocols: StoredProtocol[];
 	show?: boolean;
 };
 
-const getRecentProtocols = (state: any) => get(state, "recentProtocols", []).slice(0, 4);
+const getRecentProtocols = (state: RootState) => selectRecentProtocols(4)(state);
 
 class RecentProtocols extends Component<RecentProtocolsProps> {
-	renderRecentProtocol = (protocol: RecentProtocol) => (
-		<div key={encodeURIComponent(protocol.filePath)} className="recent-protocols__protocol">
-			<Flipped flipId={encodeURIComponent(protocol.filePath)}>
+	renderRecentProtocol = (protocol: StoredProtocol) => (
+		<div key={protocol.id} className="recent-protocols__protocol">
+			<Flipped flipId={protocol.id}>
 				<ProtocolStack protocol={protocol} />
 			</Flipped>
 		</div>
@@ -38,7 +40,7 @@ class RecentProtocols extends Component<RecentProtocolsProps> {
 		</div>
 	);
 
-	renderProtocolList = (recentProtocols: RecentProtocol[]) => (
+	renderProtocolList = (recentProtocols: StoredProtocol[]) => (
 		<>
 			<h3 className="recent-protocols__title" key="heading">
 				Recently Opened Protocols
