@@ -5,7 +5,14 @@ import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-const NameGeneratorPrompts = (props) => (
+type DyadCensusPromptsProps = {
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+};
+
+const NameGeneratorPrompts = ({ form, entity, type, disabled }: DyadCensusPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -18,7 +25,9 @@ const NameGeneratorPrompts = (props) => (
 		editComponent={PromptFields}
 		title="Edit Prompt"
 		fieldName="prompts"
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type }}
 	/>
 );
 

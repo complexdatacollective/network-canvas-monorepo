@@ -8,8 +8,15 @@ import withFormUsedVariableIndex from "./withFormUsedVariableIndex";
 import PromptPreview from "./PromptPreview";
 import PromptFields from "./PromptFields";
 
-// TODO no prop spreading
-const SociogramPrompts = (props: any) => (
+type SociogramPromptsProps = {
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+	usedVariableIndex?: Record<string, unknown>;
+};
+
+const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: SociogramPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -21,7 +28,9 @@ const SociogramPrompts = (props: any) => (
 		title="Edit Prompt"
 		previewComponent={PromptPreview}
 		editComponent={PromptFields}
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type, usedVariableIndex }}
 	/>
 );
 

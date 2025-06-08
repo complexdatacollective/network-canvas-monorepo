@@ -2,11 +2,12 @@ import { Icon } from "@codaco/legacy-ui/components";
 import { isEmpty, map } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
 import { flattenIssues, getFieldId } from "../utils/issues";
 import scrollTo from "../utils/scrollTo";
+import { formName } from "./StageEditor/configuration";
 
 const variants = {
 	show: {
@@ -21,13 +22,11 @@ const variants = {
 
 type IssuesProps = {
 	show?: boolean;
-	form: string;
 	hideIssues: () => void;
 };
 
-const Issues = ({ show = true, form, hideIssues }: IssuesProps) => {
-	const formSyncErrorsSelector = useMemo(() => getFormSyncErrors(form), [form]);
-	const issues = useSelector(formSyncErrorsSelector);
+const Issues = ({ show = true, hideIssues }: IssuesProps) => {
+	const issues = useSelector(getFormSyncErrors(formName));
 	const [open, setOpen] = useState(true);
 	const flatIssues = flattenIssues(issues);
 	const issueRefs = useRef<Record<string, HTMLElement | null>>({});

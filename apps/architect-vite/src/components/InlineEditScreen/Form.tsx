@@ -1,11 +1,6 @@
 import { reduxForm } from "redux-form";
 import stopPropagationFromHandler from "~/utils/stopPropagationFromHandler";
 
-const formOptions = {
-	touchOnBlur: false,
-	touchOnChange: true,
-};
-
 type FormProps = {
 	handleSubmit: (event?: React.FormEvent) => void;
 	children?: React.ReactNode;
@@ -19,5 +14,9 @@ const Form = ({ handleSubmit, children = null }: FormProps) => (
 	<form onSubmit={stopPropagationFromHandler(handleSubmit)}>{children}</form>
 );
 
-
-export default reduxForm(formOptions)(Form);
+// The reduxForm HOC will automatically handle initialValues when passed as props
+export default reduxForm({
+	touchOnBlur: false,
+	touchOnChange: true,
+	enableReinitialize: true,
+})(Form);

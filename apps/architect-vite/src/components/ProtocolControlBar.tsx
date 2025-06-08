@@ -5,16 +5,18 @@ import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import { UnsavedChanges } from "~/components/Dialogs";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
-import { actionLocks as protocolsLocks, actionCreators as userActions } from "~/ducks/modules/userActions/webUserActions";
+import {
+	actionLocks as protocolsLocks,
+	actionCreators as userActions,
+} from "~/ducks/modules/userActions/webUserActions";
 import logoutIcon from "~/images/home/log-out.svg";
 import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/protocol";
 
-const getIsSaving = createSelector(
-	[(state) => state],
-	(state) => statusSelectors.getIsBusy(state, protocolsLocks.saving),
+const getIsSaving = createSelector([(state) => state], (state) =>
+	statusSelectors.getIsBusy(state, protocolsLocks.saving),
 );
 
 const unsavedChangesDialog = UnsavedChanges({
@@ -27,8 +29,6 @@ interface ProtocolControlBarProps {
 }
 
 const ProtocolControlBar = ({ show = true }: ProtocolControlBarProps) => {
-	// Don't render if show is false
-	if (!show) return null;
 	const dispatch = useDispatch();
 	const [, navigate] = useLocation();
 	const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
@@ -101,12 +101,10 @@ const ProtocolControlBar = ({ show = true }: ProtocolControlBarProps) => {
 		return [];
 	}, [protocolIsValid, hasUnsavedChanges, saveNetcanvas, isSaving]);
 
-	return (
-		<ControlBar
-			secondaryButtons={secondaryButtons}
-			buttons={buttons}
-		/>
-	);
+	// Don't render if show is false
+	if (!show) return null;
+
+	return <ControlBar secondaryButtons={secondaryButtons} buttons={buttons} />;
 };
 
 export default ProtocolControlBar;

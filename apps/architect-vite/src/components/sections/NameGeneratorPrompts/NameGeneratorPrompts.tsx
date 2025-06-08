@@ -1,11 +1,12 @@
 import { compose } from "recompose";
+import type { SectionProps } from "..";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-const NameGeneratorPrompts = (props) => (
+const NameGeneratorPrompts = ({ form, entity, type, disabled }: SectionProps & { entity?: string; type?: string; disabled?: boolean }) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -18,8 +19,9 @@ const NameGeneratorPrompts = (props) => (
 		editComponent={PromptFields}
 		title="Edit Prompt"
 		fieldName="prompts"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type }}
 	/>
 );
 

@@ -1,8 +1,8 @@
 import { find, get, has, isEmpty, omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
+import { getIsUsed } from "~/selectors/codebook/isUsed";
 import prune from "~/utils/prune";
 import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "../../../selectors/codebook";
-import { makeGetIsUsed } from "../../../selectors/codebook/isUsed";
 import { makeGetUsageForType } from "../../../selectors/usage";
 import safeName from "../../../utils/safeName";
 import { checkChanged, saveableChange } from "../session";
@@ -179,7 +179,7 @@ const updateVariableByUUIDThunk =
 	};
 
 const deleteVariableThunk = (entity, type, variable) => (dispatch, getState) => {
-	const isUsed = makeGetIsUsed({ formNames: [] })(getState());
+	const isUsed = getIsUsed({ formNames: [] })(getState());
 	if (get(isUsed, variable, false)) {
 		return false;
 	}

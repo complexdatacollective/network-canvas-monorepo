@@ -1,12 +1,17 @@
 import { Button } from "@codaco/legacy-ui/components";
+import type { Validation, ValidationName } from "@codaco/protocol-validation";
 import { startCase } from "es-toolkit/compat";
 import { LayoutGroup } from "motion/react";
 import type React from "react";
+import type { ComponentType } from "react";
+import type { ConnectedComponent } from "react-redux";
+import type { Validator } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import OrderedList from "~/components/OrderedList";
 import { getFieldId } from "~/utils/issues";
+import { formName } from ".";
 import { useEditHandlers } from "./useEditHandlers";
 
 const notEmpty = (value: unknown) =>
@@ -21,9 +26,12 @@ type EditableListProps = {
 	fieldName?: string;
 	title?: string | null;
 	children?: React.ReactNode;
-	previewComponent: React.ComponentType<unknown>;
+	previewComponent: ConnectedComponent<
+		ComponentType<{ variable: string; prompt: string; entity: string; type: string }>,
+		ComponentType<{ variable: string; prompt: string; entity: string; type: string }>
+	>;
 	editComponent: React.ComponentType<unknown>;
-	validation?: Record<string, unknown>;
+	validation?: Record<string, Validator> | Record<ValidationName, Validation>;
 	editProps?: Record<string, unknown>;
 	// Optional props for customizing hook behavior
 	normalize?: (value: unknown) => unknown;
@@ -49,14 +57,15 @@ const EditableList = ({
 	itemSelector,
 	onChange,
 }: EditableListProps) => {
-	const { editField, handleEditField, handleCancelEditField, handleAddNew, handleUpdate } = useEditHandlers({
-		form,
-		fieldName,
-		normalize,
-		template,
-		itemSelector,
-		onChange,
-	});
+	const { editField, handleEditField, handleCancelEditField, handleAddNew, handleUpdate, initialValues } =
+		useEditHandlers({
+			form,
+			fieldName,
+			normalize,
+			template,
+			itemSelector,
+			onChange,
+		});
 
 	return (
 		<Section disabled={disabled} summary={sectionSummary} title={sectionTitle}>
@@ -85,9 +94,10 @@ const EditableList = ({
 					title={title}
 					onSubmit={handleUpdate}
 					onCancel={handleCancelEditField}
-					form={form}
+					form={formName}
+					initialValues={initialValues}
 				>
-					<EditComponent {...editProps} />
+					<EditComponent form={formName} {...editProps} initialValues={initialValues} />
 				</InlineEditScreen>
 			</LayoutGroup>
 		</Section>

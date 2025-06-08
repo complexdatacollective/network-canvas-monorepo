@@ -13,7 +13,7 @@ type PromptFieldsProps = {
 
 const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) => {
 	const dispatch = useDispatch();
-	const getFormValue = formValueSelector("editable-list-form");
+	const getFormValue = formValueSelector(form);
 	const hasAdditionalAttributes = useSelector((state) => getFormValue(state, "additionalAttributes"));
 
 	const handleToggleAdditionalAttributes = (nextState) => {
@@ -59,6 +59,5 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 		</>
 	);
 };
-
 
 export default PromptFields;

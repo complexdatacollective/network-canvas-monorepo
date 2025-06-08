@@ -1,26 +1,23 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { compact, get, map, reduce, uniq } from "es-toolkit/compat";
 import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
-import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
+import { getIsUsed } from "~/selectors/codebook/isUsed";
 import { getVariableIndex } from "~/selectors/indexes";
 import { getCodebook, getProtocol } from "~/selectors/protocol";
-
-const getIsUsed = makeGetIsUsed({ formNames: [] });
 
 /**
  * Extract basic stage meta by index from the app state
  * @param {Object} state Application state
  * @returns {Object[]} Stage meta sorted by index in state
  */
-export const getStageMetaByIndex = (state) => {
-	const protocol = getProtocol(state);
-	return protocol.stages.map(({ label, id }) => ({ label, id }));
-};
+export const getStageMetaByIndex = createSelector([getProtocol], (protocol) =>
+	protocol.stages.map(({ label, id }) => ({ label, id })),
+);
 
-export const getVariableMetaByIndex = (state) => {
-	const codebook = getCodebook(state);
+export const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
 	const variables = getAllVariablesByUUID(codebook);
 	return variables;
-};
+});
 
 /**
  * Extract the stage name from a path string
@@ -122,7 +119,7 @@ export const getEntityProperties = (state, { entity, type }) => {
 	const variableIndex = getVariableIndex(state);
 	const variableMeta = getVariableMetaByIndex(state);
 	const stageMetaByIndex = getStageMetaByIndex(state);
-	const isUsedIndex = getIsUsed(state);
+	const isUsedIndex = getIsUsed({ formNames: [] })(state);
 
 	const variablesWithUsage = map(variables, (variable, id) => {
 		const inUse = get(isUsedIndex, id, false);

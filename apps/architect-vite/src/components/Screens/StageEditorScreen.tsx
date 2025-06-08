@@ -1,68 +1,58 @@
 import { Button } from "@codaco/legacy-ui/components";
-import { connect } from "react-redux";
-import { compose, withHandlers, withProps } from "recompose";
-import { bindActionCreators } from "@reduxjs/toolkit";
+import { useCallback } from "react";
+import { useSelector } from "react-redux";
 import { isInvalid as isFormInvalid } from "redux-form";
-import { actionCreators as previewActions } from "../../ducks/modules/preview";
+import type { RootState } from "~/ducks/store";
 import EditorScreen from "../Screen/EditorScreen";
-import StageEditor, { formName } from "../StageEditor";
+import { formName } from "../StageEditor/configuration";
+import StageEditor from "../StageEditor/StageEditor";
 
-// const EditorScreen = () => <div>hello</div>;
+interface StageEditorScreenProps {
+	id?: string;
+	insertAtIndex?: number;
+	onComplete: () => void;
+	locus?: string;
+}
 
-const mapStateToProps = (state) => ({
-	invalid: isFormInvalid(formName)(state),
-});
+const StageEditorScreen = ({ id, insertAtIndex, onComplete, locus }: StageEditorScreenProps) => {
+	// Selectors
+	const invalid = useSelector((state: RootState) => isFormInvalid(formName)(state));
 
-const mapDispatchToProps = (dispatch, props) => {
-	const stageMeta = {
-		id: props.id,
-		insertAtIndex: props.insertAtIndex,
-	};
+	// Handlers
+	const handleComplete = useCallback(() => {
+		onComplete();
+	}, [onComplete]);
 
-	return {
-		closePreview: bindActionCreators(previewActions.closePreview, dispatch),
-		previewStage: () => dispatch(previewActions.previewStageFromForm(stageMeta, formName)),
-	};
-};
+	// Helper function for tooltip message
+	const getInvalidStageMessage = (isInvalid: boolean): string[] =>
+		isInvalid
+			? ["Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."]
+			: [];
 
-const stageEditorState = connect(mapStateToProps, mapDispatchToProps);
-
-const stageEditorHanders = withHandlers({
-	handlePreview:
-		({ previewStage }) =>
-		() =>
-			previewStage(),
-	onComplete:
-		({ onComplete, closePreview }) =>
-		(...args) => {
-			closePreview();
-			onComplete(...args);
-		},
-});
-
-const invalidStageMessage = (invalid) =>
-	invalid
-		? ["Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."]
-		: [];
-
-// const TooltipButton = withTooltip(Button);
-
-const stageEditorProps = withProps(({ handlePreview, invalid }) => ({
-	editor: StageEditor,
-	form: formName,
-	secondaryButtons: [
+	// Secondary buttons
+	const secondaryButtons = [
 		<Button
 			key="preview"
-			onClick={handlePreview}
 			color="paradise-pink"
 			disabled={invalid}
-			tooltip={invalid ? invalidStageMessage(invalid) : null}
+			tooltip={invalid ? getInvalidStageMessage(invalid) : null}
 		>
 			Preview
 		</Button>,
-	],
-}));
+	];
 
-const StageEditorScreen = compose(stageEditorState, stageEditorHanders, stageEditorProps)(EditorScreen);
+	return (
+		<EditorScreen
+			editor={StageEditor}
+			form={formName}
+			locus={locus}
+			onComplete={handleComplete}
+			secondaryButtons={secondaryButtons}
+			// Props passed to StageEditor
+			id={id}
+			insertAtIndex={insertAtIndex}
+		/>
+	);
+};
 
 export default StageEditorScreen;

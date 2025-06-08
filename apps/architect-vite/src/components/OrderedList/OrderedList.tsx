@@ -1,4 +1,4 @@
-import { isArray, isPlainObject } from "es-toolkit/compat";
+import { isArray, isEmpty, isPlainObject } from "es-toolkit/compat";
 import type React from "react";
 import { connect } from "react-redux";
 import { compose, renameProp } from "recompose";
@@ -41,34 +41,37 @@ const OrderedList = (props: OrderedListBaseProps) => {
 		meta: { form },
 	} = props;
 
+	console.log("values", values);
+
 	return (
 		<div className="list">
 			{(dirty || submitFailed) && error && !isArray(error) && <p className="list__error">{error}</p>}
-			{values?.map((value, index) => {
-				const previewValue = isPlainObject(value) ? value : { value };
-				const fieldId = `${name}[${index}]`;
-				const onClick = onClickItem && (() => onClickItem(fieldId));
+			{!isEmpty(values) &&
+				values.map((value, index) => {
+					const previewValue = isPlainObject(value) ? value : { value };
+					const fieldId = `${name}[${index}]`;
+					const onClick = onClickItem && (() => onClickItem(fieldId));
 
-				const onDelete = () => removeItem(index);
+					const onDelete = () => removeItem(index);
 
-				return (
-					<ListItem
-						index={index}
-						sortable={sortable}
-						key={fieldId}
-						layoutId={onClickItem && fieldId}
-						onClick={onClick}
-						onDelete={onDelete}
-					>
-						<Item
-							{...previewValue} // eslint-disable-line react/jsx-props-no-spreading
-							fieldId={fieldId}
-							form={form}
+					return (
+						<ListItem
+							index={index}
+							sortable={sortable}
 							key={fieldId}
-						/>
-					</ListItem>
-				);
-			})}
+							layoutId={onClickItem && fieldId}
+							onClick={onClick}
+							onDelete={onDelete}
+						>
+							<Item
+								{...previewValue} // eslint-disable-line react/jsx-props-no-spreading
+								fieldId={fieldId}
+								form={form}
+								key={fieldId}
+							/>
+						</ListItem>
+					);
+				})}
 		</div>
 	);
 };

@@ -30,9 +30,10 @@ interface InlineEditScreenProps {
 	show?: boolean;
 	form: string;
 	title?: string | null;
-	onSubmit: (values: any) => void;
+	onSubmit: (values: unknown) => void;
 	onCancel: () => void;
 	children?: React.ReactNode;
+	initialValues?: Record<string, unknown>;
 }
 
 const InlineEditScreen = ({
@@ -42,6 +43,7 @@ const InlineEditScreen = ({
 	onSubmit,
 	onCancel,
 	children = null,
+	initialValues,
 }: InlineEditScreenProps) => {
 	const dispatch = useDispatch();
 
@@ -65,7 +67,8 @@ const InlineEditScreen = ({
 						</motion.div>
 						<motion.div variants={item} className="inline-edit-screen__content">
 							<Layout>
-								<Form form={form} onSubmit={onSubmit}>
+								{/* @ts-expect-error - reduxForm enhanced component typing issue */}
+								<Form form={form} onSubmit={onSubmit} initialValues={initialValues} key={`${form}-${JSON.stringify(initialValues)}`}>
 									{children}
 								</Form>
 							</Layout>

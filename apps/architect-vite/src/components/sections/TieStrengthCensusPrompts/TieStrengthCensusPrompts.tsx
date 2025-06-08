@@ -11,7 +11,7 @@ type TieStrengthCensusPromptsProps = {
 	handleChangePrompt: (prompts: any[]) => void;
 } & Record<string, any>;
 
-const TieStrengthCensusPrompts = ({ handleChangePrompt, ...props }: TieStrengthCensusPromptsProps) => (
+const TieStrengthCensusPrompts = ({ handleChangePrompt, form, entity, type, disabled }: TieStrengthCensusPromptsProps & { form: string; entity?: string; type?: string; disabled?: boolean }) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -26,8 +26,9 @@ const TieStrengthCensusPrompts = ({ handleChangePrompt, ...props }: TieStrengthC
 		fieldName="prompts"
 		itemSelector={itemSelector()}
 		onChange={handleChangePrompt}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type }}
 	/>
 );
 

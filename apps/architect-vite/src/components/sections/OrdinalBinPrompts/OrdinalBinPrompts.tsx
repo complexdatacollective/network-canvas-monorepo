@@ -13,10 +13,11 @@ interface OrdinalBinPromptsProps {
 	handleChangePrompt: (data: any) => void;
 	entity?: string | null;
 	type?: string | null;
-	[key: string]: any;
+	form: string;
+	disabled?: boolean;
 }
 
-const OrdinalBinPrompts = ({ handleChangePrompt, entity = null, type = null, ...props }: OrdinalBinPromptsProps) => (
+const OrdinalBinPrompts = ({ handleChangePrompt, entity = null, type = null, form, disabled }: OrdinalBinPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -31,13 +32,11 @@ const OrdinalBinPrompts = ({ handleChangePrompt, entity = null, type = null, ...
 		template={template}
 		onChange={handleChangePrompt}
 		itemSelector={itemSelector(entity, type)}
-		entity={entity}
-		type={type}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		editProps={{ entity, type }}
+		form={form}
+		disabled={disabled}
 	/>
 );
-
 
 export { OrdinalBinPrompts };
 

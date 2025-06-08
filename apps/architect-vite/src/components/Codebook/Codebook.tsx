@@ -1,8 +1,7 @@
 import { isEmpty, map, reduce } from "es-toolkit/compat";
 import { connect } from "react-redux";
-import { getCodebook } from "~/selectors/codebook";
 import { getEdgeIndex, getNodeIndex, utils } from "~/selectors/indexes";
-import { getNetworkAssets } from "~/selectors/protocol";
+import { getCodebook, getNetworkAssets } from "~/selectors/protocol";
 import CodebookCategory from "./CodebookCategory";
 import EgoType from "./EgoType";
 import EntityType from "./EntityType";
@@ -19,7 +18,15 @@ type CodebookProps = {
 	nodes: any[];
 };
 
-const Codebook = ({ edges, hasEdges, hasEgoVariables, hasNetworkAssets, hasNodes, networkAssets, nodes }: CodebookProps) => (
+const Codebook = ({
+	edges,
+	hasEdges,
+	hasEgoVariables,
+	hasNetworkAssets,
+	hasNodes,
+	networkAssets,
+	nodes,
+}: CodebookProps) => (
 	<div className="codebook">
 		{!hasEgoVariables && !hasNodes && !hasEdges && (
 			<p className="codebook__notice">
@@ -66,7 +73,6 @@ const Codebook = ({ edges, hasEdges, hasEgoVariables, hasNetworkAssets, hasNodes
 		)}
 	</div>
 );
-
 
 // TODO: replace this with helpers getEntityProperties. This code was
 // duplicated and needs to be reconciled.

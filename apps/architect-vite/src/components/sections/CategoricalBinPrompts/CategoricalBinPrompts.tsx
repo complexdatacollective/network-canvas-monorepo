@@ -11,9 +11,11 @@ type CategoricalBinPromptsProps = {
 	handleChangePrompt: (value: any) => void;
 	entity?: string;
 	type?: string;
-} & Record<string, any>;
+	form: string;
+	disabled?: boolean;
+};
 
-const CategoricalBinPrompts = ({ handleChangePrompt, entity = null, type = null, ...props }: CategoricalBinPromptsProps) => (
+const CategoricalBinPrompts = ({ handleChangePrompt, entity = null, type = null, form, disabled }: CategoricalBinPromptsProps) => (
 	<EditableList
 		previewComponent={PromptPreview}
 		editComponent={PromptFields}
@@ -21,8 +23,7 @@ const CategoricalBinPrompts = ({ handleChangePrompt, entity = null, type = null,
 		onChange={handleChangePrompt}
 		normalize={normalizeField}
 		itemSelector={itemSelector(entity, type)}
-		entity={entity}
-		type={type}
+		editProps={{ entity, type }}
 		sectionTitle="Edit Prompts"
 		sectionSummary={
 			<p>
@@ -30,8 +31,8 @@ const CategoricalBinPrompts = ({ handleChangePrompt, entity = null, type = null,
 				handles on the left hand side.
 			</p>
 		}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		form={form}
+		disabled={disabled}
 	/>
 );
 

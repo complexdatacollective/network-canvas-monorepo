@@ -7,8 +7,14 @@ import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequ
 import PromptPreview from "./PromptPreview";
 import PromptFields from "./PromptFields";
 
-// TODO no prop spreading
-const GeospatialPrompts = (props) => (
+type GeospatialPromptsProps = {
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+};
+
+const GeospatialPrompts = ({ form, entity, type, disabled }: GeospatialPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -20,7 +26,9 @@ const GeospatialPrompts = (props) => (
 		title="Edit Prompt"
 		previewComponent={PromptPreview}
 		editComponent={PromptFields}
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type }}
 	/>
 );
 

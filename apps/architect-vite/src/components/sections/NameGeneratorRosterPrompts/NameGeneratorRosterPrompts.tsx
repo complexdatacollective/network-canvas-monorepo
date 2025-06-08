@@ -7,7 +7,15 @@ import { PromptPreview } from "../NameGeneratorPrompts";
 import PromptFields from "../NameGeneratorPrompts/PromptFields";
 import withMapFormToProps from "../../enhancers/withMapFormToProps";
 
-const NameGeneratorRosterPrompts = (props: any) => (
+type NameGeneratorRosterPromptsProps = {
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+	dataSource?: string;
+};
+
+const NameGeneratorRosterPrompts = ({ form, entity, type, disabled, dataSource }: NameGeneratorRosterPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		editComponent={PromptFields}
@@ -19,8 +27,9 @@ const NameGeneratorRosterPrompts = (props: any) => (
 				handles on the left hand side.
 			</p>
 		}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type, dataSource }}
 	/>
 );
 

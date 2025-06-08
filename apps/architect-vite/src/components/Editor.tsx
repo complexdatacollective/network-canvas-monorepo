@@ -1,14 +1,14 @@
-import React from "react";
+import type React from "react";
 import { compose, withStateHandlers } from "recompose";
 import { Form, reduxForm } from "redux-form";
 import Issues from "./Issues";
+import { formName } from "./StageEditor/configuration";
 
 type EditorProps = {
 	hideIssues: () => void;
 	isIssuesVisible: boolean;
 	handleSubmit: (event?: React.FormEvent) => void;
 	submitFailed: boolean;
-	form: string;
 	title?: string;
 	children?: React.ReactNode | ((props: any) => React.ReactNode);
 	component?: React.ComponentType<any> | null;
@@ -60,33 +60,23 @@ const Editor = ({
 	handleSubmit,
 	hideIssues,
 	isIssuesVisible,
-	form,
 	children,
 	title = "",
 	submitFailed,
 	component: Component = null,
 	...rest
 }: EditorProps) => {
-	console.log("Editor: rest", rest);
 	return (
 		<>
 			<Form onSubmit={handleSubmit}>
 				{typeof children === "function" &&
 					children({
-						form,
 						submitFailed,
-						...rest,
 					})}
 				{children && typeof children !== "function" && children}
-				{!children && Component && (
-					<Component
-						form={form}
-						submitFailed={submitFailed}
-						{...rest}
-					/>
-				)}
+				{!children && Component && <Component submitFailed={submitFailed} />}
 			</Form>
-			<Issues form={form} show={isIssuesVisible} hideIssues={hideIssues} />
+			<Issues show={isIssuesVisible} hideIssues={hideIssues} />
 		</>
 	);
 };
@@ -100,6 +90,7 @@ export default compose(
 		},
 	),
 	reduxForm({
+		form: formName,
 		touchOnBlur: false,
 		touchOnChange: true,
 		enableReinitialize: true,

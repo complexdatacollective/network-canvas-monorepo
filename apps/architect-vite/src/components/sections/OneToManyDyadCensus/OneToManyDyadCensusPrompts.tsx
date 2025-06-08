@@ -5,7 +5,14 @@ import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequ
 import PromptPreview from "./PromptPreview";
 import PromptFields from "./PromptFields";
 
-const OneToManyDyadCensusPrompts = (props: any) => (
+type OneToManyDyadCensusPromptsProps = {
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+};
+
+const OneToManyDyadCensusPrompts = ({ form, entity, type, disabled }: OneToManyDyadCensusPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -18,8 +25,9 @@ const OneToManyDyadCensusPrompts = (props: any) => (
 		editComponent={PromptFields}
 		title="Edit Prompt"
 		fieldName="prompts"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type }}
 	/>
 );
 

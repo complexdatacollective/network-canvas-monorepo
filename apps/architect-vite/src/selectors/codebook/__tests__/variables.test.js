@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { makeGetIsUsed, makeOptionsWithIsUsed } from "../isUsed";
+import { makeGetIsUsed, makeOptionsWithIsUsedSelector } from "../isUsed";
 
 const variable1 = "1234-1234-1234-1";
 const variable2 = "1234-1234-1234-2";
@@ -215,7 +215,7 @@ describe("makeGetIsUsed", () => {
 		});
 	});
 
-	describe("makeOptionsWithIsUsed", () => {
+	describe("makeOptionsWithIsUsedSelector", () => {
 		it("appends used state to options", () => {
 			const state = {
 				protocol: {
@@ -240,8 +240,9 @@ describe("makeGetIsUsed", () => {
 				{ value: variable4, label: "4" },
 			];
 
-			// Also check we can set form name
-			const result = makeOptionsWithIsUsed({ formNames: ["formName"] })(state, mockOptions);
+			// Create the selector with form name configuration
+			const selector = makeOptionsWithIsUsedSelector({ formNames: ["formName"] });
+			const result = selector(state, mockOptions);
 
 			expect(result).toEqual([
 				{ value: variable1, label: "1", isUsed: true },

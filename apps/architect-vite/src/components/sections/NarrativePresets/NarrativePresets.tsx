@@ -22,7 +22,14 @@ const template = () => ({
 	highlight: [],
 });
 
-const NarrativePresets = (props) => (
+type NarrativePresetsProps = {
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+};
+
+const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProps) => (
 	<EditableList
 		previewComponent={PresetPreview}
 		editComponent={PresetFields}
@@ -37,8 +44,9 @@ const NarrativePresets = (props) => (
 				the interview.
 			</p>
 		}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
+		form={form}
+		disabled={disabled}
+		editProps={{ entity, type }}
 	/>
 );
 

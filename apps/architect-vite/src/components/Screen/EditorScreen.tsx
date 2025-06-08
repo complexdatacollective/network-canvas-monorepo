@@ -1,111 +1,114 @@
 import { Button } from "@codaco/legacy-ui/components";
-import { Component } from "react";
-import { connect } from "react-redux";
-import { bindActionCreators } from "@reduxjs/toolkit";
+import { useCallback, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { isDirty, isSubmitting, startSubmit, submit } from "redux-form";
 import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { hasChanges as timelineHasChanges } from "~/selectors/timeline";
+import type { RootState } from "~/ducks/store";
 import ControlBar from "../ControlBar";
 import Screen from "./Screen";
 
 interface EditorScreenProps {
 	header?: React.ReactNode;
 	editor: React.ComponentType<any>;
-	hasUnsavedChanges: boolean;
-	jump: (locus: any) => void;
-	layoutId?: string | null;
-	locus: any;
+	locus?: string;
 	onComplete: () => void;
-	openDialog: (config: any) => void;
-	secondaryButtons?: Array<any> | null;
-	submitForm: () => void;
-	submitting: boolean;
+	secondaryButtons?: React.ReactNode[] | null;
 	form: string;
-	[key: string]: any;
+	// Explicit props for StageEditor
+	id?: string;
+	insertAtIndex?: number;
 }
 
-class EditorScreen extends Component<EditorScreenProps> {
-	handleSubmit = () => {
-		const { submitting, submitForm } = this.props;
+const EditorScreen = ({
+	header = null,
+	editor: EditorComponent,
+	locus,
+	onComplete,
+	secondaryButtons = null,
+	form,
+	id,
+	insertAtIndex,
+}: EditorScreenProps) => {
+	const dispatch = useDispatch();
+	
+	// Selectors
+	const hasUnsavedChanges = useSelector((state: RootState) => 
+		isDirty(form)(state) || timelineHasChanges(state, locus)
+	);
+	const submitting = useSelector((state: RootState) => isSubmitting(form)(state));
+
+	// Handlers
+	const handleSubmit = useCallback(() => {
 		if (submitting) {
 			return;
 		}
+		dispatch(startSubmit(form));
+		dispatch(submit(form));
+	}, [submitting, form, dispatch]);
 
-		submitForm();
-	};
-
-	handleCancel = () => {
-		const { hasUnsavedChanges, openDialog } = this.props;
+	const handleCancel = useCallback((): boolean => {
 		if (!hasUnsavedChanges) {
-			this.cancel();
-			return;
+			// Jump to original locus and complete
+			if (locus) {
+				dispatch(timelineActions.jump(locus));
+			}
+			onComplete();
+			return true;
 		}
 
-		openDialog({
+		// Show confirmation dialog for unsaved changes
+		dispatch(dialogActions.openDialog({
 			type: "Warning",
-			title: "Unsaved changes will be lost",
-			message: "Unsaved changes will be lost, do you want to continue?",
 			confirmLabel: "OK",
-			onConfirm: () => this.cancel(),
-		});
-	};
+			onConfirm: () => {
+				if (locus) {
+					dispatch(timelineActions.jump(locus));
+				}
+				onComplete();
+			},
+		}) as any);
+		return false; // Don't close the screen, wait for user confirmation
+	}, [hasUnsavedChanges, locus, onComplete, dispatch]);
 
-	cancel() {
-		const { jump, onComplete, locus } = this.props;
-		jump(locus);
-		onComplete();
-	}
-
-	buttons() {
-		const { submitting, hasUnsavedChanges } = this.props;
+	// Memoized buttons
+	const buttons = useMemo(() => {
 		const saveButton = (
-			<Button key="save" onClick={this.handleSubmit} iconPosition="right" icon="arrow-right" disabled={submitting}>
+			<Button 
+				key="save" 
+				onClick={handleSubmit} 
+				iconPosition="right" 
+				icon="arrow-right" 
+				disabled={submitting}
+			>
 				Finished Editing
 			</Button>
 		);
 
 		const cancelButton = (
-			<Button key="cancel" onClick={this.handleCancel} color="platinum" iconPosition="right">
+			<Button 
+				key="cancel" 
+				onClick={handleCancel} 
+				color="platinum" 
+				iconPosition="right"
+			>
 				Cancel
 			</Button>
 		);
 
 		return hasUnsavedChanges ? [cancelButton, saveButton] : [cancelButton];
-	}
+	}, [hasUnsavedChanges, handleSubmit, handleCancel, submitting]);
 
-	render() {
-		const { header = null, secondaryButtons = null, editor: EditorComponent, layoutId = null, ...rest } = this.props;
+	return (
+		<Screen
+			header={header}
+			footer={<ControlBar buttons={buttons} secondaryButtons={secondaryButtons} />}
+			beforeCloseHandler={handleCancel}
+		>
+			<EditorComponent id={id} insertAtIndex={insertAtIndex} onComplete={onComplete} />
+		</Screen>
+	);
+};
 
-		return (
-			<Screen
-				header={header}
-				footer={<ControlBar buttons={this.buttons()} secondaryButtons={secondaryButtons} />}
-				layoutId={layoutId}
-				beforeCloseHandler={this.handleCancel}
-			>
-				<EditorComponent
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...rest}
-				/>
-			</Screen>
-		);
-	}
-}
-
-
-const mapStateToProps = (state, { form, locus }) => ({
-	hasUnsavedChanges: isDirty(form)(state) || timelineHasChanges(state, locus),
-	submitting: isSubmitting(form)(state),
-});
-
-const mapDispatchToProps = (dispatch, { form }) => ({
-	submitForm: () => {
-		dispatch(startSubmit(form));
-		dispatch(submit(form));
-	},
-	jump: bindActionCreators(timelineActions.jump, dispatch),
-	openDialog: bindActionCreators(dialogActions.openDialog, dispatch),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(EditorScreen);
+export default EditorScreen;

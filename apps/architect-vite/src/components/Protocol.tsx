@@ -1,26 +1,13 @@
-import cx from "classnames";
-import { motion, useElementScroll } from "motion/react";
+import { motion, useScroll } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { connect } from "react-redux";
 import Overview from "~/components/Overview";
 import ProtocolControlBar from "~/components/ProtocolControlBar";
 import Timeline from "~/components/Timeline";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
-import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions";
-import { getHasUnsavedChanges, getProtocol } from "~/selectors/protocol";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 
-type ProtocolProps = {
-	isLoading?: boolean;
-	hasProtocol?: boolean;
-};
-
-const Protocol = ({ isLoading = false, hasProtocol = false }: ProtocolProps) => {
+const Protocol = () => {
 	// Use the protocol loader hook to handle URL-based protocol loading
 	useProtocolLoader();
-	
-	const sceneClasses = cx("scene", { "scene--protocol": hasProtocol }, { "scene--loading": isLoading });
 
 	const variants = {
 		show: {
@@ -35,7 +22,7 @@ const Protocol = ({ isLoading = false, hasProtocol = false }: ProtocolProps) => 
 	};
 
 	const ref = useRef(null);
-	const { scrollY } = useElementScroll(ref);
+	const { scrollY } = useScroll({ container: ref });
 	const [scrollOffset, setScrollOffset] = useState(0);
 
 	useEffect(() => {
@@ -43,32 +30,14 @@ const Protocol = ({ isLoading = false, hasProtocol = false }: ProtocolProps) => 
 	}, [scrollY]);
 
 	return (
-		<motion.div className={sceneClasses} variants={variants}>
+		<motion.div className="scene scene--protocol" variants={variants}>
 			<div className="scene__protocol" ref={ref}>
 				<Overview scrollOffset={scrollOffset} />
-				<Timeline show={hasProtocol} />
+				<Timeline />
 			</div>
-			<ProtocolControlBar show={hasProtocol} />
+			<ProtocolControlBar />
 		</motion.div>
 	);
 };
 
-
-const mapStateToProps = (state: any) => {
-	const activeProtocol = getProtocol(state);
-
-	return {
-		hasUnsavedChanges: getHasUnsavedChanges(state),
-		protocolPath: activeProtocol,
-		hasProtocol: !!activeProtocol,
-		isLoading: statusSelectors.getIsBusy(state, protocolsLocks.loading),
-	};
-};
-
-const mapDispatchToProps = {
-	openDialog: dialogActions.openDialog,
-};
-
-const withStore = connect(mapStateToProps, mapDispatchToProps);
-
-export default withStore(Protocol);
+export default Protocol;
