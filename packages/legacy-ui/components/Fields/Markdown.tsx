@@ -35,7 +35,12 @@ const defaultMarkdownRenderers = {
 	a: externalLinkRenderer,
 };
 
-const Markdown = ({ label, className = "markdown", allowedElements = ALLOWED_MARKDOWN_TAGS, markdownRenderers = {} }: MarkdownProps) => {
+const Markdown = ({
+	label,
+	className = "markdown",
+	allowedElements = ALLOWED_MARKDOWN_TAGS,
+	markdownRenderers = {},
+}: MarkdownProps) => {
 	const combinedRenderers = useMemo(
 		() => ({
 			...defaultMarkdownRenderers,
@@ -53,18 +58,15 @@ const Markdown = ({ label, className = "markdown", allowedElements = ALLOWED_MAR
 	}, [label]);
 
 	return (
-		<span className={className}>
-			<ReactMarkdown
-				allowedElements={allowedElements}
-				components={combinedRenderers}
-				rehypePlugins={[rehypeRaw, rehypeSanitize]}
-				unwrapDisallowed
-			>
-				{rawText}
-			</ReactMarkdown>
-		</span>
+		<ReactMarkdown
+			allowedElements={allowedElements}
+			components={combinedRenderers}
+			rehypePlugins={[rehypeRaw, rehypeSanitize]}
+			unwrapDisallowed
+		>
+			{rawText}
+		</ReactMarkdown>
 	);
 };
-
 
 export default memo(Markdown);

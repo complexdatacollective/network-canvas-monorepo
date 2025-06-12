@@ -6,9 +6,12 @@ import { getAssetManifest } from "~/selectors/protocol";
 const mapStateToProps = (state, { id }) => {
 	const assetManifest = getAssetManifest(state);
 	const source = get(assetManifest, [id, "source"], "");
-	const assetPath = `assets/${source}`;
-	const encodedURI = encodeURIComponent(assetPath);
-	const url = source ? `asset://${encodedURI}` : "";
+	
+	// TODO: When assets are stored remotely, this will be:
+	// const url = source ? `https://assets.example.com/${encodeURIComponent(source)}` : "";
+	
+	// For now, return a web-compatible path that won't cause errors
+	const url = source ? `/assets/${source}` : "";
 
 	return {
 		url,

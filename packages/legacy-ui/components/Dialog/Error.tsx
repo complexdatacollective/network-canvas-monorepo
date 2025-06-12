@@ -3,11 +3,11 @@ import { ReactNode, useState } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-const getErrorMessage = (error) => !!error && (error.friendlyMessage ? error.friendlyMessage : error.toString());
+const getErrorMessage = (error: any) => !!error && (error.friendlyMessage ? error.friendlyMessage : error.toString());
 
-const getMessage = ({ error, message }) => (error ? getErrorMessage(error) : message);
+const getMessage = ({ error, message }: { error: any; message: any }) => (error ? getErrorMessage(error) : message);
 
-const getStack = (error) => !!error && error.stack;
+const getStack = (error: any) => !!error && error.stack;
 
 interface AdditionalInformationProps {
 	stack?: string;

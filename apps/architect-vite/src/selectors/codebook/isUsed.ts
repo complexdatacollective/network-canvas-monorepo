@@ -42,9 +42,11 @@ const getFormsSelector = (formNames: string[]) =>
 	});
 
 const getAllFormsSelector = createSelector([(state: RootState) => state], (state) => {
-	const allFormNames = getFormNames(state) || [];
+	const allFormNames = getFormNames(state);
+	// Ensure allFormNames is an array
+	const formNamesArray = Array.isArray(allFormNames) ? allFormNames : [];
 	const forms: Record<string, any> = {};
-	allFormNames.forEach((formName) => {
+	formNamesArray.forEach((formName) => {
 		forms[formName] = getFormValues(formName)(state);
 	});
 	return forms;

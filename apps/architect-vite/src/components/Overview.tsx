@@ -5,10 +5,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
+import { useLocation } from "wouter";
 import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
 import { selectProtocolById } from "~/ducks/modules/protocols";
 import type { RootState } from "~/ducks/modules/root";
-import { actionCreators as uiActions } from "~/ducks/modules/ui";
 import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
 import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
 import withTooltip from "./enhancers/withTooltip";
@@ -47,7 +47,6 @@ type OverviewProps = {
 	name?: string | null;
 	description?: string;
 	updateOptions?: (options: { description: string }) => void;
-	openScreen: (screen: string, params: { id: string }) => void;
 	printOverview: () => void;
 	protocolIsValid: boolean;
 	hasUnsavedChanges: boolean;
@@ -58,17 +57,45 @@ const Overview = ({
 	name = null,
 	description = "",
 	updateOptions = () => {},
-	openScreen,
 	printOverview,
 	protocolIsValid,
 	hasUnsavedChanges,
 	scrollOffset,
 }: OverviewProps) => {
+	const [, setLocation] = useLocation();
+
+	// Get protocol ID from URL for navigation
+	const getProtocolId = useCallback(() => {
+		const urlPath = window.location.pathname;
+		return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
+	}, []);
+
+	const handleNavigateToAssets = useCallback(() => {
+		const protocolId = getProtocolId();
+		if (protocolId) {
+			setLocation(`/protocol/${protocolId}/assets`);
+		}
+	}, [getProtocolId, setLocation]);
+
+	const handleNavigateToCodebook = useCallback(() => {
+		const protocolId = getProtocolId();
+		if (protocolId) {
+			setLocation(`/protocol/${protocolId}/codebook`);
+		}
+	}, [getProtocolId, setLocation]);
+
+	const handlePrintSummary = useCallback(() => {
+		const protocolId = getProtocolId();
+		if (protocolId) {
+			setLocation(`/protocol/${protocolId}/summary`);
+		}
+	}, [getProtocolId, setLocation]);
+
 	const renderActionButtons = useCallback((collapsed = false) => (
 		<div className="action-buttons">
 			<motion.div variants={buttonVariants} className="action-buttons__button" title="Printable Summary">
 				<PrintableSummaryButton
-					onClick={printOverview}
+					onClick={handlePrintSummary}
 					color="slate-blue"
 					icon={<PrintIcon />}
 					disabled={!protocolIsValid || hasUnsavedChanges}
@@ -79,7 +106,7 @@ const Overview = ({
 			</motion.div>
 			<motion.div variants={buttonVariants} className="action-buttons__button" title="Resource Library">
 				<Button
-					onClick={() => openScreen("assets", { id: "resource-library" })}
+					onClick={handleNavigateToAssets}
 					color="neon-coral"
 					icon={<PermMediaIcon />}
 					content={collapsed ? undefined : "Resource Library"}
@@ -87,14 +114,14 @@ const Overview = ({
 			</motion.div>
 			<motion.div variants={buttonVariants} className="action-buttons__button" title="Manage Codebook">
 				<Button
-					onClick={() => openScreen("codebook", { id: "manage-codebook" })}
+					onClick={handleNavigateToCodebook}
 					color="sea-serpent"
 					icon={<MenuBookIcon />}
 					content={collapsed ? undefined : "Manage Codebook"}
 				/>
 			</motion.div>
 		</div>
-	), [printOverview, openScreen, protocolIsValid, hasUnsavedChanges]);
+	), [handlePrintSummary, handleNavigateToAssets, handleNavigateToCodebook, protocolIsValid, hasUnsavedChanges]);
 
 	const renderSummary = useCallback(() => (
 		<motion.div
@@ -150,7 +177,6 @@ const Overview = ({
 const mapDispatchToProps = {
 	updateOptions: activeProtocolActions.updateOptions,
 	printOverview: webUserActions.printOverview,
-	openScreen: uiActions.openScreen,
 };
 
 const mapStateToProps = (state: RootState) => {

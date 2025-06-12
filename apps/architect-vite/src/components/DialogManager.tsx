@@ -1,20 +1,20 @@
 import Dialogs from "@codaco/legacy-ui/components/Dialogs";
-import { connect } from "react-redux";
-import { bindActionCreators, compose } from "@reduxjs/toolkit";
-import { actionCreators as dialogsActions } from "../ducks/modules/dialogs";
+import { useDispatch, useSelector } from "react-redux";
+import { closeDialog } from "../ducks/modules/dialogs";
+import type { RootState } from "../ducks/modules/root";
+import { useBodyScrollLock } from "./InlineEditScreen/useBodyScrollLock";
 
-type RootState = {
-	dialogs: {
-		dialogs: unknown[];
+const DialogManager = () => {
+	const dispatch = useDispatch();
+	const dialogs = useSelector((state: RootState) => state.dialogs.dialogs);
+
+	useBodyScrollLock(dialogs.length > 0);
+
+	const handleCloseDialog = (id: string) => {
+		dispatch(closeDialog(id));
 	};
+
+	return <Dialogs dialogs={dialogs} closeDialog={handleCloseDialog} />;
 };
 
-const mapStateToProps = (state: RootState) => ({
-	dialogs: state.dialogs.dialogs,
-});
-
-const mapDispatchToProps = (dispatch: any) => ({
-	closeDialog: bindActionCreators(dialogsActions.closeDialog, dispatch),
-});
-
-export default compose(connect(mapStateToProps, mapDispatchToProps))(Dialogs);
+export default DialogManager;

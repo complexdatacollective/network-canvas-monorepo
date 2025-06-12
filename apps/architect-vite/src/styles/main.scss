@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-$font-path: '@codaco/legacy-ui/assets/fonts';
-
 @import 'react-grid-layout/css/styles.css';
 @import '@codaco/legacy-ui/styles/all';
 @import './hotfix';
@@ -10,8 +8,6 @@ $font-path: '@codaco/legacy-ui/assets/fonts';
 @import './helpers';
 @import './mixins';
 @import './grid';
-@import './reset';
-@import './app';
 @import '../lib/ProtocolSummary/styles/all';
 
 // CSS modules

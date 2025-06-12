@@ -6,27 +6,51 @@ import { get } from "es-toolkit/compat";
 import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 
 /**
- * Generate a switching function that takes a filepath as an argument
- * and returns match from configuration object.
+ * Generate a switching function that takes a filepath/URL as an argument
+ * and returns match from configuration object based on file extension.
  */
 const withExtensionSwitch =
 	(configuration, fallback = () => Promise.resolve()) =>
-	(filePath, ...rest) => {
-		if (!filePath) {
+	(filePathOrUrl, ...rest) => {
+		if (!filePathOrUrl) {
 			return null;
 		}
-		const extension = path.extname(filePath).substr(1); // e.g. 'csv'
+		// Extract extension from path/URL (web-compatible)
+		const extension = filePathOrUrl.split('.').pop()?.toLowerCase() || '';
 
 		const f = get(configuration, [extension], fallback);
-		return f(filePath, ...rest);
+		return f(filePathOrUrl, ...rest);
 	};
 
-const readJsonNetwork = (assetPath) => fs.readJson(assetPath);
+/**
+ * Fetches and parses JSON network data
+ * In the future, this will fetch from a remote asset service
+ */
+const readJsonNetwork = async (assetUrl) => {
+	// TODO: When assets are stored remotely, this will be:
+	// const response = await fetch(assetUrl);
+	// return response.json();
+	
+	// For now, return empty network as placeholder
+	console.warn('Asset loading not yet implemented for web. Returning empty network.');
+	return { nodes: [], edges: [] };
+};
 
-const readCsvNetwork = async (assetPath) => {
-	const data = await fs.readFile(assetPath);
+/**
+ * Fetches and parses CSV network data
+ * In the future, this will fetch from a remote asset service
+ */
+const readCsvNetwork = async (assetUrl) => {
+	// TODO: When assets are stored remotely, this will be:
+	// const response = await fetch(assetUrl);
+	// const data = await response.text();
+	
+	// For now, return empty network as placeholder
+	console.warn('CSV asset loading not yet implemented for web. Returning empty network.');
+	const data = '';
+	
 	const nodes = await csv({ checkColumn: true })
-		.fromString(data.toString("utf8"))
+		.fromString(data)
 		.then((rows) => rows.map((attributes) => ({ attributes })))
 		.catch((e) => {
 			if (e.toString().includes("column_mismatched")) {
@@ -102,8 +126,16 @@ export const validateAsset = async (filePath) => {
 	return true;
 };
 
-export const getGeoJsonVariables = async (filePath) => {
-	// process GeoJSON
-	const geoJson = await fs.readJson(filePath);
-	return Object.keys(geoJson.features[0].properties);
+/**
+ * Gets variables from a GeoJSON asset
+ * In the future, this will fetch from a remote asset service
+ */
+export const getGeoJsonVariables = async (assetUrl) => {
+	// TODO: When assets are stored remotely, this will be:
+	// const response = await fetch(assetUrl);
+	// const geoJson = await response.json();
+	
+	// For now, return empty array as placeholder
+	console.warn('GeoJSON asset loading not yet implemented for web. Returning empty variables.');
+	return [];
 };

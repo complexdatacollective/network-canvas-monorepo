@@ -31,12 +31,7 @@ const StageEditorScreen = ({ id, insertAtIndex, onComplete, locus }: StageEditor
 
 	// Secondary buttons
 	const secondaryButtons = [
-		<Button
-			key="preview"
-			color="paradise-pink"
-			disabled={invalid}
-			tooltip={invalid ? getInvalidStageMessage(invalid) : null}
-		>
+		<Button key="preview" color="paradise-pink" disabled tooltip={invalid ? getInvalidStageMessage(invalid) : null}>
 			Preview
 		</Button>,
 	];

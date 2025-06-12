@@ -1,5 +1,5 @@
 import { omit } from "lodash";
-import { Component } from "react";
+import { useCallback } from "react";
 import * as DialogVariants from "./Dialog/index";
 
 /*
@@ -58,33 +58,26 @@ interface DialogsProps {
 	closeDialog: (id: string) => void;
 }
 
-class Dialogs extends Component<DialogsProps> {
-	get dialogs() {
-		const { dialogs = [] } = this.props;
-		return dialogs;
-	}
-
-	handleConfirm = (dialog: Dialog) => {
-		const { closeDialog } = this.props;
+const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
+	const handleConfirm = useCallback((dialog: Dialog) => {
 		if (dialog.onConfirm) {
 			dialog.onConfirm(dialog);
 		}
 		closeDialog(dialog.id);
-	};
+	}, [closeDialog]);
 
-	handleCancel = (dialog: Dialog) => {
-		const { closeDialog } = this.props;
+	const handleCancel = useCallback((dialog: Dialog) => {
 		if (dialog.onCancel) {
 			dialog.onCancel(dialog);
 		}
 		closeDialog(dialog.id);
-	};
+	}, [closeDialog]);
 
-	renderDialog = (dialog: Dialog) => {
+	const renderDialog = useCallback((dialog: Dialog) => {
 		const Dialog = DialogVariants[dialog.type];
 
-		const onConfirm = () => this.handleConfirm(dialog);
-		const onCancel = () => this.handleCancel(dialog);
+		const onConfirm = () => handleConfirm(dialog);
+		const onCancel = () => handleCancel(dialog);
 
 		return (
 			<Dialog
@@ -96,12 +89,10 @@ class Dialogs extends Component<DialogsProps> {
 				{...omit(dialog, ["onConfirm", "onCancel"])}
 			/>
 		);
-	};
+	}, [handleConfirm, handleCancel]);
 
-	render() {
-		return this.dialogs.map(this.renderDialog);
-	}
-}
+	return dialogs.map(renderDialog);
+};
 
 export { Dialogs };
 

@@ -41,8 +41,6 @@ const OrderedList = (props: OrderedListBaseProps) => {
 		meta: { form },
 	} = props;
 
-	console.log("values", values);
-
 	return (
 		<div className="list">
 			{(dirty || submitFailed) && error && !isArray(error) && <p className="list__error">{error}</p>}

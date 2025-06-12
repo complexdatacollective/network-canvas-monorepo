@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import React, { useContext } from "react";
 import { Join } from "~/components/Query/Rules/PreviewText";
 import Rule from "./Rule";
 import SummaryContext from "./SummaryContext";
@@ -27,13 +27,12 @@ const Rules = ({ filter = null }: RulesProps) => {
 	return (
 		<div className="protocol-summary-rules">
 			{rules.map(({ type, options }, n) => (
-				<>
-					{/* eslint-disable-next-line react/no-array-index-key */}
-					<div className="protocol-summary-rules__rule" key={n}>
+				<React.Fragment key={`rule-${type}-${n}`}>
+					<div className="protocol-summary-rules__rule">
 						<Rule type={type} options={options} codebook={protocol.codebook} />
 					</div>
 					{n !== rules.length - 1 && join && <Join value={join} />}
-				</>
+				</React.Fragment>
 			))}
 		</div>
 	);

@@ -40,8 +40,11 @@ const useAssetData = (id: string) => {
 		});
 	}, []);
 
-	const encodedURI = encodeURIComponent(assetPath);
-	const url = `asset://${encodedURI}`;
+	// TODO: When assets are stored remotely, this will be:
+	// const url = `https://assets.example.com/${encodeURIComponent(assetPath)}`;
+	
+	// For now, return a placeholder URL that won't cause errors
+	const url = data.source ? `/assets/${data.source}` : '#';
 
 	return {
 		name: data.name,

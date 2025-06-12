@@ -1,11 +1,12 @@
 import Button from "@codaco/legacy-ui/components/Button";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
 import { submit } from "redux-form";
 import { Layout } from "~/components/EditorLayout";
 import Form from "./Form";
+import { useBodyScrollLock } from "./useBodyScrollLock";
 
 const screenVariants = {
 	visible: {
@@ -45,6 +46,10 @@ const InlineEditScreen = ({
 	children = null,
 	initialValues,
 }: InlineEditScreenProps) => {
+
+	// Prevent scrolling of the body when the inline edit screen is open
+	useBodyScrollLock(show);
+
 	const dispatch = useDispatch();
 
 	const handleSubmit = useCallback(() => {

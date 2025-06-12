@@ -82,15 +82,6 @@ const StageEditor = (props: StageEditorProps) => {
 
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
-	console.log("StageEditor: props", {
-		stage,
-		stagePath,
-		interfaceType,
-		initialValues,
-		formValues,
-		hasSkipLogic,
-	});
-
 	const renderSections = (sectionsList: any[], { submitFailed }: { submitFailed: boolean }) =>
 		sectionsList.map((SectionComponent: React.ComponentType<any>, sectionIndex: number) => {
 			const sectionKey = `${interfaceType}-${sectionIndex}`;

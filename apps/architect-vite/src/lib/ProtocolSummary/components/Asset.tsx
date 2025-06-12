@@ -11,22 +11,32 @@ type AssetProps = {
 const Asset = ({ id, size = null }: AssetProps) => {
 	const { url, type, name, variables } = useAssetData(id);
 
-	const ref = useRef<HTMLVideoElement | HTMLAudioElement>(null);
-	const [state, setState] = useState({ duration: 0 });
-	const metaDataListener = useRef(() => {
-		const duration = ref.current.duration.toFixed(2);
-		setState({ duration: `${duration}s` });
+	const videoRef = useRef<HTMLVideoElement>(null);
+	const audioRef = useRef<HTMLAudioElement>(null);
+	const [state, setState] = useState({ duration: "0s" });
+	const metaDataListener = useRef((event: Event) => {
+		const target = event.target as HTMLVideoElement | HTMLAudioElement;
+		if (target?.duration) {
+			const duration = target.duration.toFixed(2);
+			setState({ duration: `${duration}s` });
+		}
 	});
 
 	useEffect(() => {
-		if (ref.current && ["audio", "video"].includes(type)) {
-			ref.current.addEventListener("loadedmetadata", metaDataListener.current);
+		const videoElement = videoRef.current;
+		const audioElement = audioRef.current;
+		const element = type === "video" ? videoElement : type === "audio" ? audioElement : null;
+		
+		if (element) {
+			element.addEventListener("loadedmetadata", metaDataListener.current);
 		}
 
 		return () => {
-			ref.current.removeEventListener("loadedmetadata", metaDataListener.current);
+			if (element) {
+				element.removeEventListener("loadedmetadata", metaDataListener.current);
+			}
 		};
-	}, [ref.current, type, url]);
+	}, [type]);
 
 	return (
 		<div className="protocol-summary-asset-manifest__asset" id={`asset-${id}`}>
@@ -40,7 +50,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
 						// eslint-disable-next-line jsx-a11y/media-has-caption
 						[
 							"Preview",
-							<div className="protocol-summary-asset-manifest__asset-media">
+							<div key="image-preview" className="protocol-summary-asset-manifest__asset-media">
 								<img src={url} alt={name} />
 							</div>,
 						],
@@ -58,9 +68,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
 						["Duration", state.duration],
 						[
 							"Preview",
-							<div className="protocol-summary-asset-manifest__asset-media">
-								<video src={url} ref={ref} preload="auto">
+							<div key="video-preview" className="protocol-summary-asset-manifest__asset-media">
+								<video src={url} ref={videoRef} preload="auto">
 									<source src={`${url}#t=1`} type="video/mp4" />
+									<track kind="captions" srcLang="en" label="English" />
 								</video>
 							</div>,
 						],
@@ -76,7 +87,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
 						...(size ? [["Block Size", size]] : []),
 						["Type", "Audio"],
 						["Duration", state.duration],
-						["Preview", <audio src={url} ref={ref} />],
+						["Preview", <audio key="audio-preview" src={url} ref={audioRef}><track kind="captions" srcLang="en" label="English" /></audio>],
 					]}
 				/>
 			)}

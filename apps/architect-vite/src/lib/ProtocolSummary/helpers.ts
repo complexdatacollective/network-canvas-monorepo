@@ -34,6 +34,10 @@ const buildVariableEntry =
 	};
 
 export const getCodebookIndex = (protocol: any) => {
+	if (!protocol || !protocol.stages) {
+		return {};
+	}
+
 	const variablePaths = utils.collectPaths(paths.variables, protocol);
 
 	const fields = flatMap(protocol.stages, (stage) => {

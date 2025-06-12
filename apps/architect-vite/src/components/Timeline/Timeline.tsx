@@ -1,15 +1,16 @@
 import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { motion } from "motion/react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import { bindActionCreators } from "@reduxjs/toolkit";
 import { compose } from "recompose";
+import { useLocation } from "wouter";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
+import type { RootState } from "~/ducks/modules/root";
 import { actionCreators as uiActions } from "~/ducks/modules/ui";
 import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";
-import type { RootState } from "~/ducks/modules/root";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 
@@ -51,24 +52,44 @@ interface TimelineProps {
 
 const Timeline = (props: TimelineProps) => {
 	const { show = true, sorting = false, stages = [], openScreen, locus, openDialog, deleteStage } = props;
+	const [, setLocation] = useLocation();
 
-	const handleInsertStage = (index) => {
-		openScreen("newStage", { insertAtIndex: index });
-	};
+	// Get protocol ID from URL for navigation
+	const getProtocolId = useCallback(() => {
+		const urlPath = window.location.pathname;
+		return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
+	}, []);
 
-	const handleDeleteStage = (stageId) => {
-		openDialog({
-			type: "Warning",
-			title: "Delete stage",
-			message: "Are you sure you want to delete this stage from your protocol? This action cannot be undone!",
-			onConfirm: () => deleteStage(stageId),
-			confirmLabel: "Delete stage",
-		});
-	};
+	const handleInsertStage = useCallback(
+		(index) => {
+			openScreen("newStage", { insertAtIndex: index });
+		},
+		[openScreen],
+	);
 
-	const handleEditStage = (id, origin) => {
-		openScreen("stage", { locus, id, origin });
-	};
+	const handleDeleteStage = useCallback(
+		(stageId) => {
+			openDialog({
+				type: "Warning",
+				title: "Delete stage",
+				message: "Are you sure you want to delete this stage from your protocol? This action cannot be undone!",
+				onConfirm: () => deleteStage(stageId),
+				confirmLabel: "Delete stage",
+			});
+		},
+		[openDialog, deleteStage],
+	);
+
+	const handleEditStage = useCallback(
+		(id, origin) => {
+			const protocolId = getProtocolId();
+			if (protocolId) {
+				// Simple navigation without locus in URL - locus is managed in Redux state
+				setLocation(`/protocol/${protocolId}/stages/${id}`);
+			}
+		},
+		[getProtocolId, setLocation],
+	);
 
 	const renderStages = useCallback(
 		() =>
@@ -87,7 +108,7 @@ const Timeline = (props: TimelineProps) => {
 					onDeleteStage={handleDeleteStage}
 				/>,
 			]),
-		[stages, handleInsertStage],
+		[stages, handleInsertStage, handleEditStage, handleDeleteStage],
 	);
 
 	const timelineStyles = cx("timeline", {
@@ -135,7 +156,6 @@ const mapDispatchToProps = (dispatch: any, props: any) => ({
 		props.setSorting(true);
 	},
 });
-
 
 export { Timeline };
 

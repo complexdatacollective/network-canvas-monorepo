@@ -1,19 +1,18 @@
 /* eslint-disable import/prefer-default-export */
 
-import path from "node:path";
 import { first, get } from "lodash";
 import csvParse from "csv-parse";
-import { readFile } from "fs-extra";
 import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
 
 /**
- * Generate a switching function that takes a filepath as an argument
+ * Generate a switching function that takes a filepath/URL as an argument
  * and returns match from configuration object.
  */
 const withExtensionSwitch =
 	(configuration, fallback = () => Promise.resolve()) =>
-	(filePath) => {
-		const extension = path.extname(filePath).substr(1); // e.g. 'csv'
+	(filePathOrUrl) => {
+		// Extract extension from path/URL (web-compatible)
+		const extension = filePathOrUrl.split('.').pop()?.toLowerCase() || '';
 
 		return get(configuration, [extension], fallback);
 	};
@@ -56,10 +55,18 @@ const getVariableReader = withExtensionSwitch({
 
 /**
  * Gets node variables from an external data source
- * @param {buffer} file - The external data source
+ * In the future, this will fetch from a remote asset service
+ * @param {string} assetUrl - The URL of the external data source
  */
-export const getAssetVariables = (filePath) => {
-	const variableReader = getVariableReader(filePath);
+export const getAssetVariables = async (assetUrl) => {
+	const variableReader = getVariableReader(assetUrl);
 
-	return readFile(filePath).then(variableReader);
+	// TODO: When assets are stored remotely, this will be:
+	// const response = await fetch(assetUrl);
+	// const data = await response.text();
+	// return variableReader(data);
+	
+	// For now, return empty array as placeholder
+	console.warn('Asset variable loading not yet implemented for web. Returning empty array.');
+	return [];
 };

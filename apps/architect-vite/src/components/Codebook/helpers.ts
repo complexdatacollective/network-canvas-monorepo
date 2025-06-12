@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { compact, get, map, reduce, uniq } from "es-toolkit/compat";
 import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
-import { getIsUsed } from "~/selectors/codebook/isUsed";
+import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
 import { getVariableIndex } from "~/selectors/indexes";
 import { getCodebook, getProtocol } from "~/selectors/protocol";
 
@@ -119,7 +119,7 @@ export const getEntityProperties = (state, { entity, type }) => {
 	const variableIndex = getVariableIndex(state);
 	const variableMeta = getVariableMetaByIndex(state);
 	const stageMetaByIndex = getStageMetaByIndex(state);
-	const isUsedIndex = getIsUsed({ formNames: [] })(state);
+	const isUsedIndex = makeGetIsUsed({ formNames: [] })(state);
 
 	const variablesWithUsage = map(variables, (variable, id) => {
 		const inUse = get(isUsedIndex, id, false);

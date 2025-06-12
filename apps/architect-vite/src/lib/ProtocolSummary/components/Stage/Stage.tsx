@@ -71,7 +71,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 											<td>Variables</td>
 											<td>
 												{stageVariables.map(([variableId, variable], i) => (
-													<React.Fragment key={variableId}>
+													<React.Fragment key={`${id}-${variableId}`}>
 														<DualLink to={`#variable-${variableId}`}>{variable}</DualLink>
 														{i !== stageVariables.length - 1 && ", "}
 													</React.Fragment>

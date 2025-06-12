@@ -296,7 +296,7 @@
       "id": "namegen2",
       "type": "NameGeneratorQuickAdd",
       "label": "NG Quick add",
-      "quickAdd": "name_variable",
+      "quickAdd": "venue_name_variable",
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -1666,7 +1666,7 @@
         "color": "node-color-seq-4",
         "iconVariant": "add-a-place",
         "variables": {
-          "name_variable": {
+          "venue_name_variable": {
             "name": "name",
             "type": "text"
           },

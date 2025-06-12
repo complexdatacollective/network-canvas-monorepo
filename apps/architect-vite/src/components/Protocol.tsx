@@ -31,7 +31,7 @@ const Protocol = () => {
 
 	return (
 		<motion.div className="scene scene--protocol" variants={variants}>
-			<div className="scene__protocol" ref={ref}>
+			<div className="scene__protocol bg-[var(--background)]" ref={ref}>
 				<Overview scrollOffset={scrollOffset} />
 				<Timeline />
 			</div>

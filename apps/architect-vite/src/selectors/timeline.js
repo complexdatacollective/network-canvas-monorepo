@@ -1,6 +1,10 @@
 import { get, last } from "lodash";
+import { getProtocol } from "./protocol";
 
-export const getLocus = (state) => last(get(state, ["protocol", "timeline"]));
+export const getLocus = (state) => {
+	const protocol = getProtocol(state);
+	return last(get(protocol, ["timeline"]));
+};
 
 export const hasChanges = (state, locus) => {
 	// If no locus is provided, there are no timeline changes to consider
@@ -8,7 +12,12 @@ export const hasChanges = (state, locus) => {
 		return false;
 	}
 	
-	const { timeline } = state.protocol;
+	const protocol = getProtocol(state);
+	if (!protocol?.timeline) {
+		return false;
+	}
+	
+	const { timeline } = protocol;
 	const locusIndex = timeline.findIndex((id) => id === locus);
 	
 	// If locus is not found in timeline, no changes

@@ -1,11 +1,11 @@
+import type { Protocol } from "@codaco/protocol-validation";
 import { createContext } from "react";
 
 type SummaryContextType = {
-	protocol: any;
+	protocol: Protocol | null;
 	index: any[];
-	workingPath?: string;
 };
 
-const SummaryContext = createContext<SummaryContextType>({ protocol: null, index: [], workingPath: undefined });
+const SummaryContext = createContext<SummaryContextType>({ protocol: null, index: [] });
 
 export default SummaryContext;

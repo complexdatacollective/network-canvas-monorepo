@@ -6,8 +6,6 @@
 @import 'core/palette';
 @import 'core/spacing';
 @import 'core/typography';
-@import 'core/quicksand';
-@import 'core/normalize';
 @import 'core/z-index';
 @import 'core/helpers';
 
@@ -210,8 +208,10 @@ $schema-colors: (
 
 @include color-sequence('schema-color-seq', $schema-colors, true);
 
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
+
 $base-line-height: 1.5;
-$netcanvas-font-stack: 'Quicksand', 'Open Sans', sans-serif;
+$netcanvas-font-stack: 'Quicksand', sans-serif;
 $system-font-stack: 'system-ui', sans-serif;
 
 :root {
@@ -291,13 +291,10 @@ $system-font-stack: 'system-ui', sans-serif;
   display: flex;
 }
 
-@if $export-ui-classes {
-  @include normalize;
-}
-
 html {
   font-family: var(--body-font-family);
   font-size: var(--base-font-size);
+  color: var(--text);
 }
 
 a {
@@ -306,7 +303,7 @@ a {
 
 // Headings
 
-$headings-font-weight: 600 !default;
+$headings-font-weight: 700 !default;
 $headings-line-height: 1.1 !default;
 
 // Based of px sizes in style guide (em values were inconsistent)
@@ -334,112 +331,6 @@ $headings: (
     @include text($font-size, $font-family);
   }
 }
-
-@include type-set(
-  'quicksand', base,
-  (
-    font-family: var(--heading-font-family),
-    font-size: 1rem,
-    line-height: $base-line-height,
-    font-weight: $headings-font-weight
-  )
-);
-@include type-set(
-  'light', base, (font-weight: 300)
-);
-@include type-set(
-  'medium', base, (font-weight: 500)
-);
-@include type-set(
-  'bold', base, (font-weight: 700)
-);
-@include type-set(
-  'center', base, (text-align: center)
-);
-// H1  - questions, form, and menu headlines
-@include type-set(
-  'main-title', base,
-  (
-    font-family: var(--heading-font-family),
-    font-size: 3rem,
-    line-height: 1.429,
-    font-weight: 700,
-    text-align: center,
-  )
-);
-
-@include type-set(
-  'title-1', base,
-  (
-    font-family: var(--heading-font-family),
-    font-size: 2.3rem,
-    line-height: 1.429,
-    font-weight: 700,
-    text-align: center,
-    width: 100%
-  )
-);
-
-// H2 - Form question headlines, buttons, text links
-@include type-set(
-  'title-2', base,
-  (
-    font-size: 1.2rem,
-    line-height: $base-line-height,
-    font-weight: 500,
-  )
-);
-
-// H3 - Large nodes, name generator panel, ordinal bins, categorial bins
-@include type-set(
-  'title-3', base,
-  (
-    font-size: 1.05rem,
-    line-height: $base-line-height,
-    font-weight: $headings-font-weight,
-    text-align: center,
-  )
-);
-// H4 - Menu items, error message headline, body copy
-@include type-set(
-  'title-4', base,
-  (
-    font-size: 1rem,
-    line-height: $base-line-height,
-  )
-);
-// H5 - Small nodes, context bins, number counter, form field label
-@include type-set(
-  'title-5', base,
-  (
-    font-size: 0.8rem,
-    line-height: $base-line-height,
-  )
-);
-
-// Copy sizes
-@include type-set(
-  'copy-large', base,
-  (
-    font-size: 1.1rem,
-    line-height: $base-line-height
-  )
-);
-@include type-set(
-  'copy-standard', base,
-  (
-    font-size: 1rem,
-    line-height: $base-line-height
-  )
-);
-@include type-set(
-  'copy-small', base,
-  (
-    font-size: 0.7rem,
-    line-height: $base-line-height,
-    font-weight: 100
-  )
-);
 
 @if $export-ui-classes {
   @include typography-classes;

@@ -1,12 +1,14 @@
 import ProtocolCard from "@codaco/legacy-ui/components/Cards/ProtocolCard";
 import { DateTime } from "luxon";
-import path from "node:path";
 import { useContext } from "react";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
 import SummaryContext from "./SummaryContext";
 
 const Cover = () => {
 	const { protocol, filePath } = useContext(SummaryContext);
+	
+	// Extract filename without extension from file path (web-compatible)
+	const protocolName = filePath?.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '') || 'protocol';
 
 	const lastModified = DateTime.fromISO(protocol.lastModified).toHTTP();
 	const date = new Date();
@@ -22,7 +24,7 @@ const Cover = () => {
 				</div>
 			</div>
 			<ProtocolCard
-				name={path.basename(filePath)}
+				name={protocolName}
 				description={protocol.description}
 				lastModified={lastModified}
 				schemaVersion={protocol.schemaVersion}

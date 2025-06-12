@@ -130,13 +130,7 @@ pnpm typecheck   # TypeScript check
 - Always use `pnpm` for package management
 - Always use typescript for new components
 - Examine @codaco/protocol-validation and @codaco/shared-consts for types and schemas that may be reused.
-
-**Biome Configuration:**
-
-- Tab indentation
-- 120 character line width
-- Double quotes for JavaScript/TypeScript
-- Semicolons required
+- Biome is used for linting and formatting
 
 **TypeScript:**
 
@@ -148,19 +142,14 @@ pnpm typecheck   # TypeScript check
 **Component Patterns:**
 
 - Functional components with hooks
-- PropTypes being removed in favor of TypeScript
-- Default props via ES6 default parameters
+- PropTypes being removed in favor of TypeScript. ALWAYS remove defaultProps and replace with TypeScript default parameters. Account for nested objects and arrays in default parameters.
 - Tailwind for all new styling - migrating legacy sass styles to Tailwind.
 
 ## Important Notes
 
 - Do not run linting or typechecking tasks unless specifically instructed to do so, as they may fail due to the current state of the codebase.
-- do not use recompose or HOCs in new components, and remove them from existing components where possible
-.
-- prioritize completing modifications for a single file so that you do not run out of context mid way through complex tasks.
-- framer-motion (now '@motion') is used for animations and transitions. Other animation systems are present, but should be phased out
-- Currently on `editor` branch, PRs should target `main`
-- React StrictMode disabled pending redux-form removal
-- Legacy UI components in `lib/legacy-ui/` being rewritten gradually to use radix primitives and Tailwind
-- When migrating components to TypeScript, ensure default values are preserved
-- The screen management system uses portals and AnimatePresence for transitions
+- do not use recompose or HOCs in new components.
+- ALWAYS remove recompose and refactor HOCs when they are found in existing components
+- prioritize completing modifications to a single file so that you do not run out of context mid way through complex tasks.
+- framer-motion (now '@motion') is used for animations and transitions. Other animation systems are present, but should be removed and replaced with motion when encountered.
+- Legacy UI components in `/packages/legacy-ui`. These should bemigrated to use radix primitives and Tailwind when required.
