@@ -32,35 +32,35 @@ $-icon-color-modifiers: (
   // and need to be styled individually
   &[name='add-a-context-button'] {
     .cls-1 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-2 {
-      fill: color('platinum--dark', 0.3);
+      fill: hsl(var(--platinum-dark) / 0.3);
     }
 
     .cls-3 {
-      fill: color('platinum--dark', 0.6);
+      fill: hsl(var(--platinum-dark) / 0.6);
     }
 
     .cls-4 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-5 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-6 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-7 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-8 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
   }
 
@@ -77,72 +77,72 @@ $-icon-color-modifiers: (
   &[name='add-a-person-button'],
   &[name='add-a-relationship-button'] {
     .cls-1 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-2 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-3 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-4 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-5 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-6 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
   }
 
   &[name='add-a-place-button'] {
     .cls-1 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-2 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-3 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-4 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-5 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-6 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
   }
 
   &[name='add-a-protocol'],
   &[name='add-a-protocol-button'] {
     .cls-1 {
-      fill: color('white');
+      fill: var(--color-white);
     }
 
     .cls-2 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-3 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-4 {
-      fill: color('cyber-grape');
+      fill: var(--color-cyber-grape);
     }
 
     .cls-5 {
@@ -150,7 +150,7 @@ $-icon-color-modifiers: (
     }
 
     .cls-6 {
-      fill: var(--color-platinum--dark);
+      fill: var(--color-platinum-dark);
     }
 
     .cls-8 {
@@ -158,134 +158,134 @@ $-icon-color-modifiers: (
     }
 
     .cls-7 {
-      fill: color('slate-blue');
+      fill: var(--color-slate-blue);
     }
 
     .cls-9 {
-      fill: color('white');
+      fill: var(--color-white);
     }
   }
 
   &[name='add-a-screen'] {
     .cls-1 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-2 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-3 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-4 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-5 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-6 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
   }
 
   &[name='pair-a-server'] {
     .cls-8 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-2 {
-      fill: color('mustard');
+      fill: var(--color-mustard);
     }
 
     .cls-3 {
-      fill: color('neon-coral');
+      fill: var(--color-neon-coral);
       clip-path: url('#clip-path');
     }
 
     .cls-4 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-5 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
   }
 
   &[name='tick'],
   &[name='cross'] {
     .cls-1 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
   }
 
   &[name='error'] {
     .cls-1 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-2 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-3 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-4 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-5 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-6 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-8 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
   }
 
   &[name='info'] {
     .cls-1 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-2 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-3 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-4 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-5 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
   }
 
   &[name='protocol-card'] {
 
     .cls-1 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-2 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-2 {
-      fill: color('cyber-grape');
+      fill: var(--color-cyber-grape);
     }
 
     .cls-3 {
@@ -308,25 +308,25 @@ $-icon-color-modifiers: (
 
   &[name='warning'] {
     .cls-1 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-2 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-3 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-4 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
   }
 
   &[name='edit'] {
     .cls-1 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-2 {
@@ -334,37 +334,37 @@ $-icon-color-modifiers: (
     }
 
     .cls-3 {
-      fill: color('tomato');
+      fill: var(--color-tomato);
     }
 
     .cls-4 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-5 {
-      fill: color('tomato--dark');
+      fill: var(--color-tomato-dark);
     }
 
     .cls-6 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-7 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-8 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
   }
 
   &[name='trash-bin'] {
     .cls-1 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-2 {
-      fill: color('#{$main-color}');
+      fill: var(--color-#{$main-color});
     }
 
     .cls-3 {
@@ -381,7 +381,7 @@ $-icon-color-modifiers: (
 
   &[name='toggle-off'] {
     .cls-2 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
   }
 
@@ -441,11 +441,11 @@ $-icon-color-modifiers: (
 @mixin color-icon($color: 'sea-green') {
   .cls-1,
   .cls-3 {
-    fill: color('#{$color}--dark');
+    fill: var(--color-#{$color}-dark);
   }
 
   .cls-2 {
-    fill: color('#{$color}');
+    fill: var(--color-#{$color});
   }
 }
 
@@ -458,15 +458,15 @@ $-icon-color-modifiers: (
 
     .cls-1,
     .cls-3 {
-      fill: color('platinum--dark');
+      fill: var(--color-platinum-dark);
     }
 
     .cls-2 {
-      fill: color('platinum');
+      fill: var(--color-platinum);
     }
 
     .cls-4 {
-      fill: color('neon-coral');
+      fill: var(--color-neon-coral);
     }
 
     .cls-5 {
@@ -553,8 +553,4 @@ $-icon-color-modifiers: (
       height: $icon-small-height;
     }
   }
-}
-
-@if $export-ui-classes {
-  @include icon;
 }

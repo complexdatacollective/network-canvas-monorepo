@@ -70,7 +70,7 @@ export const VARIABLE_TYPES = {
 		label: "Location",
 		value: "location",
 		icon: LocationVariable,
-		color: "var(--color-slate-blue--dark)",
+		color: "var(--color-slate-blue-dark)",
 	},
 };
 

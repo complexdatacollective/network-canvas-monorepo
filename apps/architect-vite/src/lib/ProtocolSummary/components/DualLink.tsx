@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 type DualLinkProps = {
 	to: string;
@@ -8,11 +8,10 @@ type DualLinkProps = {
 
 const DualLink = ({ to, children = null, className = null }: DualLinkProps) => (
 	<>
-		<a href={to} data-print="only" className={className}>
+		<a href={to} className={className}>
 			{children}
 		</a>
 	</>
 );
-
 
 export default DualLink;

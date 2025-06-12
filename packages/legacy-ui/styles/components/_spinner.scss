@@ -1,6 +1,6 @@
 
-$light-color-list: (color('sea-serpent'), color('mustard'), color('neon-coral'), color('sea-green'));
-$dark-color-list: (color('sea-serpent--dark'), color('mustard--dark'), color('neon-coral--dark'), color('sea-green--dark'));
+$light-color-list: (var(--color-sea-serpent), var(--color-mustard), var(--color-neon-coral), var(--color-sea-green));
+$dark-color-list: (var(--color-sea-serpent-dark), var(--color-mustard-dark), var(--color-neon-coral-dark), var(--color-sea-green-dark));
 
 .spinner {
   --circle-size: 2rem;

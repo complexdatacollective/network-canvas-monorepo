@@ -10,31 +10,28 @@ $-color-alpha-map: (0.1, 0.15, 0.3, 0.6, 0.7, 0.8, 1) !default;
 }
 
 @function color($color-name, $alpha: 1, $use-mapped-value: false) {
-  $color: #fff;
-  @if $use-mapped-value == true {
-    @if index($-color-alpha-map, $alpha) == null {
-      @warn 'color: Only use #{$-color-alpha-map} for alpha values.';
-    }
-
-    @if map-has-key($-color-map, $color-name) {
-      $color: map-get($-color-map, $color-name);
-      @return rgba($color, $alpha);
-    } @else {
-      @return $color;
-    }
+  @if $alpha != 1 {
+    @return hsl(var(--#{$color-name}) / #{$alpha});
   } @else {
     @return var(--color-#{$color-name});
   }
 }
 
 @mixin color-modifiers($include-hover: false) {
-  @each $color-name, $color-group in $-color-map {
+  $color-names: (
+    'neon-coral', 'sea-green', 'slate-blue', 'navy-taupe', 'cyber-grape',
+    'mustard', 'rich-black', 'charcoal', 'platinum', 'sea-serpent',
+    'purple-pizazz', 'paradise-pink', 'cerulean-blue', 'kiwi', 'neon-carrot',
+    'barbie-pink', 'tomato', 'white'
+  );
+  
+  @each $color-name in $color-names {
     @include modifier($color-name) {
-      background-color: color($color-name);
+      background-color: var(--color-#{$color-name});
 
       @if $include-hover {
         &:hover {
-          background-color: color($color-name, 0.8);
+          background-color: hsl(var(--#{$color-name}) / 0.8);
         }
       }
     }

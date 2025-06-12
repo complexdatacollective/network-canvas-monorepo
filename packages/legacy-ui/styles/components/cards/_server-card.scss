@@ -47,7 +47,7 @@ $component: 'server-card';
 
   &--disabled {
     .#{$component}__icon-section {
-      background: var(--color-platinum--dark);
+      background: var(--color-platinum-dark);
     }
 
     .server-name, h6 {

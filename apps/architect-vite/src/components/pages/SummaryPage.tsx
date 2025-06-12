@@ -86,7 +86,7 @@ const SummaryPage = () => {
 			<Layout className="protocol-summary-page">
 				<div className="stage-heading">
 					<div className="flex flex-col">
-						<h1 className="screen-heading !m-0">Protocol Summary</h1>
+						<h1 className="screen-heading">Protocol Summary</h1>
 						<p>
 							Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and
 							assets.

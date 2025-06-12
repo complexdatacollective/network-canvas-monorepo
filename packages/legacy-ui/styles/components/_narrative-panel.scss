@@ -3,7 +3,7 @@ $module-name: 'narrative-panel';
 .#{$module-name} {
   display: flex;
   flex-direction: column;
-  background-color: palette('light-background');
+  background-color: var(--light-background);
   border-bottom: var(--narrative-border-bottom-color) 2px solid;
 
   &__heading {
@@ -26,7 +26,7 @@ $module-name: 'narrative-panel';
 
     &:hover {
       background-color: var(--narrative-heading-bg-hover);
-      color: palette('selected');
+      color: var(--selected);
     }
   }
 

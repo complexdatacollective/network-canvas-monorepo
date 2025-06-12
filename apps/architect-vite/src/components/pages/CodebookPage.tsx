@@ -1,3 +1,4 @@
+import { Button } from "@codaco/legacy-ui";
 import { useLocation } from "wouter";
 import Codebook from "~/components/Codebook/Codebook";
 import { Layout } from "~/components/EditorLayout";
@@ -21,29 +22,21 @@ const CodebookPage = () => {
 	};
 
 	return (
-		<div className="scene scene--codebook">
-			<div className="stage-heading stage-heading--inline">
-				<Layout>
-					<div className="flex items-center gap-4 mb-6">
-						<button
-							onClick={handleGoBack}
-							className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-							type="button"
-						>
-							← Back to Protocol
-						</button>
-					</div>
-					<h1 className="screen-heading">Codebook</h1>
-					<p>
-						Below you can find an overview of the node and edge types that you have defined while creating your
-						interview. Entities that are unused may be deleted.
-					</p>
-				</Layout>
+		<Layout>
+			<div className="stage-heading">
+				<h1 className="screen-heading">Codebook</h1>
+				<p>
+					Below you can find an overview of the node and edge types that you have defined while creating your interview.
+					Entities that are unused may be deleted.
+				</p>
 			</div>
-			<Layout>
-				<Codebook />
-			</Layout>
-		</div>
+			<Codebook />
+			<div className="flex fixed bottom-0 p-6 bg-slate-blue-dark w-full">
+				<Button onClick={handleGoBack} color="platinum">
+					Go Back
+				</Button>
+			</div>
+		</Layout>
 	);
 };
 

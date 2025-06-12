@@ -27,7 +27,7 @@
         & > td {
           padding: .75rem;
           vertical-align: top;
-          border-top: var(--color-platinum--dark) 1px solid;
+          border-top: var(--color-platinum-dark) 1px solid;
 
           // Variable name column can contain long and hard to break strings
           &:first-of-type {
@@ -77,7 +77,7 @@
 
       & > tr:nth-child(2n) {
         & > td {
-          background-color: var(--color-platinum--dark);
+          background-color: var(--color-platinum-dark);
         }
       }
     }

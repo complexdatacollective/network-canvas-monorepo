@@ -73,8 +73,7 @@
       flex-wrap: nowrap;
       text-align: center;
       font-size: 0.15em;
-      font-family: $netcanvas-font-stack;
-      color: palette('text');
+      color: var(--text);
       hyphens: auto;
       overflow: hidden;
       white-space: pre-line;
@@ -111,7 +110,7 @@
 
   &--selected {
     .node__node-trim {
-      stroke: palette('selected');
+      stroke: var(--selected);
     }
 
     .node__node-outer-trim {
@@ -126,14 +125,14 @@
 
     &--node-highlight-seq-#{$i} {
       .node__node-trim {
-        stroke: color($ordinal-color);
+        stroke: var(--color-#{$ordinal-color});
       }
     }
   }
 
   &--linking {
     .node__node-trim {
-      stroke: palette('selected');
+      stroke: var(--selected);
     }
 
     .node__node-outer-trim {

@@ -7,7 +7,7 @@
     max-height: 100vh;
     overflow-y: scroll;
     padding: $spacer-3;
-    background-color: color('white');
+    background-color: var(--color-white);
     position: absolute;
     visibility: hidden;
     transform: translate3d(-100%, 0, 0);
@@ -15,7 +15,7 @@
 
     &__heading {
       @include typography('title-1');
-      color: color('white');
+      color: var(--color-white);
       text-align: left;
     }
 
@@ -51,8 +51,4 @@
   &--#{$added-class} {
     transform: translate3d(25%, 0, 0);
   }
-}
-
-@if $export-ui-classes {
-  @include sidemenu;
 }

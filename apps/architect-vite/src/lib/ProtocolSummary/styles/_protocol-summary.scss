@@ -76,7 +76,7 @@
 }
 
 .protocol-summary-page {
-  --base-font-size: 16px;
+  --base-font-size: 14px;
 
   // Fixed positioning for summary page header and controls
   .stage-heading {
@@ -152,7 +152,7 @@
       width: var(--page-size-width);
       min-height: var(--page-size-height);
       margin: var(--margin) auto;
-      border: 1px var(--color-platinum--dark) solid;
+      border: 1px var(--color-platinum-dark) solid;
       border-radius: 5px;
 
       box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
@@ -163,12 +163,6 @@
 
   [data-print="no"] {
     @media print {
-      display: none;
-    }
-  }
-
-  [data-print="only"] {
-    @media screen {
       display: none;
     }
   }

@@ -876,6 +876,8 @@ const apiKeyAssetSchema = baseAssetSchema.extend({
 
 export const assetSchema = z.discriminatedUnion("type", [fileAssetSchema, apiKeyAssetSchema, videoAudioAssetSchema]);
 
+export type Asset = z.infer<typeof assetSchema>;
+
 export const ExperimentsSchema = z.object({
 	encryptedVariables: z.boolean().optional(),
 });

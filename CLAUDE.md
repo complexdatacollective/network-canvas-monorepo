@@ -153,3 +153,7 @@ pnpm typecheck   # TypeScript check
 - prioritize completing modifications to a single file so that you do not run out of context mid way through complex tasks.
 - framer-motion (now '@motion') is used for animations and transitions. Other animation systems are present, but should be removed and replaced with motion when encountered.
 - Legacy UI components in `/packages/legacy-ui`. These should bemigrated to use radix primitives and Tailwind when required.
+
+## Development Principles
+
+- Always remove unused types after refactoring

@@ -26,8 +26,8 @@
     width: 100%;
     height: 100%;
     font-family: inherit;
-    color: color('white');
-    border-bottom: 1px solid color('white');
+    color: var(--color-white);
+    border-bottom: 1px solid var(--color-white);
 
     &:focus,
     &:active {
@@ -39,7 +39,7 @@
     }
 
     &__error {
-      color: color('tomato');
+      color: var(--color-destructive);
     }
 
     &__tooltip-right,
@@ -48,7 +48,7 @@
 
       .#{$input-class}__error {
         align-items: center;
-        color: palette('text');
+        color: var(--text);
         display: flex;
         margin-top: 30px;
         padding: 20px 20px 0;
@@ -88,8 +88,8 @@
       }
 
       .#{$input-class}__error {
-        background: palette('background');
-        border-right: 10px solid palette('error');
+        background: var(--background);
+        border-right: 10px solid var(--error);
         height: 5rem;
         margin-left: 15px;
         position: absolute;
@@ -97,7 +97,7 @@
         top: -300%;
 
         &::after {
-          border-right-color: palette('background');
+          border-right-color: var(--background);
           border-left: 0;
           left: -15px; /* To the left of the tooltip */
           margin-left: 0;
@@ -110,13 +110,13 @@
       display: inline-block;
 
       .#{$input-class}__error {
-        background: palette('light-background');
-        border-left: 10px solid palette('error');
+        background: var(--light-background);
+        border-left: 10px solid var(--error);
         height: 130px;
         position: relative;
 
         &::after {
-          border-bottom-color: palette('light-background');
+          border-bottom-color: var(--light-background);
           border-top: 0;
           margin-left: -15px;
           margin-top: -15px;
@@ -141,8 +141,8 @@
     width: 100%;
     height: 100%;
     font-family: inherit;
-    color: color('white');
-    border-bottom: 1px solid color('white');
+    color: var(--color-white);
+    border-bottom: 1px solid var(--color-white);
 
     &:focus,
     &:active {
@@ -201,7 +201,7 @@
       &::before {
         content: '';
         background: transparent;
-        border: 1px solid color('white', 0.7);
+        border: 1px solid hsl(var(--white) / 0.7);
         display: inline-block;
         width: $checkbox-button-size;
         height: $checkbox-button-size;
@@ -214,11 +214,11 @@
 
     &:checked {
       + .#{$checkbox-class}__label {
-        color: color('white');
+        color: var(--color-white);
 
         &::before {
-          background-color: color('sea-green');
-          box-shadow: inset 0 0 0 4px color('navy-taupe');
+          background-color: var(--color-success);
+          box-shadow: inset 0 0 0 4px var(--color-navy-taupe);
         }
       }
     }
@@ -228,7 +228,7 @@
       + .#{$checkbox-class}__label {
         &::before {
           outline: none;
-          border-color: color('sea-green');
+          border-color: var(--color-success);
         }
       }
     }
@@ -236,9 +236,9 @@
     &:disabled {
       + .#{$checkbox-class}__label {
         &::before {
-          box-shadow: inset 0 0 0 4px color('white');
-          border-color: color('white', 0.7);
-          background: color('white', 0.7);
+          box-shadow: inset 0 0 0 4px var(--color-white);
+          border-color: hsl(var(--white) / 0.7);
+          background: hsl(var(--white) / 0.7);
         }
       }
     }
@@ -272,13 +272,13 @@
       display: flex;
       align-items: center;
       padding-right: 1em;
-      color: color('white', 0.7);
+      color: hsl(var(--white) / 0.7);
 
       &::before {
         content: '';
         background: transparent;
         border-radius: 100%;
-        border: 1px solid color('white', 0.7);
+        border: 1px solid hsl(var(--white) / 0.7);
         display: inline-block;
         width: $radio-button-size;
         height: $radio-button-size;
@@ -291,11 +291,11 @@
 
     &:checked {
       + .#{$radio-class}__label {
-        color: color('white');
+        color: var(--color-white);
 
         &::before {
-          background-color: color('sea-green');
-          box-shadow: inset 0 0 0 4px color('navy-taupe');
+          background-color: var(--color-success);
+          box-shadow: inset 0 0 0 4px var(--color-navy-taupe);
         }
       }
     }
@@ -305,7 +305,7 @@
       + .#{$radio-class}__label {
         &::before {
           outline: none;
-          border-color: color('sea-green');
+          border-color: var(--color-success);
         }
       }
     }
@@ -314,9 +314,9 @@
       + .#{$radio-class}__label {
 
         &::before {
-          box-shadow: inset 0 0 0 4px color('white');
-          border-color: color('white', 0.7);
-          background: color('white', 0.7);
+          box-shadow: inset 0 0 0 4px var(--color-white);
+          border-color: hsl(var(--white) / 0.7);
+          background: hsl(var(--white) / 0.7);
         }
       }
     }
@@ -372,7 +372,7 @@
     &__button {
       position: absolute;
       cursor: pointer;
-      background-color: palette('input-background');
+      background-color: var(--input-background);
       border-radius: $toggle-height;
       top: 0;
       left: 0;
@@ -387,18 +387,18 @@
         width: $switch-size;
         left: $switch-size * -0.5;
         top: $switch-size * -0.25;
-        background-color: palette('text');
+        background-color: var(--text);
         transition: 0.4s;
       }
     }
 
     &:checked + .#{$toggle-class}__slider {
       .#{$toggle-class}__button {
-        background-color: color('sea-green');
+        background-color: var(--color-success);
 
         @each $color-name, $color-group in $-color-map {
           @include modifier($color-name) {
-            background-color: color($color-name);
+            background-color: var(--color-#{$color-name});
           }
         }
 
@@ -493,13 +493,4 @@
       }
     }
   }
-}
-
-@if $export-ui-classes {
-  @include input-global;
-  @include text-input;
-  @include checkbox;
-  @include radio;
-  @include toggle;
-  @include context;
 }

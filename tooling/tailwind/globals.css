@@ -56,7 +56,7 @@
 	--platinum-saturation: 43%;
 	--platinum-lightness: 95%;
 	--platinum: var(--platinum-hue) var(--platinum-saturation) var(--platinum-lightness);
-	--platinum--dark: var(--platinum-hue) var(--platinum-saturation) calc(var(--platinum-lightness) - var(--dark-mod));
+	--platinum-dark: var(--platinum-hue) var(--platinum-saturation) calc(var(--platinum-lightness) - var(--dark-mod));
 
 	--sea-serpent-hue: 190;
 	--sea-serpent-saturation: 87%;
