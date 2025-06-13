@@ -1,10 +1,7 @@
 import Button from "@codaco/legacy-ui/components/Button";
-import { AnimatePresence, motion } from "motion/react";
-import { createPortal } from "react-dom";
 import { Layout } from "~/components/EditorLayout";
 import ControlBar from "../ControlBar";
-import Screen from "../Screen/Screen";
-import { screenVariants } from "../Screens/Screens";
+import Dialog from "../Dialog/Dialog";
 import AssetBrowser from "./AssetBrowser";
 
 type AssetBrowserWindowProps = {
@@ -28,38 +25,24 @@ const AssetBrowserWindow = ({
 		</Button>,
 	];
 
-	if (!show) {
-		return null;
-	}
-
-	return createPortal(
-		<AnimatePresence>
-			{show && (
-				<motion.div
-					variants={screenVariants}
-					initial="hidden"
-					animate="visible"
-					exit="hidden"
-					className="screens-container"
-				>
-					<Screen
-						header={
-							<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
-								<Layout>
-									<h2>Resource Browser</h2>
-								</Layout>
-							</div>
-						}
-						footer={<ControlBar buttons={cancelButton} />}
-					>
-						<Layout>
-							<AssetBrowser type={type} onSelect={onSelect} selected={selected} disableDelete />
-						</Layout>
-					</Screen>
-				</motion.div>
-			)}
-		</AnimatePresence>,
-		document.body,
+	return (
+		<Dialog
+			show={show}
+			onClose={onCancel}
+			className="asset-browser-dialog"
+			header={
+				<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
+					<Layout>
+						<h2>Resource Browser</h2>
+					</Layout>
+				</div>
+			}
+			footer={<ControlBar buttons={cancelButton} />}
+		>
+			<Layout>
+				<AssetBrowser type={type} onSelect={onSelect} selected={selected} disableDelete />
+			</Layout>
+		</Dialog>
 	);
 };
 

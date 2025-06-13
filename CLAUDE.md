@@ -156,4 +156,5 @@ pnpm typecheck   # TypeScript check
 
 ## Development Principles
 
+- Always remove barrel files (index.js, index.ts, index.tsx, etc.), and update imports to use the correct path.
 - Always remove unused types after refactoring

@@ -8,7 +8,7 @@ import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/s
 import type { RootState } from "~/ducks/store";
 import { getStage, getStageIndex } from "~/selectors/protocol";
 import CodeView from "../CodeView";
-import CollapsableHeader from "../Screen/CollapsableHeader";
+import CollapsableHeader from "../CollapsableHeader";
 import { formName } from "./configuration";
 import { getInterface } from "./Interfaces";
 import StageHeading, { CondensedStageHeading } from "./StageHeading";

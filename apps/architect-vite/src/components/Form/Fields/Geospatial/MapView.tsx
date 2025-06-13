@@ -2,13 +2,11 @@ import Button from "@codaco/legacy-ui/components/Button";
 import { get } from "es-toolkit/compat";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import ControlBar from "~/components/ControlBar";
+import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
-import Screen from "~/components/Screen/Screen";
-import { screenVariants } from "~/components/Screens/Screens";
 import { getAssetManifest } from "~/selectors/protocol";
 
 type MapOptions = {
@@ -124,41 +122,34 @@ const MapView = ({
 	}, [mapOptions, mapboxAPIKey]);
 
 	return (
-		<AnimatePresence>
-			<motion.div
-				variants={screenVariants}
-				initial="hidden"
-				animate="visible"
-				exit="hidden"
-				className="screens-container"
-			>
-				<Screen
-					header={
-						<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
-							<Layout>
-								<h2>Initial Map View</h2>
-							</Layout>
-						</div>
-					}
-					footer={<ControlBar buttons={controlButtons} />}
-				>
+		<Dialog
+			show={true}
+			onClose={close}
+			className="map-view-dialog"
+			header={
+				<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
 					<Layout>
-						<Section
-							title="Set Initial Map View"
-							summary={
-								<p>
-									Pan and zoom the map below to configure the initial view. When the map is first loaded, it will be
-									centered at the initial center and zoom level as it appears here. Resetting the map will return it to
-									this view.
-								</p>
-							}
-						>
-							<div ref={mapContainerRef} style={{ width: "100%", height: "50vh" }} />
-						</Section>
+						<h2>Initial Map View</h2>
 					</Layout>
-				</Screen>
-			</motion.div>
-		</AnimatePresence>
+				</div>
+			}
+			footer={<ControlBar buttons={controlButtons} />}
+		>
+			<Layout>
+				<Section
+					title="Set Initial Map View"
+					summary={
+						<p>
+							Pan and zoom the map below to configure the initial view. When the map is first loaded, it will be
+							centered at the initial center and zoom level as it appears here. Resetting the map will return it to
+							this view.
+						</p>
+					}
+				>
+					<div ref={mapContainerRef} style={{ width: "100%", height: "50vh" }} />
+				</Section>
+			</Layout>
+		</Dialog>
 	);
 };
 

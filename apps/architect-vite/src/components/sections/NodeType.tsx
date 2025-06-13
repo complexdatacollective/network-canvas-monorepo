@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { difference, keys, get } from "lodash";
 import { change, getFormValues } from "redux-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -8,7 +8,7 @@ import Filter from "./Filter";
 import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 import ValidatedField from "../Form/ValidatedField";
 import IssueAnchor from "../IssueAnchor";
-import { makeScreenMessageListener } from "../../selectors/ui";
+// Screen message listeners removed as part of screen system refactor
 
 // List of fields that are independent of the stage subject, and so do not need to be
 // reset when the subject changes.
@@ -33,22 +33,8 @@ const NodeType = (props: NodeTypeProps) => {
 		fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
 	});
 
-	const screenMessageListener = makeScreenMessageListener("type");
-	const typeScreenMessage = useSelector((state) => screenMessageListener(state));
-
-	// Automatically switch to a newly created stage subject if
-	// there are no existing subjects.
-	useEffect(() => {
-		// Message is sent by the new entity screen dialog.
-		// If it is empty, we don't need to do anything.
-		// If there is already a subject, we also don't do anything
-		if (!typeScreenMessage || currentSubject) {
-			return;
-		}
-
-		const { type } = typeScreenMessage;
-		dispatch(change(form, "subject", { entity: "node", type }));
-	}, [typeScreenMessage]);
+	// TODO: Restore auto-selection of newly created types when type creation dialogs
+	// are properly integrated with form state management
 
 	return (
 		<Section title="Node Type">

@@ -2,10 +2,10 @@ import { Icon } from "@codaco/legacy-ui/components";
 import Button from "@codaco/legacy-ui/components/Button";
 import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { actionCreators as screenActions } from "~/ducks/modules/ui/screens";
+import NewTypeDialog from "~/components/Dialog/NewTypeDialog";
 import { getEdgeTypes, getNodeTypes } from "../../../../selectors/codebook";
 import { asOptions } from "../../../../selectors/utils";
 import PreviewEdge from "./PreviewEdge";
@@ -30,6 +30,12 @@ type EntitySelectFieldProps = {
 	promptBeforeChange?: string | null;
 };
 
+// Helper function to get protocol ID from URL
+const getProtocolId = () => {
+	const urlPath = window.location.pathname;
+	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
+};
+
 const EntitySelectField = ({
 	entityType,
 	label = null,
@@ -38,9 +44,9 @@ const EntitySelectField = ({
 	promptBeforeChange = null,
 }: EntitySelectFieldProps) => {
 	const dispatch = useDispatch();
-	const openScreen = (screen, params) => dispatch(screenActions.openScreen(screen, params));
 	const edgeOptions = useSelector(getEdgeOptions);
 	const nodeOptions = useSelector(getNodeOptions);
+	const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
 
 	const options = useMemo(() => {
 		if (entityType === "edge") {
@@ -69,8 +75,16 @@ const EntitySelectField = ({
 	};
 
 	const handleOpenCreateNewType = useCallback(() => {
-		openScreen("type", { entity: entityType });
-	}, [openScreen, encodeURI]);
+		setShowNewTypeDialog(true);
+	}, []);
+
+	const handleNewTypeComplete = useCallback(() => {
+		setShowNewTypeDialog(false);
+	}, []);
+
+	const handleNewTypeCancel = useCallback(() => {
+		setShowNewTypeDialog(false);
+	}, []);
 
 	const PreviewComponent = useMemo(() => {
 		if (entityType === "edge") {
@@ -126,6 +140,12 @@ const EntitySelectField = ({
 			<Button color="primary" icon="add" size="small" onClick={handleOpenCreateNewType}>
 				Create new {entityType} type
 			</Button>
+			<NewTypeDialog
+				show={showNewTypeDialog}
+				entityType={entityType}
+				onComplete={handleNewTypeComplete}
+				onCancel={handleNewTypeCancel}
+			/>
 		</div>
 	);
 };

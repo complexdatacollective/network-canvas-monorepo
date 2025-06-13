@@ -1,4 +1,4 @@
-const getStatus = (state) => state.ui.status;
+const getStatus = (state) => state.ui;
 
 const getIsBusy = (state, type) => {
 	const status = getStatus(state);

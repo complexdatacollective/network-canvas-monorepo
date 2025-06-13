@@ -6,7 +6,7 @@ import { compose } from "@reduxjs/toolkit";
 import * as Assets from "~/components/Assets";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import withAssetPath from "~/components/Assets/withAssetPath";
-import WindowFrame from "~/components/Window";
+import Dialog from "~/components/Dialog/Dialog";
 
 const getRenderer = (meta) => {
 	switch (meta.type) {
@@ -33,11 +33,12 @@ type PreviewProps = {
 	id: string;
 	meta: Record<string, any>;
 	assetPath: string;
+	show?: boolean;
 	onDownload?: (path: string, meta: Record<string, any>) => void;
 	onClose?: () => void;
 };
 
-const Preview = ({ id, meta, assetPath, onDownload = () => {}, onClose = () => {} }: PreviewProps) => {
+const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onClose = () => {} }: PreviewProps) => {
 	const AssetRenderer = getRenderer(meta);
 
 	const handleDownload = useCallback(() => {
@@ -72,16 +73,33 @@ const Preview = ({ id, meta, assetPath, onDownload = () => {}, onClose = () => {
 
 	const className = cx("asset-browser-preview", `asset-browser-preview--type-${meta.type}`);
 
+	const header = (
+		<div className="window__heading stage-heading stage-heading--inline stage-heading--collapsed">
+			<div className="stage-editor">
+				<h2>{meta.name}</h2>
+			</div>
+		</div>
+	);
+
+	const footer = (
+		<div className="window__controls">
+			{secondaryButtons.length > 0 && <div className="window__controls-left">{secondaryButtons}</div>}
+			{primaryButtons.length > 0 && <div className="window__controls-right">{primaryButtons}</div>}
+		</div>
+	);
+
 	return (
-		<WindowFrame
-			title={meta.name}
-			className={className}
-			leftControls={secondaryButtons}
-			rightControls={primaryButtons}
-			windowRoot={document.body}
+		<Dialog
+			show={show}
+			onClose={onClose}
+			className={cx("window-dialog", className)}
+			header={header}
+			footer={footer}
 		>
-			<AssetRenderer id={id} />
-		</WindowFrame>
+			<div className="window__content">
+				<AssetRenderer id={id} />
+			</div>
+		</Dialog>
 	);
 };
 

@@ -1,8 +1,9 @@
 import { get } from "es-toolkit/compat";
-import { connect } from "react-redux";
-import { compose, withHandlers, withProps } from "recompose";
+import { useCallback, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 import { getProtocol } from "~/selectors/protocol";
+import type { RootState } from "~/ducks/store";
 import Editor from "../Editor";
 import { format, parse } from "./convert";
 import getNewTypeTemplate from "./getNewTypeTemplate";
@@ -10,44 +11,59 @@ import TypeEditor from "./TypeEditor";
 
 const formName = "TYPE_EDITOR";
 
-function mapStateToProps(state, props) {
-	const { entity } = props;
-	const { type } = props;
-	const protocol = getProtocol(state);
+type TypeEditorContainerProps = {
+	entity?: string;
+	type?: string;
+	onComplete?: () => void;
+};
 
-	const initialValues = format(get(protocol, ["codebook", entity, type], getNewTypeTemplate({ protocol, entity }), {}));
+const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerProps) => {
+	const dispatch = useDispatch();
+	const protocol = useSelector((state: RootState) => getProtocol(state));
 
-	const isNew = !type;
+	const initialValues = useMemo(() => {
+		return format(get(protocol, ["codebook", entity, type], getNewTypeTemplate({ protocol, entity }), {}));
+	}, [protocol, entity, type]);
 
-	return {
-		initialValues,
-		isNew,
-	};
-}
-
-const mapDispatchToProps = (dispatch) => ({
-	updateType: (entity, type, form) => dispatch(codebookActions.updateType(entity, type, parse(form))),
-	createType: (entity, form) => dispatch(codebookActions.createType(entity, parse(form))),
-});
-
-const withTypeProps = withProps({
-	form: formName,
-	component: TypeEditor,
-});
-
-const withTypeState = connect(mapStateToProps, mapDispatchToProps);
-
-const withTypeHandlers = withHandlers({
-	onSubmit:
-		({ createType, updateType, onComplete, entity, type }) =>
-		async (values) => {
-			if (!type) {
-				return createType(entity, values).then(onComplete);
-			}
-			return updateType(entity, type, values).then(onComplete);
+	const updateType = useCallback(
+		(entityType: string, typeKey: string, form: Record<string, unknown>) => {
+			// @ts-expect-error - thunk action returns promise
+			return dispatch(codebookActions.updateType(entityType, typeKey, parse(form)));
 		},
-});
+		[dispatch]
+	);
+
+	const createType = useCallback(
+		(entityType: string, form: Record<string, unknown>) => {
+			// @ts-expect-error - thunk action returns promise
+			return dispatch(codebookActions.createType(entityType, parse(form)));
+		},
+		[dispatch]
+	);
+
+	const handleSubmit = useCallback(
+		async (values: Record<string, unknown>) => {
+			if (!type && entity) {
+				// @ts-expect-error - thunk action returns promise
+				return createType(entity, values).then(() => onComplete?.());
+			}
+			if (entity && type) {
+				// @ts-expect-error - thunk action returns promise
+				return updateType(entity, type, values).then(() => onComplete?.());
+			}
+		},
+		[createType, updateType, onComplete, entity, type]
+	);
+
+	return (
+		<Editor
+			form={formName}
+			component={TypeEditor}
+			initialValues={initialValues}
+			onSubmit={handleSubmit}
+		/>
+	);
+};
 
 export { formName };
-
-export default compose(withTypeState, withTypeProps, withTypeHandlers)(Editor);
+export default TypeEditorContainer;

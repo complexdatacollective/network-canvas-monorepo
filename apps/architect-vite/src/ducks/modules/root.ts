@@ -8,7 +8,6 @@ import dialogs from "./dialogs";
 // Phase 1 Complete: Using new modules only
 import activeProtocol from "./activeProtocol";
 import protocols from "./protocols";
-import stacks from "./stacks";
 import toasts from "./toasts";
 import ui from "./ui/index";
 
@@ -25,7 +24,6 @@ export const rootReducer = combineReducers({
 	// Phase 1 Complete: Using new modules only
 	activeProtocol: createTimeline(activeProtocol, timelineOptions),
 	protocols,
-	stacks,
 	ui,
 	toasts,
 });

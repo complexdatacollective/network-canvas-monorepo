@@ -4,12 +4,11 @@ import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { connect, useDispatch, useSelector } from "react-redux";
-import { createSelector } from "@reduxjs/toolkit";
-import Screen from "~/components/Screen/Screen";
+import { connect, useSelector } from "react-redux";
+import Dialog from "~/components/Dialog/Dialog";
 import Tag from "~/components/Tag";
-import { actionCreators as uiActions } from "~/ducks/modules/ui";
-import { getExperiments } from "~/selectors/protocol";
+import { useLocation } from "wouter";
+import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
 import ControlBar from "../../ControlBar";
 import Row from "../../EditorLayout/Row";
 import InterfaceList from "./InterfaceList";
@@ -24,10 +23,7 @@ const fuseOptions = {
 	keys: ["title", "description", "keywords"],
 };
 
-const getLatestLocus = createSelector(
-	[(state) => state.protocol.timeline],
-	(timeline) => (timeline && timeline.length > 0 ? timeline[timeline.length - 1] : null),
-);
+// Using existing getTimelineLocus selector instead of custom selector
 
 const fuse = new Fuse(INTERFACE_TYPES, fuseOptions);
 
@@ -48,21 +44,22 @@ const search = (query) => {
 
 type NewStageScreenProps = {
 	insertAtIndex: number;
-	onComplete: () => void;
+	show: boolean;
+	onCancel: () => void;
 	experiments?: {
 		encryptedVariables?: boolean;
 	};
 };
 
-const NewStageScreen = ({ insertAtIndex, onComplete, experiments = {} }: NewStageScreenProps) => {
-	const dispatch = useDispatch();
+const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: NewStageScreenProps) => {
+	const [, setLocation] = useLocation();
 	const [selectedTags, setSelectedTags] = useState([]);
 	const [query, setQuery] = useState("");
 	const [cursor, setCursor] = useState(0);
 	const [cursorActive, setCursorActive] = useState(false);
 	const [mouseMoved, setMouseMoved] = useState(false);
 
-	const locus = useSelector(getLatestLocus);
+	const locus = useSelector(getTimelineLocus);
 
 	const filteredInterfaces = useMemo(() => {
 		let interfaces = search(query, selectedTags).filter(({ tags: interfaceTags }) =>
@@ -121,10 +118,22 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments = {} }: NewStag
 
 	const handleSelectInterface = useCallback(
 		(interfaceType) => {
-			dispatch(uiActions.closeScreen("newStage"));
-			dispatch(uiActions.openScreen("stage", { type: interfaceType, locus, insertAtIndex }));
+			onCancel(); // Close the dialog
+			// Get current protocol ID from the URL
+			const currentPath = window.location.pathname;
+			const protocolMatch = currentPath.match(/\/protocol\/([^\/]+)/);
+			const protocolId = protocolMatch ? protocolMatch[1] : '';
+			
+			if (protocolId) {
+				const params = new URLSearchParams();
+				params.set('type', interfaceType);
+				if (insertAtIndex !== undefined) {
+					params.set('insertAtIndex', insertAtIndex.toString());
+				}
+				setLocation(`/protocol/${protocolId}/stages/new?${params.toString()}`);
+			}
 		},
-		[insertAtIndex, locus, dispatch],
+		[insertAtIndex, onCancel, setLocation],
 	);
 
 	// Navigate within the list of results using the keyboard
@@ -215,15 +224,17 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments = {} }: NewStag
 
 	const buttons = useMemo(
 		() => [
-			<Button key="done" onClick={onComplete} iconPosition="right" color="platinum">
+			<Button key="done" onClick={onCancel} iconPosition="right" color="platinum">
 				Cancel
 			</Button>,
 		],
-		[onComplete],
+		[onCancel],
 	);
 
 	return (
-		<Screen
+		<Dialog
+			show={show}
+			onClose={onCancel}
 			className="new-stage"
 			footer={<ControlBar buttons={buttons} secondaryButtons={[]} />}
 			header={
@@ -278,7 +289,7 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments = {} }: NewStag
 					removeHighlighted={handleRemoveHighlight}
 				/>
 			</div>
-		</Screen>
+		</Dialog>
 	);
 };
 

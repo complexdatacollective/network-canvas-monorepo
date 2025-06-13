@@ -2,10 +2,9 @@ import { Button } from "@codaco/legacy-ui/components";
 import React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
-import ScreenLink from "~/components/Screens/ScreenLink";
+import { Link, useLocation } from "wouter";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { actionCreators as codebookActionCreators } from "~/ducks/modules/protocol/codebook";
-import { actionCreators as screenActionsCreators } from "~/ducks/modules/ui/screens";
 import EntityIcon from "./EntityIcon";
 import { getEntityProperties } from "./helpers";
 import Tag from "./Tag";
@@ -30,6 +29,12 @@ type EntityTypeProps = {
 	variables?: Variable[];
 };
 
+// Helper function to get protocol ID from URL
+const getProtocolId = () => {
+	const urlPath = window.location.pathname;
+	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
+};
+
 const EntityType = ({ 
 	name, 
 	color, 
@@ -41,10 +46,11 @@ const EntityType = ({
 	handleEdit = () => {}, 
 	handleDelete = () => {} 
 }: EntityTypeProps) => {
+	const protocolId = getProtocolId();
 	const stages = usage.map(({ id, label }) => (
-		<ScreenLink screen="stage" id={id} key={id}>
+		<Link href={`/protocol/${protocolId}/stages/${id}`} key={id}>
 			{label}
-		</ScreenLink>
+		</Link>
 	));
 
 	return (
@@ -94,14 +100,15 @@ const withEntityHandlers = compose(
 	connect(null, {
 		openDialog: dialogActionCreators.openDialog,
 		deleteType: codebookActionCreators.deleteType,
-		closeScreen: screenActionsCreators.closeScreen,
-		openScreen: screenActionsCreators.openScreen,
 	}),
 	withHandlers({
 		handleEdit:
-			({ openScreen, entity, type }) =>
+			({ entity, type }) =>
 			() => {
-				openScreen("type", { entity, type });
+				const protocolId = getProtocolId();
+				if (protocolId) {
+					window.location.href = `/protocol/${protocolId}/codebook/${entity}/${type}`;
+				}
 			},
 		handleDelete:
 			({ deleteType, openDialog, entity, type, name, inUse }) =>

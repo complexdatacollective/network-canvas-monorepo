@@ -2,15 +2,15 @@ import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { motion } from "motion/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import type { RootState } from "~/ducks/modules/root";
-import { actionCreators as uiActions } from "~/ducks/modules/ui";
 import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";
+import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 
@@ -45,14 +45,15 @@ interface TimelineProps {
 	sorting?: boolean;
 	deleteStage: (stageId: string) => void;
 	openDialog: (config: any) => void;
-	openScreen: (screen: string, params?: any) => void;
 	show?: boolean;
 	locus: number | string;
 }
 
 const Timeline = (props: TimelineProps) => {
-	const { show = true, sorting = false, stages = [], openScreen, locus, openDialog, deleteStage } = props;
+	const { show = true, sorting = false, stages = [], locus, openDialog, deleteStage } = props;
 	const [, setLocation] = useLocation();
+	const [showNewStageDialog, setShowNewStageDialog] = useState(false);
+	const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
 
 	// Get protocol ID from URL for navigation
 	const getProtocolId = useCallback(() => {
@@ -62,10 +63,16 @@ const Timeline = (props: TimelineProps) => {
 
 	const handleInsertStage = useCallback(
 		(index) => {
-			openScreen("newStage", { insertAtIndex: index });
+			setInsertAtIndex(index);
+			setShowNewStageDialog(true);
 		},
-		[openScreen],
+		[],
 	);
+
+	const handleNewStageCancel = useCallback(() => {
+		setShowNewStageDialog(false);
+		setInsertAtIndex(undefined);
+	}, []);
 
 	const handleDeleteStage = useCallback(
 		(stageId) => {
@@ -133,6 +140,11 @@ const Timeline = (props: TimelineProps) => {
 					Add new stage
 				</motion.div>
 			</motion.div>
+			<NewStageScreen
+				show={showNewStageDialog}
+				insertAtIndex={insertAtIndex}
+				onCancel={handleNewStageCancel}
+			/>
 		</div>
 	);
 };
@@ -147,7 +159,6 @@ const mapStateToProps = (state: RootState) => ({
 const mapDispatchToProps = (dispatch: any, props: any) => ({
 	deleteStage: bindActionCreators(stageActions.deleteStage, dispatch),
 	openDialog: bindActionCreators(dialogsActions.openDialog, dispatch),
-	openScreen: bindActionCreators(uiActions.openScreen, dispatch),
 	onSortEnd: ({ oldIndex, newIndex }) => {
 		props.setSorting(false);
 		dispatch(stageActions.moveStage(oldIndex, newIndex));

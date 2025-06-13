@@ -1,16 +1,13 @@
 import * as Fields from "@codaco/legacy-ui/components/Fields";
-import { AnimatePresence, motion } from "motion/react";
 import React, { useCallback } from "react";
 
 import Button from "@codaco/legacy-ui/components/Button";
-import { createPortal } from "react-dom";
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
 import ControlBar from "~/components/ControlBar";
 import { Layout, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
-import Screen from "~/components/Screen/Screen";
-import { screenVariants } from "~/components/Screens/Screens";
+import Dialog from "~/components/Dialog/Dialog";
 
 import { useDispatch } from "react-redux";
 
@@ -61,68 +58,58 @@ const APIKeyBrowser = ({
 		return null;
 	}
 
-	return createPortal(
-		<AnimatePresence>
-			{show && (
-				<motion.div
-					variants={screenVariants}
-					initial="hidden"
-					animate="visible"
-					exit="hidden"
-					className="screens-container"
-				>
-					<BasicForm form={formName} onSubmit={handleSubmit}>
-						<Screen
-							header={
-								<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
-									<Layout>
-										<h2>API Key Browser</h2>
-									</Layout>
-								</div>
-							}
-							footer={<ControlBar buttons={[cancelButton]} />}
-						>
-							<Layout>
-								<Section title="Create New API Key">
-									<div data-name="API Key Name" />
-									<ValidatedField
-										component={Fields.Text}
-										label="API Key Name"
-										type="text"
-										placeholder="Name this key"
-										name="keyName"
-										validation={{ required: true }}
-									/>
-									<div data-name="API Key Value" />
-									<ValidatedField
-										component={Fields.Text}
-										label="API Key"
-										type="text"
-										placeholder="Enter an API Key..."
-										name="keyValue"
-										validation={{ required: true }}
-									/>
-									<Button key="save" type="submit" iconPosition="right" icon="arrow-right" size="small">
-										Create Key
-									</Button>
-								</Section>
-								<Section title="Resource Library">
-									<Assets
-										onSelect={handleSelectAsset}
-										selected={selected}
-										type="apikey"
-										disableDelete
-										onPreview={handleShowPreview}
-									/>
-								</Section>
-								{preview}
-							</Layout>
-						</Screen>
-					</BasicForm>
-				</motion.div>
-			)}
-		</AnimatePresence>,
-		document.body,
+	return (
+		<Dialog
+			show={show}
+			onClose={close}
+			className="api-key-browser-dialog"
+			header={
+				<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
+					<Layout>
+						<h2>API Key Browser</h2>
+					</Layout>
+				</div>
+			}
+			footer={<ControlBar buttons={[cancelButton]} />}
+		>
+			<BasicForm form={formName} onSubmit={handleSubmit}>
+				<Layout>
+					<Section title="Create New API Key">
+						<div data-name="API Key Name" />
+						<ValidatedField
+							component={Fields.Text}
+							label="API Key Name"
+							type="text"
+							placeholder="Name this key"
+							name="keyName"
+							validation={{ required: true }}
+						/>
+						<div data-name="API Key Value" />
+						<ValidatedField
+							component={Fields.Text}
+							label="API Key"
+							type="text"
+							placeholder="Enter an API Key..."
+							name="keyValue"
+							validation={{ required: true }}
+						/>
+						<Button key="save" type="submit" iconPosition="right" icon="arrow-right" size="small">
+							Create Key
+						</Button>
+					</Section>
+					<Section title="Resource Library">
+						<Assets
+							onSelect={handleSelectAsset}
+							selected={selected}
+							type="apikey"
+							disableDelete
+							onPreview={handleShowPreview}
+						/>
+					</Section>
+					{preview}
+				</Layout>
+			</BasicForm>
+		</Dialog>
 	);
 };
 
