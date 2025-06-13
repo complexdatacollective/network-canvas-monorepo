@@ -46,7 +46,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
 
     &:active {
       background-color: var(--color-sea-green--dark);
-      color: var(--text-light);
+      color: var(--foreground-light);
     }
 
     &--is-focused {
@@ -92,7 +92,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
         border-radius: 1.2rem;
 
         .cls-1 {
-          fill: var(--text-light);
+          fill: var(--foreground-light);
         }
       }
     }

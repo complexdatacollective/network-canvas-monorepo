@@ -7,7 +7,7 @@
   background-color: var(--color-sea-serpent);
   transform-origin: 0 100%;
   overflow: hidden;
-  color: var(--text-light);
+  color: var(--foreground-light);
   z-index: var(--z-default);
   max-height: auto;
 
@@ -68,7 +68,7 @@
       width: 100%;
       padding: 1.2rem 2.4rem;
       text-decoration: none;
-      color: var(--text-light);
+      color: var(--foreground-light);
 
       &::before {
         counter-increment: issue;

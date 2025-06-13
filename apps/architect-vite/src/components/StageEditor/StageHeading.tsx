@@ -41,7 +41,6 @@ export const CondensedStageHeading = ({ id = null }: CondensedStageHeadingProps)
 	);
 };
 
-
 interface StageHeadingProps {
 	stageNumber?: number | null;
 	type?: string;
@@ -74,19 +73,11 @@ const StageHeading = ({ stageNumber = null, type = "" }: StageHeadingProps) => (
 	</div>
 );
 
-
 const mapStateToProps = (state, props) => {
 	const { id } = props;
 	const stageIndex = getStageIndex(state, id);
 	const stageNumber = stageIndex !== -1 ? stageIndex + 1 : null;
 	const formValues = getFormValues("edit-stage")(state);
-
-	console.log("StageHeading: mapStateToProps", {
-		id,
-		stageIndex,
-		stageNumber,
-		formValues,
-	});
 
 	return {
 		stageNumber,

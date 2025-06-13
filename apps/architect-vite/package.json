@@ -11,9 +11,9 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@codaco/development-protocol": "workspace:*",
 		"@codaco/legacy-ui": "workspace:*",
 		"@codaco/protocol-validation": "workspace:*",
-		"@codaco/development-protocol": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@faker-js/faker": "^9.8.0",
@@ -78,6 +78,7 @@
 		"wouter": "^3.7.1"
 	},
 	"devDependencies": {
+		"@tailwindcss/postcss": "^4.1.10",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/react": "^16.2.0",
 		"@testing-library/user-event": "^14.6.1",
@@ -89,6 +90,7 @@
 		"fs-extra": "^11.3.0",
 		"globals": "^16.0.0",
 		"jsdom": "^26.1.0",
+		"postcss": "catalog:",
 		"typescript": "~5.8.3",
 		"vite": "^6.3.5",
 		"vitest": "catalog:"

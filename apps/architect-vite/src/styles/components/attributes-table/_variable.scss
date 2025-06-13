@@ -24,7 +24,7 @@ $duration: var(--animation-duration-standard);
     max-height: 0;
     overflow: hidden;
     transition: opacity $duration, max-height $duration;
-    color: var(--text-light);
+    color: var(--foreground-light);
     padding: 0 1.2rem;
   }
 

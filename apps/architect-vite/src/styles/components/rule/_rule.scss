@@ -3,7 +3,7 @@
   display: inline-flex;
   @include flex-align(left, middle);
 
-  color: var(--text-light);
+  color: var(--foreground-light);
   position: relative;
   z-index: var(--z-default);
 
@@ -14,7 +14,7 @@
     align-items: center; justify-content: center;
 
     background-color: var(--architect-rule-control);
-    color: var(--text-light);
+    color: var(--foreground-light);
     border: 0;
     border-radius: $drag-button-size;
     width: $drag-button-size;
@@ -32,7 +32,7 @@
     align-items: center; justify-content: center;
 
     background-color: var(--architect-rule-delete);
-    color: var(--text-light);
+    color: var(--foreground-light);
     border: 0;
     position: absolute;
     top: 0;

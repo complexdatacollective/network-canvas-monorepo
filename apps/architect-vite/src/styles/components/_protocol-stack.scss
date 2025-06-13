@@ -22,7 +22,7 @@ $component-name: protocol-stack;
   &__label {
     margin: 0;
     text-align: center;
-    color: var(--text-light);
+    color: var(--foreground-light);
     max-height: 100%;
     max-width: 100%;
     overflow: hidden;
@@ -35,7 +35,7 @@ $component-name: protocol-stack;
   &__filepath {
     margin: 0;
     text-align: center;
-    color: var(--text-light);
+    color: var(--foreground-light);
     max-height: 100%;
     max-width: 100%;
     word-break: break-all;

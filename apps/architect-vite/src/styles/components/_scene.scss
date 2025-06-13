@@ -46,7 +46,7 @@
     opacity: 0;
     pointer-events: none;
     transform: translateY(calc(-100% - #{1.2rem}));
-    color: var(--text-light);
+    color: var(--foreground-light);
     background: var(--color-sea-green);
     display: flex;
     align-items: center;

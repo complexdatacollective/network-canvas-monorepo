@@ -58,19 +58,36 @@ Implementation plan:
 
 ## Phase 3
 
-- OVERALL AIM: Remove the screen and stack concepts from the app entirely, and replace the dialog system with a new system based on zustand, which does not use the Redux store.
-- This new system must support all existing functionality, including the ability to attach callbacks to dialog cancel/confirm actions.
-- Implementation should consist of creating a detailed plan, which will be approved by the user, and should be written to a file that can be referenced later. It should include concrete steps, and should be broken down into smaller tasks that can be completed in a reasonable time frame.
-- The plan should include new tests written using vitest.
-- It should include updating all existing components, and removing any that are no longer needed.
+- OVERALL AIM: Remove the screen and stack concepts from the app entirely, including ALL components and redux store state, actions, selectors etc. Also remove any associated scss styles.
+- Implementation should consist of first analysing the codebase, and thinking deeply to create a detailed plan, which will be approved by the user.
+- The plan should include detailed concrete steps, including lists of files that must be changed, and should be broken down into smaller tasks where required.
+- This plan should be written to a file that can be referenced later.
 
 Changes to components:
 
-- Remove the concept of "screens" from the app. Expect that all components will be rendered in specific routes, and not as modals. Remove the core components that Screens and Stacks are built with.
-- Update any components that currently render inside these screens, to no longer use them. Remove portalling where required.
-- Update styling to ensure that components render correctly in their new contexts.
+- Remove the concept of "screens" from the app. Remove the core components that Screens and Stacks are built with.
+- Update any components that currently render inside these screens, to no longer use them.
+- Remove all uses of the old screen and stack components, including any components that were specifically designed to work with them.
+- Ensure that all components that previously relied on the screen and stack system are updated. If unsure how functionality should be implemented, consult with the user.
+
+Changes to the redux store:
+
+- Remove the concept of screens and stacks from the redux store.
+- Remove all uses of actions/selectors that are related to this.
+
+## Phase 4
+
+- OVERALL AIM: replace the dialog system with a new system based on zustand, which does not use the Redux store.
+- This new system must support all existing functionality, including the ability to attach callbacks to dialog cancel/confirm actions.
+- Implementation should consist of first searching the codebase creating a detailed plan, which will be approved by the user, and should be written to a file that can be referenced later. It should include concrete steps, and should be broken down into smaller tasks.
+- The plan should include new tests written using vitest.
+- It should include updating ALL existing components, and removing any that are no longer needed.
+
+Changes to components:
+
 - Create a new dialog system using zustand, including a store, actions, and selectors as needed.
 - Ensure that the new dialog system supports all existing functionality, including callbacks for cancel/confirm actions.
+- Create a list of all components that currently use the old dialog system. Search for all wants that a dialog might be triggered.
 - Update all components that currently use the old dialog system to use the new zustand-based dialog system.
 - Remove all uses of the old dialog system, including any components that were specifically designed to work with it.
 - Remove all uses of the old screen and stack components, including any components that were specifically designed to work with them.

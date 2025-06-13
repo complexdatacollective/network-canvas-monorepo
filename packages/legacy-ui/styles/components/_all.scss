@@ -1,12 +1,29 @@
 @import 'button';
+
+// Instantiate button classes
+@include button;
 @import 'action-button';
 @import 'graphic-button';
 @import 'spinner';
 @import 'icons';
+
+// Instantiate icon classes
+@include icon;
 @import 'inputs';
+
+// Instantiate input classes
+@include input-global;
+@include text-input;
+@include checkbox;
+@include radio;
+@include toggle;
+@include context;
 @import 'form/fields';
 @import 'hover-marquee';
 @import 'sidemenu';
+
+// Instantiate sidemenu classes
+@include sidemenu;
 @import 'node';
 @import 'expandable';
 @import 'scrollable';
