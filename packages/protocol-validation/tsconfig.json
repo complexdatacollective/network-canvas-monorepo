@@ -4,6 +4,7 @@
 		"baseUrl": ".",
 		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
 		"allowJs": false,
+		"checkJs": false,
 		"incremental": false
 	},
 	"include": ["."],

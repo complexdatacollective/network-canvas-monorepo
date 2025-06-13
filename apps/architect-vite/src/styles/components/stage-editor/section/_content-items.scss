@@ -1,0 +1,46 @@
+
+
+.stage-editor-section-content-items {
+  &__controls {
+    margin-top: 1.2rem;
+
+    .button {
+      &:first-child {
+        margin-left: 0;
+      }
+    }
+  }
+
+  &__control {
+    margin-right: 0.6rem;
+    color: var(--foreground-light);
+
+    &::before {
+      content: '+';
+      font-size: 1.75rem;
+      line-height: 100%;
+      position: relative;
+      top: -0.2rem;
+      margin-right: 0.6rem;
+
+    }
+
+    &--text {
+      @include button-background(var(--architect-variant--1));
+    }
+
+    &--image {
+      @include button-background(var(--architect-variant--2));
+    }
+
+    &--audio {
+      @include button-background(var(--architect-variant--3));
+    }
+
+    &--video {
+      @include button-background(var(--architect-variant--4));
+    }
+
+
+  }
+}

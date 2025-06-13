@@ -2,7 +2,6 @@ import { get, isObject } from "es-toolkit/compat";
 import type {
 	AdditionalAttributes,
 	Codebook,
-	EntityDefinition,
 	FilterRule,
 	FormField,
 	Item,
@@ -20,8 +19,8 @@ import {
 	duplicateInArray,
 	getEntityNames,
 	getRuleEntityCodebookDefinition,
+	getVariableIDs,
 	getVariableNameFromID,
-	getVariableNames,
 	getVariablesForSubject,
 } from "./helpers";
 
@@ -192,10 +191,89 @@ export const validateLogic = (protocol: Protocol) => {
 		(items) => `Items contain duplicate ID "${checkDuplicateNestedId(items)}"`,
 	);
 
-	v.addValidation<EntityDefinition["variables"]>(
-		/codebook\..*\.variables/,
-		(variableMap) => !duplicateInArray(getVariableNames(variableMap)),
-		(variableMap) => `Duplicate variable name "${duplicateInArray(getVariableNames(variableMap))}"`,
+	// Enforce unique variable names across all entities
+	// We should move to a flat variable structure so that this can be implemented in zod directly.
+	v.addValidation<Codebook>(
+		"codebook",
+		(codebook) => {
+			const allVariableNames: string[] = [];
+
+			// Collect variables from node definitions
+			if (codebook.node) {
+				for (const nodeDefinition of Object.values(codebook.node)) {
+					if (nodeDefinition.variables) {
+						allVariableNames.push(...getVariableIDs(nodeDefinition.variables));
+					}
+				}
+			}
+
+			// Collect variables from edge definitions
+			if (codebook.edge) {
+				for (const edgeDefinition of Object.values(codebook.edge)) {
+					if (edgeDefinition.variables) {
+						allVariableNames.push(...getVariableIDs(edgeDefinition.variables));
+					}
+				}
+			}
+
+			// Collect variables from ego definition
+			if (codebook.ego?.variables) {
+				allVariableNames.push(...getVariableIDs(codebook.ego.variables));
+			}
+
+			// Check for duplicates
+			return !duplicateInArray(allVariableNames);
+		},
+		(codebook) => {
+			// Build a detailed error message showing where the duplicate appears
+			const variableLocations = new Map<string, string[]>();
+
+			// Track variable locations
+			if (codebook.node) {
+				for (const [nodeType, nodeDefinition] of Object.entries(codebook.node)) {
+					if (nodeDefinition.variables) {
+						for (const varName of Object.keys(nodeDefinition.variables)) {
+							if (!variableLocations.get(varName)) {
+								variableLocations.set(varName, []);
+							}
+							variableLocations.get(varName)?.push(`node.${nodeType}`);
+						}
+					}
+				}
+			}
+
+			if (codebook.edge) {
+				for (const [edgeType, edgeDefinition] of Object.entries(codebook.edge)) {
+					if (edgeDefinition.variables) {
+						for (const varName of Object.keys(edgeDefinition.variables)) {
+							if (!variableLocations.get(varName)) {
+								variableLocations.set(varName, []);
+							}
+							variableLocations.get(varName)?.push(`edge.${edgeType}`);
+						}
+					}
+				}
+			}
+
+			if (codebook.ego?.variables) {
+				for (const varName of Object.keys(codebook.ego.variables)) {
+					if (!variableLocations.get(varName)) {
+						variableLocations.set(varName, []);
+					}
+					variableLocations.get(varName)?.push("ego");
+				}
+			}
+
+			// Find the duplicate
+			const duplicate = Array.from(variableLocations.entries()).find(([_, locations]) => locations.length > 1);
+
+			if (duplicate) {
+				const [varName, locations] = duplicate;
+				return `Variable name "${varName}" is used in multiple entities: ${locations.join(", ")}`;
+			}
+
+			return "Duplicate variable name found across entities";
+		},
 	);
 
 	// Ordinal and categorical bin interfaces have a variable property on the prompt.
