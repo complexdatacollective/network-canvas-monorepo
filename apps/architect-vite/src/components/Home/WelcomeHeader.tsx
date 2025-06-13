@@ -18,7 +18,9 @@ const WelcomeHeader = () => {
 	const dispatch = useDispatch();
 	const downloadSampleProtocol = () => dispatch(webUserActions.importSampleProtocol());
 
-	const classes = cx("home-section", "welcome-header", { "welcome-header--is-open": isOpen });
+	const classes = cx("home-section", "welcome-header", { 
+		"welcome-header--is-open bg-slate-blue text-white": isOpen 
+	});
 
 	const start = {
 		show: {
@@ -62,7 +64,7 @@ const WelcomeHeader = () => {
 				<AnimatePresence initial={false}>
 					{isOpen && (
 						<motion.div variants={start} initial="hide" animate="show" exit="hide">
-							<Group className="home-welcome">
+							<Group className="home-welcome text-white">
 								<div className="home-welcome__content">
 									<h2>Welcome to Architect!</h2>
 									<p>
@@ -75,7 +77,7 @@ const WelcomeHeader = () => {
 									</p>
 									<div className="welcome-actions">
 										<Button
-											className="button button--cerulean-blue button--with-new"
+											className="button button--cerulean-blue button--with-new before:bg-white before:text-rich-black"
 											color="cerulean-blue"
 											onClick={() => openExternalLink("https://community.networkcanvas.com")}
 										>

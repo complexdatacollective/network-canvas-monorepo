@@ -28,11 +28,28 @@
   }
 
   &__dot {
-    @include color-modifiers($include-hover: false);
-
     width: 15px;
     height: 15px;
     border-radius: 50%;
+
+    &--neon-coral { background-color: var(--color-neon-coral); }
+    &--sea-green { background-color: var(--color-sea-green); }
+    &--slate-blue { background-color: var(--color-slate-blue); }
+    &--navy-taupe { background-color: var(--color-navy-taupe); }
+    &--cyber-grape { background-color: var(--color-cyber-grape); }
+    &--mustard { background-color: var(--color-mustard); }
+    &--rich-black { background-color: var(--color-rich-black); }
+    &--charcoal { background-color: var(--color-charcoal); }
+    &--platinum { background-color: var(--color-platinum); }
+    &--sea-serpent { background-color: var(--color-sea-serpent); }
+    &--purple-pizazz { background-color: var(--color-purple-pizazz); }
+    &--paradise-pink { background-color: var(--color-paradise-pink); }
+    &--cerulean-blue { background-color: var(--color-cerulean-blue); }
+    &--kiwi { background-color: var(--color-kiwi); }
+    &--neon-carrot { background-color: var(--color-neon-carrot); }
+    &--barbie-pink { background-color: var(--color-barbie-pink); }
+    &--tomato { background-color: var(--color-tomato); }
+    &--white { background-color: var(--color-white); }
   }
 
   &__label {

@@ -27,7 +27,7 @@ type SectionProps = {
 };
 
 const Section = ({ children = null, className = null }: SectionProps) => {
-	const classes = cx("home-section", className);
+	const classes = cx("home-section bg-platinum-dark", className);
 
 	return (
 		<motion.div className={classes} variants={springy}>

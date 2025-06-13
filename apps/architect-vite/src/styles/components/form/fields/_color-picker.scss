@@ -1,8 +1,6 @@
-$component-name: form-fields-color-picker;
-$color-picker-size: 4.2rem;
-$color-picker-border-size: 5px;
-
-.#{$component-name} {
+.form-fields-color-picker {
+  --color-picker-size: 4.2rem;
+  --color-picker-border-size: 5px;
   &__edit {
     background: var(--input-background);
     color: var(--input-text);
@@ -26,9 +24,9 @@ $color-picker-border-size: 5px;
 
   &__color {
     display: flex;
-    width: $color-picker-size;
-    height: $color-picker-size;
-    border-radius: $color-picker-size;
+    width: var(--color-picker-size);
+    height: var(--color-picker-size);
+    border-radius: var(--color-picker-size);
     margin: 0 0.6rem 0.6rem 0;
     overflow: hidden;
     cursor: pointer;
@@ -39,12 +37,12 @@ $color-picker-border-size: 5px;
     transition-property: background-color;
 
     &::after {
-      margin: $color-picker-border-size;
+      margin: var(--color-picker-border-size);
       background-color: var(--color);
       content: '';
-      width: calc(#{$color-picker-size} - #{$color-picker-border-size * 2});
-      height: calc(#{$color-picker-size} - #{$color-picker-border-size * 2});
-      border-radius: $color-picker-size;
+      width: calc(var(--color-picker-size) - var(--color-picker-border-size) * 2);
+      height: calc(var(--color-picker-size) - var(--color-picker-border-size) * 2);
+      border-radius: var(--color-picker-size);
       border-color: transparent;
       border-style: solid;
       border-width: .15rem;
@@ -53,7 +51,7 @@ $color-picker-border-size: 5px;
       transition-property: border-color;
     }
 
-    &.#{$component-name}__color--selected {
+    &.form-fields-color-picker__color--selected {
       background-color: var(--node-outer-trim-stroke);
 
       &::after {
@@ -82,11 +80,11 @@ $color-picker-border-size: 5px;
   }
 
   &--has-error {
-    .#{$component-name}__edit {
+    .form-fields-color-picker__edit {
       border: .1rem solid var(--error);
     }
 
-    .#{$component-name}__error {
+    .form-fields-color-picker__error {
       opacity: 1;
     }
   }

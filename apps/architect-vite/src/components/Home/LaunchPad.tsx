@@ -42,7 +42,7 @@ const LaunchPad = ({
 		<>
 			{lastEditedProtocol && (
 				<Section className="launch-pad">
-					<Group color="sea-green" className="resume-group home-group--flex">
+					<Group color="sea-green" className="resume-group home-group--flex text-white">
 						<div className="launch-pad__resume">
 							<h2>Resume Editing</h2>
 							<ProtocolCard

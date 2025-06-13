@@ -20,7 +20,7 @@
     font-size: 0.8rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: hsl(var(--foreground-light));
+    /* color moved to Tailwind classes in Button component */
     display: inline-flex;
     font-family: var(--heading-font-family);
     text-align: center;
@@ -30,7 +30,7 @@
     min-width: 3rem;
     min-height: 3.5rem;
     border-radius: 2rem;
-    background-color: var(--color-primary);
+    /* background-color moved to Tailwind classes in Button component */
     margin-bottom: 0.15rem;
 
     &:disabled,
@@ -39,7 +39,7 @@
       cursor: not-allowed;
     }
 
-    @include color-modifiers($include-hover: true);
+    /* color-modifiers replaced with Tailwind classes in Button component */
 
     &--small {
       min-width: inherit;
@@ -72,19 +72,8 @@
       flex: 1 1 auto;
     }
 
-    // light color variations
-    &--white,
-    &--platinum,
-    &--platinum-dark {
-      color: var(--color-charcoal);
-
-      // icons
-      .icon {
-        .cls-2 {
-          fill: var(--color-charcoal);
-        }
-      }
-    }
+    // light color variations handled by Tailwind classes in Button component
+    // Icon colors are now handled via Tailwind text color inheritance
 
     &__icon {
       // sass-lint:disable-block no-important

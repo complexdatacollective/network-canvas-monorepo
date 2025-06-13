@@ -32,7 +32,7 @@ const Switch = ({
 				value="true"
 				onChange={onChange}
 			/>
-			<div className="switch__button" />
+			<div className="switch__button before:bg-rich-black after:bg-white" />
 			<div className="switch__label">{label}</div>
 		</label>
 	);

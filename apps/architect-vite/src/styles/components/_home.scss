@@ -1,7 +1,5 @@
 
 
-$panel-color: var(--color-platinum);
-$panel-color-alt: var(--color-platinum-dark);
 $scrollbar-height: 1.25rem;
 $scrollbar-padding: 1.2rem;
 
@@ -69,7 +67,6 @@ $font-sizes: (
   position: relative;
   border-radius: var(--border-radius);
   box-shadow: 0 0.6rem .2rem 0 var(--architect-panel-shadow);
-  background: var(--color-platinum-dark);
   margin: 2.4rem auto;
   max-width: 70rem;
   overflow: hidden;
@@ -113,7 +110,6 @@ $font-sizes: (
     background-size: cover;
     background-position: 100% -2rem;
     background-repeat: no-repeat;
-    color: var(--color-white);
     align-items: center;
 
     .launch-pad__action-divider {
@@ -221,7 +217,6 @@ $font-sizes: (
       transform: translateY(-50%);
       content: '';
       border-radius: $size;
-      background-color: var(--color-rich-black);
       transition: background var(--animation-duration-fast) var(--animation-easing);
       width: $size * 2;
       height: $size * .67;
@@ -233,7 +228,6 @@ $font-sizes: (
       border-radius: 50%;
       height: $size;
       width: $size;
-      background-color: var(--color-white);
       transform: translateX(-1px);
       transition: transform var(--animation-duration-fast) var(--animation-easing);
     }
@@ -269,9 +263,7 @@ $font-sizes: (
   box-shadow: none;
 
   &--is-open {
-    background: var(--color-slate-blue);
     box-shadow: 0 0.6rem .2rem 0 var(--architect-panel-shadow);
-    color: var(--color-white);
   }
 
   &__header {
@@ -346,7 +338,6 @@ $font-sizes: (
 .home-welcome {
   display: flex;
   flex-direction: row;
-  color: var(--color-white);
   padding-top: 0;
   background-image: url('../images/home/undraw_prototyping_process.svg');
   background-size: 50%;
@@ -378,8 +369,6 @@ $font-sizes: (
           position: absolute;
           top: -8px;
           left: -5px;
-          background-color: var(--color-white);
-          color: var(--color-rich-black);
           font-size: .6rem;
           font-weight: 900;
           padding: 0.3rem 0.6rem;
@@ -406,13 +395,8 @@ $font-sizes: (
   }
 }
 
-.release-notes {
-  color: var(--color-white);
-}
 
 .home-tips {
-  color: var(--color-white);
-
   h3 { margin: 0 0 1rem; }
   p { margin: 0; }
 }

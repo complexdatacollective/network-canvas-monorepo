@@ -17,18 +17,6 @@ $export-ui-classes: true !default;
   align-items: center;
 }
 
-// Root sequence
-$root-colors: (
-  'neon-coral',
-  'sea-serpent',
-  'purple-pizazz',
-  'neon-carrot',
-  'kiwi',
-  'cerulean-blue',
-  'paradise-pink',
-  'mustard'
-);
-
 // Edge sequence
 $edge-colors: (
   'mustard',
@@ -45,17 +33,6 @@ $edge-colors: (
 
 // Node Sequence
 @include palette-set('node-label', var(--color-white));
-
-$node-colors: (
-  'neon-coral',
-  'sea-serpent',
-  'purple-pizazz',
-  'neon-carrot',
-  'kiwi',
-  'cerulean-blue',
-  'paradise-pink',
-  'mustard'
-);
 
 // Ordinal Bin Sequence
 $ordinal-colors: (
@@ -84,18 +61,6 @@ $categorical-colors: (
 );
 
 
-// Protocol Schema Sequence
-$schema-colors: (
-  'platinum-dark',
-  'cyber-grape',
-  'slate-blue',
-  'sea-serpent',
-  'cerulean-blue',
-  'mustard',
-  'neon-carrot',
-  'barbie-pink',
-  'tomato'
-);
 
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
 

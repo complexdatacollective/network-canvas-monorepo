@@ -1,6 +1,5 @@
 
 
-$field-color: #c7ced0;
 
 .assign-attributes {
   &__empty {
@@ -46,14 +45,14 @@ $field-color: #c7ced0;
       margin-bottom: 1.2rem;
 
       fieldset {
-        border-color: $field-color;
+        border-color: var(--architect-border);
       }
     }
   }
 
   &__value {
     flex: 1 0 auto;
-    border: 2px dashed $field-color;
+    border: 2px dashed var(--architect-border);
     padding: 1.2rem;
     border-radius: var(--border-radius);
 

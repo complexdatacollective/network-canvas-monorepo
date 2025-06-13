@@ -98,7 +98,7 @@ const TypeEditorPage = () => {
 			<TypeEditor entity={entity} type={actualType} onComplete={handleTypeEditorComplete} />
 
 			{/* Control Bar */}
-			<div className="fixed bottom-0 left-0 right-0 bg-[var(--architect-control-bar-background)] p-4">
+			<div className="fixed bottom-0 left-0 right-0 bg-cyber-grape p-4">
 				<div className="flex justify-end items-center max-w-6xl mx-auto">
 					<div className="flex gap-2">{actionButtons}</div>
 				</div>

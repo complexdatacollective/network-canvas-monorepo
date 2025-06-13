@@ -1,5 +1,17 @@
 // Icons
 // =============================================================================
+//
+// MIGRATION NOTICE: Icon colors are being migrated from SASS to Tailwind CSS.
+// The new color mapping is located in _icons-tailwind.css
+// 
+// Legacy SASS color modifiers (.icon--{color}) are still supported but will be
+// removed once the migration is complete. Use the same color prop on the Icon
+// component - the implementation now uses Tailwind classes internally.
+//
+// Example: <Icon name="tick" color="sea-green" /> 
+// This applies .icon--sea-green class which is mapped to Tailwind fill classes
+//
+// =============================================================================
 
 $icon-dimension-base: 2.5rem !default;
 

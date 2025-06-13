@@ -26,19 +26,35 @@
     }
 
     &--text {
-      @include button-background(var(--architect-variant--1));
+      background-color: var(--architect-variant--1);
+
+      &:hover {
+        background-color: var(--architect-variant--1);
+      }
     }
 
     &--image {
-      @include button-background(var(--architect-variant--2));
+      background-color: var(--architect-variant--2);
+
+      &:hover {
+        background-color: var(--architect-variant--2);
+      }
     }
 
     &--audio {
-      @include button-background(var(--architect-variant--3));
+      background-color: var(--architect-variant--3);
+
+      &:hover {
+        background-color: var(--architect-variant--3);
+      }
     }
 
     &--video {
-      @include button-background(var(--architect-variant--4));
+      background-color: var(--architect-variant--4);
+
+      &:hover {
+        background-color: var(--architect-variant--4);
+      }
     }
 
 

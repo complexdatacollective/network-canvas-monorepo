@@ -48,7 +48,7 @@ const ControlBar = ({ buttons = null, secondaryButtons = null, className = "" }:
 	];
 
 	return (
-		<motion.div className={cx("control-bar", className)} variants={barVariants}>
+		<motion.div className={cx("control-bar", "text-white bg-cyber-grape", className)} variants={barVariants}>
 			<AnimatePresence>{buttonLayout}</AnimatePresence>
 		</motion.div>
 	);

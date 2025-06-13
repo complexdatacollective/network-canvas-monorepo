@@ -1,11 +1,5 @@
 @import 'tailwindcss';
 
-/* @plugin '@tailwindcss/forms';
-@plugin '@tailwindcss/aspect-ratio';
-@plugin '@tailwindcss/container-queries';
-@plugin 'tailwindcss-animate';
-@plugin '@tailwindcss/typography'; */
-
 
 @layer base {
   :root {
@@ -65,6 +59,8 @@
     --rich-black-lightness: 10%;
     --rich-black: var(--rich-black-hue) var(--rich-black-saturation)
       var(--rich-black-lightness);
+    --rich-black--dark: var(--rich-black-hue) var(--rich-black-saturation)
+      calc(var(--rich-black-lightness) - var(--dark-mod));
 
     --charcoal-hue: 231;
     --charcoal-saturation: 4%;
@@ -152,7 +148,7 @@
     --foreground: var(--cyber-grape);
     --foreground-light: var(--white);
 
-    --primary: var(--cyber-grape);
+    --primary: var(--sea-green);
     --primary-foreground: var(--white);
 
     --secondary: var(--neon-coral);
@@ -197,6 +193,7 @@
     --error: var(--destructive);
     --input-background: var(--rich-black-hue) var(--rich-black-saturation) calc(var(--rich-black-lightness) + 10%) / 0.33;
     --light-background: var(--cyber-grape);
+    --background-light: var(--white);
     --selected: var(--mustard);
   }
 }
@@ -310,9 +307,19 @@
 
   --color-input: hsl(var(--input));
   --color-input-foreground: hsl(var(--input-foreground));
+  --color-input-background: hsl(var(--input-background));
 
   --color-border: hsl(var(--border));
   --color-link: hsl(var(--link));
+
+  /* Additional semantic colors for legacy components */
+  --color-error: hsl(var(--error));
+  --color-selected: hsl(var(--selected));
+  --color-light-background: hsl(var(--background-light));
+  --color-mid-grey: var(--color-mid-grey);
+  
+  /* Dark variants for semantic colors */
+  --color-selected-dark: hsl(var(--mustard--dark));
 
   --radius-*: initial;
   --radius-none: 0px;

@@ -1,4 +1,4 @@
-// sass-lint:disable no-color-literals
+/* Converted from SASS to use Tailwind-compatible CSS variables */
 
 :root {
   --color-shadow: rgb(0 0 0 / 15%);
@@ -6,108 +6,110 @@
   --color-mid-grey: rgb(128 128 128);
   --text-light-muted: rgb(255 255 255 / 50%);
 
-  // UI overwrites
-  --background: var(--color-platinum);
-  --text: var(--color-charcoal);
-  --input-background: var(--color-white);
-  --input-label: var(--color-charcoal);
-  --text-light: var(--color-white); // actually this one is new
-  --text-dark: var(--color-charcoal);
-  --ring--background: var(--color-navy-taupe);
-  --node-outer-trim-stroke: var(--color-mustard);
-  --input-panel-bg: var(--color-white);
+  /* UI overwrites - Updated to use direct Tailwind color references */
+  --background: hsl(var(--platinum));
+  --text: hsl(var(--charcoal));
+  --input-background: hsl(var(--white));
+  --input-label: hsl(var(--charcoal));
+  --text-light: hsl(var(--white));
+  --text-dark: hsl(var(--charcoal));
+  --ring--background: hsl(var(--navy-taupe));
+  --node-outer-trim-stroke: hsl(var(--mustard));
+  --input-panel-bg: hsl(var(--white));
 
-  // App Chrome
-  --background-dark: var(--color-navy-taupe);
-  --background-light: var(--color-white);
-  --background-alt: var(--color-platinum);
-  --architect-wave: var(--color-sea-green);
+  /* App Chrome */
+  --background-dark: hsl(var(--navy-taupe));
+  --background-light: hsl(var(--white));
+  --background-alt: hsl(var(--platinum));
+  --architect-wave: hsl(var(--sea-green));
   --architect-control-bar-shadow: rgb(20 0 0 / 30%);
-  --architect-titlebar: var(--color-sea-green--dark);
+  --architect-titlebar: hsl(var(--sea-green--dark));
 
-  // Errors
-  --architect-error-background: var(--color-cyber-grape);
-  --architect-error-code-background: var(--color-navy-taupe);
-  --architect-warning: var(--color-tomato);
-  --architect-media-background: var(--color-rich-black);
+  /* Errors */
+  --architect-error-background: hsl(var(--cyber-grape));
+  --architect-error-code-background: hsl(var(--navy-taupe));
+  --architect-warning: hsl(var(--tomato));
+  --architect-media-background: hsl(var(--rich-black));
 
-  // App-wide
+  /* App-wide */
   --architect-row-background: rgb(242 246 247 / 50%);
-  --architect-background: var(--color-white);
-  --architect-text: var(--color-charcoal);
+  --architect-background: hsl(var(--white));
+  --architect-text: hsl(var(--charcoal));
   --architect-shadow: var(--color-shadow);
-  --architect-divider: var(--color-platinum);
-  --architect-selected: var(--color-sea-green);
-  --architect-active: var(--color-sea-green);
-  --architect-panel-grey: var(--color-platinum);
+  --architect-divider: hsl(var(--platinum));
+  --architect-selected: hsl(var(--sea-green));
+  --architect-active: hsl(var(--sea-green));
+  --architect-panel-grey: hsl(var(--platinum));
   --architect-panel-grey--dark: #e9eeef;
 
-  // Control bar
-  --architect-control-bar-background: var(--color-cyber-grape);
-  --architect-control-bar-text: var(--color-white);
+  /* Control bar */
+  --architect-control-bar-background: hsl(var(--cyber-grape));
+  --architect-control-bar-text: hsl(var(--white));
 
-  // forms
-  --form-control: var(--color-sea-serpent);
+  /* Forms */
+  --form-control: hsl(var(--sea-serpent));
 
-  // dialog
-  --architect-dialog-background: var(--color-platinum);
-  --architect-dialog-background--dark: var(--color-platinum-dark);
+  /* Dialog */
+  --architect-dialog-background: hsl(var(--platinum));
+  --architect-dialog-background--dark: hsl(var(--platinum-dark));
 
-  // sortable, rename?
-  --architect-sortable-text: var(--color-white);
-  --architect-sortable-background: var(--color-slate-blue);
-  --architect-sortable-preview-background: var(--color-slate-blue);
-  --architect-sortable-preview-background--alt: var(--color-slate-blue-dark);
+  /* Sortable */
+  --architect-sortable-text: hsl(var(--white));
+  --architect-sortable-background: hsl(var(--slate-blue));
+  --architect-sortable-preview-background: hsl(var(--slate-blue));
+  --architect-sortable-preview-background--alt: hsl(var(--slate-blue--dark));
 
-  // Modal
+  /* Modal */
   --architect-modal-shadow: var(--modal-overlay);
 
-  // Logic screen
-  --architect-logic-background: var(--color-mustard);
-  --architect-logic-text: var(--color-white);
+  /* Logic screen */
+  --architect-logic-background: hsl(var(--mustard));
+  --architect-logic-text: hsl(var(--white));
 
-  // TODO: review below
-  --architect-edit-button-background: var(--primary);
-  --architect-edit-button-fill: var(--color-white);
-  --architect-ui-button: var(--color-sea-green);
-  --architect-ui-button-text: var(--color-white);
-  --architect-ui-radio-border: var(--color-cyber-grape);
-  --architect-ui-radio-dot: var(--color-sea-green);
-  --architect-button-background--dark: var(--color-navy-taupe);
-  --architect-button-background--dark--hover: var(--color-cyber-grape);
-  --architect-drawer-background: var(--color-platinum);
-  --architect-panel-background: var(--color-platinum);
+  /* TODO: review below */
+  --architect-edit-button-background: hsl(var(--primary));
+  --architect-edit-button-fill: hsl(var(--white));
+  --architect-ui-button: hsl(var(--sea-green));
+  --architect-ui-button-text: hsl(var(--white));
+  --architect-ui-radio-border: hsl(var(--cyber-grape));
+  --architect-ui-radio-dot: hsl(var(--sea-green));
+  --architect-button-background--dark: hsl(var(--navy-taupe));
+  --architect-button-background--dark--hover: hsl(var(--cyber-grape));
+  --architect-drawer-background: hsl(var(--platinum));
+  --architect-panel-background: hsl(var(--platinum));
   --architect-panel-shadow: var(--color-shadow);
-  --architect-panel-text: var(--color-charcoal);
-  --architect-panel-divider: var(--color-platinum-dark);
-  --architect-border: var(--color-platinum-dark);
-  --architect-input-placeholder: var(--color-platinum);
-  --architect-input-focus: var(--color-sea-green);
-  --architect-intent--inactive: var(--color-charcoal);
-  --architect-intent: var(--color-mustard);
-  --architect-intent-border: var(--color-mustard--dark);
+  --architect-panel-text: hsl(var(--charcoal));
+  --architect-panel-divider: hsl(var(--platinum-dark));
+  --architect-border: hsl(var(--platinum-dark));
+  --architect-input-placeholder: hsl(var(--platinum));
+  --architect-input-focus: hsl(var(--sea-green));
+  --architect-intent--inactive: hsl(var(--charcoal));
+  --architect-intent: hsl(var(--mustard));
+  --architect-intent-border: hsl(var(--mustard--dark));
   --architect-timeline-highlight: rgb(216 216 216 / 20%);
-  --architect-timeline-line: var(--color-neon-coral);
-  --architect-timeline-screen: var(--color-navy-taupe);
+  --architect-timeline-line: hsl(var(--neon-coral));
+  --architect-timeline-screen: hsl(var(--navy-taupe));
 
-  // rules
-  --architect-rules-type: var(--color-neon-coral);
-  --architect-rules-assert: var(--color-sea-green);
+  /* Rules */
+  --architect-rules-type: hsl(var(--neon-coral));
+  --architect-rules-assert: hsl(var(--sea-green));
 
-  // content item types
-  --architect-variant--1: var(--color-slate-blue-dark);
-  --architect-variant--2: var(--color-mustard--dark);
-  --architect-variant--3: var(--color-sea-green);
-  --architect-variant--4: var(--color-sea-green--dark);
-  --architect-asset-background: var(--color-charcoal);
+  /* Content item types */
+  --architect-variant--1: hsl(var(--slate-blue--dark));
+  --architect-variant--2: hsl(var(--mustard--dark));
+  --architect-variant--3: hsl(var(--sea-green));
+  --architect-variant--4: hsl(var(--sea-green--dark));
+  --architect-asset-background: hsl(var(--charcoal));
 
-  .form-field-slider {
-    --slider-color: var(--color-platinum-dark);
-    --tooltip-color: var(--color-navy-taupe);
-    --tooltip-label: var(--color-white);
-  }
+}
 
-  .rich-text {
-    --blockquote-border-color: var(--transparent-md);
-  }
+/* Component-specific overrides */
+.form-field-slider {
+  --slider-color: hsl(var(--platinum-dark));
+  --tooltip-color: hsl(var(--navy-taupe));
+  --tooltip-label: hsl(var(--white));
+}
+
+.rich-text {
+  --blockquote-border-color: var(--transparent-md);
 }

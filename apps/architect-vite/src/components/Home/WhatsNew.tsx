@@ -21,7 +21,7 @@ const WhatsNew = () => {
 			{!isDismissed && (
 				<motion.div exit={{ opacity: 0, height: 0 }}>
 					<Section>
-						<Group color="cerulean-blue" className="release-notes" icon="info" tada>
+						<Group color="cerulean-blue" className="release-notes text-white" icon="info" tada>
 							<h2>
 								Whats new in
 								{appVersion}
