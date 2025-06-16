@@ -1,4 +1,3 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -8,6 +7,7 @@ import Tip from "~/components/Tip";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 
 type SearchOptionsProps = {
 	dataSource: string;

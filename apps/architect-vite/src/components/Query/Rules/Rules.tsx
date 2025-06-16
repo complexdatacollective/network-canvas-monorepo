@@ -1,10 +1,10 @@
-import Button from "@codaco/legacy-ui/components/Button";
-import RadioGroup from "@codaco/legacy-ui/components/Fields/RadioGroup";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { compose } from "recompose";
 import DetachedField from "~/components/DetachedField";
 import FieldError from "~/components/Form/FieldError";
+import Button from "~/lib/legacy-ui/components/Button";
+import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
 import EditRule from "./EditRule";
 import PreviewRules from "./PreviewRules";
 import withDraftRule from "./withDraftRule";

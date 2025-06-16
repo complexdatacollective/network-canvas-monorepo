@@ -1,8 +1,8 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { get } from "es-toolkit/compat";
 import { connect, useSelector } from "react-redux";
 import { getFormValues } from "redux-form";
 import timelineImages from "~/images/timeline";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getStageIndex } from "~/selectors/protocol";
 import { getFieldId } from "../../utils/issues";
 import ExternalLink from "../ExternalLink";

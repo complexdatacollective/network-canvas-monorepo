@@ -1,10 +1,10 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import { Component } from "react";
+import Button from "~/lib/legacy-ui/components/Button";
+import CollapsableHeader from "../../CollapsableHeader";
 import ControlBar from "../../ControlBar";
+import Dialog from "../../Dialog/Dialog";
 import Layout from "../../EditorLayout/Layout";
 import ExternalLink from "../../ExternalLink";
-import CollapsableHeader from "../../CollapsableHeader";
-import Dialog from "../../Dialog/Dialog";
 import EditEgoRule from "./EditEgoRule";
 import EditEntityRule from "./EditEntityRule";
 

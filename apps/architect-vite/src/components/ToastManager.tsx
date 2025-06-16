@@ -1,6 +1,6 @@
-import { ToastManager as UIToastManager } from "@codaco/legacy-ui/components";
-import { connect } from "react-redux";
 import { bindActionCreators, compose } from "@reduxjs/toolkit";
+import { connect } from "react-redux";
+import { ToastManager as UIToastManager } from "~/lib/legacy-ui/components";
 import { actionCreators as toastActions } from "../ducks/modules/toasts";
 
 type RootState = {

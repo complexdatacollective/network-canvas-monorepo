@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
+import Button from "~/lib/legacy-ui/components/Button";
 import Dialog from "./Dialog";
-import Button from "@codaco/legacy-ui/components/Button";
 
 type NewTypeDialogProps = {
 	show?: boolean;
@@ -16,11 +15,11 @@ const getProtocolId = () => {
 	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
 };
 
-const NewTypeDialog = ({ 
-	show = false, 
-	entityType, 
-	onComplete = () => {}, 
-	onCancel = () => {} 
+const NewTypeDialog = ({
+	show = false,
+	entityType,
+	onComplete = () => {},
+	onCancel = () => {},
 }: NewTypeDialogProps) => {
 	const [, setLocation] = useLocation();
 
@@ -51,8 +50,8 @@ const NewTypeDialog = ({
 		>
 			<div className="p-4">
 				<p>
-					You are about to create a new {entityType} type. This will open the type editor where you can 
-					define the name, color, and variables for this {entityType} type.
+					You are about to create a new {entityType} type. This will open the type editor where you can define the name,
+					color, and variables for this {entityType} type.
 				</p>
 			</div>
 		</Dialog>

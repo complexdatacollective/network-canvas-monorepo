@@ -1,7 +1,7 @@
-import { Icon } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { useEffect, useRef } from "react";
 import { v4 as uuid } from "uuid";
+import { Icon } from "~/lib/legacy-ui/components";
 
 const dashIndex = [4, 7];
 

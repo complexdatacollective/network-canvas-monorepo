@@ -1,5 +1,5 @@
-import Markdown from "@codaco/legacy-ui/components/Fields/Markdown";
 import { useContext } from "react";
+import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
 import Variable from "../Variable";

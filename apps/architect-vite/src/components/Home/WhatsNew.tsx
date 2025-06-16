@@ -1,5 +1,5 @@
-import { Button } from "@codaco/legacy-ui/components";
 import { AnimatePresence, motion } from "motion/react";
+import { Button } from "~/lib/legacy-ui/components";
 import { appVersion } from "~/utils/appVersion";
 import ExternalLink, { openExternalLink } from "../ExternalLink";
 import ButtonStack from "./ButtonStack";

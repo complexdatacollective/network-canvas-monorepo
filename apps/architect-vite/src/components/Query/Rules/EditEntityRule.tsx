@@ -1,17 +1,17 @@
-import RadioGroup from "@codaco/legacy-ui/components/Fields/RadioGroup";
 import { isArray, isNil } from "es-toolkit/compat";
 import { compose } from "recompose";
 import DetachedField from "~/components/DetachedField";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
 import Section from "../../EditorLayout/Section";
 import IssueAnchor from "../../IssueAnchor";
 import EntitySelectField from "../../sections/fields/EntitySelectField/EntitySelectField";
 import { makeGetOptionsWithDefaults } from "./defaultRule";
 import EditValue from "./EditValue";
 import {
-	// operatorsWithRegExp,
-	operatorsWithOptionCount,
-	operatorsWithValue,
+    // operatorsWithRegExp,
+    operatorsWithOptionCount,
+    operatorsWithValue,
 } from "./options";
 import { entityRuleTypeOptions, entityRuleTypes, withEntityRuleType } from "./withEntityRuleType";
 import withOptions from "./withOptions";

@@ -1,6 +1,6 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 type AudioThumbnailProps = {
 	id: string;

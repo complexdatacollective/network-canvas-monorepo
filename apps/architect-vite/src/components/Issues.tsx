@@ -1,10 +1,10 @@
-import { Icon } from "@codaco/legacy-ui/components";
 import { isEmpty, map } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
+import { Icon } from "~/lib/legacy-ui/components";
 import { flattenIssues, getFieldId } from "../utils/issues";
 import scrollTo from "../utils/scrollTo";
 import { formName } from "./StageEditor/configuration";

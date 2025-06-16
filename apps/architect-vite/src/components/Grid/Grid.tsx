@@ -1,8 +1,8 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import { throttle } from "lodash";
 import React, { Component } from "react";
 import GridLayout from "react-grid-layout";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import GridItem from "./GridItem";
 import { convertSize, getLayout, trimSize } from "./helpers";
 import withItems from "./withItems";

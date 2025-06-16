@@ -1,5 +1,5 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import { Flipped } from "react-flip-toolkit";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 type GridItemProps = {
 	fields: {

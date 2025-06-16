@@ -1,4 +1,3 @@
-import { Button } from "@codaco/legacy-ui/components";
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
 import { startCase } from "es-toolkit/compat";
 import { LayoutGroup } from "motion/react";
@@ -9,7 +8,8 @@ import type { Validator } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
-import OrderedList from "~/components/OrderedList";
+import OrderedList from "~/components/OrderedList/OrderedList";
+import { Button } from "~/lib/legacy-ui/components";
 import { getFieldId } from "~/utils/issues";
 import { formName } from ".";
 import { useEditHandlers } from "./useEditHandlers";
@@ -72,23 +72,18 @@ const EditableList = ({
 			<LayoutGroup>
 				<div id={getFieldId(`${fieldName}._error`)} data-name={startCase(fieldName)} />
 				{children}
-				<div className="editable-list">
-					<div className="editable-list__items">
-						<ValidatedField
-							name={fieldName}
-							component={OrderedList}
-							item={PreviewComponent}
-							validation={validation}
-							onClickItem={handleEditField}
-							editField={editField}
-							form={form}
-						/>
-					</div>
-					<Button onClick={handleAddNew} size="small" icon="add">
-						Create new
-					</Button>
-				</div>
-
+				<ValidatedField
+					name={fieldName}
+					component={OrderedList}
+					item={PreviewComponent}
+					validation={validation}
+					onClickItem={handleEditField}
+					editField={editField}
+					form={form}
+				/>
+				<Button onClick={handleAddNew} size="small" icon="add">
+					Create new
+				</Button>
 				<InlineEditScreen
 					show={!!editField}
 					title={title}

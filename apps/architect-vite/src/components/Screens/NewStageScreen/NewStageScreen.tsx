@@ -1,13 +1,13 @@
-import Button from "@codaco/legacy-ui/components/Button";
-import Search from "@codaco/legacy-ui/components/Fields/Search";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect, useSelector } from "react-redux";
+import { useLocation } from "wouter";
 import Dialog from "~/components/Dialog/Dialog";
 import Tag from "~/components/Tag";
-import { useLocation } from "wouter";
+import Button from "~/lib/legacy-ui/components/Button";
+import Search from "~/lib/legacy-ui/components/Fields/Search";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
 import ControlBar from "../../ControlBar";
 import Row from "../../EditorLayout/Row";

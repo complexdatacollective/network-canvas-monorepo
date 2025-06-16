@@ -1,5 +1,5 @@
-import Markdown from "@codaco/legacy-ui/components/Fields/Markdown";
 import { get, isNull } from "lodash";
+import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
 import EntityBadge from "../EntityBadge";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";

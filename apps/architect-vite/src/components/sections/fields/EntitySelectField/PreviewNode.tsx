@@ -1,5 +1,5 @@
-import { Node } from "@codaco/legacy-ui/components";
 import cx from "classnames";
+import { Node } from "~/lib/legacy-ui/components";
 
 type PreviewNodeProps = {
 	label: string;

@@ -1,11 +1,11 @@
-import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import { useDispatch } from "react-redux";
 import Version from "~/components/Version";
+import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
 import headerGraphic from "~/images/Arc-Flat.svg";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
-import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
+import { Button } from "~/lib/legacy-ui/components";
 import { openExternalLink } from "../ExternalLink";
 import Group from "./Group";
 import Section from "./Section";

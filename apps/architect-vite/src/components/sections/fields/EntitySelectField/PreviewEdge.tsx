@@ -1,5 +1,5 @@
-import { Icon } from "@codaco/legacy-ui/components";
 import cx from "classnames";
+import { Icon } from "~/lib/legacy-ui/components";
 
 type PreviewEdgeProps = {
 	label: string;

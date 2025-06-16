@@ -1,12 +1,12 @@
-import {
-	Number,
-	// CheckboxGroup,
-	RadioGroup,
-	Text,
-	Toggle,
-} from "@codaco/legacy-ui/components/Fields";
 import { withProps } from "recompose";
 import DetachedField from "~/components/DetachedField";
+import {
+    Number,
+    // CheckboxGroup,
+    RadioGroup,
+    Text,
+    Toggle,
+} from "~/lib/legacy-ui/components/Fields";
 
 // Todo: reinstate CheckboxGroup support when we switch to schema 8
 const INPUT_TYPES = {

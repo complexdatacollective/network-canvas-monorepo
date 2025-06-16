@@ -1,7 +1,7 @@
-import Markdown from "@codaco/legacy-ui/components/Fields/Markdown";
 import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
 import React, { useContext } from "react";
 import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
+import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
 import DualLink from "./DualLink";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";

@@ -1,8 +1,8 @@
-import { Button } from "@codaco/legacy-ui";
 import { useLocation } from "wouter";
 import Codebook from "~/components/Codebook/Codebook";
 import { Layout } from "~/components/EditorLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
+import { Button } from "~/lib/legacy-ui";
 
 const CodebookPage = () => {
 	const [, setLocation] = useLocation();

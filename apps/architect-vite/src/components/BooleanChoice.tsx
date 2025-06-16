@@ -1,10 +1,10 @@
-import RichText from "@codaco/legacy-ui/components/Fields/RichText";
-import Toggle from "@codaco/legacy-ui/components/Fields/Toggle";
+import { compose } from "@reduxjs/toolkit";
 import { isEmpty, isNull } from "lodash";
 import { useEffect } from "react";
 import { connect } from "react-redux";
-import { compose } from "@reduxjs/toolkit";
 import { change, Field, formValueSelector } from "redux-form";
+import RichText from "~/lib/legacy-ui/components/Fields/RichText";
+import Toggle from "~/lib/legacy-ui/components/Fields/Toggle";
 import ValidatedField from "./Form/ValidatedField";
 
 type OptionType = {

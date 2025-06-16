@@ -1,7 +1,7 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
-import React from "react";
+import type React from "react";
 import { components as ReactSelectComponents } from "react-select";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 type OptionData = {
 	value: string;
@@ -62,6 +62,5 @@ const DefaultSelectOption = (props: DefaultSelectOptionProps) => {
 		</ReactSelectComponents.Option>
 	);
 };
-
 
 export default DefaultSelectOption;

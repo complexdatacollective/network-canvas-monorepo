@@ -1,10 +1,10 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { capitalize, toPairs } from "es-toolkit/compat";
 import { useEffect, useMemo } from "react";
 import { connect, useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Layout, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getCodebook } from "~/selectors/protocol";
 import { getFieldId } from "~/utils/issues";
 import ColorPicker from "../Form/Fields/ColorPicker";

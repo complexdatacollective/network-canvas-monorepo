@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 import { describe, expect, it, vi } from "vitest";
 import { UnconnectedStage } from "../Stage";
 
-vi.mock("@codaco/legacy-ui/utils/CSSVariables");
+vi.mock("~/lib/legacy-ui/utils/CSSVariables");
 
 const mockProps = {
 	id: uuid(),

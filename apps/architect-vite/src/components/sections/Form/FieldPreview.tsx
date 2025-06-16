@@ -1,9 +1,9 @@
-import { Markdown } from "@codaco/legacy-ui/components/Fields";
 import { get } from "es-toolkit/compat";
 import { useSelector } from "react-redux";
 import Badge from "~/components/Badge";
 import withSubject from "~/components/enhancers/withSubject";
 import { getColorForType } from "~/config/variables";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
 import { getVariablesForSubject } from "~/selectors/codebook";
 
 type FieldPreviewProps = {

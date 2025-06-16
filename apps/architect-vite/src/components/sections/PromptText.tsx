@@ -1,6 +1,6 @@
-import { Field as RichText } from "@codaco/legacy-ui/components/Fields/RichText";
 import { Row, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
+import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 
 type PromptTextProps = {

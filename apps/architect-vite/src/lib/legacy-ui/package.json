@@ -1,5 +1,5 @@
 {
-	"name": "@codaco/legacy-ui",
+	"name": "~/lib/legacy-ui",
 	"version": "5.8.6",
 	"description": "Styles and React components for the Network Canvas project",
 	"type": "module",

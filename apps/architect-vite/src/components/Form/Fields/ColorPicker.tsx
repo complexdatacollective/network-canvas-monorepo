@@ -1,6 +1,6 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import { range } from "lodash";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 type ColorOption = {
 	label: string;

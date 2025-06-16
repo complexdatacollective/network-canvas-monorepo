@@ -1,4 +1,3 @@
-import { Button } from "@codaco/legacy-ui/components";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { isDirty, isInvalid, isSubmitting, startSubmit, submit } from "redux-form";
@@ -8,6 +7,7 @@ import { formName } from "~/components/StageEditor/configuration";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/store";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
+import { Button } from "~/lib/legacy-ui/components";
 import { getLocus } from "~/selectors/timeline";
 
 const StageEditorPage = () => {
@@ -120,7 +120,7 @@ const StageEditorPage = () => {
 	);
 
 	return (
-		<div className="scene scene--stage-editor">
+		<div className="scene bg-white">
 			{/* Stage Editor */}
 			<StageEditor id={stageId} insertAtIndex={insertAtIndex} onComplete={handleStageEditorComplete} />
 

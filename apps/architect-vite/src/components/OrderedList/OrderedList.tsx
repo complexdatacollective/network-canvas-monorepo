@@ -1,15 +1,20 @@
-import { isArray, isEmpty, isPlainObject } from "es-toolkit/compat";
+import { isArray } from "es-toolkit/compat";
+import { AnimatePresence, Reorder } from "motion/react";
 import type React from "react";
-import { connect } from "react-redux";
-import { compose, renameProp } from "recompose";
-import { arrayMove, arrayRemove } from "redux-form";
+import { useCallback } from "react";
+import { useDispatch } from "react-redux";
+import { arrayRemove } from "redux-form";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import ListItem from "./ListItem";
 
 type OrderedListBaseProps = {
 	input: {
-		value: Record<string, unknown>[];
+		value: {
+			variable: string;
+			prompt: string;
+		}[];
 		name: string;
+		onChange: (newValues: Record<string, unknown>[]) => void;
 	};
 	meta: {
 		error?: string | string[];
@@ -17,95 +22,79 @@ type OrderedListBaseProps = {
 		submitFailed?: boolean;
 		form: string;
 	};
-	item: React.ComponentType<any>;
+	item: React.ReactNode;
+	disabled?: boolean;
 	onClickItem?: ((fieldId: string) => void) | null;
-	removeItem: (index: number) => void;
-	disabled: boolean;
 };
 
 type OrderedListProps = OrderedListBaseProps & {
-	lockAxis?: string;
-	useDragHandle?: boolean;
 	sortable?: boolean;
-	onSortEnd?: (params: { oldIndex: number; newIndex: number }) => void;
 };
 
-const OrderedList = (props: OrderedListBaseProps) => {
+const OrderedList = (props: OrderedListProps) => {
 	const {
-		input: { value: values = [], name },
+		input: { value: values, name, onChange },
 		meta: { error, dirty, submitFailed },
 		item: Item,
 		disabled: sortable,
 		onClickItem,
-		removeItem,
 		meta: { form },
 	} = props;
 
+	const dispatch = useDispatch();
+
+	const getDeleteHandler = useCallback(
+		(variable: string) => async () => {
+			const index = values.findIndex((item) => item.variable === variable);
+			if (index !== -1) {
+				dispatch(
+					dialogActions.openDialog({
+						type: "Confirm",
+						title: "Remove this item?",
+						confirmLabel: "Remove item",
+						onConfirm: () => {
+							dispatch(arrayRemove(form, name, index));
+						},
+					}),
+				);
+			}
+		},
+		[values, dispatch, form, name],
+	);
+
+	const handleReorder = (
+		newOrder: {
+			variable: string;
+			prompt: string;
+		}[],
+	) => {
+		onChange(newOrder);
+	};
+
 	return (
-		<div className="list">
-			{(dirty || submitFailed) && error && !isArray(error) && <p className="list__error">{error}</p>}
-			{!isEmpty(values) &&
-				values.map((value, index) => {
-					const previewValue = isPlainObject(value) ? value : { value };
-					const fieldId = `${name}[${index}]`;
-					const onClick = onClickItem && (() => onClickItem(fieldId));
-
-					const onDelete = () => removeItem(index);
-
-					return (
-						<ListItem
-							index={index}
-							sortable={sortable}
-							key={fieldId}
-							layoutId={onClickItem && fieldId}
-							onClick={onClick}
-							onDelete={onDelete}
-						>
-							<Item
-								{...previewValue} // eslint-disable-line react/jsx-props-no-spreading
-								fieldId={fieldId}
-								form={form}
-								key={fieldId}
-							/>
-						</ListItem>
-					);
-				})}
-		</div>
+		<Reorder.Group
+			className="flex flex-col gap-4 my-4"
+			onReorder={handleReorder}
+			values={values}
+			disabled={sortable}
+			axis="y"
+		>
+			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-error">{error}</p>}
+			<AnimatePresence initial={false}>
+				{values.map((item, index) => (
+					<ListItem
+						key={item.variable}
+						value={item}
+						handleDelete={getDeleteHandler(item.variable)}
+						handleClick={() => onClickItem(`${name}[${index}]`)}
+						sortable={sortable}
+					>
+						<Item form={form} {...item} />
+					</ListItem>
+				))}
+			</AnimatePresence>
+		</Reorder.Group>
 	);
 };
 
-const mapDispatchToProps = (dispatch, { input: { name }, meta: { form } }) => ({
-	removeItem: (index) => {
-		dispatch(
-			dialogActions.openDialog({
-				type: "Confirm",
-				title: "Remove this item?",
-				confirmLabel: "Remove item",
-			}),
-		).then((confirm) => {
-			if (!confirm) {
-				return;
-			}
-			dispatch(arrayRemove(form, name, index));
-		});
-	},
-	onSortEnd: ({ oldIndex, newIndex }) => {
-		dispatch(arrayMove(form, name, oldIndex, newIndex));
-	},
-});
-
-export { OrderedList };
-
-const withDefaults = (Component: React.ComponentType<OrderedListBaseProps>) => {
-	return (props: Omit<OrderedListProps, "removeItem" | "onSortEnd">) => {
-		const { lockAxis = "y", useDragHandle = true, sortable = true, onClickItem = null, ...rest } = props;
-
-		return <Component {...rest} onClickItem={onClickItem} disabled={!sortable} />;
-	};
-};
-
-export default compose(
-	withDefaults,
-	renameProp("sortable", "disabled"),
-	connect(null, mapDispatchToProps),
-)(OrderedList);
+export default OrderedList;

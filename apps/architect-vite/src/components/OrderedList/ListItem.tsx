@@ -1,35 +1,44 @@
 import cx from "classnames";
-import { motion } from "motion/react";
-import DeleteButton from "./DeleteButton";
-import Handle from "./Handle";
+import { GripVertical, Trash2 } from "lucide-react";
+import { Reorder, useDragControls } from "motion/react";
 
 type ListItemProps = {
-	children?: React.ReactNode;
-	onDelete: () => void;
-	onClick?: () => void;
+	children: React.ReactNode;
+	handleDelete: () => void;
+	handleClick: () => void;
 	className?: string;
 	sortable?: boolean;
+	value: string | number | Record<string, unknown>;
 };
 
-const ListItem = ({ children = null, onDelete, onClick = null, className = null, sortable = true }: ListItemProps) => {
-	const componentClasses = cx("list-item", { "list-item--clickable": onClick }, className);
+const ListItem = ({ children, handleDelete, handleClick, className = null, sortable = true, value }: ListItemProps) => {
+	const controls = useDragControls();
+
+	const componentClasses = cx(
+		"bg-accent text-accent-foreground flex rounded p-4 justify-between items-center gap-4 select-none",
+		className,
+	);
 
 	return (
-		<motion.div className={componentClasses}>
+		<Reorder.Item
+			className={componentClasses}
+			value={value}
+			dragListener={false}
+			dragControls={controls}
+			initial={{ opacity: 0, y: 30 }}
+			animate={{ opacity: 1, y: 0 }}
+			exit={{ opacity: 0, y: -30 }}
+			whileHover={{ scale: 1.01 }}
+			whileDrag={{ scale: 1.05 }}
+			onClick={handleClick}
+		>
 			{sortable && (
-				<div className="list-item__control list-item__control--left" key="handle">
-					<Handle />
-				</div>
+				<GripVertical className="flex grow-0 shrink-0 cursor-grab" onPointerDown={(e) => controls.start(e)} />
 			)}
-			<div className="list-item__content" onClick={onClick} key="content">
-				{children}
-			</div>
-			<div className="list-item__control list-item__control--right" key="controls">
-				<DeleteButton onDelete={onDelete} />
-			</div>
-		</motion.div>
+			<div className="grow-1 shrink-1">{children}</div>
+			<Trash2 onClick={handleDelete} />
+		</Reorder.Item>
 	);
 };
-
 
 export default ListItem;

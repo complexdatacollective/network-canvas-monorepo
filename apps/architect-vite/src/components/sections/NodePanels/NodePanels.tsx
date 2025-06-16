@@ -1,13 +1,13 @@
-import { Button } from "@codaco/legacy-ui/components";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { has } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { connect, useDispatch } from "react-redux";
-import { bindActionCreators } from "@reduxjs/toolkit";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import { Section } from "~/components/EditorLayout";
-import OrderedList from "~/components/OrderedList";
+import OrderedList from "~/components/OrderedList/OrderedList";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Button } from "~/lib/legacy-ui/components";
 import IssueAnchor from "../../IssueAnchor";
 import NodePanel from "./NodePanel";
 
@@ -73,7 +73,6 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 		</Section>
 	);
 };
-
 
 const mapStateToProps = (state, props) => {
 	const getFormValues = formValueSelector(props.form);

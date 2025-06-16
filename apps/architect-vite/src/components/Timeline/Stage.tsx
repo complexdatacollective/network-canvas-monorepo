@@ -1,8 +1,8 @@
-import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { DeleteIcon } from "lucide-react";
 import { motion } from "motion/react";
-import React, { useRef } from "react";
+import { useRef } from "react";
+import { Button } from "~/lib/legacy-ui/components";
 import getAbsoluteBoundingRect from "~/utils/getAbsoluteBoundingRect";
 import EditStageButton from "./EditStageButton";
 
@@ -42,16 +42,16 @@ type StageProps = {
 	onDeleteStage: (id: string) => void;
 };
 
-const Stage = ({ 
-	id, 
-	stageNumber, 
-	className = "", 
-	onEditStage, 
-	onDeleteStage, 
-	type, 
-	label = "", 
-	hasSkipLogic = false, 
-	hasFilter = false 
+const Stage = ({
+	id,
+	stageNumber,
+	className = "",
+	onEditStage,
+	onDeleteStage,
+	type,
+	label = "",
+	hasSkipLogic = false,
+	hasFilter = false,
 }: StageProps) => {
 	const componentClasses = cx("timeline-stage", className);
 
@@ -98,7 +98,6 @@ const Stage = ({
 		</motion.div>
 	);
 };
-
 
 export { Stage as UnconnectedStage };
 

@@ -1,4 +1,3 @@
-import { Button } from "@codaco/legacy-ui/components";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { isDirty, isInvalid, isSubmitting, startSubmit, submit } from "redux-form";
@@ -7,6 +6,7 @@ import TypeEditor, { formName } from "~/components/TypeEditor";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/store";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
+import { Button } from "~/lib/legacy-ui/components";
 
 const TypeEditorPage = () => {
 	const { protocolId, entity, type } = useParams();

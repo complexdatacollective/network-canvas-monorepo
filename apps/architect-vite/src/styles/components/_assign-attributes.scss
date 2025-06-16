@@ -17,13 +17,10 @@
 }
 
 .assign-attributes-attribute {
-  --section-background-color: var(--architect-panel-grey--dark);
-
   display: flex;
   margin: 1.2rem 0;
   padding: 1.2rem;
   border-radius: var(--border-radius);
-  background: var(--section-background-color);
 
 
   .form-field {

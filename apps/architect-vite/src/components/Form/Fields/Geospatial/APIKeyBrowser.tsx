@@ -1,13 +1,13 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 
-import Button from "@codaco/legacy-ui/components/Button";
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
 import ControlBar from "~/components/ControlBar";
+import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
-import Dialog from "~/components/Dialog/Dialog";
+import Button from "~/lib/legacy-ui/components/Button";
 
 import { useDispatch } from "react-redux";
 
@@ -23,12 +23,7 @@ type APIKeyBrowserProps = {
 	close: () => void;
 };
 
-const APIKeyBrowser = ({ 
-	show = true, 
-	close, 
-	onSelect = () => {}, 
-	selected = null 
-}: APIKeyBrowserProps) => {
+const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = null }: APIKeyBrowserProps) => {
 	const formName = "create-api-key";
 	const dispatch = useDispatch();
 	const [preview, handleShowPreview] = useExternalDataPreview();
@@ -112,6 +107,5 @@ const APIKeyBrowser = ({
 		</Dialog>
 	);
 };
-
 
 export default APIKeyBrowser;

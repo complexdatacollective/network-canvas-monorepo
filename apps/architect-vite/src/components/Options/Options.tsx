@@ -1,9 +1,9 @@
-import { Button } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import type React from "react";
 import { compose, defaultProps, withHandlers } from "recompose";
 import { FieldArray } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
+import { Button } from "~/lib/legacy-ui/components";
 import Option from "./Option";
 
 const minTwoOptions = (value) =>

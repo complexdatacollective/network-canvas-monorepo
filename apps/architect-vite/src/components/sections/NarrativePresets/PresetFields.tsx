@@ -1,9 +1,9 @@
-import CheckboxGroup from "@codaco/legacy-ui/components/Fields/CheckboxGroup";
-import Text from "@codaco/legacy-ui/components/Fields/Text";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import ValidatedField from "~/components/Form/ValidatedField";
+import CheckboxGroup from "~/lib/legacy-ui/components/Fields/CheckboxGroup";
+import Text from "~/lib/legacy-ui/components/Fields/Text";
 import Row from "../../EditorLayout/Row";
 import Section from "../../EditorLayout/Section";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";

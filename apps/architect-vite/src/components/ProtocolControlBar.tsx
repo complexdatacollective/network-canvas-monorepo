@@ -1,4 +1,3 @@
-import { Button, Spinner } from "@codaco/legacy-ui/components";
 import { createSelector } from "@reduxjs/toolkit";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -9,10 +8,11 @@ import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeP
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import {
-	actionLocks as protocolsLocks,
-	actionCreators as userActions,
+    actionLocks as protocolsLocks,
+    actionCreators as userActions,
 } from "~/ducks/modules/userActions/webUserActions";
 import logoutIcon from "~/images/home/log-out.svg";
+import { Button, Spinner } from "~/lib/legacy-ui/components";
 import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/protocol";
 
 const getIsSaving = createSelector([(state) => state], (state) =>

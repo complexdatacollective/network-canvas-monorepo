@@ -1,12 +1,12 @@
-import { Button } from "@codaco/legacy-ui/components";
-import { Text } from "@codaco/legacy-ui/components/Fields";
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
+import { Button } from "~/lib/legacy-ui/components";
+import { Text } from "~/lib/legacy-ui/components/Fields";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import { getValidator } from "~/utils/validations";
 
 interface Option {

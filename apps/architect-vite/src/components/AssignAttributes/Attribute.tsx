@@ -1,7 +1,7 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
-import Icon from "@codaco/legacy-ui/components/Icon";
 import { compose } from "recompose";
 import ValidatedField from "~/components/Form/ValidatedField";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import withCreateVariableHandler from "../enhancers/withCreateVariableHandler";
 import VariablePicker from "../Form/Fields/VariablePicker/VariablePicker";
 import withAttributeHandlers from "./withAttributeHandlers";
@@ -25,7 +25,7 @@ const Attribute = ({
 	entity,
 	type,
 }: AttributeProps) => (
-	<div className="assign-attributes-attribute">
+	<div className="assign-attributes-attribute bg-section-background-dark">
 		<div className="assign-attributes-attribute__wrapper">
 			<div className="assign-attributes-attribute__variable">
 				<ValidatedField

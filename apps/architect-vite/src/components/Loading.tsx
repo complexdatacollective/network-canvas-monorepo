@@ -1,8 +1,8 @@
-import { Spinner } from "@codaco/legacy-ui/components";
 import { AnimatePresence, motion } from "motion/react";
 import { connect } from "react-redux";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import { actionLocks as protocolsLocks } from "~/ducks/modules/userActions/webUserActions";
+import { Spinner } from "~/lib/legacy-ui/components";
 
 const variants = {
 	hidden: { opacity: 0, transition: { delay: 0.5, duration: 0.5 } },
@@ -17,7 +17,6 @@ const Loading = ({ isLoading }: LoadingProps) => (
 	<AnimatePresence>
 		{isLoading && (
 			<motion.div
-				className="scene__loading"
 				style={{
 					width: "100%",
 					height: "100%",

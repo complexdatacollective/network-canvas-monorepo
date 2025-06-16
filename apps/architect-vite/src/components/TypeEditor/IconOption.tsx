@@ -1,4 +1,4 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import Radio from "../Form/Fields/Radio";
 
 type IconOptionProps = {

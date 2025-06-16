@@ -1,12 +1,12 @@
-import { Button } from "@codaco/legacy-ui/components";
+import { compose } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { CopyIcon as ContentCopyIcon, DownloadIcon } from "lucide-react";
-import React, { useCallback } from "react";
-import { compose } from "@reduxjs/toolkit";
+import { useCallback } from "react";
 import * as Assets from "~/components/Assets";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import withAssetPath from "~/components/Assets/withAssetPath";
 import Dialog from "~/components/Dialog/Dialog";
+import { Button } from "~/lib/legacy-ui/components";
 
 const getRenderer = (meta) => {
 	switch (meta.type) {
@@ -89,19 +89,12 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	);
 
 	return (
-		<Dialog
-			show={show}
-			onClose={onClose}
-			className={cx("window-dialog", className)}
-			header={header}
-			footer={footer}
-		>
+		<Dialog show={show} onClose={onClose} className={cx("window-dialog", className)} header={header} footer={footer}>
 			<div className="window__content">
 				<AssetRenderer id={id} />
 			</div>
 		</Dialog>
 	);
 };
-
 
 export default compose(withAssetMeta, withAssetPath)(Preview);

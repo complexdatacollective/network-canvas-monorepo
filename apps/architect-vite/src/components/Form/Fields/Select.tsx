@@ -1,8 +1,8 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
-import React, { PureComponent } from "react";
+import type React from "react";
+import { PureComponent } from "react";
 import ReactSelect from "react-select";
-import DefaultSelectOption from "./DefaultSelectOption";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 const getValue = (options, value) => {
 	const foundValue = options.find((option) => option.value === value);
@@ -115,7 +115,6 @@ class Select extends PureComponent<SelectProps> {
 		);
 	}
 }
-
 
 // Default props handled via TypeScript optional properties and destructuring defaults
 

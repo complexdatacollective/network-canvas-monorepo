@@ -1,13 +1,13 @@
-import { DatePicker } from "@codaco/legacy-ui/components/Fields";
-import { DATE_FORMATS } from "@codaco/legacy-ui/components/Fields/DatePicker";
-import Number from "@codaco/legacy-ui/components/Fields/Number";
-import Toggle from "@codaco/legacy-ui/components/Fields/Toggle";
 import type React from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import ValidatedField from "~/components/Form/ValidatedField";
+import { DatePicker } from "~/lib/legacy-ui/components/Fields";
+import { DATE_FORMATS } from "~/lib/legacy-ui/components/Fields/DatePicker";
+import Number from "~/lib/legacy-ui/components/Fields/Number";
+import Toggle from "~/lib/legacy-ui/components/Fields/Toggle";
 
 type RelativeDatePickerParametersProps = {
 	name: string;

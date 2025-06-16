@@ -1,7 +1,7 @@
-import { Icon, Spinner } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import { times } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
+import { Icon, Spinner } from "~/lib/legacy-ui/components";
 import { openDialog } from "~/utils/dialogs";
 import { acceptsPaths, getAcceptsExtensions, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";

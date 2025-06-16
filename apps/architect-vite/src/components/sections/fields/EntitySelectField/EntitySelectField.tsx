@@ -1,11 +1,11 @@
-import { Icon } from "@codaco/legacy-ui/components";
-import Button from "@codaco/legacy-ui/components/Button";
 import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import NewTypeDialog from "~/components/Dialog/NewTypeDialog";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Icon } from "~/lib/legacy-ui/components";
+import Button from "~/lib/legacy-ui/components/Button";
 import { getEdgeTypes, getNodeTypes } from "../../../../selectors/codebook";
 import { asOptions } from "../../../../selectors/utils";
 import PreviewEdge from "./PreviewEdge";

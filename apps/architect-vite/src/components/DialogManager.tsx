@@ -1,5 +1,5 @@
-import Dialogs from "@codaco/legacy-ui/components/Dialogs";
 import { useDispatch, useSelector } from "react-redux";
+import Dialogs from "~/lib/legacy-ui/components/Dialogs";
 import { closeDialog } from "../ducks/modules/dialogs";
 import type { RootState } from "../ducks/modules/root";
 import { useBodyScrollLock } from "./InlineEditScreen/useBodyScrollLock";

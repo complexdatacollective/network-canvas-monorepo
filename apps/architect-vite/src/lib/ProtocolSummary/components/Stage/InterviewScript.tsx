@@ -1,4 +1,4 @@
-import Markdown from "@codaco/legacy-ui/components/Fields/Markdown";
+import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
 
 type InterviewScriptProps = {
 	interviewScript?: string | null;

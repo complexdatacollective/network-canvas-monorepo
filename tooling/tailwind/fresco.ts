@@ -134,6 +134,10 @@ export default {
 			},
 			border: "hsl(var(--border) / <alpha-value>)",
 			link: "hsl(var(--link) / <alpha-value>)",
+			"section-background": {
+				DEFAULT: "hsl(var(--platinum) / <alpha-value>)",
+				dark: "#e9eeef",
+			},
 		},
 		borderRadius: {
 			...defaultTheme.borderRadius,

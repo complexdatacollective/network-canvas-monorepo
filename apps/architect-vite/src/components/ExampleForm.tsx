@@ -1,4 +1,4 @@
-import Modal from "@codaco/legacy-ui/Modal";
+import Modal from "~/lib/legacy-ui/Modal";
 
 /*
  *  <ExampleForm

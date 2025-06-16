@@ -1,5 +1,5 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import { Layout } from "~/components/EditorLayout";
+import Button from "~/lib/legacy-ui/components/Button";
 import ControlBar from "../ControlBar";
 import Dialog from "../Dialog/Dialog";
 import AssetBrowser from "./AssetBrowser";

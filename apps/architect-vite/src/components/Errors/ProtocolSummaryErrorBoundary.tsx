@@ -1,6 +1,6 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import { remote } from "electron";
 import { Component, type ReactNode } from "react";
+import Button from "~/lib/legacy-ui/components/Button";
 
 const closeWindow = () => remote.getCurrentWindow().hide();
 

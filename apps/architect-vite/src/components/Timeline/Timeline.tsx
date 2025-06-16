@@ -1,4 +1,3 @@
-import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { motion } from "motion/react";
@@ -9,6 +8,7 @@ import { useLocation } from "wouter";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
 import type { RootState } from "~/ducks/modules/root";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";
 import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
 import InsertButton from "./InsertButton";
@@ -61,13 +61,10 @@ const Timeline = (props: TimelineProps) => {
 		return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
 	}, []);
 
-	const handleInsertStage = useCallback(
-		(index) => {
-			setInsertAtIndex(index);
-			setShowNewStageDialog(true);
-		},
-		[],
-	);
+	const handleInsertStage = useCallback((index) => {
+		setInsertAtIndex(index);
+		setShowNewStageDialog(true);
+	}, []);
 
 	const handleNewStageCancel = useCallback(() => {
 		setShowNewStageDialog(false);
@@ -140,11 +137,7 @@ const Timeline = (props: TimelineProps) => {
 					Add new stage
 				</motion.div>
 			</motion.div>
-			<NewStageScreen
-				show={showNewStageDialog}
-				insertAtIndex={insertAtIndex}
-				onCancel={handleNewStageCancel}
-			/>
+			<NewStageScreen show={showNewStageDialog} insertAtIndex={insertAtIndex} onCancel={handleNewStageCancel} />
 		</div>
 	);
 };
@@ -169,25 +162,5 @@ const mapDispatchToProps = (dispatch: any, props: any) => ({
 });
 
 export { Timeline };
-
-// export default compose(
-// 	withStateHandlers(
-// 		({ sorting = false }) => ({
-// 			sorting,
-// 		}),
-// 		{
-// 			setSorting: () => (sortingState) => ({
-// 				sorting: sortingState,
-// 			}),
-// 		},
-// 	),
-// 	defaultProps({
-// 		lockAxis: "y",
-// 		distance: 5,
-// 		helperClass: "timeline__sortable-element",
-// 	}),
-// 	connect(mapStateToProps, mapDispatchToProps),
-// 	SortableContainer,
-// )(Timeline);
 
 export default compose(connect(mapStateToProps, mapDispatchToProps))(Timeline);

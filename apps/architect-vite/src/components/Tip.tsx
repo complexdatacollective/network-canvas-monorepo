@@ -1,7 +1,7 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
 import { motion, useAnimation } from "motion/react";
 import type React from "react";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 type TipProps = {
 	type?: "info" | "warning" | "error";

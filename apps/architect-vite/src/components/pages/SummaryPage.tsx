@@ -1,4 +1,3 @@
-import { Button } from "@codaco/legacy-ui";
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useLocation, useParams } from "wouter";
@@ -6,6 +5,7 @@ import { Layout } from "~/components/EditorLayout";
 import { selectProtocolById } from "~/ducks/modules/protocols";
 import type { RootState } from "~/ducks/modules/root";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
+import { Button } from "~/lib/legacy-ui";
 import AssetManifest from "~/lib/ProtocolSummary/components/AssetManifest";
 import Codebook from "~/lib/ProtocolSummary/components/Codebook";
 import Contents from "~/lib/ProtocolSummary/components/Contents";

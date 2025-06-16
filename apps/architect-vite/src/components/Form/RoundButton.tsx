@@ -1,6 +1,6 @@
-import { Icon } from "@codaco/legacy-ui/components";
 import cx from "classnames";
 import type React from "react";
+import { Icon } from "~/lib/legacy-ui/components";
 
 type RoundButtonProps = {
 	icon?: string | null;

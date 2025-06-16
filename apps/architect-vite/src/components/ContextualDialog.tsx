@@ -1,9 +1,9 @@
-import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import cx from "classnames";
 import type React from "react";
 import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import Stackable from "~/components/Stackable";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
 type ControlsProps = {
 	children?: React.ReactNode;

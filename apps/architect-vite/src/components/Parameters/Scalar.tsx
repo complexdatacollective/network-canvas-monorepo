@@ -1,4 +1,4 @@
-import TextField from "@codaco/legacy-ui/components/Fields/Text";
+import TextField from "~/lib/legacy-ui/components/Fields/Text";
 import { ValidatedField } from "../Form";
 
 type ScalarParametersProps = {

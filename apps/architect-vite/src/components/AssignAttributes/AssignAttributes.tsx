@@ -1,5 +1,5 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import type { FieldArrayFieldsProps } from "redux-form";
+import Button from "~/lib/legacy-ui/components/Button";
 import Attribute from "./Attribute";
 import withAssignAttributesHandlers from "./withAssignAttributesHandlers";
 

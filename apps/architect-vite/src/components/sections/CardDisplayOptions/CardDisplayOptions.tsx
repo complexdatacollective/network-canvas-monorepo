@@ -1,4 +1,3 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -7,6 +6,7 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import MultiSelect from "~/components/Form/MultiSelect";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import Tip from "../../Tip";
 import getVariableOptionsGetter from "../SortOptionsForExternalData/getVariableOptionsGetter";
 

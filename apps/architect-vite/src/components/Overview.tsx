@@ -1,5 +1,3 @@
-import { Button, Icon } from "@codaco/legacy-ui/components";
-import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
@@ -10,6 +8,8 @@ import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeP
 import { selectProtocolById } from "~/ducks/modules/protocols";
 import type { RootState } from "~/ducks/modules/root";
 import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
+import { Button, Icon } from "~/lib/legacy-ui/components";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
 import withTooltip from "./enhancers/withTooltip";
 

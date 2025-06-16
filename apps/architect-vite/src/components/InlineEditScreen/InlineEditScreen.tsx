@@ -1,12 +1,11 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import { useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { submit } from "redux-form";
-import { Layout } from "~/components/EditorLayout";
 import Dialog from "~/components/Dialog/Dialog";
+import { Layout } from "~/components/EditorLayout";
+import Button from "~/lib/legacy-ui/components/Button";
 import Form from "./Form";
 import { useBodyScrollLock } from "./useBodyScrollLock";
-
 
 interface InlineEditScreenProps {
 	show?: boolean;
@@ -27,7 +26,6 @@ const InlineEditScreen = ({
 	children = null,
 	initialValues,
 }: InlineEditScreenProps) => {
-
 	// Prevent scrolling of the body when the inline edit screen is open
 	useBodyScrollLock(show);
 
@@ -58,7 +56,7 @@ const InlineEditScreen = ({
 		>
 			<Layout>
 				{/* @ts-expect-error - reduxForm enhanced component typing issue */}
-				<Form form={form} onSubmit={onSubmit} initialValues={initialValues} key={`${form}-${JSON.stringify(initialValues)}`}>
+				<Form form={form} onSubmit={onSubmit} initialValues={initialValues}>
 					{children}
 				</Form>
 			</Layout>

@@ -1,5 +1,3 @@
-import { Button } from "@codaco/legacy-ui/components";
-import TextField from "@codaco/legacy-ui/components/Fields/Text";
 import { get, values } from "es-toolkit/compat";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -8,6 +6,8 @@ import { Field } from "redux-form";
 import BasicForm from "~/components/BasicForm";
 import ContextualDialog, { Controls, Title } from "~/components/ContextualDialog";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { Button } from "~/lib/legacy-ui/components";
+import TextField from "~/lib/legacy-ui/components/Fields/Text";
 import { getType, getVariablesForSubject } from "~/selectors/codebook";
 import safeName from "~/utils/safeName";
 import { allowedVariableName, required, uniqueByList } from "~/utils/validations";

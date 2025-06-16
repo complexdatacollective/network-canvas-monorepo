@@ -2,7 +2,7 @@ import { isEmpty } from "es-toolkit/compat";
 import markdown from "remark-parse";
 import slate from "remark-slate";
 import type { Descendant } from "slate";
-import unified from "unified";
+import { unified } from "unified";
 
 export const defaultValue: Descendant[] = [
 	{

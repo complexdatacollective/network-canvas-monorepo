@@ -1,4 +1,3 @@
-import RichText from "@codaco/legacy-ui/components/Fields/RichText/Field";
 import { compose } from "@reduxjs/toolkit";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
@@ -6,6 +5,7 @@ import ValidatedField from "~/components/Form/ValidatedField";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import Tip from "~/components/Tip";
+import RichText from "~/lib/legacy-ui/components/Fields/RichText/Field";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import withCreateEdgeHandlers from "./withCreateEdgeHandler";

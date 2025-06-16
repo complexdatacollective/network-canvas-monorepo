@@ -1,4 +1,3 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import { get } from "es-toolkit/compat";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -7,6 +6,7 @@ import { useSelector } from "react-redux";
 import ControlBar from "~/components/ControlBar";
 import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
+import Button from "~/lib/legacy-ui/components/Button";
 import { getAssetManifest } from "~/selectors/protocol";
 
 type MapOptions = {

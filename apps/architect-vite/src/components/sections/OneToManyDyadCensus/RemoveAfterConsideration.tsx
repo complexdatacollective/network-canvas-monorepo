@@ -1,8 +1,8 @@
-import * as Fields from "@codaco/legacy-ui/components/Fields";
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import * as Fields from "~/lib/legacy-ui/components/Fields";
 import DetachedField from "../../DetachedField";
 
 type RemoveAfterConsiderationProps = {

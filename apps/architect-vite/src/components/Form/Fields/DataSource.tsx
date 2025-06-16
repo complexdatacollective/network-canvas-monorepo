@@ -1,7 +1,6 @@
-import Radio from "@codaco/legacy-ui/components/Fields/Radio";
-import React from "react";
 import { withState } from "recompose";
 import NetworkThumbnail from "~/components/Thumbnail/Network";
+import Radio from "~/lib/legacy-ui/components/Fields/Radio";
 import File from "./File";
 
 type InputProps = {
@@ -86,6 +85,5 @@ const DataSource = (props: DataSourceProps) => {
 		</File>
 	);
 };
-
 
 export default withSelectNetworkAsset(DataSource);

@@ -1,8 +1,8 @@
 import { EditListPlugin } from "@productboard/slate-edit-list";
+import { compose } from "@reduxjs/toolkit";
 import { isEmpty } from "es-toolkit/compat";
 import isHotkey from "is-hotkey";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { compose } from "redux";
 import { createEditor, Transforms as SlateTransforms, type BaseEditor, type Descendant } from "slate";
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";

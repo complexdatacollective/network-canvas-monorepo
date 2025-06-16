@@ -1,6 +1,6 @@
-import Node from "@codaco/legacy-ui/Node";
 import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
+import Node from "~/lib/legacy-ui/Node";
 import { getNodeTypes } from "../selectors/codebook";
 
 type NodeType = {

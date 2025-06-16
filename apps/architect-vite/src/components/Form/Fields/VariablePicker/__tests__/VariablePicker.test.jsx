@@ -11,7 +11,7 @@ vi.mock("../VariablePill", () => ({
 	SimpleVariablePill: () => <div data-testid="simple-variable-pill">SimpleVariablePill</div>,
 }));
 
-vi.mock("@codaco/legacy-ui/components", () => ({
+vi.mock("~/lib/legacy-ui/components", () => ({
 	Button: ({ children, ...props }) => <button {...props}>{children}</button>,
 }));
 

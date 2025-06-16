@@ -1,10 +1,9 @@
-import { Button } from "@codaco/legacy-ui/components";
-import React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { actionCreators as codebookActionCreators } from "~/ducks/modules/protocol/codebook";
+import { Button } from "~/lib/legacy-ui/components";
 import EntityIcon from "./EntityIcon";
 import { getEntityProperties } from "./helpers";
 import Tag from "./Tag";
@@ -35,16 +34,16 @@ const getProtocolId = () => {
 	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
 };
 
-const EntityType = ({ 
-	name, 
-	color, 
-	inUse = true, 
-	usage, 
-	entity, 
-	type, 
-	variables = [], 
-	handleEdit = () => {}, 
-	handleDelete = () => {} 
+const EntityType = ({
+	name,
+	color,
+	inUse = true,
+	usage,
+	entity,
+	type,
+	variables = [],
+	handleEdit = () => {},
+	handleDelete = () => {},
 }: EntityTypeProps) => {
 	const protocolId = getProtocolId();
 	const stages = usage.map(({ id, label }) => (
@@ -88,7 +87,6 @@ const EntityType = ({
 		</div>
 	);
 };
-
 
 const mapStateToProps = (state, { entity, type }) => {
 	const entityProperties = getEntityProperties(state, { entity, type });

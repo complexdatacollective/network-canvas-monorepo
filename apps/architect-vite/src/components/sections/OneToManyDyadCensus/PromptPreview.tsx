@@ -1,4 +1,4 @@
-import { Markdown } from "@codaco/legacy-ui/components/Fields";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
 
 type PromptPreviewProps = {
 	text: string;

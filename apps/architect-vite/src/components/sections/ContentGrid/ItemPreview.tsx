@@ -1,6 +1,6 @@
-import { Markdown } from "@codaco/legacy-ui/components/Fields";
 import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
 import { getAssetManifest } from "~/selectors/protocol";
 import AudioWithUrl from "../../Assets/Audio";
 import BackgroundImageWithUrl from "../../Assets/BackgroundImage";

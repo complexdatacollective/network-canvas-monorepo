@@ -1,10 +1,10 @@
-import { Number } from "@codaco/legacy-ui/components/Fields";
 import { get, isNull, isUndefined } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Number } from "~/lib/legacy-ui/components/Fields";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 import Tip from "../Tip";

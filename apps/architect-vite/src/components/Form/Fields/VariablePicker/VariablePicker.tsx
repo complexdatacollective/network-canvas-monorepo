@@ -1,7 +1,7 @@
-import { Button } from "@codaco/legacy-ui/components";
 import { get, has } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { Button } from "~/lib/legacy-ui/components";
 import SpotlightModal from "./SpotlightModal";
 import EditableVariablePill, { SimpleVariablePill } from "./VariablePill";
 import VariableSpotlight from "./VariableSpotlight";
@@ -77,7 +77,7 @@ const VariablePicker = ({
 	return (
 		<>
 			<div className="form-fields-variable-picker">
-				<fieldset>
+				<fieldset className="bg-section-background">
 					{label && <legend>{label}</legend>}
 					{value && (
 						<AnimatePresence exitBeforeEnter initial={false}>

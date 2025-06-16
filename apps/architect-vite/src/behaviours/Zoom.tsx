@@ -1,9 +1,9 @@
-import { getCSSVariableAsNumber } from "@codaco/legacy-ui/utils/CSSVariables";
 import anime from "animejs";
 import type React from "react";
 import { PureComponent } from "react";
 import ReactDOM from "react-dom";
 import { compose, getContext } from "recompose";
+import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
 function getDisplayName(WrappedComponent: React.ComponentType<any>) {
 	return WrappedComponent.displayName || WrappedComponent.name || "Component";

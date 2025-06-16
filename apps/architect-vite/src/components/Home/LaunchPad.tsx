@@ -1,8 +1,8 @@
-import { GraphicButton } from "@codaco/legacy-ui/components";
-import { ProtocolCard } from "@codaco/legacy-ui/components/Cards";
 import { first } from "es-toolkit/compat";
 import { connect, useDispatch } from "react-redux";
 import { useLocation } from "wouter";
+import { GraphicButton } from "~/lib/legacy-ui/components";
+import { ProtocolCard } from "~/lib/legacy-ui/components/Cards";
 // Use webUserActions during transition
 import { selectRecentProtocols, type StoredProtocol } from "~/ducks/modules/protocols";
 import type { RootState } from "~/ducks/modules/root";

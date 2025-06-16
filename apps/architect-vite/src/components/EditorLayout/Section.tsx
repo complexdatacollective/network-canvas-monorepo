@@ -1,8 +1,8 @@
-import { Toggle } from "@codaco/legacy-ui/components/Fields";
 import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { Toggle } from "~/lib/legacy-ui/components/Fields";
 import IssueAnchor from "../IssueAnchor";
 
 const animations = {
@@ -28,7 +28,7 @@ type SectionProps = {
 	className?: string;
 	toggleable?: boolean;
 	startExpanded?: boolean;
-	handleToggleChange?: () => Promise<boolean>;
+	handleToggleChange?: (state: boolean) => Promise<boolean>;
 };
 
 const Section = ({
@@ -41,7 +41,7 @@ const Section = ({
 	className = "",
 	toggleable = false,
 	startExpanded = true,
-	handleToggleChange = () => Promise.resolve(true),
+	handleToggleChange = (state) => Promise.resolve(state),
 }: SectionProps) => {
 	const [isOpen, setIsOpen] = useState(startExpanded);
 
@@ -62,10 +62,11 @@ const Section = ({
 		if (result) {
 			setIsOpen(intendedState);
 		}
-	}, [isOpen, setIsOpen, handleToggleChange]);
+	}, [isOpen, handleToggleChange]);
 
 	const sectionClasses = cx(
 		"stage-editor-section",
+		group ? "bg-section-background-dark" : "bg-section-background",
 		{ "stage-editor-section--toggleable": toggleable },
 		{ "stage-editor-section--open": isOpen },
 		{ "stage-editor-section--disabled": disabled },
@@ -75,7 +76,9 @@ const Section = ({
 
 	return (
 		<fieldset className={sectionClasses}>
-			<legend className={toggleable ? "toggleable" : ""}>
+			<legend
+				className={cx(toggleable ? "toggleable" : "", group ? "bg-section-background-dark" : "bg-section-background")}
+			>
 				{toggleable && (
 					<Toggle
 						input={{
@@ -86,7 +89,7 @@ const Section = ({
 					/>
 				)}
 				{title}
-				{!toggleable && <span style={{ color: "var(--error)" }}> *</span>}
+				{!toggleable && <span className="text-error"> *</span>}
 			</legend>
 			<div className="summary">{summary}</div>
 			{id && <IssueAnchor fieldName={id} description={title} />}

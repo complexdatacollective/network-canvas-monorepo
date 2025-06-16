@@ -1,7 +1,7 @@
-import { Button } from "@codaco/legacy-ui/components";
 import useExternalDataDownload from "~/components/AssetBrowser/useExternalDataDownload";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
+import { Button } from "~/lib/legacy-ui/components";
 import EntityIcon from "./EntityIcon";
 import VariableList from "./VariableList";
 

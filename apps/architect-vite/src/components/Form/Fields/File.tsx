@@ -1,8 +1,8 @@
-import Button from "@codaco/legacy-ui/components/Button";
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
-import React from "react";
+import type React from "react";
 import { withState } from "recompose";
+import Button from "~/lib/legacy-ui/components/Button";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
 
 const withShowBrowser = withState("showBrowser", "setShowBrowser", ({ showBrowser }) => !!showBrowser);
@@ -96,7 +96,6 @@ const FileInput = ({
 		</div>
 	);
 };
-
 
 export { FileInput };
 

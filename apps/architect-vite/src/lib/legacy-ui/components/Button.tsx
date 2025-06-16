@@ -2,6 +2,18 @@ import cx from "classnames";
 import React, { PureComponent } from "react";
 import Icon from "./Icon";
 
+// Safelist for Tailwind CSS - ensures all button color classes are included in build
+// bg-neon-coral bg-sea-green bg-slate-blue bg-navy-taupe bg-cyber-grape bg-mustard
+// bg-rich-black bg-charcoal bg-platinum bg-platinum-dark bg-sea-serpent
+// bg-purple-pizazz bg-paradise-pink bg-cerulean-blue bg-kiwi bg-neon-carrot
+// bg-barbie-pink bg-tomato bg-white bg-primary
+// text-white text-charcoal
+// hover:bg-neon-coral/80 hover:bg-sea-green/80 hover:bg-slate-blue/80 hover:bg-navy-taupe/80
+// hover:bg-cyber-grape/80 hover:bg-mustard/80 hover:bg-rich-black/80 hover:bg-charcoal/80
+// hover:bg-platinum/80 hover:bg-platinum-dark/80 hover:bg-sea-serpent/80 hover:bg-purple-pizazz/80
+// hover:bg-paradise-pink/80 hover:bg-cerulean-blue/80 hover:bg-kiwi/80 hover:bg-neon-carrot/80
+// hover:bg-barbie-pink/80 hover:bg-tomato/80 hover:bg-white/80 hover:bg-primary/80
+
 // Color mapping for button variants to Tailwind classes
 const getColorClasses = (color?: string) => {
 	if (!color) {
@@ -144,7 +156,7 @@ interface ButtonProps {
 	type?: "button" | "submit" | "reset";
 	onClick?: () => void;
 	disabled?: boolean;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 class Button extends PureComponent<ButtonProps> {

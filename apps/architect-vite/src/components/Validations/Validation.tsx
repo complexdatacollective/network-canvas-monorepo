@@ -1,6 +1,6 @@
-import { Icon } from "@codaco/legacy-ui/components";
-import Number from "@codaco/legacy-ui/components/Fields/Number";
 import { map } from "lodash";
+import { Icon } from "~/lib/legacy-ui/components";
+import Number from "~/lib/legacy-ui/components/Fields/Number";
 import NativeSelect from "../Form/Fields/NativeSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 

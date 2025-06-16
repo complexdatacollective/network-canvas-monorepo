@@ -1,4 +1,4 @@
-import { Icon, Node } from "@codaco/legacy-ui/components";
+import { Icon, Node } from "~/lib/legacy-ui/components";
 
 const EntityIcon = ({ entity, color }) => {
 	switch (entity) {

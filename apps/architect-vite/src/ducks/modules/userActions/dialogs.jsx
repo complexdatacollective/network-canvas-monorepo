@@ -1,7 +1,7 @@
-import { Markdown } from "@codaco/legacy-ui/components/Fields";
 import React from "react";
 import ExternalLink from "~/components/ExternalLink";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { Markdown } from "~/lib/legacy-ui/components/Fields";
 import { errors as netcanvasFileErrors } from "~/utils/netcanvasFile";
 
 const getFriendlyMessage = (e, meta = {}) => {
@@ -217,9 +217,10 @@ const mayUpgradeProtocolDialog = (protocolSchemaVersion, targetSchemaVersion, mi
 };
 
 export {
-	appUpgradeRequiredDialog,
-	importErrorDialog,
-	mayUpgradeProtocolDialog,
-	netcanvasFileErrorHandler,
-	validationErrorDialog,
+    appUpgradeRequiredDialog,
+    importErrorDialog,
+    mayUpgradeProtocolDialog,
+    netcanvasFileErrorHandler,
+    validationErrorDialog
 };
+

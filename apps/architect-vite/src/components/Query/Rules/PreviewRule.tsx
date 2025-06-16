@@ -1,5 +1,5 @@
-import { Icon } from "@codaco/legacy-ui/components";
 import { compose, withHandlers } from "recompose";
+import { Icon } from "~/lib/legacy-ui/components";
 import RuleText, { Join } from "./PreviewText";
 import withDisplayOptions from "./withDisplayOptions";
 

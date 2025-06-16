@@ -1,6 +1,6 @@
-import { asOptionObject, getValue } from "@codaco/legacy-ui/components/Fields/utils/options";
 import cx from "classnames";
-import React, { PureComponent } from "react";
+import { PureComponent } from "react";
+import { asOptionObject, getValue } from "~/lib/legacy-ui/components/Fields/utils/options";
 
 type OptionType = {
 	value: string | number;

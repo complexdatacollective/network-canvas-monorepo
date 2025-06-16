@@ -1,7 +1,7 @@
-import Button from "@codaco/legacy-ui/components/Button";
 import cx from "classnames";
 import { useState } from "react";
 import APIKeyThumbnail from "~/components/Thumbnail/APIKey";
+import Button from "~/lib/legacy-ui/components/Button";
 import APIKeyBrowser from "./APIKeyBrowser";
 
 type GeoAPIKeyProps = {

@@ -1,5 +1,5 @@
-import Icon from "@codaco/legacy-ui/components/Icon";
 import cx from "classnames";
+import Icon from "~/lib/legacy-ui/components/Icon";
 
 type FieldErrorProps = {
 	error?: string | null;

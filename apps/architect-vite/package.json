@@ -12,7 +12,6 @@
 	},
 	"dependencies": {
 		"@codaco/development-protocol": "workspace:*",
-		"@codaco/legacy-ui": "workspace:*",
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
