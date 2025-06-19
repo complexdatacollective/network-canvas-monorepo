@@ -44,7 +44,8 @@ export default defineConfig({
 	plugins: [
 		schemaPlugin(),
 		dts({
-			rollupTypes: true,
+			rollupTypes: false,
+			insertTypesEntry: true,
 		}),
 	],
 	test: {
