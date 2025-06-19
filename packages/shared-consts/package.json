@@ -23,12 +23,15 @@
 	"keywords": ["typescript", "library"],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "MIT",
+	"engines": {
+		"node": ">=20.0.0"
+	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"typescript": "catalog:",
-		"vite": "^6.3.5",
-		"vite-plugin-dts": "^4.5.4"
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:"
 	},
 	"dependencies": {
 		"zod": "catalog:"

@@ -9,6 +9,9 @@
 	},
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"type": "module",
+	"engines": {
+		"node": ">=20.0.0"
+	},
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
@@ -46,8 +49,8 @@
 		"tar-stream": "^3.1.7",
 		"tsx": "^4.19.3",
 		"typescript": "catalog:",
-		"vite": "^6.2.0",
-		"vite-plugin-dts": "^4.5.3",
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:",
 		"zod-to-json-schema": "^3.24.3"
 	}
