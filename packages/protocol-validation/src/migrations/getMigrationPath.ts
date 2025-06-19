@@ -1,8 +1,10 @@
+import type { Protocol } from "src/schemas/8.zod";
 import { MigrationNotPossibleError, StringVersionError, VersionMismatchError } from "./errors";
 import type { ProtocolMigration } from "./migrateProtocol";
 import { migrations } from "./migrations";
 
-const isMigrationPathValid = (path: ProtocolMigration[]) => !path.some(({ migration }) => !migration);
+const isMigrationPathValid = (path: ProtocolMigration<Protocol, Protocol>[]) =>
+	!path.some(({ migration }) => !migration);
 
 const matchMigrations =
 	(sourceVersion: number, targetVersion: number) =>
