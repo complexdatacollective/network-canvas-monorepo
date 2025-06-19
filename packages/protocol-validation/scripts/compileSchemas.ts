@@ -1,6 +1,6 @@
 import Ajv from "ajv";
 import standaloneCode from "ajv/dist/standalone/index.js";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import * as fs from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 
 const SCHEMA_SRC_PATH = "./src/schemas/";
@@ -19,7 +19,7 @@ const isJsonFile = (fileName: string) => extname(fileName) === ".json";
 const getBaseName = (schemaFileName: string) => basename(schemaFileName, ".json");
 
 const getSchemas = async (directory: string) => {
-	const files = await readdir(directory);
+	const files = await fs.readdir(directory);
 	return files.filter(isJsonFile).map(getBaseName);
 };
 
@@ -27,7 +27,7 @@ const compileSchemas = async () => {
 	const schemaSrcDirectory = resolve(SCHEMA_SRC_PATH);
 	const schemaOutputDirectory = resolve(SCHEMA_OUTPUT_PATH);
 
-	await mkdir(schemaOutputDirectory, { recursive: true });
+	await fs.mkdir(schemaOutputDirectory, { recursive: true });
 
 	const schemas = await getSchemas(schemaSrcDirectory);
 
@@ -38,11 +38,12 @@ const compileSchemas = async () => {
 		const modulePath = join(schemaOutputDirectory, `${baseSchemaName}.js`);
 
 		// Read the file at schemaPath and parse as JSON
-		const schema = (await readFile(schemaPath, "utf8").then(JSON.parse)) as Record<string, unknown>;
+		const schemaContent = await fs.readFile(schemaPath, { encoding: "utf8" });
+		const schema = JSON.parse(schemaContent) as Record<string, unknown>;
 		const validateFunction = ajv.compile(schema);
 		const moduleCode = standaloneCode(ajv, validateFunction);
 
-		await writeFile(modulePath, moduleCode, {});
+		await fs.writeFile(modulePath, moduleCode, {});
 
 		console.log(`${baseSchemaName} done.`);
 	}
