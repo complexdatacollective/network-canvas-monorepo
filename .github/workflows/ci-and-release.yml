@@ -26,8 +26,18 @@ jobs:
         run: pnpm install
       - name: Build shared-consts
         run: pnpm --filter @codaco/shared-consts build
-      - name: Run Biome
-        run: pnpm biome check .
+      - name: Check and fix formatting
+        run: |
+          echo "Running Biome check with auto-fix..."
+          pnpm biome check . --write
+          if ! git diff --quiet; then
+            echo "❌ Formatting issues found and fixed. Please run 'pnpm format-and-lint:fix' locally and commit the changes."
+            echo "Files that were fixed:"
+            git diff --name-only
+            exit 1
+          else
+            echo "✅ No formatting issues found"
+          fi
       - name: Typecheck
         run: pnpm typecheck-all
 

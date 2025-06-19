@@ -7,15 +7,22 @@
 		"test:watch": "pnpm -r test:watch",
 		"publish-packages": "pnpm run format-and-lint:fix && pnpm run build && pnpm changeset publish",
 		"version-packages": "pnpm changeset version && pnpm run format-and-lint:fix",
+		"changeset": "pnpm changeset add && pnpm run format-and-lint:fix",
 		"format-and-lint": "biome check .",
 		"format-and-lint:fix": "biome check . --write",
-		"typecheck-all": "pnpm -r --no-bail run typecheck"
+		"typecheck-all": "pnpm -r --no-bail run typecheck",
+		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.28.1",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.1.2",
 		"typescript": "catalog:"
 	},
 	"packageManager": "pnpm@10.6.5+sha512.cdf928fca20832cd59ec53826492b7dc25dc524d4370b6b4adbf65803d32efaa6c1c88147c0ae4e8d579a6c9eec715757b50d4fa35eea179d868eada4ed043af",
-	"name": "network-canvas-monorepo"
+	"name": "network-canvas-monorepo",
+	"lint-staged": {
+		"*": "biome check --write --no-errors-on-unmatched"
+	}
 }
