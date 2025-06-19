@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 5.0.2
+
+### Patch Changes
+
+- 793bf39: Fix TypeScript declaration merging errors by disabling rollupTypes in vite-plugin-dts. This resolves "Individual declarations in merged declaration must be all exported or all local" errors and "const initializer in ambient context" issues when importing the package.
+
 ## 5.0.1
 
 ### Patch Changes
