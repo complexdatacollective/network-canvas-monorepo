@@ -489,6 +489,9 @@ importers:
 
   packages/protocol-validation:
     dependencies:
+      '@codaco/shared-consts':
+        specifier: workspace:*
+        version: link:../shared-consts
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -496,9 +499,6 @@ importers:
         specifier: 'catalog:'
         version: 3.24.2
     devDependencies:
-      '@codaco/shared-consts':
-        specifier: workspace:*
-        version: link:../shared-consts
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
