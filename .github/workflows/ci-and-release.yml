@@ -11,7 +11,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
+      node-modules-cache-hit: ${{ steps.cache-node-modules.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Node.js
@@ -20,28 +20,39 @@ jobs:
           node-version: "20"
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-      - name: Cache pnpm
-        id: cache-check
+      
+      # Cache node_modules based on pnpm-lock.yaml
+      - name: Cache node_modules
+        id: cache-node-modules
         uses: actions/cache@v4
         with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - name: Install dependencies
-        run: pnpm install
-      - name: Build shared-consts
-        run: pnpm --filter @codaco/shared-consts build
-      
-      # Upload artifacts for other jobs
-      - name: Upload node_modules
-        uses: actions/upload-artifact@v4
-        with:
-          name: node_modules
           path: |
             node_modules
             packages/*/node_modules
             apps/*/node_modules
-          retention-days: 1
+            tooling/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
       
+      # Cache pnpm store for faster installs
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      # Only install if cache miss
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build shared-consts
+        run: pnpm --filter @codaco/shared-consts build
+      
+      # Upload shared-consts build as artifact
       - name: Upload shared-consts build
         uses: actions/upload-artifact@v4
         with:
@@ -61,11 +72,18 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
       
-      # Download artifacts instead of rebuilding
-      - name: Download node_modules
-        uses: actions/download-artifact@v4
+      # Restore cached node_modules
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
         with:
-          name: node_modules
+          path: |
+            node_modules
+            packages/*/node_modules
+            apps/*/node_modules
+            tooling/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
       
       - name: Download shared-consts build
         uses: actions/download-artifact@v4
@@ -73,18 +91,8 @@ jobs:
           name: shared-consts-dist
           path: packages/shared-consts/dist
       
-      - name: Check and fix formatting
-        run: |
-          echo "Running Biome check with auto-fix..."
-          pnpm biome check . --write
-          if ! git diff --quiet; then
-            echo "❌ Formatting issues found and fixed. Please run 'pnpm format-and-lint:fix' locally and commit the changes."
-            echo "Files that were fixed:"
-            git diff --name-only
-            exit 1
-          else
-            echo "✅ No formatting issues found"
-          fi
+      - name: Check formatting
+        run: pnpm format-and-lint
       
       - name: Typecheck
         run: pnpm typecheck-all
@@ -108,11 +116,18 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
       
-      # Download artifacts instead of rebuilding
-      - name: Download node_modules
-        uses: actions/download-artifact@v4
+      # Restore cached node_modules
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
         with:
-          name: node_modules
+          path: |
+            node_modules
+            packages/*/node_modules
+            apps/*/node_modules
+            tooling/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
       
       - name: Download shared-consts build
         uses: actions/download-artifact@v4
@@ -145,11 +160,18 @@ jobs:
     - name: Install pnpm
       uses: pnpm/action-setup@v4
     
-    # Download artifacts instead of rebuilding
-    - name: Download node_modules
-      uses: actions/download-artifact@v4
+    # Restore cached node_modules
+    - name: Restore node_modules cache
+      uses: actions/cache/restore@v4
       with:
-        name: node_modules
+        path: |
+          node_modules
+          packages/*/node_modules
+          apps/*/node_modules
+          tooling/*/node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-node-modules-
     
     - name: Download shared-consts build
       uses: actions/download-artifact@v4
