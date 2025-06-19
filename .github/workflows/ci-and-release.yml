@@ -1,0 +1,103 @@
+name: CI and Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Cache pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build shared-consts
+        run: pnpm --filter @codaco/shared-consts build
+      - name: Run Biome
+        run: pnpm biome check .
+      - name: Typecheck
+        run: pnpm typecheck-all
+
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env: 
+      PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+      PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+      GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Cache pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build shared-consts
+        run: pnpm --filter @codaco/shared-consts build
+      - name: Create .env file and run tests
+        run: |
+          echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
+          echo "PROTOCOL_ENCRYPTION_IV=${{ secrets.PROTOCOL_ENCRYPTION_IV }}" >> packages/protocol-validation/.env
+          echo "GITHUB_TOKEN=${{ secrets.TEST_PROTOCOL_TOKEN }}" >> packages/protocol-validation/.env
+          pnpm test
+
+  release:
+    # Only run on main branch pushes (not PRs) and only if lint and test jobs succeed
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint-and-format, test]
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_DOCS_PATH: "docs"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+    - name: Cache pnpm
+      uses: actions/cache@v4
+      with:
+        path: ~/.pnpm-store
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+    - name: Install dependencies
+      run: pnpm install
+    - name: Build shared-consts
+      run: pnpm --filter @codaco/shared-consts build
+    - name: Create Release Pull Request
+      uses: changesets/action@v1
+      with:
+        # command used to version packages. allows for fixing formatting issues caused by versioning
+        version: pnpm run version-packages
+        # builds packages and runs changesets publish. versioning is done by changesets action
+        publish: pnpm run publish-packages
+        createGithubReleases: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
