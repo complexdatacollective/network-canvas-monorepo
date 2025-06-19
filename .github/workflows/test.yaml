@@ -27,6 +27,8 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
       - name: Install dependencies
         run: pnpm install
+      - name: Build shared-consts
+        run: pnpm --filter @codaco/shared-consts build
       - name: Create .env file and run tests
         run: |
           echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env

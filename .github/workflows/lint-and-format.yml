@@ -24,6 +24,8 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
       - name: Install dependencies
         run: pnpm install
+      - name: Build shared-consts
+        run: pnpm --filter @codaco/shared-consts build
       - name: Run Biome
         run: pnpm biome check .
       - name: Typecheck
