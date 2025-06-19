@@ -6,6 +6,8 @@
 		"test": "pnpm -r test",
 		"test:watch": "pnpm -r test:watch",
 		"publish-packages": "pnpm run format-and-lint:fix && pnpm run build && pnpm exec changeset publish",
+		"publish-packages-optimized": "pnpm run format-and-lint:fix && pnpm run build-for-publish && pnpm exec changeset publish",
+		"build-for-publish": "node scripts/build-changed-packages.mjs",
 		"version-packages": "pnpm exec changeset version && pnpm run format-and-lint:fix",
 		"changeset": "changeset add && pnpm run format-and-lint:fix",
 		"format-and-lint": "biome check .",
