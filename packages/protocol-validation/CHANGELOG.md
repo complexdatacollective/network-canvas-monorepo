@@ -1,5 +1,13 @@
 # @codaco/protocol-validation
 
+## 5.0.1
+
+### Patch Changes
+
+- 29287ef: Schema 8 migration fixes/improvements:
+  - Fix displayVariable removal
+  - Remove options from Toggle variables
+
 ## 5.0.0
 
 ### Major Changes
