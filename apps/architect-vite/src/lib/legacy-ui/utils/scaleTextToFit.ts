@@ -26,7 +26,7 @@ const scaleTextToFit = (element: HTMLElement, options?: ScaleTextOptions): void 
 	element.innerHTML = "";
 
 	const textElement = document.createElement("span");
-	textElement.innerHTML = text;
+	textElement.textContent = text;
 	element.appendChild(textElement);
 
 	const findFontSize = (size: number): number => {
