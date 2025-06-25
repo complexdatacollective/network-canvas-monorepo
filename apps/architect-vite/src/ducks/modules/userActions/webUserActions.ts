@@ -1,11 +1,19 @@
 /* eslint-disable import/prefer-default-export */
-import { getMigrationNotes, validateProtocol } from "@codaco/protocol-validation";
 import type { Protocol } from "@codaco/protocol-validation";
+import { getMigrationNotes, validateProtocol } from "@codaco/protocol-validation";
 import axios from "axios";
+import JSZip from "jszip";
 import { v4 as uuid } from "uuid";
+import { navigate } from "wouter/use-browser-location";
 import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION, SAMPLE_PROTOCOL_URL } from "~/config";
+import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import {
+	addProtocol,
+	generateProtocolId,
+	updateProtocol
+} from "~/ducks/modules/protocols";
 import { actionCreators as toastActions } from "~/ducks/modules/toasts";
 import { createLock } from "~/ducks/modules/ui/status";
 import {
@@ -14,19 +22,11 @@ import {
 	mayUpgradeProtocolDialog,
 	validationErrorDialog,
 } from "~/ducks/modules/userActions/dialogs";
+import type { AppDispatch, RootState } from "~/ducks/store";
 import { getHasUnsavedChanges } from "~/selectors/protocol";
 import CancellationError from "~/utils/cancellationError";
 import * as netcanvasFile from "~/utils/netcanvasFile";
 import { createImportToast, updateDownloadProgress } from "./userActionToasts";
-import { 
-  addProtocol, 
-  updateProtocol, 
-  generateProtocolId,
-  type StoredProtocol 
-} from "~/ducks/modules/protocols";
-import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
-import type { AppDispatch, RootState } from "~/ducks/store";
-import { navigate } from "wouter/use-browser-location";
 
 const protocolsLock = createLock("PROTOCOLS");
 const loadingLock = createLock("LOADING");
@@ -55,8 +55,74 @@ const checkUnsavedChanges = () => (dispatch: AppDispatch, getState: () => RootSt
 			});
 		});
 
-// New function to handle file upload in browser
-const openProtocolFile = (): Promise<{ canceled: boolean; protocol?: Protocol }> => {
+// IndexedDB utilities for asset storage
+const DB_NAME = 'NetworkCanvasAssets';
+const DB_VERSION = 1;
+const ASSET_STORE = 'assets';
+
+const openIndexedDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(ASSET_STORE)) {
+        const store = db.createObjectStore(ASSET_STORE, { keyPath: 'id' });
+        store.createIndex('protocolId', 'protocolId', { unique: false });
+      }
+    };
+  });
+};
+
+const saveAssetToIndexedDB = async (assetId: string, protocolId: string, filename: string, data: ArrayBuffer, mimeType: string): Promise<void> => {
+  const db = await openIndexedDB();
+  const transaction = db.transaction([ASSET_STORE], 'readwrite');
+  const store = transaction.objectStore(ASSET_STORE);
+  
+  const assetData = {
+    id: assetId,
+    protocolId,
+    filename,
+    data,
+    mimeType,
+    createdAt: Date.now(),
+  };
+  
+  return new Promise((resolve, reject) => {
+    const request = store.put(assetData);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+};
+
+const getAssetMimeType = (filename: string): string => {
+  const ext = filename.toLowerCase().split('.').pop();
+  const mimeTypes: Record<string, string> = {
+    // Images
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    // Audio
+    'mp3': 'audio/mpeg',
+    'aiff': 'audio/aiff',
+    'm4a': 'audio/mp4',
+    // Video
+    'mov': 'video/quicktime',
+    'mp4': 'video/mp4',
+    // Data
+    'json': 'application/json',
+    'csv': 'text/csv',
+    'geojson': 'application/geo+json',
+  };
+  return mimeTypes[ext || ''] || 'application/octet-stream';
+};
+
+const openProtocolFile = (): Promise<{ canceled: boolean; protocol?: Protocol; protocolId?: string }> => {
+  console.log('Opening protocol file...');
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -64,15 +130,65 @@ const openProtocolFile = (): Promise<{ canceled: boolean; protocol?: Protocol }>
     
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
+      console.log('File selected:', file);
       if (!file) {
         resolve({ canceled: true });
         return;
       }
       
       try {
-        const text = await file.text();
-        const protocol = JSON.parse(text) as Protocol;
-        resolve({ canceled: false, protocol });
+        const fileName = file.name.toLowerCase();
+        
+        if (fileName.endsWith('.netcanvas')) {
+          // Handle .netcanvas ZIP file
+          console.log('Processing .netcanvas ZIP file...');
+          const arrayBuffer = await file.arrayBuffer();
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          
+          // Extract protocol.json
+          const protocolFile = zip.file('protocol.json');
+          if (!protocolFile) {
+            throw new Error('protocol.json not found in .netcanvas file');
+          }
+          
+          const protocolText = await protocolFile.async('string');
+          const protocol = JSON.parse(protocolText) as Protocol;
+          
+          // Generate protocol ID for asset storage
+          const protocolId = await generateProtocolId(protocol);
+          
+          // Extract and store assets
+          const assetFiles = Object.keys(zip.files).filter(fileName => 
+            fileName.startsWith('assets/') && !zip.files[fileName].dir
+          );
+          
+          console.log(`Found ${assetFiles.length} assets to extract`);
+          
+          // Process assets in parallel
+          const assetPromises = assetFiles.map(async (assetPath) => {
+            const assetFile = zip.file(assetPath);
+            if (!assetFile) return;
+            
+            const assetData = await assetFile.async('arraybuffer');
+            const filename = assetPath.replace('assets/', '');
+            const mimeType = getAssetMimeType(filename);
+            const assetId = filename.split('.')[0]; // Use filename without extension as ID
+            
+            await saveAssetToIndexedDB(assetId, protocolId, filename, assetData, mimeType);
+            console.log(`Saved asset: ${filename} (${assetData.byteLength} bytes)`);
+          });
+          
+          await Promise.all(assetPromises);
+          console.log('All assets extracted and saved to IndexedDB');
+          
+          resolve({ canceled: false, protocol, protocolId });
+        } else {
+          // Handle plain .json file
+          console.log('Processing .json file...');
+          const text = await file.text();
+          const protocol = JSON.parse(text) as Protocol;
+          resolve({ canceled: false, protocol });
+        }
       } catch (error) {
         console.error('Error reading protocol file:', error);
         resolve({ canceled: true });
@@ -90,7 +206,7 @@ const openProtocolFile = (): Promise<{ canceled: boolean; protocol?: Protocol }>
 // Updated to work with web-based approach
 const openNetcanvas = protocolsLock(() => {
 	// helper function so we can use loadingLock
-	const openOrUpgrade = loadingLock(({ canceled, protocol }: { canceled: boolean; protocol?: Protocol }) => 
+	const openOrUpgrade = loadingLock(({ canceled, protocol, protocolId: existingProtocolId }: { canceled: boolean; protocol?: Protocol; protocolId?: string }) => 
     async (dispatch: AppDispatch) => {
 		if (canceled || !protocol) {
 			return null;
@@ -101,8 +217,8 @@ const openNetcanvas = protocolsLock(() => {
 			
 			switch (schemaVersionStatus) {
 				case schemaVersionStates.OK: {
-					// Generate ID and store protocol
-					const protocolId = await generateProtocolId(protocol);
+					// Use existing protocol ID if available (from .netcanvas file), otherwise generate new one
+					const protocolId = existingProtocolId || await generateProtocolId(protocol);
 					const protocolName = protocol.name || 'Untitled Protocol';
 					
 					// Add to protocols store
@@ -154,8 +270,8 @@ const openNetcanvas = protocolsLock(() => {
 				return { canceled: true };
 			}
 
-			const { canceled, protocol } = await openProtocolFile();
-			return dispatch(openOrUpgrade({ canceled, protocol }));
+			const { canceled, protocol, protocolId } = await openProtocolFile();
+			return dispatch(openOrUpgrade({ canceled, protocol, protocolId }));
 		} catch (e) {
 			console.error('Error in openNetcanvas:', e);
 			return null;

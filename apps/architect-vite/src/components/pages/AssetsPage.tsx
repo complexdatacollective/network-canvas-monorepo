@@ -3,6 +3,7 @@ import AssetBrowser from "~/components/AssetBrowser";
 import { Layout } from "~/components/EditorLayout";
 import ExternalLink from "~/components/ExternalLink";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
+import Button from "~/lib/legacy-ui/components/Button";
 
 const AssetsPage = () => {
 	const [, setLocation] = useLocation();
@@ -26,13 +27,9 @@ const AssetsPage = () => {
 			<div className="stage-heading stage-heading--inline">
 				<Layout>
 					<div className="flex items-center gap-4 mb-6">
-						<button
-							onClick={handleGoBack}
-							className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-							type="button"
-						>
+						<Button onClick={handleGoBack} color="platinum">
 							← Back to Protocol
-						</button>
+						</Button>
 					</div>
 					<h1 className="screen-heading">Resource Library</h1>
 					<p>
@@ -44,6 +41,7 @@ const AssetsPage = () => {
 						</ExternalLink>{" "}
 						for more information.
 					</p>
+					
 				</Layout>
 			</div>
 			<Layout>
