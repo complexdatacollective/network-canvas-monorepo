@@ -20,18 +20,18 @@ interface DialogProps {
  * a specific type of Dialog, create in the pattern of Notice
  */
 const Dialog = ({ 
-	children = null, 
-	type = null, 
-	icon = null, 
+	children, 
+	type, 
+	icon, 
 	show = false, 
 	options = [], 
 	title, 
-	message = null, 
+	message, 
 	onBlur = () => {}, 
-	classNames = null 
+	classNames,
 }: DialogProps) => (
 	<Modal show={show} onBlur={onBlur}>
-		<div className={cx("dialog", { [`dialog--${type}`]: type }, classNames)}>
+		<div className={cx("dialog", { [`dialog--${type}`]: type }, classNames, "bg-slate-blue-dark text-accent-foreground")}>
 			<div className="dialog__main">
 				{icon && (
 					<div className="dialog__main-icon">

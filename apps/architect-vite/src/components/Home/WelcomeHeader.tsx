@@ -5,7 +5,7 @@ import Version from "~/components/Version";
 import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
 import headerGraphic from "~/images/Arc-Flat.svg";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
-import { Button } from "~/lib/legacy-ui/components";
+import Button from "~/lib/legacy-ui/components/Button";
 import { openExternalLink } from "../ExternalLink";
 import Group from "./Group";
 import Section from "./Section";
@@ -18,9 +18,11 @@ const WelcomeHeader = () => {
 	const dispatch = useDispatch();
 	const downloadSampleProtocol = () => dispatch(webUserActions.importSampleProtocol());
 
-	const classes = cx("home-section", "welcome-header", { 
-		"welcome-header--is-open bg-slate-blue text-white": isOpen 
-	});
+  	const classes = cx(
+    	"relative rounded-(--border-radius) shadow-(--architect-panel-shadow) my-10 mx-auto max-w-4xl overflow-hidden flex flex-col flex-wrap",
+    	"welcome-header",
+    	isOpen ? "welcome-header--is-open bg-slate-blue text-white" : "bg-transparent"
+  	);
 
 	const start = {
 		show: {
@@ -77,7 +79,7 @@ const WelcomeHeader = () => {
 									</p>
 									<div className="welcome-actions">
 										<Button
-											className="button button--cerulean-blue button--with-new before:bg-white before:text-rich-black"
+											className="button bg-cerulean-blue button--with-new before:bg-white before:text-rich-black"
 											color="cerulean-blue"
 											onClick={() => openExternalLink("https://community.networkcanvas.com")}
 										>
@@ -85,7 +87,7 @@ const WelcomeHeader = () => {
 										</Button>
 										{/* <Button
                       color="primary"
-                      onClick={() => openExternalLink('https://www.youtube.com/watch?v=XzfE6j-LnII')}
+                      onClick={() => window.open('https://www.youtube.com/watch?v=XzfE6j-LnII', '_blank', 'noopener,noreferrer')}
                     >
                       Watch overview video
                     </Button> */}

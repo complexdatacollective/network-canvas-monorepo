@@ -1,7 +1,7 @@
 import type React from "react";
 
 export const openExternalLink = (href: string) => {
-	shell.openExternal(href);
+	window.open(href, '_blank', 'noopener,noreferrer');
 };
 
 type ExternalLinkProps = {

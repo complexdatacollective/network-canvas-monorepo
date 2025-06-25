@@ -204,4 +204,5 @@ class Button extends PureComponent<ButtonProps> {
 	}
 }
 
+export { Button };
 export default Button;

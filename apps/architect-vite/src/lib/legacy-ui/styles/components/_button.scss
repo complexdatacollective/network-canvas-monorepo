@@ -5,7 +5,7 @@
   -webkit-appearance: none; //sass-lint:disable-line no-vendor-prefixes
   border: 0;
   padding: 0 1rem;
-  background: none;
+  /* background removed - now handled by Tailwind classes in Button component */
 }
 
 @mixin button (

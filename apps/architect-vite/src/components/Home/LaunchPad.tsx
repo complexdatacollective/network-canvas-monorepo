@@ -90,7 +90,7 @@ const LaunchPad = ({
 							<GraphicButton
 								graphic={openButtonGraphic}
 								graphicPosition="0 bottom"
-								color="slate-blue--dark"
+								color="slate-blue-dark"
 								graphicSize="auto 115%"
 								onClick={openNetcanvas}
 							>
