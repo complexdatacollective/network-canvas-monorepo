@@ -2,6 +2,7 @@ import developmentProtocol from "@codaco/development-protocol";
 import type { Protocol } from "@codaco/protocol-validation";
 import { addProtocol, generateProtocolId } from "~/ducks/modules/protocols";
 import type { AppDispatch } from "~/ducks/store";
+import { db } from "./assetDB";
 
 /**
  * Install development protocols for testing
@@ -31,13 +32,16 @@ export async function installDevelopmentProtocol(dispatch: AppDispatch) {
 }
 
 /**
- * Clear all stored data (protocols, active protocol, etc.)
- * This function clears both Redux state and localStorage
+ * Clear all stored data (protocols, active protocol, assets, etc.)
+ * This function clears Redux state, localStorage, and IndexedDB
  */
-export function clearAllStorage(_dispatch: AppDispatch) {
+export async function clearAllStorage(_dispatch: AppDispatch) {
 	try {
 		// Clear localStorage
 		localStorage.clear();
+
+		// Clear assetDB (IndexedDB)
+		await db.assets.clear();
 
 		// Reload the page to reset Redux state
 		window.location.reload();
