@@ -3,7 +3,7 @@ import cx from "classnames";
 import withAssetUrl from "~/components/Assets/withAssetUrl";
 
 type ImageThumbnailProps = {
-	url: string;
+	url?: string;
 	contain?: boolean;
 } & React.HTMLAttributes<HTMLDivElement>;
 
@@ -13,7 +13,7 @@ const ImageThumbnail = ({ url, contain = false, ...props }: ImageThumbnailProps)
 	return (
 		<div
 			className={className}
-			style={{ backgroundImage: `url(${url})` }}
+			style={{ backgroundImage: url ? `url(${url})` : undefined }}
 			{...props}
 		/>
 	);

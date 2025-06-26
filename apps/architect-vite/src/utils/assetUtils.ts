@@ -63,3 +63,19 @@ export const extractProtocolAssets = async (protocol: Protocol, zip: JSZip, prot
 export const getAssetById = async (assetId: string): Promise<Asset | undefined> => {
   return await db.assets.get(assetId);
 };
+
+export const createBlobUrl = (asset: Asset): string => {
+  return URL.createObjectURL(asset.blob);
+};
+
+export const revokeBlobUrl = (url: string): void => {
+  URL.revokeObjectURL(url);
+};
+
+export const getAssetBlobUrl = async (assetId: string): Promise<string | null> => {
+  const asset = await getAssetById(assetId);
+  if (!asset) {
+    return null;
+  }
+  return createBlobUrl(asset);
+};
