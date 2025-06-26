@@ -27,6 +27,7 @@ import { getHasUnsavedChanges } from "~/selectors/protocol";
 import CancellationError from "~/utils/cancellationError";
 import * as netcanvasFile from "~/utils/netcanvasFile";
 import { createImportToast, updateDownloadProgress } from "./userActionToasts";
+import { extractProtocolAssets } from "~/utils/assetUtils";
 
 const protocolsLock = createLock("PROTOCOLS");
 const loadingLock = createLock("LOADING");
@@ -55,71 +56,6 @@ const checkUnsavedChanges = () => (dispatch: AppDispatch, getState: () => RootSt
 			});
 		});
 
-// IndexedDB utilities for asset storage
-const DB_NAME = 'NetworkCanvasAssets';
-const DB_VERSION = 1;
-const ASSET_STORE = 'assets';
-
-const openIndexedDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(ASSET_STORE)) {
-        const store = db.createObjectStore(ASSET_STORE, { keyPath: 'id' });
-        store.createIndex('protocolId', 'protocolId', { unique: false });
-      }
-    };
-  });
-};
-
-const saveAssetToIndexedDB = async (assetId: string, protocolId: string, filename: string, data: ArrayBuffer, mimeType: string): Promise<void> => {
-  const db = await openIndexedDB();
-  const transaction = db.transaction([ASSET_STORE], 'readwrite');
-  const store = transaction.objectStore(ASSET_STORE);
-  
-  const assetData = {
-    id: assetId,
-    protocolId,
-    filename,
-    data,
-    mimeType,
-    createdAt: Date.now(),
-  };
-  
-  return new Promise((resolve, reject) => {
-    const request = store.put(assetData);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-};
-
-const getAssetMimeType = (filename: string): string => {
-  const ext = filename.toLowerCase().split('.').pop();
-  const mimeTypes: Record<string, string> = {
-    // Images
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'gif': 'image/gif',
-    // Audio
-    'mp3': 'audio/mpeg',
-    'aiff': 'audio/aiff',
-    'm4a': 'audio/mp4',
-    // Video
-    'mov': 'video/quicktime',
-    'mp4': 'video/mp4',
-    // Data
-    'json': 'application/json',
-    'csv': 'text/csv',
-    'geojson': 'application/geo+json',
-  };
-  return mimeTypes[ext || ''] || 'application/octet-stream';
-};
 
 const openProtocolFile = (): Promise<{ canceled: boolean; protocol?: Protocol; protocolId?: string }> => {
   console.log('Opening protocol file...');
@@ -157,29 +93,8 @@ const openProtocolFile = (): Promise<{ canceled: boolean; protocol?: Protocol; p
           // Generate protocol ID for asset storage
           const protocolId = await generateProtocolId(protocol);
           
-          // Extract and store assets
-          const assetFiles = Object.keys(zip.files).filter(fileName => 
-            fileName.startsWith('assets/') && !zip.files[fileName].dir
-          );
-          
-          console.log(`Found ${assetFiles.length} assets to extract`);
-          
-          // Process assets in parallel
-          const assetPromises = assetFiles.map(async (assetPath) => {
-            const assetFile = zip.file(assetPath);
-            if (!assetFile) return;
-            
-            const assetData = await assetFile.async('arraybuffer');
-            const filename = assetPath.replace('assets/', '');
-            const mimeType = getAssetMimeType(filename);
-            const assetId = filename.split('.')[0]; // Use filename without extension as ID
-            
-            await saveAssetToIndexedDB(assetId, protocolId, filename, assetData, mimeType);
-            console.log(`Saved asset: ${filename} (${assetData.byteLength} bytes)`);
-          });
-          
-          await Promise.all(assetPromises);
-          console.log('All assets extracted and saved to IndexedDB');
+          // Extract and store assets using the utility function
+          await extractProtocolAssets(protocol, zip, protocolId);
           
           resolve({ canceled: false, protocol, protocolId });
         } else {
