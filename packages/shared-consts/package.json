@@ -1,22 +1,37 @@
 {
 	"name": "@codaco/shared-consts",
-	"version": "1.0.0-alpha.3",
+	"version": "4.0.0",
 	"description": "Shared constants and typescript definitions for the Network Canvas project.",
 	"type": "module",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./src/index.ts"
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
 	},
+	"files": ["dist"],
 	"scripts": {
-		"clean": "rm -rf .turbo node_modules",
+		"build": "tsc --noEmit && vite build",
+		"dev": "npm run build -- --watch",
+		"clean": "rm -rf .turbo node_modules dist",
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": ["typescript", "library"],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "MIT",
+	"engines": {
+		"node": ">=20.0.0"
+	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:"
 	},
 	"dependencies": {
 		"zod": "catalog:"

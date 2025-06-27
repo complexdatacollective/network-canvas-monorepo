@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/protocol-validation",
-	"version": "4.0.0-alpha.11",
+	"version": "5.0.2",
 	"main": "./dist/index.js",
 	"license": "GPL-3.0-or-later",
 	"repository": {
@@ -9,6 +9,9 @@
 	},
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"type": "module",
+	"engines": {
+		"node": ">=20.0.0"
+	},
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
@@ -27,11 +30,11 @@
 	},
 	"files": ["dist"],
 	"dependencies": {
+		"@codaco/shared-consts": "workspace:*",
 		"ajv": "^8.17.1",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@types/gunzip-maybe": "^1.4.2",
 		"@types/lodash-es": "^4.17.12",
@@ -47,7 +50,7 @@
 		"tsx": "^4.19.3",
 		"typescript": "catalog:",
 		"vite": "catalog:",
-		"vite-plugin-dts": "^4.5.3",
+		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:",
 		"zod-to-json-schema": "^3.24.3"
 	}

@@ -1,0 +1,214 @@
+name: CI and Release (Optimized)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  # Setup job that all other jobs depend on
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      node-modules-cache-hit: ${{ steps.cache-node-modules.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      
+      # Cache node_modules based on pnpm-lock.yaml
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            apps/*/node_modules
+            tooling/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+      
+      # Cache pnpm store for faster installs
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      # Only install if cache miss
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build shared-consts
+        run: pnpm --filter @codaco/shared-consts build
+      
+      # Upload shared-consts build as artifact
+      - name: Upload shared-consts build
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-consts-dist
+          path: packages/shared-consts/dist
+          retention-days: 1
+
+  lint-and-format:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      
+      # Restore cached node_modules
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            apps/*/node_modules
+            tooling/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+      
+      - name: Download shared-consts build
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-consts-dist
+          path: packages/shared-consts/dist
+      
+      - name: Check formatting
+        run: pnpm format-and-lint
+      
+      - name: Typecheck
+        run: pnpm typecheck-all
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env: 
+      PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+      PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+      GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      
+      # Restore cached node_modules
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            apps/*/node_modules
+            tooling/*/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+      
+      - name: Download shared-consts build
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-consts-dist
+          path: packages/shared-consts/dist
+      
+      - name: Create .env file and run tests
+        run: |
+          echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
+          echo "PROTOCOL_ENCRYPTION_IV=${{ secrets.PROTOCOL_ENCRYPTION_IV }}" >> packages/protocol-validation/.env
+          echo "GITHUB_TOKEN=${{ secrets.TEST_PROTOCOL_TOKEN }}" >> packages/protocol-validation/.env
+          pnpm test
+
+  release:
+    # Only run on main branch pushes (not PRs) and only if lint and test jobs succeed
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [setup, lint-and-format, test]
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_DOCS_PATH: "docs"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+    
+    # Restore cached node_modules
+    - name: Restore node_modules cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          node_modules
+          packages/*/node_modules
+          apps/*/node_modules
+          tooling/*/node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-node-modules-
+    
+    - name: Download shared-consts build
+      uses: actions/download-artifact@v4
+      with:
+        name: shared-consts-dist
+        path: packages/shared-consts/dist
+    
+    # Build only packages with changesets
+    - name: Build changed packages only
+      run: |
+        echo "🔍 Detecting packages with changesets..."
+        
+        # Get packages with changesets
+        CHANGED_PACKAGES=$(find .changeset -name "*.md" -not -name "README.md" -exec grep -l "\"@codaco/" {} \; | xargs grep -ho "\"@codaco/[^\"]*" | sort -u | tr -d '"' || echo "")
+        
+        if [ -z "$CHANGED_PACKAGES" ]; then
+          echo "📦 No packages with changesets found, building all packages"
+          pnpm run build
+        else
+          echo "📦 Building only packages with changesets:"
+          echo "$CHANGED_PACKAGES"
+          
+          # Build each changed package and its dependencies
+          for package in $CHANGED_PACKAGES; do
+            echo "🔨 Building $package..."
+            pnpm --filter "$package..." build
+          done
+        fi
+    
+    - name: Create Release Pull Request
+      uses: changesets/action@v1
+      with:
+        # command used to version packages. allows for fixing formatting issues caused by versioning
+        version: pnpm run version-packages
+        # builds packages and runs changesets publish. versioning is done by changesets action
+        publish: pnpm run publish-packages-optimized
+        createGithubReleases: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

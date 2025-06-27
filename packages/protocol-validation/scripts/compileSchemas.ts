@@ -38,7 +38,8 @@ const compileSchemas = async () => {
 		const modulePath = join(schemaOutputDirectory, `${baseSchemaName}.js`);
 
 		// Read the file at schemaPath and parse as JSON
-		const schema = (await readFile(schemaPath, "utf8").then(JSON.parse)) as Record<string, unknown>;
+		const schemaContent = await readFile(schemaPath, { encoding: "utf8" });
+		const schema = JSON.parse(schemaContent) as Record<string, unknown>;
 		const validateFunction = ajv.compile(schema);
 		const moduleCode = standaloneCode(ajv, validateFunction);
 

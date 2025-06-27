@@ -1,5 +1,81 @@
 # @codaco/protocol-validation
 
+## 5.0.2
+
+### Patch Changes
+
+- 793bf39: Fix TypeScript declaration merging errors by disabling rollupTypes in vite-plugin-dts. This resolves "Individual declarations in merged declaration must be all exported or all local" errors and "const initializer in ambient context" issues when importing the package.
+
+## 5.0.1
+
+### Patch Changes
+
+- 29287ef: Schema 8 migration fixes/improvements:
+  - Fix displayVariable removal
+  - Remove options from Toggle variables
+
+## 5.0.0
+
+### Major Changes
+
+- 97fd038: # Release stable versions for protocol-validation
+
+  This changeset marks the transition from alpha/prerelease to stable versions for protocol-validation package.
+
+  ## Changes
+
+  - **@codaco/protocol-validation**: Upgraded from `4.0.0-alpha.11` → `4.0.0` (stable)
+
+  ## Context
+
+  - Both shared-consts (3.0.0) and protocol-validation are now considered stable and ready for production use
+  - This removes the alpha/prerelease status and indicates these packages have reached production readiness
+
+  ## Breaking Changes
+
+  This is not a breaking change in terms of functionality - the API remains the same. The version bump reflects the move from alpha to stable status.
+
+- ae26f2a: ### Major Update for `@codaco/protocol-validation` (Schema 8)
+
+  #### Key Changes:
+
+  - **New Stage Types Added**:
+
+    - `Geospatial`
+    - `Anonymisation`
+    - `OneToManyDyadCensus`
+    - `FamilyTreeCensus`
+
+  - **Expanded `assetManifest` Schema**:
+
+    - Added a new `apiAssetSchema`, enabling support for API keys.
+    - Expanded `fileAssetSchema` with the addition of the `geojson` type, enabling support for geospatial data.
+
+  - **New `experiments` Property on `Protocol`**:
+    - Introduced a new `experiments` property with an `encryptNames` boolean.
+
+### Patch Changes
+
+- a4969c4: small changes
+- 86aa8c0: separate out node and edge based stage subjects so that they can be extracted
+- Improve types for variables
+- 4ea6b33: Ensure development protocol can validate
+- 43c3304: make data source required property in panel schema
+- 3605f81: export even more types
+- df6da79: Make migration for schema 8 return proocol object
+- 04aff9d: Correct SortOrderSchema
+- 37df451: Export stage types
+- ec38a8a: change anonymisation schema
+- 3e394d5: use specific stage subject types
+- ceda2af: Export additional schemas to support prisma json transformer extension
+- 551b473: Improve prompt type
+- Updated dependencies [a4969c4]
+- Updated dependencies
+- Updated dependencies [9ec9284]
+- Updated dependencies [304c64f]
+- Updated dependencies [b0fa339]
+  - @codaco/shared-consts@4.0.0
+
 ## 4.0.0-alpha.11
 
 ### Patch Changes

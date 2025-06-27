@@ -22,16 +22,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
       
       # Setup pnpm
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-      # Build protocol-validation
+      # Build protocol-validation and dependencies
       - name: Build protocol validation
         run: |
           pnpm install
+          # Build shared-consts first, then protocol-validation
+          pnpm --filter @codaco/shared-consts build
           pnpm build
 
       - name: Validate protocol
