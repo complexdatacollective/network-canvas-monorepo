@@ -2,7 +2,7 @@ $module-name: form-field-rich-text;
 
 .rich-text {
   --blockquote-border-color: var(--transparent-light);
-  background: var(--input-background);
+  background: hsl(var(--input-background));
   border-radius: 1rem 1rem 0 0;
   overflow: hidden;
 

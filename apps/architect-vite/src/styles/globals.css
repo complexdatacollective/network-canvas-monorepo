@@ -167,8 +167,10 @@
 
 		/* Additional semantic colors for legacy components */
 		--error: var(--destructive);
-		--input-background: var(--rich-black-hue) var(--rich-black-saturation) calc(var(--rich-black-lightness) + 10%) /
-			0.33;
+		--input-background: var(--white);
+		--input-label: var(--foreground);
+		--input-radio--fill: var(--white);
+		--input-border: var(--platinum-dark);
 		--light-background: var(--cyber-grape);
 		--background-light: var(--white);
 		--selected: var(--mustard);

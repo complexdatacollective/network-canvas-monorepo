@@ -372,7 +372,7 @@
     &__button {
       position: absolute;
       cursor: pointer;
-      background-color: var(--input-background);
+      background-color: hsl(var(--input-background));
       border-radius: $toggle-height;
       top: 0;
       left: 0;

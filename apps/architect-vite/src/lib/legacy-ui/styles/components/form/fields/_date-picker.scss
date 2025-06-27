@@ -37,7 +37,7 @@ $darken: rgba(0, 0, 0, 0.2);
 
 .#{$module-name} {
   --active-color: var(--color-sea-green);
-  --background: var(--input-background);
+  --background: hsl(var(--input-background));
   --lighten: $lighten;
   --darken: $darken;
   max-width: 100%;

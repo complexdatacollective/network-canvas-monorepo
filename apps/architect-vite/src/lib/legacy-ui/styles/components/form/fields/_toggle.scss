@@ -21,7 +21,7 @@ $component-name: form-field-toggle;
 
   &__button {
     position: absolute;
-    background-color: var(--input-background);
+    background-color: hsl(var(--input-background));
     transition: background var(--animation-duration-fast) var(--animation-easing);
     border-radius: $global-input-element-size;
     top: 0;
@@ -35,14 +35,14 @@ $component-name: form-field-toggle;
       border-radius: 50%;
       height: $global-input-element-size;
       width: $global-input-element-size;
-      background-color: var(--input-border);
+      background-color: hsl(var(--input-border));
       transition: transform var(--animation-duration-fast) var(--animation-easing);
     }
   }
 
   &__input:checked + &__toggle { // sass-lint:disable-line force-pseudo-nesting
     .form-field-toggle__button {
-      background-color: var(--input-radio--fill);
+      background-color: hsl(var(--input-radio--fill));
 
       &::before {
         transform: translateX($global-input-element-size);

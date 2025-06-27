@@ -2,7 +2,7 @@
   --color-picker-size: 4.2rem;
   --color-picker-border-size: 5px;
   &__edit {
-    background: var(--input-background);
+    background: hsl(var(--input-background));
     color: var(--input-text);
     border-radius: 1rem 1rem 0 0;
     padding: 0.6rem 0 0 0.6rem;

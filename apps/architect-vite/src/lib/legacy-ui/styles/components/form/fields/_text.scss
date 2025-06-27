@@ -10,7 +10,7 @@ $module-name: form-field-text;
     font-family: var(--body-font-family);
     font-size: inherit;
     font-weight: inherit;
-    background-color: var(--input-background);
+    background-color: hsl(var(--input-background));
     width: 100%;
     color: var(--input-text);
     border: 0;

@@ -241,7 +241,7 @@ $font-sizes: (
 
     &:checked + .switch__button {
       &::before {
-        background-color: var(--input-radio--fill);
+        background-color: hsl(var(--input-radio--fill));
       }
 
       &::after {

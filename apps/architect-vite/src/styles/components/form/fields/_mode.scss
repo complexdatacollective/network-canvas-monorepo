@@ -9,7 +9,7 @@
     border-radius: 0.6rem;
     overflow: hidden;
     border: 2px solid var(--input-border);
-    background-color: var(--input-background);
+    background-color: hsl(var(--input-background));
   }
 
   &__option {

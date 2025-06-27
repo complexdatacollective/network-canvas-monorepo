@@ -15,7 +15,7 @@
   &__input {
     @include preset('copy-standard');
 
-    background-color: var(--input-background);
+    background-color: hsl(var(--input-background));
     border: 0;
     width: 100%;
     min-height: 4.8rem;
@@ -24,7 +24,7 @@
     overflow: hidden;
 
     &-container {
-      background-color: var(--input-background);
+      background-color: hsl(var(--input-background));
       padding: 0.6rem;
       flex: 1 0 50%;
       border-radius: 0 0.6rem 0.6rem 0;

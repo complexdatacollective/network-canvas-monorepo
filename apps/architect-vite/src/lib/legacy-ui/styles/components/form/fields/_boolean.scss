@@ -59,8 +59,8 @@
   align-items: center;
   margin-right: unit(0.5);
   margin-left: 0;
-  background: var(--input-background);
-  color: var(--input-label);
+  background: hsl(var(--input-background));
+  color: hsl(var(--input-label));
 
   &--collapsed {
     border-width: $global-input-border-size * 2;
@@ -98,7 +98,7 @@
   width: $global-input-element-size;
   height: $global-input-element-size;
   border-radius: 100%;
-  border-color: var(--input-border);
+  border-color: hsl(var(--input-border));
   border-width: $global-input-border-size;
   border-style: solid;
   transition-property: border-color, background-color;
