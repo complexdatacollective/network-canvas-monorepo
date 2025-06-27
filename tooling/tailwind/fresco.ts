@@ -44,7 +44,7 @@ export default {
 			},
 			platinum: {
 				DEFAULT: "hsl(var(--platinum) / <alpha-value>)",
-				dark: "hsl(var(--platinum--dark) / <alpha-value>)",
+				dark: "hsl(var(--platinum-dark) / <alpha-value>)",
 			},
 			"sea-serpent": {
 				DEFAULT: "hsl(var(--sea-serpent) / <alpha-value>)",
@@ -134,6 +134,10 @@ export default {
 			},
 			border: "hsl(var(--border) / <alpha-value>)",
 			link: "hsl(var(--link) / <alpha-value>)",
+			"section-background": {
+				DEFAULT: "hsl(var(--platinum) / <alpha-value>)",
+				dark: "#e9eeef",
+			},
 		},
 		borderRadius: {
 			...defaultTheme.borderRadius,
