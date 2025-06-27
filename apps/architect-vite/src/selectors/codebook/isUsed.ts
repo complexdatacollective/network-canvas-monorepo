@@ -2,12 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { cloneDeep, get, omit } from "lodash";
 import { getFormValues, getFormNames } from "redux-form";
 import type { RootState } from "~/ducks/store";
-import type { 
-	Validation,
-	NodeDefinition,
-	EdgeDefinition,
-	EgoDefinition
-} from "@codaco/protocol-validation";
+import type { Validation, NodeDefinition, EdgeDefinition, EgoDefinition } from "@codaco/protocol-validation";
 import { formName as EditableListFormName } from "~/components/EditableList";
 import { formName as StageEditorFormName } from "~/components/StageEditor/configuration";
 import { getCodebook, getProtocol } from "../protocol";
@@ -59,14 +54,14 @@ const getVariableValidationsSelector = createSelector([getCodebook], (codebook):
 	const validations: Validation[] = [];
 
 	const getEntityVariableValidations = (
-		entityDefinition: NodeDefinition | EdgeDefinition | EgoDefinition | undefined
+		entityDefinition: NodeDefinition | EdgeDefinition | EgoDefinition | undefined,
 	): Validation[] => {
 		if (!entityDefinition?.variables) {
 			return [];
 		}
 
 		return Object.values(entityDefinition.variables).reduce<Validation[]>((memo, variable) => {
-			if ('validation' in variable && variable.validation) {
+			if ("validation" in variable && variable.validation) {
 				memo.push(variable.validation);
 			}
 			return memo;
@@ -169,4 +164,3 @@ export const makeOptionsWithIsUsedSelector = (isUsedOptions: GetIsUsedOptions = 
 		},
 	);
 };
-

@@ -38,5 +38,4 @@ const Rules = ({ filter = null }: RulesProps) => {
 	);
 };
 
-
 export default Rules;

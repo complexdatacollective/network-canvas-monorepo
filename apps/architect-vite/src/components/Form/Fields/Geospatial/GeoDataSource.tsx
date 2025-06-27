@@ -25,5 +25,4 @@ const GeoDataSource = (props: GeoDataSourceProps) => {
 	);
 };
 
-
 export default withSelectGeoAsset(GeoDataSource);

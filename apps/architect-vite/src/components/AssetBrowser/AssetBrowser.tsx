@@ -15,7 +15,13 @@ type AssetBrowserProps = {
 	disableDelete?: boolean;
 };
 
-const AssetBrowser = ({ type = null, selected = null, onSelect = () => {}, onDelete = () => {}, disableDelete = false }: AssetBrowserProps) => {
+const AssetBrowser = ({
+	type = null,
+	selected = null,
+	onSelect = () => {},
+	onDelete = () => {},
+	disableDelete = false,
+}: AssetBrowserProps) => {
 	const handleCreate = useCallback(
 		(assetIds) => {
 			if (assetIds.length !== 1) {
@@ -52,6 +58,5 @@ const AssetBrowser = ({ type = null, selected = null, onSelect = () => {}, onDel
 		</>
 	);
 };
-
 
 export default compose(withAssetActions)(AssetBrowser);

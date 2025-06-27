@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import cx from "classnames";
 
 type DisableProps = {
@@ -8,10 +8,7 @@ type DisableProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 const Disable = ({ disabled = true, className = "", children = null, ...rest }: DisableProps) => (
-	<div
-		className={cx("disable", { "disable--disabled": disabled }, className)}
-		{...rest}
-	>
+	<div className={cx("disable", { "disable--disabled": disabled }, className)} {...rest}>
 		<div className="disable__capture">{children}</div>
 	</div>
 );

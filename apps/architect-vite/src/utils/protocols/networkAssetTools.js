@@ -12,7 +12,7 @@ const withExtensionSwitch =
 	(configuration, fallback = () => Promise.resolve()) =>
 	(filePathOrUrl) => {
 		// Extract extension from path/URL (web-compatible)
-		const extension = filePathOrUrl.split('.').pop()?.toLowerCase() || '';
+		const extension = filePathOrUrl.split(".").pop()?.toLowerCase() || "";
 
 		return get(configuration, [extension], fallback);
 	};
@@ -65,8 +65,8 @@ export const getAssetVariables = async (assetUrl) => {
 	// const response = await fetch(assetUrl);
 	// const data = await response.text();
 	// return variableReader(data);
-	
+
 	// For now, return empty array as placeholder
-	console.warn('Asset variable loading not yet implemented for web. Returning empty array.');
+	console.warn("Asset variable loading not yet implemented for web. Returning empty array.");
 	return [];
 };

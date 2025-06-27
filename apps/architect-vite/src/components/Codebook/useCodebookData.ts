@@ -41,15 +41,9 @@ const useEntityProcessors = () => {
 	const edgeIndex = useSelector(getEdgeIndex);
 
 	// Memoize selector creation to avoid recreating on every render
-	const getNodeWithUsage = useMemo(
-		() => makeGetEntityWithUsage(nodeIndex, { entity: "node" }),
-		[nodeIndex]
-	);
-	
-	const getEdgeWithUsage = useMemo(
-		() => makeGetEntityWithUsage(edgeIndex, { entity: "edge" }),
-		[edgeIndex]
-	);
+	const getNodeWithUsage = useMemo(() => makeGetEntityWithUsage(nodeIndex, { entity: "node" }), [nodeIndex]);
+
+	const getEdgeWithUsage = useMemo(() => makeGetEntityWithUsage(edgeIndex, { entity: "edge" }), [edgeIndex]);
 
 	// Use the selectors
 	const nodeProcessor = useSelector(getNodeWithUsage);
@@ -60,7 +54,7 @@ const useEntityProcessors = () => {
 
 const processEntityEntries = (
 	entries: [string, unknown][],
-	processor: (value: unknown, id: string) => unknown
+	processor: (value: unknown, id: string) => unknown,
 ): EntityWithUsage[] => {
 	return entries.map(([id, value]) => processor(value, id) as EntityWithUsage);
 };
@@ -76,7 +70,7 @@ const calculateFlags = (
 	codebook: Codebook,
 	nodes: EntityWithUsage[],
 	edges: EntityWithUsage[],
-	networkAssets: AssetWithId[]
+	networkAssets: AssetWithId[],
 ): CodebookFlags => ({
 	hasEgoVariables: Boolean(codebook.ego && Object.keys(codebook.ego).length > 0),
 	hasNodes: nodes.length > 0,
@@ -94,7 +88,7 @@ export const useCodebookData = (codebook: Codebook | null): CodebookData => {
 		return processEntityEntries(Object.entries(codebook.node), nodeProcessor);
 	}, [codebook?.node, nodeProcessor]);
 
-	// Memoize edge processing  
+	// Memoize edge processing
 	const edges = useMemo(() => {
 		if (!codebook?.edge) return [];
 		return processEntityEntries(Object.entries(codebook.edge), edgeProcessor);
@@ -118,10 +112,13 @@ export const useCodebookData = (codebook: Codebook | null): CodebookData => {
 		return calculateFlags(codebook, nodes, edges, processedNetworkAssets);
 	}, [codebook, nodes, edges, processedNetworkAssets]);
 
-	return useMemo(() => ({
-		nodes,
-		edges,
-		processedNetworkAssets,
-		...flags,
-	}), [nodes, edges, processedNetworkAssets, flags]);
+	return useMemo(
+		() => ({
+			nodes,
+			edges,
+			processedNetworkAssets,
+			...flags,
+		}),
+		[nodes, edges, processedNetworkAssets, flags],
+	);
 };

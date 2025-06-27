@@ -126,5 +126,4 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	);
 };
 
-
 export default Stage;

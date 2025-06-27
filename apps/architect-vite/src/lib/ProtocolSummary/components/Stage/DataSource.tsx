@@ -19,5 +19,4 @@ const DataSource = ({ dataSource = null }: DataSourceProps) => {
 	);
 };
 
-
 export default DataSource;

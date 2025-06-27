@@ -176,5 +176,4 @@ const PresetFields = ({
 	);
 };
 
-
 export default compose(withPresetProps)(PresetFields);

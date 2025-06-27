@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import Dialog from "./Dialog";
 import Button from "../Button";
 
@@ -16,15 +16,15 @@ interface ConfirmProps {
 /*
  * Designed to present yes/no choices to the user.
  */
-const Confirm = ({ 
-	title, 
-	message = null, 
-	canCancel = true, 
-	onConfirm, 
-	onCancel = null, 
-	confirmLabel = "OK", 
-	cancelLabel = "Cancel", 
-	show = false 
+const Confirm = ({
+	title,
+	message = null,
+	canCancel = true,
+	onConfirm,
+	onCancel = null,
+	confirmLabel = "OK",
+	cancelLabel = "Cancel",
+	show = false,
 }: ConfirmProps) => (
 	<Dialog
 		type="confirm"
@@ -39,7 +39,6 @@ const Confirm = ({
 		]}
 	/>
 );
-
 
 export { Confirm };
 

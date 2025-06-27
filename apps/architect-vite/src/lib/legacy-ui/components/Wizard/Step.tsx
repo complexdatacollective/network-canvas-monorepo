@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ReactNode, ComponentType, HTMLAttributes } from "react";
+import type { ReactNode, ComponentType } from "react";
 
 interface StepProps {
 	children?: ReactNode;

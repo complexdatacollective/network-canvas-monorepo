@@ -1,4 +1,3 @@
-
 export const CATEGORIES = {
 	GENERATORS: "Name and Edge Generators",
 	SOCIOGRAMS: "Sociograms",
@@ -49,9 +48,9 @@ export const INTERFACE_TYPE_NAMES = [
 ] as const;
 
 // Type helpers
-export type InterfaceTypeName = typeof INTERFACE_TYPE_NAMES[number];
-export type Category = typeof CATEGORIES[keyof typeof CATEGORIES];
-export type Tag = typeof TAGS[keyof typeof TAGS];
+export type InterfaceTypeName = (typeof INTERFACE_TYPE_NAMES)[number];
+export type Category = (typeof CATEGORIES)[keyof typeof CATEGORIES];
+export type Tag = (typeof TAGS)[keyof typeof TAGS];
 
 export type InterfaceType = {
 	type: InterfaceTypeName;

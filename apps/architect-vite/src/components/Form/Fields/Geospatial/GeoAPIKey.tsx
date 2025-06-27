@@ -12,7 +12,6 @@ type GeoAPIKeyProps = {
 };
 
 const GeoAPIKey = ({ input: { value, onChange } }: GeoAPIKeyProps) => {
-
 	const [showAPIKeyBrowser, setShowAPIKeyBrowser] = useState(false);
 	const fieldClasses = cx("form-fields-file", {
 		"form-fields-file--replace": !!value,
@@ -38,6 +37,5 @@ const GeoAPIKey = ({ input: { value, onChange } }: GeoAPIKeyProps) => {
 		</>
 	);
 };
-
 
 export default GeoAPIKey;

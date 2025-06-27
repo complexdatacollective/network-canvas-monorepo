@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { configureStore } from "@reduxjs/toolkit";
 import configureMockStore from "redux-mock-store";
 import { actionCreators } from "../preview";
 import testState from "../../../__tests__/testState.json";
@@ -10,11 +9,11 @@ vi.mock("../../../utils/previewDriver");
 const mockStore = configureMockStore([
 	// Use RTK's thunk middleware which is included by default
 	(store) => (next) => (action) => {
-		if (typeof action === 'function') {
+		if (typeof action === "function") {
 			return action(store.dispatch, store.getState);
 		}
 		return next(action);
-	}
+	},
 ]);
 
 describe("preview", () => {

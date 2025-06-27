@@ -11,7 +11,13 @@ type TieStrengthCensusPromptsProps = {
 	handleChangePrompt: (prompts: any[]) => void;
 } & Record<string, any>;
 
-const TieStrengthCensusPrompts = ({ handleChangePrompt, form, entity, type, disabled }: TieStrengthCensusPromptsProps & { form: string; entity?: string; type?: string; disabled?: boolean }) => (
+const TieStrengthCensusPrompts = ({
+	handleChangePrompt,
+	form,
+	entity,
+	type,
+	disabled,
+}: TieStrengthCensusPromptsProps & { form: string; entity?: string; type?: string; disabled?: boolean }) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={
@@ -31,7 +37,6 @@ const TieStrengthCensusPrompts = ({ handleChangePrompt, form, entity, type, disa
 		editProps={{ entity, type }}
 	/>
 );
-
 
 export { TieStrengthCensusPrompts };
 

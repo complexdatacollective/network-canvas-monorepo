@@ -1,4 +1,4 @@
-import { find, findIndex, get, reduce } from "es-toolkit/compat";
+import { find, findIndex, reduce } from "es-toolkit/compat";
 import { createSelector } from "@reduxjs/toolkit";
 
 const propStageId = (_, props) => props.stageId;
@@ -13,7 +13,7 @@ export const getProtocol = (state) => {
 		}
 		return protocol;
 	}
-	
+
 	// Fall back to old protocol store during transition
 	return state.protocol?.present || null;
 };
@@ -27,20 +27,17 @@ export const getCodebook = (state) => {
 	return protocol?.codebook || null;
 };
 
-export const getStageList = createSelector(
-	[getProtocol],
-	(protocol) => {
-		const stages = protocol ? protocol.stages : [];
+export const getStageList = createSelector([getProtocol], (protocol) => {
+	const stages = protocol ? protocol.stages : [];
 
-		return stages.map((stage) => ({
-			id: stage.id,
-			type: stage.type,
-			label: stage.label,
-			hasFilter: !!stage.filter,
-			hasSkipLogic: !!stage.skipLogic,
-		}));
-	}
-);
+	return stages.map((stage) => ({
+		id: stage.id,
+		type: stage.type,
+		label: stage.label,
+		hasFilter: !!stage.filter,
+		hasSkipLogic: !!stage.skipLogic,
+	}));
+});
 
 export const getStage = (state, id) => {
 	const protocol = getProtocol(state);
@@ -86,20 +83,20 @@ export const getExperiments = (state) => {
 
 export const getHasUnsavedChanges = (state) => {
 	// During transition, check both stores
-	
+
 	// Check new activeProtocol store
 	if (state.activeProtocol?.present) {
 		// TODO: Implement proper change tracking for new store
 		// For now, assume no unsaved changes
 		return false;
 	}
-	
+
 	// Check old protocol store
 	const activeProtocol = state.protocol?.present;
 	if (activeProtocol) {
 		return activeProtocol.lastChanged > activeProtocol.lastSaved;
 	}
-	
+
 	return false;
 };
 
@@ -119,12 +116,12 @@ export const getTimelineLocus = (state) => {
 	if (activeProtocolTimeline?.length > 0) {
 		return activeProtocolTimeline[activeProtocolTimeline.length - 1];
 	}
-	
+
 	// Fall back to old protocol store
 	const protocolTimeline = state.protocol?.timeline;
 	if (protocolTimeline?.length > 0) {
 		return protocolTimeline[protocolTimeline.length - 1];
 	}
-	
+
 	return null;
 };

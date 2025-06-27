@@ -19,18 +19,24 @@ type ValidationSectionProps = {
 	existingVariables: Record<string, ExistingVariable>;
 };
 
-const ValidationSection = ({ disabled = false, form, entity, variableType = "", existingVariables }: ValidationSectionProps) => {
+const ValidationSection = ({
+	disabled = false,
+	form,
+	entity,
+	variableType = "",
+	existingVariables,
+}: ValidationSectionProps) => {
 	const dispatch = useDispatch();
-	
+
 	// Create memoized selector for hasValidation
 	const hasValidationSelector = useMemo(() => {
 		const formSelector = formValueSelector(form);
 		return createSelector(
 			[(state) => formSelector(state, "validation")],
-			(validation) => validation && Object.keys(validation).length > 0
+			(validation) => validation && Object.keys(validation).length > 0,
 		);
 	}, [form]);
-	
+
 	const hasValidation = useSelector(hasValidationSelector);
 
 	const handleToggleValidation = (nextState) => {
@@ -64,6 +70,5 @@ const ValidationSection = ({ disabled = false, form, entity, variableType = "", 
 		</Section>
 	);
 };
-
 
 export default ValidationSection;

@@ -107,5 +107,4 @@ const VariablePicker = ({
 	);
 };
 
-
 export default VariablePicker;

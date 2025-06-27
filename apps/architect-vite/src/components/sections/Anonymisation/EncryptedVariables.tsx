@@ -60,22 +60,26 @@ const EncryptedVariables = () => {
 				</>
 			}
 		>
-{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
+			{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
 				const hasEncryptedVariable = Object.values(nodeType.variables || {}).some((variable) => variable.encrypted);
-				
+
 				// Memoize these calculations to avoid recreating arrays on every render
 				const variables = nodeType.variables || {};
-				const variableOptions = useMemo(() => 
-					Object.entries(variables).map(([variableId, variable]) => ({
-						value: variableId,
-						label: variable.name,
-					})), [variables]
+				const variableOptions = useMemo(
+					() =>
+						Object.entries(variables).map(([variableId, variable]) => ({
+							value: variableId,
+							label: variable.name,
+						})),
+					[variables],
 				);
-				
-				const encryptedVariableIds = useMemo(() => 
-					Object.entries(variables)
-						.filter(([, variable]) => variable.encrypted)
-						.map(([variableId]) => variableId), [variables]
+
+				const encryptedVariableIds = useMemo(
+					() =>
+						Object.entries(variables)
+							.filter(([, variable]) => variable.encrypted)
+							.map(([variableId]) => variableId),
+					[variables],
 				);
 
 				return (

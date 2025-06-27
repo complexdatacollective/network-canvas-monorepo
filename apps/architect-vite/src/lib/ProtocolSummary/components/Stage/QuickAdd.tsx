@@ -32,5 +32,4 @@ const QuickAdd = ({ quickAdd = null }: QuickAddProps) => {
 	);
 };
 
-
 export default QuickAdd;

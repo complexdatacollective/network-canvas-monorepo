@@ -1,11 +1,11 @@
 import { withProps } from "recompose";
 import DetachedField from "~/components/DetachedField";
 import {
-    Number,
-    // CheckboxGroup,
-    RadioGroup,
-    Text,
-    Toggle,
+	Number,
+	// CheckboxGroup,
+	RadioGroup,
+	Text,
+	Toggle,
 } from "~/lib/legacy-ui/components/Fields";
 
 // Todo: reinstate CheckboxGroup support when we switch to schema 8
@@ -41,7 +41,14 @@ type EditValueProps = {
 	variableType: string;
 };
 
-const EditValue = ({ fieldComponent: FieldComponent, value, variableType, onChange = () => {}, options = [], ...rest }: EditValueProps) => (
+const EditValue = ({
+	fieldComponent: FieldComponent,
+	value,
+	variableType,
+	onChange = () => {},
+	options = [],
+	...rest
+}: EditValueProps) => (
 	<DetachedField
 		component={FieldComponent}
 		label={getLabel(variableType, value)}
@@ -53,6 +60,5 @@ const EditValue = ({ fieldComponent: FieldComponent, value, variableType, onChan
 		{...rest}
 	/>
 );
-
 
 export default withMappedFieldComponent(EditValue);

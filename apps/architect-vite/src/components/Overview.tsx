@@ -91,53 +91,61 @@ const Overview = ({
 		}
 	}, [getProtocolId, setLocation]);
 
-	const renderActionButtons = useCallback((collapsed = false) => (
-		<div className="action-buttons">
-			<motion.div variants={buttonVariants} className="action-buttons__button" title="Printable Summary">
-				<PrintableSummaryButton
-					onClick={handlePrintSummary}
-					color="slate-blue"
-					icon={<PrintIcon />}
-					disabled={!protocolIsValid || hasUnsavedChanges}
-					tooltip={hasUnsavedChanges ? "You must save your protocol before you can view the printable summary." : undefined}
-					content={collapsed ? undefined : "Printable Summary"}
-					tippyProps={{}}
-				/>
-			</motion.div>
-			<motion.div variants={buttonVariants} className="action-buttons__button" title="Resource Library">
-				<Button
-					onClick={handleNavigateToAssets}
-					color="neon-coral"
-					icon={<PermMediaIcon />}
-					content={collapsed ? undefined : "Resource Library"}
-				/>
-			</motion.div>
-			<motion.div variants={buttonVariants} className="action-buttons__button" title="Manage Codebook">
-				<Button
-					onClick={handleNavigateToCodebook}
-					color="sea-serpent"
-					icon={<MenuBookIcon />}
-					content={collapsed ? undefined : "Manage Codebook"}
-				/>
-			</motion.div>
-		</div>
-	), [handlePrintSummary, handleNavigateToAssets, handleNavigateToCodebook, protocolIsValid, hasUnsavedChanges]);
-
-	const renderSummary = useCallback(() => (
-		<motion.div
-			key="summary"
-			className="overview-summary"
-			variants={summaryVariants}
-			initial="hide"
-			animate="show"
-			exit="exit"
-		>
-			<div className="overview-summary__header">
-				<h3>{name}</h3>
+	const renderActionButtons = useCallback(
+		(collapsed = false) => (
+			<div className="action-buttons">
+				<motion.div variants={buttonVariants} className="action-buttons__button" title="Printable Summary">
+					<PrintableSummaryButton
+						onClick={handlePrintSummary}
+						color="slate-blue"
+						icon={<PrintIcon />}
+						disabled={!protocolIsValid || hasUnsavedChanges}
+						tooltip={
+							hasUnsavedChanges ? "You must save your protocol before you can view the printable summary." : undefined
+						}
+						content={collapsed ? undefined : "Printable Summary"}
+						tippyProps={{}}
+					/>
+				</motion.div>
+				<motion.div variants={buttonVariants} className="action-buttons__button" title="Resource Library">
+					<Button
+						onClick={handleNavigateToAssets}
+						color="neon-coral"
+						icon={<PermMediaIcon />}
+						content={collapsed ? undefined : "Resource Library"}
+					/>
+				</motion.div>
+				<motion.div variants={buttonVariants} className="action-buttons__button" title="Manage Codebook">
+					<Button
+						onClick={handleNavigateToCodebook}
+						color="sea-serpent"
+						icon={<MenuBookIcon />}
+						content={collapsed ? undefined : "Manage Codebook"}
+					/>
+				</motion.div>
 			</div>
-			{renderActionButtons(true)}
-		</motion.div>
-	), [name, renderActionButtons]);
+		),
+		[handlePrintSummary, handleNavigateToAssets, handleNavigateToCodebook, protocolIsValid, hasUnsavedChanges],
+	);
+
+	const renderSummary = useCallback(
+		() => (
+			<motion.div
+				key="summary"
+				className="overview-summary"
+				variants={summaryVariants}
+				initial="hide"
+				animate="show"
+				exit="exit"
+			>
+				<div className="overview-summary__header">
+					<h3>{name}</h3>
+				</div>
+				{renderActionButtons(true)}
+			</motion.div>
+		),
+		[name, renderActionButtons],
+	);
 
 	return (
 		<AnimatePresence>
@@ -183,11 +191,11 @@ const mapStateToProps = (state: RootState) => {
 	const protocol = getProtocol(state);
 	const protocolIsValid = getIsProtocolValid(state);
 	const hasUnsavedChanges = getHasUnsavedChanges(state);
-	
+
 	// Get protocol ID from URL params via props or window location
 	const urlPath = window.location.pathname;
 	const protocolId = urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-	
+
 	// Get stored protocol info for name
 	const storedProtocol = protocolId ? selectProtocolById(protocolId)(state) : null;
 

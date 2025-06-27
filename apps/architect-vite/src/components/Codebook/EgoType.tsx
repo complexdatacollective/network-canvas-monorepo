@@ -18,7 +18,6 @@ const EgoType = ({ variables = [] }: EgoTypeProps) => (
 	</div>
 );
 
-
 const mapStateToProps = (state) => {
 	const entityProperties = getEntityProperties(state, { entity: "ego" });
 	return entityProperties;

@@ -217,10 +217,9 @@ const mayUpgradeProtocolDialog = (protocolSchemaVersion, targetSchemaVersion, mi
 };
 
 export {
-    appUpgradeRequiredDialog,
-    importErrorDialog,
-    mayUpgradeProtocolDialog,
-    netcanvasFileErrorHandler,
-    validationErrorDialog
+	appUpgradeRequiredDialog,
+	importErrorDialog,
+	mayUpgradeProtocolDialog,
+	netcanvasFileErrorHandler,
+	validationErrorDialog,
 };
-

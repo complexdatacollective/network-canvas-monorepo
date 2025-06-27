@@ -19,5 +19,4 @@ const Layout = ({ children, className = "", ...rest }: LayoutProps) => {
 	);
 };
 
-
 export default Layout;

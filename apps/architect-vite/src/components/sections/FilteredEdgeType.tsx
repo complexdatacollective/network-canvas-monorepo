@@ -54,5 +54,4 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	);
 };
 
-
 export default FilteredEdgeType;

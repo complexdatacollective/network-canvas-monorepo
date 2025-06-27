@@ -122,18 +122,27 @@ const getColorClasses = (color?: string) => {
 		},
 	};
 
-	return colorMap[color] || {
-		background: "bg-primary",
-		text: "text-white",
-		hover: "hover:bg-primary/80",
-	};
+	return (
+		colorMap[color] || {
+			background: "bg-primary",
+			text: "text-white",
+			hover: "hover:bg-primary/80",
+		}
+	);
 };
 
-const renderButtonIcon = ({ icon, iconPosition, textColor }: { icon?: string | React.ReactElement; iconPosition?: string; textColor?: string }) => {
-	const iconClassNames = cx({
-		button__icon: true,
-		"button__icon--right": iconPosition === "right",
-	}, textColor);
+const renderButtonIcon = ({
+	icon,
+	iconPosition,
+	textColor,
+}: { icon?: string | React.ReactElement; iconPosition?: string; textColor?: string }) => {
+	const iconClassNames = cx(
+		{
+			button__icon: true,
+			"button__icon--right": iconPosition === "right",
+		},
+		textColor,
+	);
 
 	let iconElement = null;
 	if (icon) {

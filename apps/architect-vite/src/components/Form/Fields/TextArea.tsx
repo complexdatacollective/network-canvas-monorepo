@@ -34,5 +34,4 @@ const TextArea = ({ meta, label, input }: TextAreaProps) => {
 	);
 };
 
-
 export default TextArea;

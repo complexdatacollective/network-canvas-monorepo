@@ -1,6 +1,6 @@
 import { Flipped } from "react-flip-toolkit";
 import { useLocation } from "wouter";
-import { type StoredProtocol } from "~/ducks/modules/protocols";
+import type { StoredProtocol } from "~/ducks/modules/protocols";
 import protocolCover from "~/images/NC-File.svg";
 
 type ProtocolStackProps = {
@@ -9,11 +9,11 @@ type ProtocolStackProps = {
 
 const ProtocolStack = ({ protocol }: ProtocolStackProps) => {
 	const [, navigate] = useLocation();
-	
+
 	const handleClick = () => {
 		navigate(`/protocol/${protocol.id}`);
 	};
-	
+
 	return (
 		<div className="protocol-stack" onClick={handleClick}>
 			<div className="protocol-stack__preview">

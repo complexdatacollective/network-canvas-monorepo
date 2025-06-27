@@ -16,7 +16,7 @@ const withExtensionSwitch =
 			return null;
 		}
 		// Extract extension from path/URL (web-compatible)
-		const extension = filePathOrUrl.split('.').pop()?.toLowerCase() || '';
+		const extension = filePathOrUrl.split(".").pop()?.toLowerCase() || "";
 
 		const f = get(configuration, [extension], fallback);
 		return f(filePathOrUrl, ...rest);
@@ -30,9 +30,9 @@ const readJsonNetwork = async (assetUrl) => {
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);
 	// return response.json();
-	
+
 	// For now, return empty network as placeholder
-	console.warn('Asset loading not yet implemented for web. Returning empty network.');
+	console.warn("Asset loading not yet implemented for web. Returning empty network.");
 	return { nodes: [], edges: [] };
 };
 
@@ -44,11 +44,11 @@ const readCsvNetwork = async (assetUrl) => {
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);
 	// const data = await response.text();
-	
+
 	// For now, return empty network as placeholder
-	console.warn('CSV asset loading not yet implemented for web. Returning empty network.');
-	const data = '';
-	
+	console.warn("CSV asset loading not yet implemented for web. Returning empty network.");
+	const data = "";
+
 	const nodes = await csv({ checkColumn: true })
 		.fromString(data)
 		.then((rows) => rows.map((attributes) => ({ attributes })))
@@ -134,8 +134,8 @@ export const getGeoJsonVariables = async (assetUrl) => {
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);
 	// const geoJson = await response.json();
-	
+
 	// For now, return empty array as placeholder
-	console.warn('GeoJSON asset loading not yet implemented for web. Returning empty variables.');
+	console.warn("GeoJSON asset loading not yet implemented for web. Returning empty variables.");
 	return [];
 };

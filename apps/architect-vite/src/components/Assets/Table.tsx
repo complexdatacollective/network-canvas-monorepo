@@ -47,5 +47,4 @@ const Table = ({ data, columns }: TableProps) => {
 	);
 };
 
-
 export default Table;

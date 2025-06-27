@@ -21,7 +21,13 @@ type VariableSelectProps = {
 } & Record<string, any>;
 
 // TODO: For now just map existing variables, but later could also append create handlers!
-const VariableSelect = ({ reserved = [], entity = null, type = null, variable = null, ...props }: VariableSelectProps) => (
+const VariableSelect = ({
+	reserved = [],
+	entity = null,
+	type = null,
+	variable = null,
+	...props
+}: VariableSelectProps) => (
 	<div className="form-fields-variable-select">
 		<NativeSelect
 			placeholder="Select or create a variable"
@@ -31,6 +37,5 @@ const VariableSelect = ({ reserved = [], entity = null, type = null, variable = 
 		/>
 	</div>
 );
-
 
 export default compose(connect(mapStateToProps, {}), withVariableValidator)(VariableSelect);

@@ -50,7 +50,6 @@ const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps
 	);
 };
 
-
 type VariablesProps = {
 	entity: string;
 	onDelete?: (id: string) => void;
@@ -61,7 +60,14 @@ type VariablesProps = {
 	variables?: any[];
 };
 
-const Variables = ({ variables = [], onDelete = () => {}, sortBy, sortDirection, sort, type = null }: VariablesProps) => {
+const Variables = ({
+	variables = [],
+	onDelete = () => {},
+	sortBy,
+	sortDirection,
+	sort,
+	type = null,
+}: VariablesProps) => {
 	const headingProps = {
 		sortBy,
 		sortDirection,
@@ -118,7 +124,6 @@ const Variables = ({ variables = [], onDelete = () => {}, sortBy, sortDirection,
 		</div>
 	);
 };
-
 
 const withVariableHandlers = compose(
 	connect(null, {

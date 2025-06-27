@@ -18,7 +18,13 @@ const getDefaultSummary = () => (
 	</p>
 );
 
-const BinSortOrderSection = ({ form, disabled = false, maxItems = 5, optionGetter, summary = getDefaultSummary() }: BinSortOrderSectionProps) => {
+const BinSortOrderSection = ({
+	form,
+	disabled = false,
+	maxItems = 5,
+	optionGetter,
+	summary = getDefaultSummary(),
+}: BinSortOrderSectionProps) => {
 	const dispatch = useDispatch();
 	const getFormValue = formValueSelector(form);
 	const hasBinSortOrder = useSelector((state) => getFormValue(state, "binSortOrder"));
@@ -51,6 +57,5 @@ const BinSortOrderSection = ({ form, disabled = false, maxItems = 5, optionGette
 		</Section>
 	);
 };
-
 
 export default BinSortOrderSection;

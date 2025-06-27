@@ -15,8 +15,10 @@ const withNumericChangeHandlers = withProps((props: any) => ({
 	placeholder: props.placeholder ? props.placeholder : "Enter a number...",
 	input: {
 		...props.input,
-		onChange: (e: React.ChangeEvent<HTMLInputElement>) => has(props, "input.onChange") && props.input.onChange(toInt(e.target.value)),
-		onBlur: (e: React.FocusEvent<HTMLInputElement>) => has(props, "input.onBlur") && props.input.onBlur(toInt(e.target.value)),
+		onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+			has(props, "input.onChange") && props.input.onChange(toInt(e.target.value)),
+		onBlur: (e: React.FocusEvent<HTMLInputElement>) =>
+			has(props, "input.onBlur") && props.input.onBlur(toInt(e.target.value)),
 	},
 }));
 

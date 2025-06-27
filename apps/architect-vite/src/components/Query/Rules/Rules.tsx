@@ -111,7 +111,6 @@ const Rules = ({
 	);
 };
 
-
 export { Rules };
 
 export default compose(withDraftRule, withRulesChangeHandlers)(Rules);

@@ -13,7 +13,6 @@ const Filter = ({ rules = [], join = null, codebook, onChange, openDialog, error
 	<Rules rules={rules} join={join} onChange={onChange} openDialog={openDialog} codebook={codebook} error={error} />
 );
 
-
 export { Filter };
 
 export default Filter;

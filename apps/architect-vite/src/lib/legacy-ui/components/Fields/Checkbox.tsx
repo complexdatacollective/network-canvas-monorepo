@@ -25,7 +25,6 @@ const Checkbox = ({
 	fieldLabel = null,
 	...rest
 }: CheckboxProps) => {
-
 	const id = useRef(uuid());
 
 	const componentClasses = cx("form-field-checkbox", className, {
@@ -52,7 +51,6 @@ const Checkbox = ({
 		</label>
 	);
 };
-
 
 const areEqual = (prevProps: CheckboxProps, nextProps: CheckboxProps) => {
 	const {

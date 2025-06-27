@@ -12,12 +12,12 @@ type AssetBrowserWindowProps = {
 	onSelect?: () => void;
 };
 
-const AssetBrowserWindow = ({ 
-	show = true, 
-	type = null, 
-	selected = null, 
-	onCancel = () => {}, 
-	onSelect = () => {} 
+const AssetBrowserWindow = ({
+	show = true,
+	type = null,
+	selected = null,
+	onCancel = () => {},
+	onSelect = () => {},
 }: AssetBrowserWindowProps) => {
 	const cancelButton = [
 		<Button color="platinum" onClick={onCancel} key="cancel">
@@ -45,6 +45,5 @@ const AssetBrowserWindow = ({
 		</Dialog>
 	);
 };
-
 
 export default AssetBrowserWindow;

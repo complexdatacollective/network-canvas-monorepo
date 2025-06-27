@@ -35,5 +35,4 @@ const Parameters = ({ type, component, ...rest }: ParametersProps) => {
 	);
 };
 
-
 export default Parameters;

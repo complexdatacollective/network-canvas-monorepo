@@ -189,5 +189,4 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 	);
 };
 
-
 export default TapBehaviour;

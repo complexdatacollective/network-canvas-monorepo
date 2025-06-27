@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState, RefObject, FocusEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject, type FocusEvent } from "react";
 import useScrollTo from "../../../hooks/useScrollTo";
 import Date from "./DatePicker/Date";
 import DatePicker from "./DatePicker/DatePicker";

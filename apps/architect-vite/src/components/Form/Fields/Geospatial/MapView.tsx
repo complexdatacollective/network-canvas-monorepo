@@ -141,8 +141,8 @@ const MapView = ({
 					summary={
 						<p>
 							Pan and zoom the map below to configure the initial view. When the map is first loaded, it will be
-							centered at the initial center and zoom level as it appears here. Resetting the map will return it to
-							this view.
+							centered at the initial center and zoom level as it appears here. Resetting the map will return it to this
+							view.
 						</p>
 					}
 				>
@@ -152,6 +152,5 @@ const MapView = ({
 		</Dialog>
 	);
 };
-
 
 export default MapView;

@@ -20,5 +20,4 @@ const Drop = ({ children = null }: DropProps) => (
 	</motion.div>
 );
 
-
 export default Drop;

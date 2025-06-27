@@ -4,164 +4,164 @@
 /* Default icon colors */
 .icon .cls-1,
 .icon .cls-3 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon .cls-2 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon .cls-4 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon .cls-5 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 /* Color modifier classes */
 .icon.icon--sea-green .cls-1,
 .icon.icon--sea-green .cls-3 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 .icon.icon--sea-green .cls-2 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--neon-coral .cls-1,
 .icon.icon--neon-coral .cls-3 {
-  @apply fill-neon-coral-dark;
+	@apply fill-neon-coral-dark;
 }
 
 .icon.icon--neon-coral .cls-2 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--tomato .cls-1,
 .icon.icon--tomato .cls-3 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon.icon--tomato .cls-2 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--slate-blue .cls-1,
 .icon.icon--slate-blue .cls-3 {
-  @apply fill-slate-blue-dark;
+	@apply fill-slate-blue-dark;
 }
 
 .icon.icon--slate-blue .cls-2 {
-  @apply fill-slate-blue;
+	@apply fill-slate-blue;
 }
 
 .icon.icon--navy-taupe .cls-1,
 .icon.icon--navy-taupe .cls-3 {
-  @apply fill-navy-taupe-dark;
+	@apply fill-navy-taupe-dark;
 }
 
 .icon.icon--navy-taupe .cls-2 {
-  @apply fill-navy-taupe;
+	@apply fill-navy-taupe;
 }
 
 .icon.icon--cyber-grape .cls-1,
 .icon.icon--cyber-grape .cls-3 {
-  @apply fill-cyber-grape-dark;
+	@apply fill-cyber-grape-dark;
 }
 
 .icon.icon--cyber-grape .cls-2 {
-  @apply fill-cyber-grape;
+	@apply fill-cyber-grape;
 }
 
 .icon.icon--mustard .cls-1,
 .icon.icon--mustard .cls-3 {
-  @apply fill-mustard-dark;
+	@apply fill-mustard-dark;
 }
 
 .icon.icon--mustard .cls-2 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 .icon.icon--sea-serpent .cls-1,
 .icon.icon--sea-serpent .cls-3 {
-  @apply fill-sea-serpent-dark;
+	@apply fill-sea-serpent-dark;
 }
 
 .icon.icon--sea-serpent .cls-2 {
-  @apply fill-sea-serpent;
+	@apply fill-sea-serpent;
 }
 
 .icon.icon--purple-pizazz .cls-1,
 .icon.icon--purple-pizazz .cls-3 {
-  @apply fill-purple-pizazz-dark;
+	@apply fill-purple-pizazz-dark;
 }
 
 .icon.icon--purple-pizazz .cls-2 {
-  @apply fill-purple-pizazz;
+	@apply fill-purple-pizazz;
 }
 
 .icon.icon--paradise-pink .cls-1,
 .icon.icon--paradise-pink .cls-3 {
-  @apply fill-paradise-pink-dark;
+	@apply fill-paradise-pink-dark;
 }
 
 .icon.icon--paradise-pink .cls-2 {
-  @apply fill-paradise-pink;
+	@apply fill-paradise-pink;
 }
 
 .icon.icon--cerulean-blue .cls-1,
 .icon.icon--cerulean-blue .cls-3 {
-  @apply fill-cerulean-blue-dark;
+	@apply fill-cerulean-blue-dark;
 }
 
 .icon.icon--cerulean-blue .cls-2 {
-  @apply fill-cerulean-blue;
+	@apply fill-cerulean-blue;
 }
 
 .icon.icon--kiwi .cls-1,
 .icon.icon--kiwi .cls-3 {
-  @apply fill-kiwi-dark;
+	@apply fill-kiwi-dark;
 }
 
 .icon.icon--kiwi .cls-2 {
-  @apply fill-kiwi;
+	@apply fill-kiwi;
 }
 
 .icon.icon--barbie-pink .cls-1,
 .icon.icon--barbie-pink .cls-3 {
-  @apply fill-barbie-pink-dark;
+	@apply fill-barbie-pink-dark;
 }
 
 .icon.icon--barbie-pink .cls-2 {
-  @apply fill-barbie-pink;
+	@apply fill-barbie-pink;
 }
 
 .icon.icon--white .cls-1,
 .icon.icon--white .cls-3 {
-  @apply fill-white;
+	@apply fill-white;
 }
 
 .icon.icon--white .cls-2 {
-  @apply fill-white;
+	@apply fill-white;
 }
 
 .icon.icon--neon-carrot .cls-1,
 .icon.icon--neon-carrot .cls-3 {
-  @apply fill-neon-carrot-dark;
+	@apply fill-neon-carrot-dark;
 }
 
 .icon.icon--neon-carrot .cls-2 {
-  @apply fill-neon-carrot;
+	@apply fill-neon-carrot;
 }
 
 .icon.icon--primary .cls-1,
 .icon.icon--primary .cls-3 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 .icon.icon--primary .cls-2 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 /* Special icon mappings */
@@ -169,193 +169,193 @@
 /* Tick and Cross icons */
 .icon[name="tick"] .cls-1,
 .icon[name="cross"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--sea-green[name="tick"] .cls-1,
 .icon.icon--sea-green[name="cross"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="tick"] .cls-1,
 .icon.icon--tomato[name="cross"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--neon-coral[name="tick"] .cls-1,
 .icon.icon--neon-coral[name="cross"] .cls-1 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 /* Error icon */
 .icon[name="error"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="error"] .cls-2 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="error"] .cls-3 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="error"] .cls-4 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="error"] .cls-5 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon[name="error"] .cls-6 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="error"] .cls-8 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--sea-green[name="error"] .cls-8 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="error"] .cls-8 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 /* Warning icon */
 .icon[name="warning"] .cls-1 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="warning"] .cls-2 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="warning"] .cls-3 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="warning"] .cls-4 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 /* Info icon */
 .icon[name="info"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="info"] .cls-2 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon[name="info"] .cls-3 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="info"] .cls-4 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="info"] .cls-5 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--sea-green[name="info"] .cls-5 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="info"] .cls-5 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 /* Complex add-a-* button icons */
 .icon[name="add-a-context-button"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="add-a-context-button"] .cls-2 {
-  @apply fill-platinum/30;
+	@apply fill-platinum/30;
 }
 
 .icon[name="add-a-context-button"] .cls-3 {
-  @apply fill-platinum/60;
+	@apply fill-platinum/60;
 }
 
 .icon[name="add-a-context-button"] .cls-4,
 .icon[name="add-a-context-button"] .cls-6 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="add-a-context-button"] .cls-5 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="add-a-context-button"] .cls-7 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="add-a-context-button"] .cls-8 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon.icon--sea-green[name="add-a-context-button"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="add-a-context-button"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 /* Similar patterns for other add-a-* buttons */
 .icon[name="add-a-person-button"] .cls-1,
 .icon[name="add-a-relationship-button"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="add-a-person-button"] .cls-2,
 .icon[name="add-a-relationship-button"] .cls-2,
 .icon[name="add-a-person-button"] .cls-6,
 .icon[name="add-a-relationship-button"] .cls-6 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="add-a-person-button"] .cls-3,
 .icon[name="add-a-relationship-button"] .cls-3 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="add-a-person-button"] .cls-4,
 .icon[name="add-a-relationship-button"] .cls-4 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="add-a-person-button"] .cls-5,
 .icon[name="add-a-relationship-button"] .cls-5 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 /* Add-a-place-button */
 .icon[name="add-a-place-button"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="add-a-place-button"] .cls-2,
 .icon[name="add-a-place-button"] .cls-5 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="add-a-place-button"] .cls-3 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="add-a-place-button"] .cls-4 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon[name="add-a-place-button"] .cls-6 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 /* Add-a-protocol and add-a-protocol-button */
@@ -363,164 +363,164 @@
 .icon[name="add-a-protocol-button"] .cls-1,
 .icon[name="add-a-protocol"] .cls-9,
 .icon[name="add-a-protocol-button"] .cls-9 {
-  @apply fill-white;
+	@apply fill-white;
 }
 
 .icon[name="add-a-protocol"] .cls-2,
 .icon[name="add-a-protocol-button"] .cls-2 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="add-a-protocol"] .cls-3,
 .icon[name="add-a-protocol-button"] .cls-3 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="add-a-protocol"] .cls-4,
 .icon[name="add-a-protocol-button"] .cls-4 {
-  @apply fill-cyber-grape;
+	@apply fill-cyber-grape;
 }
 
 .icon[name="add-a-protocol"] .cls-5,
 .icon[name="add-a-protocol-button"] .cls-5 {
-  @apply fill-navy-taupe/50;
+	@apply fill-navy-taupe/50;
 }
 
 .icon[name="add-a-protocol"] .cls-6,
 .icon[name="add-a-protocol-button"] .cls-6 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="add-a-protocol"] .cls-7,
 .icon[name="add-a-protocol-button"] .cls-7 {
-  @apply fill-slate-blue;
+	@apply fill-slate-blue;
 }
 
 .icon[name="add-a-protocol"] .cls-8,
 .icon[name="add-a-protocol-button"] .cls-8 {
-  @apply fill-navy-taupe;
+	@apply fill-navy-taupe;
 }
 
 /* Add-a-screen */
 .icon[name="add-a-screen"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="add-a-screen"] .cls-2,
 .icon[name="add-a-screen"] .cls-6 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="add-a-screen"] .cls-3 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="add-a-screen"] .cls-4 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon[name="add-a-screen"] .cls-5 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 /* Pair-a-server */
 .icon[name="pair-a-server"] .cls-8 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="pair-a-server"] .cls-2 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 .icon[name="pair-a-server"] .cls-3 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon[name="pair-a-server"] .cls-4 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="pair-a-server"] .cls-5 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 /* Edit icon */
 .icon[name="edit"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="edit"] .cls-2 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 .icon[name="edit"] .cls-3 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon[name="edit"] .cls-4,
 .icon[name="edit"] .cls-5 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon[name="edit"] .cls-6 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="edit"] .cls-7,
 .icon[name="edit"] .cls-8 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 /* Trash bin icon */
 .icon[name="trash-bin"] .cls-1 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="trash-bin"] .cls-2 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="trash-bin"] .cls-3 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 /* Protocol card icon */
 .icon[name="protocol-card"] .cls-1 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 .icon[name="protocol-card"] .cls-2 {
-  @apply fill-cyber-grape;
+	@apply fill-cyber-grape;
 }
 
 .icon[name="protocol-card"] .cls-3 {
-  @apply fill-navy-taupe;
+	@apply fill-navy-taupe;
 }
 
 .icon[name="protocol-card"] .cls-4 {
-  @apply fill-navy-taupe/50;
+	@apply fill-navy-taupe/50;
 }
 
 .icon[name="protocol-card"] .cls-5 {
-  @apply fill-platinum;
+	@apply fill-platinum;
 }
 
 .icon[name="protocol-card"] .cls-6 {
-  @apply fill-slate-blue;
+	@apply fill-slate-blue;
 }
 
 /* Settings icon */
 .icon[name="settings"] .cls-3 {
-  fill: transparent;
+	fill: transparent;
 }
 
 /* Add-a-context special classes */
 .icon[name="add-a-context"] .cls-9 {
-  fill: rgba(0,0,0, 0.1);
+	fill: rgba(0, 0, 0, 0.1);
 }
 
 .icon[name="add-a-context"] .cls-10 {
-  fill: rgba(0,0,0, 0.2);
+	fill: rgba(0, 0, 0, 0.2);
 }
 
 /* Color modifiers for complex icons */
@@ -528,160 +528,160 @@
 /* Add-a-person-button color modifiers */
 .icon.icon--sea-green[name="add-a-person-button"] .cls-1,
 .icon.icon--sea-green[name="add-a-relationship-button"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="add-a-person-button"] .cls-1,
 .icon.icon--tomato[name="add-a-relationship-button"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--neon-coral[name="add-a-person-button"] .cls-1,
 .icon.icon--neon-coral[name="add-a-relationship-button"] .cls-1 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--mustard[name="add-a-person-button"] .cls-1,
 .icon.icon--mustard[name="add-a-relationship-button"] .cls-1 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 /* Add-a-place-button color modifiers */
 .icon.icon--sea-green[name="add-a-place-button"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="add-a-place-button"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--neon-coral[name="add-a-place-button"] .cls-1 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--mustard[name="add-a-place-button"] .cls-1 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 /* Add-a-protocol color modifiers */
 .icon.icon--sea-green[name="add-a-protocol"] .cls-2,
 .icon.icon--sea-green[name="add-a-protocol-button"] .cls-2 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="add-a-protocol"] .cls-2,
 .icon.icon--tomato[name="add-a-protocol-button"] .cls-2 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--neon-coral[name="add-a-protocol"] .cls-2,
 .icon.icon--neon-coral[name="add-a-protocol-button"] .cls-2 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--mustard[name="add-a-protocol"] .cls-2,
 .icon.icon--mustard[name="add-a-protocol-button"] .cls-2 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 /* Add-a-screen color modifiers */
 .icon.icon--sea-green[name="add-a-screen"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="add-a-screen"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--neon-coral[name="add-a-screen"] .cls-1 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--mustard[name="add-a-screen"] .cls-1 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 /* Pair-a-server color modifiers */
 .icon.icon--sea-green[name="pair-a-server"] .cls-8 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--tomato[name="pair-a-server"] .cls-8 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--neon-coral[name="pair-a-server"] .cls-8 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--mustard[name="pair-a-server"] .cls-8 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 /* Edit icon color modifiers */
 .icon.icon--sea-green[name="edit"] .cls-1 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--sea-green[name="edit"] .cls-2 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 .icon.icon--tomato[name="edit"] .cls-1 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--tomato[name="edit"] .cls-2 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon.icon--neon-coral[name="edit"] .cls-1 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--neon-coral[name="edit"] .cls-2 {
-  @apply fill-neon-coral-dark;
+	@apply fill-neon-coral-dark;
 }
 
 .icon.icon--mustard[name="edit"] .cls-1 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 .icon.icon--mustard[name="edit"] .cls-2 {
-  @apply fill-mustard-dark;
+	@apply fill-mustard-dark;
 }
 
 /* Trash bin color modifiers */
 .icon.icon--sea-green[name="trash-bin"] .cls-2 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon.icon--sea-green[name="trash-bin"] .cls-3 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 .icon.icon--tomato[name="trash-bin"] .cls-2 {
-  @apply fill-tomato;
+	@apply fill-tomato;
 }
 
 .icon.icon--tomato[name="trash-bin"] .cls-3 {
-  @apply fill-tomato-dark;
+	@apply fill-tomato-dark;
 }
 
 .icon.icon--neon-coral[name="trash-bin"] .cls-2 {
-  @apply fill-neon-coral;
+	@apply fill-neon-coral;
 }
 
 .icon.icon--neon-coral[name="trash-bin"] .cls-3 {
-  @apply fill-neon-coral-dark;
+	@apply fill-neon-coral-dark;
 }
 
 .icon.icon--mustard[name="trash-bin"] .cls-2 {
-  @apply fill-mustard;
+	@apply fill-mustard;
 }
 
 .icon.icon--mustard[name="trash-bin"] .cls-3 {
-  @apply fill-mustard-dark;
+	@apply fill-mustard-dark;
 }
 
 /* Transparent fill for certain icons */
@@ -693,33 +693,33 @@
 .icon[name="form-arrow-left"] .cls-1,
 .icon[name="toggle-on"] .cls-1,
 .icon[name="toggle-off"] .cls-1 {
-  fill: transparent;
+	fill: transparent;
 }
 
 .icon[name="toggle-off"] .cls-2 {
-  @apply fill-platinum-dark;
+	@apply fill-platinum-dark;
 }
 
 /* Node color sequences for highlighted icon */
 .icon[name="highlighted"] .cls-4 {
-  @apply fill-sea-green;
+	@apply fill-sea-green;
 }
 
 .icon[name="highlighted"] .cls-5 {
-  @apply fill-sea-green-dark;
+	@apply fill-sea-green-dark;
 }
 
 .icon[name="highlighted"] .cls-7 {
-  fill: rgba(255, 255, 255, 0.2);
+	fill: rgba(255, 255, 255, 0.2);
 }
 
 /* Context colors for contexts icon */
 .icon[name="contexts"] .cls-6 {
-  @apply fill-cyber-grape;
+	@apply fill-cyber-grape;
 }
 
 .icon[name="contexts"] .cls-7 {
-  fill: rgba(255, 255, 255, 0.2);
+	fill: rgba(255, 255, 255, 0.2);
 }
 
 /* 

@@ -6,9 +6,13 @@ import SummaryContext from "./SummaryContext";
 
 const Cover = () => {
 	const { protocol, filePath } = useContext(SummaryContext);
-	
+
 	// Extract filename without extension from file path (web-compatible)
-	const protocolName = filePath?.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '') || 'protocol';
+	const protocolName =
+		filePath
+			?.split(/[/\\]/)
+			.pop()
+			?.replace(/\.[^/.]+$/, "") || "protocol";
 
 	const lastModified = DateTime.fromISO(protocol.lastModified).toHTTP();
 	const date = new Date();

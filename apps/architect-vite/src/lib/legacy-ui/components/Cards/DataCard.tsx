@@ -33,5 +33,4 @@ const DataCard = ({ label, data = {}, onClick = noop, allowDrag = false }: DataC
 	);
 };
 
-
 export default DataCard;

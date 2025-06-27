@@ -81,5 +81,4 @@ const InterfaceThumbnail = ({
 	);
 };
 
-
 export default InterfaceThumbnail;

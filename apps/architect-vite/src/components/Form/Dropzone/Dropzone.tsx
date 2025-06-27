@@ -176,7 +176,6 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 	);
 };
 
-
 export { Dropzone };
 
 export default Dropzone;

@@ -29,5 +29,4 @@ const Entity = ({ type = null, entity = null, variables = null }: EntityProps) =
 	</div>
 );
 
-
 export default Entity;

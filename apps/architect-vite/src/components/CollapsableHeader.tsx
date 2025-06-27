@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 const variants = {
@@ -29,22 +30,22 @@ const CollapsableHeader = ({ children, threshold = 115, collapsedState }: Collap
 	useEffect(() => {
 		const handleScroll = () => {
 			// Get the scroll position of the nearest scrollable parent or window
-			const scrollElement = document.querySelector('.scene') || window;
+			const scrollElement = document.querySelector(".scene") || window;
 			const currentScrollY = scrollElement === window ? window.scrollY : scrollElement.scrollTop;
 			setScrollY(currentScrollY);
 		};
 
 		// Add scroll listener to window and potential parent scroll containers
-		window.addEventListener('scroll', handleScroll);
-		const sceneElement = document.querySelector('.scene');
+		window.addEventListener("scroll", handleScroll);
+		const sceneElement = document.querySelector(".scene");
 		if (sceneElement) {
-			sceneElement.addEventListener('scroll', handleScroll);
+			sceneElement.addEventListener("scroll", handleScroll);
 		}
 
 		return () => {
-			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener("scroll", handleScroll);
 			if (sceneElement) {
-				sceneElement.removeEventListener('scroll', handleScroll);
+				sceneElement.removeEventListener("scroll", handleScroll);
 			}
 		};
 	}, []);

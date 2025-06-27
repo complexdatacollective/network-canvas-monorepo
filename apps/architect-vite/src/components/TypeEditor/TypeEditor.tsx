@@ -85,7 +85,6 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 	);
 };
 
-
 const mapStateToProps = (state, { type, isNew }) => {
 	const codebook = getCodebook(state);
 

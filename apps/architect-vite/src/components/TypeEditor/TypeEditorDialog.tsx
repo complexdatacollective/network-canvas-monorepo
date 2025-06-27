@@ -73,7 +73,13 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 		// Save button (only if there are unsaved changes)
 		if (hasUnsavedChanges) {
 			buttons.push(
-				<Button key="save" onClick={handleSubmit} iconPosition="right" icon="arrow-right" disabled={submitting || invalid}>
+				<Button
+					key="save"
+					onClick={handleSubmit}
+					iconPosition="right"
+					icon="arrow-right"
+					disabled={submitting || invalid}
+				>
 					{type ? "Update Type" : "Create Type"}
 				</Button>,
 			);
@@ -87,11 +93,7 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 			show={show}
 			onClose={handleCancel}
 			className="type-editor-dialog"
-			footer={
-				<div className="flex justify-end items-center gap-2">
-					{actionButtons}
-				</div>
-			}
+			footer={<div className="flex justify-end items-center gap-2">{actionButtons}</div>}
 		>
 			<TypeEditor entity={entity} type={type} onComplete={handleTypeEditorComplete} />
 		</Dialog>

@@ -1,4 +1,5 @@
-import React, { useRef } from "react";
+import type React from "react";
+import { useRef } from "react";
 import cx from "classnames";
 import { v4 as uuid } from "uuid";
 
@@ -10,13 +11,7 @@ type SwitchProps = {
 	onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
-const Switch = ({ 
-	label = null, 
-	on = false, 
-	disabled = false, 
-	className = null, 
-	onChange = () => {} 
-}: SwitchProps) => {
+const Switch = ({ label = null, on = false, disabled = false, className = null, onChange = () => {} }: SwitchProps) => {
 	const id = useRef(uuid());
 
 	const classes = cx("switch", className, { "switch--on": on });

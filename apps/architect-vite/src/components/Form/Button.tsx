@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import cx from "classnames";
 
 type ButtonProps = {
@@ -8,11 +8,7 @@ type ButtonProps = {
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const Button = ({ children = null, className = "", type = "button", ...props }: ButtonProps) => (
-	<button
-		className={cx("form-button", className)}
-		type={type as any}
-		{...props}
-	>
+	<button className={cx("form-button", className)} type={type as any} {...props}>
 		{children}
 	</button>
 );

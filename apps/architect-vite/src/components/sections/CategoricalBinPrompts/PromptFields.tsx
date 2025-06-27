@@ -176,5 +176,4 @@ const PromptFields = ({
 	);
 };
 
-
 export default compose(withVariableOptions, withVariableHandlers)(PromptFields);

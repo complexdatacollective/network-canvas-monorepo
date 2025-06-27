@@ -9,9 +9,9 @@ import EntitySelectField from "../../sections/fields/EntitySelectField/EntitySel
 import { makeGetOptionsWithDefaults } from "./defaultRule";
 import EditValue from "./EditValue";
 import {
-    // operatorsWithRegExp,
-    operatorsWithOptionCount,
-    operatorsWithValue,
+	// operatorsWithRegExp,
+	operatorsWithOptionCount,
+	operatorsWithValue,
 } from "./options";
 import { entityRuleTypeOptions, entityRuleTypes, withEntityRuleType } from "./withEntityRuleType";
 import withOptions from "./withOptions";
@@ -165,6 +165,5 @@ const EditEntityRule = ({
 		</>
 	);
 };
-
 
 export default compose(withEntityRuleType, withRuleChangeHandler, withOptions)(EditEntityRule);

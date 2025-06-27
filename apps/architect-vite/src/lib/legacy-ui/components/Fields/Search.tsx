@@ -45,5 +45,4 @@ const Search = ({ input = { onChange: noop }, ...props }: SearchProps) => {
 	);
 };
 
-
 export default Search;

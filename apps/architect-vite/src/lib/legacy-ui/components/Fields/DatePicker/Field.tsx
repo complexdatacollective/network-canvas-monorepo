@@ -1,4 +1,4 @@
-import React, { Component, RefObject } from "react";
+import React, { Component, type RefObject } from "react";
 import cx from "classnames";
 import Icon from "../../Icon";
 import DatePicker from "./DatePicker";

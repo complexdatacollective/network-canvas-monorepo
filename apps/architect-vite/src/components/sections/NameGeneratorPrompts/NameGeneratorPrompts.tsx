@@ -6,7 +6,12 @@ import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-const NameGeneratorPrompts = ({ form, entity, type, disabled }: SectionProps & { entity?: string; type?: string; disabled?: boolean }) => (
+const NameGeneratorPrompts = ({
+	form,
+	entity,
+	type,
+	disabled,
+}: SectionProps & { entity?: string; type?: string; disabled?: boolean }) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={

@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import Dialog from "./Dialog";
 import Button from "../Button";
 
@@ -19,13 +18,13 @@ interface ErrorDialogProps {
  * Designed to present errors to the user. Unlike some other Dialog types user must
  * explicitly click Acknowledge to close.
  */
-const ErrorDialog = ({ 
-	error = null, 
-	message = null, 
-	onConfirm, 
-	show = false, 
-	confirmLabel = "OK", 
-	title = "Something went wrong!" 
+const ErrorDialog = ({
+	error = null,
+	message = null,
+	onConfirm,
+	show = false,
+	confirmLabel = "OK",
+	title = "Something went wrong!",
 }: ErrorDialogProps) => (
 	<Dialog
 		type="error"
@@ -36,7 +35,6 @@ const ErrorDialog = ({
 		options={[<Button key="confirm" onClick={onConfirm} color="neon-coral" content={confirmLabel} />]}
 	/>
 );
-
 
 export { ErrorDialog };
 

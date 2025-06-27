@@ -52,7 +52,6 @@ const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name }: Netwo
 	);
 };
 
-
 const mapStateToProps = (state, props) => ({
 	hasFilter: get(getFormValues(props.form)(state), props.name, null) !== null,
 });

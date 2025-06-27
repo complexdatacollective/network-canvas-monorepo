@@ -44,5 +44,4 @@ const InterfaceList = ({
 	</motion.div>
 );
 
-
 export default InterfaceList;

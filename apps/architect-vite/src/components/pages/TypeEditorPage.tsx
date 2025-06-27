@@ -10,7 +10,7 @@ import { Button } from "~/lib/legacy-ui/components";
 
 const TypeEditorPage = () => {
 	const { protocolId, entity, type } = useParams();
-	
+
 	// Handle "new" type creation
 	const actualType = type === "new" ? undefined : type;
 	const [, setLocation] = useLocation();
@@ -83,7 +83,13 @@ const TypeEditorPage = () => {
 		// Save button (only if there are unsaved changes)
 		if (hasUnsavedChanges) {
 			buttons.push(
-				<Button key="save" onClick={handleSubmit} iconPosition="right" icon="arrow-right" disabled={submitting || invalid}>
+				<Button
+					key="save"
+					onClick={handleSubmit}
+					iconPosition="right"
+					icon="arrow-right"
+					disabled={submitting || invalid}
+				>
 					{actualType ? "Update Type" : "Create Type"}
 				</Button>,
 			);

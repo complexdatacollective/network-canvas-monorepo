@@ -33,7 +33,7 @@ class ToggleButtonGroup extends PureComponent<ToggleButtonGroupProps> {
 	handleClickOption = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const { options, input } = this.props;
 
-		const option = getValue(options[parseInt(event.target.value, 10)]);
+		const option = getValue(options[Number.parseInt(event.target.value, 10)]);
 		const newValue = this.isOptionChecked(option)
 			? this.value.filter((value) => value !== option)
 			: [...this.value, option];

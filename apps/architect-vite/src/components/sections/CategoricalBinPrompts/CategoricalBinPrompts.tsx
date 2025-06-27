@@ -15,7 +15,13 @@ type CategoricalBinPromptsProps = {
 	disabled?: boolean;
 };
 
-const CategoricalBinPrompts = ({ handleChangePrompt, entity = null, type = null, form, disabled }: CategoricalBinPromptsProps) => (
+const CategoricalBinPrompts = ({
+	handleChangePrompt,
+	entity = null,
+	type = null,
+	form,
+	disabled,
+}: CategoricalBinPromptsProps) => (
 	<EditableList
 		previewComponent={PromptPreview}
 		editComponent={PromptFields}
@@ -35,7 +41,6 @@ const CategoricalBinPrompts = ({ handleChangePrompt, entity = null, type = null,
 		disabled={disabled}
 	/>
 );
-
 
 export { CategoricalBinPrompts };
 

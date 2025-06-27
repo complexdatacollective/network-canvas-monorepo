@@ -95,5 +95,4 @@ class EditRule extends Component<EditRuleProps> {
 	}
 }
 
-
 export default EditRule;

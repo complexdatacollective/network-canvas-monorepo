@@ -24,7 +24,15 @@ interface PromptFieldsProps {
 	optionsForVariableDraft?: Array<any>;
 }
 
-const PromptFields = ({ changeForm, entity, form, type, variable = null, variableOptions = [], optionsForVariableDraft = [] }: PromptFieldsProps) => {
+const PromptFields = ({
+	changeForm,
+	entity,
+	form,
+	type,
+	variable = null,
+	variableOptions = [],
+	optionsForVariableDraft = [],
+}: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
 		entity,
 		type,
@@ -125,6 +133,5 @@ const PromptFields = ({ changeForm, entity, form, type, variable = null, variabl
 		</>
 	);
 };
-
 
 export default compose(withVariableOptions, withVariableHandlers)(PromptFields);

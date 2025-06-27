@@ -30,7 +30,7 @@ const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerPr
 			// @ts-expect-error - thunk action returns promise
 			return dispatch(codebookActions.updateType(entityType, typeKey, parse(form)));
 		},
-		[dispatch]
+		[dispatch],
 	);
 
 	const createType = useCallback(
@@ -38,7 +38,7 @@ const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerPr
 			// @ts-expect-error - thunk action returns promise
 			return dispatch(codebookActions.createType(entityType, parse(form)));
 		},
-		[dispatch]
+		[dispatch],
 	);
 
 	const handleSubmit = useCallback(
@@ -52,17 +52,10 @@ const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerPr
 				return updateType(entity, type, values).then(() => onComplete?.());
 			}
 		},
-		[createType, updateType, onComplete, entity, type]
+		[createType, updateType, onComplete, entity, type],
 	);
 
-	return (
-		<Editor
-			form={formName}
-			component={TypeEditor}
-			initialValues={initialValues}
-			onSubmit={handleSubmit}
-		/>
-	);
+	return <Editor form={formName} component={TypeEditor} initialValues={initialValues} onSubmit={handleSubmit} />;
 };
 
 export { formName };

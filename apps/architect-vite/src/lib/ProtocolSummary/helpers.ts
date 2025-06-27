@@ -2,7 +2,8 @@ import { flatMap, get, reduce } from "lodash";
 import { paths, utils } from "../../selectors/indexes";
 
 const buildVariableEntry =
-	(protocol: any, variablePaths: Record<string, unknown>, fields: any[], entity: string, entityType: string) => (variableConfiguration: any, variableId: string) => {
+	(protocol: any, variablePaths: Record<string, unknown>, fields: any[], entity: string, entityType: string) =>
+	(variableConfiguration: any, variableId: string) => {
 		const usage = reduce(
 			variablePaths,
 			(memo, id, variablePath) => {

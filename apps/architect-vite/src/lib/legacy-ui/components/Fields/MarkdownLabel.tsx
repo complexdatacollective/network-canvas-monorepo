@@ -16,5 +16,4 @@ const MarkdownLabel = ({ label, className = "form-field-label", inline = false }
 	/>
 );
 
-
 export default memo(MarkdownLabel);

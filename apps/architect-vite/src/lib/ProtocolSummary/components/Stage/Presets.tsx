@@ -64,5 +64,4 @@ const Presets = ({ presets = null }: PresetsProps) => {
 	);
 };
 
-
 export default Presets;

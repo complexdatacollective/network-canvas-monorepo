@@ -18,21 +18,21 @@ type BaseVariablePillProps = {
 	children: React.ReactNode;
 };
 
-export const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type = null, children }, ref) => {
+export const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(
+	({ type = null, children }, ref) => {
+		const icon = useMemo(() => getIconForType(type), [type]);
+		const backgroundColor = useMemo(() => getColorForType(type), [type]);
 
-	const icon = useMemo(() => getIconForType(type), [type]);
-	const backgroundColor = useMemo(() => getColorForType(type), [type]);
-
-	return (
-		<motion.div className="variable-pill" ref={ref}>
-			<div className="variable-pill__icon" style={{ backgroundColor }}>
-				<img className="icon" src={icon} alt={type} />
-			</div>
-			<div className="variable-pill__container">{children}</div>
-		</motion.div>
-	);
-});
-
+		return (
+			<motion.div className="variable-pill" ref={ref}>
+				<div className="variable-pill__icon" style={{ backgroundColor }}>
+					<img className="icon" src={icon} alt={type} />
+				</div>
+				<div className="variable-pill__container">{children}</div>
+			</motion.div>
+		);
+	},
+);
 
 type SimpleVariablePillProps = {
 	label: string;
@@ -44,7 +44,6 @@ export const SimpleVariablePill = ({ label, ...props }: SimpleVariablePillProps)
 		<motion.h4>{label}</motion.h4>
 	</BaseVariablePill>
 );
-
 
 type EditableVariablePillProps = {
 	uuid: string;
@@ -87,15 +86,15 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		setIsEditing(false);
 	};
 
-	const existingVariablesSelector = useMemo(() => 
-		(state) => getVariablesForSubject(state, { entity, type: entityType }),
-		[entity, entityType]
+	const existingVariablesSelector = useMemo(
+		() => (state) => getVariablesForSubject(state, { entity, type: entityType }),
+		[entity, entityType],
 	);
 	const existingVariables = useSelector(existingVariablesSelector);
 
-	const existingVariableNames = useMemo(() =>
-		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
-		[existingVariables]
+	const existingVariableNames = useMemo(
+		() => Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
+		[existingVariables],
 	);
 
 	const handleUpdateName = (event) => {
@@ -199,6 +198,5 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		</>
 	);
 };
-
 
 export default React.memo(EditableVariablePill);

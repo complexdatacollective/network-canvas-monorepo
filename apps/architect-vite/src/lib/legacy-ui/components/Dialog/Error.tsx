@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ReactNode, useState } from "react";
+import { type ReactNode, useState } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
@@ -34,7 +34,6 @@ const AdditionalInformation = ({ stack = null }: AdditionalInformationProps) => 
 	);
 };
 
-
 interface ErrorDialogProps {
 	error?: Error | string | { friendlyMessage?: string };
 	message?: ReactNode;
@@ -48,13 +47,13 @@ interface ErrorDialogProps {
  * Designed to present errors to the user. Unlike some other Dialog types user must
  * explicitly click Acknowledge to close.
  */
-const ErrorDialog = ({ 
-	error = null, 
-	message = null, 
-	onConfirm, 
-	show = false, 
-	confirmLabel = "OK", 
-	title = "Something went wrong!" 
+const ErrorDialog = ({
+	error = null,
+	message = null,
+	onConfirm,
+	show = false,
+	confirmLabel = "OK",
+	title = "Something went wrong!",
 }: ErrorDialogProps) => {
 	const stack = getStack(error);
 
@@ -71,7 +70,6 @@ const ErrorDialog = ({
 		</Dialog>
 	);
 };
-
 
 export { ErrorDialog };
 

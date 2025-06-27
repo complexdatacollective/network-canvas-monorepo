@@ -33,5 +33,4 @@ const Prompts = ({ prompts = null }: PromptsProps) => {
 	);
 };
 
-
 export default Prompts;

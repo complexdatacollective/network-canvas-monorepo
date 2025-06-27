@@ -48,5 +48,4 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 	);
 };
 
-
 export default ExternalEntity;

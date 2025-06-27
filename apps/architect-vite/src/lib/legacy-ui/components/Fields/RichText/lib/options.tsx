@@ -5,8 +5,8 @@ export const MARKS = ["bold", "italic"];
 export const HISTORY = ["history"];
 
 export const MODES = {
-  full: "full",
-  inline: "inline",
+	full: "full",
+	inline: "inline",
 } as const;
 
 export const ALWAYS_DISALLOWED = ["strike", "code"];

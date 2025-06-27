@@ -61,5 +61,4 @@ class SpotlightModal extends Component<SpotlightModalProps> {
 	}
 }
 
-
 export default SpotlightModal;

@@ -59,37 +59,46 @@ interface DialogsProps {
 }
 
 const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
-	const handleConfirm = useCallback((dialog: Dialog) => {
-		if (dialog.onConfirm) {
-			dialog.onConfirm(dialog);
-		}
-		closeDialog(dialog.id);
-	}, [closeDialog]);
+	const handleConfirm = useCallback(
+		(dialog: Dialog) => {
+			if (dialog.onConfirm) {
+				dialog.onConfirm(dialog);
+			}
+			closeDialog(dialog.id);
+		},
+		[closeDialog],
+	);
 
-	const handleCancel = useCallback((dialog: Dialog) => {
-		if (dialog.onCancel) {
-			dialog.onCancel(dialog);
-		}
-		closeDialog(dialog.id);
-	}, [closeDialog]);
+	const handleCancel = useCallback(
+		(dialog: Dialog) => {
+			if (dialog.onCancel) {
+				dialog.onCancel(dialog);
+			}
+			closeDialog(dialog.id);
+		},
+		[closeDialog],
+	);
 
-	const renderDialog = useCallback((dialog: Dialog) => {
-		const Dialog = DialogVariants[dialog.type];
+	const renderDialog = useCallback(
+		(dialog: Dialog) => {
+			const Dialog = DialogVariants[dialog.type];
 
-		const onConfirm = () => handleConfirm(dialog);
-		const onCancel = () => handleCancel(dialog);
+			const onConfirm = () => handleConfirm(dialog);
+			const onCancel = () => handleCancel(dialog);
 
-		return (
-			<Dialog
-				show
-				key={dialog.id}
-				onConfirm={onConfirm}
-				onCancel={onCancel}
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...omit(dialog, ["onConfirm", "onCancel"])}
-			/>
-		);
-	}, [handleConfirm, handleCancel]);
+			return (
+				<Dialog
+					show
+					key={dialog.id}
+					onConfirm={onConfirm}
+					onCancel={onCancel}
+					// eslint-disable-next-line react/jsx-props-no-spreading
+					{...omit(dialog, ["onConfirm", "onCancel"])}
+				/>
+			);
+		},
+		[handleConfirm, handleCancel],
+	);
 
 	return dialogs.map(renderDialog);
 };

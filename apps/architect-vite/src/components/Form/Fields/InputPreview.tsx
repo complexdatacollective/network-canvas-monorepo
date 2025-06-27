@@ -21,5 +21,4 @@ const InputPreview = ({ image, label, description }: InputPreviewProps) => (
 	</div>
 );
 
-
 export default InputPreview;

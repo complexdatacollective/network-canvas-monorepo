@@ -32,13 +32,13 @@ const asColorOption = (name: string): ColorOption => ({
 	value: name,
 });
 
-const ColorPicker = ({ 
-	palette, 
-	paletteRange = 0, 
-	options = [], 
-	input, 
-	label, 
-	meta: { error, invalid, touched } 
+const ColorPicker = ({
+	palette,
+	paletteRange = 0,
+	options = [],
+	input,
+	label,
+	meta: { error, invalid, touched },
 }: ColorPickerProps) => {
 	const colors = palette ? range(1, paletteRange).map((index) => asColorOption(`${palette}-${index}`)) : options;
 
@@ -84,6 +84,5 @@ const ColorPicker = ({
 		</div>
 	);
 };
-
 
 export default ColorPicker;

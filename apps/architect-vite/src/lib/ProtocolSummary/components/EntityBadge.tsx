@@ -48,5 +48,4 @@ const EntityBadge = ({ type, entity, link = false, small = false, tiny = false }
 	);
 };
 
-
 export default EntityBadge;

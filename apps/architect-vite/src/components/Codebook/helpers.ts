@@ -4,7 +4,6 @@ import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
 import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
 import { getVariableIndex, utils } from "~/selectors/indexes";
 import { getCodebook, getProtocol } from "~/selectors/protocol";
-import type { RootState } from "~/ducks/modules/root";
 
 /**
  * Extract basic stage meta by index from the app state
@@ -115,24 +114,21 @@ export const sortByLabel = (a, b) => {
  * @returns {function} Function that can be used in map operations
  */
 export const makeGetEntityWithUsage = (index: unknown, mergeProps: Record<string, unknown>) =>
-	createSelector(
-		[getStageMetaByIndex, getVariableMetaByIndex],
-		(stageMetaByIndex, variableMetaByIndex) => {
-			const search = utils.buildSearch([index]);
-			
-			return (_: unknown, id: string) => {
-				const inUse = search.has(id);
-				const usage = inUse ? getUsageAsStageMeta(stageMetaByIndex, variableMetaByIndex, getUsage(index, id)) : [];
-				
-				return {
-					...mergeProps,
-					type: id,
-					inUse,
-					usage,
-				};
+	createSelector([getStageMetaByIndex, getVariableMetaByIndex], (stageMetaByIndex, variableMetaByIndex) => {
+		const search = utils.buildSearch([index]);
+
+		return (_: unknown, id: string) => {
+			const inUse = search.has(id);
+			const usage = inUse ? getUsageAsStageMeta(stageMetaByIndex, variableMetaByIndex, getUsage(index, id)) : [];
+
+			return {
+				...mergeProps,
+				type: id,
+				inUse,
+				usage,
 			};
-		}
-	);
+		};
+	});
 
 /**
  * Returns entity meta data for use in the codebook.

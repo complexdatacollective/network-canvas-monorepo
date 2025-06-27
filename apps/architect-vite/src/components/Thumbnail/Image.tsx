@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import cx from "classnames";
 import withAssetUrl from "~/components/Assets/withAssetUrl";
 
@@ -10,13 +10,7 @@ type ImageThumbnailProps = {
 const ImageThumbnail = ({ url, contain = false, ...props }: ImageThumbnailProps) => {
 	const className = cx("thumbnail", "thumbnail--image", { "thumbnail--contain": contain });
 
-	return (
-		<div
-			className={className}
-			style={{ backgroundImage: url ? `url(${url})` : undefined }}
-			{...props}
-		/>
-	);
+	return <div className={className} style={{ backgroundImage: url ? `url(${url})` : undefined }} {...props} />;
 };
 
 export { ImageThumbnail };

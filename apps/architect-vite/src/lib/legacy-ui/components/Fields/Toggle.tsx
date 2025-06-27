@@ -106,5 +106,4 @@ class Toggle extends PureComponent<ToggleProps> {
 	}
 }
 
-
 export default Toggle;

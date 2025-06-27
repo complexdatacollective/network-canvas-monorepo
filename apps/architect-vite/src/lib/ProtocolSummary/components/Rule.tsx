@@ -9,5 +9,4 @@ type RuleProps = {
 
 const Rule = ({ type, options }: RuleProps) => <RuleText type={type} options={options} />;
 
-
 export default compose(withDisplayOptions)(Rule);

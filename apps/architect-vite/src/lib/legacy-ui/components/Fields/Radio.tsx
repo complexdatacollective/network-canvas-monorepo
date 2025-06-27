@@ -61,5 +61,4 @@ class Radio extends PureComponent<RadioProps> {
 	}
 }
 
-
 export default Radio;

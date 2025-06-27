@@ -1,5 +1,5 @@
 import { compose } from "recompose";
-import { Heading, rowClassName, SortDirection, withSort } from "./Variables";
+import { Heading, rowClassName, type SortDirection, withSort } from "./Variables";
 
 type VariableListProps = {
 	variables?: string[];
@@ -41,7 +41,6 @@ const Variables = ({ variables = [], sortBy, sortDirection, sort, onDelete = () 
 		</div>
 	);
 };
-
 
 export { Variables };
 

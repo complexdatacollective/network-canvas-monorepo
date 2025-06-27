@@ -1,15 +1,15 @@
 interface TrackProps {
-  source: {
-    id: string;
-    value: number;
-    percent: number;
-  };
-  target: {
-    id: string;
-    value: number;
-    percent: number;
-  };
-  getTrackProps: () => any;
+	source: {
+		id: string;
+		value: number;
+		percent: number;
+	};
+	target: {
+		id: string;
+		value: number;
+		percent: number;
+	};
+	getTrackProps: () => any;
 }
 
 const Track = ({ source, target, getTrackProps }: TrackProps) => (

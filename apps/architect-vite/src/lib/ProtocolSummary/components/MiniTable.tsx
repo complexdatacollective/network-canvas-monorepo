@@ -1,5 +1,5 @@
 import cx from "classnames";
-import React from "react";
+import type React from "react";
 
 type MiniTableProps = {
 	rows?: React.ReactNode[][];
@@ -39,6 +39,5 @@ const MiniTable = ({ rows = [], wide = false, lite = false, rotated = false }: M
 		</table>
 	);
 };
-
 
 export default MiniTable;

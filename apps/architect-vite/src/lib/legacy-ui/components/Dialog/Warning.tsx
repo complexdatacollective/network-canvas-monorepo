@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import Dialog from "./Dialog";
 import Button from "../Button";
 
@@ -17,15 +17,15 @@ interface WarningProps {
  * Designed to present warnings to the user. Unlike some other Dialog types user
  * must explicitly click Acknowledge to close.
  */
-const Warning = ({ 
-	title, 
-	message = null, 
-	canCancel = true, 
-	onConfirm, 
-	onCancel = null, 
-	confirmLabel = "OK", 
-	cancelLabel = "Cancel", 
-	show = false 
+const Warning = ({
+	title,
+	message = null,
+	canCancel = true,
+	onConfirm,
+	onCancel = null,
+	confirmLabel = "OK",
+	cancelLabel = "Cancel",
+	show = false,
 }: WarningProps) => (
 	<Dialog
 		type="warning"
@@ -39,7 +39,6 @@ const Warning = ({
 		]}
 	/>
 );
-
 
 export { Warning };
 

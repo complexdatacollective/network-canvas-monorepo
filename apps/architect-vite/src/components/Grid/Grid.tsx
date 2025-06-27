@@ -142,5 +142,4 @@ class Grid extends Component<GridProps, GridState> {
 	}
 }
 
-
 export default withItems(Grid);

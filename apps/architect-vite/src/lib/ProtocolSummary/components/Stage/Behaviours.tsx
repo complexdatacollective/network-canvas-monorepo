@@ -48,5 +48,4 @@ const Behaviours = ({ behaviours = null }: BehavioursProps) => {
 	);
 };
 
-
 export default Behaviours;

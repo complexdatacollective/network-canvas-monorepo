@@ -1,4 +1,5 @@
-import React, { useCallback, memo } from "react";
+import type React from "react";
+import { useCallback, memo } from "react";
 import cx from "classnames";
 import icons from "../utils/getIcon";
 
@@ -25,14 +26,7 @@ const Icon = ({ color = "", name, className = "", style = {}, ...rest }: IconPro
 		return null;
 	}
 
-	return (
-		<IconComponent
-			className={iconClassNames}
-			name={name}
-			style={style}
-			{...rest}
-		/>
-	);
+	return <IconComponent className={iconClassNames} name={name} style={style} {...rest} />;
 };
 
 export default memo(Icon);

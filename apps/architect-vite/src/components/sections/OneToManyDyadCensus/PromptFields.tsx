@@ -93,5 +93,4 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 	);
 };
 
-
 export default compose(withVariableOptions)(PromptFields);

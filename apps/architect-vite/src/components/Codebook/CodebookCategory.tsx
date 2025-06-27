@@ -1,4 +1,3 @@
-
 type CodebookCategoryProps = {
 	title?: string;
 	children?: React.ReactNode;
@@ -10,6 +9,5 @@ const CodebookCategory = ({ title = "", children = null }: CodebookCategoryProps
 		<div className="codebook__category-items">{children}</div>
 	</div>
 );
-
 
 export default CodebookCategory;

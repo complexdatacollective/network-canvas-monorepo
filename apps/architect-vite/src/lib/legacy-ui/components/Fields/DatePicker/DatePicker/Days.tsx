@@ -1,8 +1,8 @@
-import { ReactNode, useContext } from "react";
+import { type ReactNode, useContext } from "react";
 import { range } from "lodash";
 import { DateTime } from "luxon";
 import DatePickerContext from "./DatePickerContext";
-import { formatRangeItem, RangeItem } from "./helpers";
+import { formatRangeItem, type RangeItem } from "./helpers";
 
 interface DaysRenderProps {
 	days: RangeItem[];

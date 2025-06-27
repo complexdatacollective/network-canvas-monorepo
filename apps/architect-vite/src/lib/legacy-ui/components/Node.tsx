@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import classNames from "classnames";
 
 /**
@@ -29,14 +29,14 @@ class Node extends Component<NodeProps> {
 	};
 
 	render() {
-		const { 
-			label = "Node", 
-			color = "node-color-seq-1", 
-			inactive = false, 
-			selected = false, 
-			selectedColor = "", 
-			linking = false, 
-			handleClick = null 
+		const {
+			label = "Node",
+			color = "node-color-seq-1",
+			inactive = false,
+			selected = false,
+			selectedColor = "",
+			linking = false,
+			handleClick = null,
 		} = this.props;
 
 		const classes = classNames("node", {

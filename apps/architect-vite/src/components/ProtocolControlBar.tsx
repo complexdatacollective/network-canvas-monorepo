@@ -8,8 +8,8 @@ import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeP
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
 import {
-    actionLocks as protocolsLocks,
-    actionCreators as userActions,
+	actionLocks as protocolsLocks,
+	actionCreators as userActions,
 } from "~/ducks/modules/userActions/webUserActions";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button, Spinner } from "~/lib/legacy-ui/components";

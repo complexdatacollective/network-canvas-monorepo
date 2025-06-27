@@ -16,5 +16,4 @@ const NewAsset = ({ type = null, onCreate = () => {} }: NewAssetProps) => (
 	</>
 );
 
-
 export default NewAsset;

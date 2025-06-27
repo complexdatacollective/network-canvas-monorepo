@@ -73,5 +73,4 @@ const BooleanField = ({
 	);
 };
 
-
 export default BooleanField;

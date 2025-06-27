@@ -21,12 +21,9 @@ export const getHighlightVariablesForSubject = (state: any, { type, entity }: { 
 	return highlightVariables;
 };
 
-export const getEdgesForSubject = createSelector(
-	[getCodebook],
-	(codebook) => {
-		return asOptions(codebook.edge);
-	}
-);
+export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {
+	return asOptions(codebook.edge);
+});
 
 export const getEdgeFilters = (state: any) => {
 	const getStageValue = formValueSelector("edit-stage");

@@ -16,5 +16,4 @@ const ValidatedFieldArray = ({ validation, ...rest }: ValidatedFieldArrayProps) 
 	);
 };
 
-
 export default ValidatedFieldArray;

@@ -17,19 +17,19 @@ type ToastsState = Toast[];
 const initialState: ToastsState = [];
 
 // Async thunk for adding toasts that returns the generated ID
-export const addToast = createAsyncThunk<
-	string,
-	Partial<Toast> & { id?: string }
->("toasts/addToast", async (toastConfig, { dispatch }) => {
-	const id = toastConfig.id || uuid();
-	const toast: Toast = {
-		...toastConfig,
-		id,
-	};
+export const addToast = createAsyncThunk<string, Partial<Toast> & { id?: string }>(
+	"toasts/addToast",
+	async (toastConfig, { dispatch }) => {
+		const id = toastConfig.id || uuid();
+		const toast: Toast = {
+			...toastConfig,
+			id,
+		};
 
-	dispatch(addToastSync(toast));
-	return id;
-});
+		dispatch(addToastSync(toast));
+		return id;
+	},
+);
 
 // Create the toasts slice
 const toastsSlice = createSlice({

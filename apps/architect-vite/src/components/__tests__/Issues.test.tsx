@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 
 import { render } from "@testing-library/react";
-import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
 import Issues from "../Issues";

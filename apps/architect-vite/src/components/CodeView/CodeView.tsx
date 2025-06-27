@@ -32,5 +32,4 @@ const CodeView = ({ toggleCodeView, show = false, form }: CodeViewProps) => {
 	);
 };
 
-
 export default CodeView;

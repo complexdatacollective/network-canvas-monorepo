@@ -17,5 +17,4 @@ const PageHeading = ({ heading = null }: PageHeadingProps) => {
 	);
 };
 
-
 export default PageHeading;

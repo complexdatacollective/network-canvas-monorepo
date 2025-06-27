@@ -4,33 +4,33 @@ import Slider from "./Slider";
 import MarkdownLabel from "../MarkdownLabel";
 
 interface SliderFieldProps {
-  label?: React.ReactNode;
-  className?: string;
-  hidden?: boolean;
-  input: {
-    name: string;
-    value: string | number | null;
-    onBlur: (value: any) => void;
-    onChange: (value: any) => void;
-    onDragStart: () => void;
-    onDrop: () => void;
-    onFocus: () => void;
-  };
-  meta?: {
-    error?: string;
-    invalid?: boolean;
-    touched?: boolean;
-  };
-  parameters?: {
-    minLabel?: string;
-    maxLabel?: string;
-  };
-  options?: Array<{
-    value: string | number;
-    label: string;
-  }> | null;
-  fieldLabel?: string | null;
-  type: string;
+	label?: React.ReactNode;
+	className?: string;
+	hidden?: boolean;
+	input: {
+		name: string;
+		value: string | number | null;
+		onBlur: (value: any) => void;
+		onChange: (value: any) => void;
+		onDragStart: () => void;
+		onDrop: () => void;
+		onFocus: () => void;
+	};
+	meta?: {
+		error?: string;
+		invalid?: boolean;
+		touched?: boolean;
+	};
+	parameters?: {
+		minLabel?: string;
+		maxLabel?: string;
+	};
+	options?: Array<{
+		value: string | number;
+		label: string;
+	}> | null;
+	fieldLabel?: string | null;
+	type: string;
 }
 
 const getSliderType = (variableType: string) => {

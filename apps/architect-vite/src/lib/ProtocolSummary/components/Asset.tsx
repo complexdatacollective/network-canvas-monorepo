@@ -26,7 +26,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
 		const videoElement = videoRef.current;
 		const audioElement = audioRef.current;
 		const element = type === "video" ? videoElement : type === "audio" ? audioElement : null;
-		
+
 		if (element) {
 			element.addEventListener("loadedmetadata", metaDataListener.current);
 		}
@@ -87,7 +87,12 @@ const Asset = ({ id, size = null }: AssetProps) => {
 						...(size ? [["Block Size", size]] : []),
 						["Type", "Audio"],
 						["Duration", state.duration],
-						["Preview", <audio key="audio-preview" src={url} ref={audioRef}><track kind="captions" srcLang="en" label="English" /></audio>],
+						[
+							"Preview",
+							<audio key="audio-preview" src={url} ref={audioRef}>
+								<track kind="captions" srcLang="en" label="English" />
+							</audio>,
+						],
 					]}
 				/>
 			)}
@@ -105,6 +110,5 @@ const Asset = ({ id, size = null }: AssetProps) => {
 		</div>
 	);
 };
-
 
 export default Asset;

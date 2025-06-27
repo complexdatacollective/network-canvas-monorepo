@@ -37,5 +37,4 @@ const AssetBadge = ({ id, link = false }: AssetBadgeProps) => {
 	);
 };
 
-
 export default AssetBadge;

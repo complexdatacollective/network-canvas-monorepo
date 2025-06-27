@@ -13,15 +13,15 @@ describe("dialogs", () => {
 		let store;
 
 		beforeEach(() => {
-			store = configureStore({ 
+			store = configureStore({
 				reducer,
 				middleware: (getDefaultMiddleware) =>
 					getDefaultMiddleware({
 						serializableCheck: {
-							ignoredPaths: ['dialogs'],
-							ignoredActions: ['dialogs/addDialog']
-						}
-					})
+							ignoredPaths: ["dialogs"],
+							ignoredActions: ["dialogs/addDialog"],
+						},
+					}),
 			});
 		});
 
@@ -53,15 +53,15 @@ describe("dialogs", () => {
 		});
 
 		beforeEach(() => {
-			store = configureStore({ 
+			store = configureStore({
 				reducer,
 				middleware: (getDefaultMiddleware) =>
 					getDefaultMiddleware({
 						serializableCheck: {
-							ignoredPaths: ['dialogs'],
-							ignoredActions: ['dialogs/addDialog', 'dialogs/openDialog/pending', 'dialogs/openDialog/fulfilled']
-						}
-					})
+							ignoredPaths: ["dialogs"],
+							ignoredActions: ["dialogs/addDialog", "dialogs/openDialog/pending", "dialogs/openDialog/fulfilled"],
+						},
+					}),
 			});
 		});
 

@@ -14,11 +14,14 @@ const useVariablesFromExternalData = (dataSource, asOptions = false, type = "net
 
 	// Only select the asset manifest (which is what the functions actually need)
 	const assetManifest = useSelector(getAssetManifest);
-	
+
 	// Create a minimal state object containing only what's needed
-	const partialState = useMemo(() => ({ 
-		protocol: { present: { assetManifest } } 
-	}), [assetManifest]);
+	const partialState = useMemo(
+		() => ({
+			protocol: { present: { assetManifest } },
+		}),
+		[assetManifest],
+	);
 
 	useEffect(() => {
 		if (!dataSource) {
@@ -28,9 +31,8 @@ const useVariablesFromExternalData = (dataSource, asOptions = false, type = "net
 		setState({ isVariablesLoading: true, variables: [], variablesError: null });
 
 		// Create the appropriate function based on type
-		const getVariablesFn = type === "geojson" 
-			? makeGetGeoJsonAssetVariables(partialState) 
-			: makeGetNetworkAssetVariables(partialState);
+		const getVariablesFn =
+			type === "geojson" ? makeGetGeoJsonAssetVariables(partialState) : makeGetNetworkAssetVariables(partialState);
 
 		getVariablesFn(dataSource, asOptions)
 			.then((variables) => {

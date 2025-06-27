@@ -32,14 +32,14 @@ type DialogProps = {
 	beforeCloseHandler?: (() => boolean) | null;
 };
 
-const Dialog = ({ 
-	header = null, 
-	footer = null, 
-	children, 
-	className = "", 
+const Dialog = ({
+	header = null,
+	footer = null,
+	children,
+	className = "",
 	show = true,
-	onClose = () => {}, 
-	beforeCloseHandler = null 
+	onClose = () => {},
+	beforeCloseHandler = null,
 }: DialogProps) => {
 	const classes = cx("dialog", className);
 
@@ -74,15 +74,15 @@ const Dialog = ({
 	return createPortal(
 		<AnimatePresence>
 			{show && (
-				<motion.div 
+				<motion.div
 					className="dialog-wrapper"
 					variants={dialogVariants}
 					initial="hidden"
 					animate="visible"
 					exit="hidden"
 				>
-					<div 
-						className="modal__background" 
+					<div
+						className="modal__background"
 						onClick={handleBackgroundClick}
 						onKeyDown={handleKeyDown}
 						role="button"

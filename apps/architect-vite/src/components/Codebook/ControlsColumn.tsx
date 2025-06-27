@@ -21,5 +21,4 @@ const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => (
 	</>
 );
 
-
 export default ControlsColumn;

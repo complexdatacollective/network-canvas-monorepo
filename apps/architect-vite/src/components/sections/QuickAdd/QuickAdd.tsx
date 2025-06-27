@@ -20,7 +20,14 @@ type QuickAddProps = {
 	quickAdd?: string | null;
 };
 
-const QuickAdd = ({ disabled = false, entity, handleCreateVariable, options = [], type = null, quickAdd = null }: QuickAddProps) =>
+const QuickAdd = ({
+	disabled = false,
+	entity,
+	handleCreateVariable,
+	options = [],
+	type = null,
+	quickAdd = null,
+}: QuickAddProps) =>
 	type && (
 		<Section disabled={disabled} group title="Quick Add Variable" id="issue-form">
 			<p>Choose which variable to use to store the value of the quick add form.</p>
@@ -45,7 +52,6 @@ const QuickAdd = ({ disabled = false, entity, handleCreateVariable, options = []
 			</div>
 		</Section>
 	);
-
 
 export { QuickAdd };
 

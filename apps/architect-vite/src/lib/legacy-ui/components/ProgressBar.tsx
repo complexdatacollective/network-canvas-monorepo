@@ -1,4 +1,3 @@
-import React from "react";
 import cx from "classnames";
 
 const fillerValue = (orientation: "horizontal" | "vertical", percentProgress: number | null) => {
@@ -17,12 +16,12 @@ type ProgressBarProps = {
 	nudge?: boolean;
 };
 
-const ProgressBar = ({ 
-	indeterminate = false, 
-	onClick = () => {}, 
-	orientation = "vertical", 
-	percentProgress = 0, 
-	nudge = true 
+const ProgressBar = ({
+	indeterminate = false,
+	onClick = () => {},
+	orientation = "vertical",
+	percentProgress = 0,
+	nudge = true,
 }: ProgressBarProps) => (
 	<div
 		className={cx("progress-bar", `progress-bar--${orientation}`, {

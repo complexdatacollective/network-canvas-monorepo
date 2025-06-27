@@ -42,5 +42,4 @@ const Network = ({ assetPath }: NetworkProps) => {
 	return <Table data={data} columns={columns} />;
 };
 
-
 export default compose(withAssetPath)(Network);

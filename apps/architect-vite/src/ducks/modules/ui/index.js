@@ -6,7 +6,6 @@ export const selectors = {
 	...statusSelectors,
 };
 
-export const actionCreators = {
-};
+export const actionCreators = {};
 
 export default ui;

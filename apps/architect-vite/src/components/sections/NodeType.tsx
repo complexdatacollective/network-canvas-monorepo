@@ -63,7 +63,6 @@ const NodeType = (props: NodeTypeProps) => {
 	);
 };
 
-
 // eslint-disable-next-line react/jsx-props-no-spreading
 export const FilteredNodeType = (props: NodeTypeProps) => <NodeType withFilter {...props} />;
 

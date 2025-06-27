@@ -17,7 +17,13 @@ interface OrdinalBinPromptsProps {
 	disabled?: boolean;
 }
 
-const OrdinalBinPrompts = ({ handleChangePrompt, entity = null, type = null, form, disabled }: OrdinalBinPromptsProps) => (
+const OrdinalBinPrompts = ({
+	handleChangePrompt,
+	entity = null,
+	type = null,
+	form,
+	disabled,
+}: OrdinalBinPromptsProps) => (
 	<EditableList
 		sectionTitle="Prompts"
 		sectionSummary={

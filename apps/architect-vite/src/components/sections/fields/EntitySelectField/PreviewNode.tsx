@@ -17,5 +17,4 @@ const PreviewNode = ({ label, color = "node-color-seq-1", onClick, selected = fa
 	</div>
 );
 
-
 export default PreviewNode;

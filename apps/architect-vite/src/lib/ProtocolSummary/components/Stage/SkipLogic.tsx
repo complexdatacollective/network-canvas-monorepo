@@ -26,5 +26,4 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
 	);
 };
 
-
 export default SkipLogic;

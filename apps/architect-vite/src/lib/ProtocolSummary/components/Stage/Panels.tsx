@@ -47,5 +47,4 @@ const Panels = ({ panels = null }: PanelsProps) => {
 	);
 };
 
-
 export default Panels;

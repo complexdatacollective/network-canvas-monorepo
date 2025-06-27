@@ -11,10 +11,7 @@ import {
 } from "~/config/variables";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
-import { 
-	getVariableOptionsForSubjectSelector, 
-	getVariablesForSubjectSelector 
-} from "~/selectors/codebook";
+import { getVariableOptionsForSubjectSelector, getVariablesForSubjectSelector } from "~/selectors/codebook";
 
 type UseFieldHandlerProps = {
 	form: string;
@@ -34,39 +31,41 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	);
 
 	// Create separate selectors for each field to avoid creating new objects
-	const makeFormFieldSelector = useCallback((field: string) => {
-		return (state: RootState) => formValueSelector(form)(state, field);
-	}, [form]);
-	
+	const makeFormFieldSelector = useCallback(
+		(field: string) => {
+			return (state: RootState) => formValueSelector(form)(state, field);
+		},
+		[form],
+	);
+
 	// Use separate selectors for each field
 	const variable = useSelector(makeFormFieldSelector("variable"));
 	const component = useSelector(makeFormFieldSelector("component"));
 	const createNewVariable = useSelector(makeFormFieldSelector("_createNewVariable"));
 
 	const isNewVariable = !!createNewVariable;
-	
+
 	// Create subject object once to ensure stable reference
-	const subject = useMemo(() => ({ entity, type }), [entity, type]) as { entity: "node" | "edge" | "ego"; type?: string };
-	
+	const subject = useMemo(() => ({ entity, type }), [entity, type]) as {
+		entity: "node" | "edge" | "ego";
+		type?: string;
+	};
+
 	// Use the properly memoized selectors
-	const existingVariables = useSelector(
-		(state: RootState) => getVariablesForSubjectSelector(state, subject)
+	const existingVariables = useSelector((state: RootState) => getVariablesForSubjectSelector(state, subject));
+
+	const baseVariableOptions = useSelector((state: RootState) =>
+		getVariableOptionsForSubjectSelector(state, subject, {}),
 	);
-	
-	const baseVariableOptions = useSelector(
-		(state: RootState) => getVariableOptionsForSubjectSelector(state, subject, {})
-	);
-	
+
 	// Memoize the filtered and concatenated variable options
 	const variableOptions = useMemo(() => {
 		const filtered = baseVariableOptions
 			// If not a variable with corresponding component, we can't use it here.
 			.filter(({ type: variableType }: any) => VARIABLE_TYPES_WITH_COMPONENTS.includes(variableType));
-		
+
 		// with New variable
-		return isNewVariable 
-			? filtered.concat([{ label: createNewVariable, value: createNewVariable }])
-			: filtered;
+		return isNewVariable ? filtered.concat([{ label: createNewVariable, value: createNewVariable }]) : filtered;
 	}, [baseVariableOptions, isNewVariable, createNewVariable]);
 
 	// 1. If type defined use that (existing variable)

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { motion } from "motion/react";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface PanelProps {
 	type?: string | null;

@@ -28,13 +28,13 @@ const Routes = () => {
 				<Route path="/protocol/:protocolId/codebook/:entity/:type" component={TypeEditorPage} />
 				<Route path="/protocol/:protocolId/summary" component={SummaryPage} />
 				<Route path="/protocol/:protocolId/stages/:stageId" component={StageEditorPage} />
-				
+
 				{/* Protocol overview routes */}
 				<Route path="/protocol/:protocolId" component={Protocol} />
-				
+
 				{/* Keep legacy route during transition */}
 				<Route path="/protocol" component={Protocol} />
-				
+
 				{/* Home route */}
 				<Route path="/" component={Home} />
 			</Switch>

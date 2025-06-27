@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 
-import React from "react";
+import type React from "react";
 import withAssetUrl from "./withAssetUrl";
 
 type AudioProps = {

@@ -161,5 +161,4 @@ const MultiSelect = ({ name, properties, options, label = "", ...rest }: MultiSe
 	</div>
 );
 
-
 export default MultiSelect;

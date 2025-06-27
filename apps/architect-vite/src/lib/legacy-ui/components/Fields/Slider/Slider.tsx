@@ -7,19 +7,19 @@ import Track from "./Track";
 import Tick from "./Tick";
 
 interface SliderOption {
-  value: string | number;
-  label: string;
+	value: string | number;
+	label: string;
 }
 
 interface SliderInputProps {
-  options?: SliderOption[];
-  value: string | number | null;
-  type: string;
-  onBlur: (value: any) => void;
-  parameters?: {
-    minLabel?: string;
-    maxLabel?: string;
-  };
+	options?: SliderOption[];
+	value: string | number | null;
+	type: string;
+	onBlur: (value: any) => void;
+	parameters?: {
+		minLabel?: string;
+		maxLabel?: string;
+	};
 }
 
 class SliderInput extends Component<SliderInputProps> {

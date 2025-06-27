@@ -56,7 +56,6 @@ const SkipLogicSection = () => {
 	);
 };
 
-
 export { SkipLogicSection };
 
 export default SkipLogicSection;

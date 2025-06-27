@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import Dialog from "./Dialog";
 import Button from "../Button";
 
@@ -13,13 +13,7 @@ interface NoticeProps {
 /*
  * Designed to present notices to the user.
  */
-const Notice = ({ 
-	title, 
-	message = null, 
-	onConfirm, 
-	confirmLabel = "OK", 
-	show = false 
-}: NoticeProps) => (
+const Notice = ({ title, message = null, onConfirm, confirmLabel = "OK", show = false }: NoticeProps) => (
 	<Dialog
 		type="notice"
 		icon="info"
@@ -30,7 +24,6 @@ const Notice = ({
 		options={[<Button key="confirm" onClick={onConfirm} color="primary" content={confirmLabel} />]}
 	/>
 );
-
 
 export { Notice };
 

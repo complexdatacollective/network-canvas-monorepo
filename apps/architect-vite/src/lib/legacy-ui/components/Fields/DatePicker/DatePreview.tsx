@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { motion } from "motion/react";
-import React, { MouseEvent } from "react";
+import React, { type MouseEvent } from "react";
 import Date from "./DatePicker/Date";
 import { getMonthName } from "./helpers";
 

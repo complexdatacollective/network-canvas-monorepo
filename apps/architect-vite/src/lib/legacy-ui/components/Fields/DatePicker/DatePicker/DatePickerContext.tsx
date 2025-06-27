@@ -1,6 +1,6 @@
 import { createContext } from "react";
-import { Interval } from "luxon";
-import { DateObject } from "./helpers";
+import type { Interval } from "luxon";
+import type { DateObject } from "./helpers";
 
 export interface DatePickerContextType {
 	onChange: (values: Partial<DateObject>) => void;

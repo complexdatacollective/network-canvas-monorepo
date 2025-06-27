@@ -35,7 +35,6 @@ const Counter = ({ incomingValue }: CounterProps) => {
 	return <span ref={nodeRef} />;
 };
 
-
 interface ProgressCircleProps {
 	percentProgress: number;
 	hideCounter?: boolean;
@@ -80,6 +79,5 @@ const ProgressCircle = ({ percentProgress, hideCounter = false }: ProgressCircle
 		</div>
 	);
 };
-
 
 export default ProgressCircle;

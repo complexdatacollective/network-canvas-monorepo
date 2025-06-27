@@ -21,5 +21,4 @@ const Variable = ({ id }: VariableProps) => {
 	);
 };
 
-
 export default Variable;

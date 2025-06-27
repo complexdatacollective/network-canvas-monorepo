@@ -122,13 +122,13 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 			// Get current protocol ID from the URL
 			const currentPath = window.location.pathname;
 			const protocolMatch = currentPath.match(/\/protocol\/([^\/]+)/);
-			const protocolId = protocolMatch ? protocolMatch[1] : '';
-			
+			const protocolId = protocolMatch ? protocolMatch[1] : "";
+
 			if (protocolId) {
 				const params = new URLSearchParams();
-				params.set('type', interfaceType);
+				params.set("type", interfaceType);
 				if (insertAtIndex !== undefined) {
-					params.set('insertAtIndex', insertAtIndex.toString());
+					params.set("insertAtIndex", insertAtIndex.toString());
 				}
 				setLocation(`/protocol/${protocolId}/stages/new?${params.toString()}`);
 			}
@@ -296,6 +296,5 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 const mapStateToProps = (state) => ({
 	experiments: getExperiments(state),
 });
-
 
 export default connect(mapStateToProps)(NewStageScreen);

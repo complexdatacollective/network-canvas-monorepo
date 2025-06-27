@@ -88,5 +88,4 @@ const Assets = ({
 	);
 };
 
-
 export default compose(withAssets)(Assets);

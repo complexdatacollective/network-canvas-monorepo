@@ -19,5 +19,4 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false }: Preview
 	</div>
 );
 
-
 export default PreviewEdge;

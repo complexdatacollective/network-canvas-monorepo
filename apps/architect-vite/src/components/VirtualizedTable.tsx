@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import { useCallback } from "react";
-import { useTable, useBlockLayout, Column } from "react-table";
+import { useTable, useBlockLayout, type Column } from "react-table";
 import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 
@@ -75,6 +75,5 @@ const VirtualizedTable = ({ columns, data }: VirtualizedTableProps) => {
 		</AutoSizer>
 	);
 };
-
 
 export default VirtualizedTable;

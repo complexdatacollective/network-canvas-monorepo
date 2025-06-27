@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import cx from "classnames";
 import Modal from "../Modal";
 import Icon from "../Icon";
@@ -19,19 +19,21 @@ interface DialogProps {
  * Top level Dialog component, not intended to be used directly, if you need
  * a specific type of Dialog, create in the pattern of Notice
  */
-const Dialog = ({ 
-	children, 
-	type, 
-	icon, 
-	show = false, 
-	options = [], 
-	title, 
-	message, 
-	onBlur = () => {}, 
+const Dialog = ({
+	children,
+	type,
+	icon,
+	show = false,
+	options = [],
+	title,
+	message,
+	onBlur = () => {},
 	classNames,
 }: DialogProps) => (
 	<Modal show={show} onBlur={onBlur}>
-		<div className={cx("dialog", { [`dialog--${type}`]: type }, classNames, "bg-slate-blue-dark text-accent-foreground")}>
+		<div
+			className={cx("dialog", { [`dialog--${type}`]: type }, classNames, "bg-slate-blue-dark text-accent-foreground")}
+		>
 			<div className="dialog__main">
 				{icon && (
 					<div className="dialog__main-icon">
@@ -48,7 +50,6 @@ const Dialog = ({
 		</div>
 	</Modal>
 );
-
 
 export { Dialog };
 

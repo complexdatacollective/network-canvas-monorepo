@@ -49,5 +49,4 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 	</>
 );
 
-
 export default withItemHandlers(ItemEditor);

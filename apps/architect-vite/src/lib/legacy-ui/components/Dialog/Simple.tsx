@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Modal from "../Modal";
 
 interface SimpleDialogProps {
@@ -15,14 +15,14 @@ interface SimpleDialogProps {
 /**
  * A relatively unstyled dialog for use in other kinds of modals
  */
-const SimpleDialog = ({ 
-	children = null, 
-	show = false, 
-	options = [], 
-	title, 
-	onBlur = () => {}, 
-	className = null, 
-	style = {} 
+const SimpleDialog = ({
+	children = null,
+	show = false,
+	options = [],
+	title,
+	onBlur = () => {},
+	className = null,
+	style = {},
 }: SimpleDialogProps) => (
 	<Modal show={show} onBlur={onBlur}>
 		<div className={cx("dialog", "dialog--simple", className)} style={style}>
@@ -36,7 +36,6 @@ const SimpleDialog = ({
 		</div>
 	</Modal>
 );
-
 
 export { SimpleDialog };
 

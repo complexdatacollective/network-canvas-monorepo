@@ -1,17 +1,14 @@
 import MarkdownLabel from "../MarkdownLabel";
 
 interface TickProps {
-  tick: {
-    value: number;
-    percent: number;
-  };
-  getLabelForValue?: (value: number) => string | null;
+	tick: {
+		value: number;
+		percent: number;
+	};
+	getLabelForValue?: (value: number) => string | null;
 }
 
-const Tick = ({ 
-  tick, 
-  getLabelForValue = () => null 
-}: TickProps) => {
+const Tick = ({ tick, getLabelForValue = () => null }: TickProps) => {
 	const { value, percent } = tick;
 	const label = getLabelForValue(value);
 

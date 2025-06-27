@@ -45,5 +45,4 @@ const GeoJSONTable = ({ assetPath }: GeoJSONTableProps) => {
 	return <Table data={data} columns={columns} />;
 };
 
-
 export default withAssetPath(GeoJSONTable);

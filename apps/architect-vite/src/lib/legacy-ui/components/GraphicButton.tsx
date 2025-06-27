@@ -46,5 +46,4 @@ const GraphicButton = ({
 	);
 };
 
-
 export default GraphicButton;

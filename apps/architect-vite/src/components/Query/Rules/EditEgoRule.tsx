@@ -114,5 +114,4 @@ const EditEgoRule = ({
 	);
 };
 
-
 export default compose(withOptions, withRuleChangeHandler)(EditEgoRule);

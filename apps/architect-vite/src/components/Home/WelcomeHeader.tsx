@@ -18,11 +18,11 @@ const WelcomeHeader = () => {
 	const dispatch = useDispatch();
 	const downloadSampleProtocol = () => dispatch(webUserActions.importSampleProtocol());
 
-  	const classes = cx(
-    	"relative rounded-(--border-radius) shadow-(--architect-panel-shadow) my-10 mx-auto max-w-4xl overflow-hidden flex flex-col flex-wrap",
-    	"welcome-header",
-    	isOpen ? "welcome-header--is-open bg-slate-blue text-white" : "bg-transparent"
-  	);
+	const classes = cx(
+		"relative rounded-(--border-radius) shadow-(--architect-panel-shadow) my-10 mx-auto max-w-4xl overflow-hidden flex flex-col flex-wrap",
+		"welcome-header",
+		isOpen ? "welcome-header--is-open bg-slate-blue text-white" : "bg-transparent",
+	);
 
 	const start = {
 		show: {

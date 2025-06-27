@@ -35,5 +35,4 @@ const SelectOptionVariable = (props: SelectOptionVariableProps) => {
 	);
 };
 
-
 export default SelectOptionVariable;

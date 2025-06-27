@@ -1,7 +1,7 @@
-import { ReactNode, useContext } from "react";
+import { type ReactNode, useContext } from "react";
 import { range } from "lodash";
 import DatePickerContext from "./DatePickerContext";
-import { formatRangeItem, RangeItem } from "./helpers";
+import { formatRangeItem, type RangeItem } from "./helpers";
 
 interface YearsRenderProps {
 	years: RangeItem[];
@@ -16,11 +16,11 @@ interface YearsProps {
  */
 const Years = ({ children }: YearsProps) => {
 	const { range: dateRange } = useContext(DatePickerContext);
-	
+
 	if (!dateRange) {
 		return children({ years: [] }) as JSX.Element;
 	}
-	
+
 	const years = range(dateRange.start.year, dateRange.end.year + 1).map((y) => formatRangeItem(y));
 	return children({ years }) as JSX.Element;
 };

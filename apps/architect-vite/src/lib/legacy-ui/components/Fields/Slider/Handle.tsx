@@ -3,21 +3,21 @@ import cx from "classnames";
 import MarkdownLabel from "../MarkdownLabel";
 
 interface HandleProps {
-  domain: [number, number];
-  handle: {
-    id: any;
-    value: number;
-    percent: number;
-  };
-  isActive?: boolean;
-  isDisabled?: boolean;
-  showTooltips?: boolean;
-  getHandleProps: (id: any, props?: any) => any;
-  getLabelForValue: (value: number) => string | null;
+	domain: [number, number];
+	handle: {
+		id: any;
+		value: number;
+		percent: number;
+	};
+	isActive?: boolean;
+	isDisabled?: boolean;
+	showTooltips?: boolean;
+	getHandleProps: (id: any, props?: any) => any;
+	getLabelForValue: (value: number) => string | null;
 }
 
 interface HandleState {
-  mouseOver: boolean;
+	mouseOver: boolean;
 }
 
 class Handle extends Component<HandleProps, HandleState> {

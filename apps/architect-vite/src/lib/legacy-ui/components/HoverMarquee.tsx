@@ -39,5 +39,4 @@ const HoverMarquee = ({ speed = 100, children }: HoverMarqueeProps) => {
 	);
 };
 
-
 export default HoverMarquee;

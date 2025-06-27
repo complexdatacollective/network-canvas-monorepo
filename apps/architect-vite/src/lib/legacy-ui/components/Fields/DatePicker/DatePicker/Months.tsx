@@ -1,8 +1,8 @@
-import { ReactNode, useContext } from "react";
+import { type ReactNode, useContext } from "react";
 import { range } from "lodash";
 import { Interval } from "luxon";
 import DatePickerContext from "./DatePickerContext";
-import { formatRangeItem, getMonthName, RangeItem } from "./helpers";
+import { formatRangeItem, getMonthName, type RangeItem } from "./helpers";
 
 interface MonthsRenderProps {
 	months: RangeItem[];

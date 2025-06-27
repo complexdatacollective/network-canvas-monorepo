@@ -87,5 +87,4 @@ class TextArea extends PureComponent<TextAreaProps> {
 	}
 }
 
-
 export default TextArea;

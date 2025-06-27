@@ -24,14 +24,14 @@ const ASSET_COMPONENTS = {
 	geojson: Thumbnails.GeoJSON,
 };
 
-const Asset = ({ 
-	id, 
-	isUsed = false, 
-	onClick = () => {}, 
-	onDelete = null, 
-	onDownload = () => {}, 
-	onPreview = () => {}, 
-	type 
+const Asset = ({
+	id,
+	isUsed = false,
+	onClick = () => {},
+	onDelete = null,
+	onDownload = () => {},
+	onPreview = () => {},
+	type,
 }: AssetProps) => {
 	const handleClick = useCallback(
 		(e: React.MouseEvent) => {
@@ -105,6 +105,5 @@ const Asset = ({
 		</div>
 	);
 };
-
 
 export default Asset;

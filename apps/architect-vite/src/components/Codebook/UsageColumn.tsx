@@ -13,7 +13,7 @@ type UsageColumnProps = {
 
 const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 	const [location] = useLocation();
-	
+
 	if (!inUse) {
 		return (
 			<Tag key="unused" notUsed>
@@ -34,10 +34,10 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 		if (!id) {
 			return <Tag key="validation-option">{label}</Tag>;
 		}
-		
+
 		const protocolId = getProtocolId();
-		const href = protocolId ? `/protocol/${protocolId}/stages/${id}` : '#';
-		
+		const href = protocolId ? `/protocol/${protocolId}/stages/${id}` : "#";
+
 		return (
 			<Link key={id} href={href}>
 				<Tag>{label}</Tag>
@@ -51,6 +51,5 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 		</div>
 	);
 };
-
 
 export default UsageColumn;

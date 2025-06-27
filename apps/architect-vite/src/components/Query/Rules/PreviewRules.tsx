@@ -34,5 +34,4 @@ const PreviewRules = ({ join = null, rules, codebook, onClickRule, onDeleteRule 
 	);
 };
 
-
 export default PreviewRules;

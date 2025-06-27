@@ -16,5 +16,4 @@ const Filter = ({ filter }: FilterProps) => {
 	);
 };
 
-
 export default Filter;

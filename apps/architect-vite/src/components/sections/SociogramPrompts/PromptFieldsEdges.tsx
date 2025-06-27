@@ -17,26 +17,28 @@ type DisplayEdgesProps = {
 
 const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 	const dispatch = useDispatch();
-	
+
 	// Fix 1: Use the already memoized selector directly
 	const edgesForSubject = useSelector(getEdgesForSubject);
-	
+
 	// Fix 2: Memoize form selectors
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const createEdge = useSelector((state) => formSelector(state, "edges.create"));
 	const displayEdges = useSelector((state) => formSelector(state, "edges.display"));
 
 	// Fix 3: Memoize the mapped array
-	const displayEdgesOptions = useMemo(() => 
-		edgesForSubject.map((edge) => {
-			if (edge.value !== createEdge) {
-				return edge;
-			}
-			return {
-				...edge,
-				disabled: true,
-			};
-		}), [edgesForSubject, createEdge]
+	const displayEdgesOptions = useMemo(
+		() =>
+			edgesForSubject.map((edge) => {
+				if (edge.value !== createEdge) {
+					return edge;
+				}
+				return {
+					...edge,
+					disabled: true,
+				};
+			}),
+		[edgesForSubject, createEdge],
 	);
 
 	const hasDisabledEdgeOption = displayEdgesOptions.some((option) => option.disabled);

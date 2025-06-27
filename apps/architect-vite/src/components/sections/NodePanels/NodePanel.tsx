@@ -50,5 +50,4 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 	</>
 );
 
-
 export default NodePanel;

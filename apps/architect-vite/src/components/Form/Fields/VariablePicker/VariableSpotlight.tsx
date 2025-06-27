@@ -20,7 +20,14 @@ type ListItemProps = {
 	removeSelected?: () => void;
 };
 
-const ListItem = ({ disabled = false, selected = false, onSelect = null, children = null, setSelected = () => {}, removeSelected = () => {} }: ListItemProps) => {
+const ListItem = ({
+	disabled = false,
+	selected = false,
+	onSelect = null,
+	children = null,
+	setSelected = () => {},
+	removeSelected = () => {},
+}: ListItemProps) => {
 	const ref = useRef(null);
 
 	useEffect(() => {
@@ -47,7 +54,6 @@ const ListItem = ({ disabled = false, selected = false, onSelect = null, childre
 	);
 };
 
-
 type DividerProps = {
 	legend: string;
 };
@@ -59,7 +65,6 @@ const Divider = ({ legend }: DividerProps) => (
 		</fieldset>
 	</ListItem>
 );
-
 
 type VariableSpotlightProps = {
 	disallowCreation?: boolean;
@@ -84,7 +89,6 @@ const VariableSpotlight = ({
 	options,
 	disallowCreation = false,
 }: VariableSpotlightProps) => {
-
 	const [filterTerm, setFilterTerm] = useState("");
 
 	// Cursor positions:
@@ -346,6 +350,5 @@ const VariableSpotlight = ({
 		</motion.div>
 	);
 };
-
 
 export default VariableSpotlight;

@@ -1,4 +1,5 @@
-import React, { PureComponent } from "react";
+import type React from "react";
+import { PureComponent } from "react";
 import classNames from "classnames";
 
 type SpinnerProps = {

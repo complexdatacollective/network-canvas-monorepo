@@ -102,5 +102,4 @@ const TextInput = ({
 	);
 };
 
-
 export default memo(TextInput);

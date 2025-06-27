@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import withAssetUrl from "./withAssetUrl";
 
 const backgroundStyles = (url: string): React.CSSProperties => ({
