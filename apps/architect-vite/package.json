@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "vite build",
+		"build": "pnpm prepare && vite build",
+		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" build",
 		"preview": "vite preview",
 		"test": "vitest run"
 	},
