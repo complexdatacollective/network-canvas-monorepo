@@ -1,20 +1,24 @@
-/* eslint-disable react/prop-types */
-/* eslint-disable react/jsx-props-no-spreading */
 import { useRef } from "react";
-import Tippy from "@tippyjs/react";
+import Tippy, { type TippyProps } from "@tippyjs/react";
+import type { ComponentType, ReactNode } from "react";
 
-const withTooltip =
-	(WrappedComponent) =>
-	({ tooltip, tippyProps, ...props }) => {
-		const ref = useRef();
+type WithTooltipProps = {
+	tooltip?: ReactNode;
+	tippyProps?: Partial<TippyProps>;
+};
+
+const withTooltip = <P extends object>(WrappedComponent: ComponentType<P>) => {
+	return ({ tooltip, tippyProps, ...props }: P & WithTooltipProps) => {
+		const ref = useRef<HTMLSpanElement>(null);
 		return (
 			<>
 				<span ref={ref}>
-					<WrappedComponent {...props} />
+					<WrappedComponent {...(props as P)} />
 				</span>
 				{tooltip && <Tippy content={tooltip} reference={ref} {...tippyProps} />}
 			</>
 		);
 	};
+};
 
 export default withTooltip;

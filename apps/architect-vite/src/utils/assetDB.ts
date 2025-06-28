@@ -1,25 +1,35 @@
+import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
 import Dexie, { type EntityTable } from "dexie";
 
-interface Asset {
-	id: string; // The asset ID from protocol manifest (key)
-	name: string; // Original filename from manifest
-	source: string; // Internal filename used in zip (asset.source)
-	type: string; // Asset type from manifest (image, video, etc.)
-	protocolId: string; // Protocol this asset belongs to
-	blob: Blob; // The actual file data
-}
-
-const db = new Dexie("Architect") as Dexie & {
+export const assetDb = new Dexie("ArchitectAssetDB") as Dexie & {
 	assets: EntityTable<
-		Asset,
+		ExtractedAsset,
 		"id" // primary key "id" (for the typings only)
 	>;
 };
 
 // Schema declaration:
-db.version(1).stores({
-	assets: "++id, name, source, type, protocolId, blob", // primary key "id" (for the runtime!)
+assetDb.version(1).stores({
+	assets: "++id, name, data", // primary key "id" (for the runtime!)
 });
 
-export { db };
-export type { Asset };
+/**
+ * Clear all stored data (protocols, active protocol, assets, etc.)
+ * This function clears Redux state, localStorage, and IndexedDB
+ */
+export async function clearAllStorage() {
+	try {
+		// Clear localStorage
+		localStorage.clear();
+
+		// Clear assetDB (IndexedDB)
+		await assetDb.assets.clear();
+
+		// Reload the page to reset Redux state
+		window.location.reload();
+
+		console.log("Storage cleared and app reloaded");
+	} catch (error) {
+		console.error("Error clearing storage:", error);
+	}
+}

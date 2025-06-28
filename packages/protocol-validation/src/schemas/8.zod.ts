@@ -854,7 +854,6 @@ export type Stage = z.infer<typeof stageSchema>;
 export type Prompt = Extract<Stage, { prompts: unknown }>["prompts"][number];
 
 const baseAssetSchema = z.object({
-	id: z.string().optional(),
 	name: z.string(),
 });
 

@@ -158,3 +158,7 @@ pnpm typecheck   # TypeScript check
 
 - Always remove barrel files (index.js, index.ts, index.tsx, etc.), and update imports to use the correct path.
 - Always remove unused types after refactoring
+
+## Redux and Toolkit Notes
+
+- Do not use the `AnyAction` type from @reduxjs/toolkit - it is deprecated. Search the web for the latest approach, if required.

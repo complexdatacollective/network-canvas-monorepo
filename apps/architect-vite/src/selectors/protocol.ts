@@ -1,15 +1,17 @@
-import { find, findIndex, reduce } from "es-toolkit/compat";
-import { createSelector } from "@reduxjs/toolkit";
-import type { RootState } from "~/ducks/modules/root";
 import type { Protocol } from "@codaco/protocol-validation";
+import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import { find, findIndex, reduce } from "es-toolkit/compat";
+import { UnsavedChanges } from "~/components/Dialogs";
 import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
+import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 
 const propStageId = (_: any, props: { stageId: string }) => props.stageId;
 
 // During transition, check both old and new stores
-export const getProtocol = (state: RootState): Protocol | null => {
+export const getProtocol = (state: RootState) => {
 	// First check new activeProtocol store (with timeline)
-	const activeProtocol = selectActiveProtocol(state as any);
+	const activeProtocol = selectActiveProtocol(state);
 	if (activeProtocol) {
 		return activeProtocol;
 	}
@@ -87,6 +89,9 @@ export const getExperiments = (state: RootState) => {
 };
 
 export const getHasUnsavedChanges = (state: RootState): boolean => {
+	// state.activeProtocol.present.lastChanged should be compared with
+	// state.protocols
+
 	// During transition, check both stores
 
 	// Check new activeProtocol store
@@ -97,7 +102,7 @@ export const getHasUnsavedChanges = (state: RootState): boolean => {
 	}
 
 	// Check old protocol store
-	const activeProtocol = state.protocol?.present as any;
+	const activeProtocol = state.protocols?.present;
 	if (activeProtocol) {
 		return activeProtocol.lastChanged > activeProtocol.lastSaved;
 	}
@@ -105,13 +110,36 @@ export const getHasUnsavedChanges = (state: RootState): boolean => {
 	return false;
 };
 
-export const getIsProtocolValid = (state: RootState): boolean => {
-	const protocol = getProtocol(state);
-	if (!protocol) {
-		return false;
+export const checkUnsavedChanges = createAsyncThunk("protocol/check-unsaved-changes", (_, thunkAPI) => {
+	const state = thunkAPI.getState() as RootState;
+	const hasUnsavedChanges = getHasUnsavedChanges(state);
+
+	if (!hasUnsavedChanges) {
+		return Promise.resolve(true);
 	}
 
-	return true; // TODO: Implement actual validation logic
+	const unsavedChangesDialog = UnsavedChanges({
+		confirmLabel: "Discard changes and continue",
+	});
+
+	return thunkAPI.dispatch(dialogsActions.openDialog(unsavedChangesDialog)).unwrap();
+});
+
+export const getIsProtocolValid = (state: RootState): boolean => {
+	// Return validation result from Redux state
+	return state.protocolValidation.validationResult?.isValid ?? false;
+};
+
+export const getProtocolValidationState = (state: RootState) => {
+	return state.protocolValidation;
+};
+
+export const getProtocolValidationResult = (state: RootState) => {
+	return state.protocolValidation.validationResult;
+};
+
+export const getIsProtocolValidating = (state: RootState): boolean => {
+	return state.protocolValidation.isValidating;
 };
 
 // Timeline selector

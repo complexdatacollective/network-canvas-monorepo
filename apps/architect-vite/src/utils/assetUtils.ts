@@ -1,65 +1,20 @@
-import type { Protocol } from "@codaco/protocol-validation";
-import type JSZip from "jszip";
-import { db, type Asset } from "./assetDB";
+import { assetDb, type Asset } from "./assetDB";
 
-export const saveAssetToDb = async (
-	assetId: string,
-	name: string,
-	source: string,
-	type: string,
-	protocolId: string,
-	data: ArrayBuffer,
-): Promise<void> => {
-	const blob = new Blob([data]);
-
-	const asset: Asset = {
-		id: assetId,
-		name,
-		source,
-		type,
-		protocolId,
-		blob,
-	};
-
-	await db.assets.put(asset);
+export const saveAssetToDb = async (asset: Asset): Promise<void> => {
+	await assetDb.assets.put(asset);
 };
 
-export const extractProtocolAssets = async (protocol: Protocol, zip: JSZip, protocolId: string): Promise<void> => {
-	// Extract and store assets using assetManifest
-	const assetManifest = protocol.assetManifest || {};
-	const assetKeys = Object.keys(assetManifest);
-
-	console.log(`Found ${assetKeys.length} assets in manifest to extract`);
-
+export const saveProtocolAssets = async (assets: Asset[]): Promise<void> => {
 	// Process assets in parallel using manifest
-	const assetPromises = assetKeys.map(async (assetKey) => {
-		const asset = assetManifest[assetKey];
-		if (!asset) return;
-
+	const assetPromises = assets.map(async (asset) => {
 		// Skip apikey assets as they're not actual files
-		if (asset.type === "apikey") {
+		if (typeof asset.data === "string") {
 			console.log(`Skipping apikey asset: ${asset.name}`);
 			return;
 		}
 
-		// Use asset.source for the actual file path in zip
-		const assetFile = zip.file(`assets/${asset.source}`);
-		if (!assetFile) {
-			console.error(`Asset "${asset.source}" not found in zip for manifest entry "${assetKey}"`);
-			return;
-		}
-
-		const assetData = await assetFile.async("arraybuffer");
-
-		await saveAssetToDb(
-			asset.id || assetKey, // Use manifest asset ID, fallback to key
-			asset.name, // Original filename from manifest
-			asset.source, // Internal filename in zip
-			asset.type, // Asset type from manifest
-			protocolId,
-			assetData,
-		);
-		console.log(`Saved asset: ${asset.name} (${asset.source}) - ${assetData.byteLength} bytes`);
+		await saveAssetToDb(asset);
+		console.log(`Saved asset: ${asset.name} - ${asset.data.bytes()} bytes`);
 	});
 
 	await Promise.all(assetPromises);
@@ -67,11 +22,11 @@ export const extractProtocolAssets = async (protocol: Protocol, zip: JSZip, prot
 };
 
 export const getAssetById = async (assetId: string): Promise<Asset | undefined> => {
-	return await db.assets.get(assetId);
+	return await assetDb.assets.get(assetId);
 };
 
 export const createBlobUrl = (asset: Asset): string => {
-	return URL.createObjectURL(asset.blob);
+	return URL.createObjectURL(asset.data);
 };
 
 export const revokeBlobUrl = (url: string): void => {

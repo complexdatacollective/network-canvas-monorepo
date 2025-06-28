@@ -2,92 +2,9 @@ import React from "react";
 import ExternalLink from "~/components/ExternalLink";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Markdown } from "~/lib/legacy-ui/components/Fields";
-import { errors as netcanvasFileErrors } from "~/utils/netcanvasFile";
 
 const getFriendlyMessage = (e, meta = {}) => {
-	const collectedMeta = {
-		...e.meta,
-		...meta,
-	};
-
-	const fileName = collectedMeta.filePath ? <em>{path.basename(collectedMeta.filePath)}</em> : "file";
-
-	switch (e.friendlyCode) {
-		case netcanvasFileErrors.NotFound:
-			return <p>Could not find {fileName}. See the information below for details about why this error occurred.</p>;
-		case netcanvasFileErrors.IncorrectPermissions:
-			return (
-				<>
-					<p>
-						Could not save/open &quot;
-						{fileName}
-						&quot; due to a permissions issue. Please check that the file is not &quot;read only&quot;.
-					</p>
-					<p>
-						If you are attempting to save this file, you can try renaming it so that Architect can recreate the file
-						when you save again.
-					</p>
-					<p>Please contact the Network Canvas team if you need support with this issue.</p>
-				</>
-			);
-		case netcanvasFileErrors.ReadError:
-			return (
-				<p>
-					Could not read the file &quot;
-					{fileName}
-					&quot;. See the information below for details about why this error occurred. Please contact the Network Canvas
-					team if you need support with this issue.
-				</p>
-			);
-		case netcanvasFileErrors.WriteError:
-			return (
-				<>
-					<p>
-						Saving failed because there was an error writing the file. Check that you have enough disk space, or try
-						saving to a different location. The original file has not been changed. See the information below for
-						details about why this error occurred.
-					</p>
-					<p>If you continue to encounter this error, please contact the Network Canvas team for support.</p>
-				</>
-			);
-		case netcanvasFileErrors.CreateFailed:
-			return (
-				<p>
-					Architect failed to create a new protocol file. This may mean it could not write to the temporary directory,
-					or it could not read the template file. Please contact the Network Canvas team for support with this issue.
-					See the information below for details about why this error occurred.
-				</p>
-			);
-		case netcanvasFileErrors.SaveFailed:
-			return (
-				<>
-					<p>
-						Saving failed. Check that you have enough disk space, or try saving to a different location. The original
-						file has not been changed. See the information below for details about why this error occurred.
-					</p>
-					<p>If you continue to encounter this error, please contact the Network Canvas team for support.</p>
-				</>
-			);
-		case netcanvasFileErrors.OpenFailed:
-			return (
-				<>
-					<p>Opening this protocol file failed. See the information below for details about why this error occurred.</p>
-					<p>
-						If you continue to encounter this error, please contact the Network Canvas team for support, including a
-						copy of your protocol file.
-					</p>
-				</>
-			);
-		case netcanvasFileErrors.VerificationFailed:
-			return (
-				<p>
-					Saving failed because the result could not be verified. Your original netcanvas file has not been changed. See
-					the information below for details about why this error occurred.
-				</p>
-			);
-		default:
-			return null;
-	}
+	return <p>Error!</p>;
 };
 
 const netcanvasFileErrorHandler = (e, meta = {}) => {

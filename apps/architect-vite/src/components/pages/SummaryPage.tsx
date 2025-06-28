@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useLocation, useParams } from "wouter";
 import { Layout } from "~/components/EditorLayout";
-import { selectProtocolById } from "~/ducks/modules/protocols";
-import type { RootState } from "~/ducks/modules/root";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui";
 import AssetManifest from "~/lib/ProtocolSummary/components/AssetManifest";
@@ -38,9 +36,6 @@ const SummaryPage = () => {
 	// Get the active protocol from Redux store
 	const protocol = useSelector(getProtocol);
 
-	// Get the stored protocol metadata (for file path)
-	const storedProtocol = useSelector((state: RootState) => (protocolId ? selectProtocolById(protocolId)(state) : null));
-
 	const handleGoBack = () => {
 		if (protocolId) {
 			setLocation(`/protocol/${protocolId}`);
@@ -57,7 +52,7 @@ const SummaryPage = () => {
 
 		// Extract filename without extension (web-compatible approach)
 		const baseFileName =
-			storedProtocol?.name
+			protocol?.name
 				?.replace(/\.netcanvas$/, "")
 				.split("/")
 				.pop() || "protocol";
@@ -68,7 +63,7 @@ const SummaryPage = () => {
 	};
 
 	// Don't render until we have protocol data
-	if (!protocol || !storedProtocol) {
+	if (!protocol) {
 		return (
 			<Layout>
 				<p>Loading protocol...</p>

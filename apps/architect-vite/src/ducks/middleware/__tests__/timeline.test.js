@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import crypto from "node:crypto";
 import { times } from "lodash";
 import { v4 as uuid } from "uuid";
-import createTimeline, { actionCreators } from "../timeline";
+import createTimeline, { timelineActions } from "../timeline";
 
 vi.mock("uuid");
 
@@ -26,7 +26,8 @@ describe("timeline middleware", () => {
 		it("modifies an existing reducer to contain past present future", () => {
 			const mockState = { foo: "bar" };
 			const reducer = () => mockState;
-			const state = createTimeline(reducer)(undefined);
+			const timelineReducer = createTimeline(reducer);
+			const state = timelineReducer(undefined, { type: "@@INIT" });
 
 			expect(state).toEqual(
 				expect.objectContaining({
@@ -60,7 +61,7 @@ describe("timeline middleware", () => {
 		it("can revert to a specific point on the timeline", () => {
 			const nextState = times(10).reduce((state) => rewindableReducer(state, {}), undefined);
 
-			const rollbackState = rewindableReducer(nextState, actionCreators.jump(nextState.timeline[4]));
+			const rollbackState = rewindableReducer(nextState, timelineActions.jump(nextState.timeline[4]));
 
 			expect(rollbackState.past).toEqual(nextState.past.slice(0, 4));
 			expect(rollbackState.timeline).toEqual(nextState.timeline.slice(0, 5));
@@ -70,7 +71,7 @@ describe("timeline middleware", () => {
 		it("if point does not exist it ignores action", () => {
 			const nextState = times(10).reduce((state) => rewindableReducer(state, {}), undefined);
 
-			const rollbackState = rewindableReducer(nextState, actionCreators.jump("NON_EXISTENT_POINT"));
+			const rollbackState = rewindableReducer(nextState, timelineActions.jump("NON_EXISTENT_POINT"));
 
 			expect(rollbackState.past).toEqual(nextState.past);
 			expect(rollbackState.timeline).toEqual(nextState.timeline);
@@ -82,7 +83,7 @@ describe("timeline middleware", () => {
 		it("can revert to an unused state", () => {
 			const nextState = times(10).reduce((state) => rewindableReducer(state, {}), undefined);
 
-			const resetState = rewindableReducer(nextState, actionCreators.reset());
+			const resetState = rewindableReducer(nextState, timelineActions.reset());
 
 			expect(resetState).toEqual(
 				expect.objectContaining({

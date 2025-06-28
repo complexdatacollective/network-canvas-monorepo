@@ -13,7 +13,7 @@ describe("Test protocols", () => {
 
 		// Extract all protocols and keep track of filenames separately
 		for (const [filename, buffer] of protocolBuffers.entries()) {
-			const protocol = await extractProtocol(buffer);
+			const { protocol } = await extractProtocol(buffer);
 			protocols.push(protocol);
 			protocolFilenames.push(filename);
 		}

@@ -4,10 +4,8 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
-import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
-import { selectProtocolById } from "~/ducks/modules/protocols";
+import { updateProtocolOptions } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
-import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
 import { Button, Icon } from "~/lib/legacy-ui/components";
 import * as Fields from "~/lib/legacy-ui/components/Fields";
 import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
@@ -57,7 +55,6 @@ const Overview = ({
 	name = null,
 	description = "",
 	updateOptions = () => {},
-	printOverview,
 	protocolIsValid,
 	hasUnsavedChanges,
 	scrollOffset,
@@ -183,8 +180,7 @@ const Overview = ({
 };
 
 const mapDispatchToProps = {
-	updateOptions: activeProtocolActions.updateOptions,
-	printOverview: webUserActions.printOverview,
+	updateOptions: updateProtocolOptions,
 };
 
 const mapStateToProps = (state: RootState) => {
@@ -192,15 +188,8 @@ const mapStateToProps = (state: RootState) => {
 	const protocolIsValid = getIsProtocolValid(state);
 	const hasUnsavedChanges = getHasUnsavedChanges(state);
 
-	// Get protocol ID from URL params via props or window location
-	const urlPath = window.location.pathname;
-	const protocolId = urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-
-	// Get stored protocol info for name
-	const storedProtocol = protocolId ? selectProtocolById(protocolId)(state) : null;
-
 	return {
-		name: storedProtocol?.name || "Untitled Protocol",
+		name: protocol?.name || "Untitled Protocol",
 		description: protocol?.description || "",
 		codebook: protocol?.codebook,
 		protocolIsValid,

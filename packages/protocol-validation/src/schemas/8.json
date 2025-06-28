@@ -619,9 +619,6 @@
 							{
 								"type": "object",
 								"properties": {
-									"id": {
-										"type": "string"
-									},
 									"name": {
 										"type": "string"
 									},
@@ -639,9 +636,6 @@
 							{
 								"type": "object",
 								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/id"
-									},
 									"name": {
 										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
 									},
@@ -659,9 +653,6 @@
 							{
 								"type": "object",
 								"properties": {
-									"id": {
-										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/id"
-									},
 									"name": {
 										"$ref": "#/definitions/Protocol/properties/assetManifest/additionalProperties/anyOf/0/properties/name"
 									},

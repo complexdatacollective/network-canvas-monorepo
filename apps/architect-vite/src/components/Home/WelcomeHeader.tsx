@@ -2,7 +2,8 @@ import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import { useDispatch } from "react-redux";
 import Version from "~/components/Version";
-import { actionCreators as webUserActions } from "~/ducks/modules/userActions/webUserActions";
+import { SAMPLE_PROTOCOL_URL } from "~/config";
+import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import headerGraphic from "~/images/Arc-Flat.svg";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
 import Button from "~/lib/legacy-ui/components/Button";
@@ -16,7 +17,7 @@ const WelcomeHeader = () => {
 	const [isOpen, setIsOpen] = useAppState("showWelcome", true);
 
 	const dispatch = useDispatch();
-	const downloadSampleProtocol = () => dispatch(webUserActions.importSampleProtocol());
+	const downloadSampleProtocol = () => dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL));
 
 	const classes = cx(
 		"relative rounded-(--border-radius) shadow-(--architect-panel-shadow) my-10 mx-auto max-w-4xl overflow-hidden flex flex-col flex-wrap",

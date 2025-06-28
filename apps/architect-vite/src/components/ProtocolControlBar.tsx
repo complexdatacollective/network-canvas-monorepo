@@ -1,23 +1,13 @@
-import { createSelector } from "@reduxjs/toolkit";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import { UnsavedChanges } from "~/components/Dialogs";
-import { actionCreators as activeProtocolActions } from "~/ducks/modules/activeProtocol";
+import { clearActiveProtocol } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { selectors as statusSelectors } from "~/ducks/modules/ui/status";
-import {
-	actionLocks as protocolsLocks,
-	actionCreators as userActions,
-} from "~/ducks/modules/userActions/webUserActions";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button, Spinner } from "~/lib/legacy-ui/components";
 import { getHasUnsavedChanges, getIsProtocolValid } from "~/selectors/protocol";
-
-const getIsSaving = createSelector([(state) => state], (state) =>
-	statusSelectors.getIsBusy(state, protocolsLocks.saving),
-);
 
 const unsavedChangesDialog = UnsavedChanges({
 	message: <p>Your protocol has changes that have not yet been saved. Continuing will discard these changes!</p>,
@@ -32,9 +22,9 @@ const ProtocolControlBar = ({ show = true }: ProtocolControlBarProps) => {
 	const dispatch = useDispatch();
 	const [, navigate] = useLocation();
 	const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
-	const isSaving = useSelector(getIsSaving);
+	const isSaving = false;
 	const protocolIsValid = useSelector(getIsProtocolValid);
-	const saveNetcanvas = useCallback(() => dispatch(userActions.saveNetcanvas()), [dispatch]);
+	const saveNetcanvas = () => console.log("Save Netcanvas action triggered");
 
 	const handleClickStart = useCallback(
 		() =>
@@ -51,7 +41,7 @@ const ProtocolControlBar = ({ show = true }: ProtocolControlBarProps) => {
 						return;
 					}
 					// Clear the active protocol and navigate home
-					dispatch(activeProtocolActions.clearActiveProtocol());
+					dispatch(clearActiveProtocol());
 					navigate("/");
 				}),
 		[dispatch, hasUnsavedChanges, navigate],
@@ -99,7 +89,7 @@ const ProtocolControlBar = ({ show = true }: ProtocolControlBarProps) => {
 			];
 		}
 		return [];
-	}, [protocolIsValid, hasUnsavedChanges, saveNetcanvas, isSaving]);
+	}, [protocolIsValid, hasUnsavedChanges]);
 
 	// Don't render if show is false
 	if (!show) return null;

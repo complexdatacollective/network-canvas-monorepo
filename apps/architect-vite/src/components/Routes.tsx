@@ -1,7 +1,6 @@
 import { motion } from "motion/react";
 import { Route, Switch } from "wouter";
 import Home from "~/components/Home/Home";
-import Loading from "~/components/Loading";
 import { AssetsPage, CodebookPage, StageEditorPage, SummaryPage, TypeEditorPage } from "~/components/pages";
 import Protocol from "~/components/Protocol";
 
@@ -20,7 +19,6 @@ const appVariants = {
 const Routes = () => {
 	return (
 		<motion.div className="app" variants={appVariants} initial="hide" animate="show">
-			<Loading />
 			<Switch>
 				{/* Protocol sub-routes */}
 				<Route path="/protocol/:protocolId/assets" component={AssetsPage} />

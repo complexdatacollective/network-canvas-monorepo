@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
 import activeProtocolReducer, {
 	actionCreators,
-	actionTypes,
 	selectActiveProtocol,
 	selectHasActiveProtocol,
 } from "../activeProtocol";
@@ -53,26 +52,21 @@ describe("activeProtocol", () => {
 		beforeEach(() => {
 			store = configureStore({
 				reducer: {
-					activeProtocol: {
-						present: activeProtocolReducer,
-						past: () => [],
-						future: () => [],
-						timeline: () => [],
-					},
+					activeProtocol: activeProtocolReducer,
 				},
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
 			});
 		});
 
 		it("should have an empty initial state", () => {
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state).toEqual({});
 		});
 
 		it("should set active protocol", () => {
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state).toEqual(mockProtocol);
 		});
 
@@ -84,7 +78,7 @@ describe("activeProtocol", () => {
 			const updates = { description: "updated description" };
 			store.dispatch(actionCreators.updateProtocol(updates));
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state.description).toBe("updated description");
 			expect(state.name).toBe(mockProtocol.name); // Other fields preserved
 		});
@@ -97,7 +91,7 @@ describe("activeProtocol", () => {
 			const options = { name: "Updated Name", description: "Updated Description" };
 			store.dispatch(actionCreators.updateProtocolOptions(options));
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state.name).toBe("Updated Name");
 			expect(state.description).toBe("Updated Description");
 			expect(state.stages).toEqual(mockProtocol.stages); // Other fields preserved
@@ -110,78 +104,43 @@ describe("activeProtocol", () => {
 			// Clear protocol
 			store.dispatch(actionCreators.clearActiveProtocol());
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state).toEqual({});
 		});
 
-		it("should handle legacy setProtocol action", () => {
-			store.dispatch(actionCreators.setProtocol({ meta: "test" }, mockProtocol));
+		it("should handle setActiveProtocol action with metadata", () => {
+			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state).toEqual(mockProtocol);
 		});
 
-		it("should handle legacy updateOptions action", () => {
+		it("should handle updateProtocolOptions action", () => {
 			// Set initial protocol
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
-			// Update options using legacy action
+			// Update options using modern action
 			store.dispatch(
-				actionCreators.updateOptions({
-					name: "Legacy Updated Name",
-					description: "Legacy Updated Description",
+				actionCreators.updateProtocolOptions({
+					name: "Updated Name",
+					description: "Updated Description",
 				}),
 			);
 
-			const state = store.getState().activeProtocol.present;
-			expect(state.name).toBe("Legacy Updated Name");
-			expect(state.description).toBe("Legacy Updated Description");
+			const state = store.getState().activeProtocol;
+			expect(state.name).toBe("Updated Name");
+			expect(state.description).toBe("Updated Description");
 		});
 
-		it("should handle SESSION/RESET_SESSION action", () => {
+		it("should handle session reset with clearActiveProtocol", () => {
 			// Set initial protocol
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
-			// Reset session
-			store.dispatch({ type: "SESSION/RESET_SESSION" });
+			// Reset session using modern action
+			store.dispatch(actionCreators.clearActiveProtocol());
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 			expect(state).toEqual({});
-		});
-
-		it("should handle SESSION/OPEN_NETCANVAS_SUCCESS action", () => {
-			store.dispatch({
-				type: "SESSION/OPEN_NETCANVAS_SUCCESS",
-				payload: { protocol: mockProtocol },
-			});
-
-			const state = store.getState().activeProtocol.present;
-			expect(state).toEqual(mockProtocol);
-		});
-
-		it("should handle legacy PROTOCOL/SET action", () => {
-			store.dispatch({
-				type: "PROTOCOL/SET",
-				protocol: mockProtocol,
-			});
-
-			const state = store.getState().activeProtocol.present;
-			expect(state).toEqual(mockProtocol);
-		});
-
-		it("should handle legacy PROTOCOL/UPDATE_OPTIONS action", () => {
-			// Set initial protocol
-			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
-
-			// Update options using legacy action type
-			store.dispatch({
-				type: "PROTOCOL/UPDATE_OPTIONS",
-				options: { name: "Legacy Action Name", description: "Legacy Action Description" },
-			});
-
-			const state = store.getState().activeProtocol.present;
-			expect(state.name).toBe("Legacy Action Name");
-			expect(state.description).toBe("Legacy Action Description");
 		});
 	});
 
@@ -191,12 +150,7 @@ describe("activeProtocol", () => {
 		beforeEach(() => {
 			store = configureStore({
 				reducer: {
-					activeProtocol: {
-						present: activeProtocolReducer,
-						past: () => [],
-						future: () => [],
-						timeline: () => [],
-					},
+					activeProtocol: activeProtocolReducer,
 				},
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
 			});
@@ -251,7 +205,7 @@ describe("activeProtocol", () => {
 		it("should create setActiveProtocol action", () => {
 			const action = actionCreators.setActiveProtocol(mockProtocol);
 
-			expect(action.type).toBe(actionTypes.SET_ACTIVE_PROTOCOL);
+			expect(action.type).toBe(actionCreators.setActiveProtocol.type);
 			expect(action.payload).toEqual(mockProtocol);
 		});
 
@@ -259,7 +213,7 @@ describe("activeProtocol", () => {
 			const updates = { description: "updated" };
 			const action = actionCreators.updateProtocol(updates);
 
-			expect(action.type).toBe(actionTypes.UPDATE_PROTOCOL);
+			expect(action.type).toBe(actionCreators.updateProtocol.type);
 			expect(action.payload).toEqual(updates);
 		});
 
@@ -267,14 +221,14 @@ describe("activeProtocol", () => {
 			const options = { name: "Updated", description: "Updated desc" };
 			const action = actionCreators.updateProtocolOptions(options);
 
-			expect(action.type).toBe(actionTypes.UPDATE_PROTOCOL_OPTIONS);
+			expect(action.type).toBe(actionCreators.updateProtocolOptions.type);
 			expect(action.payload).toEqual(options);
 		});
 
 		it("should create clearActiveProtocol action", () => {
 			const action = actionCreators.clearActiveProtocol();
 
-			expect(action.type).toBe(actionTypes.CLEAR_ACTIVE_PROTOCOL);
+			expect(action.type).toBe(actionCreators.clearActiveProtocol.type);
 		});
 	});
 
@@ -284,12 +238,7 @@ describe("activeProtocol", () => {
 		beforeEach(() => {
 			store = configureStore({
 				reducer: {
-					activeProtocol: {
-						present: activeProtocolReducer,
-						past: () => [],
-						future: () => [],
-						timeline: () => [],
-					},
+					activeProtocol: activeProtocolReducer,
 				},
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
 			});
@@ -299,7 +248,7 @@ describe("activeProtocol", () => {
 			// Set protocol with stages and codebook
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol2));
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 
 			// Verify the protocol was set correctly
 			expect(state.name).toBe("Another Protocol");
@@ -311,7 +260,7 @@ describe("activeProtocol", () => {
 			// Try to dispatch an action that would normally be handled by sub-reducers
 			store.dispatch({ type: "STAGES/CREATE_STAGE", stage: { id: "test" } });
 
-			const state = store.getState().activeProtocol.present;
+			const state = store.getState().activeProtocol;
 
 			// Should remain empty since no protocol is set
 			expect(state).toEqual({});

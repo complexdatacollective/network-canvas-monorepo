@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import { getThunkMocks } from "~/__tests__/helpers";
 import testState from "../../../../__tests__/testState.json";
 import reducer, { actionCreators, actionTypes, test } from "../codebook";
-import { test as stageActions } from "../utils/stages";
+import { test as stageActions } from "../stages";
 
 vi.mock("uuid");
 

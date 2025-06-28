@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getFormValues, isDirty as isFormDirty, isInvalid as isFormInvalid } from "redux-form";
 import Editor from "~/components/Editor";
 import { Layout } from "~/components/EditorLayout";
-import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
+import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
 import { getStage, getStageIndex } from "~/selectors/protocol";
 import CodeView from "../CodeView";

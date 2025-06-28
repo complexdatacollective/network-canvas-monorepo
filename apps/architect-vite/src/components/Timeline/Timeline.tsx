@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
-import { actionCreators as stageActions } from "~/ducks/modules/protocol/utils/stages";
+import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/modules/root";
 import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";

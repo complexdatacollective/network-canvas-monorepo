@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 export const LABEL_VARIABLE_TYPES = new Set(["text", "number", "datetime"]);
 
 // Color palette sizes, they follow the pattern: ord-color-seq-1...ord-color-seq-n
@@ -16,7 +14,7 @@ export const COLOR_PALETTE_BY_ENTITY = {
 };
 
 // Target protocol schema version. Used to determine compatibility & migration
-export const APP_SCHEMA_VERSION = 8;
+export const APP_SCHEMA_VERSION = 8 as const;
 
 export const SAMPLE_PROTOCOL_URL = "https://assets.networkcanvas.com/public/protocols/Sample%20Protocol%20v4.netcanvas";
 

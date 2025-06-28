@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
-import { actionCreators as timelineActions } from "~/ducks/middleware/timeline";
+import { timelineActionCreators } from "~/ducks/middleware/timeline";
 import { getLocus } from "~/selectors/timeline";
 
 interface UseEditHandlersOptions {
@@ -56,7 +56,7 @@ export const useEditHandlers = ({
 	// Action creators
 	const upsert = useCallback((fieldId: string, value: any) => dispatch(change(form, fieldId, value)), [dispatch, form]);
 
-	const jump = useCallback((targetLocus: any) => dispatch(timelineActions.jump(targetLocus)), [dispatch]);
+	const jump = useCallback((targetLocus: any) => dispatch(timelineActionCreators.jump(targetLocus)), [dispatch]);
 
 	// State handlers
 	const setEditField = useCallback(
