@@ -52,6 +52,6 @@
 		"vite": "catalog:",
 		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:",
-		"zod-to-json-schema": "^3.24.3"
+		"zod-to-json-schema": "^3.24.6"
 	}
 }
