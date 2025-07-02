@@ -3,7 +3,7 @@
 :root {
   --variable-pill-width: 33rem;
   --variable-pill-background: var(--color-white);
-  --variable-pill-shadow-color: var(--color-platinum-dark);
+  --variable-pill-shadow-color: hsl(var(--platinum-dark));
 }
 
 .variable-pill {
@@ -32,7 +32,7 @@
   }
 
   &__icon {
-    background-color: var(--color-platinum);
+    background-color: hsl(var(--platinum));
     flex: 0 0 3.6rem;
 
     .icon {

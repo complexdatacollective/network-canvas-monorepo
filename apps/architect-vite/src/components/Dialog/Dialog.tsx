@@ -1,7 +1,7 @@
+import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { createPortal } from "react-dom";
-import cx from "classnames";
 
 const dialogVariants = {
 	visible: {
@@ -75,19 +75,14 @@ const Dialog = ({
 		<AnimatePresence>
 			{show && (
 				<motion.div
-					className="dialog-wrapper"
+					className="absolute inset-0 z-50 flex items-center justify-center bg-rich-black/50 backdrop-blur-sm"
 					variants={dialogVariants}
 					initial="hidden"
 					animate="visible"
 					exit="hidden"
+					onClick={handleBackgroundClick}
+					onKeyDown={handleKeyDown}
 				>
-					<div
-						className="modal__background"
-						onClick={handleBackgroundClick}
-						onKeyDown={handleKeyDown}
-						role="button"
-						tabIndex={-1}
-					/>
 					<motion.div className={classes}>
 						{header && (
 							<motion.header variants={item} className="dialog__header">

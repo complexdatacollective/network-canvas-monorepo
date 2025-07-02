@@ -1,6 +1,6 @@
 
-$light-color-list: (var(--color-sea-serpent), var(--color-mustard), var(--color-neon-coral), var(--color-sea-green));
-$dark-color-list: (var(--color-sea-serpent-dark), var(--color-mustard-dark), var(--color-neon-coral-dark), var(--color-sea-green-dark));
+$light-color-list: (hsl(var(--sea-serpent)), hsl(var(--mustard)), hsl(var(--neon-coral)), hsl(var(--sea-green)));
+$dark-color-list: (hsl(var(--sea-serpent-dark)), hsl(var(--mustard-dark)), hsl(var(--neon-coral-dark)), hsl(var(--sea-green-dark)));
 
 .spinner {
   --circle-size: 2rem;

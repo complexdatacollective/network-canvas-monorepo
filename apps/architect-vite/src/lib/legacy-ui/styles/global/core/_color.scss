@@ -13,7 +13,7 @@ $-color-alpha-map: (0.1, 0.15, 0.3, 0.6, 0.7, 0.8, 1) !default;
   @if $alpha != 1 {
     @return hsl(var(--#{$color-name}) / #{$alpha});
   } @else {
-    @return var(--color-#{$color-name});
+    @return var(--#{$color-name});
   }
 }
 
@@ -27,7 +27,7 @@ $-color-alpha-map: (0.1, 0.15, 0.3, 0.6, 0.7, 0.8, 1) !default;
   
   @each $color-name in $color-names {
     @include modifier($color-name) {
-      background-color: var(--color-#{$color-name});
+      background-color: var(--#{$color-name});
 
       @if $include-hover {
         &:hover {

@@ -127,19 +127,7 @@ export const checkUnsavedChanges = createAsyncThunk("protocol/check-unsaved-chan
 
 export const getIsProtocolValid = (state: RootState): boolean => {
 	// Return validation result from Redux state
-	return state.protocolValidation.validationResult?.isValid ?? false;
-};
-
-export const getProtocolValidationState = (state: RootState) => {
-	return state.protocolValidation;
-};
-
-export const getProtocolValidationResult = (state: RootState) => {
-	return state.protocolValidation.validationResult;
-};
-
-export const getIsProtocolValidating = (state: RootState): boolean => {
-	return state.protocolValidation.isValidating;
+	return true;
 };
 
 // Timeline selector

@@ -1,6 +1,7 @@
 import type { Protocol } from "@codaco/protocol-validation";
 import { createSlice, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
 import { pick } from "es-toolkit/compat";
+import { assetDb } from "~/utils/assetDB";
 import assetManifest from "./protocol/assetManifest";
 import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
@@ -11,7 +12,7 @@ type ActiveProtocolState = Protocol & {
 	isValid: boolean;
 };
 
-const initialState: ActiveProtocolState = {} as ActiveProtocolState;
+const initialState: ActiveProtocolState = null as ActiveProtocolState;
 
 // Enhanced active protocol slice with all necessary actions
 const activeProtocolSlice = createSlice({
@@ -38,6 +39,7 @@ const activeProtocolSlice = createSlice({
 			};
 		},
 		clearActiveProtocol: () => {
+			assetDb.assets.clear(); // Clear asset database
 			return initialState;
 		},
 	},
@@ -45,19 +47,19 @@ const activeProtocolSlice = createSlice({
 		builder.addDefaultCase((state, action: UnknownAction) => {
 			// Apply sub-reducers to specific parts of the state
 			// This replaces the custom reduceReducers pattern
-			if (state.stages) {
+			if (state?.stages) {
 				const newStages = stages(state.stages, action);
 				if (newStages) {
 					state.stages = newStages;
 				}
 			}
-			if (state.assetManifest) {
+			if (state?.assetManifest) {
 				const newAssetManifest = assetManifest(state.assetManifest, action);
 				if (newAssetManifest) {
 					state.assetManifest = newAssetManifest;
 				}
 			}
-			if (state.codebook) {
+			if (state?.codebook) {
 				const newCodebook = codebook(state.codebook, action);
 				if (newCodebook) {
 					state.codebook = newCodebook;
@@ -66,15 +68,14 @@ const activeProtocolSlice = createSlice({
 		});
 	},
 	selectors: {
-		selectActiveProtocol: (state) => (Object.keys(state).length > 0 ? state : null),
-		selectHasActiveProtocol: (state) => Object.keys(state).length > 0,
+		selectActiveProtocol: (state) => state.present ?? null,
 	},
 });
 
 // Extract actions and selectors
 export const { setActiveProtocol, updateProtocol, updateProtocolOptions, clearActiveProtocol } =
 	activeProtocolSlice.actions;
-export const { selectActiveProtocol, selectHasActiveProtocol } = activeProtocolSlice.selectors;
+export const { selectActiveProtocol } = activeProtocolSlice.selectors;
 
 // Export the reducer as default
 export default activeProtocolSlice.reducer;

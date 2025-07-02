@@ -2,10 +2,10 @@
   max-width: 60rem;
   display: flex;
   flex-direction: column;
-  // background: var(--modal-background);
-  color: var(--text);
-  box-shadow: 0 0 4rem 0 var(--modal-window-box-shadow);
-  border-color: var(--primary);
+  background: var(--color-panel);
+  color: var(--color-text);
+  box-shadow: 0 0 4rem 0 var(--color-modal-window-box-shadow);
+  border-color: var(--color-primary);
   border-style: solid;
   border-width: 0;
   border-left-width: 0.5rem;
@@ -57,7 +57,7 @@
       @include allow-text-selection;
       margin-top: unit(2);
       max-height: 25rem;
-      background: var(--background);
+      background: var(--color-background);
       user-select: initial;
       overflow-y: auto;
       overflow-x: hidden;
@@ -82,11 +82,11 @@
   }
 
   &--confirm {
-    border-color: var(--notice);
+    border-color: var(--color-notice);
   }
 
   &--warning {
-    border-color: var(--warning);
+    border-color: var(--color-warning);
   }
 
   &--error {

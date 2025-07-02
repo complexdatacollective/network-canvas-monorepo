@@ -2,7 +2,7 @@
 
 .simple-list {
   &:first-child {
-    border-top: 0.2rem solid var(--architect-divider);
+    border-top: 0.2rem solid var(--color-architect-divider);
   }
 
   &__item {
@@ -20,7 +20,7 @@
 
     a {
       text-decoration: none;
-      color: var(--text);
+      color: var(--color-text);
       cursor: pointer;
     }
 

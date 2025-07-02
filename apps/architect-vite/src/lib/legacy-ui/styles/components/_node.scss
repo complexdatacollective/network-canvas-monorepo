@@ -33,13 +33,11 @@
   }
 
   &__node-base {
-    @include palette-modifiers($include-fill: true);
-    // fill: palette('node-color-seq-1');
+    fill: hsl(var(--node-color-seq-1));
   }
 
   &__node-flash {
-    @include palette-modifiers($include-fill: true);
-    // fill: palette('node-color-seq-1--dark');
+    fill: hsl(var(--node-color-seq-1-dark));
   }
 
   &__node-trim {
@@ -73,7 +71,7 @@
       flex-wrap: nowrap;
       text-align: center;
       font-size: 0.15em;
-      color: var(--text);
+      color: var(--color-text);
       hyphens: auto;
       overflow: hidden;
       white-space: pre-line;
@@ -110,7 +108,7 @@
 
   &--selected {
     .node__node-trim {
-      stroke: var(--selected);
+      stroke: hsl(var(--selected));
     }
 
     .node__node-outer-trim {
@@ -125,7 +123,7 @@
 
     &--node-highlight-seq-#{$i} {
       .node__node-trim {
-        stroke: var(--color-#{$ordinal-color});
+        stroke: hsl(var(--#{$ordinal-color}));
       }
     }
   }

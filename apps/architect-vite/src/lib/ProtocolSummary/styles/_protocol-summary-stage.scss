@@ -52,7 +52,7 @@
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: var(--color-cyber-grape);
+        background: hsl(var(--cyber-grape));
         content: attr(data-number);
         color: white;
         font-family: var(--heading-font-family);

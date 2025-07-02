@@ -22,55 +22,55 @@ export const VARIABLE_TYPES = {
 		label: "Number",
 		value: "number",
 		icon: NumberVariable,
-		color: "var(--color-paradise-pink)",
+		color: "var(paradise-pink)",
 	},
 	text: {
 		label: "Text",
 		value: "text",
 		icon: TextVariable,
-		color: "var(--color-cerulean-blue)",
+		color: "var(cerulean-blue)",
 	},
 	boolean: {
 		label: "Boolean",
 		value: "boolean",
 		icon: BooleanVariable,
-		color: "var(--color-neon-carrot)",
+		color: "var(neon-carrot)",
 	},
 	ordinal: {
 		label: "Ordinal",
 		value: "ordinal",
 		icon: OrdinalVariable,
-		color: "var(--color-sea-green)",
+		color: "var(sea-green)",
 	},
 	categorical: {
 		label: "Categorical",
 		value: "categorical",
 		icon: CategoricalVariable,
-		color: "var(--color-mustard)",
+		color: "var(mustard)",
 	},
 	scalar: {
 		label: "Scalar",
 		value: "scalar",
 		icon: ScalarVariable,
-		color: "var(--color-kiwi)",
+		color: "var(kiwi)",
 	},
 	datetime: {
 		label: "Date",
 		value: "datetime",
 		icon: DateVariable,
-		color: "var(--color-tomato)",
+		color: "var(tomato)",
 	},
 	layout: {
 		label: "Layout",
 		value: "layout",
 		icon: LayoutVariable,
-		color: "var(--color-purple-pizazz)",
+		color: "var(purple-pizazz)",
 	},
 	location: {
 		label: "Location",
 		value: "location",
 		icon: LocationVariable,
-		color: "var(--color-slate-blue-dark)",
+		color: "var(slate-blue-dark)",
 	},
 };
 
@@ -216,7 +216,7 @@ const getTypeForComponent = (component) => {
 	return type;
 };
 
-const getColorForType = (type) => get(VARIABLE_TYPES, [type, "color"], "var(--color-charcoal)");
+const getColorForType = (type) => get(VARIABLE_TYPES, [type, "color"], "var(charcoal)");
 
 const getIconForType = (type) => get(VARIABLE_TYPES, `${type}.icon`, DefaultVariable);
 

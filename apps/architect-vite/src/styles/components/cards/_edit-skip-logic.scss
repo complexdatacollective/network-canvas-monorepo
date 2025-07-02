@@ -11,7 +11,7 @@
       display: 'block';
       width: 0;
       height: 20px;
-      border-left: 8px solid var(--architect-rule-control);
+      border-left: 8px solid var(--color-architect-rule-control);
     }
 
     &--first {
@@ -24,7 +24,7 @@
   &__action {
     display: inline-flex;
 
-    background: var(--architect-rule-operator);
+    background: var(--color-architect-rule-operator);
     border-radius: 10px;
     padding: 20px;
   }

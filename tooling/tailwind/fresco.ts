@@ -12,35 +12,35 @@ export default {
 			// NC colors
 			"neon-coral": {
 				DEFAULT: "hsl(var(--neon-coral) / <alpha-value>)",
-				dark: "hsl(var(--neon-coral--dark) / <alpha-value>)",
+				dark: "hsl(var(--neon-coral-dark) / <alpha-value>)",
 			},
 			"sea-green": {
 				DEFAULT: "hsl(var(--sea-green) / <alpha-value>)",
-				dark: "hsl(var(--sea-green--dark) / <alpha-value>)",
+				dark: "hsl(var(--sea-green-dark) / <alpha-value>)",
 			},
 			"slate-blue": {
 				DEFAULT: "hsl(var(--slate-blue) / <alpha-value>)",
-				dark: "hsl(var(--slate-blue--dark) / <alpha-value>)",
+				dark: "hsl(var(--slate-blue-dark) / <alpha-value>)",
 			},
 			"navy-taupe": {
 				DEFAULT: "hsl(var(--navy-taupe) / <alpha-value>)",
-				dark: "hsl(var(--navy-taupe--dark) / <alpha-value>)",
+				dark: "hsl(var(--navy-taupe-dark) / <alpha-value>)",
 			},
 			"cyber-grape": {
 				DEFAULT: "hsl(var(--cyber-grape) / <alpha-value>)",
-				dark: "hsl(var(--cyber-grape--dark) / <alpha-value>)",
+				dark: "hsl(var(--cyber-grape-dark) / <alpha-value>)",
 			},
 			mustard: {
 				DEFAULT: "hsl(var(--mustard) / <alpha-value>)",
-				dark: "hsl(var(--mustard--dark) / <alpha-value>)",
+				dark: "hsl(var(--mustard-dark) / <alpha-value>)",
 			},
 			"rich-black": {
 				DEFAULT: "hsl(var(--rich-black) / <alpha-value>)",
-				dark: "hsl(var(--rich-black--dark) / <alpha-value>)",
+				dark: "hsl(var(--rich-black-dark) / <alpha-value>)",
 			},
 			charcoal: {
 				DEFAULT: "hsl(var(--charcoal) / <alpha-value>)",
-				dark: "hsl(var(--charcoal--dark) / <alpha-value>)",
+				dark: "hsl(var(--charcoal-dark) / <alpha-value>)",
 			},
 			platinum: {
 				DEFAULT: "hsl(var(--platinum) / <alpha-value>)",
@@ -48,35 +48,35 @@ export default {
 			},
 			"sea-serpent": {
 				DEFAULT: "hsl(var(--sea-serpent) / <alpha-value>)",
-				dark: "hsl(var(--sea-serpent--dark) / <alpha-value>)",
+				dark: "hsl(var(--sea-serpent-dark) / <alpha-value>)",
 			},
 			"purple-pizazz": {
 				DEFAULT: "hsl(var(--purple-pizazz) / <alpha-value>)",
-				dark: "hsl(var(--purple-pizazz--dark) / <alpha-value>)",
+				dark: "hsl(var(--purple-pizazz-dark) / <alpha-value>)",
 			},
 			"paradise-pink": {
 				DEFAULT: "hsl(var(--paradise-pink) / <alpha-value>)",
-				dark: "hsl(var(--paradise-pink--dark) / <alpha-value>)",
+				dark: "hsl(var(--paradise-pink-dark) / <alpha-value>)",
 			},
 			"cerulean-blue": {
 				DEFAULT: "hsl(var(--cerulean-blue) / <alpha-value>)",
-				dark: "hsl(var(--cerulean-blue--dark) / <alpha-value>)",
+				dark: "hsl(var(--cerulean-blue-dark) / <alpha-value>)",
 			},
 			kiwi: {
 				DEFAULT: "hsl(var(--kiwi) / <alpha-value>)",
-				dark: "hsl(var(--kiwi--dark) / <alpha-value>)",
+				dark: "hsl(var(--kiwi-dark) / <alpha-value>)",
 			},
 			"neon-carrot": {
 				DEFAULT: "hsl(var(--neon-carrot) / <alpha-value>)",
-				dark: "hsl(var(--neon-carrot--dark) / <alpha-value>)",
+				dark: "hsl(var(--neon-carrot-dark) / <alpha-value>)",
 			},
 			"barbie-pink": {
 				DEFAULT: "hsl(var(--barbie-pink) / <alpha-value>)",
-				dark: "hsl(var(--barbie-pink--dark) / <alpha-value>)",
+				dark: "hsl(var(--barbie-pink-dark) / <alpha-value>)",
 			},
 			tomato: {
 				DEFAULT: "hsl(var(--tomato) / <alpha-value>)",
-				dark: "hsl(var(--tomato--dark) / <alpha-value>)",
+				dark: "hsl(var(--tomato-dark) / <alpha-value>)",
 			},
 			transparent: "transparent",
 			white: "hsl(var(--white) / <alpha-value>)",

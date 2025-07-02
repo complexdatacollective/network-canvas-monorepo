@@ -30,7 +30,7 @@
       overflow: visible;
       height: auto;
       width: auto;
-      background: var(--color-platinum);
+      background: hsl(var(--platinum));
     }
   }
 
@@ -56,7 +56,7 @@
 
 
 .section {
-  border: 2px solid var(--color-platinum);
+  border: 2px solid hsl(var(--platinum));
   padding: 0.6rem 1.2rem;
   border-radius: var(--border-radius);
   position: relative;
@@ -71,7 +71,7 @@
     width: 100%;
     margin: 0;
     padding: 0.6rem 1.2rem;
-    background: var(--color-platinum);
+    background: hsl(var(--platinum));
   }
 }
 
@@ -83,7 +83,7 @@
     position: sticky;
     top: 0;
     z-index: var(--z-global-ui);
-    border-bottom: 1px solid var(--color-platinum);
+    border-bottom: 1px solid hsl(var(--platinum));
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
     h1.screen-heading {
@@ -102,7 +102,7 @@
   }
 
   .protocol-summary-controls {
-    background: var(--color-cyber-grape);
+    background: hsl(var(--cyber-grape));
     padding: 1rem 2rem;
     position: fixed;
     width: 100%;
@@ -152,7 +152,7 @@
       width: var(--page-size-width);
       min-height: var(--page-size-height);
       margin: var(--margin) auto;
-      border: 1px var(--color-platinum-dark) solid;
+      border: 1px hsl(var(--platinum-dark)) solid;
       border-radius: 5px;
 
       box-shadow: 0 4px 5px rgb(75 75 75 / 20%);

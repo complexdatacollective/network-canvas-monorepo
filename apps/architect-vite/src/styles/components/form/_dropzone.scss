@@ -14,7 +14,7 @@
   transition-timing-function: var(--animation-easing);
   transition-property: border-color;
   border-color: transparent;
-  background-color: var(--background-dark);
+  background-color: var(--color-background-dark);
   overflow: hidden;
   padding: 2.4rem;
   display: flex;
@@ -46,7 +46,7 @@
 
   &__link {
     display: inline-block;
-    border-bottom: 2px solid var(--notice);
+    border-bottom: 2px solid var(--color-notice);
     line-height: 1.2rem;
     cursor: pointer;
   }
@@ -75,7 +75,7 @@
   }
 
   &--hover {
-    border-color: var(--notice);
+    border-color: var(--color-notice);
     transition-duration: var(--animation-duration-fast);
   }
 
@@ -92,7 +92,7 @@
   }
 
   &--error {
-    border-color: var(--warning);
+    border-color: var(--color-warning);
     transition-duration: var(--animation-duration-fast);
   }
 
@@ -101,7 +101,7 @@
     overflow: hidden;
     padding: 0.6rem 1.2rem;
     border-radius: 0.6rem;
-    background-color: var(--warning);
+    background-color: var(--color-warning);
     opacity: 0;
     transform-origin: top center;
     transition-duration: var(--animation-duration-fast);

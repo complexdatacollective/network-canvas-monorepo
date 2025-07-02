@@ -8,8 +8,8 @@
     display: inline-flex;
     border-radius: 0.6rem;
     overflow: hidden;
-    border: 2px solid var(--input-border);
-    background-color: hsl(var(--input-background));
+    border: 2px solid var(--color-input-border);
+    background-color: var(--color-input-background);
   }
 
   &__option {
@@ -28,7 +28,7 @@
     cursor: pointer;
 
     &--selected {
-      background-color: var(--architect-selected);
+      background-color: var(--color-architect-selected);
       color: var(--foreground-light);
     }
 

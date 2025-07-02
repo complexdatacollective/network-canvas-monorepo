@@ -5,8 +5,8 @@ $module-name: form-field-slider;
   $height: $touch-height * 2;
   $align-margin: $touch-height * 2; // left-right margins
 
-  --active-color: var(--color-sea-green);
-  --slider-color: var(--color-platinum);
+  --active-color: hsl(var(--sea-green));
+  --slider-color: hsl(var(--platinum));
   --disabled-color: var(--color-charcoal);
   --label-color: var(--color-white);
   --tooltip-color: var(--color-white);
@@ -216,8 +216,8 @@ $module-name: form-field-slider;
 
   &__error {
     opacity: 0;
-    background: var(--error);
-    color: var(--form-error-text);
+    background: var(--color-error);
+    color: var(--color-form-error-text);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
     padding: 0.5rem 0.25rem;

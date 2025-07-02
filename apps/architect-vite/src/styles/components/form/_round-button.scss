@@ -2,8 +2,8 @@
 
 .form-round-button {
   font-size: 1.8rem;
-  background-color: var(--architect-button-background--dark);
-  color: var(--text);
+  background-color: var(--color-architect-button-background-dark);
+  color: var(--color-text);
   width: 2.4rem;
   height: 2.4rem;
   border-radius: 100%;
@@ -30,6 +30,6 @@
   }
 
   &:hover {
-    background-color: var(--architect-button-background--dark--hover);
+    background-color: var(--color-architect-button-background-dark--hover);
   }
 }

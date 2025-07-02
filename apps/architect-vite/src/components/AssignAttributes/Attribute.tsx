@@ -25,7 +25,7 @@ const Attribute = ({
 	entity,
 	type,
 }: AttributeProps) => (
-	<div className="assign-attributes-attribute bg-section-background-dark">
+	<div className="assign-attributes-attribute bg-section-background">
 		<div className="assign-attributes-attribute__wrapper">
 			<div className="assign-attributes-attribute__variable">
 				<ValidatedField

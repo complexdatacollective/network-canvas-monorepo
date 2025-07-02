@@ -39,7 +39,7 @@
     }
 
     &__error {
-      color: var(--color-destructive);
+      color: var(--destructive);
     }
 
     &__tooltip-right,
@@ -48,7 +48,7 @@
 
       .#{$input-class}__error {
         align-items: center;
-        color: var(--text);
+        color: var(--color-text);
         display: flex;
         margin-top: 30px;
         padding: 20px 20px 0;
@@ -88,7 +88,7 @@
       }
 
       .#{$input-class}__error {
-        background: var(--background);
+        background: var(--color-background);
         border-right: 10px solid var(--error);
         height: 5rem;
         margin-left: 15px;
@@ -97,7 +97,7 @@
         top: -300%;
 
         &::after {
-          border-right-color: var(--background);
+          border-right-color: var(--color-background);
           border-left: 0;
           left: -15px; /* To the left of the tooltip */
           margin-left: 0;
@@ -110,7 +110,7 @@
       display: inline-block;
 
       .#{$input-class}__error {
-        background: var(--light-background);
+        background: var(--color-error);
         border-left: 10px solid var(--error);
         height: 130px;
         position: relative;
@@ -201,7 +201,7 @@
       &::before {
         content: '';
         background: transparent;
-        border: 1px solid hsl(var(--white) / 0.7);
+        border: 1px solid hsl(from var(--color-white) h s l / 0.7);
         display: inline-block;
         width: $checkbox-button-size;
         height: $checkbox-button-size;
@@ -218,7 +218,7 @@
 
         &::before {
           background-color: var(--color-success);
-          box-shadow: inset 0 0 0 4px var(--color-navy-taupe);
+          box-shadow: inset 0 0 0 4px hsl(var(--navy-taupe));
         }
       }
     }
@@ -228,7 +228,7 @@
       + .#{$checkbox-class}__label {
         &::before {
           outline: none;
-          border-color: var(--color-success);
+          border-color: var(--success);
         }
       }
     }
@@ -237,8 +237,8 @@
       + .#{$checkbox-class}__label {
         &::before {
           box-shadow: inset 0 0 0 4px var(--color-white);
-          border-color: hsl(var(--white) / 0.7);
-          background: hsl(var(--white) / 0.7);
+          border-color: hsl(from var(--color-white) h s l / 0.7);
+          background: hsl(from var(--color-white) h s l / 0.7);
         }
       }
     }
@@ -272,13 +272,13 @@
       display: flex;
       align-items: center;
       padding-right: 1em;
-      color: hsl(var(--white) / 0.7);
+      color: hsl(from var(--color-white) h s l / 0.7);
 
       &::before {
         content: '';
         background: transparent;
         border-radius: 100%;
-        border: 1px solid hsl(var(--white) / 0.7);
+        border: 1px solid hsl(from var(--color-white) h s l / 0.7);
         display: inline-block;
         width: $radio-button-size;
         height: $radio-button-size;
@@ -295,7 +295,7 @@
 
         &::before {
           background-color: var(--color-success);
-          box-shadow: inset 0 0 0 4px var(--color-navy-taupe);
+          box-shadow: inset 0 0 0 4px hsl(var(--navy-taupe));
         }
       }
     }
@@ -305,7 +305,7 @@
       + .#{$radio-class}__label {
         &::before {
           outline: none;
-          border-color: var(--color-success);
+          border-color: var(--success);
         }
       }
     }
@@ -315,8 +315,8 @@
 
         &::before {
           box-shadow: inset 0 0 0 4px var(--color-white);
-          border-color: hsl(var(--white) / 0.7);
-          background: hsl(var(--white) / 0.7);
+          border-color: hsl(from var(--color-white) h s l / 0.7);
+          background: hsl(from var(--color-white) h s l / 0.7);
         }
       }
     }
@@ -372,7 +372,7 @@
     &__button {
       position: absolute;
       cursor: pointer;
-      background-color: hsl(var(--input-background));
+      background-color: var(--input-background);
       border-radius: $toggle-height;
       top: 0;
       left: 0;
@@ -387,7 +387,7 @@
         width: $switch-size;
         left: $switch-size * -0.5;
         top: $switch-size * -0.25;
-        background-color: var(--text);
+        background-color: var(--color-text);
         transition: 0.4s;
       }
     }
@@ -396,9 +396,9 @@
       .#{$toggle-class}__button {
         background-color: var(--color-success);
 
-        @each $color-name, $color-group in $-color-map {
-          @include modifier($color-name) {
-            background-color: var(--color-#{$color-name});
+        @each $name, $group in $-color-map {
+          @include modifier($name) {
+            background-color: var(--#{$name});
           }
         }
 
@@ -443,7 +443,7 @@
       background-color: transparent;
       border-radius: 50%;
       padding: 2px;
-      border: 3px solid var(--cat-color-seq-1);
+      border: 3px solid var(--cat-seq-1);
 
       display: flex;
       justify-content: center;
@@ -451,8 +451,8 @@
       transition: all var(--animation-duration-standard) var(--animation-easing); //sass-lint:disable-line no-transition-all
 
       @for $i from 1 through 5 {
-        &--cat-color-seq-#{$i} {
-          border: 3px solid var(--cat-color-seq-#{$i});
+        &--cat-seq-#{$i} {
+          border: 3px solid var(--cat-seq-#{$i});
         }
       }
 
@@ -481,13 +481,13 @@
       &::after {
         transition: all var(--animation-duration-standard) var(--animation-easing); //sass-lint:disable-line no-transition-all
         opacity: 1;
-        background-color: var(--cat-color-seq-1);
+        background-color: var(--cat-seq-1);
       }
 
       @for $i from 1 through 5 {
-        &--cat-color-seq-#{$i} {
+        &--cat-seq-#{$i} {
           &::after {
-            background-color: var(--cat-color-seq-#{$i});
+            background-color: var(--cat-seq-#{$i});
           }
         }
       }

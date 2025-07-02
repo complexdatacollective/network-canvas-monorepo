@@ -66,7 +66,7 @@ $font-sizes: (
 .home-section {
   position: relative;
   border-radius: var(--border-radius);
-  box-shadow: 0 0.6rem .2rem 0 var(--architect-panel-shadow);
+  box-shadow: 0 0.6rem .2rem 0 var(--color-architect-panel-shadow);
   margin: 2.4rem auto;
   max-width: 70rem;
   overflow: hidden;
@@ -241,7 +241,7 @@ $font-sizes: (
 
     &:checked + .switch__button {
       &::before {
-        background-color: hsl(var(--input-radio--fill));
+        background-color: var(--color-input-radio--fill);
       }
 
       &::after {
@@ -263,7 +263,7 @@ $font-sizes: (
   box-shadow: none;
 
   &--is-open {
-    box-shadow: 0 0.6rem .2rem 0 var(--architect-panel-shadow);
+    box-shadow: 0 0.6rem .2rem 0 var(--color-architect-panel-shadow);
   }
 
   &__header {

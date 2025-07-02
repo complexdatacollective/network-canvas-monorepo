@@ -45,9 +45,8 @@ const EntityType = ({
 	handleEdit = () => {},
 	handleDelete = () => {},
 }: EntityTypeProps) => {
-	const protocolId = getProtocolId();
 	const stages = usage.map(({ id, label }) => (
-		<Link href={`/protocol/${protocolId}/stages/${id}`} key={id}>
+		<Link href={`/protocol/stage/${id}`} key={id}>
 			{label}
 		</Link>
 	));

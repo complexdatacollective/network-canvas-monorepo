@@ -11,8 +11,8 @@ $component-name: 'options';
 
   &__option {
     display: flex;
-    background-color: var(--form-control);
-    color: var(--architect-sortable-text);
+    background-color: var(--color-form-control);
+    color: var(--color-architect-sortable-text);
     z-index: var(--z-fx);
     transition: background-color var(--animation-easing) var(--animation-duration-standard);
     border-radius: 1rem;
@@ -58,7 +58,7 @@ $component-name: 'options';
       display: flex;
       justify-content: center;
       align-items: center;
-      color: var(--architect-sortable-text);
+      color: var(--color-architect-sortable-text);
 
       .icon {
         width: 1.2rem;
@@ -66,7 +66,7 @@ $component-name: 'options';
 
         .cls-1,
         .cls-2 {
-          fill: var(--architect-sortable-text);
+          fill: var(--color-architect-sortable-text);
         }
       }
     }
@@ -87,7 +87,7 @@ $component-name: 'options';
     }
 
     .#{$component-name}__option {
-      background-color: var(--error);
+      background-color: var(--color-error);
 
       &-label {
         color: var(--foreground-light);

@@ -16,13 +16,16 @@ const variants = {
 	},
 };
 
-const Home = () => (
-	<div className="home">
-		<motion.div className="home__container" variants={variants} key="start-screen">
-			<WelcomeHeader />
-			<LaunchPad />
-		</motion.div>
-	</div>
-);
+const Home = () => {
+	// useProtocolLoader();
+	return (
+		<div className="home">
+			<motion.div className="home__container" variants={variants} key="start-screen">
+				<WelcomeHeader />
+				<LaunchPad />
+			</motion.div>
+		</div>
+	);
+};
 
 export default Home;

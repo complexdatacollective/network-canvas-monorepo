@@ -3,7 +3,7 @@ $module-name: 'narrative-panel';
 .#{$module-name} {
   display: flex;
   flex-direction: column;
-  background-color: var(--light-background);
+  background-color: var(--color-light-background);
   border-bottom: var(--narrative-border-bottom-color) 2px solid;
 
   &__heading {

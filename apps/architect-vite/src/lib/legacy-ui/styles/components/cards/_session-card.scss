@@ -1,11 +1,11 @@
 
 .session-card {
-  background-color: var(--color-platinum);
+  background-color: hsl(var(--platinum));
   border-radius: var(--border-radius);
   display: flex;
   flex-direction: column;
   height: 9rem;
-  color: var(--color-navy-taupe);
+  color: hsl(var(--navy-taupe));
   justify-content: space-between;
   overflow: hidden;
   box-sizing: border-box;
@@ -31,7 +31,7 @@
   .meta-wrapper {
     display: flex;
     padding: 0 unit(4);
-    background: var(--color-platinum-dark);
+    background: hsl(var(--platinum-dark));
     align-items: center;
     justify-content: space-between;
     flex: 0 0 45%;
@@ -79,7 +79,7 @@
       }
 
       .progress-bar {
-        background-color: var(--color-platinum);
+        background-color: hsl(var(--platinum));
         flex: 1;
 
         .progress-bar__filler {
@@ -88,7 +88,7 @@
 
         &--complete {
           .progress-bar__filler {
-            background-color: var(--primary);
+            background-color: var(--color-primary);
           }
         }
       }

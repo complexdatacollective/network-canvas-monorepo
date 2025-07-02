@@ -6,7 +6,7 @@
   &__open {
     transition: opacity var(--animation-duration-standard) var(--animation-easing),
     transform var(--animation-duration-standard) var(--animation-easing);
-    background-color: var(--primary);
+    background-color: var(--color-primary);
     color: var(--foreground-light);
     border: 0;
     border-radius: 100%;
@@ -52,15 +52,15 @@
     }
 
     &--alter {
-      background-color: var(--architect-rule-type--alter);
+      background-color: var(--color-architect-rule-type--alter);
     }
 
     &--ego {
-      background-color: var(--architect-rule-attribute--ego);
+      background-color: var(--color-architect-rule-attribute--ego);
     }
 
     &--edge {
-      background-color: var(--architect-rule-type--edge);
+      background-color: var(--color-architect-rule-type--edge);
     }
   }
 

@@ -1,5 +1,5 @@
-import { Component } from "react";
 import classNames from "classnames";
+import { Component } from "react";
 
 /**
  * Renders a Node.
@@ -52,7 +52,7 @@ class Node extends Component<NodeProps> {
 		};
 
 		const nodeBaseColor = `var(--${color})`;
-		const nodeFlashColor = `var(--${color}--dark)`;
+		const nodeFlashColor = `var(--${color}-dark)`;
 
 		const labelWithEllipsis = label.length < 22 ? label : `${label.substring(0, 18)}\u{AD}...`; // Add ellipsis for really long labels
 
@@ -66,13 +66,8 @@ class Node extends Component<NodeProps> {
 				>
 					<circle cx="250" cy="270" r="200" className="node__node-shadow" opacity="0.25" />
 					<circle cx="250" cy="250" r="250" className="node__node-outer-trim" />
-					<circle cx="250" cy="250" r="200" fill={nodeBaseColor} className="node__node-base" />
-					<path
-						d="m50,250 a1,1 0 0,0 400,0"
-						fill={nodeFlashColor}
-						className="node__node-flash"
-						transform="rotate(-35 250 250)"
-					/>
+					<circle cx="250" cy="250" r="200" className="node__node-base" />
+					<path d="m50,250 a1,1 0 0,0 400,0" className="node__node-flash" transform="rotate(-35 250 250)" />
 					<circle cx="250" cy="250" r="200" className="node__node-trim" />
 				</svg>
 				<div className="node__label">

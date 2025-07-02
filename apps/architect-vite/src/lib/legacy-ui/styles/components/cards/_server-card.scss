@@ -1,8 +1,8 @@
 $component: 'server-card';
 
 .#{$component} {
-  background: var(--color-platinum);
-  color: var(--color-navy-taupe);
+  background: hsl(var(--platinum));
+  color: hsl(var(--navy-taupe));
   border-radius: var(--border-radius);
   display: flex;
   overflow: hidden;
@@ -11,7 +11,7 @@ $component: 'server-card';
     display: flex;
     justify-content: center;
     align-items: center;
-    background: var(--color-mustard);
+    background: hsl(var(--mustard));
     flex-direction: row;
     width: 7rem;
 
@@ -47,7 +47,7 @@ $component: 'server-card';
 
   &--disabled {
     .#{$component}__icon-section {
-      background: var(--color-platinum-dark);
+      background: hsl(var(--platinum-dark));
     }
 
     .server-name, h6 {

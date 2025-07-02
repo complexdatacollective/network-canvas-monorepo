@@ -2,19 +2,19 @@ $module-name: form-field-rich-text;
 
 .rich-text {
   --blockquote-border-color: var(--transparent-light);
-  background: hsl(var(--input-background));
+  background: var(--color-input-background);
   border-radius: 1rem 1rem 0 0;
   overflow: hidden;
 
   &__toolbar {
-    background: var(--color-platinum);
+    background: hsl(var(--platinum));
     padding: 0 unit(2);
     display: flex;
     align-items: center;
     justify-content: flex-start;
 
     .toolbar-spacer {
-      background: var(--color-platinum-dark);
+      background: hsl(var(--platinum-dark));
       flex: 0 0 auto;
       width: 2px;
       height: unit(3);
@@ -29,7 +29,7 @@ $module-name: form-field-rich-text;
       overflow: auto;
     }
     cursor: text;
-    color: var(--input-text);
+    color: var(--color-input-text);
     padding: 0 unit(2);
     border-bottom-width: unit(.25);
     border-bottom-style: solid;
@@ -69,7 +69,7 @@ $module-name: form-field-rich-text;
     }
 
     &--is-active {
-      background-color: var(--primary);
+      background-color: var(--color-primary);
       filter: none;
       &:hover {
         filter: none;
@@ -79,7 +79,7 @@ $module-name: form-field-rich-text;
 
   &:hover {
     .rich-text__editable {
-      border-bottom: 2px solid var(--input-accent);
+      border-bottom: 2px solid var(--color-input-accent);
     }
   }
 }
@@ -97,8 +97,8 @@ $module-name: form-field-rich-text;
 
   &__error {
     opacity: 0;
-    background: var(--error);
-    color: var(--form-error-text);
+    background: var(--color-error);
+    color: var(--color-form-error-text);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
     padding: 0.5rem 0.25rem;

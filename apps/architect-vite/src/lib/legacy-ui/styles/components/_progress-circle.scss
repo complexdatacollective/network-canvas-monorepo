@@ -1,8 +1,8 @@
 .progress-circle {
-  --circle-text-color: var(--text);
+  --circle-text-color: var(--color-text);
   --circle-background-color: var(--transparent-md);
-  --circle-color: var(--color-slate-blue);
-  --circle-complete-color: var(--primary);
+  --circle-color: hsl(var(--slate-blue));
+  --circle-complete-color: var(--color-primary);
   --circle-line-width: 10;
 
   .animated-circle {
@@ -14,7 +14,7 @@
   .background-circle {
     stroke-width: var(--circle-line-width);
     fill: var(--circle-background-color);
-    stroke: var(--color-platinum);
+    stroke: hsl(var(--platinum));
   }
 
   @include element(status) {

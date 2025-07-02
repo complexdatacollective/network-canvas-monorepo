@@ -16,7 +16,7 @@
  
 .toast {
   width: 40rem;
-  background: var(--color-platinum);
+  background: hsl(var(--platinum));
   margin: unit(2) unit(6);
   padding: unit(4);
   border-radius: var(--border-radius);
@@ -32,7 +32,7 @@
   }
 
   &--warning {
-    border-color: var(--warning);
+    border-color: var(--color-warning);
   }
 
   &--error {
@@ -40,7 +40,7 @@
   }
 
   &--success {
-    border-color: var(--primary);
+    border-color: var(--color-primary);
   }
 
   .toast-icon {
@@ -56,7 +56,7 @@
 
       &[name="info"] {
         .cls-3 {
-          fill: var(--color-platinum-dark);
+          fill: hsl(var(--platinum-dark));
         }
 
         .cls-4 {
@@ -66,7 +66,7 @@
 
       &[name="warning"] {
         .cls-1 {
-          fill: var(--color-platinum-dark);
+          fill: hsl(var(--platinum-dark));
         }
 
         .cls-2 {

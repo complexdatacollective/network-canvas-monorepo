@@ -23,7 +23,7 @@ $component-name: timeline-stage;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    background-color: var(--architect-timeline-line);
+    background-color: var(--color-architect-timeline-line);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -64,7 +64,7 @@ $component-name: timeline-stage;
     @include clickable(2);
 
     display: block;
-    background: var(--color-navy-taupe);
+    background: hsl(var(--navy-taupe));
     padding: 1rem;
     width: $preview-width;
     position: relative;

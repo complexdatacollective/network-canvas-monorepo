@@ -2,16 +2,30 @@ import type { Protocol } from "@codaco/protocol-validation";
 import { extractProtocol, getMigrationNotes, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { navigate } from "wouter/use-browser-location";
+import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION } from "~/config";
 import { appUpgradeRequiredDialog, mayUpgradeProtocolDialog } from "~/ducks/modules/userActions/dialogs";
 import type { AppDispatch, RootState } from "~/ducks/store";
+import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { setActiveProtocol } from "../activeProtocol";
+import { openDialog } from "../dialogs";
 
-const checkUnsavedChanges = createAsyncThunk("webUserActions/checkUnsavedChanges", async (_, { dispatch }) => {
-	console.log("TODO: Checking for unsaved changes...");
-	return true;
-});
+export const checkUnsavedChanges = createAsyncThunk(
+	"webUserActions/checkUnsavedChanges",
+	async (_, { dispatch, getState }) => {
+		const state = getState() as RootState;
+		const hasUnsavedChanges = getHasUnsavedChanges(state);
+
+		if (!hasUnsavedChanges) {
+			return true;
+		}
+
+		const confirm = await dispatch(openDialog(UnsavedChanges({}))).unwrap();
+
+		return confirm;
+	},
+);
 
 export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas", async (file: File, { dispatch }) => {
 	const proceed = await dispatch(checkUnsavedChanges()).unwrap();
@@ -28,7 +42,7 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		}
 
 		const arrayBuffer = await file.arrayBuffer();
-		const { protocol, assets } = await extractProtocol(Buffer.from(arrayBuffer));
+		const { protocol, assets } = await extractProtocol(new Uint8Array(arrayBuffer));
 
 		// Handle migration if needed
 		const migratedProtocol = await dispatch(handleProtocolMigration(protocol)).unwrap();
@@ -37,12 +51,14 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 			throw new Error("Protocol migration failed or was canceled.");
 		}
 
+		console.log("Protocol migration complete:", migratedProtocol);
+
 		// Validate the protocol
 		const validationResult = await validateProtocol(migratedProtocol);
 
 		if (!validationResult.isValid) {
 			throw new Error(
-				`Protocol validation failed: ${[...validationResult.logicErrors, ...validationResult.schemaErrors].join(", ")}`,
+				`Protocol validation failed: ${[...validationResult.logicErrors, ...validationResult.schemaErrors].map((error) => error.message).join(", ")}`,
 			);
 		}
 
@@ -94,7 +110,7 @@ const handleProtocolMigration = createAsyncThunk("protocol/openOrUpgrade", async
 				const migrationNotes = getMigrationNotes(protocol.schemaVersion, APP_SCHEMA_VERSION);
 				const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, migrationNotes);
 
-				const confirm = await dispatch(upgradeDialog);
+				const confirm = await dispatch(upgradeDialog).unwrap();
 				if (!confirm) {
 					return false;
 				}
@@ -188,10 +204,10 @@ export const openRemoteNetcanvas = createAsyncThunk(
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const blob = await response.blob();
+			const buffer = await response.arrayBuffer();
 
 			// TODO: Remove duplicated code by reusing openLocalNetcanvas logic
-			const { protocol, assets } = await extractProtocol(Buffer.from(await blob.arrayBuffer()));
+			const { protocol, assets } = await extractProtocol(buffer);
 
 			// Handle migration if needed
 			const migratedProtocol = await dispatch(handleProtocolMigration(protocol)).unwrap();
@@ -205,7 +221,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 
 			if (!validationResult.isValid) {
 				throw new Error(
-					`Protocol validation failed: ${[...validationResult.logicErrors, ...validationResult.schemaErrors].join(", ")}`,
+					`Protocol validation failed: ${[...validationResult.logicErrors, ...validationResult.schemaErrors].map((error) => error.message).join(", ")}`,
 				);
 			}
 

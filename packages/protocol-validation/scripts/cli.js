@@ -45,7 +45,8 @@ async function main() {
 		// If it is a .netcanvas, extract the protocol.json inside it to os temp folder
 		if (absolutePath.endsWith(".netcanvas")) {
 			const fileBuffer = fs.readFileSync(absolutePath);
-			protocol = await extractProtocol(fileBuffer);
+			const result = await extractProtocol(fileBuffer);
+			protocol = result.protocol;
 		} else {
 			// Read as JSON
 			protocol = JSON.parse(fs.readFileSync(absolutePath, "utf8"));

@@ -18,7 +18,7 @@
   }
 
   .protocol-card {
-    background: var(--color-platinum);
+    background: hsl(var(--platinum));
     max-width: 12cm;
     zoom: 120%;
 
@@ -32,7 +32,7 @@
     top: 0;
     left: 0;
     width: 100%;
-    border-bottom: 2px solid var(--color-platinum);
+    border-bottom: 2px solid hsl(var(--platinum));
     display: flex;
     justify-content: space-between;
     align-items: center;

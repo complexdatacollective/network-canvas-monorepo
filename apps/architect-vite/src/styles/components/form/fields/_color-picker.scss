@@ -2,8 +2,8 @@
   --color-picker-size: 4.2rem;
   --color-picker-border-size: 5px;
   &__edit {
-    background: hsl(var(--input-background));
-    color: var(--input-text);
+    background: var(--color-input-background);
+    color: var(--color-input-text);
     border-radius: 1rem 1rem 0 0;
     padding: 0.6rem 0 0 0.6rem;
   }
@@ -11,7 +11,7 @@
   &__label {
     font-family: var(--heading-font-family);
     font-size: inherit;
-    color: var(--text);
+    color: var(--color-text);
     margin-top: 2.4rem;
     margin-bottom: 1.2rem;
     font-weight: 600;
@@ -24,9 +24,9 @@
 
   &__color {
     display: flex;
-    width: var(--color-picker-size);
-    height: var(--color-picker-size);
-    border-radius: var(--color-picker-size);
+    width: var(--picker-size);
+    height: var(--picker-size);
+    border-radius: var(--picker-size);
     margin: 0 0.6rem 0.6rem 0;
     overflow: hidden;
     cursor: pointer;
@@ -37,12 +37,12 @@
     transition-property: background-color;
 
     &::after {
-      margin: var(--color-picker-border-size);
+      margin: var(--picker-border-size);
       background-color: var(--color);
       content: '';
-      width: calc(var(--color-picker-size) - var(--color-picker-border-size) * 2);
-      height: calc(var(--color-picker-size) - var(--color-picker-border-size) * 2);
-      border-radius: var(--color-picker-size);
+      width: calc(var(--picker-size) - var(--picker-border-size) * 2);
+      height: calc(var(--picker-size) - var(--picker-border-size) * 2);
+      border-radius: var(--picker-size);
       border-color: transparent;
       border-style: solid;
       border-width: .15rem;
@@ -55,7 +55,7 @@
       background-color: var(--node-outer-trim-stroke);
 
       &::after {
-        border-color: var(--background-light);
+        border-color: var(--color-background-light);
       }
     }
   }
@@ -66,8 +66,8 @@
 
   &__error {
     opacity: 0;
-    background: var(--error);
-    color: var(--form-error-text);
+    background: var(--color-error);
+    color: var(--color-form-error-text);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
     padding: .5rem .25rem;

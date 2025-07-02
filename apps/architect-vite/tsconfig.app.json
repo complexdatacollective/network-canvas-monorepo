@@ -5,8 +5,18 @@
 		"paths": {
 			"~/*": ["./src/*"]
 		},
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+		"types": ["vite/client"]
 	},
-	"include": ["**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+	"include": [
+		"src/global.d.ts",
+		"**/*.js",
+		"**/*.jsx",
+		"**/*.mjs",
+		"**/*.cjs",
+		"**/*.ts",
+		"**/*.tsx",
+		".next/types/**/*.ts"
+	],
 	"exclude": ["node_modules"]
 }

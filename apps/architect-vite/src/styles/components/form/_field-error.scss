@@ -1,7 +1,7 @@
 .form-field-error {
   opacity: 0;
-  background: var(--error);
-  color: var(--form-error-text);
+  background: var(--color-error);
+  color: var(--color-form-error-text);
   transition: opacity var(--animation-easing) var(--animation-duration-standard),
   max-height var(--animation-easing) var(--animation-duration-standard);
   max-height: 0;

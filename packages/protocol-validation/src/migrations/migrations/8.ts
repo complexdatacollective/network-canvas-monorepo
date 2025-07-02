@@ -37,6 +37,15 @@ const migration: MigrationFunction<Protocol, Protocol> = (protocol) => {
 		removeToggleOptions(codebook.ego.variables);
 	}
 
+	// Remove 'id' property from entries in the asset manifest
+	if (protocol.assetManifest) {
+		for (const asset of Object.values(protocol.assetManifest)) {
+			// @ts-expect-error deleting invalid property
+			// biome-ignore lint/performance/noDelete: performance hit acceptable, as this is a one-time operation
+			delete asset.id;
+		}
+	}
+
 	return protocol;
 };
 
@@ -50,6 +59,7 @@ const notes = `
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 - Removed 'options' property for boolean Toggle variables. This property was not used.
+- Removed 'id' property from asset manifest entries. This property was not used.
 `;
 
 const v8 = {

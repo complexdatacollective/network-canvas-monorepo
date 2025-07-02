@@ -7,11 +7,11 @@
   flex-direction: column;
   padding: 1.2rem 4.8rem;
   margin: 0;
-  background: var(--color-slate-blue-dark);
-  color: var(--text);
+  background: hsl(var(--slate-blue-dark));
+  color: var(--color-text);
 
   a {
-    color: var(--text);
+    color: var(--color-text);
     font-weight: 700;
     border-bottom: 2px solid var(--primary);
   }
@@ -40,7 +40,7 @@
       &::before {
         mask-image: linear-gradient(180deg, transparent,  rgb(0 0 0 / 100%) 40%,  rgb(0 0 0 / 100%) 40%, transparent 100%);
         content: '';
-        border-left: .5rem solid var(--architect-timeline-line);
+        border-left: .5rem solid var(--color-architect-timeline-line);
         position: absolute;
         left: 15.8rem;
         height: 11rem;
@@ -50,7 +50,7 @@
 
     img {
       display: block;
-      background: var(--color-navy-taupe);
+      background: hsl(var(--navy-taupe));
       padding: .5rem;
       width: 12rem;
       text-align: center;
@@ -64,7 +64,7 @@
   }
 
   &--shadow {
-    box-shadow: 0 0.6rem .2rem 0 var(--architect-panel-shadow);
+    box-shadow: 0 0.6rem .2rem 0 var(--color-architect-panel-shadow);
   }
 
   &.stage-heading--collapsed {
@@ -104,7 +104,7 @@
   .form-fields-edge-select {
     --input-text: var(--color-white);
 
-    color: var(--input-text);
+    color: var(--color-input-text);
   }
 
   .stage-header-sections {
@@ -112,7 +112,7 @@
     flex: 1 auto;
     flex-direction: column;
     padding: 1.2rem 2.4rem;
-    background: var(--color-slate-blue);
+    background: hsl(var(--slate-blue));
     color: var(--color-white);
 
     .stage-editor-section {

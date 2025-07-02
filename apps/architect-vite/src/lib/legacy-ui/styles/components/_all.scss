@@ -6,7 +6,6 @@
 @import 'graphic-button';
 @import 'spinner';
 @import 'icons';
-@import 'icons-tailwind';
 
 // Instantiate icon classes
 @include icon;
@@ -30,7 +29,6 @@
 @import 'scrollable';
 @import 'narrative-panel';
 @import 'dialog';
-@import 'modal';
 @import 'progress';
 @import 'progress-bar';
 @import 'progress-circle';

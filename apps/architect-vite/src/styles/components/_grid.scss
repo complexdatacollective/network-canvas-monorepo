@@ -3,7 +3,7 @@
 .grid {
   .layout {
     height: 450px;
-    background: var(--background-dark);
+    background: var(--color-background-dark);
     border-radius: 1rem;
   }
 
@@ -20,15 +20,15 @@
         width: 1rem;
         height: 1rem;
         border-bottom-right-radius: .5rem;
-        border-bottom: 2px solid var(--architect-active);
-        border-right: 2px solid var(--architect-active);
+        border-bottom: 2px solid var(--color-architect-active);
+        border-right: 2px solid var(--color-architect-active);
       }
     }
   }
 
   &__error {
     opacity: 0;
-    background-color: var(--error);
+    background-color: var(--color-error);
     color: var(--foreground-light);
     border-radius: .5rem;
     max-height: 0;
@@ -67,8 +67,8 @@
   width: 100%;
   align-items: stretch;
   justify-content: flex-start;
-  background-color: var(--architect-sortable-background);
-  color: var(--architect-sortable-text);
+  background-color: var(--color-architect-sortable-background);
+  color: var(--color-architect-sortable-text);
   border-radius: .5rem;
 
   &__controls {
@@ -94,7 +94,7 @@
     .icon {
       .cls-1,
       .cls-2 {
-        fill: var(--architect-sortable-text);
+        fill: var(--color-architect-sortable-text);
       }
     }
   }
@@ -113,8 +113,8 @@
     }
 
     .assets {
-      background-color: var(--architect-sortable-background);
-      color: var(--architect-sortable-text);
+      background-color: var(--color-architect-sortable-background);
+      color: var(--color-architect-sortable-text);
       height: auto;
     }
   }

@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@use 'tailwindcss';
+@source not inline('container');
 
 @layer base {
 	:root {
@@ -9,48 +10,48 @@
 		--neon-coral-saturation: 76.9%;
 		--neon-coral-lightness: 50.8%;
 		--neon-coral: var(--neon-coral-hue) var(--neon-coral-saturation) var(--neon-coral-lightness);
-		--neon-coral--dark: var(--neon-coral-hue) var(--neon-coral-saturation)
+		--neon-coral-dark: var(--neon-coral-hue) var(--neon-coral-saturation)
 			calc(var(--neon-coral-lightness) - var(--dark-mod));
 
 		--mustard-hue: 46;
 		--mustard-saturation: 100%;
 		--mustard-lightness: 47%;
 		--mustard: var(--mustard-hue) var(--mustard-saturation) var(--mustard-lightness);
-		--mustard--dark: var(--mustard-hue) var(--mustard-saturation) calc(var(--mustard-lightness) - var(--dark-mod));
+		--mustard-dark: var(--mustard-hue) var(--mustard-saturation) calc(var(--mustard-lightness) - var(--dark-mod));
 
 		--sea-green-hue: 168;
 		--sea-green-saturation: 100%;
 		--sea-green-lightness: 35%;
 		--sea-green: var(--sea-green-hue) var(--sea-green-saturation) var(--sea-green-lightness);
-		--sea-green--dark: var(--sea-green-hue) var(--sea-green-saturation)
+		--sea-green-dark: var(--sea-green-hue) var(--sea-green-saturation)
 			calc(var(--sea-green-lightness) - var(--dark-mod));
 
 		--slate-blue-hue: 237;
 		--slate-blue-saturation: 79%;
 		--slate-blue-lightness: 65%;
 		--slate-blue: var(--slate-blue-hue) var(--slate-blue-saturation) var(--slate-blue-lightness);
-		--slate-blue--dark: var(--slate-blue-hue) var(--slate-blue-saturation)
+		--slate-blue-dark: var(--slate-blue-hue) var(--slate-blue-saturation)
 			calc(var(--slate-blue-lightness) - var(--dark-mod));
 
 		--navy-taupe-hue: 248;
 		--navy-taupe-saturation: 34%;
 		--navy-taupe-lightness: 25%;
 		--navy-taupe: var(--navy-taupe-hue) var(--navy-taupe-saturation) var(--navy-taupe-lightness);
-		--navy-taupe--dark: var(--navy-taupe-hue) var(--navy-taupe-saturation)
+		--navy-taupe-dark: var(--navy-taupe-hue) var(--navy-taupe-saturation)
 			calc(var(--navy-taupe-lightness) - var(--dark-mod));
 
 		--cyber-grape-hue: 240;
 		--cyber-grape-saturation: 33%;
 		--cyber-grape-lightness: 29%;
 		--cyber-grape: var(--cyber-grape-hue) var(--cyber-grape-saturation) var(--cyber-grape-lightness);
-		--cyber-grape--dark: var(--cyber-grape-hue) var(--cyber-grape-saturation)
+		--cyber-grape-dark: var(--cyber-grape-hue) var(--cyber-grape-saturation)
 			calc(var(--cyber-grape-lightness) - var(--dark-mod));
 
 		--rich-black-hue: 240;
 		--rich-black-saturation: 35%;
 		--rich-black-lightness: 10%;
 		--rich-black: var(--rich-black-hue) var(--rich-black-saturation) var(--rich-black-lightness);
-		--rich-black--dark: var(--rich-black-hue) var(--rich-black-saturation)
+		--rich-black-dark: var(--rich-black-hue) var(--rich-black-saturation)
 			calc(var(--rich-black-lightness) - var(--dark-mod));
 
 		--charcoal-hue: 231;
@@ -68,61 +69,62 @@
 		--sea-serpent-saturation: 87%;
 		--sea-serpent-lightness: 47%;
 		--sea-serpent: var(--sea-serpent-hue) var(--sea-serpent-saturation) var(--sea-serpent-lightness);
-		--sea-serpent--dark: var(--sea-serpent-hue) var(--sea-serpent-saturation)
+		--sea-serpent-dark: var(--sea-serpent-hue) var(--sea-serpent-saturation)
 			calc(var(--sea-serpent-lightness) - var(--dark-mod));
 
 		--purple-pizazz-hue: 291;
 		--purple-pizazz-saturation: 86%;
 		--purple-pizazz-lightness: 52%;
 		--purple-pizazz: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) var(--purple-pizazz-lightness);
-		--purple-pizazz--dark: var(--purple-pizazz-hue) var(--purple-pizazz-saturation)
+		--purple-pizazz-dark: var(--purple-pizazz-hue) var(--purple-pizazz-saturation)
 			calc(var(--purple-pizazz-lightness) - var(--dark-mod));
 
 		--paradise-pink-hue: 331;
 		--paradise-pink-saturation: 100%;
 		--paradise-pink-lightness: 57%;
 		--paradise-pink: var(--paradise-pink-hue) var(--paradise-pink-saturation) var(--paradise-pink-lightness);
-		--paradise-pink--dark: var(--paradise-pink-hue) var(--paradise-pink-saturation)
+		--paradise-pink-dark: var(--paradise-pink-hue) var(--paradise-pink-saturation)
 			calc(var(--paradise-pink-lightness) - var(--dark-mod));
 
 		--cerulean-blue-hue: 216;
 		--cerulean-blue-saturation: 100%;
 		--cerulean-blue-lightness: 53%;
 		--cerulean-blue: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) var(--cerulean-blue-lightness);
-		--cerulean-blue--dark: var(--cerulean-blue-hue) var(--cerulean-blue-saturation)
+		--cerulean-blue-dark: var(--cerulean-blue-hue) var(--cerulean-blue-saturation)
 			calc(var(--cerulean-blue-lightness) - var(--dark-mod));
 
 		--kiwi-hue: 103;
 		--kiwi-saturation: 46%;
 		--kiwi-lightness: 56%;
 		--kiwi: var(--kiwi-hue) var(--kiwi-saturation) var(--kiwi-lightness);
-		--kiwi--dark: var(--kiwi-hue) var(--kiwi-saturation) calc(var(--kiwi-lightness) - var(--dark-mod));
+		--kiwi-dark: var(--kiwi-hue) var(--kiwi-saturation) calc(var(--kiwi-lightness) - var(--dark-mod));
 
 		--neon-carrot-hue: 32;
 		--neon-carrot-saturation: 92%;
 		--neon-carrot-lightness: 52%;
 		--neon-carrot: var(--neon-carrot-hue) var(--neon-carrot-saturation) var(--neon-carrot-lightness);
-		--neon-carrot--dark: var(--neon-carrot-hue) var(--neon-carrot-saturation)
+		--neon-carrot-dark: var(--neon-carrot-hue) var(--neon-carrot-saturation)
 			calc(var(--neon-carrot-lightness) - var(--dark-mod));
 
 		--barbie-pink-hue: 328;
 		--barbie-pink-saturation: 100%;
 		--barbie-pink-lightness: 47%;
 		--barbie-pink: var(--barbie-pink-hue) var(--barbie-pink-saturation) var(--barbie-pink-lightness);
-		--barbie-pink--dark: var(--barbie-pink-hue) var(--barbie-pink-saturation)
+		--barbie-pink-dark: var(--barbie-pink-hue) var(--barbie-pink-saturation)
 			calc(var(--barbie-pink-lightness) - var(--dark-mod));
 
 		--tomato-hue: 356;
 		--tomato-saturation: 77%;
 		--tomato-lightness: 54%;
 		--tomato: var(--tomato-hue) var(--tomato-saturation) var(--tomato-lightness);
-		--tomato--dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
+		--tomato-dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
 
 		--white: 0 0% 100%;
 
-		/* Semantic slots */
+		--base-font-size: 14px;
+
 		--background: var(--platinum);
-		--foreground: var(--cyber-grape);
+		--foreground: var(--charcoal);
 		--foreground-light: var(--white);
 
 		--primary: var(--sea-green);
@@ -155,25 +157,68 @@
 
 		--link: var(--neon-coral);
 
-		--card: 0 0% 100%;
+		--card: var(--white);
 
 		--panel: var(--platinum);
-
-		--input: 0 0% 100%;
-		--input-foreground: var(--cyber-grape);
 
 		--popover: var(--white);
 		--popover-foreground: var(--foreground);
 
-		/* Additional semantic colors for legacy components */
-		--error: var(--destructive);
-		--input-background: var(--white);
-		--input-label: var(--foreground);
-		--input-radio--fill: var(--white);
-		--input-border: var(--platinum-dark);
-		--light-background: var(--cyber-grape);
-		--background-light: var(--white);
-		--selected: var(--mustard);
+		--node-color-seq-1: var(--neon-coral);
+		--node-color-seq-1-dark: var(--neon-coral-dark);
+
+		--node-color-seq-2: var(--sea-serpent);
+		--node-color-seq-2-dark: var(--sea-serpent-dark);
+
+		--node-color-seq-3: var(--purple-pizazz);
+		--node-color-seq-3-dark: var(--purple-pizazz-dark);
+
+		--node-color-seq-4: var(--neon-carrot);
+		--node-color-seq-4-dark: var(--neon-carrot-dark);
+
+		--node-color-seq-5: var(--kiwi);
+		--node-color-seq-5-dark: var(--kiwi-dark);
+
+		--node-color-seq-6: var(--cerulean-blue);
+		--node-color-seq-6-dark: var(--cerulean-blue-dark);
+
+		--node-color-seq-7: var(--paradise-pink);
+		--node-color-seq-7-dark: var(--paradise-pink-dark);
+
+		--node-color-seq-8: var(--mustard);
+		--node-color-seq-8-dark: var(--mustard-dark);
+
+		--edge-color-seq-1: var(--mustard);
+		--edge-color-seq-1-dark: var(--mustard-dark);
+
+		--edge-color-seq-2: var(--neon-coral);
+		--edge-color-seq-2-dark: var(--neon-coral-dark);
+
+		--edge-color-seq-3: var(--kiwi);
+		--edge-color-seq-3-dark: var(--kiwi-dark);
+
+		--edge-color-seq-4: var(--paradise-pink);
+		--edge-color-seq-4-dark: var(--paradise-pink-dark);
+
+		--edge-color-seq-5: var(--tomato);
+		--edge-color-seq-5-dark: var(--tomato-dark);
+
+		--edge-color-seq-6: var(--sea-serpent);
+		--edge-color-seq-6-dark: var(--sea-serpent-dark);
+
+		--edge-color-seq-7: var(--slate-blue);
+		--edge-color-seq-7-dark: var(--slate-blue-dark);
+
+		--edge-color-seq-8: var(--sea-green);
+		--edge-color-seq-8-dark: var(--sea-green-dark);
+
+		--edge-color-seq-9: var(--cerulean-blue);
+		--edge-color-seq-9-dark: var(--cerulean-blue-dark);
+
+		/* Missing variables */
+		--notice: var(--info);
+		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+		--architect-timeline-line: var(--neon-coral);
 	}
 }
 
@@ -195,55 +240,55 @@
 
 @theme {
 	--color-neon-coral: hsl(var(--neon-coral));
-	--color-neon-coral-dark: hsl(var(--neon-coral--dark));
+	--color-neon-coral-dark: hsl(var(--neon-coral-dark));
 
 	--color-sea-green: hsl(var(--sea-green));
-	--color-sea-green-dark: hsl(var(--sea-green--dark));
+	--color-sea-green-dark: hsl(var(--sea-green-dark));
 
 	--color-slate-blue: hsl(var(--slate-blue));
-	--color-slate-blue-dark: hsl(var(--slate-blue--dark));
+	--color-slate-blue-dark: hsl(var(--slate-blue-dark));
 
 	--color-navy-taupe: hsl(var(--navy-taupe));
-	--color-navy-taupe-dark: hsl(var(--navy-taupe--dark));
+	--color-navy-taupe-dark: hsl(var(--navy-taupe-dark));
 
 	--color-cyber-grape: hsl(var(--cyber-grape));
-	--color-cyber-grape-dark: hsl(var(--cyber-grape--dark));
+	--color-cyber-grape-dark: hsl(var(--cyber-grape-dark));
 
 	--color-mustard: hsl(var(--mustard));
-	--color-mustard-dark: hsl(var(--mustard--dark));
+	--color-mustard-dark: hsl(var(--mustard-dark));
 
 	--color-rich-black: hsl(var(--rich-black));
-	--color-rich-black-dark: hsl(var(--rich-black--dark));
+	--color-rich-black-dark: hsl(var(--rich-black-dark));
 
 	--color-charcoal: hsl(var(--charcoal));
-	--color-charcoal-dark: hsl(var(--charcoal--dark));
+	--color-charcoal-dark: hsl(var(--charcoal-dark));
 
 	--color-platinum: hsl(var(--platinum));
 	--color-platinum-dark: hsl(var(--platinum-dark));
 
 	--color-sea-serpent: hsl(var(--sea-serpent));
-	--color-sea-serpent-dark: hsl(var(--sea-serpent--dark));
+	--color-sea-serpent-dark: hsl(var(--sea-serpent-dark));
 
 	--color-purple-pizazz: hsl(var(--purple-pizazz));
-	--color-purple-pizazz-dark: hsl(var(--purple-pizazz--dark));
+	--color-purple-pizazz-dark: hsl(var(--purple-pizazz-dark));
 
 	--color-paradise-pink: hsl(var(--paradise-pink));
-	--color-paradise-pink-dark: hsl(var(--paradise-pink--dark));
+	--color-paradise-pink-dark: hsl(var(--paradise-pink-dark));
 
 	--color-cerulean-blue: hsl(var(--cerulean-blue));
-	--color-cerulean-blue-dark: hsl(var(--cerulean-blue--dark));
+	--color-cerulean-blue-dark: hsl(var(--cerulean-blue-dark));
 
 	--color-kiwi: hsl(var(--kiwi));
-	--color-kiwi-dark: hsl(var(--kiwi--dark));
+	--color-kiwi-dark: hsl(var(--kiwi-dark));
 
 	--color-neon-carrot: hsl(var(--neon-carrot));
-	--color-neon-carrot-dark: hsl(var(--neon-carrot--dark));
+	--color-neon-carrot-dark: hsl(var(--neon-carrot-dark));
 
 	--color-barbie-pink: hsl(var(--barbie-pink));
-	--color-barbie-pink-dark: hsl(var(--barbie-pink--dark));
+	--color-barbie-pink-dark: hsl(var(--barbie-pink-dark));
 
 	--color-tomato: hsl(var(--tomato));
-	--color-tomato-dark: hsl(var(--tomato--dark));
+	--color-tomato-dark: hsl(var(--tomato-dark));
 
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
@@ -290,16 +335,17 @@
 	--color-border: hsl(var(--border));
 	--color-link: hsl(var(--link));
 
-	/* Additional semantic colors for legacy components */
+	--color-architect-timeline-line: hsl(var(--architect-timeline-line));
+
+	--color-notice: hsl(var(--notice));
+	--color-modal-window-box-shadow: var(--modal-window-box-shadow);
+
 	--color-error: hsl(var(--error));
 	--color-selected: hsl(var(--selected));
 	--color-light-background: hsl(var(--background-light));
-	--color-mid-grey: var(--color-mid-grey);
 
-	/* Dark variants for semantic colors */
-	--color-selected-dark: hsl(var(--mustard--dark));
+	--color-selected-dark: hsl(var(--mustard-dark));
 
-	/* Section background colors */
 	--color-section-background: hsl(var(--platinum));
 	--color-section-background-dark: #e9eeef;
 
@@ -322,6 +368,90 @@
 	--animate-background-gradient: background-gradient 5s infinite ease-in-out;
 
 	--transform-origin-left-right: 0% 50%;
+
+	--color-shadow: rgb(0 0 0 / 15%);
+	--color-mid-grey: rgb(128 128 128);
+
+	--color-text: hsl(var(--charcoal));
+	--color-input-background: hsl(var(--white));
+	--color-input-label: hsl(var(--charcoal));
+	--color-text-light: hsl(var(--white));
+	--color-text-dark: hsl(var(--charcoal));
+	--color-ring--background: hsl(var(--navy-taupe));
+	--color-node-outer-trim-stroke: hsl(var(--mustard));
+	--color-input-panel-bg: hsl(var(--white));
+
+	--color-background-dark: hsl(var(--navy-taupe));
+	--color-background-light: hsl(var(--white));
+	--color-background-alt: hsl(var(--platinum));
+	--color-architect-wave: hsl(var(--sea-green));
+	--color-architect-control-bar-shadow: rgb(20 0 0 / 30%);
+	--color-architect-titlebar: hsl(var(--sea-green-dark));
+
+	--color-architect-error-background: hsl(var(--cyber-grape));
+	--color-architect-error-code-background: hsl(var(--navy-taupe));
+	--color-architect-warning: hsl(var(--tomato));
+	--color-architect-media-background: hsl(var(--rich-black));
+
+	--color-architect-row-background: rgb(242 246 247 / 50%);
+	--color-architect-background: hsl(var(--white));
+	--color-architect-text: hsl(var(--charcoal));
+	--color-architect-shadow: var(--shadow);
+	--color-architect-divider: hsl(var(--platinum));
+	--color-architect-selected: hsl(var(--sea-green));
+	--color-architect-active: hsl(var(--sea-green));
+	--color-architect-panel-grey: hsl(var(--platinum));
+	--color-architect-panel-grey-dark: #e9eeef;
+
+	--color-architect-control-bar-background: hsl(var(--cyber-grape));
+	--color-architect-control-bar-text: hsl(var(--white));
+
+	--color-form-control: hsl(var(--sea-serpent));
+
+	--color-architect-dialog-background: hsl(var(--platinum));
+	--color-architect-dialog-background-dark: hsl(var(--platinum-dark));
+
+	--color-architect-sortable-text: hsl(var(--white));
+	--color-architect-sortable-background: hsl(var(--slate-blue));
+	--color-architect-sortable-preview-background: hsl(var(--slate-blue));
+	--color-architect-sortable-preview-background--alt: hsl(var(--slate-blue-dark));
+
+	--color-architect-modal-shadow: var(--modal-overlay);
+
+	--color-architect-logic-background: hsl(var(--mustard));
+	--color-architect-logic-text: hsl(var(--white));
+
+	--color-architect-edit-button-background: hsl(var(--primary));
+	--color-architect-edit-button-fill: hsl(var(--white));
+	--color-architect-ui-button: hsl(var(--sea-green));
+	--color-architect-ui-button-text: hsl(var(--white));
+	--color-architect-ui-radio-border: hsl(var(--cyber-grape));
+	--color-architect-ui-radio-dot: hsl(var(--sea-green));
+	--color-architect-button-background-dark: hsl(var(--navy-taupe));
+	--color-architect-button-background-dark--hover: hsl(var(--cyber-grape));
+	--color-architect-drawer-background: hsl(var(--platinum));
+	--color-architect-panel-background: hsl(var(--platinum));
+	--color-architect-panel-shadow: var(--shadow);
+	--color-architect-panel-text: hsl(var(--charcoal));
+	--color-architect-panel-divider: hsl(var(--platinum-dark));
+	--color-architect-border: hsl(var(--platinum-dark));
+	--color-architect-input-placeholder: hsl(var(--platinum));
+	--color-architect-input-focus: hsl(var(--sea-green));
+	--color-architect-intent--inactive: hsl(var(--charcoal));
+	--color-architect-intent: hsl(var(--mustard));
+	--color-architect-intent-border: hsl(var(--mustard-dark));
+	--color-architect-timeline-highlight: rgb(216 216 216 / 20%);
+	--color-architect-timeline-line: hsl(var(--neon-coral));
+	--color-architect-timeline-screen: hsl(var(--navy-taupe));
+
+	--color-architect-rules-type: hsl(var(--neon-coral));
+	--color-architect-rules-assert: hsl(var(--sea-green));
+
+	--color-architect-variant--1: hsl(var(--slate-blue-dark));
+	--color-architect-variant--2: hsl(var(--mustard-dark));
+	--color-architect-variant--3: hsl(var(--sea-green));
+	--color-architect-variant--4: hsl(var(--sea-green-dark));
+	--color-architect-asset-background: hsl(var(--charcoal));
 
 	@keyframes wiggle {
 		0%,

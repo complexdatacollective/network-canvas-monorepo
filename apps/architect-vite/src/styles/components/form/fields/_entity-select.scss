@@ -10,8 +10,8 @@ $component-name: 'form-fields-entity-select';
 
   &__error {
     opacity: 0;
-    background: var(--error);
-    color: var(--form-error-text);
+    background: var(--color-error);
+    color: var(--color-form-error-text);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
     padding: .5rem .25rem;
@@ -49,7 +49,7 @@ $component-name: 'form-fields-entity-select';
 }
 
 .preview-edge {
-  background: var(--color-platinum);
+  background: hsl(var(--platinum));
   margin: 0.6rem;
   display: flex;
   flex-direction: row;

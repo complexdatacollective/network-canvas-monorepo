@@ -1,10 +1,11 @@
-import { assetDb, type Asset } from "./assetDB";
+import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
+import { assetDb } from "./assetDB";
 
-export const saveAssetToDb = async (asset: Asset): Promise<void> => {
+export const saveAssetToDb = async (asset: ExtractedAsset): Promise<void> => {
 	await assetDb.assets.put(asset);
 };
 
-export const saveProtocolAssets = async (assets: Asset[]): Promise<void> => {
+export const saveProtocolAssets = async (assets: ExtractedAsset[]): Promise<void> => {
 	// Process assets in parallel using manifest
 	const assetPromises = assets.map(async (asset) => {
 		// Skip apikey assets as they're not actual files
@@ -14,18 +15,22 @@ export const saveProtocolAssets = async (assets: Asset[]): Promise<void> => {
 		}
 
 		await saveAssetToDb(asset);
-		console.log(`Saved asset: ${asset.name} - ${asset.data.bytes()} bytes`);
 	});
 
 	await Promise.all(assetPromises);
 	console.log("All assets extracted and saved to IndexedDB");
 };
 
-export const getAssetById = async (assetId: string): Promise<Asset | undefined> => {
+export const getAssetById = async (assetId: string): Promise<ExtractedAsset | undefined> => {
 	return await assetDb.assets.get(assetId);
 };
 
-export const createBlobUrl = (asset: Asset): string => {
+export const createBlobUrl = (asset: ExtractedAsset): string => {
+	if (typeof asset.data === "string") {
+		console.warn(`Asset ${asset.name} is not a Blob, cannot create Blob URL.`);
+		return asset.data; // Return the string directly if it's not a Blob
+	}
+
 	return URL.createObjectURL(asset.data);
 };
 

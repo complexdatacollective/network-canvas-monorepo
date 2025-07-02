@@ -49,7 +49,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: var(--error);
+    background: var(--color-error);
 
     .icon {
       width: 1.2rem;
@@ -57,15 +57,15 @@
 
       .cls-1,
       .cls-2 {
-        fill: var(--architect-sortable-text);
+        fill: var(--color-architect-sortable-text);
       }
     }
   }
 
   &:hover {
-    --variable-pill-shadow-color: var(--color-rich-black);
+    --variable-pill-shadow-color: hsl(var(--rich-black));
 
-    background-color: var(--background-dark);
+    background-color: var(--color-background-dark);
 
     .rules-preview-rule__delete {
       opacity: 1;
@@ -78,7 +78,7 @@
 }
 
 .stage-editor-section {
-  --variable-pill-background: var(--color-platinum);
+  --variable-pill-background: hsl(var(--platinum));
   --variable-pill-shadow-color: rgb(212 212 212); // sass-lint:disable-line no-color-literals
 
   .preview-edge {
@@ -87,7 +87,7 @@
 
   .stage-editor-section {
     --variable-pill-background: var(--color-white);
-    --variable-pill-shadow-color: var(--color-platinum-dark);
+    --variable-pill-shadow-color: hsl(var(--platinum-dark));
 
     .preview-edge {
       background: var(--variable-pill-background);

@@ -5,16 +5,16 @@ $lighten: rgba(255, 255, 255, 0.05);
 $darken: rgba(0, 0, 0, 0.2);
 
 .form-field-date-picker {
-  --datepicker-panel-bg: var(--input-panel-bg);
-  color: var(--input-text);
+  --datepicker-panel-bg: var(--color-input-panel-bg);
+  color: var(--color-input-text);
   &__error {
     opacity: 0;
     transition: opacity var(--animation-easing) var(--animation-duration-fast);
   }
 
   &__error-message {
-    color: var(--form-error-text);
-    background: var(--error);
+    color: var(--color-form-error-text);
+    background: var(--color-error);
     padding: 0.5rem 0.25rem;
 
     svg {
@@ -36,21 +36,21 @@ $darken: rgba(0, 0, 0, 0.2);
 }
 
 .#{$module-name} {
-  --active-color: var(--color-sea-green);
-  --background: hsl(var(--input-background));
+  --active-color: hsl(var(--sea-green));
+  --background: var(--color-input-background);
   --lighten: $lighten;
-  --darken: $darken;
+  -darken: $darken;
   max-width: 100%;
   position: relative;
 
   &__placeholder {
-    color: var(--input-placeholder);
+    color: var(--color-input-placeholder);
     font-style: italic;
   }
 
   &__preview {
     font-size: 1rem;
-    background-color: var(--background);
+    background-color: var(--color-background);
     border-radius: 1rem 1rem 0 0;
     padding: 0 1rem;
     line-height: 4rem;
@@ -72,11 +72,11 @@ $darken: rgba(0, 0, 0, 0.2);
     }
 
     &-part {
-      color: var(--input-placeholder);
+      color: var(--color-input-placeholder);
       font-style: italic;
 
       &--is-set {
-        color: var(--input-text);
+        color: var(--color-input-text);
         font-style: normal;
       }
     }
@@ -95,7 +95,7 @@ $darken: rgba(0, 0, 0, 0.2);
     }
 
     &--is-empty {
-      color: var(--input-placeholder);
+      color: var(--color-input-placeholder);
       cursor: pointer;
       font-style: italic;
     }
@@ -110,7 +110,7 @@ $darken: rgba(0, 0, 0, 0.2);
     z-index: var(--z-global-ui);
     width: 100%;
     max-width: 30rem;
-    box-shadow: 0 2rem 3rem 0 var(--modal-window-box-shadow);
+    box-shadow: 0 2rem 3rem 0 var(--color-modal-window-box-shadow);
     margin-bottom: 3rem;
   }
 

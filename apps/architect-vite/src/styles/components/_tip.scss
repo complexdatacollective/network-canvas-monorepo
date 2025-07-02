@@ -1,7 +1,7 @@
 
 
 .tip {
-  background-color: var(--color-mid-grey);
+  background-color: var(--mid-grey);
   border-radius: var(--border-radius);
   padding: 0.3rem 2.4rem;
   margin: 1.2rem 0;
@@ -28,7 +28,7 @@
   }
 
   &__error {
-    background-color: var(--error);
+    background-color: var(--color-error);
     color: var(--color-white);
   }
 }

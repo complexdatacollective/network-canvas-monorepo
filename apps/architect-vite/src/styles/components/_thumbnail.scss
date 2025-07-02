@@ -1,7 +1,7 @@
 
 
 .thumbnail {
-  background-color: var(--color-cyber-grape);
+  background-color: hsl(var(--cyber-grape));
   color: var(--foreground-light);
   border-radius: var(--border-radius);
   display: inline-flex;
@@ -23,7 +23,7 @@
   }
 
   &--existing {
-    background-color: var(--notice);
+    background-color: var(--color-notice);
     font-style: italic;
   }
 

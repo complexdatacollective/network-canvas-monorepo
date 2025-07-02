@@ -29,7 +29,7 @@ $duration: var(--animation-duration-standard);
   }
 
   &--edit {
-    background: var(--architect-table-edit-background);
+    background: var(--color-architect-table-edit-background);
 
     .attributes-table-variable__edit {
       max-height: fit-content;

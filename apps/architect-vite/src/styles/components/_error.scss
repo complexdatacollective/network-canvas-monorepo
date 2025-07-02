@@ -16,7 +16,7 @@
     padding: 3.6rem;
     width: 60rem;
     border-radius: var(--border-radius);
-    background: var(--color-cyber-grape);
+    background: hsl(var(--cyber-grape));
   }
 
   &__stack {
@@ -26,6 +26,6 @@
     padding: 1.2rem;
     max-height: 9rem;
     border-radius: var(--border-radius);
-    background-color: var(--architect-error-code-background);
+    background-color: var(--color-architect-error-code-background);
   }
 }

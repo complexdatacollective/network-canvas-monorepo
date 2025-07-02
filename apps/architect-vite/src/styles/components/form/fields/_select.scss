@@ -6,8 +6,8 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
   font-size: var(--base-font-size);
 
   &__control {
-    background: hsl(var(--input-background));
-    color: var(--input-text);
+    background: var(--color-input-background);
+    color: var(--color-input-text);
     border: 0;
     border-radius: 1rem 1rem 0 0;
     padding: 0 1rem;
@@ -22,7 +22,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
   }
 
   &__placeholder {
-    color: var(--input-placeholder);
+    color: var(--color-input-placeholder);
     font-style: italic;
   }
 
@@ -45,16 +45,16 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
     font-size: var(--base-font-size);
 
     &:active {
-      background-color: var(--color-sea-green--dark);
+      background-color: hsl(var(--sea-green-dark));
       color: var(--foreground-light);
     }
 
     &--is-focused {
-      background-color: var(--color-platinum);
+      background-color: hsl(var(--platinum));
     }
 
     &--is-selected {
-      background-color: var(--primary);
+      background-color: var(--color-primary);
     }
   }
 
@@ -88,7 +88,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
         line-height: 1.2rem;
         padding: .3rem;
         margin-right: 0.6rem;
-        background: var(--color-sea-green);
+        background: hsl(var(--sea-green));
         border-radius: 1.2rem;
 
         .cls-1 {
@@ -113,7 +113,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
     }
 
     &--warning {
-      background: var(--error);
+      background: var(--color-error);
       color: var(--color-white);
     }
   }
@@ -130,7 +130,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
 
   &__error {
     opacity: 0;
-    background: var(--error);
+    background: var(--color-error);
     padding: .5rem .25rem;
     display: flex;
     align-items: center;
@@ -152,7 +152,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
 
   &--light-background {
     .form-fields-select__control {
-      background-color: var(--background);
+      background-color: var(--color-background);
     }
   }
 }

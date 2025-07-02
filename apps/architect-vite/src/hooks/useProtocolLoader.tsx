@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useLocation, useParams } from "wouter";
+import { useLocation } from "wouter";
 import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
 
 /**
@@ -8,30 +8,21 @@ import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
  * Reads protocolId from URL params and sets the active protocol
  */
 export const useProtocolLoader = () => {
-	const params = useParams<{ protocolId: string }>();
 	const [, navigate] = useLocation();
-
-	const protocolId = params.protocolId;
 
 	// Get the stored protocol
 	const activeProtocol = useSelector(selectActiveProtocol);
 
-	useEffect(() => {
-		if (!protocolId) {
-			// No protocol ID in URL, nothing to load
-			return;
-		}
+	console.log("useProtocolLoader activeProtocol", activeProtocol);
 
+	useEffect(() => {
 		if (!activeProtocol) {
-			// Protocol not found in store
-			console.error(`Protocol with ID ${protocolId} not found`);
-			// Could navigate to home or show error
+			// No protocol ID in URL, nothing to load
 			navigate("/");
 			return;
 		}
-
-		navigate("/protocol");
-	}, [protocolId, activeProtocol, navigate]);
+		// navigate("/protocol");
+	}, [activeProtocol, navigate]);
 };
 
 export default useProtocolLoader;

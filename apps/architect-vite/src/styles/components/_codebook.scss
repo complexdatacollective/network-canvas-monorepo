@@ -8,7 +8,7 @@
 
   &__notice {
     margin-top: 2rem;
-    background-color: var(--background-alt);
+    background-color: var(--color-background-alt);
     padding: 2rem;
     font-style: italic;
     text-align: center;
@@ -21,11 +21,11 @@
     padding: 0.3rem 0.45rem;
     font-size: .9em;
     color: var(--color-white);
-    background-color: var(--color-mustard--dark);
+    background-color: hsl(var(--mustard-dark));
     word-break: break-word;
 
     &--not-used {
-      background-color: var(--architect-warning);
+      background-color: var(--color-architect-warning);
     }
   }
 
@@ -33,7 +33,7 @@
     margin-top: 2.4rem;
 
     &-items {
-      border-top: 0.2rem solid var(--architect-divider);
+      border-top: 0.2rem solid var(--color-architect-divider);
       margin-top: 1.2rem;
     }
   }
@@ -62,7 +62,7 @@
     overflow: hidden;
     margin: 2.4rem auto;
     padding: 2.4rem;
-    background: var(--architect-panel-grey);
+    background: var(--color-architect-panel-grey);
     border-radius: var(--border-radius);
 
     &:first-child {
@@ -114,11 +114,11 @@
 
     &-row {
       &--heading {
-        border-bottom: 0.2rem solid var(--architect-divider);
+        border-bottom: 0.2rem solid var(--color-architect-divider);
       }
 
       &--even {
-        background-color: var(--architect-row-background);
+        background-color: var(--color-architect-row-background);
       }
     }
 

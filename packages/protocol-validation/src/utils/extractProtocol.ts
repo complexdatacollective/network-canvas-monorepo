@@ -37,7 +37,7 @@ const extractProtocolAssets = async (protocol: Protocol, zip: Zip) => {
 };
 
 export const extractProtocol = async (
-	protocolBuffer: Buffer,
+	protocolBuffer: ArrayBuffer,
 ): Promise<{ protocol: Protocol; assets: Array<ExtractedAsset> }> => {
 	const zip = await JSZip.loadAsync(protocolBuffer);
 	const protocol = await getProtocolJsonAsObject(zip);

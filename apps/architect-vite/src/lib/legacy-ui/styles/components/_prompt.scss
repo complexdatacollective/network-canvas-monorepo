@@ -3,7 +3,7 @@ $module-name: prompt;
 .#{$module-name} {
   --local-prompt-text-size: var(--prompt-text-size, 1.75rem);
   --local-number-of-lines: var(--number-of-lines, 3);
-  --local-text: var(--text, inherit);
+  --local-text: var(--color-text, inherit);
   --local-underline-duration: var(--underline-duration, 2s);
 
   color: var(--local-text);

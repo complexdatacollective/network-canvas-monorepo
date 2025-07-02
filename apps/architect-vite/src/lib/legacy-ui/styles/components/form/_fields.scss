@@ -8,7 +8,7 @@ $global-input-border-space: 0.25rem;
     font-weight: 200;
     display: block;
     margin: 0;
-    color: hsl(var(--input-label));
+    color: var(--color-input-label);
   }
 }
 
@@ -16,7 +16,7 @@ $global-input-border-space: 0.25rem;
   font-family: var(--heading-font-family);
   font-size: inherit;
   font-weight: 500;
-  color: var(--text);
+  color: var(--color-text);
 
   > * {
     font-weight: inherit;
@@ -47,8 +47,8 @@ $global-input-border-space: 0.25rem;
 }
 
 .form-field {
-  background: hsl(var(--input-background));
-  color: var(--input-text);
+  background: var(--color-input-background);
+  color: var(--color-input-text);
   border-radius: 1rem 1rem 0 0;
   margin-bottom: 2rem;
   padding: 1rem unit(2);

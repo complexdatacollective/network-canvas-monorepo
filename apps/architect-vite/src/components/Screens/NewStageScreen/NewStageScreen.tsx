@@ -130,7 +130,7 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 				if (insertAtIndex !== undefined) {
 					params.set("insertAtIndex", insertAtIndex.toString());
 				}
-				setLocation(`/protocol/${protocolId}/stages/new?${params.toString()}`);
+				setLocation(`/protocol/stage/new?${params.toString()}`);
 			}
 		},
 		[insertAtIndex, onCancel, setLocation],

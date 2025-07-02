@@ -1,6 +1,6 @@
-import type React from "react";
 import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
+import type React from "react";
 
 const barVariants = {
 	visible: {
@@ -48,7 +48,10 @@ const ControlBar = ({ buttons = null, secondaryButtons = null, className = "" }:
 	];
 
 	return (
-		<motion.div className={cx("control-bar", "text-white bg-cyber-grape", className)} variants={barVariants}>
+		<motion.div
+			className={cx("control-bar", "text-white bg-cyber-grape fixed bottom-0 z-20", className)}
+			variants={barVariants}
+		>
 			<AnimatePresence>{buttonLayout}</AnimatePresence>
 		</motion.div>
 	);

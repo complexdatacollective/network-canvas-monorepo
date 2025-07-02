@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import type { Protocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
+import { beforeEach, describe, expect, it } from "vitest";
 import activeProtocolReducer, {
 	actionCreators,
 	selectActiveProtocol,
 	selectHasActiveProtocol,
 } from "../activeProtocol";
-import type { Protocol } from "@codaco/protocol-validation";
+import { createStage } from "../protocol/stages";
 
 const mockProtocol: Protocol = {
 	name: "Test Protocol",
@@ -258,7 +259,7 @@ describe("activeProtocol", () => {
 
 		it("should not process sub-reducers when no protocol data", () => {
 			// Try to dispatch an action that would normally be handled by sub-reducers
-			store.dispatch({ type: "STAGES/CREATE_STAGE", stage: { id: "test" } });
+			store.dispatch(createStage({ stage: { id: "test" } }));
 
 			const state = store.getState().activeProtocol;
 

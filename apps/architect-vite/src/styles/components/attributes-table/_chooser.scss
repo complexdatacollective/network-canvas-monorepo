@@ -21,13 +21,13 @@ $duration: var(--animation-duration-standard);
     padding: 1.2rem;
     margin: 0.6rem;
     border-radius: 1.2rem;
-    border: 3px solid var(--architect-table-chooser);
+    border: 3px solid var(--color-architect-table-chooser);
     background-color: transparent;
     cursor: pointer;
     transition: background-color $duration;
 
     &:hover {
-      background-color: var(--architect-table-chooser);
+      background-color: var(--color-architect-table-chooser);
     }
   }
 

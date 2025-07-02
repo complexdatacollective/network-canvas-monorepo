@@ -3,8 +3,8 @@
 
   &__error {
     opacity: 0;
-    background: var(--error);
-    color: var(--text);
+    background: var(--color-error);
+    color: var(--color-text);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
     padding: 0.5rem 0.25rem;
@@ -40,7 +40,7 @@
     display: block;
     font-size: .9rem;
     margin-top: 1rem;
-    color: var(--input-text);
+    color: var(--color-input-text);
     text-decoration: underline;
   }
 }
@@ -59,8 +59,8 @@
   align-items: center;
   margin-right: unit(0.5);
   margin-left: 0;
-  background: hsl(var(--input-background));
-  color: hsl(var(--input-label));
+  background: var(--color-input-background);
+  color: var(--color-input-label);
 
   &--collapsed {
     border-width: $global-input-border-size * 2;
@@ -81,7 +81,7 @@
   }
 
   &--selected {
-    border-color: var(--input-accent);
+    border-color: var(--color-input-accent);
 
     &.boolean-option--negative {
       border-color: var(--error);
@@ -98,7 +98,7 @@
   width: $global-input-element-size;
   height: $global-input-element-size;
   border-radius: 100%;
-  border-color: hsl(var(--input-border));
+  border-color: var(--color-input-border);
   border-width: $global-input-border-size;
   border-style: solid;
   transition-property: border-color, background-color;
@@ -116,11 +116,11 @@
   }
 
   &--checked {
-    background-color: var(--input-accent);
+    background-color: var(--color-input-accent);
     border-color: transparent;
 
     &.round-checkbox--negative {
-      background-color: var(--error);
+      background-color: var(--color-error);
     }
 
     svg {

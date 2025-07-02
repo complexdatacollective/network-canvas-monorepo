@@ -1,7 +1,7 @@
 
 
 .assets {
-  background-color: var(--background-dark);
+  background-color: var(--color-background-dark);
   color: var(--foreground-light);
   border-radius: 1.2rem;
   display: flex;
@@ -28,7 +28,7 @@
     }
 
     &--existing {
-      background-color: var(--notice);
+      background-color: var(--color-notice);
       font-style: italic;
     }
   }

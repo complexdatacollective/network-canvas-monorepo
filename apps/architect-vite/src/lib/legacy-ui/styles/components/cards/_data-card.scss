@@ -11,7 +11,7 @@
     display: flex;
     align-items: center;
     padding: 1rem;
-    background-color: var(--color-platinum);
+    background-color: hsl(var(--platinum));
     h2 {
       margin: 0;
     }
@@ -19,8 +19,7 @@
 
   &__data {
     display: table;
-    // background: var(--color-slate-blue-dark);
-    background: var(--color-rich-black);
+    background: hsl(var(--rich-black));
     overflow: hidden;
     padding: 0.5rem 1rem;
     width: 100%;

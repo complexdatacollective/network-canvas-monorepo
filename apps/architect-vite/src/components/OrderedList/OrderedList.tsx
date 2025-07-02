@@ -79,7 +79,7 @@ const OrderedList = (props: OrderedListProps) => {
 			disabled={sortable}
 			axis="y"
 		>
-			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-error">{error}</p>}
+			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-destructive">{error}</p>}
 			<AnimatePresence initial={false}>
 				{values.map((item, index) => (
 					<ListItem

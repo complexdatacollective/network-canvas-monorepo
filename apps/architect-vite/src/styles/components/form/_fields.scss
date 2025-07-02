@@ -27,7 +27,7 @@
 
   &__error {
     opacity: 0;
-    color: var(--form-error-text);
+    color: var(--color-form-error-text);
     transition: opacity var(--animation-easing) var(--animation-duration-standard),
     max-height var(--animation-easing) var(--animation-duration-standard);
   }

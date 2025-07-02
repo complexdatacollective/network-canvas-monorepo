@@ -13,7 +13,7 @@
     display: inline-flex;
     align-items: center; justify-content: center;
 
-    background-color: var(--architect-rule-control);
+    background-color: var(--color-architect-rule-control);
     color: var(--foreground-light);
     border: 0;
     border-radius: $drag-button-size;
@@ -31,7 +31,7 @@
     display: inline-flex;
     align-items: center; justify-content: center;
 
-    background-color: var(--architect-rule-delete);
+    background-color: var(--color-architect-rule-delete);
     color: var(--foreground-light);
     border: 0;
     position: absolute;
@@ -79,11 +79,11 @@
     }
 
     &--action {
-      background: var(--architect-rule-type);
+      background: var(--color-architect-rule-type);
     }
 
     &--type {
-      background: var(--architect-rule-type);
+      background: var(--color-architect-rule-type);
     }
 
     &--type + &--attribute {
@@ -99,9 +99,9 @@
         top: 0;
         width: 0;
         height: 0;
-        border-top: 20px solid var(--architect-rule-attribute);
-        border-bottom: 20px solid var(--architect-rule-attribute);
-        border-left: 15px solid var(--architect-rule-type);
+        border-top: 20px solid var(--color-architect-rule-attribute);
+        border-bottom: 20px solid var(--color-architect-rule-attribute);
+        border-left: 15px solid var(--color-architect-rule-type);
       }
 
       &:empty {
@@ -112,7 +112,7 @@
     }
 
     &--attribute {
-      background: var(--architect-rule-attribute);
+      background: var(--color-architect-rule-attribute);
       max-width: 500px;
       transition: max-width var(--animation-easing) var(--animation-duration-standard),
       padding var(--animation-easing) var(--animation-duration-standard);
@@ -124,38 +124,38 @@
     }
 
     &--operator {
-      background: var(--architect-rule-operator);
+      background: var(--color-architect-rule-operator);
     }
 
     &--value {
-      background: var(--architect-rule-value);
+      background: var(--color-architect-rule-value);
     }
   }
 
   &--alter {
     .rule__option--type {
-      background: var(--architect-rule-type--alter);
+      background: var(--color-architect-rule-type--alter);
     }
   }
 
   &--ego {
     .rule__option--attribute {
-      background: var(--architect-rule-attribute--ego);
+      background: var(--color-architect-rule-attribute--ego);
     }
   }
 
   &--edge {
     .rule__option--type {
-      background: var(--architect-rule-type--edge);
+      background: var(--color-architect-rule-type--edge);
     }
 
     .rule__option--attribute {
-      background: var(--architect-rule-attribute--edge);
+      background: var(--color-architect-rule-attribute--edge);
 
       &::before {
-        border-top: 20px solid var(--architect-rule-attribute--edge);
-        border-bottom: 20px solid var(--architect-rule-attribute--edge);
-        border-left: 15px solid var(--architect-rule-type--edge);
+        border-top: 20px solid var(--color-architect-rule-attribute--edge);
+        border-bottom: 20px solid var(--color-architect-rule-attribute--edge);
+        border-left: 15px solid var(--color-architect-rule-type--edge);
       }
     }
   }

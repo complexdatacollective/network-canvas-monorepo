@@ -3,9 +3,11 @@
 .stage-editor-section {
   margin: 2.4rem 4.8rem;
   padding: 1.2rem 2.4rem;
+
+  
   border-radius: var(--border-radius);
   position: relative;
-  box-shadow: 0 .2rem .2rem 0 var(--architect-panel-shadow);
+  box-shadow: 0 .2rem .2rem 0 var(--color-architect-panel-shadow);
 
   &--toggleable {
     &:not(.stage-editor-section--open) {
@@ -48,7 +50,7 @@
       margin-right: 0.6rem;
 
       .cls-2 {
-        fill: var(--color-charcoal);
+        fill: hsl(var(--charcoal));
       }
     }
   }
@@ -65,13 +67,13 @@
   .stage-editor-section {
     --architect-panel-divider: #bbc4c5; // sass-lint:disable-line no-color-literals
     --variable-pill-shadow-color: #c7ced0; // sass-lint:disable-line no-color-literals
-    --input-background: var(--color-platinum-dark);
-    --slider-color: var(--color-charcoal);
+    --input-background: hsl(var(--platinum-dark));
+    --slider-color: hsl(var(--charcoal));
 
     margin: 2.4rem 0;
 
     .form-field-slider {
-      --slider-color: var(--color-charcoal);
+      --slider-color: hsl(var(--charcoal));
     }
   }
 

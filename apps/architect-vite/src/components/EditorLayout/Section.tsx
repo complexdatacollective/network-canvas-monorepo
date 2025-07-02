@@ -2,8 +2,8 @@ import cx from "classnames";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { Toggle } from "~/lib/legacy-ui/components/Fields";
 import IssueAnchor from "../IssueAnchor";
+import Switch from "../NewComponents/Switch";
 
 const animations = {
 	collapsed: {
@@ -65,8 +65,7 @@ const Section = ({
 	}, [isOpen, handleToggleChange]);
 
 	const sectionClasses = cx(
-		"stage-editor-section",
-		group ? "bg-section-background-dark" : "bg-section-background",
+		"stage-editor-section bg-section-background",
 		{ "stage-editor-section--toggleable": toggleable },
 		{ "stage-editor-section--open": isOpen },
 		{ "stage-editor-section--disabled": disabled },
@@ -76,20 +75,14 @@ const Section = ({
 
 	return (
 		<fieldset className={sectionClasses}>
-			<legend
-				className={cx(toggleable ? "toggleable" : "", group ? "bg-section-background-dark" : "bg-section-background")}
-			>
-				{toggleable && (
-					<Toggle
-						input={{
-							value: isOpen,
-							onChange: changeToggleState,
-						}}
-						title="Turn this feature on or off"
-					/>
-				)}
-				{title}
-				{!toggleable && <span className="text-error"> *</span>}
+			<legend className="toggleable bg-section-background">
+				<span className="flex gap-4">
+					{toggleable && (
+						<Switch title="Turn this feature on or off" checked={isOpen} onCheckedChange={changeToggleState} />
+					)}
+					{title}
+				</span>
+				{!toggleable && <span className="text-destructive">*</span>}
 			</legend>
 			<div className="summary">{summary}</div>
 			{id && <IssueAnchor fieldName={id} description={title} />}

@@ -1,3 +1,4 @@
+import type { StageType } from "@codaco/protocol-validation";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { motion } from "motion/react";
@@ -18,7 +19,7 @@ const variants = {
 	outer: {
 		show: {
 			background:
-				"repeating-linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0) 100%, var(--background) 100%, var(--background) 100% )",
+				"repeating-linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0) 100%, var(--color-background) 100%, var(--color-background) 100% )",
 			transition: {
 				duration: 0.5,
 				delay: 0.75,
@@ -26,7 +27,7 @@ const variants = {
 		},
 		hide: {
 			background:
-				"repeating-linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0) 0%, var(--background) 0%, var(--background) 100% )",
+				"repeating-linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0) 0%, var(--color-background) 0%, var(--color-background) 100% )",
 		},
 	},
 	newStage: {
@@ -40,26 +41,20 @@ const variants = {
 	},
 };
 
-interface TimelineProps {
-	stages?: Array<any>;
+type TimelineProps = {
+	stages?: StageType[];
 	sorting?: boolean;
 	deleteStage: (stageId: string) => void;
 	openDialog: (config: any) => void;
 	show?: boolean;
 	locus: number | string;
-}
+};
 
 const Timeline = (props: TimelineProps) => {
 	const { show = true, sorting = false, stages = [], locus, openDialog, deleteStage } = props;
 	const [, setLocation] = useLocation();
 	const [showNewStageDialog, setShowNewStageDialog] = useState(false);
 	const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
-
-	// Get protocol ID from URL for navigation
-	const getProtocolId = useCallback(() => {
-		const urlPath = window.location.pathname;
-		return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-	}, []);
 
 	const handleInsertStage = useCallback((index) => {
 		setInsertAtIndex(index);
@@ -86,13 +81,9 @@ const Timeline = (props: TimelineProps) => {
 
 	const handleEditStage = useCallback(
 		(id, origin) => {
-			const protocolId = getProtocolId();
-			if (protocolId) {
-				// Simple navigation without locus in URL - locus is managed in Redux state
-				setLocation(`/protocol/${protocolId}/stages/${id}`);
-			}
+			setLocation(`/protocol/stage/${id}`);
 		},
-		[getProtocolId, setLocation],
+		[setLocation],
 	);
 
 	const renderStages = useCallback(

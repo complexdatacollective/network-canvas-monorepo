@@ -2,7 +2,7 @@
   display: flex;
   padding: 1.2rem;
   border-radius: var(--border-radius);
-  background: var(--color-platinum);
+  background: hsl(var(--platinum));
 
   &__description {
     flex: 0 0 50%;

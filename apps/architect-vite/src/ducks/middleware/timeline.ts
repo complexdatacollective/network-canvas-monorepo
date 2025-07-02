@@ -11,7 +11,7 @@ import { v4 as uuid } from "uuid";
 // Types
 type TimelineState<T = unknown> = {
 	past: T[];
-	present: T | undefined;
+	present: T | null;
 	timeline: string[];
 };
 
@@ -44,7 +44,7 @@ const createTimelineReducer = <T>(
 
 	const initialState: TimelineState<T> = {
 		past: [],
-		present: undefined,
+		present: null,
 		timeline: [],
 	};
 

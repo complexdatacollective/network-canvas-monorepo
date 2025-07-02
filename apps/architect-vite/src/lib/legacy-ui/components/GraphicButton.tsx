@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { motion } from "motion/react";
+import type { CSSProperties, ReactNode } from "react";
 import create from "../assets/images/create-button.svg";
-import type { ReactNode, CSSProperties } from "react";
 
 interface GraphicButtonProps {
 	children: ReactNode;
@@ -25,7 +25,7 @@ const GraphicButton = ({
 	disabled = false,
 }: GraphicButtonProps) => {
 	const styles = {
-		backgroundColor: `var(--color-${color})`,
+		backgroundColor: `var(--${color})`,
 		backgroundImage: `url(${graphic})`,
 		backgroundPosition: graphicPosition,
 		backgroundSize: graphicSize,
@@ -35,7 +35,7 @@ const GraphicButton = ({
 		...labelPosition,
 	};
 
-	const className = cx("graphic-button", { "graphic-button--disabled": disabled });
+	const className = cx("button", { "graphic-button--disabled": disabled });
 
 	return (
 		<motion.div className={className} style={styles} onClick={onClick}>

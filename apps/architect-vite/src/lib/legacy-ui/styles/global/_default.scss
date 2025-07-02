@@ -11,11 +11,41 @@
 
 $export-ui-classes: true !default;
 
+$PREFIX: '';
+
+// Color sequences
+@mixin color-sequence($name, $color-list, $with-dark: true) {
+  @each $current-color in $color-list {
+    $i: index($color-list, $current-color);
+    @include palette-set($PREFIX + '#{$name}-#{$i}', color($current-color));
+    @if $with-dark {
+      @include palette-set(
+        $PREFIX + '#{$name}-#{$i}-dark',
+        color('#{$current-color}-dark')
+      );
+    }
+  }
+}
+
 // vertical align, horizontal align
 @mixin vcjc {
   justify-content: center;
   align-items: center;
 }
+
+// Root sequence
+$root-colors: (
+  'neon-coral',
+  'sea-serpent',
+  'purple-pizazz',
+  'neon-carrot',
+  'kiwi',
+  'cerulean-blue',
+  'paradise-pink',
+  'mustard'
+);
+
+@include color-sequence('primary-color-seq', $root-colors, true);
 
 // Edge sequence
 $edge-colors: (
@@ -31,8 +61,23 @@ $edge-colors: (
   'cerulean-blue'
 );
 
+@include color-sequence('edge-color-seq', $edge-colors, false);
+
 // Node Sequence
-@include palette-set('node-label', var(--color-white));
+@include palette-set($PREFIX + 'node-label', color('white'));
+
+$node-colors: (
+  'neon-coral',
+  'sea-serpent',
+  'purple-pizazz',
+  'neon-carrot',
+  'kiwi',
+  'cerulean-blue',
+  'paradise-pink',
+  'mustard'
+);
+
+@include color-sequence('node-color-seq', $node-colors, true);
 
 // Ordinal Bin Sequence
 $ordinal-colors: (
@@ -45,6 +90,8 @@ $ordinal-colors: (
   'paradise-pink',
   'mustard'
 );
+
+@include color-sequence('ord-color-seq', $ordinal-colors, true);
 
 // Categorical Bin Sequence
 $categorical-colors: (
@@ -60,6 +107,22 @@ $categorical-colors: (
   'slate-blue'
 );
 
+@include color-sequence('cat-color-seq', $categorical-colors, true);
+
+// Protocol Schema Sequence
+$schema-colors: (
+  'platinum--dark',
+  'cyber-grape',
+  'slate-blue',
+  'sea-serpent',
+  'cerulean-blue',
+  'mustard',
+  'neon-carrot',
+  'barbie-pink',
+  'tomato'
+);
+
+@include color-sequence('schema-color-seq', $schema-colors, true);
 
 
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
@@ -68,7 +131,7 @@ $categorical-colors: (
 html {
   font-family: var(--body-font-family);
   font-size: var(--base-font-size);
-  color: var(--text);
+  color: var(--color-text);
 }
 
 

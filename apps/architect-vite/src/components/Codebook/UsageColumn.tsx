@@ -36,7 +36,7 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 		}
 
 		const protocolId = getProtocolId();
-		const href = protocolId ? `/protocol/${protocolId}/stages/${id}` : "#";
+		const href = protocolId ? `/protocol/stage/${id}` : "#";
 
 		return (
 			<Link key={id} href={href}>

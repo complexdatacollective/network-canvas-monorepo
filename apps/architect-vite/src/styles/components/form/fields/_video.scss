@@ -4,7 +4,7 @@ $component-name: form-fields-video;
   width: 100%;
   padding-bottom: 57%;
   position: relative;
-  background: var(--color-rich-black);
+  background: hsl(var(--rich-black));
   overflow: hidden;
 
   &__name {
@@ -13,7 +13,7 @@ $component-name: form-fields-video;
     word-break: break-all;
     position: absolute;
     z-index: 2;
-    background: var(--architect-border);
+    background: var(--color-architect-border);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);

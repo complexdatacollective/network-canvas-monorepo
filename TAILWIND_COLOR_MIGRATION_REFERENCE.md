@@ -13,17 +13,17 @@ The project uses a custom color system with named colors and semantic color slot
 | CSS Variable | Tailwind Background | Tailwind Text | Tailwind Border | HSL Values |
 |--------------|-------------------|---------------|-----------------|------------|
 | `var(--neon-coral)` | `bg-neon-coral` | `text-neon-coral` | `border-neon-coral` | `342 76.9% 50.8%` |
-| `var(--neon-coral--dark)` | `bg-neon-coral-dark` | `text-neon-coral-dark` | `border-neon-coral-dark` | `342 76.9% 45.8%` |
+| `var(--neon-coral-dark)` | `bg-neon-coral-dark` | `text-neon-coral-dark` | `border-neon-coral-dark` | `342 76.9% 45.8%` |
 | `var(--mustard)` | `bg-mustard` | `text-mustard` | `border-mustard` | `46 100% 47%` |
-| `var(--mustard--dark)` | `bg-mustard-dark` | `text-mustard-dark` | `border-mustard-dark` | `46 100% 42%` |
+| `var(--mustard-dark)` | `bg-mustard-dark` | `text-mustard-dark` | `border-mustard-dark` | `46 100% 42%` |
 | `var(--sea-green)` | `bg-sea-green` | `text-sea-green` | `border-sea-green` | `168 100% 35%` |
-| `var(--sea-green--dark)` | `bg-sea-green-dark` | `text-sea-green-dark` | `border-sea-green-dark` | `168 100% 30%` |
+| `var(--sea-green-dark)` | `bg-sea-green-dark` | `text-sea-green-dark` | `border-sea-green-dark` | `168 100% 30%` |
 | `var(--slate-blue)` | `bg-slate-blue` | `text-slate-blue` | `border-slate-blue` | `237 79% 65%` |
-| `var(--slate-blue--dark)` | `bg-slate-blue-dark` | `text-slate-blue-dark` | `border-slate-blue-dark` | `237 79% 60%` |
+| `var(--slate-blue-dark)` | `bg-slate-blue-dark` | `text-slate-blue-dark` | `border-slate-blue-dark` | `237 79% 60%` |
 | `var(--navy-taupe)` | `bg-navy-taupe` | `text-navy-taupe` | `border-navy-taupe` | `248 34% 25%` |
-| `var(--navy-taupe--dark)` | `bg-navy-taupe-dark` | `text-navy-taupe-dark` | `border-navy-taupe-dark` | `248 34% 20%` |
+| `var(--navy-taupe-dark)` | `bg-navy-taupe-dark` | `text-navy-taupe-dark` | `border-navy-taupe-dark` | `248 34% 20%` |
 | `var(--cyber-grape)` | `bg-cyber-grape` | `text-cyber-grape` | `border-cyber-grape` | `240 33% 29%` |
-| `var(--cyber-grape--dark)` | `bg-cyber-grape-dark` | `text-cyber-grape-dark` | `border-cyber-grape-dark` | `240 33% 24%` |
+| `var(--cyber-grape-dark)` | `bg-cyber-grape-dark` | `text-cyber-grape-dark` | `border-cyber-grape-dark` | `240 33% 24%` |
 | `var(--rich-black)` | `bg-rich-black` | `text-rich-black` | `border-rich-black` | `240 35% 10%` |
 | `var(--charcoal)` | `bg-charcoal` | `text-charcoal` | `border-charcoal` | `231 4% 43%` |
 | `var(--platinum)` | `bg-platinum` | `text-platinum` | `border-platinum` | `210 43% 95%` |
@@ -34,21 +34,21 @@ The project uses a custom color system with named colors and semantic color slot
 | CSS Variable | Tailwind Background | Tailwind Text | Tailwind Border | HSL Values |
 |--------------|-------------------|---------------|-----------------|------------|
 | `var(--sea-serpent)` | `bg-sea-serpent` | `text-sea-serpent` | `border-sea-serpent` | `190 87% 47%` |
-| `var(--sea-serpent--dark)` | `bg-sea-serpent-dark` | `text-sea-serpent-dark` | `border-sea-serpent-dark` | `190 87% 42%` |
+| `var(--sea-serpent-dark)` | `bg-sea-serpent-dark` | `text-sea-serpent-dark` | `border-sea-serpent-dark` | `190 87% 42%` |
 | `var(--purple-pizazz)` | `bg-purple-pizazz` | `text-purple-pizazz` | `border-purple-pizazz` | `291 86% 52%` |
-| `var(--purple-pizazz--dark)` | `bg-purple-pizazz-dark` | `text-purple-pizazz-dark` | `border-purple-pizazz-dark` | `291 86% 47%` |
+| `var(--purple-pizazz-dark)` | `bg-purple-pizazz-dark` | `text-purple-pizazz-dark` | `border-purple-pizazz-dark` | `291 86% 47%` |
 | `var(--paradise-pink)` | `bg-paradise-pink` | `text-paradise-pink` | `border-paradise-pink` | `331 100% 57%` |
-| `var(--paradise-pink--dark)` | `bg-paradise-pink-dark` | `text-paradise-pink-dark` | `border-paradise-pink-dark` | `331 100% 52%` |
+| `var(--paradise-pink-dark)` | `bg-paradise-pink-dark` | `text-paradise-pink-dark` | `border-paradise-pink-dark` | `331 100% 52%` |
 | `var(--cerulean-blue)` | `bg-cerulean-blue` | `text-cerulean-blue` | `border-cerulean-blue` | `216 100% 53%` |
-| `var(--cerulean-blue--dark)` | `bg-cerulean-blue-dark` | `text-cerulean-blue-dark` | `border-cerulean-blue-dark` | `216 100% 48%` |
+| `var(--cerulean-blue-dark)` | `bg-cerulean-blue-dark` | `text-cerulean-blue-dark` | `border-cerulean-blue-dark` | `216 100% 48%` |
 | `var(--kiwi)` | `bg-kiwi` | `text-kiwi` | `border-kiwi` | `103 46% 56%` |
-| `var(--kiwi--dark)` | `bg-kiwi-dark` | `text-kiwi-dark` | `border-kiwi-dark` | `103 46% 51%` |
+| `var(--kiwi-dark)` | `bg-kiwi-dark` | `text-kiwi-dark` | `border-kiwi-dark` | `103 46% 51%` |
 | `var(--neon-carrot)` | `bg-neon-carrot` | `text-neon-carrot` | `border-neon-carrot` | `32 92% 52%` |
-| `var(--neon-carrot--dark)` | `bg-neon-carrot-dark` | `text-neon-carrot-dark` | `border-neon-carrot-dark` | `32 92% 47%` |
+| `var(--neon-carrot-dark)` | `bg-neon-carrot-dark` | `text-neon-carrot-dark` | `border-neon-carrot-dark` | `32 92% 47%` |
 | `var(--barbie-pink)` | `bg-barbie-pink` | `text-barbie-pink` | `border-barbie-pink` | `328 100% 47%` |
-| `var(--barbie-pink--dark)` | `bg-barbie-pink-dark` | `text-barbie-pink-dark` | `border-barbie-pink-dark` | `328 100% 42%` |
+| `var(--barbie-pink-dark)` | `bg-barbie-pink-dark` | `text-barbie-pink-dark` | `border-barbie-pink-dark` | `328 100% 42%` |
 | `var(--tomato)` | `bg-tomato` | `text-tomato` | `border-tomato` | `356 77% 54%` |
-| `var(--tomato--dark)` | `bg-tomato-dark` | `text-tomato-dark` | `border-tomato-dark` | `356 77% 49%` |
+| `var(--tomato-dark)` | `bg-tomato-dark` | `text-tomato-dark` | `border-tomato-dark` | `356 77% 49%` |
 | `var(--white)` | `bg-white` | `text-white` | `border-white` | `0 0% 100%` |
 
 ## Semantic Color Mappings
@@ -109,9 +109,9 @@ The project uses a custom color system with named colors and semantic color slot
 
 ```css
 /* Old CSS */
-background-color: var(--sea-green);
-color: var(--white);
-border-color: var(--platinum-dark);
+background-color: hsl(var(--sea-green));
+color: hsl(var(--white));
+border-color: hsl(var(--platinum-dark));
 
 /* New Tailwind */
 <div className="bg-sea-green text-white border-platinum-dark">
@@ -122,7 +122,7 @@ border-color: var(--platinum-dark);
 ```css
 /* Old CSS */
 .button:hover {
-  background-color: var(--sea-green--dark);
+  background-color: var(--sea-green-dark);
 }
 
 /* New Tailwind */
@@ -235,7 +235,7 @@ For colors with calculations (like `var(--muted-foreground)`), use the pre-calcu
 ```
 
 ### Dark Mode Considerations
-The project uses dark variants with `--dark` suffix. These are automatically available in Tailwind:
+The project uses dark variants with `-dark` suffix. These are automatically available in Tailwind:
 
 ```jsx
 // Light and dark variants

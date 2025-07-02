@@ -20,7 +20,16 @@ const LaunchPad = () => {
 	};
 
 	const handleOpenExistingProtocol = () => {
-		dispatch(openLocalNetcanvas());
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".netcanvas";
+		input.onchange = (event) => {
+			const file = (event.target as HTMLInputElement).files?.[0];
+			if (file) {
+				dispatch(openLocalNetcanvas(file));
+			}
+		};
+		input.click();
 	};
 
 	const handleClearStorage = () => {

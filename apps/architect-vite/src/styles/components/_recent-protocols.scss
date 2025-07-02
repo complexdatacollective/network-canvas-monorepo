@@ -4,11 +4,11 @@
   position: relative;
   margin: 0 auto;
   border-radius: 0.6rem;
-  background-color: var(--light-background);
+  background-color: var(--color-light-background);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  filter: drop-shadow(10px 10px 0 var(--architect-control-bar-shadow));
+  filter: drop-shadow(10px 10px 0 var(--color-architect-control-bar-shadow));
   z-index: 2;
   padding: 1.8rem;
 

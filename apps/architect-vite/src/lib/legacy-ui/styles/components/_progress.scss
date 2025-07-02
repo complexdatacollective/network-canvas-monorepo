@@ -1,8 +1,8 @@
 :root {
   --progress-background-color: var(--color-white);
-  --progress-value-color: var(--color-sea-green);
-  --progress-indeterminate-background-color: var(--color-sea-green);
-  --progress-indeterminate-highlight-color: var(--color-sea-green--dark);
+  --progress-value-color: hsl(var(--sea-green));
+  --progress-indeterminate-background-color: hsl(var(--sea-green));
+  --progress-indeterminate-highlight-color: hsl(var(--sea-green-dark));
   --progress-indeterminate-gradient-width: 100rem;
   --progress-indeterminate-animation-duration: 2s;
 

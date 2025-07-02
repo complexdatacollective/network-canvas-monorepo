@@ -27,7 +27,7 @@ const Group = ({
 	...rest
 }: GroupProps) => {
 	const styles = {
-		backgroundColor: color ? `var(--color-${color})` : "transparent",
+		backgroundColor: color ? `var(--${color})` : "transparent",
 	};
 
 	const classes = cx("home-group", className, {
