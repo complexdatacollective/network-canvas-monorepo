@@ -1,0 +1,32 @@
+.form-fields-textarea {
+	width: 100%;
+}
+
+.form-fields-textarea__label {
+	display: block;
+	margin: 0 0 var(--space-xs);
+}
+
+.form-fields-textarea__error {
+	opacity: 0;
+	color: var(--color-error-foreground);
+	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+		var(--animation-duration-standard);
+}
+
+.form-fields-textarea__label {
+	font-size: var(--text-xl);
+	font-weight: var(--font-semibold);
+	line-height: var(--leading-normal);
+}
+
+.form-fields-textarea__input {
+	font-size: var(--text-lg);
+	line-height: var(--leading-normal);
+	border: 0.12rem solid var(--color-surface-2);
+	padding: var(--space-xs);
+	min-height: var(--space-5xl);
+	width: 100%;
+	vertical-align: top;
+	resize: vertical;
+}

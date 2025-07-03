@@ -1,0 +1,29 @@
+.variable-registry {
+	.simple-list {
+		&__attribute {
+			&--icon {
+				flex-grow: 0;
+
+				.node {
+					font-size: var(--text-6xl);
+				}
+			}
+
+			&--options {
+				flex-grow: 0;
+			}
+		}
+
+		&__tag {
+			font-size: var(--text-sm);
+			line-height: var(--leading-normal);
+
+			display: inline-block;
+			border-radius: var(--space-xs);
+			padding: var(--space-xs);
+			margin-left: var(--space-sm);
+			color: var(--color-warning-foreground);
+			background-color: var(--color-warning);
+		}
+	}
+}

@@ -41,7 +41,7 @@ const Attribute = ({
 			</div>
 			{variable && (
 				<fieldset className="assign-attributes-attribute__value">
-					<legend>Set value of variable to:</legend>
+					<legend className="small-heading">Set value of variable to:</legend>
 					<ValidatedField
 						name={`${field}.value`}
 						options={[

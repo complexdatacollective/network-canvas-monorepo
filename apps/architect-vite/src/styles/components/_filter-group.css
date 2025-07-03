@@ -1,0 +1,34 @@
+.filter-group {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--color-rules);
+	color: var(--foreground-light);
+	transition: background-color var(--animation-easing) var(--animation-duration-standard);
+	border-radius: 10px;
+	padding: 10px;
+}
+
+.filter-group__join {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 50px;
+	padding-right: 10px;
+}
+
+.filter-group__rules {
+	flex: 1 1 auto;
+	padding: 10px;
+	border-radius: 10px;
+	background: linear-gradient(rgb(255 255 255 / 10%), rgb(255 255 255 / 5%));
+	overflow: hidden;
+}
+
+.filter-group--and {
+	background-color: var(--color-rules--and);
+}
+
+.filter-group--or {
+	background-color: var(--color-rules--or);
+}

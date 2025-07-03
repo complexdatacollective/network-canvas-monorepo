@@ -19,7 +19,7 @@ const variants = {
 const Home = () => {
 	// useProtocolLoader();
 	return (
-		<div className="home">
+		<div className="home scrollable">
 			<motion.div className="home__container" variants={variants} key="start-screen">
 				<WelcomeHeader />
 				<LaunchPad />

@@ -1,0 +1,5 @@
+.stage-editor-section-title .seamless-text-input__input {
+	font-size: var(--text-4xl);
+	font-weight: var(--font-bold);
+	line-height: var(--leading-tight);
+}

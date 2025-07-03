@@ -24,6 +24,7 @@ const Tag = ({
 		"tag--selected": selected,
 		"tag--light": light,
 		"tag--clickable": !disabled && !!onClick,
+		clickable: !disabled && !!onClick,
 		"tag--disabled": disabled,
 	});
 

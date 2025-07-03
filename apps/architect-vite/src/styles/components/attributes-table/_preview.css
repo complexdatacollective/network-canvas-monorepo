@@ -1,0 +1,44 @@
+.attributes-table-preview {
+	display: flex;
+	flex-direction: row;
+
+	&__name,
+	&__value,
+	&__error,
+	&__delete {
+		padding: 0 var(--space-5);
+	}
+
+	&__name {
+		flex: 0 0 15rem;
+		font-weight: var(--font-semibold);
+	}
+
+	&__value,
+	&__error {
+		flex-grow: 1;
+	}
+
+	&__error {
+		font-style: italic;
+		color: var(--error);
+	}
+
+	&__delete {
+		flex: 0 0 var(--space-10);
+		cursor: pointer;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		.icon {
+			width: var(--space-5);
+			height: var(--space-5);
+
+			.cls-1,
+			.cls-2 {
+				fill: var(--text-dark);
+			}
+		}
+	}
+}

@@ -1,0 +1,12 @@
+.field-preview {
+	line-height: var(--leading-normal);
+
+	&__rich-content {
+		margin: calc(-1 * var(--space-lg)) 0;
+	}
+
+	&__badges {
+		padding: var(--space-sm) 0 0;
+		margin: 0 calc(-1 * var(--space-sm));
+	}
+}

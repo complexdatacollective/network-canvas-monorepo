@@ -61,7 +61,7 @@ type DividerProps = {
 const Divider = ({ legend }: DividerProps) => (
 	<ListItem>
 		<fieldset className="divider-header">
-			<legend>{legend}</legend>
+			<legend className="small-heading">{legend}</legend>
 		</fieldset>
 	</ListItem>
 );

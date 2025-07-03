@@ -1,0 +1,18 @@
+.badge {
+	display: inline-block;
+	background-color: var(--mid-grey);
+	border-radius: var(--space-sm);
+	padding: 0.2rem var(--space-sm);
+	margin: 0 var(--space-sm);
+	font-size: var(--text-xs);
+	color: var(--foreground-light);
+
+	strong {
+		text-transform: capitalize;
+
+		/* These properties are a hacky workaround for this:
+		   https://stackoverflow.com/questions/49783681/text-transform-capitalize-css-not-working-correctly */
+		content: "";
+		display: inline-block;
+	}
+}

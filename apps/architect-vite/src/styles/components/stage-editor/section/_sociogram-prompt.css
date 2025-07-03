@@ -1,0 +1,27 @@
+.stage-editor-section-sociogram-prompt {
+	&__preview {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		width: 100%;
+		height: 100%;
+
+		&-icon {
+			& .node {
+				font-size: var(--text-5xl);
+			}
+		}
+
+		&-text {
+			margin: 0 0 0 var(--space-5);
+
+			& > * {
+				margin: var(--space-5) 0 0;
+
+				&:first-child {
+					margin: 0;
+				}
+			}
+		}
+	}
+}

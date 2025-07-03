@@ -1,0 +1,28 @@
+.form-fields-video {
+	width: 100%;
+	padding-bottom: 57%;
+	position: relative;
+	background: hsl(var(--rich-black));
+	overflow: hidden;
+
+	&__name {
+		padding: var(--space-md);
+		border-radius: var(--space-md);
+		word-break: break-all;
+		position: absolute;
+		z-index: 2;
+		background: var(--color-border);
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+
+	&__still {
+		position: absolute;
+		z-index: 2;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+	}
+}

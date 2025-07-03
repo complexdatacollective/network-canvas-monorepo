@@ -1,0 +1,17 @@
+.attributes-table-editor {
+	max-height: 0;
+	overflow: hidden;
+	opacity: 0;
+	transition: transform var(--animation-duration-standard), opacity var(--animation-duration-standard), max-height
+		var(--animation-duration-standard);
+	transform: translateX(-100%);
+
+	&--show {
+		max-height: 500px;
+		opacity: 1;
+		transform: translateX(0);
+		transition: transform var(--animation-duration-standard) var(--animation-duration-standard), opacity
+			var(--animation-duration-standard) var(--animation-duration-standard), max-height
+			var(--animation-duration-standard) var(--animation-duration-standard);
+	}
+}

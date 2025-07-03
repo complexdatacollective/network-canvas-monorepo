@@ -1,0 +1,303 @@
+/* Rule Component */
+.rule {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	color: var(--color-foreground);
+	position: relative;
+	z-index: var(--z-default);
+
+	.rule-drag-handle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background-color: var(--color-rule-control);
+		color: var(--color-foreground);
+		border: 0;
+		border-radius: var(--space-lg);
+		width: var(--space-lg);
+		height: var(--space-lg);
+		cursor: grab;
+		font-size: var(--text-base);
+		font-weight: var(--font-bold);
+		margin-right: var(--space-xs);
+	}
+
+	&__delete {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background-color: var(--color-rule-delete);
+		color: var(--color-foreground);
+		border: 0;
+		position: absolute;
+		top: 0;
+		right: 0;
+		transform: translate(50%, -50%);
+		border-radius: var(--space-md);
+		width: var(--space-md);
+		height: var(--space-md);
+		font-size: var(--text-lg);
+		margin-left: var(--space-md);
+		cursor: pointer;
+
+		&::after {
+			display: block;
+			content: "x";
+		}
+	}
+
+	&__options {
+		display: inline-flex;
+		align-items: center;
+		justify-content: flex-start;
+		padding: 0;
+		border-radius: var(--space-md);
+		height: var(--space-2xl);
+	}
+
+	&__option {
+		display: inline-flex;
+		align-items: center;
+		justify-content: flex-start;
+		height: 100%;
+		padding: 0 var(--space-md);
+		position: relative;
+
+		&:first-child {
+			border-top-left-radius: var(--space-xs);
+			border-bottom-left-radius: var(--space-xs);
+		}
+
+		&:last-child {
+			border-top-right-radius: var(--space-xs);
+			border-bottom-right-radius: var(--space-xs);
+		}
+
+		&--action {
+			background: var(--color-rule-type);
+		}
+
+		&--type {
+			background: var(--color-rule-type);
+		}
+
+		&--type + &--attribute {
+			padding-left: var(--space-2xl);
+
+			&::before {
+				display: block;
+				content: "";
+				position: absolute;
+				left: calc(-1 * var(--space-xs));
+				transform: translateX(var(--space-xs));
+				z-index: 2;
+				top: 0;
+				width: 0;
+				height: 0;
+				border-top: var(--space-md) solid var(--color-rule-attribute);
+				border-bottom: var(--space-md) solid var(--color-rule-attribute);
+				border-left: var(--space-lg) solid var(--color-rule-type);
+			}
+
+			&:empty {
+				&::before {
+					display: none;
+				}
+			}
+		}
+
+		&--attribute {
+			background: var(--color-rule-attribute);
+			max-width: 500px;
+			transition: max-width var(--animation-easing) var(--animation-duration-standard), padding var(--animation-easing)
+				var(--animation-duration-standard);
+
+			&:empty {
+				max-width: 0;
+				padding: 0;
+			}
+		}
+
+		&--operator {
+			background: var(--color-rule-operator);
+		}
+
+		&--value {
+			background: var(--color-rule-value);
+		}
+	}
+
+	&--alter {
+		.rule__option--type {
+			background: var(--color-rule-type--alter);
+		}
+	}
+
+	&--ego {
+		.rule__option--attribute {
+			background: var(--color-rule-attribute--ego);
+		}
+	}
+
+	&--edge {
+		.rule__option--type {
+			background: var(--color-rule-type--edge);
+		}
+
+		.rule__option--attribute {
+			background: var(--color-rule-attribute--edge);
+
+			&::before {
+				border-top: var(--space-md) solid var(--color-rule-attribute--edge);
+				border-bottom: var(--space-md) solid var(--color-rule-attribute--edge);
+				border-left: var(--space-lg) solid var(--color-rule-type--edge);
+			}
+		}
+	}
+}
+
+/* Rule Add Button */
+.rule-add-button {
+	width: 100%;
+	position: relative;
+	text-align: left;
+
+	&__open {
+		transition: opacity var(--animation-duration-standard) var(--animation-easing), transform
+			var(--animation-duration-standard) var(--animation-easing);
+		background-color: var(--color-primary);
+		color: var(--color-primary-foreground);
+		border: 0;
+		border-radius: 100%;
+		width: var(--space-lg);
+		height: var(--space-lg);
+		font-size: var(--text-base);
+		font-weight: var(--font-bold);
+
+		&:focus {
+			outline: none;
+		}
+	}
+
+	&__choices {
+		transition: opacity var(--animation-duration-standard) var(--animation-easing), transform
+			var(--animation-duration-standard) var(--animation-easing);
+		opacity: 0;
+		transform-origin: 0 50%;
+		transform: translateY(-50%) scale(0.5);
+		position: absolute;
+		top: 50%;
+		left: 0;
+		width: 100%;
+	}
+
+	&__choice {
+		border: 0;
+		cursor: pointer;
+		padding: 0 var(--space-2xl);
+		margin-left: var(--space-xs);
+		background-color: var(--color-surface-1);
+		color: var(--color-sortable-foreground);
+		border-radius: var(--space-xs);
+		height: var(--space-lg);
+		text-transform: uppercase;
+
+		&:focus {
+			outline: none;
+		}
+
+		&:first-child {
+			margin-left: 0;
+		}
+	}
+
+	&--is-open {
+		.rule-add-button__open {
+			opacity: 0;
+			transform: scale(0);
+		}
+
+		.rule-add-button__choices {
+			opacity: 1;
+			transform: translateY(-50%) scale(1);
+		}
+	}
+}
+
+/* Rule Drop Down */
+.rule-drop-down {
+	display: block;
+	margin: 0;
+	overflow: hidden;
+	position: relative;
+	font-size: var(--text-base);
+	height: 1.2em;
+
+	&__spacer {
+		visibility: hidden;
+	}
+
+	&__options {
+		position: absolute;
+		top: 50%;
+		width: 100%;
+		transform: translateY(-50%);
+		left: 0;
+		color: var(--foreground);
+		background-color: transparent;
+		border: 0;
+		appearance: none;
+
+		option {
+			color: var(--text-dark); /* Needed for dropdown on Windows */
+		}
+	}
+}
+
+/* Rule Input */
+.rule-input {
+	margin: 0;
+	position: relative;
+
+	&__spacer {
+		visibility: hidden;
+		font-size: var(--text-base);
+		height: 1.2em;
+		min-width: 75px;
+		padding: 0 var(--space-xs);
+	}
+
+	&__input {
+		position: absolute;
+		top: 50%;
+		width: 100%;
+		transform: translateY(-50%);
+		left: 0;
+		background-color: transparent;
+		color: var(--color-foreground);
+		border: 0;
+	}
+
+	input {
+		&[type="number"] {
+			&::-webkit-inner-spin-button,
+			&::-webkit-outer-spin-button {
+				appearance: none;
+				margin: 0;
+			}
+		}
+
+		&[type="text"],
+		&[type="number"] {
+			padding: var(--space-xs) 0;
+			border-bottom: 2px solid var(--color-white);
+		}
+	}
+
+	&--checkbox {
+		.rule-input__spacer {
+			min-width: var(--space-md);
+		}
+	}
+}

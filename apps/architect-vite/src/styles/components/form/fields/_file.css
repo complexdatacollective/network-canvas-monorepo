@@ -1,0 +1,44 @@
+.form-fields-file {
+	@apply form-field;
+
+	display: block;
+	position: relative;
+
+	&__preview {
+		position: relative;
+		overflow: hidden;
+		display: none;
+	}
+
+	&__browse {
+		margin: var(--space-md) 0 0;
+	}
+
+	&--replace {
+		& .form-fields-file__preview {
+			display: block;
+		}
+	}
+
+	&__error {
+		opacity: 0;
+		color: var(--error);
+		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+			var(--animation-duration-standard);
+		padding: var(--space-sm) var(--space-xs);
+		display: flex;
+		align-items: center;
+
+		& .icon {
+			height: var(--space-md);
+			width: var(--space-md);
+			margin-right: var(--space-sm);
+		}
+	}
+
+	&--has-error {
+		& .form-fields-file__error {
+			opacity: 1;
+		}
+	}
+}
