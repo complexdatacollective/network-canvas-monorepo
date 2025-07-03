@@ -3,7 +3,7 @@
 	width: 100%;
 	margin-bottom: var(--space-xl);
 
-	&__edit {
+	.form-fields-markdown__edit {
 		display: flex;
 		cursor: text;
 		background: var(--color-background);
@@ -11,7 +11,7 @@
 		border-radius: var(--space-sm);
 	}
 
-	&__input {
+	.form-fields-markdown__input {
 		font-size: var(--text-base);
 		line-height: var(--leading-normal);
 		background-color: hsl(var(--input-background));
@@ -30,7 +30,7 @@
 		}
 	}
 
-	&__preview {
+	.form-fields-markdown__preview {
 		font-size: var(--text-base);
 		line-height: var(--leading-normal);
 		flex: 1 0 50%;
@@ -39,7 +39,7 @@
 		vertical-align: top;
 	}
 
-	&__error {
+	.form-fields-markdown__error {
 		opacity: 0;
 		max-height: 0;
 		color: var(--error);
@@ -48,7 +48,7 @@
 			var(--animation-duration-standard);
 	}
 
-	&--has-error {
+	&.form-fields-markdown--has-error {
 		.form-fields-markdown__error {
 			opacity: 1;
 			max-height: var(--space-3xl);

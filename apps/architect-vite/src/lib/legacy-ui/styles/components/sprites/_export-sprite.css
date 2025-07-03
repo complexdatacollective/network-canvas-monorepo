@@ -1,0 +1,54 @@
+.export-sprite {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	width: 100%;
+	height: 100%;
+
+	.export-sprite__node {
+		position: absolute;
+		background: lime;
+		width: var(--size-5);
+		height: var(--size-5);
+		background: repeating-linear-gradient(
+			145deg,
+			rgba(255, 255, 255, 0.15),
+			rgba(255, 255, 255, 0.15) 50%,
+			rgba(0, 0, 0, 0.1) 50%,
+			rgba(0, 0, 0, 0.1) 100%
+		);
+	}
+
+	.export-sprite__destination {
+		--destination-size: var(--size-12);
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		z-index: var(--z-global-ui);
+		margin-bottom: calc(-1 * var(--size-2));
+
+		.export-sprite__destination__circle {
+			flex: 0 0 var(--destination-size);
+			height: var(--destination-size);
+
+			.progress-circle {
+				--circle-text-color: var(--color-charcoal);
+				--circle-background-color: var(--color-white);
+				--circle-complete-color: var(--color-primary);
+			}
+		}
+
+		.export-sprite__destination__text {
+			flex: 0 0 var(--size-2);
+			height: var(--size-2);
+
+			h4 {
+				margin-bottom: 0;
+				margin-top: var(--size-1);
+				color: var(--color-text);
+			}
+		}
+	}
+}

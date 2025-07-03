@@ -4,7 +4,7 @@
 	padding: var(--space-md);
 	border-radius: var(--border-radius);
 
-	&__image {
+	.form-fields-image__image {
 		background-size: contain;
 		background-position: center;
 		background-repeat: no-repeat;

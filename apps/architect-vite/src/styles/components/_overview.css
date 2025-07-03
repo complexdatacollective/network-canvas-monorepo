@@ -10,7 +10,7 @@
 	box-shadow: 0 var(--space-sm) 0.2rem 0 var(--color-border);
 	z-index: var(--z-panel);
 
-	&__header {
+	.overview-summary__header {
 		color: var(--color-white);
 	}
 
@@ -20,7 +20,7 @@
 		align-items: center;
 		margin-left: auto;
 
-		&__button {
+		.action-buttons__button {
 			&:not(:last-child) {
 				margin-right: var(--space-md);
 			}
@@ -46,7 +46,7 @@
 	display: flex;
 	flex-direction: column;
 
-	&__panel {
+	.overview__panel {
 		padding: var(--space-md) var(--space-3xl);
 
 		.overview-description {
@@ -63,7 +63,7 @@
 		}
 	}
 
-	&__footer {
+	.overview__footer {
 		background: var(--color-slate-blue-dark);
 		display: flex;
 		align-items: center;

@@ -1,0 +1,40 @@
+/* Radio Group Field - Converted from SCSS to CSS */
+/* =============================================== */
+
+.form-field-radio-group {
+	/* form-field mixin styles */
+	.form-field-radio-group__label {
+		/* typography(copy-standard, font-size) equivalent */
+		font-size: 1rem; /* copy-standard font-size */
+		font-weight: 200;
+		display: block;
+		margin: 0;
+		color: var(--color-input-label);
+	}
+
+	.form-field-radio-group__error {
+		opacity: 0;
+		background: var(--color-error);
+		color: var(--color-text);
+		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+			var(--animation-duration-standard);
+		padding: 0.5rem 0.25rem;
+		display: flex;
+		align-items: center;
+
+		svg {
+			max-height: 1.2rem;
+		}
+	}
+
+	&.form-field-radio-group--has-error {
+		.form-field-radio-group__error {
+			opacity: 1;
+		}
+
+		.form-field-radio-group {
+			border: 0.125rem solid var(--error);
+			margin-bottom: 0;
+		}
+	}
+}

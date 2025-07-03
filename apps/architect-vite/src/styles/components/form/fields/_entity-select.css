@@ -1,10 +1,10 @@
 .form-fields-entity-select {
-	&__field {
+	.form-fields-entity-select__field {
 		flex-flow: row wrap;
 		justify-content: flex-start;
 	}
 
-	&__error {
+	.form-fields-entity-select__error {
 		opacity: 0;
 		background: var(--color-error);
 		color: var(--color-form-error-text);
@@ -20,7 +20,7 @@
 		}
 	}
 
-	&--has-error {
+	&.form-fields-entity-select--has-error {
 		& .form-fields-entity-select__field {
 			border: var(--space-xs) solid var(--error);
 			margin-bottom: 0;
@@ -31,11 +31,11 @@
 		}
 	}
 
-	&--nodes {
+	&.form-fields-entity-select--nodes {
 		--base-node-size: 7rem;
 
 		& .preview-node {
-			&--clickable {
+			&.preview-node--clickable {
 				&:not(.preview-node--selected) {
 					cursor: pointer;
 				}
@@ -60,7 +60,7 @@
 		margin: 0 var(--space-sm) 0 0;
 	}
 
-	&--selected {
+	&.preview-edge--selected {
 		border-color: var(--edge-color);
 
 		&.preview-edge--selected {
@@ -68,7 +68,7 @@
 		}
 	}
 
-	&--clickable {
+	&.preview-edge--clickable {
 		@apply clickable;
 	}
 }

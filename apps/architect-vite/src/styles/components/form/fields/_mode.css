@@ -4,7 +4,7 @@
 	display: block;
 	position: relative;
 
-	&__options {
+	.form-fields-mode__options {
 		display: inline-flex;
 		border-radius: var(--space-sm);
 		overflow: hidden;
@@ -12,7 +12,7 @@
 		background-color: var(--color-surface-1);
 	}
 
-	&__option {
+	.form-fields-mode__option {
 		font-size: var(--text-sm);
 		line-height: var(--leading-normal);
 
@@ -28,18 +28,18 @@
 			var(--animation-easing) var(--animation-duration-standard);
 		cursor: pointer;
 
-		&--selected {
+		&.form-fields-mode__option--selected {
 			background-color: var(--color-selected);
 			color: var(--color-selected-foreground);
 		}
 
-		&--disabled {
+		&.form-fields-mode__option--disabled {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
 	}
 
-	&--has-error {
+	&.form-fields-mode--has-error {
 		& .form-fields-mode__error {
 			opacity: 1;
 			max-height: 50px;

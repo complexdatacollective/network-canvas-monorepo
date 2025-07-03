@@ -5,7 +5,7 @@
 	background: hsl(var(--rich-black));
 	overflow: hidden;
 
-	&__name {
+	.form-fields-video__name {
 		padding: var(--space-md);
 		border-radius: var(--space-md);
 		word-break: break-all;
@@ -17,7 +17,7 @@
 		transform: translate(-50%, -50%);
 	}
 
-	&__still {
+	.form-fields-video__still {
 		position: absolute;
 		z-index: 2;
 		top: 0;

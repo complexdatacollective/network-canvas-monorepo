@@ -2,29 +2,29 @@
 	display: flex;
 	flex-direction: row;
 
-	&__name,
-	&__value,
-	&__error,
-	&__delete {
+	.attributes-table-preview__name,
+	.attributes-table-preview__value,
+	.attributes-table-preview__error,
+	.attributes-table-preview__delete {
 		padding: 0 var(--space-5);
 	}
 
-	&__name {
+	.attributes-table-preview__name {
 		flex: 0 0 15rem;
 		font-weight: var(--font-semibold);
 	}
 
-	&__value,
-	&__error {
+	.attributes-table-preview__value,
+	.attributes-table-preview__error {
 		flex-grow: 1;
 	}
 
-	&__error {
+	.attributes-table-preview__error {
 		font-style: italic;
 		color: var(--error);
 	}
 
-	&__delete {
+	.attributes-table-preview__delete {
 		flex: 0 0 var(--space-10);
 		cursor: pointer;
 		display: flex;

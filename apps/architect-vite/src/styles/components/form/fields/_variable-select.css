@@ -1,5 +1,5 @@
 .form-fields-variable-select {
-	&__rename {
+	.form-fields-variable-select__rename {
 		margin-top: var(--space-sm);
 	}
 }

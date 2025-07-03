@@ -13,7 +13,7 @@
 		transition: transform var(--animation-duration-standard) var(--animation-easing);
 	}
 
-	&__welcome {
+	.start__welcome {
 		display: flex;
 		align-items: center;
 		margin-bottom: 3vmin;
@@ -41,7 +41,7 @@
 		}
 	}
 
-	&__call-to-action {
+	.start__call-to-action {
 		padding: 0 0 var(--space-3xl);
 
 		.button {
@@ -52,7 +52,7 @@
 		}
 	}
 
-	&--hide {
+	&.start--hide {
 		#create-new-protocol-button {
 			transform: translateX(-100%);
 		}

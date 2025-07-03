@@ -1,0 +1,271 @@
+/* Toggle Button Field - Converted from SCSS to CSS */
+/* ================================================= */
+
+.form-field-togglebutton {
+	/* Local variables */
+	--size: 9rem;
+	--border: 0.2rem;
+	--border-space: 0.3rem;
+
+	/* Clickable styles */
+	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
+	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-very-fast) var(--animation-easing);
+
+	&:not(:disabled):hover {
+		text-decoration: none;
+		cursor: pointer;
+		transform: translateY(-0.2rem);
+		box-shadow: 0 0.4rem 0.2rem 0 rgba(0, 0, 0, 0.35);
+	}
+
+	&:not(:disabled):active {
+		box-shadow: unset;
+		transform: translateY(0.2rem);
+	}
+
+	display: inline-block;
+	cursor: pointer;
+
+	.toggle-button__input {
+		display: none;
+	}
+
+	.toggle-button__checkbox {
+		border-radius: 50%;
+		position: relative;
+		width: var(--size);
+		height: var(--size);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 0;
+		text-align: center;
+		padding: 0.75rem;
+		hyphens: auto;
+
+		&::before {
+			position: absolute;
+			top: 0;
+			left: 0;
+			content: "";
+			width: 100%;
+			height: 100%;
+			border-color: var(--color-input-radio--fill);
+			border-width: var(--border);
+			border-style: solid;
+			border-radius: 50%;
+			transition: border-color var(--animation-easing) var(--animation-duration-standard);
+		}
+
+		&::after {
+			position: absolute;
+			content: "";
+			top: calc(var(--border) + var(--border-space));
+			left: calc(var(--border) + var(--border-space));
+			width: calc(100% - (var(--border) + var(--border-space)) * 2);
+			height: calc(100% - (var(--border) + var(--border-space)) * 2);
+			background-color: var(--color-input-radio--fill);
+			border-radius: 50%;
+			opacity: 0;
+			transition: opacity var(--animation-easing) var(--animation-duration-standard);
+			z-index: -1;
+		}
+	}
+
+	.toggle-button__label {
+		display: inline-block;
+		margin-left: var(--unit-1);
+		vertical-align: top;
+		line-height: var(--size);
+	}
+
+	&:hover {
+		.form-field-checkbox__checkbox {
+			&::before {
+				border-color: var(--color-input-radio--fill);
+			}
+		}
+	}
+
+	.toggle-button__input:checked + .toggle-button__checkbox {
+		&::after {
+			opacity: 1;
+		}
+	}
+
+	&.toggle-button--disabled {
+		cursor: default;
+		pointer-events: none;
+
+		.form-field-checkbox__checkbox {
+			&::before {
+				border-color: hsl(var(--charcoal));
+			}
+
+			&::after {
+				opacity: 0;
+			}
+		}
+
+		&:hover {
+			.form-field-checkbox__checkbox {
+				&::before {
+					border-color: hsl(var(--charcoal));
+				}
+
+				&::after {
+					opacity: 0;
+				}
+			}
+		}
+	}
+}
+
+/* Color sequence classes - converted from @for loop */
+.form-field-togglebutton-cat-color-seq-0 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-1);
+}
+.form-field-togglebutton-cat-color-seq-0 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-1);
+}
+
+.form-field-togglebutton-cat-color-seq-1 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-2);
+}
+.form-field-togglebutton-cat-color-seq-1 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-2);
+}
+
+.form-field-togglebutton-cat-color-seq-2 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-3);
+}
+.form-field-togglebutton-cat-color-seq-2 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-3);
+}
+
+.form-field-togglebutton-cat-color-seq-3 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-4);
+}
+.form-field-togglebutton-cat-color-seq-3 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-4);
+}
+
+.form-field-togglebutton-cat-color-seq-4 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-5);
+}
+.form-field-togglebutton-cat-color-seq-4 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-5);
+}
+
+.form-field-togglebutton-cat-color-seq-5 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-6);
+}
+.form-field-togglebutton-cat-color-seq-5 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-6);
+}
+
+.form-field-togglebutton-cat-color-seq-6 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-7);
+}
+.form-field-togglebutton-cat-color-seq-6 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-7);
+}
+
+.form-field-togglebutton-cat-color-seq-7 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-8);
+}
+.form-field-togglebutton-cat-color-seq-7 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-8);
+}
+
+.form-field-togglebutton-cat-color-seq-8 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-9);
+}
+.form-field-togglebutton-cat-color-seq-8 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-9);
+}
+
+.form-field-togglebutton-cat-color-seq-9 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-10);
+}
+.form-field-togglebutton-cat-color-seq-9 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-10);
+}
+
+.form-field-togglebutton-cat-color-seq-10 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-1);
+}
+.form-field-togglebutton-cat-color-seq-10 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-1);
+}
+
+.form-field-togglebutton-cat-color-seq-11 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-2);
+}
+.form-field-togglebutton-cat-color-seq-11 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-2);
+}
+
+.form-field-togglebutton-cat-color-seq-12 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-3);
+}
+.form-field-togglebutton-cat-color-seq-12 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-3);
+}
+
+.form-field-togglebutton-cat-color-seq-13 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-4);
+}
+.form-field-togglebutton-cat-color-seq-13 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-4);
+}
+
+.form-field-togglebutton-cat-color-seq-14 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-5);
+}
+.form-field-togglebutton-cat-color-seq-14 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-5);
+}
+
+.form-field-togglebutton-cat-color-seq-15 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-6);
+}
+.form-field-togglebutton-cat-color-seq-15 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-6);
+}
+
+.form-field-togglebutton-cat-color-seq-16 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-7);
+}
+.form-field-togglebutton-cat-color-seq-16 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-7);
+}
+
+.form-field-togglebutton-cat-color-seq-17 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-8);
+}
+.form-field-togglebutton-cat-color-seq-17 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-8);
+}
+
+.form-field-togglebutton-cat-color-seq-18 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-9);
+}
+.form-field-togglebutton-cat-color-seq-18 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-9);
+}
+
+.form-field-togglebutton-cat-color-seq-19 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-10);
+}
+.form-field-togglebutton-cat-color-seq-19 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-10);
+}
+
+.form-field-togglebutton-cat-color-seq-20 .form-field-togglebutton__checkbox::before {
+	border-color: var(--cat-color-seq-1);
+}
+.form-field-togglebutton-cat-color-seq-20 .form-field-togglebutton__checkbox::after {
+	background-color: var(--cat-color-seq-1);
+}

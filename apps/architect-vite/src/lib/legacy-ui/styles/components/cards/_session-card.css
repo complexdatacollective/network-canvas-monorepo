@@ -1,0 +1,130 @@
+.session-card {
+	background-color: hsl(var(--platinum));
+	border-radius: var(--border-radius);
+	display: flex;
+	flex-direction: column;
+	height: var(--space-4xl);
+	color: hsl(var(--navy-taupe));
+	justify-content: space-between;
+	overflow: hidden;
+	box-sizing: border-box;
+	position: relative;
+
+	&.session-card--clickable {
+		cursor: pointer;
+		transition: all 0.2s ease;
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		}
+	}
+
+	&.session-card--selected {
+		&:before {
+			content: "";
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			border: var(--space-xs) solid var(--color-mustard);
+			border-radius: var(--border-radius);
+		}
+	}
+
+	.meta-wrapper {
+		display: flex;
+		padding: 0 var(--space-xl);
+		background: hsl(var(--platinum-dark));
+		align-items: center;
+		justify-content: space-between;
+		flex: 0 0 45%;
+		width: 100%;
+
+		.meta {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: flex-start;
+			width: 50%;
+
+			.highlight {
+				color: var(--error);
+			}
+
+			h6 {
+				margin: 0;
+				text-transform: uppercase;
+				letter-spacing: 0.15em;
+				font-size: var(--text-xs);
+				width: 100%;
+			}
+
+			img {
+				width: var(--space-lg);
+				height: var(--space-lg);
+				margin-right: var(--space-md);
+			}
+		}
+
+		.progress-wrapper {
+			height: 100%;
+			display: flex;
+			align-items: center;
+			width: 100%;
+
+			span {
+				text-transform: uppercase;
+				letter-spacing: 0.15em;
+				font-size: var(--text-xs);
+				font-weight: 700;
+				margin-right: var(--space-md);
+			}
+
+			.progress-bar {
+				background-color: hsl(var(--platinum));
+				flex: 1;
+
+				.progress-bar__filler {
+					background-color: var(--color-cerulean-blue);
+				}
+
+				&.session-progress--complete {
+					.progress-bar__filler {
+						background-color: var(--color-primary);
+					}
+				}
+			}
+		}
+	}
+
+	.main-wrapper {
+		flex: 1 0 auto;
+		padding: 0 var(--space-xl);
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+
+		.card {
+			.session-progress__label {
+				flex: 0 0 auto;
+				margin: 0;
+				align-items: center;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				width: 100%;
+			}
+
+			.session-progress__protocol {
+				flex: 0 0 auto;
+				margin: var(--space-xs) 0 0;
+				align-items: center;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				width: 100%;
+			}
+		}
+	}
+}

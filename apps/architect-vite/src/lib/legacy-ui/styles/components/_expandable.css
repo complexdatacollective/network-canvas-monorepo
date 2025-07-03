@@ -1,0 +1,9 @@
+.expandable {
+	transition: max-height var(--animation-duration-standard) ease;
+	max-height: 0;
+	overflow: hidden;
+
+	&.expandable--open {
+		max-height: 500px;
+	}
+}

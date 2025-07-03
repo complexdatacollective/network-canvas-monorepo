@@ -28,7 +28,7 @@
 		}
 	}
 
-	&--show {
+	&.attributes-table-chooser--show {
 		max-height: 100%;
 		opacity: 1;
 		transform: translateX(0);

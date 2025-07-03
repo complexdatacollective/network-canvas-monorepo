@@ -4,23 +4,23 @@
 	display: block;
 	position: relative;
 
-	&__preview {
+	.form-fields-file__preview {
 		position: relative;
 		overflow: hidden;
 		display: none;
 	}
 
-	&__browse {
+	.form-fields-file__browse {
 		margin: var(--space-md) 0 0;
 	}
 
-	&--replace {
+	&.form-fields-file--replace {
 		& .form-fields-file__preview {
 			display: block;
 		}
 	}
 
-	&__error {
+	.form-fields-file__error {
 		opacity: 0;
 		color: var(--error);
 		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
@@ -36,7 +36,7 @@
 		}
 	}
 
-	&--has-error {
+	&.form-fields-file--has-error {
 		& .form-fields-file__error {
 			opacity: 1;
 		}

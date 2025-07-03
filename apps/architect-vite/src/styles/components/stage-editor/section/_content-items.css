@@ -1,5 +1,5 @@
 .stage-editor-section-content-items {
-	&__controls {
+	.stage-editor-section-content-items__controls {
 		margin-top: var(--space-5);
 
 		.button {
@@ -9,7 +9,7 @@
 		}
 	}
 
-	&__control {
+	.stage-editor-section-content-items__control {
 		margin-right: var(--space-2);
 		color: var(--foreground-light);
 
@@ -22,7 +22,7 @@
 			margin-right: var(--space-2);
 		}
 
-		&--text {
+		&.stage-editor-section-content-items__control--text {
 			background-color: var(--color-variant-1);
 
 			&:hover {
@@ -30,7 +30,7 @@
 			}
 		}
 
-		&--image {
+		&.stage-editor-section-content-items__control--image {
 			background-color: var(--color-variant-2);
 
 			&:hover {
@@ -38,7 +38,7 @@
 			}
 		}
 
-		&--audio {
+		&.stage-editor-section-content-items__control--audio {
 			background-color: var(--color-variant-3);
 
 			&:hover {
@@ -46,7 +46,7 @@
 			}
 		}
 
-		&--video {
+		&.stage-editor-section-content-items__control--video {
 			background-color: var(--color-variant-4);
 
 			&:hover {

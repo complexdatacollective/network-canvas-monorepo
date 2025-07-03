@@ -1,0 +1,182 @@
+/* Spinner Component - Converted from SCSS to CSS */
+/* ================================================ */
+
+:root {
+	--spinner-light-color-1: hsl(var(--sea-serpent));
+	--spinner-light-color-2: hsl(var(--mustard));
+	--spinner-light-color-3: hsl(var(--neon-coral));
+	--spinner-light-color-4: hsl(var(--sea-green));
+
+	--spinner-dark-color-1: hsl(var(--sea-serpent-dark));
+	--spinner-dark-color-2: hsl(var(--mustard-dark));
+	--spinner-dark-color-3: hsl(var(--neon-coral-dark));
+	--spinner-dark-color-4: hsl(var(--sea-green-dark));
+}
+
+.spinner {
+	--circle-size: 2rem;
+	--container-size: calc(var(--circle-size) * 3);
+	--animation-duration: 1.8s;
+	--circle-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+	will-change: transform;
+	backface-visibility: hidden;
+	width: var(--container-size);
+	height: var(--container-size);
+	margin: var(--circle-size);
+	animation: spin var(--animation-duration) ease-in-out infinite;
+	transform: rotate(45deg);
+}
+
+.spinner--small {
+	--circle-size: 1rem;
+}
+
+.spinner--large {
+	--circle-size: 3rem;
+}
+
+.spinner .circle {
+	position: absolute;
+}
+
+.spinner .circle:nth-child(1) {
+	top: calc(var(--circle-size) * -1);
+	left: 0;
+}
+
+.spinner .circle:nth-child(2) {
+	top: 0;
+	left: calc(var(--circle-size) * 2);
+	transform: rotate(90deg);
+}
+
+.spinner .circle:nth-child(3) {
+	top: var(--circle-size);
+	left: calc(var(--circle-size) * -1);
+	transform: rotate(-90deg);
+}
+
+.spinner .circle:nth-child(4) {
+	top: calc(var(--circle-size) * 2);
+	left: var(--circle-size);
+	transform: rotate(-180deg);
+}
+
+.spinner .circle .half-circle {
+	height: var(--circle-size);
+	width: calc(var(--circle-size) * 2);
+	border-top-left-radius: calc(var(--circle-size) * 2);
+	border-top-right-radius: calc(var(--circle-size) * 2);
+}
+
+.spinner .circle .half-circle--rotated {
+	transform: rotate(180deg);
+	position: relative;
+	top: -1px;
+}
+
+/* Circle color animations for each circle */
+.spinner .circle:nth-child(1) :nth-child(1) {
+	background: var(--spinner-dark-color-1);
+	animation: circle-color-1 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+}
+
+.spinner .circle:nth-child(1) :nth-child(2) {
+	background: var(--spinner-light-color-1);
+}
+
+.spinner .circle:nth-child(2) :nth-child(1) {
+	background: var(--spinner-dark-color-2);
+	animation: circle-color-2 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+}
+
+.spinner .circle:nth-child(2) :nth-child(2) {
+	background: var(--spinner-light-color-2);
+}
+
+.spinner .circle:nth-child(3) :nth-child(1) {
+	background: var(--spinner-dark-color-3);
+	animation: circle-color-3 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+}
+
+.spinner .circle:nth-child(3) :nth-child(2) {
+	background: var(--spinner-light-color-3);
+}
+
+.spinner .circle:nth-child(4) :nth-child(1) {
+	background: var(--spinner-dark-color-4);
+	animation: circle-color-4 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+}
+
+.spinner .circle:nth-child(4) :nth-child(2) {
+	background: var(--spinner-light-color-4);
+}
+
+/* Keyframe animations for each circle color */
+@keyframes circle-color-1 {
+	0% {
+		transform: translateX(0);
+		background: var(--spinner-light-color-1);
+	}
+
+	100% {
+		transform: translateX(var(--circle-size));
+		background: var(--spinner-dark-color-1);
+	}
+}
+
+@keyframes circle-color-2 {
+	0% {
+		transform: translateX(0);
+		background: var(--spinner-light-color-2);
+	}
+
+	100% {
+		transform: translateX(var(--circle-size));
+		background: var(--spinner-dark-color-2);
+	}
+}
+
+@keyframes circle-color-3 {
+	0% {
+		transform: translateX(0);
+		background: var(--spinner-light-color-3);
+	}
+
+	100% {
+		transform: translateX(var(--circle-size));
+		background: var(--spinner-dark-color-3);
+	}
+}
+
+@keyframes circle-color-4 {
+	0% {
+		transform: translateX(0);
+		background: var(--spinner-light-color-4);
+	}
+
+	100% {
+		transform: translateX(var(--circle-size));
+		background: var(--spinner-dark-color-4);
+	}
+}
+
+/* Main spinner rotation animation */
+@keyframes spin {
+	0% {
+		transform: rotate(45deg) scale(0.8);
+	}
+
+	40% {
+		transform: rotate(45deg) scale(1);
+	}
+
+	57% {
+		transform: rotate(45deg) scale(1);
+	}
+
+	100% {
+		transform: rotate(405deg) scale(0.8);
+	}
+}

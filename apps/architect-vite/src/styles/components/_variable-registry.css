@@ -1,7 +1,7 @@
 .variable-registry {
 	.simple-list {
-		&__attribute {
-			&--icon {
+		.simple-list__attribute {
+			&.simple-list__attribute--icon {
 				flex-grow: 0;
 
 				.node {
@@ -9,12 +9,12 @@
 				}
 			}
 
-			&--options {
+			&.simple-list__attribute--options {
 				flex-grow: 0;
 			}
 		}
 
-		&__tag {
+		.simple-list__tag {
 			font-size: var(--text-sm);
 			line-height: var(--leading-normal);
 

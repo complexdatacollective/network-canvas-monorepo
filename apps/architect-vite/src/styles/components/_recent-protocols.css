@@ -10,7 +10,7 @@
 	z-index: 2;
 	padding: var(--space-lg);
 
-	&__title {
+	.recent-protocols__title {
 		width: 100%;
 		text-align: center;
 		color: var(--color-text);
@@ -18,7 +18,7 @@
 		margin-top: 0;
 	}
 
-	&__protocol {
+	.recent-protocols__protocol {
 		display: flex;
 		flex: 0 0;
 		justify-content: center;
@@ -26,13 +26,13 @@
 		margin: var(--space-md);
 	}
 
-	&__wrapper {
+	.recent-protocols__wrapper {
 		display: flex;
 		justify-content: space-around;
 		width: 100%;
 	}
 
-	&__welcome {
+	.recent-protocols__welcome {
 		text-align: center;
 		width: 85vmin;
 		padding: var(--space-xl);

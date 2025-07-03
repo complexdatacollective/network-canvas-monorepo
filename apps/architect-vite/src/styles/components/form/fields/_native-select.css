@@ -1,13 +1,13 @@
 .form-fields-select-native {
-	&--disabled {
+	&.form-fields-select-native--disabled {
 		cursor: not-allowed;
 	}
 
-	&__wrapper {
+	.form-fields-select-native__wrapper {
 		flex: 1;
 	}
 
-	&__new-section {
+	.form-fields-select-native__new-section {
 		background: var(--color-surface-2);
 		padding: var(--space-md);
 		border-radius: var(--border-radius);
@@ -28,7 +28,7 @@
 		}
 	}
 
-	&__error {
+	.form-fields-select-native__error {
 		opacity: 0;
 		background: var(--color-error);
 		color: var(--color-form-error-text);
@@ -41,7 +41,7 @@
 		}
 	}
 
-	&__component {
+	.form-fields-select-native__component {
 		display: block;
 		font-size: var(--text-base);
 		font-weight: normal;
@@ -81,7 +81,7 @@
 		}
 	}
 
-	&--has-error {
+	&.form-fields-select-native--has-error {
 		& .form-fields-select-native__component {
 			border: var(--space-xs) solid var(--error);
 			margin-bottom: 0;

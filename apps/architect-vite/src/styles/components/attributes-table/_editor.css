@@ -6,7 +6,7 @@
 		var(--animation-duration-standard);
 	transform: translateX(-100%);
 
-	&--show {
+	&.attributes-table-editor--show {
 		max-height: 500px;
 		opacity: 1;
 		transform: translateX(0);

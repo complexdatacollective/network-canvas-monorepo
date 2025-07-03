@@ -10,22 +10,22 @@
 	transition-timing-function: var(--animation-easing);
 	width: 25rem;
 
-	&__icon {
+	.thumbnail__icon {
 		flex: 0 0 25px;
 		margin: 0 var(--space-md) 0 0;
 	}
 
-	&__label {
+	.thumbnail__label {
 		overflow: hidden;
 		overflow-wrap: break-word;
 	}
 
-	&--existing {
+	&.thumbnail--existing {
 		background-color: var(--color-info);
 		font-style: italic;
 	}
 
-	&--image {
+	&.thumbnail--image {
 		background-repeat: no-repeat;
 		background-size: contain;
 		background-position: center;

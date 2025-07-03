@@ -4,7 +4,7 @@
 	margin: var(--space-10) var(--space-20);
 	max-width: 80rem;
 
-	&__notice {
+	.codebook__notice {
 		margin-top: var(--space-8);
 		background-color: var(--color-surface-2);
 		padding: var(--space-8);
@@ -13,7 +13,7 @@
 		border-radius: var(--space-4);
 	}
 
-	&__tag {
+	.codebook__tag {
 		display: inline-block;
 		border-radius: var(--space-2);
 		padding: var(--space-1) var(--space-2);
@@ -22,12 +22,12 @@
 		background-color: hsl(var(--mustard-dark));
 		word-break: break-word;
 
-		&--not-used {
+		&.codebook__tag--not-used {
 			background-color: var(--color-warning);
 		}
 	}
 
-	&__category {
+	.codebook__category {
 		margin-top: var(--space-10);
 
 		&-items {
@@ -36,10 +36,10 @@
 		}
 	}
 
-	&-column {
+	.codebook-column {
 		vertical-align: middle;
 
-		&--control {
+		&.codebook-column--control {
 			white-space: nowrap;
 			text-align: left;
 			width: 0;
@@ -55,7 +55,7 @@
 		}
 	}
 
-	&__entity {
+	.codebook__entity {
 		overflow: hidden;
 		margin: var(--space-10) auto;
 		padding: var(--space-10);
@@ -105,16 +105,16 @@
 		}
 	}
 
-	&__variables {
+	.codebook__variables {
 		margin-top: var(--space-5);
 		width: 100%;
 
 		&-row {
-			&--heading {
+			&.codebook__variables-row--heading {
 				border-bottom: 0.2rem solid var(--color-divider);
 			}
 
-			&--even {
+			&.codebook__variables-row--even {
 				background-color: var(--color-row-background);
 			}
 		}
@@ -147,13 +147,13 @@
 					content: "dir";
 				}
 
-				&--asc {
+				&.sort-direction--asc {
 					&::after {
 						content: "\25BE";
 					}
 				}
 
-				&--desc {
+				&.sort-direction--desc {
 					&::after {
 						content: "\25B4";
 					}
@@ -161,7 +161,7 @@
 			}
 		}
 
-		&--usage {
+		&.codebook__variables--usage {
 			max-width: 300px;
 		}
 

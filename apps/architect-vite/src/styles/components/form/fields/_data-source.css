@@ -11,7 +11,7 @@
 		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
 			var(--animation-duration-standard);
 
-		&--hide {
+		&.form-fields-data-source-file--hide {
 			max-height: 0;
 			opacity: 0;
 		}

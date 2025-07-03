@@ -22,7 +22,7 @@
 		}
 	}
 
-	&__error {
+	.form-fields-variable-picker__error {
 		color: var(--error);
 		margin-bottom: 0;
 	}

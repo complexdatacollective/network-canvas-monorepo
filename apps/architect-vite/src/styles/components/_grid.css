@@ -5,7 +5,7 @@
 		border-radius: var(--space-4);
 	}
 
-	&__item {
+	.grid__item {
 		position: relative;
 
 		.react-resizable-handle {
@@ -24,7 +24,7 @@
 		}
 	}
 
-	&__error {
+	.grid__error {
 		opacity: 0;
 		background-color: var(--color-error);
 		color: var(--foreground-light);
@@ -40,7 +40,7 @@
 		}
 	}
 
-	&--has-error {
+	&.grid--has-error {
 		.grid__error {
 			opacity: 1;
 			max-height: 50px;
@@ -49,7 +49,7 @@
 }
 
 .grid-manager {
-	&__add {
+	.grid-manager__add {
 		margin-top: var(--space-4);
 
 		.button {
@@ -69,14 +69,14 @@
 	color: var(--color-sortable-foreground);
 	border-radius: var(--space-2);
 
-	&__controls {
+	.grid-item__controls {
 		flex: 0 1 auto;
 		display: flex;
 		align-items: center;
 	}
 
-	&__edit,
-	&__delete {
+	.grid-item__edit,
+	.grid-item__delete {
 		cursor: pointer;
 		padding: var(--space-2);
 
@@ -86,7 +86,7 @@
 		}
 	}
 
-	&__delete {
+	.grid-item__delete {
 		margin-left: var(--space-4);
 
 		.icon {
@@ -97,7 +97,7 @@
 		}
 	}
 
-	&__content {
+	.grid-item__content {
 		flex-grow: 1;
 		flex-basis: 100%;
 		display: flex;

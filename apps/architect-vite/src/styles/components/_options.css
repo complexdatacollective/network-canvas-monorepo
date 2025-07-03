@@ -1,11 +1,11 @@
 .options {
 	display: block;
 
-	&__options {
+	.options__options {
 		margin-bottom: var(--space-4);
 	}
 
-	&__option {
+	.options__option {
 		display: flex;
 		background-color: var(--color-form-control);
 		color: var(--color-sortable-foreground);
@@ -22,7 +22,7 @@
 			display: flex;
 			padding: var(--space-4);
 
-			&--center {
+			&.options__option-controls--center {
 				align-items: center;
 			}
 		}
@@ -76,7 +76,7 @@
 		}
 	}
 
-	&--has-error {
+	&.options--has-error {
 		.form-field-error {
 			margin: var(--space-4) 0;
 			border-radius: var(--space-2);

@@ -1,5 +1,5 @@
 .interview-script {
-	&__details {
+	.interview-script__details {
 		.form-field-container {
 			margin: 0;
 		}

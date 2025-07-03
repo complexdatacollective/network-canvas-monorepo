@@ -13,7 +13,7 @@
 	position: relative;
 	box-shadow: 0 var(--space-px) var(--space-px) 0 var(--color-shadow-panel);
 
-	&--toggleable {
+	&.stage-editor-section--toggleable {
 		&:not(.stage-editor-section--open) {
 			.summary {
 				margin-top: calc(-1 * var(--space-5));
@@ -59,7 +59,7 @@
 		}
 	}
 
-	&--disabled {
+	&.stage-editor-section--disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 
@@ -88,7 +88,7 @@
 		border-radius: var(--space-2);
 	}
 
-	&--compact-next {
+	&.stage-editor-section--compact-next {
 		margin-bottom: -2.5rem;
 		padding-bottom: 0;
 	}

@@ -1,0 +1,357 @@
+/* Button System - Converted from SCSS to CSS */
+/* ============================================= */
+
+/* Reset button utility class */
+.u-reset-button {
+	-webkit-appearance: none;
+	border: 0;
+	padding: 0 1rem;
+	/* background removed - now handled by Tailwind classes in Button component */
+}
+
+/* Base button class */
+.button {
+	-webkit-appearance: none;
+	border: 0;
+	padding: 0 1rem;
+
+	/* Flexbox centering */
+	justify-content: center;
+	align-items: center;
+
+	/* Clickable effects */
+	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
+	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-very-fast) var(--animation-easing);
+
+	/* Typography */
+	font-weight: 700;
+	font-size: 0.8rem;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+
+	/* Layout */
+	display: inline-flex;
+	font-family: var(--heading-font-family);
+	text-align: center;
+	text-decoration: none; /* in the case that this is used on a link */
+	width: auto;
+	height: auto;
+	min-width: 3rem;
+	min-height: 3.5rem;
+	border-radius: 2rem;
+	margin-bottom: 0.15rem;
+}
+
+.button:not(:disabled):hover {
+	text-decoration: none;
+	cursor: pointer;
+	transform: translateY(-0.2rem);
+	box-shadow: 0 0.4rem 0.2rem 0 rgba(0, 0, 0, 0.35);
+}
+
+.button:not(:disabled):active {
+	box-shadow: unset;
+	transform: translateY(0.2rem);
+}
+
+.button:disabled,
+.button[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Button variants */
+.button--small {
+	min-width: inherit;
+	min-height: 2.5rem;
+	font-size: 0.5rem;
+}
+
+.button--has-icon .button__content {
+	margin-left: 0;
+}
+
+.button--has-icon:not(.button--icon-pos-right) .button__content {
+	margin-left: -2rem;
+}
+
+.button--has-icon.button--icon-pos-right .button__content {
+	margin-right: -2rem;
+}
+
+/* Button elements */
+.button__content {
+	padding: 0 2rem;
+	flex: 1 1 auto;
+}
+
+.button__icon {
+	margin: 0 1rem;
+}
+
+.button__icon--right {
+	order: 2;
+}
+
+.icon.button__icon {
+	height: var(--unit-2) !important;
+	width: var(--unit-2) !important;
+}
+
+/* SVG Button utility classes */
+.u-svg-button {
+	background: transparent;
+	background-repeat: no-repeat;
+	background-size: contain;
+	text-indent: -1000px;
+	overflow: hidden;
+	border: 0;
+	cursor: pointer;
+	outline: none;
+}
+
+.u-svg-button:focus {
+	outline: none;
+}
+
+/* Color modifier utility classes for buttons */
+.u-button-neon-coral {
+	background-color: hsl(var(--neon-coral));
+	color: hsl(var(--white));
+}
+
+.u-button-neon-coral:hover {
+	background-color: hsl(var(--neon-coral) / 0.8);
+}
+
+.u-button-sea-green {
+	background-color: hsl(var(--sea-green));
+	color: hsl(var(--white));
+}
+
+.u-button-sea-green:hover {
+	background-color: hsl(var(--sea-green) / 0.8);
+}
+
+.u-button-slate-blue {
+	background-color: hsl(var(--slate-blue));
+	color: hsl(var(--white));
+}
+
+.u-button-slate-blue:hover {
+	background-color: hsl(var(--slate-blue) / 0.8);
+}
+
+.u-button-navy-taupe {
+	background-color: hsl(var(--navy-taupe));
+	color: hsl(var(--white));
+}
+
+.u-button-navy-taupe:hover {
+	background-color: hsl(var(--navy-taupe) / 0.8);
+}
+
+.u-button-cyber-grape {
+	background-color: hsl(var(--cyber-grape));
+	color: hsl(var(--white));
+}
+
+.u-button-cyber-grape:hover {
+	background-color: hsl(var(--cyber-grape) / 0.8);
+}
+
+.u-button-mustard {
+	background-color: hsl(var(--mustard));
+	color: hsl(var(--rich-black));
+}
+
+.u-button-mustard:hover {
+	background-color: hsl(var(--mustard) / 0.8);
+}
+
+.u-button-rich-black {
+	background-color: hsl(var(--rich-black));
+	color: hsl(var(--white));
+}
+
+.u-button-rich-black:hover {
+	background-color: hsl(var(--rich-black) / 0.8);
+}
+
+.u-button-charcoal {
+	background-color: hsl(var(--charcoal));
+	color: hsl(var(--white));
+}
+
+.u-button-charcoal:hover {
+	background-color: hsl(var(--charcoal) / 0.8);
+}
+
+.u-button-platinum {
+	background-color: hsl(var(--platinum));
+	color: hsl(var(--rich-black));
+}
+
+.u-button-platinum:hover {
+	background-color: hsl(var(--platinum) / 0.8);
+}
+
+.u-button-sea-serpent {
+	background-color: hsl(var(--sea-serpent));
+	color: hsl(var(--white));
+}
+
+.u-button-sea-serpent:hover {
+	background-color: hsl(var(--sea-serpent) / 0.8);
+}
+
+.u-button-purple-pizazz {
+	background-color: hsl(var(--purple-pizazz));
+	color: hsl(var(--white));
+}
+
+.u-button-purple-pizazz:hover {
+	background-color: hsl(var(--purple-pizazz) / 0.8);
+}
+
+.u-button-paradise-pink {
+	background-color: hsl(var(--paradise-pink));
+	color: hsl(var(--white));
+}
+
+.u-button-paradise-pink:hover {
+	background-color: hsl(var(--paradise-pink) / 0.8);
+}
+
+.u-button-cerulean-blue {
+	background-color: hsl(var(--cerulean-blue));
+	color: hsl(var(--white));
+}
+
+.u-button-cerulean-blue:hover {
+	background-color: hsl(var(--cerulean-blue) / 0.8);
+}
+
+.u-button-kiwi {
+	background-color: hsl(var(--kiwi));
+	color: hsl(var(--rich-black));
+}
+
+.u-button-kiwi:hover {
+	background-color: hsl(var(--kiwi) / 0.8);
+}
+
+.u-button-neon-carrot {
+	background-color: hsl(var(--neon-carrot));
+	color: hsl(var(--rich-black));
+}
+
+.u-button-neon-carrot:hover {
+	background-color: hsl(var(--neon-carrot) / 0.8);
+}
+
+.u-button-barbie-pink {
+	background-color: hsl(var(--barbie-pink));
+	color: hsl(var(--white));
+}
+
+.u-button-barbie-pink:hover {
+	background-color: hsl(var(--barbie-pink) / 0.8);
+}
+
+.u-button-tomato {
+	background-color: hsl(var(--tomato));
+	color: hsl(var(--white));
+}
+
+.u-button-tomato:hover {
+	background-color: hsl(var(--tomato) / 0.8);
+}
+
+.u-button-white {
+	background-color: hsl(var(--white));
+	color: hsl(var(--rich-black));
+}
+
+.u-button-white:hover {
+	background-color: hsl(var(--white) / 0.8);
+}
+
+/* Light color variations - for better contrast */
+.u-button-light-neon-coral {
+	background-color: hsl(var(--neon-coral) / 0.2);
+	color: hsl(var(--neon-coral));
+	border: 1px solid hsl(var(--neon-coral));
+}
+
+.u-button-light-sea-green {
+	background-color: hsl(var(--sea-green) / 0.2);
+	color: hsl(var(--sea-green));
+	border: 1px solid hsl(var(--sea-green));
+}
+
+.u-button-light-slate-blue {
+	background-color: hsl(var(--slate-blue) / 0.2);
+	color: hsl(var(--slate-blue));
+	border: 1px solid hsl(var(--slate-blue));
+}
+
+/* Icon color inheritance for buttons */
+.button .icon {
+	color: inherit;
+	fill: currentColor;
+}
+
+/* Alternative button class variations for different sizes */
+.btn {
+	/* Alias for .button */
+	-webkit-appearance: none;
+	border: 0;
+	padding: 0 1rem;
+
+	/* Flexbox centering */
+	justify-content: center;
+	align-items: center;
+
+	/* Clickable effects */
+	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
+	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-very-fast) var(--animation-easing);
+
+	/* Typography */
+	font-weight: 700;
+	font-size: 0.8rem;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+
+	/* Layout */
+	display: inline-flex;
+	font-family: var(--heading-font-family);
+	text-align: center;
+	text-decoration: none;
+	width: auto;
+	height: auto;
+	min-width: 3rem;
+	min-height: 3.5rem;
+	border-radius: 2rem;
+	margin-bottom: 0.15rem;
+}
+
+.btn:not(:disabled):hover {
+	text-decoration: none;
+	cursor: pointer;
+	transform: translateY(-0.2rem);
+	box-shadow: 0 0.4rem 0.2rem 0 rgba(0, 0, 0, 0.35);
+}
+
+.btn:not(:disabled):active {
+	box-shadow: unset;
+	transform: translateY(0.2rem);
+}
+
+.btn:disabled,
+.btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}

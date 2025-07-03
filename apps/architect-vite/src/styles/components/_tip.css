@@ -13,21 +13,21 @@
 		width: var(--space-xl);
 	}
 
-	&__content {
+	.tip__content {
 		margin-left: var(--space-md);
 	}
 
-	&__info {
+	&.tip__info {
 		background-color: var(--color-info);
 		color: var(--color-info-foreground);
 	}
 
-	&__warning {
+	&.tip__warning {
 		background-color: var(--color-warning);
 		color: var(--color-warning-foreground);
 	}
 
-	&__error {
+	&.tip__error {
 		background-color: var(--color-error);
 		color: var(--color-error-foreground);
 	}

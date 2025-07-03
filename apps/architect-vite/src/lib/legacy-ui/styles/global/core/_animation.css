@@ -1,0 +1,345 @@
+/* Animation System - Converted from SCSS to CSS */
+/* =============================================== */
+
+:root {
+	/* Animation scale factor variables */
+	--animation-scale-factor: 1;
+	--animation-duration-very-fast: calc(var(--animation-scale-factor) * 0.18s);
+	--animation-duration-very-fast-ms: calc(var(--animation-scale-factor) * 180);
+	--animation-duration-fast: calc(var(--animation-scale-factor) * 0.25s);
+	--animation-duration-fast-ms: calc(var(--animation-scale-factor) * 250);
+	--animation-duration-standard: calc(var(--animation-scale-factor) * 0.35s);
+	--animation-duration-standard-ms: calc(var(--animation-scale-factor) * 350);
+	--animation-duration-slow: calc(var(--animation-scale-factor) * 0.55s);
+	--animation-duration-slow-ms: calc(var(--animation-scale-factor) * 550);
+
+	/* Easing curves */
+	--animation-easing-ios: cubic-bezier(0.23, 1, 0.32, 1);
+	--animation-easing-android: cubic-bezier(0.4, 0, 0.2, 1);
+	--animation-easing: var(--animation-easing-android);
+
+	/* Values provided to JS must be valid JSON */
+	--animation-easing-json: "cubic-bezier(0.4, 0, 0.2, 1)";
+	--animation-easing-js: var(--animation-easing-json);
+}
+
+/* Preset keyframe animations */
+@keyframes zoom {
+	0% {
+		transform: scale(0, 0);
+		opacity: 0;
+	}
+
+	100% {
+		transform: scale(1, 1);
+		opacity: 1;
+	}
+}
+
+@keyframes bounce {
+	0% {
+		transform: scale(0);
+		opacity: 0;
+	}
+
+	50% {
+		transform: scale(1.1);
+		opacity: 0.4;
+	}
+
+	75% {
+		transform: scale(0.9);
+		opacity: 0.7;
+	}
+
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes fade-in {
+	0% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes fade-out {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes slide-in-up {
+	0% {
+		transform: translateY(100%);
+		opacity: 0;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes slide-in-down {
+	0% {
+		transform: translateY(-100%);
+		opacity: 0;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes slide-in-left {
+	0% {
+		transform: translateX(-100%);
+		opacity: 0;
+	}
+	100% {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+@keyframes slide-in-right {
+	0% {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+	100% {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+/* Animation utility classes */
+.u-animate-zoom {
+	animation-name: zoom;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-bounce {
+	animation-name: bounce;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-fade-in {
+	animation-name: fade-in;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-fade-out {
+	animation-name: fade-out;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-slide-in-up {
+	animation-name: slide-in-up;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-slide-in-down {
+	animation-name: slide-in-down;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-slide-in-left {
+	animation-name: slide-in-left;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+.u-animate-slide-in-right {
+	animation-name: slide-in-right;
+	animation-duration: var(--animation-duration-standard);
+	animation-timing-function: var(--animation-easing);
+	animation-delay: 0ms;
+	animation-iteration-count: 1;
+}
+
+/* Transition utilities for standard properties */
+.u-transition-all {
+	transition: all var(--animation-duration-standard) var(--animation-easing);
+}
+
+.u-transition-opacity {
+	transition: opacity var(--animation-duration-standard) var(--animation-easing);
+}
+
+.u-transition-transform {
+	transition: transform var(--animation-duration-standard) var(--animation-easing);
+}
+
+.u-transition-colors {
+	transition: background-color var(--animation-duration-standard) var(--animation-easing), color
+		var(--animation-duration-standard) var(--animation-easing), border-color var(--animation-duration-standard)
+		var(--animation-easing);
+}
+
+.u-transition-fast {
+	transition-duration: var(--animation-duration-fast);
+}
+
+.u-transition-very-fast {
+	transition-duration: var(--animation-duration-very-fast);
+}
+
+.u-transition-slow {
+	transition-duration: var(--animation-duration-slow);
+}
+
+/* Group transition utilities for React Transition Group or similar */
+/* Zoom transition group */
+.u-group-transition-zoom-appear,
+.u-group-transition-zoom-enter {
+	transform: scale(0, 0);
+	opacity: 0;
+}
+
+.u-group-transition-zoom-appear-active,
+.u-group-transition-zoom-enter-active {
+	transition: transform var(--animation-duration-standard) var(--animation-easing), opacity
+		var(--animation-duration-standard) var(--animation-easing);
+	transform: scale(1, 1);
+	opacity: 1;
+}
+
+.u-group-transition-zoom-leave {
+	transform: scale(1, 1);
+	opacity: 1;
+}
+
+.u-group-transition-zoom-leave-active {
+	transition: transform var(--animation-duration-standard) var(--animation-easing), opacity
+		var(--animation-duration-standard) var(--animation-easing);
+	transform: scale(0, 0);
+	opacity: 0;
+}
+
+/* Fade transition group */
+.u-group-transition-fade-appear,
+.u-group-transition-fade-enter {
+	opacity: 0;
+}
+
+.u-group-transition-fade-appear-active,
+.u-group-transition-fade-enter-active {
+	transition: opacity var(--animation-duration-standard) var(--animation-easing);
+	opacity: 1;
+}
+
+.u-group-transition-fade-leave {
+	opacity: 1;
+}
+
+.u-group-transition-fade-leave-active {
+	transition: opacity var(--animation-duration-standard) var(--animation-easing);
+	opacity: 0;
+}
+
+/* Flex transition group */
+.u-group-transition-flex-appear,
+.u-group-transition-flex-enter {
+	flex-grow: 0;
+}
+
+.u-group-transition-flex-appear-active,
+.u-group-transition-flex-enter-active {
+	transition: flex-grow var(--animation-duration-standard) var(--animation-easing);
+	flex-grow: 1;
+}
+
+.u-group-transition-flex-leave {
+	flex-grow: 1;
+}
+
+.u-group-transition-flex-leave-active {
+	transition: flex-grow var(--animation-duration-standard) var(--animation-easing);
+	flex-grow: 0;
+}
+
+/* Transition group with delay variants */
+.u-group-transition-fade-delayed-appear {
+	opacity: 0;
+}
+
+.u-group-transition-fade-delayed-appear-active {
+	transition: opacity var(--animation-duration-standard) var(--animation-easing) 0.1s;
+	opacity: 1;
+}
+
+.u-group-transition-fade-delayed-enter {
+	opacity: 0;
+}
+
+.u-group-transition-fade-delayed-enter-active {
+	transition: opacity var(--animation-duration-standard) var(--animation-easing) 0.1s;
+	opacity: 1;
+}
+
+.u-group-transition-fade-delayed-leave {
+	opacity: 1;
+}
+
+.u-group-transition-fade-delayed-leave-active {
+	transition: opacity var(--animation-duration-standard) var(--animation-easing);
+	opacity: 0;
+}
+
+/* Animation duration utility classes */
+.u-duration-very-fast {
+	animation-duration: var(--animation-duration-very-fast);
+}
+
+.u-duration-fast {
+	animation-duration: var(--animation-duration-fast);
+}
+
+.u-duration-standard {
+	animation-duration: var(--animation-duration-standard);
+}
+
+.u-duration-slow {
+	animation-duration: var(--animation-duration-slow);
+}
+
+/* Animation timing function utility classes */
+.u-easing-ios {
+	animation-timing-function: var(--animation-easing-ios);
+}
+
+.u-easing-android {
+	animation-timing-function: var(--animation-easing-android);
+}
+
+.u-easing-default {
+	animation-timing-function: var(--animation-easing);
+}

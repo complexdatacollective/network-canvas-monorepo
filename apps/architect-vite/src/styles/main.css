@@ -1,8 +1,9 @@
 @import "_tailwind.css";
 
 @import "react-grid-layout/css/styles.css";
-@import "../lib/legacy-ui/styles/all";
-@import "../lib/ProtocolSummary/styles/all";
+@import "../lib/legacy-ui/styles/_all.css";
+/* TODO: Convert ProtocolSummary SCSS to CSS */
+/* @import "../lib/ProtocolSummary/styles/all"; */
 
 /* CSS modules */
 /* TBC */

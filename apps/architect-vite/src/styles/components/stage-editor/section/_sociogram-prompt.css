@@ -1,5 +1,5 @@
 .stage-editor-section-sociogram-prompt {
-	&__preview {
+	.stage-editor-section-sociogram-prompt__preview {
 		display: flex;
 		flex-direction: row;
 		align-items: center;
