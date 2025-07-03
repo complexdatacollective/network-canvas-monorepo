@@ -1,11 +1,7 @@
-
-
-$duration: var(--animation-duration-standard);
-
 .attributes-table-variable {
   min-height: 50px;
   background: transparent;
-  transition: background $duration;
+  transition: background var(--animation-duration-standard);
   padding: 1.2rem 0;
 
   .form-field-container,
@@ -16,31 +12,31 @@ $duration: var(--animation-duration-standard);
   &__preview {
     max-height: 50px;
     overflow: hidden;
-    transition: opacity $duration $duration, max-height $duration $duration;
+    transition: opacity var(--animation-duration-standard) var(--animation-duration-standard), max-height var(--animation-duration-standard) var(--animation-duration-standard);
   }
 
   &__edit {
     opacity: 0;
     max-height: 0;
     overflow: hidden;
-    transition: opacity $duration, max-height $duration;
-    color: var(--foreground-light);
+    transition: opacity var(--animation-duration-standard), max-height var(--animation-duration-standard);
+    color: var(--color-foreground);
     padding: 0 1.2rem;
   }
 
   &--edit {
-    background: var(--color-architect-table-edit-background);
+    background: var(--color-table-edit-background);
 
     .attributes-table-variable__edit {
       max-height: fit-content;
       opacity: 1;
-      transition: opacity $duration $duration, max-height $duration $duration;
+      transition: opacity var(--animation-duration-standard) var(--animation-duration-standard), max-height var(--animation-duration-standard) var(--animation-duration-standard);
     }
 
     .attributes-table-variable__preview {
       max-height: 0;
       opacity: 0;
-      transition: opacity $duration, max-height $duration;
+      transition: opacity var(--animation-duration-standard), max-height var(--animation-duration-standard);
     }
   }
 }

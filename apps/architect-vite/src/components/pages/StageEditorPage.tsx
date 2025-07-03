@@ -1,19 +1,19 @@
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { isDirty, isInvalid, isSubmitting, startSubmit, submit } from "redux-form";
 import { useLocation, useParams } from "wouter";
 import StageEditor from "~/components/StageEditor/StageEditor";
 import { formName } from "~/components/StageEditor/configuration";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import type { RootState } from "~/ducks/store";
+import { useAppDispatch, type RootState } from "~/ducks/store";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
 import { getLocus } from "~/selectors/timeline";
 
 const StageEditorPage = () => {
-	const { protocolId, stageId } = useParams();
+	const { stageId } = useParams();
 	const [, setLocation] = useLocation();
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
@@ -30,15 +30,6 @@ const StageEditorPage = () => {
 	const submitting = useSelector((state: RootState) => isSubmitting(formName)(state));
 	const invalid = useSelector((state: RootState) => isInvalid(formName)(state));
 
-	// Navigation handler
-	const handleGoBack = useCallback(() => {
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}`);
-		} else {
-			setLocation("/");
-		}
-	}, [protocolId, setLocation]);
-
 	// Form submission handler
 	const handleSubmit = useCallback(() => {
 		if (submitting) {
@@ -51,7 +42,7 @@ const StageEditorPage = () => {
 	// Cancel handler with unsaved changes confirmation
 	const handleCancel = useCallback((): boolean => {
 		if (!hasUnsavedChanges) {
-			handleGoBack();
+			setLocation("/protocol");
 			return true;
 		}
 
@@ -63,17 +54,17 @@ const StageEditorPage = () => {
 				message: "You have unsaved changes. Are you sure you want to leave without saving?",
 				confirmLabel: "Leave Without Saving",
 				onConfirm: () => {
-					handleGoBack();
+					setLocation("/protocol");
 				},
-			}) as any,
+			}),
 		);
 		return false;
-	}, [hasUnsavedChanges, handleGoBack, dispatch]);
+	}, [hasUnsavedChanges, setLocation, dispatch]);
 
 	// Stage editor completion handler
 	const handleStageEditorComplete = useCallback(() => {
-		handleGoBack();
-	}, [handleGoBack]);
+		setLocation("/protocol");
+	}, [setLocation]);
 
 	// Memoized action buttons
 	const actionButtons = useMemo(() => {
@@ -120,12 +111,12 @@ const StageEditorPage = () => {
 	);
 
 	return (
-		<div className="scene bg-white">
+		<div className="scene">
 			{/* Stage Editor */}
 			<StageEditor id={stageId} insertAtIndex={insertAtIndex} onComplete={handleStageEditorComplete} />
 
 			{/* Control Bar */}
-			<div className="fixed bottom-0 left-0 right-0 bg-cyber-grape p-4">
+			<div className="fixed bottom-0 left-0 right-0 bg-surface-accent p-4">
 				<div className="flex justify-between items-center max-w-6xl mx-auto">
 					<div className="flex gap-2">{secondaryButtons}</div>
 					<div className="flex gap-2">{actionButtons}</div>

@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-architect-panel-grey);
+  background: var(--color-surface-2);
   color: var(--color-text);
   border-radius: var(--border-radius);
   box-shadow: 0 0 4rem var(--color-modal-window-box-shadow);
@@ -26,13 +26,13 @@
 
       &[name='info'] {
         .cls-3 {
-          fill: hsl(var(--platinum-dark));
+          fill: var(--color-divider);
         }
       }
 
       &[name='warning'] {
         .cls-1 {
-          fill: hsl(var(--platinum-dark));
+          fill: var(--color-divider);
         }
       }
 
@@ -40,7 +40,7 @@
   }
 
   .divider-header {
-    border-top: 2px solid var(--color-architect-panel-grey-dark);
+    border-top: 2px solid var(--color-surface-3);
     width: 100%;
 
     > legend {
@@ -89,7 +89,7 @@
 
   kbd {
     margin-left: 1.2rem;
-    background: hsl(var(--platinum));
+    background: var(--color-surface-1);
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--color-charcoal);
     border-radius: 5px;
@@ -99,7 +99,7 @@
   }
 
   &--selected {
-    --text: var(--color-white);
+    --color-text: var(--color-white);
     --variable-pill-shadow-color: hsl(var(--sea-green-dark));
 
     background: var(--color-primary);
@@ -134,7 +134,7 @@
       &[name='warning'] {
         .cls-1,
         .cls-2 {
-          fill: var(--warning);
+          fill: var(--color-warning);
         }
 
         .cls-3,

@@ -1,4 +1,6 @@
+import tailwindcss from "@tailwindcss/postcss";
 import react from "@vitejs/plugin-react-swc";
+import scss from "postcss-scss";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -14,6 +16,12 @@ export default defineConfig({
 	// 		},
 	// 	},
 	// },
+	css: {
+		postcss: {
+			syntax: scss,
+			plugins: [tailwindcss({})],
+		},
+	},
 	test: {
 		globals: true,
 		environment: "jsdom",

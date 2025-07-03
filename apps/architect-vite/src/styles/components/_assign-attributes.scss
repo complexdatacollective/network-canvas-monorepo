@@ -24,7 +24,7 @@
 
 
   .form-field {
-    background: var(--color-architect-panel-grey);
+    background: var(--color-surface-2);
     margin-bottom: 0;
   }
 
@@ -42,14 +42,14 @@
       margin-bottom: 1.2rem;
 
       fieldset {
-        border-color: var(--color-architect-border);
+        border-color: var(--color-border);
       }
     }
   }
 
   &__value {
     flex: 1 0 auto;
-    border: 2px dashed var(--color-architect-border);
+    border: 2px dashed var(--color-border);
     padding: 1.2rem;
     border-radius: var(--border-radius);
 

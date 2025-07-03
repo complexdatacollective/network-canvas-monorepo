@@ -1,13 +1,19 @@
 
 
 .stage-editor-section {
+  // Surface level system with automatic nesting
+  --current-surface: var(--color-surface-1);
+  --current-surface-foreground: var(--color-surface-1-foreground);
+  --next-surface: var(--color-surface-1);
+  --next-surface-foreground: var(--color-surface-1-foreground);
+
   margin: 2.4rem 4.8rem;
   padding: 1.2rem 2.4rem;
-
-  
+  background-color: var(--current-surface);
+  color: var(--current-surface-foreground);
   border-radius: var(--border-radius);
   position: relative;
-  box-shadow: 0 .2rem .2rem 0 var(--color-architect-panel-shadow);
+  box-shadow: 0 .2rem .2rem 0 var(--color-shadow-panel);
 
   &--toggleable {
     &:not(.stage-editor-section--open) {
@@ -26,6 +32,8 @@
 
     --input-background: transparent;
 
+    background-color: var(--current-surface);
+    color: var(--current-surface-foreground);
     font-family: var(--heading-font-family);
     font-size: 1rem;
     padding: 0.6rem 1.8rem;
@@ -64,10 +72,13 @@
     }
   }
 
+  // Automatic surface level progression for nested sections
   .stage-editor-section {
-    --architect-panel-divider: #bbc4c5; // sass-lint:disable-line no-color-literals
-    --variable-pill-shadow-color: #c7ced0; // sass-lint:disable-line no-color-literals
-    --input-background: hsl(var(--platinum-dark));
+    --current-surface: var(--next-surface);
+    --current-surface-foreground: var(--next-surface-foreground);
+    --next-surface: var(--color-surface-2);
+    --next-surface-foreground: var(--color-surface-2-foreground);
+    --input-background: var(--color-surface-1);
     --slider-color: hsl(var(--charcoal));
 
     margin: 2.4rem 0;

@@ -9,7 +9,7 @@
     border-radius: 0.6rem;
     overflow: hidden;
     border: 2px solid var(--color-input-border);
-    background-color: var(--color-input-background);
+    background-color: var(--color-surface-1);
   }
 
   &__option {
@@ -28,8 +28,8 @@
     cursor: pointer;
 
     &--selected {
-      background-color: var(--color-architect-selected);
-      color: var(--foreground-light);
+      background-color: var(--color-selected);
+      color: var(--color-selected-foreground);
     }
 
     &--disabled {

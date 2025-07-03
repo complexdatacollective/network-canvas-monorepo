@@ -6,8 +6,8 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
   font-size: var(--base-font-size);
 
   &__control {
-    background: var(--color-input-background);
-    color: var(--color-input-text);
+    background: var(--color-surface-1);
+    color: var(--color-text);
     border: 0;
     border-radius: 1rem 1rem 0 0;
     padding: 0 1rem;
@@ -22,7 +22,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
   }
 
   &__placeholder {
-    color: var(--color-input-placeholder);
+    color: var(--color-text-muted);
     font-style: italic;
   }
 
@@ -45,16 +45,16 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
     font-size: var(--base-font-size);
 
     &:active {
-      background-color: hsl(var(--sea-green-dark));
-      color: var(--foreground-light);
+      background-color: hsl(var(--color-primary));
+      color: var(--color-primary-foreground);
     }
 
     &--is-focused {
-      background-color: hsl(var(--platinum));
+      background-color: var(--color-surface-1);
     }
 
     &--is-selected {
-      background-color: var(--color-primary);
+      background-color: var(--color-selected);
     }
   }
 
@@ -92,7 +92,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
         border-radius: 1.2rem;
 
         .cls-1 {
-          fill: var(--foreground-light);
+          fill: var(--color-sea-green-foreground);
         }
       }
     }
@@ -114,7 +114,7 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
 
     &--warning {
       background: var(--color-error);
-      color: var(--color-white);
+      color: var(--color-error-foreground);
     }
   }
 
@@ -146,13 +146,13 @@ img.form-fields-select { // sass-lint:disable-line no-qualifying-elements, force
     }
 
     .form-fields-select__control {
-      border: .1rem solid var(--error);
+      border: .1rem solid var(--color-error);
     }
   }
 
   &--light-background {
     .form-fields-select__control {
-      background-color: var(--color-background);
+      background-color: var(--color-surface-1);
     }
   }
 }

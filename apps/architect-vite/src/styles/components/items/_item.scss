@@ -4,8 +4,8 @@ $component-name: items-item;
 
 .#{$component-name} {
   width: 100%;
-  background-color: var(--color-architect-sortable-background);
-  color: var(--color-architect-sortable-text);
+  background-color: var(--color-sortable-background);
+  color: var(--color-sortable-foreground);
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -18,7 +18,7 @@ $component-name: items-item;
     .icon {
       .cls-1,
       .cls-2 {
-        fill: var(--color-architect-sortable-text);
+        fill: var(--color-sortable-foreground);
       }
     }
   }

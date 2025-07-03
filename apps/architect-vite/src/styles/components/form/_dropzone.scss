@@ -46,7 +46,7 @@
 
   &__link {
     display: inline-block;
-    border-bottom: 2px solid var(--color-notice);
+    border-bottom: 2px solid var(--color-info);
     line-height: 1.2rem;
     cursor: pointer;
   }
@@ -75,7 +75,7 @@
   }
 
   &--hover {
-    border-color: var(--color-notice);
+    border-color: var(--color-info);
     transition-duration: var(--animation-duration-fast);
   }
 

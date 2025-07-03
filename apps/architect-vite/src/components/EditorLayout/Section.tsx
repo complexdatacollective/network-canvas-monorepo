@@ -65,7 +65,7 @@ const Section = ({
 	}, [isOpen, handleToggleChange]);
 
 	const sectionClasses = cx(
-		"stage-editor-section bg-section-background",
+		"stage-editor-section border border-platinum-dark",
 		{ "stage-editor-section--toggleable": toggleable },
 		{ "stage-editor-section--open": isOpen },
 		{ "stage-editor-section--disabled": disabled },
@@ -75,7 +75,7 @@ const Section = ({
 
 	return (
 		<fieldset className={sectionClasses}>
-			<legend className="toggleable bg-section-background">
+			<legend className="toggleable border border-platinum-dark">
 				<span className="flex gap-4">
 					{toggleable && (
 						<Switch title="Turn this feature on or off" checked={isOpen} onCheckedChange={changeToggleState} />

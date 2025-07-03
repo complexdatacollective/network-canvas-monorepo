@@ -57,7 +57,7 @@
 
       .cls-1,
       .cls-2 {
-        fill: var(--color-architect-sortable-text);
+        fill: var(--color-sortable-foreground);
       }
     }
   }
@@ -78,8 +78,8 @@
 }
 
 .stage-editor-section {
-  --variable-pill-background: hsl(var(--platinum));
-  --variable-pill-shadow-color: rgb(212 212 212); // sass-lint:disable-line no-color-literals
+  --variable-pill-background: var(--color-surface-1);
+  --variable-pill-shadow-color: var(--color-variable-pill-shadow);
 
   .preview-edge {
     background: var(--variable-pill-background);
@@ -87,7 +87,7 @@
 
   .stage-editor-section {
     --variable-pill-background: var(--color-white);
-    --variable-pill-shadow-color: hsl(var(--platinum-dark));
+    --variable-pill-shadow-color: var(--color-variable-pill-shadow);
 
     .preview-edge {
       background: var(--variable-pill-background);

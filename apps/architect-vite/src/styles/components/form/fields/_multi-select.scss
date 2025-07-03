@@ -26,7 +26,7 @@ $component-name: 'form-fields-multi-select';
   &__rule {
     display: flex;
     background-color: var(--color-form-control);
-    color: var(--color-architect-sortable-text);
+    color: var(--color-sortable-foreground);
     border-radius: 0.6rem;
     z-index: var(--z-fx);
     transition: background-color var(--animation-easing) var(--animation-duration-standard);
@@ -101,7 +101,7 @@ $component-name: 'form-fields-multi-select';
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-architect-sortable-text);
+    color: var(--color-sortable-foreground);
 
     .icon {
       width: 1.2rem;
@@ -109,7 +109,7 @@ $component-name: 'form-fields-multi-select';
 
       .cls-1,
       .cls-2 {
-        fill: var(--color-architect-sortable-text);
+        fill: var(--color-sortable-foreground);
       }
     }
   }
@@ -142,7 +142,7 @@ $component-name: 'form-fields-multi-select';
       background-color: var(--color-error);
 
       &-option-label {
-        color: var(--foreground-light);
+        color: var(--color-error-foreground);
       }
     }
 

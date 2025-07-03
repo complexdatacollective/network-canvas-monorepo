@@ -7,7 +7,7 @@
     transition: opacity var(--animation-duration-standard) var(--animation-easing),
     transform var(--animation-duration-standard) var(--animation-easing);
     background-color: var(--color-primary);
-    color: var(--foreground-light);
+    color: var(--color-primary-foreground);
     border: 0;
     border-radius: 100%;
     width: 30px;
@@ -37,8 +37,8 @@
     cursor: pointer;
     padding: 0 40px;
     margin-left: 10px;
-    background-color: var(--edge-alt-2);
-    color: var(--foreground-light);
+    background-color: var(--color-surface-1);
+    color: var(--color-sortable-foreground);
     border-radius: 10px;
     height: 30px;
     text-transform: uppercase;
@@ -49,18 +49,6 @@
 
     &:first-child {
       margin-left: 0;
-    }
-
-    &--alter {
-      background-color: var(--color-architect-rule-type--alter);
-    }
-
-    &--ego {
-      background-color: var(--color-architect-rule-attribute--ego);
-    }
-
-    &--edge {
-      background-color: var(--color-architect-rule-type--edge);
     }
   }
 

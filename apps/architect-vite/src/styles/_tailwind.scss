@@ -1,4 +1,9 @@
-@use 'tailwindcss';
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+
 @source not inline('container');
 
 @layer base {
@@ -58,6 +63,7 @@
 		--charcoal-saturation: 4%;
 		--charcoal-lightness: 43%;
 		--charcoal: var(--charcoal-hue) var(--charcoal-saturation) var(--charcoal-lightness);
+		--charcoal-dark: var(--charcoal-hue) var(--charcoal-saturation) calc(var(--charcoal-lightness) - var(--dark-mod));
 
 		--platinum-hue: 210;
 		--platinum-saturation: 43%;
@@ -123,102 +129,7 @@
 
 		--base-font-size: 14px;
 
-		--background: var(--platinum);
-		--foreground: var(--charcoal);
-		--foreground-light: var(--white);
-
-		--primary: var(--sea-green);
-		--primary-foreground: var(--white);
-
-		--secondary: var(--neon-coral);
-		--secondary-foreground: var(--white);
-
-		--muted: var(--platinum);
-		--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
-			calc(var(--cyber-grape-lightness) - 10%);
-
-		--accent: var(--slate-blue);
-		--accent-foreground: var(--white);
-
-		--destructive: var(--tomato);
-		--destructive-foreground: var(--white);
-
-		--warning: var(--neon-carrot);
-		--warning-foreground: var(--white);
-
-		--info: var(--cerulean-blue);
-		--info-foreground: var(--white);
-
-		--success: var(--sea-green);
-		--success-foreground: var(--white);
-
-		--border: var(--platinum-dark);
-		--border-radius: var(--radius-lg);
-
-		--link: var(--neon-coral);
-
-		--card: var(--white);
-
-		--panel: var(--platinum);
-
-		--popover: var(--white);
-		--popover-foreground: var(--foreground);
-
-		--node-color-seq-1: var(--neon-coral);
-		--node-color-seq-1-dark: var(--neon-coral-dark);
-
-		--node-color-seq-2: var(--sea-serpent);
-		--node-color-seq-2-dark: var(--sea-serpent-dark);
-
-		--node-color-seq-3: var(--purple-pizazz);
-		--node-color-seq-3-dark: var(--purple-pizazz-dark);
-
-		--node-color-seq-4: var(--neon-carrot);
-		--node-color-seq-4-dark: var(--neon-carrot-dark);
-
-		--node-color-seq-5: var(--kiwi);
-		--node-color-seq-5-dark: var(--kiwi-dark);
-
-		--node-color-seq-6: var(--cerulean-blue);
-		--node-color-seq-6-dark: var(--cerulean-blue-dark);
-
-		--node-color-seq-7: var(--paradise-pink);
-		--node-color-seq-7-dark: var(--paradise-pink-dark);
-
-		--node-color-seq-8: var(--mustard);
-		--node-color-seq-8-dark: var(--mustard-dark);
-
-		--edge-color-seq-1: var(--mustard);
-		--edge-color-seq-1-dark: var(--mustard-dark);
-
-		--edge-color-seq-2: var(--neon-coral);
-		--edge-color-seq-2-dark: var(--neon-coral-dark);
-
-		--edge-color-seq-3: var(--kiwi);
-		--edge-color-seq-3-dark: var(--kiwi-dark);
-
-		--edge-color-seq-4: var(--paradise-pink);
-		--edge-color-seq-4-dark: var(--paradise-pink-dark);
-
-		--edge-color-seq-5: var(--tomato);
-		--edge-color-seq-5-dark: var(--tomato-dark);
-
-		--edge-color-seq-6: var(--sea-serpent);
-		--edge-color-seq-6-dark: var(--sea-serpent-dark);
-
-		--edge-color-seq-7: var(--slate-blue);
-		--edge-color-seq-7-dark: var(--slate-blue-dark);
-
-		--edge-color-seq-8: var(--sea-green);
-		--edge-color-seq-8-dark: var(--sea-green-dark);
-
-		--edge-color-seq-9: var(--cerulean-blue);
-		--edge-color-seq-9-dark: var(--cerulean-blue-dark);
-
-		/* Missing variables */
-		--notice: var(--info);
-		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-		--architect-timeline-line: var(--neon-coral);
+		
 	}
 }
 
@@ -236,9 +147,23 @@
 	em {
 		@apply italic;
 	}
+
+	p {
+		@apply my-[1em];
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-weight: 600;
+	}
 }
 
 @theme {
+	// 1. FOUNDATION COLORS (Named colors for rare direct use cases)
 	--color-neon-coral: hsl(var(--neon-coral));
 	--color-neon-coral-dark: hsl(var(--neon-coral-dark));
 
@@ -292,63 +217,195 @@
 
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
-	--color-background: hsl(var(--background));
-	--color-foreground: hsl(var(--foreground));
+	
+	// 1.1 Core Foundation Colors
+	--color-background: hsl(var(--platinum));
+	--color-foreground: hsl(var(--cyber-grape));
 
-	--color-primary: hsl(var(--primary));
-	--color-primary-foreground: hsl(var(--primary-foreground));
+	// 1.2 Brand Colors
+	--color-primary: hsl(var(--sea-green));
+	--color-primary-foreground: hsl(var(--white));
+	--color-secondary: hsl(var(--neon-coral));
+	--color-secondary-foreground: hsl(var(--white));
+	--color-accent: hsl(var(--slate-blue));
+	--color-accent-foreground: hsl(var(--white));
 
-	--color-secondary: hsl(var(--secondary));
-	--color-secondary-foreground: hsl(var(--secondary-foreground));
+	// 1.3 Status Colors
+	--color-success: hsl(var(--sea-green));
+	--color-success-foreground: hsl(var(--white));
+	--color-warning: hsl(var(--neon-carrot));
+	--color-warning-foreground: hsl(var(--white));
+	--color-error: hsl(var(--tomato));
+	--color-error-foreground: hsl(var(--white));
+	--color-info: hsl(var(--cerulean-blue));
+	--color-info-foreground: hsl(var(--white));
 
-	--color-destructive: hsl(var(--destructive));
-	--color-destructive-foreground: hsl(var(--destructive-foreground));
+	// 1.4 Surface System (3 levels for nesting)
+	--color-surface-1: hsl(var(--white));
+	--color-surface-1-foreground: hsl(var(--charcoal));
+	--color-surface-2: hsl(var(--platinum));
+	--color-surface-2-foreground: hsl(var(--charcoal));
+	--color-surface-3: hsl(var(--platinum-dark));
+	--color-surface-3-foreground: hsl(var(--charcoal));
 
-	--color-success: hsl(var(--success));
-	--color-success-foreground: hsl(var(--success-foreground));
+	// 1.5 Text System
+	--color-text: hsl(var(--charcoal));
+	--color-text-muted: hsl(var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%) calc(var(--cyber-grape-lightness) - 10%));
+	--color-text-inverse: hsl(var(--white));
 
-	--color-info: hsl(var(--info));
-	--color-info-foreground: hsl(var(--info-foreground));
+	// 1.6 Interactive States
+	--color-hover: hsl(var(--sea-green-dark));
+	--color-focus: hsl(var(--sea-green));
+	--color-active: hsl(var(--sea-green));
+	--color-selected: var(--color-mustard);
 
-	--color-warning: hsl(var(--warning));
-	--color-warning-foreground: hsl(var(--warning-foreground));
+	// 1.7 Borders & Utilities
+	--color-border: hsl(var(--platinum-dark));
+	--color-divider: hsl(var(--platinum-dark));
+	--color-link: hsl(var(--neon-coral));
 
-	--color-muted: hsl(var(--muted));
-	--color-muted-foreground: hsl(var(--muted-foreground));
+	// 3. Utilities
+	--color-shadow: rgb(0 0 0 / 15%);
+	--color-shadow-elevated: rgb(0 0 0 / 25%);
 
-	--color-accent: hsl(var(--accent));
-	--color-accent-foreground: hsl(var(--accent-foreground));
+	// 4. Specialized Component Colors (keep minimal)
+	
+	// 4.1 Form Controls
+	--color-input-placeholder: hsl(var(--platinum));
+	--color-sortable-background: hsl(var(--slate-blue));
+	--color-sortable-foreground: hsl(var(--white));
 
-	--color-popover: hsl(var(--popover));
-	--color-popover-foreground: hsl(var(--popover-foreground));
+	// 4.2 Rules System (minimal essential colors)
+	--color-rules-type: hsl(var(--neon-coral));
+	--color-rules-assert: hsl(var(--sea-green));
+	--color-rules-control: hsl(var(--slate-blue));
+	--color-rules-delete: hsl(var(--tomato));
+	--color-rules-attribute: hsl(var(--mustard));
+	--color-rules-operator: hsl(var(--cyber-grape));
+	--color-rules-value: hsl(var(--sea-serpent));
 
-	--color-card: hsl(var(--card));
-	--color-card-foreground: hsl(var(--card-foreground));
+	// Aliases for existing references
+	--color-rule-type: var(--color-rules-type);
+	--color-rule-control: var(--color-rules-control);
+	--color-rule-delete: var(--color-rules-delete);
+	--color-rule-attribute: var(--color-rules-attribute);
+	--color-rule-operator: var(--color-rules-operator);
+	--color-rule-value: var(--color-rules-value);
 
-	--color-panel: hsl(var(--panel));
-	--color-panel-foreground: hsl(var(--foreground));
+	// 4.3 Content Type Variants
+	--color-variant-1: hsl(var(--slate-blue-dark));
+	--color-variant-2: hsl(var(--mustard-dark));
+	--color-variant-3: hsl(var(--sea-green));
+	--color-variant-4: hsl(var(--sea-green-dark));
 
-	--color-input: hsl(var(--input));
-	--color-input-foreground: hsl(var(--input-foreground));
-	--color-input-background: hsl(var(--input-background));
+	// 4. SPECIALIZED COLORS (Network visualization)
+	--node-color-seq-1: var(--neon-coral);
+		--node-color-seq-1-dark: var(--neon-coral-dark);
 
-	--color-border: hsl(var(--border));
-	--color-link: hsl(var(--link));
+		--node-color-seq-2: var(--sea-serpent);
+		--node-color-seq-2-dark: var(--sea-serpent-dark);
 
-	--color-architect-timeline-line: hsl(var(--architect-timeline-line));
+		--node-color-seq-3: var(--purple-pizazz);
+		--node-color-seq-3-dark: var(--purple-pizazz-dark);
 
-	--color-notice: hsl(var(--notice));
-	--color-modal-window-box-shadow: var(--modal-window-box-shadow);
+		--node-color-seq-4: var(--neon-carrot);
+		--node-color-seq-4-dark: var(--neon-carrot-dark);
 
-	--color-error: hsl(var(--error));
-	--color-selected: hsl(var(--selected));
-	--color-light-background: hsl(var(--background-light));
+		--node-color-seq-5: var(--kiwi);
+		--node-color-seq-5-dark: var(--kiwi-dark);
 
-	--color-selected-dark: hsl(var(--mustard-dark));
+		--node-color-seq-6: var(--cerulean-blue);
+		--node-color-seq-6-dark: var(--cerulean-blue-dark);
 
-	--color-section-background: hsl(var(--platinum));
-	--color-section-background-dark: #e9eeef;
+		--node-color-seq-7: var(--paradise-pink);
+		--node-color-seq-7-dark: var(--paradise-pink-dark);
 
+		--node-color-seq-8: var(--mustard);
+		--node-color-seq-8-dark: var(--mustard-dark);
+
+		--edge-color-seq-1: var(--mustard);
+		--edge-color-seq-1-dark: var(--mustard-dark);
+
+		--edge-color-seq-2: var(--neon-coral);
+		--edge-color-seq-2-dark: var(--neon-coral-dark);
+
+		--edge-color-seq-3: var(--kiwi);
+		--edge-color-seq-3-dark: var(--kiwi-dark);
+
+		--edge-color-seq-4: var(--paradise-pink);
+		--edge-color-seq-4-dark: var(--paradise-pink-dark);
+
+		--edge-color-seq-5: var(--tomato);
+		--edge-color-seq-5-dark: var(--tomato-dark);
+
+		--edge-color-seq-6: var(--sea-serpent);
+		--edge-color-seq-6-dark: var(--sea-serpent-dark);
+
+		--edge-color-seq-7: var(--slate-blue);
+		--edge-color-seq-7-dark: var(--slate-blue-dark);
+
+		--edge-color-seq-8: var(--sea-green);
+		--edge-color-seq-8-dark: var(--sea-green-dark);
+
+		--edge-color-seq-9: var(--cerulean-blue);
+		--edge-color-seq-9-dark: var(--cerulean-blue-dark);
+
+		/* Missing base variables */
+		--notice: var(--cerulean-blue);
+		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+		--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+		--modal-overlay: rgb(0 0 0 / 0.5);
+		--error: var(--tomato);
+		--selected: var(--sea-green);
+		--background-light: var(--white);
+		--input: var(--white);
+		--input-foreground: var(--charcoal);
+		--input-background: var(--white);
+		--card-foreground: var(--charcoal);
+
+		/* Additional missing variables */
+		--mid-grey: rgb(128 128 128);
+		--text-light-muted: var(--white);
+		--text-dark: var(--charcoal);
+		--transparent-dark: transparent;
+		--transparent--md: transparent;
+		--settings: var(--cyber-grape);
+		--edge-color: var(--slate-blue);
+		--table-color: hsl(var(--sea-green));
+
+		/* Animation variables */
+		--animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+		--animation-duration-standard: 300ms;
+		--animation-duration-slow: 500ms;
+		--animation-duration-fast: 150ms;
+
+		/* Typography variables */
+		--heading-font-family: "Open Sans", sans-serif;
+
+		/* Z-index variables */
+		--z-fx: 1;
+		--z-panel: 10;
+		--z-default: 100;
+		--z-dialog: 1000;
+		--z-modal: 2000;
+		--z-tooltip: 3000;
+
+		/* Picker variables */
+		--picker-size: 40px;
+		--picker-border-size: 2px;
+
+		/* Additional missing core variables */
+		--color-text: hsl(var(--charcoal));
+		--border-radius: var(--radius-lg);
+		--edge-alt-2: var(--slate-blue-dark);
+		--color-shadow: var(--shadow);
+		--node-outer-trim-stroke: var(--mustard);
+		
+		/* Surface-related base variables */
+		--section-background-color: hsl(var(--platinum));
+		--variable-pill-shadow-color: hsl(var(--platinum-dark));
+
+	// Border
 	--radius-none: 0px;
 	--radius-sm: 0.125rem;
 	--radius: 0.25rem;
@@ -360,6 +417,7 @@
 	--radius-full: 9999px;
 	--radius-input: 0.75rem;
 
+	// Animation
 	--animate-wiggle: wiggle 1s ease-in-out infinite;
 	--animate-shake: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 	--animate-accordion-down: accordion-down 0.2s ease-out;
@@ -368,90 +426,6 @@
 	--animate-background-gradient: background-gradient 5s infinite ease-in-out;
 
 	--transform-origin-left-right: 0% 50%;
-
-	--color-shadow: rgb(0 0 0 / 15%);
-	--color-mid-grey: rgb(128 128 128);
-
-	--color-text: hsl(var(--charcoal));
-	--color-input-background: hsl(var(--white));
-	--color-input-label: hsl(var(--charcoal));
-	--color-text-light: hsl(var(--white));
-	--color-text-dark: hsl(var(--charcoal));
-	--color-ring--background: hsl(var(--navy-taupe));
-	--color-node-outer-trim-stroke: hsl(var(--mustard));
-	--color-input-panel-bg: hsl(var(--white));
-
-	--color-background-dark: hsl(var(--navy-taupe));
-	--color-background-light: hsl(var(--white));
-	--color-background-alt: hsl(var(--platinum));
-	--color-architect-wave: hsl(var(--sea-green));
-	--color-architect-control-bar-shadow: rgb(20 0 0 / 30%);
-	--color-architect-titlebar: hsl(var(--sea-green-dark));
-
-	--color-architect-error-background: hsl(var(--cyber-grape));
-	--color-architect-error-code-background: hsl(var(--navy-taupe));
-	--color-architect-warning: hsl(var(--tomato));
-	--color-architect-media-background: hsl(var(--rich-black));
-
-	--color-architect-row-background: rgb(242 246 247 / 50%);
-	--color-architect-background: hsl(var(--white));
-	--color-architect-text: hsl(var(--charcoal));
-	--color-architect-shadow: var(--shadow);
-	--color-architect-divider: hsl(var(--platinum));
-	--color-architect-selected: hsl(var(--sea-green));
-	--color-architect-active: hsl(var(--sea-green));
-	--color-architect-panel-grey: hsl(var(--platinum));
-	--color-architect-panel-grey-dark: #e9eeef;
-
-	--color-architect-control-bar-background: hsl(var(--cyber-grape));
-	--color-architect-control-bar-text: hsl(var(--white));
-
-	--color-form-control: hsl(var(--sea-serpent));
-
-	--color-architect-dialog-background: hsl(var(--platinum));
-	--color-architect-dialog-background-dark: hsl(var(--platinum-dark));
-
-	--color-architect-sortable-text: hsl(var(--white));
-	--color-architect-sortable-background: hsl(var(--slate-blue));
-	--color-architect-sortable-preview-background: hsl(var(--slate-blue));
-	--color-architect-sortable-preview-background--alt: hsl(var(--slate-blue-dark));
-
-	--color-architect-modal-shadow: var(--modal-overlay);
-
-	--color-architect-logic-background: hsl(var(--mustard));
-	--color-architect-logic-text: hsl(var(--white));
-
-	--color-architect-edit-button-background: hsl(var(--primary));
-	--color-architect-edit-button-fill: hsl(var(--white));
-	--color-architect-ui-button: hsl(var(--sea-green));
-	--color-architect-ui-button-text: hsl(var(--white));
-	--color-architect-ui-radio-border: hsl(var(--cyber-grape));
-	--color-architect-ui-radio-dot: hsl(var(--sea-green));
-	--color-architect-button-background-dark: hsl(var(--navy-taupe));
-	--color-architect-button-background-dark--hover: hsl(var(--cyber-grape));
-	--color-architect-drawer-background: hsl(var(--platinum));
-	--color-architect-panel-background: hsl(var(--platinum));
-	--color-architect-panel-shadow: var(--shadow);
-	--color-architect-panel-text: hsl(var(--charcoal));
-	--color-architect-panel-divider: hsl(var(--platinum-dark));
-	--color-architect-border: hsl(var(--platinum-dark));
-	--color-architect-input-placeholder: hsl(var(--platinum));
-	--color-architect-input-focus: hsl(var(--sea-green));
-	--color-architect-intent--inactive: hsl(var(--charcoal));
-	--color-architect-intent: hsl(var(--mustard));
-	--color-architect-intent-border: hsl(var(--mustard-dark));
-	--color-architect-timeline-highlight: rgb(216 216 216 / 20%);
-	--color-architect-timeline-line: hsl(var(--neon-coral));
-	--color-architect-timeline-screen: hsl(var(--navy-taupe));
-
-	--color-architect-rules-type: hsl(var(--neon-coral));
-	--color-architect-rules-assert: hsl(var(--sea-green));
-
-	--color-architect-variant--1: hsl(var(--slate-blue-dark));
-	--color-architect-variant--2: hsl(var(--mustard-dark));
-	--color-architect-variant--3: hsl(var(--sea-green));
-	--color-architect-variant--4: hsl(var(--sea-green-dark));
-	--color-architect-asset-background: hsl(var(--charcoal));
 
 	@keyframes wiggle {
 		0%,

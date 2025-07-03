@@ -6,7 +6,7 @@
   &__variables {
     display: flex;
     width: 100%;
-    background: var(--color-architect-table-background);
+    background: var(--color-table-background);
     border-radius: 10px;
     overflow: hidden;
     flex-direction: column;
@@ -15,14 +15,14 @@
 
   &__variable {
     &:nth-child(even) {
-      background: var(--color-architect-table-background--alt);
+      background: var(--color-table-background--alt);
     }
   }
 
   &__add {
     &::before {
       content: '+';
-      color: var(--foreground-light);
+      color: var(--color-foreground);
       display: block;
       position: relative;
       top: 0.12rem;

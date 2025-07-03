@@ -12,7 +12,7 @@ $component-name: 'options';
   &__option {
     display: flex;
     background-color: var(--color-form-control);
-    color: var(--color-architect-sortable-text);
+    color: var(--color-sortable-foreground);
     z-index: var(--z-fx);
     transition: background-color var(--animation-easing) var(--animation-duration-standard);
     border-radius: 1rem;
@@ -58,7 +58,7 @@ $component-name: 'options';
       display: flex;
       justify-content: center;
       align-items: center;
-      color: var(--color-architect-sortable-text);
+      color: var(--color-sortable-foreground);
 
       .icon {
         width: 1.2rem;
@@ -66,7 +66,7 @@ $component-name: 'options';
 
         .cls-1,
         .cls-2 {
-          fill: var(--color-architect-sortable-text);
+          fill: var(--color-sortable-foreground);
         }
       }
     }

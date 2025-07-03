@@ -1,7 +1,7 @@
 
 
 .stage-heading {
-  --text: var(--color-white);
+  --color-text: var(--color-white);
 
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   a {
     color: var(--color-text);
     font-weight: 700;
-    border-bottom: 2px solid var(--primary);
+    border-bottom: 2px solid var(--color-primary);
   }
 
   .stage-meta {
@@ -40,7 +40,7 @@
       &::before {
         mask-image: linear-gradient(180deg, transparent,  rgb(0 0 0 / 100%) 40%,  rgb(0 0 0 / 100%) 40%, transparent 100%);
         content: '';
-        border-left: .5rem solid var(--color-architect-timeline-line);
+        border-left: .5rem solid var(--color-timeline-line);
         position: absolute;
         left: 15.8rem;
         height: 11rem;
@@ -64,7 +64,7 @@
   }
 
   &--shadow {
-    box-shadow: 0 0.6rem .2rem 0 var(--color-architect-panel-shadow);
+    box-shadow: 0 0.6rem .2rem 0 var(--color-border);
   }
 
   &.stage-heading--collapsed {

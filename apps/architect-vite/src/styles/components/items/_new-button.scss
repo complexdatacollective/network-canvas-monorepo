@@ -8,7 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: var(--color-architect-edit-button-background);
+  background-color: var(--color-edit-button-background);
   border-radius: 50%;
 
   .icon {
@@ -16,7 +16,7 @@
     height: 1.2rem;
 
     .cls-1 {
-      fill: var(--color-architect-edit-button-fill);
+      fill: var(--color-edit-button-fill);
     }
   }
 }

@@ -39,7 +39,7 @@ $bottom-spacing: 7.2rem;
       width: 3.2rem;
       height: 3.2rem;
       border-radius: 3.2rem;
-      background-color: var(--color-architect-timeline-line);
+      background-color: var(--color-timeline-line);
       display: inline-flex;
       justify-content: center;
       align-items: center;
@@ -71,7 +71,7 @@ $bottom-spacing: 7.2rem;
 
     &--new,
     &:hover {
-      color: var(--color-architect-text);
+      color: var(--color-text);
 
       &::before {
         transform: translateX(-50%);
@@ -101,7 +101,7 @@ $bottom-spacing: 7.2rem;
     left: 50%;
     width: 0;
     height: calc(100% - #{3.2rem});
-    border-left: 0.36rem solid var(--color-architect-timeline-line);
+    border-left: 0.36rem solid var(--color-timeline-line);
   }
 
   &__stages {

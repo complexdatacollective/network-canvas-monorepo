@@ -4,10 +4,4 @@
 @import './attributes-table/preview';
 @import './attributes-table/variable';
 
-// Tables
-:root {
-  --architect-table-background: var(--color-white);
-  --architect-table-background--alt: hsl(var(--mustard));
-  --architect-table-edit-background: hsl(var(--cyber-grape));
-  --architect-table-chooser: hsl(var(--sea-green));
-}
+// Tables - variables are now defined in main _tailwind.scss

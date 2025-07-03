@@ -49,7 +49,7 @@ $component-name: 'form-fields-entity-select';
 }
 
 .preview-edge {
-  background: hsl(var(--platinum));
+  background: var(--color-surface-1);
   margin: 0.6rem;
   display: flex;
   flex-direction: row;

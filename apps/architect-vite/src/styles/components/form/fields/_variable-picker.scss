@@ -8,10 +8,10 @@ $component-name: form-fields-variable-picker;
 
   fieldset {
     --variable-pill-background: var(--color-white);
-    --variable-pill-shadow-color: hsl(var(--platinum-dark));
+    --variable-pill-shadow-color: var(--color-variable-pill-shadow);
 
     flex: 1;
-    border: 2px dashed var(--color-architect-panel-divider);
+    border: 2px dashed var(--color-divider);
     padding: 1.2rem;
     border-radius: var(--border-radius);
 

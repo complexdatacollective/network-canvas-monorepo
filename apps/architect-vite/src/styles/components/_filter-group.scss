@@ -6,7 +6,7 @@ $background-gradient: linear-gradient($background-gradient-start, $background-gr
   display: inline-flex;
   align-items: center; justify-content: center;
 
-  background-color: var(--color-architect-rules);
+  background-color: var(--color-rules);
   color: var(--foreground-light);
   transition: background-color var(--animation-easing) var(--animation-duration-standard);
   border-radius: 10px;
@@ -29,10 +29,10 @@ $background-gradient: linear-gradient($background-gradient-start, $background-gr
   }
 
   &--and {
-    background-color: var(--color-architect-rules--and);
+    background-color: var(--color-rules--and);
   }
 
   &--or {
-    background-color: var(--color-architect-rules--or);
+    background-color: var(--color-rules--or);
   }
 }
