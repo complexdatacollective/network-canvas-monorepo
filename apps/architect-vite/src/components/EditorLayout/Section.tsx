@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import IssueAnchor from "../IssueAnchor";
@@ -76,35 +76,33 @@ const Section = ({
 	return (
 		<div className="w-full grid gap-4 grid-cols-[25%_auto] max-w-6xl">
 			<div>
-				<legend className="flex px-8 py-2 rounded items-center bg-border sticky top-0">
+				<legend className="flex px-6 py-2 rounded items-center justify-between flex-row-reverse bg-border sticky top-2 gap-4 [--color-input:var(--color-navy-taupe)] [--color-input-foreground:white]">
+					<span className="small-heading">
+						{title}
+						{!toggleable && <span className="text-error">*</span>}
+					</span>
 					{toggleable && (
 						<Switch
 							title="Turn this feature on or off"
 							checked={isOpen}
 							onCheckedChange={changeToggleState}
-							className="mr-4 shrink-0 grow-0"
+							className="shrink-0 grow-0"
 						/>
 					)}
-					<span className="small-heading">{title}</span>
-					{!toggleable && <span className="text-error">*</span>}
 				</legend>
 				<div className="summary">{summary}</div>
 			</div>
 			<fieldset className={sectionClasses}>
 				{id && <IssueAnchor fieldName={id} description={title} />}
-				<AnimatePresence initial={false}>
-					{(isOpen || !toggleable) && (
-						<motion.div
-							variants={animations}
-							initial="collapsed"
-							animate="open"
-							exit="collapsed"
-							transition={{ duration: 0.2, ease: "easeInOut" }}
-						>
-							{children}
-						</motion.div>
-					)}
-				</AnimatePresence>
+				<motion.div
+					variants={animations}
+					initial="collapsed"
+					animate="open"
+					exit="collapsed"
+					transition={{ duration: 0.2, ease: "easeInOut" }}
+				>
+					{children}
+				</motion.div>
 			</fieldset>
 		</div>
 	);

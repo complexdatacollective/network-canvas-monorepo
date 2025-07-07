@@ -29,27 +29,29 @@ const QuickAdd = ({
 	quickAdd = null,
 }: QuickAddProps) =>
 	type && (
-		<Section disabled={disabled} group title="Quick Add Variable" id="issue-form">
-			<p>Choose which variable to use to store the value of the quick add form.</p>
+		<Section
+			disabled={disabled}
+			group
+			title="Quick Add Variable"
+			id="issue-form"
+			summary={<p>Choose which variable to use to store the value of the quick add form.</p>}
+		>
 			<Tip type="info">
 				<p>
 					Use a variable called &quot;name&quot; here, unless you have a good reason not to. Interviewer will then
 					automatically use this variable as the label for the node in the interview.
 				</p>
 			</Tip>
-			<div className="stage-editor-section-form">
-				<ValidatedField
-					name="quickAdd"
-					component={VariablePicker}
-					options={options}
-					onCreateOption={(value) => handleCreateVariable(value, "text", "quickAdd")}
-					validation={{ required: true }}
-					type={type}
-					entity={entity}
-					label="Quick Add Variable"
-					variable={quickAdd}
-				/>
-			</div>
+			<ValidatedField
+				name="quickAdd"
+				component={VariablePicker}
+				options={options}
+				onCreateOption={(value) => handleCreateVariable(value, "text", "quickAdd")}
+				validation={{ required: true }}
+				type={type}
+				entity={entity}
+				variable={quickAdd}
+			/>
 		</Section>
 	);
 

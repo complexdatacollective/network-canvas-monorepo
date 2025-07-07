@@ -39,24 +39,6 @@
 	}
 }
 
-.form-field {
-	background: var(--color-input-background);
-	color: var(--color-input-text);
-	border-radius: 1rem 1rem 0 0;
-	margin-bottom: 2rem;
-	padding: 1rem var(--size-2);
-	width: 100%;
-	min-height: 4rem;
-
-	.form-field__label {
-		font-size: var(--type-scale-copy-standard);
-		font-weight: 200;
-		display: block;
-		margin: 0;
-		color: var(--color-input-label);
-	}
-}
-
 /* Import field-specific styles */
 @import "./fields/boolean.css";
 @import "./fields/radio.css";

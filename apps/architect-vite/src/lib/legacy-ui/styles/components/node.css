@@ -36,14 +36,6 @@
 	overflow: visible;
 }
 
-.node__node-base {
-	fill: hsl(var(--node-color-seq-1));
-}
-
-.node__node-flash {
-	fill: hsl(var(--node-color-seq-1-dark));
-}
-
 .node__node-trim {
 	fill: transparent;
 	stroke: transparent;
@@ -95,11 +87,11 @@
 }
 
 .node--selected .node__node-trim {
-	stroke: hsl(var(--selected));
+	stroke: var(--color-selected);
 }
 
 .node--selected .node__node-outer-trim {
-	fill: var(--node-outer-trim-stroke);
+	@apply fill-selected/55;
 	transform-origin: 250px 250px;
 	animation: bounce var(--animation-duration-standard) ease-in-out;
 }

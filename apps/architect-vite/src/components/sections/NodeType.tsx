@@ -1,13 +1,13 @@
+import { difference, get, keys } from "lodash";
 import { useCallback } from "react";
-import { difference, keys, get } from "lodash";
-import { change, getFormValues } from "redux-form";
 import { useDispatch, useSelector } from "react-redux";
-import Section from "../EditorLayout/Section";
+import { change, getFormValues } from "redux-form";
 import Row from "../EditorLayout/Row";
-import Filter from "./Filter";
-import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
+import Section from "../EditorLayout/Section";
 import ValidatedField from "../Form/ValidatedField";
 import IssueAnchor from "../IssueAnchor";
+import Filter from "./Filter";
+import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 // Screen message listeners removed as part of screen system refactor
 
 // List of fields that are independent of the stage subject, and so do not need to be
@@ -37,7 +37,7 @@ const NodeType = (props: NodeTypeProps) => {
 	// are properly integrated with form state management
 
 	return (
-		<Section title="Node Type">
+		<Section title="Node Type" summary={<p>Select the type of node that this stage will create.</p>}>
 			<Row>
 				<IssueAnchor fieldName="subject" description="Node Type" />
 				<ValidatedField

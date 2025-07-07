@@ -30,12 +30,6 @@ type EntitySelectFieldProps = {
 	promptBeforeChange?: string | null;
 };
 
-// Helper function to get protocol ID from URL
-const getProtocolId = () => {
-	const urlPath = window.location.pathname;
-	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-};
-
 const EntitySelectField = ({
 	entityType,
 	label = null,
@@ -107,39 +101,29 @@ const EntitySelectField = ({
 		[options, value, handleClickItem, PreviewComponent],
 	);
 
-	const classes = cx(
-		"form-fields-entity-select",
-		{
-			"form-fields-entity-select--has-error": hasError,
-		},
-		{
-			"form-fields-entity-select--nodes": entityType === "node",
-		},
-		{
-			"form-fields-entity-select--edges": entityType === "edge",
-		},
-	);
+	const classes = cx("form-fields-entity-select", {
+		"form-fields-entity-select--has-error": hasError,
+	});
 
 	return (
 		<div className={classes}>
 			{label && <h4 className="form-field-label">{label}</h4>}
-			<div className="form-field flex-wrap flex">
-				{renderOptions()}
-				{options.length === 0 && (
-					<p className="form-fields-entity-select__empty">
-						No {entityType} types currently defined. Use the button below to create one.
-					</p>
-				)}
-			</div>
+
+			<div className="flex-wrap flex [--base-node-size:7rem] mb-[var(--space-md)]">{renderOptions()}</div>
+			{options.length === 0 && (
+				<p className="form-fields-entity-select__empty">
+					No {entityType} types currently defined. Use the button below to create one.
+				</p>
+			)}
+			<Button icon="add" onClick={handleOpenCreateNewType}>
+				Create new {entityType} type
+			</Button>
 			{invalid && touched && (
 				<div className="form-fields-entity-select__error">
 					<Icon name="warning" />
 					{error}
 				</div>
 			)}
-			<Button color="sea-green" icon="add" onClick={handleOpenCreateNewType}>
-				Create new {entityType} type
-			</Button>
 			<NewTypeDialog
 				show={showNewTypeDialog}
 				entityType={entityType}

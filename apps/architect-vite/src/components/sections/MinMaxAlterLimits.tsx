@@ -3,8 +3,8 @@ import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Number } from "~/components/Form/Fields";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 import Tip from "../Tip";
@@ -69,7 +69,7 @@ const MinMaxAlterLimits = () => {
 
 	return (
 		<Section
-			title="Set minimum or maximum alter numbers"
+			title="Min/max alters"
 			summary=<p>
 				This feature allows you to specify a minimum or maximum number of alters that can be named on this stage. Please
 				note that these limits apply to the <strong>stage as a whole</strong>, regardless of the number of prompts you

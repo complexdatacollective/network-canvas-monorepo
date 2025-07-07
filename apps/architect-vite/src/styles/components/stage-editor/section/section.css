@@ -12,15 +12,20 @@
 	position: relative;
 	box-shadow: 0 var(--space-px) var(--space-px) 0 var(--color-shadow-panel);
 
-	& legend {
-		--color-input: var(--color-navy-taupe);
-		--color-input-foreground: white;
-	}
-
 	&.stage-editor-section--toggleable {
+		overflow: hidden;
 		&:not(.stage-editor-section--open) {
-			.summary {
-				margin-top: calc(-1 * var(--space-5));
+			@apply bg-border;
+
+			& ::after {
+				@apply backdrop-blur-[1px];
+
+				content: "";
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
 			}
 		}
 	}

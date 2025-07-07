@@ -1,5 +1,3 @@
-@reference '../../../tailwind.css';
-
 .form-fields-entity-select {
 	.form-fields-entity-select__field {
 		flex-flow: row wrap;

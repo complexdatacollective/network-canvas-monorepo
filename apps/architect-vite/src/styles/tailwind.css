@@ -509,12 +509,10 @@
 
 /* Form field utility - replaces form-field mixin */
 @utility form-field {
-	@apply w-full rounded-lg border bg-white text-sm transition-colors duration-150;
+	@apply w-full rounded-lg border bg-white text-sm transition-colors duration-150 text-input-foreground mb-4;
 	border-color: var(--color-border);
 	background-color: var(--color-surface-1);
-	color: var(--color-text);
 	padding: var(--space-sm) var(--space-md);
-	font-size: var(--text-sm);
 	line-height: var(--leading-normal);
 
 	:focus {
@@ -525,6 +523,14 @@
 
 	::placeholder {
 		color: var(--color-input-placeholder);
+	}
+
+	& .form-field__label {
+		font-size: var(--type-scale-copy-standard);
+		font-weight: 200;
+		display: block;
+		margin: 0;
+		color: var(--color-input-label);
 	}
 }
 

@@ -76,21 +76,20 @@ const VariablePicker = ({
 
 	return (
 		<>
-			<div className="form-fields-variable-picker">
-				<fieldset className="bg-section-background">
-					{label && <legend>{label}</legend>}
-					{value && (
+			<div className="">
+				{value && (
+					<div className="mb-[var(--space-md)]">
 						<AnimatePresence exitBeforeEnter initial={false}>
 							<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={value}>
 								{variablePillComponent()}
 							</motion.div>
 						</AnimatePresence>
-					)}
-					<Button icon="add" onClick={() => setShowPicker(true)}>
-						{value ? "Change Variable" : "Select Variable"}
-					</Button>
-					{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
-				</fieldset>
+					</div>
+				)}
+				<Button icon="add" onClick={() => setShowPicker(true)}>
+					{value ? "Change Variable" : "Select Variable"}
+				</Button>
+				{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
 			</div>
 			<SpotlightModal show={showPicker} onBlur={hideModal}>
 				<VariableSpotlight

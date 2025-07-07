@@ -5,7 +5,7 @@
 }
 
 .variable-pill {
-	@apply bg-platinum;
+	@apply bg-platinum h-16;
 
 	width: var(--variable-pill-width);
 	display: inline-flex;
