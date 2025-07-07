@@ -2,7 +2,7 @@ import { PureComponent } from "react";
 import { compose } from "recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { getFieldId } from "../../../utils/issues";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";

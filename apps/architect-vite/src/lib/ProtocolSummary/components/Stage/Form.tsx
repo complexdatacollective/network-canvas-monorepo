@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
+import Markdown from "~/components/Form/Fields/Markdown";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
 import Variable from "../Variable";

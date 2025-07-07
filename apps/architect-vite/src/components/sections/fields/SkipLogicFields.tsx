@@ -1,7 +1,7 @@
 import { Row } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import { Query, ruleValidator, withFieldConnector, withStoreConnector } from "~/components/Query";
-import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
+import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import { getFieldId } from "../../../utils/issues";
 import IssueAnchor from "../../IssueAnchor";
 

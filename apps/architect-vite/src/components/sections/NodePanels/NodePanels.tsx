@@ -64,7 +64,7 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 
 				{!isFull && (
 					<div className="stage-editor-section-content-items__controls">
-						<Button onClick={() => createNewPanel()} size="small" icon="add">
+						<Button onClick={() => createNewPanel()} icon="add">
 							Add new panel
 						</Button>
 					</div>

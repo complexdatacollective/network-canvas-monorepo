@@ -1,7 +1,7 @@
 import DataSource from "~/components/Form/Fields/DataSource";
 import ValidatedField from "~/components/Form/ValidatedField";
 import NetworkFilter from "~/components/sections/fields/NetworkFilter";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { getFieldId } from "~/utils/issues";
 import Section from "../../EditorLayout/Section";
 

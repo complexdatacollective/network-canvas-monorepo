@@ -28,10 +28,8 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 					</div>
 					<div className="codebook__entity-meta" />
 					<div className="codebook__entity-control">
-						<Button size="small" onClick={() => handleShowPreview(id)}>
-							Preview
-						</Button>
-						<Button size="small" onClick={() => handleDownloadAsset(id)} color="sea-serpent">
+						<Button onClick={() => handleShowPreview(id)}>Preview</Button>
+						<Button onClick={() => handleDownloadAsset(id)} color="sea-serpent">
 							Download
 						</Button>
 					</div>

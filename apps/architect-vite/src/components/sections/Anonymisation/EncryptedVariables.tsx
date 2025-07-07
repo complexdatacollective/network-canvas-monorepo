@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { getNodeTypes } from "~/selectors/codebook";
 
 import { omit } from "es-toolkit/compat";

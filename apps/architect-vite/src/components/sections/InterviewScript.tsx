@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 
 type RootState = {

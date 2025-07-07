@@ -3,8 +3,8 @@ import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import Search from "~/components/Form/Fields/Search";
 import { Icon, Scroller } from "~/lib/legacy-ui/components";
-import Search from "~/lib/legacy-ui/components/Fields/Search";
 import { allowedVariableName, uniqueByList } from "~/utils/validations";
 import { getVariablesForSubject } from "../../../../selectors/codebook";
 import { sortByLabel } from "../../../Codebook/helpers";
@@ -61,7 +61,7 @@ type DividerProps = {
 const Divider = ({ legend }: DividerProps) => (
 	<ListItem>
 		<fieldset className="divider-header">
-			<legend className="small-heading">{legend}</legend>
+			<legend>{legend}</legend>
 		</fieldset>
 	</ListItem>
 );

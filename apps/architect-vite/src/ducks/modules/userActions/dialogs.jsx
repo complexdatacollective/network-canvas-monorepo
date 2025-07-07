@@ -1,7 +1,7 @@
 import React from "react";
 import ExternalLink from "~/components/ExternalLink";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { Markdown } from "~/lib/legacy-ui/components/Fields";
+import { Markdown } from "~/components/Form/Fields";
 
 const getFriendlyMessage = (e, meta = {}) => {
 	return <p>Error!</p>;

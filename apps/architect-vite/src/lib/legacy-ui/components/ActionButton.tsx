@@ -42,7 +42,7 @@ const ActionButton = React.memo(
 			<button type="button" onClick={handleClick} className={classes} title={title} tabIndex="0" disabled={disabled}>
 				<div className="icon-container">{renderIcon({ icon })}</div>
 				<div className="plus-button">
-					<Icon name="menu-new-session" color="sea-green" size="small" />
+					<Icon name="menu-new-session" color="sea-green" />
 				</div>
 			</button>
 		);

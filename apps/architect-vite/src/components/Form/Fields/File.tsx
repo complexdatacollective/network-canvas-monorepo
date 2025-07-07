@@ -82,7 +82,7 @@ const FileInput = ({
 			)}
 			<div className="form-fields-file__preview">{children(value)}</div>
 			<div className="form-fields-file__browse">
-				<Button onClick={handleBrowseLibrary} color="primary" size="small">
+				<Button onClick={handleBrowseLibrary} color="primary">
 					{!value ? "Select resource" : "Update resource"}
 				</Button>
 			</div>

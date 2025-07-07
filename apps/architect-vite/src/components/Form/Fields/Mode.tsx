@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { PureComponent } from "react";
-import { asOptionObject, getValue } from "~/lib/legacy-ui/components/Fields/utils/options";
+import { asOptionObject, getValue } from "~/components/Form/Fields/utils/options";
 
 type OptionType = {
 	value: string | number;

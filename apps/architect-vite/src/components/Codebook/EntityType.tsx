@@ -69,10 +69,8 @@ const EntityType = ({
 					)}
 				</div>
 				<div className="codebook__entity-control">
-					<Button size="small" onClick={handleEdit}>
-						Edit entity
-					</Button>
-					<Button size="small" color="neon-coral" onClick={handleDelete}>
+					<Button onClick={handleEdit}>Edit entity</Button>
+					<Button color="neon-coral" onClick={handleDelete}>
 						Delete entity
 					</Button>
 				</div>

@@ -7,7 +7,7 @@ import Tip from "~/components/Tip";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 
 type SearchOptionsProps = {
 	dataSource: string;

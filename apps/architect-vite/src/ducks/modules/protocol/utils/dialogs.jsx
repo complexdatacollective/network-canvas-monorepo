@@ -20,7 +20,7 @@ const genericAssetMessage = (
 		</p>
 		<p>
 			<ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
-				<Button size="small">view documentation</Button>
+				<Button>view documentation</Button>
 			</ExternalLink>
 		</p>
 	</>

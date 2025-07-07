@@ -97,7 +97,7 @@ const GridManager = ({
 			</div>
 			{hasSpace && (
 				<div className="grid-manager__add">
-					<Button onClick={handleAddNew} size="small" icon="add">
+					<Button onClick={handleAddNew} icon="add">
 						Add new item
 					</Button>
 				</div>

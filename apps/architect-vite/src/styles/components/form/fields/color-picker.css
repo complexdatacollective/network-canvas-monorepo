@@ -1,0 +1,90 @@
+.form-fields-color-picker {
+	--color-picker-size: 4.2rem;
+	--color-picker-border-size: 5px;
+}
+
+.form-fields-color-picker__edit {
+	background: var(--color-surface-1);
+	color: var(--color-input-text);
+	border-radius: 1rem 1rem 0 0;
+	padding: var(--space-sm) 0 0 var(--space-sm);
+}
+
+.form-fields-color-picker__label {
+	font-family: var(--heading-font-family);
+	font-size: inherit;
+	color: var(--color-text);
+	margin-top: var(--space-xl);
+	margin-bottom: var(--space-md);
+	font-weight: var(--font-weight-semibold);
+}
+
+.form-fields-color-picker__colors {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.form-fields-color-picker__color {
+	display: flex;
+	width: var(--picker-size);
+	height: var(--picker-size);
+	border-radius: var(--picker-size);
+	margin: 0 var(--space-sm) var(--space-sm) 0;
+	overflow: hidden;
+	cursor: pointer;
+	justify-content: center;
+	align-items: center;
+	transition-duration: var(--animation-duration-standard);
+	transition-timing-function: var(--animation-easing);
+	transition-property: background-color;
+}
+
+.form-fields-color-picker__color::after {
+	margin: var(--picker-border-size);
+	background-color: var(--color);
+	content: "";
+	width: calc(var(--picker-size) - var(--picker-border-size) * 2);
+	height: calc(var(--picker-size) - var(--picker-border-size) * 2);
+	border-radius: var(--picker-size);
+	border-color: transparent;
+	border-style: solid;
+	border-width: var(--space-xs);
+	transition-duration: var(--animation-duration-standard);
+	transition-timing-function: var(--animation-easing);
+	transition-property: border-color;
+}
+
+.form-fields-color-picker__color.form-fields-color-picker__color--selected {
+	background-color: var(--node-outer-trim-stroke);
+}
+
+.form-fields-color-picker__color.form-fields-color-picker__color--selected::after {
+	border-color: var(--color-background-light);
+}
+
+.form-fields-color-picker__color-label {
+	display: none;
+}
+
+.form-fields-color-picker__error {
+	opacity: 0;
+	background: var(--color-error);
+	color: var(--color-form-error-text);
+	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+		var(--animation-duration-standard);
+	padding: var(--space-xs) var(--space-xs);
+	display: flex;
+	align-items: center;
+}
+
+.form-fields-color-picker__error svg {
+	max-height: var(--space-md);
+}
+
+.form-fields-color-picker--has-error .form-fields-color-picker__edit {
+	border: var(--space-xs) solid var(--error);
+}
+
+.form-fields-color-picker--has-error .form-fields-color-picker__error {
+	opacity: 1;
+}

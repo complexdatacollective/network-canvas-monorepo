@@ -1,6 +1,6 @@
 import { withState } from "recompose";
 import NetworkThumbnail from "~/components/Thumbnail/Network";
-import Radio from "~/lib/legacy-ui/components/Fields/Radio";
+import Radio from "~/components/Form/Fields/Radio";
 import File from "./File";
 
 type InputProps = {

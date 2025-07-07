@@ -103,14 +103,14 @@ pnpm typecheck   # TypeScript check
 
 **Key Patterns:**
 
-- Heavy use of Higher-Order Components (HOCs) for shared functionality
+- Heavy use of Higher-Order Components (HOCs) for shared functionality - these are being phased out in favor of hooks.
 - Selectors with reselect for derived state
 - Custom error boundaries at multiple levels
 - Protocol-centric design with stages, codebook, and assets
 
 **Form System:**
 
-- Built on redux-form (legacy)
+- Built on redux-form (legacy - to be removed eventually)
 - Custom field components in `components/Form/Fields/`
 - Validation via custom validation functions
 - When refactoring forms: preserve validation behavior and default values
@@ -143,7 +143,8 @@ pnpm typecheck   # TypeScript check
 
 - Functional components with hooks
 - PropTypes being removed in favor of TypeScript. ALWAYS remove defaultProps and replace with TypeScript default parameters. Account for nested objects and arrays in default parameters.
-- Tailwind for all new styling - migrating legacy sass styles to Tailwind.
+- Tailwind v4 for all new styling - migrating legacy sass styles to Tailwind.
+- ALWAYS delete unused components and styles.
 
 ## Important Notes
 
@@ -152,11 +153,14 @@ pnpm typecheck   # TypeScript check
 - ALWAYS remove recompose and refactor HOCs when they are found in existing components
 - prioritize completing modifications to a single file so that you do not run out of context mid way through complex tasks.
 - framer-motion (now '@motion') is used for animations and transitions. Other animation systems are present, but should be removed and replaced with motion when encountered.
-- Legacy UI components in `/packages/legacy-ui`. These should bemigrated to use radix primitives and Tailwind when required.
+- Legacy UI components in `/packages/legacy-ui`. These should be migrated to use radix primitives and Tailwind when required.
 
 ## Development Principles
 
-- Always remove barrel files (index.js, index.ts, index.tsx, etc.), and update imports to use the correct path.
+- NEVER use `any` type in TypeScript - always use specific types or `unknown` if necessary.
+- Always remove barrel files (index.js, index.ts, index.tsx, etc.), and update all imports to use the correct path.
+- Always search for existing components before creating new ones.
+- Always update imports to use the correct path when moving or modifying files.
 - Always remove unused types after refactoring
 
 ## Redux and Toolkit Notes

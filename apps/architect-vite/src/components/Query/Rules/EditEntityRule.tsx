@@ -2,7 +2,7 @@ import { isArray, isNil } from "es-toolkit/compat";
 import { compose } from "recompose";
 import DetachedField from "~/components/DetachedField";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
-import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
+import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import Section from "../../EditorLayout/Section";
 import IssueAnchor from "../../IssueAnchor";
 import EntitySelectField from "../../sections/fields/EntitySelectField/EntitySelectField";

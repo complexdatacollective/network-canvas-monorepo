@@ -1,17 +1,17 @@
 import { has, omit } from "es-toolkit/compat";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useCallback, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import { getFormValues, isDirty as isFormDirty, isInvalid as isFormInvalid } from "redux-form";
+import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
-import { Layout } from "~/components/EditorLayout";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import type { RootState } from "~/ducks/store";
+import { useAppDispatch, type RootState } from "~/ducks/store";
+import { Button } from "~/lib/legacy-ui/components";
 import { getStage, getStageIndex } from "~/selectors/protocol";
-import CodeView from "../CodeView";
-import CollapsableHeader from "../CollapsableHeader";
 import { formName } from "./configuration";
 import { getInterface } from "./Interfaces";
-import StageHeading, { CondensedStageHeading } from "./StageHeading";
+import StageHeading from "./StageHeading";
 
 interface StageEditorProps {
 	id?: string | null;
@@ -22,8 +22,9 @@ interface StageEditorProps {
 const StageEditor = (props: StageEditorProps) => {
 	const { id = null, type, insertAtIndex, onComplete } = props;
 
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const [showCodeView, setShowCodeView] = useState(false);
+	const [, setLocation] = useLocation();
 
 	// Get stage metadata from Redux state
 	const stage = useSelector((state: RootState) => getStage(state, id || ""));
@@ -34,6 +35,7 @@ const StageEditor = (props: StageEditorProps) => {
 	const initialValues = stage || { ...template, type: interfaceType };
 
 	// Get form state
+	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
 	const formValues = useSelector((state: RootState) => getFormValues(formName)(state));
 	const hasSkipLogic = has(formValues, "skipLogic.action");
 	const dirty = useSelector((state: RootState) => isFormDirty(formName)(state));
@@ -45,40 +47,81 @@ const StageEditor = (props: StageEditorProps) => {
 			const normalizedStage = omit(stageData, "_modified");
 
 			if (id) {
-				// @ts-expect-error - thunk action returns promise
-				return dispatch(stageActions.updateStage(id, normalizedStage)).then(() => onComplete?.());
+				dispatch(stageActions.updateStage(id, normalizedStage));
+			} else {
+				dispatch(stageActions.createStage(normalizedStage, insertAtIndex));
 			}
 
-			// @ts-expect-error - thunk action returns promise
-			return dispatch(stageActions.createStage(normalizedStage, insertAtIndex)).then(() => onComplete?.());
+			setLocation("/protocol");
 		},
 		[id, insertAtIndex, onComplete, dispatch],
 	);
 
-	const toggleCodeView = useCallback(() => {
-		setShowCodeView((state) => !state);
-	}, []);
+	// Cancel handler with unsaved changes confirmation
+	const handleCancel = useCallback((): boolean => {
+		if (!hasUnsavedChanges) {
+			setLocation("/protocol");
+			return true;
+		}
 
-	const handleKeyDown = useCallback(
-		(event: KeyboardEvent) => {
-			if (event.ctrlKey && event.key === "/") {
-				toggleCodeView();
-			}
-		},
-		[toggleCodeView],
+		// Show confirmation dialog for unsaved changes
+		dispatch(
+			dialogActions.openDialog({
+				type: "Warning",
+				title: "Unsaved Changes",
+				message: "You have unsaved changes. Are you sure you want to leave without saving?",
+				confirmLabel: "Leave Without Saving",
+				onConfirm: () => {
+					setLocation("/protocol");
+				},
+			}),
+		);
+		return false;
+	}, [hasUnsavedChanges, setLocation, dispatch]);
+
+	// Memoized action buttons
+	const actionButtons = useMemo(() => {
+		const buttons = [];
+
+		// Cancel button
+		buttons.push(
+			<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
+				Cancel
+			</Button>,
+		);
+
+		// Save button (only if there are unsaved changes)
+		if (hasUnsavedChanges) {
+			buttons.push(
+				<Button key="save" onClick={onSubmit} iconPosition="right" icon="arrow-right">
+					Finished Editing
+				</Button>,
+			);
+		}
+
+		return buttons;
+	}, [hasUnsavedChanges, onSubmit, handleCancel]);
+
+	// Secondary buttons (like preview)
+	const secondaryButtons = useMemo(
+		() => [
+			<Button
+				key="preview"
+				color="paradise-pink"
+				disabled
+				tooltip={
+					invalid
+						? [
+								"Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing.",
+							]
+						: null
+				}
+			>
+				Preview
+			</Button>,
+		],
+		[invalid],
 	);
-
-	useEffect(() => {
-		window.addEventListener("keydown", handleKeyDown);
-		return () => {
-			window.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [handleKeyDown]);
-
-	useEffect(() => {
-		// ipcRenderer.on("REFRESH_PREVIEW", previewStage);
-		// return () => ipcRenderer.removeListener("REFRESH_PREVIEW", previewStage);
-	}, []);
 
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
@@ -108,11 +151,14 @@ const StageEditor = (props: StageEditorProps) => {
 		>
 			{({ submitFailed }: { submitFailed: boolean }) => (
 				<>
-					<CodeView form={formName} show={showCodeView} toggleCodeView={toggleCodeView} />
-					<CollapsableHeader threshold={165} collapsedState={<CondensedStageHeading id={id} />}>
-						<StageHeading id={id} />
-					</CollapsableHeader>
-					<Layout>{renderSections(sections, { submitFailed })}</Layout>
+					<StageHeading id={id} />
+					<div className="flex flex-col gap-10 w-full mb-32">{renderSections(sections, { submitFailed })}</div>
+					<div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-accent z-panel">
+						<div className="flex justify-between items-center max-w-6xl mx-auto">
+							<div className="flex gap-2">{secondaryButtons}</div>
+							<div className="flex gap-2">{actionButtons}</div>
+						</div>
+					</div>
 				</>
 			)}
 		</Editor>

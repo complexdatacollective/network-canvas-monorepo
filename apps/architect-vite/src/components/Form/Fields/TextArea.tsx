@@ -1,35 +1,66 @@
+/* eslint-disable react/jsx-props-no-spreading */
+
 import cx from "classnames";
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
+import Icon from "~/lib/legacy-ui/components/Icon";
+import MarkdownLabel from "./MarkdownLabel";
 
 type TextAreaProps = {
-	meta: any;
-	label?: string;
-	input: any;
+	input?: {
+		name?: string;
+		value?: string;
+		onChange?: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+		[key: string]: unknown;
+	};
+	meta?: {
+		active?: boolean;
+		error?: string;
+		invalid?: boolean;
+		touched?: boolean;
+	};
+	label?: string | null;
+	fieldLabel?: string | null;
+	className?: string;
+	placeholder?: string;
+	hidden?: boolean;
 };
 
-const TextArea = ({ meta, label, input }: TextAreaProps) => {
+const TextArea = ({
+	input = {},
+	meta = {},
+	label = null,
+	fieldLabel = null,
+	className = "",
+	placeholder = "",
+	hidden = false,
+}: TextAreaProps) => {
 	const id = useRef(uuid());
 
-	const { active, touched, invalid, error } = meta;
+	const { active, error, invalid, touched } = meta;
 
-	const textareaClasses = cx("form-fields-textarea", {
-		"form-fields-textarea--is-focussed": active,
-		"form-fields-textarea--has-error": touched && invalid,
+	const seamlessClasses = cx(className, "form-field-text", {
+		"form-field-text--has-focus": active,
+		"form-field-text--has-error": invalid && touched && error,
 	});
 
 	return (
-		<label htmlFor={id.current} className={textareaClasses}>
-			{label && <div className="form-fields-textarea__label">{label}</div>}
-			<div className="form-fields-textarea__edit">
+		<label htmlFor={id.current} className="form-field-container" hidden={hidden}>
+			{(fieldLabel || label) && <MarkdownLabel label={fieldLabel || label || ""} />}
+			<div className={seamlessClasses}>
 				<textarea
-					className={cx("form-fields-textarea__input")}
 					id={id.current}
-					// eslint-disable-next-line react/jsx-props-no-spreading
+					className="form-field form-field-text form-field-text--area form-field-text__input"
+					placeholder={placeholder}
 					{...input}
 				/>
+				{invalid && touched && (
+					<div className="form-field-text__error">
+						<Icon name="warning" />
+						{error}
+					</div>
+				)}
 			</div>
-			{touched && invalid && <p className="form-fields-markdown__error">{error}</p>}
 		</label>
 	);
 };

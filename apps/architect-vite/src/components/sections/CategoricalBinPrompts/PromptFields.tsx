@@ -5,7 +5,7 @@ import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVa
 import Options from "~/components/Options";
 import Tip from "~/components/Tip";
 import PromptText from "~/components/sections/PromptText";
-import RichTextField from "~/lib/legacy-ui/components/Fields/RichText";
+import RichTextField from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import BinSortOrderSection from "../BinSortOrderSection";

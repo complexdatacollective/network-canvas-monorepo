@@ -1,6 +1,6 @@
 import { Row, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 
 type PromptTextProps = {

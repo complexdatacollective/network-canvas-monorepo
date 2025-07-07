@@ -1,177 +1,49 @@
-import cx from "classnames";
 import React, { PureComponent } from "react";
+import { cn } from "~/utils/cn";
 import Icon from "./Icon";
 
-// Safelist for Tailwind CSS - ensures all button color classes are included in build
-// bg-neon-coral bg-sea-green bg-slate-blue bg-navy-taupe bg-cyber-grape bg-mustard
-// bg-rich-black bg-charcoal bg-platinum bg-platinum-dark bg-sea-serpent
-// bg-purple-pizazz bg-paradise-pink bg-cerulean-blue bg-kiwi bg-neon-carrot
-// bg-barbie-pink bg-tomato bg-white bg-primary
-// text-white text-charcoal
-// hover:bg-neon-coral/80 hover:bg-sea-green/80 hover:bg-slate-blue/80 hover:bg-navy-taupe/80
-// hover:bg-cyber-grape/80 hover:bg-mustard/80 hover:bg-rich-black/80 hover:bg-charcoal/80
-// hover:bg-platinum/80 hover:bg-platinum-dark/80 hover:bg-sea-serpent/80 hover:bg-purple-pizazz/80
-// hover:bg-paradise-pink/80 hover:bg-cerulean-blue/80 hover:bg-kiwi/80 hover:bg-neon-carrot/80
-// hover:bg-barbie-pink/80 hover:bg-tomato/80 hover:bg-white/80 hover:bg-primary/80
-
-// Color mapping for button variants to Tailwind classes
-const getColorClasses = (color?: string) => {
-	if (!color) {
-		return {
-			background: "bg-primary",
-			text: "text-white",
-			hover: "hover:bg-primary/80",
-		};
-	}
-
-	const colorMap: Record<string, { background: string; text: string; hover: string }> = {
-		"neon-coral": {
-			background: "bg-neon-coral",
-			text: "text-white",
-			hover: "hover:bg-neon-coral/80",
-		},
-		"sea-green": {
-			background: "bg-sea-green",
-			text: "text-white",
-			hover: "hover:bg-sea-green/80",
-		},
-		"slate-blue": {
-			background: "bg-slate-blue",
-			text: "text-white",
-			hover: "hover:bg-slate-blue/80",
-		},
-		"navy-taupe": {
-			background: "bg-navy-taupe",
-			text: "text-white",
-			hover: "hover:bg-navy-taupe/80",
-		},
-		"cyber-grape": {
-			background: "bg-cyber-grape",
-			text: "text-white",
-			hover: "hover:bg-cyber-grape/80",
-		},
-		mustard: {
-			background: "bg-mustard",
-			text: "text-white",
-			hover: "hover:bg-mustard/80",
-		},
-		"rich-black": {
-			background: "bg-rich-black",
-			text: "text-white",
-			hover: "hover:bg-rich-black/80",
-		},
-		charcoal: {
-			background: "bg-charcoal",
-			text: "text-white",
-			hover: "hover:bg-charcoal/80",
-		},
-		platinum: {
-			background: "bg-platinum",
-			text: "text-charcoal",
-			hover: "hover:bg-platinum/80",
-		},
-		"platinum-dark": {
-			background: "bg-platinum-dark",
-			text: "text-charcoal",
-			hover: "hover:bg-platinum-dark/80",
-		},
-		"sea-serpent": {
-			background: "bg-sea-serpent",
-			text: "text-white",
-			hover: "hover:bg-sea-serpent/80",
-		},
-		"purple-pizazz": {
-			background: "bg-purple-pizazz",
-			text: "text-white",
-			hover: "hover:bg-purple-pizazz/80",
-		},
-		"paradise-pink": {
-			background: "bg-paradise-pink",
-			text: "text-white",
-			hover: "hover:bg-paradise-pink/80",
-		},
-		"cerulean-blue": {
-			background: "bg-cerulean-blue",
-			text: "text-white",
-			hover: "hover:bg-cerulean-blue/80",
-		},
-		kiwi: {
-			background: "bg-kiwi",
-			text: "text-white",
-			hover: "hover:bg-kiwi/80",
-		},
-		"neon-carrot": {
-			background: "bg-neon-carrot",
-			text: "text-white",
-			hover: "hover:bg-neon-carrot/80",
-		},
-		"barbie-pink": {
-			background: "bg-barbie-pink",
-			text: "text-white",
-			hover: "hover:bg-barbie-pink/80",
-		},
-		tomato: {
-			background: "bg-tomato",
-			text: "text-white",
-			hover: "hover:bg-tomato/80",
-		},
-		white: {
-			background: "bg-white",
-			text: "text-charcoal",
-			hover: "hover:bg-white/80",
-		},
-	};
-
-	return (
-		colorMap[color] || {
-			background: "bg-primary",
-			text: "text-white",
-			hover: "hover:bg-primary/80",
-		}
-	);
-};
-
-const renderButtonIcon = ({
-	icon,
-	iconPosition,
-	textColor,
-}: { icon?: string | React.ReactElement; iconPosition?: string; textColor?: string }) => {
-	const iconClassNames = cx(
-		{
-			button__icon: true,
-			"button__icon--right": iconPosition === "right",
-		},
-		textColor,
-	);
-
+const renderButtonIcon = ({ icon }: { icon?: string | React.ReactElement }) => {
 	let iconElement = null;
 	if (icon) {
 		if (typeof icon === "string") {
-			iconElement = <Icon name={icon} className={iconClassNames} />;
+			iconElement = <Icon name={icon} />;
 		} else {
-			iconElement = React.cloneElement(icon, { className: iconClassNames });
+			iconElement = React.cloneElement(icon);
 		}
 	}
 	return iconElement;
 };
 
-interface ButtonProps {
+type ButtonProps = {
 	content?: string | React.ReactElement;
-	children?: React.ReactNode;
-	icon?: string | React.ReactElement | object;
+	icon?: string | React.ReactElement;
 	iconPosition?: "left" | "right";
-	size?: string;
-	color?: string;
-	type?: "button" | "submit" | "reset";
-	onClick?: () => void;
-	disabled?: boolean;
-	[key: string]: unknown;
-}
+	size?: "small" | "large";
+	color?:
+		| "sea-green"
+		| "neon-coral"
+		| "slate-blue"
+		| "navy-taupe"
+		| "cyber-grape"
+		| "mustard"
+		| "rich-black"
+		| "charcoal"
+		| "platinum"
+		| "platinum-dark"
+		| "sea-serpent"
+		| "purple-pizazz"
+		| "paradise-pink"
+		| "cerulean-blue"
+		| "kiwi"
+		| "neon-carrot"
+		| "barbie-pink"
+		| "tomato";
+} & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 class Button extends PureComponent<ButtonProps> {
 	render() {
 		const {
-			color,
+			color = "primary",
 			size,
 			children,
 			content = "",
@@ -183,31 +55,53 @@ class Button extends PureComponent<ButtonProps> {
 			...rest
 		} = this.props;
 
-		const colorClasses = getColorClasses(color);
-		const buttonClassNames = cx(
-			{
-				button: true,
-				[`button--${size}`]: !!size,
-				"button--has-icon": !!icon,
-				"button--icon-pos-right": iconPosition === "right",
-			},
-			colorClasses.background,
-			colorClasses.text,
-			colorClasses.hover,
+		const buttonClasses = cn(
+			"inline-flex gap-2 items-center justify-center",
+			// focus state
+			"focus:outline-none focus:ring-2 focus:ring-offset-2",
+			"transition-color duration-200 ease-in-out",
+			"cursor-pointer",
+			"rounded-xl",
+			"h-10 px-6 py-2",
+			"tracking-wide font-[500] text-sm",
+			// Handle image size
+			"[&>svg]:h-full",
+			// Disabled states
+			"disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
+			// Hover state
+			"hover:shadow-md hover:scale-[1.02]",
+			// sizes
+			size === "small" && "h-8 px-4 text-xs",
+			size === "large" && "h-12 px-8 text-base",
+			// colors
+			"bg-platinum border border-border hover:platinum-dark",
+			color === "neon-coral" && "bg-neon-coral border-neon-coral-dark text-white hover:bg-neon-coral-dark",
+			color === "sea-green" && "bg-sea-green border-sea-green-dark text-white hover:bg-sea-green-dark",
+			color === "slate-blue" && "bg-slate-blue border-slate-blue-dark text-white hover:bg-slate-blue-dark",
+			color === "navy-taupe" && "bg-navy-taupe border-navy-taupe-dark text-white hover:bg-navy-taupe-dark",
+			color === "cyber-grape" && "bg-cyber-grape border-cyber-grape-dark text-white hover:bg-cyber-grape-dark",
+			color === "mustard" && "bg-mustard border-mustard-dark text-white hover:bg-mustard-dark",
+			color === "rich-black" && "bg-rich-black border-rich-black-dark text-white hover:bg-rich-black-dark",
+			color === "charcoal" && "bg-charcoal border-charcoal-dark text-white hover:bg-charcoal-dark",
+			color === "platinum" && "bg-platinum border-platinum-dark text-charcoal hover:bg-platinum-dark",
+			color === "platinum-dark" && "bg-platinum-dark border-platinum-dark text-charcoal hover:bg-platinum",
+			color === "sea-serpent" && "bg-sea-serpent border-sea-serpent-dark text-white hover:bg-sea-serpent-dark",
+			color === "purple-pizazz" && "bg-purple-pizazz border-purple-pizazz-dark text-white hover:bg-purple-pizazz-dark",
+			color === "paradise-pink" && "bg-paradise-pink border-paradise-pink-dark text-white hover:bg-paradise-pink-dark",
+			color === "cerulean-blue" && "bg-cerulean-blue border-cerulean-blue-dark text-white hover:bg-cerulean-blue-dark",
+			color === "kiwi" && "bg-kiwi border-kiwi-dark text-white hover:bg-kiwi-dark",
+			color === "neon-carrot" && "bg-neon-carrot border-neon-carrot-dark text-white hover:bg-neon-carrot-dark",
+			color === "barbie-pink" && "bg-barbie-pink border-barbie-pink-dark text-white hover:bg-barbie-pink-dark",
+			color === "tomato" && "bg-tomato border-tomato-dark text-white hover:bg-tomato-dark",
+			// Icon position
+			icon && iconPosition === "left" && "flex-row",
+			icon && iconPosition === "right" && "flex-row-reverse",
 		);
 
 		return (
-			<button
-				// eslint-disable-next-line react/button-has-type
-				type={type}
-				className={buttonClassNames}
-				onClick={onClick}
-				disabled={disabled}
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...rest}
-			>
-				{renderButtonIcon({ icon, iconPosition, textColor: colorClasses.text })}
-				{(content || children) && <span className="button__content">{children || content}</span>}
+			<button type={type} className={buttonClasses} onClick={onClick} disabled={disabled} {...rest}>
+				{renderButtonIcon({ icon })}
+				{content || children}
 			</button>
 		);
 	}

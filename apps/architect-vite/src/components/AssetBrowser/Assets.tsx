@@ -1,5 +1,5 @@
 import { compose } from "recompose";
-import { RadioGroup } from "~/lib/legacy-ui/components/Fields";
+import { RadioGroup } from "~/components/Form/Fields";
 import Asset from "./Asset";
 import withAssets from "./withAssets";
 

@@ -1,4 +1,4 @@
-import { Markdown } from "~/lib/legacy-ui/components/Fields";
+import { Markdown } from "~/components/Form/Fields";
 
 type PromptPreviewProps = {
 	text: string;

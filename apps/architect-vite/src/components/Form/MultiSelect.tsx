@@ -2,9 +2,9 @@ import { bindActionCreators } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers, withProps } from "recompose";
 import { change, FieldArray, formValueSelector } from "redux-form";
+import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import { Button, Icon } from "~/lib/legacy-ui/components";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
-import NativeSelect from "./Fields/NativeSelect";
 import ValidatedField from "./ValidatedField";
 
 const ItemHandle = () => (
@@ -27,7 +27,6 @@ const AddItem = (props) => (
 	<Button
 		color="primary"
 		icon="add"
-		size="small"
 		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	>

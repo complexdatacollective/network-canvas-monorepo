@@ -1,4 +1,4 @@
-@import "./_data-card.css";
-@import "./_protocol-card.css";
-@import "./_server-card.css";
-@import "./_session-card.css";
+@import "./data-card.css";
+@import "./protocol-card.css";
+@import "./server-card.css";
+@import "./session-card.css";

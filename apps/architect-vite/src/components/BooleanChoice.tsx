@@ -3,8 +3,8 @@ import { isEmpty, isNull } from "lodash";
 import { useEffect } from "react";
 import { connect } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
-import RichText from "~/lib/legacy-ui/components/Fields/RichText";
-import Toggle from "~/lib/legacy-ui/components/Fields/Toggle";
+import RichText from "~/components/Form/Fields/RichText";
+import Toggle from "~/components/Form/Fields/Toggle";
 import ValidatedField from "./Form/ValidatedField";
 
 type OptionType = {

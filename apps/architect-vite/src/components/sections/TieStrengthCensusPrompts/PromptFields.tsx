@@ -5,7 +5,7 @@ import ValidatedField from "~/components/Form/ValidatedField";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import Tip from "~/components/Tip";
-import RichText from "~/lib/legacy-ui/components/Fields/RichText/Field";
+import RichText from "~/components/Form/Fields/RichText/Field";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import withCreateEdgeHandlers from "./withCreateEdgeHandler";

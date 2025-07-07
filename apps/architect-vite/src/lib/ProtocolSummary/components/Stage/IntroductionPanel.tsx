@@ -1,4 +1,4 @@
-import Markdown from "~/lib/legacy-ui/components/Fields/Markdown";
+import Markdown from "~/components/Form/Fields/Markdown";
 
 type IntroductionPanelProps = {
 	introductionPanel?: {

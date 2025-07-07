@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
-import { Markdown } from "~/lib/legacy-ui/components/Fields";
+import { Markdown } from "~/components/Form/Fields";
 import { getAssetManifest } from "~/selectors/protocol";
 import AudioWithUrl from "../../Assets/Audio";
 import BackgroundImageWithUrl from "../../Assets/BackgroundImage";

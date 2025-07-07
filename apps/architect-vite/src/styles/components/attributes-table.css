@@ -1,0 +1,7 @@
+@import "./attributes-table/attributes-table.css";
+@import "./attributes-table/chooser.css";
+@import "./attributes-table/editor.css";
+@import "./attributes-table/preview.css";
+@import "./attributes-table/variable.css";
+
+/* Tables - variables are now defined in main _tailwind.scss */

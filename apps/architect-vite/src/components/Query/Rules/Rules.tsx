@@ -3,8 +3,8 @@ import { get } from "es-toolkit/compat";
 import { compose } from "recompose";
 import DetachedField from "~/components/DetachedField";
 import FieldError from "~/components/Form/FieldError";
+import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import Button from "~/lib/legacy-ui/components/Button";
-import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
 import EditRule from "./EditRule";
 import PreviewRules from "./PreviewRules";
 import withDraftRule from "./withDraftRule";
@@ -80,14 +80,14 @@ const Rules = ({
 			</div>
 
 			<div className="rules-rules__add-new">
-				<Button type="button" size="small" color="sea-serpent" onClick={handleCreateAlterRule}>
+				<Button type="button" color="sea-serpent" onClick={handleCreateAlterRule}>
 					Add alter rule
 				</Button>
-				<Button type="button" size="small" color="paradise-pink" onClick={handleCreateEdgeRule}>
+				<Button type="button" color="paradise-pink" onClick={handleCreateEdgeRule}>
 					Add edge rule
 				</Button>
 				{type === "query" && (
-					<Button type="button" size="small" color="neon-carrot" onClick={handleCreateEgoRule}>
+					<Button type="button" color="neon-carrot" onClick={handleCreateEgoRule}>
 						Add ego rule
 					</Button>
 				)}

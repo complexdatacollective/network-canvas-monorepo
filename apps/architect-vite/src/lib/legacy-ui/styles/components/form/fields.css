@@ -1,0 +1,73 @@
+/* Form field variables */
+:root {
+	--global-input-element-size: var(--size-4);
+	--global-input-border-size: 0.125rem;
+	--global-input-border-space: 0.25rem;
+}
+
+.form-field-label {
+	font-family: var(--heading-font-family);
+	font-size: inherit;
+	font-weight: 500;
+	color: var(--color-text);
+
+	> * {
+		font-weight: inherit;
+	}
+
+	> :first-child {
+		margin-top: 0;
+	}
+}
+
+.form-field-inline-label {
+	> :first-child {
+		margin-top: 0;
+	}
+
+	> :last-child {
+		margin-bottom: 0;
+	}
+}
+
+.form-field-container {
+	display: block;
+	margin-bottom: 2rem;
+
+	&.form-field-container--inline {
+		margin-bottom: 0;
+	}
+}
+
+.form-field {
+	background: var(--color-input-background);
+	color: var(--color-input-text);
+	border-radius: 1rem 1rem 0 0;
+	margin-bottom: 2rem;
+	padding: 1rem var(--size-2);
+	width: 100%;
+	min-height: 4rem;
+
+	.form-field__label {
+		font-size: var(--type-scale-copy-standard);
+		font-weight: 200;
+		display: block;
+		margin: 0;
+		color: var(--color-input-label);
+	}
+}
+
+/* Import field-specific styles */
+@import "./fields/boolean.css";
+@import "./fields/radio.css";
+@import "./fields/radio-group.css";
+@import "./fields/checkbox.css";
+@import "./fields/checkbox-group.css";
+@import "./fields/toggle.css";
+@import "./fields/toggle-button.css";
+@import "./fields/toggle-button-group.css";
+@import "./fields/text.css";
+@import "./fields/range.css";
+@import "./fields/slider.css";
+@import "./fields/date-picker.css";
+@import "./fields/rich-text.css";

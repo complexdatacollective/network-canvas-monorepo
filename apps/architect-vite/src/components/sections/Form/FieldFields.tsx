@@ -5,7 +5,7 @@ import ValidatedField from "~/components/Form/ValidatedField";
 import Options from "~/components/Options";
 import Parameters from "~/components/Parameters";
 import { isBooleanWithOptions, isOrdinalOrCategoricalType, isVariableTypeWithParameters } from "~/config/variables";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import BooleanChoice from "../../BooleanChoice";
 import ExternalLink from "../../ExternalLink";

@@ -5,7 +5,7 @@ import withDisabledFormTitle from "~/components/enhancers/withDisabledFormTitle"
 import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubjectRequired";
 import withSubject from "~/components/enhancers/withSubject";
 import ValidatedField from "~/components/Form/ValidatedField";
-import TextField from "~/lib/legacy-ui/components/Fields/Text";
+import TextField from "~/components/Form/Fields/Text";
 import { getFieldId } from "~/utils/issues";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";

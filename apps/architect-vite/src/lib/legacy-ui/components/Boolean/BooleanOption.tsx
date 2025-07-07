@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { memo } from "react";
-import Markdown from "../Fields/Markdown";
+import Markdown from "~/components/Form/Fields/Markdown";
 import RoundCheckbox from "./RoundCheckbox";
 
 interface BooleanOptionProps {

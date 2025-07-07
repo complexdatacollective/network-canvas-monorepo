@@ -5,8 +5,8 @@ import { compose, withHandlers } from "recompose";
 import ValidatedField from "~/components/Form/ValidatedField";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
-import RichTextField from "~/lib/legacy-ui/components/Fields/RichText";
-import TextField from "~/lib/legacy-ui/components/Fields/Text";
+import RichTextField from "~/components/Form/Fields/RichText";
+import TextField from "~/components/Form/Fields/Text";
 
 const isNumberLike = (value) => Number.parseInt(value, 10) === value; // eslint-disable-line
 

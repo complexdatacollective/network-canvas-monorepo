@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
@@ -88,7 +88,7 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 							name="keyValue"
 							validation={{ required: true }}
 						/>
-						<Button key="save" type="submit" iconPosition="right" icon="arrow-right" size="small">
+						<Button key="save" type="submit" iconPosition="right" icon="arrow-right">
 							Create Key
 						</Button>
 					</Section>

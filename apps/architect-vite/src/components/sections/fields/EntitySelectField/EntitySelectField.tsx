@@ -137,7 +137,7 @@ const EntitySelectField = ({
 					{error}
 				</div>
 			)}
-			<Button color="primary" icon="add" size="small" onClick={handleOpenCreateNewType}>
+			<Button color="sea-green" icon="add" onClick={handleOpenCreateNewType}>
 				Create new {entityType} type
 			</Button>
 			<NewTypeDialog

@@ -1,0 +1,60 @@
+.stage-editor-section {
+	/* Surface level system with automatic nesting */
+	--current-surface: var(--color-surface-1);
+	--current-surface-foreground: var(--color-surface-1-foreground);
+	--next-surface: var(--color-surface-1);
+	--next-surface-foreground: var(--color-surface-1-foreground);
+
+	padding: var(--space-md) var(--space-xl);
+	background-color: var(--current-surface);
+	color: var(--current-surface-foreground);
+	border-radius: var(--radius);
+	position: relative;
+	box-shadow: 0 var(--space-px) var(--space-px) 0 var(--color-shadow-panel);
+
+	& legend {
+		--color-input: var(--color-navy-taupe);
+		--color-input-foreground: white;
+	}
+
+	&.stage-editor-section--toggleable {
+		&:not(.stage-editor-section--open) {
+			.summary {
+				margin-top: calc(-1 * var(--space-5));
+			}
+		}
+	}
+
+	.form-field-container {
+		margin-bottom: 0;
+	}
+
+	&.stage-editor-section--disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+
+		> * {
+			pointer-events: none;
+		}
+	}
+
+	/* Automatic surface level progression for nested sections */
+	.stage-editor-section {
+		--current-surface: var(--next-surface);
+		--current-surface-foreground: var(--next-surface-foreground);
+		--next-surface: var(--color-surface-2);
+		--next-surface-foreground: var(--color-surface-2-foreground);
+		--input-background: var(--color-surface-1);
+		--slider-color: hsl(var(--charcoal));
+
+		margin: var(--space-10) 0;
+
+		.form-field-slider {
+			--slider-color: hsl(var(--charcoal));
+		}
+	}
+
+	> .stage-editor-section {
+		border-radius: var(--radius);
+	}
+}

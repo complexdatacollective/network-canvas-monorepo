@@ -9,15 +9,7 @@ type ControlsColumnProps = {
 
 const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => (
 	<>
-		{!inUse && (
-			<Button
-				size="small"
-				color="neon-coral"
-				icon={<DeleteIcon />}
-				onClick={() => onDelete(id)}
-				title="Delete variable"
-			/>
-		)}
+		{!inUse && <Button color="neon-coral" icon={<DeleteIcon />} onClick={() => onDelete(id)} title="Delete variable" />}
 	</>
 );
 

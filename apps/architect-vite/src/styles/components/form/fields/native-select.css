@@ -1,0 +1,94 @@
+.form-fields-select-native {
+	&.form-fields-select-native--disabled {
+		cursor: not-allowed;
+	}
+
+	.form-fields-select-native__wrapper {
+		flex: 1;
+	}
+
+	.form-fields-select-native__new-section {
+		background: var(--color-surface-2);
+		padding: var(--space-md);
+		border-radius: var(--radius);
+
+		& .button-footer {
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+
+			& .button {
+				min-width: 10rem;
+				margin-right: var(--space-sm);
+
+				&:last-of-type {
+					margin-right: 0;
+				}
+			}
+		}
+	}
+
+	.form-fields-select-native__error {
+		opacity: 0;
+		background: var(--color-error);
+		color: var(--color-form-error-text);
+		padding: var(--space-xs) var(--space-xs);
+		display: flex;
+		align-items: center;
+
+		& svg {
+			max-height: var(--space-md);
+		}
+	}
+
+	.form-fields-select-native__component {
+		display: block;
+		font-size: var(--text-base);
+		font-weight: normal;
+		color: var(--color-input-text);
+		padding: var(--space-sm) var(--space-md);
+		width: 100%;
+		min-height: var(--space-4xl);
+		max-width: 100%;
+		box-sizing: border-box;
+		margin: 0;
+		margin-bottom: var(--space-lg);
+		border: 0;
+		box-shadow: unset;
+		border-radius: var(--space-sm) var(--space-sm) 0 0;
+		appearance: none;
+		background-color: var(--color-surface-1);
+		background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236D6F76%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+		background-repeat: no-repeat, repeat;
+		background-position: right var(--space-xl) top 50%, 0 0;
+		background-size: 0.9rem auto, 100%;
+
+		&:disabled {
+			cursor: not-allowed;
+		}
+
+		&:focus {
+			outline: none;
+			box-shadow: unset;
+		}
+
+		& option {
+			/* Placeholder */
+			&:disabled {
+				font-style: italic;
+				color: var(--color-text-muted);
+			}
+		}
+	}
+
+	&.form-fields-select-native--has-error {
+		& .form-fields-select-native__component {
+			border: var(--space-xs) solid var(--error);
+			margin-bottom: 0;
+		}
+
+		& .form-fields-select-native__error {
+			opacity: 1;
+		}
+	}
+}

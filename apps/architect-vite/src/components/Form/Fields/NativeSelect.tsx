@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
 import { Button } from "~/lib/legacy-ui/components";
-import { Text } from "~/lib/legacy-ui/components/Fields";
+import { Text } from "~/components/Form/Fields";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import { getValidator } from "~/utils/validations";
 

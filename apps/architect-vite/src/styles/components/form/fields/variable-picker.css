@@ -1,0 +1,31 @@
+@reference '../../../tailwind.css';
+
+.form-fields-variable-picker {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: var(--space-xl) 0;
+
+	& fieldset {
+		--variable-pill-background: var(--color-white);
+		--variable-pill-shadow-color: var(--color-variable-pill-shadow);
+
+		flex: 1;
+		border: 2px dashed var(--color-divider);
+		padding: var(--space-md);
+		border-radius: var(--radius);
+
+		& > legend {
+			padding: 0 var(--space-md);
+		}
+
+		& .variable-pill {
+			margin-bottom: var(--space-md);
+		}
+	}
+
+	.form-fields-variable-picker__error {
+		color: var(--error);
+		margin-bottom: 0;
+	}
+}

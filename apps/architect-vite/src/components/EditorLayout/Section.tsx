@@ -65,7 +65,7 @@ const Section = ({
 	}, [isOpen, handleToggleChange]);
 
 	const sectionClasses = cx(
-		"stage-editor-section border border-platinum-dark",
+		"stage-editor-section border border-platinum-dark w-full",
 		{ "stage-editor-section--toggleable": toggleable },
 		{ "stage-editor-section--open": isOpen },
 		{ "stage-editor-section--disabled": disabled },
@@ -74,32 +74,39 @@ const Section = ({
 	);
 
 	return (
-		<fieldset className={sectionClasses}>
-			<legend className="toggleable border border-platinum-dark">
-				<span className="flex gap-4">
+		<div className="w-full grid gap-4 grid-cols-[25%_auto] max-w-6xl">
+			<div>
+				<legend className="flex px-8 py-2 rounded items-center bg-border sticky top-0">
 					{toggleable && (
-						<Switch title="Turn this feature on or off" checked={isOpen} onCheckedChange={changeToggleState} />
+						<Switch
+							title="Turn this feature on or off"
+							checked={isOpen}
+							onCheckedChange={changeToggleState}
+							className="mr-4 shrink-0 grow-0"
+						/>
 					)}
-					{title}
-				</span>
-				{!toggleable && <span className="text-destructive">*</span>}
-			</legend>
-			<div className="summary">{summary}</div>
-			{id && <IssueAnchor fieldName={id} description={title} />}
-			<AnimatePresence initial={false}>
-				{(isOpen || !toggleable) && (
-					<motion.div
-						variants={animations}
-						initial="collapsed"
-						animate="open"
-						exit="collapsed"
-						transition={{ duration: 0.2, type: "easeInOut" }}
-					>
-						{children}
-					</motion.div>
-				)}
-			</AnimatePresence>
-		</fieldset>
+					<span className="small-heading">{title}</span>
+					{!toggleable && <span className="text-error">*</span>}
+				</legend>
+				<div className="summary">{summary}</div>
+			</div>
+			<fieldset className={sectionClasses}>
+				{id && <IssueAnchor fieldName={id} description={title} />}
+				<AnimatePresence initial={false}>
+					{(isOpen || !toggleable) && (
+						<motion.div
+							variants={animations}
+							initial="collapsed"
+							animate="open"
+							exit="collapsed"
+							transition={{ duration: 0.2, ease: "easeInOut" }}
+						>
+							{children}
+						</motion.div>
+					)}
+				</AnimatePresence>
+			</fieldset>
+		</div>
 	);
 };
 

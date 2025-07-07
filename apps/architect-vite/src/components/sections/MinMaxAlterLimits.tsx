@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { Number } from "~/lib/legacy-ui/components/Fields";
+import { Number } from "~/components/Form/Fields";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 import Tip from "../Tip";

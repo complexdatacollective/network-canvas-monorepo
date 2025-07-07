@@ -5,7 +5,7 @@ import remark from "remark";
 import strip from "strip-markdown";
 import useSpeech from "../../hooks/useSpeech";
 import useTimeout from "../../hooks/useTimeout";
-import MarkdownLabel from "../Fields/MarkdownLabel.jsx";
+import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 
 // Words read per second (approximate). Used to calculate underline duration.
 const WORDS_PER_SECOND = 0.3;

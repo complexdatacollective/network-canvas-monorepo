@@ -3,13 +3,19 @@
 import cx from "classnames";
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
+import MarkdownLabel from "./MarkdownLabel";
 
 type RadioProps = {
 	label?: React.ReactNode;
-	className?: string;
-	input: any;
-	disabled?: boolean;
 	fieldLabel?: string;
+	className?: string;
+	disabled?: boolean;
+	input: {
+		name?: string;
+		value?: any;
+		onChange?: (value: any) => void;
+		[key: string]: any;
+	};
 } & Record<string, any>;
 
 const Radio = ({ label = null, className = "", input, disabled = false, fieldLabel = null, ...rest }: RadioProps) => {
@@ -33,7 +39,7 @@ const Radio = ({ label = null, className = "", input, disabled = false, fieldLab
 				{...rest}
 			/>
 			<div className="form-field-radio__radio" />
-			{label}
+			{label && <MarkdownLabel inline label={label} className="form-field-inline-label" />}
 		</label>
 	);
 };

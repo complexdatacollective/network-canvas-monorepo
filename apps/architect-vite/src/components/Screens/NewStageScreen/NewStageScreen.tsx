@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import Dialog from "~/components/Dialog/Dialog";
 import Tag from "~/components/Tag";
 import Button from "~/lib/legacy-ui/components/Button";
-import Search from "~/lib/legacy-ui/components/Fields/Search";
+import Search from "~/components/Form/Fields/Search";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
 import ControlBar from "../../ControlBar";
 import Row from "../../EditorLayout/Row";

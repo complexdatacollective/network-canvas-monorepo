@@ -1,7 +1,7 @@
 import { get } from "es-toolkit/compat";
 import { Row, Section } from "~/components/EditorLayout";
-import RadioGroup from "~/lib/legacy-ui/components/Fields/RadioGroup";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import RadioGroup from "~/components/Form/Fields/RadioGroup";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "../../../utils/issues";
 import Audio from "../../Form/Fields/Audio";
 import Image from "../../Form/Fields/Image";

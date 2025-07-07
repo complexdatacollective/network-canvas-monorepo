@@ -6,7 +6,7 @@ import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import Options from "~/components/Options";
 import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { getFieldId } from "~/utils/issues";
 import safeName from "~/utils/safeName";
 import { allowedVariableName, required, uniqueByList } from "~/utils/validations";

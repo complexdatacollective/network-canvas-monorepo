@@ -26,15 +26,13 @@ const Protocol = () => {
 	const [scrollOffset, setScrollOffset] = useState(0);
 
 	useEffect(() => {
-		scrollY.onChange((value) => setScrollOffset(value));
+		scrollY.on("change", (value) => setScrollOffset(value));
 	}, [scrollY]);
 
 	return (
-		<motion.div className="scene scene--protocol" variants={variants}>
-			<div className="bg-background" ref={ref}>
-				<Overview scrollOffset={scrollOffset} />
-				<Timeline />
-			</div>
+		<motion.div className="" variants={variants} ref={ref}>
+			<Overview scrollOffset={scrollOffset} />
+			<Timeline />
 			<ProtocolControlBar />
 		</motion.div>
 	);

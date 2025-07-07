@@ -1,4 +1,4 @@
-import TextField from "~/lib/legacy-ui/components/Fields/Text";
+import TextField from "~/components/Form/Fields/Text";
 import { ValidatedField } from "../Form";
 
 type ScalarParametersProps = {

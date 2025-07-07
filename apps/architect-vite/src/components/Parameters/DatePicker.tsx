@@ -4,8 +4,8 @@ import { compose } from "recompose";
 import { change, formValues } from "redux-form";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import ValidatedField from "~/components/Form/ValidatedField";
-import { DatePicker } from "~/lib/legacy-ui/components/Fields";
-import { DATE_FORMATS, DATE_TYPES } from "~/lib/legacy-ui/components/Fields/DatePicker";
+import { DatePicker } from "~/components/Form/Fields";
+import { DATE_FORMATS, DATE_TYPES } from "~/components/Form/Fields/DatePicker";
 
 const dateTypes = DATE_TYPES.map((type) => ({
 	...type,

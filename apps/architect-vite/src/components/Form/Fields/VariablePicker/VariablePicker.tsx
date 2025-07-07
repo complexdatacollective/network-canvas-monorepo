@@ -86,7 +86,7 @@ const VariablePicker = ({
 							</motion.div>
 						</AnimatePresence>
 					)}
-					<Button icon="add" onClick={() => setShowPicker(true)} size="small">
+					<Button icon="add" onClick={() => setShowPicker(true)}>
 						{value ? "Change Variable" : "Select Variable"}
 					</Button>
 					{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}

@@ -6,7 +6,7 @@ import {
 	RadioGroup,
 	Text,
 	Toggle,
-} from "~/lib/legacy-ui/components/Fields";
+} from "~/components/Form/Fields";
 
 // Todo: reinstate CheckboxGroup support when we switch to schema 8
 const INPUT_TYPES = {

@@ -4,7 +4,7 @@ import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";

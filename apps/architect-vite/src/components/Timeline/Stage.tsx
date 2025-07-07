@@ -85,13 +85,7 @@ const Stage = ({
 				hasFilter={hasFilter}
 			/>
 			<div className="timeline-stage__controls">
-				<Button
-					size="small"
-					color="neon-coral"
-					icon={<DeleteIcon />}
-					onClick={() => onDeleteStage(id)}
-					title="Delete stage"
-				>
+				<Button color="neon-coral" icon={<DeleteIcon />} onClick={() => onDeleteStage(id)} title="Delete stage">
 					Delete stage
 				</Button>
 			</div>

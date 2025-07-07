@@ -1,5 +1,5 @@
 import { Section } from "~/components/EditorLayout";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { getFieldId } from "../../utils/issues";
 import { ValidatedField } from "../Form";
 

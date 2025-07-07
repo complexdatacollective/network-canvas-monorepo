@@ -6,7 +6,7 @@ import MultiSelect from "~/components/Form/MultiSelect";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
-import { Text } from "~/lib/legacy-ui/components/Fields";
+import { Text } from "~/components/Form/Fields";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
 

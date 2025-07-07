@@ -1,7 +1,7 @@
 import { Row, Section } from "~/components/EditorLayout";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import EntitySelectField from "../fields/EntitySelectField/EntitySelectField";
 

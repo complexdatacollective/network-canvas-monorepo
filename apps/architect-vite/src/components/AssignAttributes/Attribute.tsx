@@ -1,6 +1,6 @@
 import { compose } from "recompose";
+import * as Fields from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import withCreateVariableHandler from "../enhancers/withCreateVariableHandler";
 import VariablePicker from "../Form/Fields/VariablePicker/VariablePicker";
@@ -41,7 +41,7 @@ const Attribute = ({
 			</div>
 			{variable && (
 				<fieldset className="assign-attributes-attribute__value">
-					<legend className="small-heading">Set value of variable to:</legend>
+					<legend>Set value of variable to:</legend>
 					<ValidatedField
 						name={`${field}.value`}
 						options={[

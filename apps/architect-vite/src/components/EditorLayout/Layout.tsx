@@ -6,7 +6,7 @@ type LayoutProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 const Layout = ({ children, className = "", ...rest }: LayoutProps) => {
-	const containerClasses = cx(className, "stage-editor");
+	const containerClasses = cx(className, "flex flex-col gap-6 items-center w-full");
 
 	return (
 		<div

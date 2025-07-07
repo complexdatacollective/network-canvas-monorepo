@@ -51,7 +51,7 @@ const AssignAttributes = ({
 			</div>
 		)}
 		<div className="assign-attributes__add">
-			<Button color="primary" icon="add" size="small" onClick={handleAddNew}>
+			<Button color="primary" icon="add" onClick={handleAddNew}>
 				Add new variable to assign
 			</Button>
 		</div>

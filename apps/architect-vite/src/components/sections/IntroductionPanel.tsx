@@ -1,6 +1,6 @@
 import { Row, Section } from "~/components/EditorLayout";
-import { Field as RichText } from "~/lib/legacy-ui/components/Fields/RichText";
-import TextField from "~/lib/legacy-ui/components/Fields/Text";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
+import TextField from "~/components/Form/Fields/Text";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 

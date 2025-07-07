@@ -1,0 +1,67 @@
+.data-card {
+	border-radius: var(--radius);
+	overflow: hidden;
+	color: var(--color-navy-taupe);
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+
+	.data-card__label {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		padding: var(--space-md);
+		background-color: hsl(var(--platinum));
+		h2 {
+			margin: 0;
+		}
+	}
+
+	.data-card__data {
+		display: table;
+		background: hsl(var(--rich-black));
+		overflow: hidden;
+		padding: var(--space-sm) var(--space-md);
+		width: 100%;
+
+		&-label,
+		&-value {
+			padding: var(--space-sm) 0;
+			display: table-cell;
+			font-size: var(--text-sm);
+			color: var(--color-white);
+		}
+
+		&-label {
+			text-transform: uppercase;
+			letter-spacing: 0.15em;
+			text-transform: uppercase;
+			font-weight: 600;
+			color: var(--color-white);
+			opacity: 0.5;
+			text-align: right;
+			padding-right: var(--space-md);
+			overflow-wrap: anywhere;
+			hyphens: auto;
+			width: 33%;
+			min-width: var(--space-3xl);
+		}
+
+		&-value {
+			padding-left: 0;
+			width: 100%;
+		}
+
+		&-item {
+			display: table-row;
+		}
+	}
+
+	&.data-card--can-drag {
+		cursor: grab;
+	}
+
+	&.data-card--can-click {
+		cursor: pointer;
+	}
+}

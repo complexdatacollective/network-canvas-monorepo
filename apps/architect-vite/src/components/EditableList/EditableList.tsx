@@ -81,7 +81,7 @@ const EditableList = ({
 					editField={editField}
 					form={form}
 				/>
-				<Button onClick={handleAddNew} size="small" icon="add">
+				<Button onClick={handleAddNew} icon="add">
 					Create new
 				</Button>
 				<InlineEditScreen

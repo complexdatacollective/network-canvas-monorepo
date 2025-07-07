@@ -37,7 +37,6 @@ const AddItem = (props: React.ComponentProps<typeof Button>) => (
 	<Button
 		color="primary"
 		icon="add"
-		size="small"
 		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	>

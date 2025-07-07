@@ -43,7 +43,7 @@ exports[`<Stage /> can render 1`] = `
       icon={<Memo />}
       iconPosition="left"
       onClick={[Function]}
-      size="small"
+      
       title="Delete stage"
       type="button"
     >

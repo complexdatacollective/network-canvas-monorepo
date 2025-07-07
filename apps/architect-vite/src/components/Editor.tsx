@@ -9,7 +9,6 @@ type EditorProps = {
 	isIssuesVisible: boolean;
 	handleSubmit: (event?: React.FormEvent) => void;
 	submitFailed: boolean;
-	title?: string;
 	children?: React.ReactNode | ((props: any) => React.ReactNode);
 	component?: React.ComponentType<any> | null;
 };
@@ -61,14 +60,12 @@ const Editor = ({
 	hideIssues,
 	isIssuesVisible,
 	children,
-	title = "",
 	submitFailed,
 	component: Component = null,
-	...rest
 }: EditorProps) => {
 	return (
 		<>
-			<Form onSubmit={handleSubmit}>
+			<Form onSubmit={handleSubmit} className="flex gap-6 flex-col mx-6">
 				{typeof children === "function" &&
 					children({
 						submitFailed,

@@ -4,35 +4,48 @@ import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import TextInput from "~/components/Form/Fields/Text";
+import { getIconForType } from "~/config/variables";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 import { Icon } from "~/lib/legacy-ui/components";
-import TextInput from "~/lib/legacy-ui/components/Fields/Text";
+import { getVariablesForSubject, makeGetVariableWithEntity } from "~/selectors/codebook";
+import { cn } from "~/utils/cn";
 import { allowedVariableName, required as requiredValidation, uniqueByList } from "~/utils/validations";
-import { getColorForType, getIconForType } from "../../../../config/variables";
-import { getVariablesForSubject, makeGetVariableWithEntity } from "../../../../selectors/codebook";
 
 const EDIT_COMPLETE_BUTTON_ID = "editCompleteButton";
 
 type BaseVariablePillProps = {
-	type?: string | null;
+	type: "number" | "text" | "boolean" | "ordinal" | "categorical" | "scalar" | "datetime" | "layout" | "location";
 	children: React.ReactNode;
 };
 
-export const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(
-	({ type = null, children }, ref) => {
-		const icon = useMemo(() => getIconForType(type), [type]);
-		const backgroundColor = useMemo(() => getColorForType(type), [type]);
+export const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children }, ref) => {
+	const icon = useMemo(() => getIconForType(type), [type]);
+	// const backgroundColor = useMemo(() => getColorForType(type), [type]);
 
-		return (
-			<motion.div className="variable-pill" ref={ref}>
-				<div className="variable-pill__icon" style={{ backgroundColor }}>
-					<img className="icon" src={icon} alt={type} />
-				</div>
-				<div className="variable-pill__container">{children}</div>
-			</motion.div>
-		);
-	},
-);
+	// TODO: remove these from the src/config/variables.ts file
+	const iconClasses = cn(
+		"variable-pill__icon",
+		type === "number" && "bg-paradise-pink",
+		type === "text" && "bg-cerulean-blue",
+		type === "boolean" && "bg-neon-carrot",
+		type === "ordinal" && "bg-sea-green",
+		type === "categorical" && "bg-mustard",
+		type === "scalar" && "bg-kiwi",
+		type === "datetime" && "bg-tomato",
+		type === "layout" && "bg-purple-pizazz",
+		type === "location" && "bg-slate-blue-dark",
+	);
+
+	return (
+		<motion.div className="variable-pill" ref={ref}>
+			<div className={iconClasses}>
+				<img className="icon" src={icon} alt={type} />
+			</div>
+			<div className="variable-pill__container">{children}</div>
+		</motion.div>
+	);
+});
 
 type SimpleVariablePillProps = {
 	label: string;

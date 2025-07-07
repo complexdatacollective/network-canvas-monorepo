@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import { updateProtocolOptions } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
-import * as Fields from "~/lib/legacy-ui/components/Fields";
+import * as Fields from "~/components/Form/Fields";
 import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
 import withTooltip from "./enhancers/withTooltip";
 
@@ -157,16 +157,13 @@ const Overview = ({
 					>
 						<h1 className="overview-name">{name}</h1>
 					</motion.div>
-					<div className="overview-description">
-						<Fields.TextArea
-							className="overview-description__field"
-							placeholder="Enter a description for your protocol..."
-							input={{
-								value: description,
-								onChange: ({ target: { value } }) => updateOptions({ description: value }),
-							}}
-						/>
-					</div>
+					<Fields.TextArea
+						placeholder="Enter a description for your protocol..."
+						input={{
+							value: description,
+							onChange: ({ target: { value } }) => updateOptions({ description: value }),
+						}}
+					/>
 				</div>
 				<div className="overview__footer">
 					<div className="icon">

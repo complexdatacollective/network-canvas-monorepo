@@ -27,7 +27,7 @@ const AdditionalInformation = ({ stack = null }: AdditionalInformationProps) => 
 			>
 				<pre className="error__stack-trace">{stack}</pre>
 			</motion.div>
-			<Button size="small" color="platinum" onClick={() => setExpanded(!expanded)}>
+			<Button color="platinum" onClick={() => setExpanded(!expanded)}>
 				{buttonText}
 			</Button>
 		</div>
