@@ -12,28 +12,6 @@
 	position: relative;
 	box-shadow: 0 var(--space-px) var(--space-px) 0 var(--color-shadow-panel);
 
-	&.stage-editor-section--toggleable {
-		overflow: hidden;
-		&:not(.stage-editor-section--open) {
-			@apply bg-border;
-
-			& ::after {
-				@apply backdrop-blur-[1px];
-
-				content: "";
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-			}
-		}
-	}
-
-	.form-field-container {
-		margin-bottom: 0;
-	}
-
 	&.stage-editor-section--disabled {
 		opacity: 0.5;
 		cursor: not-allowed;

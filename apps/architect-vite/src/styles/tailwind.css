@@ -202,36 +202,23 @@
 
 	/* Typography assignments using semantic variables */
 	h1 {
-		font-size: var(--text-3xl);
-		line-height: var(--leading-tight);
-		font-weight: var(--font-weight-bold);
-		margin: var(--space-lg) 0 var(--space-md) 0;
+		@apply h1;
 	}
 
 	h2 {
-		font-size: var(--text-2xl);
-		line-height: var(--leading-tight);
-		font-weight: var(--font-weight-bold);
-		margin: var(--space-lg) 0 var(--space-md) 0;
+		@apply h2;
 	}
 
 	h3 {
-		font-size: var(--text-xl);
-		line-height: var(--leading-tight);
-		font-weight: var(--font-weight-semibold);
-		margin: var(--space-md) 0 var(--space-sm) 0;
+		@apply h3;
 	}
 
 	h4 {
-		font-size: var(--text-lg);
-		line-height: var(--leading-normal);
-		font-weight: var(--font-weight-semibold);
-		margin: var(--space-md) 0 var(--space-sm) 0;
+		@apply h4;
 	}
 
 	p {
-		font-size: var(--text-base);
-		line-height: var(--leading-normal);
+		@apply text-base leading-normal;
 		margin: 1em 0;
 	}
 }
@@ -326,17 +313,22 @@
 
 	--color-background: hsl(var(--platinum));
 	--color-foreground: hsl(var(--cyber-grape));
-	--color-primary: hsl(var(--sea-green));
+
+	--color-primary: hsl(var(--cyber-grape));
 	--color-primary-foreground: hsl(var(--white));
+
 	--color-secondary: hsl(var(--neon-coral));
 	--color-secondary-foreground: hsl(var(--white));
 	--color-accent: hsl(var(--slate-blue));
 	--color-accent-foreground: hsl(var(--white));
 
+	--color-action: hsl(var(--sea-green));
+	--color-action-foreground: hsl(var(--white));
+
 	--color-timeline: hsl(var(--tomato));
 	--color-timeline-foreground: hsl(var(--white));
 
-	--color-success: hsl(var(--sea-green));
+	--color-success: hsl(var(--kiwi));
 	--color-success-foreground: hsl(var(--white));
 	--color-warning: hsl(var(--neon-carrot));
 	--color-warning-foreground: hsl(var(--white));
@@ -471,6 +463,22 @@
 	}
 }
 
+@utility h1 {
+	@apply text-3xl leading-tight font-bold my-6 mx-0;
+}
+
+@utility h2 {
+	@apply text-2xl leading-tight font-bold my-6 mx-0;
+}
+
+@utility h3 {
+	@apply text-xl leading-tight font-semibold my-2 mx-0;
+}
+
+@utility h4 {
+	@apply text-lg leading-normal font-semibold my-2 mx-0;
+}
+
 /* Small heading utility - replaces .small-heading placeholder */
 @utility small-heading {
 	font-size: var(--text-sm);
@@ -509,9 +517,8 @@
 
 /* Form field utility - replaces form-field mixin */
 @utility form-field {
-	@apply w-full rounded-lg border bg-white text-sm transition-colors duration-150 text-input-foreground mb-4;
-	border-color: var(--color-border);
-	background-color: var(--color-surface-1);
+	@apply w-full rounded-lg border border-border;
+	background-color: var(--color-white);
 	padding: var(--space-sm) var(--space-md);
 	line-height: var(--leading-normal);
 

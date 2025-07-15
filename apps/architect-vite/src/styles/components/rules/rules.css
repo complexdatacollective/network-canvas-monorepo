@@ -1,5 +1,5 @@
 .rules-rules__join {
-	--input-border: var(--color-text);
+	--input-border: var(--color-foreground);
 	margin-top: var(--space-xl);
 }
 

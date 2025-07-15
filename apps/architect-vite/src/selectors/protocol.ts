@@ -17,7 +17,7 @@ export const getProtocol = (state: RootState) => {
 	}
 
 	// Fall back to old protocol store during transition
-	return state.protocol?.present || null;
+	return state.activeProtocol?.present || null;
 };
 
 export const getAssetManifest = (state: RootState) => {
@@ -30,7 +30,7 @@ export const getCodebook = (state: RootState) => {
 	return protocol?.codebook || null;
 };
 
-export const getStageList = createSelector([getProtocol], (protocol) => {
+export const getStageList = createSelector([getProtocol], (protocol: Protocol) => {
 	const stages = protocol ? protocol.stages : [];
 
 	return stages.map((stage) => ({
@@ -89,24 +89,7 @@ export const getExperiments = (state: RootState) => {
 };
 
 export const getHasUnsavedChanges = (state: RootState): boolean => {
-	// state.activeProtocol.present.lastChanged should be compared with
-	// state.protocols
-
-	// During transition, check both stores
-
-	// Check new activeProtocol store
-	if (state.activeProtocol?.protocol) {
-		// TODO: Implement proper change tracking for new store
-		// For now, assume no unsaved changes
-		return false;
-	}
-
-	// Check old protocol store
-	const activeProtocol = state.protocols?.present;
-	if (activeProtocol) {
-		return activeProtocol.lastChanged > activeProtocol.lastSaved;
-	}
-
+	// TODO: need a new state item to track last saved time
 	return false;
 };
 
@@ -125,7 +108,7 @@ export const checkUnsavedChanges = createAsyncThunk("protocol/check-unsaved-chan
 	return thunkAPI.dispatch(dialogsActions.openDialog(unsavedChangesDialog)).unwrap();
 });
 
-export const getIsProtocolValid = (state: RootState): boolean => {
+export const getIsProtocolValid = (_state: RootState): boolean => {
 	// Return validation result from Redux state
 	return true;
 };
@@ -149,5 +132,5 @@ export const getTimelineLocus = (state: RootState) => {
 
 // New selectors for the activeProtocol store
 export const hasActiveProtocol = (state: RootState): boolean => {
-	return Boolean(selectActiveProtocol(state as { activeProtocol: { present: Protocol } }));
+	return Boolean(selectActiveProtocol(state));
 };

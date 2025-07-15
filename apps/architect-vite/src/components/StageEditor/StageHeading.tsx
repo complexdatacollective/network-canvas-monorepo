@@ -1,17 +1,20 @@
 import { get } from "es-toolkit/compat";
-import { connect } from "react-redux";
-import { getFormValues } from "redux-form";
 import timelineImages from "~/images/timeline";
+import { useFormContext } from "../Editor";
 import { getInterface } from "./Interfaces";
 
-const getTimelineImage = (type) => get(timelineImages, type, timelineImages.Default);
+const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
-interface StageHeadingProps {
-	type: string;
-	label: string;
-}
+const StageHeading = () => {
+	const { values } = useFormContext();
 
-const StageHeading = ({ label, type }: StageHeadingProps) => {
+	const type = get(values, "type") as string;
+	const label = get(values, "label") as string;
+
+	if (!type || !label) {
+		return null;
+	}
+
 	const documentationLinkForType = get(getInterface(type), "documentation", null);
 
 	return (
@@ -25,14 +28,6 @@ const StageHeading = ({ label, type }: StageHeadingProps) => {
 						src={getTimelineImage(type)}
 						alt={`${type} interface`}
 						title={`${type} interface`}
-						// -webkit-mask-image: linear-gradient(180deg, transparent, rgb(0, 0, 0) 40%, rgb(0, 0, 0) 40%, transparent 100%);
-						// mask-image: linear-gradient(180deg, transparent, rgb(0, 0, 0) 40%, rgb(0, 0, 0) 40%, transparent 100%);
-						// content: "";
-						// border-left: .5rem solid var(--architect-timeline-line);
-						// position: absolute;
-						// left: 15.8rem;
-						// height: 11rem;
-						// top: -1rem;
 						className="relative w-full aspect-auto rounded h-28"
 					/>
 				</a>
@@ -44,13 +39,4 @@ const StageHeading = ({ label, type }: StageHeadingProps) => {
 	);
 };
 
-const mapStateToProps = (state, props) => {
-	const formValues = getFormValues("edit-stage")(state);
-
-	return {
-		type: get(formValues, "type"),
-		label: get(formValues, "label"),
-	};
-};
-
-export default connect(mapStateToProps)(StageHeading);
+export default StageHeading;

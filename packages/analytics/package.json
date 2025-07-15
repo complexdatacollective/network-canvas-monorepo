@@ -10,7 +10,7 @@
 		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"publish": "pnpm lint && pnpm build && npm publish --access public",
 		"dev": "npm run build -- --watch",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --build --noEmit"
 	},
 	"peerDependencies": {
 		"next": "catalog:"

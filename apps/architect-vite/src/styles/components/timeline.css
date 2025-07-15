@@ -9,13 +9,10 @@
 		cursor: pointer;
 		position: absolute;
 		left: 50%;
-		padding-left: var(--space-2xl);
-		height: var(--space-2xl);
+		padding-left: var(--space-xl);
+		height: var(--space-xl);
 		display: inline-flex;
 		align-items: center;
-		font-family: var(--heading-font-family);
-		font-size: var(--text-xl);
-		font-weight: var(--font-weight-semibold);
 		letter-spacing: 0.05rem;
 		line-height: var(--leading-tight);
 		color: transparent;
@@ -28,10 +25,10 @@
 			position: absolute;
 			left: 0;
 			top: 0;
-			width: var(--space-2xl);
-			height: var(--space-2xl);
-			border-radius: var(--space-2xl);
-			background-color: var(--color-timeline-line);
+			width: var(--space-xl);
+			height: var(--space-xl);
+			border-radius: var(--space-xl);
+			background-color: var(--color-timeline);
 			display: inline-flex;
 			justify-content: center;
 			align-items: center;
@@ -63,7 +60,7 @@
 
 		&.timeline__insert--new,
 		&:hover {
-			color: var(--color-text);
+			color: var(--color-foreground);
 
 			&::before {
 				transform: translateX(-50%);
@@ -92,13 +89,13 @@
 		top: 0;
 		left: 50%;
 		width: 0;
-		height: calc(100% - var(--space-2xl));
-		border-left: 0.36rem solid var(--color-timeline-line);
+		height: calc(100% - var(--space-xl));
+		border-left: 0.36rem solid var(--color-timeline);
 	}
 
 	.timeline__stages {
 		position: relative;
-		padding: var(--space-2xl) 0 0;
+		padding: var(--space-xl) 0 0;
 
 		&.timeline__stages--show {
 			opacity: 1;
@@ -118,27 +115,12 @@
 
 /* Timeline Stage */
 .timeline-stage {
-	padding: var(--space-2xl) 0;
+	padding: var(--space-xl) 0;
 	position: relative;
-	margin-top: var(--space-2xl);
+	margin-top: var(--space-xl);
 
 	.timeline-stage__notch {
-		font-size: var(--text-2xl);
-		font-weight: var(--font-weight-semibold);
-		line-height: var(--leading-normal);
-		font-family: var(--heading-font-family);
-		left: 50%;
-		width: var(--space-2xl);
-		height: var(--space-2xl);
-		border-radius: var(--space-2xl);
-		position: absolute;
-		top: 50%;
-		transform: translate(-50%, -50%);
-		background-color: var(--color-timeline-line);
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		color: var(--color-white);
+		@apply h4 !m-0 h-10 w-10 rounded-full absolute bg-timeline flex justify-center items-center text-timeline-foreground left-1/2 top-1/2 -translate-1/2;
 	}
 
 	.timeline-stage__controls {
@@ -168,7 +150,6 @@
 
 	.timeline-stage__meta {
 		margin: 0 0 0 var(--space-5xl);
-		width: 15.6rem;
 	}
 
 	.timeline-stage__screen {

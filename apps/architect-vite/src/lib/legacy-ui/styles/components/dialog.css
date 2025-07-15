@@ -6,7 +6,7 @@
 	display: flex;
 	flex-direction: column;
 	background: var(--color-surface-1);
-	color: var(--color-text);
+	color: var(--color-foreground);
 	box-shadow: 0 0 4rem 0 var(--color-modal-window-box-shadow);
 	border-color: var(--color-primary);
 	border-style: solid;

@@ -76,7 +76,7 @@
 			/* Placeholder */
 			&:disabled {
 				font-style: italic;
-				color: var(--color-text-muted);
+				color: var(--color-foreground-muted);
 			}
 		}
 	}

@@ -2,7 +2,7 @@
 /* ============================================== */
 
 .progress-circle {
-	--circle-text-color: var(--color-text);
+	--circle-text-color: var(--color-foreground);
 	--circle-background-color: var(--transparent-md);
 	--circle-color: hsl(var(--slate-blue));
 	--circle-complete-color: var(--color-primary);

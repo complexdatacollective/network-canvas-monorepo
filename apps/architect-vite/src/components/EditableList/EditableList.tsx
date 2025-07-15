@@ -1,21 +1,37 @@
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
-import { startCase } from "es-toolkit/compat";
-import { LayoutGroup } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import type { ComponentType } from "react";
-import type { ConnectedComponent } from "react-redux";
 import type { Validator } from "redux-form";
-import { Section } from "~/components/EditorLayout";
+import { v4 } from "uuid";
 import ValidatedField from "~/components/Form/ValidatedField";
-import InlineEditScreen from "~/components/InlineEditScreen";
-import OrderedList from "~/components/OrderedList/OrderedList";
+import OrderedList, { type OrderedListProps } from "~/components/OrderedList/OrderedList";
 import { Button } from "~/lib/legacy-ui/components";
-import { getFieldId } from "~/utils/issues";
-import { formName } from ".";
+import Dialog from "../NewComponents/Dialog";
 import { useEditHandlers } from "./useEditHandlers";
+
+type EditComponentProps = FieldType & {
+	layoutId: string;
+};
+
+const EditComponent = ({ layoutId, handleCancel, handleUpdate, ...rest }: EditComponentProps) => {
+	return (
+		<motion.div layoutId={layoutId} className="flex items-center justify-between h-50 w-50 bg-accent p-2 rounded">
+			<Button onClick={handleCancel} icon="cancel" color="platinum">
+				Cancel
+			</Button>
+			<Button onClick={handleUpdate} icon="save" color="sea-green">
+				Save
+			</Button>
+		</motion.div>
+	);
+};
 
 const notEmpty = (value: unknown) =>
 	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item.";
+
+// TODO: Make this a generic that is passed in.
+type FieldType = { variable: string; prompt: string }[];
 
 type EditableListProps = {
 	sectionTitle: string;
@@ -26,76 +42,66 @@ type EditableListProps = {
 	fieldName?: string;
 	title?: string | null;
 	children?: React.ReactNode;
-	previewComponent: ConnectedComponent<
-		ComponentType<{ variable: string; prompt: string; entity: string; type: string }>,
-		ComponentType<{ variable: string; prompt: string; entity: string; type: string }>
+	previewComponent: ComponentType<FieldType>;
+	editComponent: React.ComponentType<
+		FieldType[number] & { layoutId: string; handleCancel: () => void; handleUpdate: () => void }
 	>;
-	editComponent: React.ComponentType<unknown>;
 	validation?: Record<string, Validator> | Record<ValidationName, Validation>;
-	editProps?: Record<string, unknown>;
 	// Optional props for customizing hook behavior
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
-	itemSelector?: (state: unknown, options: { form: string; editField: string }) => unknown;
-	onChange?: (value: unknown) => Promise<unknown>;
 };
 
 const EditableList = ({
-	sectionTitle,
-	sectionSummary = null,
-	form,
-	disabled = false,
 	fieldName = "prompts",
 	children = null,
-	title = null,
 	validation = { notEmpty },
-	editComponent: EditComponent,
+	// editComponent: EditComponent,
 	previewComponent: PreviewComponent,
-	editProps = {},
-	normalize,
-	template,
-	itemSelector,
-	onChange,
+	normalize = (value) => value, // Function to normalize the value before saving
+	template = () => ({ id: v4() }), // Function to provide a template for new items
 }: EditableListProps) => {
-	const { editField, handleEditField, handleCancelEditField, handleAddNew, handleUpdate, initialValues } =
-		useEditHandlers({
-			form,
-			fieldName,
-			normalize,
-			template,
-			itemSelector,
-			onChange,
-		});
+	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
+		fieldName,
+		normalize,
+		template,
+	});
 
 	return (
-		<Section disabled={disabled} summary={sectionSummary} title={sectionTitle}>
-			<LayoutGroup>
-				<div id={getFieldId(`${fieldName}._error`)} data-name={startCase(fieldName)} />
-				{children}
-				<ValidatedField
-					name={fieldName}
-					component={OrderedList}
-					item={PreviewComponent}
-					validation={validation}
-					onClickItem={handleEditField}
-					editField={editField}
-					form={form}
-				/>
-				<Button onClick={handleAddNew} icon="add">
-					Create new
-				</Button>
-				<InlineEditScreen
-					show={!!editField}
-					title={title}
-					onSubmit={handleUpdate}
-					onCancel={handleCancelEditField}
-					form={formName}
-					initialValues={initialValues}
-				>
-					<EditComponent form={formName} {...editProps} initialValues={initialValues} />
-				</InlineEditScreen>
-			</LayoutGroup>
-		</Section>
+		<>
+			{children}
+			<ValidatedField<OrderedListProps>
+				name={fieldName}
+				component={OrderedList}
+				validation={validation}
+				componentProps={{
+					item: PreviewComponent,
+					onClickItem: handleTriggerEdit,
+					editIndex: editIndex, // Pass editIndex so OrderedList can hide the editing item
+				}}
+			/>
+			<Button onClick={handleAddNew} icon="add">
+				Create new
+			</Button>
+			<AnimatePresence>
+				{editIndex !== null && (
+					<motion.div
+						key={`edit-component-${editIndex}`}
+						layoutId={`${fieldName}-edit-field-${editIndex}`}
+						className="absolute top-50 left-50 flex items-center justify-between h-50 w-50 bg-sea-green p-2 rounded"
+						transition={{ layout: { duration: 1, type: "spring" } }}
+					>
+						<Button onClick={handleCancelEdit} color="platinum">
+							Cancel
+						</Button>
+						<Button onClick={handleSaveEdit} color="sea-green">
+							Save
+						</Button>
+					</motion.div>
+				)}
+			</AnimatePresence>
+			<Dialog />
+		</>
 	);
 };
 

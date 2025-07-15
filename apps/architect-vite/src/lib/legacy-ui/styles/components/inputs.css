@@ -371,7 +371,7 @@
 	width: 2em; /* switch-size */
 	left: -1em; /* switch-size * -0.5 */
 	top: -0.5em; /* switch-size * -0.25 */
-	background-color: var(--color-text);
+	background-color: var(--color-foreground);
 	transition: 0.4s;
 }
 

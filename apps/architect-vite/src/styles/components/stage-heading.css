@@ -4,7 +4,7 @@
 }
 
 .stage-heading a {
-	color: var(--color-text);
+	color: var(--color-foreground);
 	font-weight: var(--font-weight-bold);
 	border-bottom: 2px solid var(--color-primary);
 }
@@ -35,7 +35,7 @@
 .stage-heading .stage-meta .timeline-preview::before {
 	mask-image: linear-gradient(180deg, transparent, rgb(0 0 0 / 100%) 40%, rgb(0 0 0 / 100%) 40%, transparent 100%);
 	content: "";
-	border-left: var(--space-xs) solid var(--color-timeline-line);
+	border-left: var(--space-xs) solid var(--color-timeline);
 	position: absolute;
 	left: 15.8rem;
 	height: 11rem;

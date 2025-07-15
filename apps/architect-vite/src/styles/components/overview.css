@@ -35,53 +35,24 @@
 }
 
 .overview {
-	margin: 0 auto;
-	margin-top: var(--space-xl);
-	width: 70rem;
-	position: relative;
-	background: var(--color-white);
-	border-radius: var(--space-sm);
-	overflow: hidden;
+	@apply w-full max-w-4xl mx-auto bg-white flex flex-col rounded relative mt-10 overflow-hidden;
 	box-shadow: 0 var(--space-sm) 0.2rem 0 var(--color-border);
-	display: flex;
-	flex-direction: column;
 
 	.overview__panel {
-		padding: var(--space-md) var(--space-3xl);
-
-		.overview-description {
-			textarea {
-				padding-bottom: 0;
-				margin-bottom: 0;
-				min-height: 5rem;
-				background: var(--color-white);
-			}
-
-			.form-field-container {
-				margin-bottom: 0;
-			}
-		}
+		@apply py-4 px-6;
 	}
 
 	.overview__footer {
+		@apply py-4 px-6 flex gap-6;
 		background: var(--color-slate-blue-dark);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		flex: 0 0 auto;
-		padding: var(--space-md) var(--space-3xl);
 
 		.action-buttons {
-			display: flex;
-
-			:not(:last-child) {
-				margin-right: var(--space-md);
-			}
+			@apply flex w-full justify-end items-center gap-4;
 		}
 
 		.icon {
+			@apply h-full w-10;
 			height: 100%;
-			width: 3rem;
 		}
 	}
 }

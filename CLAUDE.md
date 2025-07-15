@@ -166,3 +166,7 @@ pnpm typecheck   # TypeScript check
 ## Redux and Toolkit Notes
 
 - Do not use the `AnyAction` type from @reduxjs/toolkit - it is deprecated. Search the web for the latest approach, if required.
+
+## Package Management Notes
+
+- Always use pnpm rather than npx for package management and script execution

@@ -43,7 +43,7 @@ type ButtonProps = {
 class Button extends PureComponent<ButtonProps> {
 	render() {
 		const {
-			color = "primary",
+			color = "platinum",
 			size,
 			children,
 			content = "",

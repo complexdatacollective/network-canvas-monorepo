@@ -1,138 +1,100 @@
-import { useCallback, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { change, formValueSelector } from "redux-form";
-import { v4 as uuid } from "uuid";
-import { timelineActionCreators } from "~/ducks/middleware/timeline";
-import { getLocus } from "~/selectors/timeline";
+import { useAppDispatch } from "~/ducks/hooks";
 
-interface UseEditHandlersOptions {
-	form: string;
+import { useFormContext } from "../Editor";
+
+type UseEditHandlersOptions = {
 	fieldName: string;
-	normalize?: (value: any) => any;
-	template?: () => any;
-	itemSelector?: (state: any, options: { form: string; editField: string }) => any;
-	onChange?: (value: any) => Promise<any>;
-}
+	normalize?: (value: unknown) => unknown;
+	template?: () => Record<string, unknown>;
+};
 
-interface EditState {
-	editField: string | null;
-	locus: any;
-}
+// Default functions defined outside component to prevent recreating on every render
+const defaultNormalize = (value: unknown) => value;
+const defaultTemplate = () => ({});
 
 export const useEditHandlers = ({
-	form,
 	fieldName,
-	normalize = (value) => value,
-	template = () => ({}),
-	itemSelector,
-	onChange,
+	normalize = defaultNormalize,
+	template = defaultTemplate,
 }: UseEditHandlersOptions) => {
-	const dispatch = useDispatch();
+	const { form } = useFormContext();
+	const dispatch = useAppDispatch();
 
-	// State management
-	const [editState, setEditState] = useState<EditState>({
-		editField: null,
-		locus: null,
+	// Logging to track re-renders
+	const renderCount = useRef(0);
+	renderCount.current++;
+	console.log(`🔄 useEditHandlers render #${renderCount.current}`, {
+		fieldName,
+		form,
+		normalize: normalize.name || "anonymous",
+		template: template.name || "anonymous",
 	});
 
-	// Selectors
-	const items = useSelector((state: any) => formValueSelector(form)(state, fieldName));
-	const itemCount = items ? items.length : 0;
-	const locus = useSelector(getLocus);
+	// State management
+	const [editIndex, setEditIndex] = useState<number | null>(null);
 
-	// Get current item being edited
-	const defaultItemSelector = useCallback(
-		(state: any, { form, editField }: { form: string; editField: string }) => formValueSelector(form)(state, editField),
-		[],
-	);
+	// Get items only when needed for operations, not for rendering
+	const getItems = useCallback(() => {
+		console.log(`🔍 getItems called`);
+		// This creates a selector that gets current state without subscribing to changes
+		const state = dispatch.getState();
+		return formValueSelector(form)(state, fieldName) || [];
+	}, [dispatch, form, fieldName]);
 
-	const currentItemSelector = itemSelector || defaultItemSelector;
-	const currentItem = useSelector((state: any) =>
-		editState.editField ? currentItemSelector(state, { form, editField: editState.editField }) : null,
-	);
+	// Log when getItems callback is recreated
+	useEffect(() => {
+		console.log(`🔄 getItems callback recreated`);
+	}, [getItems]);
 
-	const initialValues = currentItem || { ...template(), id: uuid() };
+	// // Get current item being edited
+	// const currentItem = useSelector((state: AppState) =>
+	// 	editIndex !== null ? formValueSelector(form)(state, `${fieldName}[${editIndex}]`) : null,
+	// );
 
-	// Action creators
-	const upsert = useCallback((fieldId: string, value: any) => dispatch(change(form, fieldId, value)), [dispatch, form]);
-
-	const jump = useCallback((targetLocus: any) => dispatch(timelineActionCreators.jump(targetLocus)), [dispatch]);
-
-	// State handlers
-	const setEditField = useCallback(
-		(fieldId: string) => {
-			setEditState({
-				editField: fieldId,
-				locus,
-			});
-		},
-		[locus],
-	);
+	// const initialValues = currentItem || template();
 
 	const clearEditField = useCallback(() => {
-		setEditState({
-			editField: null,
-			locus: null,
-		});
+		console.log(`❌ clearEditField called`);
+		setEditIndex(null);
 	}, []);
 
-	const resetEditField = useCallback(() => {
-		if (editState.locus) {
-			jump(editState.locus);
-		}
-		setEditState({
-			editField: null,
-			locus: null,
-		});
-	}, [editState.locus, jump]);
-
 	// Event handlers
-	const handleEditField = useCallback((fieldId: string) => setEditField(fieldId), [setEditField]);
-
-	const handleCancelEditField = useCallback(() => resetEditField(), [resetEditField]);
+	const handleTriggerEdit = useCallback((index: number) => {
+		console.log(`✏️ handleTriggerEdit called with index:`, index);
+		setEditIndex(index);
+	}, []);
 
 	const handleAddNew = useCallback(() => {
-		const newItemFieldName = `${fieldName}[${itemCount}]`;
-		setEditField(newItemFieldName);
-	}, [fieldName, itemCount, setEditField]);
+		console.log(`➕ handleAddNew called`);
+		const items = getItems();
+		console.log(`📊 Current items length:`, items.length);
+		setEditIndex(items.length);
+	}, [getItems]);
 
-	const handleUpdate = useCallback(
-		async (value: any) => {
-			if (!editState.editField) return;
+	const handleSaveEdit = useCallback(
+		(value: unknown) => {
+			if (editIndex === null) return;
 
 			try {
-				// Using onChange allows us to do some intermediate processing if necessary
-				const newValue = onChange ? await onChange(value) : value;
-				const normalizedValue = normalize(newValue);
-
-				upsert(editState.editField, normalizedValue);
+				const normalizedValue = normalize(value);
+				const fieldPath = `${fieldName}[${editIndex}]`;
+				dispatch(change(form, fieldPath, normalizedValue));
 				clearEditField();
 			} catch (error) {
 				console.error("Error updating field:", error);
 				throw error;
 			}
 		},
-		[editState.editField, onChange, normalize, upsert, clearEditField],
+		[editIndex, normalize, dispatch, form, fieldName, clearEditField],
 	);
 
 	return {
-		// State
-		editField: editState.editField,
-		locus: editState.locus,
-		itemCount,
-		initialValues,
-
-		// Handlers
-		handleEditField,
-		handleCancelEditField,
+		editIndex,
+		handleTriggerEdit,
+		handleCancelEdit: clearEditField,
+		handleSaveEdit,
 		handleAddNew,
-		handleUpdate,
-
-		// Low-level actions (if needed for advanced use cases)
-		setEditField,
-		clearEditField,
-		resetEditField,
-		upsert,
-		jump,
 	};
 };

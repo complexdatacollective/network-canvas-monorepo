@@ -7,7 +7,7 @@
 		display: flex;
 		cursor: text;
 		background: var(--color-background);
-		color: var(--color-text);
+		color: var(--color-foreground);
 		border-radius: var(--space-sm);
 	}
 

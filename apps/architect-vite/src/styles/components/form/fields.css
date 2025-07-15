@@ -14,14 +14,14 @@
 @import "./fields/data-source.css";
 @import "./fields/multi-select.css";
 @import "./fields/color-picker.css";
-@import "./fields/field-preview.css";
+
+.form-field {
+	@apply form-field;
+}
 
 /* Form field base styles - converted from SCSS mixin to CSS utility class */
-.form-field__label {
-	/* @include preset(copy-standard, font-size); */
-	/* font-weight: 200; */
-	display: block;
-	margin: 0 0 var(--space-xs);
+.form-field-label {
+	@apply h3;
 }
 
 .form-field__error {
@@ -31,6 +31,6 @@
 		var(--animation-duration-standard);
 }
 
-.form-field-container h4 {
-	font-weight: var(--font-weight-semibold);
+.form-field-container {
+	@apply mb-4;
 }

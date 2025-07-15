@@ -13,8 +13,6 @@ export const useProtocolLoader = () => {
 	// Get the stored protocol
 	const activeProtocol = useSelector(selectActiveProtocol);
 
-	console.log("useProtocolLoader activeProtocol", activeProtocol);
-
 	useEffect(() => {
 		if (!activeProtocol) {
 			// No protocol ID in URL, nothing to load

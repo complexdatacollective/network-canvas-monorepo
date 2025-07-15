@@ -160,7 +160,7 @@
 
 	&.action-button--white {
 		background: var(--color-white);
-		color: var(--color-text-dark);
+		color: var(--color-foreground-dark);
 
 		&:hover {
 			background: var(--color-white-dark);

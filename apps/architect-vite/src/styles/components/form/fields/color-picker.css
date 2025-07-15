@@ -13,7 +13,7 @@
 .form-fields-color-picker__label {
 	font-family: var(--heading-font-family);
 	font-size: inherit;
-	color: var(--color-text);
+	color: var(--color-foreground);
 	margin-top: var(--space-xl);
 	margin-bottom: var(--space-md);
 	font-weight: var(--font-weight-semibold);

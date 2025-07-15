@@ -1,7 +1,7 @@
 import cx from "classnames";
-import { motion } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { cn } from "~/utils/cn";
 import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
@@ -65,12 +65,18 @@ const Section = ({
 	}, [isOpen, handleToggleChange]);
 
 	const sectionClasses = cx(
-		"stage-editor-section border border-platinum-dark w-full",
+		"stage-editor-section border border-platinum-dark w-full relative",
 		{ "stage-editor-section--toggleable": toggleable },
 		{ "stage-editor-section--open": isOpen },
 		{ "stage-editor-section--disabled": disabled },
 		{ "stage-editor-section--group": group },
 		className,
+	);
+
+	const classes = cn(
+		"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
+		"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative px-6 py-4 shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)]",
+		toggleable && "cursor-pointer",
 	);
 
 	return (
@@ -92,17 +98,14 @@ const Section = ({
 				</legend>
 				<div className="summary">{summary}</div>
 			</div>
-			<fieldset className={sectionClasses}>
+			<fieldset className={classes}>
 				{id && <IssueAnchor fieldName={id} description={title} />}
-				<motion.div
-					variants={animations}
-					initial="collapsed"
-					animate="open"
-					exit="collapsed"
-					transition={{ duration: 0.2, ease: "easeInOut" }}
-				>
-					{children}
-				</motion.div>
+				{children}
+				{toggleable && !isOpen && (
+					<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 backdrop-blur-sm text-foreground/70 font-semibold italic">
+						Cick the toggle to enable this feature...
+					</div>
+				)}
 			</fieldset>
 		</div>
 	);

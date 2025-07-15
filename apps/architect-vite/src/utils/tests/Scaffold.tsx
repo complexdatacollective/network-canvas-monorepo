@@ -1,10 +1,10 @@
 /* eslint-env jest */
 
-import type React from "react";
 import { configureStore } from "@reduxjs/toolkit";
+import type React from "react";
 import { Provider } from "react-redux";
-import { reduxForm } from "redux-form";
 import { compose } from "recompose";
+import { reduxForm } from "redux-form";
 
 type ScaffoldProps = {
 	children?: React.ReactNode;
@@ -18,7 +18,10 @@ const Form = compose(
 	reduxForm({
 		form: "foo",
 	}),
-)(({ children }: { children?: React.ReactNode }) => <form>{children}</form>);
+)((props: unknown) => {
+	const { children } = props as { children?: React.ReactNode };
+	return <form>{children}</form>;
+});
 
 const Scaffold = ({ children = null }: ScaffoldProps) => (
 	<Provider store={store}>

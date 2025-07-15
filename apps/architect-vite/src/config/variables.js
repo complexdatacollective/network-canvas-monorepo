@@ -22,55 +22,55 @@ export const VARIABLE_TYPES = {
 		label: "Number",
 		value: "number",
 		icon: NumberVariable,
-		color: "var(paradise-pink)",
+		color: "paradise-pink",
 	},
 	text: {
 		label: "Text",
 		value: "text",
 		icon: TextVariable,
-		color: "var(cerulean-blue)",
+		color: "cerulean-blue",
 	},
 	boolean: {
 		label: "Boolean",
 		value: "boolean",
 		icon: BooleanVariable,
-		color: "var(neon-carrot)",
+		color: "neon-carrot",
 	},
 	ordinal: {
 		label: "Ordinal",
 		value: "ordinal",
 		icon: OrdinalVariable,
-		color: "var(sea-green)",
+		color: "sea-green",
 	},
 	categorical: {
 		label: "Categorical",
 		value: "categorical",
 		icon: CategoricalVariable,
-		color: "var(mustard)",
+		color: "mustard",
 	},
 	scalar: {
 		label: "Scalar",
 		value: "scalar",
 		icon: ScalarVariable,
-		color: "var(kiwi)",
+		color: "kiwi",
 	},
 	datetime: {
 		label: "Date",
 		value: "datetime",
 		icon: DateVariable,
-		color: "var(tomato)",
+		color: "tomato",
 	},
 	layout: {
 		label: "Layout",
 		value: "layout",
 		icon: LayoutVariable,
-		color: "var(purple-pizazz)",
+		color: "purple-pizazz",
 	},
 	location: {
 		label: "Location",
 		value: "location",
 		icon: LocationVariable,
-		color: "var(slate-blue-dark)",
+		color: "slate-blue-dark",
 	},
 };
 
@@ -216,7 +216,7 @@ const getTypeForComponent = (component) => {
 	return type;
 };
 
-const getColorForType = (type) => get(VARIABLE_TYPES, [type, "color"], "var(charcoal)");
+const getColorForType = (type) => get(VARIABLE_TYPES, [type, "color"], "charcoal");
 
 const getIconForType = (type) => get(VARIABLE_TYPES, `${type}.icon`, DefaultVariable);
 

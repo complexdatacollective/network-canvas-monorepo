@@ -1,6 +1,6 @@
 .assets {
 	background-color: var(--color-surface-2);
-	color: var(--color-text);
+	color: var(--color-foreground);
 	border-radius: var(--space-md);
 	display: flex;
 	justify-content: center;

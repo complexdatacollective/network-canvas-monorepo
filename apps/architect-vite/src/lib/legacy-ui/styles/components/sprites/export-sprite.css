@@ -47,7 +47,7 @@
 			h4 {
 				margin-bottom: 0;
 				margin-top: var(--size-1);
-				color: var(--color-text);
+				color: var(--color-foreground);
 			}
 		}
 	}

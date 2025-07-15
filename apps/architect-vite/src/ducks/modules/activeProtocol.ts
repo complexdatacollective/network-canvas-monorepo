@@ -7,10 +7,12 @@ import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
 
 // Types
-type ActiveProtocolState = Protocol & {
-	name: string;
-	isValid: boolean;
-};
+type ActiveProtocolState =
+	| (Protocol & {
+			name: string;
+			isValid: boolean;
+	  })
+	| null;
 
 const initialState: ActiveProtocolState = null as ActiveProtocolState;
 
@@ -38,7 +40,7 @@ const activeProtocolSlice = createSlice({
 				...pick(action.payload, ["name", "description"]),
 			};
 		},
-		clearActiveProtocol: () => {
+		clearActiveProtocol: (_state, _action: null) => {
 			assetDb.assets.clear(); // Clear asset database
 			return initialState;
 		},

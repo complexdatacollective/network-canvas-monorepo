@@ -1,8 +1,8 @@
 .form-field-text {
-	position: relative;
+	/* position: relative; */
 
 	.form-field-text__input {
-		display: block;
+		/* display: block;
 		position: relative;
 		padding: 0.5em 1em;
 		font-family: var(--body-font-family);
@@ -15,7 +15,7 @@
 		border-bottom-width: calc(0.6rem * 0.25);
 		border-bottom-style: solid;
 		border-bottom-color: transparent;
-		transition: border-bottom-color var(--animation-easing) var(--animation-duration-standard);
+		transition: border-bottom-color var(--animation-easing) var(--animation-duration-standard); */
 
 		&::placeholder {
 			color: var(--color-input-placeholder);
@@ -72,9 +72,6 @@
 	&.form-field-text--area {
 		display: block;
 		width: 100%;
-		min-height: 14rem;
-		padding-top: 2rem;
-		padding-bottom: 2rem;
 		resize: vertical;
 	}
 

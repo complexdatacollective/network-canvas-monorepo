@@ -13,7 +13,7 @@
 	.recent-protocols__title {
 		width: 100%;
 		text-align: center;
-		color: var(--color-text);
+		color: var(--color-foreground);
 		margin-bottom: var(--space-2xl);
 		margin-top: 0;
 	}
@@ -36,7 +36,7 @@
 		text-align: center;
 		width: 85vmin;
 		padding: var(--space-xl);
-		color: var(--color-text);
+		color: var(--color-foreground);
 		margin: 0 auto;
 		align-self: center;
 

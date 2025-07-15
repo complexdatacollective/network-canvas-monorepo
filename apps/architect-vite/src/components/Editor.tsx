@@ -1,95 +1,97 @@
-import type React from "react";
-import { compose, withStateHandlers } from "recompose";
-import { Form, reduxForm } from "redux-form";
+import { merge } from "es-toolkit/compat";
+import React, { createContext, useContext, useState } from "react";
+import { Form, reduxForm, type ConfigProps, type InjectedFormProps } from "redux-form";
 import Issues from "./Issues";
-import { formName } from "./StageEditor/configuration";
 
-type EditorProps = {
-	hideIssues: () => void;
-	isIssuesVisible: boolean;
-	handleSubmit: (event?: React.FormEvent) => void;
-	submitFailed: boolean;
-	children?: React.ReactNode | ((props: any) => React.ReactNode);
-	component?: React.ComponentType<any> | null;
+type EditorOwnProps = Partial<ConfigProps<Record<string, unknown>, EditorOwnProps>> & {
+	form: string; // Make this required, so that consumers must specify a form name.
+	children?: React.ReactNode;
+};
+
+type EditorProps = EditorOwnProps & InjectedFormProps<Record<string, unknown>, EditorOwnProps>;
+
+// Form context type
+type FormContextType = {
+	form: string;
+	submitting?: boolean;
+	submitFailed?: boolean;
+	pristine?: boolean;
+	valid?: boolean;
+	initialValues?: Record<string, unknown>;
+	values: Record<string, unknown>;
+	error?: string;
+	warning?: string;
+};
+
+// Create the form context
+const FormContext = createContext<FormContextType | undefined>(undefined);
+
+// Custom hook to access form context
+export const useFormContext = () => {
+	const context = useContext(FormContext);
+	if (context === undefined) {
+		throw new Error("useFormContext must be used within an Editor component");
+	}
+	return context;
 };
 
 /**
- * Editor is a scaffold for specific editor components.
+ * A thin wrapper over redux form's Form component that handles displaying issues
+ * when the form is submitted and there are validation errors.
  *
- * It includes:
- * - `<Issues />` component, which provides interactive form errors
- * - `<CodeView />` component, which reveals the form's working copy of the configuration
- * - A redux-form `<Form />` component, which allows us to dispatch submit from outside
- *   the editor (necessary for our button footers).
- *
- * Required props:
- * - {string} form Name to use for the form in redux-form, this must match any child form
- *   components which hard-code this values
- * - {Component} component A React component which contains any number of redux-form `<Field />`
- * - {func} onSubmit(values) The submit handler, it receives the values of the form as an argument
- *   and will likely be hooked up to redux state.
- * - It also accepts the same props as `reduxForm()`, such as `initialValues`
- *
- * @example
- * export const formName = 'MY_EDITOR';
- *
- * const MySpecificEditor = ({
- *   submitHandler,
- * }) => (
- *   <Editor
- *     form={formName}
- *     component={MyFieldsComponent}
- *     onSubmit={submitHandler}
- *   />
- * );
- *
- * const mapDispatchToProps = (dispatch) => ({
- *   onSubmit: (values) => {
- *     if (values.id) {
- *       dispatch(actions.update(values.id, values));
- *     } else {
- *       dispatch(actions.create(values));
- *     }
- *   },
- * });
- *
- * export default connect(null, mapDispatchToProps)(MySpecificEditor);
  */
-const Editor = ({
-	handleSubmit,
-	hideIssues,
-	isIssuesVisible,
-	children,
-	submitFailed,
-	component: Component = null,
-}: EditorProps) => {
+const Editor = (props: EditorProps) => {
+	const {
+		handleSubmit,
+		submitFailed,
+		submitting,
+		pristine,
+		valid,
+		initialValues,
+		error,
+		warning,
+		form,
+		children,
+		values,
+	} = props;
+	const [isIssuesVisible, setIsIssuesVisible] = useState(false);
+
+	const hideIssues = () => {
+		setIsIssuesVisible(false);
+	};
+
+	// Show issues when submit fails
+	React.useEffect(() => {
+		if (submitFailed) {
+			setIsIssuesVisible(true);
+		}
+	}, [submitFailed]);
+
+	// Create context value with useful form information
+	const contextValue: FormContextType = {
+		form,
+		submitting,
+		submitFailed,
+		pristine,
+		valid,
+		initialValues,
+		values: merge(values, initialValues),
+		error,
+		warning,
+	};
+
 	return (
-		<>
+		<FormContext.Provider value={contextValue}>
 			<Form onSubmit={handleSubmit} className="flex gap-6 flex-col mx-6">
-				{typeof children === "function" &&
-					children({
-						submitFailed,
-					})}
-				{children && typeof children !== "function" && children}
-				{!children && Component && <Component submitFailed={submitFailed} />}
+				{children}
 			</Form>
 			<Issues show={isIssuesVisible} hideIssues={hideIssues} />
-		</>
+		</FormContext.Provider>
 	);
 };
 
-export default compose(
-	withStateHandlers(
-		{ isIssuesVisible: false },
-		{
-			hideIssues: () => () => ({ isIssuesVisible: false }),
-			onSubmitFail: () => () => ({ isIssuesVisible: true }),
-		},
-	),
-	reduxForm({
-		form: formName,
-		touchOnBlur: false,
-		touchOnChange: true,
-		enableReinitialize: true,
-	}),
-)(Editor);
+export default reduxForm<Record<string, unknown>, EditorOwnProps>({
+	touchOnBlur: false,
+	touchOnChange: true,
+	enableReinitialize: true,
+})(Editor);

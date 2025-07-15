@@ -1,5 +1,4 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { useDispatch } from "react-redux";
 import { rememberEnhancer, rememberReducer } from "redux-remember";
 import logger from "./middleware/logger";
 import { protocolValidationListenerMiddleware } from "./middleware/protocolValidationListener";
@@ -32,6 +31,5 @@ export { store };
 
 // Export types for use throughout the application
 export type AppDispatch = typeof store.dispatch;
-export const useAppDispatch = useDispatch.withTypes<AppDispatch>(); //
 export type AppStore = typeof store;
 export type { RootState };

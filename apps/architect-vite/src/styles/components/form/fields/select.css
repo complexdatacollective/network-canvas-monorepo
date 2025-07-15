@@ -19,7 +19,7 @@ img.form-fields-select {
 
 .form-fields-select__control {
 	background: var(--color-surface-1);
-	color: var(--color-text);
+	color: var(--color-foreground);
 	border: 0;
 	border-radius: 1rem 1rem 0 0;
 	padding: 0 var(--space-md);
@@ -34,7 +34,7 @@ img.form-fields-select {
 }
 
 .form-fields-select__placeholder {
-	color: var(--color-text-muted);
+	color: var(--color-foreground-muted);
 	font-style: italic;
 }
 

@@ -23,7 +23,7 @@
 		"test:watch": "vitest",
 		"zod-to-json": "tsx ./scripts/zodToJson.ts",
 		"compile-schemas": "tsx ./scripts/compileSchemas.ts",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --build --noEmit"
 	},
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"

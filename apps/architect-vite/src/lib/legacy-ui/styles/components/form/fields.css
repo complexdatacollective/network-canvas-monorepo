@@ -9,7 +9,7 @@
 	font-family: var(--heading-font-family);
 	font-size: inherit;
 	font-weight: 500;
-	color: var(--color-text);
+	color: var(--color-foreground);
 
 	> * {
 		font-weight: inherit;

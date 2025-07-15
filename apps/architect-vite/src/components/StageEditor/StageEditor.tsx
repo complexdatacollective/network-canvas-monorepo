@@ -1,29 +1,30 @@
-import { has, omit } from "es-toolkit/compat";
-import { useCallback, useMemo, useState } from "react";
+import type { Stage } from "@codaco/protocol-validation";
+import { omit } from "es-toolkit/compat";
+import { useCallback, useMemo } from "react";
 import { useSelector } from "react-redux";
-import { getFormValues, isDirty as isFormDirty, isInvalid as isFormInvalid } from "redux-form";
+import { isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
+import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import { useAppDispatch, type RootState } from "~/ducks/store";
+import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getStage, getStageIndex } from "~/selectors/protocol";
 import { formName } from "./configuration";
 import { getInterface } from "./Interfaces";
 import StageHeading from "./StageHeading";
 
-interface StageEditorProps {
+type StageEditorProps = {
 	id?: string | null;
 	insertAtIndex?: number;
-	onComplete?: () => void;
-}
+	type?: string;
+};
 
 const StageEditor = (props: StageEditorProps) => {
-	const { id = null, type, insertAtIndex, onComplete } = props;
+	const { id = null, type, insertAtIndex } = props;
 
 	const dispatch = useAppDispatch();
-	const [showCodeView, setShowCodeView] = useState(false);
 	const [, setLocation] = useLocation();
 
 	// Get stage metadata from Redux state
@@ -36,15 +37,11 @@ const StageEditor = (props: StageEditorProps) => {
 
 	// Get form state
 	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
-	const formValues = useSelector((state: RootState) => getFormValues(formName)(state));
-	const hasSkipLogic = has(formValues, "skipLogic.action");
-	const dirty = useSelector((state: RootState) => isFormDirty(formName)(state));
-	const invalid = useSelector((state: RootState) => isFormInvalid(formName)(state));
 
 	// Handle form submission
 	const onSubmit = useCallback(
-		(stageData: any) => {
-			const normalizedStage = omit(stageData, "_modified");
+		(stageData: Record<string, unknown>) => {
+			const normalizedStage = omit(stageData, "_modified") as Stage;
 
 			if (id) {
 				dispatch(stageActions.updateStage(id, normalizedStage));
@@ -54,7 +51,7 @@ const StageEditor = (props: StageEditorProps) => {
 
 			setLocation("/protocol");
 		},
-		[id, insertAtIndex, onComplete, dispatch],
+		[id, insertAtIndex, setLocation, dispatch],
 	);
 
 	// Cancel handler with unsaved changes confirmation
@@ -78,89 +75,34 @@ const StageEditor = (props: StageEditorProps) => {
 		);
 		return false;
 	}, [hasUnsavedChanges, setLocation, dispatch]);
-
-	// Memoized action buttons
-	const actionButtons = useMemo(() => {
-		const buttons = [];
-
-		// Cancel button
-		buttons.push(
-			<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
-				Cancel
-			</Button>,
-		);
-
-		// Save button (only if there are unsaved changes)
-		if (hasUnsavedChanges) {
-			buttons.push(
-				<Button key="save" onClick={onSubmit} iconPosition="right" icon="arrow-right">
-					Finished Editing
-				</Button>,
-			);
-		}
-
-		return buttons;
-	}, [hasUnsavedChanges, onSubmit, handleCancel]);
-
-	// Secondary buttons (like preview)
-	const secondaryButtons = useMemo(
-		() => [
-			<Button
-				key="preview"
-				color="paradise-pink"
-				disabled
-				tooltip={
-					invalid
-						? [
-								"Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing.",
-							]
-						: null
-				}
-			>
-				Preview
-			</Button>,
-		],
-		[invalid],
-	);
-
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
-	const renderSections = (sectionsList: any[], { submitFailed }: { submitFailed: boolean }) =>
-		sectionsList.map((SectionComponent: React.ComponentType<any>, sectionIndex: number) => {
+	const renderSections = (sectionsList: unknown[]) =>
+		sectionsList.map((SectionComponent: React.ComponentType<unknown>, sectionIndex: number) => {
 			const sectionKey = `${interfaceType}-${sectionIndex}`;
-			return (
-				<SectionComponent
-					key={sectionKey}
-					form={formName}
-					stagePath={stagePath}
-					hasSubmitFailed={submitFailed}
-					interfaceType={interfaceType}
-				/>
-			);
+			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
 		});
 
 	return (
-		<Editor
-			initialValues={initialValues}
-			onSubmit={onSubmit}
-			dirty={dirty}
-			invalid={invalid}
-			hasSkipLogic={hasSkipLogic}
-			stagePath={stagePath}
-			interfaceType={interfaceType}
-		>
-			{({ submitFailed }: { submitFailed: boolean }) => (
-				<>
-					<StageHeading id={id} />
-					<div className="flex flex-col gap-10 w-full mb-32">{renderSections(sections, { submitFailed })}</div>
-					<div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-accent z-panel">
-						<div className="flex justify-between items-center max-w-6xl mx-auto">
-							<div className="flex gap-2">{secondaryButtons}</div>
-							<div className="flex gap-2">{actionButtons}</div>
-						</div>
+		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
+			<StageHeading />
+			<div className="flex flex-col gap-10 w-full mb-32">{renderSections(sections)}</div>
+			<div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-accent z-panel">
+				<div className="flex justify-between items-center max-w-6xl mx-auto">
+					<div className="flex gap-2">
+						<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
+							Cancel
+						</Button>
 					</div>
-				</>
-			)}
+					<div className="flex gap-2">
+						{hasUnsavedChanges && (
+							<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
+								Finished Editing
+							</Button>
+						)}
+					</div>
+				</div>
+			</div>
 		</Editor>
 	);
 };

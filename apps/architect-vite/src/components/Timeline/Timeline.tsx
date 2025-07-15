@@ -1,57 +1,65 @@
-import type { StageType } from "@codaco/protocol-validation";
-import { bindActionCreators } from "@reduxjs/toolkit";
-import cx from "classnames";
-import { motion } from "motion/react";
+import { get } from "es-toolkit/compat";
+import { motion, Reorder, type Variants } from "motion/react";
 import { useCallback, useState } from "react";
-import { connect } from "react-redux";
-import { compose } from "recompose";
+import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
+import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import type { RootState } from "~/ducks/modules/root";
-import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
-import { getProtocol, getStageList, getTimelineLocus } from "~/selectors/protocol";
+import timelineImages from "~/images/timeline";
+import { getStageList } from "~/selectors/protocol";
 import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
 
-const variants = {
-	outer: {
-		show: {
-			background:
-				"repeating-linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0) 100%, var(--color-background) 100%, var(--color-background) 100% )",
-			transition: {
-				duration: 0.5,
-				delay: 0.75,
-			},
-		},
-		hide: {
-			background:
-				"repeating-linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0) 0%, var(--color-background) 0%, var(--color-background) 100% )",
-		},
+const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
+
+export const lineVariants: Variants = {
+	hide: {
+		backgroundImage: "linear-gradient(var(--color-background), var(--color-background))",
+		backgroundRepeat: "no-repeat",
+		backgroundPosition: "center top",
+		backgroundSize: "5px 0%",
 	},
-	newStage: {
-		show: {
-			opacity: 1,
-			transition: {},
-		},
-		hide: {
-			opacity: 0,
+	show: {
+		backgroundSize: "5px 97%", // Not 100% because of the new stage button at the bottom
+		transition: {
+			backgroundSize: { delay: 1, duration: 1.6, ease: "easeInOut" },
+			delayChildren: 1,
+			staggerChildren: 0.1,
 		},
 	},
 };
 
-type TimelineProps = {
-	stages?: StageType[];
-	sorting?: boolean;
-	deleteStage: (stageId: string) => void;
-	openDialog: (config: any) => void;
-	show?: boolean;
-	locus: number | string;
+const itemVariants = {
+	show: {
+		opacity: 1,
+		y: 0,
+	},
+	hide: {
+		opacity: 0,
+		y: 30,
+	},
 };
 
-const Timeline = (props: TimelineProps) => {
-	const { show = true, sorting = false, stages = [], locus, openDialog, deleteStage } = props;
+const Timeline = () => {
+	const stages = useSelector(getStageList);
+	const dispatch = useAppDispatch();
+
+	const deleteStage = useCallback(
+		(stageId: string) => {
+			dispatch(stageActions.deleteStage(stageId));
+		},
+		[dispatch],
+	);
+
+	const openDialog = useCallback(
+		(config: any) => {
+			dispatch(dialogsActions.openDialog(config));
+		},
+		[dispatch],
+	);
+
 	const [, setLocation] = useLocation();
 	const [showNewStageDialog, setShowNewStageDialog] = useState(false);
 	const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
@@ -106,52 +114,48 @@ const Timeline = (props: TimelineProps) => {
 		[stages, handleInsertStage, handleEditStage, handleDeleteStage],
 	);
 
-	const timelineStyles = cx("timeline", {
-		"timeline--show": show,
-		"timeline--sorting": sorting,
-	});
+	const [stateStages, setStateStages] = useState(stages);
 
 	return (
-		<div className={timelineStyles}>
-			<motion.div
-				className="timeline__stages"
-				initial={sorting ? false : "hide"}
+		<>
+			<Reorder.Group
+				axis="y"
+				onReorder={setStateStages}
+				className="relative overflow-hidden grid grid-cols-1 gap-28 py-16 justify-items-center [--color-background:var(--color-timeline)]"
+				initial="hide"
 				animate="show"
-				variants={variants.outer}
+				variants={lineVariants}
+				values={stateStages}
 			>
-				{renderStages()}
-				<motion.div
-					className="timeline__insert timeline__insert--new"
-					onClick={() => handleInsertStage(stages.length)}
-					variants={variants.newStage}
-				>
+				{stateStages.map((stage, index) => (
+					<Reorder.Item
+						key={stage.id}
+						value={stage}
+						layoutId={`timeline-stage-${stage.id}`}
+						variants={itemVariants}
+						className="grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer"
+					>
+						<img
+							className="w-40 rounded shadow justify-self-end select-none pointer-events-none"
+							src={getTimelineImage(stage.type)}
+							alt={`${stage.type} interface`}
+							title={`${stage.type} interface`}
+						/>
+						<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center">
+							{index + 1}
+						</div>
+						<h4 className="text-center justify-self-start">{stage.label || "\u00A0"}</h4>
+					</Reorder.Item>
+				))}
+
+				<motion.div className="mb-40" onClick={() => handleInsertStage(stages.length)}>
 					Add new stage
 				</motion.div>
-			</motion.div>
+			</Reorder.Group>
+
 			<NewStageScreen show={showNewStageDialog} insertAtIndex={insertAtIndex} onCancel={handleNewStageCancel} />
-		</div>
+		</>
 	);
 };
 
-const mapStateToProps = (state: RootState) => ({
-	locus: getTimelineLocus(state),
-	activeProtocol: getProtocol(state),
-	stages: getStageList(state),
-	transitionDuration: getCSSVariableAsNumber("--animation-duration-standard-ms"), // Re-order transition
-});
-
-const mapDispatchToProps = (dispatch: any, props: any) => ({
-	deleteStage: bindActionCreators(stageActions.deleteStage, dispatch),
-	openDialog: bindActionCreators(dialogsActions.openDialog, dispatch),
-	onSortEnd: ({ oldIndex, newIndex }) => {
-		props.setSorting(false);
-		dispatch(stageActions.moveStage(oldIndex, newIndex));
-	},
-	onSortStart: () => {
-		props.setSorting(true);
-	},
-});
-
-export { Timeline };
-
-export default compose(connect(mapStateToProps, mapDispatchToProps))(Timeline);
+export default Timeline;

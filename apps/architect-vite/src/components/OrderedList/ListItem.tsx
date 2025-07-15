@@ -1,8 +1,9 @@
 import cx from "classnames";
 import { GripVertical, Trash2 } from "lucide-react";
 import { Reorder, useDragControls } from "motion/react";
+import type { ComponentProps } from "react";
 
-type ListItemProps = React.HTMLAttributes<HTMLDivElement> & {
+type ListItemProps = ComponentProps<typeof Reorder.Item> & {
 	handleDelete: () => void;
 	handleClick: () => void;
 	sortable?: boolean;
@@ -22,9 +23,11 @@ const ListItem = ({
 	const controls = useDragControls();
 
 	const componentClasses = cx(
-		"bg-accent text-accent-foreground flex rounded p-4 justify-between items-center gap-4 select-none cursor-pointer",
+		"bg-accent text-accent-foreground flex rounded px-4 justify-between items-center gap-4 select-none cursor-pointer shadow",
 		className,
 	);
+
+	console.log("layoutId", rest.layoutId);
 
 	return (
 		<Reorder.Item
