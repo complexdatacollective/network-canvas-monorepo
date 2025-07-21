@@ -53,7 +53,7 @@
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "^4.6.0",
 		"drizzle-kit": "^0.30.5",
-		"next-test-api-route-handler": "^4.0.15",
+		"next-test-api-route-handler": "^5.0.0",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
 		"vite-tsconfig-paths": "^5.1.4",
