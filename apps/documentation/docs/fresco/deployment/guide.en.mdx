@@ -69,34 +69,53 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
 
 1. Visit the <a href="https://vercel.com" target="_blank">Vercel website</a> and click **Continue with GitHub** to sign in. You will be redirected to the Vercel dashboard.
 
-2. From your dashboard, select **"Storage"** from the top navigation bar. Then, click **Create** next to Postgres ('Serverless SQL').
+2. From your dashboard, select **"Storage"** from the top navigation bar. Then, click **Create** next to Neon ('Serverless Postgres').
 
-   ![Create a Postgres database](/assets/img/fresco-images/vercel-db-1.png)
+   ![Create a Neon database](/assets/img/fresco-images/vercel-db-1.png)
 
-3. Review and accept the terms in the modal.
+3. Choose a region from the dropdown. We recommend choosing the region nearest to you. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **"Continue"**.
 
-   ![Accept terms](/assets/img/fresco-images/vercel-db-2.png)
+   ![Choose a region and installation plan](/assets/img/fresco-images/vercel-db-2.png)
 
-4. Give your database a name, and then click **"Create"**. Do not change the region. Your database will be generated and you will be redirected to the Getting Started page.
+4. Give your database a name and then click **"Create"**. Your database will be generated. Click **"Done"** to return to the database dashboard.
 
-   ![Enter a name and create the database](/assets/img/fresco-images/vercel-db-3.png)
+   ![Create database](/assets/img/fresco-images/vercel-db-3.png)
 
 5. Under the heading 'quickstart' you will see a connection string for the database. Click the `.env.local` tab, and then click **"Copy Snippet"** to copy the environment variables to your clipboard.
 
    ![Click the `.env.local` tab, and copy the environment variables](/assets/img/fresco-images/vercel-storage-env.png)
 
-6. Paste the environment variables on a new line into the same place you pasted the UploadThing variables for safekeeping. The file should now look something like this:
+6. Paste the environment variables into a text file or notes app for safekeeping. You will need these environment variables later in the deployment process. The file should look something like this:
 
    ```bash
 
-   POSTGRES_URL="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require"
-   POSTGRES_PRISMA_URL="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require&pgbouncer=true&connect_timeout=15"
-   POSTGRES_URL_NO_SSL="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech:5432/verceldb"
-   POSTGRES_URL_NON_POOLING="postgres://default:XZ8giBJSQ9tl@ep-snowy-flower-a4ylimlb.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require"
-   POSTGRES_USER="default"
-   POSTGRES_HOST="ep-snowy-flower-a4ylimlb-pooler.us-east-1.aws.neon.tech"
-   POSTGRES_PASSWORD="XZ8giBJSQ9tl"
-   POSTGRES_DATABASE="verceldb"
+   # Recommended for most uses
+   DATABASE_URL=******************
+
+   # For uses requiring a connection without pgbouncer
+   DATABASE_URL_UNPOOLED=******************
+
+   # Parameters for constructing your own connection string
+   PGHOST=******************
+   PGHOST_UNPOOLED=******************
+   PGUSER=default
+   PGDATABASE=******************
+   PGPASSWORD******************
+
+   # Parameters for Vercel Postgres Templates
+   POSTGRES_URL=******************
+   POSTGRES_URL_NON_POOLING=******************
+   POSTGRES_USER=******************
+   POSTGRES_HOST=******************
+   POSTGRES_PASSWORD=******************
+   POSTGRES_DATABASE=******************
+   POSTGRES_URL_NO_SSL=******************
+   POSTGRES_PRISMA_URL=******************
+
+   # Neon Auth environment variables for Next.js
+   NEXT_PUBLIC_STACK_PROJECT_ID=****************************
+   NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=****************************************
+   STACK_SECRET_SERVER_KEY=***********************
    ```
 
 ## Create a project on Vercel
