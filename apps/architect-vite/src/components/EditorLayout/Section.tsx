@@ -99,13 +99,13 @@ const Section = ({
 				<div className="summary">{summary}</div>
 			</div>
 			<fieldset className={classes}>
-				{id && <IssueAnchor fieldName={id} description={title} />}
 				{children}
 				{toggleable && !isOpen && (
 					<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 backdrop-blur-sm text-foreground/70 font-semibold italic">
 						Cick the toggle to enable this feature...
 					</div>
 				)}
+				{id && <IssueAnchor fieldName={id} description={title} />}
 			</fieldset>
 		</div>
 	);

@@ -21,8 +21,8 @@ function ValidatedField<T = {}>({ validation, component, componentProps, ...fiel
 
 	return (
 		<>
-			<div id={getFieldId(`${fieldProps.name}._error`)} data-name={startCase(fieldProps.name)} />
 			<Field {...fieldProps} {...componentProps} validate={validations} component={component} />
+			<div id={getFieldId(`${fieldProps.name}._error`)} data-name={startCase(fieldProps.name)} />
 		</>
 	);
 }

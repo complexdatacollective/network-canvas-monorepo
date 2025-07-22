@@ -1,8 +1,7 @@
 .tip {
-	@apply bg-surface-2;
+	@apply bg-surface-2 not-first:mt-4 not-last:mb-4;
 	border-radius: var(--space-sm);
 	padding: var(--space-xs) var(--space-xl);
-	margin: var(--space-md) 0;
 	font-size: var(--text-sm);
 	display: flex;
 	align-items: center;

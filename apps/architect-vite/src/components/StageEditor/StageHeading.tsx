@@ -1,11 +1,12 @@
 import { get } from "es-toolkit/compat";
+import { motion } from "motion/react";
 import timelineImages from "~/images/timeline";
 import { useFormContext } from "../Editor";
 import { getInterface } from "./Interfaces";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
-const StageHeading = () => {
+const StageHeading = ({ id }) => {
 	const { values } = useFormContext();
 
 	const type = get(values, "type") as string;
@@ -24,7 +25,8 @@ const StageHeading = () => {
 					href={documentationLinkForType}
 					className="before:absolute before:left-[50%] before:border-l-10 before:h-56 before:border-tomato before:-top-13 before:[mask-image:linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]"
 				>
-					<img
+					<motion.img
+						layoutId={`timeline-stage-${id}`}
 						src={getTimelineImage(type)}
 						alt={`${type} interface`}
 						title={`${type} interface`}

@@ -133,18 +133,23 @@ const Timeline = () => {
 						value={stage}
 						layoutId={`timeline-stage-${stage.id}`}
 						variants={itemVariants}
-						className="grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer"
+						className="grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
+						as="button"
+						onClick={() => handleEditStage(stage.id, stage)}
 					>
-						<img
-							className="w-40 rounded shadow justify-self-end select-none pointer-events-none"
+						<motion.img
+							layoutId={`timeline-stage-${stage.id}`}
+							className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
 							src={getTimelineImage(stage.type)}
 							alt={`${stage.type} interface`}
 							title={`${stage.type} interface`}
 						/>
-						<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center">
+						<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
 							{index + 1}
 						</div>
-						<h4 className="text-center justify-self-start">{stage.label || "\u00A0"}</h4>
+						<h4 className="text-center justify-self-start group-hover:font-bold transition-all">
+							{stage.label || "\u00A0"}
+						</h4>
 					</Reorder.Item>
 				))}
 

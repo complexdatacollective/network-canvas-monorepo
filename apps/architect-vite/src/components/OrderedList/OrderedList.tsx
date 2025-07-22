@@ -51,8 +51,12 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 	}
 
 	return (
-		<Reorder.Group className="flex flex-col gap-4 my-4" onReorder={handleReorder} values={values} axis="y">
-			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-destructive">{error}</p>}
+		<Reorder.Group
+			className="flex flex-col gap-4 not-first:mt-4 not-last:mb-4"
+			onReorder={handleReorder}
+			values={values}
+			axis="y"
+		>
 			<AnimatePresence initial={false}>
 				{values.map((item, index) => {
 					// Create a stable identifier by hashing the item.
@@ -76,6 +80,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 					);
 				})}
 			</AnimatePresence>
+			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-destructive">{error}</p>}
 		</Reorder.Group>
 	);
 };
