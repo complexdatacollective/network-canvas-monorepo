@@ -3,6 +3,10 @@ name: Documentation Check for Broken Links
 on:
   deployment_status
 
+permissions:
+  contents: read
+  deployments: read
+
 jobs:
   check_paths:
     runs-on: ubuntu-latest
