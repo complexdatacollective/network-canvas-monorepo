@@ -1,5 +1,8 @@
 name: Documentation Check for Broken Links
 
+permissions:
+  contents: read
+
 on:
   deployment_status
 
