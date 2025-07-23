@@ -1,18 +1,24 @@
 import { get } from "es-toolkit/compat";
 import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useHierarchicalLayout } from "~/hooks/useHierarchicalLayout";
 import timelineImages from "~/images/timeline";
-import type { Line, Node, BranchNode as TBranchNode, StageNode as TStageNode } from "~/utils/lineValidation";
+import type { Line, BranchNode as TBranchNode, StageNode as TStageNode } from "~/utils/lineValidation";
+import { ZoomPanViewport } from "./ZoomPanViewport";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
 function StageNode({
+	id,
 	node,
 }: {
+	id: string;
 	node: TStageNode;
 }) {
 	return (
 		<div className="flex flex-col items-center">
 			<img
+				data-node-marker={id}
 				className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
 				src={getTimelineImage(node.name)}
 				alt={`${node.name} interface`}
@@ -23,16 +29,18 @@ function StageNode({
 }
 
 function BranchNode({
+	id,
 	node,
 }: {
+	id: string;
 	node: TBranchNode;
 }) {
 	return (
 		<div className="flex flex-col items-center">
-			<img
-				className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
-				src={getTimelineImage(node.name)}
-				alt={`${node.name} interface`}
+			{/* /* Render a diamond shape for branch nodes */}
+			<div
+				className="w-10 h-10 bg-timeline text-timeline-foreground rounded-full flex items-center justify-center"
+				data-node-marker={id}
 			/>
 			<h4>{node.name}</h4>
 		</div>
@@ -100,206 +108,161 @@ const completeLine: Line = {
 
 console.log("Complete Line:", completeLine);
 
-// Grid position type for CSS Grid layout
-type GridPosition = {
-	row: number;
-	column: number;
-	// Store pixel positions for SVG connectors
-	pixelX: number;
-	pixelY: number;
-};
+// Helper function to get all connections from the line data
+function getConnections(line: Line): Array<{ from: string; to: string }> {
+	const connections: Array<{ from: string; to: string }> = [];
 
-// Layout algorithm for CSS Grid
-function calculateGridLayout(line: Line): { positions: Record<string, GridPosition>; totalColumns: number } {
-	const positions: Record<string, GridPosition> = {};
-	const nodeDepths: Record<string, number> = {};
-	const nodeColumns: Record<string, number> = {};
-
-	// Find root nodes (start points)
-	const rootNodeIds = Object.entries(line)
-		.filter(([_, node]) => node.root)
-		.map(([id]) => id);
-
-	// Calculate depth (row in grid)
-	function calculateDepth(nodeId: string, depth: number, visited: Set<string> = new Set()): void {
-		if (visited.has(nodeId)) return;
-		visited.add(nodeId);
-
-		nodeDepths[nodeId] = Math.max(nodeDepths[nodeId] || 0, depth);
-
-		const node = line[nodeId];
-		if (node && "next" in node && node.next) {
-			if (node.kind === "stage" && node.next) {
-				calculateDepth(node.next, depth + 1, visited);
-			} else if (node.kind === "branch" && node.next) {
-				for (const nextId of node.next) {
-					calculateDepth(nextId, depth + 1, visited);
-				}
-			}
-		}
-	}
-
-	for (const nodeId of rootNodeIds) {
-		calculateDepth(nodeId, 0);
-	}
-
-	// Ensure FinishStage is on its own row at the bottom
-	const finishStageId = Object.entries(line).find(([_, node]) => node.name === "FinishStage")?.[0];
-	if (finishStageId) {
-		// Find all non-FinishStage nodes and get their max depth
-		const otherNodeDepths = Object.entries(nodeDepths)
-			.filter(([id]) => id !== finishStageId)
-			.map(([_, depth]) => depth);
-		const maxOtherDepth = otherNodeDepths.length > 0 ? Math.max(...otherNodeDepths) : 0;
-		nodeDepths[finishStageId] = maxOtherDepth + 1;
-	}
-
-	// Find convergence nodes (like FinishStage)
-	const incomingConnections: Record<string, string[]> = {};
 	for (const [nodeId, node] of Object.entries(line)) {
 		if ("next" in node && node.next) {
 			if (node.kind === "stage" && node.next) {
-				const connections = incomingConnections[node.next] || [];
-				connections.push(nodeId);
-				incomingConnections[node.next] = connections;
+				connections.push({ from: nodeId, to: node.next });
 			} else if (node.kind === "branch" && node.next) {
 				for (const nextId of node.next) {
-					const connections = incomingConnections[nextId] || [];
-					connections.push(nodeId);
-					incomingConnections[nextId] = connections;
+					connections.push({ from: nodeId, to: nextId });
 				}
 			}
 		}
 	}
 
-	const convergenceNodes = new Set(
-		Object.entries(incomingConnections)
-			.filter(([_, incoming]) => incoming.length > 1)
-			.map(([nodeId]) => nodeId),
-	);
-
-	// Find the maximum branch width needed
-	let maxBranchWidth = 1;
-	for (const [nodeId, node] of Object.entries(line)) {
-		if (node.kind === "branch" && node.next) {
-			maxBranchWidth = Math.max(maxBranchWidth, node.next.length);
-		}
-	}
-
-	// Ensure we have an odd number of total columns for proper centering
-	const totalColumns = maxBranchWidth % 2 === 0 ? maxBranchWidth + 1 : maxBranchWidth;
-	const centerColumn = Math.ceil(totalColumns / 2);
-
-	// Assign columns with proper centering
-	const assignColumns = (nodeId: string, preferredColumn: number, visited: Set<string> = new Set()): void => {
-		if (visited.has(nodeId)) return;
-		visited.add(nodeId);
-
-		const node = line[nodeId];
-		if (!node) return;
-
-		// Convergence nodes (like FinishStage) go in center column
-		if (convergenceNodes.has(nodeId)) {
-			nodeColumns[nodeId] = centerColumn;
-		} else if (nodeColumns[nodeId] === undefined) {
-			nodeColumns[nodeId] = preferredColumn;
-		}
-
-		if ("next" in node && node.next) {
-			if (node.kind === "stage" && node.next) {
-				// Linear progression stays in the same column
-				assignColumns(node.next, nodeColumns[nodeId], visited);
-			} else if (node.kind === "branch" && node.next) {
-				// Branch nodes spread their children symmetrically around center
-				const branchWidth = node.next.length;
-				const startOffset = -(branchWidth - 1) / 2;
-
-				for (const [index, nextId] of node.next.entries()) {
-					const offset = startOffset + index;
-					assignColumns(nextId, centerColumn + offset, visited);
-				}
-			}
-		}
-	};
-
-	// Start from center column for root nodes
-	for (const nodeId of rootNodeIds) {
-		assignColumns(nodeId, centerColumn);
-	}
-
-	// Convert to grid positions with pixel positions for connectors
-	const cellWidth = 180; // minmax(180px, auto) from grid template
-	const cellHeight = 80; // minmax(80px, auto) from grid template
-	const gap = 16; // gap-4 = 1rem = 16px
-	const offsetX = cellWidth / 2; // Center of cell
-	const offsetY = cellHeight / 2; // Center of cell
-
-	for (const [nodeId, depth] of Object.entries(nodeDepths)) {
-		const column = nodeColumns[nodeId] || centerColumn;
-		const row = depth + 1; // CSS Grid is 1-indexed
-
-		positions[nodeId] = {
-			row,
-			column,
-			// Account for grid gap and center position within cell
-			pixelX: (column - 1) * (cellWidth + gap) + offsetX,
-			pixelY: (row - 1) * (cellHeight + gap) + offsetY,
-		};
-	}
-
-	return { positions, totalColumns };
+	return connections;
 }
 
-// Helper to check if node is terminal
-function isTerminal(node: Node): "start" | "end" | null {
-	if (node.root) return "start";
-	if (!node.next || (node.kind === "branch" && node.next.length === 0)) return "end";
-	return null;
+// Hook to get element positions using data-node-marker for line drawing
+function useLinePositions(
+	connections: Array<{ from: string; to: string }>,
+	layoutPositions: Map<string, { x: number; y: number; width: number; height: number }> | undefined,
+) {
+	const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	const updatePositions = useCallback(() => {
+		if (!containerRef.current || !layoutPositions) return;
+
+		const newPositions: Record<string, { x: number; y: number }> = {};
+		const containerRect = containerRef.current.getBoundingClientRect();
+
+		// Get all unique node IDs from connections
+		const nodeIds = new Set<string>();
+		for (const connection of connections) {
+			nodeIds.add(connection.from);
+			nodeIds.add(connection.to);
+		}
+
+		// Find each element and get its center position
+		for (const nodeId of nodeIds) {
+			const element = containerRef.current.querySelector(`[data-node-marker="${nodeId}"]`) as HTMLElement;
+			if (element) {
+				const rect = element.getBoundingClientRect();
+				newPositions[nodeId] = {
+					x: rect.left + rect.width / 2 - containerRect.left,
+					y: rect.top + rect.height / 2 - containerRect.top,
+				};
+			}
+		}
+
+		setPositions(newPositions);
+	}, [connections, layoutPositions]);
+
+	useEffect(() => {
+		// Delay position calculation to ensure DOM is ready
+		const timer = setTimeout(updatePositions, 100);
+		return () => clearTimeout(timer);
+	}, [updatePositions]);
+
+	useEffect(() => {
+		// Update positions on window resize
+		window.addEventListener("resize", updatePositions);
+		return () => window.removeEventListener("resize", updatePositions);
+	}, [updatePositions]);
+
+	return { positions, containerRef };
 }
 
 const ExperimentalTimeline: React.FC = () => {
 	const line = completeLine;
-	const { positions, totalColumns } = calculateGridLayout(line);
+	const { layout, zoom, pan, handleZoom, handlePan, resetView } = useHierarchicalLayout(line);
+	const connections = getConnections(line);
+	const { positions: linePositions, containerRef } = useLinePositions(connections, layout?.positions);
 
-	// Calculate grid dimensions
-	const allPositions = Object.values(positions);
-	if (allPositions.length === 0) {
+	if (!layout) {
 		return <div>No timeline data available</div>;
 	}
 
-	const maxRow = Math.max(...allPositions.map((p) => p.row));
-
 	return (
-		<div className="relative">
-			{/* CSS Grid for nodes */}
-			<div
-				className="grid gap-30 relative z-10"
-				style={{
-					gridTemplateRows: `repeat(${maxRow}, minmax(80px, auto))`,
-					gridTemplateColumns: `repeat(${totalColumns}, minmax(180px, auto))`,
-				}}
-			>
-				{Object.entries(line).map(([nodeId, node]) => {
-					const pos = positions[nodeId];
-					if (!pos) return null;
-					const isStage = node.kind === "stage";
-
-					return (
-						<button
-							type="button"
-							data-node-id={nodeId}
-							key={nodeId}
-							className="flex items-center justify-center relative"
-							style={{
-								gridRow: pos.row,
-								gridColumn: pos.column,
-							}}
-						>
-							{isStage ? <StageNode node={node} /> : <BranchNode node={node} />}
-						</button>
-					);
-				})}
+		<div className="w-full h-full overflow-hidden">
+			{/* Control buttons */}
+			<div className="absolute bottom-24 right-4 z-20 flex gap-2">
+				<button
+					type="button"
+					onClick={resetView}
+					className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50"
+				>
+					Reset View
+				</button>
+				<div className="px-3 py-1 bg-white border border-gray-300 rounded text-sm">{Math.round(zoom * 100)}%</div>
 			</div>
+
+			<ZoomPanViewport zoom={zoom} pan={pan} onZoom={handleZoom} onPan={handlePan} className="w-full h-full">
+				<div
+					ref={containerRef}
+					className="relative"
+					style={{
+						width: layout.bounds.width + 200, // Add padding
+						height: layout.bounds.height + 200, // Add padding
+						transform: `translate(100px, 100px)`, // Center with padding
+					}}
+				>
+					{/* Render nodes using absolute positioning */}
+					{Array.from(layout.positions.entries()).map(([nodeId, position]) => {
+						const node = line[nodeId];
+						if (!node) return null;
+
+						const isStage = node.kind === "stage";
+
+						return (
+							<button
+								type="button"
+								key={nodeId}
+								data-node-id={nodeId}
+								className="absolute flex items-center justify-center hover:scale-105 transition-transform duration-200"
+								style={{
+									left: position.x,
+									top: position.y,
+									width: position.width,
+									height: position.height,
+								}}
+							>
+								{isStage ? <StageNode node={node} id={nodeId} /> : <BranchNode node={node} id={nodeId} />}
+							</button>
+						);
+					})}
+
+					{/* SVG overlay for connecting lines */}
+					<svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ overflow: "visible" }}>
+						<title>Timeline Connectors</title>
+						{connections.map(({ from, to }) => {
+							const fromPos = linePositions[from];
+							const toPos = linePositions[to];
+
+							if (!fromPos || !toPos) return null;
+
+							return (
+								<line
+									key={`${from}-${to}`}
+									x1={fromPos.x}
+									y1={fromPos.y}
+									x2={toPos.x}
+									y2={toPos.y}
+									stroke="#3b82f6"
+									strokeWidth="2"
+									strokeLinecap="round"
+									className="drop-shadow-sm"
+								/>
+							);
+						})}
+					</svg>
+				</div>
+			</ZoomPanViewport>
 		</div>
 	);
 };

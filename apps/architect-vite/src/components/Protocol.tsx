@@ -1,4 +1,3 @@
-import Overview from "~/components/Overview";
 import ProtocolControlBar from "~/components/ProtocolControlBar";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import ExperimentalTimeline from "./Timeline/ExperimentalTimeline";
@@ -9,7 +8,7 @@ const Protocol = () => {
 
 	return (
 		<>
-			<Overview />
+			{/* <Overview /> */}
 			{/* <Timeline /> */}
 			<ExperimentalTimeline />
 			<ProtocolControlBar />
