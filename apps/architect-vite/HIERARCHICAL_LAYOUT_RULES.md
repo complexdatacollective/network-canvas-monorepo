@@ -132,7 +132,7 @@ The hierarchical layout system arranges timeline nodes in a tree structure with 
 ```typescript
 const LAYOUT_CONFIG = {
   nodeWidth: 180,        // Base width of a node
-  nodeHeight: 120,       // Base height of a node
+  nodeHeight: 180,       // Base height of a node
   horizontalSpacing: 60, // Space between sibling nodes
   verticalSpacing: 80,   // Space between vertical levels
   minZoom: 0.1,         // Minimum zoom level

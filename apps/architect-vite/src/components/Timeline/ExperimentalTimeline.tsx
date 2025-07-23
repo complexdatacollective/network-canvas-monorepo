@@ -3,35 +3,10 @@ import type React from "react";
 import { useHierarchicalLayout } from "~/hooks/useHierarchicalLayout";
 import timelineImages from "~/images/timeline";
 import { Button } from "~/lib/legacy-ui/components";
-import {
-	createSampleLine,
-	type Line,
-	type BranchNode as TBranchNode,
-	type StageNode as TStageNode,
-} from "~/utils/lineValidation";
+import { createSampleLine, type Line, type BranchNode as TBranchNode } from "~/utils/lineValidation";
 import { ZoomPanViewport } from "./ZoomPanViewport";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
-
-function StageNode({
-	id,
-	node,
-}: {
-	id: string;
-	node: TStageNode;
-}) {
-	return (
-		<div className="flex flex-col items-center bg-white shadow-md rounded p-2 group w-[600px]">
-			<img
-				data-node-marker={id}
-				className="w-full h-auto rounded shadow justify-self-end select-none pointer-events-none"
-				src={getTimelineImage(node.name)}
-				alt={`${node.name} interface`}
-			/>
-			<h4>{node.name}</h4>
-		</div>
-	);
-}
 
 function BranchNode({
 	id,
@@ -143,6 +118,8 @@ const ExperimentalTimeline: React.FC = () => {
 		return <div>No timeline data available</div>;
 	}
 
+	const { nodeWidth, nodeHeight } = config;
+
 	return (
 		<>
 			{/* Control buttons */}
@@ -177,22 +154,20 @@ const ExperimentalTimeline: React.FC = () => {
 
 								if (!fromPos || !toPos || !fromNode) return null;
 
-								// Calculate center positions, accounting for the visual elements being above the text
-								// The visual elements (image/circle) are centered horizontally but positioned higher vertically
-								const fromCenterX = fromPos.x + fromPos.width / 2;
-								const fromCenterY = fromPos.y + (fromNode.kind === "stage" ? 70 : 40); // Lower offset for branch nodes
-								const toCenterX = toPos.x + toPos.width / 2;
-								const toCenterY = toPos.y + (line[to]?.kind === "stage" ? 70 : 20); // Lower offset for branch nodes
-
-								// Determine the path based on node type
 								let pathData: string;
 
 								if (fromNode.kind === "branch") {
-									// Branch nodes: exit horizontally until vertically aligned with target
-									pathData = `M ${fromCenterX} ${fromCenterY} H ${toCenterX} V ${toCenterY}`;
+									const fromSideX = fromPos.x + fromPos.width;
+									const fromSideY = fromPos.y + fromPos.height / 2;
+									const toTopX = toPos.x + toPos.width / 2;
+									const toTopY = toPos.y;
+									pathData = `M ${fromSideX} ${fromSideY} H ${toTopX} V ${toTopY}`;
 								} else {
-									// Stage nodes: exit vertically until horizontally aligned with target
-									pathData = `M ${fromCenterX} ${fromCenterY} V ${toCenterY} H ${toCenterX}`;
+									const fromBottomX = fromPos.x + fromPos.width / 2;
+									const fromBottomY = fromPos.y + fromPos.height;
+									const toSideY = toPos.y + toPos.height / 2;
+									const toSideX = toPos.x;
+									pathData = `M ${fromBottomX} ${fromBottomY} V ${toSideY} H ${toSideX}`;
 								}
 
 								return (
@@ -226,7 +201,22 @@ const ExperimentalTimeline: React.FC = () => {
 										height: position.height,
 									}}
 								>
-									{isStage ? <StageNode node={node} id={nodeId} /> : <BranchNode node={node} id={nodeId} />}
+									{isStage ? (
+										<div
+											className="flex flex-col items-center bg-white shadow-md rounded p-2 group"
+											style={{ width: `${nodeWidth}px`, height: `${nodeHeight}px` }}
+										>
+											<img
+												data-node-marker={nodeId}
+												className="w-full aspect-[4/3] rounded shadow justify-self-end select-none pointer-events-none"
+												src={getTimelineImage(node.name)}
+												alt={`${node.name} interface`}
+											/>
+											<h4>{node.name}</h4>
+										</div>
+									) : (
+										<BranchNode node={node} id={nodeId} />
+									)}
 								</button>
 							);
 						})}
