@@ -41,6 +41,13 @@ export default defineConfig({
 			formats: ["es"],
 		},
 	},
+	server: {
+		cors: {
+			origin: process.env.NODE_ENV === "development" ? true : false,
+			methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+			allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+		},
+	},
 	plugins: [
 		schemaPlugin(),
 		dts({

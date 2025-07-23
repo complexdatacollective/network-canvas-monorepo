@@ -22,6 +22,13 @@ export default defineConfig({
 			},
 		},
 	},
+	server: {
+		cors: {
+			origin: process.env.NODE_ENV === "development" ? true : false,
+			methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+			allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+		},
+	},
 	plugins: [
 		dts({
 			rollupTypes: true,

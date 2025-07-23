@@ -52,7 +52,7 @@
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "^4.6.0",
-		"drizzle-kit": "^0.30.5",
+		"drizzle-kit": "^0.31.4",
 		"next-test-api-route-handler": "^5.0.0",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
