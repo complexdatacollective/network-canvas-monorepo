@@ -21,10 +21,10 @@ function StageNode({
 	node: TStageNode;
 }) {
 	return (
-		<div className="flex flex-col items-center bg-white shadow-md rounded p-2 group">
+		<div className="flex flex-col items-center bg-white shadow-md rounded p-2 group w-[600px]">
 			<img
 				data-node-marker={id}
-				className="w-40 rounded shadow justify-self-end select-none pointer-events-none"
+				className="w-full h-auto rounded shadow justify-self-end select-none pointer-events-none"
 				src={getTimelineImage(node.name)}
 				alt={`${node.name} interface`}
 			/>
@@ -199,12 +199,9 @@ const ExperimentalTimeline: React.FC = () => {
 									<path
 										key={`${from}-${to}`}
 										d={pathData}
-										fill="none"
-										stroke="#3b82f6"
-										strokeWidth="2"
 										strokeLinecap="round"
 										strokeLinejoin="round"
-										className="drop-shadow-sm"
+										className="stroke-timeline stroke-2 fill-none"
 									/>
 								);
 							})}

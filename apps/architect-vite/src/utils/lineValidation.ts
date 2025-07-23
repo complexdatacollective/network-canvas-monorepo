@@ -257,7 +257,7 @@ export const createSampleLine = (): Line => {
 	};
 
 	// Build the line with proper convergence handling
-	buildTimelineWithConvergence(rootId, allNodes, finishStageId, 0, 3);
+	buildTimelineWithConvergence(rootId, allNodes, finishStageId, 0, 5);
 
 	return allNodes;
 };
@@ -268,7 +268,7 @@ const buildTimelineWithConvergence = (
 	allNodes: Record<string, Node>,
 	finishStageId: string,
 	currentDepth: number,
-	maxDepth = 4,
+	maxDepth = 5,
 ): void => {
 	// Stop recursion if we've reached max depth
 	if (currentDepth >= maxDepth) {
@@ -283,8 +283,8 @@ const buildTimelineWithConvergence = (
 	const currentNode = allNodes[currentNodeId];
 	if (!currentNode) return;
 
-	// 30% chance to create a branch, 70% chance for linear continuation
-	const shouldBranch = Math.random() > 0.7 && currentDepth < maxDepth - 1;
+	// 50% chance to create a branch, 50% chance for linear continuation
+	const shouldBranch = Math.random() > 0.5 && currentDepth < maxDepth - 1;
 
 	if (shouldBranch) {
 		// Create a branch node
@@ -325,17 +325,17 @@ const buildTimelineWithConvergence = (
 	}
 };
 
-// Helper function to create a simple linear sub-line
+// Helper function to create a branch path that can contain nested branches
 const createBranchPath = (
 	allNodes: Record<string, Node>,
 	finishStageId: string,
 	currentDepth: number,
-	_maxDepth: number,
+	maxDepth: number,
 ): string[] => {
 	const pathIds: string[] = [];
 
-	// Create 1-10 stages for this branch path
-	const numStages = Math.floor(Math.random() * 10) + 1;
+	// Create 1-5 stages for this branch path (reduced for better nesting)
+	const numStages = Math.floor(Math.random() * 5) + 1;
 
 	for (let i = 0; i < numStages; i++) {
 		const stageName = getRandomItem(STAGE_NAMES);
@@ -355,6 +355,13 @@ const createBranchPath = (
 			if (prevNode && prevNode.kind === "stage") {
 				allNodes[prevId] = { ...prevNode, next: stageId };
 			}
+		}
+
+		// 30% chance to create a nested branch within this path
+		if (Math.random() > 0.7 && currentDepth < maxDepth - 1 && i === numStages - 1) {
+			// Use the recursive function to potentially create more branching
+			buildTimelineWithConvergence(stageId, allNodes, finishStageId, currentDepth + 1, maxDepth);
+			return pathIds; // Let recursion handle the rest
 		}
 	}
 
