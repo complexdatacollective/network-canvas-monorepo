@@ -212,6 +212,41 @@ const ExperimentalTimeline: React.FC = () => {
 						transform: `translate(100px, 100px)`, // Center with padding
 					}}
 				>
+					{/* SVG overlay for connecting lines */}
+					<svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ overflow: "visible" }}>
+						<title>Timeline Connectors</title>
+						{connections.map(({ from, to }) => {
+							const fromPos = linePositions[from];
+							const toPos = linePositions[to];
+							const fromNode = line[from];
+
+							if (!fromPos || !toPos || !fromNode) return null;
+
+							// Determine the path based on node type
+							let pathData: string;
+
+							if (fromNode.kind === "branch") {
+								// Branch nodes: exit horizontally until vertically aligned with target
+								pathData = `M ${fromPos.x} ${fromPos.y} H ${toPos.x} V ${toPos.y}`;
+							} else {
+								// Stage nodes: exit vertically until horizontally aligned with target
+								pathData = `M ${fromPos.x} ${fromPos.y} V ${toPos.y} H ${toPos.x}`;
+							}
+
+							return (
+								<path
+									key={`${from}-${to}`}
+									d={pathData}
+									fill="none"
+									stroke="#3b82f6"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									className="drop-shadow-sm"
+								/>
+							);
+						})}
+					</svg>
 					{/* Render nodes using absolute positioning */}
 					{Array.from(layout.positions.entries()).map(([nodeId, position]) => {
 						const node = line[nodeId];
@@ -236,31 +271,6 @@ const ExperimentalTimeline: React.FC = () => {
 							</button>
 						);
 					})}
-
-					{/* SVG overlay for connecting lines */}
-					<svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ overflow: "visible" }}>
-						<title>Timeline Connectors</title>
-						{connections.map(({ from, to }) => {
-							const fromPos = linePositions[from];
-							const toPos = linePositions[to];
-
-							if (!fromPos || !toPos) return null;
-
-							return (
-								<line
-									key={`${from}-${to}`}
-									x1={fromPos.x}
-									y1={fromPos.y}
-									x2={toPos.x}
-									y2={toPos.y}
-									stroke="#3b82f6"
-									strokeWidth="2"
-									strokeLinecap="round"
-									className="drop-shadow-sm"
-								/>
-							);
-						})}
-					</svg>
 				</div>
 			</ZoomPanViewport>
 		</div>
