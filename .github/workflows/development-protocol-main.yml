@@ -1,4 +1,8 @@
 name: Development Protocol Validate
+
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths:
