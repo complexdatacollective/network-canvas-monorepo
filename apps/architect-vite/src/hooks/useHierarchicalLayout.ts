@@ -391,25 +391,66 @@ function centerTerminalNodes(root: TreeNode) {
 	const bounds = getLayoutBounds(root);
 	const layoutCenterX = bounds.minX + bounds.width / 2;
 
-	function findAndCenterTerminalNodes(node: TreeNode) {
-		// Check if this is a terminal node (no children and no "next" connections leading to it from multiple sources)
-		if (node.children.length === 0) {
-			// Check if this node has multiple parents by examining if it's referenced by multiple nodes
-			// For FinishStage, this would be true as multiple branches converge to it
-			const isConvergencePoint = isNodeConvergencePoint(node, root);
+	// First, find all convergence points and their parent nodes
+	const convergencePoints = new Map<TreeNode, TreeNode[]>();
 
-			if (isConvergencePoint) {
-				// Center this node horizontally
-				node.position.x = layoutCenterX - LAYOUT_CONFIG.nodeWidth / 2;
-			}
-		}
+	function findConvergencePoints(node: TreeNode, visited = new Set<string>()) {
+		if (visited.has(node.id)) return;
+		visited.add(node.id);
 
 		for (const child of node.children) {
-			findAndCenterTerminalNodes(child);
+			if (!convergencePoints.has(child)) {
+				convergencePoints.set(child, []);
+			}
+			convergencePoints.get(child)!.push(node);
+			findConvergencePoints(child, visited);
 		}
 	}
 
-	findAndCenterTerminalNodes(root);
+	findConvergencePoints(root);
+
+	// Process convergence points (nodes with multiple parents or named "FinishStage")
+	for (const [node, parents] of convergencePoints) {
+		if (node.children.length === 0 && (parents.length > 1 || node.node.name === "FinishStage")) {
+			// This is a convergence point
+
+			// Center horizontally
+			node.position.x = layoutCenterX - LAYOUT_CONFIG.nodeWidth / 2;
+
+			// Adjust vertical position to be one row below the bottommost parent
+			let maxParentBottom = 0;
+
+			// Find all nodes that connect to this convergence point
+			function findConnectingNodes(
+				searchNode: TreeNode,
+				targetNode: TreeNode,
+				connectingNodes: TreeNode[] = [],
+			): TreeNode[] {
+				if (searchNode.children.includes(targetNode)) {
+					connectingNodes.push(searchNode);
+				}
+
+				for (const child of searchNode.children) {
+					findConnectingNodes(child, targetNode, connectingNodes);
+				}
+
+				return connectingNodes;
+			}
+
+			const connectingNodes = findConnectingNodes(root, node);
+
+			// Find the bottommost connecting node
+			for (const connectingNode of connectingNodes) {
+				const nodeBottom = connectingNode.position.y + connectingNode.position.height;
+				maxParentBottom = Math.max(maxParentBottom, nodeBottom);
+			}
+
+			// Position the convergence point one row below the bottommost parent
+			if (maxParentBottom > 0) {
+				node.position.y = maxParentBottom + LAYOUT_CONFIG.verticalSpacing;
+			}
+		}
+	}
 }
 
 // Helper function to check if a node is a convergence point (multiple paths lead to it)
