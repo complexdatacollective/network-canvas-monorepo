@@ -492,6 +492,9 @@ importers:
       wouter:
         specifier: ^3.7.1
         version: 3.7.1(react@19.0.0)
+      zod:
+        specifier: 'catalog:'
+        version: 3.24.2
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3

@@ -16,7 +16,7 @@ export const useProtocolLoader = () => {
 	useEffect(() => {
 		if (!activeProtocol) {
 			// No protocol ID in URL, nothing to load
-			navigate("/");
+			// navigate("/");
 			return;
 		}
 		// navigate("/protocol");

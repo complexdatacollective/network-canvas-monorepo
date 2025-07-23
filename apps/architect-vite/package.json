@@ -82,7 +82,8 @@
 		"unified": "^11.0.5",
 		"uuid": "^11.1.0",
 		"vite-tsconfig-paths": "^5.1.4",
-		"wouter": "^3.7.1"
+		"wouter": "^3.7.1",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@testing-library/jest-dom": "^6.6.3",

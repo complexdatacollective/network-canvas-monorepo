@@ -170,3 +170,11 @@ pnpm typecheck   # TypeScript check
 ## Package Management Notes
 
 - Always use pnpm rather than npx for package management and script execution
+
+## Claude Workflow
+
+- NEVER waste tokens summarising your work. Simply state that the task has been completed. The only exception to this is if there was some aspect of the task that you didn't complete - ALWAYS mention this.
+
+## Testing and Debugging
+
+- Use the Playwright MCP to verify work, debug, or access console logs. NEVER start the development server - instead prompt the user to do this for you if you find that it is not already started.
