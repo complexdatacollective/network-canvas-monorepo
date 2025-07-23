@@ -178,3 +178,7 @@ pnpm typecheck   # TypeScript check
 ## Testing and Debugging
 
 - Use the Playwright MCP to verify work, debug, or access console logs. NEVER start the development server - instead prompt the user to do this for you if you find that it is not already started.
+
+## Development Best Practices
+
+- Always run linting and formatting after completing a task

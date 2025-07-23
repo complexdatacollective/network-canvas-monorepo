@@ -7,9 +7,19 @@ const LAYOUT_CONFIG = {
 	nodeHeight: 120,
 	horizontalSpacing: 60,
 	verticalSpacing: 80,
-	minZoom: 0.1,
-	maxZoom: 3,
+	minZoom: 0.5,
+	maxZoom: 2,
 	zoomStep: 0.1,
+	// Centralized zoom sensitivity configuration
+	zoomSensitivity: {
+		// Base scale factor that affects all zoom methods equally
+		baseScaleFactor: 0.02,
+		// Multipliers for different input methods (relative to baseScaleFactor)
+		mouseWheel: 0.5, // Reduced mouse wheel sensitivity
+		trackpadPinch: 2.0, // Further reduced trackpad sensitivity for macOS pinch
+		pointerPinch: 0.5, // Pointer pinch uses distance ratios, so smaller multiplier
+		keyboard: 2.5, // Slightly increased keyboard steps for better control
+	},
 } as const;
 
 // Position type for layout
@@ -536,6 +546,7 @@ export function useHierarchicalLayout(line: Line) {
 			tree,
 			positions,
 			bounds,
+			config: LAYOUT_CONFIG,
 		};
 	}, [line]);
 
@@ -544,11 +555,12 @@ export function useHierarchicalLayout(line: Line) {
 		setZoom((prevZoom) => {
 			const newZoom = Math.max(LAYOUT_CONFIG.minZoom, Math.min(LAYOUT_CONFIG.maxZoom, prevZoom + delta));
 
-			// Adjust pan to zoom towards the center point
+			// Adjust pan to zoom towards the pointer position
 			if (newZoom !== prevZoom) {
+				const zoomRatio = newZoom / prevZoom;
 				setPan((prevPan) => ({
-					x: prevPan.x - centerX * (newZoom - prevZoom),
-					y: prevPan.y - centerY * (newZoom - prevZoom),
+					x: centerX + (prevPan.x - centerX) * zoomRatio,
+					y: centerY + (prevPan.y - centerY) * zoomRatio,
 				}));
 			}
 

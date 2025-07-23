@@ -71,7 +71,7 @@ export type Node = z.infer<typeof nodeSchema>;
 export type Line = z.infer<typeof lineSchema>;
 
 // Export schemas
-export { baseNodeSchema, stageNodeSchema, branchNodeSchema, nodeSchema, lineSchema };
+export { baseNodeSchema, branchNodeSchema, lineSchema, nodeSchema, stageNodeSchema };
 
 // Utility function to generate unique IDs
 const generateId = (): string => {
@@ -268,7 +268,7 @@ const buildTimelineWithConvergence = (
 	allNodes: Record<string, Node>,
 	finishStageId: string,
 	currentDepth: number,
-	maxDepth: number,
+	maxDepth = 4,
 ): void => {
 	// Stop recursion if we've reached max depth
 	if (currentDepth >= maxDepth) {
@@ -334,8 +334,8 @@ const createBranchPath = (
 ): string[] => {
 	const pathIds: string[] = [];
 
-	// Create 1-3 stages for this branch path
-	const numStages = Math.floor(Math.random() * 3) + 1;
+	// Create 1-10 stages for this branch path
+	const numStages = Math.floor(Math.random() * 10) + 1;
 
 	for (let i = 0; i < numStages; i++) {
 		const stageName = getRandomItem(STAGE_NAMES);
