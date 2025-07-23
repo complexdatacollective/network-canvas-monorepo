@@ -6,6 +6,13 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read      # Allow reading repository contents
+  packages: read      # Allow reading GitHub Packages
+  actions: read       # Allow read-only access to workflow runs and jobs
+  checks: write       # Allow updating check runs (needed for changesets/action)
+  pull-requests: write # Allow creating pull requests (needed for changesets/action)
+
 jobs:
   # Setup job that all other jobs depend on
   setup:
