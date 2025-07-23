@@ -8,6 +8,7 @@ import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import timelineImages from "~/images/timeline";
 import { getStageList } from "~/selectors/protocol";
+import { cn } from "~/utils/cn";
 import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
 import InsertButton from "./InsertButton";
 import Stage from "./Stage";
@@ -116,6 +117,13 @@ const Timeline = () => {
 
 	const [stateStages, setStateStages] = useState(stages);
 
+	const itemClasses = cn(
+		"grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
+		"hover:bg-timeline-hover transition-colors duration-300 ease-in-out",
+		// Focus state for accessibility
+		"focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-timeline",
+	);
+
 	return (
 		<>
 			<Reorder.Group
@@ -129,12 +137,12 @@ const Timeline = () => {
 			>
 				{stateStages.map((stage, index) => (
 					<Reorder.Item
+						tabIndex={0}
 						key={stage.id}
 						value={stage}
 						layoutId={`timeline-stage-${stage.id}`}
 						variants={itemVariants}
-						className="grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
-						as="button"
+						className={itemClasses}
 						onClick={() => handleEditStage(stage.id, stage)}
 					>
 						<motion.img
@@ -147,9 +155,9 @@ const Timeline = () => {
 						<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
 							{index + 1}
 						</div>
-						<h4 className="text-center justify-self-start group-hover:font-bold transition-all">
-							{stage.label || "\u00A0"}
-						</h4>
+						<div className="justify-self-start">
+							<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
+						</div>
 					</Reorder.Item>
 				))}
 
