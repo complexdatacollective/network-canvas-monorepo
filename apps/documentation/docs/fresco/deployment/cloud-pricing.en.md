@@ -9,13 +9,20 @@ Deploying Fresco can be achieved entirely for free using the free tiers of each 
 
 ## Vercel
 
-- **Hobby Tier (Free)**: Vercel offers a hobby tier which provides sufficient features and database storage for small-scale deployments, up to 60 hours of compute time per month and 250 MB of storage.
+- **Hobby Tier (Free)**: Vercel offers a hobby tier which provides sufficient features for small-scale deployments.
 
 - **Upgrade Option**: If your project grows or you require additional features, you can upgrade to Vercel's Pro plan for $20/user/month.
 
 For more information on Vercel's pricing plans and features, you can visit their [pricing page.](https://vercel.com/pricing)
 
-For specific information on Vercel's Postgres Database Storage pricing, you can visit their [Vercel Postgres pricing page.](https://vercel.com/docs/storage/vercel-postgres/usage-and-pricing)
+## Neon
+
+- **Free Plan**: Neon offers a free plan which provides 0.5 GB storage and 190 compute hours, sufficient for small-scale projects.
+
+- **Upgrade Option**: If you require extra storage or compute hours, you can upgrade to Neon's Launch plan for $19/month.
+
+For more information on Neon's pricing plans and features, you can visit their [pricing page.](https://neon.com/pricing)
+
 
 ## UploadThing
 
