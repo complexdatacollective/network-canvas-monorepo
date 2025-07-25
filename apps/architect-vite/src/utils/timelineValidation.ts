@@ -2,32 +2,32 @@ import {
 	BranchSchema,
 	CollectionSchema,
 	EntitySchema,
+	FinishSchema,
 	StageSchema,
 	StartSchema,
-	FinishSchema,
 	TimelineSchema,
 	type Branch,
 	type Collection,
 	type Entity,
+	type Finish,
 	type InterfaceType,
 	type Stage,
 	type Start,
-	type Finish,
 	type Timeline,
 } from "~/schemas/timeline";
 
 // Export schemas for external use
-export { BranchSchema, CollectionSchema, EntitySchema, StageSchema, StartSchema, FinishSchema, TimelineSchema };
+export { BranchSchema, CollectionSchema, EntitySchema, FinishSchema, StageSchema, StartSchema, TimelineSchema };
 
 // Re-export types from schema
 export type {
 	Branch,
 	Collection,
 	Entity,
+	Finish,
 	InterfaceType,
 	Stage,
 	Start,
-	Finish,
 	Timeline,
 } from "~/schemas/timeline";
 
@@ -126,12 +126,8 @@ export const createCollection = (name: string, target: string, timeline: Timelin
 
 // Utility function to create a minimal valid timeline
 export const createValidTimeline = (entities: Entity[]): Timeline => {
-	const timeline: Timeline = {
-		entities,
-	};
-
 	// Validate the timeline
-	const result = TimelineSchema.safeParse(timeline);
+	const result = TimelineSchema.safeParse(entities);
 	if (!result.success) {
 		throw new Error(`Invalid timeline: ${result.error.message}`);
 	}
@@ -273,7 +269,7 @@ export const createSampleTimeline = (): Timeline => {
 	});
 
 	// Create Core Network Collection Timeline with more stages
-	const coreNetworkTimeline = createValidTimeline([
+	const coreNetworkTimeline = [
 		withId(createStart("Core Network Start", nameGen1Id), coreNetworkStartId),
 		withId(createStage("Core Network Generator", "NameGenerator", branch1Id), nameGen1Id),
 		{
@@ -291,10 +287,10 @@ export const createSampleTimeline = (): Timeline => {
 		withId(createStage("Additional Names", "NameGenerator", alterFormId), nameGen3Id),
 		withId(createStage("Alter Details", "AlterForm", coreNetworkFinishId), alterFormId),
 		withId(createFinish("Core Network Complete"), coreNetworkFinishId),
-	]);
+	];
 
 	// Create Network Analysis Collection Timeline with more stages
-	const networkAnalysisTimeline = createValidTimeline([
+	const networkAnalysisTimeline = [
 		withId(createStart("Network Analysis Start", tieStrengthId), networkAnalysisStartId),
 		withId(createStage("Relationship Strength", "TieStrengthCensus", branch2Id), tieStrengthId),
 		{
@@ -315,26 +311,26 @@ export const createSampleTimeline = (): Timeline => {
 		withId(createStage("Geographic Mapping", "Geospatial", networkAnalysisFinishId), geospatialId),
 		withId(createStage("Family Tree Analysis", "FamilyTreeCensus", networkAnalysisFinishId), familyTreeId),
 		withId(createFinish("Network Analysis Complete"), networkAnalysisFinishId),
-	]);
+	];
 
 	// Create Relationship Assessment Collection Timeline with more stages
-	const relationshipTimeline = createValidTimeline([
+	const relationshipTimeline = [
 		withId(createStart("Relationship Start", ordinalBinId), relationshipStartId),
 		withId(createStage("Closeness Rating", "OrdinalBin", alterEdgeFormId), ordinalBinId),
 		withId(createStage("Relationship Details", "AlterEdgeForm", oneToManyId), alterEdgeFormId),
 		withId(createStage("Group Relationships", "OneToManyDyadCensus", relationshipFinishId), oneToManyId),
 		withId(createFinish("Relationship Complete"), relationshipFinishId),
-	]);
+	];
 
 	// Create Final Steps Collection Timeline with more stages
-	const finalStepsTimeline = createValidTimeline([
+	const finalStepsTimeline = [
 		withId(createStart("Final Steps Start", narrativeId), finalStartId),
 		withId(createStage("Personal Story", "Narrative", dataQualityId), narrativeId),
 		withId(createStage("Data Quality Check", "Information", feedbackId), dataQualityId),
 		withId(createStage("Feedback Form", "EgoForm", anonymisationId), feedbackId),
 		withId(createStage("Data Privacy", "Anonymisation", finalFinishId), anonymisationId),
 		withId(createFinish("Final Steps Complete"), finalFinishId),
-	]);
+	];
 
 	// Now create main timeline entities with additional stages
 	const entities: Entity[] = [
@@ -371,214 +367,205 @@ export const createSampleTimeline = (): Timeline => {
 	return createValidTimeline(entities);
 };
 // Create a simple static timeline for testing and debugging layout issues
-export const createTestTimeline = (): Timeline => {
-	// Static IDs for consistent testing
-	const entities: Entity[] = [
-		// Start node
-		{
-			id: "start-1",
-			type: "Start",
-			name: "Welcome",
-			target: "stage-1",
-		},
+export const testTimeline: Timeline = [
+	// Start node
+	{
+		id: "start-1",
+		type: "Start",
+		name: "Welcome",
+		target: "stage-1",
+	},
 
-		// Individual stages at beginning
-		{
-			id: "stage-1",
-			type: "Stage",
-			name: "Consent & Information",
-			interfaceType: "Information",
-			target: "stage-2",
-		},
+	// Individual stages at beginning
+	{
+		id: "stage-1",
+		type: "Stage",
+		name: "Consent & Information",
+		interfaceType: "Information",
+		target: "stage-2",
+	},
 
-		{
-			id: "stage-2",
-			type: "Stage",
-			name: "Demographics",
-			interfaceType: "EgoForm",
-			target: "branch-1",
-		},
+	{
+		id: "stage-2",
+		type: "Stage",
+		name: "Demographics",
+		interfaceType: "EgoForm",
+		target: "branch-1",
+	},
 
-		// Branch outside of collection
-		{
-			id: "branch-1",
-			type: "Branch",
-			name: "Interview Path",
-			conditions: {
-				"Standard Path": "stage-3",
-				"Extended Path": "stage-4",
+	// Branch outside of collection
+	{
+		id: "branch-1",
+		type: "Branch",
+		name: "Interview Path",
+		conditions: {
+			"Standard Path": "stage-3",
+			"Extended Path": "stage-4",
+		},
+	},
+
+	// More individual stages
+	{
+		id: "stage-3",
+		type: "Stage",
+		name: "Background Questions",
+		interfaceType: "Information",
+		target: "collection-1",
+	},
+
+	{
+		id: "stage-4",
+		type: "Stage",
+		name: "Extended Background",
+		interfaceType: "EgoForm",
+		target: "collection-1",
+	},
+
+	// First collection - coherent network data collection unit
+	{
+		id: "collection-1",
+		type: "Collection",
+		name: "Network Data Collection",
+		target: "stage-5",
+		timeline: [
+			{
+				id: "coll1-start",
+				type: "Start",
+				name: "Network Start",
+				target: "coll1-stage-1",
 			},
-		},
-
-		// More individual stages
-		{
-			id: "stage-3",
-			type: "Stage",
-			name: "Background Questions",
-			interfaceType: "Information",
-			target: "collection-1",
-		},
-
-		{
-			id: "stage-4",
-			type: "Stage",
-			name: "Extended Background",
-			interfaceType: "EgoForm",
-			target: "collection-1",
-		},
-
-		// First collection - coherent network data collection unit
-		{
-			id: "collection-1",
-			type: "Collection",
-			name: "Network Data Collection",
-			target: "stage-5",
-			timeline: {
-				entities: [
-					{
-						id: "coll1-start",
-						type: "Start",
-						name: "Network Start",
-						target: "coll1-stage-1",
-					},
-					{
-						id: "coll1-stage-1",
-						type: "Stage",
-						name: "Name Generator",
-						interfaceType: "NameGenerator",
-						target: "coll1-branch",
-					},
-					{
-						id: "coll1-branch",
-						type: "Branch",
-						name: "Collection Method",
-						conditions: {
-							"Quick Add": "coll1-stage-2",
-							"Roster Method": "coll1-stage-3",
-							"Mixed Method": "coll1-stage-4",
-						},
-					},
-					{
-						id: "coll1-stage-2",
-						type: "Stage",
-						name: "Quick Add Names",
-						interfaceType: "NameGeneratorQuickAdd",
-						target: "coll1-stage-5",
-					},
-					{
-						id: "coll1-stage-3",
-						type: "Stage",
-						name: "Roster Selection",
-						interfaceType: "NameGeneratorRoster",
-						target: "coll1-stage-5",
-					},
-					{
-						id: "coll1-stage-4",
-						type: "Stage",
-						name: "Additional Names",
-						interfaceType: "NameGenerator",
-						target: "coll1-stage-5",
-					},
-					{
-						id: "coll1-stage-5",
-						type: "Stage",
-						name: "Alter Details",
-						interfaceType: "AlterForm",
-						target: "coll1-finish",
-					},
-					{
-						id: "coll1-finish",
-						type: "Finish",
-						name: "Network Collection Complete",
-					},
-				],
+			{
+				id: "coll1-stage-1",
+				type: "Stage",
+				name: "Name Generator",
+				interfaceType: "NameGenerator",
+				target: "coll1-branch",
 			},
-		},
-
-		// Individual stage between collections
-		{
-			id: "stage-5",
-			type: "Stage",
-			name: "Review Network",
-			interfaceType: "Information",
-			target: "collection-2",
-		},
-
-		// Second collection - coherent relationship analysis unit
-		{
-			id: "collection-2",
-			type: "Collection",
-			name: "Relationship Analysis",
-			target: "stage-6",
-			timeline: {
-				entities: [
-					{
-						id: "coll2-start",
-						type: "Start",
-						name: "Analysis Start",
-						target: "coll2-stage-1",
-					},
-					{
-						id: "coll2-stage-1",
-						type: "Stage",
-						name: "Tie Strength",
-						interfaceType: "TieStrengthCensus",
-						target: "coll2-stage-2",
-					},
-					{
-						id: "coll2-stage-2",
-						type: "Stage",
-						name: "Network Visualization",
-						interfaceType: "Sociogram",
-						target: "coll2-stage-3",
-					},
-					{
-						id: "coll2-stage-3",
-						type: "Stage",
-						name: "Relationship Details",
-						interfaceType: "DyadCensus",
-						target: "coll2-finish",
-					},
-					{
-						id: "coll2-finish",
-						type: "Finish",
-						name: "Analysis Complete",
-					},
-				],
+			{
+				id: "coll1-branch",
+				type: "Branch",
+				name: "Collection Method",
+				conditions: {
+					"Quick Add": "coll1-stage-2",
+					"Roster Method": "coll1-stage-3",
+					"Mixed Method": "coll1-stage-4",
+				},
 			},
-		},
+			{
+				id: "coll1-stage-2",
+				type: "Stage",
+				name: "Quick Add Names",
+				interfaceType: "NameGeneratorQuickAdd",
+				target: "coll1-stage-5",
+			},
+			{
+				id: "coll1-stage-3",
+				type: "Stage",
+				name: "Roster Selection",
+				interfaceType: "NameGeneratorRoster",
+				target: "coll1-stage-5",
+			},
+			{
+				id: "coll1-stage-4",
+				type: "Stage",
+				name: "Additional Names",
+				interfaceType: "NameGenerator",
+				target: "coll1-stage-5",
+			},
+			{
+				id: "coll1-stage-5",
+				type: "Stage",
+				name: "Alter Details",
+				interfaceType: "AlterForm",
+				target: "coll1-finish",
+			},
+			{
+				id: "coll1-finish",
+				type: "Finish",
+				name: "Network Collection Complete",
+			},
+		],
+	},
 
-		// More individual stages at end
-		{
-			id: "stage-6",
-			type: "Stage",
-			name: "Additional Questions",
-			interfaceType: "EgoForm",
-			target: "stage-7",
-		},
+	// Individual stage between collections
+	{
+		id: "stage-5",
+		type: "Stage",
+		name: "Review Network",
+		interfaceType: "Information",
+		target: "collection-2",
+	},
 
-		{
-			id: "stage-7",
-			type: "Stage",
-			name: "Data Validation",
-			interfaceType: "Information",
-			target: "finish-1",
-		},
+	// Second collection - coherent relationship analysis unit
+	{
+		id: "collection-2",
+		type: "Collection",
+		name: "Relationship Analysis",
+		target: "stage-6",
+		timeline: [
+			{
+				id: "coll2-start",
+				type: "Start",
+				name: "Analysis Start",
+				target: "coll2-stage-1",
+			},
+			{
+				id: "coll2-stage-1",
+				type: "Stage",
+				name: "Tie Strength",
+				interfaceType: "TieStrengthCensus",
+				target: "coll2-stage-2",
+			},
+			{
+				id: "coll2-stage-2",
+				type: "Stage",
+				name: "Network Visualization",
+				interfaceType: "Sociogram",
+				target: "coll2-stage-3",
+			},
+			{
+				id: "coll2-stage-3",
+				type: "Stage",
+				name: "Relationship Details",
+				interfaceType: "DyadCensus",
+				target: "coll2-finish",
+			},
+			{
+				id: "coll2-finish",
+				type: "Finish",
+				name: "Analysis Complete",
+			},
+		],
+	},
 
-		// Finish node
-		{
-			id: "finish-1",
-			type: "Finish",
-			name: "Interview Complete",
-		},
-	];
+	// More individual stages at end
+	{
+		id: "stage-6",
+		type: "Stage",
+		name: "Additional Questions",
+		interfaceType: "EgoForm",
+		target: "stage-7",
+	},
 
-	return createValidTimeline(entities);
-};
+	{
+		id: "stage-7",
+		type: "Stage",
+		name: "Data Validation",
+		interfaceType: "Information",
+		target: "finish-1",
+	},
+
+	// Finish node
+	{
+		id: "finish-1",
+		type: "Finish",
+		name: "Interview Complete",
+	},
+];
 
 // Helper function to find an entity by ID
 export const findEntityById = (timeline: Timeline, id: string): Entity | undefined => {
-	return timeline.entities.find((entity) => entity.id === id);
+	return timeline.find((entity) => entity.id === id);
 };
 
 // Helper function to get all connections in the timeline
@@ -592,7 +579,7 @@ export type Connection = {
 export const getConnections = (timeline: Timeline): Connection[] => {
 	const connections: Connection[] = [];
 
-	for (const entity of timeline.entities) {
+	for (const entity of timeline) {
 		if ((entity.type === "Stage" || entity.type === "Start") && entity.target) {
 			connections.push({
 				from: entity.id,
@@ -624,19 +611,19 @@ export const getConnections = (timeline: Timeline): Connection[] => {
 
 // Helper to get the start entity in a collection's nested timeline
 export const getCollectionStartEntity = (collection: Collection): Entity | undefined => {
-	return collection.timeline.entities.find((entity) => entity.type === "Start");
+	return collection.timeline.find((entity) => entity.type === "Start");
 };
 
 // Helper to get the finish entity in a collection's nested timeline
 export const getCollectionFinishEntity = (collection: Collection): Entity | undefined => {
-	return collection.timeline.entities.find((entity) => entity.type === "Finish");
+	return collection.timeline.find((entity) => entity.type === "Finish");
 };
 
 // Helper to check if an entity is inside a collection's nested timeline
 export const isEntityInCollection = (timeline: Timeline, entityId: string): Collection | undefined => {
-	for (const entity of timeline.entities) {
+	for (const entity of timeline) {
 		if (entity.type === "Collection") {
-			const found = entity.timeline.entities.find((e) => e.id === entityId);
+			const found = entity.timeline.find((e) => e.id === entityId);
 			if (found) return entity;
 		}
 	}
@@ -645,5 +632,5 @@ export const isEntityInCollection = (timeline: Timeline, entityId: string): Coll
 
 // Helper to get all entity IDs from a collection's nested timeline
 export const expandCollectionEntities = (collection: Collection): string[] => {
-	return collection.timeline.entities.map((entity) => entity.id);
+	return collection.timeline.map((entity) => entity.id);
 };

@@ -1,19 +1,14 @@
 import { get } from "es-toolkit/compat";
 import type React from "react";
-import { useTimelineLayout } from "~/hooks/useTimelineLayout";
 import timelineImages from "~/images/timeline";
-import { Button } from "~/lib/legacy-ui/components";
 import {
-	createTestTimeline,
+	type Branch,
+	type Finish,
 	getConnections,
 	type Stage,
-	type Branch,
-	type Collection,
 	type Start,
-	type Finish,
-	type Entity,
+	testTimeline,
 } from "~/utils/timelineValidation";
-import { ZoomPanViewport } from "./ZoomPanViewport";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
@@ -131,282 +126,16 @@ function BranchNode({
 	);
 }
 
-function CollectionNode({
-	id,
-	collection,
-}: {
-	id: string;
-	collection: Collection;
-}) {
-	// Get the layout for the collection's internal timeline
-	const collectionLayout = useTimelineLayout(collection.timeline);
-	const layout = collectionLayout.layout;
-
-	if (!layout) {
-		return <div>Collection layout error</div>;
-	}
-
-	// Calculate collection bounds based on internal entities
-	const internalPositions = Array.from(layout.positions.values());
-	if (internalPositions.length === 0) {
-		return <div>Empty collection</div>;
-	}
-
-	const padding = 20;
-	const minX = Math.min(...internalPositions.map((p) => p.x));
-	const minY = Math.min(...internalPositions.map((p) => p.y));
-	const maxX = Math.max(...internalPositions.map((p) => p.x + p.width));
-	const maxY = Math.max(...internalPositions.map((p) => p.y + p.height));
-
-	const containerWidth = maxX - minX + padding * 2;
-	const containerHeight = maxY - minY + padding * 2 + 40; // Extra space for title
-
-	// Get internal connections for the collection's timeline
-	const internalConnections = getConnections(collection.timeline);
-
-	return (
-		<div
-			className="absolute bg-blue-50 border-2 border-blue-300 rounded-lg shadow-md"
-			style={{
-				width: containerWidth,
-				height: containerHeight,
-			}}
-			data-node-marker={id}
-		>
-			{/* Collection header */}
-			<div className="bg-blue-100 border-b border-blue-300 rounded-t-lg px-3 py-2">
-				<h4 className="text-sm font-semibold text-blue-800">{collection.name}</h4>
-			</div>
-
-			{/* Internal entities container */}
-			<div className="relative p-4" style={{ height: containerHeight - 40 }}>
-				{/* SVG overlay for internal connections */}
-				<svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ overflow: "visible" }}>
-					<title>Collection Internal Connectors</title>
-					{internalConnections.map(({ from, to, type }) => {
-						const fromPos = layout.positions.get(from);
-						const toPos = layout.positions.get(to);
-
-						if (!fromPos || !toPos) return null;
-
-						// Adjust positions relative to container padding
-						const fromCenterX = fromPos.x - minX + fromPos.width / 2;
-						const fromCenterY = fromPos.y - minY + 40; // Account for header
-						const toCenterX = toPos.x - minX + toPos.width / 2;
-						const toCenterY = toPos.y - minY + 20; // Account for header
-
-						let pathData: string;
-						if (type === "branch") {
-							pathData = `M ${fromCenterX} ${fromCenterY} H ${toCenterX} V ${toCenterY}`;
-						} else {
-							pathData = `M ${fromCenterX} ${fromCenterY} V ${toCenterY} H ${toCenterX}`;
-						}
-
-						return (
-							<path
-								key={`${from}-${to}`}
-								d={pathData}
-								fill="none"
-								stroke={type === "branch" ? "#f59e0b" : "#3b82f6"}
-								strokeWidth="1.5"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								className="drop-shadow-sm"
-							/>
-						);
-					})}
-				</svg>
-
-				{/* Render internal entities */}
-				{Array.from(layout.positions.entries()).map(([nodeId, position]) => {
-					const entity = collection.timeline.entities.find((e: Entity) => e.id === nodeId);
-					if (!entity) return null;
-
-					// Skip start/finish nodes within collections - they're invisible
-					if (entity.type === "Start" || entity.type === "Finish") {
-						return null;
-					}
-
-					// Adjust position relative to container
-					const adjustedPosition = {
-						x: position.x - minX,
-						y: position.y - minY,
-						width: position.width,
-						height: position.height,
-					};
-
-					return (
-						<button
-							type="button"
-							key={nodeId}
-							data-node-id={nodeId}
-							className="absolute flex items-center justify-center hover:scale-105 transition-transform duration-200 z-10"
-							style={{
-								left: adjustedPosition.x,
-								top: adjustedPosition.y,
-								width: adjustedPosition.width,
-								height: adjustedPosition.height,
-								transform: "scale(0.8)", // Make internal entities smaller
-							}}
-						>
-							{entity.type === "Stage" && <StageNode stage={entity as Stage} id={nodeId} />}
-							{entity.type === "Branch" && <BranchNode branch={entity as Branch} id={nodeId} />}
-						</button>
-					);
-				})}
-			</div>
-		</div>
-	);
-}
-
-// Create a test timeline for debugging
-const testTimeline = createTestTimeline();
-
-console.log("Test Timeline:", testTimeline);
-
 const ExperimentalTimeline: React.FC = () => {
 	const timeline = testTimeline;
-	const { layout, zoom, pan, handleZoom, handlePan, resetView, config } = useTimelineLayout(timeline);
 	const connections = getConnections(timeline);
 
-	if (!layout) {
-		return <div>No timeline data available</div>;
-	}
+	console.log({
+		timeline,
+		connections,
+	});
 
-	// Create a map of entities by ID for quick lookup
-	const entitiesById = new Map<string, Entity>(timeline.entities.map((entity: Entity) => [entity.id, entity]));
-
-	return (
-		<>
-			{/* Control buttons */}
-			<div className="absolute bottom-24 right-4 z-20 flex gap-2">
-				<Button onClick={resetView}>Reset View</Button>
-				<div className="px-3 py-1 bg-white border border-gray-300 rounded text-sm">{Math.round(zoom * 100)}%</div>
-			</div>
-			<div className="w-full h-full overflow-hidden">
-				<ZoomPanViewport
-					zoom={zoom}
-					pan={pan}
-					onZoom={handleZoom}
-					onPan={handlePan}
-					className="w-full h-full"
-					zoomConfig={config.zoomSensitivity}
-				>
-					<div
-						className="relative"
-						style={{
-							width: layout.bounds.width + 200, // Add padding
-							height: layout.bounds.height + 200, // Add padding
-							transform: "translate(100px, 100px)", // Center with padding
-						}}
-					>
-						{/* SVG overlay for connecting lines */}
-						<svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ overflow: "visible" }}>
-							<title>Timeline Connectors</title>
-							{connections.map(({ from, to, type }) => {
-								const fromEntity = entitiesById.get(from);
-								const toEntity = entitiesById.get(to);
-								const fromPos = layout.positions.get(from);
-								const toPos = layout.positions.get(to);
-
-								if (!fromPos || !toPos || !fromEntity || !toEntity) return null;
-
-								// Calculate center positions, accounting for the visual elements being above the text
-								const fromCenterX = fromPos.x + fromPos.width / 2;
-								let fromCenterY: number;
-								if (fromEntity.type === "Collection") {
-									fromCenterY = fromPos.y + fromPos.height; // Exit from bottom of collection
-								} else if (fromEntity.type === "Stage") {
-									fromCenterY = fromPos.y + 70;
-								} else {
-									fromCenterY = fromPos.y + 40;
-								}
-								const toCenterX = toPos.x + toPos.width / 2;
-								let toCenterY: number;
-								if (toEntity.type === "Collection") {
-									toCenterY = toPos.y; // Enter at top of collection
-								} else if (toEntity.type === "Stage") {
-									toCenterY = toPos.y + 20;
-								} else {
-									toCenterY = toPos.y + 20;
-								}
-
-								// Determine the path based on node type
-								let pathData: string;
-
-								if (type === "branch") {
-									// Branch nodes: exit horizontally until vertically aligned with target
-									pathData = `M ${fromCenterX} ${fromCenterY} H ${toCenterX} V ${toCenterY}`;
-								} else {
-									// Stage nodes: exit vertically until horizontally aligned with target
-									pathData = `M ${fromCenterX} ${fromCenterY} V ${toCenterY} H ${toCenterX}`;
-								}
-
-								return (
-									<path
-										key={`${from}-${to}`}
-										d={pathData}
-										fill="none"
-										stroke={type === "branch" ? "#f59e0b" : "#3b82f6"}
-										strokeWidth="2"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										className="drop-shadow-sm"
-									/>
-								);
-							})}
-						</svg>
-
-						{/* Render nodes using absolute positioning */}
-						{Array.from(layout.positions.entries()).map(([nodeId, position]) => {
-							const entity = entitiesById.get(nodeId);
-							if (!entity) return null;
-
-							// Collections are not buttons - they're containers
-							if (entity.type === "Collection") {
-								return (
-									<div
-										key={nodeId}
-										data-node-id={nodeId}
-										className="absolute z-10"
-										style={{
-											left: position.x,
-											top: position.y,
-											width: position.width,
-											height: position.height,
-										}}
-									>
-										<CollectionNode collection={entity as Collection} id={nodeId} />
-									</div>
-								);
-							}
-
-							// Other entities remain as buttons
-							return (
-								<button
-									type="button"
-									key={nodeId}
-									data-node-id={nodeId}
-									className="absolute flex items-center justify-center hover:scale-105 transition-transform duration-200 z-10"
-									style={{
-										left: position.x,
-										top: position.y,
-										width: position.width,
-										height: position.height,
-									}}
-								>
-									{entity.type === "Stage" && <StageNode stage={entity as Stage} id={nodeId} />}
-									{entity.type === "Branch" && <BranchNode branch={entity as Branch} id={nodeId} />}
-									{entity.type === "Start" && <StartNode start={entity as Start} id={nodeId} />}
-									{entity.type === "Finish" && <FinishNode finish={entity as Finish} id={nodeId} />}
-								</button>
-							);
-						})}
-					</div>
-				</ZoomPanViewport>
-			</div>
-		</>
-	);
+	return <></>;
 };
 
 export default ExperimentalTimeline;

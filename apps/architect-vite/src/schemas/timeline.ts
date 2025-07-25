@@ -31,7 +31,7 @@ const StageSchemaBase = z.object({
 	type: z.literal("Stage"),
 	name: z.string().min(1),
 	interfaceType: InterfaceType,
-	target: EntityId,
+	next: EntityId,
 });
 
 export const StageSchema = StageSchemaBase;
@@ -41,38 +41,40 @@ const StartSchemaBase = z.object({
 	id: EntityId,
 	type: z.literal("Start"),
 	name: z.string().min(1),
-	target: EntityId, // Must have exactly one target
+	next: EntityId, // Must have exactly one target
 });
 
 export const StartSchema = StartSchemaBase;
 
 // Finish node schema (single exit point)
-const FinishSchemaBase = z.object({
+const FinishSchema = z.object({
 	id: EntityId,
 	type: z.literal("Finish"),
 	name: z.string().min(1),
-	// No target property - finish nodes don't point anywhere
 });
 
-export const FinishSchema = FinishSchemaBase;
-
 // Branch schema with exit slots (conditions)
-const BranchSchemaBase = z.object({
+const BranchSchema = z.object({
 	id: EntityId,
 	type: z.literal("Branch"),
 	name: z.string().min(1),
-	conditions: z.record(z.string().min(1), EntityId),
+	targets: z.array(EntityId).min(2, "Branch must have at least two exit slots"),
 });
 
-export const BranchSchema = BranchSchemaBase.refine((branch) => Object.keys(branch.conditions).length >= 2, {
-	message: "Branch must have at least two exit slots (conditions)",
+// Collection schema base for discriminated union
+const CollectionSchema = z.object({
+	id: EntityId,
+	type: z.literal("Collection"),
+	name: z.string().min(1),
+	next: EntityId,
+	children: z.lazy(() => z.array(z.union([StageSchema, BranchSchema, CollectionSchema]))),
 });
 
 // Union type for any entity
 export const EntitySchema = z.discriminatedUnion("type", [
 	StageSchemaBase,
 	BranchSchemaBase,
-	CollectionSchema,
+	CollectionSchemaBase,
 	StartSchemaBase,
 	FinishSchemaBase,
 ]);
@@ -115,15 +117,6 @@ export const EntityArraySchema = z
 		},
 		{ message: "All referenced entity IDs must exist" },
 	);
-
-// Collection schema - now a nested Timeline with target property
-export const CollectionSchema = z.object({
-	id: EntityId,
-	type: z.literal("Collection"),
-	name: z.string().min(1),
-	target: EntityId, // Where this collection connects to in parent timeline
-	timeline: z.lazy(() => EntityArraySchema),
-});
 
 export const TimelineSchema = EntityArraySchema.refine(
 	(timeline) => {
