@@ -68,15 +68,6 @@ export const BranchSchema = BranchSchemaBase.refine((branch) => Object.keys(bran
 	message: "Branch must have at least two exit slots (conditions)",
 });
 
-// Collection schema - now a nested Timeline with target property
-export const CollectionSchema = z.object({
-	id: EntityId,
-	type: z.literal("Collection"),
-	name: z.string().min(1),
-	target: EntityId, // Where this collection connects to in parent timeline
-	timeline: z.lazy(() => TimelineSchema), // Nested timeline with its own start/finish
-});
-
 // Union type for any entity
 export const EntitySchema = z.discriminatedUnion("type", [
 	StageSchemaBase,
@@ -87,39 +78,21 @@ export const EntitySchema = z.discriminatedUnion("type", [
 ]);
 
 // Timeline schema
-export const TimelineSchema = z
-	.object({
-		entities: z.array(EntitySchema),
-	})
+export const EntityArraySchema = z
+	.array(EntitySchema)
 	.refine(
 		(timeline) => {
-			const entityIds = new Set(timeline.entities.map((e) => e.id));
-			return entityIds.size === timeline.entities.length;
+			const entityIds = new Set(timeline.map((e) => e.id));
+			return entityIds.size === timeline.length;
 		},
 		{ message: "All entity IDs must be unique" },
 	)
 	.refine(
 		(timeline) => {
-			// Exactly one start node
-			const startNodes = timeline.entities.filter((e) => e.type === "Start");
-			return startNodes.length === 1;
-		},
-		{ message: "Timeline must have exactly one start node" },
-	)
-	.refine(
-		(timeline) => {
-			// Exactly one finish node
-			const finishNodes = timeline.entities.filter((e) => e.type === "Finish");
-			return finishNodes.length === 1;
-		},
-		{ message: "Timeline must have exactly one finish node" },
-	)
-	.refine(
-		(timeline) => {
 			// Validate all referenced IDs exist
-			const entityIds = new Set(timeline.entities.map((e) => e.id));
+			const entityIds = new Set(timeline.map((e) => e.id));
 
-			for (const entity of timeline.entities) {
+			for (const entity of timeline) {
 				if ((entity.type === "Stage" || entity.type === "Start") && entity.target) {
 					if (!entityIds.has(entity.target)) {
 						return false;
@@ -142,6 +115,31 @@ export const TimelineSchema = z
 		},
 		{ message: "All referenced entity IDs must exist" },
 	);
+
+// Collection schema - now a nested Timeline with target property
+export const CollectionSchema = z.object({
+	id: EntityId,
+	type: z.literal("Collection"),
+	name: z.string().min(1),
+	target: EntityId, // Where this collection connects to in parent timeline
+	timeline: z.lazy(() => EntityArraySchema),
+});
+
+export const TimelineSchema = EntityArraySchema.refine(
+	(timeline) => {
+		// Exactly one start node
+		const startNodes = timeline.filter((e) => e.type === "Start");
+		return startNodes.length === 1;
+	},
+	{ message: "Timeline must have exactly one start node" },
+).refine(
+	(timeline) => {
+		// Exactly one finish node
+		const finishNodes = timeline.filter((e) => e.type === "Finish");
+		return finishNodes.length === 1;
+	},
+	{ message: "Timeline must have exactly one finish node" },
+);
 
 // Type exports
 export type Stage = z.infer<typeof StageSchema>;
