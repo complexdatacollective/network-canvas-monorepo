@@ -48,7 +48,4 @@ export default defineConfig({
 			insertTypesEntry: true,
 		}),
 	],
-	test: {
-		disableConsoleIntercept: true,
-	},
 });
