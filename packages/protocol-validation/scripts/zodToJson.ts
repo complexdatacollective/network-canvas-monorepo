@@ -3,8 +3,7 @@ import { execSync } from "node:child_process";
 import { readdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { ensureError } from "src/utils/ensureError";
-import type { ZodType } from "zod";
-import zodToJsonSchema from "zod-to-json-schema";
+import { z, type ZodType } from "zod";
 
 const schemaArg = process.argv[2];
 const SCHEMA_DIR = "./src/schemas";
@@ -14,8 +13,11 @@ const logInfo = (msg: string) => console.log(chalk.blue(msg));
 const logSuccess = (msg: string) => console.log(chalk.green(msg));
 
 export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: string, outputFileName: string) => {
-	const convertedSchema = zodToJsonSchema(zodSchema, {
-		name: schemaName,
+	const convertedSchema = z.toJSONSchema(zodSchema, {
+		definitions: {
+			[schemaName]: zodSchema,
+		},
+		$ref: `#/definitions/${schemaName}`,
 	});
 
 	const outputPath = `${SCHEMA_DIR}/${outputFileName}.json`;

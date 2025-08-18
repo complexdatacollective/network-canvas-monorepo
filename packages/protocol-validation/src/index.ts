@@ -64,7 +64,7 @@ export const validateProtocolZod = async (protocol: Protocol) => {
 
 		// Format zod errors as ValidationError[]
 		const procesedErrors =
-			result.error?.errors.map((error) => ({
+			result.error?.issues.map((error) => ({
 				...error,
 				path: error.path.join("."),
 				message: error.message,

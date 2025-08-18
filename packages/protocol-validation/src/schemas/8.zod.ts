@@ -1,5 +1,5 @@
-import { VariableNameSchema } from "@codaco/shared-consts";
 import { z } from "zod";
+import { VariableNameSchema } from "@codaco/shared-consts";
 
 export const ComponentTypes = {
 	Boolean: "Boolean",
