@@ -24,7 +24,7 @@ const ErrorSchema = z.object({
 });
 
 const SharedEventAndErrorSchema = z.object({
-	metadata: z.record(z.unknown()).optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**

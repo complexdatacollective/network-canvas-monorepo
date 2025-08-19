@@ -12,12 +12,9 @@ const logError = (msg: string) => console.log(chalk.red(msg));
 const logInfo = (msg: string) => console.log(chalk.blue(msg));
 const logSuccess = (msg: string) => console.log(chalk.green(msg));
 
-export const convertZodToJson = async (zodSchema: ZodType<unknown>, schemaName: string, outputFileName: string) => {
+export const convertZodToJson = async (zodSchema: ZodType<unknown>, outputFileName: string) => {
 	const convertedSchema = z.toJSONSchema(zodSchema, {
-		definitions: {
-			[schemaName]: zodSchema,
-		},
-		$ref: `#/definitions/${schemaName}`,
+		target: "draft-7",
 	});
 
 	const outputPath = `${SCHEMA_DIR}/${outputFileName}.json`;
@@ -41,7 +38,7 @@ const convertSingleSchema = async (schemaPath: string) => {
 
 	try {
 		const importedSchema = await import(schemaPath).then((module) => module.default);
-		await convertZodToJson(importedSchema, "Protocol", schemaFileName);
+		await convertZodToJson(importedSchema, schemaFileName);
 	} catch (e) {
 		const error = ensureError(e);
 		logError(`Error converting zod schema to json schema: ${error.message}`);

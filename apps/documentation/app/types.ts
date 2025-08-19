@@ -47,14 +47,14 @@ export type TSidebarFolder = z.infer<typeof baseSidebarFolder> & {
 };
 
 export const SidebarFolderSchema: z.ZodType<TSidebarFolder> = baseSidebarFolder.extend({
-	children: z.lazy(() => z.record(z.union([SidebarFolderSchema, SidebarPageSchema]))),
+	children: z.lazy(() => z.record(z.string(), z.union([SidebarFolderSchema, SidebarPageSchema]))),
 });
 
 export type SidebarFolder = z.infer<typeof SidebarFolderSchema>;
 
 export const SidebarProjectSchema = SidebarItemBase.extend({
 	type: z.literal("project"),
-	children: z.record(z.union([SidebarFolderSchema, SidebarPageSchema])),
+	children: z.record(z.string(), z.union([SidebarFolderSchema, SidebarPageSchema])),
 });
 
 export type SidebarProject = z.infer<typeof SidebarProjectSchema>;
