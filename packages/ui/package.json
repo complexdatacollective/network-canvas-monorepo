@@ -38,7 +38,7 @@
 		"motion": "catalog:",
 		"lucide-react": "catalog:",
 		"next-themes": "^0.4.6",
-		"react-hook-form": "^7.54.2",
+		"react-hook-form": "^7.62.0",
 		"sonner": "catalog:",
 		"tailwind-merge": "catalog:",
 		"tailwindcss-animate": "catalog:"
