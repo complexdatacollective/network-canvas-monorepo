@@ -56,13 +56,13 @@ type TypeProps = {
 	children?: React.ReactNode;
 };
 
-const Type = ({ children = "" }: TypeProps) => <div className="rules-preview-text__type">{children}</div>;
+const _Type = ({ children = "" }: TypeProps) => <div className="rules-preview-text__type">{children}</div>;
 
 type EntityProps = {
 	children?: React.ReactNode;
 };
 
-const Entity = ({ children = "" }: EntityProps) => <div className="rules-preview-text__entity">{children}s</div>;
+const _Entity = ({ children = "" }: EntityProps) => <div className="rules-preview-text__entity">{children}s</div>;
 
 type VariableProps = {
 	children?: React.ReactNode;

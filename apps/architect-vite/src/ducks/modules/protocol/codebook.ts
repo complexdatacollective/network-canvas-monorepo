@@ -16,7 +16,7 @@ type Entity = "node" | "edge" | "ego";
 type Variable = {
 	name: string;
 	type: string;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 type EntityType = {
@@ -24,7 +24,7 @@ type EntityType = {
 	color: string;
 	iconVariant?: string;
 	variables: Record<string, Variable>;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 type CodebookState = {
@@ -238,7 +238,7 @@ export const deleteVariableAsync = createAsyncThunk(
 	},
 );
 
-const getDeleteAction = ({ type, ...owner }: any) => {
+const getDeleteAction = ({ type, ...owner }: { type: string; [key: string]: unknown }) => {
 	switch (type) {
 		case "stage":
 			return stageActions.deleteStage(owner.id);
@@ -276,7 +276,11 @@ export const deleteTypeAsync = createAsyncThunk(
 		const getUsageForType = makeGetUsageForType(state);
 		const usageForType = getUsageForType(entity, type);
 
-		await Promise.all(usageForType.map(({ owner }: any) => dispatch(getDeleteAction(owner))));
+		await Promise.all(
+			usageForType.map(({ owner }: { owner: { type: string; [key: string]: unknown } }) =>
+				dispatch(getDeleteAction(owner)),
+			),
+		);
 	},
 );
 
@@ -285,7 +289,7 @@ const getStateWithUpdatedType = (
 	state: CodebookState,
 	entity: Entity,
 	type: string | undefined,
-	configuration: any,
+	configuration: Record<string, unknown>,
 ): CodebookState => {
 	if (entity !== "ego" && !type) {
 		throw Error("Type must be specified for non ego nodes");
@@ -310,7 +314,7 @@ const getStateWithUpdatedVariable = (
 	entity: Entity,
 	type: string | undefined,
 	variable: string,
-	configuration: any,
+	configuration: Record<string, unknown>,
 	merge = false,
 ): CodebookState => {
 	if (entity !== "ego" && !type) {

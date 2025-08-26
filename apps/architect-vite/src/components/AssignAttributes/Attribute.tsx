@@ -9,7 +9,13 @@ import withAttributeHandlers from "./withAttributeHandlers";
 type AttributeProps = {
 	field: string;
 	variable?: string | null;
-	variableOptions: any[];
+	variableOptions: Array<{
+		disabled?: boolean;
+		isUsed?: boolean;
+		label: string;
+		type: string;
+		value: string;
+	}>;
 	handleCreateVariable: (value: string, type: string, field: string) => void;
 	handleDelete: () => void;
 	entity: string;
@@ -55,7 +61,19 @@ const Attribute = ({
 				</fieldset>
 			)}
 		</div>
-		<div className="assign-attributes-attribute__delete" onClick={handleDelete}>
+		<div
+			className="assign-attributes-attribute__delete"
+			onClick={handleDelete}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					handleDelete();
+				}
+			}}
+			role="button"
+			tabIndex={0}
+			aria-label="Delete attribute"
+		>
 			<Icon name="delete" />
 		</div>
 	</div>

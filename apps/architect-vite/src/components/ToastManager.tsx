@@ -11,7 +11,7 @@ const mapStateToProps = (state: RootState) => ({
 	toasts: state.toasts,
 });
 
-const mapDispatchToProps = (dispatch: any) => ({
+const mapDispatchToProps = (dispatch: ReturnType<typeof configureStore>["dispatch"]) => ({
 	removeToast: bindActionCreators(toastActions.removeToast, dispatch),
 });
 

@@ -8,14 +8,14 @@ const useExternalDataPreview = (): [React.ReactNode | null, (id: string) => void
 
 	const handleShowPreview = setShowPreview;
 
-	const handleClosePreview = useCallback(() => setShowPreview(null), [setShowPreview]);
+	const handleClosePreview = useCallback(() => setShowPreview(null), []);
 
 	const preview = useMemo(
 		() =>
 			showPreview && (
 				<Preview id={showPreview} onDownload={() => handleDownload(showPreview)} onClose={handleClosePreview} />
 			),
-		[showPreview],
+		[showPreview, handleDownload, handleClosePreview],
 	);
 
 	return [preview, handleShowPreview, handleClosePreview];

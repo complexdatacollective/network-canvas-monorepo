@@ -46,7 +46,7 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 	useEffect(() => {
 		const displayEdgesWithCreatedEdge = union(displayEdges, [createEdge]);
 		dispatch(change(form, "edges.display", displayEdgesWithCreatedEdge));
-	}, [createEdge]);
+	}, [createEdge, displayEdges, dispatch, form]);
 
 	const edgeFilters = useSelector((state) => getEdgeFilters(state));
 	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, displayEdges);

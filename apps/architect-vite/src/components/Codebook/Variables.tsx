@@ -28,7 +28,7 @@ type HeadingProps = {
 	name: string;
 	sortBy: string;
 	sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC;
-	onSort: (options: { sortBy: string; sortDirection: any }) => void;
+	onSort: (options: { sortBy: string; sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC }) => void;
 };
 
 const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps) => {
@@ -53,11 +53,11 @@ const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps
 type VariablesProps = {
 	entity: string;
 	onDelete?: (id: string) => void;
-	sort: (options: { sortBy: string; sortDirection: any }) => void;
+	sort: (options: { sortBy: string; sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC }) => void;
 	sortBy: string;
 	sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC;
 	type?: string;
-	variables?: any[];
+	variables?: Array<{ id: string; name: string; type: string; [key: string]: unknown }>;
 };
 
 const Variables = ({

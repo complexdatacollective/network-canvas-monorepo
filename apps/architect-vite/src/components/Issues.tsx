@@ -1,7 +1,7 @@
 import { isEmpty, map } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
 import { Icon } from "~/lib/legacy-ui/components";
@@ -47,7 +47,7 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 	 * Because display information for fields is essentially stored in the dom
 	 * we use that as our data source for the field labels in the issue list.
 	 */
-	const updateFieldNames = () => {
+	const updateFieldNames = useCallback(() => {
 		// for each issue get friendly title from dom
 		flatIssues.forEach(({ field }) => {
 			const fieldId = getFieldId(field);
@@ -64,11 +64,11 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 				issueRefs.current[fieldId].textContent = fieldName;
 			}
 		});
-	};
+	}, [flatIssues]);
 
 	useEffect(() => {
 		updateFieldNames();
-	});
+	}, [updateFieldNames]);
 
 	// when panel hidden by parent reset collapsed state
 	const noIssues = isEmpty(issues);

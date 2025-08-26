@@ -24,7 +24,19 @@ const CodeView = ({ toggleCodeView, show = false, form }: CodeViewProps) => {
 					<code>{show && JSON.stringify(code, null, 2)}</code>
 				</pre>
 			</div>
-			<div className="code-view__controls" onClick={toggleCodeView}>
+			<div
+				className="code-view__controls"
+				onClick={toggleCodeView}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						toggleCodeView();
+					}
+				}}
+				role="button"
+				tabIndex={0}
+				aria-label="Close code view"
+			>
 				Close code view
 			</div>
 		</motion.div>,

@@ -12,9 +12,7 @@ type AutomaticLayoutProps = {
 	form: string;
 };
 
-type RootState = {
-	[key: string]: any;
-};
+type RootState = Record<string, unknown>;
 
 const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
 	const dispatch = useDispatch();

@@ -101,7 +101,7 @@ const assetManifestSlice = createSlice({
 	name: "assetManifest",
 	initialState,
 	reducers: {
-		importAsset: (state, action: PayloadAction<string>) => {
+		importAsset: (_state, _action: PayloadAction<string>) => {
 			// This is just a loading state action - no state change needed
 			// Could be used to track loading states in the future
 		},
@@ -114,7 +114,7 @@ const assetManifestSlice = createSlice({
 				source: filename,
 			};
 		},
-		importAssetFailed: (state, action: PayloadAction<ImportAssetFailedPayload>) => {
+		importAssetFailed: (_state, action: PayloadAction<ImportAssetFailedPayload>) => {
 			// Could be used to track error states in the future
 			console.error("Asset import failed:", action.payload.error);
 		},

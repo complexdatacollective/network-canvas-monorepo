@@ -41,10 +41,32 @@ const Asset = ({
 		[onClick, id],
 	);
 
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onClick(id);
+			}
+		},
+		[onClick, id],
+	);
+
 	const handleDelete = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
 			onDelete?.(id, isUsed);
+		},
+		[onDelete, isUsed, id],
+	);
+
+	const handleDeleteKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onDelete?.(id, isUsed);
+			}
 		},
 		[onDelete, isUsed, id],
 	);
@@ -57,10 +79,32 @@ const Asset = ({
 		[onPreview, id],
 	);
 
+	const handlePreviewKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onPreview(id);
+			}
+		},
+		[onPreview, id],
+	);
+
 	const handleDownload = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
 			onDownload(id);
+		},
+		[onDownload, id],
+	);
+
+	const handleDownloadKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onDownload(id);
+			}
 		},
 		[onDownload, id],
 	);
@@ -74,20 +118,34 @@ const Asset = ({
 	);
 
 	return (
-		<div onClick={handleClick} className={assetClasses}>
+		<div onClick={handleClick} onKeyDown={handleKeyDown} className={assetClasses} role="button" tabIndex={0}>
 			<div className="asset-browser-asset__preview">
 				<PreviewComponent id={id} />
 			</div>
 
 			<div className="asset-browser-asset__controls">
 				{onPreview && (
-					<div className="asset-browser-asset__control" onClick={handlePreview}>
+					<div
+						className="asset-browser-asset__control"
+						onClick={handlePreview}
+						onKeyDown={handlePreviewKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Preview asset"
+					>
 						<PreviewIcon />
 					</div>
 				)}
 
 				{onDownload && (
-					<div className="asset-browser-asset__control" onClick={handleDownload}>
+					<div
+						className="asset-browser-asset__control"
+						onClick={handleDownload}
+						onKeyDown={handleDownloadKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Download asset"
+					>
 						<DownloadIcon />
 					</div>
 				)}
@@ -96,6 +154,10 @@ const Asset = ({
 					<div
 						className="asset-browser-asset__control asset-browser-asset__control--delete"
 						onClick={handleDelete}
+						onKeyDown={handleDeleteKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label={isUsed ? "This asset is in use by the protocol and cannot be deleted" : "Delete asset"}
 						title={isUsed ? "This asset is in use by the protocol and cannot be deleted" : ""}
 					>
 						<DeleteIcon />

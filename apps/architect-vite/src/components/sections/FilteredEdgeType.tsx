@@ -24,9 +24,9 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const handleResetStage = useCallback(() => {
 		const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
 		fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
-	});
+	}, [fields, dispatch, form]);
 
-	const currentSubject = get(formValues, "subject");
+	const _currentSubject = get(formValues, "subject");
 
 	// TODO: Restore auto-selection of newly created types when type creation dialogs
 	// are properly integrated with form state management

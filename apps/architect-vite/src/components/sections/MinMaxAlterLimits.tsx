@@ -65,7 +65,10 @@ const MinMaxAlterLimits = () => {
 		[dispatch, openDialog, currentMinValue, currentMaxValue],
 	);
 
-	const startExpanded = useMemo(() => !isUndefined(currentMinValue) || !isUndefined(currentMaxValue), []);
+	const startExpanded = useMemo(
+		() => !isUndefined(currentMinValue) || !isUndefined(currentMaxValue),
+		[currentMinValue, currentMaxValue],
+	);
 
 	return (
 		<Section

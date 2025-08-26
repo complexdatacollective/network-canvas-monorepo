@@ -158,17 +158,20 @@ const RichText = ({
 		return serialize(value);
 	};
 
-	const setInitialValue = () =>
-		parse(initialValue).then((parsedValue) => {
-			// we need to reset the cursor state because the value length may have changed
-			SlateTransforms.deselect(editor);
-			setValue(parsedValue);
-		});
+	const setInitialValue = useCallback(
+		() =>
+			parse(initialValue).then((parsedValue) => {
+				// we need to reset the cursor state because the value length may have changed
+				SlateTransforms.deselect(editor);
+				setValue(parsedValue);
+			}),
+		[initialValue, editor],
+	);
 
 	// Set starting state from prop value on start up
 	useEffect(() => {
 		setInitialValue().then(() => setIsInitialized(true));
-	}, []);
+	}, [setInitialValue]);
 
 	// Set value again when initial value changes
 	useEffect(() => {
@@ -177,7 +180,7 @@ const RichText = ({
 			return;
 		}
 		setInitialValue();
-	}, [initialValue]);
+	}, [initialValue, lastChange, setInitialValue]);
 
 	// Update upstream on change
 	useEffect(() => {
@@ -194,7 +197,7 @@ const RichText = ({
 
 		setLastChange(nextValue);
 		onChange(nextValue);
-	}, [value]);
+	}, [value, isInitialized, lastChange, onChange, editor]);
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {

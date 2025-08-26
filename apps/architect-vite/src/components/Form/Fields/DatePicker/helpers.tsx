@@ -3,7 +3,7 @@ import { difference, intersection, get } from "lodash";
 
 export const now = () => DateTime.local();
 
-export const isEmpty = (value: any) => value === null || value === "";
+export const isEmpty = (value: unknown) => value === null || value === "";
 
 export const getFirstDayOfMonth = (dateObj: { year?: number | null; month?: number | null; day?: number | null }) =>
 	DateTime.fromObject({ ...dateObj, day: 1 }).toFormat("c");

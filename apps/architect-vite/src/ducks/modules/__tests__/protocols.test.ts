@@ -41,7 +41,7 @@ const mockProtocol2: Protocol = {
 
 describe("protocols", () => {
 	describe("reducer", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore>;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -190,7 +190,7 @@ describe("protocols", () => {
 	});
 
 	describe("selectors", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore>;
 		const protocol1Id = "protocol-1";
 		const protocol2Id = "protocol-2";
 

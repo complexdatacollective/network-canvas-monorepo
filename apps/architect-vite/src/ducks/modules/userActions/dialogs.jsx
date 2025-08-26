@@ -3,7 +3,7 @@ import ExternalLink from "~/components/ExternalLink";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Markdown } from "~/components/Form/Fields";
 
-const getFriendlyMessage = (e, meta = {}) => {
+const getFriendlyMessage = (_e, _meta = {}) => {
 	return <p>Error!</p>;
 };
 

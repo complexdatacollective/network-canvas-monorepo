@@ -59,7 +59,7 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 	const [cursorActive, setCursorActive] = useState(false);
 	const [mouseMoved, setMouseMoved] = useState(false);
 
-	const locus = useSelector(getTimelineLocus);
+	const _locus = useSelector(getTimelineLocus);
 
 	const filteredInterfaces = useMemo(() => {
 		let interfaces = search(query, selectedTags).filter(({ tags: interfaceTags }) =>

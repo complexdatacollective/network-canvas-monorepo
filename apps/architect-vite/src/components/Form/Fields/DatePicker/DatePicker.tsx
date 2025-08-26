@@ -44,14 +44,14 @@ const DatePickerInput = ({
 		[value, setPanelsOpen, onChangeInput],
 	);
 
-	const handleClickOutside = (e: MouseEvent) => {
+	const handleClickOutside = useCallback((e: MouseEvent) => {
 		if (ref.current?.contains(e.target as Node)) {
 			// inside click
 			return;
 		}
 		// outside click
 		setPanelsOpen(false);
-	};
+	}, []);
 
 	useScrollTo(parentRef, (open: boolean) => open, [panelsOpen, parentRef]);
 
@@ -65,7 +65,7 @@ const DatePickerInput = ({
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
-	}, [panelsOpen]);
+	}, [panelsOpen, handleClickOutside]);
 
 	// treat empty string as no value (for Redux Forms)
 	const initialDate = isEmpty(value) ? null : value;

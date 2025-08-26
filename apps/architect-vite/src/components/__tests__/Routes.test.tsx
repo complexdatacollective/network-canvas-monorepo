@@ -67,7 +67,7 @@ const createWrapper = (store: any) => {
 };
 
 describe("Routes", () => {
-	let store: any;
+	let store: ReturnType<typeof configureStore>;
 
 	beforeEach(() => {
 		store = createTestStore();

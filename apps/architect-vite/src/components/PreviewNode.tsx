@@ -15,9 +15,7 @@ type PreviewNodeProps = {
 	type?: string;
 };
 
-type RootState = {
-	[key: string]: any;
-};
+type RootState = Record<string, unknown>;
 
 const mapStateToProps = (state: RootState) => ({
 	nodeTypes: getNodeTypes(state),

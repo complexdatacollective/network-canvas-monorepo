@@ -26,12 +26,12 @@ const NodeType = (props: NodeTypeProps) => {
 	const formValues = useSelector((state) => getFormValues(form)(state));
 	const fields = keys(formValues);
 
-	const currentSubject = get(formValues, "subject");
+	const _currentSubject = get(formValues, "subject");
 
 	const handleResetStage = useCallback(() => {
 		const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
 		fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
-	});
+	}, [fields, dispatch, form]);
 
 	// TODO: Restore auto-selection of newly created types when type creation dialogs
 	// are properly integrated with form state management

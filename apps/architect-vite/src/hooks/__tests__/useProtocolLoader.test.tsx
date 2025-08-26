@@ -50,7 +50,7 @@ const createWrapper = (store: any) => {
 };
 
 describe("useProtocolLoader", () => {
-	let store: any;
+	let store: ReturnType<typeof configureStore>;
 
 	beforeEach(() => {
 		store = createTestStore();
@@ -121,7 +121,7 @@ describe("useProtocolLoader", () => {
 		);
 
 		// Set as active protocol first
-		const initialState = store.getState();
+		const _initialState = store.getState();
 		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: mockProtocol });
 
 		mockUseParams.mockReturnValue({ protocolId });

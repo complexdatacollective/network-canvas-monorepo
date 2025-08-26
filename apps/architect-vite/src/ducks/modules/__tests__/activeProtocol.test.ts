@@ -48,7 +48,7 @@ const mockProtocol2: Protocol = {
 
 describe("activeProtocol", () => {
 	describe("reducer", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore>;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -146,7 +146,7 @@ describe("activeProtocol", () => {
 	});
 
 	describe("selectors", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore>;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -234,7 +234,7 @@ describe("activeProtocol", () => {
 	});
 
 	describe("sub-reducers integration", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore>;
 
 		beforeEach(() => {
 			store = configureStore({

@@ -4,11 +4,11 @@ import cx from "classnames";
 type ButtonProps = {
 	children?: React.ReactNode;
 	className?: string;
-	type?: string;
+	type?: "button" | "submit" | "reset";
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const Button = ({ children = null, className = "", type = "button", ...props }: ButtonProps) => (
-	<button className={cx("form-button", className)} type={type as any} {...props}>
+	<button className={cx("form-button", className)} type={type} {...props}>
 		{children}
 	</button>
 );

@@ -14,7 +14,7 @@ type EditComponentProps = FieldType & {
 	layoutId: string;
 };
 
-const EditComponent = ({ layoutId, handleCancel, handleUpdate, ...rest }: EditComponentProps) => {
+const _EditComponent = ({ layoutId, handleCancel, handleUpdate, ...rest }: EditComponentProps) => {
 	return (
 		<motion.div layoutId={layoutId} className="flex items-center justify-between h-50 w-50 bg-accent p-2 rounded">
 			<Button onClick={handleCancel} icon="cancel" color="platinum">

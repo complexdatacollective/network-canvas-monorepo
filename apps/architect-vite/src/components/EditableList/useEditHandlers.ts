@@ -37,7 +37,7 @@ export const useEditHandlers = ({
 
 	// Get items only when needed for operations, not for rendering
 	const getItems = useCallback(() => {
-		console.log(`🔍 getItems called`);
+		console.log("🔍 getItems called");
 		// This creates a selector that gets current state without subscribing to changes
 		const state = dispatch.getState();
 		return formValueSelector(form)(state, fieldName) || [];
@@ -45,8 +45,8 @@ export const useEditHandlers = ({
 
 	// Log when getItems callback is recreated
 	useEffect(() => {
-		console.log(`🔄 getItems callback recreated`);
-	}, [getItems]);
+		console.log("🔄 getItems callback recreated");
+	}, []);
 
 	// // Get current item being edited
 	// const currentItem = useSelector((state: AppState) =>
@@ -56,20 +56,20 @@ export const useEditHandlers = ({
 	// const initialValues = currentItem || template();
 
 	const clearEditField = useCallback(() => {
-		console.log(`❌ clearEditField called`);
+		console.log("❌ clearEditField called");
 		setEditIndex(null);
 	}, []);
 
 	// Event handlers
 	const handleTriggerEdit = useCallback((index: number) => {
-		console.log(`✏️ handleTriggerEdit called with index:`, index);
+		console.log("✏️ handleTriggerEdit called with index:", index);
 		setEditIndex(index);
 	}, []);
 
 	const handleAddNew = useCallback(() => {
-		console.log(`➕ handleAddNew called`);
+		console.log("➕ handleAddNew called");
 		const items = getItems();
-		console.log(`📊 Current items length:`, items.length);
+		console.log("📊 Current items length:", items.length);
 		setEditIndex(items.length);
 	}, [getItems]);
 

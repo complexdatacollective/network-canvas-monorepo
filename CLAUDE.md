@@ -182,3 +182,4 @@ pnpm typecheck   # TypeScript check
 ## Development Best Practices
 
 - Always run linting and formatting after completing a task
+- Always run the formatter to clean up formatting after editing a file

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import cx from "classnames";
 import { times, find } from "lodash";
 import type { RangeItem } from "./DatePicker/helpers";
@@ -41,12 +41,10 @@ const RangePicker = ({
 	onSelect = () => {},
 	offset = 0,
 }: RangePickerProps) => {
-	const datePickerRef = React.createRef<HTMLDivElement>();
-	const scrollRef = React.createRef<HTMLDivElement>();
+	const datePickerRef = useRef<HTMLDivElement>(null);
+	const scrollRef = useRef<HTMLDivElement>(null);
 
-	const datePickerKey = !!datePickerRef.current;
-	const scrollRefKey = scrollRef.current?.getAttribute("data-value");
-	const rangeKey = range.toString();
+	const scrollToValue = getScrollToValue(range, today);
 
 	useEffect(() => {
 		// only scroll year
@@ -63,13 +61,12 @@ const RangePicker = ({
 		const { offsetTop } = scrollRef.current;
 		const { offsetHeight } = scrollRef.current;
 		datePickerRef.current.scrollTop = offsetTop - offsetHeight * 0.5;
-	}, [rangeKey, datePickerKey, scrollRefKey, value, type]);
+	}, [range, value, type, scrollToValue]);
 
 	const classes = cx("date-picker__range-picker", { [`date-picker__range-picker--${type}`]: !!type });
 
 	const padding = times(offset, (index) => <div key={`padding${index}`} className="date-picker__range-item" />);
 
-	const scrollToValue = getScrollToValue(range, today);
 	return (
 		<div className={classes} ref={datePickerRef}>
 			<div className="date-picker__range-picker-items">

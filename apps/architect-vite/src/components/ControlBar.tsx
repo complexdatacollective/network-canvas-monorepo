@@ -25,7 +25,7 @@ const buttonVariants = {
 };
 
 const animatedButton = (button: React.ReactNode, index: number) => (
-	<motion.div key={(button as any)?.key || index} variants={buttonVariants} exit="hidden" layout>
+	<motion.div key={(button as React.ReactElement)?.key || index} variants={buttonVariants} exit="hidden" layout>
 		{button}
 	</motion.div>
 );

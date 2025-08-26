@@ -31,7 +31,7 @@ const StageSchemaBase = z.object({
 	type: z.literal("Stage"),
 	name: z.string().min(1),
 	interfaceType: InterfaceType,
-	next: EntityId,
+	target: EntityId,
 });
 
 export const StageSchema = StageSchemaBase;
@@ -41,42 +41,44 @@ const StartSchemaBase = z.object({
 	id: EntityId,
 	type: z.literal("Start"),
 	name: z.string().min(1),
-	next: EntityId, // Must have exactly one target
+	target: EntityId, // Must have exactly one target
 });
 
 export const StartSchema = StartSchemaBase;
 
 // Finish node schema (single exit point)
-const FinishSchema = z.object({
+export const FinishSchema = z.object({
 	id: EntityId,
 	type: z.literal("Finish"),
 	name: z.string().min(1),
 });
 
 // Branch schema with exit slots (conditions)
-const BranchSchema = z.object({
+export const BranchSchema = z.object({
 	id: EntityId,
 	type: z.literal("Branch"),
 	name: z.string().min(1),
-	targets: z.array(EntityId).min(2, "Branch must have at least two exit slots"),
+	targets: z.array(EntityId).refine((conditions) => conditions.length >= 2, {
+		message: "Branch must have at least two conditions",
+	}),
 });
 
 // Collection schema base for discriminated union
-const CollectionSchema = z.object({
+export const CollectionSchema = z.object({
 	id: EntityId,
 	type: z.literal("Collection"),
 	name: z.string().min(1),
-	next: EntityId,
-	children: z.lazy(() => z.array(z.union([StageSchema, BranchSchema, CollectionSchema]))),
+	target: EntityId,
+	children: z.lazy(() => z.array(z.union([StageSchema, BranchSchema, StartSchema, FinishSchema, CollectionSchema]))),
 });
 
 // Union type for any entity
 export const EntitySchema = z.discriminatedUnion("type", [
-	StageSchemaBase,
-	BranchSchemaBase,
-	CollectionSchemaBase,
-	StartSchemaBase,
-	FinishSchemaBase,
+	StageSchema,
+	BranchSchema,
+	CollectionSchema,
+	StartSchema,
+	FinishSchema,
 ]);
 
 // Timeline schema

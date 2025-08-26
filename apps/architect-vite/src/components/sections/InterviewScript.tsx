@@ -6,9 +6,7 @@ import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 
-type RootState = {
-	[key: string]: any;
-};
+type RootState = Record<string, unknown>;
 
 const InterviewerScript = () => {
 	const getFormValue = formValueSelector("edit-stage");

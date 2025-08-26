@@ -12,7 +12,7 @@ type Stage = {
 	type: string;
 	label: string;
 	prompts?: Array<{ id: string | number }>;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 type StagesState = Stage[];
@@ -67,13 +67,19 @@ export const deleteStageAsync = createAsyncThunk(
 		if (stage?.type === "Anonymisation") {
 			// Remove encrypted from all variables
 			const nodeTypes = getNodeTypes(state);
-			const encryptedVariables = Object.values(nodeTypes).reduce((acc: any[], nodeType: any) => {
-				const nodeTypeVariables = Object.entries(nodeType.variables || {})
-					.filter(([, variable]: [string, any]) => variable.encrypted)
-					.map(([variableId, variable]: [string, any]) => ({ ...variable, id: variableId }));
+			const encryptedVariables = Object.values(nodeTypes).reduce(
+				(
+					acc: Array<{ id: string; [key: string]: unknown }>,
+					nodeType: { variables?: Record<string, { encrypted?: boolean; [key: string]: unknown }> },
+				) => {
+					const nodeTypeVariables = Object.entries(nodeType.variables || {})
+						.filter(([, variable]: [string, { encrypted?: boolean; [key: string]: unknown }]) => variable.encrypted)
+						.map(([variableId, variable]: [string, { [key: string]: unknown }]) => ({ ...variable, id: variableId }));
 
-				return [...acc, ...nodeTypeVariables];
-			}, []);
+					return [...acc, ...nodeTypeVariables];
+				},
+				[],
+			);
 
 			// Note: This dispatches a codebook action - will need to be updated when codebook is modernized
 			encryptedVariables.forEach((variable) => {
@@ -124,7 +130,7 @@ const stagesSlice = createSlice({
 
 			state[stageIndex] = prune(newStage);
 		},
-		moveStage: (state, action: PayloadAction<MoveStagePayload>) => {
+		moveStage: (_state, action: PayloadAction<MoveStagePayload>) => {
 			const { oldIndex, newIndex } = action.payload;
 			// TODO: Implement array move functionality
 			console.warn("moveStage is not implemented yet, this will not work as expected.");

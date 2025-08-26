@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 
-export const renderValue = (value: any) => {
+export const renderValue = (value: unknown) => {
 	if (typeof value === "boolean") {
 		return value ? <em>TRUE</em> : <em>FALSE</em>;
 	}

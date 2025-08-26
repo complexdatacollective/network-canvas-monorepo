@@ -1,5 +1,5 @@
 // Custom hook for body scroll lock
-export const useBodyScrollLock = (isLocked: boolean) => {
+export const useBodyScrollLock = (_isLocked: boolean) => {
 	// useEffect(() => {
 	// 	if (!isLocked) return;
 	// 	const originalOverflow = document.body.style.overflow;

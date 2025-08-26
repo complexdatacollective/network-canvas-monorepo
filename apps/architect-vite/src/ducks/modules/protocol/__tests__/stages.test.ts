@@ -129,7 +129,7 @@ describe("protocol.stages", () => {
 
 	describe("sync action creators", () => {
 		it("updateStage", () => {
-			const store = createTestStore();
+			const _store = createTestStore();
 
 			const action = actionCreators.updateStage("9", { label: "new label" });
 			expect(action.type).toBe("stages/updateStage");

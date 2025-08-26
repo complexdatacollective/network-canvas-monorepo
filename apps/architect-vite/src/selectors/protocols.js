@@ -25,14 +25,14 @@ export const getProtocolCount = createSelector([selectAllProtocols], (protocols)
  * Get protocols by name search
  */
 export const makeGetProtocolsBySearch = () =>
-	createSelector([selectAllProtocols, (state, searchTerm) => searchTerm], (protocols, searchTerm) => {
+	createSelector([selectAllProtocols, (_state, searchTerm) => searchTerm], (protocols, searchTerm) => {
 		if (!searchTerm) return protocols;
 
 		const lowerSearchTerm = searchTerm.toLowerCase();
 		return protocols.filter(
 			(protocol) =>
 				protocol.name.toLowerCase().includes(lowerSearchTerm) ||
-				(protocol.description && protocol.description.toLowerCase().includes(lowerSearchTerm)),
+				protocol.description?.toLowerCase().includes(lowerSearchTerm),
 		);
 	});
 

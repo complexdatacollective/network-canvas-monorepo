@@ -36,9 +36,9 @@ type GridManagerProps = {
 
 const formName = "editable-list-form";
 
-const notEmpty = (value: any) => (value && value.length > 0 ? undefined : "You must create at least one item");
+const notEmpty = (value: unknown) => (value && value.length > 0 ? undefined : "You must create at least one item");
 
-const handleSubmitFail = (issues: any) => {
+const handleSubmitFail = (issues: Record<string, unknown>) => {
 	scrollToFirstIssue(issues);
 };
 

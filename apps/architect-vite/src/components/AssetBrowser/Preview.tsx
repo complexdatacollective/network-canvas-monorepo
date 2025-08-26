@@ -31,10 +31,10 @@ const getRenderer = (meta) => {
 
 type PreviewProps = {
 	id: string;
-	meta: Record<string, any>;
+	meta: Record<string, unknown>;
 	assetPath: string;
 	show?: boolean;
-	onDownload?: (path: string, meta: Record<string, any>) => void;
+	onDownload?: (path: string, meta: Record<string, unknown>) => void;
 	onClose?: () => void;
 };
 
@@ -49,7 +49,7 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 		if (meta.value) {
 			navigator.clipboard.writeText(meta.value);
 		}
-	}, []);
+	}, [meta.value]);
 
 	const primaryButtons = [
 		<Button onClick={onClose} color="white" key="close">

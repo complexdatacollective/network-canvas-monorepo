@@ -4,7 +4,7 @@ import Variables from "./Variables";
 import { getEntityProperties } from "./helpers";
 
 type EgoTypeProps = {
-	variables?: any[];
+	variables?: Array<{ id: string; name: string; type: string; [key: string]: unknown }>;
 };
 
 const EgoType = ({ variables = [] }: EgoTypeProps) => (

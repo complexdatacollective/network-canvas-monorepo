@@ -4,12 +4,12 @@ import { isEqual } from "es-toolkit/compat";
 import { compose, defaultProps } from "recompose";
 import { getValidations } from "~/utils/validations";
 
-const getValue = (eventOrValue: any) => {
-	if (!eventOrValue || !eventOrValue.target) {
+const getValue = (eventOrValue: unknown) => {
+	if (!eventOrValue || typeof eventOrValue !== "object" || !("target" in eventOrValue)) {
 		return eventOrValue;
 	}
 
-	const { target } = eventOrValue;
+	const target = eventOrValue.target as HTMLInputElement;
 	const value = target.type === "checkbox" ? target.checked : target.value;
 
 	return value;
@@ -23,11 +23,11 @@ type DetachedFieldState = {
 };
 
 type DetachedFieldProps = {
-	onChange: (eventOrValue: any, nextValue: any, currentValue: any, name: any) => void;
-	value?: any;
-	name?: any;
+	onChange: (eventOrValue: unknown, nextValue: unknown, currentValue: unknown, name: string) => void;
+	value?: unknown;
+	name?: string;
 	validation: Record<string, unknown>;
-	component: React.ComponentType<any>;
+	component: React.ComponentType<unknown>;
 	meta?: Record<string, unknown>;
 };
 
@@ -60,7 +60,7 @@ class DetachedField extends Component<DetachedFieldProps, DetachedFieldState> {
 		};
 	}
 
-	handleChange = (eventOrValue: any) => {
+	handleChange = (eventOrValue: unknown) => {
 		const { onChange, name, value } = this.props;
 
 		const nextValue = getValue(eventOrValue);
@@ -69,12 +69,12 @@ class DetachedField extends Component<DetachedFieldProps, DetachedFieldState> {
 		onChange(eventOrValue, nextValue, value, name);
 	};
 
-	validate(value: any) {
+	validate(value: unknown) {
 		const { validation } = this.props;
 
 		const validate = getValidations(validation);
 
-		const errors = validate.reduce((memo: string[], rule: (value: any) => string | undefined) => {
+		const errors = validate.reduce((memo: string[], rule: (value: unknown) => string | undefined) => {
 			const result = rule(value);
 			if (!result) {
 				return memo;

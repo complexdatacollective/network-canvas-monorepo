@@ -94,17 +94,13 @@ export const createFinish = (name: string): Finish => {
 };
 
 // Utility function to create a valid branch
-export const createBranch = (name: string, conditions: Record<string, string>): Branch => {
-	if (Object.keys(conditions).length < 2) {
-		throw new Error("Branch must have at least two conditions");
-	}
-
+export const createBranch = (name: string, targets: string[]): Branch => {
 	const id = generateId();
 	const branch: Branch = {
 		id,
 		type: "Branch",
 		name,
-		conditions,
+		targets,
 	};
 
 	return branch;
@@ -156,7 +152,7 @@ export const isValidTimeline = (timeline: unknown): timeline is Timeline => {
 };
 
 // Pool of possible stage names for random generation
-const STAGE_NAMES = [
+const _STAGE_NAMES = [
 	"Information",
 	"EgoForm",
 	"NameGenerator",
@@ -176,7 +172,7 @@ const STAGE_NAMES = [
 	"Geospatial",
 ];
 
-const BRANCH_NAMES = [
+const _BRANCH_NAMES = [
 	"Decision Point",
 	"Branch Point",
 	"Path Split",
@@ -187,7 +183,7 @@ const BRANCH_NAMES = [
 	"Path Divergence",
 ];
 
-const COLLECTION_NAMES = [
+const _COLLECTION_NAMES = [
 	"Demographics Collection",
 	"Network Questions",
 	"Relationship Assessment",
@@ -199,7 +195,7 @@ const COLLECTION_NAMES = [
 ];
 
 // Utility function to get a random item from an array
-const getRandomItem = <T>(array: T[]): T => {
+const _getRandomItem = <T>(array: T[]): T => {
 	if (array.length === 0) {
 		throw new Error("Cannot get random item from empty array");
 	}
@@ -398,10 +394,7 @@ export const testTimeline: Timeline = [
 		id: "branch-1",
 		type: "Branch",
 		name: "Interview Path",
-		conditions: {
-			"Standard Path": "stage-3",
-			"Extended Path": "stage-4",
-		},
+		targets: ["stage-3", "stage-4"],
 	},
 
 	// More individual stages
@@ -427,13 +420,7 @@ export const testTimeline: Timeline = [
 		type: "Collection",
 		name: "Network Data Collection",
 		target: "stage-5",
-		timeline: [
-			{
-				id: "coll1-start",
-				type: "Start",
-				name: "Network Start",
-				target: "coll1-stage-1",
-			},
+		children: [
 			{
 				id: "coll1-stage-1",
 				type: "Stage",
@@ -445,11 +432,7 @@ export const testTimeline: Timeline = [
 				id: "coll1-branch",
 				type: "Branch",
 				name: "Collection Method",
-				conditions: {
-					"Quick Add": "coll1-stage-2",
-					"Roster Method": "coll1-stage-3",
-					"Mixed Method": "coll1-stage-4",
-				},
+				targets: ["coll1-stage-2", "coll1-stage-3", "coll1-stage-4"],
 			},
 			{
 				id: "coll1-stage-2",
@@ -477,16 +460,10 @@ export const testTimeline: Timeline = [
 				type: "Stage",
 				name: "Alter Details",
 				interfaceType: "AlterForm",
-				target: "coll1-finish",
-			},
-			{
-				id: "coll1-finish",
-				type: "Finish",
-				name: "Network Collection Complete",
+				target: "collection-1", // Points to the collection itself to exit
 			},
 		],
 	},
-
 	// Individual stage between collections
 	{
 		id: "stage-5",
@@ -502,13 +479,7 @@ export const testTimeline: Timeline = [
 		type: "Collection",
 		name: "Relationship Analysis",
 		target: "stage-6",
-		timeline: [
-			{
-				id: "coll2-start",
-				type: "Start",
-				name: "Analysis Start",
-				target: "coll2-stage-1",
-			},
+		children: [
 			{
 				id: "coll2-stage-1",
 				type: "Stage",
@@ -528,12 +499,7 @@ export const testTimeline: Timeline = [
 				type: "Stage",
 				name: "Relationship Details",
 				interfaceType: "DyadCensus",
-				target: "coll2-finish",
-			},
-			{
-				id: "coll2-finish",
-				type: "Finish",
-				name: "Analysis Complete",
+				target: "collection-2", // Points to the collection itself to exit
 			},
 		],
 	},
@@ -587,12 +553,11 @@ export const getConnections = (timeline: Timeline): Connection[] => {
 				type: entity.type === "Start" ? "start" : "stage",
 			});
 		} else if (entity.type === "Branch") {
-			for (const [condition, targetId] of Object.entries(entity.conditions)) {
+			for (const targetId of entity.targets) {
 				connections.push({
 					from: entity.id,
 					to: targetId,
 					type: "branch",
-					label: condition,
 				});
 			}
 		} else if (entity.type === "Collection") {

@@ -35,7 +35,7 @@ const RadioGroup = ({
 	meta = {},
 	optionComponent: OptionComponent = Radio,
 }: RadioGroupProps) => {
-	const id = useRef(uuid());
+	const _id = useRef(uuid());
 
 	const onChange = useCallback(
 		(index: number) => {

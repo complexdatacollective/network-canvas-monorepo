@@ -2,7 +2,7 @@
 
 import cx from "classnames";
 import MarkdownLabel from "./MarkdownLabel";
-import Boolean from "~/lib/legacy-ui/components/Boolean/Boolean";
+import BooleanComponent from "~/lib/legacy-ui/components/Boolean/Boolean";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
 interface BooleanOption {
@@ -63,7 +63,7 @@ const BooleanField = ({
 		<div className={componentClasses} name={input.name}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
 			<div className="form-field-boolean__control">
-				<Boolean options={options} value={input.value} onChange={input.onChange} noReset={noReset} />
+				<BooleanComponent options={options} value={input.value} onChange={input.onChange} noReset={noReset} />
 				{invalid && touched && (
 					<div className="form-field-boolean__error">
 						<Icon name="warning" />

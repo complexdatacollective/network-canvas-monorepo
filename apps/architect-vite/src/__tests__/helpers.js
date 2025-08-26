@@ -35,7 +35,8 @@ export const toHaveDispatched = (received, actions) => {
 		if (!call.type) {
 			return acc;
 		}
-		return [...acc, call];
+		acc.push(call);
+		return acc;
 	}, []);
 
 	const error = actions.reduce((errorMessage, action, index) => {

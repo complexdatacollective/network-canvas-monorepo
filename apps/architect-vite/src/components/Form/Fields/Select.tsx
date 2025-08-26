@@ -14,7 +14,7 @@ const getValue = (options, value) => {
 };
 
 type SelectOption = {
-	value: any;
+	value: unknown;
 	label?: string;
 	__createNewOption__?: boolean;
 };

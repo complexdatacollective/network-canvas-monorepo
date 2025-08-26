@@ -88,7 +88,7 @@ export const getExperiments = (state: RootState) => {
 	return experiments;
 };
 
-export const getHasUnsavedChanges = (state: RootState): boolean => {
+export const getHasUnsavedChanges = (_state: RootState): boolean => {
 	// TODO: need a new state item to track last saved time
 	return false;
 };

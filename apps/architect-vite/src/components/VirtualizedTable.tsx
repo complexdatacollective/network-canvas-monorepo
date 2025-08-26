@@ -5,8 +5,8 @@ import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 
 type VirtualizedTableProps = {
-	columns: Column<Record<string, any>>[];
-	data: Record<string, any>[];
+	columns: Column<Record<string, unknown>>[];
+	data: Record<string, unknown>[];
 };
 
 const VirtualizedTable = ({ columns, data }: VirtualizedTableProps) => {

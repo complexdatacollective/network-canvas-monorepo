@@ -69,7 +69,7 @@ const createWrapper = (store: any) => {
 };
 
 describe("Protocol Component", () => {
-	let store: any;
+	let store: ReturnType<typeof configureStore>;
 
 	beforeEach(() => {
 		store = createTestStore();
