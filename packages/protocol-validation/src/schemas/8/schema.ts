@@ -1,5 +1,16 @@
-import { z } from "zod";
 import { VariableNameSchema } from "@codaco/shared-consts";
+import { z } from "zod";
+import {
+	findDuplicateId,
+	getAllEntityNames,
+	findDuplicateName,
+	getVariableNames,
+	entityExists,
+	variableExists,
+	filterRuleEntityExists,
+	filterRuleAttributeExists,
+	getVariablesForSubject,
+} from "./validation-helpers";
 
 export const ComponentTypes = {
 	Boolean: "Boolean",
@@ -293,7 +304,18 @@ export type VariablePropertyKey = AllKeys<Variable>;
 type AllValues<T> = T extends unknown ? T[keyof T] : never;
 export type VariablePropertyValue = AllValues<Variable>;
 
-export const VariablesSchema = z.record(VariableNameSchema, VariableSchema);
+export const VariablesSchema = z.record(VariableNameSchema, VariableSchema).superRefine((variables, ctx) => {
+	// Check for duplicate variable names
+	const variableNames = getVariableNames(variables);
+	const duplicateVarName = findDuplicateName(variableNames);
+	if (duplicateVarName) {
+		ctx.addIssue({
+			code: "custom" as const,
+			message: `Duplicate variable name "${duplicateVarName}"`,
+			path: [],
+		});
+	}
+});
 
 export type Variables = z.infer<typeof VariablesSchema>;
 
@@ -325,7 +347,32 @@ const EgoDefinitionSchema = z
 	.object({
 		variables: VariablesSchema.optional(),
 	})
-	.strict();
+	.strict()
+	.superRefine((egoDef, ctx) => {
+		// Validate ego-specific constraints
+		if (egoDef.variables) {
+			for (const [varId, variable] of Object.entries(egoDef.variables)) {
+				if (
+					variable &&
+					typeof variable === "object" &&
+					"validation" in variable &&
+					variable.validation &&
+					typeof variable.validation === "object"
+				) {
+					const validation = variable.validation as Record<string, unknown>;
+
+					// Check that unique validation is not used on ego variables
+					if (validation.unique) {
+						ctx.addIssue({
+							code: "custom" as const,
+							message: `The 'unique' variable validation cannot be used on ego variables. Was used on ego variable "${varId}".`,
+							path: ["variables", varId, "validation", "unique"],
+						});
+					}
+				}
+			}
+		}
+	});
 
 export type EgoDefinition = z.infer<typeof EgoDefinitionSchema>;
 export type EgoDefinitionKeys = AllKeys<EgoDefinition>;
@@ -342,7 +389,19 @@ export const CodebookSchema = z
 		edge: z.record(VariableNameSchema, EdgeDefinitionSchema).optional(),
 		ego: EgoDefinitionSchema.optional(),
 	})
-	.strict();
+	.strict()
+	.superRefine((codebook, ctx) => {
+		// Check for duplicate entity names across all entity types
+		const entityNames = getAllEntityNames(codebook);
+		const duplicateEntityName = findDuplicateName(entityNames);
+		if (duplicateEntityName) {
+			ctx.addIssue({
+				code: "custom" as const,
+				message: `Duplicate entity name "${duplicateEntityName}"`,
+				path: [],
+			});
+		}
+	});
 
 export type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -515,8 +574,36 @@ const nameGeneratorStage = baseStageSchema.extend({
 	type: z.literal("NameGenerator"),
 	form: FormSchema,
 	subject: NodeStageSubjectSchema,
-	panels: z.array(panelSchema).optional(),
-	prompts: z.array(nameGeneratorPromptSchema).min(1),
+	panels: z
+		.array(panelSchema)
+		.optional()
+		.superRefine((panels, ctx) => {
+			if (panels) {
+				// Check for duplicate panel IDs
+				const duplicatePanelId = findDuplicateId(panels);
+				if (duplicatePanelId) {
+					ctx.addIssue({
+						code: "custom" as const,
+						message: `Panels contain duplicate ID "${duplicatePanelId}"`,
+						path: [],
+					});
+				}
+			}
+		}),
+	prompts: z
+		.array(nameGeneratorPromptSchema)
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 	behaviours: z
 		.object({
 			minNodes: z.number().int().optional(),
@@ -529,8 +616,36 @@ const nameGeneratorQuickAddStage = baseStageSchema.extend({
 	type: z.literal("NameGeneratorQuickAdd"),
 	quickAdd: z.string(),
 	subject: NodeStageSubjectSchema,
-	panels: z.array(panelSchema).optional(),
-	prompts: z.array(nameGeneratorPromptSchema).min(1),
+	panels: z
+		.array(panelSchema)
+		.optional()
+		.superRefine((panels, ctx) => {
+			if (panels) {
+				// Check for duplicate panel IDs
+				const duplicatePanelId = findDuplicateId(panels);
+				if (duplicatePanelId) {
+					ctx.addIssue({
+						code: "custom" as const,
+						message: `Panels contain duplicate ID "${duplicatePanelId}"`,
+						path: [],
+					});
+				}
+			}
+		}),
+	prompts: z
+		.array(nameGeneratorPromptSchema)
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 	behaviours: z
 		.object({
 			minNodes: z.number().int().optional(),
@@ -563,7 +678,20 @@ const nameGeneratorRosterStage = baseStageSchema.extend({
 		})
 		.strict()
 		.optional(),
-	prompts: z.array(nameGeneratorPromptSchema).min(1),
+	prompts: z
+		.array(nameGeneratorPromptSchema)
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 	behaviours: z
 		.object({
 			minNodes: z.number().int().optional(),
@@ -612,7 +740,18 @@ const sociogramStage = baseStageSchema.extend({
 					.optional(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 const dyadCensusStage = baseStageSchema.extend({
@@ -624,7 +763,18 @@ const dyadCensusStage = baseStageSchema.extend({
 				createEdge: z.string(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 const tieStrengthCensusStage = baseStageSchema.extend({
@@ -638,7 +788,18 @@ const tieStrengthCensusStage = baseStageSchema.extend({
 				negativeLabel: z.string(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 const ordinalBinStage = baseStageSchema.extend({
@@ -653,7 +814,18 @@ const ordinalBinStage = baseStageSchema.extend({
 				color: z.string().optional(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 const categoricalBinStage = baseStageSchema.extend({
@@ -676,7 +848,18 @@ const categoricalBinStage = baseStageSchema.extend({
 				binSortOrder: SortOrderSchema.optional(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 const narrativeStage = baseStageSchema.extend({
@@ -700,7 +883,18 @@ const narrativeStage = baseStageSchema.extend({
 				})
 				.strict(),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 	background: z
 		.object({
 			concentricCircles: z.number().int().optional(),
@@ -734,7 +928,17 @@ export type Item = z.infer<typeof ItemSchema>;
 const informationStage = baseStageSchema.extend({
 	type: z.literal("Information"),
 	title: z.string().optional(),
-	items: z.array(ItemSchema),
+	items: z.array(ItemSchema).superRefine((items, ctx) => {
+		// Check for duplicate item IDs
+		const duplicateItemId = findDuplicateId(items);
+		if (duplicateItemId) {
+			ctx.addIssue({
+				code: "custom" as const,
+				message: `Items contain duplicate ID "${duplicateItemId}"`,
+				path: [],
+			});
+		}
+	}),
 });
 
 const anonymisationStage = baseStageSchema.extend({
@@ -762,7 +966,18 @@ const oneToManyDyadCensusStage = baseStageSchema.extend({
 				binSortOrder: SortOrderSchema.optional(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 const familyTreeCensusStage = baseStageSchema.extend({
@@ -823,7 +1038,18 @@ const geospatialStage = baseStageSchema.extend({
 				})
 				.strict(),
 		)
-		.min(1),
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
 });
 
 // Combine all stage types
@@ -880,18 +1106,352 @@ export const ExperimentsSchema = z.object({
 	encryptedVariables: z.boolean().optional(),
 });
 
-// Main Protocol Schema
-export const ProtocolSchema = z.object({
-	description: z.string().optional(),
-	experiments: ExperimentsSchema.optional(),
-	lastModified: z.string().datetime().optional(),
-	schemaVersion: z.literal(8),
-	codebook: CodebookSchema,
-	assetManifest: z.record(z.string(), assetSchema).optional(),
-	stages: z.array(stageSchema),
-});
+const ProtocolSchema = z
+	.object({
+		description: z.string().optional(),
+		experiments: ExperimentsSchema.optional(),
+		lastModified: z.string().datetime().optional(),
+		schemaVersion: z.literal(8),
+		codebook: CodebookSchema,
+		assetManifest: z.record(z.string(), assetSchema).optional(),
+		stages: z.array(stageSchema).superRefine((stages, ctx) => {
+			// Check for duplicate stage IDs
+			const duplicateStageId = findDuplicateId(stages);
+			if (duplicateStageId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Stages contain duplicate ID "${duplicateStageId}"`,
+					path: [],
+				});
+			}
+		}),
+	})
+	.passthrough()
+	.superRefine((protocol, ctx) => {
+		// COMPREHENSIVE VALIDATION - ALL RULES FROM validateLogic.ts implemented in Zod 4 native
 
-// Must be default export for zod schema conversion
-export default ProtocolSchema;
+		// 1. Comprehensive stage validation
+		protocol.stages.forEach((stage, stageIndex) => {
+			// 3a. Check stage subject exists in codebook
+			if ("subject" in stage && stage.subject) {
+				if (!entityExists(protocol.codebook, stage.subject)) {
+					ctx.addIssue({
+						code: "custom" as const,
+						message: "Stage subject is not defined in the codebook",
+						path: ["stages", stageIndex, "subject"],
+					});
+				}
+			}
+
+			// 3b. Form field validation - check variables exist in appropriate codebook entity
+			if ("form" in stage && stage.form?.fields) {
+				stage.form.fields.forEach((field, fieldIndex) => {
+					let subject: { entity: "ego" } | { entity: "node" | "edge"; type: string } | undefined;
+					if (stage.type === "EgoForm") {
+						subject = { entity: "ego" as const };
+					} else if ("subject" in stage && stage.subject) {
+						subject = stage.subject as { entity: "node" | "edge"; type: string };
+					}
+
+					if (subject && !variableExists(protocol.codebook, subject, field.variable)) {
+						ctx.addIssue({
+							code: "custom" as const,
+							message: "Form field variable not found in codebook.",
+							path: ["stages", stageIndex, "form", "fields", fieldIndex, "variable"],
+						});
+					}
+				});
+			}
+
+			// 3c. Comprehensive prompt validation (duplicate ID validation moved to individual stage schemas)
+			if ("prompts" in stage && stage.prompts) {
+				stage.prompts.forEach((prompt, promptIndex) => {
+					// 3d.i. Variable references in prompts (for bin stages)
+					if ("variable" in prompt && prompt.variable && "subject" in stage && stage.subject) {
+						if (!variableExists(protocol.codebook, stage.subject, prompt.variable)) {
+							const subject = stage.subject;
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `"${prompt.variable}" not defined in codebook[${subject.entity}][${subject.type}].variables`,
+								path: ["stages", stageIndex, "prompts", promptIndex, "variable"],
+							});
+						}
+					}
+
+					// 3d.ii. otherVariable validation (for categorical bin)
+					if ("otherVariable" in prompt && prompt.otherVariable && "subject" in stage && stage.subject) {
+						if (!variableExists(protocol.codebook, stage.subject, prompt.otherVariable)) {
+							const subject = stage.subject;
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `"${prompt.otherVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables`,
+								path: ["stages", stageIndex, "prompts", promptIndex, "otherVariable"],
+							});
+						}
+					}
+
+					// 3d.iii. createEdge references validation
+					if ("createEdge" in prompt && prompt.createEdge) {
+						if (!protocol.codebook.edge || !Object.keys(protocol.codebook.edge).includes(prompt.createEdge)) {
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `"${prompt.createEdge}" definition for createEdge not found in codebook["edge"]`,
+								path: ["stages", stageIndex, "prompts", promptIndex, "createEdge"],
+							});
+						}
+					}
+
+					// 3d.iv. edgeVariable validation for TieStrengthCensus
+					if ("edgeVariable" in prompt && prompt.edgeVariable && "createEdge" in prompt && prompt.createEdge) {
+						const edgeSubject = { entity: "edge" as const, type: prompt.createEdge };
+						if (!variableExists(protocol.codebook, edgeSubject, prompt.edgeVariable)) {
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `"${prompt.edgeVariable}" not defined in codebook[edge][${prompt.createEdge}].variables`,
+								path: ["stages", stageIndex, "prompts", promptIndex, "edgeVariable"],
+							});
+						} else {
+							// Check that it's an ordinal variable
+							const variables = getVariablesForSubject(protocol.codebook, edgeSubject);
+							const variable = variables[prompt.edgeVariable];
+							if (variable && variable.type !== "ordinal") {
+								ctx.addIssue({
+									code: "custom" as const,
+									message: `"${prompt.edgeVariable}" is not of type 'ordinal'.`,
+									path: ["stages", stageIndex, "prompts", promptIndex, "edgeVariable"],
+								});
+							}
+						}
+					}
+
+					// 3d.v. layoutVariable validation (can be string or object)
+					if (
+						"layout" in prompt &&
+						prompt.layout &&
+						"layoutVariable" in prompt.layout &&
+						prompt.layout.layoutVariable
+					) {
+						const layoutVariable = prompt.layout.layoutVariable;
+						if (typeof layoutVariable === "object" && layoutVariable !== null) {
+							// Object format: { nodeType: variableName }
+							const missingVariables: string[] = [];
+							for (const [nodeType, variableName] of Object.entries(layoutVariable)) {
+								if (typeof variableName === "string") {
+									const nodeSubject = { entity: "node" as const, type: nodeType };
+									if (!variableExists(protocol.codebook, nodeSubject, variableName)) {
+										missingVariables.push(
+											`Layout variable "${variableName}" not defined in codebook[node][${nodeType}].variables.`,
+										);
+									}
+								}
+							}
+							if (missingVariables.length > 0) {
+								ctx.addIssue({
+									code: "custom" as const,
+									message: missingVariables.join(" "),
+									path: ["stages", stageIndex, "prompts", promptIndex, "layout", "layoutVariable"],
+								});
+							}
+						} else if (typeof layoutVariable === "string" && "subject" in stage && stage.subject) {
+							// String format: direct variable reference
+							if (!variableExists(protocol.codebook, stage.subject, layoutVariable)) {
+								const subject = stage.subject;
+								ctx.addIssue({
+									code: "custom" as const,
+									message: `Layout variable "${layoutVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables.`,
+									path: ["stages", stageIndex, "prompts", promptIndex, "layout", "layoutVariable"],
+								});
+							}
+						}
+					}
+
+					// 3d.vi. additionalAttributes validation
+					if ("additionalAttributes" in prompt && prompt.additionalAttributes && "subject" in stage && stage.subject) {
+						const missingVariables: string[] = [];
+						for (const attr of prompt.additionalAttributes) {
+							if (!variableExists(protocol.codebook, stage.subject, attr.variable)) {
+								missingVariables.push(attr.variable);
+							}
+						}
+						if (missingVariables.length > 0) {
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `One or more sortable properties not defined in codebook: ${missingVariables.join(", ")}`,
+								path: ["stages", stageIndex, "prompts", promptIndex, "additionalAttributes"],
+							});
+						}
+					}
+
+					// 3d.vii. edges.restrict.origin validation for Sociogram
+					if (
+						"edges" in prompt &&
+						prompt.edges &&
+						typeof prompt.edges === "object" &&
+						prompt.edges !== null &&
+						"restrict" in prompt.edges &&
+						prompt.edges.restrict &&
+						typeof prompt.edges.restrict === "object" &&
+						prompt.edges.restrict !== null &&
+						"origin" in prompt.edges.restrict &&
+						prompt.edges.restrict.origin
+					) {
+						const origin = prompt.edges.restrict.origin as string;
+						if (!protocol.codebook.node || !Object.keys(protocol.codebook.node).includes(origin)) {
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `"${origin}" is not a valid node type.`,
+								path: ["stages", stageIndex, "prompts", promptIndex, "edges", "restrict", "origin"],
+							});
+						}
+					}
+				});
+			}
+
+			// Note: Panels duplicate ID validation moved to individual stage schemas
+
+			// Note: Items duplicate ID validation moved to individual stage schemas
+
+			// 3g. Filter rules validation (comprehensive)
+			if ("filter" in stage && stage.filter?.rules) {
+				const duplicateRuleId = findDuplicateId(stage.filter.rules);
+				if (duplicateRuleId) {
+					ctx.addIssue({
+						code: "custom" as const,
+						message: `Rules contain duplicate ID "${duplicateRuleId}"`,
+						path: ["stages", stageIndex, "filter", "rules"],
+					});
+				}
+
+				stage.filter.rules.forEach((rule, ruleIndex) => {
+					// Check entity exists
+					if (!filterRuleEntityExists(rule, protocol.codebook)) {
+						ctx.addIssue({
+							code: "custom" as const,
+							message:
+								rule.type === "ego"
+									? 'Entity type "Ego" is not defined in codebook'
+									: `Rule option type "${rule.options.type}" is not defined in codebook`,
+							path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "type"],
+						});
+					}
+
+					// Check attribute exists
+					if (rule.options.attribute && !filterRuleAttributeExists(rule, protocol.codebook)) {
+						ctx.addIssue({
+							code: "custom" as const,
+							message: `"${rule.options.attribute}" is not a valid variable ID`,
+							path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "attribute"],
+						});
+					}
+				});
+			}
+
+			// 3h. Check any nested filter rules recursively (for skipLogic, etc.)
+			const validateNestedFilters = (obj: unknown, basePath: (string | number)[]) => {
+				if (typeof obj === "object" && obj !== null) {
+					if ("rules" in obj && Array.isArray(obj.rules)) {
+						const rules = obj.rules as unknown[];
+						const duplicateNestedRuleId = findDuplicateId(rules as { id: string }[]);
+						if (duplicateNestedRuleId) {
+							ctx.addIssue({
+								code: "custom" as const,
+								message: `Rules contain duplicate ID "${duplicateNestedRuleId}"`,
+								path: [...basePath, "rules"],
+							});
+						}
+					}
+					// Recursively check nested objects
+					for (const [key, value] of Object.entries(obj)) {
+						validateNestedFilters(value, [...basePath, key]);
+					}
+				}
+			};
+			validateNestedFilters(stage, ["stages", stageIndex]);
+		});
+
+		// 4. Codebook variable validation
+		const validateVariableReferences = (
+			variables: Record<string, unknown> | undefined,
+			entityPath: string[],
+			entityType: "ego" | "node" | "edge",
+			entityName?: string,
+		) => {
+			if (!variables) return;
+
+			for (const [varId, variable] of Object.entries(variables)) {
+				if (
+					variable &&
+					typeof variable === "object" &&
+					"validation" in variable &&
+					variable.validation &&
+					typeof variable.validation === "object"
+				) {
+					const validation = variable.validation as Record<string, unknown>;
+
+					// Note: Ego-specific validation moved to EgoDefinitionSchema
+
+					// 4b. Cross-reference validations
+					const checkCrossRef = (refType: string, refVar: string) => {
+						const subject =
+							entityType === "ego" ? { entity: "ego" as const } : { entity: entityType, type: entityName || "" };
+
+						if (!variableExists(protocol.codebook, subject, refVar)) {
+							if (entityType === "ego") {
+								ctx.addIssue({
+									code: "custom" as const,
+									message: `Validation configuration for the variable "${varId}" is invalid! The variable "${refVar}" does not exist in the codebook for this type.`,
+									path: [...entityPath, varId, "validation", refType],
+								});
+							} else {
+								ctx.addIssue({
+									code: "custom" as const,
+									message: `Validation configuration for the variable "${varId}" is invalid! The variable "${refVar}" does not exist in the codebook for this type.`,
+									path: [...entityPath, varId, "validation", refType],
+								});
+							}
+						}
+					};
+
+					if (validation.sameAs && typeof validation.sameAs === "string") {
+						checkCrossRef("sameAs", validation.sameAs);
+					}
+					if (validation.differentFrom && typeof validation.differentFrom === "string") {
+						checkCrossRef("differentFrom", validation.differentFrom);
+					}
+					if (validation.greaterThanVariable && typeof validation.greaterThanVariable === "string") {
+						checkCrossRef("greaterThanVariable", validation.greaterThanVariable);
+					}
+					if (validation.lessThanVariable && typeof validation.lessThanVariable === "string") {
+						checkCrossRef("lessThanVariable", validation.lessThanVariable);
+					}
+				}
+			}
+
+			// Note: Duplicate variable name validation moved to VariablesSchema
+		};
+
+		// 5. Apply variable validation to all codebook entities
+
+		// 5a. Validate ego variables
+		if (protocol.codebook.ego?.variables) {
+			validateVariableReferences(protocol.codebook.ego.variables, ["codebook", "ego", "variables"], "ego");
+		}
+
+		// 5b. Validate node variables
+		if (protocol.codebook.node) {
+			for (const [nodeType, nodeDef] of Object.entries(protocol.codebook.node)) {
+				validateVariableReferences(nodeDef.variables, ["codebook", "node", nodeType, "variables"], "node", nodeType);
+			}
+		}
+
+		// 5c. Validate edge variables
+		if (protocol.codebook.edge) {
+			for (const [edgeType, edgeDef] of Object.entries(protocol.codebook.edge)) {
+				validateVariableReferences(edgeDef.variables, ["codebook", "edge", edgeType, "variables"], "edge", edgeType);
+			}
+		}
+	});
 
 export type Protocol = z.infer<typeof ProtocolSchema>;
+
+export default ProtocolSchema;
