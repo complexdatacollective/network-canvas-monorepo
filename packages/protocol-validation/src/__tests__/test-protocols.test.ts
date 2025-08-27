@@ -77,23 +77,4 @@ describe("Test protocols", () => {
 			}
 		}
 	});
-
-	// // Keep the original test as a summary test
-	// it("should validate all protocols successfully", async () => {
-	// 	console.log(`Validating all ${protocols.length} protocols in a batch test`);
-
-	// 	const results = await Promise.allSettled(
-	// 		protocols.map(async (protocol) => {
-	// 			return await validateProtocol(protocol);
-	// 		}),
-	// 	);
-
-	// 	const validCount = results.filter((r) => r.isValid).length;
-	// 	console.log(`Validation summary: ${validCount}/${results.length} protocols validated successfully`);
-
-	// 	// Check if all protocols are valid
-	// 	expect(results.every((r) => r.isValid)).toBe(true);
-	// 	expect(results.every((r) => r.schemaErrors.length === 0)).toBe(true);
-	// 	expect(results.every((r) => r.logicErrors.length === 0)).toBe(true);
-	// });
 });
