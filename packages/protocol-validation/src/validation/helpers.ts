@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import type { ValidationError } from "../";
-import type { Codebook, EntityDefinition, FilterRule, StageSubject } from "../schemas/8.zod";
+import type { Codebook, EntityDefinition, FilterRule, StageSubject } from "../schemas/8/schema";
 
 // For some error types, AJV returns info separate from message
 const additionalErrorInfo = (errorObj: ValidationError) => {

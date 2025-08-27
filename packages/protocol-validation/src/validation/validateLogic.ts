@@ -13,7 +13,7 @@ import type {
 	StageSubject,
 	Validation,
 	Variable,
-} from "../schemas/8.zod";
+} from "../schemas/8/schema";
 import Validator from "./Validator";
 import {
 	checkDuplicateNestedId,

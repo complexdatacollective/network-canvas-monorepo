@@ -39,4 +39,5 @@ next-env.d.ts
 
 dist
 
-
+# Serena cache: https://github.com/oraios/serena/issues/283
+/.serena/cache

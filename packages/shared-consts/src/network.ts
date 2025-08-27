@@ -36,6 +36,7 @@ const BaseNcEntitySchema = z.object({
 	[entityAttributesProperty]: z.record(VariableNameSchema, variableValueSchema),
 	[entitySecureAttributesMeta]: z
 		.record(
+			z.string(),
 			z.object({
 				iv: z.array(z.number()),
 				salt: z.array(z.number()),

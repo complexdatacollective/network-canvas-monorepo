@@ -1,6 +1,6 @@
 import type Zip from "jszip";
 import JSZip from "jszip";
-import type { Protocol } from "src/schemas/8.zod";
+import type { Protocol } from "src/schemas/8/schema";
 
 const getProtocolJsonAsObject = async (zip: Zip): Promise<Protocol> => {
 	const protocolString = await zip.file("protocol.json")?.async("string");

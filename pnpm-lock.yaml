@@ -127,8 +127,8 @@ catalogs:
       specifier: ^3.2.4
       version: 3.2.4
     zod:
-      specifier: ^3.24.2
-      version: 3.24.2
+      specifier: ^4.0.17
+      version: 4.0.17
 
 importers:
 
@@ -229,7 +229,7 @@ importers:
         version: 3.3.0
       zod:
         specifier: 'catalog:'
-        version: 3.24.2
+        version: 4.0.17
     devDependencies:
       '@codaco/tailwind-config':
         specifier: workspace:*
@@ -311,7 +311,7 @@ importers:
         version: 1.1.6(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
-        version: 0.12.0(typescript@5.9.2)(zod@3.24.2)
+        version: 0.12.0(typescript@5.9.2)(zod@4.0.17)
       '@tailwindcss/container-queries':
         specifier: 'catalog:'
         version: 0.1.1(tailwindcss@3.4.17)
@@ -447,7 +447,7 @@ importers:
         version: 5.0.1
       zod:
         specifier: 'catalog:'
-        version: 3.24.2
+        version: 4.0.17
 
   packages/analytics:
     dependencies:
@@ -456,7 +456,7 @@ importers:
         version: 15.2.4(@babel/core@7.27.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 3.24.2
+        version: 4.0.17
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -509,7 +509,7 @@ importers:
         version: 8.17.1
       zod:
         specifier: 'catalog:'
-        version: 3.24.2
+        version: 4.0.17
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -562,15 +562,12 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.13.13)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.8.0)
-      zod-to-json-schema:
-        specifier: ^3.24.6
-        version: 3.24.6(zod@3.24.2)
 
   packages/shared-consts:
     dependencies:
       zod:
         specifier: 'catalog:'
-        version: 3.24.2
+        version: 4.0.17
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -698,7 +695,7 @@ importers:
         version: 5.9.2
       zod:
         specifier: 'catalog:'
-        version: 3.24.2
+        version: 4.0.17
 
   tooling/tailwind:
     dependencies:
@@ -874,8 +871,8 @@ packages:
     resolution: {integrity: sha512-vbavdySgbTTrmFE+EsiqUTzlOr5bzlnJtUv9PynGCAKvfQqjIXbvFdumPM/GxMDfyuGMJaJAU6TO4zc1Jf1i8Q==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/runtime@7.28.3':
-    resolution: {integrity: sha512-9uIQ10o0WGdpP6GDhXcdOJPJuDgFtIDtN/9+ArJQ2NAfAmiuhTQdzkaTGR33v43GYS2UrSA0eX2pPPHoFVvpxA==}
+  '@babel/runtime@7.28.2':
+    resolution: {integrity: sha512-KHp2IflsnGywDjBWDkR9iEqiWSpc8GIi0lgTT3mOElT0PP1tG26P4tmFI2YvAdzgq9RGyoHZQEIEdZy6Ec5xCA==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.27.2':
@@ -5153,7 +5150,6 @@ packages:
   source-map@0.8.0-beta.0:
     resolution: {integrity: sha512-2ymg6oRBpebeZi9UUNsgQ89bhx01TcTkmNTGnNO88imTmbSgy4nfujrgVEFKWpMTEGA11EDkTt7mqObTPdigIA==}
     engines: {node: '>= 8'}
-    deprecated: The work that was done in this beta branch won't be included in future versions
 
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
@@ -5738,13 +5734,8 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
-  zod-to-json-schema@3.24.6:
-    resolution: {integrity: sha512-h/z3PKvcTcTetyjl1fkj79MHNEjm+HpD6NXheWjzOekY7kV+lwDYnHw+ivHkijnCSMz1yJaWBD9vu/Fcmk+vEg==}
-    peerDependencies:
-      zod: ^3.24.1
-
-  zod@3.24.2:
-    resolution: {integrity: sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==}
+  zod@4.0.17:
+    resolution: {integrity: sha512-1PHjlYRevNxxdy2JZ8JcNAw7rX8V9P1AKkP+x/xZfxB0K5FYfuV+Ug6P/6NVSR2jHQ+FzDDoDHS04nYUsOIyLQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -5952,7 +5943,7 @@ snapshots:
 
   '@babel/runtime@7.27.6': {}
 
-  '@babel/runtime@7.28.3': {}
+  '@babel/runtime@7.28.2': {}
 
   '@babel/template@7.27.2':
     dependencies:
@@ -7817,17 +7808,17 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@t3-oss/env-core@0.12.0(typescript@5.9.2)(zod@3.24.2)':
+  '@t3-oss/env-core@0.12.0(typescript@5.9.2)(zod@4.0.17)':
     optionalDependencies:
       typescript: 5.9.2
-      zod: 3.24.2
+      zod: 4.0.17
 
-  '@t3-oss/env-nextjs@0.12.0(typescript@5.9.2)(zod@3.24.2)':
+  '@t3-oss/env-nextjs@0.12.0(typescript@5.9.2)(zod@4.0.17)':
     dependencies:
-      '@t3-oss/env-core': 0.12.0(typescript@5.9.2)(zod@3.24.2)
+      '@t3-oss/env-core': 0.12.0(typescript@5.9.2)(zod@4.0.17)
     optionalDependencies:
       typescript: 5.9.2
-      zod: 3.24.2
+      zod: 4.0.17
 
   '@tailwindcss/container-queries@0.1.1(tailwindcss@3.4.17)':
     dependencies:
@@ -7852,7 +7843,7 @@ snapshots:
   '@testing-library/dom@10.4.0':
     dependencies:
       '@babel/code-frame': 7.27.1
-      '@babel/runtime': 7.28.3
+      '@babel/runtime': 7.28.2
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       chalk: 4.1.2
@@ -11041,10 +11032,6 @@ snapshots:
 
   yaml@2.8.0: {}
 
-  zod-to-json-schema@3.24.6(zod@3.24.2):
-    dependencies:
-      zod: 3.24.2
-
-  zod@3.24.2: {}
+  zod@4.0.17: {}
 
   zwitch@2.0.4: {}
