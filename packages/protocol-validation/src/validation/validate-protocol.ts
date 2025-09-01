@@ -1,5 +1,5 @@
-import { type VersionedProtocol, VersionedProtocolSchema } from "src/schemas";
-import { ensureError } from "src/utils/ensureError";
+import { type VersionedProtocol, VersionedProtocolSchema } from "../schemas";
+import { ensureError } from "../utils/ensureError";
 
 export type ValidationError = {
 	path: string;
