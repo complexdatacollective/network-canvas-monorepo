@@ -150,6 +150,9 @@ jobs:
           pnpm test
 
   release:
+    permissions:
+      contents: write
+      pull-requests: write
     # Only run on main branch pushes (not PRs) and only if lint and test jobs succeed
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [setup, lint-and-format, test]
