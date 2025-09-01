@@ -1,5 +1,5 @@
 import { Paragraph, type ParagraphProps } from "@codaco/ui";
-import { motion } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import { Children } from "react";
 
 // FancyParagraph animates individual words in a paragraph.
@@ -8,7 +8,7 @@ const FancyParagraph = (props: ParagraphProps) => {
 
 	const words = Children.toArray(children);
 
-	const variants = {
+	const variants: Variants = {
 		hidden: { y: "100%" },
 		visible: (custom: number) => ({
 			y: 0,
