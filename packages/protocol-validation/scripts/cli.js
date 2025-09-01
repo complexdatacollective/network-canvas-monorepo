@@ -52,7 +52,6 @@ async function main() {
 		}
 
 		const result = await validateProtocol(protocol);
-		// const result = await validateProtocolZod(protocol);
 
 		if (result.isValid) {
 			success("✅ Protocol is valid");
