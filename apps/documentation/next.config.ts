@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
 	images: {
 		unoptimized: true,
 	},
+	typedRoutes: true,
 	/** Enables hot reloading for local packages without a build step */
 	transpilePackages: ["@codaco/ui"],
 	experimental: {

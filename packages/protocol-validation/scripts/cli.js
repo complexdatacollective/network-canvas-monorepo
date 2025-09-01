@@ -7,11 +7,11 @@ import path from "node:path";
 import { errToString, extractProtocol, validateProtocol } from "../dist/index.js";
 
 async function main() {
-	const [, , filePath, forceSchema = undefined] = process.argv;
+	const [, , filePath] = process.argv;
 
 	if (!filePath) {
 		console.error("Error: Please provide a file path");
-		console.log("Usage: npx @codaco/protocol-validation <file-path> [schema-version]");
+		console.log("Usage: npx @codaco/protocol-validation <file-path>");
 		process.exit(1);
 	}
 
@@ -51,8 +51,7 @@ async function main() {
 			protocol = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
 		}
 
-		const result = await validateProtocol(protocol, forceSchema ? Number.parseInt(forceSchema) : undefined);
-		// const result = await validateProtocolZod(protocol);
+		const result = await validateProtocol(protocol);
 
 		if (result.isValid) {
 			success("✅ Protocol is valid");

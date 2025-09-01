@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
-import type { ValidationError } from "..";
-import type { Protocol, StageSubject } from "../schemas/8.zod";
+import type { Protocol, StageSubject } from "..";
+import type { ValidationError } from "./validate-protocol";
 
 /**
  * See addValidation().

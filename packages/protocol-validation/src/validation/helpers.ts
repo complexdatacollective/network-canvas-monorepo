@@ -1,19 +1,30 @@
 import { get } from "es-toolkit/compat";
-import type { ValidationError } from "../";
-import type { Codebook, EntityDefinition, FilterRule, StageSubject } from "../schemas/8.zod";
+import type { ValidationError } from "./validate-protocol";
+import type { Codebook, EntityDefinition, FilterRule, StageSubject } from "../schemas/8/schema";
 
-// For some error types, AJV returns info separate from message
+// Legacy error type with additional parameters
+type LegacyValidationError = ValidationError & {
+	params?: {
+		additionalProperty?: string;
+		allowedValues?: string[];
+		allowedValue?: string;
+	};
+};
+
+// For some error types, legacy validation may return info separate from message
 const additionalErrorInfo = (errorObj: ValidationError) => {
-	if (!errorObj.params) {
+	// ValidationError type doesn't have params - this is legacy code
+	const legacyObj = errorObj as LegacyValidationError;
+	if (!legacyObj.params) {
 		return undefined;
 	}
 
-	return "additionalProperty" in errorObj.params
-		? errorObj.params.additionalProperty
-		: "allowedValues" in errorObj.params
-			? errorObj.params.allowedValues
-			: "allowedValue" in errorObj.params
-				? errorObj.params.allowedValue
+	return "additionalProperty" in legacyObj.params
+		? legacyObj.params.additionalProperty
+		: "allowedValues" in legacyObj.params
+			? legacyObj.params.allowedValues
+			: "allowedValue" in legacyObj.params
+				? legacyObj.params.allowedValue
 				: undefined;
 };
 
