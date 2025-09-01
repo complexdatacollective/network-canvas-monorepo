@@ -35,8 +35,8 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.issues).toHaveLength(2); // Stage subject not defined and form field variable not found
-				expect(result.error.issues[0].message).toBe("Stage subject is not defined in the codebook");
-				expect(result.error.issues[0].path).toEqual(["stages", 0, "subject"]);
+				expect(result.error.issues[0]?.message).toBe("Stage subject is not defined in the codebook");
+				expect(result.error.issues[0]?.path).toEqual(["stages", 0, "subject"]);
 			}
 		});
 
@@ -179,8 +179,8 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.issues).toHaveLength(1);
-				expect(result.error.issues[0].message).toBe("Form field variable not found in codebook.");
-				expect(result.error.issues[0].path).toEqual(["stages", 0, "form", "fields", 0, "variable"]);
+				expect(result.error.issues[0]?.message).toBe("Form field variable not found in codebook.");
+				expect(result.error.issues[0]?.path).toEqual(["stages", 0, "form", "fields", 0, "variable"]);
 			}
 		});
 
@@ -325,8 +325,8 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.issues).toHaveLength(1);
-				expect(result.error.issues[0].message).toBe('Stages contain duplicate ID "nameGenerator1"');
-				expect(result.error.issues[0].path).toEqual(["stages"]);
+				expect(result.error.issues[0]?.message).toBe('Stages contain duplicate ID "nameGenerator1"');
+				expect(result.error.issues[0]?.path).toEqual(["stages"]);
 			}
 		});
 

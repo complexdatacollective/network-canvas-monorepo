@@ -2,7 +2,7 @@ import { type VersionedProtocol, VersionedProtocolSchema } from "src/schemas";
 import { ensureError } from "src/utils/ensureError";
 
 export type ValidationError = {
-	path?: string;
+	path: string;
 	message: string;
 };
 

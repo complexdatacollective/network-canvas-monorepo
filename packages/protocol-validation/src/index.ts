@@ -28,6 +28,7 @@ export {
 } from "./schemas";
 
 export { errToString, extractProtocol, getVariableNamesFromNetwork, validateNames, validateProtocol };
+export type { ValidationError } from "./validation/validate-protocol";
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from "./schemas";
