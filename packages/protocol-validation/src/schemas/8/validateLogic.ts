@@ -1,4 +1,14 @@
 import { get, isObject } from "es-toolkit/compat";
+import Validator from "../../validation/Validator";
+import {
+	checkDuplicateNestedId,
+	duplicateInArray,
+	getEntityNames,
+	getRuleEntityCodebookDefinition,
+	getVariableNameFromID,
+	getVariableNames,
+	getVariablesForSubject,
+} from "../../validation/helpers";
 import type {
 	AdditionalAttributes,
 	Codebook,
@@ -13,17 +23,7 @@ import type {
 	StageSubject,
 	Validation,
 	Variable,
-} from "../schemas/8/schema";
-import Validator from "./Validator";
-import {
-	checkDuplicateNestedId,
-	duplicateInArray,
-	getEntityNames,
-	getRuleEntityCodebookDefinition,
-	getVariableNameFromID,
-	getVariableNames,
-	getVariablesForSubject,
-} from "./helpers";
+} from "./schema";
 
 /**
  * Define and run all dynamic validations (which aren't covered by the JSON Schema).

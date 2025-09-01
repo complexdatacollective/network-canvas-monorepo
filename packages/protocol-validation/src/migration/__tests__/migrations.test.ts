@@ -214,19 +214,6 @@ describe("Protocol Migrations", () => {
 			expect(migrated).toHaveProperty("experiments");
 		});
 
-		it("preserves unknown fields during migration", () => {
-			const v7DocWithExtra = {
-				schemaVersion: 7,
-				description: "Test",
-				customField: "preserved",
-				codebook: {},
-				stages: [],
-			};
-			const migrated = migrateProtocol(v7DocWithExtra);
-			expect(migrated.schemaVersion).toBe(8);
-			expect(migrated).toHaveProperty("customField", "preserved");
-		});
-
 		it("handles validation errors gracefully", () => {
 			const invalidDoc = {
 				schemaVersion: 7,

@@ -1,4 +1,4 @@
-import type { Codebook, StageSubject, FilterRule, Variable } from "./schema";
+import type { Codebook, FilterRule, StageSubject, Variable } from "../schemas/8/schema";
 
 /**
  * Helper functions for cross-reference validation within Protocol schemas
