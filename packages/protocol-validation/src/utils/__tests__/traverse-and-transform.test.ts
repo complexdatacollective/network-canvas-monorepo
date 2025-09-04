@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { processThing } from "../process-thing";
+import { traverseAndTransform } from "../traverse-and-transform";
 
-describe("processThing", () => {
+describe("traverseAndTransform", () => {
 	it("should process nested array filters", () => {
 		const test = {
 			stages: [
@@ -54,7 +54,7 @@ describe("processThing", () => {
 		let stageFilterCount = 0;
 
 		// Test processing panel filters (should be called 3 times)
-		const result1 = processThing(test, ["stages[].panels[].filter"], (filter) => {
+		const result1 = traverseAndTransform(test, ["stages[].panels[].filter"], (filter) => {
 			panelFilterCount++;
 			return { ...filter, processed: true };
 		});
@@ -65,7 +65,7 @@ describe("processThing", () => {
 		expect(result1.stages[1].panels[0].filter).toHaveProperty("processed", true);
 
 		// Test processing skipLogic filters (should be called 1 time)
-		const result2 = processThing(test, ["stages[].skipLogic.filter"], (filter) => {
+		const result2 = traverseAndTransform(test, ["stages[].skipLogic.filter"], (filter) => {
 			skipLogicFilterCount++;
 			return { ...filter, skipProcessed: true };
 		});
@@ -74,7 +74,7 @@ describe("processThing", () => {
 		expect(result2.stages[0].skipLogic.filter).toHaveProperty("skipProcessed", true);
 
 		// Test processing stage-level filters (should be called 1 time)
-		const result3 = processThing(test, ["stages[].filter"], (filter) => {
+		const result3 = traverseAndTransform(test, ["stages[].filter"], (filter) => {
 			stageFilterCount++;
 			return { ...filter, stageProcessed: true };
 		});
@@ -100,7 +100,7 @@ describe("processThing", () => {
 		};
 
 		let callCount = 0;
-		const result = processThing(
+		const result = traverseAndTransform(
 			test,
 			["stages[].panels[].filter", "stages[].skipLogic.filter", "stages[].filter"],
 			(filter) => {
@@ -122,7 +122,7 @@ describe("processThing", () => {
 			stages: [{ id: 1 }, { id: 2 }],
 		};
 
-		const result = processThing(test, ["stages[].nonExistent.filter"], (value) => {
+		const result = traverseAndTransform(test, ["stages[].nonExistent.filter"], (value) => {
 			return { ...value, modified: true };
 		});
 
@@ -135,7 +135,7 @@ describe("processThing", () => {
 			stages: { notAnArray: true },
 		};
 
-		const result = processThing(test, ["stages[].filter"], (value) => {
+		const result = traverseAndTransform(test, ["stages[].filter"], (value) => {
 			return { ...value, modified: true };
 		});
 
@@ -152,7 +152,7 @@ describe("processThing", () => {
 			],
 		};
 
-		const result = processThing(test, ["stages[].filter"], (filter) => {
+		const result = traverseAndTransform(test, ["stages[].filter"], (filter) => {
 			const f = filter as { type: string };
 			return { ...f, type: "modified" };
 		});
@@ -177,7 +177,7 @@ describe("processThing", () => {
 		};
 
 		let count = 0;
-		const result = processThing(test, ["a.b[].c.d[].e"], (value) => {
+		const result = traverseAndTransform(test, ["a.b[].c.d[].e"], (value) => {
 			count++;
 			const v = value as { value: number };
 			return { ...v, value: v.value * 10 };

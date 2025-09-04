@@ -34,7 +34,7 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
 
 	const [currentSegment, ...restSegments] = remainingSegments;
 
-	if (typeof currentSegment === "object" && currentSegment.arrayKey) {
+	if (typeof currentSegment === "object" && currentSegment !== null && "arrayKey" in currentSegment) {
 		// Process array elements
 		if (!Array.isArray(obj)) {
 			return obj;
@@ -49,20 +49,21 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
 	}
 
 	const objAsRecord = obj as Record<string, unknown>;
+	const key = currentSegment as string;
 
-	if (!(currentSegment in objAsRecord)) {
+	if (!(key in objAsRecord)) {
 		return obj;
 	}
 
 	// Create a new object with the modified property
 	return {
 		...objAsRecord,
-		[currentSegment]: traverseAndApply(objAsRecord[currentSegment], restSegments, fn),
+		[key]: traverseAndApply(objAsRecord[key], restSegments, fn),
 	};
 }
 
 /**
- * Process an object by applying a transformation function to values at specified paths.
+ * Traverse to specific paths in a nested object and apply a transformation function.
  * Supports array notation with [] to process all elements in an array.
  *
  * @param obj - The object to process
@@ -71,12 +72,12 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
  * @returns A new object with transformations applied
  *
  * @example
- * processThing(data, ["stages[].panels[].filter"], (filter) => {
+ * traverseAndTransform(data, ["stages[].panels[].filter"], (filter) => {
  *   // Transform the filter
  *   return modifiedFilter;
  * });
  */
-export function processThing<T>(obj: T, paths: string[], fn: <V>(value: V) => V): T {
+export function traverseAndTransform<T>(obj: T, paths: string[], fn: <V>(value: V) => V): T {
 	let result = obj as unknown;
 
 	for (const path of paths) {

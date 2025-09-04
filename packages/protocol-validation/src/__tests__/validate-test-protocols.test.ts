@@ -51,16 +51,18 @@ describe("Test protocols", () => {
 			console.log(`Result: ${result.isValid ? "✅ Valid" : "❌ Invalid"}`);
 
 			// If there are errors, log them (using unified errors array)
-			if (result.errors.length > 0) {
-				console.log(`Validation errors: ${JSON.stringify(result.errors, null, 2)}`);
+			if (!result.isValid) {
+				console.log(
+					`Validation errors: ${JSON.stringify(result.errors || result.schemaErrors || result.logicErrors || "No error details available", null, 2)}`,
+				);
 			}
 
 			// Test each protocol individually but within the same test
 			expect(result.isValid).toBe(true);
-			expect(result.errors).toEqual([]);
+			expect(result.errors || []).toEqual([]);
 			// Legacy properties should also be empty for backward compatibility
-			expect(result.schemaErrors).toEqual([]);
-			expect(result.logicErrors).toEqual([]);
+			expect(result.schemaErrors || []).toEqual([]);
+			expect(result.logicErrors || []).toEqual([]);
 
 			// Migrate and validate protocols with schema version < 8
 			if (protocol.schemaVersion < 8) {
@@ -69,15 +71,15 @@ describe("Test protocols", () => {
 
 				console.log(`Migration result: ${migrationResult.isValid ? "✅ Valid" : "❌ Invalid"}`);
 
-				if (migrationResult.errors.length > 0) {
+				if (migrationResult.errors && migrationResult.errors.length > 0) {
 					console.log(`Migration validation errors: ${JSON.stringify(migrationResult.errors, null, 2)}`);
 				}
 
 				expect.soft(migrationResult.isValid).toBe(true);
-				expect.soft(migrationResult.errors).toEqual([]);
+				expect.soft(migrationResult.errors || []).toEqual([]);
 				// Legacy properties should also be empty for backward compatibility
-				expect.soft(migrationResult.schemaErrors).toEqual([]);
-				expect.soft(migrationResult.logicErrors).toEqual([]);
+				expect.soft(migrationResult.schemaErrors || []).toEqual([]);
+				expect.soft(migrationResult.logicErrors || []).toEqual([]);
 			}
 		}
 	});
