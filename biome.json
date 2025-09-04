@@ -10,9 +10,24 @@
 			"correctness": {
 				"noUnusedImports": "error",
 				"noUnusedVariables": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "error"
 			}
 		}
 	},
+	"overrides": [
+		{
+			"include": ["packages/protocol-validation/src/utils/zod-mock-extension.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					}
+				}
+			}
+		}
+	],
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",

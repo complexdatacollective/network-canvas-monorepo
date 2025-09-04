@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const filterRuleSchema = z
 	.object({
-		type: z.enum(["alter", "ego", "edge"]),
+		type: z.enum(["node", "ego", "edge"]),
 		id: z.string(),
 		options: z
 			.object({

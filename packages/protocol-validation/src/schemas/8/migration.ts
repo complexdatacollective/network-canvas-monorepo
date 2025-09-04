@@ -1,4 +1,7 @@
 import type { ProtocolMigration } from "src/migration";
+import { processThing } from "src/utils/process-thing";
+// Uncomment to use processThing for filter transformations:
+// import { processThing } from "../../utils/process-thing";
 
 // Remove `options` from Toggle boolean variables
 const removeToggleOptions = (variables?: Record<string, unknown>) => {
@@ -27,6 +30,7 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 - Removed 'options' property for boolean Toggle variables. This property was not used.
+- Changed FilterRule type to use the same entity names as elsewhere
 `,
 	migrate: (doc) => {
 		const codebook = doc.codebook;
@@ -56,8 +60,18 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 			}
 		}
 
+		// filter.type changed values
+		const doc2 = processThing(
+			doc,
+			["stages[].panels[].filter.type[]", "stages[].skipLogic.filter.type[]", "stages[].filter.type[]"],
+			(filterType) => {
+				if (filterType === "alter") return "node" as typeof filterType;
+				return filterType;
+			},
+		);
+
 		return {
-			...doc,
+			...doc2,
 			codebook,
 			schemaVersion: 8 as const,
 			experiments: undefined,

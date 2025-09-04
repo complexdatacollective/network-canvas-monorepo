@@ -1,4 +1,4 @@
-import type { Codebook, FilterRule, StageSubject, Variable } from "../schemas/8/schema";
+import type { Codebook, EntityDefinition, FilterRule, StageSubject, Variable } from "../schemas/8/schema";
 
 /**
  * Helper functions for cross-reference validation within Protocol schemas
@@ -117,7 +117,7 @@ export const getAllEntityNames = (codebook: Codebook): string[] => {
 /**
  * Get all variable names for an entity definition
  */
-export const getVariableNames = (variables?: Record<string, Variable>): string[] => {
+export const getVariableNames = (variables?: EntityDefinition["variables"]): string[] => {
 	if (!variables) return [];
 	return Object.values(variables).map((v) => v.name);
 };
@@ -130,8 +130,7 @@ export const filterRuleEntityExists = (rule: FilterRule, codebook: Codebook): bo
 		return codebook.ego !== undefined;
 	}
 
-	const entityType = rule.type === "alter" ? "node" : rule.type;
-	return !!codebook[entityType]?.[rule.options.type || ""];
+	return !!codebook[rule.type]?.[rule.options.type || ""];
 };
 
 /**
@@ -144,8 +143,7 @@ export const filterRuleAttributeExists = (rule: FilterRule, codebook: Codebook):
 		return !!codebook.ego?.variables?.[rule.options.attribute];
 	}
 
-	const entityType = rule.type === "alter" ? "node" : rule.type;
-	const entity = codebook[entityType]?.[rule.options.type || ""];
+	const entity = codebook[rule.type]?.[rule.options.type || ""];
 	return !!entity?.variables?.[rule.options.attribute];
 };
 

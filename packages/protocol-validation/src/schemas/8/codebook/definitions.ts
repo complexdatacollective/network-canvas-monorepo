@@ -25,10 +25,9 @@ export { EdgeDefinitionSchema };
 export type EdgeDefinition = z.infer<typeof EdgeDefinitionSchema>;
 
 const EgoDefinitionSchema = z
-	.object({
+	.strictObject({
 		variables: VariablesSchema.optional(),
 	})
-	.strict()
 	.superRefine((egoDef, ctx) => {
 		// Validate ego-specific constraints
 		if (egoDef.variables) {
