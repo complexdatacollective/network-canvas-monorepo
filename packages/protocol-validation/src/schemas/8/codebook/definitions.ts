@@ -1,12 +1,15 @@
-import { z } from "zod";
+import { z } from "../../../utils/zod-mock-extension";
 import { VariablesSchema } from "../variables";
 
 const NodeDefinitionSchema = z
 	.object({
-		name: z.string(),
-		iconVariant: z.string().optional(),
+		name: z.string().generateMock(() => "Person"),
+		iconVariant: z
+			.string()
+			.optional()
+			.generateMock(() => "add-a-person"),
 		variables: VariablesSchema.optional(),
-		color: z.string(),
+		color: z.string().generateMock(() => "node-color-seq-1"),
 	})
 	.strict();
 
@@ -15,8 +18,8 @@ export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
 
 const EdgeDefinitionSchema = z
 	.object({
-		name: z.string(),
-		color: z.string(),
+		name: z.string().generateMock(() => "Friends"),
+		color: z.string().generateMock(() => "edge-color-seq-1"),
 		variables: VariablesSchema.optional(),
 	})
 	.strict();

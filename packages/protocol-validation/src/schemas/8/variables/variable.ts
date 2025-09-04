@@ -1,26 +1,37 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
-import { z } from "zod";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
+import { z } from "../../../utils/zod-mock-extension";
 import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";
 
 // Options Schema for categorical and ordinal variables
-const categoricalOptionsSchema = z.array(
-	z
-		.object({
-			label: z.string(),
-			value: z.union([z.number().int(), z.string(), z.boolean()]),
-		})
-		.strict(),
-);
+const categoricalOptionsSchema = z
+	.array(
+		z
+			.object({
+				label: z.string().generateMock(() => `Option ${Math.floor(Math.random() * 100) + 1}`),
+				value: z
+					.union([z.number().int(), z.string(), z.boolean()])
+					.generateMock(() => Math.floor(Math.random() * 5) + 1),
+			})
+			.strict(),
+	)
+	.generateMock(() => [
+		{ label: "Option 1", value: 1 },
+		{ label: "Option 2", value: 2 },
+		{ label: "Option 3", value: 3 },
+	]);
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 
 // Variable Schema
 const baseVariableSchema = z
 	.object({
-		name: VariableNameSchema,
-		encrypted: z.boolean().optional(),
+		name: VariableNameSchema.generateMock(() => `variable_${Math.random().toString(36).substring(2, 8)}`),
+		encrypted: z
+			.boolean()
+			.optional()
+			.generateMock(() => false),
 	})
 	.strict();
 
@@ -108,29 +119,45 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const textVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.text),
-	component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			minLength: true,
-			maxLength: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-		})
-		.optional(),
-});
+const textVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.text),
+		component: z
+			.enum([ComponentTypes.Text, ComponentTypes.TextArea])
+			.optional()
+			.generateMock(() => ComponentTypes.Text),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				minLength: true,
+				maxLength: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `text_${base.name}`,
+	}));
 
-const booleanOptionsSchema = z.array(
-	z.object({
-		label: z.string(),
-		value: z.boolean(),
-		negative: z.boolean().optional(),
-	}),
-);
+const booleanOptionsSchema = z
+	.array(
+		z.object({
+			label: z.string().generateMock(() => `boolean option ${Math.floor(Math.random() * 100) + 1}`),
+			value: z.boolean().generateMock(() => Math.random() > 0.5),
+			negative: z
+				.boolean()
+				.optional()
+				.generateMock(() => false),
+		}),
+	)
+	.generateMock(() => [
+		{ label: "Yes", value: true },
+		{ label: "No", value: false },
+	]);
 
 const booleanBooleanVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.boolean),
@@ -161,39 +188,55 @@ const booleanToggleVariableSchema = baseVariableSchema.extend({
 		.optional(),
 });
 
-const ordinalVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.ordinal),
-	component: z.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale]).optional(),
-	options: categoricalOptionsSchema,
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			minSelected: true,
-			maxSelected: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-		})
-		.optional(),
-});
+const ordinalVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.ordinal),
+		component: z
+			.enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale])
+			.optional()
+			.generateMock(() => ComponentTypes.RadioGroup),
+		options: categoricalOptionsSchema,
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				minSelected: true,
+				maxSelected: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `ordinal_${base.name}`,
+	}));
 
-const categoricalVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.categorical),
-	component: z.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup]).optional(),
-	options: categoricalOptionsSchema,
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			minSelected: true,
-			maxSelected: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-		})
-		.optional(),
-});
+const categoricalVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.categorical),
+		component: z
+			.enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup])
+			.optional()
+			.generateMock(() => ComponentTypes.CheckboxGroup),
+		options: categoricalOptionsSchema,
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				minSelected: true,
+				maxSelected: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `categorical_${base.name}`,
+	}));
 
 const layoutVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.layout),
@@ -225,17 +268,35 @@ export type VariablePropertyKey = AllKeys<Variable>;
 type AllValues<T> = T extends unknown ? T[keyof T] : never;
 export type VariablePropertyValue = AllValues<Variable>;
 
-export const VariablesSchema = z.record(VariableNameSchema, VariableSchema).superRefine((variables, ctx) => {
-	// Check for duplicate variable names
-	const variableNames = getVariableNames(variables);
-	const duplicateVarName = findDuplicateName(variableNames);
-	if (duplicateVarName) {
-		ctx.addIssue({
-			code: "custom" as const,
-			message: `Duplicate variable name "${duplicateVarName}"`,
-			path: [],
-		});
-	}
-});
+export const VariablesSchema = z
+	.record(VariableNameSchema, VariableSchema)
+	.superRefine((variables, ctx) => {
+		// Check for duplicate variable names
+		const variableNames = getVariableNames(variables);
+		const duplicateVarName = findDuplicateName(variableNames);
+		if (duplicateVarName) {
+			ctx.addIssue({
+				code: "custom" as const,
+				message: `Duplicate variable name "${duplicateVarName}"`,
+				path: [],
+			});
+		}
+	})
+	.generateMock(() => {
+		const textVar = textVariableSchema.generateMock();
+		const ordinalVar = ordinalVariableSchema.generateMock();
+		const categoricalVar = categoricalVariableSchema.generateMock();
+
+		// Use names inspired by the sample protocol
+		const firstName = { ...textVar, name: "first_name" };
+		const communicationFrequency = { ...ordinalVar, name: "communication_freq" };
+		const languagesSpoken = { ...categoricalVar, name: "languages_spoken" };
+
+		return {
+			[firstName.name]: firstName,
+			[communicationFrequency.name]: communicationFrequency,
+			[languagesSpoken.name]: languagesSpoken,
+		};
+	});
 
 export type Variables = z.infer<typeof VariablesSchema>;

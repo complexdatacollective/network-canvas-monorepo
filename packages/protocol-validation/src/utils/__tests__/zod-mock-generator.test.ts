@@ -229,4 +229,33 @@ describe("Zod Mock Generator", () => {
 			// Optional field behavior will depend on implementation
 		});
 	});
+
+	describe("literal and enum support", () => {
+		it("should generate exact literal values", () => {
+			const literalSchema = z.literal("exact_value");
+			const numberLiteralSchema = z.literal(42);
+			const booleanLiteralSchema = z.literal(true);
+
+			expect(literalSchema.generateMock()).toBe("exact_value");
+			expect(numberLiteralSchema.generateMock()).toBe(42);
+			expect(booleanLiteralSchema.generateMock()).toBe(true);
+		});
+
+		it("should generate random enum values", () => {
+			const enumSchema = z.enum(["option1", "option2", "option3"]);
+
+			const result = enumSchema.generateMock();
+			expect(["option1", "option2", "option3"]).toContain(result);
+		});
+
+		it("should work with protocol schema enums and literals", () => {
+			const entitySchema = z.literal("node");
+			const typeSchema = z.enum(["text", "number", "boolean"]);
+			const operatorSchema = z.enum(["EXISTS", "NOT_EXISTS", "EXACTLY"]);
+
+			expect(entitySchema.generateMock()).toBe("node");
+			expect(["text", "number", "boolean"]).toContain(typeSchema.generateMock());
+			expect(["EXISTS", "NOT_EXISTS", "EXACTLY"]).toContain(operatorSchema.generateMock());
+		});
+	});
 });
