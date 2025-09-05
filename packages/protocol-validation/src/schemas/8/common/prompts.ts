@@ -1,11 +1,10 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
-import { z } from "zod";
+import { randomItem, z } from "src/utils/zod-mock-extension";
 import { SortOrderSchema } from "../filters";
 
 const promptSchema = z
 	.object({
-		id: z.string(),
-		text: z.string(),
+		id: z.string().generateMock(() => crypto.randomUUID()),
 	})
 	.strict();
 
@@ -22,7 +21,7 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
 export const sociogramPromptSchema = promptSchema.extend({
 	sortOrder: SortOrderSchema.optional(),
 	layout: z.object({
-		layoutVariable: z.string(),
+		layoutVariable: z.string().generateMock(() => crypto.randomUUID()),
 	}),
 	edges: z
 		.object({
@@ -39,13 +38,15 @@ export const sociogramPromptSchema = promptSchema.extend({
 });
 
 export const dyadCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string(),
+	createEdge: z.string().generateMock(() => randomItem(["knows", "works_with", "friends_with", "related_to"])),
 });
 
 export const tieStrengthCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string(),
-	edgeVariable: z.string(),
-	negativeLabel: z.string(),
+	createEdge: z.string().generateMock(() => randomItem(["knows", "works_with", "friends_with", "related_to"])),
+	edgeVariable: z.string().generateMock(() => crypto.randomUUID()),
+	negativeLabel: z
+		.string()
+		.generateMock(() => randomItem(["not_knows", "not_works_with", "not_friends_with", "not_related_to"])),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({

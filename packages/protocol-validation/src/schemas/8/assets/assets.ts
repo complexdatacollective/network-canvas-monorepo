@@ -1,4 +1,8 @@
-import { z } from "zod";
+import { randomItem, z } from "src/utils/zod-mock-extension";
+
+const fileNames = ["background.jpg", "logo.png", "map.geojson", "classmates.csv"];
+const mockVideoNames = ["intro_video.mp4", "tutorial.mp4", "outro.mov"];
+const mockAudioNames = ["01.mp3", "02.mp3", "03.mp3"];
 
 const baseAssetSchema = z.object({
 	id: z.string().optional(),
@@ -7,13 +11,13 @@ const baseAssetSchema = z.object({
 
 const videoAudioAssetSchema = baseAssetSchema.extend({
 	type: z.enum(["video", "audio"]),
-	source: z.string(),
+	source: z.string().generateMock(() => randomItem([...mockVideoNames, ...mockAudioNames])),
 	loop: z.boolean().optional(),
 });
 
 const fileAssetSchema = baseAssetSchema.extend({
 	type: z.enum(["image", "network", "geojson"]),
-	source: z.string(),
+	source: z.string().generateMock(() => randomItem(fileNames)),
 });
 
 const apiKeyAssetSchema = baseAssetSchema.extend({
