@@ -1,6 +1,6 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
-import { z } from "../../../utils/zod-mock-extension";
 import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";
 

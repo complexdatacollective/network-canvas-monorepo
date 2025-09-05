@@ -1,9 +1,9 @@
-import { z } from "../../../utils/zod-mock-extension";
+import { z } from "src/utils/zod-mock-extension";
 
 export const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => "Person"),
+		type: z.string().generateMock(() => "person"),
 	})
 	.strict();
 

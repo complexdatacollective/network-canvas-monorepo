@@ -26,7 +26,11 @@ const ProtocolSchema = z
 	.strictObject({
 		description: z.string().optional(),
 		experiments: ExperimentsSchema.optional(),
-		lastModified: z.string().datetime().optional(),
+		lastModified: z
+			.string()
+			.datetime()
+			.optional()
+			.generateMock(() => new Date().toISOString()),
 		schemaVersion: z.literal(8),
 		codebook: CodebookSchema,
 		assetManifest: z.record(z.string(), assetSchema).optional(),
@@ -311,6 +315,25 @@ const ProtocolSchema = z
 				validateVariableReferences(edgeDef.variables, ["codebook", "edge", edgeType, "variables"], "edge", edgeType);
 			}
 		}
+	})
+	.generateMock(() => {
+		const codebook = CodebookSchema.generateMock();
+		const stages = Array.from({ length: Math.floor(Math.random() * 3) + 3 }, () => stageSchema.generateMock());
+
+		return {
+			description: "Generated Mock Protocol for Testing",
+			schemaVersion: 8 as const,
+			lastModified: new Date().toISOString(),
+			experiments: {
+				encryptedVariables: false,
+			},
+			codebook,
+			assetManifest: {
+				[crypto.randomUUID()]: assetSchema.generateMock(),
+				[crypto.randomUUID()]: assetSchema.generateMock(),
+			},
+			stages,
+		};
 	});
 
 export type Protocol = z.infer<typeof ProtocolSchema>;

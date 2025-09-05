@@ -1,4 +1,4 @@
-import { z } from "../../../utils/zod-mock-extension";
+import { z } from "src/utils/zod-mock-extension";
 
 export const filterRuleSchema = z
 	.object({
@@ -9,11 +9,11 @@ export const filterRuleSchema = z
 				type: z
 					.string()
 					.optional()
-					.generateMock(() => "Person"),
+					.generateMock(() => "person"),
 				attribute: z
 					.string()
 					.optional()
-					.generateMock(() => "name"),
+					.generateMock(() => "first_name"),
 				operator: z
 					.enum([
 						// TODO: this can be narrowed based on `type` and `attribute`

@@ -169,6 +169,42 @@ function generateMockData(schema: z.ZodTypeAny, applyTopLevelTransform = false):
 			return undefined;
 		}
 
+		case "record": {
+			const keyType = (schema as any)._def.keyType;
+			const valueType = (schema as any)._def.valueType;
+
+			// Generate random keys and values
+			const numEntries = Math.floor(Math.random() * 3) + 2;
+			const result: Record<string, any> = {};
+
+			for (let i = 0; i < numEntries; i++) {
+				// Generate key - if keyType is string, create a UUID, otherwise use keyType mock
+				let key: string;
+				if (keyType._def.type === "string") {
+					key = crypto.randomUUID();
+				} else {
+					key = String(generateMockData(keyType, false));
+				}
+
+				// Generate value using the value schema
+				const value = generateMockData(valueType, false);
+				result[key] = value;
+			}
+
+			return result;
+		}
+
+		case "tuple": {
+			const items = (schema as any)._def.items;
+			const result: any[] = [];
+
+			for (const itemSchema of items) {
+				result.push(generateMockData(itemSchema));
+			}
+
+			return result;
+		}
+
 		default:
 			throw new Error(
 				`Mock generation not implemented for type: ${type}. Available: ${JSON.stringify((schema as any)._def, null, 2)}`,
@@ -201,5 +237,11 @@ z.ZodType.prototype.generateMock = function <T>(generator?: MockGenerator<T>) {
 	// For other types, generate normally
 	return generateMockData(this);
 };
+
+//todo - fix this non null assertion
+export function randomItem<T>(arr: readonly T[]): T {
+	// biome-ignore lint/style/noNonNullAssertion: array is guaranteed non-empty
+	return arr[Math.floor(Math.random() * arr.length)]!;
+}
 
 export { z };
