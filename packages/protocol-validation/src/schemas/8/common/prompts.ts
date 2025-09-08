@@ -1,5 +1,6 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { randomItem, z } from "src/utils/zod-mock-extension";
+import { randomEdgeType, randomVariable } from "../../../utils/mock-ids";
 import { SortOrderSchema } from "../filters";
 
 const promptSchema = z
@@ -21,7 +22,7 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
 export const sociogramPromptSchema = promptSchema.extend({
 	sortOrder: SortOrderSchema.optional(),
 	layout: z.object({
-		layoutVariable: z.string().generateMock(() => crypto.randomUUID()),
+		layoutVariable: z.string().generateMock(() => randomVariable()),
 	}),
 	edges: z
 		.object({
@@ -38,33 +39,36 @@ export const sociogramPromptSchema = promptSchema.extend({
 });
 
 export const dyadCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string().generateMock(() => randomItem(["knows", "works_with", "friends_with", "related_to"])),
+	createEdge: z.string().generateMock(() => randomEdgeType()),
 });
 
 export const tieStrengthCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string().generateMock(() => randomItem(["knows", "works_with", "friends_with", "related_to"])),
-	edgeVariable: z.string().generateMock(() => crypto.randomUUID()),
+	createEdge: z.string().generateMock(() => randomEdgeType()),
+	edgeVariable: z.string().generateMock(() => randomVariable()),
 	negativeLabel: z
 		.string()
 		.generateMock(() => randomItem(["not_knows", "not_works_with", "not_friends_with", "not_related_to"])),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
-	variable: z.string(),
+	variable: z.string().generateMock(() => randomVariable()),
 	bucketSortOrder: SortOrderSchema.optional(),
 	binSortOrder: SortOrderSchema.optional(),
 	color: z.string().optional(),
 });
 
 export const categoricalBinPromptSchema = promptSchema.extend({
-	variable: z.string(),
+	variable: z.string().generateMock(() => randomVariable()),
 	// TODO: This should be structured this way:
 	// otherOption: z.object({
 	// 	binLabel: z.string(),
 	// 	variable: z.string(),
 	// 	prompt: z.string(),
 	// }).optional(),
-	otherVariable: z.string().optional(),
+	otherVariable: z
+		.string()
+		.generateMock(() => randomVariable())
+		.optional(),
 	otherVariablePrompt: z.string().optional(),
 	otherOptionLabel: z.string().optional(),
 	bucketSortOrder: SortOrderSchema.optional(),
@@ -72,13 +76,13 @@ export const categoricalBinPromptSchema = promptSchema.extend({
 });
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string(),
+	createEdge: z.string().generateMock(() => randomEdgeType()),
 	bucketSortOrder: SortOrderSchema.optional(),
 	binSortOrder: SortOrderSchema.optional(),
 });
 
 export const geospatialPromptSchema = promptSchema
 	.extend({
-		variable: z.string(),
+		variable: z.string().generateMock(() => randomVariable()),
 	})
 	.strict();

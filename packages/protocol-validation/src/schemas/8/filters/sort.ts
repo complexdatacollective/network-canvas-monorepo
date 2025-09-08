@@ -1,6 +1,6 @@
 import { randomItem, z } from "src/utils/zod-mock-extension";
+import { randomVariable } from "../../../utils/mock-ids";
 
-const properties = ["first_name", "last_name", "age", "dob", "freq"] as const;
 const directions = ["asc", "desc"] as const;
 
 export const SortOrderSchema = z
@@ -11,7 +11,7 @@ export const SortOrderSchema = z
 				direction: z.enum(["asc", "desc"]),
 			})
 			.generateMock(() => ({
-				property: randomItem(properties),
+				property: randomVariable(),
 				direction: randomItem(directions),
 			})),
 	)

@@ -1,5 +1,6 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { z } from "src/utils/zod-mock-extension";
+import { MOCK_IDS } from "../../../utils/mock-ids";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
 import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";
@@ -287,15 +288,14 @@ export const VariablesSchema = z
 		const ordinalVar = ordinalVariableSchema.generateMock();
 		const categoricalVar = categoricalVariableSchema.generateMock();
 
-		// Use names inspired by the sample protocol
-		const firstName = { ...textVar, name: "first_name" };
+		const firstName = { ...textVar, name: "name" };
 		const communicationFrequency = { ...ordinalVar, name: "communication_freq" };
 		const languagesSpoken = { ...categoricalVar, name: "languages_spoken" };
 
 		return {
-			[firstName.name]: firstName,
-			[communicationFrequency.name]: communicationFrequency,
-			[languagesSpoken.name]: languagesSpoken,
+			[MOCK_IDS.variables[0]]: firstName,
+			[MOCK_IDS.variables[1]]: communicationFrequency,
+			[MOCK_IDS.variables[2]]: languagesSpoken,
 		};
 	});
 

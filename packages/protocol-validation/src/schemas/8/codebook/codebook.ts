@@ -1,6 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateName, getAllEntityNames } from "../../../utils/validation-helpers";
+import { MOCK_IDS } from "../../../utils/mock-ids";
 import { EdgeDefinitionSchema, EgoDefinitionSchema, NodeDefinitionSchema } from "./definitions";
 
 export const CodebookSchema = z
@@ -23,17 +24,20 @@ export const CodebookSchema = z
 		}
 	})
 	.generateMock(() => {
-		// minimal codebook, could be expanded later on
 		const personNode = NodeDefinitionSchema.generateMock();
+		const orgNode = NodeDefinitionSchema.generateMock();
 		const friendshipEdge = EdgeDefinitionSchema.generateMock();
+		const worksWithEdge = EdgeDefinitionSchema.generateMock();
 		const ego = EgoDefinitionSchema.generateMock();
 
 		return {
 			node: {
-				person: { ...personNode, name: "Person" },
+				[MOCK_IDS.nodeTypes[0]]: { ...personNode, name: "Person" },
+				[MOCK_IDS.nodeTypes[1]]: { ...orgNode, name: "Organization" },
 			},
 			edge: {
-				friendship: { ...friendshipEdge, name: "Friendship" },
+				[MOCK_IDS.edgeTypes[0]]: { ...friendshipEdge, name: "Friendship" },
+				[MOCK_IDS.edgeTypes[1]]: { ...worksWithEdge, name: "WorksWith" },
 			},
 			ego: ego,
 		};

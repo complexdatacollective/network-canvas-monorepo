@@ -1,4 +1,5 @@
 import { randomItem, z } from "src/utils/zod-mock-extension";
+import { randomVariable } from "../../../utils/mock-ids";
 
 export const validations = {
 	required: z.boolean().optional(),
@@ -34,10 +35,22 @@ export const validations = {
 		.optional()
 		.generateMock(() => randomItem([3, 5, 10])),
 	unique: z.boolean().optional(),
-	differentFrom: z.string().optional(),
-	sameAs: z.string().optional(),
-	greaterThanVariable: z.string().optional(),
-	lessThanVariable: z.string().optional(),
+	differentFrom: z
+		.string()
+		.generateMock(() => randomVariable())
+		.optional(),
+	sameAs: z
+		.string()
+		.generateMock(() => randomVariable())
+		.optional(),
+	greaterThanVariable: z
+		.string()
+		.generateMock(() => randomVariable())
+		.optional(),
+	lessThanVariable: z
+		.string()
+		.generateMock(() => randomVariable())
+		.optional(),
 };
 
 export const ValidationsSchema = z.object(validations);

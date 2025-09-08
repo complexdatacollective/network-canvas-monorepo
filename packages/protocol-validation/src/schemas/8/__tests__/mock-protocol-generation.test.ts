@@ -15,7 +15,7 @@ describe("Mock Protocol", () => {
 
 		// should pass validation - this is currently failing due to complex integration issues
 		// stages need to reference codebook items, which are randomly generated
-		// expect(result.success).toBe(true);
+		expect(result.success).toBe(true);
 
 		// simple checks. should expand later.
 		expect(protocol.schemaVersion).toBe(8);
