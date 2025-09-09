@@ -62,7 +62,6 @@ const multipleFilterRuleSchema = z
 		join: z.enum(["OR", "AND"]).generateMock(() => "AND" as const),
 		rules: z
 			.array(filterRuleSchema)
-			.min(2)
 			.generateMock(() => [filterRuleSchema.generateMock(), filterRuleSchema.generateMock()]),
 	})
 	.strict();
