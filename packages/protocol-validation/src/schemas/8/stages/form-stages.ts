@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { FormSchema } from "../common";
 import { baseStageSchema } from "./base";
 
@@ -25,7 +26,12 @@ export const egoFormStage = baseStageSchema
 		...base,
 		type: "EgoForm",
 		introductionPanel: {
-			title: randomItem(["Consent Form", "Personal Information", "Background Questions", "Participant Details"]),
+			title: faker.helpers.arrayElement([
+				"Consent Form",
+				"Personal Information",
+				"Background Questions",
+				"Participant Details",
+			]),
 			text: "Please answer the following questions about yourself.",
 		},
 		form: {
@@ -47,22 +53,26 @@ export const alterFormStage = baseStageSchema
 		...base,
 		type: "AlterForm",
 		introductionPanel: {
-			title: randomItem(["Person Per-Alter Form", "People in Your Network"]),
+			title: faker.helpers.arrayElement(["Person Per-Alter Form", "People in Your Network"]),
 			text: "On the next screen, you will be asked some questions about each person in your network.",
 		},
 		form: {
 			fields: [
 				{
 					variable: crypto.randomUUID(),
-					prompt: randomItem(["How old is this person?", "What is their age?", "Age of this person?"]),
+					prompt: faker.helpers.arrayElement(["How old is this person?", "What is their age?", "Age of this person?"]),
 				},
 				{
 					variable: crypto.randomUUID(),
-					prompt: randomItem(["What is their occupation?", "What do they do for work?", "Their job or profession?"]),
+					prompt: faker.helpers.arrayElement([
+						"What is their occupation?",
+						"What do they do for work?",
+						"Their job or profession?",
+					]),
 				},
 				{
 					variable: crypto.randomUUID(),
-					prompt: randomItem([
+					prompt: faker.helpers.arrayElement([
 						"How long have you known them?",
 						"Length of relationship?",
 						"Years you've known this person?",
@@ -82,14 +92,14 @@ export const alterEdgeFormStage = baseStageSchema
 		...base,
 		type: "AlterEdgeForm",
 		introductionPanel: {
-			title: randomItem(["About This Relationship", "Relationship Details", "Connection Information"]),
+			title: faker.helpers.arrayElement(["About This Relationship", "Relationship Details", "Connection Information"]),
 			text: "On the next screen, you will be asked some questions about the relationship between pairs of people in your network.",
 		},
 		form: {
 			fields: [
 				{
 					variable: crypto.randomUUID(),
-					prompt: randomItem([
+					prompt: faker.helpers.arrayElement([
 						"How strong is this relationship?",
 						"Rate the strength of this connection",
 						"How close are they?",
@@ -97,11 +107,15 @@ export const alterEdgeFormStage = baseStageSchema
 				},
 				{
 					variable: crypto.randomUUID(),
-					prompt: randomItem(["How often do they interact?", "Frequency of contact", "How often do they communicate?"]),
+					prompt: faker.helpers.arrayElement([
+						"How often do they interact?",
+						"Frequency of contact",
+						"How often do they communicate?",
+					]),
 				},
 				{
 					variable: crypto.randomUUID(),
-					prompt: randomItem([
+					prompt: faker.helpers.arrayElement([
 						"What type of relationship is this?",
 						"How would you describe this relationship?",
 						"Nature of their connection?",

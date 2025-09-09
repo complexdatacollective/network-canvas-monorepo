@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 
 const fileNames = ["background.jpg", "logo.png", "map.geojson", "classmates.csv"];
 const mockVideoNames = ["intro_video.mp4", "tutorial.mp4", "outro.mov"];
@@ -11,13 +12,13 @@ const baseAssetSchema = z.object({
 
 const videoAudioAssetSchema = baseAssetSchema.extend({
 	type: z.enum(["video", "audio"]),
-	source: z.string().generateMock(() => randomItem([...mockVideoNames, ...mockAudioNames])),
+	source: z.string().generateMock(() => faker.helpers.arrayElement([...mockVideoNames, ...mockAudioNames])),
 	loop: z.boolean().optional(),
 });
 
 const fileAssetSchema = baseAssetSchema.extend({
 	type: z.enum(["image", "network", "geojson"]),
-	source: z.string().generateMock(() => randomItem(fileNames)),
+	source: z.string().generateMock(() => faker.helpers.arrayElement(fileNames)),
 });
 
 const apiKeyAssetSchema = baseAssetSchema.extend({

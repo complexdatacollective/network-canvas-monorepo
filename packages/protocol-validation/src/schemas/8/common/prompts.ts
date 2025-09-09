@@ -1,5 +1,6 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { randomEdgeType, randomVariable } from "../../../utils/mock-ids";
 import { SortOrderSchema } from "../filters";
 
@@ -47,7 +48,9 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
 	edgeVariable: z.string().generateMock(() => randomVariable()),
 	negativeLabel: z
 		.string()
-		.generateMock(() => randomItem(["not_knows", "not_works_with", "not_friends_with", "not_related_to"])),
+		.generateMock(() =>
+			faker.helpers.arrayElement(["not_knows", "not_works_with", "not_friends_with", "not_related_to"]),
+		),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({

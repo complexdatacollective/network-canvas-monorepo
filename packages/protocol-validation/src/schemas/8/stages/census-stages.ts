@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { dyadCensusPromptSchema, oneToManyDyadCensusPromptSchema, tieStrengthCensusPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
@@ -39,7 +40,7 @@ export const dyadCensusStage = baseStageSchema
 		prompts: [
 			{
 				id: crypto.randomUUID(),
-				text: randomItem([
+				text: faker.helpers.arrayElement([
 					"Do these two people spend time together outside of class?",
 					"Do these two people know each other?",
 					"Have these two people met before?",
@@ -75,14 +76,14 @@ export const tieStrengthCensusStage = baseStageSchema
 		prompts: [
 			{
 				id: crypto.randomUUID(),
-				text: randomItem([
+				text: faker.helpers.arrayElement([
 					"How much do these two people know each other?",
 					"Rate the relationship strength between these two people",
 					"How close would you say these two people are?",
 				]),
 				createEdge: crypto.randomUUID(),
 				edgeVariable: crypto.randomUUID(),
-				negativeLabel: randomItem(["Weak", "Not close", "Distant"]),
+				negativeLabel: faker.helpers.arrayElement(["Weak", "Not close", "Distant"]),
 			},
 		],
 	}));
@@ -92,7 +93,7 @@ export const oneToManyDyadCensusStage = baseStageSchema
 		type: z.literal("OneToManyDyadCensus"),
 		subject: NodeStageSubjectSchema,
 		behaviours: z.object({
-			removeAfterConsideration: z.boolean().generateMock(() => randomItem([true, false])),
+			removeAfterConsideration: z.boolean().generateMock(() => faker.helpers.arrayElement([true, false])),
 		}),
 		prompts: z
 			.array(oneToManyDyadCensusPromptSchema)
@@ -118,7 +119,7 @@ export const oneToManyDyadCensusStage = baseStageSchema
 		prompts: [
 			{
 				id: crypto.randomUUID(),
-				text: randomItem([
+				text: faker.helpers.arrayElement([
 					"Which of these people does this person know?",
 					"Who does this person have a relationship with?",
 					"Select all people that this person is connected to",

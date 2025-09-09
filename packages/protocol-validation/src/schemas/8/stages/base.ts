@@ -1,4 +1,4 @@
-import { randomItem } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
 import { z } from "zod";
 import { SkipLogicSchema } from "../common";
 import { FilterSchema } from "../filters";
@@ -23,7 +23,7 @@ export const baseStageSchema = z
 
 		return {
 			id: `stage_${Math.random().toString(36).substring(2, 8)}`,
-			label: randomItem(stageNames),
+			label: faker.helpers.arrayElement(stageNames),
 			interviewScript: Math.random() < 0.5 ? "This is the script text." : undefined,
 			introductionPanel: {
 				title: "Welcome",

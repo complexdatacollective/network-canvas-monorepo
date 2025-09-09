@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { randomVariable } from "../../../utils/mock-ids";
 
 const directions = ["asc", "desc"] as const;
@@ -12,7 +13,7 @@ export const SortOrderSchema = z
 			})
 			.generateMock(() => ({
 				property: randomVariable(),
-				direction: randomItem(directions),
+				direction: faker.helpers.arrayElement(directions),
 			})),
 	)
 	.min(2)

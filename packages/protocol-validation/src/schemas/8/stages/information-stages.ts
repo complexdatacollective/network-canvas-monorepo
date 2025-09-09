@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { baseStageSchema } from "./base";
 
@@ -8,7 +9,7 @@ const ItemSchema = z
 		id: z.string().generateMock(() => crypto.randomUUID()),
 		type: z.enum(["text", "asset"]),
 		content: z.string().generateMock(() =>
-			randomItem([
+			faker.helpers.arrayElement([
 				"Welcome to our research study.",
 				"On the next screen, you will be asked to provide some information.",
 				"Please read through this information.",
@@ -19,7 +20,7 @@ const ItemSchema = z
 		size: z
 			.string()
 			.optional()
-			.generateMock(() => randomItem(["SMALL", "MEDIUM", "LARGE"])),
+			.generateMock(() => faker.helpers.arrayElement(["SMALL", "MEDIUM", "LARGE"])),
 		loop: z.boolean().optional(),
 	})
 	.strict();
@@ -33,7 +34,7 @@ export const informationStage = baseStageSchema
 			.string()
 			.optional()
 			.generateMock(() =>
-				randomItem([
+				faker.helpers.arrayElement([
 					"Welcome to the Study",
 					"Information Interface",
 					"Using the Sociogram",
@@ -56,7 +57,7 @@ export const informationStage = baseStageSchema
 	.generateMock((base) => ({
 		...base,
 		type: "Information",
-		title: randomItem([
+		title: faker.helpers.arrayElement([
 			"Welcome to the Sample Protocol",
 			"Information Interface",
 			"Using the Sociogram",
@@ -96,11 +97,13 @@ export const anonymisationStage = baseStageSchema
 		type: z.literal("Anonymisation"),
 		explanationText: z
 			.object({
-				title: z.string().generateMock(() => randomItem(["Create an Anonymous ID", "Anonymous Identifier"])),
+				title: z
+					.string()
+					.generateMock(() => faker.helpers.arrayElement(["Create an Anonymous ID", "Anonymous Identifier"])),
 				body: z
 					.string()
 					.generateMock(() =>
-						randomItem([
+						faker.helpers.arrayElement([
 							"Please create a unique identifier that will be used to anonymize your data.",
 							"To protect your privacy, please enter a unique code that only you will know.",
 							"Create a personal identifier to keep your responses anonymous while allowing us to link your data.",
@@ -114,12 +117,12 @@ export const anonymisationStage = baseStageSchema
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => randomItem([4, 6, 8])),
+					.generateMock(() => faker.helpers.arrayElement([4, 6, 8])),
 				maxLength: z
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => randomItem([16, 20, 24])),
+					.generateMock(() => faker.helpers.arrayElement([16, 20, 24])),
 			})
 			.optional(),
 	})

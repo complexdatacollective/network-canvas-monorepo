@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { sociogramPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
@@ -24,11 +25,11 @@ export const sociogramStage = baseStageSchema
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => randomItem([1, 2, 3, 4])),
+					.generateMock(() => faker.helpers.arrayElement([1, 2, 3, 4])),
 				skewedTowardCenter: z
 					.boolean()
 					.optional()
-					.generateMock(() => randomItem([true, false])),
+					.generateMock(() => faker.helpers.arrayElement([true, false])),
 			})
 			.strict()
 			.optional(),
@@ -85,7 +86,12 @@ export const narrativeStage = baseStageSchema
 						label: z
 							.string()
 							.generateMock(() =>
-								randomItem(["Sample Preset", "Network Overview", "Group Visualization", "Relationship Display"]),
+								faker.helpers.arrayElement([
+									"Sample Preset",
+									"Network Overview",
+									"Group Visualization",
+									"Relationship Display",
+								]),
 							),
 						layoutVariable: z.string().generateMock(() => crypto.randomUUID()),
 						groupVariable: z
@@ -126,7 +132,7 @@ export const narrativeStage = baseStageSchema
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => randomItem([1, 2, 3])),
+					.generateMock(() => faker.helpers.arrayElement([1, 2, 3])),
 				skewedTowardCenter: z.boolean().optional(),
 			})
 			.strict()

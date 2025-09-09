@@ -238,10 +238,4 @@ z.ZodType.prototype.generateMock = function <T>(generator?: MockGenerator<T>) {
 	return generateMockData(this);
 };
 
-//todo - fix this non null assertion
-export function randomItem<T>(arr: readonly T[]): T {
-	// biome-ignore lint/style/noNonNullAssertion: array is guaranteed non-empty
-	return arr[Math.floor(Math.random() * arr.length)]!;
-}
-
 export { z };

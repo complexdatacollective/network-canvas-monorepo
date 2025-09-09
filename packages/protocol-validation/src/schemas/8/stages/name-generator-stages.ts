@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { FormSchema, nameGeneratorPromptSchema, panelSchema } from "../common";
 import { SortOrderSchema } from "../filters";
@@ -58,7 +59,7 @@ export const nameGeneratorStage = baseStageSchema
 		type: "NameGenerator",
 		behaviours: {
 			minNodes: 1,
-			maxNodes: randomItem([10, 15, 20, 25]),
+			maxNodes: faker.helpers.arrayElement([10, 15, 20, 25]),
 		},
 	}));
 
@@ -109,7 +110,7 @@ export const nameGeneratorQuickAddStage = baseStageSchema
 		type: "NameGeneratorQuickAdd",
 		behaviours: {
 			minNodes: 1,
-			maxNodes: randomItem([5, 10, 15]),
+			maxNodes: faker.helpers.arrayElement([5, 10, 15]),
 		},
 	}));
 
@@ -133,14 +134,14 @@ export const nameGeneratorRosterStage = baseStageSchema
 			.optional(),
 		searchOptions: z
 			.object({
-				fuzziness: z.number().generateMock(() => randomItem([0.25, 0.5, 0.75])),
-				matchProperties: z.array(z.string()).generateMock(() =>
-					randomItem([
+				fuzziness: z.number().generateMock(() => faker.helpers.arrayElement([0.25, 0.5, 0.75])),
+				matchProperties: z.array(z.string()).generateMock(() => [
+					...faker.helpers.arrayElement([
 						["name", "first_name", "last_name"],
 						["website", "country", "name"],
 						["email", "name"],
 					]),
-				),
+				]),
 			})
 			.strict()
 			.optional(),
@@ -183,6 +184,6 @@ export const nameGeneratorRosterStage = baseStageSchema
 		},
 		behaviours: {
 			minNodes: 1,
-			maxNodes: randomItem([20, 30, 50]),
+			maxNodes: faker.helpers.arrayElement([20, 30, 50]),
 		},
 	}));

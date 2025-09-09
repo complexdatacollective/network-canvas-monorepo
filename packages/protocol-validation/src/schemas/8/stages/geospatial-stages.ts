@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { geospatialPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
@@ -39,20 +40,28 @@ const styleOptions = z.enum(mapboxStyleOptions.map((option) => option.value) as 
 
 const mapOptions = z.object({
 	tokenAssetId: z.string().generateMock(() => crypto.randomUUID()),
-	style: styleOptions.generateMock(() => randomItem(mapboxStyleOptions).value),
+	style: styleOptions.generateMock(() => faker.helpers.arrayElement(mapboxStyleOptions).value),
 	center: z.tuple([z.number(), z.number()]),
 	initialZoom: z
 		.number()
 		.min(0, { message: "Zoom must be at least 0" })
 		.max(22, { message: "Zoom must be less than or equal to 22" })
-		.generateMock(() => randomItem([10, 12, 14, 16])),
+		.generateMock(() => faker.helpers.arrayElement([10, 12, 14, 16])),
 	dataSourceAssetId: z.string().generateMock(() => crypto.randomUUID()),
 	color: z
 		.string()
 		.generateMock(() =>
-			randomItem(["node-color-seq-1", "node-color-seq-2", "node-color-seq-3", "node-color-seq-4", "node-color-seq-5"]),
+			faker.helpers.arrayElement([
+				"node-color-seq-1",
+				"node-color-seq-2",
+				"node-color-seq-3",
+				"node-color-seq-4",
+				"node-color-seq-5",
+			]),
 		),
-	targetFeatureProperty: z.string().generateMock(() => randomItem(["name", "location_type", "category"])), // property of geojson to select
+	targetFeatureProperty: z
+		.string()
+		.generateMock(() => faker.helpers.arrayElement(["name", "location_type", "category"])), // property of geojson to select
 });
 
 export type MapOptions = z.infer<typeof mapOptions>;
@@ -92,7 +101,7 @@ export const geospatialStage = baseStageSchema
 		prompts: [
 			{
 				id: crypto.randomUUID(),
-				text: randomItem([
+				text: faker.helpers.arrayElement([
 					"Where does this person live?",
 					"Please mark where this person works",
 					"Select the geographic location for each person.",

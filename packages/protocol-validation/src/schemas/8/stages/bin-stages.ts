@@ -1,4 +1,5 @@
-import { randomItem, z } from "src/utils/zod-mock-extension";
+import { faker } from "@faker-js/faker";
+import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { categoricalBinPromptSchema, ordinalBinPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
@@ -36,13 +37,13 @@ export const ordinalBinStage = baseStageSchema
 			{
 				id: crypto.randomUUID(),
 				variable: crypto.randomUUID(),
-				text: randomItem([
+				text: faker.helpers.arrayElement([
 					"When was the last time that you communicated with each of the people you named?",
 					"How often do you see each person?",
 					"Rank these people by how close you feel to them",
 					"Order these people by how long you have known them",
 				]),
-				color: randomItem(["ord-color-seq-1", "ord-color-seq-2", "ord-color-seq-3"]),
+				color: faker.helpers.arrayElement(["ord-color-seq-1", "ord-color-seq-2", "ord-color-seq-3"]),
 			},
 		],
 	}));
@@ -73,14 +74,14 @@ export const categoricalBinStage = baseStageSchema
 			{
 				id: crypto.randomUUID(),
 				variable: crypto.randomUUID(),
-				text: randomItem([
+				text: faker.helpers.arrayElement([
 					"Which of these options best describes how you know this person?",
 					"What type of relationship do you have with each person?",
 					"How would you categorize your relationship with each person?",
 					"Which group does each person belong to?",
 				]),
-				otherOptionLabel: randomItem(["Other", "Something else", "Not listed"]),
-				otherVariablePrompt: randomItem([
+				otherOptionLabel: faker.helpers.arrayElement(["Other", "Something else", "Not listed"]),
+				otherVariablePrompt: faker.helpers.arrayElement([
 					"Which context best describes how you know this person?",
 					"Please specify the relationship type",
 					"How would you describe this relationship?",
