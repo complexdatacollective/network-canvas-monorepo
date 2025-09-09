@@ -8,14 +8,15 @@ const ItemSchema = z
 	.object({
 		id: z.string().generateMock(() => crypto.randomUUID()),
 		type: z.enum(["text", "asset"]),
-		content: z.string().generateMock(() =>
-			faker.helpers.arrayElement([
-				"Welcome to our research study.",
-				"On the next screen, you will be asked to provide some information.",
-				"Please read through this information.",
-				crypto.randomUUID(), // For asset content
-			]),
-		),
+		content: z
+			.string()
+			.generateMock(() =>
+				faker.helpers.arrayElement([
+					"Welcome to our research study.",
+					"On the next screen, you will be asked to provide some information.",
+					"Please read through this information.",
+				]),
+			),
 		description: z.string().optional(),
 		size: z
 			.string()

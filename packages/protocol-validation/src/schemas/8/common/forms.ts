@@ -1,8 +1,8 @@
+import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { randomVariable } from "../../../utils/mock-ids";
 
 const FormFieldSchema = z
-	.object({ variable: z.string().generateMock(() => randomVariable()), prompt: z.string() })
+	.object({ variable: z.string().generateMock(() => getNodeVariableId(0)), prompt: z.string() })
 	.strict();
 
 export type FormField = z.infer<typeof FormFieldSchema>;

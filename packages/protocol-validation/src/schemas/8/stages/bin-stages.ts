@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { categoricalBinPromptSchema, ordinalBinPromptSchema } from "../common";
@@ -7,7 +8,7 @@ import { baseStageSchema } from "./base";
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
@@ -73,7 +74,7 @@ export const categoricalBinStage = baseStageSchema
 		prompts: [
 			{
 				id: crypto.randomUUID(),
-				variable: crypto.randomUUID(),
+				variable: getNodeVariableId(),
 				text: faker.helpers.arrayElement([
 					"Which of these options best describes how you know this person?",
 					"What type of relationship do you have with each person?",
@@ -86,7 +87,7 @@ export const categoricalBinStage = baseStageSchema
 					"Please specify the relationship type",
 					"How would you describe this relationship?",
 				]),
-				otherVariable: crypto.randomUUID(),
+				otherVariable: getNodeVariableId(1),
 			},
 		],
 	}));

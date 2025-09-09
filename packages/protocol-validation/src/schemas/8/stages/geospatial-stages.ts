@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { getAssetId, getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { geospatialPromptSchema } from "../common";
@@ -7,7 +8,7 @@ import { baseStageSchema } from "./base";
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
@@ -39,7 +40,7 @@ const mapboxStyleOptions = [
 const styleOptions = z.enum(mapboxStyleOptions.map((option) => option.value) as [string, ...string[]]);
 
 const mapOptions = z.object({
-	tokenAssetId: z.string().generateMock(() => crypto.randomUUID()),
+	tokenAssetId: z.string().generateMock(() => getAssetId(0)),
 	style: styleOptions.generateMock(() => faker.helpers.arrayElement(mapboxStyleOptions).value),
 	center: z.tuple([z.number(), z.number()]),
 	initialZoom: z
@@ -47,7 +48,7 @@ const mapOptions = z.object({
 		.min(0, { message: "Zoom must be at least 0" })
 		.max(22, { message: "Zoom must be less than or equal to 22" })
 		.generateMock(() => faker.helpers.arrayElement([10, 12, 14, 16])),
-	dataSourceAssetId: z.string().generateMock(() => crypto.randomUUID()),
+	dataSourceAssetId: z.string().generateMock(() => getAssetId(1)),
 	color: z
 		.string()
 		.generateMock(() =>
@@ -90,11 +91,11 @@ export const geospatialStage = baseStageSchema
 		...base,
 		type: "Geospatial",
 		mapOptions: {
-			tokenAssetId: crypto.randomUUID(),
+			tokenAssetId: getAssetId(0),
 			style: "mapbox://styles/mapbox/streets-v12",
 			center: [-74.006, 40.7128],
 			initialZoom: 12,
-			dataSourceAssetId: crypto.randomUUID(),
+			dataSourceAssetId: getAssetId(1),
 			color: "node-color-seq-1",
 			targetFeatureProperty: "name",
 		},
@@ -106,7 +107,7 @@ export const geospatialStage = baseStageSchema
 					"Please mark where this person works",
 					"Select the geographic location for each person.",
 				]),
-				variable: crypto.randomUUID(),
+				variable: getNodeVariableId(0),
 			},
 		],
 	}));

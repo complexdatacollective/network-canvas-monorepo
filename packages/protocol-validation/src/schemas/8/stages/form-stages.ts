@@ -1,4 +1,11 @@
 import { faker } from "@faker-js/faker";
+import {
+	getEdgeTypeId,
+	getEdgeVariableId,
+	getEgoVariableId,
+	getNodeTypeId,
+	getNodeVariableId,
+} from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { FormSchema } from "../common";
 import { baseStageSchema } from "./base";
@@ -6,14 +13,14 @@ import { baseStageSchema } from "./base";
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
 const EdgeStageSubjectSchema = z
 	.object({
 		entity: z.literal("edge"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getEdgeTypeId()),
 	})
 	.strict();
 
@@ -36,9 +43,9 @@ export const egoFormStage = baseStageSchema
 		},
 		form: {
 			fields: [
-				{ variable: crypto.randomUUID(), prompt: "What is your first name?" },
-				{ variable: crypto.randomUUID(), prompt: "What is your age?" },
-				{ variable: crypto.randomUUID(), prompt: "What is your date of birth?" },
+				{ variable: getEgoVariableId(0), prompt: "What is your first name?" },
+				{ variable: getEgoVariableId(1), prompt: "What is your age?" },
+				{ variable: getEgoVariableId(2), prompt: "What is your date of birth?" },
 			],
 		},
 	}));
@@ -59,11 +66,11 @@ export const alterFormStage = baseStageSchema
 		form: {
 			fields: [
 				{
-					variable: crypto.randomUUID(),
+					variable: getNodeVariableId(0),
 					prompt: faker.helpers.arrayElement(["How old is this person?", "What is their age?", "Age of this person?"]),
 				},
 				{
-					variable: crypto.randomUUID(),
+					variable: getNodeVariableId(1),
 					prompt: faker.helpers.arrayElement([
 						"What is their occupation?",
 						"What do they do for work?",
@@ -71,7 +78,7 @@ export const alterFormStage = baseStageSchema
 					]),
 				},
 				{
-					variable: crypto.randomUUID(),
+					variable: getNodeVariableId(2),
 					prompt: faker.helpers.arrayElement([
 						"How long have you known them?",
 						"Length of relationship?",
@@ -98,7 +105,7 @@ export const alterEdgeFormStage = baseStageSchema
 		form: {
 			fields: [
 				{
-					variable: crypto.randomUUID(),
+					variable: getEdgeVariableId(0),
 					prompt: faker.helpers.arrayElement([
 						"How strong is this relationship?",
 						"Rate the strength of this connection",
@@ -106,7 +113,7 @@ export const alterEdgeFormStage = baseStageSchema
 					]),
 				},
 				{
-					variable: crypto.randomUUID(),
+					variable: getEdgeVariableId(1),
 					prompt: faker.helpers.arrayElement([
 						"How often do they interact?",
 						"Frequency of contact",
@@ -114,7 +121,7 @@ export const alterEdgeFormStage = baseStageSchema
 					]),
 				},
 				{
-					variable: crypto.randomUUID(),
+					variable: getEdgeVariableId(2),
 					prompt: faker.helpers.arrayElement([
 						"What type of relationship is this?",
 						"How would you describe this relationship?",

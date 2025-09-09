@@ -1,5 +1,5 @@
+import { getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { randomNodeType, randomVariable } from "../../../utils/mock-ids";
 
 export const filterRuleSchema = z
 	.object({
@@ -10,11 +10,11 @@ export const filterRuleSchema = z
 				type: z
 					.string()
 					.optional()
-					.generateMock(() => randomNodeType()),
+					.generateMock(() => getNodeTypeId()),
 				attribute: z
 					.string()
 					.optional()
-					.generateMock(() => randomVariable()),
+					.generateMock(() => getNodeVariableId()),
 				operator: z
 					.enum([
 						// TODO: this can be narrowed based on `type` and `attribute`

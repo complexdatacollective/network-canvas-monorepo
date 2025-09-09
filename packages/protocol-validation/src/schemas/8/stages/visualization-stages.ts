@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { getAssetId, getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { sociogramPromptSchema } from "../common";
@@ -7,7 +8,7 @@ import { baseStageSchema } from "./base";
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
@@ -20,7 +21,7 @@ export const sociogramStage = baseStageSchema
 				image: z
 					.string()
 					.optional()
-					.generateMock(() => crypto.randomUUID()),
+					.generateMock(() => getAssetId()),
 				concentricCircles: z
 					.number()
 					.int()
@@ -65,7 +66,7 @@ export const sociogramStage = baseStageSchema
 			{
 				id: crypto.randomUUID(),
 				layout: {
-					layoutVariable: crypto.randomUUID(),
+					layoutVariable: getNodeVariableId(0),
 				},
 				highlight: {
 					allowHighlighting: false,
@@ -94,11 +95,11 @@ export const narrativeStage = baseStageSchema
 									"Relationship Display",
 								]),
 							),
-						layoutVariable: z.string().generateMock(() => crypto.randomUUID()),
+						layoutVariable: z.string().generateMock(() => getNodeVariableId(0)),
 						groupVariable: z
 							.string()
 							.optional()
-							.generateMock(() => crypto.randomUUID()),
+							.generateMock(() => getNodeVariableId(1)),
 						edges: z
 							.object({
 								display: z

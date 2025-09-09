@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
+import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { randomVariable } from "../../../utils/mock-ids";
 
 const directions = ["asc", "desc"] as const;
 
@@ -11,7 +11,7 @@ export const SortOrderSchema = z.array(
 			direction: z.enum(["asc", "desc"]),
 		})
 		.generateMock(() => ({
-			property: randomVariable(),
+			property: getNodeVariableId(),
 			direction: faker.helpers.arrayElement(directions),
 		})),
 );

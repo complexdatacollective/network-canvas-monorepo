@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { getEdgeTypeId, getEdgeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { dyadCensusPromptSchema, oneToManyDyadCensusPromptSchema, tieStrengthCensusPromptSchema } from "../common";
@@ -46,7 +47,7 @@ export const dyadCensusStage = baseStageSchema
 					"Have these two people met before?",
 					"Are these two people friends?",
 				]),
-				createEdge: crypto.randomUUID(),
+				createEdge: getEdgeTypeId(),
 			},
 		],
 	}));
@@ -81,8 +82,8 @@ export const tieStrengthCensusStage = baseStageSchema
 					"Rate the relationship strength between these two people",
 					"How close would you say these two people are?",
 				]),
-				createEdge: crypto.randomUUID(),
-				edgeVariable: crypto.randomUUID(),
+				createEdge: getEdgeTypeId(),
+				edgeVariable: getEdgeVariableId(),
 				negativeLabel: faker.helpers.arrayElement(["Weak", "Not close", "Distant"]),
 			},
 		],
@@ -124,7 +125,7 @@ export const oneToManyDyadCensusStage = baseStageSchema
 					"Who does this person have a relationship with?",
 					"Select all people that this person is connected to",
 				]),
-				createEdge: crypto.randomUUID(),
+				createEdge: getEdgeTypeId(),
 			},
 		],
 	}));

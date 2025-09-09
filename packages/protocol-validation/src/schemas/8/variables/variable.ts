@@ -1,6 +1,6 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
+import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { MOCK_IDS } from "../../../utils/mock-ids";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
 import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";
@@ -293,9 +293,9 @@ export const VariablesSchema = z
 		const languagesSpoken = { ...categoricalVar, name: "languages_spoken" };
 
 		return {
-			[MOCK_IDS.variables[0]]: firstName,
-			[MOCK_IDS.variables[1]]: communicationFrequency,
-			[MOCK_IDS.variables[2]]: languagesSpoken,
+			[getNodeVariableId(0)]: firstName,
+			[getNodeVariableId(1)]: communicationFrequency,
+			[getNodeVariableId(2)]: languagesSpoken,
 		};
 	});
 

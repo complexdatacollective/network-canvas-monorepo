@@ -1,17 +1,17 @@
+import { getEdgeTypeId, getNodeTypeId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { randomNodeType, randomEdgeType } from "../../../utils/mock-ids";
 
 export const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => randomNodeType()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
 export const EdgeStageSubjectSchema = z
 	.object({
 		entity: z.literal("edge"),
-		type: z.string().generateMock(() => randomEdgeType()),
+		type: z.string().generateMock(() => getEdgeTypeId()),
 	})
 	.strict();
 

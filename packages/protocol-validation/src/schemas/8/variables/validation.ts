@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
+import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { randomVariable } from "../../../utils/mock-ids";
 
 export const validations = {
 	required: z.boolean().optional(),
@@ -38,19 +38,19 @@ export const validations = {
 	unique: z.boolean().optional(),
 	differentFrom: z
 		.string()
-		.generateMock(() => randomVariable())
+		.generateMock(() => getNodeVariableId(1))
 		.optional(),
 	sameAs: z
 		.string()
-		.generateMock(() => randomVariable())
+		.generateMock(() => getNodeVariableId(1))
 		.optional(),
 	greaterThanVariable: z
 		.string()
-		.generateMock(() => randomVariable())
+		.generateMock(() => getNodeVariableId(1))
 		.optional(),
 	lessThanVariable: z
 		.string()
-		.generateMock(() => randomVariable())
+		.generateMock(() => getNodeVariableId(1))
 		.optional(),
 };
 

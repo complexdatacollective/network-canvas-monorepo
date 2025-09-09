@@ -17,6 +17,7 @@ export * from "./stages";
 export * from "./variables";
 
 // Import what we need for the ProtocolSchema
+import { getAssetId } from "src/utils/mock-seeds";
 import { assetSchema } from "./assets";
 import { CodebookSchema } from "./codebook";
 import { ExperimentsSchema, type StageSubject } from "./common";
@@ -329,8 +330,8 @@ const ProtocolSchema = z
 			},
 			codebook,
 			assetManifest: {
-				[crypto.randomUUID()]: assetSchema.generateMock(),
-				[crypto.randomUUID()]: assetSchema.generateMock(),
+				[getAssetId(0)]: assetSchema.generateMock(),
+				[getAssetId(1)]: assetSchema.generateMock(),
 			},
 			stages,
 		};

@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { getAssetId, getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { FormSchema, nameGeneratorPromptSchema, panelSchema } from "../common";
@@ -8,7 +9,7 @@ import { baseStageSchema } from "./base";
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
@@ -66,7 +67,7 @@ export const nameGeneratorStage = baseStageSchema
 export const nameGeneratorQuickAddStage = baseStageSchema
 	.extend({
 		type: z.literal("NameGeneratorQuickAdd"),
-		quickAdd: z.string().generateMock(() => crypto.randomUUID()),
+		quickAdd: z.string().generateMock(() => getNodeVariableId(0)),
 		subject: NodeStageSubjectSchema,
 		panels: z
 			.array(panelSchema)
@@ -118,7 +119,7 @@ export const nameGeneratorRosterStage = baseStageSchema
 	.extend({
 		type: z.literal("NameGeneratorRoster"),
 		subject: NodeStageSubjectSchema,
-		dataSource: z.string().generateMock(() => crypto.randomUUID()),
+		dataSource: z.string().generateMock(() => getAssetId()),
 		cardOptions: z
 			.object({
 				displayLabel: z.string().optional(),

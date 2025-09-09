@@ -1,7 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { faker } from "@faker-js/faker";
+import { getEdgeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
-import { randomEdgeType, randomVariable } from "../../../utils/mock-ids";
 import { SortOrderSchema } from "../filters";
 
 const promptSchema = z
@@ -24,7 +24,7 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
 export const sociogramPromptSchema = promptSchema.extend({
 	sortOrder: SortOrderSchema.optional(),
 	layout: z.object({
-		layoutVariable: z.string().generateMock(() => randomVariable()),
+		layoutVariable: z.string().generateMock(() => getNodeVariableId()),
 	}),
 	edges: z
 		.object({
@@ -41,12 +41,12 @@ export const sociogramPromptSchema = promptSchema.extend({
 });
 
 export const dyadCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string().generateMock(() => randomEdgeType()),
+	createEdge: z.string().generateMock(() => getEdgeTypeId()),
 });
 
 export const tieStrengthCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string().generateMock(() => randomEdgeType()),
-	edgeVariable: z.string().generateMock(() => randomVariable()),
+	createEdge: z.string().generateMock(() => getEdgeTypeId()),
+	edgeVariable: z.string().generateMock(() => getNodeVariableId()),
 	negativeLabel: z
 		.string()
 		.generateMock(() =>
@@ -55,14 +55,14 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
-	variable: z.string().generateMock(() => randomVariable()),
+	variable: z.string().generateMock(() => getNodeVariableId()),
 	bucketSortOrder: SortOrderSchema.optional(),
 	binSortOrder: SortOrderSchema.optional(),
 	color: z.string().optional(),
 });
 
 export const categoricalBinPromptSchema = promptSchema.extend({
-	variable: z.string().generateMock(() => randomVariable()),
+	variable: z.string().generateMock(() => getNodeVariableId()),
 	// TODO: This should be structured this way:
 	// otherOption: z.object({
 	// 	binLabel: z.string(),
@@ -71,7 +71,7 @@ export const categoricalBinPromptSchema = promptSchema.extend({
 	// }).optional(),
 	otherVariable: z
 		.string()
-		.generateMock(() => randomVariable())
+		.generateMock(() => getNodeVariableId())
 		.optional(),
 	otherVariablePrompt: z.string().optional(),
 	otherOptionLabel: z.string().optional(),
@@ -80,13 +80,13 @@ export const categoricalBinPromptSchema = promptSchema.extend({
 });
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
-	createEdge: z.string().generateMock(() => randomEdgeType()),
+	createEdge: z.string().generateMock(() => getEdgeTypeId()),
 	bucketSortOrder: SortOrderSchema.optional(),
 	binSortOrder: SortOrderSchema.optional(),
 });
 
 export const geospatialPromptSchema = promptSchema
 	.extend({
-		variable: z.string().generateMock(() => randomVariable()),
+		variable: z.string().generateMock(() => getNodeVariableId()),
 	})
 	.strict();

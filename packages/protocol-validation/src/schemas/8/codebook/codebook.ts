@@ -1,7 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
+import { getEdgeTypeId, getNodeTypeId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateName, getAllEntityNames } from "../../../utils/validation-helpers";
-import { MOCK_IDS } from "../../../utils/mock-ids";
 import { EdgeDefinitionSchema, EgoDefinitionSchema, NodeDefinitionSchema } from "./definitions";
 
 export const CodebookSchema = z
@@ -32,12 +32,12 @@ export const CodebookSchema = z
 
 		return {
 			node: {
-				[MOCK_IDS.nodeTypes[0]]: { ...personNode, name: "Person" },
-				[MOCK_IDS.nodeTypes[1]]: { ...orgNode, name: "Organization" },
+				[getNodeTypeId(0)]: { ...personNode, name: "Person" },
+				[getNodeTypeId(1)]: { ...orgNode, name: "Organization" },
 			},
 			edge: {
-				[MOCK_IDS.edgeTypes[0]]: { ...friendshipEdge, name: "Friendship" },
-				[MOCK_IDS.edgeTypes[1]]: { ...worksWithEdge, name: "WorksWith" },
+				[getEdgeTypeId(0)]: { ...friendshipEdge, name: "Friendship" },
+				[getEdgeTypeId(1)]: { ...worksWithEdge, name: "WorksWith" },
 			},
 			ego: ego,
 		};
