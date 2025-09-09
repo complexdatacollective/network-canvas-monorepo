@@ -93,7 +93,7 @@ export const oneToManyDyadCensusStage = baseStageSchema
 		type: z.literal("OneToManyDyadCensus"),
 		subject: NodeStageSubjectSchema,
 		behaviours: z.object({
-			removeAfterConsideration: z.boolean().generateMock(() => faker.helpers.arrayElement([true, false])),
+			removeAfterConsideration: z.boolean().generateMock(),
 		}),
 		prompts: z
 			.array(oneToManyDyadCensusPromptSchema)
