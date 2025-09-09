@@ -25,8 +25,11 @@ export const sociogramStage = baseStageSchema
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => faker.number.int(4)),
-				skewedTowardCenter: z.boolean().optional().generateMock(),
+					.generateMock(() => faker.helpers.arrayElement([1, 2, 3, 4])),
+				skewedTowardCenter: z
+					.boolean()
+					.optional()
+					.generateMock(() => faker.helpers.arrayElement([true, false])),
 			})
 			.strict()
 			.optional(),
@@ -130,7 +133,7 @@ export const narrativeStage = baseStageSchema
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => faker.number.int(4)),
+					.generateMock(() => faker.helpers.arrayElement([1, 2, 3])),
 				skewedTowardCenter: z.boolean().optional(),
 			})
 			.strict()

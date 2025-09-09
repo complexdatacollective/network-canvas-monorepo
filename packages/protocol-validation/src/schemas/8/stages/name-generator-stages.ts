@@ -59,7 +59,7 @@ export const nameGeneratorStage = baseStageSchema
 		type: "NameGenerator",
 		behaviours: {
 			minNodes: 1,
-			maxNodes: faker.number.int(8),
+			maxNodes: faker.helpers.arrayElement([10, 15, 20, 25]),
 		},
 	}));
 
@@ -110,7 +110,7 @@ export const nameGeneratorQuickAddStage = baseStageSchema
 		type: "NameGeneratorQuickAdd",
 		behaviours: {
 			minNodes: 1,
-			maxNodes: faker.number.int(8),
+			maxNodes: faker.helpers.arrayElement([5, 10, 15]),
 		},
 	}));
 
@@ -134,7 +134,7 @@ export const nameGeneratorRosterStage = baseStageSchema
 			.optional(),
 		searchOptions: z
 			.object({
-				fuzziness: z.number().generateMock(),
+				fuzziness: z.number().generateMock(() => faker.helpers.arrayElement([0.25, 0.5, 0.75])),
 				matchProperties: z.array(z.string()).generateMock(() => [
 					...faker.helpers.arrayElement([
 						["name", "first_name", "last_name"],
@@ -184,6 +184,6 @@ export const nameGeneratorRosterStage = baseStageSchema
 		},
 		behaviours: {
 			minNodes: 1,
-			maxNodes: faker.number.int(8),
+			maxNodes: faker.helpers.arrayElement([20, 30, 50]),
 		},
 	}));

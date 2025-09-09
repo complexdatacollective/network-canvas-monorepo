@@ -9,32 +9,32 @@ export const validations = {
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int(5)),
+		.generateMock(() => faker.helpers.arrayElement([1, 2, 3, 5])),
 	maxLength: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int(200)),
+		.generateMock(() => faker.helpers.arrayElement([50, 100, 200])),
 	minValue: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int(10)),
+		.generateMock(() => faker.helpers.arrayElement([0, 1, 5, 10])),
 	maxValue: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int({ min: 10, max: 100 })),
+		.generateMock(() => faker.helpers.arrayElement([10, 50, 100])),
 	minSelected: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int(2)),
+		.generateMock(() => faker.helpers.arrayElement([1, 2])),
 	maxSelected: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int({ min: 2, max: 10 })),
+		.generateMock(() => faker.helpers.arrayElement([3, 5, 10])),
 	unique: z.boolean().optional(),
 	differentFrom: z
 		.string()

@@ -117,12 +117,12 @@ export const anonymisationStage = baseStageSchema
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => faker.number.int(8)),
+					.generateMock(() => faker.helpers.arrayElement([4, 6, 8])),
 				maxLength: z
 					.number()
 					.int()
 					.optional()
-					.generateMock(() => faker.number.int({ min: 8, max: 20 })),
+					.generateMock(() => faker.helpers.arrayElement([16, 20, 24])),
 			})
 			.optional(),
 	})
