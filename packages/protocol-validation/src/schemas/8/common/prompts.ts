@@ -7,6 +7,7 @@ import { SortOrderSchema } from "../filters";
 const promptSchema = z
 	.object({
 		id: z.string().generateMock(() => crypto.randomUUID()),
+		text: z.string(),
 	})
 	.strict();
 

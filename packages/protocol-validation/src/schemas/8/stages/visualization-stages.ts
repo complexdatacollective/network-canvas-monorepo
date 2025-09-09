@@ -67,6 +67,7 @@ export const sociogramStage = baseStageSchema
 				highlight: {
 					allowHighlighting: false,
 				},
+				text: "",
 			},
 		],
 	}));
