@@ -1,3 +1,4 @@
+import { faker } from "@faker-js/faker";
 import { getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 
@@ -15,31 +16,30 @@ export const filterRuleSchema = z
 					.string()
 					.optional()
 					.generateMock(() => getNodeVariableId()),
-				operator: z
-					.enum([
-						// TODO: this can be narrowed based on `type` and `attribute`
-						"EXISTS",
-						"NOT_EXISTS",
-						"EXACTLY",
-						"NOT",
-						"GREATER_THAN",
-						"GREATER_THAN_OR_EQUAL",
-						"LESS_THAN",
-						"LESS_THAN_OR_EQUAL",
-						"INCLUDES",
-						"EXCLUDES",
-						"OPTIONS_GREATER_THAN",
-						"OPTIONS_LESS_THAN",
-						"OPTIONS_EQUALS",
-						"OPTIONS_NOT_EQUALS",
-						"CONTAINS",
-						"DOES NOT CONTAIN",
-					])
-					.generateMock(() => "EXISTS" as const),
+				operator: z.enum([
+					// TODO: this can be narrowed based on `type` and `attribute`
+					"EXISTS",
+					"NOT_EXISTS",
+					"EXACTLY",
+					"NOT",
+					"GREATER_THAN",
+					"GREATER_THAN_OR_EQUAL",
+					"LESS_THAN",
+					"LESS_THAN_OR_EQUAL",
+					"INCLUDES",
+					"EXCLUDES",
+					"OPTIONS_GREATER_THAN",
+					"OPTIONS_LESS_THAN",
+					"OPTIONS_EQUALS",
+					"OPTIONS_NOT_EQUALS",
+					"CONTAINS",
+					"DOES NOT CONTAIN",
+				]),
+
 				value: z
 					.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())])
 					.optional()
-					.generateMock(() => "test_value"),
+					.generateMock(() => faker.string.alpha(5)),
 			})
 			.strict(),
 	})

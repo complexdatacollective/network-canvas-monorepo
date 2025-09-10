@@ -3,7 +3,7 @@ import { VariablesSchema } from "../variables";
 
 const NodeDefinitionSchema = z
 	.object({
-		name: z.string().generateMock(() => "Person"),
+		name: z.string(),
 		iconVariant: z
 			.string()
 			.optional()
@@ -19,7 +19,7 @@ export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
 
 const EdgeDefinitionSchema = z
 	.object({
-		name: z.string().generateMock(() => "Friends"),
+		name: z.string(),
 		color: z.string().generateMock(() => "edge-color-seq-1"),
 		variables: VariablesSchema.optional(),
 	})
