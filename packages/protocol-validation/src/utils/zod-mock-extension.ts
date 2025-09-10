@@ -150,59 +150,30 @@ function generateMockData(schema: z.ZodTypeAny, applyTopLevelTransform = false):
 		}
 
 		case "literal": {
-			const values = (schema as any)._def.values;
-			if (Array.isArray(values) && values.length > 0) {
-				return values[0];
-			}
-			return undefined;
+			return (schema as any)._def.values?.[0];
 		}
 
 		case "enum": {
-			const entries = (schema as any)._def.entries;
-			if (entries && typeof entries === "object") {
-				const values = Object.values(entries);
-				if (values.length > 0) {
-					const randomIndex = Math.floor(Math.random() * values.length);
-					return values[randomIndex];
-				}
-			}
-			return undefined;
+			const values = Object.values((schema as any)._def.entries);
+			return values[Math.floor(Math.random() * values.length)];
 		}
 
 		case "record": {
-			const keyType = (schema as any)._def.keyType;
-			const valueType = (schema as any)._def.valueType;
+			const { keyType, valueType } = (schema as any)._def;
+			const numEntries = Math.floor(Math.random() * 3) + 1;
 
-			// Generate random keys and values
-			const numEntries = Math.floor(Math.random() * 3) + 2;
-			const result: Record<string, any> = {};
-
-			for (let i = 0; i < numEntries; i++) {
-				// Generate key - if keyType is string, create a UUID, otherwise use keyType mock
-				let key: string;
-				if (keyType._def.type === "string") {
-					key = crypto.randomUUID();
-				} else {
-					key = String(generateMockData(keyType, false));
-				}
-
-				// Generate value using the value schema
-				const value = generateMockData(valueType, false);
-				result[key] = value;
-			}
-
-			return result;
+			return Object.fromEntries(
+				Array.from({ length: numEntries }, () => {
+					const key = String(generateMockData(keyType));
+					const value = generateMockData(valueType);
+					return [key, value] as const;
+				}),
+			);
 		}
 
 		case "tuple": {
 			const items = (schema as any)._def.items;
-			const result: any[] = [];
-
-			for (const itemSchema of items) {
-				result.push(generateMockData(itemSchema));
-			}
-
-			return result;
+			return items.map((itemSchema: any) => generateMockData(itemSchema));
 		}
 
 		default:
