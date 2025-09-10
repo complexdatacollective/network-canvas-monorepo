@@ -65,6 +65,10 @@ describe("Test protocols", () => {
 			expect(result.isValid).toBe(true);
 			expect(result.errors).toEqual(null);
 
+			// Legacy properties should also be empty for backward compatibility
+			expect(result.schemaErrors).toEqual(undefined);
+			expect(result.logicErrors).toEqual(undefined);
+
 			// Migrate and validate protocols with schema version < 8
 			if (protocol.schemaVersion < 8) {
 				const migratedProtocol = migrateProtocol(protocol);
@@ -79,8 +83,8 @@ describe("Test protocols", () => {
 				expect.soft(migrationResult.isValid).toBe(true);
 				expect.soft(migrationResult.errors).toEqual(null);
 				// // Legacy properties should also be empty for backward compatibility
-				// expect.soft(migrationResult.schemaErrors).toEqual(null);
-				// expect.soft(migrationResult.logicErrors).toEqual(null);
+				expect.soft(migrationResult.schemaErrors).toEqual(undefined);
+				expect.soft(migrationResult.logicErrors).toEqual(undefined);
 			}
 		}
 	});
