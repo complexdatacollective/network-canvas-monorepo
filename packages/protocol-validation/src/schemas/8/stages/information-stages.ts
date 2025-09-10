@@ -80,16 +80,6 @@ export const informationStage = baseStageSchema
 					"To move through this protocol, use the arrows on the left hand side of the screen. When you are ready to continue, click the down arrow.",
 				size: "SMALL",
 			},
-			...(Math.random() > 0.5
-				? [
-						{
-							id: crypto.randomUUID(),
-							type: "asset" as const,
-							content: crypto.randomUUID(),
-							size: "SMALL",
-						},
-					]
-				: []),
 		],
 	}));
 

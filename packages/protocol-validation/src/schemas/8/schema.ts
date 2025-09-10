@@ -319,7 +319,7 @@ const ProtocolSchema = z
 	})
 	.generateMock(() => {
 		const codebook = CodebookSchema.generateMock();
-		const stages = Array.from({ length: Math.floor(Math.random() * 3) + 3 }, () => stageSchema.generateMock());
+		const stages = Array.from({ length: 5 }, () => stageSchema.generateMock());
 
 		return {
 			description: "Generated Mock Protocol for Testing",

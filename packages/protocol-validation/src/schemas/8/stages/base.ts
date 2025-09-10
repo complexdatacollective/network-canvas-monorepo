@@ -22,9 +22,9 @@ export const baseStageSchema = z
 		const stageNames = ["Introduction", "Consent Form", "Person Sociogram"] as const;
 
 		return {
-			id: `stage_${Math.random().toString(36).substring(2, 8)}`,
+			id: `stage_${faker.string.uuid()}`,
 			label: faker.helpers.arrayElement(stageNames),
-			interviewScript: Math.random() < 0.5 ? "This is the script text." : undefined,
+			interviewScript: Math.random() < 0.5 ? faker.lorem.paragraph() : undefined,
 			introductionPanel: {
 				title: "Welcome",
 				text: "Thank you for participating in this study.",

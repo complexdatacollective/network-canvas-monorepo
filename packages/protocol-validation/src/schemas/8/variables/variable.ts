@@ -1,5 +1,4 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
-import { faker } from "@faker-js/faker";
 import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
@@ -7,119 +6,128 @@ import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";
 
 // Options Schema for categorical and ordinal variables
-const categoricalOptionsSchema = z
-	.array(
-		z
-			.object({
-				label: z.string().generateMock(() => `Option ${Math.floor(Math.random() * 100) + 1}`),
-				value: z
-					.union([z.number().int(), z.string(), z.boolean()])
-					.generateMock(() => Math.floor(Math.random() * 5) + 1),
-			})
-			.strict(),
-	)
-	.generateMock(() => [
-		{ label: faker.word.words(5), value: 1 },
-		{ label: faker.word.words(5), value: 2 },
-		{ label: faker.word.words(5), value: 3 },
-	]);
+const categoricalOptionsSchema = z.array(
+	z
+		.object({
+			label: z.string(),
+			value: z.union([z.number().int(), z.string(), z.boolean()]),
+		})
+		.strict(),
+);
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 
 // Variable Schema
 const baseVariableSchema = z
 	.object({
-		name: VariableNameSchema.generateMock(() => `variable_${Math.random().toString(36).substring(2, 8)}`),
-		encrypted: z
-			.boolean()
-			.optional()
-			.generateMock(() => false),
+		name: VariableNameSchema,
+		encrypted: z.boolean().optional(),
 	})
 	.strict();
 
-const numberVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.number),
-	component: z.literal(ComponentTypes.Number).optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			minValue: true,
-			maxValue: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-			greaterThanVariable: true,
-			lessThanVariable: true,
-		})
-		.optional(),
-});
+const numberVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.number),
+		component: z.literal(ComponentTypes.Number).optional(),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				minValue: true,
+				maxValue: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+				greaterThanVariable: true,
+				lessThanVariable: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `number_${base.name}`,
+	}));
 
-const scalarVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.scalar),
-	component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
-	parameters: z
-		.object({
-			minLabel: z.string().optional(),
-			maxLabel: z.string().optional(),
-		})
-		.optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			minValue: true,
-			maxValue: true,
-			greaterThanVariable: true,
-			lessThanVariable: true,
-		})
-		.optional(),
-});
+const scalarVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.scalar),
+		component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
+		parameters: z
+			.object({
+				minLabel: z.string().optional(),
+				maxLabel: z.string().optional(),
+			})
+			.optional(),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				minValue: true,
+				maxValue: true,
+				greaterThanVariable: true,
+				lessThanVariable: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `scalar_${base.name}`,
+	}));
 
-const dateTimeDatePickerSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.DatePicker).optional(),
-	parameters: z
-		.object({
-			type: z.enum(["full", "month", "year"]).optional(),
-			min: z.string().optional(),
-			max: z.string().optional(),
-		})
-		.optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-			greaterThanVariable: true,
-			lessThanVariable: true,
-		})
-		.optional(),
-});
+const dateTimeDatePickerSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.datetime),
+		component: z.literal(ComponentTypes.DatePicker).optional(),
+		parameters: z
+			.object({
+				type: z.enum(["full", "month", "year"]).optional(),
+				min: z.string().optional(),
+				max: z.string().optional(),
+			})
+			.optional(),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+				greaterThanVariable: true,
+				lessThanVariable: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `date_time_${base.name}`,
+	}));
 
-const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.datetime),
-	component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
-	parameters: z
-		.object({
-			before: z.number().int().optional(),
-			after: z.number().int().optional(),
-		})
-		.optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-			greaterThanVariable: true,
-			lessThanVariable: true,
-		})
-		.optional(),
-});
+const dateTimeRelativeDatePickerSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.datetime),
+		component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
+		parameters: z
+			.object({
+				before: z.number().int().optional(),
+				after: z.number().int().optional(),
+			})
+			.optional(),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+				greaterThanVariable: true,
+				lessThanVariable: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `date_time_relative_${base.name}`,
+	}));
 
 const textVariableSchema = baseVariableSchema
 	.extend({
@@ -161,34 +169,44 @@ const booleanOptionsSchema = z
 		{ label: "No", value: false },
 	]);
 
-const booleanBooleanVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.boolean),
-	component: z.literal(ComponentTypes.Boolean).optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-		})
-		.optional(),
-	options: booleanOptionsSchema.optional(), // This is different from the categorical options!
-});
+const booleanBooleanVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.boolean),
+		component: z.literal(ComponentTypes.Boolean).optional(),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+			})
+			.optional(),
+		options: booleanOptionsSchema.optional(), // This is different from the categorical options!
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `boolean_${base.name}`,
+	}));
 
-const booleanToggleVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.boolean),
-	component: z.literal(ComponentTypes.Toggle).optional(),
-	validation: z
-		.object(validations)
-		.pick({
-			required: true,
-			sameAs: true,
-			unique: true,
-			differentFrom: true,
-		})
-		.optional(),
-});
+const booleanToggleVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.boolean),
+		component: z.literal(ComponentTypes.Toggle).optional(),
+		validation: z
+			.object(validations)
+			.pick({
+				required: true,
+				sameAs: true,
+				unique: true,
+				differentFrom: true,
+			})
+			.optional(),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `boolean_toggle_${base.name}`,
+	}));
 
 const ordinalVariableSchema = baseVariableSchema
 	.extend({
@@ -240,13 +258,23 @@ const categoricalVariableSchema = baseVariableSchema
 		name: `categorical_${base.name}`,
 	}));
 
-const layoutVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.layout),
-});
+const layoutVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.layout),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `layout_${base.name}`,
+	}));
 
-const locationVariableSchema = baseVariableSchema.extend({
-	type: z.literal(VariableTypes.location),
-});
+const locationVariableSchema = baseVariableSchema
+	.extend({
+		type: z.literal(VariableTypes.location),
+	})
+	.generateMock((base) => ({
+		...base,
+		name: `location_${base.name}`,
+	}));
 
 export const VariableSchema = z.union([
 	textVariableSchema,
@@ -285,18 +313,15 @@ export const VariablesSchema = z
 		}
 	})
 	.generateMock(() => {
+		// todo: could be improved by getting random variable types
 		const textVar = textVariableSchema.generateMock();
 		const ordinalVar = ordinalVariableSchema.generateMock();
 		const categoricalVar = categoricalVariableSchema.generateMock();
 
-		const firstName = { ...textVar, name: "name" };
-		const communicationFrequency = { ...ordinalVar, name: "communication_freq" };
-		const languagesSpoken = { ...categoricalVar, name: "languages_spoken" };
-
 		return {
-			[getNodeVariableId(0)]: firstName,
-			[getNodeVariableId(1)]: communicationFrequency,
-			[getNodeVariableId(2)]: languagesSpoken,
+			[getNodeVariableId(0)]: textVar,
+			[getNodeVariableId(1)]: ordinalVar,
+			[getNodeVariableId(2)]: categoricalVar,
 		};
 	});
 
