@@ -1,4 +1,5 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
+import { faker } from "@faker-js/faker";
 import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
@@ -276,7 +277,7 @@ const locationVariableSchema = baseVariableSchema
 		name: `location_${base.name}`,
 	}));
 
-export const VariableSchema = z.union([
+const variableSchemas = [
 	textVariableSchema,
 	numberVariableSchema,
 	scalarVariableSchema,
@@ -288,7 +289,8 @@ export const VariableSchema = z.union([
 	dateTimeRelativeDatePickerSchema,
 	layoutVariableSchema,
 	locationVariableSchema,
-]);
+] as const;
+export const VariableSchema = z.union([...variableSchemas]);
 
 export type Variable = z.infer<typeof VariableSchema>;
 
@@ -313,16 +315,13 @@ export const VariablesSchema = z
 		}
 	})
 	.generateMock(() => {
-		// todo: could be improved by getting random variable types
-		const textVar = textVariableSchema.generateMock();
-		const ordinalVar = ordinalVariableSchema.generateMock();
-		const categoricalVar = categoricalVariableSchema.generateMock();
-
-		return {
-			[getNodeVariableId(0)]: textVar,
-			[getNodeVariableId(1)]: ordinalVar,
-			[getNodeVariableId(2)]: categoricalVar,
-		};
+		// 3 random variables
+		const randomVariables: Record<string, Variable> = {};
+		for (let i = 0; i < 3; i++) {
+			const schema = faker.helpers.arrayElement(variableSchemas);
+			randomVariables[getNodeVariableId(i)] = schema.generateMock();
+		}
+		return randomVariables;
 	});
 
 export type Variables = z.infer<typeof VariablesSchema>;
