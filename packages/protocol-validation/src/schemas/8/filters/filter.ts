@@ -4,7 +4,7 @@ import { z } from "src/utils/zod-mock-extension";
 export const filterRuleSchema = z
 	.object({
 		type: z.enum(["node", "ego", "edge"]).generateMock(() => "node" as const),
-		id: z.string().generateMock(() => `filter_rule_${crypto.randomUUID()}`),
+		id: z.string(),
 		options: z
 			.object({
 				type: z

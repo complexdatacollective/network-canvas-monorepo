@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId, getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
+import { getAssetId, getNodeTypeId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { geospatialPromptSchema } from "../common";
@@ -67,47 +67,22 @@ const mapOptions = z.object({
 
 export type MapOptions = z.infer<typeof mapOptions>;
 
-export const geospatialStage = baseStageSchema
-	.extend({
-		type: z.literal("Geospatial"),
-		subject: NodeStageSubjectSchema,
-		mapOptions: mapOptions,
-		prompts: z
-			.array(geospatialPromptSchema)
-			.min(1)
-			.superRefine((prompts, ctx) => {
-				// Check for duplicate prompt IDs
-				const duplicatePromptId = findDuplicateId(prompts);
-				if (duplicatePromptId) {
-					ctx.addIssue({
-						code: "custom" as const,
-						message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-						path: [],
-					});
-				}
-			}),
-	})
-	.generateMock((base) => ({
-		...base,
-		type: "Geospatial",
-		mapOptions: {
-			tokenAssetId: getAssetId(0),
-			style: "mapbox://styles/mapbox/streets-v12",
-			center: [-74.006, 40.7128],
-			initialZoom: 12,
-			dataSourceAssetId: getAssetId(1),
-			color: "node-color-seq-1",
-			targetFeatureProperty: "name",
-		},
-		prompts: [
-			{
-				id: crypto.randomUUID(),
-				text: faker.helpers.arrayElement([
-					"Where does this person live?",
-					"Please mark where this person works",
-					"Select the geographic location for each person.",
-				]),
-				variable: getNodeVariableId(0),
-			},
-		],
-	}));
+export const geospatialStage = baseStageSchema.extend({
+	type: z.literal("Geospatial"),
+	subject: NodeStageSubjectSchema,
+	mapOptions: mapOptions,
+	prompts: z
+		.array(geospatialPromptSchema)
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
+});

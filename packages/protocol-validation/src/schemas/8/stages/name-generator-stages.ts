@@ -115,76 +115,54 @@ export const nameGeneratorQuickAddStage = baseStageSchema
 		},
 	}));
 
-export const nameGeneratorRosterStage = baseStageSchema
-	.extend({
-		type: z.literal("NameGeneratorRoster"),
-		subject: NodeStageSubjectSchema,
-		dataSource: z.string().generateMock(() => getAssetId()),
-		cardOptions: z
-			.object({
-				displayLabel: z.string().optional(),
-				additionalProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
-			})
-			.strict()
-			.optional(),
-		sortOptions: z
-			.object({
-				sortOrder: SortOrderSchema.optional(),
-				sortableProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
-			})
-			.optional(),
-		searchOptions: z
-			.object({
-				fuzziness: z.number().generateMock(() => faker.number.float({ multipleOf: 0.25, min: 0, max: 1 })),
-				matchProperties: z.array(z.string()).generateMock(() => [
-					...faker.helpers.arrayElement([
-						["name", "first_name", "last_name"],
-						["website", "country", "name"],
-						["email", "name"],
-					]),
+export const nameGeneratorRosterStage = baseStageSchema.extend({
+	type: z.literal("NameGeneratorRoster"),
+	subject: NodeStageSubjectSchema,
+	dataSource: z.string().generateMock(() => getAssetId()),
+	cardOptions: z
+		.object({
+			displayLabel: z.string().optional(),
+			additionalProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
+		})
+		.strict()
+		.optional(),
+	sortOptions: z
+		.object({
+			sortOrder: SortOrderSchema.optional(),
+			sortableProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
+		})
+		.optional(),
+	searchOptions: z
+		.object({
+			fuzziness: z.number().generateMock(() => faker.number.float({ multipleOf: 0.25, min: 0, max: 1 })),
+			matchProperties: z.array(z.string()).generateMock(() => [
+				...faker.helpers.arrayElement([
+					["name", "first_name", "last_name"],
+					["website", "country", "name"],
+					["email", "name"],
 				]),
-			})
-			.strict()
-			.optional(),
-		prompts: z
-			.array(nameGeneratorPromptSchema)
-			.min(1)
-			.superRefine((prompts, ctx) => {
-				// Check for duplicate prompt IDs
-				const duplicatePromptId = findDuplicateId(prompts);
-				if (duplicatePromptId) {
-					ctx.addIssue({
-						code: "custom" as const,
-						message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-						path: [],
-					});
-				}
-			}),
-		behaviours: z
-			.object({
-				minNodes: z.number().int().optional(),
-				maxNodes: z.number().int().optional(),
-			})
-			.optional(),
-	})
-	.generateMock((base) => ({
-		...base,
-		type: "NameGeneratorRoster",
-		cardOptions: {
-			additionalProperties: [
-				{ label: "First Name", variable: "first_name" },
-				{ label: "Last Name", variable: "last_name" },
-			],
-		},
-		sortOptions: {
-			sortOrder: [{ property: "first_name", direction: "asc" }],
-			sortableProperties: [
-				{ label: "First Name", variable: "first_name" },
-				{ label: "Last Name", variable: "last_name" },
-			],
-		},
-		behaviours: {
-			minNodes: 1,
-			maxNodes: faker.number.int({ min: 2, max: 25 }),
-		},
-	}));
+			]),
+		})
+		.strict()
+		.optional(),
+	prompts: z
+		.array(nameGeneratorPromptSchema)
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
+	behaviours: z
+		.object({
+			minNodes: z.number().int().optional(),
+			maxNodes: z.number().int().optional(),
+		})
+		.optional(),
+});

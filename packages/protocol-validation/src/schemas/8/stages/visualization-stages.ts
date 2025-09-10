@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId, getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
+import { getAssetId, getEdgeTypeId, getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { sociogramPromptSchema } from "../common";
@@ -27,10 +27,7 @@ export const sociogramStage = baseStageSchema
 					.int()
 					.optional()
 					.generateMock(() => faker.number.int({ min: 1, max: 5 })),
-				skewedTowardCenter: z
-					.boolean()
-					.optional()
-					.generateMock(() => faker.datatype.boolean()),
+				skewedTowardCenter: z.boolean().optional(),
 			})
 			.strict()
 			.optional(),
@@ -76,103 +73,73 @@ export const sociogramStage = baseStageSchema
 		],
 	}));
 
-export const narrativeStage = baseStageSchema
-	.extend({
-		type: z.literal("Narrative"),
-		subject: NodeStageSubjectSchema,
-		presets: z
-			.array(
-				z
-					.object({
-						id: z.string().generateMock(() => crypto.randomUUID()),
-						label: z
-							.string()
-							.generateMock(() =>
-								faker.helpers.arrayElement([
-									"Sample Preset",
-									"Network Overview",
-									"Group Visualization",
-									"Relationship Display",
-								]),
-							),
-						layoutVariable: z.string().generateMock(() => getNodeVariableId(0)),
-						groupVariable: z
-							.string()
-							.optional()
-							.generateMock(() => getNodeVariableId(1)),
-						edges: z
-							.object({
-								display: z
-									.array(z.string())
-									.optional()
-									.generateMock(() => [crypto.randomUUID(), crypto.randomUUID()]),
-							})
-							.strict()
-							.optional(),
-						highlight: z
-							.array(z.string())
-							.optional()
-							.generateMock(() => [crypto.randomUUID(), crypto.randomUUID()]),
-					})
-					.strict(),
-			)
-			.min(1)
-			.superRefine((prompts, ctx) => {
-				// Check for duplicate prompt IDs
-				const duplicatePromptId = findDuplicateId(prompts);
-				if (duplicatePromptId) {
-					ctx.addIssue({
-						code: "custom" as const,
-						message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-						path: [],
-					});
-				}
-			}),
-		background: z
-			.object({
-				concentricCircles: z
-					.number()
-					.int()
-					.optional()
-					.generateMock(() => faker.number.int({ min: 1, max: 5 })),
-				skewedTowardCenter: z.boolean().optional(),
-			})
-			.strict()
-			.optional(),
-		behaviours: z
-			.object({
-				freeDraw: z
-					.boolean()
-					.optional()
-					.generateMock(() => true),
-				allowRepositioning: z
-					.boolean()
-					.optional()
-					.generateMock(() => true),
-			})
-			.strict()
-			.optional(),
-	})
-	.generateMock((base) => ({
-		...base,
-		type: "Narrative",
-		background: {
-			concentricCircles: 1,
-		},
-		behaviours: {
-			allowRepositioning: true,
-			freeDraw: true,
-		},
-		presets: [
-			{
-				id: crypto.randomUUID(),
-				label: "Sample Preset",
-				layoutVariable: crypto.randomUUID(),
-				groupVariable: crypto.randomUUID(),
-				edges: {
-					display: [crypto.randomUUID(), crypto.randomUUID()],
-				},
-				highlight: [crypto.randomUUID(), crypto.randomUUID()],
-			},
-		],
-	}));
+export const narrativeStage = baseStageSchema.extend({
+	type: z.literal("Narrative"),
+	subject: NodeStageSubjectSchema,
+	presets: z
+		.array(
+			z
+				.object({
+					id: z.string(),
+					label: z
+						.string()
+						.generateMock(() =>
+							faker.helpers.arrayElement([
+								"Sample Preset",
+								"Network Overview",
+								"Group Visualization",
+								"Relationship Display",
+							]),
+						),
+					layoutVariable: z.string().generateMock(() => getNodeVariableId(0)),
+					groupVariable: z
+						.string()
+						.optional()
+						.generateMock(() => getNodeVariableId(1)),
+					edges: z
+						.object({
+							display: z
+								.array(z.string())
+								.optional()
+								.generateMock(() => [getEdgeTypeId(0), getEdgeTypeId(1)]),
+						})
+						.strict()
+						.optional(),
+					highlight: z
+						.array(z.string())
+						.optional()
+						.generateMock(() => [getNodeVariableId(0), getNodeVariableId(1)]),
+				})
+				.strict(),
+		)
+		.min(1)
+		.superRefine((prompts, ctx) => {
+			// Check for duplicate prompt IDs
+			const duplicatePromptId = findDuplicateId(prompts);
+			if (duplicatePromptId) {
+				ctx.addIssue({
+					code: "custom" as const,
+					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+					path: [],
+				});
+			}
+		}),
+	background: z
+		.object({
+			concentricCircles: z
+				.number()
+				.int()
+				.optional()
+				.generateMock(() => faker.number.int({ min: 1, max: 5 })),
+			skewedTowardCenter: z.boolean().optional(),
+		})
+		.strict()
+		.optional(),
+	behaviours: z
+		.object({
+			freeDraw: z.boolean().optional(),
+			allowRepositioning: z.boolean().optional(),
+		})
+		.strict()
+		.optional(),
+});

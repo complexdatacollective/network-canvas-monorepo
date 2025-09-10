@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { getEdgeTypeId, getEdgeVariableId } from "src/utils/mock-seeds";
+import { getEdgeTypeId, getEdgeVariableId, getNodeTypeId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { dyadCensusPromptSchema, oneToManyDyadCensusPromptSchema, tieStrengthCensusPromptSchema } from "../common";
@@ -8,7 +8,7 @@ import { baseStageSchema } from "./base";
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string().generateMock(() => crypto.randomUUID()),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
@@ -94,7 +94,7 @@ export const oneToManyDyadCensusStage = baseStageSchema
 		type: z.literal("OneToManyDyadCensus"),
 		subject: NodeStageSubjectSchema,
 		behaviours: z.object({
-			removeAfterConsideration: z.boolean().generateMock(() => faker.helpers.arrayElement([true, false])),
+			removeAfterConsideration: z.boolean(),
 		}),
 		prompts: z
 			.array(oneToManyDyadCensusPromptSchema)
