@@ -1,4 +1,5 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
+import { faker } from "@faker-js/faker";
 import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
@@ -18,9 +19,9 @@ const categoricalOptionsSchema = z
 			.strict(),
 	)
 	.generateMock(() => [
-		{ label: "Option 1", value: 1 },
-		{ label: "Option 2", value: 2 },
-		{ label: "Option 3", value: 3 },
+		{ label: faker.word.words(5), value: 1 },
+		{ label: faker.word.words(5), value: 2 },
+		{ label: faker.word.words(5), value: 3 },
 	]);
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;

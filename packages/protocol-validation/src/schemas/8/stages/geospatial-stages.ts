@@ -47,7 +47,7 @@ const mapOptions = z.object({
 		.number()
 		.min(0, { message: "Zoom must be at least 0" })
 		.max(22, { message: "Zoom must be less than or equal to 22" })
-		.generateMock(() => faker.helpers.arrayElement([10, 12, 14, 16])),
+		.generateMock(() => faker.number.int({ min: 0, max: 22 })),
 	dataSourceAssetId: z.string().generateMock(() => getAssetId(1)),
 	color: z
 		.string()

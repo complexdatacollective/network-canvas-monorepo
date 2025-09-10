@@ -8,33 +8,34 @@ export const validations = {
 	minLength: z
 		.number()
 		.int()
-		.optional()
-		.generateMock(() => faker.helpers.arrayElement([1, 2, 3, 5])),
+		.generateMock(() => faker.number.int({ min: 2, max: 5 }))
+		.optional(),
+
 	maxLength: z
 		.number()
 		.int()
-		.optional()
-		.generateMock(() => faker.helpers.arrayElement([50, 100, 200])),
+		.generateMock(() => faker.number.int({ min: 6, max: 50 }))
+		.optional(),
 	minValue: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.helpers.arrayElement([0, 1, 5, 10])),
+		.generateMock(() => faker.number.int({ min: 1, max: 10 })),
 	maxValue: z
 		.number()
 		.int()
-		.optional()
-		.generateMock(() => faker.helpers.arrayElement([10, 50, 100])),
+		.generateMock(() => faker.number.int({ min: 11, max: 100 }))
+		.optional(),
 	minSelected: z
 		.number()
 		.int()
-		.optional()
-		.generateMock(() => faker.helpers.arrayElement([1, 2])),
+		.generateMock(() => faker.number.int({ min: 1, max: 2 }))
+		.optional(),
 	maxSelected: z
 		.number()
 		.int()
-		.optional()
-		.generateMock(() => faker.helpers.arrayElement([3, 5, 10])),
+		.generateMock(() => faker.number.int({ min: 3, max: 5 }))
+		.optional(),
 	unique: z.boolean().optional(),
 	differentFrom: z
 		.string()
