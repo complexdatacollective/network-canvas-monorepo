@@ -8,7 +8,8 @@ const NodeDefinitionSchema = z
 			.string()
 			.optional()
 			.generateMock(() => "add-a-person"),
-		variables: VariablesSchema.optional(),
+		// Always generate variables in mocks
+		variables: VariablesSchema.optional().generateMock(() => VariablesSchema.generateMock()),
 		color: z.string().generateMock(() => "node-color-seq-1"),
 	})
 	.strict();
