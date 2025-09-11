@@ -1,6 +1,5 @@
 import { extractProtocol } from "./utils/extractProtocol";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
-import { errToString } from "./validation/helpers";
 import validateProtocol from "./validation/validate-protocol";
 export {
 	detectSchemaVersion,
@@ -27,8 +26,7 @@ export {
 	type VersionedProtocol,
 } from "./schemas";
 
-export { errToString, extractProtocol, getVariableNamesFromNetwork, validateNames, validateProtocol };
-export type { ValidationError } from "./validation/validate-protocol";
+export { extractProtocol, getVariableNamesFromNetwork, validateNames, validateProtocol };
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from "./schemas";

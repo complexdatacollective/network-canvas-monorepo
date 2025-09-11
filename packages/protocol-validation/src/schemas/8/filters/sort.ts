@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
-import { getNodeVariableId } from "src/utils/mock-seeds";
-import { z } from "src/utils/zod-mock-extension";
+import { getNodeVariableId } from "../../../utils/mock-seeds";
+import { z } from "../../../utils/zod-mock-extension";
 
 const directions = ["asc", "desc"] as const;
 

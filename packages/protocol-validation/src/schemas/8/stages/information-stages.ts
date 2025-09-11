@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { z } from "src/utils/zod-mock-extension";
+import { z } from "../../../utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { baseStageSchema } from "./base";
 

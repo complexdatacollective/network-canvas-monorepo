@@ -1,5 +1,5 @@
 import type { ProtocolMigration } from "src/migration";
-import { traverseAndTransform } from "src/utils/traverse-and-transform";
+import { traverseAndTransform } from "../../utils/traverse-and-transform";
 
 // Remove `options` from Toggle boolean variables
 const removeToggleOptions = (variables?: Record<string, unknown>) => {

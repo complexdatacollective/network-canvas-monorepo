@@ -1,7 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { faker } from "@faker-js/faker";
-import { getEdgeVariableId, getEgoVariableId, getNodeVariableId } from "src/utils/mock-seeds";
-import { z } from "src/utils/zod-mock-extension";
+import { getEdgeVariableId, getEgoVariableId, getNodeVariableId } from "../../../utils/mock-seeds";
+import { z } from "../../../utils/zod-mock-extension";
 import { findDuplicateName, getVariableNames } from "../../../utils/validation-helpers";
 import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";

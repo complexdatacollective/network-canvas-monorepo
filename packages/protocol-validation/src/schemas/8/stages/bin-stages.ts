@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
-import { getNodeTypeId, getNodeVariableId } from "src/utils/mock-seeds";
-import { z } from "src/utils/zod-mock-extension";
+import { getNodeTypeId, getNodeVariableId } from "../../../utils/mock-seeds";
+import { z } from "../../../utils/zod-mock-extension";
 import { findDuplicateId } from "../../../utils/validation-helpers";
 import { categoricalBinPromptSchema, ordinalBinPromptSchema } from "../common";
 import { baseStageSchema } from "./base";

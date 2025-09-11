@@ -17,7 +17,7 @@ export * from "./stages";
 export * from "./variables";
 
 // Import what we need for the ProtocolSchema
-import { getAssetId } from "src/utils/mock-seeds";
+import { getAssetId } from "../../utils/mock-seeds";
 import { assetSchema } from "./assets";
 import { CodebookSchema } from "./codebook";
 import { ExperimentsSchema, type StageSubject } from "./common";

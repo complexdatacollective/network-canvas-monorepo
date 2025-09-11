@@ -106,7 +106,7 @@ describe("traverseAndTransform", () => {
 			(filter) => {
 				callCount++;
 				const f = filter as Record<string, unknown>;
-				return { ...f, modified: true };
+				return { ...f, modified: true } as typeof filter;
 			},
 		);
 
@@ -154,7 +154,7 @@ describe("traverseAndTransform", () => {
 
 		const result = traverseAndTransform(test, ["stages[].filter"], (filter) => {
 			const f = filter as { type: string };
-			return { ...f, type: "modified" };
+			return { ...f, type: "modified" } as typeof filter;
 		});
 
 		// Original should be unchanged
@@ -180,7 +180,7 @@ describe("traverseAndTransform", () => {
 		const result = traverseAndTransform(test, ["a.b[].c.d[].e"], (value) => {
 			count++;
 			const v = value as { value: number };
-			return { ...v, value: v.value * 10 };
+			return { ...v, value: v.value * 10 } as typeof value;
 		});
 
 		expect(count).toBe(2);

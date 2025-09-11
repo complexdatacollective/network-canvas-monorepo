@@ -50,7 +50,7 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
 
 	const objAsRecord = obj as Record<string, unknown>;
 
-	if (!(currentSegment in objAsRecord)) {
+	if (typeof currentSegment !== "string" || !(currentSegment in objAsRecord)) {
 		return obj;
 	}
 

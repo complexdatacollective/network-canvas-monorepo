@@ -1,4 +1,4 @@
-import { z } from "src/utils/zod-mock-extension";
+import { z } from "../../../utils/zod-mock-extension";
 
 // Export base stage schema
 export * from "./base";

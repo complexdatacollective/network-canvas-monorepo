@@ -1,7 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
-import { getEdgeTypeId, getNodeTypeId } from "src/utils/mock-seeds";
-import { z } from "src/utils/zod-mock-extension";
+import { getEdgeTypeId, getNodeTypeId } from "../../../utils/mock-seeds";
 import { findDuplicateName, getAllEntityNames } from "../../../utils/validation-helpers";
+import { z } from "../../../utils/zod-mock-extension";
 import { EdgeDefinitionSchema, EgoDefinitionSchema, NodeDefinitionSchema } from "./definitions";
 
 export const CodebookSchema = z

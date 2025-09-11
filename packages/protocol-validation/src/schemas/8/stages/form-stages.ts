@@ -5,8 +5,8 @@ import {
 	getEgoVariableId,
 	getNodeTypeId,
 	getNodeVariableId,
-} from "src/utils/mock-seeds";
-import { z } from "src/utils/zod-mock-extension";
+} from "../../../utils/mock-seeds";
+import { z } from "../../../utils/zod-mock-extension";
 import { FormSchema } from "../common";
 import { baseStageSchema } from "./base";
 
