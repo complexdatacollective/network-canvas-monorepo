@@ -30,16 +30,9 @@ describe("Test protocols", () => {
 		const totalCount = protocols.length;
 
 		for (let i = 0; i < protocols.length; i++) {
-			if (i === 40) {
-				// todo: this is a broken protocol (old schema 8 version with issues)
-				// probably should be removed.
-				console.log(`Skipping protocol #41: ${protocolFilenames[i]}`);
-				continue;
-			}
 			// biome-ignore lint/style/noNonNullAssertion: duh
 			const protocol = protocols[i]!;
 			const filename = protocolFilenames[i];
-
 			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
 			// Earlier versions used semver strings which should be ignored
 			if (typeof protocol.schemaVersion !== "number" || protocol.schemaVersion < 7 || protocol.schemaVersion > 8) {
