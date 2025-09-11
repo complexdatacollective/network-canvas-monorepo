@@ -60,9 +60,9 @@ describe("traverseAndTransform", () => {
 		});
 
 		expect(panelFilterCount).toBe(3);
-		expect(result1.stages[0].panels[0].filter).toHaveProperty("processed", true);
-		expect(result1.stages[0].panels[1].filter).toHaveProperty("processed", true);
-		expect(result1.stages[1].panels[0].filter).toHaveProperty("processed", true);
+		expect(result1.stages?.[0]?.panels?.[0]?.filter).toHaveProperty("processed", true);
+		expect(result1.stages?.[0]?.panels?.[1]?.filter).toHaveProperty("processed", true);
+		expect(result1.stages?.[1]?.panels?.[0]?.filter).toHaveProperty("processed", true);
 
 		// Test processing skipLogic filters (should be called 1 time)
 		const result2 = traverseAndTransform(test, ["stages[].skipLogic.filter"], (filter) => {
@@ -71,7 +71,7 @@ describe("traverseAndTransform", () => {
 		});
 
 		expect(skipLogicFilterCount).toBe(1);
-		expect(result2.stages[0].skipLogic.filter).toHaveProperty("skipProcessed", true);
+		expect(result2.stages?.[0]?.skipLogic?.filter).toHaveProperty("skipProcessed", true);
 
 		// Test processing stage-level filters (should be called 1 time)
 		const result3 = traverseAndTransform(test, ["stages[].filter"], (filter) => {
@@ -80,7 +80,7 @@ describe("traverseAndTransform", () => {
 		});
 
 		expect(stageFilterCount).toBe(1);
-		expect(result3.stages[1].filter).toHaveProperty("stageProcessed", true);
+		expect(result3.stages?.[1]?.filter).toHaveProperty("stageProcessed", true);
 	});
 
 	it("should process multiple paths in one call", () => {
@@ -111,10 +111,10 @@ describe("traverseAndTransform", () => {
 		);
 
 		expect(callCount).toBe(4); // 2 panel filters + 1 skipLogic filter + 1 stage filter
-		expect(result.stages[0].skipLogic.filter).toHaveProperty("modified", true);
-		expect(result.stages[0].panels[0].filter).toHaveProperty("modified", true);
-		expect(result.stages[1].filter).toHaveProperty("modified", true);
-		expect(result.stages[1].panels[0].filter).toHaveProperty("modified", true);
+		expect(result.stages?.[0]?.skipLogic?.filter).toHaveProperty("modified", true);
+		expect(result.stages?.[0]?.panels?.[0]?.filter).toHaveProperty("modified", true);
+		expect(result.stages?.[1]?.filter).toHaveProperty("modified", true);
+		expect(result.stages?.[1]?.panels?.[0]?.filter).toHaveProperty("modified", true);
 	});
 
 	it("should handle missing paths gracefully", () => {
@@ -158,9 +158,9 @@ describe("traverseAndTransform", () => {
 		});
 
 		// Original should be unchanged
-		expect(test.stages[0].filter.type).toBe("original");
+		expect(test.stages[0]?.filter?.type).toBe("original");
 		// Result should be modified
-		expect(result.stages[0].filter.type).toBe("modified");
+		expect(result.stages[0]?.filter?.type).toBe("modified");
 	});
 
 	it("should handle deeply nested paths", () => {
@@ -184,7 +184,7 @@ describe("traverseAndTransform", () => {
 		});
 
 		expect(count).toBe(2);
-		expect(result.a.b[0].c.d[0].e.value).toBe(10);
-		expect(result.a.b[0].c.d[1].e.value).toBe(20);
+		expect(result.a?.b?.[0]?.c?.d?.[0]?.e?.value).toBe(10);
+		expect(result.a?.b?.[0]?.c?.d?.[1]?.e?.value).toBe(20);
 	});
 });
