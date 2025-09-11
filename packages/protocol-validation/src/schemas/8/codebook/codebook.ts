@@ -30,17 +30,6 @@ export const CodebookSchema = z
 		const worksWithEdge = EdgeDefinitionSchema.generateMock();
 		const ego = EgoDefinitionSchema.generateMock();
 
-		// Remove 'unique' validation from ego variables
-		// can't think of a better way to do this
-		if (ego.variables) {
-			for (const variable of Object.values(ego.variables)) {
-				if ("validation" in variable && variable.validation && "unique" in variable.validation) {
-					// biome-ignore lint/performance/noDelete: safe in mock context
-					delete (variable.validation as { unique?: boolean }).unique;
-				}
-			}
-		}
-
 		return {
 			node: {
 				[getNodeTypeId(0)]: { ...personNode, name: "Person" },

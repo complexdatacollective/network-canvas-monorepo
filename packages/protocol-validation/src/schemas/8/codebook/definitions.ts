@@ -1,5 +1,5 @@
 import { z } from "src/utils/zod-mock-extension";
-import { VariablesSchema } from "../variables";
+import { EdgeVariablesSchema, EgoVariablesSchema, VariablesSchema } from "../variables";
 
 const NodeDefinitionSchema = z
 	.object({
@@ -21,42 +21,16 @@ const EdgeDefinitionSchema = z
 	.object({
 		name: z.string(),
 		color: z.string().generateMock(() => "edge-color-seq-1"),
-		variables: VariablesSchema.optional(),
+		variables: EdgeVariablesSchema.optional(),
 	})
 	.strict();
 
 export { EdgeDefinitionSchema };
 export type EdgeDefinition = z.infer<typeof EdgeDefinitionSchema>;
 
-const EgoDefinitionSchema = z
-	.strictObject({
-		variables: VariablesSchema.optional(),
-	})
-	.superRefine((egoDef, ctx) => {
-		// Validate ego-specific constraints
-		if (egoDef.variables) {
-			for (const [varId, variable] of Object.entries(egoDef.variables)) {
-				if (
-					variable &&
-					typeof variable === "object" &&
-					"validation" in variable &&
-					variable.validation &&
-					typeof variable.validation === "object"
-				) {
-					const validation = variable.validation as Record<string, unknown>;
-
-					// Check that unique validation is not used on ego variables
-					if (validation.unique) {
-						ctx.addIssue({
-							code: "custom" as const,
-							message: `The 'unique' variable validation cannot be used on ego variables. Was used on ego variable "${varId}".`,
-							path: ["variables", varId, "validation", "unique"],
-						});
-					}
-				}
-			}
-		}
-	});
+const EgoDefinitionSchema = z.strictObject({
+	variables: EgoVariablesSchema.optional(),
+});
 
 export { EgoDefinitionSchema };
 export type EgoDefinition = z.infer<typeof EgoDefinitionSchema>;

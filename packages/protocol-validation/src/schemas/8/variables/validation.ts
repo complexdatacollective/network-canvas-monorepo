@@ -1,5 +1,4 @@
 import { faker } from "@faker-js/faker";
-import { getNodeVariableId } from "src/utils/mock-seeds";
 import { z } from "src/utils/zod-mock-extension";
 
 export const validations = {
@@ -37,22 +36,10 @@ export const validations = {
 		.generateMock(() => faker.number.int({ min: 3, max: 5 }))
 		.optional(),
 	unique: z.boolean().optional(),
-	differentFrom: z
-		.string()
-		.generateMock(() => getNodeVariableId(1))
-		.optional(),
-	sameAs: z
-		.string()
-		.generateMock(() => getNodeVariableId(1))
-		.optional(),
-	greaterThanVariable: z
-		.string()
-		.generateMock(() => getNodeVariableId(1))
-		.optional(),
-	lessThanVariable: z
-		.string()
-		.generateMock(() => getNodeVariableId(1))
-		.optional(),
+	differentFrom: z.string().optional(),
+	sameAs: z.string().optional(),
+	greaterThanVariable: z.string().optional(),
+	lessThanVariable: z.string().optional(),
 };
 
 export const ValidationsSchema = z.object(validations);
