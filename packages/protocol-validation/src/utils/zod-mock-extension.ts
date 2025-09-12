@@ -149,6 +149,33 @@ function generateMockData(schema: z.ZodTypeAny, applyTopLevelTransform = false):
 			return null;
 		}
 
+		case "literal": {
+			return (schema as any)._def.values?.[0];
+		}
+
+		case "enum": {
+			const values = Object.values((schema as any)._def.entries);
+			return values[Math.floor(Math.random() * values.length)];
+		}
+
+		case "record": {
+			const { keyType, valueType } = (schema as any)._def;
+			const numEntries = Math.floor(Math.random() * 3) + 1;
+
+			return Object.fromEntries(
+				Array.from({ length: numEntries }, () => {
+					const key = String(generateMockData(keyType));
+					const value = generateMockData(valueType);
+					return [key, value] as const;
+				}),
+			);
+		}
+
+		case "tuple": {
+			const items = (schema as any)._def.items;
+			return items.map((itemSchema: any) => generateMockData(itemSchema));
+		}
+
 		default:
 			throw new Error(
 				`Mock generation not implemented for type: ${type}. Available: ${JSON.stringify((schema as any)._def, null, 2)}`,

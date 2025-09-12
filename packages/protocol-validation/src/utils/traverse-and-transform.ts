@@ -50,7 +50,7 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
 
 	const objAsRecord = obj as Record<string, unknown>;
 
-	if (!(currentSegment in objAsRecord)) {
+	if (typeof currentSegment !== "string" || !(currentSegment in objAsRecord)) {
 		return obj;
 	}
 
@@ -76,7 +76,7 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
  *   return modifiedFilter;
  * });
  */
-export function processThing<T>(obj: T, paths: string[], fn: <V>(value: V) => V): T {
+export function traverseAndTransform<T>(obj: T, paths: string[], fn: <V>(value: V) => V): T {
 	let result = obj as unknown;
 
 	for (const path of paths) {

@@ -1,7 +1,5 @@
 import type { ProtocolMigration } from "src/migration";
-import { processThing } from "src/utils/process-thing";
-// Uncomment to use processThing for filter transformations:
-// import { processThing } from "../../utils/process-thing";
+import { traverseAndTransform } from "../../utils/traverse-and-transform";
 
 // Remove `options` from Toggle boolean variables
 const removeToggleOptions = (variables?: Record<string, unknown>) => {
@@ -61,9 +59,13 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 		}
 
 		// filter.type changed values
-		const doc2 = processThing(
+		const doc2 = traverseAndTransform(
 			doc,
-			["stages[].panels[].filter.type[]", "stages[].skipLogic.filter.type[]", "stages[].filter.type[]"],
+			[
+				"stages[].panels[].filter.rules[].type",
+				"stages[].skipLogic.filter.rules[].type",
+				"stages[].filter.rules[].type",
+			],
 			(filterType) => {
 				if (filterType === "alter") return "node" as typeof filterType;
 				return filterType;

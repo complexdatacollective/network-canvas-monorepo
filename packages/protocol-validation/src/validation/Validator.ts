@@ -1,6 +1,5 @@
 import { get } from "es-toolkit/compat";
 import type { Protocol, StageSubject } from "..";
-import type { ValidationError } from "./validate-protocol";
 
 /**
  * See addValidation().
@@ -85,7 +84,7 @@ type Validation<T> = ValidationItemBase & (ValidationItemSingle<T> | ValidationI
  */
 class Validator {
 	private protocol: Protocol;
-	errors: ValidationError[];
+	errors: Array<{ path: string; message: string }>;
 	warnings: string[];
 	// biome-ignore lint/suspicious/noExplicitAny: TODO: remove any and correctly type the validations
 	private validations: Validation<any>[];

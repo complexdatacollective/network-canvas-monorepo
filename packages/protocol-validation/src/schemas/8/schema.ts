@@ -17,6 +17,7 @@ export * from "./stages";
 export * from "./variables";
 
 // Import what we need for the ProtocolSchema
+import { getAssetId } from "../../utils/mock-seeds";
 import { assetSchema } from "./assets";
 import { CodebookSchema } from "./codebook";
 import { ExperimentsSchema, type StageSubject } from "./common";
@@ -26,7 +27,11 @@ const ProtocolSchema = z
 	.strictObject({
 		description: z.string().optional(),
 		experiments: ExperimentsSchema.optional(),
-		lastModified: z.string().datetime().optional(),
+		lastModified: z
+			.string()
+			.datetime()
+			.optional()
+			.generateMock(() => new Date().toISOString()),
 		schemaVersion: z.literal(8),
 		codebook: CodebookSchema,
 		assetManifest: z.record(z.string(), assetSchema).optional(),
@@ -311,6 +316,25 @@ const ProtocolSchema = z
 				validateVariableReferences(edgeDef.variables, ["codebook", "edge", edgeType, "variables"], "edge", edgeType);
 			}
 		}
+	})
+	.generateMock(() => {
+		const codebook = CodebookSchema.generateMock();
+		const stages = Array.from({ length: 5 }, () => stageSchema.generateMock());
+
+		return {
+			description: "Generated Mock Protocol for Testing",
+			schemaVersion: 8 as const,
+			lastModified: new Date().toISOString(),
+			experiments: {
+				encryptedVariables: false,
+			},
+			codebook,
+			assetManifest: {
+				[getAssetId(0)]: assetSchema.generateMock(),
+				[getAssetId(1)]: assetSchema.generateMock(),
+			},
+			stages,
+		};
 	});
 
 export type Protocol = z.infer<typeof ProtocolSchema>;
