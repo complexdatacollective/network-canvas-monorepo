@@ -360,6 +360,23 @@ export function generateVariableMocks(type: "ego" | "edge" | "node"): Record<str
 	for (let i = 0; i < 3; i++) {
 		const schema = faker.helpers.arrayElement(variableSchema.options);
 		const baseMock = schema.generateMock();
+		console.log(baseMock);
+
+		// Validations should only be present 20% of the time
+		// Remove them 80%
+
+		if (!("validation" in baseMock)) {
+			randomVariables[idGenerator(i)] = baseMock;
+			continue;
+		}
+
+		if (Math.random() < 0.2) {
+			randomVariables[idGenerator(i)] = {
+				...baseMock,
+				validation: undefined,
+			};
+			continue;
+		}
 
 		/*
 		 Some validations reference other variables by ID 
@@ -371,11 +388,6 @@ export function generateVariableMocks(type: "ego" | "edge" | "node"): Record<str
 
 		 This has to be done post-validation generation, as the validation mock generators are not context-aware
 		*/
-
-		if (!("validation" in baseMock)) {
-			randomVariables[idGenerator(i)] = baseMock;
-			continue;
-		}
 
 		const entityAwareValidation = { ...baseMock.validation };
 		const refIndex = (i + 1) % 3;

@@ -7,34 +7,34 @@ export const validations = {
 	minLength: z
 		.number()
 		.int()
-		.generateMock(() => faker.number.int({ min: 2, max: 5 }))
-		.optional(),
+		.optional()
+		.generateMock(() => (Math.random() < 0.2 ? faker.number.int({ min: 2, max: 5 }) : undefined)),
 
 	maxLength: z
 		.number()
 		.int()
-		.generateMock(() => faker.number.int({ min: 6, max: 50 }))
-		.optional(),
+		.optional()
+		.generateMock(() => (Math.random() < 0.2 ? faker.number.int({ min: 6, max: 50 }) : undefined)),
 	minValue: z
 		.number()
 		.int()
 		.optional()
-		.generateMock(() => faker.number.int({ min: 1, max: 10 })),
+		.generateMock(() => (Math.random() < 0.2 ? faker.number.int({ min: 1, max: 10 }) : undefined)),
 	maxValue: z
 		.number()
 		.int()
-		.generateMock(() => faker.number.int({ min: 11, max: 100 }))
-		.optional(),
+		.optional()
+		.generateMock(() => (Math.random() < 0.2 ? faker.number.int({ min: 11, max: 100 }) : undefined)),
 	minSelected: z
 		.number()
 		.int()
-		.generateMock(() => faker.number.int({ min: 1, max: 2 }))
-		.optional(),
+		.optional()
+		.generateMock(() => (Math.random() < 0.2 ? faker.number.int({ min: 1, max: 2 }) : undefined)),
 	maxSelected: z
 		.number()
 		.int()
-		.generateMock(() => faker.number.int({ min: 3, max: 5 }))
-		.optional(),
+		.optional()
+		.generateMock(() => (Math.random() < 0.2 ? faker.number.int({ min: 3, max: 5 }) : undefined)),
 	unique: z.boolean().optional(),
 	differentFrom: z.string().optional(),
 	sameAs: z.string().optional(),
