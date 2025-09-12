@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBaseProtocol } from "../../../utils/test-utils";
+import { createBaseProtocol } from "~/utils/test-utils";
 import ProtocolSchemaV8 from "../schema";
 
 /**

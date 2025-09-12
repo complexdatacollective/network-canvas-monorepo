@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
-import { getNodeTypeId, getNodeVariableId } from "../../../utils/mock-seeds";
-import { z } from "../../../utils/zod-mock-extension";
+import { getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
+import { z } from "~/utils/zod-mock-extension";
 
 export const filterRuleSchema = z
 	.object({

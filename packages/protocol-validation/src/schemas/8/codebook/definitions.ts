@@ -1,4 +1,4 @@
-import { z } from "../../../utils/zod-mock-extension";
+import { z } from "~/utils/zod-mock-extension";
 import { EdgeVariablesSchema, EgoVariablesSchema, VariablesSchema } from "../variables";
 
 const NodeDefinitionSchema = z

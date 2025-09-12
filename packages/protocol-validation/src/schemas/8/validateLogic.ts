@@ -1,5 +1,5 @@
 import { get, isObject } from "es-toolkit/compat";
-import Validator from "../../validation/Validator";
+import Validator from "~/validation/Validator";
 import {
 	checkDuplicateNestedId,
 	duplicateInArray,
@@ -8,7 +8,7 @@ import {
 	getVariableNameFromID,
 	getVariableNames,
 	getVariablesForSubject,
-} from "../../validation/helpers";
+} from "~/validation/helpers";
 import type {
 	AdditionalAttributes,
 	Codebook,

@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { z } from "../../../utils/zod-mock-extension";
+import { z } from "~/utils/zod-mock-extension";
 
 const fileNames = ["background.jpg", "logo.png", "map.geojson", "classmates.csv"];
 const mockVideoNames = ["intro_video.mp4", "tutorial.mp4", "outro.mov"];

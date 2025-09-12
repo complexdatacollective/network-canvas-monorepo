@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId, getNodeTypeId } from "../../../utils/mock-seeds";
-import { z } from "../../../utils/zod-mock-extension";
-import { findDuplicateId } from "../../../utils/validation-helpers";
+import { getAssetId, getNodeTypeId } from "~/utils/mock-seeds";
+import { z } from "~/utils/zod-mock-extension";
+import { findDuplicateId } from "~/utils/validation-helpers";
 import { geospatialPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
 

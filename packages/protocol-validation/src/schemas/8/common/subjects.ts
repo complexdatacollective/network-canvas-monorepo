@@ -1,5 +1,5 @@
-import { getEdgeTypeId, getNodeTypeId } from "../../../utils/mock-seeds";
-import { z } from "../../../utils/zod-mock-extension";
+import { getEdgeTypeId, getNodeTypeId } from "~/utils/mock-seeds";
+import { z } from "~/utils/zod-mock-extension";
 
 export const NodeStageSubjectSchema = z
 	.object({

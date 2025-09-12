@@ -1,4 +1,4 @@
-import { z } from "../../../utils/zod-mock-extension";
+import { z } from "~/utils/zod-mock-extension";
 import { FilterSchema } from "../filters";
 
 const SkipLogicActionSchema = z.enum(["SHOW", "SKIP"]);

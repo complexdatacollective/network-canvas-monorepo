@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId, getNodeTypeId, getNodeVariableId } from "../../../utils/mock-seeds";
-import { z } from "../../../utils/zod-mock-extension";
-import { findDuplicateId } from "../../../utils/validation-helpers";
+import { z } from "~/utils/zod-mock-extension";
+import { getAssetId, getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
+import { findDuplicateId } from "~/utils/validation-helpers";
 import { FormSchema, nameGeneratorPromptSchema, panelSchema } from "../common";
 import { SortOrderSchema } from "../filters";
 import { baseStageSchema } from "./base";

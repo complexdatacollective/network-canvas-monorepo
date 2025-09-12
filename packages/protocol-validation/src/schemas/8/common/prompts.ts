@@ -1,7 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { faker } from "@faker-js/faker";
-import { getEdgeTypeId, getNodeVariableId } from "../../../utils/mock-seeds";
-import { z } from "../../../utils/zod-mock-extension";
+import { getEdgeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
+import { z } from "~/utils/zod-mock-extension";
 import { SortOrderSchema } from "../filters";
 
 const promptSchema = z
