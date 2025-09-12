@@ -1,20 +1,5 @@
-import type { ProtocolMigration } from "src/migration";
+import type { ProtocolDocument, ProtocolMigration } from "src/migration";
 import { traverseAndTransform } from "~/utils/traverse-and-transform";
-
-// Remove `options` from Toggle boolean variables
-const removeToggleOptions = (variables?: Record<string, unknown>) => {
-	if (!variables) return;
-	for (const variable of Object.values(variables)) {
-		if (typeof variable === "object" && variable !== null) {
-			const typedVariable = variable as Record<string, unknown>;
-			if (typedVariable.type === "boolean" && typedVariable.component === "Toggle") {
-				// Remove invalid 'options' property
-				// biome-ignore lint/performance/noDelete: acceptable in this instance
-				delete typedVariable.options;
-			}
-		}
-	}
-};
 
 const migrationV7toV8: ProtocolMigration<7, 8> = {
 	from: 7,
@@ -31,53 +16,63 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 - Changed FilterRule type to use the same entity names as elsewhere
 `,
 	migrate: (doc) => {
-		const codebook = doc.codebook;
-
-		// Iterate node and edge types in codebook, and remove 'displayVariable' property
-		for (const type of ["node", "edge"] as const) {
-			const entityRecord = codebook[type];
-			if (entityRecord) {
-				for (const entityDefinition of Object.values(entityRecord as Record<string, unknown>)) {
+		const transformed = traverseAndTransform(doc as Record<string, unknown>, [
+			{
+				// Remove deprecated 'displayVariable' property from node and edge entity definitions
+				paths: ["codebook.node.*", "codebook.edge.*"],
+				fn: <V>(entityDefinition: V) => {
 					if (typeof entityDefinition === "object" && entityDefinition !== null) {
 						const typedEntity = entityDefinition as Record<string, unknown>;
-						// Remove deprecated displayVariable property
 						// biome-ignore lint/performance/noDelete: necessary for migration
 						delete typedEntity.displayVariable;
-						// Remove options from Toggle boolean variables
-						removeToggleOptions(typedEntity.variables as Record<string, unknown> | undefined);
 					}
-				}
-			}
-		}
-
-		// Handle ego variables
-		if (codebook.ego && typeof codebook.ego === "object" && codebook.ego !== null) {
-			const egoRecord = codebook.ego as Record<string, unknown>;
-			if ("variables" in egoRecord && typeof egoRecord.variables === "object" && egoRecord.variables !== null) {
-				removeToggleOptions(egoRecord.variables as Record<string, unknown>);
-			}
-		}
-
-		// filter.type changed values
-		const doc2 = traverseAndTransform(
-			doc,
-			[
-				"stages[].panels[].filter.rules[].type",
-				"stages[].skipLogic.filter.rules[].type",
-				"stages[].filter.rules[].type",
-			],
-			(filterType) => {
-				if (filterType === "alter") return "node" as typeof filterType;
-				return filterType;
+					return entityDefinition;
+				},
 			},
-		);
+			{
+				// Remove 'options' property from Toggle boolean variables
+				paths: ["codebook.node.*.variables", "codebook.edge.*.variables", "codebook.ego.variables"],
+				fn: <V>(variables: V) => {
+					if (!variables || typeof variables !== "object") return variables;
 
-		return {
-			...doc2,
-			codebook,
-			schemaVersion: 8 as const,
-			experiments: undefined,
-		} as ReturnType<ProtocolMigration<7, 8>["migrate"]>;
+					for (const variable of Object.values(variables as Record<string, unknown>)) {
+						if (typeof variable === "object" && variable !== null) {
+							const typedVariable = variable as Record<string, unknown>;
+							if (typedVariable.type === "boolean" && typedVariable.component === "Toggle") {
+								// Remove invalid 'options' property
+								// biome-ignore lint/performance/noDelete: necessary for migration
+								delete typedVariable.options;
+							}
+						}
+					}
+					return variables;
+				},
+			},
+			{
+				// Change filter.type value from "alter" to "node" to match entity naming elsewhere
+				paths: [
+					"stages[].panels[].filter.rules[].type",
+					"stages[].skipLogic.filter.rules[].type",
+					"stages[].filter.rules[].type",
+				],
+				fn: <V>(filterType: V) => {
+					if (filterType === "alter") return "node" as V;
+					return filterType;
+				},
+			},
+			{
+				// Update schema version and add experiments field
+				paths: [""],
+				fn: <V>(protocol: V) =>
+					({
+						...(protocol as Record<string, unknown>),
+						schemaVersion: 8 as const,
+						experiments: undefined,
+					}) as V,
+			},
+		]);
+
+		return transformed as ProtocolDocument<8>;
 	},
 };
 

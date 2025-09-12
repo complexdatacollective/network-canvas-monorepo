@@ -66,23 +66,32 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
  * Supports array notation with [] to process all elements in an array.
  *
  * @param obj - The object to process
- * @param paths - Array of path strings (e.g., ["stages[].panels[].filter"])
- * @param fn - Function to apply to matching values
+ * @param transformations - Array of path-function pairs to apply
  * @returns A new object with transformations applied
  *
  * @example
- * processThing(data, ["stages[].panels[].filter"], (filter) => {
- *   // Transform the filter
- *   return modifiedFilter;
- * });
+ * traverseAndTransform(data, [
+ *   {
+ *     paths: ["stages[].panels[].filter"],
+ *     fn: (filter) => modifiedFilter
+ *   }
+ * ]);
  */
-export function traverseAndTransform<T>(obj: T, paths: string[], fn: <V>(value: V) => V): T {
-	let result = obj as unknown;
-
-	for (const path of paths) {
-		const segments = parsePath(path);
-		result = traverseAndApply(result, segments, fn);
+export function traverseAndTransform<T>(
+	obj: T,
+	transformations: Array<{ paths: string[]; fn: <V>(value: V) => V }>,
+): T {
+	let result = obj;
+	for (const { paths, fn } of transformations) {
+		for (const path of paths) {
+			if (path === "") {
+				// Handle root-level transformation
+				result = fn(result) as T;
+			} else {
+				const segments = parsePath(path);
+				result = traverseAndApply(result, segments, fn) as T;
+			}
+		}
 	}
-
-	return result as T;
+	return result;
 }

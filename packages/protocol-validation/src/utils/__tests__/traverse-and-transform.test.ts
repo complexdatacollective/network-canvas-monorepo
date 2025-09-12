@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { traverseAndTransform } from "../traverse-and-transform";
 
 describe("traverseAndTransform", () => {
-	it("should process nested array filters", () => {
+	it("should process multiple transformations in sequence", () => {
 		const test = {
 			stages: [
 				{
@@ -53,37 +53,46 @@ describe("traverseAndTransform", () => {
 		let skipLogicFilterCount = 0;
 		let stageFilterCount = 0;
 
-		// Test processing panel filters (should be called 3 times)
-		const result1 = traverseAndTransform(test, ["stages[].panels[].filter"], (filter) => {
-			panelFilterCount++;
-			return { ...filter, processed: true };
-		});
+		// Test processing all filters with the new array format
+		const result = traverseAndTransform(test, [
+			{
+				// Process panel filters (should be called 3 times)
+				paths: ["stages[].panels[].filter"],
+				fn: <V>(filter: V) => {
+					panelFilterCount++;
+					return { ...filter, processed: true };
+				},
+			},
+			{
+				// Process skipLogic filters (should be called 1 time)
+				paths: ["stages[].skipLogic.filter"],
+				fn: <V>(filter: V) => {
+					skipLogicFilterCount++;
+					return { ...filter, skipProcessed: true };
+				},
+			},
+			{
+				// Process stage-level filters (should be called 1 time)
+				paths: ["stages[].filter"],
+				fn: <V>(filter: V) => {
+					stageFilterCount++;
+					return { ...filter, stageProcessed: true };
+				},
+			},
+		]);
 
 		expect(panelFilterCount).toBe(3);
-		expect(result1.stages?.[0]?.panels?.[0]?.filter).toHaveProperty("processed", true);
-		expect(result1.stages?.[0]?.panels?.[1]?.filter).toHaveProperty("processed", true);
-		expect(result1.stages?.[1]?.panels?.[0]?.filter).toHaveProperty("processed", true);
-
-		// Test processing skipLogic filters (should be called 1 time)
-		const result2 = traverseAndTransform(test, ["stages[].skipLogic.filter"], (filter) => {
-			skipLogicFilterCount++;
-			return { ...filter, skipProcessed: true };
-		});
-
 		expect(skipLogicFilterCount).toBe(1);
-		expect(result2.stages?.[0]?.skipLogic?.filter).toHaveProperty("skipProcessed", true);
-
-		// Test processing stage-level filters (should be called 1 time)
-		const result3 = traverseAndTransform(test, ["stages[].filter"], (filter) => {
-			stageFilterCount++;
-			return { ...filter, stageProcessed: true };
-		});
-
 		expect(stageFilterCount).toBe(1);
-		expect(result3.stages?.[1]?.filter).toHaveProperty("stageProcessed", true);
+
+		expect(result.stages?.[0]?.panels?.[0]?.filter).toHaveProperty("processed", true);
+		expect(result.stages?.[0]?.panels?.[1]?.filter).toHaveProperty("processed", true);
+		expect(result.stages?.[1]?.panels?.[0]?.filter).toHaveProperty("processed", true);
+		expect(result.stages?.[0]?.skipLogic?.filter).toHaveProperty("skipProcessed", true);
+		expect(result.stages?.[1]?.filter).toHaveProperty("stageProcessed", true);
 	});
 
-	it("should process multiple paths in one call", () => {
+	it("should process multiple paths in one transformation", () => {
 		const test = {
 			stages: [
 				{
@@ -100,15 +109,15 @@ describe("traverseAndTransform", () => {
 		};
 
 		let callCount = 0;
-		const result = traverseAndTransform(
-			test,
-			["stages[].panels[].filter", "stages[].skipLogic.filter", "stages[].filter"],
-			(filter) => {
-				callCount++;
-				const f = filter as Record<string, unknown>;
-				return { ...f, modified: true } as typeof filter;
+		const result = traverseAndTransform(test, [
+			{
+				paths: ["stages[].panels[].filter", "stages[].skipLogic.filter", "stages[].filter"],
+				fn: <V>(filter: V) => {
+					callCount++;
+					return { ...filter, modified: true };
+				},
 			},
-		);
+		]);
 
 		expect(callCount).toBe(4); // 2 panel filters + 1 skipLogic filter + 1 stage filter
 		expect(result.stages?.[0]?.skipLogic?.filter).toHaveProperty("modified", true);
@@ -122,9 +131,14 @@ describe("traverseAndTransform", () => {
 			stages: [{ id: 1 }, { id: 2 }],
 		};
 
-		const result = traverseAndTransform(test, ["stages[].nonExistent.filter"], (value) => {
-			return { ...value, modified: true };
-		});
+		const result = traverseAndTransform(test, [
+			{
+				paths: ["stages[].nonExistent.filter"],
+				fn: <V>(value: V) => {
+					return { ...value, modified: true };
+				},
+			},
+		]);
 
 		// Should return original structure unchanged
 		expect(result).toEqual(test);
@@ -135,9 +149,14 @@ describe("traverseAndTransform", () => {
 			stages: { notAnArray: true },
 		};
 
-		const result = traverseAndTransform(test, ["stages[].filter"], (value) => {
-			return { ...value, modified: true };
-		});
+		const result = traverseAndTransform(test, [
+			{
+				paths: ["stages[].filter"],
+				fn: <V>(value: V) => {
+					return { ...value, modified: true };
+				},
+			},
+		]);
 
 		// Should return original structure unchanged
 		expect(result).toEqual(test);
@@ -152,10 +171,15 @@ describe("traverseAndTransform", () => {
 			],
 		};
 
-		const result = traverseAndTransform(test, ["stages[].filter"], (filter) => {
-			const f = filter as { type: string };
-			return { ...f, type: "modified" } as typeof filter;
-		});
+		const result = traverseAndTransform(test, [
+			{
+				paths: ["stages[].filter"],
+				fn: <V>(filter: V) => {
+					const f = filter as { type: string };
+					return { ...f, type: "modified" } as V;
+				},
+			},
+		]);
 
 		// Original should be unchanged
 		expect(test.stages[0]?.filter?.type).toBe("original");
@@ -177,14 +201,80 @@ describe("traverseAndTransform", () => {
 		};
 
 		let count = 0;
-		const result = traverseAndTransform(test, ["a.b[].c.d[].e"], (value) => {
-			count++;
-			const v = value as { value: number };
-			return { ...v, value: v.value * 10 } as typeof value;
-		});
+		const result = traverseAndTransform(test, [
+			{
+				paths: ["a.b[].c.d[].e"],
+				fn: <V>(value: V) => {
+					count++;
+					const v = value as { value: number };
+					return { ...v, value: v.value * 10 } as V;
+				},
+			},
+		]);
 
 		expect(count).toBe(2);
 		expect(result.a?.b?.[0]?.c?.d?.[0]?.e?.value).toBe(10);
 		expect(result.a?.b?.[0]?.c?.d?.[1]?.e?.value).toBe(20);
+	});
+
+	it("should handle root-level transformations", () => {
+		const test = {
+			schemaVersion: 7,
+			data: "test",
+		};
+
+		type ResultType = typeof test & { newField: string };
+
+		const result = traverseAndTransform(test, [
+			{
+				paths: [""],
+				fn: <V>(protocol: V) =>
+					({
+						...(protocol as typeof test),
+						schemaVersion: 8,
+						newField: "added",
+					}) as V,
+			},
+		]) as ResultType;
+
+		expect(result.schemaVersion).toBe(8);
+		expect(result.data).toBe("test");
+		expect(result.newField).toBe("added");
+	});
+
+	it("should apply transformations in sequence", () => {
+		const test = {
+			value: 1,
+			nested: {
+				value: 10,
+			},
+		};
+
+		type ResultType = typeof test & { total: number };
+
+		const result = traverseAndTransform(test, [
+			{
+				paths: ["value"],
+				fn: <V>(value: V) => ((value as number) * 2) as V,
+			},
+			{
+				paths: ["nested.value"],
+				fn: <V>(value: V) => ((value as number) + 5) as V,
+			},
+			{
+				paths: [""],
+				fn: <V>(obj: V) => {
+					const o = obj as typeof test;
+					return {
+						...o,
+						total: o.value + o.nested.value,
+					} as V;
+				},
+			},
+		]) as ResultType;
+
+		expect(result.value).toBe(2); // 1 * 2
+		expect(result.nested.value).toBe(15); // 10 + 5
+		expect(result.total).toBe(17); // 2 + 15
 	});
 });
