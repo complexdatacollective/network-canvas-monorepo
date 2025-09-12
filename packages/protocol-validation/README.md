@@ -20,12 +20,12 @@ const { hasErrors, errors } = validateLogic(protocolJson);
 
 ```js
 const result = await validateProtocol(protocolJson);
-if (result.isValid) {
-  // protocol is valid
+if (result.success) {
+  // protocol is valid, validated data available in result.data
 } else {
   // protocol is invalid
-  // result.errors contains the Zod error tree
-  console.error(result.errors);
+  // result.error contains the Zod error
+  console.error(result.error);
 }
 ```
 

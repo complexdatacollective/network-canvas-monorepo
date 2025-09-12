@@ -53,12 +53,12 @@ async function main() {
 
 		const result = await validateProtocol(protocol);
 
-		if (result.isValid) {
+		if (result.success) {
 			success("✅ Protocol is valid");
 			process.exit(0);
 		} else {
 			error("❌ Protocol validation failed:");
-			console.error(result.errors);
+			console.error(result.error);
 			process.exit(1);
 		}
 	} catch (error) {

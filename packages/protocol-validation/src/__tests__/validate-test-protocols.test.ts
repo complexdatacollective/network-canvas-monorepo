@@ -47,30 +47,28 @@ describe("Test protocols", () => {
 			const duration = Date.now() - startTime;
 
 			console.log(`Validation completed in ${duration}ms`);
-			console.log(`Result: ${result.isValid ? "✅ Valid" : "❌ Invalid"}`);
+			console.log(`Result: ${result.success ? "✅ Valid" : "❌ Invalid"}`);
 
 			// If there are errors, log them (using unified errors array)
-			if (!result.isValid) {
-				console.log(`Validation errors: ${JSON.stringify(result.errors || "No error details available", null, 2)}`);
+			if (!result.success) {
+				console.log(`Validation errors: ${JSON.stringify(result.error || "No error details available", null, 2)}`);
 			}
 
 			// Test each protocol individually but within the same test
-			expect(result.isValid).toBe(true);
-			expect(result.errors).toEqual(null);
+			expect(result.success).toBe(true);
 
 			// Migrate and validate protocols with schema version < 8
 			if (protocol.schemaVersion < 8) {
 				const migratedProtocol = migrateProtocol(protocol);
 				const migrationResult = await validateProtocol(migratedProtocol);
 
-				console.log(`Migration result: ${migrationResult.isValid ? "✅ Valid" : "❌ Invalid"}`);
+				console.log(`Migration result: ${migrationResult.success ? "✅ Valid" : "❌ Invalid"}`);
 
-				if (migrationResult.errors && migrationResult.errors.errors.length > 0) {
-					console.log(`Migration validation errors: ${JSON.stringify(migrationResult.errors, null, 2)}`);
+				if (!migrationResult.success) {
+					console.log(`Migration validation errors: ${JSON.stringify(migrationResult.error, null, 2)}`);
 				}
 
-				expect.soft(migrationResult.isValid).toBe(true);
-				expect.soft(migrationResult.errors).toEqual(null);
+				expect.soft(migrationResult.success).toBe(true);
 			}
 		}
 	});
