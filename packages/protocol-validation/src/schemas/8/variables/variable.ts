@@ -370,7 +370,7 @@ export function generateVariableMocks(type: "ego" | "edge" | "node"): Record<str
 			continue;
 		}
 
-		if (Math.random() < 0.2) {
+		if (Math.random() < 0.8) {
 			randomVariables[idGenerator(i)] = {
 				...baseMock,
 				validation: undefined,
