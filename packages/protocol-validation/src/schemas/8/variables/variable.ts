@@ -4,16 +4,6 @@ import { findDuplicateName, getVariableNames } from "../../../utils/validation-h
 import { ComponentTypes, VariableTypes } from "./types";
 import { validations } from "./validation";
 
-// Options Schema for categorical and ordinal variables
-const categoricalOptionsSchema = z.array(
-	z
-		.object({
-			label: z.string(),
-			value: z.union([z.number().int(), z.string(), z.boolean()]),
-		})
-		.strict(),
-);
-
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 
 // Variable Schema
@@ -160,6 +150,16 @@ const booleanToggleVariableSchema = baseVariableSchema.extend({
 		})
 		.optional(),
 });
+
+// Options Schema for categorical and ordinal variables
+const categoricalOptionsSchema = z.array(
+	z
+		.object({
+			label: z.string(),
+			value: z.union([z.number().int(), z.string(), z.boolean()]),
+		})
+		.strict(),
+);
 
 const ordinalVariableSchema = baseVariableSchema.extend({
 	type: z.literal(VariableTypes.ordinal),

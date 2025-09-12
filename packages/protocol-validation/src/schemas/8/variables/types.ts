@@ -7,7 +7,6 @@ export const ComponentTypes = {
 	TextArea: "TextArea",
 	Toggle: "Toggle",
 	ToggleButtonGroup: "ToggleButtonGroup",
-	Slider: "Slider",
 	VisualAnalogScale: "VisualAnalogScale",
 	LikertScale: "LikertScale",
 	DatePicker: "DatePicker",
