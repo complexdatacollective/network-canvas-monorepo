@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "~/lib/legacy-ui/components";
 import SpotlightModal from "./SpotlightModal";
 import EditableVariablePill, { SimpleVariablePill } from "./VariablePill";
-import VariableSpotlight from "./VariableSpotlight";
+import VariableSidebar from "./VariableSidebar";
 
 type VariablePickerProps = {
 	disallowCreation?: boolean;
@@ -92,12 +92,18 @@ const VariablePicker = ({
 				{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
 			</div>
 			<SpotlightModal show={showPicker} onBlur={hideModal}>
-				<VariableSpotlight
+				{/* <VariableSpotlight
 					entity={entity}
 					type={type}
 					onSelect={handleSelectVariable}
 					onCancel={hideModal}
 					options={options}
+					onCreateOption={handleCreateOption}
+					disallowCreation={disallowCreation}
+				/> */}
+				<VariableSidebar
+					options={options}
+					onSelect={handleSelectVariable}
 					onCreateOption={handleCreateOption}
 					disallowCreation={disallowCreation}
 				/>

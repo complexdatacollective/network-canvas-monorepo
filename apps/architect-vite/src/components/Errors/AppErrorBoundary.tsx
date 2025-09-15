@@ -28,14 +28,14 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 				<div className="error">
 					<div className="error__layout">
 						<h1 className="error__title">Something went wrong.</h1>
-						<div className="error__message">
+						<div className="error__message text-white">
 							<p>
 								The following &quot;
 								{error.message}
 								&quot; error occurred:
 							</p>
 						</div>
-						<pre className="error__stack">
+						<pre className="error__stack text-white">
 							<code>{error.stack}</code>
 						</pre>
 					</div>

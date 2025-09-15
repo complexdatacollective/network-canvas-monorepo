@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { useAppDispatch } from "~/ducks/hooks";
 
@@ -35,25 +36,30 @@ export const useEditHandlers = ({
 	// State management
 	const [editIndex, setEditIndex] = useState<number | null>(null);
 
+	// Get items from Redux state
+	const items = useSelector((state) => formValueSelector(form)(state, fieldName)) || [];
+
 	// Get items only when needed for operations, not for rendering
 	const getItems = useCallback(() => {
 		console.log(`🔍 getItems called`);
-		// This creates a selector that gets current state without subscribing to changes
-		const state = dispatch.getState();
-		return formValueSelector(form)(state, fieldName) || [];
-	}, [dispatch, form, fieldName]);
+		return items;
+	}, [items]);
 
 	// Log when getItems callback is recreated
 	useEffect(() => {
 		console.log(`🔄 getItems callback recreated`);
 	}, [getItems]);
 
-	// // Get current item being edited
-	// const currentItem = useSelector((state: AppState) =>
-	// 	editIndex !== null ? formValueSelector(form)(state, `${fieldName}[${editIndex}]`) : null,
-	// );
-
-	// const initialValues = currentItem || template();
+	// Get current item being edited
+	const getCurrentItem = useCallback(() => {
+		if (editIndex === null) return null;
+		// If we're adding new (index equals array length), return template
+		if (editIndex >= items.length) {
+			return template();
+		}
+		// Otherwise return the existing item
+		return items[editIndex] || template();
+	}, [items, editIndex, template]);
 
 	const clearEditField = useCallback(() => {
 		console.log(`❌ clearEditField called`);
@@ -92,6 +98,7 @@ export const useEditHandlers = ({
 
 	return {
 		editIndex,
+		currentItem: getCurrentItem(),
 		handleTriggerEdit,
 		handleCancelEdit: clearEditField,
 		handleSaveEdit,
