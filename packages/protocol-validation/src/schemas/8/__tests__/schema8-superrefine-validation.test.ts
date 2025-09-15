@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBaseProtocol } from "../../../utils/test-utils";
+import { createBaseProtocol } from "~/utils/test-utils";
 import ProtocolSchemaV8 from "../schema";
 
 /**
@@ -815,7 +815,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 							rules: [
 								{
 									id: "rule1",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "person",
 										attribute: "age",
@@ -852,7 +852,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 							rules: [
 								{
 									id: "rule1",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "nonexistentEntityType",
 										attribute: "name",
@@ -886,7 +886,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 							rules: [
 								{
 									id: "rule1",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "person",
 										attribute: "nonexistentAttribute",
@@ -920,7 +920,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 							rules: [
 								{
 									id: "duplicateId",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "person",
 										attribute: "age",
@@ -930,7 +930,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								},
 								{
 									id: "duplicateId",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "person",
 										attribute: "name",
@@ -1057,7 +1057,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								rules: [
 									{
 										id: "skipRule1",
-										type: "alter",
+										type: "node",
 										options: {
 											type: "person",
 											attribute: "age",
@@ -1089,7 +1089,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								rules: [
 									{
 										id: "duplicateNestedId",
-										type: "alter",
+										type: "node",
 										options: {
 											type: "person",
 											attribute: "age",
@@ -1099,7 +1099,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 									},
 									{
 										id: "duplicateNestedId",
-										type: "alter",
+										type: "node",
 										options: {
 											type: "person",
 											attribute: "name",
@@ -1503,7 +1503,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 							rules: [
 								{
 									id: "filterRule1",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "person",
 										attribute: "age",
@@ -1570,7 +1570,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 							rules: [
 								{
 									id: "rule1",
-									type: "alter",
+									type: "node",
 									options: {
 										type: "anotherNonexistent", // Error 4: Invalid filter entity type
 										attribute: "invalidAttribute", // Error 5: Invalid filter attribute

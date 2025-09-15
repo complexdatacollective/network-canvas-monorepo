@@ -24,6 +24,7 @@
 	"files": ["dist"],
 	"dependencies": {
 		"@codaco/shared-consts": "workspace:*",
+		"@faker-js/faker": "^10.0.0",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

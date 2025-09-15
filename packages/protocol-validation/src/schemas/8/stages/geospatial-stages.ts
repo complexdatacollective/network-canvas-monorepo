@@ -1,12 +1,14 @@
-import { z } from "zod";
-import { findDuplicateId } from "../../../utils/validation-helpers";
+import { faker } from "@faker-js/faker";
+import { getAssetId, getNodeTypeId } from "~/utils/mock-seeds";
+import { z } from "~/utils/zod-mock-extension";
+import { findDuplicateId } from "~/utils/validation-helpers";
 import { geospatialPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
 
 const NodeStageSubjectSchema = z
 	.object({
 		entity: z.literal("node"),
-		type: z.string(),
+		type: z.string().generateMock(() => getNodeTypeId()),
 	})
 	.strict();
 
@@ -38,16 +40,29 @@ const mapboxStyleOptions = [
 const styleOptions = z.enum(mapboxStyleOptions.map((option) => option.value) as [string, ...string[]]);
 
 const mapOptions = z.object({
-	tokenAssetId: z.string(),
-	style: styleOptions,
+	tokenAssetId: z.string().generateMock(() => getAssetId(0)),
+	style: styleOptions.generateMock(() => faker.helpers.arrayElement(mapboxStyleOptions).value),
 	center: z.tuple([z.number(), z.number()]),
 	initialZoom: z
 		.number()
 		.min(0, { message: "Zoom must be at least 0" })
-		.max(22, { message: "Zoom must be less than or equal to 22" }),
-	dataSourceAssetId: z.string(),
-	color: z.string(),
-	targetFeatureProperty: z.string(), // property of geojson to select
+		.max(22, { message: "Zoom must be less than or equal to 22" })
+		.generateMock(() => faker.number.int({ min: 0, max: 22 })),
+	dataSourceAssetId: z.string().generateMock(() => getAssetId(1)),
+	color: z
+		.string()
+		.generateMock(() =>
+			faker.helpers.arrayElement([
+				"node-color-seq-1",
+				"node-color-seq-2",
+				"node-color-seq-3",
+				"node-color-seq-4",
+				"node-color-seq-5",
+			]),
+		),
+	targetFeatureProperty: z
+		.string()
+		.generateMock(() => faker.helpers.arrayElement(["name", "location_type", "category"])), // property of geojson to select
 });
 
 export type MapOptions = z.infer<typeof mapOptions>;

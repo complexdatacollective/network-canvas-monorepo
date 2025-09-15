@@ -19,15 +19,13 @@ const { hasErrors, errors } = validateLogic(protocolJson);
 3. validateProtocol - validates the protocol against the schema and logic.
 
 ```js
-try {
-  validateProtocol(protocolJson, schemaJson);
-  // schema is valid
-} catch (e) {
-  if (e instanceof ValidationError) {
-    // schema is invalid. e.schemaErrors and e.dataErrors contain the errors
-  } else {
-    // some other error happened during the process
-  }
+const result = await validateProtocol(protocolJson);
+if (result.success) {
+  // protocol is valid, validated data available in result.data
+} else {
+  // protocol is invalid
+  // result.error contains the Zod error
+  console.error(result.error);
 }
 ```
 
@@ -44,25 +42,19 @@ const migratedProtocol = migrateProtocol(8, protocolJson);
 const canProtocolUpgrade = canUpgrade(7, 8);
 ```
 
-3. errToString - converts a validation error object into a string
-
-```js
-const errString = errToString(errObj);
-```
-
-4. getMigrationNotes - returns migration notes on the changes between a source schema version and a target schema version.
+3. getMigrationNotes - returns migration notes on the changes between a source schema version and a target schema version.
 
 ```js
 const migrationNotes = getMigrationNotes(7, 8);
 ```
 
-5. getVariableNamesFromNetwork - returns variable names from an external network data source
+4. getVariableNamesFromNetwork - returns variable names from an external network data source
 
 ```js
 const variableNames = getVariableNamesFromNetwork(network);
 ```
 
-6. validateNames - validates variable names to ensure they only contain letters, numbers, and the symbols ._-:
+5. validateNames - validates variable names to ensure they only contain letters, numbers, and the symbols ._-:
 ```js
 const validationResult = validateNames(variableNamesArray);
 ```

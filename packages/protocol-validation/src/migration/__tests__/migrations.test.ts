@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VersionedProtocolSchema } from "../../schemas";
+import { VersionedProtocolSchema } from "~/schemas";
 import { SchemaVersionDetectionError } from "../errors";
 import { MigrationChain, type ProtocolDocument } from "../index";
 import { detectSchemaVersion, getMigrationInfo, migrateProtocol, protocolMigrator } from "../migrate-protocol";

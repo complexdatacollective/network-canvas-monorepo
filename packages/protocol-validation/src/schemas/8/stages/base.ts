@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { FilterSchema } from "../filters";
 import { SkipLogicSchema } from "../common";
+import { FilterSchema } from "../filters";
 
 export const baseStageSchema = z.object({
 	id: z.string(),
@@ -8,5 +8,11 @@ export const baseStageSchema = z.object({
 	label: z.string(),
 	filter: FilterSchema.optional(),
 	skipLogic: SkipLogicSchema.optional(),
-	introductionPanel: z.object({ title: z.string(), text: z.string() }).strict().optional(),
+	introductionPanel: z
+		.object({
+			title: z.string(),
+			text: z.string(),
+		})
+		.strict()
+		.optional(),
 });

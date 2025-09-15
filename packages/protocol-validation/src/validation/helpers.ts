@@ -1,45 +1,5 @@
 import { get } from "es-toolkit/compat";
-import type { ValidationError } from "./validate-protocol";
 import type { Codebook, EntityDefinition, FilterRule, StageSubject } from "../schemas/8/schema";
-
-// Legacy error type with additional parameters
-type LegacyValidationError = ValidationError & {
-	params?: {
-		additionalProperty?: string;
-		allowedValues?: string[];
-		allowedValue?: string;
-	};
-};
-
-// For some error types, legacy validation may return info separate from message
-const additionalErrorInfo = (errorObj: ValidationError) => {
-	// ValidationError type doesn't have params - this is legacy code
-	const legacyObj = errorObj as LegacyValidationError;
-	if (!legacyObj.params) {
-		return undefined;
-	}
-
-	return "additionalProperty" in legacyObj.params
-		? legacyObj.params.additionalProperty
-		: "allowedValues" in legacyObj.params
-			? legacyObj.params.allowedValues
-			: "allowedValue" in legacyObj.params
-				? legacyObj.params.allowedValue
-				: undefined;
-};
-
-export const errToString = (errorObj: ValidationError | string) => {
-	if (typeof errorObj === "string") {
-		return errorObj;
-	}
-
-	let str = `${errorObj.path} ${errorObj.message}`;
-	const additionalInfo = additionalErrorInfo(errorObj);
-	if (additionalInfo) {
-		str += `: ${additionalInfo}`;
-	}
-	return str;
-};
 
 /**
  * Check that the entity referenced in a FilterRule is defined in the codebook
@@ -51,10 +11,7 @@ export const getRuleEntityCodebookDefinition = (rule: FilterRule, codebook: Code
 	if (rule.type === "ego") {
 		return codebook.ego;
 	}
-
-	// We need to do this because FilterRule uses 'edge'|'alter' and the codebook uses 'edge'|'node'
-	const entityType = rule.type === "edge" ? "edge" : "node";
-	return rule.options.type ? codebook[entityType]?.[rule.options.type] : undefined;
+	return rule.options.type ? codebook[rule.type]?.[rule.options.type] : undefined;
 };
 
 export const getVariablesForSubject = (codebook: Codebook, subject: StageSubject) => {

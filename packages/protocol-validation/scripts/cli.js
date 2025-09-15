@@ -4,7 +4,7 @@
 import chalk from "chalk";
 import fs from "node:fs";
 import path from "node:path";
-import { errToString, extractProtocol, validateProtocol } from "../dist/index.js";
+import { extractProtocol, validateProtocol } from "../dist/index.js";
 
 async function main() {
 	const [, , filePath] = process.argv;
@@ -53,17 +53,12 @@ async function main() {
 
 		const result = await validateProtocol(protocol);
 
-		if (result.isValid) {
+		if (result.success) {
 			success("✅ Protocol is valid");
 			process.exit(0);
 		} else {
 			error("❌ Protocol validation failed:");
-			console.log(result.schemaErrors);
-			const errors = [...result.logicErrors, ...result.schemaErrors];
-
-			for (const e of errors) {
-				error(`- ${errToString(e)}`);
-			}
+			console.error(result.error);
 			process.exit(1);
 		}
 	} catch (error) {

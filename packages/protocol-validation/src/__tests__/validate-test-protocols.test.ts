@@ -33,7 +33,6 @@ describe("Test protocols", () => {
 			// biome-ignore lint/style/noNonNullAssertion: duh
 			const protocol = protocols[i]!;
 			const filename = protocolFilenames[i];
-
 			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
 			// Earlier versions used semver strings which should be ignored
 			if (typeof protocol.schemaVersion !== "number" || protocol.schemaVersion < 7 || protocol.schemaVersion > 8) {
@@ -48,36 +47,28 @@ describe("Test protocols", () => {
 			const duration = Date.now() - startTime;
 
 			console.log(`Validation completed in ${duration}ms`);
-			console.log(`Result: ${result.isValid ? "✅ Valid" : "❌ Invalid"}`);
+			console.log(`Result: ${result.success ? "✅ Valid" : "❌ Invalid"}`);
 
 			// If there are errors, log them (using unified errors array)
-			if (result.errors.length > 0) {
-				console.log(`Validation errors: ${JSON.stringify(result.errors, null, 2)}`);
+			if (!result.success) {
+				console.log(`Validation errors: ${JSON.stringify(result.error || "No error details available", null, 2)}`);
 			}
 
 			// Test each protocol individually but within the same test
-			expect(result.isValid).toBe(true);
-			expect(result.errors).toEqual([]);
-			// Legacy properties should also be empty for backward compatibility
-			expect(result.schemaErrors).toEqual([]);
-			expect(result.logicErrors).toEqual([]);
+			expect(result.success).toBe(true);
 
 			// Migrate and validate protocols with schema version < 8
 			if (protocol.schemaVersion < 8) {
 				const migratedProtocol = migrateProtocol(protocol);
 				const migrationResult = await validateProtocol(migratedProtocol);
 
-				console.log(`Migration result: ${migrationResult.isValid ? "✅ Valid" : "❌ Invalid"}`);
+				console.log(`Migration result: ${migrationResult.success ? "✅ Valid" : "❌ Invalid"}`);
 
-				if (migrationResult.errors.length > 0) {
-					console.log(`Migration validation errors: ${JSON.stringify(migrationResult.errors, null, 2)}`);
+				if (!migrationResult.success) {
+					console.log(`Migration validation errors: ${JSON.stringify(migrationResult.error, null, 2)}`);
 				}
 
-				expect.soft(migrationResult.isValid).toBe(true);
-				expect.soft(migrationResult.errors).toEqual([]);
-				// Legacy properties should also be empty for backward compatibility
-				expect.soft(migrationResult.schemaErrors).toEqual([]);
-				expect.soft(migrationResult.logicErrors).toEqual([]);
+				expect.soft(migrationResult.success).toBe(true);
 			}
 		}
 	});

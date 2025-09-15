@@ -1,13 +1,21 @@
-import { z } from "zod";
+import { faker } from "@faker-js/faker";
+import { getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
+import { z } from "~/utils/zod-mock-extension";
 
 export const filterRuleSchema = z
 	.object({
-		type: z.enum(["alter", "ego", "edge"]),
+		type: z.enum(["node", "ego", "edge"]).generateMock(() => "node" as const),
 		id: z.string(),
 		options: z
 			.object({
-				type: z.string().optional(),
-				attribute: z.string().optional(),
+				type: z
+					.string()
+					.optional()
+					.generateMock(() => getNodeTypeId()),
+				attribute: z
+					.string()
+					.optional()
+					.generateMock(() => getNodeVariableId()),
 				operator: z.enum([
 					// TODO: this can be narrowed based on `type` and `attribute`
 					"EXISTS",
@@ -27,7 +35,11 @@ export const filterRuleSchema = z
 					"CONTAINS",
 					"DOES NOT CONTAIN",
 				]),
-				value: z.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())]).optional(),
+
+				value: z
+					.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())])
+					.optional()
+					.generateMock(() => faker.string.alpha(5)),
 			})
 			.strict(),
 	})
@@ -38,17 +50,24 @@ export type FilterRule = z.infer<typeof filterRuleSchema>;
 const singleFilterRuleSchema = z
 	.object({
 		join: z.enum(["OR", "AND"]).optional(),
-		rules: z.array(filterRuleSchema).max(1),
+		rules: z
+			.array(filterRuleSchema)
+			.max(1)
+			.generateMock(() => [filterRuleSchema.generateMock()]),
 	})
 	.strict();
 
 const multipleFilterRuleSchema = z
 	.object({
-		join: z.enum(["OR", "AND"]),
-		rules: z.array(filterRuleSchema).min(2),
+		join: z.enum(["OR", "AND"]).generateMock(() => "AND" as const),
+		rules: z
+			.array(filterRuleSchema)
+			.generateMock(() => [filterRuleSchema.generateMock(), filterRuleSchema.generateMock()]),
 	})
 	.strict();
 
-export const FilterSchema = z.union([singleFilterRuleSchema, multipleFilterRuleSchema]);
+export const FilterSchema = z
+	.union([singleFilterRuleSchema, multipleFilterRuleSchema])
+	.generateMock(() => singleFilterRuleSchema.generateMock());
 
 export type Filter = z.infer<typeof FilterSchema>;

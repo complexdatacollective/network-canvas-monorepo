@@ -1,6 +1,7 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
-import { z } from "zod";
-import { findDuplicateName, getAllEntityNames } from "../../../utils/validation-helpers";
+import { getEdgeTypeId, getNodeTypeId } from "~/utils/mock-seeds";
+import { findDuplicateName, getAllEntityNames } from "~/utils/validation-helpers";
+import { z } from "~/utils/zod-mock-extension";
 import { EdgeDefinitionSchema, EgoDefinitionSchema, NodeDefinitionSchema } from "./definitions";
 
 export const CodebookSchema = z
@@ -21,6 +22,25 @@ export const CodebookSchema = z
 				path: [],
 			});
 		}
+	})
+	.generateMock(() => {
+		const personNode = NodeDefinitionSchema.generateMock();
+		const orgNode = NodeDefinitionSchema.generateMock();
+		const friendshipEdge = EdgeDefinitionSchema.generateMock();
+		const worksWithEdge = EdgeDefinitionSchema.generateMock();
+		const ego = EgoDefinitionSchema.generateMock();
+
+		return {
+			node: {
+				[getNodeTypeId(0)]: { ...personNode, name: "Person" },
+				[getNodeTypeId(1)]: { ...orgNode, name: "Organization" },
+			},
+			edge: {
+				[getEdgeTypeId(0)]: { ...friendshipEdge, name: "Friendship" },
+				[getEdgeTypeId(1)]: { ...worksWithEdge, name: "WorksWith" },
+			},
+			ego: ego,
+		};
 	});
 
 export type Codebook = z.infer<typeof CodebookSchema>;

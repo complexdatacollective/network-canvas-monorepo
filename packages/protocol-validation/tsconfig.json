@@ -4,7 +4,10 @@
 		"baseUrl": ".",
 		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
 		"allowJs": false,
-		"incremental": false
+		"incremental": false,
+		"paths": {
+			"~/*": ["./src/*"]
+		}
 	},
 	"include": ["."],
 	"exclude": ["dist", "node_modules"]

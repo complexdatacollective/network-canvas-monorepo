@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "~/utils/zod-mock-extension";
 
 export const ExperimentsSchema = z.object({
 	encryptedVariables: z.boolean().optional(),

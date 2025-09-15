@@ -1,33 +1,34 @@
-import { z } from "zod";
+import { z } from "~/utils/zod-mock-extension";
 
 // Export base stage schema
 export * from "./base";
 
 // Import all stage types
-import { egoFormStage, alterFormStage, alterEdgeFormStage } from "./form-stages";
-import { nameGeneratorStage, nameGeneratorQuickAddStage, nameGeneratorRosterStage } from "./name-generator-stages";
-import { sociogramStage, narrativeStage } from "./visualization-stages";
+import { faker } from "@faker-js/faker";
+import { categoricalBinStage, ordinalBinStage } from "./bin-stages";
 import {
 	dyadCensusStage,
-	tieStrengthCensusStage,
-	oneToManyDyadCensusStage,
 	familyTreeCensusStage,
+	oneToManyDyadCensusStage,
+	tieStrengthCensusStage,
 } from "./census-stages";
-import { ordinalBinStage, categoricalBinStage } from "./bin-stages";
-import { informationStage, anonymisationStage } from "./information-stages";
+import { alterEdgeFormStage, alterFormStage, egoFormStage } from "./form-stages";
 import { geospatialStage } from "./geospatial-stages";
+import { anonymisationStage, informationStage } from "./information-stages";
+import { nameGeneratorQuickAddStage, nameGeneratorRosterStage, nameGeneratorStage } from "./name-generator-stages";
+import { narrativeStage, sociogramStage } from "./visualization-stages";
 
 // Re-export individual stages
+export * from "./bin-stages";
+export * from "./census-stages";
 export * from "./form-stages";
+export * from "./geospatial-stages";
+export * from "./information-stages";
 export * from "./name-generator-stages";
 export * from "./visualization-stages";
-export * from "./census-stages";
-export * from "./bin-stages";
-export * from "./information-stages";
-export * from "./geospatial-stages";
 
 // Combine all stage types
-export const stageSchema = z.discriminatedUnion("type", [
+const stageSchemas = [
 	egoFormStage,
 	alterFormStage,
 	alterEdgeFormStage,
@@ -45,7 +46,14 @@ export const stageSchema = z.discriminatedUnion("type", [
 	oneToManyDyadCensusStage,
 	familyTreeCensusStage,
 	geospatialStage,
-]);
+] as const;
+
+// Combine all stage types
+export const stageSchema = z.discriminatedUnion("type", stageSchemas).generateMock(() => {
+	// pick a random schema
+	const schema = faker.helpers.arrayElement(stageSchemas);
+	return schema.generateMock();
+});
 
 // Extract all the 'type' values from stageSchema
 export type StageType = z.infer<typeof stageSchema>["type"];

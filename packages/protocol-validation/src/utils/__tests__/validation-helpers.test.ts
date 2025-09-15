@@ -312,14 +312,14 @@ describe("Validation Helpers", () => {
 			expect(result).toBe(false);
 		});
 
-		it("returns true for alter rule with existing node type", () => {
-			const rule = { id: "rule1", type: "alter" as const, options: { type: "person" } };
+		it("returns true for node rule with existing node type", () => {
+			const rule = { id: "rule1", type: "node" as const, options: { type: "person" } };
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(true);
 		});
 
-		it("returns false for alter rule with non-existing node type", () => {
-			const rule = { id: "rule1", type: "alter" as const, options: { type: "nonexistent" } };
+		it("returns false for node rule with non-existing node type", () => {
+			const rule = { id: "rule1", type: "node" as const, options: { type: "nonexistent" } };
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(false);
 		});
@@ -336,8 +336,8 @@ describe("Validation Helpers", () => {
 			expect(result).toBe(false);
 		});
 
-		it("returns false when options.type is missing for alter rule", () => {
-			const rule = { id: "rule1", type: "alter" as const, options: {} };
+		it("returns false when options.type is missing for node rule", () => {
+			const rule = { id: "rule1", type: "node" as const, options: {} };
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(false);
 		});
@@ -345,7 +345,7 @@ describe("Validation Helpers", () => {
 
 	describe("filterRuleAttributeExists", () => {
 		it("returns true when no attribute is specified", () => {
-			const rule = { id: "rule1", type: "alter" as const, options: { type: "person" } };
+			const rule = { id: "rule1", type: "node" as const, options: { type: "person" } };
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(true);
 		});
@@ -370,20 +370,20 @@ describe("Validation Helpers", () => {
 			expect(result).toBe(false);
 		});
 
-		it("returns true for alter rule with existing node attribute", () => {
+		it("returns true for node rule with existing node attribute", () => {
 			const rule = {
 				id: "rule1",
-				type: "alter" as const,
+				type: "node" as const,
 				options: { type: "person", attribute: "name", operator: "EXISTS" as const },
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(true);
 		});
 
-		it("returns false for alter rule with non-existing node attribute", () => {
+		it("returns false for node rule with non-existing node attribute", () => {
 			const rule = {
 				id: "rule1",
-				type: "alter" as const,
+				type: "node" as const,
 				options: { type: "person", attribute: "nonexistent", operator: "EXISTS" as const },
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
@@ -413,7 +413,7 @@ describe("Validation Helpers", () => {
 		it("returns false when entity doesn't exist", () => {
 			const rule = {
 				id: "rule1",
-				type: "alter" as const,
+				type: "node" as const,
 				options: { type: "nonexistent", attribute: "name", operator: "EXISTS" as const },
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
