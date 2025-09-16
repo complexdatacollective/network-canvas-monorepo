@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 7.0.0
+
+### Major Changes
+
+- 7ec964b: Refactored protocol-validation API to return the Zod validation result directly, which is a result object with success and error properties.
+
 ## 6.0.0
 
 ### Major Changes
