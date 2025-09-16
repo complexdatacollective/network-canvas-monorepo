@@ -4,7 +4,7 @@
 import chalk from "chalk";
 import fs from "node:fs";
 import path from "node:path";
-import { extractProtocol, validateProtocol } from "../dist/index.js";
+import { errToString, extractProtocol, validateProtocol } from "../dist/index.js";
 
 async function main() {
 	const [, , filePath] = process.argv;
@@ -45,7 +45,8 @@ async function main() {
 		// If it is a .netcanvas, extract the protocol.json inside it to os temp folder
 		if (absolutePath.endsWith(".netcanvas")) {
 			const fileBuffer = fs.readFileSync(absolutePath);
-			protocol = await extractProtocol(fileBuffer);
+			const result = await extractProtocol(fileBuffer);
+			protocol = result.protocol;
 		} else {
 			// Read as JSON
 			protocol = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
@@ -58,7 +59,11 @@ async function main() {
 			process.exit(0);
 		} else {
 			error("❌ Protocol validation failed:");
-			console.error(result.error);
+			const errors = [...result.logicErrors, ...result.schemaErrors];
+
+			for (const e of errors) {
+				error(`- ${errToString(e)}`);
+			}
 			process.exit(1);
 		}
 	} catch (error) {

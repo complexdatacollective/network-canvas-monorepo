@@ -175,7 +175,3 @@ This project is licensed under the terms specified in individual package LICENSE
 - **Main Website**: [Network Canvas](https://networkcanvas.com)
 - **Documentation**: [Network Canvas Documentation](https://documentation.networkcanvas.com)
 - **Issues**: [GitHub Issues](https://github.com/complexdatacollective/network-canvas/issues)
-
----
-
-Built with ❤️ by the Complex Data Collective team

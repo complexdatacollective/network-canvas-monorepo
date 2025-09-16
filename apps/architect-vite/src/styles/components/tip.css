@@ -1,0 +1,39 @@
+.tip {
+	@apply bg-surface-2 not-first:mt-4 not-last:mb-4;
+	border-radius: var(--space-sm);
+	padding: var(--space-xs) var(--space-xl);
+	font-size: var(--text-sm);
+	display: flex;
+	align-items: center;
+
+	.icon {
+		flex: 0 0 var(--space-xl);
+		height: var(--space-xl);
+		width: var(--space-xl);
+	}
+
+	.tip__content {
+		margin-left: var(--space-md);
+	}
+
+	&.tip__info {
+		@apply bg-info/25;
+		@apply text-navy-taupe;
+
+		.cls-3 {
+			fill: var(--color-white);
+		}
+
+		.cls-4 {
+			fill: var(--color-platinum);
+		}
+	}
+
+	&.tip__warning {
+		@apply bg-warning/10;
+	}
+
+	&.tip__error {
+		@apply bg-error/10;
+	}
+}

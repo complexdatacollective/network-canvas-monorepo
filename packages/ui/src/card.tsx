@@ -3,7 +3,7 @@ import * as React from "react";
 import Heading from "./typography/Heading";
 import { cn } from "./utils";
 
-export const cardClasses = "rounded-xl border border-[hsl(var(--platinum--dark))] bg-card text-card-foreground";
+export const cardClasses = "rounded-xl border border-[hsl(var(--platinum-dark))] bg-card text-card-foreground";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
 	<div ref={ref} className={cn(cardClasses, className)} {...props} />
@@ -39,4 +39,4 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 CardFooter.displayName = "CardFooter";
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

@@ -1,0 +1,13 @@
+.items-delete-button {
+	width: var(--space-xl);
+	height: var(--space-xl);
+	cursor: pointer;
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.items-delete-button .icon {
+	width: var(--space-md);
+}
