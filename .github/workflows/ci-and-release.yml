@@ -192,6 +192,7 @@ jobs:
     # Build only packages with changesets
     - name: Build changed packages only
       run: |
+        set -e  # Exit on any command failure
         echo "🔍 Detecting packages with changesets..."
         
         # Get packages with changesets
@@ -207,7 +208,11 @@ jobs:
           # Build each changed package and its dependencies
           for package in $CHANGED_PACKAGES; do
             echo "🔨 Building $package..."
-            pnpm --filter "$package..." build
+            if ! pnpm --filter "$package..." build; then
+              echo "❌ Build failed for $package"
+              exit 1
+            fi
+            echo "✅ Successfully built $package"
           done
         fi
     
