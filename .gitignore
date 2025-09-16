@@ -39,5 +39,8 @@ next-env.d.ts
 
 dist
 
+# protocol validation test protocols
+/packages/protocol-validation/src/__tests__/data
+
 # Serena cache: https://github.com/oraios/serena/issues/283
 /.serena/cache
