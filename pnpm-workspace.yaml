@@ -30,7 +30,7 @@ catalog:
   '@types/react': ^19.0.3
   '@types/react-dom': ^19.0.3
   cmdk: ^1.0.4
-  dotenv: ^17.2.1
+  dotenv: ^17.2.2
   lucide-react: ^0.542.0
   motion: ^12.23.12
   next: 15.4.7
