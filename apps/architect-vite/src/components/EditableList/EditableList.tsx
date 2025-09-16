@@ -42,7 +42,7 @@ const EditableList = ({
 	editComponent: EditComponent,
 	previewComponent: PreviewComponent,
 	normalize = (value) => value, // Function to normalize the value before saving
-	template = () => ({ id: v4() }),
+	template = () => ({ id: v4() }), // Function to provide a template for new items
 }: EditableListProps) => {
 	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
