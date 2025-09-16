@@ -1,5 +1,4 @@
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
-import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import type { ComponentType } from "react";
 import type { Validator } from "redux-form";
@@ -7,25 +6,9 @@ import { v4 } from "uuid";
 import ValidatedField from "~/components/Form/ValidatedField";
 import OrderedList, { type OrderedListProps } from "~/components/OrderedList/OrderedList";
 import { Button } from "~/lib/legacy-ui/components";
+import { useFormContext } from "../Editor";
 import Dialog from "../NewComponents/Dialog";
 import { useEditHandlers } from "./useEditHandlers";
-
-type EditComponentProps = FieldType & {
-	layoutId: string;
-};
-
-const EditComponent = ({ layoutId, handleCancel, handleUpdate, ...rest }: EditComponentProps) => {
-	return (
-		<motion.div layoutId={layoutId} className="flex items-center justify-between h-50 w-50 bg-accent p-2 rounded">
-			<Button onClick={handleCancel} icon="cancel" color="platinum">
-				Cancel
-			</Button>
-			<Button onClick={handleUpdate} icon="save" color="sea-green">
-				Save
-			</Button>
-		</motion.div>
-	);
-};
 
 const notEmpty = (value: unknown) =>
 	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item.";
@@ -56,16 +39,19 @@ const EditableList = ({
 	fieldName = "prompts",
 	children = null,
 	validation = { notEmpty },
-	// editComponent: EditComponent,
+	editComponent: EditComponent,
 	previewComponent: PreviewComponent,
 	normalize = (value) => value, // Function to normalize the value before saving
-	template = () => ({ id: v4() }), // Function to provide a template for new items
+	template = () => ({ id: v4() }),
 }: EditableListProps) => {
+	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
 		fieldName,
 		normalize,
 		template,
 	});
+
+	const isOpen = editIndex !== null;
 
 	return (
 		<>
@@ -83,24 +69,16 @@ const EditableList = ({
 			<Button onClick={handleAddNew} icon="add">
 				Create new
 			</Button>
-			<AnimatePresence>
-				{editIndex !== null && (
-					<motion.div
-						key={`edit-component-${editIndex}`}
-						layoutId={`${fieldName}-edit-field-${editIndex}`}
-						className="absolute top-50 left-50 flex items-center justify-between h-50 w-50 bg-sea-green p-2 rounded"
-						transition={{ layout: { duration: 1, type: "spring" } }}
-					>
-						<Button onClick={handleCancelEdit} color="platinum">
-							Cancel
-						</Button>
-						<Button onClick={handleSaveEdit} color="sea-green">
-							Save
-						</Button>
-					</motion.div>
-				)}
-			</AnimatePresence>
-			<Dialog />
+			<Dialog
+				open={isOpen}
+				onOpenChange={(open) => !open && handleCancelEdit()}
+				title={editIndex !== null ? "Edit Prompt" : "Create New Prompt"}
+				onConfirm={() => handleSaveEdit({})} // todo: implement saving form data
+				onCancel={handleCancelEdit}
+				confirmText="Save"
+			>
+				<EditComponent form={form} fieldName={`${fieldName}[${editIndex}]`} />
+			</Dialog>
 		</>
 	);
 };
