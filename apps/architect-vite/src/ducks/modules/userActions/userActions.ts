@@ -1,5 +1,10 @@
-import type { Protocol } from "@codaco/protocol-validation";
-import { extractProtocol, getMigrationNotes, migrateProtocol, validateProtocol } from "@codaco/protocol-validation";
+import {
+	extractProtocol,
+	getMigrationInfo,
+	migrateProtocol,
+	type Protocol,
+	validateProtocol,
+} from "@codaco/protocol-validation";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { navigate } from "wouter/use-browser-location";
 import { UnsavedChanges } from "~/components/Dialogs";
@@ -56,10 +61,8 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		// Validate the protocol
 		const validationResult = await validateProtocol(migratedProtocol);
 
-		if (!validationResult.isValid) {
-			throw new Error(
-				`Protocol validation failed: ${[...validationResult.logicErrors, ...validationResult.schemaErrors].map((error) => error.message).join(", ")}`,
-			);
+		if (!validationResult.success) {
+			throw new Error(`Protocol validation failed: ${validationResult.error}`);
 		}
 
 		// Add protocol assets to IndexedDB
@@ -107,7 +110,7 @@ const handleProtocolMigration = createAsyncThunk("protocol/openOrUpgrade", async
 				return protocol;
 			}
 			case schemaVersionStates.UPGRADE_PROTOCOL: {
-				const migrationNotes = getMigrationNotes(protocol.schemaVersion, APP_SCHEMA_VERSION);
+				const migrationNotes = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
 				const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, migrationNotes);
 
 				const confirm = await dispatch(upgradeDialog).unwrap();
@@ -115,7 +118,7 @@ const handleProtocolMigration = createAsyncThunk("protocol/openOrUpgrade", async
 					return false;
 				}
 
-				const migratedProtocol = await migrateProtocol(protocol, APP_SCHEMA_VERSION);
+				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION);
 				return migratedProtocol as Protocol;
 			}
 			case schemaVersionStates.UPGRADE_APP:
@@ -219,10 +222,8 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			// Validate the protocol
 			const validationResult = await validateProtocol(migratedProtocol);
 
-			if (!validationResult.isValid) {
-				throw new Error(
-					`Protocol validation failed: ${[...validationResult.logicErrors, ...validationResult.schemaErrors].map((error) => error.message).join(", ")}`,
-				);
+			if (!validationResult.success) {
+				throw new Error(`Protocol validation failed: ${validationResult.error}`);
 			}
 
 			// Add protocol assets to IndexedDB
