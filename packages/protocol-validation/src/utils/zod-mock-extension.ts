@@ -1,25 +1,12 @@
 import { z } from "zod";
 
-// Type definitions for the mock generator extension
-type MockGenerator<T> = () => T;
-type ObjectMockGenerator<T> = (data: T) => T;
-
 // Helper type to extract the output type of a Zod schema for use in type annotations
 export type MockData<T extends z.ZodTypeAny> = z.output<T>;
-
-// Create an intersection type that preserves the original schema type
-type WithMockGenerator<T extends z.ZodTypeAny, U = z.output<T>> = T & {
-	_mockGenerator?: MockGenerator<U> | ObjectMockGenerator<U>;
-	generateMock(): U;
-	generateMock<V = U>(generator: MockGenerator<V> | ObjectMockGenerator<V>): WithMockGenerator<T, V>;
-};
 
 declare module "zod" {
 	interface ZodType {
 		generateMock(): z.output<this>;
-		generateMock<T extends z.output<this> = z.output<this>>(
-			generator: (() => T) | ((data: z.output<this>) => T),
-		): WithMockGenerator<this, T>;
+		generateMock<T extends z.output<this>>(generator: (() => T) | ((data: z.output<this>) => T)): this;
 	}
 }
 
@@ -184,7 +171,7 @@ function generateMockData(schema: z.ZodTypeAny, applyTopLevelTransform = false):
 }
 
 // Extend ZodType prototype
-z.ZodType.prototype.generateMock = function <T>(generator?: MockGenerator<T>) {
+z.ZodType.prototype.generateMock = function <T>(generator?: (() => T) | ((data: any) => T)) {
 	if (generator) {
 		// Store the generator function on the schema instance
 		const newSchema = this.clone();

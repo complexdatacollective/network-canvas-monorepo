@@ -66,10 +66,10 @@ describe("Zod Mock Generator", () => {
 						)
 						.min(1),
 				})
-				.generateMock(({ id, user, items }) => ({
+				.generateMock(({ id, user, items }: any) => ({
 					id,
 					user,
-					items: items.map((item) => ({
+					items: items.map((item: any) => ({
 						productId: `${user.id}_${item.productId}`,
 						quantity: item.quantity,
 					})),
