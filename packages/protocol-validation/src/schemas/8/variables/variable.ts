@@ -360,7 +360,6 @@ export function generateVariableMocks(type: "ego" | "edge" | "node"): Record<str
 	for (let i = 0; i < 3; i++) {
 		const schema = faker.helpers.arrayElement(variableSchema.options);
 		const baseMock = schema.generateMock();
-		console.log(baseMock);
 
 		// Validations should only be present 20% of the time
 		// Remove them 80%
