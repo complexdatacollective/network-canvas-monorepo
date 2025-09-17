@@ -25,12 +25,12 @@
 	background-position: center;
 }
 
-.graphic-button__label {
+/* .graphic-button__label {
 	position: absolute;
 	top: 50%;
 	right: 4rem;
 	transform: translateY(-50%);
-}
+} */
 
 .home {
 	height: 100%;

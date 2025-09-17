@@ -35,7 +35,7 @@ const GraphicButton = ({
 		...labelPosition,
 	};
 
-	const className = cx("button", { "graphic-button--disabled": disabled });
+	const className = cx("graphic-button", { "graphic-button--disabled": disabled });
 
 	return (
 		<motion.div className={className} style={styles} onClick={onClick}>

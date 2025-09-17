@@ -37,20 +37,50 @@ const LaunchPad = () => {
 	};
 
 	return (
-		<>
-			<Section className="launch-pad">
+		<Section className="launch-pad">
+			<Group>
+				<h2>Tasks</h2>
+				<div className="launch-pad__actions">
+					<div className="launch-pad__action">
+						<GraphicButton
+							graphic={createButtonGraphic}
+							graphicPosition="20% bottom"
+							graphicSize="auto 90%"
+							onClick={handleCreateNewProtocol}
+						>
+							<h2>Create</h2>
+							<h3>New Protocol</h3>
+						</GraphicButton>
+					</div>
+					<div className="launch-pad__action-divider" />
+					<div className="launch-pad__action">
+						<GraphicButton
+							graphic={openButtonGraphic}
+							graphicPosition="0 bottom"
+							color="slate-blue-dark"
+							graphicSize="auto 115%"
+							onClick={handleOpenExistingProtocol}
+						>
+							<h2>Open</h2>
+							<h3>Existing Protocol</h3>
+						</GraphicButton>
+					</div>
+				</div>
+			</Group>
+			{process.env.NODE_ENV === "development" && (
 				<Group>
-					<h2>Tasks</h2>
+					<h2>Development Tools</h2>
 					<div className="launch-pad__actions">
 						<div className="launch-pad__action">
 							<GraphicButton
 								graphic={createButtonGraphic}
 								graphicPosition="20% bottom"
 								graphicSize="auto 90%"
-								onClick={handleCreateNewProtocol}
+								onClick={handleInstallDevProtocols}
+								color="neon-coral"
 							>
-								<h2>Create</h2>
-								<h3>New Protocol</h3>
+								<h2>Install</h2>
+								<h3>Sample Protocols</h3>
 							</GraphicButton>
 						</div>
 						<div className="launch-pad__action-divider" />
@@ -58,52 +88,18 @@ const LaunchPad = () => {
 							<GraphicButton
 								graphic={openButtonGraphic}
 								graphicPosition="0 bottom"
-								color="slate-blue-dark"
+								color="mustard"
 								graphicSize="auto 115%"
-								onClick={handleOpenExistingProtocol}
+								onClick={handleClearStorage}
 							>
-								<h2>Open</h2>
-								<h3>Existing Protocol</h3>
+								<h2>Clear</h2>
+								<h3>All Storage</h3>
 							</GraphicButton>
 						</div>
 					</div>
 				</Group>
-			</Section>
-			{process.env.NODE_ENV === "development" && (
-				<Section className="launch-pad">
-					<Group>
-						<h2>Development Tools</h2>
-						<div className="launch-pad__actions">
-							<div className="launch-pad__action">
-								<GraphicButton
-									graphic={createButtonGraphic}
-									graphicPosition="20% bottom"
-									graphicSize="auto 90%"
-									onClick={handleInstallDevProtocols}
-									color="neon-coral"
-								>
-									<h2>Install</h2>
-									<h3>Sample Protocols</h3>
-								</GraphicButton>
-							</div>
-							<div className="launch-pad__action-divider" />
-							<div className="launch-pad__action">
-								<GraphicButton
-									graphic={openButtonGraphic}
-									graphicPosition="0 bottom"
-									color="mustard"
-									graphicSize="auto 115%"
-									onClick={handleClearStorage}
-								>
-									<h2>Clear</h2>
-									<h3>All Storage</h3>
-								</GraphicButton>
-							</div>
-						</div>
-					</Group>
-				</Section>
 			)}
-		</>
+		</Section>
 	);
 };
 
