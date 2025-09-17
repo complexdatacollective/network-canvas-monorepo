@@ -92,6 +92,8 @@ class Grid extends Component<GridProps, GridState> {
 			"grid--has-error": submitFailed && error,
 		});
 
+		console.log("Rendering Grid with items:", items);
+
 		if (!items) {
 			return (
 				<div className="grid">

@@ -25,6 +25,8 @@ const GridItem = ({
 	const fieldId = `${fields.name}[${index}]`;
 	const flipId = editField === fieldId ? `_${fieldId}` : fieldId;
 
+	console.log(PreviewComponent, "PreviewComponent");
+
 	if (!PreviewComponent) {
 		return null;
 	}

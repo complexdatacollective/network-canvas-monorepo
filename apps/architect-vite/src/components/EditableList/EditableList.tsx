@@ -1,6 +1,7 @@
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
 import type React from "react";
 import type { ComponentType } from "react";
+import { defaultProps } from "recompose";
 import type { Validator } from "redux-form";
 import { v4 } from "uuid";
 import ValidatedField from "~/components/Form/ValidatedField";
@@ -16,6 +17,10 @@ const notEmpty = (value: unknown) =>
 // TODO: Make this a generic that is passed in.
 type FieldType = { variable: string; prompt: string }[];
 
+const withDefaultFieldName = defaultProps({
+	fieldName: "prompts",
+});
+
 type EditableListProps = {
 	sectionTitle: string;
 	sectionSummary?: React.ReactNode;
@@ -23,7 +28,7 @@ type EditableListProps = {
 	disabled?: boolean;
 	sortMode?: "manual";
 	fieldName?: string;
-	title?: string | null;
+	title: string;
 	children?: React.ReactNode;
 	previewComponent: ComponentType<FieldType>;
 	editComponent: React.ComponentType<
@@ -33,6 +38,8 @@ type EditableListProps = {
 	// Optional props for customizing hook behavior
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
+	initialValues?: Record<string, unknown>;
+	editField?: string;
 };
 
 const EditableList = ({
@@ -43,6 +50,9 @@ const EditableList = ({
 	previewComponent: PreviewComponent,
 	normalize = (value) => value, // Function to normalize the value before saving
 	template = () => ({ id: v4() }), // Function to provide a template for new items
+	initialValues,
+	editField,
+	title,
 }: EditableListProps) => {
 	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
@@ -52,6 +62,8 @@ const EditableList = ({
 	});
 
 	const isOpen = editIndex !== null;
+
+	console.log("initialValues", initialValues);
 
 	return (
 		<>
@@ -72,15 +84,14 @@ const EditableList = ({
 			<Dialog
 				open={isOpen}
 				onOpenChange={(open) => !open && handleCancelEdit()}
-				title={editIndex !== null ? "Edit Prompt" : "Create New Prompt"}
+				title={title}
 				onConfirm={() => handleSaveEdit({})} // todo: implement saving form data
 				onCancel={handleCancelEdit}
 				confirmText="Save"
 			>
-				<EditComponent form={form} fieldName={`${fieldName}[${editIndex}]`} />
+				<EditComponent form={form} initialValues={initialValues} fieldId={editField} />
 			</Dialog>
 		</>
 	);
 };
-
 export default EditableList;

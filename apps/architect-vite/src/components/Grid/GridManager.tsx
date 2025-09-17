@@ -1,9 +1,9 @@
 import { compose, defaultProps, withState } from "recompose";
 import { Section } from "~/components/EditorLayout";
-import InlineEditScreen from "~/components/InlineEditScreen";
 import { Button } from "~/lib/legacy-ui/components";
 import { getFieldId, scrollToFirstIssue } from "../../utils/issues";
 import ValidatedFieldArray from "../Form/ValidatedFieldArray";
+import Dialog from "../NewComponents/Dialog";
 import Grid from "./Grid";
 import withEditHandlers from "./withEditHandlers";
 
@@ -103,15 +103,13 @@ const GridManager = ({
 				</div>
 			)}
 		</div>
-		<InlineEditScreen
-			show={!!editField}
-			initialValues={initialValues}
-			flipId={editField}
+		<Dialog
+			open={!!editField}
 			title={title}
-			onSubmit={handleUpdate}
-			onSubmitFail={handleSubmitFail}
+			onConfirm={handleUpdate} // todo: implement saving form data
 			onCancel={handleResetEditField}
-			form={formName}
+			confirmText="Save"
+			onOpenChange={() => void 0}
 		>
 			<EditComponent
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -120,7 +118,7 @@ const GridManager = ({
 				fieldId={editField}
 				onComplete={handleResetEditField}
 			/>
-		</InlineEditScreen>
+		</Dialog>
 	</Section>
 );
 

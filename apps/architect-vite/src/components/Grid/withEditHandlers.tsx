@@ -8,8 +8,11 @@ const mapStateToProps = (state, { capacity, form, fieldName, itemSelector, editF
 	const items = formValueSelector(form)(state, fieldName) || [];
 	const itemCount = items ? items.length : 0;
 	const item = itemSelector(state, { form, editField });
-	const initialValues = item || { ...template(), id: uuid() };
 	const hasSpace = getRemainingSpace(items, capacity) > 0;
+
+	// Use the existing item if available, otherwise return null
+	// The new item will be created in handleAddNew when needed
+	const initialValues = item || null;
 
 	return {
 		itemCount,
@@ -33,9 +36,14 @@ const handlers = withHandlers({
 		() =>
 			setEditField(),
 	handleAddNew:
-		({ setEditField, itemCount, fieldName }) =>
+		({ setEditField, itemCount, fieldName, upsert, template }) =>
 		() => {
 			const newItemFieldName = `${fieldName}[${itemCount}]`;
+			// Create the new item with a stable UUID
+			const newItem = { ...template(), id: uuid() };
+			// Add it to the form state immediately
+			upsert(newItemFieldName, newItem);
+			// Then open the editor
 			setEditField(newItemFieldName);
 		},
 	handleUpdate:

@@ -1,7 +1,8 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { change, formValueSelector } from "redux-form";
 import { useAppDispatch } from "~/ducks/hooks";
 
+import { useStore } from "react-redux";
 import { useFormContext } from "../Editor";
 
 type UseEditHandlersOptions = {
@@ -21,6 +22,7 @@ export const useEditHandlers = ({
 }: UseEditHandlersOptions) => {
 	const { form } = useFormContext();
 	const dispatch = useAppDispatch();
+	const store = useStore();
 
 	// Logging to track re-renders
 	const renderCount = useRef(0);
@@ -39,9 +41,9 @@ export const useEditHandlers = ({
 	const getItems = useCallback(() => {
 		console.log(`🔍 getItems called`);
 		// This creates a selector that gets current state without subscribing to changes
-		const state = dispatch.getState();
+		const state = store.getState();
 		return formValueSelector(form)(state, fieldName) || [];
-	}, [dispatch, form, fieldName]);
+	}, [store, form, fieldName]);
 
 	// Log when getItems callback is recreated
 	useEffect(() => {
