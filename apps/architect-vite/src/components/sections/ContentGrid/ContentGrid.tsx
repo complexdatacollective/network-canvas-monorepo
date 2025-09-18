@@ -41,6 +41,7 @@ const ContentGrid = (props) => (
 		capacity={capacity}
 		form={props.form}
 		disabled={props.disabled}
+		{...props}
 	/>
 );
 
