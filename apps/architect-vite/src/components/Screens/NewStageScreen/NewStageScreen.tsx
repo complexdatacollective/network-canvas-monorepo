@@ -4,12 +4,10 @@ import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect, useSelector } from "react-redux";
 import { useLocation } from "wouter";
-import Dialog from "~/components/Dialog/Dialog";
-import Tag from "~/components/Tag";
-import Button from "~/lib/legacy-ui/components/Button";
 import Search from "~/components/Form/Fields/Search";
+import Dialog from "~/components/NewComponents/Dialog";
+import Tag from "~/components/Tag";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
-import ControlBar from "../../ControlBar";
 import Row from "../../EditorLayout/Row";
 import InterfaceList from "./InterfaceList";
 import { INTERFACE_TYPES, TAGS, TAG_COLORS } from "./interfaceOptions";
@@ -222,63 +220,50 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 		"new-stage-screen--has-query": hasQuery,
 	});
 
-	const buttons = useMemo(
-		() => [
-			<Button key="done" onClick={onCancel} iconPosition="right" color="platinum">
-				Cancel
-			</Button>,
-		],
-		[onCancel],
-	);
-
 	return (
 		<Dialog
-			show={show}
-			onClose={onCancel}
-			className="new-stage"
-			footer={<ControlBar buttons={buttons} secondaryButtons={[]} />}
-			header={
-				<div className="stage-heading stage-heading--shadow">
-					<Row>
-						<h1 className="screen-heading">Select an Interface Type</h1>
-					</Row>
-					<Row>
-						<div className="new-stage-screen__filter">
-							<Search
-								placeholder="Search interfaces by name or keyword..."
-								input={{
-									value: query,
-									onChange: handleUpdateQuery,
-									onKeyDown: handleKeyDown,
-								}}
-								autoFocus
-							/>
-						</div>
-					</Row>
-					<Row>
-						<div className="new-stage-screen__menu-tags">
-							<div className="menu-tags__label">
-								<h4>Filter by capabilities:</h4>
-							</div>
-							<div className="menu-tags__tags">
-								{tags.map(({ value, selected, disabled }) => (
-									<Tag
-										key={value}
-										id={value}
-										selected={selected}
-										onClick={handleTagClick}
-										color={get(TAG_COLORS, value)}
-										disabled={disabled}
-									>
-										{value}
-									</Tag>
-								))}
-							</div>
-						</div>
-					</Row>
-				</div>
-			}
+			open={show}
+			onOpenChange={(open) => !open && onCancel()}
+			title="Select an Interface Type"
+			onCancel={onCancel}
+			size="lg"
 		>
+			<div className="stage-heading stage-heading--shadow">
+				<Row>
+					<div className="new-stage-screen__filter">
+						<Search
+							placeholder="Search interfaces by name or keyword..."
+							input={{
+								value: query,
+								onChange: handleUpdateQuery,
+								onKeyDown: handleKeyDown,
+							}}
+							autoFocus
+						/>
+					</div>
+				</Row>
+				<Row>
+					<div className="new-stage-screen__menu-tags">
+						<div className="menu-tags__label">
+							<h4>Filter by capabilities:</h4>
+						</div>
+						<div className="menu-tags__tags">
+							{tags.map(({ value, selected, disabled }) => (
+								<Tag
+									key={value}
+									id={value}
+									selected={selected}
+									onClick={handleTagClick}
+									color={get(TAG_COLORS, value)}
+									disabled={disabled}
+								>
+									{value}
+								</Tag>
+							))}
+						</div>
+					</div>
+				</Row>
+			</div>
 			<div className={componentClasses}>
 				<InterfaceList
 					items={filteredInterfaces}

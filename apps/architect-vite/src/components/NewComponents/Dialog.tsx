@@ -16,6 +16,7 @@ interface DialogProps {
 	confirmText?: string;
 	cancelText?: string;
 	confirmColor?: unknown; // todo
+	size?: "lg";
 }
 
 function Dialog({
@@ -29,6 +30,7 @@ function Dialog({
 	confirmText = "Confirm",
 	cancelText = "Cancel",
 	confirmColor = "sea-green",
+	size,
 }: DialogProps) {
 	return (
 		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -49,7 +51,9 @@ function Dialog({
 							render={
 								<div className="fixed inset-0 z-[calc(var(--z-dialog)+1)] flex items-center justify-center pointer-events-none">
 									<motion.div
-										className="rounded-[10px] border border-border bg-surface-1 text-surface-1-foreground z-[calc(var(--z-dialog)+2)] py-6 px-4 min-w-[400px] max-w-[800px] max-h-[80vh] overflow-y-auto pointer-events-auto"
+										className={`rounded-[10px] border border-border bg-surface-1 text-surface-1-foreground z-[calc(var(--z-dialog)+2)] py-6 px-4 max-h-[80vh] overflow-y-auto pointer-events-auto ${
+											size === "lg" ? "min-w-[800px] max-w-[1200px]" : "min-w-[400px] max-w-[800px]"
+										}`}
 										initial={dialogInitialState}
 										animate={dialogOpenState}
 										exit={dialogInitialState}
