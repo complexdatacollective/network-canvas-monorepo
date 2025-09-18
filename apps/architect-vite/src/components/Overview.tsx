@@ -41,32 +41,17 @@ const Overview = ({
 }: OverviewProps) => {
 	const [, setLocation] = useLocation();
 
-	// Get protocol ID from URL for navigation
-	const getProtocolId = useCallback(() => {
-		const urlPath = window.location.pathname;
-		return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-	}, []);
-
 	const handleNavigateToAssets = useCallback(() => {
-		const protocolId = getProtocolId();
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}/assets`);
-		}
-	}, [getProtocolId, setLocation]);
+		setLocation("/protocol/assets");
+	}, [setLocation]);
 
 	const handleNavigateToCodebook = useCallback(() => {
-		const protocolId = getProtocolId();
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}/codebook`);
-		}
-	}, [getProtocolId, setLocation]);
+		setLocation("/protocol/codebook");
+	}, [setLocation]);
 
 	const handlePrintSummary = useCallback(() => {
-		const protocolId = getProtocolId();
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}/summary`);
-		}
-	}, [getProtocolId, setLocation]);
+		setLocation("/protocol/summary");
+	}, [setLocation]);
 
 	return (
 		<motion.div className="overview" variants={panelVariants} initial="hide" animate="show" key="overview">
