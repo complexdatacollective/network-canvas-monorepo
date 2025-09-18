@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
-import Button from "~/lib/legacy-ui/components/Button";
-import Dialog from "./Dialog";
+import Dialog from "../NewComponents/Dialog";
 
 type NewTypeDialogProps = {
 	show?: boolean;
@@ -31,29 +30,20 @@ const NewTypeDialog = ({
 		}
 	};
 
-	const buttons = [
-		<Button key="cancel" onClick={onCancel} color="platinum">
-			Cancel
-		</Button>,
-		<Button key="create" onClick={handleCreateNewType} iconPosition="right" icon="arrow-right">
-			Create New {entityType === "node" ? "Node" : "Edge"} Type
-		</Button>,
-	];
-
 	return (
 		<Dialog
-			show={show}
-			onClose={onCancel}
-			className="new-type-dialog"
-			header={<h2>Create New {entityType === "node" ? "Node" : "Edge"} Type</h2>}
-			footer={<div className="flex gap-2 justify-end">{buttons}</div>}
+			open={show}
+			onOpenChange={(open) => !open && onCancel()}
+			title={`Create New ${entityType === "node" ? "Node" : "Edge"} Type`}
+			onCancel={onCancel}
+			cancelText="Cancel"
+			onConfirm={handleCreateNewType}
+			confirmText={`Create New ${entityType === "node" ? "Node" : "Edge"} Type`}
 		>
-			<div className="p-4">
-				<p>
-					You are about to create a new {entityType} type. This will open the type editor where you can define the name,
-					color, and variables for this {entityType} type.
-				</p>
-			</div>
+			<p>
+				You are about to create a new {entityType} type. This will open the type editor where you can define the name,
+				color, and variables for this {entityType} type.
+			</p>
 		</Dialog>
 	);
 };

@@ -1,11 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { isDirty, isInvalid, isSubmitting, startSubmit, submit } from "redux-form";
-import Dialog from "~/components/Dialog/Dialog";
+import Dialog from "~/components/NewComponents/Dialog";
 import TypeEditor, { formName } from "~/components/TypeEditor";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/store";
-import { Button } from "~/lib/legacy-ui/components";
 
 type TypeEditorDialogProps = {
 	entity?: string;
@@ -59,41 +58,17 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 		onComplete?.();
 	}, [onComplete]);
 
-	// Memoized action buttons
-	const actionButtons = useMemo(() => {
-		const buttons = [];
-
-		// Cancel button
-		buttons.push(
-			<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
-				Cancel
-			</Button>,
-		);
-
-		// Save button (only if there are unsaved changes)
-		if (hasUnsavedChanges) {
-			buttons.push(
-				<Button
-					key="save"
-					onClick={handleSubmit}
-					iconPosition="right"
-					icon="arrow-right"
-					disabled={submitting || invalid}
-				>
-					{type ? "Update Type" : "Create Type"}
-				</Button>,
-			);
-		}
-
-		return buttons;
-	}, [hasUnsavedChanges, handleSubmit, handleCancel, submitting, invalid, type]);
+	const dialogTitle = type ? "Edit Type" : "Create Type";
 
 	return (
 		<Dialog
-			show={show}
-			onClose={handleCancel}
-			className="type-editor-dialog"
-			footer={<div className="flex justify-end items-center gap-2">{actionButtons}</div>}
+			open={show}
+			onOpenChange={(open) => !open && handleCancel()}
+			title={dialogTitle}
+			onCancel={handleCancel}
+			cancelText="Cancel"
+			onConfirm={hasUnsavedChanges ? handleSubmit : undefined}
+			confirmText={hasUnsavedChanges ? (type ? "Update Type" : "Create Type") : undefined}
 		>
 			<TypeEditor entity={entity} type={type} onComplete={handleTypeEditorComplete} />
 		</Dialog>
