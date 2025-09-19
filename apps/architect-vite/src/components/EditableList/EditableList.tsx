@@ -1,6 +1,7 @@
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
 import type React from "react";
 import type { ComponentType } from "react";
+import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { defaultProps } from "recompose";
 import type { Validator } from "redux-form";
@@ -71,10 +72,14 @@ const EditableList = ({
 
 	// Get current item values for editing
 	const currentItemValues = useSelector((state: any) => {
-		if (editIndex === null) return template();
+		if (editIndex === null) return null;
 		const selector = formValueSelector(form);
-		return selector(state, `${fieldName}[${editIndex}]`) || template();
+		return selector(state, `${fieldName}[${editIndex}]`);
 	});
+
+	// Memoize template result to prevent form reinitialization
+	const templateValues = useMemo(() => template(), [editIndex]);
+	const initialValuesForEdit = currentItemValues || templateValues;
 
 	return (
 		<>
@@ -98,7 +103,7 @@ const EditableList = ({
 				title={title}
 				onSubmit={handleSaveEdit}
 				onCancel={handleCancelEdit}
-				initialValues={currentItemValues}
+				initialValues={initialValuesForEdit}
 			>
 				<EditComponent form={formName} entity={editProps?.entity} type={editProps?.type} />
 			</InlineEditScreen>
