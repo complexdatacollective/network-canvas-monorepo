@@ -10,6 +10,7 @@ interface DialogProps {
 	onOpenChange: (open: boolean) => void;
 	title?: string;
 	description?: string;
+	header?: ReactNode;
 	children?: ReactNode;
 	onConfirm?: () => void;
 	onCancel?: () => void;
@@ -24,6 +25,7 @@ function Dialog({
 	onOpenChange,
 	title = "Confirm",
 	description,
+	header,
 	children,
 	onConfirm,
 	onCancel,
@@ -51,7 +53,7 @@ function Dialog({
 							render={
 								<div className="fixed inset-0 z-[calc(var(--z-dialog)+1)] flex items-center justify-center pointer-events-none">
 									<motion.div
-										className={`rounded-[10px] border border-border bg-surface-1 text-surface-1-foreground z-[calc(var(--z-dialog)+2)] py-6 px-4 max-h-[80vh] overflow-y-auto pointer-events-auto ${
+										className={`rounded-[10px]  bg-surface-1 text-surface-1-foreground z-[calc(var(--z-dialog)+2)] max-h-[80vh] overflow-hidden flex flex-col pointer-events-auto ${
 											size === "lg" ? "min-w-[800px] max-w-[1200px]" : "min-w-[400px] max-w-[800px]"
 										}`}
 										initial={dialogInitialState}
@@ -59,10 +61,13 @@ function Dialog({
 										exit={dialogInitialState}
 										style={{ transformPerspective: 500 }}
 									>
-										{title && <BaseDialog.Title className="text-2xl m-0 mb-5">{title}</BaseDialog.Title>}
-										{description && <BaseDialog.Description className="mb-4">{description}</BaseDialog.Description>}
-										{children && <div className="mb-5">{children}</div>}
-										<div className="border-t border-divider pt-5 mt-5 flex justify-end gap-2.5">
+										{header && <div className="sticky top-0 bg-accent px-4 py-6 z-10">{header}</div>}
+										<div className="flex-1 overflow-y-auto px-4 py-6">
+											{title && !header && <BaseDialog.Title className="text-2xl m-0 mb-5">{title}</BaseDialog.Title>}
+											{description && <BaseDialog.Description className="mb-4">{description}</BaseDialog.Description>}
+											{children && <div className="mb-5">{children}</div>}
+										</div>
+										<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
 											{onCancel && (
 												<BaseDialog.Close
 													render={

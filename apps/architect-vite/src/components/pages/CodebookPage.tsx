@@ -12,13 +12,14 @@ const CodebookPage = () => {
 
 	const handleGoBack = () => {
 		// Extract protocol ID from current URL and navigate back to protocol overview
-		const urlPath = window.location.pathname;
-		const protocolId = urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}`);
-		} else {
-			setLocation("/");
-		}
+		// const urlPath = window.location.pathname;
+		// const protocolId = urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
+		// if (protocolId) {
+		// 	setLocation(`/protocol/${protocolId}`);
+		// } else {
+		// 	setLocation("/");
+		// }
+		setLocation("/protocol");
 	};
 
 	return (

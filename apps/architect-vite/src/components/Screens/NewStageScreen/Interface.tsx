@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { find, get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -42,10 +41,6 @@ const InterfaceThumbnail = ({
 		[onClick, interfaceType],
 	);
 
-	const classes = cx("new-stage-screen__interface", {
-		"new-stage-screen__interface--highlighted": highlighted,
-	});
-
 	useEffect(() => {
 		if (highlighted) {
 			// Move element into view when it is selected
@@ -56,19 +51,19 @@ const InterfaceThumbnail = ({
 	return (
 		<motion.div
 			ref={ref}
-			className={classes}
+			className={`flex-1 cursor-pointer px-16 py-4 border-b-2 border-divider ${highlighted ? "bg-action" : ""}`}
 			onClick={handleSelect}
 			onMouseEnter={setHighlighted}
 			onMouseLeave={removeHighlighted}
 		>
-			<div className="new-stage-screen__interface-content">
-				<div className="new-stage-screen__interface-image">
-					<img className="new-stage-screen__interface-preview" src={image} alt={title} />
+			<div className="mx-auto flex items-center">
+				<div className="flex-none w-60 mr-6">
+					<img className="w-full rounded-lg" src={image} alt={title} />
 				</div>
-				<div className="new-stage-screen__interface-info">
-					<h2>{title}</h2>
-					<div className="new-stage-screen__interface-description">{description}</div>
-					<div className="new-stage-screen__interface-tags">
+				<div className="flex flex-col">
+					<h2 className={`text-2xl font-bold mb-2 ${highlighted ? "text-white" : ""}`}>{title}</h2>
+					<div className={`mb-3 ${highlighted ? "text-white" : ""}`}>{description}</div>
+					<div className="flex flex-wrap gap-2">
 						{tags.map((tag) => (
 							<Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
 								{tag}

@@ -19,10 +19,10 @@ const InterfaceList = ({
 	setHighlighted,
 	removeHighlighted,
 }: InterfaceListProps) => (
-	<motion.div className="new-stage-screen__interfaces">
+	<motion.div className="flex flex-col my-4">
 		{items.length === 0 && (
-			<div className="new-stage-screen__interfaces--empty">
-				<p>
+			<div className="absolute inset-0 flex flex-col items-center justify-center">
+				<p className="text-center mb-4">
 					No interfaces match your filter and/or search results. Try a different combination of types, or clear your
 					filters and search query to see all available interfaces.
 				</p>

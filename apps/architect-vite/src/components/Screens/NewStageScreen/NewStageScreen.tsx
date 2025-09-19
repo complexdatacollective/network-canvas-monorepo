@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,7 +7,6 @@ import Search from "~/components/Form/Fields/Search";
 import Dialog from "~/components/NewComponents/Dialog";
 import Tag from "~/components/Tag";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
-import Row from "../../EditorLayout/Row";
 import InterfaceList from "./InterfaceList";
 import { INTERFACE_TYPES, TAGS, TAG_COLORS } from "./interfaceOptions";
 
@@ -216,55 +214,51 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 		};
 	}, []);
 
-	const componentClasses = cx("new-stage-screen", {
-		"new-stage-screen--has-query": hasQuery,
-	});
-
 	return (
 		<Dialog
 			open={show}
 			onOpenChange={(open) => !open && onCancel()}
-			title="Select an Interface Type"
+			header={
+				<div className="flex flex-col gap-4">
+					<h2 className="text-2xl text-white">Select an Interface Type</h2>
+					<div className="flex flex-col gap-3">
+						<div className="w-full">
+							<Search
+								placeholder="Search interfaces by name or keyword..."
+								input={{
+									value: query,
+									onChange: handleUpdateQuery,
+									onKeyDown: handleKeyDown,
+								}}
+								autoFocus
+							/>
+						</div>
+						<div className="flex items-center gap-3">
+							<div className="flex-shrink-0 text-white">
+								<h4 className="text-sm font-semibold">Filter by capabilities:</h4>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								{tags.map(({ value, selected, disabled }) => (
+									<Tag
+										key={value}
+										id={value}
+										selected={selected}
+										onClick={handleTagClick}
+										color={get(TAG_COLORS, value)}
+										disabled={disabled}
+									>
+										{value}
+									</Tag>
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
+			}
 			onCancel={onCancel}
 			size="lg"
 		>
-			<div className="stage-heading stage-heading--shadow">
-				<Row>
-					<div className="new-stage-screen__filter">
-						<Search
-							placeholder="Search interfaces by name or keyword..."
-							input={{
-								value: query,
-								onChange: handleUpdateQuery,
-								onKeyDown: handleKeyDown,
-							}}
-							autoFocus
-						/>
-					</div>
-				</Row>
-				<Row>
-					<div className="new-stage-screen__menu-tags">
-						<div className="menu-tags__label">
-							<h4>Filter by capabilities:</h4>
-						</div>
-						<div className="menu-tags__tags">
-							{tags.map(({ value, selected, disabled }) => (
-								<Tag
-									key={value}
-									id={value}
-									selected={selected}
-									onClick={handleTagClick}
-									color={get(TAG_COLORS, value)}
-									disabled={disabled}
-								>
-									{value}
-								</Tag>
-							))}
-						</div>
-					</div>
-				</Row>
-			</div>
-			<div className={componentClasses}>
+			<div className="h-full">
 				<InterfaceList
 					items={filteredInterfaces}
 					onSelect={handleSelectInterface}
