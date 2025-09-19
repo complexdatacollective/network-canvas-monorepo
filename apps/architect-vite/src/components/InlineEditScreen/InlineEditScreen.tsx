@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { submit } from "redux-form";
-import Dialog from "~/components/Dialog/Dialog";
+import Dialog from "~/components/NewComponents/Dialog";
 import { Layout } from "~/components/EditorLayout";
-import Button from "~/lib/legacy-ui/components/Button";
 import Form from "./Form";
 import { useBodyScrollLock } from "./useBodyScrollLock";
 
@@ -35,24 +34,17 @@ const InlineEditScreen = ({
 		dispatch(submit(form));
 	}, [form, dispatch]);
 
-	const footer = (
-		<div className="inline-edit-screen__controls">
-			<Button onClick={onCancel} color="platinum">
-				Cancel
-			</Button>
-			<Button onClick={handleSubmit} type="submit" icon="arrow-right" iconPosition="right">
-				Save and Close
-			</Button>
-		</div>
-	);
-
 	return (
 		<Dialog
-			show={show}
-			onClose={onCancel}
-			className="inline-edit-dialog"
-			header={title ? <h2>{title}</h2> : null}
-			footer={footer}
+			open={show}
+			onOpenChange={(open) => {
+				if (!open) {
+					onCancel();
+				}
+			}}
+			title={title || undefined}
+			onConfirm={handleSubmit}
+			confirmText="Save and Close"
 		>
 			<Layout>
 				{/* @ts-expect-error - reduxForm enhanced component typing issue */}

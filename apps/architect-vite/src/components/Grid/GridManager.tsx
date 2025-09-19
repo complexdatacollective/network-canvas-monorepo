@@ -3,9 +3,11 @@ import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";
 import { getFieldId, scrollToFirstIssue } from "../../utils/issues";
 import ValidatedFieldArray from "../Form/ValidatedFieldArray";
-import Dialog from "../NewComponents/Dialog";
+import InlineEditScreen from "../InlineEditScreen/InlineEditScreen";
 import Grid from "./Grid";
 import withEditHandlers from "./withEditHandlers";
+
+const formName = "editable-list-form";
 
 type GridManagerProps = {
 	form: string;
@@ -33,8 +35,6 @@ type GridManagerProps = {
 	template?: any;
 	upsert: (item: any) => void;
 } & Record<string, any>;
-
-const formName = "editable-list-form";
 
 const notEmpty = (value: any) => (value && value.length > 0 ? undefined : "You must create at least one item");
 
@@ -103,13 +103,13 @@ const GridManager = ({
 				</div>
 			)}
 		</div>
-		<Dialog
-			open={!!editField}
+		<InlineEditScreen
+			show={!!editField}
+			form={formName}
 			title={title}
-			onConfirm={handleUpdate} // todo: implement saving form data
+			onSubmit={handleUpdate}
 			onCancel={handleResetEditField}
-			confirmText="Save"
-			onOpenChange={() => void 0}
+			initialValues={initialValues}
 		>
 			<EditComponent
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -118,7 +118,7 @@ const GridManager = ({
 				fieldId={editField}
 				onComplete={handleResetEditField}
 			/>
-		</Dialog>
+		</InlineEditScreen>
 	</Section>
 );
 

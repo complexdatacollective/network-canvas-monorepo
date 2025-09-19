@@ -1,14 +1,16 @@
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
 import type React from "react";
 import type { ComponentType } from "react";
+import { useSelector } from "react-redux";
 import { defaultProps } from "recompose";
 import type { Validator } from "redux-form";
+import { formValueSelector } from "redux-form";
 import { v4 } from "uuid";
 import ValidatedField from "~/components/Form/ValidatedField";
 import OrderedList, { type OrderedListProps } from "~/components/OrderedList/OrderedList";
 import { Button } from "~/lib/legacy-ui/components";
 import { useFormContext } from "../Editor";
-import Dialog from "../NewComponents/Dialog";
+import InlineEditScreen from "../InlineEditScreen/InlineEditScreen";
 import { useEditHandlers } from "./useEditHandlers";
 
 const notEmpty = (value: unknown) =>
@@ -20,6 +22,8 @@ type FieldType = { variable: string; prompt: string }[];
 const withDefaultFieldName = defaultProps({
 	fieldName: "prompts",
 });
+
+const formName = "editable-list-form";
 
 type EditableListProps = {
 	sectionTitle: string;
@@ -34,6 +38,7 @@ type EditableListProps = {
 	editComponent: React.ComponentType<
 		FieldType[number] & { layoutId: string; handleCancel: () => void; handleUpdate: () => void }
 	>;
+	editProps?: Record<string, unknown>;
 	validation?: Record<string, Validator> | Record<ValidationName, Validation>;
 	// Optional props for customizing hook behavior
 	normalize?: (value: unknown) => unknown;
@@ -47,6 +52,7 @@ const EditableList = ({
 	children = null,
 	validation = { notEmpty },
 	editComponent: EditComponent,
+	editProps = {},
 	previewComponent: PreviewComponent,
 	normalize = (value) => value, // Function to normalize the value before saving
 	template = () => ({ id: v4() }), // Function to provide a template for new items
@@ -63,7 +69,12 @@ const EditableList = ({
 
 	const isOpen = editIndex !== null;
 
-	console.log("initialValues", initialValues);
+	// Get current item values for editing
+	const currentItemValues = useSelector((state: any) => {
+		if (editIndex === null) return template();
+		const selector = formValueSelector(form);
+		return selector(state, `${fieldName}[${editIndex}]`) || template();
+	});
 
 	return (
 		<>
@@ -81,16 +92,16 @@ const EditableList = ({
 			<Button onClick={handleAddNew} icon="add">
 				Create new
 			</Button>
-			<Dialog
-				open={isOpen}
-				onOpenChange={(open) => !open && handleCancelEdit()}
+			<InlineEditScreen
+				show={isOpen}
+				form={formName}
 				title={title}
-				onConfirm={() => handleSaveEdit({})} // todo: implement saving form data
+				onSubmit={handleSaveEdit}
 				onCancel={handleCancelEdit}
-				confirmText="Save"
+				initialValues={currentItemValues}
 			>
-				<EditComponent form={form} initialValues={initialValues} fieldId={editField} />
-			</Dialog>
+				<EditComponent form={formName} entity={editProps?.entity} type={editProps?.type} />
+			</InlineEditScreen>
 		</>
 	);
 };
