@@ -87,6 +87,12 @@
 							"label": "Ego Form",
 							"navOrder": null
 						},
+						"geospatial": {
+							"type": "page",
+							"sourceFile": "/docs/desktop/interface-documentation/geospatial.en.mdx",
+							"label": "Geospatial",
+							"navOrder": null
+						},
 						"information": {
 							"type": "page",
 							"sourceFile": "/docs/desktop/interface-documentation/information.en.mdx",
