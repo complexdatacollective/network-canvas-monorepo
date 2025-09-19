@@ -1,0 +1,20 @@
+.items-new-button {
+	width: var(--space-2xl);
+	height: var(--space-2xl);
+	cursor: pointer;
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: var(--color-edit-button-background);
+	border-radius: 50%;
+}
+
+.items-new-button .icon {
+	width: var(--space-md);
+	height: var(--space-md);
+}
+
+.items-new-button .icon .cls-1 {
+	fill: var(--color-edit-button-fill);
+}

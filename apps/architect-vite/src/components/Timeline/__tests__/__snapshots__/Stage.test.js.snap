@@ -1,0 +1,54 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<Stage /> can render 1`] = `
+<ForwardRef(MotionComponent)
+  className="timeline-stage"
+  variants={
+    Object {
+      "hide": Object {
+        "opacity": 0,
+        "scale": 0,
+      },
+      "show": Object {
+        "opacity": 1,
+        "scale": 1,
+        "transition": Object {
+          "delay": 0.75,
+          "type": "spring",
+        },
+      },
+    }
+  }
+>
+  <div
+    className="timeline-stage__notch"
+    onClick={[Function]}
+  >
+    1
+  </div>
+  <ForwardRef
+    hasFilter={false}
+    hasSkipLogic={false}
+    label=""
+    onEditStage={[Function]}
+    type="Foo"
+  />
+  <div
+    className="timeline-stage__controls"
+  >
+    <Button
+      color="neon-coral"
+      content=""
+      disabled={false}
+      icon={<Memo />}
+      iconPosition="left"
+      onClick={[Function]}
+      
+      title="Delete stage"
+      type="button"
+    >
+      Delete stage
+    </Button>
+  </div>
+</ForwardRef(MotionComponent)>
+`;

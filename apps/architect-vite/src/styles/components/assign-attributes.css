@@ -1,0 +1,71 @@
+.assign-attributes__empty {
+	margin-top: var(--space-3);
+	font-style: italic;
+}
+
+.assign-attributes__add {
+	margin-top: var(--space-3);
+}
+
+.assign-attributes__add button {
+	margin: 0;
+}
+
+.assign-attributes-attribute {
+	display: flex;
+	margin: var(--space-3) 0;
+	padding: var(--space-3);
+	border-radius: var(--radius);
+}
+
+.assign-attributes-attribute .form-field {
+	background: var(--color-surface-2);
+	margin-bottom: 0;
+}
+
+.assign-attributes-attribute__wrapper {
+	display: flex;
+	flex: 1 0 auto;
+	flex-direction: column;
+}
+
+.assign-attributes-attribute__variable {
+	flex: 1 0 auto;
+}
+
+.assign-attributes-attribute__variable .form-fields-variable-picker {
+	margin-top: 0;
+	margin-bottom: var(--space-3);
+}
+
+.assign-attributes-attribute__variable .form-fields-variable-picker fieldset {
+	border-color: var(--color-border);
+}
+
+.assign-attributes-attribute__value {
+	flex: 1 0 auto;
+	border: 2px dashed var(--color-border);
+	padding: var(--space-3);
+	border-radius: var(--radius);
+}
+
+.assign-attributes-attribute__value legend {
+	padding: 0 var(--space-3);
+}
+
+.assign-attributes-attribute__delete {
+	flex: 0 0 5rem;
+	padding-left: var(--space-3);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.assign-attributes-attribute__delete .icon {
+	height: var(--space-3);
+	cursor: pointer;
+}
+
+.assign-attributes-attribute__delete .icon .cls-1 {
+	fill: var(--text-dark);
+}

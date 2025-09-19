@@ -1,0 +1,100 @@
+.form-field-text {
+	/* position: relative; */
+
+	.form-field-text__input {
+		/* display: block;
+		position: relative;
+		padding: 0.5em 1em;
+		font-family: var(--body-font-family);
+		font-size: inherit;
+		font-weight: inherit;
+		background-color: var(--color-input-background);
+		width: 100%;
+		color: var(--color-input-text);
+		border: 0;
+		border-bottom-width: calc(0.6rem * 0.25);
+		border-bottom-style: solid;
+		border-bottom-color: transparent;
+		transition: border-bottom-color var(--animation-easing) var(--animation-duration-standard); */
+
+		&::placeholder {
+			color: var(--color-input-placeholder);
+			font-style: italic;
+		}
+	}
+
+	.form-field-text__adornment-left,
+	.form-field-text__adornment-right {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		transition: all var(--animation-easing) var(--animation-duration-fast);
+		width: 1.5em;
+	}
+
+	.form-field-text__adornment-left {
+		left: 1em;
+	}
+
+	.form-field-text__adornment-right {
+		right: 1em;
+	}
+
+	&.form-field-text--has-focus,
+	&:hover {
+		.form-field-text__input {
+			border-bottom-color: var(--color-input-accent);
+		}
+
+		.form-field-text__icon--edit {
+			opacity: 1;
+		}
+	}
+
+	.form-field-text__error {
+		opacity: 0;
+		background: var(--color-error);
+		color: var(--color-form-error-text);
+		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+			var(--animation-duration-standard);
+		padding: 0.5rem 0.25rem;
+		display: flex;
+		align-items: center;
+
+		svg {
+			max-height: 1.2rem;
+		}
+	}
+
+	&.form-field-text--area {
+		display: block;
+		width: 100%;
+		resize: vertical;
+	}
+
+	&.form-field-text--has-right-adornment {
+		.form-field-text__input {
+			padding-right: 3.25em;
+		}
+	}
+
+	&.form-field-text--has-left-adornment {
+		.form-field-text__input {
+			padding-left: 3.25em;
+		}
+	}
+
+	&.form-field-text--has-error {
+		.form-field-text__error {
+			opacity: 1;
+		}
+
+		.form-field-text__input {
+			margin-bottom: 0;
+			border: 0.125rem solid var(--error);
+		}
+	}
+}

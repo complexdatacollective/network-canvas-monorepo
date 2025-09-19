@@ -1,0 +1,24 @@
+.items-item {
+	width: 100%;
+	background-color: var(--color-sortable-background);
+	color: var(--color-sortable-foreground);
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	border-radius: 0.9rem;
+}
+
+.items-item__control {
+	padding: var(--space-md);
+	flex-grow: 0;
+}
+
+.items-item__control .icon .cls-1,
+.items-item__control .icon .cls-2 {
+	fill: var(--color-sortable-foreground);
+}
+
+.items-item__content {
+	padding: var(--space-xl) var(--space-md);
+	flex-grow: 1;
+}

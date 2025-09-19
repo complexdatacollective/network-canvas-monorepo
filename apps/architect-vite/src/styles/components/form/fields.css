@@ -1,0 +1,36 @@
+@import "./fields/native-select.css";
+@import "./fields/variable-select.css";
+@import "./fields/entity-select.css";
+@import "./fields/select.css";
+@import "./fields/input-preview.css";
+@import "./fields/variable-picker.css";
+@import "./fields/textarea.css";
+@import "./fields/markdown.css";
+@import "./fields/mode.css";
+@import "./fields/file.css";
+@import "./fields/audio.css";
+@import "./fields/image.css";
+@import "./fields/video.css";
+@import "./fields/data-source.css";
+@import "./fields/multi-select.css";
+@import "./fields/color-picker.css";
+
+.form-field {
+	@apply form-field;
+}
+
+/* Form field base styles - converted from SCSS mixin to CSS utility class */
+.form-field-label {
+	@apply h3;
+}
+
+.form-field__error {
+	opacity: 0;
+	color: var(--color-error-foreground);
+	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+		var(--animation-duration-standard);
+}
+
+.form-field-container {
+	@apply mb-4;
+}

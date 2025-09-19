@@ -1,0 +1,16 @@
+.rules-rules__join {
+	--input-border: var(--color-foreground);
+	margin-top: var(--space-xl);
+}
+
+.rules-rules__add-new {
+	margin-top: var(--space-md);
+}
+
+.rules-rules__add-new button {
+	margin: 0 var(--space-md) 0 0;
+}
+
+.rules-rules--has-error .rules-preview-rules {
+	border-color: var(--error);
+}

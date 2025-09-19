@@ -1,0 +1,1 @@
+Use the playwright MCP to verify work, debug, or access console logs. NEVER start the development server - instead prompt the user to do this if it is not already started.

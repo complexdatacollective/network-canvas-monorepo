@@ -169,8 +169,6 @@ class Validator {
 			let failureMessage: string;
 			try {
 				// Try to decorate the failure message with useful info
-				// const subjectTypeName = getSubjectTypeName(this.protocol.codebook, subject);
-				// console.log('subjtn', subjectTypeName);
 				failureMessage = makeFailureMessage(fragment, subject, keypath);
 			} catch (err) {
 				let errorString: string;
