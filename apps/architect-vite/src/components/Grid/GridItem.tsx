@@ -43,7 +43,14 @@ const GridItem = ({
 						/>
 					</div>
 					<div className="grid-item__controls">
-						<div className="grid-item__edit" onClick={() => onEditItem(fieldId)}>
+						<div
+							className="grid-item__edit"
+							onMouseDown={(e) => {
+								e.stopPropagation();
+								e.preventDefault();
+								onEditItem(fieldId);
+							}}
+						>
 							<Icon name="edit" />
 						</div>
 						<div className="grid-item__delete" onClick={() => fields.remove(index)}>

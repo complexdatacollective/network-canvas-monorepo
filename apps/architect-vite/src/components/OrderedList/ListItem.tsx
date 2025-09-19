@@ -46,7 +46,12 @@ const ListItem = ({
 				<GripVertical className="flex grow-0 shrink-0 cursor-grab" onPointerDown={(e) => controls.start(e)} />
 			)}
 			<div className="grow-1 shrink-1">{children}</div>
-			<Trash2 onClick={handleDelete} />
+			<Trash2
+				onClick={(e) => {
+					e.stopPropagation();
+					handleDelete();
+				}}
+			/>
 		</Reorder.Item>
 	);
 };
