@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
-import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
-import type { ReactNode } from "react";
-import useProtocolLoader from "../useProtocolLoader";
-import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
-import activeProtocolReducer from "~/ducks/modules/activeProtocol";
 import type { Protocol } from "@codaco/protocol-validation";
+import { configureStore } from "@reduxjs/toolkit";
+import { renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { Provider } from "react-redux";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import activeProtocolReducer from "~/ducks/modules/activeProtocol";
+import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
+import useProtocolLoader from "../useProtocolLoader";
 
 // Mock wouter hooks
 const mockNavigate = vi.fn();
@@ -58,22 +58,8 @@ describe("useProtocolLoader", () => {
 		mockUseParams.mockClear();
 	});
 
-	it("should do nothing when no protocolId in params", () => {
-		mockUseParams.mockReturnValue({});
-
-		const { result } = renderHook(() => useProtocolLoader(), {
-			wrapper: createWrapper(store),
-		});
-
-		expect(result.current.protocolId).toBeUndefined();
-		expect(result.current.isLoading).toBe(false);
-		expect(result.current.error).toBeUndefined();
-		expect(mockNavigate).not.toHaveBeenCalled();
-	});
-
 	it("should navigate to home when protocol not found", () => {
-		const nonExistentId = "non-existent-id";
-		mockUseParams.mockReturnValue({ protocolId: nonExistentId });
+		mockUseParams.mockReturnValue({});
 
 		renderHook(() => useProtocolLoader(), {
 			wrapper: createWrapper(store),
@@ -83,19 +69,16 @@ describe("useProtocolLoader", () => {
 	});
 
 	it("should set active protocol when protocol found in store", () => {
-		const protocolId = "test-protocol-id";
-
 		// Add protocol to store
 		store.dispatch(
 			addProtocol({
-				id: protocolId,
 				protocol: mockProtocol,
 				name: mockProtocol.name,
 				description: mockProtocol.description,
 			}),
 		);
 
-		mockUseParams.mockReturnValue({ protocolId });
+		mockUseParams.mockReturnValue({});
 
 		renderHook(() => useProtocolLoader(), {
 			wrapper: createWrapper(store),
@@ -108,12 +91,9 @@ describe("useProtocolLoader", () => {
 	});
 
 	it("should not reload protocol if already active", () => {
-		const protocolId = "test-protocol-id";
-
 		// Add protocol to store and set as active
 		store.dispatch(
 			addProtocol({
-				id: protocolId,
 				protocol: mockProtocol,
 				name: mockProtocol.name,
 				description: mockProtocol.description,
@@ -124,8 +104,7 @@ describe("useProtocolLoader", () => {
 		const initialState = store.getState();
 		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: mockProtocol });
 
-		mockUseParams.mockReturnValue({ protocolId });
-
+		mockUseParams.mockReturnValue({});
 		const { rerender } = renderHook(() => useProtocolLoader(), {
 			wrapper: createWrapper(store),
 		});
@@ -140,73 +119,24 @@ describe("useProtocolLoader", () => {
 		expect(mockNavigate).not.toHaveBeenCalled();
 	});
 
-	it("should load different protocol when protocolId changes", () => {
-		const protocol1Id = "protocol-1";
-		const protocol2Id = "protocol-2";
-
-		const protocol2 = { ...mockProtocol, name: "Protocol 2" };
-
-		// Add both protocols to store
-		store.dispatch(
-			addProtocol({
-				id: protocol1Id,
-				protocol: mockProtocol,
-				name: mockProtocol.name,
-				description: mockProtocol.description,
-			}),
-		);
-
-		store.dispatch(
-			addProtocol({
-				id: protocol2Id,
-				protocol: protocol2,
-				name: protocol2.name,
-				description: protocol2.description,
-			}),
-		);
-
-		// Start with protocol1
-		mockUseParams.mockReturnValue({ protocolId: protocol1Id });
-
-		const { rerender } = renderHook(() => useProtocolLoader(), {
-			wrapper: createWrapper(store),
-		});
-
-		// Verify protocol1 is active
-		let state = store.getState();
-		expect(state.activeProtocol.present.name).toBe("Test Protocol");
-
-		// Switch to protocol2
-		mockUseParams.mockReturnValue({ protocolId: protocol2Id });
-		rerender();
-
-		// Verify protocol2 is now active
-		state = store.getState();
-		expect(state.activeProtocol.present.name).toBe("Protocol 2");
-	});
-
 	it("should return correct loading state", () => {
-		const protocolId = "test-protocol-id";
-		mockUseParams.mockReturnValue({ protocolId });
+		mockUseParams.mockReturnValue({});
 
 		const { result } = renderHook(() => useProtocolLoader(), {
 			wrapper: createWrapper(store),
 		});
 
-		expect(result.current.protocolId).toBe(protocolId);
-		expect(result.current.isLoading).toBe(false);
+		expect(result.current).toBeUndefined();
+		expect(result.current?.isLoading).toBe(false);
 	});
 
 	it("should handle protocol content comparison correctly", () => {
-		const protocolId = "test-protocol-id";
-
 		// Create protocol with same content but different object reference
 		const sameProtocol = JSON.parse(JSON.stringify(mockProtocol));
 
 		// Add protocol to store
 		store.dispatch(
 			addProtocol({
-				id: protocolId,
 				protocol: mockProtocol,
 				name: mockProtocol.name,
 				description: mockProtocol.description,
@@ -216,7 +146,7 @@ describe("useProtocolLoader", () => {
 		// Set same content protocol as active (but different object reference)
 		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: sameProtocol });
 
-		mockUseParams.mockReturnValue({ protocolId });
+		mockUseParams.mockReturnValue({});
 
 		renderHook(() => useProtocolLoader(), {
 			wrapper: createWrapper(store),

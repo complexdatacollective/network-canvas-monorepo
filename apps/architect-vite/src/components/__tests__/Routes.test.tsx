@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
-import type { ReactNode } from "react";
-import Routes from "../Routes";
-import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
-import activeProtocolReducer from "~/ducks/modules/activeProtocol";
 import type { Protocol } from "@codaco/protocol-validation";
+import { configureStore } from "@reduxjs/toolkit";
+import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { Provider } from "react-redux";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import activeProtocolReducer from "~/ducks/modules/activeProtocol";
+import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
+import Routes from "../Routes";
 
 // Mock wouter
 const mockLocation = vi.fn();
@@ -17,7 +17,7 @@ vi.mock("wouter", () => ({
 	Route: ({ path, component: Component, ...props }: any) => {
 		const currentPath = mockLocation();
 		// Simple path matching for testing
-		if (path === currentPath || (path === "/protocol/:protocolId" && currentPath.startsWith("/protocol/"))) {
+		if (path === currentPath || (path === "/protocol" && currentPath.startsWith("/protocol/"))) {
 			return <Component {...props} />;
 		}
 		return null;
@@ -86,63 +86,20 @@ describe("Routes", () => {
 	});
 
 	it("should render Protocol component on protocol path", () => {
-		const protocolId = "test-protocol-id";
-
 		// Add protocol to store
 		store.dispatch(
 			addProtocol({
-				id: protocolId,
 				protocol: mockProtocol,
 				name: mockProtocol.name,
 				description: mockProtocol.description,
 			}),
 		);
 
-		mockLocation.mockReturnValue(`/protocol/${protocolId}`);
+		mockLocation.mockReturnValue("/protocol");
 
 		render(<Routes />, {
 			wrapper: createWrapper(store),
 		});
-
-		expect(screen.getByTestId("protocol")).toBeInTheDocument();
-	});
-
-	it("should handle protocol routes with different IDs", () => {
-		const protocolId1 = "protocol-1";
-		const protocolId2 = "protocol-2";
-
-		// Add protocols to store
-		store.dispatch(
-			addProtocol({
-				id: protocolId1,
-				protocol: mockProtocol,
-				name: "Protocol 1",
-				description: "First protocol",
-			}),
-		);
-
-		store.dispatch(
-			addProtocol({
-				id: protocolId2,
-				protocol: { ...mockProtocol, name: "Protocol 2" },
-				name: "Protocol 2",
-				description: "Second protocol",
-			}),
-		);
-
-		// Test first protocol
-		mockLocation.mockReturnValue(`/protocol/${protocolId1}`);
-
-		const { rerender } = render(<Routes />, {
-			wrapper: createWrapper(store),
-		});
-
-		expect(screen.getByTestId("protocol")).toBeInTheDocument();
-
-		// Test second protocol
-		mockLocation.mockReturnValue(`/protocol/${protocolId2}`);
-
-		rerender(<Routes />);
 
 		expect(screen.getByTestId("protocol")).toBeInTheDocument();
 	});

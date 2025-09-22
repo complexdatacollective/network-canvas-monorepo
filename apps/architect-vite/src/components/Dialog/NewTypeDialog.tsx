@@ -8,12 +8,6 @@ type NewTypeDialogProps = {
 	onCancel?: () => void;
 };
 
-// Helper function to get protocol ID from URL
-const getProtocolId = () => {
-	const urlPath = window.location.pathname;
-	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-};
-
 const NewTypeDialog = ({
 	show = false,
 	entityType,
@@ -23,11 +17,8 @@ const NewTypeDialog = ({
 	const [, setLocation] = useLocation();
 
 	const handleCreateNewType = () => {
-		const protocolId = getProtocolId();
-		if (protocolId) {
-			onComplete();
-			setLocation(`/protocol/${protocolId}/codebook/${entityType}/new`);
-		}
+		onComplete();
+		setLocation(`/protocol/codebook/${entityType}/new`);
 	};
 
 	return (

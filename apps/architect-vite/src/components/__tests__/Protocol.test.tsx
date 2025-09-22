@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
-import type { ReactNode } from "react";
-import Protocol from "../Protocol";
-import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
-import activeProtocolReducer from "~/ducks/modules/activeProtocol";
 import type { Protocol as ProtocolType } from "@codaco/protocol-validation";
+import { configureStore } from "@reduxjs/toolkit";
+import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { Provider } from "react-redux";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import activeProtocolReducer from "~/ducks/modules/activeProtocol";
+import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
+import Protocol from "../Protocol";
 
 // Mock components to avoid complex rendering
 vi.mock("~/components/Overview", () => ({
@@ -77,12 +77,9 @@ describe("Protocol Component", () => {
 	});
 
 	it("should render protocol components when protocol is loaded", () => {
-		const protocolId = "test-protocol-id";
-
 		// Add protocol to store
 		store.dispatch(
 			addProtocol({
-				id: protocolId,
 				protocol: mockProtocol,
 				name: mockProtocol.name,
 				description: mockProtocol.description,
@@ -93,7 +90,6 @@ describe("Protocol Component", () => {
 		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: mockProtocol });
 
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId,
 			isLoading: false,
 			error: undefined,
 		});
@@ -109,7 +105,6 @@ describe("Protocol Component", () => {
 
 	it("should call useProtocolLoader hook on mount", () => {
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId: undefined,
 			isLoading: false,
 			error: undefined,
 		});
@@ -123,7 +118,6 @@ describe("Protocol Component", () => {
 
 	it("should handle loading state", () => {
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId: "test-id",
 			isLoading: true,
 			error: undefined,
 		});
@@ -138,7 +132,6 @@ describe("Protocol Component", () => {
 
 	it("should handle error state", () => {
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId: "test-id",
 			isLoading: false,
 			error: "Protocol not found",
 		});
@@ -153,7 +146,6 @@ describe("Protocol Component", () => {
 
 	it("should handle missing protocol ID", () => {
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId: undefined,
 			isLoading: false,
 			error: undefined,
 		});
@@ -169,13 +161,9 @@ describe("Protocol Component", () => {
 	});
 
 	it("should update when protocol changes", () => {
-		const protocolId1 = "protocol-1";
-		const protocolId2 = "protocol-2";
-
 		// Add protocols to store
 		store.dispatch(
 			addProtocol({
-				id: protocolId1,
 				protocol: mockProtocol,
 				name: "Protocol 1",
 				description: "First protocol",
@@ -184,7 +172,6 @@ describe("Protocol Component", () => {
 
 		store.dispatch(
 			addProtocol({
-				id: protocolId2,
 				protocol: { ...mockProtocol, name: "Protocol 2" },
 				name: "Protocol 2",
 				description: "Second protocol",
@@ -193,7 +180,6 @@ describe("Protocol Component", () => {
 
 		// Start with first protocol
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId: protocolId1,
 			isLoading: false,
 			error: undefined,
 		});
@@ -206,7 +192,6 @@ describe("Protocol Component", () => {
 
 		// Switch to second protocol
 		mockUseProtocolLoader.mockReturnValue({
-			protocolId: protocolId2,
 			isLoading: false,
 			error: undefined,
 		});

@@ -9,7 +9,7 @@ import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
 
 const TypeEditorPage = () => {
-	const { protocolId, entity, type } = useParams();
+	const { entity, type } = useParams();
 
 	// Handle "new" type creation
 	const actualType = type === "new" ? undefined : type;
@@ -26,12 +26,8 @@ const TypeEditorPage = () => {
 
 	// Navigation handler
 	const handleGoBack = useCallback(() => {
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}/codebook`);
-		} else {
-			setLocation("/");
-		}
-	}, [protocolId, setLocation]);
+		setLocation("/protocol/codebook");
+	}, [setLocation]);
 
 	// Form submission handler
 	const handleSubmit = useCallback(() => {

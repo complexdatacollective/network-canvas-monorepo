@@ -1,17 +1,16 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import type { Protocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
+import { beforeEach, describe, expect, it } from "vitest";
 import protocolsReducer, {
 	addProtocol,
-	updateProtocol,
-	updateProtocolMetadata,
 	removeProtocol,
 	selectAllProtocols,
 	selectProtocolById,
-	selectRecentProtocols,
 	selectProtocolExists,
-	generateProtocolId,
+	selectRecentProtocols,
+	updateProtocol,
+	updateProtocolMetadata,
 } from "../protocols";
-import type { Protocol } from "@codaco/protocol-validation";
 
 const mockProtocol: Protocol = {
 	name: "Test Protocol",
@@ -56,11 +55,8 @@ describe("protocols", () => {
 		});
 
 		it("should add a protocol", () => {
-			const protocolId = "test-id-123";
-
 			store.dispatch(
 				addProtocol({
-					id: protocolId,
 					protocol: mockProtocol,
 					name: mockProtocol.name,
 					description: mockProtocol.description,
@@ -69,23 +65,19 @@ describe("protocols", () => {
 
 			const state = store.getState().protocols;
 
-			expect(state[protocolId]).toBeDefined();
-			expect(state[protocolId].id).toBe(protocolId);
-			expect(state[protocolId].name).toBe("Test Protocol");
-			expect(state[protocolId].description).toBe("test description");
-			expect(state[protocolId].protocol).toEqual(mockProtocol);
-			expect(state[protocolId].createdAt).toBeDefined();
-			expect(state[protocolId].updatedAt).toBeDefined();
-			expect(state[protocolId].lastModified).toBeDefined();
+			expect(state).toBeDefined();
+			expect(state.name).toBe("Test Protocol");
+			expect(state.description).toBe("test description");
+			expect(state.protocol).toEqual(mockProtocol);
+			expect(state.createdAt).toBeDefined();
+			expect(state.updatedAt).toBeDefined();
+			expect(state.lastModified).toBeDefined();
 		});
 
 		it("should update a protocol", () => {
-			const protocolId = "test-id-123";
-
 			// Add initial protocol
 			store.dispatch(
 				addProtocol({
-					id: protocolId,
 					protocol: mockProtocol,
 					name: mockProtocol.name,
 					description: mockProtocol.description,
@@ -96,23 +88,19 @@ describe("protocols", () => {
 			const updatedProtocol = { ...mockProtocol, description: "updated description" };
 			store.dispatch(
 				updateProtocol({
-					id: protocolId,
 					protocol: updatedProtocol,
 				}),
 			);
 
 			const state = store.getState().protocols;
 
-			expect(state[protocolId].protocol.description).toBe("updated description");
+			expect(state.protocol.description).toBe("updated description");
 		});
 
 		it("should update protocol metadata", () => {
-			const protocolId = "test-id-123";
-
 			// Add initial protocol
 			store.dispatch(
 				addProtocol({
-					id: protocolId,
 					protocol: mockProtocol,
 					name: mockProtocol.name,
 					description: mockProtocol.description,
@@ -122,7 +110,6 @@ describe("protocols", () => {
 			// Update metadata
 			store.dispatch(
 				updateProtocolMetadata({
-					id: protocolId,
 					name: "Updated Name",
 					description: "Updated Description",
 				}),
@@ -130,17 +117,14 @@ describe("protocols", () => {
 
 			const state = store.getState().protocols;
 
-			expect(state[protocolId].name).toBe("Updated Name");
-			expect(state[protocolId].description).toBe("Updated Description");
+			expect(state.name).toBe("Updated Name");
+			expect(state.description).toBe("Updated Description");
 		});
 
 		it("should remove a protocol", () => {
-			const protocolId = "test-id-123";
-
 			// Add protocol
 			store.dispatch(
 				addProtocol({
-					id: protocolId,
 					protocol: mockProtocol,
 					name: mockProtocol.name,
 					description: mockProtocol.description,
@@ -148,44 +132,11 @@ describe("protocols", () => {
 			);
 
 			// Remove protocol
-			store.dispatch(removeProtocol(protocolId));
+			store.dispatch(removeProtocol());
 
 			const state = store.getState().protocols;
 
-			expect(state[protocolId]).toBeUndefined();
-		});
-
-		it("should handle duplicate protocol IDs by updating existing", () => {
-			const protocolId = "test-id-123";
-
-			// Add initial protocol
-			store.dispatch(
-				addProtocol({
-					id: protocolId,
-					protocol: mockProtocol,
-					name: "Original Name",
-					description: "Original Description",
-				}),
-			);
-
-			const originalCreatedAt = store.getState().protocols[protocolId].createdAt;
-
-			// Add same protocol ID again (should update)
-			store.dispatch(
-				addProtocol({
-					id: protocolId,
-					protocol: mockProtocol2,
-					name: "Updated Name",
-					description: "Updated Description",
-				}),
-			);
-
-			const state = store.getState().protocols;
-
-			expect(state[protocolId].name).toBe("Updated Name");
-			expect(state[protocolId].description).toBe("Updated Description");
-			expect(state[protocolId].protocol).toEqual(mockProtocol2);
-			expect(state[protocolId].createdAt).toBe(originalCreatedAt); // Should preserve original createdAt
+			expect(state).toBeUndefined();
 		});
 	});
 
@@ -261,23 +212,6 @@ describe("protocols", () => {
 
 			expect(selectProtocolExists(protocol1Id)(state)).toBe(true);
 			expect(selectProtocolExists("non-existent")(state)).toBe(false);
-		});
-	});
-
-	describe("generateProtocolId", () => {
-		it("should generate consistent IDs for the same protocol", async () => {
-			const id1 = await generateProtocolId(mockProtocol);
-			const id2 = await generateProtocolId(mockProtocol);
-
-			expect(id1).toBe(id2);
-			expect(id1).toHaveLength(16); // First 16 chars of SHA-256 hash
-		});
-
-		it("should generate different IDs for different protocols", async () => {
-			const id1 = await generateProtocolId(mockProtocol);
-			const id2 = await generateProtocolId(mockProtocol2);
-
-			expect(id1).not.toBe(id2);
 		});
 	});
 });

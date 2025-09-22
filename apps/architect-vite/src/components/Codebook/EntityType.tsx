@@ -28,12 +28,6 @@ type EntityTypeProps = {
 	variables?: Variable[];
 };
 
-// Helper function to get protocol ID from URL
-const getProtocolId = () => {
-	const urlPath = window.location.pathname;
-	return urlPath.match(/\/protocol\/([^\/]+)/)?.[1];
-};
-
 const EntityType = ({
 	name,
 	color,
@@ -100,10 +94,7 @@ const withEntityHandlers = compose(
 		handleEdit:
 			({ entity, type }) =>
 			() => {
-				const protocolId = getProtocolId();
-				if (protocolId) {
-					window.location.href = `/protocol/${protocolId}/codebook/${entity}/${type}`;
-				}
+				window.location.href = `/protocol/codebook/${entity}/${type}`;
 			},
 		handleDelete:
 			({ deleteType, openDialog, entity, type, name, inUse }) =>

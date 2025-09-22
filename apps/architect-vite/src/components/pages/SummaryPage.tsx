@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useLocation, useParams } from "wouter";
+import { useLocation } from "wouter";
 import { Layout } from "~/components/EditorLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui";
@@ -19,7 +19,6 @@ const dateWithSafeChars = (date: string, replaceWith = "-") =>
 
 const SummaryPage = () => {
 	const [, setLocation] = useLocation();
-	const { protocolId } = useParams();
 
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
@@ -37,11 +36,7 @@ const SummaryPage = () => {
 	const protocol = useSelector(getProtocol);
 
 	const handleGoBack = () => {
-		if (protocolId) {
-			setLocation(`/protocol/${protocolId}`);
-		} else {
-			setLocation("/");
-		}
+		setLocation("/protocol");
 	};
 
 	const index = getCodebookIndex(protocol);

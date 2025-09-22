@@ -43,7 +43,7 @@ export const useEditHandlers = ({
 		// This creates a selector that gets current state without subscribing to changes
 		const state = store.getState();
 		return formValueSelector(form)(state, fieldName) || [];
-	}, [store, form, fieldName]);
+	}, [form, fieldName]);
 
 	// Log when getItems callback is recreated
 	useEffect(() => {

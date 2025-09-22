@@ -115,19 +115,13 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 	const handleSelectInterface = useCallback(
 		(interfaceType) => {
 			onCancel(); // Close the dialog
-			// Get current protocol ID from the URL
-			const currentPath = window.location.pathname;
-			const protocolMatch = currentPath.match(/\/protocol\/([^\/]+)/);
-			const protocolId = protocolMatch ? protocolMatch[1] : "";
 
-			if (protocolId) {
-				const params = new URLSearchParams();
-				params.set("type", interfaceType);
-				if (insertAtIndex !== undefined) {
-					params.set("insertAtIndex", insertAtIndex.toString());
-				}
-				setLocation(`/protocol/stage/new?${params.toString()}`);
+			const params = new URLSearchParams();
+			params.set("type", interfaceType);
+			if (insertAtIndex !== undefined) {
+				params.set("insertAtIndex", insertAtIndex.toString());
 			}
+			setLocation(`/protocol/stage/new?${params.toString()}`);
 		},
 		[insertAtIndex, onCancel, setLocation],
 	);
