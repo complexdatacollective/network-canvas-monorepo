@@ -13,11 +13,11 @@
 		justify-content: center;
 		align-items: center;
 		text-align: center;
-		flex: 0 0 calc(25% - var(--space-5));
+		flex: 0 0 calc(25% - var(--space-lg));
 		height: var(--space-28);
-		padding: var(--space-5);
-		margin: var(--space-2);
-		border-radius: var(--space-5);
+		padding: var(--space-lg);
+		margin: var(--space-sm);
+		border-radius: var(--space-lg);
 		border: 3px solid var(--color-table-chooser);
 		background-color: transparent;
 		cursor: pointer;

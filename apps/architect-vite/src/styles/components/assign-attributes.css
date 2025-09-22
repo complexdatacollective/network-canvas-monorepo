@@ -1,10 +1,10 @@
 .assign-attributes__empty {
-	margin-top: var(--space-3);
+	margin-top: var(--space-md);
 	font-style: italic;
 }
 
 .assign-attributes__add {
-	margin-top: var(--space-3);
+	margin-top: var(--space-md);
 }
 
 .assign-attributes__add button {
@@ -13,8 +13,8 @@
 
 .assign-attributes-attribute {
 	display: flex;
-	margin: var(--space-3) 0;
-	padding: var(--space-3);
+	margin: var(--space-md) 0;
+	padding: var(--space-md);
 	border-radius: var(--radius);
 }
 
@@ -35,7 +35,7 @@
 
 .assign-attributes-attribute__variable .form-fields-variable-picker {
 	margin-top: 0;
-	margin-bottom: var(--space-3);
+	margin-bottom: var(--space-md);
 }
 
 .assign-attributes-attribute__variable .form-fields-variable-picker fieldset {
@@ -45,24 +45,24 @@
 .assign-attributes-attribute__value {
 	flex: 1 0 auto;
 	border: 2px dashed var(--color-border);
-	padding: var(--space-3);
+	padding: var(--space-md);
 	border-radius: var(--radius);
 }
 
 .assign-attributes-attribute__value legend {
-	padding: 0 var(--space-3);
+	padding: 0 var(--space-md);
 }
 
 .assign-attributes-attribute__delete {
 	flex: 0 0 5rem;
-	padding-left: var(--space-3);
+	padding-left: var(--space-md);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 }
 
 .assign-attributes-attribute__delete .icon {
-	height: var(--space-3);
+	height: var(--space-md);
 	cursor: pointer;
 }
 

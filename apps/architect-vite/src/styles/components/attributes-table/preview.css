@@ -6,7 +6,7 @@
 	.attributes-table-preview__value,
 	.attributes-table-preview__error,
 	.attributes-table-preview__delete {
-		padding: 0 var(--space-5);
+		padding: 0 var(--space-lg);
 	}
 
 	.attributes-table-preview__name {
@@ -32,8 +32,8 @@
 		align-items: center;
 
 		.icon {
-			width: var(--space-5);
-			height: var(--space-5);
+			width: var(--space-lg);
+			height: var(--space-lg);
 
 			.cls-1,
 			.cls-2 {

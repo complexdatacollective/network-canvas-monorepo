@@ -3,7 +3,7 @@
 	padding: 3px;
 	border-radius: 3.2rem;
 	width: auto;
-	margin: var(--space-0-5);
+	margin: var(--space-xs);
 	cursor: pointer;
 	align-items: center;
 	justify-content: flex-start;
