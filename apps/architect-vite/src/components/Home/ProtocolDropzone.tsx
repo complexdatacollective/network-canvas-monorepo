@@ -18,9 +18,9 @@ export default function ProtocolDropzone() {
 		}
 	};
 
-	const { getRootProps, getInputProps, isDragActive } = useDropzone({
+	const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
 		onDrop,
-		accept: { "": [".netcanvas"] },
+		accept: { "application/octet-stream": [".netcanvas"] },
 		multiple: false,
 	});
 
@@ -50,7 +50,13 @@ export default function ProtocolDropzone() {
 					<FilePlus />
 					Create new
 				</Button>
-				<Button color="slate-blue">
+				<Button
+					color="slate-blue"
+					onClick={(e) => {
+						e.stopPropagation();
+						open();
+					}}
+				>
 					<FolderOpen />
 					Open existing
 				</Button>
