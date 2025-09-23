@@ -1,4 +1,4 @@
-import { BookOpen, Download, Trash, UsersRound } from "lucide-react";
+import { BookOpen, CodeXml, Download, Trash, UsersRound } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { SAMPLE_PROTOCOL_URL } from "~/config";
 import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
@@ -22,15 +22,15 @@ const LaunchCard = ({ icon, title, description, onClick, classNames, devOnly }: 
 		onClick={onClick}
 		onKeyDown={(e) => e.key === "Enter" && onClick()}
 		className={cn(
-			classNames,
 			"text-primary-foreground rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 flex p-4 gap-4 items-center",
-			devOnly && "border border-error bg-error/5 text-error",
+			devOnly && "border",
+			classNames,
 		)}
 	>
 		<div
 			className={cn(
 				"flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0 bg-white/20",
-				devOnly && "bg-error/20",
+				devOnly && "bg-inherit",
 			)}
 		>
 			<div>{icon}</div>
@@ -50,6 +50,11 @@ const LaunchPad = () => {
 
 	const handleClearStorage = () => {
 		clearAllStorage();
+	};
+
+	const installDevelopmentProtocol = () => {
+		// TODO: implement installing from development-protocol package
+		console.log("Installing development protocol");
 	};
 
 	return (
@@ -79,13 +84,24 @@ const LaunchPad = () => {
 						classNames="bg-mustard"
 					/>
 					{process.env.NODE_ENV === "development" && (
-						<LaunchCard
-							icon={<Trash />}
-							title="Clear All Data"
-							description="Clear Redux state, localStorage, and IndexedDB"
-							onClick={handleClearStorage}
-							devOnly
-						/>
+						<>
+							<LaunchCard
+								icon={<CodeXml />}
+								title="Development Protocol"
+								description="Install development protocol"
+								onClick={installDevelopmentProtocol}
+								devOnly
+								classNames="bg-primary/5 text-primary border-primary"
+							/>
+							<LaunchCard
+								icon={<Trash />}
+								title="Clear All Data"
+								description="Clear Redux state, localStorage, and IndexedDB"
+								onClick={handleClearStorage}
+								devOnly
+								classNames="bg-error/5 text-error border-error"
+							/>
+						</>
 					)}
 				</div>
 			</div>
