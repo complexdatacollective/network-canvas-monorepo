@@ -7,7 +7,7 @@ import { cn } from "~/utils/cn";
 import { openExternalLink } from "../ExternalLink";
 import ProtocolDropzone from "./ProtocolDropzone";
 
-type HelpCardProps = {
+type LaunchCardProps = {
 	icon: React.ReactNode;
 	title: string;
 	description: string;
@@ -16,7 +16,7 @@ type HelpCardProps = {
 	devOnly?: boolean;
 };
 
-const HelpCard = ({ icon, title, description, onClick, classNames, devOnly }: HelpCardProps) => (
+const LaunchCard = ({ icon, title, description, onClick, classNames, devOnly }: LaunchCardProps) => (
 	<button
 		type="button"
 		onClick={onClick}
@@ -57,21 +57,21 @@ const LaunchPad = () => {
 			<div className="items-center justify-center flex flex-col">
 				<ProtocolDropzone />
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-					<HelpCard
+					<LaunchCard
 						icon={<UsersRound />}
 						title="User Community"
 						description="Ask questions and get help"
 						onClick={() => openExternalLink("https://community.networkcanvas.com")}
 						classNames="bg-cerulean-blue"
 					/>
-					<HelpCard
+					<LaunchCard
 						icon={<BookOpen />}
 						title="Documentation"
 						description="Learn how to use Architect"
 						onClick={() => openExternalLink("https://documentation.networkcanvas.com")}
 						classNames="bg-sea-serpent"
 					/>
-					<HelpCard
+					<LaunchCard
 						icon={<Download />}
 						title="Sample Protocol"
 						description="Explore a sample project"
@@ -79,7 +79,7 @@ const LaunchPad = () => {
 						classNames="bg-mustard"
 					/>
 					{process.env.NODE_ENV === "development" && (
-						<HelpCard
+						<LaunchCard
 							icon={<Trash />}
 							title="Clear All Data"
 							description="Clear Redux state, localStorage, and IndexedDB"
