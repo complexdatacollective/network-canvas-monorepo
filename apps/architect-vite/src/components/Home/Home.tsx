@@ -4,10 +4,9 @@ import { appVersion } from "~/utils/appVersion";
 import LaunchPad from "./LaunchPad";
 
 const Home = () => {
-	// useProtocolLoader();
 	return (
 		<div className="min-h-screen flex flex-col">
-			<header className="flex justify-between items-center px-8 py-1 bg-accent text-accent-foreground">
+			<div className="flex justify-between items-center px-8 py-1 bg-accent text-accent-foreground">
 				<div className="flex items-center gap-3">
 					<img src={networkCanvasLogo} alt="Network Canvas" className="h-8 w-8" />
 					<div className="flex items-baseline gap-2">
@@ -16,7 +15,7 @@ const Home = () => {
 					</div>
 				</div>
 				<span className="text-sm">v{appVersion}</span>
-			</header>
+			</div>
 
 			<div className="flex-1 flex flex-col items-center px-8 pt-12">
 				<div className="w-full max-w-5xl">

@@ -3,6 +3,7 @@ import { useDropzone } from "react-dropzone";
 import { useDispatch } from "react-redux";
 import { createNetcanvas, openLocalNetcanvas } from "~/ducks/modules/userActions/userActions";
 import Button from "~/lib/legacy-ui/components/Button";
+import { cn } from "~/utils/cn";
 
 export default function ProtocolDropzone() {
 	const dispatch = useDispatch();
@@ -26,8 +27,10 @@ export default function ProtocolDropzone() {
 	return (
 		<div
 			{...getRootProps()}
-			className={`border-2 h-[400px] bg-surface-3 border-dashed rounded-lg p-8 flex flex-col items-center justify-center space-y-4 mb-8 w-full cursor-pointer transition
-        ${isDragActive ? "border-accent bg-white" : "hover:border-accent hover:bg-white"}`}
+			className={cn(
+				"border-2 h-[400px] bg-surface-3 border-dashed rounded-lg p-8 flex flex-col items-center justify-center space-y-4 mb-8 w-full cursor-pointer transition",
+				isDragActive ? "border-accent bg-accent/10" : "hover:border-accent hover:bg-accent/10",
+			)}
 		>
 			<input {...getInputProps()} />
 			<div className="w-12 h-12 bg-primary p-2 rounded-full flex items-center justify-center">
@@ -47,13 +50,7 @@ export default function ProtocolDropzone() {
 					<FilePlus />
 					Create new
 				</Button>
-				<Button
-					color="slate-blue"
-					onClick={(e) => {
-						e.stopPropagation(); // prevent triggering dropzone
-						document.querySelector<HTMLInputElement>("input[type=file]")?.click();
-					}}
-				>
+				<Button color="slate-blue">
 					<FolderOpen />
 					Open existing
 				</Button>
