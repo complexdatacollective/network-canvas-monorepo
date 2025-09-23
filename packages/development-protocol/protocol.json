@@ -205,7 +205,7 @@
             "join": "OR",
             "rules": [
               {
-                "type": "alter",
+                "type": "node",
                 "id": "15218241538622",
                 "options": {
                   "type": "person_node_type",
@@ -395,7 +395,7 @@
         "join": "AND",
         "rules": [
           {
-            "type": "alter",
+            "type": "node",
             "options": {
               "type": "person_node_type",
               "operator": "EXACTLY",
@@ -679,7 +679,7 @@
         "join": "AND",
         "rules": [
           {
-            "type": "alter",
+            "type": "node",
             "options": {
               "type": "person_node_type",
               "operator": "NOT",
@@ -689,7 +689,7 @@
             "id": "6091efec-3ef1-4680-810f-d68f69441384"
           },
           {
-            "type": "alter",
+            "type": "node",
             "options": {
               "type": "person_node_type",
               "operator": "NOT",
@@ -882,7 +882,7 @@
         "join": "AND",
         "rules": [
           {
-            "type": "alter",
+            "type": "node",
             "options": {
               "type": "person_node_type",
               "operator": "NOT",
@@ -941,7 +941,7 @@
           "join": "AND",
           "rules": [
             {
-              "type": "alter",
+              "type": "node",
               "options": {
                 "type": "person_node_type",
                 "operator": "INCLUDES",
@@ -995,7 +995,7 @@
             "id": "3a6fad4a-f175-492f-87d7-0747a4e4ffca"
           },
           {
-            "type": "alter",
+            "type": "node",
             "options": {
               "type": "person_node_type",
               "operator": "EXCLUDES",
@@ -1150,7 +1150,7 @@
           "join": "OR",
           "rules": [
             {
-              "type": "alter",
+              "type": "node",
               "id": "15218241538622",
               "options": {
                 "type": "person_node_type",
