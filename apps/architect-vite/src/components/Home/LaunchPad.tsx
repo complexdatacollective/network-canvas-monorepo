@@ -1,7 +1,8 @@
+import developmentProtocolUrl from "@codaco/development-protocol/Development.netcanvas?url";
 import { BookOpen, CodeXml, Download, Trash, UsersRound } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { SAMPLE_PROTOCOL_URL } from "~/config";
-import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
+import { openLocalNetcanvas, openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import { clearAllStorage } from "~/utils/assetDB";
 import { cn } from "~/utils/cn";
 import { openExternalLink } from "../ExternalLink";
@@ -52,9 +53,17 @@ const LaunchPad = () => {
 		clearAllStorage();
 	};
 
-	const installDevelopmentProtocol = () => {
-		// TODO: implement installing from development-protocol package
-		console.log("Installing development protocol");
+	const installDevelopmentProtocol = async () => {
+		try {
+			const response = await fetch(developmentProtocolUrl);
+			const blob = await response.blob();
+			const file = new File([blob], "Development.netcanvas", {
+				type: "application/octet-stream",
+			});
+			dispatch(openLocalNetcanvas(file));
+		} catch (error) {
+			console.error("Failed to install development protocol:", error);
+		}
 	};
 
 	return (
