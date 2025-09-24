@@ -4,7 +4,7 @@
 	"version": "7.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
+		"dev": "pnpm prepare && vite",
 		"build": "pnpm prepare && vite build",
 		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" --filter \"@codaco/development-protocol\" build",
 		"preview": "vite preview",
