@@ -4,7 +4,7 @@
 .narrative-panel {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-light-background);
+	background-color: var(--color-surface-1);
 	border-bottom: var(--narrative-border-bottom-color) 2px solid;
 
 	.narrative-panel__heading {
@@ -35,7 +35,7 @@
 
 		&:hover {
 			background-color: var(--narrative-heading-bg-hover);
-			color: var(--selected);
+			color: var(--color-selected);
 		}
 	}
 

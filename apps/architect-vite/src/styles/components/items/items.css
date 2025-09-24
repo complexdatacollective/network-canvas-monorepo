@@ -1,6 +1,6 @@
 .items__error {
 	margin: var(--space-md) 0;
-	color: var(--error);
+	color: var(--color-error);
 }
 
 .items__item {

@@ -8,9 +8,9 @@
 		font-family: var(--body-font-family);
 		font-size: inherit;
 		font-weight: inherit;
-		background-color: var(--color-input-background);
+		background-color: var(--color-input);
 		width: 100%;
-		color: var(--color-input-text);
+		color: var(--color-input-foreground);
 		border: 0;
 		border-bottom-width: calc(0.6rem * 0.25);
 		border-bottom-style: solid;
@@ -46,7 +46,7 @@
 	&.form-field-text--has-focus,
 	&:hover {
 		.form-field-text__input {
-			border-bottom-color: var(--color-input-accent);
+			border-bottom-color: var(--color-input-active);
 		}
 
 		.form-field-text__icon--edit {
@@ -57,7 +57,7 @@
 	.form-field-text__error {
 		opacity: 0;
 		background: var(--color-error);
-		color: var(--color-form-error-text);
+		color: var(--color-error);
 		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
 			var(--animation-duration-standard);
 		padding: 0.5rem 0.25rem;
@@ -94,7 +94,7 @@
 
 		.form-field-text__input {
 			margin-bottom: 0;
-			border: 0.125rem solid var(--error);
+			border: 0.125rem solid var(--color-error);
 		}
 	}
 }

@@ -24,7 +24,7 @@
 
 	.form-fields-file__error {
 		opacity: 0;
-		color: var(--error);
+		color: var(--color-error);
 		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
 			var(--animation-duration-standard);
 		padding: var(--space-sm) var(--space-xs);

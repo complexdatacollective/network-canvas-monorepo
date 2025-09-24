@@ -10,7 +10,7 @@
 		display: inline-flex;
 		border-radius: var(--space-sm);
 		overflow: hidden;
-		border: 2px solid var(--color-input-border);
+		border: 2px solid var(--color-border);
 		background-color: var(--color-surface-1);
 	}
 
@@ -32,7 +32,7 @@
 
 		&.form-fields-mode__option--selected {
 			background-color: var(--color-selected);
-			color: var(--color-selected-foreground);
+			color: var(--color-accent-foreground);
 		}
 
 		&.form-fields-mode__option--disabled {

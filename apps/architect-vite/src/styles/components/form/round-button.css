@@ -1,6 +1,6 @@
 .form-round-button {
 	font-size: var(--text-2xl);
-	background-color: var(--color-button-background-dark);
+	background-color: var(--color-surface-accent);
 	color: var(--color-foreground);
 	width: var(--space-xl);
 	height: var(--space-xl);
@@ -29,5 +29,5 @@
 }
 
 .form-round-button:hover {
-	background-color: var(--color-button-background-dark-hover);
+	background-color: var(--color-primary);
 }

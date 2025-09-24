@@ -26,7 +26,7 @@
 
 		.form-field {
 			margin-bottom: 0;
-			border: 0.125rem solid var(--error);
+			border: 0.125rem solid var(--color-error);
 		}
 	}
 }
@@ -42,7 +42,7 @@
 		display: block;
 		font-size: 0.9rem;
 		margin-top: 1rem;
-		color: var(--color-input-text);
+		color: var(--color-input-foreground);
 		text-decoration: underline;
 	}
 }
@@ -55,8 +55,8 @@
 	--adjusted-blur: calc(var(--base-blur) * var(--depth));
 
 	box-shadow: 0 var(--adjusted-shadow-size) rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-very-fast) var(--animation-easing);
+	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
@@ -82,8 +82,8 @@
 	align-items: center;
 	margin-right: calc(0.6rem * 0.5);
 	margin-left: 0;
-	background: var(--color-input-background);
-	color: var(--color-input-label);
+	background: var(--color-input);
+	color: var(--color-input-foreground);
 
 	&.boolean--collapsed {
 		border-width: calc(var(--global-input-border-size) * 2);
@@ -104,10 +104,10 @@
 	}
 
 	&.boolean--selected {
-		border-color: var(--color-input-accent);
+		border-color: var(--color-input-active);
 
 		&.boolean-option--negative {
-			border-color: var(--error);
+			border-color: var(--color-error);
 		}
 	}
 }
@@ -121,7 +121,7 @@
 	width: var(--global-input-element-size);
 	height: var(--global-input-element-size);
 	border-radius: 100%;
-	border-color: var(--color-input-border);
+	border-color: var(--color-border);
 	border-width: var(--global-input-border-size);
 	border-style: solid;
 	transition-property: border-color, background-color;
@@ -139,7 +139,7 @@
 	}
 
 	&.boolean--checked {
-		background-color: var(--color-input-accent);
+		background-color: var(--color-input-active);
 		border-color: transparent;
 
 		&.round-checkbox--negative {

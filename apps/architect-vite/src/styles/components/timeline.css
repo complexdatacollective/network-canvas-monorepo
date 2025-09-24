@@ -45,7 +45,7 @@
 			top: 0.05rem;
 			left: 0;
 			transform: translateX(-50%) scale(0.4);
-			font-weight: var(--font-medium);
+			font-weight: var(--font-weight-medium);
 			font-size: var(--text-4xl);
 			line-height: 2.5rem;
 			content: "+";
@@ -166,7 +166,7 @@
 
 		&-preview {
 			width: 100%;
-			color: var(--foreground-light);
+			color: var(--color-primary-foreground);
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -226,7 +226,7 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	background-color: var(--color-edit-button-background);
+	background-color: var(--color-primary);
 	border-radius: 100%;
 	transform: translateY(-1px);
 
@@ -235,7 +235,7 @@
 		height: var(--space-md);
 
 		.cls-1 {
-			fill: var(--color-edit-button-fill);
+			fill: var(--color-primary-foreground);
 		}
 	}
 }

@@ -29,12 +29,12 @@ img.form-fields-select {
 }
 
 .form-fields-select__control:hover {
-	border-color: var(--primary);
+	border-color: var(--color-primary);
 	box-shadow: unset;
 }
 
 .form-fields-select__placeholder {
-	color: var(--color-foreground-muted);
+	color: var(--color-surface-2-foreground);
 	font-style: italic;
 }
 

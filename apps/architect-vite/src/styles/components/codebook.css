@@ -1,13 +1,13 @@
 .codebook {
 	--variable-pill-width: 25rem;
 
-	margin: var(--space-10) var(--space-20);
+	margin: var(--space-3xl) var(--space-5xl);
 	max-width: 80rem;
 
 	.codebook__notice {
-		margin-top: var(--space-8);
+		margin-top: var(--space-2xl);
 		background-color: var(--color-surface-2);
-		padding: var(--space-8);
+		padding: var(--space-2xl);
 		font-style: italic;
 		text-align: center;
 		border-radius: var(--space-md);
@@ -28,7 +28,7 @@
 	}
 
 	.codebook__category {
-		margin-top: var(--space-10);
+		margin-top: var(--space-3xl);
 
 		&-items {
 			border-top: 0.2rem solid var(--color-divider);
@@ -57,13 +57,13 @@
 
 	.codebook__entity {
 		overflow: hidden;
-		margin: var(--space-10) auto;
-		padding: var(--space-10);
+		margin: var(--space-3xl) auto;
+		padding: var(--space-3xl);
 		background: var(--color-surface-2);
 		border-radius: var(--radius);
 
 		&:first-child {
-			margin-top: var(--space-10);
+			margin-top: var(--space-3xl);
 		}
 
 		&-detail {
@@ -73,7 +73,7 @@
 
 		&-icon {
 			flex-grow: 0;
-			flex-basis: var(--space-20);
+			flex-basis: var(--space-5xl);
 
 			.node {
 				font-size: var(--text-5xl);
@@ -81,12 +81,12 @@
 		}
 
 		&-name {
-			padding-left: var(--space-10);
+			padding-left: var(--space-3xl);
 		}
 
 		&-meta {
 			flex: 1;
-			padding-left: var(--space-10);
+			padding-left: var(--space-3xl);
 
 			.link {
 				margin-right: var(--space-md);
@@ -115,14 +115,14 @@
 			}
 
 			&.codebook__variables-row--even {
-				background-color: var(--color-row-background);
+				background-color: var(--color-surface-2);
 			}
 		}
 
 		&-column,
 		&-heading {
 			margin-right: 0;
-			height: var(--space-16);
+			height: var(--space-4xl);
 			padding: var(--space-md) var(--space-sm);
 			font-size: var(--text-base);
 		}
@@ -143,7 +143,7 @@
 					position: absolute;
 					font-size: var(--text-xl);
 					top: -.15rem;
-					color: var(--primary);
+					color: var(--color-primary);
 					content: "dir";
 				}
 

@@ -533,19 +533,19 @@
 	}
 
 	& .form-field__label {
-		font-size: var(--type-scale-copy-standard);
+		font-size: var(--text-base);
 		font-weight: 200;
 		display: block;
 		margin: 0;
-		color: var(--color-input-label);
+		color: var(--color-input-foreground);
 	}
 }
 
 /* Clickable utilities - enhanced 3D effect with multiple depths */
 @utility clickable {
 	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-very-fast) var(--animation-easing);
+	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
@@ -562,8 +562,8 @@
 
 @utility clickable-2 {
 	box-shadow: 0 0.4rem 0.4rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-very-fast) var(--animation-easing);
+	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
@@ -580,8 +580,8 @@
 
 @utility clickable-3 {
 	box-shadow: 0 0.6rem 0.6rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-very-fast) var(--animation-easing);
+	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;

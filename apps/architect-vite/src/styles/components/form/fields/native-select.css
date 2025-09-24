@@ -31,7 +31,7 @@
 	.form-fields-select-native__error {
 		opacity: 0;
 		background: var(--color-error);
-		color: var(--color-form-error-text);
+		color: var(--color-error);
 		padding: var(--space-xs) var(--space-xs);
 		display: flex;
 		align-items: center;
@@ -45,7 +45,7 @@
 		display: block;
 		font-size: var(--text-base);
 		font-weight: normal;
-		color: var(--color-input-text);
+		color: var(--color-input-foreground);
 		padding: var(--space-sm) var(--space-md);
 		width: 100%;
 		min-height: var(--space-4xl);
@@ -76,14 +76,14 @@
 			/* Placeholder */
 			&:disabled {
 				font-style: italic;
-				color: var(--color-foreground-muted);
+				color: var(--color-surface-2-foreground);
 			}
 		}
 	}
 
 	&.form-fields-select-native--has-error {
 		& .form-fields-select-native__component {
-			border: var(--space-xs) solid var(--error);
+			border: var(--space-xs) solid var(--color-error);
 			margin-bottom: 0;
 		}
 

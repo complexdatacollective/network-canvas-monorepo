@@ -1,6 +1,6 @@
 .thumbnail {
 	background-color: hsl(var(--cyber-grape));
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 	border-radius: var(--radius);
 	display: inline-flex;
 	align-items: center;
@@ -29,7 +29,7 @@
 		background-repeat: no-repeat;
 		background-size: contain;
 		background-position: center;
-		height: var(--space-7xl);
+		height: var(--space-6xl);
 
 		&.thumbnail--contain {
 			background-size: contain;

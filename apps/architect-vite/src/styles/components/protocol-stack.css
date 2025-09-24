@@ -18,7 +18,7 @@
 .protocol-stack__label {
 	margin: 0;
 	text-align: center;
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 	max-height: 100%;
 	max-width: 100%;
 	overflow: hidden;
@@ -31,7 +31,7 @@
 .protocol-stack__filepath {
 	margin: 0;
 	text-align: center;
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 	max-height: 100%;
 	max-width: 100%;
 	word-break: break-all;

@@ -208,7 +208,7 @@
 }
 
 .switch__input:checked + .switch__button::before {
-	background-color: var(--color-input-radio--fill);
+	background-color: var(--color-primary);
 }
 
 .switch__input:checked + .switch__button::after {
@@ -242,7 +242,7 @@
 .welcome-header__header .project-tag h5 {
 	display: inline-block;
 	font-family: var(--heading-font-family);
-	font-weight: var(--font-black);
+	font-weight: var(--font-weight-black);
 	letter-spacing: .15em;
 	margin: 0;
 }
@@ -334,7 +334,7 @@
 	top: -8px;
 	left: -5px;
 	font-size: .6rem;
-	font-weight: var(--font-black);
+	font-weight: var(--font-weight-black);
 	padding: 0.3rem 0.6rem;
 	border-radius: var(--radius);
 	margin-right: 0.6rem;

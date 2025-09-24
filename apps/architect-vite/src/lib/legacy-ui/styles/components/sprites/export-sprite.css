@@ -9,8 +9,8 @@
 	.export-sprite__node {
 		position: absolute;
 		background: lime;
-		width: var(--size-5);
-		height: var(--size-5);
+		width: var(--space-lg);
+		height: var(--space-lg);
 		background: repeating-linear-gradient(
 			145deg,
 			rgba(255, 255, 255, 0.15),
@@ -21,13 +21,13 @@
 	}
 
 	.export-sprite__destination {
-		--destination-size: var(--size-12);
+		--destination-size: var(--space-3xl);
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		z-index: var(--z-global-ui);
-		margin-bottom: calc(-1 * var(--size-2));
+		margin-bottom: calc(-1 * var(--space-sm));
 
 		.export-sprite__destination__circle {
 			flex: 0 0 var(--destination-size);
@@ -41,12 +41,12 @@
 		}
 
 		.export-sprite__destination__text {
-			flex: 0 0 var(--size-2);
-			height: var(--size-2);
+			flex: 0 0 var(--space-sm);
+			height: var(--space-sm);
 
 			h4 {
 				margin-bottom: 0;
-				margin-top: var(--size-1);
+				margin-top: var(--space-xs);
 				color: var(--color-foreground);
 			}
 		}

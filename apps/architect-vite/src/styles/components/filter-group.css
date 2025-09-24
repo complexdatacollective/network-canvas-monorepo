@@ -2,8 +2,8 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	background-color: var(--color-rules);
-	color: var(--foreground-light);
+	background-color: var(--color-rules-type);
+	color: var(--color-primary-foreground);
 	transition: background-color var(--animation-easing) var(--animation-duration-standard);
 	border-radius: 10px;
 	padding: 10px;
@@ -26,9 +26,9 @@
 }
 
 .filter-group--and {
-	background-color: var(--color-rules--and);
+	background-color: var(--color-rules-operator);
 }
 
 .filter-group--or {
-	background-color: var(--color-rules--or);
+	background-color: var(--color-rules-operator);
 }

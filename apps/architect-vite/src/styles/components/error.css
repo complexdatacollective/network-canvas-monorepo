@@ -1,6 +1,6 @@
 .error {
 	background-color: var(--modal-overlay);
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 	width: 100%;
 	height: 100%;
 	position: absolute;
@@ -25,5 +25,5 @@
 	padding: var(--space-md);
 	max-height: 9rem;
 	border-radius: var(--radius);
-	background-color: var(--color-error-code-background);
+	background-color: var(--color-surface-1-foreground);
 }

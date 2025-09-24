@@ -27,13 +27,13 @@
 		position: relative;
 
 		h2 {
-			font-size: var(--type-scale-3);
+			font-size: var(--text-lg);
 			margin: 0;
 		}
 
 		h3 {
 			text-transform: none !important;
-			font-size: var(--type-scale-body);
+			font-size: var(--text-base);
 			margin: 0.5rem 0 0;
 		}
 

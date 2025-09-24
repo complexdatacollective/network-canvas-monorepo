@@ -1,5 +1,5 @@
 .rules-preview-rules {
-	background-color: hsl(var(--input-background));
+	background-color: hsl(var(--color-input));
 	border-radius: 1rem 1rem 0 0;
 }
 

@@ -1,5 +1,5 @@
 .action-button {
-	--size: var(--size-13);
+	--size: var(--space-3xl);
 	/* Reset button styles */
 	background: none;
 	border: none;
@@ -50,14 +50,14 @@
 	}
 
 	.plus-button {
-		--size: var(--size-6-5);
+		--size: var(--space-xl);
 		position: absolute;
 		top: calc(var(--size) / -8);
 		right: calc(var(--size) / -2);
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		color: var(--primary);
+		color: var(--color-primary);
 		background: hsl(var(--platinum));
 		border-radius: 50%;
 		height: var(--size);
@@ -160,10 +160,10 @@
 
 	&.action-button--white {
 		background: var(--color-white);
-		color: var(--color-foreground-dark);
+		color: var(--color-surface-accent-foreground);
 
 		&:hover {
-			background: var(--color-white-dark);
+			background: var(--color-surface-2);
 		}
 	}
 

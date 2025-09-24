@@ -7,7 +7,7 @@
 
 	.options__option {
 		display: flex;
-		background-color: var(--color-form-control);
+		background-color: var(--color-primary);
 		color: var(--color-sortable-foreground);
 		z-index: var(--z-fx);
 		transition: background-color var(--animation-easing) var(--animation-duration-standard);
@@ -50,7 +50,7 @@
 		&-handle {
 			cursor: pointer;
 			background-color: transparent;
-			width: var(--space-12);
+			width: var(--space-3xl);
 			display: flex;
 			justify-content: center;
 			align-items: center;
@@ -86,7 +86,7 @@
 			background-color: var(--color-error);
 
 			&-label {
-				color: var(--foreground-light);
+				color: var(--color-primary-foreground);
 			}
 		}
 

@@ -5,7 +5,7 @@
 	padding: 0.2rem var(--space-sm);
 	margin: 0 var(--space-sm);
 	font-size: var(--text-xs);
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 
 	strong {
 		text-transform: capitalize;

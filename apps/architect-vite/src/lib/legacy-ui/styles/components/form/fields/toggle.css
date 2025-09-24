@@ -21,7 +21,7 @@
 
 	.toggle__button {
 		position: absolute;
-		background-color: var(--color-input-background);
+		background-color: var(--color-input);
 		transition: background var(--animation-duration-fast) var(--animation-easing);
 		border-radius: var(--global-input-element-size);
 		top: 0;
@@ -35,14 +35,14 @@
 			border-radius: 50%;
 			height: var(--global-input-element-size);
 			width: var(--global-input-element-size);
-			background-color: var(--color-input-border);
+			background-color: var(--color-border);
 			transition: transform var(--animation-duration-fast) var(--animation-easing);
 		}
 	}
 
 	.toggle__input:checked + .toggle__toggle {
 		.form-field-toggle__button {
-			background-color: var(--color-input-radio--fill);
+			background-color: var(--color-primary);
 
 			&::before {
 				transform: translateX(var(--global-input-element-size));
@@ -71,7 +71,7 @@
 		}
 
 		.form-field-toggle {
-			border: 0.125rem solid var(--error);
+			border: 0.125rem solid var(--color-error);
 			margin-bottom: 0;
 		}
 	}

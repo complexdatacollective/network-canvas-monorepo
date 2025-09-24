@@ -1,6 +1,6 @@
 .form-field-date-picker {
-	--datepicker-panel-bg: var(--color-input-panel-bg);
-	color: var(--color-input-text);
+	--datepicker-panel-bg: var(--color-surface-1);
+	color: var(--color-input-foreground);
 
 	.form-field-date-picker__error {
 		opacity: 0;
@@ -8,7 +8,7 @@
 	}
 
 	.form-field-date-picker__error-message {
-		color: var(--color-form-error-text);
+		color: var(--color-error);
 		background: var(--color-error);
 		padding: 0.5rem 0.25rem;
 
@@ -20,7 +20,7 @@
 	&.form-field-date-picker--has-error {
 		border-width: 0.1rem;
 		border-style: solid;
-		border-color: var(--error);
+		border-color: var(--color-error);
 		border-top-left-radius: 1rem;
 		border-top-right-radius: 1rem;
 
@@ -32,7 +32,7 @@
 
 .date-picker {
 	--active-color: hsl(var(--sea-green));
-	--background: var(--color-input-background);
+	--background: var(--color-input);
 	--lighten: rgba(255, 255, 255, 0.05);
 	--darken: rgba(0, 0, 0, 0.2);
 	--height: 18rem;
@@ -72,7 +72,7 @@
 			font-style: italic;
 
 			&.date-picker__preview-part--is-set {
-				color: var(--color-input-text);
+				color: var(--color-input-foreground);
 				font-style: normal;
 			}
 		}

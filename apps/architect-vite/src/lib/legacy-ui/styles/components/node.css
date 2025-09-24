@@ -129,7 +129,7 @@
 }
 
 .node--linking .node__node-trim {
-	stroke: var(--selected);
+	stroke: var(--color-selected);
 }
 
 .node--linking .node__node-outer-trim {

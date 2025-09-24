@@ -1,7 +1,7 @@
 /* Grid layout styles */
 .grid .layout {
 	height: 450px;
-	background: var(--color-background-dark);
+	background: var(--color-surface-accent);
 	border-radius: 1rem;
 }
 
@@ -28,7 +28,7 @@
 .grid .grid__error {
 	opacity: 0;
 	background-color: var(--color-error);
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 	border-radius: 0.5rem;
 	max-height: 0;
 	margin-top: 1.2rem;

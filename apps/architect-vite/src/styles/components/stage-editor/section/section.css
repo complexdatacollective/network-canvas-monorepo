@@ -10,7 +10,7 @@
 	color: var(--current-surface-foreground);
 	border-radius: var(--radius);
 	position: relative;
-	box-shadow: 0 var(--space-px) var(--space-px) 0 var(--color-shadow-panel);
+	box-shadow: 0 1px 1px 0 var(--color-shadow-panel);
 
 	&.stage-editor-section--disabled {
 		opacity: 0.5;
@@ -30,7 +30,7 @@
 		--input-background: var(--color-surface-1);
 		--slider-color: hsl(var(--charcoal));
 
-		margin: var(--space-10) 0;
+		margin: var(--space-3xl) 0;
 
 		.form-field-slider {
 			--slider-color: hsl(var(--charcoal));

@@ -5,7 +5,7 @@
 	background-color: var(--color-sea-serpent);
 	transform-origin: 0 100%;
 	overflow: hidden;
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 	z-index: var(--z-default);
 	max-height: auto;
 }
@@ -68,7 +68,7 @@
 	width: 100%;
 	padding: var(--space-md) var(--space-xl);
 	text-decoration: none;
-	color: var(--foreground-light);
+	color: var(--color-primary-foreground);
 }
 
 .issues__issue a::before {

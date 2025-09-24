@@ -110,7 +110,7 @@
 	justify-content: center;
 	align-items: center;
 	padding: var(--space-xs) var(--space-md);
-	font-weight: var(--font-medium);
+	font-weight: var(--font-weight-medium);
 }
 
 .spotlight-list-item .create-new .icon {

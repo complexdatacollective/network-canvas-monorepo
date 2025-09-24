@@ -4,7 +4,7 @@
 	cursor: pointer;
 	position: relative;
 	border-radius: var(--space-lg);
-	height: var(--space-7xl);
+	height: var(--space-6xl);
 	border-width: 2px;
 	border-style: solid;
 	transition-duration: var(--animation-duration-slow);

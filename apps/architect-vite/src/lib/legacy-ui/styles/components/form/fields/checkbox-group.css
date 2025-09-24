@@ -34,7 +34,7 @@
 
 		.form-field {
 			margin-bottom: 0;
-			border: 0.125rem solid var(--error);
+			border: 0.125rem solid var(--color-error);
 		}
 	}
 }

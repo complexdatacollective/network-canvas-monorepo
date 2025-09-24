@@ -11,7 +11,7 @@
 
 	.stage-editor-section-content-items__control {
 		margin-right: var(--space-sm);
-		color: var(--foreground-light);
+		color: var(--color-primary-foreground);
 
 		&::before {
 			content: "+";

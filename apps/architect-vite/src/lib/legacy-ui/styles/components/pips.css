@@ -2,7 +2,7 @@
 /* =================================== */
 
 .pips {
-	--local-pip-size: var(--pip-size, calc(var(--base-unit) * 1.2)); /* unit(1.2) */
+	--local-pip-size: var(--pip-size, calc(var(--space-md) * 1.2)); /* unit(1.2) */
 	--local-pip-size-flex: calc(var(--local-pip-size) + var(--space-sm));
 	--local-pip-border-color: var(--pip-border-color, hsla(0, 0%, 100%, 0.15));
 
@@ -21,7 +21,7 @@
 		transition: background-color var(--animation-duration-fast) ease-in;
 
 		&:not(:last-child):not(:only-child) {
-			margin-right: calc(var(--base-unit) * 0.5); /* unit(0.5) */
+			margin-right: calc(var(--space-md) * 0.5); /* unit(0.5) */
 		}
 
 		&.pips__pip--active {

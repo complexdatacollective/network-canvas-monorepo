@@ -6,7 +6,7 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	background-color: var(--color-edit-button-background);
+	background-color: var(--color-primary);
 	border-radius: 50%;
 }
 
@@ -16,5 +16,5 @@
 }
 
 .items-new-button .icon .cls-1 {
-	fill: var(--color-edit-button-fill);
+	fill: var(--color-primary-foreground);
 }

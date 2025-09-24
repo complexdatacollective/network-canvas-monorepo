@@ -87,7 +87,7 @@
 	}
 
 	&.dialog--notice {
-		border-color: var(--info);
+		border-color: var(--color-info);
 	}
 
 	&.dialog--confirm {
@@ -99,7 +99,7 @@
 	}
 
 	&.dialog--error {
-		border-color: var(--error);
+		border-color: var(--color-error);
 
 		.error__stack-trace {
 			padding: var(--space-md);

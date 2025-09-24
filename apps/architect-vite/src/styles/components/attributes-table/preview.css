@@ -21,11 +21,11 @@
 
 	.attributes-table-preview__error {
 		font-style: italic;
-		color: var(--error);
+		color: var(--color-error);
 	}
 
 	.attributes-table-preview__delete {
-		flex: 0 0 var(--space-10);
+		flex: 0 0 var(--space-3xl);
 		cursor: pointer;
 		display: flex;
 		justify-content: center;

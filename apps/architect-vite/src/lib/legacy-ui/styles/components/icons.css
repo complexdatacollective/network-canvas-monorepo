@@ -832,7 +832,7 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 		}
 
 		&.icon--white .cls-2 {
-			fill: var(--color-white-dark);
+			fill: var(--color-surface-2);
 		}
 
 		.cls-3 {
@@ -956,7 +956,7 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 		}
 
 		&.icon--white .cls-3 {
-			fill: var(--color-white-dark);
+			fill: var(--color-surface-2);
 		}
 
 		.cls-1 {
@@ -1405,7 +1405,7 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 	&.icon--white {
 		.cls-1,
 		.cls-3 {
-			fill: var(--color-white-dark);
+			fill: var(--color-surface-2);
 		}
 
 		.cls-2 {

@@ -35,7 +35,7 @@
 }
 
 .input__error {
-	color: var(--destructive);
+	color: var(--color-error);
 }
 
 .input__tooltip-right,
@@ -46,7 +46,7 @@
 .input__tooltip-right .input__error,
 .input__tooltip-bottom .input__error {
 	align-items: center;
-	color: var(--color-destructive-foreground);
+	color: var(--color-error-foreground);
 	display: flex;
 	margin-top: 30px;
 	padding: 20px 20px 0;
@@ -92,7 +92,7 @@
 
 .input__tooltip-right .input__error {
 	background: var(--color-background);
-	border-right: 10px solid var(--color-destructive);
+	border-right: 10px solid var(--color-error);
 	height: 5rem;
 	margin-left: 15px;
 	position: absolute;
@@ -114,14 +114,14 @@
 }
 
 .input__tooltip-bottom .input__error {
-	background: var(--color-destructive);
-	border-left: 10px solid var(--color-destructive);
+	background: var(--color-error);
+	border-left: 10px solid var(--color-error);
 	height: 130px;
 	position: relative;
 }
 
 .input__tooltip-bottom .input__error::after {
-	border-bottom-color: var(--light-background);
+	border-bottom-color: var(--color-surface-1);
 	border-top: 0;
 	margin-left: -15px;
 	margin-top: -15px;
@@ -232,7 +232,7 @@
 .checkbox:focus + .checkbox__label::before,
 .checkbox:hover + .checkbox__label::before {
 	outline: none;
-	border-color: var(--success);
+	border-color: var(--color-success);
 }
 
 .checkbox:disabled + .checkbox__label::before {
@@ -299,7 +299,7 @@
 .radio:focus + .radio__label::before,
 .radio:hover + .radio__label::before {
 	outline: none;
-	border-color: var(--success);
+	border-color: var(--color-success);
 }
 
 .radio:disabled + .radio__label::before {
@@ -355,7 +355,7 @@
 .toggle__button {
 	position: absolute;
 	cursor: pointer;
-	background-color: var(--color-input-background);
+	background-color: var(--color-input);
 	border-radius: 2em; /* toggle-height */
 	top: 0;
 	left: 0;

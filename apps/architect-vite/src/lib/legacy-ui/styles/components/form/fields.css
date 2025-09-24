@@ -1,6 +1,6 @@
 /* Form field variables */
 :root {
-	--global-input-element-size: var(--size-4);
+	--global-input-element-size: var(--space-md);
 	--global-input-border-size: 0.125rem;
 	--global-input-border-space: 0.25rem;
 }

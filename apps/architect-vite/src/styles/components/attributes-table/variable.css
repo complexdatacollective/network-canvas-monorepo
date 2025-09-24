@@ -26,7 +26,7 @@
 	}
 
 	&.attributes-table-variable--edit {
-		background: var(--color-table-edit-background);
+		background: var(--color-surface-2);
 
 		.attributes-table-variable__edit {
 			max-height: fit-content;

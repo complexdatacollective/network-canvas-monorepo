@@ -9,8 +9,8 @@
 
 	/* Clickable styles */
 	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-very-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-very-fast) var(--animation-easing);
+	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
@@ -51,7 +51,7 @@
 			content: "";
 			width: 100%;
 			height: 100%;
-			border-color: var(--color-input-radio--fill);
+			border-color: var(--color-primary);
 			border-width: var(--border);
 			border-style: solid;
 			border-radius: 50%;
@@ -65,7 +65,7 @@
 			left: calc(var(--border) + var(--border-space));
 			width: calc(100% - (var(--border) + var(--border-space)) * 2);
 			height: calc(100% - (var(--border) + var(--border-space)) * 2);
-			background-color: var(--color-input-radio--fill);
+			background-color: var(--color-primary);
 			border-radius: 50%;
 			opacity: 0;
 			transition: opacity var(--animation-easing) var(--animation-duration-standard);
@@ -83,7 +83,7 @@
 	&:hover {
 		.form-field-checkbox__checkbox {
 			&::before {
-				border-color: var(--color-input-radio--fill);
+				border-color: var(--color-primary);
 			}
 		}
 	}

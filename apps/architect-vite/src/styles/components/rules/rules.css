@@ -12,5 +12,5 @@
 }
 
 .rules-rules--has-error .rules-preview-rules {
-	border-color: var(--error);
+	border-color: var(--color-error);
 }
