@@ -19,7 +19,7 @@
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.29.7",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.1.6",
+		"lint-staged": "^16.2.0",
 		"typescript": "catalog:"
 	},
 	"packageManager": "pnpm@10.15.1+sha256.8c53af02ae3ec1fb0ae75377f8d4d6217c2d7cbe6f03c16350cabf7493de6eff",
