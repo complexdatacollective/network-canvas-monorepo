@@ -85,7 +85,7 @@ const StageEditor = (props: StageEditorProps) => {
 
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-			<StageHeading id={stage.id} />
+			<StageHeading id={stage?.id} />
 			<div className="flex flex-col gap-10 w-full mb-32">{renderSections(sections)}</div>
 			<div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-accent z-panel">
 				<div className="flex justify-between items-center max-w-6xl mx-auto">

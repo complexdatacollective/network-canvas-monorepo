@@ -1,18 +1,20 @@
 import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
+import * as Fields from "~/components/Form/Fields";
 import timelineImages from "~/images/timeline";
+import { getFieldId } from "~/utils/issues";
 import { useFormContext } from "../Editor";
+import ValidatedField from "../Form/ValidatedField";
 import { getInterface } from "./Interfaces";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
-const StageHeading = ({ id }) => {
+const StageHeading = ({ id }: { id: string }) => {
 	const { values } = useFormContext();
 
 	const type = get(values, "type") as string;
-	const label = get(values, "label") as string;
 
-	if (!type || !label) {
+	if (!type) {
 		return null;
 	}
 
@@ -34,8 +36,21 @@ const StageHeading = ({ id }) => {
 					/>
 				</a>
 			</div>
-			<div className="flex items-center gap-4">
+			{/* <div className="flex items-center gap-4">
 				<h1 className="m-0">{label}</h1>
+			</div> */}
+			<div className="stage-name-container">
+				<div id={getFieldId("label")} data-name="Stage name" />
+				<h2>Stage Name</h2>
+				<ValidatedField
+					name="label"
+					component={Fields.Text}
+					placeholder="Enter your stage name here"
+					className="stage-editor-section-title"
+					maxLength="50"
+					validation={{ required: true }}
+					autoFocus
+				/>
 			</div>
 		</div>
 	);

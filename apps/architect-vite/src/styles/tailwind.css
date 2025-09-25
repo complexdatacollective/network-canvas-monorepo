@@ -325,7 +325,7 @@
 	--color-action: hsl(var(--sea-green));
 	--color-action-foreground: hsl(var(--white));
 
-	--color-timeline: hsl(var(--tomato));
+	--color-timeline: hsl(var(--neon-coral));
 	--color-timeline-foreground: hsl(var(--white));
 
 	--color-success: hsl(var(--kiwi));
