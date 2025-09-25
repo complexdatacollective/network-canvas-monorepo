@@ -4,16 +4,15 @@
 	"version": "7.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "pnpm prepare && vite",
+		"dev": "vite",
 		"build": "pnpm prepare && vite build",
-		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" --filter \"@codaco/development-protocol\" build",
+		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\"",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
 		"@base-ui-components/react": "1.0.0-beta.0",
-		"@codaco/development-protocol": "workspace:*",
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
