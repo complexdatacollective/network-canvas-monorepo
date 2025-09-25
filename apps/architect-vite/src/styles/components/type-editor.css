@@ -1,0 +1,15 @@
+.type-editor {
+	.type-editor-icon-option {
+		margin: 0;
+		padding: var(--space-lg) 0;
+		position: relative;
+
+		.icon {
+			position: absolute;
+			width: var(--space-3xl);
+			height: var(--space-3xl);
+			top: 0;
+			margin-left: var(--space-sm);
+		}
+	}
+}

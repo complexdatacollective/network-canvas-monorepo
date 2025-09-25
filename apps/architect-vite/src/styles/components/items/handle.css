@@ -1,0 +1,14 @@
+.items-handle {
+	width: var(--space-xl);
+	height: 100%;
+	cursor: grab;
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.items-handle .icon {
+	width: var(--space-md);
+	height: var(--space-md);
+}
