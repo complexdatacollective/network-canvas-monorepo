@@ -33,11 +33,7 @@ jobs:
         id: cache-node-modules
         uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-            apps/*/node_modules
-            tooling/*/node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
@@ -83,11 +79,7 @@ jobs:
       - name: Restore node_modules cache
         uses: actions/cache/restore@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-            apps/*/node_modules
-            tooling/*/node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
@@ -127,11 +119,7 @@ jobs:
       - name: Restore node_modules cache
         uses: actions/cache/restore@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-            apps/*/node_modules
-            tooling/*/node_modules
+          path: "**/node_modules"
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
@@ -174,11 +162,7 @@ jobs:
     - name: Restore node_modules cache
       uses: actions/cache/restore@v4
       with:
-        path: |
-          node_modules
-          packages/*/node_modules
-          apps/*/node_modules
-          tooling/*/node_modules
+        path: "**/node_modules"
         key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-node-modules-
@@ -191,38 +175,16 @@ jobs:
     
     # Build only packages with changesets
     - name: Build changed packages only
-      run: |
-        set -e  # Exit on any command failure
-        echo "🔍 Detecting packages with changesets..."
-        
-        # Get packages with changesets
-        CHANGED_PACKAGES=$(find .changeset -name "*.md" -not -name "README.md" -exec grep -l "\"@codaco/" {} \; | xargs grep -ho "\"@codaco/[^\"]*" | sort -u | tr -d '"' || echo "")
-        
-        if [ -z "$CHANGED_PACKAGES" ]; then
-          echo "📦 No packages with changesets found, building all packages"
-          pnpm run build
-        else
-          echo "📦 Building only packages with changesets:"
-          echo "$CHANGED_PACKAGES"
-          
-          # Build each changed package and its dependencies
-          for package in $CHANGED_PACKAGES; do
-            echo "🔨 Building $package..."
-            if ! pnpm --filter "$package..." build; then
-              echo "❌ Build failed for $package"
-              exit 1
-            fi
-            echo "✅ Successfully built $package"
-          done
-        fi
+      run: pnpm run build:changed-packages
     
     - name: Create Release Pull Request
       uses: changesets/action@v1
       with:
-        # command used to version packages. allows for fixing formatting issues caused by versioning
-        version: pnpm run version-packages
-        # builds packages and runs changesets publish. versioning is done by changesets action
-        publish: pnpm run publish-packages-optimized
+        # command used to version packages. Lint and fix to avoid errors caused 
+        # by versioning
+        version: pnpm run version-packages && pnpm run format-and-lint:fix
+        # Runs changesets publish. versioning is done by changesets action
+        publish: pnpm run publish-packages
         createGithubReleases: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
