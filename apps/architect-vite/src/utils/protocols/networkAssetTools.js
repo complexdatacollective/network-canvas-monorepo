@@ -59,7 +59,7 @@ const getVariableReader = withExtensionSwitch({
  * @param {string} assetUrl - The URL of the external data source
  */
 export const getAssetVariables = async (assetUrl) => {
-	const variableReader = getVariableReader(assetUrl);
+	const _variableReader = getVariableReader(assetUrl);
 
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);

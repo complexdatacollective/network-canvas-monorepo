@@ -89,13 +89,13 @@ const Timeline = () => {
 	);
 
 	const handleEditStage = useCallback(
-		(id, origin) => {
+		(id, _origin) => {
 			setLocation(`/protocol/stage/${id}`);
 		},
 		[setLocation],
 	);
 
-	const renderStages = useCallback(
+	const _renderStages = useCallback(
 		() =>
 			stages.flatMap((stage, index) => [
 				<InsertButton key={`insert_${index}`} onClick={() => handleInsertStage(index)} />,

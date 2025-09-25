@@ -13,7 +13,7 @@ const startAppListening = protocolValidationListenerMiddleware.startListening as
 
 // Listen for any protocol changes and trigger validation
 startAppListening({
-	predicate: (action, currentState, previousState) => {
+	predicate: (_action, currentState, previousState) => {
 		// Get the current and previous active protocols
 		const currentProtocol = selectActiveProtocol(currentState);
 		const previousProtocol = selectActiveProtocol(previousState);
@@ -26,7 +26,7 @@ startAppListening({
 			currentProtocol !== null && currentProtocol !== previousProtocol && !currentState.protocolValidation.isValidating
 		);
 	},
-	effect: async (action, listenerApi) => {
+	effect: async (_action, listenerApi) => {
 		const state = listenerApi.getState();
 		const protocol = selectActiveProtocol(state);
 

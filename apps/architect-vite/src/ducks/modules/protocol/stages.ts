@@ -124,7 +124,7 @@ const stagesSlice = createSlice({
 
 			state[stageIndex] = prune(newStage);
 		},
-		moveStage: (state, action: PayloadAction<MoveStagePayload>) => {
+		moveStage: (_state, action: PayloadAction<MoveStagePayload>) => {
 			const { oldIndex, newIndex } = action.payload;
 			// TODO: Implement array move functionality
 			console.warn("moveStage is not implemented yet, this will not work as expected.");

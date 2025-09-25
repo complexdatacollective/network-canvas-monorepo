@@ -5,7 +5,7 @@ import { cn } from "~/utils/cn";
 import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
-const animations = {
+const _animations = {
 	collapsed: {
 		overflow: "hidden",
 		height: 0,
@@ -64,7 +64,7 @@ const Section = ({
 		}
 	}, [isOpen, handleToggleChange]);
 
-	const sectionClasses = cx(
+	const _sectionClasses = cx(
 		"stage-editor-section border border-platinum-dark w-full relative",
 		{ "stage-editor-section--toggleable": toggleable },
 		{ "stage-editor-section--open": isOpen },

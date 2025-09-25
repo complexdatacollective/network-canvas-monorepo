@@ -20,7 +20,7 @@ const notEmpty = (value: unknown) =>
 // TODO: Make this a generic that is passed in.
 type FieldType = { variable: string; prompt: string }[];
 
-const withDefaultFieldName = defaultProps({
+const _withDefaultFieldName = defaultProps({
 	fieldName: "prompts",
 });
 

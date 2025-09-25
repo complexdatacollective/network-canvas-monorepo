@@ -20,7 +20,7 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 	// Selectors
 	const hasUnsavedChanges = useSelector((state: RootState) => isDirty(formName)(state));
 	const submitting = useSelector((state: RootState) => isSubmitting(formName)(state));
-	const invalid = useSelector((state: RootState) => isInvalid(formName)(state));
+	const _invalid = useSelector((state: RootState) => isInvalid(formName)(state));
 
 	// Form submission handler
 	const handleSubmit = useCallback(() => {

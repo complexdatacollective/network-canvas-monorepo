@@ -3,7 +3,7 @@ import Home from "~/components/Home/Home";
 import { AssetsPage, CodebookPage, StageEditorPage, SummaryPage, TypeEditorPage } from "~/components/pages";
 import Protocol from "~/components/Protocol";
 
-const appVariants = {
+const _appVariants = {
 	show: {
 		opacity: 1,
 		transition: {

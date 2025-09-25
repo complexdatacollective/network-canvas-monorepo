@@ -250,7 +250,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 
 export const openRemoteFrescoNetcanvas = createAsyncThunk(
 	"webUserActions/openRemoteFrescoNetcanvas",
-	async (url: string, { dispatch }) => {
+	async (_url: string, { dispatch }) => {
 		console.log("Not implemented yet for remote Fresco Netcanvas");
 	},
 );

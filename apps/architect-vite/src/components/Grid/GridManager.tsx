@@ -38,7 +38,7 @@ type GridManagerProps = {
 
 const notEmpty = (value: any) => (value && value.length > 0 ? undefined : "You must create at least one item");
 
-const handleSubmitFail = (issues: any) => {
+const _handleSubmitFail = (issues: any) => {
 	scrollToFirstIssue(issues);
 };
 

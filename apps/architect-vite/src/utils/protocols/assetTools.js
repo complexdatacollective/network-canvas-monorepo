@@ -26,7 +26,7 @@ const withExtensionSwitch =
  * Fetches and parses JSON network data
  * In the future, this will fetch from a remote asset service
  */
-const readJsonNetwork = async (assetUrl) => {
+const readJsonNetwork = async (_assetUrl) => {
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);
 	// return response.json();
@@ -40,7 +40,7 @@ const readJsonNetwork = async (assetUrl) => {
  * Fetches and parses CSV network data
  * In the future, this will fetch from a remote asset service
  */
-const readCsvNetwork = async (assetUrl) => {
+const readCsvNetwork = async (_assetUrl) => {
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);
 	// const data = await response.text();
@@ -130,7 +130,7 @@ export const validateAsset = async (filePath) => {
  * Gets variables from a GeoJSON asset
  * In the future, this will fetch from a remote asset service
  */
-export const getGeoJsonVariables = async (assetUrl) => {
+export const getGeoJsonVariables = async (_assetUrl) => {
 	// TODO: When assets are stored remotely, this will be:
 	// const response = await fetch(assetUrl);
 	// const geoJson = await response.json();

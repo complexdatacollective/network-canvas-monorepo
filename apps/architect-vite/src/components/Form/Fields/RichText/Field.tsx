@@ -36,7 +36,7 @@ const RichTextField = ({
 	disallowedTypes = [],
 	className = null,
 }: RichTextFieldProps) => {
-	const id = useRef(uuid());
+	const _id = useRef(uuid());
 
 	const anyLabel = label;
 
