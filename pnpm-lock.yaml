@@ -282,9 +282,6 @@ importers:
       '@base-ui-components/react':
         specifier: 1.0.0-beta.0
         version: 1.0.0-beta.0(@types/react@19.1.13)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@codaco/development-protocol':
-        specifier: workspace:*
-        version: link:../../packages/development-protocol
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
@@ -766,8 +763,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.2
-
-  packages/development-protocol: {}
 
   packages/protocol-validation:
     dependencies:

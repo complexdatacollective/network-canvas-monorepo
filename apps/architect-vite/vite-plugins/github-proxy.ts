@@ -1,4 +1,4 @@
-import { DEVELOPMENT_PROTOCOL_URL } from "~/config";
+import { DEVELOPMENT_PROTOCOL_URL } from "../src/config";
 
 /**
  * Vite plugin that creates a development proxy for GitHub protocol files
