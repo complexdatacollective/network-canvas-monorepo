@@ -28,7 +28,7 @@ export default function ProtocolDropzone() {
 		<div
 			{...getRootProps()}
 			className={cn(
-				"border-2 h-[400px] bg-surface-3 border-dashed rounded-lg p-8 flex flex-col items-center justify-center space-y-4 mb-8 w-full cursor-pointer transition",
+				"border-2 h-full min-h-[400px] bg-surface-3 border-dashed rounded-lg p-8 flex flex-col flex-1 items-center justify-center space-y-4 mb-8 w-full cursor-pointer transition",
 				isDragActive ? "border-accent bg-accent/10" : "hover:border-accent hover:bg-accent/10",
 			)}
 		>

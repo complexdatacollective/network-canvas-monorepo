@@ -55,8 +55,8 @@ const LaunchPad = () => {
 	const installDevelopmentProtocol = () => dispatch(openGithubReleaseNetcanvas());
 
 	return (
-		<div className="p-8 flex flex-col gap-8">
-			<div className="flex flex-col">
+		<div className="p-8 flex flex-col gap-8 flex-1">
+			<div className="flex flex-col flex-1">
 				<ProtocolDropzone />
 
 				<div className="flex flex-col gap-4">
