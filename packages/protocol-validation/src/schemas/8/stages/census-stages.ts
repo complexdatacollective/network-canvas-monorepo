@@ -1,8 +1,13 @@
 import { faker } from "@faker-js/faker";
 import { getEdgeTypeId, getEdgeVariableId, getNodeTypeId } from "~/utils/mock-seeds";
-import { z } from "~/utils/zod-mock-extension";
 import { findDuplicateId } from "~/utils/validation-helpers";
-import { dyadCensusPromptSchema, oneToManyDyadCensusPromptSchema, tieStrengthCensusPromptSchema } from "../common";
+import { z } from "~/utils/zod-mock-extension";
+import {
+	dyadCensusPromptSchema,
+	FormSchema,
+	oneToManyDyadCensusPromptSchema,
+	tieStrengthCensusPromptSchema,
+} from "../common";
 import { baseStageSchema } from "./base";
 
 const NodeStageSubjectSchema = z
@@ -133,6 +138,8 @@ export const oneToManyDyadCensusStage = baseStageSchema
 export const familyTreeCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("FamilyTreeCensus"),
+		subject: NodeStageSubjectSchema,
+		form: FormSchema,
 	})
 	.generateMock((base) => ({
 		...base,
