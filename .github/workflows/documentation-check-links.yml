@@ -10,7 +10,7 @@ permissions:
 jobs:
   check_paths:
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.event.deployment_status.environment, 'preview') && github.event.deployment_status.state == 'success' && !contains(github.event.deployment_status.environment_url, 'analytics')}}
+    if: ${{ startsWith(github.event.deployment_status.environment, 'preview') && github.event.deployment_status.state == 'success' && contains(github.event.deployment_status.environment_url, 'documentation')}}
     outputs:
       docs_changed: ${{ steps.filter.outputs.docs }}
     steps:
