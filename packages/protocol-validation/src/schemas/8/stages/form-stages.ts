@@ -1,28 +1,9 @@
 import { faker } from "@faker-js/faker";
-import {
-	getEdgeTypeId,
-	getEdgeVariableId,
-	getEgoVariableId,
-	getNodeTypeId,
-	getNodeVariableId,
-} from "~/utils/mock-seeds";
+import { getEdgeVariableId, getEgoVariableId, getNodeVariableId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
-import { FormSchema } from "../common";
+import { EdgeStageSubjectSchema, FormSchema, NodeStageSubjectSchema } from "../common";
+import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
-
-const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
-
-const EdgeStageSubjectSchema = z
-	.object({
-		entity: z.literal("edge"),
-		type: z.string().generateMock(() => getEdgeTypeId()),
-	})
-	.strict();
 
 export const egoFormStage = baseStageSchema
 	.extend({
@@ -53,6 +34,7 @@ export const egoFormStage = baseStageSchema
 export const alterFormStage = baseStageSchema
 	.extend({
 		type: z.literal("AlterForm"),
+		filter: FilterSchema.optional(),
 		subject: NodeStageSubjectSchema,
 		form: FormSchema,
 	})

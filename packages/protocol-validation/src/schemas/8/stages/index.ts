@@ -16,7 +16,7 @@ import { alterEdgeFormStage, alterFormStage, egoFormStage } from "./form-stages"
 import { geospatialStage } from "./geospatial-stages";
 import { anonymisationStage, informationStage } from "./information-stages";
 import { nameGeneratorQuickAddStage, nameGeneratorRosterStage, nameGeneratorStage } from "./name-generator-stages";
-import { narrativeStage, sociogramStage } from "./visualization-stages";
+import { narrativeStage, sociogramStage } from "./sociogram-stages";
 
 // Re-export individual stages
 export * from "./bin-stages";
@@ -25,7 +25,7 @@ export * from "./form-stages";
 export * from "./geospatial-stages";
 export * from "./information-stages";
 export * from "./name-generator-stages";
-export * from "./visualization-stages";
+export * from "./sociogram-stages";
 
 // Combine all stage types
 const stageSchemas = [

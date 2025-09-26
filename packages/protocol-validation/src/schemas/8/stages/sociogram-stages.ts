@@ -1,21 +1,16 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId, getEdgeTypeId, getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
-import { z } from "~/utils/zod-mock-extension";
+import { getAssetId, getEdgeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
-import { sociogramPromptSchema } from "../common";
+import { z } from "~/utils/zod-mock-extension";
+import { NodeStageSubjectSchema, sociogramPromptSchema } from "../common";
+import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
-
-const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
 
 export const sociogramStage = baseStageSchema
 	.extend({
 		type: z.literal("Sociogram"),
 		subject: NodeStageSubjectSchema,
+		filter: FilterSchema.optional(),
 		background: z
 			.object({
 				image: z
@@ -75,6 +70,7 @@ export const sociogramStage = baseStageSchema
 
 export const narrativeStage = baseStageSchema.extend({
 	type: z.literal("Narrative"),
+	filter: FilterSchema.optional(),
 	subject: NodeStageSubjectSchema,
 	presets: z
 		.array(

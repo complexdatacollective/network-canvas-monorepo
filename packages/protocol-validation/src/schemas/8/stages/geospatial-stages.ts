@@ -1,16 +1,10 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId, getNodeTypeId } from "~/utils/mock-seeds";
-import { z } from "~/utils/zod-mock-extension";
+import { getAssetId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
-import { geospatialPromptSchema } from "../common";
+import { z } from "~/utils/zod-mock-extension";
+import { geospatialPromptSchema, NodeStageSubjectSchema } from "../common";
+import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
-
-const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
 
 const mapboxStyleOptions = [
 	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },
@@ -70,6 +64,7 @@ export type MapOptions = z.infer<typeof mapOptions>;
 export const geospatialStage = baseStageSchema.extend({
 	type: z.literal("Geospatial"),
 	subject: NodeStageSubjectSchema,
+	filter: FilterSchema.optional(),
 	mapOptions: mapOptions,
 	prompts: z
 		.array(geospatialPromptSchema)

@@ -1,21 +1,16 @@
 import { faker } from "@faker-js/faker";
-import { getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
-import { z } from "~/utils/zod-mock-extension";
+import { getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
-import { categoricalBinPromptSchema, ordinalBinPromptSchema } from "../common";
+import { z } from "~/utils/zod-mock-extension";
+import { categoricalBinPromptSchema, NodeStageSubjectSchema, ordinalBinPromptSchema } from "../common";
+import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
-
-const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
 
 export const ordinalBinStage = baseStageSchema
 	.extend({
 		type: z.literal("OrdinalBin"),
 		subject: NodeStageSubjectSchema,
+		filter: FilterSchema.optional(),
 		prompts: z
 			.array(ordinalBinPromptSchema)
 			.min(1)
@@ -53,6 +48,7 @@ export const categoricalBinStage = baseStageSchema
 	.extend({
 		type: z.literal("CategoricalBin"),
 		subject: NodeStageSubjectSchema,
+		filter: FilterSchema.optional(),
 		prompts: z
 			.array(categoricalBinPromptSchema)
 			.min(1)

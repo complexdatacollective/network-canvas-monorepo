@@ -1,17 +1,10 @@
 import { faker } from "@faker-js/faker";
-import { z } from "~/utils/zod-mock-extension";
-import { getAssetId, getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
+import { getAssetId, getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
-import { FormSchema, nameGeneratorPromptSchema, panelSchema } from "../common";
+import { z } from "~/utils/zod-mock-extension";
+import { FormSchema, nameGeneratorPromptSchema, NodeStageSubjectSchema, panelSchema } from "../common";
 import { SortOrderSchema } from "../filters";
 import { baseStageSchema } from "./base";
-
-const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
 
 export const nameGeneratorStage = baseStageSchema
 	.extend({

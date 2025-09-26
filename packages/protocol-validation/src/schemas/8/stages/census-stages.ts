@@ -1,26 +1,23 @@
 import { faker } from "@faker-js/faker";
-import { getEdgeTypeId, getEdgeVariableId, getNodeTypeId } from "~/utils/mock-seeds";
+import { getEdgeTypeId, getEdgeVariableId, getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
 import { z } from "~/utils/zod-mock-extension";
 import {
 	dyadCensusPromptSchema,
+	EdgeStageSubjectSchema,
 	FormSchema,
+	NodeStageSubjectSchema,
 	oneToManyDyadCensusPromptSchema,
 	tieStrengthCensusPromptSchema,
 } from "../common";
+import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
-
-const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
 
 export const dyadCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("DyadCensus"),
 		subject: NodeStageSubjectSchema,
+		filter: FilterSchema.optional(),
 		prompts: z
 			.array(dyadCensusPromptSchema)
 			.min(1)
@@ -61,6 +58,7 @@ export const tieStrengthCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("TieStrengthCensus"),
 		subject: NodeStageSubjectSchema,
+		filter: FilterSchema.optional(),
 		prompts: z
 			.array(tieStrengthCensusPromptSchema)
 			.min(1)
@@ -97,6 +95,7 @@ export const tieStrengthCensusStage = baseStageSchema
 export const oneToManyDyadCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("OneToManyDyadCensus"),
+		filter: FilterSchema.optional(),
 		subject: NodeStageSubjectSchema,
 		behaviours: z.object({
 			removeAfterConsideration: z.boolean(),
@@ -139,9 +138,27 @@ export const familyTreeCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("FamilyTreeCensus"),
 		subject: NodeStageSubjectSchema,
-		form: FormSchema,
+		edgeType: EdgeStageSubjectSchema,
+		step1: z.object({
+			text: z.string().generateMock(() => "how many family members"),
+		}),
+		step2: z.object({
+			text: z.string().generateMock(() => "enter family members"),
+			form: FormSchema,
+		}),
+		step3: z
+			.object({
+				text: z.string().generateMock(() => "nominate diseases"),
+				attributes: z.array(
+					z.object({
+						id: z.string(),
+						label: z.string(),
+						variable: z.string().generateMock(() => getNodeVariableId(0)),
+					}),
+				),
+			})
+			.optional(),
 	})
 	.generateMock((base) => ({
 		...base,
-		type: "FamilyTreeCensus",
 	}));

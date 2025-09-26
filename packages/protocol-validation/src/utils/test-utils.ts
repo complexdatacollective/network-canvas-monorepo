@@ -130,6 +130,24 @@ export const createBaseProtocol = () => ({
 				},
 			],
 		},
+		{
+			id: "sociogram1",
+			type: "Sociogram",
+			label: "Sociogram",
+			subject: {
+				entity: "node",
+				type: "person",
+			},
+			prompts: [
+				{
+					id: "socPrompt1",
+					text: "Position nodes",
+					layout: {
+						layoutVariable: "category",
+					},
+				},
+			],
+		},
 	],
 });
 
@@ -249,7 +267,7 @@ export const createStageWithFilters = () => ({
 		rules: [
 			{
 				id: "rule1",
-				type: "alter",
+				type: "node",
 				options: {
 					type: "person",
 					attribute: "age",
@@ -389,7 +407,7 @@ export const createInvalidReferenceProtocol = () => {
 					rules: [
 						{
 							id: "rule1",
-							type: "alter",
+							type: "node",
 							options: {
 								type: "anotherNonexistent", // Invalid filter entity type
 								attribute: "invalidAttribute", // Invalid filter attribute
