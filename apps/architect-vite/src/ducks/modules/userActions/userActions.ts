@@ -10,9 +10,10 @@ import { navigate } from "wouter/use-browser-location";
 import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION } from "~/config";
 import { appUpgradeRequiredDialog, mayUpgradeProtocolDialog } from "~/ducks/modules/userActions/dialogs";
-import type { AppDispatch, RootState } from "~/ducks/store";
+import type { RootState } from "~/ducks/store";
 import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
+import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
 
@@ -166,31 +167,23 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 	navigate("/protocol");
 });
 
-// Export protocol as file
-export const exportNetcanvas = () => async (_dispatch: AppDispatch, getState: () => RootState) => {
-	const state = getState();
+// Export protocol as .netcanvas file
+export const exportProtocol = createAsyncThunk("webUserActions/exportNetcanvas", async (_, { getState }) => {
+	const state = getState() as RootState;
 	const protocol = state.activeProtocol?.present;
 
 	if (!protocol) {
-		console.error("No active protocol to export");
-		return;
+		throw new Error("No active protocol to export");
 	}
 
-	// TODO: Implement asset retrieval and zip generation.
-
-	// Create a downloadable file
-	const protocolJson = JSON.stringify(protocol, null, 2);
-	const blob = new Blob([protocolJson], { type: "application/json" });
-	const url = URL.createObjectURL(blob);
-
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = `${protocol.name}.netcanvas`;
-	document.body.appendChild(a);
-	a.click();
-	document.body.removeChild(a);
-	URL.revokeObjectURL(url);
-};
+	try {
+		await downloadProtocolAsNetcanvas(protocol);
+		return true;
+	} catch (error) {
+		console.error("Error exporting protocol:", error);
+		throw error;
+	}
+});
 
 export const openRemoteNetcanvas = createAsyncThunk(
 	"webUserActions/openRemoteNetcanvas",
