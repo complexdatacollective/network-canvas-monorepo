@@ -38,55 +38,5 @@ jobs:
           files: packages/development-protocol/Development.netcanvas
           body: |
             Development protocol snapshot from commit ${{ github.sha }}
-            
-            **Note:** For a stable URL, use the [@codaco/development-protocol](https://github.com/${{ github.repository }}/releases/tag/@codaco/development-protocol) release.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check if stable release exists
-        id: check_stable
-        run: |
-          if gh release view "${{ steps.generate_id.outputs.STABLE_RELEASE_NAME }}" >/dev/null 2>&1; then
-            echo "EXISTS=true" >> $GITHUB_OUTPUT
-          else
-            echo "EXISTS=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create or update stable release
-        run: |
-          STABLE_TAG="${{ steps.generate_id.outputs.STABLE_RELEASE_NAME }}"
-          
-          if [ "${{ steps.check_stable.outputs.EXISTS }}" = "true" ]; then
-            echo "📦 Updating existing stable release..."
-            # Delete existing asset if it exists
-            gh release delete-asset "${STABLE_TAG}" "Development.netcanvas" --yes 2>/dev/null || true
-            # Upload new asset
-            gh release upload "${STABLE_TAG}" packages/development-protocol/Development.netcanvas --clobber
-            # Update release notes
-            gh release edit "${STABLE_TAG}" --notes "Latest development protocol build
-            
-            Last updated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
-            From commit: ${{ github.sha }}
-            
-            **Stable URL:** https://github.com/${{ github.repository }}/releases/download/${STABLE_TAG}/Development.netcanvas
-            
-            For version history, see [all development protocol releases](https://github.com/${{ github.repository }}/releases?q=development-protocol&expanded=true)."
-          else
-            echo "📦 Creating new stable release..."
-            # Create the stable release with the tag
-            gh release create "${STABLE_TAG}" \
-              packages/development-protocol/Development.netcanvas \
-              --title "${STABLE_TAG}" \
-              --notes "Latest development protocol build
-            
-            Last updated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
-            From commit: ${{ github.sha }}
-            
-            **Stable URL:** https://github.com/${{ github.repository }}/releases/download/${STABLE_TAG}/Development.netcanvas
-            
-            For version history, see [all development protocol releases](https://github.com/${{ github.repository }}/releases?q=development-protocol&expanded=true)."
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
