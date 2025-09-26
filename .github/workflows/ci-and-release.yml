@@ -182,7 +182,7 @@ jobs:
       with:
         # command used to version packages. Lint and fix to avoid errors caused 
         # by versioning
-        version: pnpm run version-packages && pnpm run format-and-lint:fix
+        version: pnpm run version-packages
         # Runs changesets publish. versioning is done by changesets action
         publish: pnpm run publish-packages
         createGithubReleases: true
