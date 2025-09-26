@@ -168,7 +168,7 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 });
 
 // Export protocol as .netcanvas file
-export const exportProtocol = createAsyncThunk("webUserActions/exportNetcanvas", async (_, { getState }) => {
+export const exportNetcanvas = createAsyncThunk("webUserActions/exportNetcanvas", async (_, { getState }) => {
 	const state = getState() as RootState;
 	const protocol = state.activeProtocol?.present;
 

@@ -5,7 +5,7 @@ import ControlBar from "~/components/ControlBar";
 import { useAppDispatch } from "~/ducks/hooks";
 import { clearActiveProtocol } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { checkUnsavedChanges, exportProtocol } from "~/ducks/modules/userActions/userActions";
+import { checkUnsavedChanges, exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button } from "~/lib/legacy-ui/components";
 
@@ -41,7 +41,7 @@ const ProtocolControlBar = () => {
 	const handleDownload = useCallback(async () => {
 		try {
 			setIsExporting(true);
-			await dispatch(exportProtocol()).unwrap();
+			await dispatch(exportNetcanvas()).unwrap();
 			setDownloadSuccess(true);
 			setTimeout(() => setDownloadSuccess(false), 2000);
 		} catch (error) {
