@@ -1,5 +1,12 @@
 # @codaco/protocol-validation
 
+## 7.0.1
+
+### Patch Changes
+
+- d795dd9: Changeset
+- f0fd48b: Implement initial family tree census
+
 ## 7.0.0
 
 ### Major Changes
