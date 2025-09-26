@@ -1,29 +1,37 @@
-import { motion } from "motion/react";
+import headerGraphic from "~/images/Arc-Flat.svg";
+import networkCanvasLogo from "~/images/NC-Mark.svg";
+import { appVersion } from "~/utils/appVersion";
 import LaunchPad from "./LaunchPad";
-import WelcomeHeader from "./WelcomeHeader";
-
-const variants = {
-	show: {
-		opacity: 1,
-		transition: {
-			duration: 0.5,
-			when: "beforeChildren",
-			staggerChildren: 0.2,
-		},
-	},
-	hide: {
-		opacity: 0,
-	},
-};
 
 const Home = () => {
-	// useProtocolLoader();
 	return (
-		<div className="home scrollable">
-			<motion.div className="home__container" variants={variants} key="start-screen">
-				<WelcomeHeader />
-				<LaunchPad />
-			</motion.div>
+		<div className="min-h-screen flex flex-col">
+			<div className="flex justify-between items-center px-8 py-1 bg-accent text-accent-foreground">
+				<div className="flex items-center gap-3">
+					<img src={networkCanvasLogo} alt="Network Canvas" className="h-8 w-8" />
+					<div className="flex items-baseline gap-2">
+						<h1 className="text-xl font-semibold ">Network Canvas</h1>
+						<span className="text-xl">Architect</span>
+					</div>
+				</div>
+				<div className="bg-primary/25 rounded-md px-3 py-1 flex gap-2 items-center">
+					<span className="text-sm">v{appVersion}</span>
+				</div>
+			</div>
+
+			<div className="flex-1 flex flex-col items-center px-8 pt-12">
+				<div className="w-full max-w-5xl flex-1 flex flex-col">
+					<div className="flex md:flex-row flex-col items-center justify-center gap-8">
+						<img src={headerGraphic} alt="Network Canvas Architect" className="h-24" />
+						<div className="text-left">
+							<h2 className="text-4xl font-semibold mb-0">Welcome to Architect</h2>
+							<p className="text-lg">A tool for building Network Canvas Interviews</p>
+						</div>
+					</div>
+
+					<LaunchPad />
+				</div>
+			</div>
 		</div>
 	);
 };
