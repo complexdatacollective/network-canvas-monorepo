@@ -27,6 +27,9 @@ const SkipLogicSection = () => {
 		async (newState) => {
 			// When turning skip logic on
 			if (!hasSkipLogic || newState === true) {
+				// Initialize skipLogic with default values when enabling
+				// This triggers conditional rendering of SkipLogicFields
+				dispatch(change("edit-stage", "skipLogic", { action: "SHOW", filter: { rules: [] } }));
 				return true;
 			}
 
@@ -40,7 +43,7 @@ const SkipLogicSection = () => {
 
 			return false;
 		},
-		[dispatch, openDialog, hasSkipLogic],
+		[dispatch, openDialog],
 	);
 
 	return (
@@ -51,7 +54,7 @@ const SkipLogicSection = () => {
 			startExpanded={!!hasSkipLogic}
 			handleToggleChange={handleToggleChange}
 		>
-			<SkipLogicFields />
+			{hasSkipLogic && <SkipLogicFields />}
 		</Section>
 	);
 };
