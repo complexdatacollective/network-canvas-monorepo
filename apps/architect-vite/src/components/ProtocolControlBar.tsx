@@ -1,9 +1,10 @@
-import { Download, Check } from "lucide-react";
+import { Check, Download } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import { useAppDispatch } from "~/ducks/hooks";
 import { clearActiveProtocol } from "~/ducks/modules/activeProtocol";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { checkUnsavedChanges, exportProtocol } from "~/ducks/modules/userActions/userActions";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button } from "~/lib/legacy-ui/components";
@@ -16,11 +17,25 @@ const ProtocolControlBar = () => {
 
 	const handleReturnToStart = useCallback(async () => {
 		// todo: confirm un-downloaded changes
+
 		const canContinue = await dispatch(checkUnsavedChanges()).unwrap();
-		if (canContinue) {
-			await dispatch(clearActiveProtocol());
-			navigate("/");
+		if (!canContinue) {
+			return;
 		}
+
+		dispatch(
+			dialogActions.openDialog({
+				type: "Warning",
+				title: "Clear Editor?",
+				message:
+					"Returning to the start screen will clear the current protocol from the editor. If you have made changes to your protocol, please ensure you have downloaded the updated version before proceeding.",
+				confirmLabel: "Return to start screen",
+				onConfirm: async () => {
+					await dispatch(clearActiveProtocol());
+					navigate("/");
+				},
+			}) as any,
+		);
 	}, [dispatch, navigate]);
 
 	const handleDownload = useCallback(async () => {
