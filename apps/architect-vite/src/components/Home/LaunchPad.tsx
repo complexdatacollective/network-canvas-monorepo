@@ -1,7 +1,7 @@
 import { BookOpen, CodeXml, Download, Trash, UsersRound } from "lucide-react";
 import { useDispatch } from "react-redux";
-import { SAMPLE_PROTOCOL_URL } from "~/config";
-import { openGithubReleaseNetcanvas, openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
+import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from "~/config";
+import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import { clearAllStorage } from "~/utils/assetDB";
 import { cn } from "~/utils/cn";
 import { openExternalLink } from "../ExternalLink";
@@ -52,7 +52,7 @@ const LaunchPad = () => {
 		clearAllStorage();
 	};
 
-	const installDevelopmentProtocol = () => dispatch(openGithubReleaseNetcanvas());
+	const installDevelopmentProtocol = () => dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL));
 
 	return (
 		<div className="p-8 flex flex-col gap-8 flex-1">

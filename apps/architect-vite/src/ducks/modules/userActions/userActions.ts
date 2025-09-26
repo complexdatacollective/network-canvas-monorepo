@@ -254,19 +254,3 @@ export const openRemoteFrescoNetcanvas = createAsyncThunk(
 		console.log("Not implemented yet for remote Fresco Netcanvas");
 	},
 );
-
-export const openGithubReleaseNetcanvas = createAsyncThunk(
-	"webUserActions/openGithubReleaseNetcanvas",
-	async (_, { dispatch }) => {
-		try {
-			// Use local Vite proxy endpoint to fetch development protocol
-			// This bypasses CORS issues by making the GitHub API request server-side
-			const url = "/api/github-development-protocol";
-
-			await dispatch(openRemoteNetcanvas(url)).unwrap();
-		} catch (error) {
-			console.error("Error loading development protocol:", error);
-			throw error;
-		}
-	},
-);
