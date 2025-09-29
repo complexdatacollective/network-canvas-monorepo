@@ -76,7 +76,6 @@ const Section = ({
 	const classes = cn(
 		"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
 		"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative px-6 py-4 shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)]",
-		toggleable && "cursor-pointer",
 	);
 
 	return (
@@ -99,10 +98,10 @@ const Section = ({
 				<div className="summary">{summary}</div>
 			</div>
 			<fieldset className={classes}>
-				{children}
+				{isOpen && children}
 				{toggleable && !isOpen && (
-					<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 backdrop-blur-sm text-foreground/70 font-semibold italic">
-						Cick the toggle to enable this feature...
+					<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic">
+						Click the toggle to enable this feature...
 					</div>
 				)}
 				{id && <IssueAnchor fieldName={id} description={title} />}
