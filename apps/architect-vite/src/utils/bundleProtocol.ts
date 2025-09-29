@@ -66,14 +66,25 @@ export async function bundleProtocol(protocol: Protocol): Promise<Blob> {
 	return blob;
 }
 
-export async function downloadProtocolAsNetcanvas(protocol: Protocol, filename?: string): Promise<void> {
+export async function downloadProtocolAsNetcanvas(protocol: Protocol): Promise<void> {
 	try {
 		const blob = await bundleProtocol(protocol);
+
+		// build local timestamp YYYY-MM-DD_HH-MM
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, "0");
+		const day = String(now.getDate()).padStart(2, "0");
+		const hours = String(now.getHours()).padStart(2, "0");
+		const minutes = String(now.getMinutes()).padStart(2, "0");
+		const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
+
+		const fileName = `${protocol.name.replace(/\s+/g, "_")}-${timestamp}.netcanvas`;
 
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = filename || `${protocol.name}.netcanvas`;
+		a.download = fileName;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);

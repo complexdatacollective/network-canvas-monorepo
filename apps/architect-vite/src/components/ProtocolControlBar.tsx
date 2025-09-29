@@ -1,4 +1,4 @@
-import { Check, Download } from "lucide-react";
+import { Check, Download, Save } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
@@ -30,11 +30,11 @@ const ProtocolControlBar = () => {
 				message:
 					"Returning to the start screen will clear the current protocol from the editor. If you have made changes to your protocol, please ensure you have downloaded the updated version before proceeding.",
 				confirmLabel: "Return to start screen",
-				onConfirm: async () => {
-					await dispatch(clearActiveProtocol());
+				onConfirm: () => {
+					dispatch(clearActiveProtocol());
 					navigate("/");
 				},
-			}) as any,
+			}),
 		);
 	}, [dispatch, navigate]);
 
@@ -68,13 +68,14 @@ const ProtocolControlBar = () => {
 				</Button>,
 			]}
 			buttons={[
+				<Button key="save-button" color="slate-blue" content="Save changes" disabled icon={<Save />} />,
 				<Button
 					key="export-button"
 					onClick={handleDownload}
 					color="sea-green"
 					content={downloadSuccess ? "Downloaded" : isExporting ? "Downloading..." : "Download"}
 					disabled={isExporting}
-					icon={downloadSuccess ? <Check size={22} /> : <Download size={22} />}
+					icon={downloadSuccess ? <Check /> : <Download />}
 				/>,
 			]}
 		/>
