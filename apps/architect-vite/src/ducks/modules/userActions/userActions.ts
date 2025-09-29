@@ -14,8 +14,9 @@ import type { RootState } from "~/ducks/store";
 import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
-import { setActiveProtocol } from "../activeProtocol";
+import { markProtocolSaved, setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
+import { getTimelineLocus } from "~/selectors/protocol";
 
 export const checkUnsavedChanges = createAsyncThunk(
 	"webUserActions/checkUnsavedChanges",
@@ -165,6 +166,45 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 
 	// Navigate to the protocol
 	navigate("/protocol");
+});
+
+// Save protocol (validate and mark as saved)
+export const saveProtocol = createAsyncThunk("webUserActions/saveProtocol", async (_, { getState, dispatch }) => {
+	const state = getState() as RootState;
+	const protocol = state.activeProtocol?.present;
+
+	if (!protocol) {
+		throw new Error("No active protocol to save");
+	}
+
+	// Validate the protocol
+	const validationResult = await validateProtocol(protocol);
+
+	if (!validationResult.success) {
+		// Show validation error dialog
+		await dispatch(
+			openDialog({
+				type: "Error",
+				title: "Cannot Save Protocol",
+				message: `Protocol has validation errors:\n\n${validationResult.error}`,
+				confirmLabel: "OK",
+			}),
+		).unwrap();
+		throw new Error(`Protocol validation failed: ${validationResult.error}`);
+	}
+
+	// Get current timeline locus
+	const timelineLocus = getTimelineLocus(state);
+
+	if (!timelineLocus) {
+		throw new Error("No timeline locus available");
+	}
+
+	// Mark protocol as saved
+	const timestamp = Date.now();
+	dispatch(markProtocolSaved({ timestamp, timelineLocus }));
+
+	return { timestamp, timelineLocus };
 });
 
 // Export protocol as .netcanvas file

@@ -124,10 +124,18 @@ const stagesSlice = createSlice({
 
 			state[stageIndex] = prune(newStage);
 		},
-		moveStage: (_state, action: PayloadAction<MoveStagePayload>) => {
+		moveStage: (state, action: PayloadAction<MoveStagePayload>) => {
 			const { oldIndex, newIndex } = action.payload;
-			// TODO: Implement array move functionality
-			console.warn("moveStage is not implemented yet, this will not work as expected.");
+
+			if (oldIndex < 0 || oldIndex >= state.length || newIndex < 0 || newIndex >= state.length) {
+				console.warn("moveStage: invalid index");
+				return;
+			}
+
+			// Remove the item from oldIndex
+			const [movedStage] = state.splice(oldIndex, 1);
+			// Insert it at newIndex
+			state.splice(newIndex, 0, movedStage);
 		},
 		deleteStage: (state, action: PayloadAction<string>) => {
 			const stageId = action.payload;

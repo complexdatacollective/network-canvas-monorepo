@@ -117,6 +117,28 @@ const Timeline = () => {
 
 	const [stateStages, setStateStages] = useState(stages);
 
+	const handleReorder = useCallback(
+		(newOrder: typeof stages) => {
+			setStateStages(newOrder);
+
+			// Find which stage moved
+			for (let i = 0; i < newOrder.length; i++) {
+				if (newOrder[i].id !== stages[i]?.id) {
+					// Move to new index
+					const stageId = newOrder[i].id;
+					const oldIndex = stages.findIndex((s) => s.id === stageId);
+					const newIndex = i;
+
+					if (oldIndex !== -1 && oldIndex !== newIndex) {
+						dispatch(stageActions.moveStage(oldIndex, newIndex));
+					}
+					break;
+				}
+			}
+		},
+		[stages, dispatch],
+	);
+
 	const itemClasses = cn(
 		"grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
 		"hover:bg-timeline-hover transition-colors duration-300 ease-in-out",
@@ -128,7 +150,7 @@ const Timeline = () => {
 		<>
 			<Reorder.Group
 				axis="y"
-				onReorder={setStateStages}
+				onReorder={handleReorder}
 				className="relative overflow-hidden grid grid-cols-1 gap-28 py-16 justify-items-center [--color-background:var(--color-timeline)]"
 				initial="hide"
 				animate="show"

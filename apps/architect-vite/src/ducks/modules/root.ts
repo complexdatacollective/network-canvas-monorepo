@@ -6,9 +6,10 @@ import createTimeline from "../middleware/timeline";
 import activeProtocol from "./activeProtocol";
 import app from "./app";
 import dialogs from "./dialogs";
+import protocolValidation from "./protocolValidation";
 import toasts from "./toasts";
 
-const protocolPattern = /^activeProtocol\//;
+const protocolPattern = /^(activeProtocol|stages|codebook|assetManifest)\//;
 
 const timelineOptions = {
 	exclude: ({ type }) => !protocolPattern.test(type.toString()),
@@ -19,6 +20,7 @@ export const rootReducer = combineReducers({
 	dialogs,
 	form: formReducer,
 	activeProtocol: createTimeline(activeProtocol, timelineOptions),
+	protocolValidation,
 	toasts,
 });
 

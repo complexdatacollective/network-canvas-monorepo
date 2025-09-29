@@ -88,9 +88,22 @@ export const getExperiments = (state: RootState) => {
 	return experiments;
 };
 
-export const getHasUnsavedChanges = (_state: RootState): boolean => {
-	// TODO: need a new state item to track last saved time
-	return false;
+export const getHasUnsavedChanges = (state: RootState): boolean => {
+	const protocol = getProtocol(state);
+	if (!protocol) return false;
+
+	const currentTimeline = getTimelineLocus(state);
+	const lastSavedTimeline = protocol.lastSavedTimeline;
+
+	// No saved state yet
+	if (!lastSavedTimeline) {
+		// Has unsaved changes if timeline has moved from initial state
+		const timeline = state.activeProtocol?.timeline || [];
+		return timeline.length > 1;
+	}
+
+	// Compare current timeline position with last saved position
+	return currentTimeline !== lastSavedTimeline;
 };
 
 export const checkUnsavedChanges = createAsyncThunk("protocol/check-unsaved-changes", (_, thunkAPI) => {
