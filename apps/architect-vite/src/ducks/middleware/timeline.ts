@@ -13,6 +13,8 @@ type TimelineState<T = unknown> = {
 	past: T[];
 	present: T | null;
 	timeline: string[];
+	future: T[];
+	futureTimeline: string[];
 };
 
 type TimelineOptions = {
@@ -31,6 +33,8 @@ const defaultOptions: Required<TimelineOptions> = {
 export const timelineActions = {
 	jump: createAction<string, "timeline/jump">("timeline/jump"),
 	reset: createAction<void, "timeline/reset">("timeline/reset"),
+	undo: createAction<void, "timeline/undo">("timeline/undo"),
+	redo: createAction<void, "timeline/redo">("timeline/redo"),
 };
 
 const createTimelineReducer = <T>(
@@ -46,6 +50,8 @@ const createTimelineReducer = <T>(
 		past: [],
 		present: null,
 		timeline: [],
+		future: [],
+		futureTimeline: [],
 	};
 
 	// Create slice that handles both timeline actions and wraps the original reducer
@@ -55,6 +61,26 @@ const createTimelineReducer = <T>(
 		reducers: {},
 		extraReducers: (builder) => {
 			builder
+				.addCase(timelineActions.undo, (state) => {
+					const { past, present, timeline, future = [], futureTimeline = [] } = state;
+
+					if (past.length === 0 || !present) {
+						console.warn("Nothing to undo");
+						return;
+					}
+
+					const newFuture = [present, ...(future || [])];
+					const newFutureTimeline = [timeline[timeline.length - 1], ...(futureTimeline || [])];
+
+					const newPast = past.slice(0, -1);
+					const newTimeline = timeline.slice(0, -1);
+
+					state.past = newPast;
+					state.present = newPresent as Draft<T>;
+					state.timeline = newTimeline;
+					state.future = newFuture;
+					state.futureTimeline = newFutureTimeline;
+				})
 				.addCase(timelineActions.jump, (state, action: PayloadAction<string>) => {
 					const { past, timeline } = state;
 					const locus = action.payload;
@@ -89,6 +115,32 @@ const createTimelineReducer = <T>(
 					state.present = newPresent as Draft<T>;
 					state.timeline = timeline.slice(0, locusIndex + 1);
 				})
+				.addCase(timelineActions.redo, (state) => {
+					const { future = [], futureTimeline = [], present, past, timeline } = state;
+
+					// Need at least one item in future to redo
+					if (!future || future.length === 0) {
+						console.warn("Nothing to redo");
+						return;
+					}
+
+					// Move first future item to present
+					const newPresent = future[0];
+					const newLocus = futureTimeline[0];
+
+					// Move current present to past
+					const newPast = present ? [...past, present] : past;
+					const newTimeline = [...timeline, newLocus];
+
+					state.past = newPast;
+					state.present = newPresent as Draft<T>;
+					state.timeline = newTimeline;
+					state.future = future.slice(1);
+					state.futureTimeline = futureTimeline.slice(1);
+
+					console.log("[Timeline] Redo - new timeline length:", newTimeline.length);
+					console.log("[Timeline] Redo - future length:", state.future.length);
+				})
 				.addCase(timelineActions.reset, (state) => {
 					const locus = uuid();
 					const newPresent = reducer(state.present as T, { type: "@@RESET" });
@@ -96,11 +148,32 @@ const createTimelineReducer = <T>(
 					state.past = [];
 					state.present = newPresent as Draft<T> | undefined;
 					state.timeline = [locus];
+					state.future = [];
+					state.futureTimeline = [];
 				})
 				.addDefaultCase((state, action) => {
 					// Don't process timeline actions here - they're handled by the cases above
-					if (action && (timelineActions.jump.match(action) || timelineActions.reset.match(action))) {
+					if (
+						action &&
+						(timelineActions.jump.match(action) ||
+							timelineActions.reset.match(action) ||
+							timelineActions.undo.match(action) ||
+							timelineActions.redo.match(action))
+					) {
 						return state;
+					}
+
+					// Initialize future arrays if they don't exist (for backwards compatibility with persisted state)
+					if (!state.future) {
+						state.future = [];
+					}
+					if (!state.futureTimeline) {
+						state.futureTimeline = [];
+					}
+
+					// Clean up null values from past array (for backwards compatibility with persisted state)
+					if (state.past && state.past.some((p) => p === null || p === undefined)) {
+						state.past = state.past.filter((p) => p !== null && p !== undefined);
 					}
 
 					const { past, present, timeline } = state;
@@ -109,15 +182,31 @@ const createTimelineReducer = <T>(
 					// This is the first run
 					if (timeline.length === 0) {
 						const locus = uuid();
+						console.log("[Timeline] Initial locus created:", locus);
+						console.log("[Timeline] Timeline:", [locus]);
 						state.past = [];
 						state.present = newPresent as Draft<T> | undefined;
 						state.timeline = [locus];
+						state.future = [];
+						state.futureTimeline = [];
 						return;
 					}
 
 					// If newPresent matches the old one, don't treat as a new point in the timeline
 					if (present === newPresent) {
 						return state;
+					}
+
+					// If this is setActiveProtocol, reset the timeline (loading a new protocol)
+					if (action.type === "activeProtocol/setActiveProtocol") {
+						const locus = uuid();
+						console.log("[Timeline] setActiveProtocol - resetting timeline");
+						state.past = [];
+						state.present = newPresent as Draft<T> | undefined;
+						state.timeline = [locus];
+						state.future = [];
+						state.futureTimeline = [];
+						return;
 					}
 
 					// If excluded, we don't treat this as a new point in the timeline, but we do update the state
@@ -128,16 +217,21 @@ const createTimelineReducer = <T>(
 						return;
 					}
 
+					// clear future when making a new change
+					state.future = [];
+					state.futureTimeline = [];
+
 					const locus = uuid();
+					const newTimeline = [...timeline, locus].slice(-options.limit - 1);
 
 					const validPast = [...past];
-					if (present !== undefined) {
+					if (present !== undefined && present !== null) {
 						validPast.push(present);
 					}
 
 					state.past = validPast.slice(-options.limit);
 					state.present = newPresent as Draft<T> | undefined;
-					state.timeline = [...timeline, locus].slice(-options.limit - 1);
+					state.timeline = newTimeline;
 				});
 		},
 	});

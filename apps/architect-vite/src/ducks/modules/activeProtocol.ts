@@ -83,7 +83,12 @@ const activeProtocolSlice = createSlice({
 		});
 	},
 	selectors: {
-		selectActiveProtocol: (state) => state.present ?? null,
+		selectActiveProtocol: (state) => {
+			if (state && typeof state === "object" && "present" in state) {
+				return (state as { present: ActiveProtocolState }).present ?? null;
+			}
+			return state;
+		},
 	},
 });
 
@@ -99,33 +104,30 @@ export default activeProtocolSlice.reducer;
 export type { ActiveProtocolState };
 
 export const getCanUndo = (state: RootState): boolean => {
-	const timeline = state.activeProtocol?.timeline || [];
-	return timeline.length > 1;
+	const past = state.activeProtocol?.past || [];
+	console.log("[getCanUndo] past.length:", past.length);
+	console.log(
+		"[getCanUndo] past items:",
+		past.map((p, i) => ({ index: i, isNull: p === null, hasStages: p?.stages?.length })),
+	);
+	if (past.length === 0) return false;
+
+	// Don't allow undo if it would take us back to a null state
+	const wouldBePresent = past[past.length - 1];
+	console.log("[getCanUndo] wouldBePresent:", wouldBePresent === null ? "null" : "has value");
+	return wouldBePresent !== null && wouldBePresent !== undefined;
 };
 
-export const getCanRedo = (_state: RootState): boolean => {
-	// TODO: Implement redo logic
-	return false;
+export const getCanRedo = (state: RootState): boolean => {
+	const future = state.activeProtocol?.future || [];
+	console.log("[getCanRedo] future:", future, "length:", future.length);
+	return future.length > 0;
 };
 
-const getUndoLocus = (state: RootState): string | null => {
-	const timeline = state.activeProtocol?.timeline || [];
-	if (timeline.length < 2) return null;
-	return timeline[timeline.length - 2];
+export const undo = () => (dispatch: AppDispatch) => {
+	dispatch(timelineActions.undo());
 };
 
-export const undo = () => (dispatch: AppDispatch, getState: () => RootState) => {
-	const state = getState();
-	const undoLocus = getUndoLocus(state);
-
-	if (undoLocus) {
-		dispatch(timelineActions.jump(undoLocus));
-	} else {
-		console.warn("Nothing to undo");
-	}
-};
-
-export const redo = () => (dispatch: AppDispatch, _getState: () => RootState) => {
-	// TODO: Implement redo logic
-	console.warn("Redo not implemented");
+export const redo = () => (dispatch: AppDispatch) => {
+	dispatch(timelineActions.redo());
 };
