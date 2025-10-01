@@ -138,7 +138,12 @@ export const familyTreeCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("FamilyTreeCensus"),
 		subject: NodeStageSubjectSchema,
-		edgeType: EdgeStageSubjectSchema,
+		edgeType: EdgeStageSubjectSchema.type,
+		edgeVariable: z.string().generateMock(() => getEdgeVariableId(0)),
+		genderVariable: z
+			.string()
+			.optional()
+			.generateMock(() => getNodeVariableId(1)),
 		step1: z.object({
 			text: z.string().generateMock(() => "how many family members"),
 		}),
