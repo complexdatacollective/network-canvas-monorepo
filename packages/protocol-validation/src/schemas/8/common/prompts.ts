@@ -4,7 +4,7 @@ import { getEdgeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
 import { SortOrderSchema } from "../filters";
 
-const promptSchema = z
+export const promptSchema = z
 	.object({
 		id: z.string(),
 		text: z.string(),
