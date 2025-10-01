@@ -137,10 +137,14 @@ export const oneToManyDyadCensusStage = baseStageSchema
 export const familyTreeCensusStage = baseStageSchema
 	.extend({
 		type: z.literal("FamilyTreeCensus"),
+		// The node type that is created when nodes are added
 		subject: NodeStageSubjectSchema,
-		edgeType: EdgeStageSubjectSchema.type,
-		edgeVariable: z.string().generateMock(() => getEdgeVariableId(0)),
-		genderVariable: z
+		// The edge type created when any kind of family relationship exists
+		edgeType: EdgeStageSubjectSchema,
+		// Variable on edgeType used to store the type of family relationship
+		relationshipTypeVariable: z.string().generateMock(() => getEdgeVariableId(0)),
+		// Biological sex variable present on node type. Optional, as this may not be collected.
+		sexVariable: z
 			.string()
 			.optional()
 			.generateMock(() => getNodeVariableId(1)),
