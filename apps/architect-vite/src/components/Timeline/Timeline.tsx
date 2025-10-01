@@ -115,12 +115,8 @@ const Timeline = () => {
 		[stages, handleInsertStage, handleEditStage, handleDeleteStage],
 	);
 
-	const [stateStages, setStateStages] = useState(stages);
-
 	const handleReorder = useCallback(
 		(newOrder: typeof stages) => {
-			setStateStages(newOrder);
-
 			// Find which stage moved
 			for (let i = 0; i < newOrder.length; i++) {
 				if (newOrder[i].id !== stages[i]?.id) {
@@ -155,9 +151,9 @@ const Timeline = () => {
 				initial="hide"
 				animate="show"
 				variants={lineVariants}
-				values={stateStages}
+				values={stages}
 			>
-				{stateStages.map((stage, index) => (
+				{stages.map((stage, index) => (
 					<Reorder.Item
 						tabIndex={0}
 						key={stage.id}

@@ -174,6 +174,9 @@ const createTimelineReducer = <T>(
 					}
 
 					const { past, present, timeline } = state;
+
+					// Clone present BEFORE calling reducer, because reducer mutates in place
+					const presentSnapshot = present ? structuredClone(current(present)) : null;
 					const newPresent = reducer(present as T, action);
 
 					// This is the first run
@@ -219,9 +222,8 @@ const createTimelineReducer = <T>(
 					const newTimeline = [...timeline, locus].slice(-options.limit - 1);
 
 					const validPast = [...past];
-					if (present !== undefined && present !== null) {
-						const snapshot = structuredClone(current(present));
-						validPast.push(snapshot);
+					if (presentSnapshot) {
+						validPast.push(presentSnapshot);
 					}
 
 					state.past = validPast.slice(-options.limit);
