@@ -1,5 +1,15 @@
 # @codaco/protocol-validation
 
+## 7.0.1
+
+### Patch Changes
+
+- dc865db: Second draft of family tree census
+- d795dd9: Changeset
+- 9c213e7: Add node and edge color sequences
+- f0fd48b: Implement initial family tree census
+- 018f3a0: Adjust property names
+
 ## 7.0.0
 
 ### Major Changes
