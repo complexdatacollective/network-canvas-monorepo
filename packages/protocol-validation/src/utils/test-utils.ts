@@ -25,7 +25,7 @@ export const createBaseProtocol = () => ({
 		node: {
 			person: {
 				name: "Person",
-				color: "#ff0000",
+				color: "node-color-seq-1",
 				variables: {
 					name: {
 						name: "Name",
@@ -56,7 +56,7 @@ export const createBaseProtocol = () => ({
 			},
 			colleague: {
 				name: "Colleague",
-				color: "#00ff00",
+				color: "node-color-seq-2",
 				variables: {
 					name: {
 						name: "Name",
@@ -72,7 +72,7 @@ export const createBaseProtocol = () => ({
 		edge: {
 			knows: {
 				name: "Knows",
-				color: "#0000ff",
+				color: "edge-color-seq-1",
 				variables: {
 					closeness: {
 						name: "Closeness",
@@ -91,7 +91,7 @@ export const createBaseProtocol = () => ({
 			},
 			collaborates: {
 				name: "Collaborates",
-				color: "#ff00ff",
+				color: "edge-color-seq-2",
 				variables: {
 					frequency: {
 						name: "Frequency",
