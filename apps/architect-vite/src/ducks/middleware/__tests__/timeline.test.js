@@ -99,6 +99,89 @@ describe("timeline middleware", () => {
 		});
 	});
 
+	describe("undo() action", () => {
+		it("moves to previous state", () => {
+			const nextState = times(5).reduce((state) => rewindableReducer(state, {}), undefined);
+
+			const undoState = rewindableReducer(nextState, timelineActions.undo());
+
+			expect(undoState.past.length).toBe(3);
+			expect(undoState.timeline.length).toBe(4);
+			expect(undoState.present).toEqual(nextState.past[3]);
+		});
+
+		it("moves present to future when undoing", () => {
+			const nextState = times(3).reduce((state) => rewindableReducer(state, {}), undefined);
+
+			const undoState = rewindableReducer(nextState, timelineActions.undo());
+
+			expect(undoState.future).toHaveLength(1);
+			expect(undoState.future[0]).toEqual(nextState.present);
+			expect(undoState.futureTimeline).toHaveLength(1);
+		});
+
+		it("does nothing if no past history", () => {
+			const initialState = rewindableReducer(undefined, { type: "@@INIT" });
+
+			const undoState = rewindableReducer(initialState, timelineActions.undo());
+
+			expect(undoState.past).toEqual([]);
+			expect(undoState.present).toEqual(initialState.present);
+		});
+	});
+
+	describe("redo() action", () => {
+		it("moves to next state in future", () => {
+			const nextState = times(5).reduce((state) => rewindableReducer(state, {}), undefined);
+			const undoState = rewindableReducer(nextState, timelineActions.undo());
+
+			const redoState = rewindableReducer(undoState, timelineActions.redo());
+
+			expect(redoState.past.length).toBe(4);
+			expect(redoState.timeline.length).toBe(5);
+			expect(redoState.present).toEqual(nextState.present);
+			expect(redoState.future).toHaveLength(0);
+		});
+
+		it("handles multiple redos", () => {
+			const nextState = times(5).reduce((state) => rewindableReducer(state, {}), undefined);
+			const undoState1 = rewindableReducer(nextState, timelineActions.undo());
+			const undoState2 = rewindableReducer(undoState1, timelineActions.undo());
+
+			expect(undoState2.future).toHaveLength(2);
+
+			const redoState1 = rewindableReducer(undoState2, timelineActions.redo());
+			expect(redoState1.future).toHaveLength(1);
+
+			const redoState2 = rewindableReducer(redoState1, timelineActions.redo());
+			expect(redoState2.future).toHaveLength(0);
+			expect(redoState2.present).toEqual(nextState.present);
+		});
+
+		it("does nothing if no future history", () => {
+			const nextState = times(3).reduce((state) => rewindableReducer(state, {}), undefined);
+
+			const redoState = rewindableReducer(nextState, timelineActions.redo());
+
+			expect(redoState.future).toEqual([]);
+			expect(redoState.present).toEqual(nextState.present);
+		});
+	});
+
+	describe("undo/redo interaction", () => {
+		it("clears future when making a new change after undo", () => {
+			const nextState = times(3).reduce((state) => rewindableReducer(state, {}), undefined);
+			const undoState = rewindableReducer(nextState, timelineActions.undo());
+
+			expect(undoState.future).toHaveLength(1);
+
+			const newChangeState = rewindableReducer(undoState, { type: "NEW_ACTION" });
+
+			expect(newChangeState.future).toHaveLength(0);
+			expect(newChangeState.futureTimeline).toHaveLength(0);
+		});
+	});
+
 	describe("options", () => {
 		describe("limit", () => {
 			beforeEach(() => {

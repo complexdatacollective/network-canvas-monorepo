@@ -1,5 +1,5 @@
 import type { Protocol } from "@codaco/protocol-validation";
-import { createSlice, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
+import { createSlice, current, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
 import { pick } from "es-toolkit/compat";
 import type { AppDispatch } from "~/ducks/store";
 import { assetDb } from "~/utils/assetDB";
@@ -60,25 +60,46 @@ const activeProtocolSlice = createSlice({
 	},
 	extraReducers: (builder) => {
 		builder.addDefaultCase((state, action: UnknownAction) => {
+			if (!state) return state;
+
 			// Apply sub-reducers to specific parts of the state
-			// This replaces the custom reduceReducers pattern
-			if (state?.stages) {
-				const newStages = stages(state.stages, action);
-				if (newStages) {
+			// Track if any sub-reducer made a change
+			let hasChange = false;
+
+			if (state.stages) {
+				// Use current() to get non-draft value before calling sub-reducer
+				// This ensures the sub-reducer's Immer context works correctly and can detect changes
+				const currentStages = current(state.stages);
+				const newStages = stages(currentStages, action);
+
+				// If the sub-reducer returns a different reference, it made a change
+				if (newStages !== currentStages) {
 					state.stages = newStages;
+					hasChange = true;
 				}
 			}
-			if (state?.assetManifest) {
-				const newAssetManifest = assetManifest(state.assetManifest, action);
-				if (newAssetManifest) {
+			if (state.assetManifest) {
+				const currentAssetManifest = current(state.assetManifest);
+				const newAssetManifest = assetManifest(currentAssetManifest, action);
+				if (newAssetManifest !== currentAssetManifest) {
 					state.assetManifest = newAssetManifest;
+					hasChange = true;
 				}
 			}
-			if (state?.codebook) {
-				const newCodebook = codebook(state.codebook, action);
-				if (newCodebook) {
+			if (state.codebook) {
+				const currentCodebook = current(state.codebook);
+				const newCodebook = codebook(currentCodebook, action);
+				if (newCodebook !== currentCodebook) {
 					state.codebook = newCodebook;
+					hasChange = true;
 				}
+			}
+
+			// If any sub-reducer made a change, ensure we return a new reference
+			// This is critical for the timeline middleware to detect changes
+			if (hasChange) {
+				// Force a new object reference by spreading
+				return { ...state };
 			}
 		});
 	},
@@ -105,22 +126,15 @@ export type { ActiveProtocolState };
 
 export const getCanUndo = (state: RootState): boolean => {
 	const past = state.activeProtocol?.past || [];
-	console.log("[getCanUndo] past.length:", past.length);
-	console.log(
-		"[getCanUndo] past items:",
-		past.map((p, i) => ({ index: i, isNull: p === null, hasStages: p?.stages?.length })),
-	);
 	if (past.length === 0) return false;
 
 	// Don't allow undo if it would take us back to a null state
 	const wouldBePresent = past[past.length - 1];
-	console.log("[getCanUndo] wouldBePresent:", wouldBePresent === null ? "null" : "has value");
 	return wouldBePresent !== null && wouldBePresent !== undefined;
 };
 
 export const getCanRedo = (state: RootState): boolean => {
 	const future = state.activeProtocol?.future || [];
-	console.log("[getCanRedo] future:", future, "length:", future.length);
 	return future.length > 0;
 };
 

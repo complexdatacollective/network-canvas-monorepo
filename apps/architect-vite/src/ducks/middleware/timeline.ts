@@ -1,6 +1,7 @@
 import {
 	createAction,
 	createSlice,
+	current,
 	type Draft,
 	type PayloadAction,
 	type Reducer,
@@ -65,11 +66,11 @@ const createTimelineReducer = <T>(
 					const { past, present, timeline, future = [], futureTimeline = [] } = state;
 
 					if (past.length === 0 || !present) {
-						console.warn("Nothing to undo");
 						return;
 					}
 
-					const newFuture = [present, ...(future || [])];
+					const newPresent = past[past.length - 1];
+					const newFuture = [current(present), ...current(future || [])];
 					const newFutureTimeline = [timeline[timeline.length - 1], ...(futureTimeline || [])];
 
 					const newPast = past.slice(0, -1);
@@ -120,7 +121,6 @@ const createTimelineReducer = <T>(
 
 					// Need at least one item in future to redo
 					if (!future || future.length === 0) {
-						console.warn("Nothing to redo");
 						return;
 					}
 
@@ -129,7 +129,7 @@ const createTimelineReducer = <T>(
 					const newLocus = futureTimeline[0];
 
 					// Move current present to past
-					const newPast = present ? [...past, present] : past;
+					const newPast = present ? [...past, current(present)] : past;
 					const newTimeline = [...timeline, newLocus];
 
 					state.past = newPast;
@@ -137,9 +137,6 @@ const createTimelineReducer = <T>(
 					state.timeline = newTimeline;
 					state.future = future.slice(1);
 					state.futureTimeline = futureTimeline.slice(1);
-
-					console.log("[Timeline] Redo - new timeline length:", newTimeline.length);
-					console.log("[Timeline] Redo - future length:", state.future.length);
 				})
 				.addCase(timelineActions.reset, (state) => {
 					const locus = uuid();
@@ -182,8 +179,6 @@ const createTimelineReducer = <T>(
 					// This is the first run
 					if (timeline.length === 0) {
 						const locus = uuid();
-						console.log("[Timeline] Initial locus created:", locus);
-						console.log("[Timeline] Timeline:", [locus]);
 						state.past = [];
 						state.present = newPresent as Draft<T> | undefined;
 						state.timeline = [locus];
@@ -200,7 +195,6 @@ const createTimelineReducer = <T>(
 					// If this is setActiveProtocol, reset the timeline (loading a new protocol)
 					if (action.type === "activeProtocol/setActiveProtocol") {
 						const locus = uuid();
-						console.log("[Timeline] setActiveProtocol - resetting timeline");
 						state.past = [];
 						state.present = newPresent as Draft<T> | undefined;
 						state.timeline = [locus];
@@ -226,7 +220,8 @@ const createTimelineReducer = <T>(
 
 					const validPast = [...past];
 					if (present !== undefined && present !== null) {
-						validPast.push(present);
+						const snapshot = structuredClone(current(present));
+						validPast.push(snapshot);
 					}
 
 					state.past = validPast.slice(-options.limit);
