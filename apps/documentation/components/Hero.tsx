@@ -3,7 +3,6 @@
 import { Paragraph } from "@codaco/ui";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useTheme } from "next-themes";
 import Link from "next/link";
 import { cn } from "~/lib/utils";
 import DocSearchComponent from "./DocSearchComponent";
@@ -43,8 +42,6 @@ function ProjectCard({
 
 export function Hero() {
 	const t = useTranslations();
-	const { resolvedTheme } = useTheme();
-
 	return (
 		<>
 			<motion.div
@@ -53,28 +50,34 @@ export function Hero() {
 				animate={{ opacity: 1 }}
 			>
 				<div className="flex flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
-					<div className="flex flex-col items-center justify-center md:basis-1/2 lg:basis-3/5">
+					<div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
+						<motion.div
+							initial={{ opacity: 1, y: 0, scale: 1 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							transition={{
+								type: "spring",
+								stiffness: 80,
+								delay: 0.25,
+							}}
+						>
+							<svg
+								className="h-auto w-full stroke-[currentColor] fill-[currentColor] stroke-2"
+								viewBox="0 0 512 512"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							>
+								<title>Robot</title>
+								<use href="images/robot.svg" />
+							</svg>
+						</motion.div>
+					</div>
+					<div className="flex flex-col items-center justify-center">
 						<FancyHeading variant="h1" className="text-4xl">
 							{t("Hero.title")}
 						</FancyHeading>
 						<FancyParagraph variant="lead">{t("Hero.tagline")}</FancyParagraph>
 						<DocSearchComponent className="hidden !w-full text-base lg:inline-flex" large />
 					</div>
-					{resolvedTheme !== "dark" && (
-						<div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
-							<motion.div
-								initial={{ opacity: 1, y: 0, scale: 1 }}
-								animate={{ opacity: 1, y: 0, scale: 1 }}
-								transition={{
-									type: "spring",
-									stiffness: 80,
-									delay: 0.25,
-								}}
-							>
-								<img src="images/robot.svg" className="h-auto w-36 md:w-full" alt="Robot" />
-							</motion.div>
-						</div>
-					)}
 				</div>
 				<div className="flex flex-col gap-6 md:flex-row">
 					<ProjectCard
