@@ -3,8 +3,8 @@
 import { Paragraph } from "@codaco/ui";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { cn } from "~/lib/utils";
+import { Link } from "~/navigation";
 import DocSearchComponent from "./DocSearchComponent";
 import FancyHeading from "./FancyHeading";
 import FancyParagraph from "./FancyParagraph";
