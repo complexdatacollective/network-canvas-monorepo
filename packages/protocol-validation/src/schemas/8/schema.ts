@@ -110,7 +110,7 @@ const ProtocolSchema = z
 
 					// 3d.iii. createEdge references validation
 					if ("createEdge" in prompt && prompt.createEdge) {
-						if (!protocol.codebook.edge || !Object.keys(protocol.codebook.edge).includes(prompt.createEdge)) {
+						if (!(protocol.codebook.edge && Object.keys(protocol.codebook.edge).includes(prompt.createEdge))) {
 							ctx.addIssue({
 								code: "custom" as const,
 								message: `"${prompt.createEdge}" definition for createEdge not found in codebook["edge"]`,

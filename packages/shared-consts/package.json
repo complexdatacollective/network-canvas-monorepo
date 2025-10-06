@@ -13,14 +13,19 @@
 			"require": "./dist/index.cjs"
 		}
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsc --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"clean": "rm -rf .turbo node_modules dist",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["typescript", "library"],
+	"keywords": [
+		"typescript",
+		"library"
+	],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "MIT",
 	"engines": {

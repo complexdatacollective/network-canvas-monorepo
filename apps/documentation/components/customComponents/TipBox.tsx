@@ -1,5 +1,5 @@
-import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import PopoutBox from "~/components/PopoutBox";
 import { cn } from "~/lib/utils";

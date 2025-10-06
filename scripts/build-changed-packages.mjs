@@ -6,10 +6,11 @@
  */
 
 import { execSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 function log(message) {
+	// biome-ignore lint/suspicious/noConsole: Log function
 	console.log(`🔧 ${message}`);
 }
 

@@ -88,12 +88,8 @@ export const createRouteHandler = ({
 
 			// Check if analytics is disabled
 			if (disableAnalytics) {
-				console.info("🛑 Analytics disabled. Payload not sent.");
 				try {
-					console.info("Payload:", "\n", JSON.stringify(incomingEvent, null, 2));
-				} catch (e) {
-					console.error("Error stringifying payload:", e);
-				}
+				} catch (_e) {}
 
 				return NextResponse.json({ message: "Analytics disabled" }, { status: 200 });
 			}
@@ -102,7 +98,6 @@ export const createRouteHandler = ({
 			const trackableEvent = TrackableEventSchema.safeParse(incomingEvent);
 
 			if (!trackableEvent.success) {
-				console.error("Invalid event:", trackableEvent.error);
 				return NextResponse.json({ error: "Invalid event" }, { status: 400 });
 			}
 
@@ -124,9 +119,7 @@ export const createRouteHandler = ({
 				} else {
 					throw new Error(geoData.message);
 				}
-			} catch (e) {
-				console.error("Geolocation failed:", e);
-			}
+			} catch (_e) {}
 
 			const analyticsEvent: analyticsEvent = {
 				...trackableEvent.data,
@@ -159,8 +152,6 @@ export const createRouteHandler = ({
 				if (response.status === 500) {
 					error = "Analytics platform returned an internal server error. Please check the platform logs.";
 				}
-
-				console.info(`⚠️ Analytics platform rejected event: ${error}`);
 				return Response.json(
 					{
 						error,
@@ -168,11 +159,9 @@ export const createRouteHandler = ({
 					{ status: 500 },
 				);
 			}
-			console.info("🚀 Analytics event sent to platform!");
 			return Response.json({ message: "Event forwarded successfully" });
 		} catch (e) {
 			const error = ensureError(e);
-			console.info("🚫 Internal error with sending analytics event.");
 
 			return Response.json({ error: `Error in analytics route handler: ${error.message}` }, { status: 500 });
 		}

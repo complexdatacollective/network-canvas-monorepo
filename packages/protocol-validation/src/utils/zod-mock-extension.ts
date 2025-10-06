@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: not sure how to fix this */
 import { z } from "zod";
 
 declare module "zod" {

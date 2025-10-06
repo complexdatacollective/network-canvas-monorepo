@@ -21,7 +21,9 @@
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"dependencies": {
 		"@codaco/shared-consts": "workspace:*",
 		"@faker-js/faker": "catalog:",

@@ -12,7 +12,7 @@ const validateProtocol = async (protocol: VersionedProtocol) => {
 	}
 
 	try {
-		return VersionedProtocolSchema.safeParse(protocol);
+		return await VersionedProtocolSchema.safeParseAsync(protocol);
 	} catch (e) {
 		const error = ensureError(e);
 

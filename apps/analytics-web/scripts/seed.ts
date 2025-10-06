@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
+
 dotenv.config();
 
 import { eventTypes } from "@codaco/analytics/src";
 import { faker } from "@faker-js/faker";
-import { type EventInsertType, db } from "~/db/db";
+import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
 
 const installationIds: string[] = [];
@@ -12,9 +13,9 @@ for (let i = 0; i < 20; i++) {
 }
 
 async function seedEvents() {
-	console.info("Starting to seed events");
-
 	try {
+		const eventPromises = [];
+
 		for (let i = 0; i < 100; i++) {
 			const type = faker.helpers.arrayElement([...eventTypes, "Error"]);
 			const installationId = faker.helpers.arrayElement(installationIds);
@@ -49,14 +50,16 @@ async function seedEvents() {
 				cause,
 			};
 
-			await db
-				.insert(eventsTable)
-				.values(type === "Error" ? errorEvent : noneErrorEvent)
-				.returning();
+			eventPromises.push(
+				db
+					.insert(eventsTable)
+					.values(type === "Error" ? errorEvent : noneErrorEvent)
+					.returning(),
+			);
 		}
-	} catch (error) {
-		console.error("Error seeding events", error);
-	}
+
+		await Promise.all(eventPromises);
+	} catch (_error) {}
 
 	process.exit();
 }

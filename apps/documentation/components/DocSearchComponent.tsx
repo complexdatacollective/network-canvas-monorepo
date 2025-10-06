@@ -8,21 +8,58 @@ import { useLocale, useTranslations } from "next-intl";
 import { env } from "~/env";
 import { cn } from "~/lib/utils";
 
-const DocSearchComponent = ({
-	className,
-	large,
-}: {
-	className?: string;
-	large?: boolean;
-}) => {
+const useDocSearchTranslations = () => {
+	const t = useTranslations("DocSearch");
+	return {
+		button: {
+			buttonText: t("button.buttonText"),
+			buttonAriaLabel: t("button.buttonAriaLabel"),
+		},
+		modal: {
+			searchBox: {
+				clearButtonTitle: t("modal.searchBox.resetButtonTitle"),
+				clearButtonAriaLabel: t("modal.searchBox.resetButtonAriaLabel"),
+				closeButtonText: t("modal.searchBox.cancelButtonText"),
+				closeButtonAriaLabel: t("modal.searchBox.cancelButtonAriaLabel"),
+			},
+			startScreen: {
+				recentSearchesTitle: t("modal.startScreen.recentSearchesTitle"),
+				noRecentSearchesText: t("modal.startScreen.noRecentSearchesText"),
+				saveRecentSearchButtonTitle: t("modal.startScreen.saveRecentSearchButtonTitle"),
+				removeRecentSearchButtonTitle: t("modal.startScreen.removeRecentSearchButtonTitle"),
+				favoriteSearchesTitle: t("modal.startScreen.favoriteSearchesTitle"),
+				removeFavoriteSearchButtonTitle: t("modal.startScreen.removeFavoriteSearchButtonTitle"),
+			},
+			errorScreen: {
+				titleText: t("modal.errorScreen.titleText"),
+				helpText: t("modal.errorScreen.helpText"),
+			},
+			footer: {
+				selectText: t("modal.footer.selectText"),
+				selectKeyAriaLabel: t("modal.footer.selectKeyAriaLabel"),
+				navigateText: t("modal.footer.navigateText"),
+				navigateUpKeyAriaLabel: t("modal.footer.navigateUpKeyAriaLabel"),
+				navigateDownKeyAriaLabel: t("modal.footer.navigateDownKeyAriaLabel"),
+				closeText: t("modal.footer.closeText"),
+				closeKeyAriaLabel: t("modal.footer.closeKeyAriaLabel"),
+			},
+			noResultsScreen: {
+				noResultsText: t("modal.noResultsScreen.noResultsText"),
+				suggestedQueryText: t("modal.noResultsScreen.suggestedQueryText"),
+				reportMissingResultsText: t("modal.noResultsScreen.reportMissingResultsText"),
+				reportMissingResultsLinkText: t("modal.noResultsScreen.reportMissingResultsLinkText"),
+			},
+		},
+	};
+};
+
+const DocSearchComponent = ({ className, large }: { className?: string; large?: boolean }) => {
 	const locale = useLocale();
 	const t = useTranslations("DocSearch");
+	const translations = useDocSearchTranslations();
 
-	// This is honestly some of the biggest bullshit I've ever had to deal with.
-	// Algolia - fix your shit.
 	const madHax = () => {
 		const element = document.getElementsByClassName("DocSearch-Button")[0] as HTMLButtonElement;
-
 		if (element) {
 			element.click();
 		}
@@ -35,7 +72,6 @@ const DocSearchComponent = ({
 				className={cn(
 					inputVariants({ size: large ? "2xl" : "default" }),
 					"pointer-events-auto flex w-full items-center justify-between px-4",
-					// 'md:w-auto',
 					className,
 				)}
 				onClick={madHax}
@@ -59,47 +95,7 @@ const DocSearchComponent = ({
 			</button>
 			<div className="hidden">
 				<DocSearch
-					translations={{
-						button: {
-							buttonText: t("button.buttonText"),
-							buttonAriaLabel: t("button.buttonAriaLabel"),
-						},
-						modal: {
-							searchBox: {
-								clearButtonTitle: t("modal.searchBox.resetButtonTitle"),
-								clearButtonAriaLabel: t("modal.searchBox.resetButtonAriaLabel"),
-								closeButtonText: t("modal.searchBox.cancelButtonText"),
-								closeButtonAriaLabel: t("modal.searchBox.cancelButtonAriaLabel"),
-							},
-							startScreen: {
-								recentSearchesTitle: t("modal.startScreen.recentSearchesTitle"),
-								noRecentSearchesText: t("modal.startScreen.noRecentSearchesText"),
-								saveRecentSearchButtonTitle: t("modal.startScreen.saveRecentSearchButtonTitle"),
-								removeRecentSearchButtonTitle: t("modal.startScreen.removeRecentSearchButtonTitle"),
-								favoriteSearchesTitle: t("modal.startScreen.favoriteSearchesTitle"),
-								removeFavoriteSearchButtonTitle: t("modal.startScreen.removeFavoriteSearchButtonTitle"),
-							},
-							errorScreen: {
-								titleText: t("modal.errorScreen.titleText"),
-								helpText: t("modal.errorScreen.helpText"),
-							},
-							footer: {
-								selectText: t("modal.footer.selectText"),
-								selectKeyAriaLabel: t("modal.footer.selectKeyAriaLabel"),
-								navigateText: t("modal.footer.navigateText"),
-								navigateUpKeyAriaLabel: t("modal.footer.navigateUpKeyAriaLabel"),
-								navigateDownKeyAriaLabel: t("modal.footer.navigateDownKeyAriaLabel"),
-								closeText: t("modal.footer.closeText"),
-								closeKeyAriaLabel: t("modal.footer.closeKeyAriaLabel"),
-							},
-							noResultsScreen: {
-								noResultsText: t("modal.noResultsScreen.noResultsText"),
-								suggestedQueryText: t("modal.noResultsScreen.suggestedQueryText"),
-								reportMissingResultsText: t("modal.noResultsScreen.reportMissingResultsText"),
-								reportMissingResultsLinkText: t("modal.noResultsScreen.reportMissingResultsLinkText"),
-							},
-						},
-					}}
+					translations={translations}
 					appId={env.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID}
 					indices={[
 						{

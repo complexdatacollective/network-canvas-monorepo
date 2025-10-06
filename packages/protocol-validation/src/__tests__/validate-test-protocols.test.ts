@@ -17,8 +17,6 @@ describe("Test protocols", () => {
 			protocols.push(protocol);
 			protocolFilenames.push(filename);
 		}
-
-		console.log(`Loaded ${protocols.length} protocols for testing`);
 	}, 300000);
 
 	it("should have loaded protocols", () => {
@@ -27,31 +25,24 @@ describe("Test protocols", () => {
 
 	// Use a single test with detailed logging for each protocol
 	it("should validate each protocol individually with detailed logging", async () => {
-		const totalCount = protocols.length;
+		const _totalCount = protocols.length;
 
 		for (let i = 0; i < protocols.length; i++) {
 			// biome-ignore lint/style/noNonNullAssertion: duh
 			const protocol = protocols[i]!;
-			const filename = protocolFilenames[i];
+			const _filename = protocolFilenames[i];
 			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
 			// Earlier versions used semver strings which should be ignored
 			if (typeof protocol.schemaVersion !== "number" || protocol.schemaVersion < 7 || protocol.schemaVersion > 8) {
-				console.log(`Skipping protocol ${filename} (schema version ${protocol.schemaVersion})`);
 				continue;
 			}
 
-			console.log(`\n[${i + 1}/${totalCount}] Validating protocol: ${filename}`);
-
 			const startTime = Date.now();
 			const result = await validateProtocol(protocol);
-			const duration = Date.now() - startTime;
-
-			console.log(`Validation completed in ${duration}ms`);
-			console.log(`Result: ${result.success ? "✅ Valid" : "❌ Invalid"}`);
+			const _duration = Date.now() - startTime;
 
 			// If there are errors, log them (using unified errors array)
 			if (!result.success) {
-				console.log(`Validation errors: ${JSON.stringify(result.error || "No error details available", null, 2)}`);
 			}
 
 			// Test each protocol individually but within the same test
@@ -62,10 +53,7 @@ describe("Test protocols", () => {
 				const migratedProtocol = migrateProtocol(protocol);
 				const migrationResult = await validateProtocol(migratedProtocol);
 
-				console.log(`Migration result: ${migrationResult.success ? "✅ Valid" : "❌ Invalid"}`);
-
 				if (!migrationResult.success) {
-					console.log(`Migration validation errors: ${JSON.stringify(migrationResult.error, null, 2)}`);
 				}
 
 				expect.soft(migrationResult.success).toBe(true);

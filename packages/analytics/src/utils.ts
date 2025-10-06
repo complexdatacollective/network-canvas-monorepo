@@ -11,6 +11,7 @@ export function ensureError(value: unknown): Error {
 	try {
 		stringified = JSON.stringify(value);
 	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: logging
 		console.error(e);
 	}
 

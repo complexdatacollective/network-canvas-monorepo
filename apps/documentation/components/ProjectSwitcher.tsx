@@ -1,8 +1,9 @@
 "use client";
 
 import { Heading, Paragraph, Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@codaco/ui";
-import { useLocale, useTranslations } from "next-intl";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { forwardRef } from "react";
 import { type Locale, type Project, projects } from "~/app/types";
 import { cn } from "~/lib/utils";
@@ -10,11 +11,11 @@ import { useRouter } from "~/navigation";
 
 const getImageForProject = (project: Project) => {
 	if (project === "desktop") {
-		return <img src="/images/desktop.png" alt={project} className="h-10 w-auto" />;
+		return <Image src="/images/desktop.png" alt={project} className="h-10 w-auto" width={40} height={40} />;
 	}
 
 	if (project === "fresco") {
-		return <img src="/images/fresco.png" alt={project} className="h-10 w-auto" />;
+		return <Image src="/images/fresco.png" alt={project} className="h-10 w-auto" width={40} height={40} />;
 	}
 };
 

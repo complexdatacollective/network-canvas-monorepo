@@ -1,7 +1,7 @@
-import type matter from "gray-matter";
 import type fs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 import { join, sep } from "node:path";
+import type matter from "gray-matter";
 import type { Locale, MetadataFile, SidebarFolder, SidebarPage, SidebarProject } from "~/app/types";
 import { MetadataFileSchema } from "~/app/types";
 import { env } from "~/env";
