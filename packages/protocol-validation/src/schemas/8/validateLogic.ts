@@ -1,4 +1,5 @@
 import { get, isObject } from "es-toolkit/compat";
+import assert from "node:assert";
 import Validator from "~/validation/Validator";
 import {
 	checkDuplicateNestedId,
@@ -202,8 +203,10 @@ export const validateLogic = (protocol: Protocol) => {
 	// Check this variable exists in the stage subject codebook
 	v.addValidation<string>(
 		"prompts[].variable",
-		// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
-		(variable, subject) => getVariablesForSubject(codebook, subject!)[variable],
+		(variable, subject) => {
+			assert(subject, "Subject not defined for stage.");
+			return !!getVariablesForSubject(codebook, subject)[variable];
+		},
 		(variable, subject) => {
 			if (!subject) {
 				return `Subject not defined for stage. Variable: "${variable}"`;
@@ -222,7 +225,7 @@ export const validateLogic = (protocol: Protocol) => {
 	v.addValidation<string>(
 		"prompts[].otherVariable",
 		// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
-		(otherVariable, subject) => getVariablesForSubject(codebook, subject!)[otherVariable],
+		(otherVariable, subject) => !!getVariablesForSubject(codebook, subject!)[otherVariable],
 		(otherVariable, subject) => {
 			if (!subject) {
 				return `Subject not defined for stage. Variable: "${otherVariable}"`;
@@ -261,7 +264,7 @@ export const validateLogic = (protocol: Protocol) => {
 				// Keypath = [ 'protocol', 'stages', '[{stageIndex}]', 'prompts', '[{promptIndex}]', 'edgeVariable' ]
 				const path = `stages.${keypath[2]}.prompts${keypath[4]}.createEdge`;
 				const createEdgeForPrompt = get(protocol, path);
-				return getVariablesForSubject(codebook, {
+				return !!getVariablesForSubject(codebook, {
 					entity: "edge",
 					type: createEdgeForPrompt,
 				})[edgeVariable];
@@ -282,7 +285,7 @@ export const validateLogic = (protocol: Protocol) => {
 					type: createEdgeForPrompt,
 				})[edgeVariable];
 
-				return codebookEdgeVariable.type === "ordinal";
+				return codebookEdgeVariable?.type === "ordinal";
 			},
 			(edgeVariable) => `"${edgeVariable}" is not of type 'ordinal'.`,
 		],
@@ -304,7 +307,7 @@ export const validateLogic = (protocol: Protocol) => {
 			}
 
 			// biome-ignore lint/style/noNonNullAssertion: This stage type will always have a stage subject
-			return getVariablesForSubject(codebook, subject!)[variable];
+			return !!getVariablesForSubject(codebook, subject!)[variable];
 		},
 		(variable, subject) => {
 			if (isObject(variable)) {

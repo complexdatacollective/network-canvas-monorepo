@@ -66,10 +66,10 @@ const DocSearchComponent = ({
 						},
 						modal: {
 							searchBox: {
-								resetButtonTitle: t("modal.searchBox.resetButtonTitle"),
-								resetButtonAriaLabel: t("modal.searchBox.resetButtonAriaLabel"),
-								cancelButtonText: t("modal.searchBox.cancelButtonText"),
-								cancelButtonAriaLabel: t("modal.searchBox.cancelButtonAriaLabel"),
+								clearButtonTitle: t("modal.searchBox.resetButtonTitle"),
+								clearButtonAriaLabel: t("modal.searchBox.resetButtonAriaLabel"),
+								closeButtonText: t("modal.searchBox.cancelButtonText"),
+								closeButtonAriaLabel: t("modal.searchBox.cancelButtonAriaLabel"),
 							},
 							startScreen: {
 								recentSearchesTitle: t("modal.startScreen.recentSearchesTitle"),
@@ -91,7 +91,6 @@ const DocSearchComponent = ({
 								navigateDownKeyAriaLabel: t("modal.footer.navigateDownKeyAriaLabel"),
 								closeText: t("modal.footer.closeText"),
 								closeKeyAriaLabel: t("modal.footer.closeKeyAriaLabel"),
-								searchByText: t("modal.footer.searchByText"),
 							},
 							noResultsScreen: {
 								noResultsText: t("modal.noResultsScreen.noResultsText"),
@@ -102,13 +101,17 @@ const DocSearchComponent = ({
 						},
 					}}
 					appId={env.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID}
-					indexName={env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME}
+					indices={[
+						{
+							name: env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
+							searchParameters: {
+								filters: `lang:${locale}`,
+							},
+						},
+					]}
 					apiKey={env.NEXT_PUBLIC_ALGOLIA_API_KEY}
 					insights={true}
 					placeholder="Search documentation"
-					searchParameters={{
-						filters: `lang:${locale}`,
-					}}
 				/>
 			</div>
 		</>

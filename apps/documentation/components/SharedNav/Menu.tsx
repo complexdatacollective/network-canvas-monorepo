@@ -1,12 +1,37 @@
 import { Heading, Paragraph, buttonVariants, headingVariants } from "@codaco/ui";
 import * as NavigationMenu from "@radix-ui/react-navigation-menu";
 import { ArrowLeftCircle, ChevronDown } from "lucide-react";
+import type { Route } from "next";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 
-const links = [
+type BaseMenu = {
+	translationKey: string;
+	style?: "button";
+};
+
+type MenuWithHref = BaseMenu & {
+	href: Route;
+	menu?: undefined;
+};
+
+type MenuWithSubMenu = BaseMenu & {
+	menu: SubMenu;
+	href?: undefined;
+};
+
+type SubMenu = {
+	titleTranslationKey: string;
+	descriptionTranslationKey: string;
+	href: Route;
+	image: string;
+}[];
+
+type MenuItem = MenuWithHref | MenuWithSubMenu;
+
+const links: MenuItem[] = [
 	{
 		translationKey: "community",
 		href: "https://community.networkcanvas.com",
@@ -125,13 +150,6 @@ export const NavigationMenuDemo = () => {
 	);
 };
 
-type SubMenu = {
-	titleTranslationKey: string;
-	descriptionTranslationKey: string;
-	href: string;
-	image: string;
-}[];
-
 export const NavigationMenuMobile = () => {
 	const t = useTranslations("SharedNavigation");
 	const [submenu, setSubmenu] = useState<SubMenu>([]);
@@ -140,7 +158,7 @@ export const NavigationMenuMobile = () => {
 		return (
 			<ul className={"flex flex-col items-center justify-center gap-4 md:hidden"}>
 				{links.map((link, _i) => {
-					if (link.style === "button") {
+					if (link.style === "button" && link.href) {
 						return (
 							<li key={link.translationKey}>
 								<Link

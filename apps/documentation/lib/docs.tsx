@@ -1,9 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join, sep } from "node:path";
 import { Button, Details, Heading, ListItem, OrderedList, Paragraph, Summary, UnorderedList } from "@codaco/ui";
 import rehypeFigure from "@microflash/rehype-figure";
-import type { LinkProps } from "next/link";
-import type { ReactNode } from "react";
+import { existsSync, readFileSync } from "node:fs";
+import { join, sep } from "node:path";
+import type { ComponentProps, ReactNode } from "react";
 import * as prod from "react/jsx-runtime";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
@@ -235,7 +234,7 @@ export async function getDocumentForPath({
 				),
 				pre: Pre,
 				button: (props) => <Button variant="default" {...props} />,
-				link: (props: LinkProps & { className?: string; children: ReactNode }) => {
+				link: (props: ComponentProps<typeof Link> & { className?: string; children: ReactNode }) => {
 					return <Link {...props} />;
 				},
 				tipbox: (props: TipBoxProps) => {

@@ -16,10 +16,10 @@ export const getRuleEntityCodebookDefinition = (rule: FilterRule, codebook: Code
 
 export const getVariablesForSubject = (codebook: Codebook, subject: StageSubject) => {
 	if (subject && subject.entity === "ego") {
-		return get(codebook, ["ego", "variables"], {});
+		return get(codebook, ["ego", "variables"], {} as NonNullable<EntityDefinition["variables"]>);
 	}
 
-	return get(codebook, [subject.entity, subject.type, "variables"], {});
+	return get(codebook, [subject.entity, subject.type, "variables"], {} as NonNullable<EntityDefinition["variables"]>);
 };
 
 export const getVariableNameFromID = (codebook: Codebook, subject: StageSubject, variableID: string) => {

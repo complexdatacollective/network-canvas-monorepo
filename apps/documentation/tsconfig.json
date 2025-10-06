@@ -12,6 +12,6 @@
 		],
 		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
 	},
-	"include": ["**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+	"include": ["**/*.cjs", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
 	"exclude": ["node_modules"]
 }

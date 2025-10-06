@@ -1,6 +1,7 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@codaco/ui";
 import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
+import type { Route } from "next";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,8 +40,8 @@ const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
 		return a.label.localeCompare(b.label);
 	});
 
-export function processSourceFile(type: "page", locale: Locale, sourceFile: string): string;
-export function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): string | undefined;
+export function processSourceFile(type: "page", locale: Locale, sourceFile: string): Route;
+export function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): Route | undefined;
 
 // Used by sidebar to process sourceFile values into usable routes
 export function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
@@ -66,7 +67,7 @@ export function processSourceFile(type: "folder" | "page", locale: Locale, sourc
 			.join("/");
 	}
 
-	return `/${locale}/${returnPath}`;
+	return `/${locale}/${returnPath}` as Route;
 }
 
 const SidebarFolder = ({
@@ -77,7 +78,7 @@ const SidebarFolder = ({
 	children,
 }: {
 	label: string;
-	href?: string;
+	href?: Route | URL;
 	defaultOpen?: boolean;
 	alwaysOpen?: boolean;
 	children?: React.ReactNode;
@@ -158,7 +159,7 @@ const SidebarLink = ({
 	label,
 	sidebarContainerRef,
 }: {
-	href: string;
+	href: Route | URL;
 	label: string;
 	sidebarContainerRef: RefObject<HTMLDivElement | null>;
 }) => {
