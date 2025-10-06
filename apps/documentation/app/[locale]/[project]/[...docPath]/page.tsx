@@ -1,11 +1,10 @@
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { Locale } from "~/app/types";
 import Article from "~/components/article";
 import { getDocsForRouteSegment, getDocumentForPath } from "~/lib/docs";
 
 type PageParams = {
-	locale: Locale;
+	locale: string;
 	project: string;
 	docPath: string[];
 };
@@ -22,10 +21,10 @@ export async function generateMetadata(props: { params: Promise<PageParams> }) {
 	return { title: document?.frontmatter.title };
 }
 
-export function generateStaticParams({
+export async function generateStaticParams({
 	params,
 }: {
-	params: Omit<PageParams, "docPath">;
+	params: PageParams;
 }) {
 	const { locale, project } = params;
 	const docPathSegmentsForRoute = getDocsForRouteSegment({

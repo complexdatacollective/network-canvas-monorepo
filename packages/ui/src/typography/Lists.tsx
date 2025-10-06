@@ -1,7 +1,7 @@
 import { cn } from "../utils";
 import { baseParagraphClasses } from "./Paragraph";
 
-export type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
+type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
 	children: React.ReactNode;
 	className?: string;
 };
@@ -12,7 +12,7 @@ export function UnorderedList({ children, className }: UnorderedListProps) {
 	return <ul className={cn(listContainerClasses, "list-disc", className)}>{children}</ul>;
 }
 
-export type OrderedListProps = React.HTMLAttributes<HTMLOListElement> & {
+type OrderedListProps = React.HTMLAttributes<HTMLOListElement> & {
 	children: React.ReactNode;
 	className?: string;
 };
@@ -21,7 +21,7 @@ export function OrderedList({ children, className }: OrderedListProps) {
 	return <ol className={cn(listContainerClasses, "list-decimal", className)}>{children}</ol>;
 }
 
-export type ListItemProps = React.HTMLAttributes<HTMLLIElement> & {
+type ListItemProps = React.HTMLAttributes<HTMLLIElement> & {
 	children: React.ReactNode;
 	className?: string;
 };

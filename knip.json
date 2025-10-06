@@ -1,0 +1,12 @@
+{
+	"$schema": "https://unpkg.com/knip@latest/schema.json",
+	"workspaces": {
+		"packages/ui": {},
+		"apps/analytics-web": {},
+		"packages/analytics": {},
+		"apps/documentation": {
+			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
+		},
+		"packages/protocol-validation": {}
+	}
+}

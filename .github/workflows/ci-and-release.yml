@@ -63,7 +63,7 @@ jobs:
           path: packages/shared-consts/dist
           retention-days: 1
 
-  lint-and-format:
+  lint:
     needs: setup
     runs-on: ubuntu-latest
     steps:
@@ -91,10 +91,13 @@ jobs:
           path: packages/shared-consts/dist
       
       - name: Check formatting
-        run: pnpm format-and-lint
+        run: pnpm lint
       
       - name: Typecheck
-        run: pnpm typecheck-all
+        run: pnpm typecheck
+
+      - name: Knip
+        run: pnpm knip
 
   test:
     needs: setup
@@ -143,7 +146,7 @@ jobs:
       pull-requests: write
     # Only run on main branch pushes (not PRs) and only if lint and test jobs succeed
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [setup, lint-and-format, test]
+    needs: [setup, lint, test]
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_DOCS_PATH: "docs"

@@ -22,7 +22,7 @@ pnpm test
 pnpm test:watch
 
 # Type check all packages
-pnpm typecheck-all
+pnpm typecheck
 ```
 
 ### Package-specific Commands
@@ -40,10 +40,10 @@ pnpm --filter "./apps/*" dev
 ### Code Quality
 ```bash
 # Check formatting and linting
-pnpm run format-and-lint
+pnpm run lint
 
 # Auto-fix formatting and linting issues
-pnpm run format-and-lint:fix
+pnpm run lint:fix
 ```
 
 ### Version Management
