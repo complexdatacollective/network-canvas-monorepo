@@ -3,7 +3,6 @@
 import { Slot } from "@radix-ui/react-slot";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { motion } from "motion/react";
 import React from "react";
 
 import { cn } from "../utils";
@@ -55,7 +54,5 @@ const Heading = React.forwardRef<HTMLElement, HeadingProps>(
 );
 
 Heading.displayName = "Heading";
-
-export const MotionHeading = motion.create(Heading);
 
 export default Heading;

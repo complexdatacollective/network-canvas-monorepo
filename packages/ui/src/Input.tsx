@@ -27,7 +27,7 @@ export const inputVariants = cva(inputClasses, {
 	},
 });
 
-export type InputProps = {
+type InputProps = {
 	size?: VariantProps<typeof inputVariants>["size"];
 	inputClassName?: string;
 	label?: string;

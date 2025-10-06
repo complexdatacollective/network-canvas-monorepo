@@ -91,10 +91,10 @@ jobs:
           path: packages/shared-consts/dist
       
       - name: Check formatting
-        run: pnpm format-and-lint
+        run: pnpm lint
       
       - name: Typecheck
-        run: pnpm typecheck-all
+        run: pnpm typecheck
 
   test:
     needs: setup

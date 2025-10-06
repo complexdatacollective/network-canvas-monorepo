@@ -7,9 +7,9 @@
 - `pnpm test:watch`: Run tests in watch mode
 
 ## Code Quality Commands
-- `pnpm format-and-lint`: Check formatting and linting with Biome
-- `pnpm format-and-lint:fix`: Fix formatting and linting issues automatically
-- `pnpm typecheck-all`: Run TypeScript type checking across all packages
+- `pnpm lint`: Check formatting and linting with Biome
+- `pnpm lint:fix`: Fix formatting and linting issues automatically
+- `pnpm typecheck`: Run TypeScript type checking across all packages
 
 ## Protocol Validation Package Specific
 From `packages/protocol-validation/`:

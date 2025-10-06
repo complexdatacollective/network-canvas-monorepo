@@ -40,11 +40,11 @@ const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
 		return a.label.localeCompare(b.label);
 	});
 
-export function processSourceFile(type: "page", locale: Locale, sourceFile: string): Route;
-export function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): Route | undefined;
+function processSourceFile(type: "page", locale: Locale, sourceFile: string): Route;
+function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): Route | undefined;
 
 // Used by sidebar to process sourceFile values into usable routes
-export function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
+function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
 	if (!sourceFile) return;
 	// We can't use path.sep because the webpack node shim always returns '/'.
 	// Because this might be running on Windows, we need to use a regex to split

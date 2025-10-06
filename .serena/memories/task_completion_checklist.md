@@ -3,7 +3,7 @@
 ## When a task is completed, ensure:
 
 ### Code Quality
-1. **Run formatting and linting**: `pnpm format-and-lint:fix`
+1. **Run formatting and linting**: `pnpm lint:fix`
 2. **Type checking**: Ensure no TypeScript errors
 3. **Tests pass**: Run `pnpm test` to ensure all tests pass
 4. **No `any` types**: Verify no TypeScript `any` types were introduced

@@ -2,34 +2,11 @@ import type matter from "gray-matter";
 import type fs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 import { join, sep } from "node:path";
-import rehypeStringify from "rehype-stringify";
-import remarkParse from "remark-parse";
-import remarkRehype from "remark-rehype";
-import { unified } from "unified";
 import type { Locale, MetadataFile, SidebarFolder, SidebarPage, SidebarProject } from "~/app/types";
 import { MetadataFileSchema } from "~/app/types";
 import { env } from "~/env";
 
 export const relativePathToDocs = join(process.cwd(), env.NEXT_PUBLIC_DOCS_PATH);
-
-// Converts markdown to text which we use to push to Algolia
-export async function markdownToText(markdown: string) {
-	const result = await unified().use(remarkParse).use(remarkRehype).use(rehypeStringify).process(markdown);
-
-	return result
-		.toString()
-		.replace(/<[^>]*>/g, "")
-		.replace(/\.\.\//g, ""); // remove HTML tags and relative paths
-}
-
-// Converts text to URL eg: Network Canvas => network-canvas
-export function convertToUrlText(text: string): string {
-	const lowercaseText = text.toLowerCase();
-	const hyphenatedText = lowercaseText.replace(/\s+/g, "-");
-	const cleanedText = hyphenatedText.replace(/[^a-z0-9-\u0400-\u04FF]/g, "");
-
-	return cleanedText;
-}
 
 /**
  * Given a path, return an array for each path segment, inserting 'children'
