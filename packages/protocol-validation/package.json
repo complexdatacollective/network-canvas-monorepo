@@ -33,7 +33,6 @@
 		"@codaco/tsconfig": "workspace:*",
 		"@types/gunzip-maybe": "^1.4.2",
 		"@types/tar-stream": "^3.1.4",
-		"chalk": "^5.6.2",
 		"dotenv": "catalog:",
 		"gunzip-maybe": "^1.4.2",
 		"jszip": "^3.10.1",
