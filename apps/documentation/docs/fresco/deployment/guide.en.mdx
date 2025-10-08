@@ -1,6 +1,6 @@
 ---
 title: Deployment Guide
-date: 22nd July 2025
+date: 8th October 2025
 navOrder: 1
 ---
 
@@ -35,8 +35,8 @@ To deploy Fresco, we will use the following services and technologies:
 - **PostgreSQL**: A powerful, open-source relational database system. Fresco uses PostgreSQL to store data about your study, participants, and responses.
 - **UploadThing**: A cloud-based file storage service that Fresco uses to store protocol assets such as media files.
 
-To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://vercel.com" target="_blank">Vercel</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use and has a generous free tier that is suitable for
-most research projects. It is not a requirement to use Vercel to host Fresco, but it is the simplest way to get started and is the method we will be using in this guide.
+To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://www.netlify.com/" target="_blank">Netlify</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use and has a generous free tier that is suitable for
+most research projects. It is not a requirement to use Netlify to host Fresco, but it is the simplest way to get started and is the method we will be using in this guide.
 
 ## How much does deploying Fresco cost?
 
@@ -65,62 +65,48 @@ Once you have completed this step, you will be redirected to your forked reposit
 
 ## Create a database
 
-Fresco uses a PostgreSQL database to store data about your study, participants, and responses. We will next create a new database using the Vercel platform.
+Fresco uses a PostgreSQL database to store data about your study, participants, and responses. We will next create a new database using the <a href="https://www.neon.com/" target="_blank">Neon</a> platform.
 
-1. Visit the <a href="https://vercel.com" target="_blank">Vercel website</a> and click **Continue with GitHub** to sign in. You will be redirected to the Vercel dashboard.
+1. Visit the <a href="https://neon.com" target="_blank">Neon website</a> and click **Login**. We recommend connecting to Neon with GitHub by clicking the **GitHub** button. You will be redirected to the Neon dashboard.
 
-2. From your dashboard, select **Storage** from the top navigation bar. Then, select the **Neon Serverless Postgres** option.
+2. From your dashboard, select **Create Project**.
 
-   ![Create a Neon database](/assets/img/fresco-images/vercel-db-1.png)
+   ![Create a Neon database](/assets/img/fresco-images/neon-db-1.png)
 
-3. Choose a region from the dropdown. We recommend choosing the region nearest to you. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **Continue**.
+3. Give your database a name and choose a region from the dropdown. We recommend choosing the region nearest to you. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **Create**. Your database will be generated and you will be redirected to the Project dashboard.
 
-   ![Choose a region and installation plan](/assets/img/fresco-images/vercel-db-2.png)
+   ![Create database](/assets/img/fresco-images/neon-db-2.png)
 
-4. Give your database a name and then click **Create**. Your database will be generated. Click **Done** to return to the database dashboard.
+5. Under the heading 'Connect to your databse' click **Connect**. 
 
-   ![Create database](/assets/img/fresco-images/vercel-db-3.png)
+   ![Click Connect](/assets/img/fresco-images/neon-db-3.png)
 
-5. Under the heading 'quickstart' you will see a connection string for the database. Click the `.env.local` tab, and then click **"Copy Snippet"** to copy the environment variables to your clipboard.
+6. Choose **Prisma** from the dropdown and select the **.env** tab. You will see environment variables for your database. Click **"Copy Snippet"** to copy the environment variables to your clipboard.
 
-   ![Click the `.env.local` tab, and copy the environment variables](/assets/img/fresco-images/vercel-storage-env.png)
+   ![Select Prisma and click the `.env` tab, and copy the environment variables](/assets/img/fresco-images/neon-db-4.png)
 
-6. Paste the environment variables into a text file or notes app for safekeeping. You will need these environment variables later in the deployment process. The file should look something like this:
+7. Paste the environment variables into a text file or notes app for safekeeping. You will need these environment variables later in the deployment process. 
 
-   ```bash
+<Tipbox danger>
 
-   # Recommended for most uses
-   DATABASE_URL=******************
+You **must delete the "#"** in front of `DATABSE_URL_UNPOOLED`. Make this edit in the text file or notes app where you pasted these variables.
 
-   # For uses requiring a connection without pgbouncer
-   DATABASE_URL_UNPOOLED=******************
+The edited file should look something like this:
 
-   # Parameters for constructing your own connection string
-   PGHOST=******************
-   PGHOST_UNPOOLED=******************
-   PGUSER=default
-   PGDATABASE=******************
-   PGPASSWORD******************
+```bash
 
-   # Parameters for Vercel Postgres Templates
-   POSTGRES_URL=******************
-   POSTGRES_URL_NON_POOLING=******************
-   POSTGRES_USER=******************
-   POSTGRES_HOST=******************
-   POSTGRES_PASSWORD=******************
-   POSTGRES_DATABASE=******************
-   POSTGRES_URL_NO_SSL=******************
-   POSTGRES_PRISMA_URL=******************
+DATABASE_URL="postgresql://neondb_owner:***************@ep-wispy-thunder-aduy7cf8-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# uncomment next line if you use Prisma <5.10
+DATABASE_URL_UNPOOLED="postgresql://neondb_owner:*************@ep-wispy-thunder-aduy7cf8.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
-   # Neon Auth environment variables for Next.js
-   NEXT_PUBLIC_STACK_PROJECT_ID=****************************
-   NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=****************************************
-   STACK_SECRET_SERVER_KEY=***********************
-   ```
+```
 
-## Create a project on Vercel
+</Tipbox>
 
-Next, we will deploy your fork to the Vercel platform, using the services we created previously. You can use the "hobby" tier (which is free) or paid plan (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
+
+## Create a project on Netlify
+
+Next, we will deploy your fork to the Netlify platform, using the services we created previously. You can use the Free tier or paid plan (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
 
 <Tipbox>
 
@@ -128,27 +114,35 @@ Should you run into any issues, please consult the [troubleshooting](/en/fresco/
 
 </Tipbox>
 
-1. Click <a href="https://vercel.com/new" target="_blank">here</a> to create a new project on Vercel. Sign in using GitHub, if you are not already signed in.
+1. Click <a href="https://app.netlify.com/start" target="_blank">here</a> to create a new project on Netlify. Sign in using GitHub, if you are not already signed in.
 
-2. Find the name of your Fresco instance from the list of your git repositories and click **"Import"**. You will be taken to the "Configure Project" screen.
+2. Under the **Let's deploy your project with...** header, select **GitHub**.
 
-   ![Import Git Repository](/assets/img/fresco-images/vercel2.png)
+   ![Import Git Repository](/assets/img/fresco-images/netlify-1.png)
 
-3. Open the text editor or notes app where you stored your environment variables from UploadThing and the database. Select **all** of the text, and copy it to your clipboard.
+3. Authorize GitHub permissions. You will be redirected back to the Netlify project creation dashboard.
 
-4. On the "Configure Project" screen, expand the "Environment Variables" section. Paste your variables into the "key" text box (with the `EXAMPLE_NAME` placeholder). Your variables will be automatically added below.
+4. Find the name of your Fresco instance from the list of your git repositories and click on it.
 
-   ![When you paste your variables, they will be added automatically](/assets/img/fresco-images/vercel-paste-env.png)
+5. Give your project a name. The project name determines the default URL for your project. If none is provided, a random project name will be generated for you.
 
-5. Click the **"Deploy"** button, and wait for the deployment to finish. Vercel is now building your Fresco instance! This will take 2-5 minutes.
+   ![Name your project](/assets/img/fresco-images/netlify-2.png)
 
-6. Click **"Continue to Dashboard"**, and then click on one of the domain names or the **"Visit"** button.
+6. Open the text editor or notes app where you stored your environment variables from the Neon database. Select **all** of the text, and copy it to your clipboard.
 
-   ![Continue to dashboard](/assets/img/fresco-images/vercel3.png)
+7. Scroll to the bottom of the screen. Click "Add environment variables". Then, click **Import from a .env file**.
 
-Then, click on the **"Visit"** button or the domain.
+   ![Add environment variables](/assets/img/fresco-images/netlify-3.png)
 
-![Visit domain](/assets/img/fresco-images/vercel4.png)
+8. Paste your variables into the "Contents of .env file" text box (with the `EXAMPLE_KEY_1=my-secret-value-1` placeholder). Your variables will be automatically added. Then, check the box beside **Contains secret values**.
+
+   ![When you paste your variables, they will be added automatically](/assets/img/fresco-images/netlify-4.png)
+
+9. Click the **"Deploy"** button, and wait for the deployment to finish. Netlify is now building your Fresco instance! This will take 2-5 minutes.
+
+10. Once your app is deployed, click on the deployment URL. It will be listen in green under your project name once it is deployed.
+
+   ![Deployment URL](/assets/img/fresco-images/netlify-5.png)
 
 ## Configuration and setup
 
@@ -250,21 +244,13 @@ By leaving Disable Analytics set to `false` (the default) you will help us ident
 
 ## Set up a custom domain (optional)
 
-If you prefer to use a custom domain for your Fresco instance, you can configure this in the Vercel dashboard by following these steps:
+If you prefer to use a custom domain for your Fresco instance, you can configure this in the Netlify dashboard by following these steps:
 
-1. Navigate to your project dashboard. Here, locate and click on the **"Domains"** button.
-
-   ![Navigate to domains section](/assets/img/fresco-images/set-domain1.png)
+1. Navigate to your project dashboard. Click on the **Domain Management** tab.
 
 2. In the Domains section, you have two options:
 
-   - If you have a purchased domain, you can add it here.
-   - Alternatively, you can modify the default Vercel domain to suit your needs.
+   - If you have a purchased domain, you can add it here by clicking **Add a domain**.
+   - Alternatively, you can modify the default Netlify domain to suit your needs by clicking **Options** and then **Edit project name**.
 
-   ![Domain setup options](/assets/img/fresco-images/set-domain2.png)
-
-   <TipBox danger>
-
-   While editing the current domain, make sure not to remove the **.vercel.app** portion. Vercel requires this standard for all free domains.
-
-   </TipBox>
+   ![Domain setup options](/assets/img/fresco-images/netlify-domain.png)

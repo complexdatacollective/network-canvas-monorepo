@@ -1,19 +1,19 @@
 ---
 title: Cloud Pricing
-date: 12th March 2024
+date: 8th October 2025
 navOrder: 6
 wip: false
 ---
 
 Deploying Fresco can be achieved entirely for free using the free tiers of each service. You may optionally upgrade your services based on your needs.
 
-## Vercel
+## Netlify
 
-- **Hobby Tier (Free)**: Vercel offers a hobby tier which provides sufficient features for small-scale deployments.
+- **Hobby Tier (Free)**: Netlify offers a Free tier which provides sufficient features for small-scale deployments.
 
-- **Upgrade Option**: If your project grows or you require additional features, you can upgrade to Vercel's Pro plan for $20/user/month.
+- **Upgrade Option**: If your project grows or you require additional features, you can upgrade to Netlify's Personal plan for $9/month or Pro plan for $20/month.
 
-For more information on Vercel's pricing plans and features, you can visit their [pricing page.](https://vercel.com/pricing)
+For more information on Netlify's pricing plans and features, you can visit their [pricing page.](https://www.netlify.com/pricing)
 
 ## Neon
 
