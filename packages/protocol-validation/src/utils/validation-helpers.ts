@@ -121,7 +121,7 @@ export const filterRuleEntityExists = (rule: FilterRule, codebook: Codebook): bo
 		return codebook.ego !== undefined;
 	}
 
-	return !!codebook[rule.type]?.[rule.options.type || ""];
+	return Boolean(codebook[rule.type]?.[rule.options.type || ""]);
 };
 
 /**
@@ -131,11 +131,11 @@ export const filterRuleAttributeExists = (rule: FilterRule, codebook: Codebook):
 	if (!rule.options.attribute) return true; // No attribute to check
 
 	if (rule.type === "ego") {
-		return !!codebook.ego?.variables?.[rule.options.attribute];
+		return Boolean(codebook.ego?.variables?.[rule.options.attribute]);
 	}
 
 	const entity = codebook[rule.type]?.[rule.options.type || ""];
-	return !!entity?.variables?.[rule.options.attribute];
+	return Boolean(entity?.variables?.[rule.options.attribute]);
 };
 
 /**

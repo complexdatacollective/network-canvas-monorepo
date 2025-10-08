@@ -1,14 +1,14 @@
 import {
 	CURRENT_SCHEMA_VERSION,
+	type CurrentProtocol,
 	CurrentProtocolSchema,
+	type SchemaVersion,
 	SchemaVersionSchema,
 	VersionedProtocolSchema,
-	type CurrentProtocol,
-	type SchemaVersion,
 } from "../schemas";
 import migrationV7toV8 from "../schemas/8/migration";
 import { SchemaVersionDetectionError, ValidationError } from "./errors";
-import { protocolMigrations, type ProtocolDocument } from "./index";
+import { type ProtocolDocument, protocolMigrations } from "./index";
 
 protocolMigrations.register(migrationV7toV8);
 
@@ -31,7 +31,6 @@ export function migrateProtocol(
 ): CurrentProtocol {
 	// Detect and validate source schema version
 	const detectedVersion = detectSchemaVersion(document);
-	console.log(`Detected schema version: ${detectedVersion}`);
 
 	// Validate document against its detected schema version
 	const preValidationResult = VersionedProtocolSchema.safeParse(document);
@@ -79,7 +78,6 @@ export class ProtocolMigrator {
 		const { cacheKey, targetVersion } = options || {};
 
 		if (cacheKey && this.cache.has(cacheKey)) {
-			console.log(`Using cached migration for key: ${cacheKey}`);
 			const cached = this.cache.get(cacheKey);
 			if (cached) return cached;
 		}

@@ -21,11 +21,9 @@ export default function VerifyUserSwitch({ id, verified: initialVerified }: Veri
 
 			if (!response.ok) {
 				setLocalVerified(!localVerified);
-				console.error("Database update failed.");
 			}
-		} catch (error) {
+		} catch (_error) {
 			setLocalVerified;
-			console.error("Error updating database:", error);
 		}
 	};
 

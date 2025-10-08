@@ -1,15 +1,15 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import { hasLocale, NextIntlClientProvider } from "next-intl";
-import { getNow, getTimeZone, setRequestLocale } from "next-intl/server";
 import { Quicksand } from "next/font/google";
 import { notFound } from "next/navigation";
+import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { getNow, getTimeZone, setRequestLocale } from "next-intl/server";
 import type { Messages } from "~/app/types";
 import { locales } from "~/app/types";
+import AIAssistant from "~/components/ai-assistant";
 import { LayoutComponent } from "~/components/Layout";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
-import AIAssistant from "~/components/ai-assistant";
 import { env } from "~/env";
 import { routing } from "~/lib/i18n/routing";
 
@@ -19,11 +19,7 @@ const quicksand = Quicksand({
 	display: "swap",
 });
 
-export async function generateMetadata({
-	params,
-}: {
-	params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
 	const { locale } = await params;
 
 	const metadata: Metadata = {

@@ -2,12 +2,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@codaco/ui"
 import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import type { Route } from "next";
-import { useLocale } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLocale } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
 import { cn } from "~/lib/utils";
+
+const PATH_SEPARATOR_REGEX = /[\\/]/;
+
 import sidebarData from "~/public/sidebar.json";
 import DocSearchComponent from "./DocSearchComponent";
 import ProjectSwitcher from "./ProjectSwitcher";
@@ -49,7 +52,7 @@ function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?:
 	// We can't use path.sep because the webpack node shim always returns '/'.
 	// Because this might be running on Windows, we need to use a regex to split
 	// by either / or \.
-	const pathSegments = sourceFile.split(/[\\/]/).slice(2);
+	const pathSegments = sourceFile.split(PATH_SEPARATOR_REGEX).slice(2);
 
 	let returnPath = "";
 
@@ -70,6 +73,38 @@ function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?:
 	return `/${locale}/${returnPath}` as Route;
 }
 
+const FolderChevron = ({ isOpen, alwaysOpen }: { isOpen: boolean; alwaysOpen?: boolean }) => {
+	if (alwaysOpen) return null;
+	return (
+		<MotionChevron
+			className="h-4 w-4"
+			initial={{ rotate: isOpen ? 90 : 0 }}
+			animate={{ rotate: isOpen ? 90 : 0 }}
+			aria-hidden
+		/>
+	);
+};
+
+const FolderTriggerContent = ({
+	label,
+	href,
+	isOpen,
+	alwaysOpen,
+}: {
+	label: string;
+	href?: Route | URL;
+	isOpen: boolean;
+	alwaysOpen?: boolean;
+}) => {
+	const content = (
+		<>
+			{label} <FolderChevron isOpen={isOpen} alwaysOpen={alwaysOpen} />
+		</>
+	);
+
+	return href ? <Link href={href}>{content}</Link> : <div>{content}</div>;
+};
+
 const SidebarFolder = ({
 	label,
 	href,
@@ -87,9 +122,7 @@ const SidebarFolder = ({
 
 	const memoizedIsOpen = useMemo(() => {
 		if (alwaysOpen) return true;
-
 		if (defaultOpen) return true;
-
 		return (children as React.ReactElement<{ href?: string }>[]).some((child) => child.props.href === pathname);
 	}, [alwaysOpen, defaultOpen, children, pathname]);
 
@@ -116,31 +149,7 @@ const SidebarFolder = ({
 				)}
 				asChild
 			>
-				{href ? (
-					<Link href={href}>
-						{label}{" "}
-						{!alwaysOpen && (
-							<MotionChevron
-								className="h-4 w-4"
-								initial={{ rotate: isOpen ? 90 : 0 }}
-								animate={{ rotate: isOpen ? 90 : 0 }}
-								aria-hidden
-							/>
-						)}
-					</Link>
-				) : (
-					<div>
-						{label}{" "}
-						{!alwaysOpen && (
-							<MotionChevron
-								className="h-4 w-4"
-								initial={{ rotate: isOpen ? 90 : 0 }}
-								animate={{ rotate: isOpen ? 90 : 0 }}
-								aria-hidden
-							/>
-						)}
-					</div>
-				)}
+				<FolderTriggerContent label={label} href={href} isOpen={isOpen} alwaysOpen={alwaysOpen} />
 			</CollapsibleTrigger>
 			<MotionCollapsibleContent
 				className="ml-2 flex flex-col overflow-y-hidden"

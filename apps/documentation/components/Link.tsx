@@ -1,5 +1,5 @@
 import NextLink from "next/link";
-import { type ComponentProps, type ReactNode, forwardRef } from "react";
+import { type ComponentProps, forwardRef, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 
 const Link = forwardRef<

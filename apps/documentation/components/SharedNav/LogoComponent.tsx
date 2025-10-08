@@ -1,5 +1,6 @@
-import { useTheme } from "next-themes";
+import Image from "next/image";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { cn } from "~/lib/utils";
 
 type LogoComponentProps = {
@@ -18,11 +19,19 @@ const LogoComponent = ({ invisible = false, className }: LogoComponentProps) => 
 				"focusable flex-shrink-0 transition-transform duration-1000",
 			)}
 		>
-			<img src="/images/mark.svg" alt="Network Canvas Documentation" className="h-9 w-auto lg:hidden" />
-			<img
+			<Image
+				src="/images/mark.svg"
+				alt="Network Canvas Documentation"
+				className="h-9 w-auto lg:hidden"
+				width={36}
+				height={36}
+			/>
+			<Image
 				src={resolvedTheme === "dark" ? "/images/typemark-positive.svg" : "/images/typemark-negative.svg"}
 				alt="Network Canvas Documentation"
 				className="hidden h-12 w-auto lg:block"
+				width={120}
+				height={48}
 			/>
 		</Link>
 	);

@@ -1,5 +1,5 @@
-import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
 import type { Locale } from "~/app/types";
 import Article from "~/components/article";
 import { getDocumentForPath } from "~/lib/docs";

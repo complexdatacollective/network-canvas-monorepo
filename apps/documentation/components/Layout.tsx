@@ -2,8 +2,8 @@
 
 import { BackgroundBlobs } from "@codaco/art";
 import { motion } from "motion/react";
-import { useLocale } from "next-intl";
 import { usePathname } from "next/navigation";
+import { useLocale } from "next-intl";
 import { Sidebar } from "~/components/Sidebar";
 import { cn } from "~/lib/utils";
 import SharedNav from "./SharedNav/SharedNav";

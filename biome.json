@@ -1,37 +1,46 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-	"organizeImports": {
-		"enabled": false
-	},
+	"$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
 	"linter": {
 		"enabled": true,
+		"domains": {
+			"solid": "none"
+		},
 		"rules": {
 			"recommended": true,
 			"correctness": {
 				"noUnusedImports": "error",
 				"noUnusedVariables": "error"
 			},
+			"a11y": "error",
 			"suspicious": {
-				"noExplicitAny": "error"
+				"noExplicitAny": "error",
+				"noConsole": "warn"
+			},
+			"style": {
+				"noParameterAssign": "error",
+				"useAsConstAssertion": "error",
+				"useDefaultParameterLast": "error",
+				"useEnumInitializers": "error",
+				"useSelfClosingElements": "error",
+				"useSingleVarDeclarator": "error",
+				"noUnusedTemplateLiteral": "error",
+				"useNumberNamespace": "error",
+				"noInferrableTypes": "error",
+				"noUselessElse": "error"
 			}
 		}
 	},
-	"overrides": [
-		{
-			"include": ["packages/protocol-validation/src/utils/zod-mock-extension.ts"],
-			"linter": {
-				"rules": {
-					"suspicious": {
-						"noExplicitAny": "off"
-					}
-				}
-			}
-		}
-	],
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
 		"lineWidth": 120
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
 	},
 	"vcs": {
 		"enabled": true,
@@ -39,12 +48,8 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignore": [
-			"public/**/*.*",
-			"packages/development-protocol/assets",
-			"packages/development-protocol/protocol.json",
-			"packages/protocol-validation/src/schemas/compiled"
-		]
+		"ignoreUnknown": true,
+		"includes": ["**", "!**/public/**/*.*"]
 	},
 	"javascript": { "formatter": { "quoteStyle": "double" } }
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { type EventInsertType, db } from "~/db/db";
+import { db, type EventInsertType } from "~/db/db";
 import { eventsTable } from "~/db/schema";
 
 export async function getEvents() {
@@ -10,8 +10,7 @@ export async function getEvents() {
 		});
 
 		return events;
-	} catch (error) {
-		console.error("Error getting events", error);
+	} catch (_error) {
 		return [];
 	}
 }
@@ -24,8 +23,7 @@ export async function insertEvent(event: EventInsertType) {
 		const insertedEvent = await db.insert(eventsTable).values(event).returning();
 
 		return { data: insertedEvent, error: null };
-	} catch (error) {
-		console.error("Error inserting events", error);
+	} catch (_error) {
 		return { data: null, error: "Error inserting events" };
 	}
 }

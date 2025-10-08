@@ -21,7 +21,7 @@ export default function EventsTable() {
 	}, []);
 
 	useEffect(() => {
-		void fetchEvents();
+		fetchEvents();
 	}, [fetchEvents]);
 
 	useEffect(() => {
@@ -46,11 +46,11 @@ export default function EventsTable() {
 					<h2>Events</h2>
 					{!events.length && <p>Loading...</p>}
 				</div>
-				{!!events.length && <ExportButton data={events} filename="events.csv" />}
+				{Boolean(events.length) && <ExportButton data={events} filename="events.csv" />}
 			</div>
 
 			<div className="mt-2 rounded-md bg-card">
-				{!!events.length && (
+				{Boolean(events.length) && (
 					<DataTable columns={getColumns(eventTypes, setEventTypes)} data={filteredEvents} pagination={true} />
 				)}
 			</div>

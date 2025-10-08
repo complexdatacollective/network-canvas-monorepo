@@ -17,12 +17,10 @@ const schemaPlugin = (): Plugin => {
 		// runs when a file changes
 		watchChange(file) {
 			if (file.endsWith("zod.ts")) {
-				console.log("🔄 Converting zod schema to json...", file);
 				execSync("pnpm run zod-to-json src/schemas/8.zod.ts");
 			}
 
 			if (file.endsWith(".json")) {
-				console.log("🔄 Recompiling all json schemas...", file);
 				execSync("pnpm run compile-schemas");
 			}
 		},
