@@ -1,0 +1,80 @@
+[[redirects]]
+  from = "/"
+  to = "/en"
+  status = 301
+
+[[redirects]]
+  from = "/citing-the-software"
+  to = "/en/desktop/project-information/citing-the-software"
+  status = 301
+
+[[redirects]]
+  from = "/contributing-code"
+  to = "/en/desktop/project-information/contributing-code"
+  status = 301
+
+[[redirects]]
+  from = "/faq"
+  to = "/en/desktop/project-information/faq"
+  status = 301
+
+[[redirects]]
+  from = "/project-overview"
+  to = "/en/desktop/project-information/project-overview"
+  status = 301
+
+[[redirects]]
+  from = "/requests-for-collaboration"
+  to = "/en/desktop/project-information/requests-for-collaboration"
+  status = 301
+
+[[redirects]]
+  from = "/reference/irb-best-practices"
+  to = "/en/desktop/project-information/irb-best-practices"
+  status = 301
+
+[[redirects]]
+  from = "/reference/security-model"
+  to = "/en/desktop/project-information/security-model"
+  status = 301
+
+[[redirects]]
+  from = "/reference/network-canvas-graphml"
+  to = "/en/desktop/advanced-topics/network-canvas-graphml"
+  status = 301
+
+[[redirects]]
+  from = "/reference/node-labelling"
+  to = "/en/desktop/advanced-topics/node-labelling"
+  status = 301
+
+[[redirects]]
+  from = "/reference/protocol-file-format"
+  to = "/en/desktop/advanced-topics/protocol-file-format"
+  status = 301
+
+[[redirects]]
+  from = "/reference/protocol-schema-information"
+  to = "/en/desktop/advanced-topics/protocol-schema-information"
+  status = 301
+
+[[redirects]]
+  from = "/installation-guide"
+  to = "/en/desktop/getting-started/installation-guide"
+  status = 301
+
+[[redirects]]
+  from = "/how-to/choosing-hardware"
+  to = "/en/desktop/getting-started/choosing-hardware"
+  status = 301
+
+[[redirects]]
+  from = "/how-to/configuring-devices"
+  to = "/en/desktop/getting-started/configuring-devices"
+  status = 301
+
+[[redirects]]
+  from = "/:path"
+  to = "/en/desktop/:path"
+  status = 301
+  force = true
