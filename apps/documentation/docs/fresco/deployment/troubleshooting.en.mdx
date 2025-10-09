@@ -13,16 +13,15 @@ navOrder: 3
 
 <summary>
 
-<h2 className="text-lg">"Invalid API Key" error during Vercel deployment</h2>
+<h2 className="text-lg">"Invalid environment variables" error during Netlify deployment</h2>
 
-You may encounter an error in your deployment such as "Invalid API Key", or "API keys must start with...".
+You may encounter an error in your deployment such as "Invalid environment variables"
 
 </summary>
 
-This error means that you provided an incorrect environment variable. Make sure to enter the environment variable value correctly. You must enter the value that starts after `=` symbol
-(e.g: `UPLOADTHING_APP_ID=5q5ybg9dwg`, here `UPLOADTHING_APP_ID` is the key of variable and `5q5ybg9dwg` is the value. You should always enter the value.)
+This error means that you provided an incorrect environment variable. Make sure to enter the environment variable value correctly. When copying variables from Neon, make sure you remove any **"#"** from before the variable.
 
-![Invalid API Key Console Error](/assets/img/fresco-images/deploy-error2.png)
+![Invalid Environment Variable Console Error](/assets/img/fresco-images/deploy-error2.png)
 
 </details>
 
@@ -40,23 +39,15 @@ When completing the initial setup for Fresco, you have 2 hours to complete the p
 
 To delete your database:
 
-1. Navigate to your database on the dashboard by selecting _Storage_ and then selecting your database.
+1. Navigate to your [Neon dashboard](https://console.neon.tech/) and select your project.
 
    ![Select database](/assets/img/fresco-images/reset-db-1.png)
 
-2. Select the _Projects_ tab, check the box next to your project, and select _Remove Project Connection_ from the dropdown.
+2. Select the **Settings** tab, scroll to the bottom, and click **Delete project**.
 
    ![Remove project connection](/assets/img/fresco-images/reset-db-2.png)
 
-3. Select _Remove Connection_ to confirm.
-
-   ![Remove connection](/assets/img/fresco-images/reset-db-3.png)
-
-4. Select the _Settings_ tab and select _Delete Database_ from the Delete Store section.
-
-   ![Delete Database](/assets/img/fresco-images/reset-db-4.png)
-
-5. After confirming, you can follow the instructions again to [Create a Database](/en/fresco/deployment/guide#step-4-create-your-database)
+3. After confirming, you can follow the instructions again to [Create a Database](/en/fresco/deployment/guide#step-4-create-your-database) and replace the environment variables in your Netlify project.
 
 </details>
 
@@ -66,16 +57,16 @@ To delete your database:
 
 <h2 className="text-lg">Protected URL issue</h2>
 
-You may encounter an issue where your Fresco URL is protected and prompts login through Vercel.
+You may encounter an issue where your Fresco URL is protected and prompts login through Netlify.
 
 </summary>
 
-This error means that you are using the deployment specific URL, which requires login through Vercel to access. To resolve this issue, use the domain URL provided by Vercel. To find the correct URL:
+This error means that you are using the deployment specific URL, which requires login through Netlify to access. To resolve this issue, use the domain URL provided by Netlify. To find the correct URL:
 
-1. Navigate to your project dashboard. This will be in the format `https://vercel.com/<username>/<project-name>`.
+1. Navigate to your project dashboard. This will be in the format `https://app.netlify.com/projects/<project-name>`.
 
-2. Select the _Project_ tab.
+2. Click the URL listed in green below your project name.
 
-3. Click _Visit_ or the URL in the _Domains_ section. Do not use the URL in the _Deployment_ section as it is protected.
+   ![URL](/assets/img/fresco-images/netlify-5.png)
 
 </details>
