@@ -1,0 +1,36 @@
+{
+	"extends": "@codaco/tsconfig/base.json",
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"allowJs": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"noEmit": true,
+		"esModuleInterop": true,
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"jsx": "preserve",
+		"incremental": false,
+		"plugins": [
+			{
+				"name": "next"
+			}
+		],
+		"paths": {
+			"@/*": ["./src/*"],
+			"@/components/*": ["./src/components/*"],
+			"@/lib/*": ["./src/lib/*"],
+			"@/app/*": ["./src/app/*"],
+			"~/*": ["./src/*"],
+			"@codaco/ui": ["../../packages/ui/src/index.ts"],
+			"@codaco/ui/*": ["../../packages/ui/src/*"],
+			"@fresco/api": ["../../packages/fresco-api/src/index.ts"],
+			"@fresco/orchestrator": ["../../packages/fresco-orchestrator/src/index.ts"]
+		}
+	},
+	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+	"exclude": ["node_modules"]
+}

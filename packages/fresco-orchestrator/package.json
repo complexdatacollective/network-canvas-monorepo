@@ -1,0 +1,35 @@
+{
+	"name": "@fresco/orchestrator",
+	"version": "0.1.0",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "vitest run",
+		"test:watch": "vitest watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@prisma/client": "^6.2.0",
+		"dockerode": "^4.0.2",
+		"pg": "^8.13.1",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"@types/dockerode": "^3.3.32",
+		"@types/node": "catalog:",
+		"@types/pg": "^8.11.10",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

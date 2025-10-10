@@ -14,7 +14,8 @@
 			"a11y": "error",
 			"suspicious": {
 				"noExplicitAny": "error",
-				"noConsole": "warn"
+				"noConsole": "warn",
+				"noUnknownAtRules": "info"
 			},
 			"style": {
 				"noParameterAssign": "error",

@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		"./fresco": "./fresco.ts",
+		"./fresco.css": "./fresco.css",
 		"./globals.css": "./globals.css"
 	},
 	"license": "MIT",

@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - managed by Better Auth
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenants       Tenant[]
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+// Session model - managed by Better Auth
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Account model - for OAuth providers and password auth (managed by Better Auth)
+model Account {
+  id                       String    @id @default(uuid())
+  userId                   String    @map("user_id")
+  accountId                String    @map("account_id")
+  providerId               String    @map("provider_id")
+  accessToken              String?   @map("access_token")
+  refreshToken             String?   @map("refresh_token")
+  accessTokenExpiresAt     DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt    DateTime? @map("refresh_token_expires_at")
+  scope                    String?
+  idToken                  String?   @map("id_token")
+  password                 String?
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@map("accounts")
+}
+
+enum TenantStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  STOPPED
+  ERROR
+  DESTROYING
+}
+
+model Tenant {
+  id                String        @id @default(uuid())
+  userId            String        @map("user_id")
+  tenantIdentifier  String        @unique @map("tenant_identifier")
+  subdomain         String        @unique
+  status            TenantStatus  @default(PENDING)
+  containerId       String?       @map("container_id")
+  containerPort     Int?          @map("container_port")
+  databaseSchema    String        @unique @map("database_schema")
+  databaseUser      String        @unique @map("database_user")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  lastDeployedAt    DateTime?     @map("last_deployed_at")
+  stoppedAt         DateTime?     @map("stopped_at")
+  metadata          Json          @default("{}")
+  resourceLimits    Json          @default("{}") @map("resource_limits")
+
+  // Relations
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deploymentLogs    DeploymentLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("tenants")
+}
+
+enum DeploymentAction {
+  CREATE
+  START
+  STOP
+  RESTART
+  DESTROY
+  UPDATE
+}
+
+enum DeploymentStatus {
+  INITIATED
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+}
+
+model DeploymentLog {
+  id           String           @id @default(uuid())
+  tenantId     String           @map("tenant_id")
+  action       DeploymentAction
+  status       DeploymentStatus
+  errorMessage String?          @map("error_message")
+  metadata     Json             @default("{}")
+  duration     Int?             // in milliseconds
+  createdAt    DateTime         @default(now()) @map("created_at")
+  completedAt  DateTime?        @map("completed_at")
+
+  // Relations
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("deployment_logs")
+}
+
+model SignupSession {
+  id            String   @id @default(uuid())
+  email         String
+  stepCompleted Int      @default(0) @map("step_completed")
+  data          Json     @default("{}")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([expiresAt])
+  @@map("signup_sessions")
+}
