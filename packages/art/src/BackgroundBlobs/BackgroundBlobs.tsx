@@ -101,7 +101,7 @@ class NCBlob {
 		this.positionY += this.velocityY * timeDelta;
 
 		// Wrap around screen boundaries, taking into account shape size
-		if (this.positionX < Number(this.size)) {
+		if (this.positionX < 0 - this.size) {
 			this.positionX = this.canvasWidth + this.size;
 		}
 
@@ -113,7 +113,7 @@ class NCBlob {
 			this.positionY = -this.size;
 		}
 
-		if (this.positionY < Number(this.size)) {
+		if (this.positionY < 0 - this.size) {
 			this.positionY = this.canvasHeight + this.size;
 		}
 	}
@@ -202,7 +202,7 @@ class NCBlob {
 
 		if (!this.interpolator) return;
 
-		if (!(this.gradient?.[0] && this.gradient[1])) {
+		if (!this.gradient?.[0] || !this.gradient[1]) {
 			return;
 		}
 
