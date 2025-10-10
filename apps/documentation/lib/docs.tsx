@@ -25,12 +25,20 @@ import { PrerequisitesSection, SummaryCard, SummarySection } from "~/components/
 import TipBox, { type TipBoxProps } from "~/components/customComponents/TipBox";
 import VideoIFrame from "~/components/customComponents/VideoIFrame";
 import Link from "~/components/Link";
-import sidebar from "~/public/sidebar.json";
 import { get } from "./helper_functions";
 import processPreTags from "./processPreTags";
 import processYamlMatter from "./processYamlMatter";
 import { type HeadingNode, headingTree } from "./tableOfContents";
 import { cn } from "./utils";
+
+const getSidebar = (): Partial<TSideBar> => {
+	const sidebarPath = join(process.cwd(), "public", "sidebar.json");
+	if (!existsSync(sidebarPath)) {
+		return {};
+	}
+	const sidebarContent = readFileSync(sidebarPath, "utf-8");
+	return JSON.parse(sidebarContent) as TSideBar;
+};
 
 const FrontmatterSchema = z.object({
 	title: z.string(),
@@ -75,8 +83,8 @@ type ReturnType = {
 };
 
 export const getDocsForRouteSegment = ({ locale, project }: { locale: string; project: string }) => {
-	const typedSidebar = sidebar as TSideBar;
-	const sidebarData = get(typedSidebar, [locale, project], null) as SidebarProject;
+	const sidebar = getSidebar();
+	const sidebarData = get(sidebar, [locale, project], null) as SidebarProject;
 
 	if (!sidebarData) {
 		// biome-ignore lint/suspicious/noConsole: Logging missing sidebar data
@@ -126,6 +134,7 @@ export const getDocsForRouteSegment = ({ locale, project }: { locale: string; pr
 
 // Get the sourceFile path from the sidebar.json
 const getSourceFile = (locale: string, project: string, pathSegment?: string[]) => {
+	const sidebar = getSidebar();
 	const projectSourceFile = get(sidebar, [locale, project, "sourceFile"], null) as string;
 
 	if (!pathSegment) return join(process.cwd(), projectSourceFile);
