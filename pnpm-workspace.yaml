@@ -46,7 +46,7 @@ catalog:
   vite: ^7.1.9
   vite-plugin-dts: ^4.5.4
   vitest: ^3.2.4
-  zod: ^4.1.11
+  zod: ^4.1.12
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
