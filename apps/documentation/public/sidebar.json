@@ -381,6 +381,12 @@
 							"label": "Cloud Pricing",
 							"navOrder": 6
 						},
+						"guide-vercel": {
+							"type": "page",
+							"sourceFile": "/docs/fresco/deployment/guide-vercel.en.mdx",
+							"label": "Deployment Guide",
+							"navOrder": 1
+						},
 						"guide": {
 							"type": "page",
 							"sourceFile": "/docs/fresco/deployment/guide.en.mdx",
