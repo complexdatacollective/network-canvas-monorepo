@@ -89,19 +89,34 @@ const FolderTriggerContent = ({
 	href,
 	isOpen,
 	alwaysOpen,
+	ref,
+	...props
 }: {
 	label: string;
 	href?: Route | URL;
 	isOpen: boolean;
 	alwaysOpen?: boolean;
-}) => {
+	ref?: React.Ref<HTMLElement>;
+} & React.HTMLAttributes<HTMLElement>) => {
 	const content = (
 		<>
 			{label} <FolderChevron isOpen={isOpen} alwaysOpen={alwaysOpen} />
 		</>
 	);
 
-	return href ? <Link href={href}>{content}</Link> : <div>{content}</div>;
+	if (href) {
+		return (
+			<Link ref={ref as React.Ref<HTMLAnchorElement>} href={href} {...props}>
+				{content}
+			</Link>
+		);
+	}
+
+	return (
+		<div ref={ref as React.Ref<HTMLDivElement>} {...props}>
+			{content}
+		</div>
+	);
 };
 
 const SidebarFolder = ({
