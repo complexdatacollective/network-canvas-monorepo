@@ -143,6 +143,7 @@ export const createFolderEntry = (file: fs.Dirent, locale: Locale, metadata: Met
 export const createPageEntry = (file: fs.Dirent, matterResult: matter.GrayMatterFile<string>): SidebarPage => {
 	const title = matterResult.data?.title as string | undefined;
 	const navOrder = matterResult.data?.navOrder as number | undefined;
+	const hidden = matterResult.data?.hidden as boolean | undefined;
 	const sourceFile = join(file.path, file.name).replace(process.cwd(), "");
 
 	return {
@@ -150,6 +151,7 @@ export const createPageEntry = (file: fs.Dirent, matterResult: matter.GrayMatter
 		sourceFile,
 		label: title ?? file.name,
 		navOrder: navOrder ?? null,
+		hidden,
 	};
 };
 

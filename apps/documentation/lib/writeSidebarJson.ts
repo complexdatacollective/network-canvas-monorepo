@@ -89,11 +89,6 @@ function generateSidebarData() {
 		const markdownFile = readFileSync(join(file.path, file.name), "utf-8");
 		const matterResult = matter(markdownFile);
 
-		// If file has "hidden: true" in frontmatter, skip it
-		if (matterResult.data.hidden) {
-			continue;
-		}
-
 		set(sidebarData[locale], [...nestedPath, key], createPageEntry(file, matterResult));
 	}
 

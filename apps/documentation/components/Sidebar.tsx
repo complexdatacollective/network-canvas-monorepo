@@ -216,6 +216,11 @@ const renderSidebarItem = (
 		);
 	}
 
+	// Skip pages that are hidden from sidebar
+	if (item.hidden) {
+		return null;
+	}
+
 	const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
 	return (
 		<SidebarLink sidebarContainerRef={sidebarContainerRef} key={item.label} href={sourceFile} label={item.label} />

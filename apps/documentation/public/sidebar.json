@@ -63,6 +63,13 @@
 						}
 					}
 				},
+				"index": {
+					"type": "page",
+					"sourceFile": "/docs/desktop/index.en.mdx",
+					"label": "Desktop and Tablet Software",
+					"navOrder": 1,
+					"hidden": true
+				},
 				"interface-documentation": {
 					"type": "folder",
 					"expanded": false,
@@ -384,8 +391,9 @@
 						"guide-vercel": {
 							"type": "page",
 							"sourceFile": "/docs/fresco/deployment/guide-vercel.en.mdx",
-							"label": "Deployment Guide",
-							"navOrder": 1
+							"label": "Vercel Deployment Guide",
+							"navOrder": 1,
+							"hidden": true
 						},
 						"guide": {
 							"type": "page",
