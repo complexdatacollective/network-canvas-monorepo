@@ -89,14 +89,12 @@ const FolderTriggerContent = ({
 	href,
 	isOpen,
 	alwaysOpen,
-	ref,
 	...props
 }: {
 	label: string;
 	href?: Route | URL;
 	isOpen: boolean;
 	alwaysOpen?: boolean;
-	ref?: React.Ref<HTMLElement>;
 } & React.HTMLAttributes<HTMLElement>) => {
 	const content = (
 		<>
@@ -106,17 +104,13 @@ const FolderTriggerContent = ({
 
 	if (href) {
 		return (
-			<Link ref={ref as React.Ref<HTMLAnchorElement>} href={href} {...props}>
+			<Link href={href} {...props}>
 				{content}
 			</Link>
 		);
 	}
 
-	return (
-		<div ref={ref as React.Ref<HTMLDivElement>} {...props}>
-			{content}
-		</div>
-	);
+	return <div {...props}>{content}</div>;
 };
 
 const SidebarFolder = ({
