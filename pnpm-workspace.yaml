@@ -32,7 +32,7 @@ catalog:
   '@types/react-dom': ^19.2.0
   cmdk: ^1.1.1
   dotenv: ^17.2.3
-  lucide-react: ^0.544.0
+  lucide-react: ^0.545.0
   motion: ^12.23.22
   next: 15.5.4
   postcss: ^8.5.6
