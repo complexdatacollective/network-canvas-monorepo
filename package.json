@@ -2,33 +2,31 @@
 	"private": true,
 	"scripts": {
 		"build": "pnpm -r build",
+		"build:changed-packages": "node scripts/build-changed-packages.mjs",
 		"dev": "pnpm -r dev",
 		"test": "pnpm -r test",
 		"test:watch": "pnpm -r test:watch",
-		"publish-packages": "pnpm run format-and-lint:fix && pnpm run build && pnpm exec changeset publish",
-		"publish-packages-optimized": "pnpm run format-and-lint:fix && pnpm run build-for-publish && pnpm exec changeset publish",
-		"build-for-publish": "node scripts/build-changed-packages.mjs",
-		"version-packages": "pnpm exec changeset version && pnpm run format-and-lint:fix",
-		"changeset": "changeset add && pnpm run format-and-lint:fix",
-		"format-and-lint": "biome check .",
-		"format-and-lint:fix": "biome check . --write",
-		"typecheck-all": "pnpm -r --no-bail run typecheck",
-		"prepare": "husky"
+		"publish-packages": "pnpm exec changeset publish",
+		"version-packages": "pnpm exec changeset version && pnpm lint:fix",
+		"changeset": "changeset add",
+		"lint": "biome check .",
+		"lint:fix": "biome check . --write",
+		"typecheck": "pnpm -r --no-bail run typecheck",
+		"prepare": "husky",
+		"knip": "knip"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.2.0",
 		"@changesets/cli": "^2.29.7",
+		"@types/node": "catalog:",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.2.0",
+		"knip": "^5.64.2",
+		"lint-staged": "^16.2.3",
 		"typescript": "catalog:"
 	},
-	"packageManager": "pnpm@10.15.1+sha256.8c53af02ae3ec1fb0ae75377f8d4d6217c2d7cbe6f03c16350cabf7493de6eff",
+	"packageManager": "pnpm@10.18.2+sha512.9fb969fa749b3ade6035e0f109f0b8a60b5d08a1a87fdf72e337da90dcc93336e2280ca4e44f2358a649b83c17959e9993e777c2080879f3801e6f0d999ad3dd",
 	"name": "network-canvas-monorepo",
-	"engines": {
-		"node": ">=20.0.0",
-		"pnpm": ">=10.0.0"
-	},
 	"lint-staged": {
-		"*": "bash -c 'biome check --write --no-errors-on-unmatched \"$@\" || true' --"
+		"*": "pnpm run lint:fix"
 	}
 }

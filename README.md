@@ -127,7 +127,7 @@ pnpm --filter protocol-validation test
 pnpm test:watch
 
 # Type check all packages
-pnpm typecheck-all
+pnpm typecheck
 ```
 
 ## 🎨 Code Style
@@ -136,10 +136,10 @@ This project uses Biome for formatting and linting:
 
 ```bash
 # Check formatting and linting
-pnpm run format-and-lint
+pnpm run lint
 
 # Auto-fix formatting and linting issues
-pnpm run format-and-lint:fix
+pnpm run lint:fix
 ```
 
 Pre-commit hooks automatically format code on commit.
@@ -153,7 +153,7 @@ Key scripts available in the root package:
 - **`pnpm test`** - Run test suites across all packages
 - **`pnpm changeset`** - Create a changeset for version management
 - **`pnpm run publish-packages`** - Build and publish packages to npm
-- **`pnpm run format-and-lint:fix`** - Format and lint all code
+- **`pnpm run lint:fix`** - Format and lint all code
 
 ## 🤝 Contributing
 
@@ -163,7 +163,7 @@ We welcome contributions! Please see our contributing guidelines and:
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Run `pnpm run format-and-lint:fix`
+5. Run `pnpm run lint:fix`
 6. Submit a pull request
 
 ## 📄 License

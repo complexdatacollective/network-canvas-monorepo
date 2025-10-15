@@ -48,7 +48,7 @@ const useCanvas = (draw: DrawFunction, predraw = defaultPredraw, postdraw = defa
 
 		const context = canvasRef.current.getContext("2d");
 
-		if (!context || !canvasRef.current) {
+		if (!(context && canvasRef.current)) {
 			return;
 		}
 

@@ -1,15 +1,6 @@
 import type { Codebook, EntityDefinition, FilterRule, StageSubject, Variable } from "../schemas/8/schema";
 
 /**
- * Helper functions for cross-reference validation within Protocol schemas
- */
-
-export type ValidationContext = {
-	codebook: Codebook;
-	stages?: unknown[];
-};
-
-/**
  * Check if an entity (node/edge type) exists in the codebook
  */
 export const entityExists = (codebook: Codebook, subject: StageSubject): boolean => {
@@ -130,7 +121,7 @@ export const filterRuleEntityExists = (rule: FilterRule, codebook: Codebook): bo
 		return codebook.ego !== undefined;
 	}
 
-	return !!codebook[rule.type]?.[rule.options.type || ""];
+	return Boolean(codebook[rule.type]?.[rule.options.type || ""]);
 };
 
 /**
@@ -140,30 +131,11 @@ export const filterRuleAttributeExists = (rule: FilterRule, codebook: Codebook):
 	if (!rule.options.attribute) return true; // No attribute to check
 
 	if (rule.type === "ego") {
-		return !!codebook.ego?.variables?.[rule.options.attribute];
+		return Boolean(codebook.ego?.variables?.[rule.options.attribute]);
 	}
 
 	const entity = codebook[rule.type]?.[rule.options.type || ""];
-	return !!entity?.variables?.[rule.options.attribute];
-};
-
-/**
- * Create a Zod refine function for stage subject validation
- */
-export const createStageSubjectValidator = (codebook: Codebook) => {
-	return (subject: StageSubject) => {
-		return entityExists(codebook, subject);
-	};
-};
-
-/**
- * Create a Zod refine function for form field validation
- */
-export const createFormFieldValidator = (codebook: Codebook, subject?: StageSubject) => {
-	return (field: { variable: string }) => {
-		if (!subject) return false;
-		return variableExists(codebook, subject, field.variable);
-	};
+	return Boolean(entity?.variables?.[rule.options.attribute]);
 };
 
 /**

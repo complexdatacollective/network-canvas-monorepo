@@ -1,16 +1,17 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import { NextIntlClientProvider } from "next-intl";
-import { getNow, getTimeZone, setRequestLocale } from "next-intl/server";
 import { Quicksand } from "next/font/google";
 import { notFound } from "next/navigation";
-import type { Locale, Messages } from "~/app/types";
+import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { getNow, getTimeZone, setRequestLocale } from "next-intl/server";
+import type { Messages } from "~/app/types";
 import { locales } from "~/app/types";
+import AIAssistant from "~/components/ai-assistant";
 import { LayoutComponent } from "~/components/Layout";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
-import AIAssistant from "~/components/ai-assistant";
 import { env } from "~/env";
+import { routing } from "~/lib/i18n/routing";
 
 const quicksand = Quicksand({
 	weight: ["300", "400", "500", "600", "700"],
@@ -18,12 +19,8 @@ const quicksand = Quicksand({
 	display: "swap",
 });
 
-export async function generateMetadata(props: {
-	params: Promise<{ locale: Locale }>;
-}) {
-	const params = await props.params;
-
-	const { locale } = params;
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+	const { locale } = await params;
 
 	const metadata: Metadata = {
 		other: {
@@ -41,19 +38,17 @@ export function generateStaticParams() {
 
 type MainLayoutProps = {
 	children: React.ReactNode;
-	params: Promise<{ locale: Locale }>;
+	params: Promise<{ locale: string }>;
 };
 
 export default async function MainLayout(props: MainLayoutProps) {
-	const params = await props.params;
-
-	const { locale } = params;
-
 	const { children } = props;
 
 	// Validate that the incoming `locale` parameter is valid
-	const isValidLocale = locales.some((cur) => cur === locale);
-	if (!isValidLocale) notFound();
+	const { locale } = await props.params;
+	if (!hasLocale(routing.locales, locale)) {
+		notFound();
+	}
 
 	// setting setRequestLocale to support next-intl for static rendering
 	setRequestLocale(locale);

@@ -1,6 +1,5 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
-import { type VariantProps, cva } from "class-variance-authority";
 import { Label } from "./Label";
 import { cn } from "./utils";
 
@@ -27,7 +26,7 @@ export const inputVariants = cva(inputClasses, {
 	},
 });
 
-export type InputProps = {
+type InputProps = {
 	size?: VariantProps<typeof inputVariants>["size"];
 	inputClassName?: string;
 	label?: string;
@@ -56,8 +55,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 						type={type}
 						className={cn(
 							inputVariants({ size }),
-							!!leftAdornment && "pl-10",
-							!!rightAdornment && "pr-10",
+							Boolean(leftAdornment) && "pl-10",
+							Boolean(rightAdornment) && "pr-10",
 							inputClassName,
 						)}
 						ref={ref}

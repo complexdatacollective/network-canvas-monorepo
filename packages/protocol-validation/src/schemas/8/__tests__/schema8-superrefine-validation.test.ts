@@ -847,7 +847,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -881,7 +881,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -915,7 +915,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -989,7 +989,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				},
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{

@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 
-export const MOCK_SEEDS = {
+const MOCK_SEEDS = {
 	NODE_TYPES: 1000,
 	EDGE_TYPES: 2000,
 	EGO_VARIABLES: 3000,

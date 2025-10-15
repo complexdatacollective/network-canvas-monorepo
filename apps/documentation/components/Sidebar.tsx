@@ -1,13 +1,16 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@codaco/ui";
 import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
-import { useLocale } from "next-intl";
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLocale } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
 import { cn } from "~/lib/utils";
-import sidebarData from "~/public/sidebar.json";
+
+const PATH_SEPARATOR_REGEX = /[\\/]/;
+
 import DocSearchComponent from "./DocSearchComponent";
 import ProjectSwitcher from "./ProjectSwitcher";
 
@@ -39,16 +42,16 @@ const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
 		return a.label.localeCompare(b.label);
 	});
 
-export function processSourceFile(type: "page", locale: Locale, sourceFile: string): string;
-export function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): string | undefined;
+function processSourceFile(type: "page", locale: Locale, sourceFile: string): Route;
+function processSourceFile(type: "folder", locale: Locale, sourceFile: string | undefined): Route | undefined;
 
 // Used by sidebar to process sourceFile values into usable routes
-export function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
+function processSourceFile(type: "folder" | "page", locale: Locale, sourceFile?: string) {
 	if (!sourceFile) return;
 	// We can't use path.sep because the webpack node shim always returns '/'.
 	// Because this might be running on Windows, we need to use a regex to split
 	// by either / or \.
-	const pathSegments = sourceFile.split(/[\\/]/).slice(2);
+	const pathSegments = sourceFile.split(PATH_SEPARATOR_REGEX).slice(2);
 
 	let returnPath = "";
 
@@ -66,8 +69,40 @@ export function processSourceFile(type: "folder" | "page", locale: Locale, sourc
 			.join("/");
 	}
 
-	return `/${locale}/${returnPath}`;
+	return `/${locale}/${returnPath}` as Route;
 }
+
+const FolderChevron = ({ isOpen, alwaysOpen }: { isOpen: boolean; alwaysOpen?: boolean }) => {
+	if (alwaysOpen) return null;
+	return (
+		<MotionChevron
+			className="h-4 w-4"
+			initial={{ rotate: isOpen ? 90 : 0 }}
+			animate={{ rotate: isOpen ? 90 : 0 }}
+			aria-hidden
+		/>
+	);
+};
+
+const FolderTriggerContent = ({
+	label,
+	href,
+	isOpen,
+	alwaysOpen,
+}: {
+	label: string;
+	href?: Route | URL;
+	isOpen: boolean;
+	alwaysOpen?: boolean;
+}) => {
+	const content = (
+		<>
+			{label} <FolderChevron isOpen={isOpen} alwaysOpen={alwaysOpen} />
+		</>
+	);
+
+	return href ? <Link href={href}>{content}</Link> : <div>{content}</div>;
+};
 
 const SidebarFolder = ({
 	label,
@@ -77,7 +112,7 @@ const SidebarFolder = ({
 	children,
 }: {
 	label: string;
-	href?: string;
+	href?: Route | URL;
 	defaultOpen?: boolean;
 	alwaysOpen?: boolean;
 	children?: React.ReactNode;
@@ -86,9 +121,7 @@ const SidebarFolder = ({
 
 	const memoizedIsOpen = useMemo(() => {
 		if (alwaysOpen) return true;
-
 		if (defaultOpen) return true;
-
 		return (children as React.ReactElement<{ href?: string }>[]).some((child) => child.props.href === pathname);
 	}, [alwaysOpen, defaultOpen, children, pathname]);
 
@@ -115,31 +148,7 @@ const SidebarFolder = ({
 				)}
 				asChild
 			>
-				{href ? (
-					<Link href={href}>
-						{label}{" "}
-						{!alwaysOpen && (
-							<MotionChevron
-								className="h-4 w-4"
-								initial={{ rotate: isOpen ? 90 : 0 }}
-								animate={{ rotate: isOpen ? 90 : 0 }}
-								aria-hidden
-							/>
-						)}
-					</Link>
-				) : (
-					<div>
-						{label}{" "}
-						{!alwaysOpen && (
-							<MotionChevron
-								className="h-4 w-4"
-								initial={{ rotate: isOpen ? 90 : 0 }}
-								animate={{ rotate: isOpen ? 90 : 0 }}
-								aria-hidden
-							/>
-						)}
-					</div>
-				)}
+				<FolderTriggerContent label={label} href={href} isOpen={isOpen} alwaysOpen={alwaysOpen} />
 			</CollapsibleTrigger>
 			<MotionCollapsibleContent
 				className="ml-2 flex flex-col overflow-y-hidden"
@@ -158,7 +167,7 @@ const SidebarLink = ({
 	label,
 	sidebarContainerRef,
 }: {
-	href: string;
+	href: Route | URL;
 	label: string;
 	sidebarContainerRef: RefObject<HTMLDivElement | null>;
 }) => {
@@ -217,10 +226,30 @@ export function Sidebar({ className }: { className?: string }) {
 	const locale = useLocale() as Locale;
 	// biome-ignore lint/style/noNonNullAssertion: path structure is known
 	const project = pathname.split("/")[2]! as Project;
-	const typedSidebarData = sidebarData as TSideBar;
 	const sidebarContainerRef = useRef<HTMLDivElement>(null);
+	const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
 
-	const formattedSidebarData = typedSidebarData[locale][project].children;
+	useEffect(() => {
+		fetch("/sidebar.json")
+			.then((res) => res.json())
+			.then((data) => setSidebarData(data as TSideBar))
+			.catch((error) => {
+				// biome-ignore lint/suspicious/noConsole: Error logging for sidebar data loading failure
+				console.error("Failed to load sidebar data:", error);
+			});
+	}, []);
+
+	if (!sidebarData) {
+		return (
+			<nav className={cn("flex w-full grow flex-col", className)}>
+				<DocSearchComponent className="hidden lg:flex" />
+				<ProjectSwitcher />
+				<div className="flex-1 p-2">Loading...</div>
+			</nav>
+		);
+	}
+
+	const formattedSidebarData = sidebarData[locale][project].children;
 	const sortedSidebarItems = sortSidebarItems(Object.values(formattedSidebarData));
 
 	return (

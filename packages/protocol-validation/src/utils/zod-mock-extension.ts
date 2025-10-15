@@ -1,7 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: not sure how to fix this */
 import { z } from "zod";
-
-// Helper type to extract the output type of a Zod schema for use in type annotations
-export type MockData<T extends z.ZodTypeAny> = z.output<T>;
 
 declare module "zod" {
 	interface ZodType {

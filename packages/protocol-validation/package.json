@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/protocol-validation",
-	"version": "7.0.0",
+	"version": "7.0.1",
 	"main": "./dist/index.js",
 	"license": "GPL-3.0-or-later",
 	"repository": {
@@ -21,24 +21,23 @@
 	"bin": {
 		"@codaco/protocol-validation": "./scripts/cli.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"dependencies": {
 		"@codaco/shared-consts": "workspace:*",
-		"@faker-js/faker": "^10.0.0",
+		"@faker-js/faker": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@types/gunzip-maybe": "^1.4.2",
-		"@types/tar": "^6.1.13",
-		"@types/tar-stream": "^3.1.3",
-		"chalk": "^5.6.0",
+		"@types/tar-stream": "^3.1.4",
 		"dotenv": "catalog:",
-		"es-toolkit": "^1.39.4",
 		"gunzip-maybe": "^1.4.2",
 		"jszip": "^3.10.1",
 		"tar-stream": "^3.1.7",
-		"tsx": "^4.19.3",
+		"tsx": "^4.20.6",
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vite-plugin-dts": "catalog:",

@@ -13,7 +13,6 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"postcss": "catalog:",
 		"tailwindcss": "catalog:",
 		"tailwindcss-animate": "catalog:"
 	},

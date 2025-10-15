@@ -1,10 +1,9 @@
-import type { SchemaVersion } from "../schemas";
-import { MigrationNotPossibleError, MigrationStepError, VersionMismatchError } from "./errors";
-
 // Import the actual protocol types for each version
 import type { z } from "zod";
+import type { SchemaVersion } from "../schemas";
 import type ProtocolSchemaV7 from "../schemas/7/schema";
 import type ProtocolSchemaV8 from "../schemas/8/schema";
+import { MigrationNotPossibleError, MigrationStepError, VersionMismatchError } from "./errors";
 
 // Map schema versions to their inferred types
 type ProtocolTypeMap = {
@@ -59,7 +58,6 @@ export class MigrationChain {
 	): ProtocolDocument<To> {
 		try {
 			const result = migration.migrate(document);
-			console.log(`Migration ${migration.from}→${migration.to} completed successfully`);
 			return result;
 		} catch (_error) {
 			throw new MigrationStepError(migration.from);

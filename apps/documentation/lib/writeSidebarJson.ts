@@ -1,8 +1,8 @@
 import "dotenv/config"; // This is essential here, because helper functions (below) use env variables, but they are not available in the Node.js environment without dotenv! This file is run directly in Node via tsc.
-import matter from "gray-matter";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { locales, type Locale, type SidebarLocaleDefinition, type TSideBar } from "~/app/types";
+import matter from "gray-matter";
+import { type Locale, locales, type SidebarLocaleDefinition, type TSideBar } from "~/app/types";
 import {
 	createFolderEntry,
 	createPageEntry,
@@ -64,7 +64,7 @@ function generateSidebarData() {
 		}
 
 		// Only process files ending in .md or .mdx
-		if (!file.name.endsWith(".md") && !file.name.endsWith(".mdx")) {
+		if (!(file.name.endsWith(".md") || file.name.endsWith(".mdx"))) {
 			continue;
 		}
 
@@ -72,8 +72,8 @@ function generateSidebarData() {
 		const locale = file.name.split(".")[1] as Locale | undefined;
 
 		// If there's no locale, or the locale isn't included in the type, ignore it.
-		if (!locale || !locales.includes(locale as Locale)) {
-			// eslint-disable-next-line no-console
+		if (!(locale && locales.includes(locale as Locale))) {
+			// biome-ignore lint/suspicious/noConsole: Logging missing locale
 			console.warn(
 				`File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${locale}. Skipping.`,
 			);
@@ -100,12 +100,5 @@ function generateSidebarData() {
 	return sidebarData;
 }
 
-try {
-	const sidebarData = generateSidebarData();
-
-	writeFileSync(join(process.cwd(), "public", "sidebar.json"), JSON.stringify(sidebarData, null, "\t"), "utf-8");
-} catch (e) {
-	// eslint-disable-next-line no-console
-	console.log("Error writing sidebar data!", e);
-	throw e;
-}
+const sidebarData = generateSidebarData();
+writeFileSync(join(process.cwd(), "public", "sidebar.json"), JSON.stringify(sidebarData, null, "\t"), "utf-8");

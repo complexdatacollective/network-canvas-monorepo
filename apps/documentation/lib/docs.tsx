@@ -2,9 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, sep } from "node:path";
 import { Button, Details, Heading, ListItem, OrderedList, Paragraph, Summary, UnorderedList } from "@codaco/ui";
 import rehypeFigure from "@microflash/rehype-figure";
-import type { LinkProps } from "next/link";
-import type { ReactNode } from "react";
-import * as prod from "react/jsx-runtime";
+import type { ComponentProps, ReactNode } from "react";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import type { Options } from "rehype-react";
@@ -16,15 +15,7 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { z } from "zod";
-import {
-	type Locale,
-	type SidebarFolder,
-	type SidebarPage,
-	type SidebarProject,
-	type TSideBar,
-	locales,
-} from "~/app/types";
-import Link from "~/components/Link";
+import type { SidebarFolder, SidebarPage, SidebarProject, TSideBar } from "~/app/types";
 import { BadPractice, GoodPractice } from "~/components/customComponents/BestPractices";
 import ImageFullWidth from "~/components/customComponents/ImageFullWidth";
 import { InterfaceMeta, InterfaceSummary } from "~/components/customComponents/InterfaceSummary";
@@ -33,20 +24,23 @@ import Pre from "~/components/customComponents/Pre";
 import { PrerequisitesSection, SummaryCard, SummarySection } from "~/components/customComponents/SummaryCard";
 import TipBox, { type TipBoxProps } from "~/components/customComponents/TipBox";
 import VideoIFrame from "~/components/customComponents/VideoIFrame";
-import sidebar from "~/public/sidebar.json";
+import Link from "~/components/Link";
 import { get } from "./helper_functions";
 import processPreTags from "./processPreTags";
 import processYamlMatter from "./processYamlMatter";
 import { type HeadingNode, headingTree } from "./tableOfContents";
 import { cn } from "./utils";
 
-export type DocRouteParams = {
-	params: {
-		docPath: string;
-	};
+const getSidebar = (): Partial<TSideBar> => {
+	const sidebarPath = join(process.cwd(), "public", "sidebar.json");
+	if (!existsSync(sidebarPath)) {
+		return {};
+	}
+	const sidebarContent = readFileSync(sidebarPath, "utf-8");
+	return JSON.parse(sidebarContent) as TSideBar;
 };
 
-export const FrontmatterSchema = z.object({
+const FrontmatterSchema = z.object({
 	title: z.string(),
 	lastUpdated: z.string().optional(),
 	hidden: z.boolean().optional(),
@@ -58,22 +52,8 @@ export const FrontmatterSchema = z.object({
 	bad: z.array(z.string()).optional(), // List of bad practices
 });
 
-export type Frontmatter = z.infer<typeof FrontmatterSchema>;
-
-// get available locales for the document path
-export function getAvailableLocalesForPath(project: string, pathSegment: string[]) {
-	// iterate through all locales and check if the file exists
-	const availableLocales = locales.filter((locale) => {
-		const sourceFile = getSourceFile(locale, project, pathSegment);
-		const isFileExist = !!(sourceFile && existsSync(sourceFile));
-		return isFileExist;
-	});
-
-	return availableLocales;
-}
-
 // Process docPaths to remove CWD, docs subdirectory, file extensions, and split into segments
-export const processPath = (docPath: string) => {
+const processPath = (docPath: string) => {
 	const processedPath = docPath
 		.split(sep)
 		.slice(3) // First element is empty string, second is 'docs', third is the project name
@@ -97,22 +77,17 @@ export const processPath = (docPath: string) => {
 //   docPath: [ 'getting-started', 'installation' ]
 // }
 type ReturnType = {
-	locale: Locale;
+	locale: string;
 	project: string;
 	docPath: string[];
 };
 
-export const getDocsForRouteSegment = ({
-	locale,
-	project,
-}: {
-	locale: Locale;
-	project: string;
-}) => {
-	const typedSidebar = sidebar as TSideBar;
-	const sidebarData = get(typedSidebar, [locale, project], null) as SidebarProject;
+export const getDocsForRouteSegment = ({ locale, project }: { locale: string; project: string }) => {
+	const sidebar = getSidebar();
+	const sidebarData = get(sidebar, [locale, project], null) as SidebarProject;
 
 	if (!sidebarData) {
+		// biome-ignore lint/suspicious/noConsole: Logging missing sidebar data
 		console.log(`No sidebar data found for ${locale} and ${project}`);
 		return [];
 	}
@@ -141,9 +116,11 @@ export const getDocsForRouteSegment = ({
 		}
 
 		for (const key in data.children) {
-			const child = data.children[key];
-			if (child) {
-				getSourceFilePaths(child);
+			if (Object.hasOwn(data.children, key)) {
+				const child = data.children[key];
+				if (child) {
+					getSourceFilePaths(child);
+				}
 			}
 		}
 
@@ -156,7 +133,8 @@ export const getDocsForRouteSegment = ({
 };
 
 // Get the sourceFile path from the sidebar.json
-export const getSourceFile = (locale: string, project: string, pathSegment?: string[]) => {
+const getSourceFile = (locale: string, project: string, pathSegment?: string[]) => {
+	const sidebar = getSidebar();
 	const projectSourceFile = get(sidebar, [locale, project, "sourceFile"], null) as string;
 
 	if (!pathSegment) return join(process.cwd(), projectSourceFile);
@@ -180,6 +158,68 @@ export const getSourceFile = (locale: string, project: string, pathSegment?: str
 	return join(process.cwd(), folderSourceFile);
 };
 
+const markdownComponents = {
+	h1: (props: ComponentProps<typeof Heading>) => <Heading variant="h1" {...props} />,
+	h2: (props: ComponentProps<typeof Heading>) => <Heading variant="h2" {...props} />,
+	h3: (props: ComponentProps<typeof Heading>) => <Heading variant="h3" {...props} />,
+	h4: (props: ComponentProps<typeof Heading>) => <Heading variant="h4" {...props} />,
+	p: Paragraph,
+	paragraph: Paragraph,
+	a: Link,
+	ul: UnorderedList,
+	ol: OrderedList,
+	li: ListItem,
+	blockquote: (props: { children: ReactNode }) => (
+		<blockquote className="my-4 border-s-4 border-accent bg-card p-4">{props.children}</blockquote>
+	),
+	pre: Pre,
+	button: (props: ComponentProps<typeof Button>) => <Button variant="default" {...props} />,
+	link: (props: ComponentProps<typeof Link> & { className?: string; children: ReactNode }) => {
+		return <Link {...props} />;
+	},
+	tipbox: (props: TipBoxProps) => {
+		return <TipBox danger={props.danger !== undefined}>{props.children}</TipBox>;
+	},
+	imagefullwidth: (props: { src: string; alt: string }) => <ImageFullWidth {...props} />,
+	figure: (props: { children: ReactNode }) => (
+		<figure
+			{...props}
+			className={cn(
+				"my-10 flex w-full flex-col items-center justify-center",
+				"[--shadow-color:color-mix(in_lab,hsl(var(--background))_80%,black)]",
+				"[&>a]:m-0 [&>a]:w-full [&>a]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]",
+			)}
+		/>
+	),
+	figcaption: (props: { children: ReactNode }) => <figcaption {...props} className="mt-2 text-center text-sm italic" />,
+	img: (props: { src?: string; alt?: string }) => (
+		<a href={props.src} target="_blank" rel="noreferrer" className="my-10 w-full px-8">
+			{/* biome-ignore lint/performance/noImgElement: markdown content with unknown dimensions */}
+			<img {...props} alt={props.alt} className="w-full" />
+		</a>
+	),
+	keyconcept: (props: { title: string; children: ReactNode }) => <KeyConcept {...props} />,
+	goodpractice: (props: { children: ReactNode }) => <GoodPractice {...props} />,
+	badpractice: (props: { children: ReactNode }) => <BadPractice {...props} />,
+	videoiframe: (props: { src: string; title: string }) => <VideoIFrame {...props} />,
+	summarycard: (props: { duration: string; children: ReactNode }) => <SummaryCard {...props} />,
+	prerequisitessection: (props: { children: ReactNode }) => <PrerequisitesSection {...props} />,
+	summarysection: (props: { children: ReactNode }) => <SummarySection {...props} />,
+	interfacesummary: (props: { children: ReactNode }) => <InterfaceSummary {...props} />,
+	interfacemeta: (props: { type: string; creates: string; usesprompts: string }) => <InterfaceMeta {...props} />,
+	definition: (props: { children: ReactNode }) => <div className="text-lg font-normal">{props.children}</div>,
+	table: (props: { children: ReactNode }) => (
+		<div className="overflow-x-auto">
+			<table
+				className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full !max-w-max text-pretty break-keep [&>th]:text-nowrap"
+				{...props}
+			/>
+		</div>
+	),
+	details: Details,
+	summary: Summary,
+};
+
 export async function getDocumentForPath({
 	locale,
 	project,
@@ -192,7 +232,6 @@ export async function getDocumentForPath({
 	const sourceFile = getSourceFile(locale, project, pathSegment);
 
 	if (!sourceFile || (sourceFile && !existsSync(sourceFile))) {
-		console.log(`File not found: ${sourceFile}`);
 		return null;
 	}
 
@@ -205,85 +244,12 @@ export async function getDocumentForPath({
 		.use(processYamlMatter)
 		.use(remarkRehype, { allowDangerousHtml: true })
 		.use(rehypeFigure)
-		.use(rehypeRaw) // Allow raw HTML
-		.use(slug) // Add IDs to headings
-		.use(headingTree) // Create a tree of headings in data.headings
-		.use(processPreTags) // Add the raw code content to the pre element
-		.use(
-			rehypeHighlight, // Highlight code blocks
-			{
-				detect: true, // Automatically detect the language
-			},
-		)
-		.use(rehypeReact, {
-			Fragment: prod.Fragment,
-			jsx: prod.jsx,
-			jsxs: prod.jsxs,
-			components: {
-				h1: (props) => <Heading variant="h1" {...props} />,
-				h2: (props) => <Heading variant="h2" {...props} />,
-				h3: (props) => <Heading variant="h3" {...props} />,
-				h4: (props) => <Heading variant="h4" {...props} />,
-				p: Paragraph,
-				paragraph: Paragraph,
-				a: Link,
-				ul: UnorderedList,
-				ol: OrderedList,
-				li: ListItem,
-				blockquote: (props) => (
-					<blockquote className="my-4 border-s-4 border-accent bg-card p-4">{props.children}</blockquote>
-				),
-				pre: Pre,
-				button: (props) => <Button variant="default" {...props} />,
-				link: (props: LinkProps & { className?: string; children: ReactNode }) => {
-					return <Link {...props} />;
-				},
-				tipbox: (props: TipBoxProps) => {
-					return <TipBox danger={props.danger !== undefined}>{props.children}</TipBox>;
-				},
-				imagefullwidth: (props: { src: string; alt: string }) => <ImageFullWidth {...props} />,
-				figure: (props) => (
-					<figure
-						{...props}
-						className={cn(
-							"my-10 flex w-full flex-col items-center justify-center",
-							"[--shadow-color:color-mix(in_lab,hsl(var(--background))_80%,black)]",
-							"[&>a]:m-0 [&>a]:w-full [&>a]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]",
-						)}
-					/>
-				),
-				figcaption: (props) => <figcaption {...props} className="mt-2 text-center text-sm italic" />,
-				img: (props) => (
-					<a href={props.src} target="_blank" rel="noreferrer" className="my-10 w-full px-8">
-						<img {...props} alt={props.alt} className="w-full" />
-					</a>
-				),
-				keyconcept: (props: { title: string; children: ReactNode }) => <KeyConcept {...props} />,
-				goodpractice: (props: { children: ReactNode }) => <GoodPractice {...props} />,
-				badpractice: (props: { children: ReactNode }) => <BadPractice {...props} />,
-				videoiframe: (props: { src: string; title: string }) => <VideoIFrame {...props} />,
-				summarycard: (props: { duration: string; children: ReactNode }) => <SummaryCard {...props} />,
-				prerequisitessection: (props: { children: ReactNode }) => <PrerequisitesSection {...props} />,
-				summarysection: (props: { children: ReactNode }) => <SummarySection {...props} />,
-				interfacesummary: (props: { children: ReactNode }) => <InterfaceSummary {...props} />,
-				interfacemeta: (props: {
-					type: string;
-					creates: string;
-					usesprompts: string;
-				}) => <InterfaceMeta {...props} />,
-				definition: (props: { children: ReactNode }) => <div className="text-lg font-normal">{props.children}</div>,
-				table: (props) => (
-					<div className="overflow-x-auto">
-						<table
-							className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full !max-w-max text-pretty break-keep [&>th]:text-nowrap"
-							{...props}
-						/>
-					</div>
-				),
-				details: Details,
-				summary: Summary,
-			},
-		} as Options)
+		.use(rehypeRaw)
+		.use(slug)
+		.use(headingTree)
+		.use(processPreTags)
+		.use(rehypeHighlight, { detect: true })
+		.use(rehypeReact, { Fragment, jsx, jsxs, components: markdownComponents } as Options)
 		.process(markdownFile);
 
 	const validatedFrontmatter = FrontmatterSchema.parse(result.data.matter);

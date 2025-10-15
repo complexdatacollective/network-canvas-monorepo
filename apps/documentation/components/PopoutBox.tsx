@@ -2,7 +2,7 @@ import { Heading } from "@codaco/ui";
 import type { ReactNode } from "react";
 import { cn } from "~/lib/utils";
 
-export type PopoutBoxProps = {
+type PopoutBoxProps = {
 	title?: string;
 	children: ReactNode;
 	icon?: ReactNode;

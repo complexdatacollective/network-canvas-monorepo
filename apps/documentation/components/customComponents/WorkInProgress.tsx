@@ -1,4 +1,5 @@
 import { Paragraph } from "@codaco/ui";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import PopoutBox from "~/components/PopoutBox";
 import { cn } from "~/lib/utils";
@@ -13,7 +14,7 @@ const WorkInProgress = () => {
 				"![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--success)))]",
 			)}
 			iconClassName="bg-white"
-			icon={<img src="/images/work-in-progress.svg" alt={t("title")} width={22} height={22} />}
+			icon={<Image src="/images/work-in-progress.svg" alt={t("title")} width={22} height={22} />}
 		>
 			<Paragraph>{t("content")}</Paragraph>
 		</PopoutBox>

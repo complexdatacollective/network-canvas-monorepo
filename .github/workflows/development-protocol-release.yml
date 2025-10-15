@@ -1,9 +1,9 @@
 name: Development Protocol Release
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
-      - 'packages/development-protocol'
+      - 'packages/development-protocol/**'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,18 +21,22 @@ jobs:
           cd packages/development-protocol
           zip Development.netcanvas * -r -0
 
-      - name: Tag release
-        run: git tag $(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)
+      - name: Generate unique ID
+        id: generate_id
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "UNIQUE_ID=${TIMESTAMP}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "RELEASE_NAME=@codaco/development-protocol-${TIMESTAMP}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "STABLE_RELEASE_NAME=@codaco/development-protocol" >> $GITHUB_OUTPUT
 
-      - name: Get release name
-        id: getReleaseName
-        run: echo "RELEASE_NAME=$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)" >> $GITHUB_OUTPUT
-
-      - name: Release
+      - name: Create versioned release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.getReleaseName.outputs.RELEASE_NAME }}
-          name: ${{ steps.getReleaseName.outputs.RELEASE_NAME }}
+          tag_name: ${{ steps.generate_id.outputs.RELEASE_NAME }}
+          name: ${{ steps.generate_id.outputs.RELEASE_NAME }}
           files: packages/development-protocol/Development.netcanvas
+          body: |
+            Development protocol snapshot from commit ${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

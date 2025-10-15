@@ -1,22 +1,11 @@
-import type { AbstractIntlMessages } from "next-intl";
+import { type AbstractIntlMessages, hasLocale } from "next-intl";
 import { getRequestConfig } from "next-intl/server";
-import { type Locale, locales } from "~/app/types";
+import { routing } from "./routing";
 
 export default getRequestConfig(async ({ requestLocale }) => {
-	let locale = await requestLocale;
+	const requested = await requestLocale;
 
-	// Ensure that the incoming locale is valid
-	if (!locale) {
-		locale = "en";
-	}
-
-	// Validate that the incoming `locale` string exists in the locales array
-	if (!locales.includes(locale as Locale)) {
-		return {
-			locale,
-			messages: {},
-		};
-	}
+	const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
 
 	const messages = (await import(`~/messages/${locale}.json`)) as {
 		default: AbstractIntlMessages;

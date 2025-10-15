@@ -23,7 +23,6 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 				fn: <V>(entityDefinition: V) => {
 					if (typeof entityDefinition === "object" && entityDefinition !== null) {
 						const typedEntity = entityDefinition as Record<string, unknown>;
-						// biome-ignore lint/performance/noDelete: necessary for migration
 						delete typedEntity.displayVariable;
 					}
 					return entityDefinition;
@@ -39,8 +38,6 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 						if (typeof variable === "object" && variable !== null) {
 							const typedVariable = variable as Record<string, unknown>;
 							if (typedVariable.type === "boolean" && typedVariable.component === "Toggle") {
-								// Remove invalid 'options' property
-								// biome-ignore lint/performance/noDelete: necessary for migration
 								delete typedVariable.options;
 							}
 						}
