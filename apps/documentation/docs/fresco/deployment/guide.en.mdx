@@ -75,19 +75,27 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
 
    ![Create a Neon database](/assets/img/fresco-images/neon-db-1.png)
 
-3. Give your database a name and choose a region from the dropdown. We recommend choosing the region nearest to you. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **Create**. Your database will be generated and you will be redirected to the Project dashboard.
+3. Give your database a name and optionally choose a region from the dropdown. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **Create**. Your database will be generated and you will be redirected to the Project dashboard.
 
+<TipBox>
+
+We recommend selecting **AWS US East 1 (N. Virginia)** as your database region.  
+This region is geographically closest to Netlify’s free-tier hosting region, which can help improve connection speed between your app and database.
+
+</TipBox>
+   
    ![Create database](/assets/img/fresco-images/neon-db-2.png)
 
-5. Under the heading 'Connect to your databse' click **Connect**. 
+
+4. Under the heading 'Connect to your databse' click **Connect**. 
 
    ![Click Connect](/assets/img/fresco-images/neon-db-3.png)
 
-6. Choose **Prisma** from the dropdown and select the **.env** tab. You will see environment variables for your database. Click **"Copy Snippet"** to copy the environment variables to your clipboard.
+5. Choose **Prisma** from the dropdown and select the **.env** tab. You will see environment variables for your database. Click **"Copy Snippet"** to copy the environment variables to your clipboard.
 
    ![Select Prisma and click the `.env` tab, and copy the environment variables](/assets/img/fresco-images/neon-db-4.png)
 
-7. Paste the environment variables into a text file or notes app for safekeeping. You will need these environment variables later in the deployment process. 
+6. Paste the environment variables into a text file or notes app for safekeeping. You will need these environment variables later in the deployment process. 
 
 <Tipbox danger>
 
