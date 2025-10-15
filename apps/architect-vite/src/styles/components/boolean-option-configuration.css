@@ -1,0 +1,20 @@
+@reference '../tailwind.css';
+
+.boolean-option-configuration {
+	@apply grid grid-cols-2 gap-x-5;
+}
+
+.boolean-option-configuration__item {
+	padding: var(--space-lg);
+	border-radius: var(--radius);
+	background: var(--color-surface-3);
+}
+
+.boolean-option-configuration__item h3 {
+	margin-top: 0;
+}
+
+.boolean-option-configuration__item .form-field:last-child,
+.boolean-option-configuration__item .form-field-container:last-child {
+	margin-bottom: 0;
+}

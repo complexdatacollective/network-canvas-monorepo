@@ -10,7 +10,7 @@
 	"scripts": {
 		"add": "pnpm dlx shadcn-ui add",
 		"clean": "rm -rf .turbo node_modules",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
 		"@radix-ui/react-collapsible": "catalog:",

@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$current_branch" = "main" ]; then
+  echo "🔍 Running strict checks for main branch..."
+  
+  # Run biome check without --unsafe flag for stricter validation
+  pnpm biome check . || {
+    echo "❌ Biome checks failed. Please fix all linting errors before pushing to main."
+    exit 1
+  }
+  
+  # Run type checking
+  pnpm typecheck-all || {
+    echo "❌ Type checking failed. Please fix all type errors before pushing to main."
+    exit 1
+  }
+  
+  echo "✅ All checks passed for main branch push."
+fi

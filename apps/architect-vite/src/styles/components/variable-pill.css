@@ -1,0 +1,104 @@
+:root {
+	--variable-pill-width: 20rem;
+	--variable-pill-background: var(--color-platinum);
+	--variable-pill-shadow-color: var(--color-variable-pill-shadow);
+}
+
+.variable-pill {
+	@apply bg-platinum h-16;
+
+	width: var(--variable-pill-width);
+	display: inline-flex;
+	flex-wrap: nowrap;
+	border-radius: var(--space-xl);
+	overflow: hidden;
+	box-shadow: 0 0 var(--space-sm) var(--variable-pill-shadow-color);
+}
+
+.variable-pill--disabled {
+	opacity: 0.35;
+}
+
+.variable-pill__edit-tooltip {
+	cursor: pointer;
+	padding: var(--space-sm);
+	border-radius: var(--radius);
+	display: flex;
+}
+
+.variable-pill__icon {
+	flex: 0 0 var(--space-2xl);
+}
+
+.variable-pill__icon .icon {
+	width: 1.6rem;
+}
+
+.variable-pill__icon,
+.variable-pill__container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.variable-pill__container {
+	flex: 1;
+	width: calc(100% - var(--space-2xl));
+	display: flex;
+	justify-content: space-between;
+}
+
+.variable-pill__container .label {
+	cursor: text;
+	width: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.variable-pill__container .form-field-container {
+	margin-bottom: 0;
+	flex: 1;
+}
+
+.variable-pill__container .form-field-container .form-field-text,
+.variable-pill__container .form-field-container .form-field-text__input {
+	background: transparent;
+}
+
+.variable-pill__container .form-field-container .form-field-text__input {
+	padding-right: 5em;
+	margin-bottom: 0;
+}
+
+.variable-pill__container h4 {
+	margin: 0;
+	flex: 1 0 auto;
+	padding: var(--space-sm) var(--space-md);
+	word-break: keep-all;
+}
+
+.variable-pill__container .edit-buttons {
+	flex: 0 0 auto;
+	display: flex;
+	position: relative;
+	right: 1rem;
+}
+
+.variable-pill__container .edit-buttons__button {
+	cursor: pointer;
+}
+
+.variable-pill__container .edit-buttons__button--disabled {
+	cursor: not-allowed;
+	filter: grayscale(1);
+}
+
+.variable-pill__container .edit-buttons__button .icon {
+	width: 1.5rem;
+	height: 1.5rem;
+}
+
+.variable-pill__container .edit-buttons__button--cancel {
+	margin-left: var(--space-sm);
+}

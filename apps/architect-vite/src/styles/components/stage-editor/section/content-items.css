@@ -1,0 +1,57 @@
+.stage-editor-section-content-items {
+	.stage-editor-section-content-items__controls {
+		margin-top: var(--space-lg);
+
+		.button {
+			&:first-child {
+				margin-left: 0;
+			}
+		}
+	}
+
+	.stage-editor-section-content-items__control {
+		margin-right: var(--space-sm);
+		color: var(--color-primary-foreground);
+
+		&::before {
+			content: "+";
+			font-size: var(--text-2xl);
+			line-height: 100%;
+			position: relative;
+			top: -0.2rem;
+			margin-right: var(--space-sm);
+		}
+
+		&.stage-editor-section-content-items__control--text {
+			background-color: var(--color-variant-1);
+
+			&:hover {
+				background-color: var(--color-variant-1);
+			}
+		}
+
+		&.stage-editor-section-content-items__control--image {
+			background-color: var(--color-variant-2);
+
+			&:hover {
+				background-color: var(--color-variant-2);
+			}
+		}
+
+		&.stage-editor-section-content-items__control--audio {
+			background-color: var(--color-variant-3);
+
+			&:hover {
+				background-color: var(--color-variant-3);
+			}
+		}
+
+		&.stage-editor-section-content-items__control--video {
+			background-color: var(--color-variant-4);
+
+			&:hover {
+				background-color: var(--color-variant-4);
+			}
+		}
+	}
+}

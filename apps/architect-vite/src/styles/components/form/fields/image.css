@@ -1,0 +1,14 @@
+.form-fields-image {
+	width: 100%;
+	background: hsl(var(--rich-black));
+	padding: var(--space-md);
+	border-radius: var(--radius);
+
+	.form-fields-image__image {
+		background-size: contain;
+		background-position: center;
+		background-repeat: no-repeat;
+		width: 100%;
+		height: 30vh;
+	}
+}
