@@ -28,7 +28,7 @@ const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerPr
 	const updateType = useCallback(
 		(entityType: string, typeKey: string, form: Record<string, unknown>) => {
 			// @ts-expect-error - thunk action returns promise
-			return dispatch(codebookActions.updateType(entityType, typeKey, parse(form)));
+			return dispatch(codebookActions.updateType({ entity: entityType, type: typeKey, configuration: parse(form) }));
 		},
 		[dispatch],
 	);
@@ -36,7 +36,7 @@ const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerPr
 	const createType = useCallback(
 		(entityType: string, form: Record<string, unknown>) => {
 			// @ts-expect-error - thunk action returns promise
-			return dispatch(codebookActions.createType(entityType, parse(form)));
+			return dispatch(codebookActions.createType({ entity: entityType, configuration: parse(form) }));
 		},
 		[dispatch],
 	);
