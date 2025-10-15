@@ -55,7 +55,7 @@ const ColorPicker = ({
 			<div
 				className={colorClasses}
 				onClick={() => handleClick(color.value)}
-				style={{ "--color": `var(--${color.value})` }}
+				style={{ "--color": `hsl(var(--${color.value}))` } as React.CSSProperties}
 				key={color.value}
 			>
 				<div className="form-fields-color-picker__color-label">{color.label}</div>

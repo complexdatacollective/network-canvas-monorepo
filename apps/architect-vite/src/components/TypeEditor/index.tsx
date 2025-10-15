@@ -2,8 +2,8 @@ import { get } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
-import { getProtocol } from "~/selectors/protocol";
 import type { RootState } from "~/ducks/store";
+import { getProtocol } from "~/selectors/protocol";
 import Editor from "../Editor";
 import { format, parse } from "./convert";
 import getNewTypeTemplate from "./getNewTypeTemplate";
@@ -55,7 +55,11 @@ const TypeEditorContainer = ({ entity, type, onComplete }: TypeEditorContainerPr
 		[createType, updateType, onComplete, entity, type],
 	);
 
-	return <Editor form={formName} component={TypeEditor} initialValues={initialValues} onSubmit={handleSubmit} />;
+	return (
+		<Editor form={formName} initialValues={initialValues} onSubmit={handleSubmit}>
+			<TypeEditor form={formName} entity={entity} type={type} isNew={!type} />
+		</Editor>
+	);
 };
 
 export { formName };

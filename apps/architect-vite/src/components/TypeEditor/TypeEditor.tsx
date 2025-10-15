@@ -42,10 +42,9 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 				</Layout>
 			</div>
 			<Layout>
-				<Section title={`${capitalize(entity)} Type`}>
+				<Section title={`${capitalize(entity)} Type`} summary={<p>Name this {entity} type.</p>}>
 					<p>
-						Name this {entity} type. This name will be used to identify this type in the codebook, and in your data
-						exports.
+						This name will be used to identify this type in the codebook, and in your data exports.
 						{entity === "node" && ' Some examples might be "Person", "Place", or "Organization".'}
 						{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
 					</p>

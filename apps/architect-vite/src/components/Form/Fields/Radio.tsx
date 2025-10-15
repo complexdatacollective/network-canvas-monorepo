@@ -39,7 +39,12 @@ const Radio = ({ label = null, className = "", input, disabled = false, fieldLab
 				{...rest}
 			/>
 			<div className="form-field-radio__radio" />
-			{label && <MarkdownLabel inline label={label} className="form-field-inline-label" />}
+			{label &&
+				(typeof label === "string" ? (
+					<MarkdownLabel inline label={label} className="form-field-inline-label" />
+				) : (
+					<div className="w-12 h-12">{label}</div>
+				))}
 		</label>
 	);
 };

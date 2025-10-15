@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { memo, useCallback } from "react";
+import { memo, useMemo } from "react";
 import icons from "../utils/getIcon";
 
 type IconProps = {
@@ -19,7 +19,7 @@ const Icon = ({ color = "", name, className = "", style = {}, ...rest }: IconPro
 		[className],
 	);
 
-	const IconComponent = useCallback(icons(name), [name]);
+	const IconComponent = useMemo(() => icons(name), [name]);
 
 	if (!IconComponent) {
 		console.warn("Invalid icon name:", name);

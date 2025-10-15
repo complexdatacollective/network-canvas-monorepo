@@ -1,5 +1,5 @@
-import icons from "../assets/img/icons";
 import type { ComponentType } from "react";
+import icons from "../assets/img/icons";
 
 type IconComponent = ComponentType<any>;
 
