@@ -1,4 +1,4 @@
-import { Check, Download, Redo, Save, Undo } from "lucide-react";
+import { Check, Download, Redo, Undo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
@@ -6,21 +6,17 @@ import ControlBar from "~/components/ControlBar";
 import { useAppDispatch } from "~/ducks/hooks";
 import { clearActiveProtocol, getCanRedo, getCanUndo, redo, undo } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { checkUnsavedChanges, exportNetcanvas, saveProtocol } from "~/ducks/modules/userActions/userActions";
+import { checkUnsavedChanges, exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import type { RootState } from "~/ducks/store";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button } from "~/lib/legacy-ui/components";
-import { getHasUnsavedChanges } from "~/selectors/protocol";
 
 const ProtocolControlBar = () => {
 	const dispatch = useAppDispatch();
 	const [, navigate] = useLocation();
 	const [isExporting, setIsExporting] = useState(false);
 	const [downloadSuccess, setDownloadSuccess] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
-	const [saveSuccess, setSaveSuccess] = useState(false);
 
-	const hasUnsavedChanges = useSelector((state: RootState) => getHasUnsavedChanges(state));
 	const canUndo = useSelector((state: RootState) => getCanUndo(state));
 	const canRedo = useSelector((state: RootState) => getCanRedo(state));
 
@@ -46,19 +42,6 @@ const ProtocolControlBar = () => {
 			}),
 		);
 	}, [dispatch, navigate]);
-
-	const handleSave = useCallback(async () => {
-		try {
-			setIsSaving(true);
-			await dispatch(saveProtocol()).unwrap();
-			setSaveSuccess(true);
-			setTimeout(() => setSaveSuccess(false), 2000);
-		} catch (error) {
-			console.error("Failed to save protocol:", error);
-		} finally {
-			setIsSaving(false);
-		}
-	}, [dispatch]);
 
 	const handleDownload = useCallback(async () => {
 		try {
@@ -104,14 +87,6 @@ const ProtocolControlBar = () => {
 				<Button key="redo-button" color="platinum" icon={<Redo />} onClick={handleRedo} disabled={!canRedo}>
 					Redo
 				</Button>,
-				<Button
-					key="save-button"
-					onClick={handleSave}
-					color="slate-blue"
-					content={saveSuccess ? "Saved" : isSaving ? "Saving..." : "Save changes"}
-					disabled={isSaving || !hasUnsavedChanges}
-					icon={saveSuccess ? <Check /> : <Save />}
-				/>,
 				<Button
 					key="export-button"
 					onClick={handleDownload}
