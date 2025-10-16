@@ -1,12 +1,12 @@
 import { Row, Section } from "~/components/EditorLayout";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
-import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import EntitySelectField from "../fields/EntitySelectField/EntitySelectField";
 
 const PromptFields = () => (
-	<Section title="Dyad Census Prompts">
+	<Section title="Dyad Census Prompts" layout="vertical">
 		<Row>
 			<div id={getFieldId("text")} data-title="Dyad Census Prompts" />
 			<p>

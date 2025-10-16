@@ -1,11 +1,10 @@
 import { compose } from "recompose";
-import PromptText from "~/components/sections/PromptText";
-
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import withVariableHandlers from "~/components/sections/CategoricalBinPrompts/withVariableHandlers"; // TODO: should these be moved somewhere more general?
 import withVariableOptions from "~/components/sections/CategoricalBinPrompts/withVariableOptions";
+import PromptText from "~/components/sections/PromptText";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 
 const VARIABLE_TYPE = "location";
@@ -48,7 +47,7 @@ const PromptFields = ({
 	return (
 		<>
 			<PromptText />
-			<Section title="Selection Variable">
+			<Section title="Selection Variable" layout="vertical">
 				<Row>
 					<ValidatedField
 						name="variable"

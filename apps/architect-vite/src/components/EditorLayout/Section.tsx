@@ -29,6 +29,7 @@ type SectionProps = {
 	toggleable?: boolean;
 	startExpanded?: boolean;
 	handleToggleChange?: (state: boolean) => Promise<boolean>;
+	layout?: "horizontal" | "vertical";
 };
 
 const Section = ({
@@ -42,6 +43,7 @@ const Section = ({
 	toggleable = false,
 	startExpanded = true,
 	handleToggleChange = (state) => Promise.resolve(state),
+	layout = "horizontal",
 }: SectionProps) => {
 	const [isOpen, setIsOpen] = useState(startExpanded);
 
@@ -77,6 +79,36 @@ const Section = ({
 		"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
 		"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative px-6 py-4 shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)]",
 	);
+
+	if (layout === "vertical") {
+		return (
+			<div className="w-full flex flex-col gap-3 bg-[var(--color-surface-2)] rounded-md p-5 mb-4">
+				<legend className="flex items-center justify-between [--color-input:var(--color-navy-taupe)] [--color-input-foreground:white]">
+					<span className="text-base font-semibold tracking-wide flex items-center gap-1">
+						{title}
+						{!toggleable && <span className="text-error">*</span>}
+					</span>
+					{toggleable && (
+						<Switch
+							title="Turn this feature on or off"
+							checked={isOpen}
+							onCheckedChange={changeToggleState}
+							className="shrink-0"
+						/>
+					)}
+				</legend>
+
+				{summary && <div className="text-sm text-muted-foreground -mt-1">{summary}</div>}
+
+				{isOpen && children && (
+					<fieldset className={classes}>
+						{children}
+						{id && <IssueAnchor fieldName={id} description={title} />}
+					</fieldset>
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div className="w-full grid gap-4 grid-cols-[25%_auto] max-w-6xl">

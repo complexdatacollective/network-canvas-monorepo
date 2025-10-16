@@ -1,11 +1,11 @@
 import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
+import RichTextField from "~/components/Form/Fields/RichText";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
-import Tip from "~/components/Tip";
 import PromptText from "~/components/sections/PromptText";
-import RichTextField from "~/components/Form/Fields/RichText";
+import Tip from "~/components/Tip";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import BinSortOrderSection from "../BinSortOrderSection";
@@ -76,7 +76,7 @@ const PromptFields = ({
 	return (
 		<>
 			<PromptText />
-			<Section title="Categorical Variable" id={getFieldId("variable")}>
+			<Section title="Categorical Variable" id={getFieldId("variable")} layout="vertical">
 				<Row>
 					<ValidatedField
 						name="variable"
@@ -122,6 +122,7 @@ const PromptFields = ({
 				toggleable
 				startExpanded={!!otherVariable}
 				handleToggleChange={handleToggleOtherVariable}
+				layout="vertical"
 			>
 				<Row>
 					<ValidatedField

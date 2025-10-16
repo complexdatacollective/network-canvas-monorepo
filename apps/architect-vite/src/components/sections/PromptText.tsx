@@ -8,7 +8,6 @@ type PromptTextProps = {
 };
 
 const PromptText = ({ name = "text" }: PromptTextProps) => {
-	console.log("PromptText name:", name, getFieldId(name));
 	return (
 		<Section
 			id={getFieldId(name)}
@@ -19,6 +18,7 @@ const PromptText = ({ name = "text" }: PromptTextProps) => {
 					below.
 				</p>
 			}
+			layout="vertical"
 		>
 			<Row>
 				<ValidatedField

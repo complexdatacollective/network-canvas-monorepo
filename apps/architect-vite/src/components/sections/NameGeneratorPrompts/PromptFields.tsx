@@ -38,6 +38,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					</p>
 				}
 				handleToggleChange={handleToggleAdditionalAttributes}
+				layout="vertical"
 			>
 				<Row>
 					<Tip>

@@ -48,6 +48,7 @@ const BucketSortOrderSection = ({
 			disabled={disabled}
 			startExpanded={!!hasBucketSortOrder}
 			handleToggleChange={handleToggleChange}
+			layout="vertical"
 		>
 			<Row>
 				<Tip>

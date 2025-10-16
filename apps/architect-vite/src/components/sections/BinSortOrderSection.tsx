@@ -45,6 +45,7 @@ const BinSortOrderSection = ({
 			disabled={disabled}
 			startExpanded={!!hasBinSortOrder}
 			handleToggleChange={handleToggleChange}
+			layout="vertical"
 		>
 			<Row>
 				<MultiSelect

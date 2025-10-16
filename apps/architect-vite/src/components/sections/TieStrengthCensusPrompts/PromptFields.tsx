@@ -1,11 +1,11 @@
 import { compose } from "@reduxjs/toolkit";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import RichText from "~/components/Form/Fields/RichText/Field";
 import ValidatedField from "~/components/Form/ValidatedField";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import Tip from "~/components/Tip";
-import RichText from "~/components/Form/Fields/RichText/Field";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import withCreateEdgeHandlers from "./withCreateEdgeHandler";
@@ -61,7 +61,7 @@ const PromptFields = ({
 
 	return (
 		<>
-			<Section title="Tie-Strength Census Prompt" id={getFieldId("text")}>
+			<Section title="Tie-Strength Census Prompt" id={getFieldId("text")} layout="vertical">
 				<Row>
 					<p>
 						Tie-Strength Census prompts explain to your participant which relationship they should evaluate (for
@@ -99,6 +99,7 @@ const PromptFields = ({
 						</ul>
 					</>
 				}
+				layout="vertical"
 			>
 				<Section
 					title="Create an Edge"
@@ -109,6 +110,7 @@ const PromptFields = ({
 							when creating an edge.
 						</p>
 					}
+					layout="vertical"
 				>
 					<Row>
 						<ValidatedField

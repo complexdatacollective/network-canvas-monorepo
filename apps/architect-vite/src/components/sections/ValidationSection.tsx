@@ -1,8 +1,8 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { get, pickBy } from "es-toolkit/compat";
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { createSelector } from "@reduxjs/toolkit";
 import { Row, Section } from "~/components/EditorLayout";
 import Validations from "~/components/Validations";
 import { getFieldId } from "../../utils/issues";
@@ -57,6 +57,7 @@ const ValidationSection = ({
 			summary={<p>Add one or more validation rules to this form field.</p>}
 			startExpanded={!!hasValidation}
 			handleToggleChange={handleToggleValidation}
+			layout="vertical"
 		>
 			<Row>
 				<Validations

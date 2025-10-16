@@ -2,9 +2,9 @@ import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
-import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import BinSortOrderSection from "../BinSortOrderSection";
 import BucketSortOrderSection from "../BucketSortOrderSection";
@@ -24,7 +24,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 
 	return (
 		<>
-			<Section title="One to Many Dyad Census Prompts">
+			<Section title="One to Many Dyad Census Prompts" layout="vertical">
 				<Row>
 					<div id={getFieldId("text")} data-title="Dyad Census Prompts" />
 					<p>

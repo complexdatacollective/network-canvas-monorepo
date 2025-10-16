@@ -1,11 +1,11 @@
 import { omit } from "es-toolkit/compat";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import { Field as RichText } from "~/components/Form/Fields/RichText";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Options from "~/components/Options";
 import Parameters from "~/components/Parameters";
 import { isBooleanWithOptions, isOrdinalOrCategoricalType, isVariableTypeWithParameters } from "~/config/variables";
-import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { getFieldId } from "~/utils/issues";
 import BooleanChoice from "../../BooleanChoice";
 import ExternalLink from "../../ExternalLink";
@@ -42,7 +42,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 
 	return (
 		<>
-			<Section id={getFieldId("variable")} title="Variable">
+			<Section id={getFieldId("variable")} title="Variable" layout="vertical">
 				<Row>
 					{variable && !isNewVariable && (
 						<Tip>
@@ -69,6 +69,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				title="Question Prompt"
 				id={getFieldId("prompt")}
 				summary={<p>Enter question for the participant. e.g. What is this person&apos;s name?</p>}
+				layout="vertical"
 			>
 				<Row>
 					<ValidatedField
@@ -94,6 +95,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 						.
 					</p>
 				}
+				layout="vertical"
 			>
 				<Row>
 					<ValidatedField
@@ -148,6 +150,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 							a minimum of two possible values for the participant to choose between.
 						</p>
 					}
+					layout="vertical"
 				>
 					<Row>
 						<Options name="options" label="Options" form={form} />
@@ -155,14 +158,14 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				</Section>
 			)}
 			{isBooleanWithOptions(component) && (
-				<Section id={getFieldId("parameters")} title="BooleanChoice Options">
+				<Section layout="vertical" id={getFieldId("parameters")} title="BooleanChoice Options">
 					<Row>
 						<BooleanChoice form={form} />
 					</Row>
 				</Section>
 			)}
 			{isVariableTypeWithParameters(variableType) && (
-				<Section title="Input Options" id={getFieldId("parameters")}>
+				<Section layout="vertical" title="Input Options" id={getFieldId("parameters")}>
 					<Row>
 						<Parameters type={variableType} component={component} name="parameters" form={form} />
 					</Row>

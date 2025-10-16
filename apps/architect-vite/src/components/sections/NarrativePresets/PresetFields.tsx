@@ -1,9 +1,9 @@
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
-import ValidatedField from "~/components/Form/ValidatedField";
 import CheckboxGroup from "~/components/Form/Fields/CheckboxGroup";
 import Text from "~/components/Form/Fields/Text";
+import ValidatedField from "~/components/Form/ValidatedField";
 import Row from "../../EditorLayout/Row";
 import Section from "../../EditorLayout/Section";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
@@ -80,6 +80,7 @@ const PresetFields = ({
 						visible to the participant.
 					</p>
 				}
+				layout="vertical"
 			>
 				<Row>
 					<ValidatedField
@@ -91,7 +92,11 @@ const PresetFields = ({
 					/>
 				</Row>
 			</Section>
-			<Section title="Layout Variable" summary={<p>Select a variable to use to position the nodes for this preset.</p>}>
+			<Section
+				layout="vertical"
+				title="Layout Variable"
+				summary={<p>Select a variable to use to position the nodes for this preset.</p>}
+			>
 				<Row>
 					<ValidatedField
 						name="layoutVariable"
@@ -112,6 +117,7 @@ const PresetFields = ({
 				disabled={!groupVariablesForSubject.length > 0}
 				startExpanded={hasGroupVariable && groupVariablesForSubject.length > 0}
 				handleToggleChange={handleToggleGroupVariable}
+				layout="vertical"
 			>
 				<Row>
 					<p>
@@ -138,6 +144,7 @@ const PresetFields = ({
 				handleToggleChange={handleToggleDisplayEdges}
 				disabled={!edgesForSubject.length > 0}
 				summary={<p>Select one or more edge types to display on this narrative preset.</p>}
+				layout="vertical"
 			>
 				<Row>
 					<Field
@@ -161,6 +168,7 @@ const PresetFields = ({
 				startExpanded={hasHighlightVariables && highlightVariablesForSubject.length > 0}
 				disabled={!highlightVariablesForSubject.length > 0}
 				handleToggleChange={handleToggleHighlightVariables}
+				layout="vertical"
 			>
 				<Row>
 					<Field

@@ -4,11 +4,11 @@ import { ValidatedField } from "~/components/Form";
 import ColorPicker from "~/components/Form/Fields/ColorPicker";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
-import Tip from "~/components/Tip";
 import { getSortOrderOptionGetter } from "~/components/sections/CategoricalBinPrompts/optionGetters";
 import withVariableHandlers from "~/components/sections/CategoricalBinPrompts/withVariableHandlers";
 import withVariableOptions from "~/components/sections/CategoricalBinPrompts/withVariableOptions";
 import PromptText from "~/components/sections/PromptText";
+import Tip from "~/components/Tip";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import BinSortOrderSection from "../BinSortOrderSection";
@@ -60,7 +60,7 @@ const PromptFields = ({
 	return (
 		<>
 			<PromptText />
-			<Section title="Ordinal Variable">
+			<Section title="Ordinal Variable" layout="vertical">
 				<Row>
 					<div id={getFieldId("variable")} />
 					<ValidatedField
@@ -83,6 +83,7 @@ const PromptFields = ({
 							Create <strong>up to 5</strong> options for this variable.
 						</p>
 					}
+					layout="vertical"
 				>
 					<Row>
 						<div id={getFieldId("variableOptions")} />
@@ -101,6 +102,7 @@ const PromptFields = ({
 			<Section
 				title="Color"
 				summary={<p>Interviewer will render each option in your ordinal variable using a color gradient.</p>}
+				layout="vertical"
 			>
 				<Row>
 					<div id={getFieldId("color")} data-name="Gradient color" />
