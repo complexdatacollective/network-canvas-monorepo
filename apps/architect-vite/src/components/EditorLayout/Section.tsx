@@ -84,7 +84,7 @@ const Section = ({
 		return (
 			<div className="w-full flex flex-col gap-3 bg-[var(--color-surface-2)] rounded-md p-5 mb-4">
 				<legend className="flex items-center justify-between [--color-input:var(--color-navy-taupe)] [--color-input-foreground:white]">
-					<span className="text-base font-semibold tracking-wide flex items-center gap-1">
+					<span className="small-heading">
 						{title}
 						{!toggleable && <span className="text-error">*</span>}
 					</span>
