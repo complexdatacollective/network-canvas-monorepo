@@ -3,10 +3,11 @@ import { compose } from "@reduxjs/toolkit";
 import { isEmpty } from "es-toolkit/compat";
 import isHotkey from "is-hotkey";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createEditor, Transforms as SlateTransforms, type BaseEditor, type Descendant } from "slate";
+import { type BaseEditor, createEditor, type Descendant, Transforms as SlateTransforms } from "slate";
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";
-import { Editable, Slate, withReact, type ReactEditor } from "slate-react";
+import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
+import { Spinner } from "~/lib/legacy-ui/components";
 import Element from "./Element";
 import Leaf from "./Leaf";
 import { toggleMark } from "./lib/actions";
@@ -203,6 +204,11 @@ const RichText = ({
 		},
 		[editor],
 	);
+
+	// Loading state - don't render Slate until we initialize
+	if (!isInitialized) {
+		return <Spinner />;
+	}
 
 	return (
 		<Slate editor={editor} initialValue={value} value={value} onChange={setValue}>
