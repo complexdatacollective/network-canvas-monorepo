@@ -89,28 +89,26 @@ const FolderTriggerContent = ({
 	href,
 	isOpen,
 	alwaysOpen,
-	...props
 }: {
 	label: string;
 	href?: Route | URL;
 	isOpen: boolean;
 	alwaysOpen?: boolean;
 } & React.HTMLAttributes<HTMLElement>) => {
-	const content = (
+	const className = "flex flex-1 items-center justify-between";
+	const children = (
 		<>
 			{label} <FolderChevron isOpen={isOpen} alwaysOpen={alwaysOpen} />
 		</>
 	);
 
-	if (href) {
-		return (
-			<Link href={href} {...props}>
-				{content}
-			</Link>
-		);
-	}
-
-	return <div {...props}>{content}</div>;
+	return href ? (
+		<Link href={href} className={className}>
+			{children}
+		</Link>
+	) : (
+		<div className={className}>{children}</div>
+	);
 };
 
 const SidebarFolder = ({
@@ -157,7 +155,9 @@ const SidebarFolder = ({
 				)}
 				asChild
 			>
-				<FolderTriggerContent label={label} href={href} isOpen={isOpen} alwaysOpen={alwaysOpen} />
+				<div>
+					<FolderTriggerContent label={label} href={href} isOpen={isOpen} alwaysOpen={alwaysOpen} />
+				</div>
 			</CollapsibleTrigger>
 			<MotionCollapsibleContent
 				className="ml-2 flex flex-col overflow-y-hidden"
