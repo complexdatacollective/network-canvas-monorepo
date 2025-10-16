@@ -11,7 +11,6 @@ import { cn } from "~/lib/utils";
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
-import sidebarData from "~/public/sidebar.json";
 import DocSearchComponent from "./DocSearchComponent";
 import ProjectSwitcher from "./ProjectSwitcher";
 
@@ -232,10 +231,30 @@ export function Sidebar({ className }: { className?: string }) {
 	const locale = useLocale() as Locale;
 	// biome-ignore lint/style/noNonNullAssertion: path structure is known
 	const project = pathname.split("/")[2]! as Project;
-	const typedSidebarData = sidebarData as TSideBar;
 	const sidebarContainerRef = useRef<HTMLDivElement>(null);
+	const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
 
-	const formattedSidebarData = typedSidebarData[locale][project].children;
+	useEffect(() => {
+		fetch("/sidebar.json")
+			.then((res) => res.json())
+			.then((data) => setSidebarData(data as TSideBar))
+			.catch((error) => {
+				// biome-ignore lint/suspicious/noConsole: Error logging for sidebar data loading failure
+				console.error("Failed to load sidebar data:", error);
+			});
+	}, []);
+
+	if (!sidebarData) {
+		return (
+			<nav className={cn("flex w-full grow flex-col", className)}>
+				<DocSearchComponent className="hidden lg:flex" />
+				<ProjectSwitcher />
+				<div className="flex-1 p-2">Loading...</div>
+			</nav>
+		);
+	}
+
+	const formattedSidebarData = sidebarData[locale][project].children;
 	const sortedSidebarItems = sortSidebarItems(Object.values(formattedSidebarData));
 
 	return (

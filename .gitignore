@@ -41,3 +41,5 @@ dist
 
 # Serena cache: https://github.com/oraios/serena/issues/283
 /.serena/cache
+
+apps/documentation/public/sidebar.json
