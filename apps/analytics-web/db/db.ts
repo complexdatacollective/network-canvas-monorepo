@@ -1,13 +1,9 @@
-import { neon } from "@neondatabase/serverless";
-import { config } from "dotenv";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { sql } from "@vercel/postgres";
+import { drizzle } from "drizzle-orm/vercel-postgres";
 import { eventsTable } from "./schema";
 
-config({ path: ".env" });
-
 // Use this object to send drizzle queries to your DB
-const sql = neon(process.env.POSTGRES_URL!);
-export const db = drizzle({ client: sql, schema: { eventsTable } });
+export const db = drizzle(sql, { schema: { eventsTable } });
 
 export type EventInsertType = typeof eventsTable.$inferInsert;
 

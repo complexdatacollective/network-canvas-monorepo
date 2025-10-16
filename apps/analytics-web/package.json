@@ -17,7 +17,6 @@
 	"dependencies": {
 		"@clerk/nextjs": "^6.33.3",
 		"@codaco/analytics": "workspace:*",
-		"@neondatabase/serverless": "^1.0.2",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-dropdown-menu": "catalog:",
@@ -25,6 +24,7 @@
 		"@radix-ui/react-slot": "catalog:",
 		"@radix-ui/react-switch": "catalog:",
 		"@tanstack/react-table": "catalog:",
+		"@vercel/postgres": "^0.10.0",
 		"autoprefixer": "^10.4.21",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
