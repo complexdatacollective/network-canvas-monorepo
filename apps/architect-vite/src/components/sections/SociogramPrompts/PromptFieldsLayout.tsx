@@ -2,9 +2,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import withCreateVariableHandlers from "~/components/enhancers/withCreateVariableHandler";
 import { ValidatedField } from "~/components/Form";
 import MultiSelect from "~/components/Form/MultiSelect";
-import withCreateVariableHandlers from "~/components/enhancers/withCreateVariableHandler";
 import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import Tip from "../../Tip";
@@ -58,7 +58,12 @@ const PromptFields = ({
 	};
 
 	return (
-		<Section title="Layout" summary={<p>This variable stores the position of nodes on the sociogram.</p>} group>
+		<Section
+			title="Layout"
+			summary={<p>This variable stores the position of nodes on the sociogram.</p>}
+			group
+			layout="vertical"
+		>
 			<Row>
 				<div id={getFieldId("layout.layoutVariable")} data-name="Layout Variable" />
 				<Tip type="info">
@@ -91,6 +96,7 @@ const PromptFields = ({
 					}
 					startExpanded={!!hasSortOrder}
 					handleToggleChange={handleToggleSortOrder}
+					layout="vertical"
 				>
 					<Row>
 						<MultiSelect

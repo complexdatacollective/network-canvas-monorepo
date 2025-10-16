@@ -78,6 +78,7 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 					dispatch(change(form, "edges.display", null));
 					return true;
 				}}
+				layout="vertical"
 			>
 				<Row>
 					{shouldShowNetworkFilterWarning && (

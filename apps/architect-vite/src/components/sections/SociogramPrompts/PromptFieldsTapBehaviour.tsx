@@ -2,9 +2,9 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import * as Fields from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
-import * as Fields from "~/components/Form/Fields";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
@@ -118,6 +118,7 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 				tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES || !!hasCreateEdgeBehaviour || !!hasToggleAttributeBehaviour
 			}
 			handleToggleChange={handleToggleChange}
+			layout="vertical"
 		>
 			<Row>
 				<DetachedField
