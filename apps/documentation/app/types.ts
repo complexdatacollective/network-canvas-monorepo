@@ -25,6 +25,7 @@ const SidebarPageSchema = SidebarItemBase.extend({
 	type: z.literal("page"),
 	sourceFile: z.string(),
 	navOrder: z.number().nullable(),
+	hidden: z.boolean().optional(),
 });
 
 export type SidebarPage = z.infer<typeof SidebarPageSchema>;
