@@ -44,8 +44,20 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
 				{children}
 			</main>
 			<footer>
-				<div className="mt-10 flex justify-center text-balance py-4 text-sm">
-					© {new Date().getFullYear()} Complex Data Collective
+				<div className="mt-10 flex flex-col items-center gap-2 py-4 text-sm sm:flex-row sm:justify-center">
+					<span>© {new Date().getFullYear()} Complex Data Collective</span>
+					<span className="hidden sm:inline">|</span>
+					<span>
+						This site is powered by{" "}
+						<a
+							href="https://www.netlify.com"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="underline hover:text-accent"
+						>
+							Netlify
+						</a>
+					</span>
 				</div>
 			</footer>
 		</>
