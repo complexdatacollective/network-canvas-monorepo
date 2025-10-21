@@ -12,12 +12,24 @@ catalogs:
     '@radix-ui/react-checkbox':
       specifier: ^1.3.3
       version: 1.3.3
+    '@radix-ui/react-collapsible':
+      specifier: ^1.1.12
+      version: 1.1.12
     '@radix-ui/react-dialog':
       specifier: ^1.1.15
       version: 1.1.15
     '@radix-ui/react-dropdown-menu':
       specifier: ^2.1.16
       version: 2.1.16
+    '@radix-ui/react-label':
+      specifier: ^2.1.7
+      version: 2.1.7
+    '@radix-ui/react-navigation-menu':
+      specifier: ^1.2.14
+      version: 1.2.14
+    '@radix-ui/react-popover':
+      specifier: ^1.1.15
+      version: 1.1.15
     '@radix-ui/react-select':
       specifier: ^2.2.6
       version: 2.2.6
@@ -27,6 +39,12 @@ catalogs:
     '@radix-ui/react-switch':
       specifier: ^1.2.6
       version: 1.2.6
+    '@radix-ui/react-tooltip':
+      specifier: ^1.2.8
+      version: 1.2.8
+    '@tailwindcss/container-queries':
+      specifier: ^0.1.1
+      version: 0.1.1
     '@tanstack/react-table':
       specifier: ^8.21.3
       version: 8.21.3
@@ -43,8 +61,11 @@ catalogs:
       specifier: ^17.2.3
       version: 17.2.3
     lucide-react:
-      specifier: ^0.545.0
-      version: 0.545.0
+      specifier: ^0.546.0
+      version: 0.546.0
+    motion:
+      specifier: ^12.23.24
+      version: 12.23.24
     next:
       specifier: 15.5.4
       version: 15.5.4
@@ -63,9 +84,18 @@ catalogs:
     tailwindcss:
       specifier: ^3.4.18
       version: 3.4.18
+    tailwindcss-animate:
+      specifier: ^1.0.7
+      version: 1.0.7
     typescript:
       specifier: 5.9.3
       version: 5.9.3
+    vite:
+      specifier: ^7.1.9
+      version: 7.1.9
+    vite-plugin-dts:
+      specifier: ^4.5.4
+      version: 4.5.4
     vitest:
       specifier: ^3.2.4
       version: 3.2.4
@@ -151,7 +181,7 @@ importers:
         version: 7.14.0
       lucide-react:
         specifier: 'catalog:'
-        version: 0.545.0(react@19.2.0)
+        version: 0.546.0(react@19.2.0)
       next:
         specifier: 'catalog:'
         version: 15.5.4(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -269,7 +299,7 @@ importers:
         version: 17.2.3
       lucide-react:
         specifier: 'catalog:'
-        version: 0.545.0(react@19.2.0)
+        version: 0.546.0(react@19.2.0)
       motion:
         specifier: 'catalog:'
         version: 12.23.24(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -532,7 +562,7 @@ importers:
         version: 0.7.1
       lucide-react:
         specifier: 'catalog:'
-        version: 0.545.0(react@19.2.0)
+        version: 0.546.0(react@19.2.0)
       tailwind-merge:
         specifier: 'catalog:'
         version: 3.3.1
@@ -3429,8 +3459,8 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide-react@0.545.0:
-    resolution: {integrity: sha512-7r1/yUuflQDSt4f1bpn5ZAocyIxcTyVyBBChSVtBKn5M+392cPmI5YJMWOJKk/HUWGm5wg83chlAZtCcGbEZtw==}
+  lucide-react@0.546.0:
+    resolution: {integrity: sha512-Z94u6fKT43lKeYHiVyvyR8fT7pwCzDu7RyMPpTvh054+xahSgj4HFQ+NmflvzdXsoAjYGdCguGaFKYuvq0ThCQ==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -7577,7 +7607,7 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  lucide-react@0.545.0(react@19.2.0):
+  lucide-react@0.546.0(react@19.2.0):
     dependencies:
       react: 19.2.0
 
