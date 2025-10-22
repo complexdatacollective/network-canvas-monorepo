@@ -7,7 +7,6 @@ import { type BaseEditor, createEditor, type Descendant, Transforms as SlateTran
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";
 import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
-import { Spinner } from "~/lib/legacy-ui/components";
 import Element from "./Element";
 import Leaf from "./Leaf";
 import { toggleMark } from "./lib/actions";
@@ -207,7 +206,7 @@ const RichText = ({
 
 	// Loading state - don't render Slate until we initialize
 	if (!isInitialized) {
-		return <Spinner />;
+		return <div>Loading...</div>;
 	}
 
 	return (

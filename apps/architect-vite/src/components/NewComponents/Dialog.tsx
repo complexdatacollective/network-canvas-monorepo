@@ -42,7 +42,7 @@ function Dialog({
 						<BaseDialog.Backdrop
 							render={
 								<motion.div
-									className="fixed inset-0 z-[var(--z-dialog)] bg-rich-black/50 backdrop-blur-[3px]"
+									className="fixed inset-0 z-[var(--z-default)] bg-rich-black/50 backdrop-blur-[3px]"
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1 }}
 									exit={{ opacity: 0 }}
@@ -51,9 +51,9 @@ function Dialog({
 						/>
 						<BaseDialog.Popup
 							render={
-								<div className="fixed inset-0 z-[calc(var(--z-dialog)+1)] flex items-center justify-center pointer-events-none">
+								<div className="fixed inset-0 z-[calc(var(--z-default)+1)] flex items-center justify-center pointer-events-none">
 									<motion.div
-										className={`rounded-[10px]  bg-surface-1 text-surface-1-foreground z-[calc(var(--z-dialog)+2)] max-h-[80vh] overflow-hidden flex flex-col pointer-events-auto ${
+										className={`rounded-[10px]  bg-surface-1 text-surface-1-foreground z-[calc(var(--z-default)+2)] max-h-[80vh] overflow-hidden flex flex-col pointer-events-auto ${
 											size === "lg" ? "min-w-[800px] max-w-[1200px]" : "min-w-[400px] max-w-[800px]"
 										}`}
 										initial={dialogInitialState}
