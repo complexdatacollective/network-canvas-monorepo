@@ -1,4 +1,3 @@
-import { has } from "lodash";
 import TextInput from "./Text";
 
 interface NumberInputProps {
@@ -24,10 +23,12 @@ const toInt = (value: string): number | null => {
 const NumberInput = ({ input = {}, placeholder, ...props }: NumberInputProps) => {
 	const enhancedInput = {
 		...input,
-		onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-			has(props, "input.onChange") && input.onChange?.(toInt(e.target.value)),
-		onBlur: (e: React.FocusEvent<HTMLInputElement>) =>
-			has(props, "input.onBlur") && input.onBlur?.(toInt(e.target.value)),
+		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+			input.onChange?.(toInt(e.target.value));
+		},
+		onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+			input.onBlur?.(toInt(e.target.value));
+		},
 	};
 
 	return <TextInput type="number" placeholder={placeholder || "Enter a number..."} input={enhancedInput} {...props} />;
