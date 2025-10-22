@@ -265,8 +265,8 @@ importers:
         specifier: ^0.0.206
         version: 0.0.206(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@next/bundle-analyzer':
-        specifier: 15.5.4
-        version: 15.5.4(bufferutil@4.0.9)
+        specifier: 16.0.0
+        version: 16.0.0(bufferutil@4.0.9)
       '@next/third-parties':
         specifier: 15.5.6
         version: 15.5.6(next@15.5.4(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
@@ -1453,8 +1453,8 @@ packages:
     resolution: {integrity: sha512-I5sbpSIAHiB+b6UttofhrN/UJXII+4tZPAq1qugzwCwLIL8EZLV7F/JyHUrEIiGgQpEXzpnjlJ+zwcEhheGvCw==}
     engines: {node: '>=19.0.0'}
 
-  '@next/bundle-analyzer@15.5.4':
-    resolution: {integrity: sha512-wMtpIjEHi+B/wC34ZbEcacGIPgQTwTFjjp0+F742s9TxC6QwT0MwB/O0QEgalMe8s3SH/K09DO0gmTvUSJrLRA==}
+  '@next/bundle-analyzer@16.0.0':
+    resolution: {integrity: sha512-OYufQoNm/Im2fYQBdXu9fqUrXaP3lPuPnryW0XNGG7kJiGxH/VWS8zc2/x4aW2LQGn+opqIJYNRXy7k5qV/09g==}
 
   '@next/env@13.5.11':
     resolution: {integrity: sha512-fbb2C7HChgM7CemdCY+y3N1n8pcTKdqtQLbC7/EQtPdLvlMUT9JX/dBYl8MMZAtYG4uVMyPFHXckb68q/NRwqg==}
@@ -5737,7 +5737,7 @@ snapshots:
       '@types/pg': 8.11.6
     optional: true
 
-  '@next/bundle-analyzer@15.5.4(bufferutil@4.0.9)':
+  '@next/bundle-analyzer@16.0.0(bufferutil@4.0.9)':
     dependencies:
       webpack-bundle-analyzer: 4.10.1(bufferutil@4.0.9)
     transitivePeerDependencies:
