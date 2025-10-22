@@ -1,6 +1,6 @@
 import { Route, Switch } from "wouter";
 import Home from "~/components/Home/Home";
-import { AssetsPage, CodebookPage, StageEditorPage, SummaryPage, TypeEditorPage } from "~/components/pages";
+import { AssetsPage, CodebookPage, StageEditorPage, SummaryPage } from "~/components/pages";
 import Protocol from "~/components/Protocol";
 
 const _appVariants = {
@@ -21,7 +21,6 @@ const Routes = () => {
 			<Route path="/protocol" component={Protocol} />
 			<Route path="/protocol/assets" component={AssetsPage} />
 			<Route path="/protocol/codebook" component={CodebookPage} />
-			<Route path="/protocol/codebook/:entity/:type" component={TypeEditorPage} />
 			<Route path="/protocol/summary" component={SummaryPage} />
 			<Route path="/protocol/stage/:stageId" component={StageEditorPage} />
 

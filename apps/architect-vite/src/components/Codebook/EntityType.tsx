@@ -26,6 +26,7 @@ type EntityTypeProps = {
 	handleDelete?: () => void;
 	handleEdit?: () => void;
 	variables?: Variable[];
+	onEditEntity?: (entity: string, type?: string) => void;
 };
 
 const EntityType = ({
@@ -38,6 +39,7 @@ const EntityType = ({
 	variables = [],
 	handleEdit = () => {},
 	handleDelete = () => {},
+	onEditEntity,
 }: EntityTypeProps) => {
 	const stages = usage.map(({ id, label }) => (
 		<Link href={`/protocol/stage/${id}`} key={id}>
@@ -92,9 +94,9 @@ const withEntityHandlers = compose(
 	}),
 	withHandlers({
 		handleEdit:
-			({ entity, type }) =>
+			({ entity, type, onEditEntity }) =>
 			() => {
-				window.location.href = `/protocol/codebook/${entity}/${type}`;
+				onEditEntity?.(entity, type);
 			},
 		handleDelete:
 			({ deleteType, openDialog, entity, type, name, inUse }) =>

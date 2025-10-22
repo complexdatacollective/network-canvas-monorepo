@@ -1,5 +1,5 @@
-import { useLocation } from "wouter";
-import Dialog from "../NewComponents/Dialog";
+import { useEffect, useState } from "react";
+import EntityTypeDialog from "../Codebook/EntityTypeDialog";
 
 type NewTypeDialogProps = {
 	show?: boolean;
@@ -14,29 +14,21 @@ const NewTypeDialog = ({
 	onComplete = () => {},
 	onCancel = () => {},
 }: NewTypeDialogProps) => {
-	const [, setLocation] = useLocation();
+	const [showEditor, setShowEditor] = useState(false);
 
-	const handleCreateNewType = () => {
+	// Open editor when show becomes true
+	useEffect(() => {
+		if (show && !showEditor) {
+			setShowEditor(true);
+		}
+	}, [show, showEditor]);
+
+	const handleCloseEditor = () => {
+		setShowEditor(false);
 		onComplete();
-		setLocation(`/protocol/codebook/${entityType}/new`);
 	};
 
-	return (
-		<Dialog
-			open={show}
-			onOpenChange={(open) => !open && onCancel()}
-			title={`Create New ${entityType === "node" ? "Node" : "Edge"} Type`}
-			onCancel={onCancel}
-			cancelText="Cancel"
-			onConfirm={handleCreateNewType}
-			confirmText={`Create New ${entityType === "node" ? "Node" : "Edge"} Type`}
-		>
-			<p>
-				You are about to create a new {entityType} type. This will open the type editor where you can define the name,
-				color, and variables for this {entityType} type.
-			</p>
-		</Dialog>
-	);
+	return <EntityTypeDialog show={showEditor} entity={entityType} onClose={handleCloseEditor} />;
 };
 
 export default NewTypeDialog;

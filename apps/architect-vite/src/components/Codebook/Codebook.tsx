@@ -6,7 +6,11 @@ import EntityType from "./EntityType";
 import ExternalEntity from "./ExternalEntity";
 import { useCodebookData } from "./useCodebookData";
 
-const Codebook = () => {
+type CodebookProps = {
+	onEditEntity?: (entity: string, type?: string) => void;
+};
+
+const Codebook = ({ onEditEntity }: CodebookProps) => {
 	const codebook = useSelector(getCodebook);
 	const { nodes, edges, processedNetworkAssets, hasEgoVariables, hasNodes, hasEdges, hasNetworkAssets } =
 		useCodebookData(codebook);
@@ -26,7 +30,7 @@ const Codebook = () => {
 
 			{hasEgoVariables && (
 				<CodebookCategory title="Ego">
-					<EgoType entity="ego" type="ego" />
+					<EgoType />
 				</CodebookCategory>
 			)}
 
@@ -34,7 +38,14 @@ const Codebook = () => {
 				<CodebookCategory title="Node Types">
 					<div className="space-y-4">
 						{nodes.map((node) => (
-							<EntityType key={node.type} entity={node.entity} type={node.type} inUse={node.inUse} usage={node.usage} />
+							<EntityType
+								key={node.type}
+								entity={node.entity}
+								type={node.type}
+								inUse={node.inUse}
+								usage={node.usage}
+								onEditEntity={onEditEntity}
+							/>
 						))}
 					</div>
 				</CodebookCategory>
@@ -44,7 +55,14 @@ const Codebook = () => {
 				<CodebookCategory title="Edge Types">
 					<div className="space-y-4">
 						{edges.map((edge) => (
-							<EntityType key={edge.type} entity={edge.entity} type={edge.type} inUse={edge.inUse} usage={edge.usage} />
+							<EntityType
+								key={edge.type}
+								entity={edge.entity}
+								type={edge.type}
+								inUse={edge.inUse}
+								usage={edge.usage}
+								onEditEntity={onEditEntity}
+							/>
 						))}
 					</div>
 				</CodebookCategory>

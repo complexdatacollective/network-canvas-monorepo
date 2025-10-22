@@ -8,8 +8,8 @@ import * as Fields from "~/components/Form/Fields";
 import { getCodebook } from "~/selectors/protocol";
 import { getFieldId } from "~/utils/issues";
 import ColorPicker from "../Form/Fields/ColorPicker";
-import IconOption from "./IconOption";
 import getPalette from "./getPalette";
+import IconOption from "./IconOption";
 
 const ICON_OPTIONS = ["add-a-person", "add-a-place"];
 
@@ -42,7 +42,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 				</Layout>
 			</div>
 			<Layout>
-				<Section title={`${capitalize(entity)} Type`} summary={<p>Name this {entity} type.</p>}>
+				<Section title={`${capitalize(entity)} Type`} summary={<p>Name this {entity} type.</p>} layout="vertical">
 					<p>
 						This name will be used to identify this type in the codebook, and in your data exports.
 						{entity === "node" && ' Some examples might be "Person", "Place", or "Organization".'}
@@ -55,7 +55,12 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 						validation={{ required: true, allowedNMToken: `${entity} type name`, uniqueByList: existingTypes }}
 					/>
 				</Section>
-				<Section title="Color" id={getFieldId("color")} summary={<p>Choose a color for this {entity} type.</p>}>
+				<Section
+					title="Color"
+					id={getFieldId("color")}
+					summary={<p>Choose a color for this {entity} type.</p>}
+					layout="vertical"
+				>
 					<ValidatedField
 						component={ColorPicker}
 						name="color"
@@ -69,6 +74,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 						title="Icon"
 						id={getFieldId("iconVariant")}
 						summary={<p>Choose an icon to display on interfaces that create this {entity}.</p>}
+						layout="vertical"
 					>
 						<ValidatedField
 							component={Fields.RadioGroup}
