@@ -44,8 +44,7 @@ type EditableListProps = {
 	// Optional props for customizing hook behavior
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
-	initialValues?: Record<string, unknown>;
-	editField?: string;
+	itemSelector?: (state: unknown, params: { form: string; editField: string }) => unknown;
 };
 
 const EditableList = ({
@@ -57,9 +56,8 @@ const EditableList = ({
 	previewComponent: PreviewComponent,
 	normalize = (value) => value, // Function to normalize the value before saving
 	template = () => ({ id: v4() }), // Function to provide a template for new items
-	initialValues,
-	editField,
 	title,
+	itemSelector,
 }: EditableListProps) => {
 	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
@@ -70,9 +68,16 @@ const EditableList = ({
 
 	const isOpen = editIndex !== null;
 
-	// Get current item values for editing
-	const currentItemValues = useSelector((state: any) => {
+	// Get current item values for editing & enrich with codebook data using itemSelector
+	const currentItemValues = useSelector((state: unknown) => {
 		if (editIndex === null) return null;
+
+		const editFieldPath = `${fieldName}[${editIndex}]`;
+
+		if (itemSelector) {
+			return itemSelector(state, { form, editField: editFieldPath });
+		}
+
 		const selector = formValueSelector(form);
 		return selector(state, `${fieldName}[${editIndex}]`);
 	});
