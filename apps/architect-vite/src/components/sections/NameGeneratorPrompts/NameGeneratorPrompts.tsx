@@ -9,6 +9,8 @@ import PromptPreview from "./PromptPreview";
 
 const NameGeneratorPrompts = ({
 	disabled,
+	entity,
+	type,
 	...rest
 }: SectionProps & { entity?: string; type?: string; disabled?: boolean }) => (
 	<Section
@@ -26,6 +28,7 @@ const NameGeneratorPrompts = ({
 			editComponent={PromptFields}
 			fieldName="prompts"
 			title="Edit Prompt"
+			editProps={{ entity, type }}
 			{...rest}
 		/>
 	</Section>
