@@ -286,7 +286,7 @@
 	--space-xl: 2.4rem;
 	--space-2xl: 3.6rem;
 	--space-3xl: 4.8rem;
-	--space-4xl: 6.0rem;
+	--space-4xl: 6rem;
 	--space-5xl: 7.2rem;
 
 	--text-xs: 0.75rem; /* 12px */
@@ -365,6 +365,8 @@
 
 	--color-sortable-background: hsl(var(--slate-blue));
 	--color-sortable-foreground: hsl(var(--white));
+
+	--color-form-control: hsl(var(--sea-serpent));
 
 	--color-rules-type: hsl(var(--neon-coral));
 	--color-rules-assert: hsl(var(--sea-green));
@@ -545,8 +547,9 @@
 /* Clickable utilities - enhanced 3D effect with multiple depths */
 @utility clickable {
 	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-fast) var(--animation-easing);
+	transition:
+		transform var(--animation-duration-fast) var(--animation-easing),
+		box-shadow var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
@@ -563,8 +566,9 @@
 
 @utility clickable-2 {
 	box-shadow: 0 0.4rem 0.4rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-fast) var(--animation-easing);
+	transition:
+		transform var(--animation-duration-fast) var(--animation-easing),
+		box-shadow var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
@@ -581,8 +585,9 @@
 
 @utility clickable-3 {
 	box-shadow: 0 0.6rem 0.6rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-fast) var(--animation-easing);
+	transition:
+		transform var(--animation-duration-fast) var(--animation-easing),
+		box-shadow var(--animation-duration-fast) var(--animation-easing);
 
 	&:not(:disabled):hover {
 		text-decoration: none;
