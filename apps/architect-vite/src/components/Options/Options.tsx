@@ -39,16 +39,20 @@ export const OptionsField = compose(
 		<div className="form-field-container">
 			<div className={classes}>
 				<div className="options__options">
-					{fields.map((field, index) => (
-						<Option
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...rest}
-							key={field}
-							index={index}
-							field={field}
-							fields={fields}
-						/>
-					))}
+					{fields.map((field, index) => {
+						const option = fields.get(index);
+
+						return (
+							<Option
+								// eslint-disable-next-line react/jsx-props-no-spreading
+								{...rest}
+								key={option.value}
+								index={index}
+								field={field}
+								fields={fields}
+							/>
+						);
+					})}
 				</div>
 
 				<FieldError show={submitFailed && error} error={error} />
