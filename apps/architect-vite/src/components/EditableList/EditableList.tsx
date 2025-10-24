@@ -42,6 +42,7 @@ type EditableListProps = {
 	editProps?: Record<string, unknown>;
 	validation?: Record<string, Validator> | Record<ValidationName, Validation>;
 	// Optional props for customizing hook behavior
+	onChange?: (value: unknown) => Promise<unknown> | unknown;
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
 	itemSelector?: (state: unknown, params: { form: string; editField: string }) => unknown;
@@ -54,6 +55,7 @@ const EditableList = ({
 	editComponent: EditComponent,
 	editProps = {},
 	previewComponent: PreviewComponent,
+	onChange,
 	normalize = (value) => value, // Function to normalize the value before saving
 	template = () => ({ id: v4() }), // Function to provide a template for new items
 	title,
@@ -62,6 +64,7 @@ const EditableList = ({
 	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
 		fieldName,
+		onChange,
 		normalize,
 		template,
 	});

@@ -40,7 +40,13 @@ const formHandlers = withHandlers({
 
 				// Merge is set to false below so that properties that were removed, such
 				// as 'options: []' and 'parameters: {}' get deleted.
-				await updateVariable(entity, type, variable, { ...baseProps, ...configuration }, false);
+				await updateVariable({
+					entity,
+					type,
+					variable,
+					configuration: { ...baseProps, ...configuration },
+					merge: false,
+				});
 
 				return {
 					variable,
@@ -48,9 +54,13 @@ const formHandlers = withHandlers({
 				};
 			}
 
-			return createVariable(entity, type, {
-				...configuration,
-				name: _createNewVariable,
+			return createVariable({
+				entity,
+				type,
+				configuration: {
+					...configuration,
+					name: _createNewVariable,
+				},
 			})
 				.then(({ variable: newVariable }) => ({
 					variable: newVariable,

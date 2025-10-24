@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { useStore } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { useAppDispatch } from "~/ducks/hooks";
-
-import { useStore } from "react-redux";
 import { useFormContext } from "../Editor";
 
 type UseEditHandlersOptions = {
 	fieldName: string;
+	onChange?: (value: unknown) => Promise<unknown> | unknown;
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
 };
@@ -17,6 +17,7 @@ const defaultTemplate = () => ({});
 
 export const useEditHandlers = ({
 	fieldName,
+	onChange,
 	normalize = defaultNormalize,
 	template = defaultTemplate,
 }: UseEditHandlersOptions) => {
@@ -24,31 +25,15 @@ export const useEditHandlers = ({
 	const dispatch = useAppDispatch();
 	const store = useStore();
 
-	// Logging to track re-renders
-	const renderCount = useRef(0);
-	renderCount.current++;
-	console.log(`🔄 useEditHandlers render #${renderCount.current}`, {
-		fieldName,
-		form,
-		normalize: normalize.name || "anonymous",
-		template: template.name || "anonymous",
-	});
-
 	// State management
 	const [editIndex, setEditIndex] = useState<number | null>(null);
 
 	// Get items only when needed for operations, not for rendering
 	const getItems = useCallback(() => {
-		console.log("🔍 getItems called");
 		// This creates a selector that gets current state without subscribing to changes
 		const state = store.getState();
 		return formValueSelector(form)(state, fieldName) || [];
-	}, [form, fieldName]);
-
-	// Log when getItems callback is recreated
-	useEffect(() => {
-		console.log("🔄 getItems callback recreated");
-	}, [getItems]);
+	}, [form, fieldName, store]);
 
 	// // Get current item being edited
 	// const currentItem = useSelector((state: AppState) =>
@@ -58,29 +43,34 @@ export const useEditHandlers = ({
 	// const initialValues = currentItem || template();
 
 	const clearEditField = useCallback(() => {
-		console.log("❌ clearEditField called");
 		setEditIndex(null);
 	}, []);
 
 	// Event handlers
 	const handleTriggerEdit = useCallback((index: number) => {
-		console.log("✏️ handleTriggerEdit called with index:", index);
 		setEditIndex(index);
 	}, []);
 
 	const handleAddNew = useCallback(() => {
-		console.log("➕ handleAddNew called");
 		const items = getItems();
-		console.log("📊 Current items length:", items.length);
 		setEditIndex(items.length);
 	}, [getItems]);
 
 	const handleSaveEdit = useCallback(
-		(value: unknown) => {
+		async (value: unknown) => {
 			if (editIndex === null) return;
 
 			try {
-				const normalizedValue = normalize(value);
+				let valueToSave = value;
+				if (onChange) {
+					const result = await onChange(value);
+					if (result !== undefined) {
+						valueToSave = result;
+					}
+				}
+
+				const normalizedValue = normalize(valueToSave);
+
 				const fieldPath = `${fieldName}[${editIndex}]`;
 				dispatch(change(form, fieldPath, normalizedValue));
 				clearEditField();
@@ -89,7 +79,7 @@ export const useEditHandlers = ({
 				throw error;
 			}
 		},
-		[editIndex, normalize, dispatch, form, fieldName, clearEditField],
+		[editIndex, onChange, normalize, dispatch, form, fieldName, clearEditField],
 	);
 
 	return {
