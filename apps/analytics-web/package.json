@@ -15,7 +15,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@clerk/nextjs": "^6.33.3",
+		"@clerk/nextjs": "^6.34.0",
 		"@codaco/analytics": "workspace:*",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
