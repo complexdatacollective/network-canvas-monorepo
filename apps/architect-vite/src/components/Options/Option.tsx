@@ -63,10 +63,6 @@ const Option = ({ field, handleDelete, value }: OptionProps) => {
 			value={value}
 			dragListener={false}
 			dragControls={controls}
-			initial={{ opacity: 0, y: 30 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, y: -30 }}
-			whileDrag={{ scale: 1.05 }}
 		>
 			<div className="options__option-controls options__option-controls--center">
 				<div className="options__option-handle" onPointerDown={(e) => controls.start(e)}>

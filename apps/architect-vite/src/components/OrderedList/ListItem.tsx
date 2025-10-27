@@ -27,18 +27,12 @@ const ListItem = ({
 		className,
 	);
 
-	console.log("layoutId", rest.layoutId);
-
 	return (
 		<Reorder.Item
 			className={componentClasses}
 			value={value}
 			dragListener={false}
 			dragControls={controls}
-			initial={{ opacity: 0, y: 30 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, y: -30 }}
-			whileDrag={{ scale: 1.05 }}
 			onClick={handleClick}
 			{...rest}
 		>

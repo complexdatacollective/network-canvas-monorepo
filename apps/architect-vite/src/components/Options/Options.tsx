@@ -1,6 +1,6 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
 import cx from "classnames";
-import { AnimatePresence, Reorder } from "motion/react";
+import { Reorder } from "motion/react";
 import { hash } from "ohash";
 import type React from "react";
 import { FieldArray } from "redux-form";
@@ -48,13 +48,15 @@ export const OptionsField = ({ fields, meta: { error, submitFailed } }: OptionsF
 	const options = fields.getAll() || [];
 
 	const handleReorder = (newOrder: OptionValue[]) => {
-		for (let newIndex = 0; newIndex < newOrder.length; newIndex++) {
-			const item = newOrder[newIndex];
-			const oldIndex = options.findIndex((opt) => hash(opt) === hash(item));
-
-			if (oldIndex !== newIndex) {
-				fields.move(oldIndex, newIndex);
-				break;
+		for (let i = 0; i < newOrder.length; i++) {
+			const newHash = hash(newOrder[i]);
+			const oldHash = hash(options[i]);
+			if (newHash !== oldHash) {
+				const oldIndex = options.findIndex((opt) => hash(opt) === newHash);
+				if (oldIndex !== -1 && oldIndex !== i) {
+					fields.move(oldIndex, i);
+					break;
+				}
 			}
 		}
 	};
@@ -63,14 +65,12 @@ export const OptionsField = ({ fields, meta: { error, submitFailed } }: OptionsF
 		<div className="form-field-container">
 			<div className={classes}>
 				<Reorder.Group className="options__options" onReorder={handleReorder} values={options} axis="y">
-					<AnimatePresence initial={false}>
-						{fields.map((field: string, index: number) => {
-							const option = fields.get(index);
-							const key = hash(option);
+					{fields.map((field: string, index: number) => {
+						const option = fields.get(index);
+						const key = hash(option);
 
-							return <Option key={key} value={option} index={index} field={field} fields={fields} />;
-						})}
-					</AnimatePresence>
+						return <Option key={key} value={option} index={index} field={field} fields={fields} />;
+					})}
 				</Reorder.Group>
 
 				<FieldError show={submitFailed && !!error} error={error} />

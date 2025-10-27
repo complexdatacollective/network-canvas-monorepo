@@ -1,17 +1,14 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
+import { GripVertical } from "lucide-react";
+import { Reorder, useDragControls } from "motion/react";
+import { hash } from "ohash";
 import { connect } from "react-redux";
-import { compose, defaultProps, withHandlers, withProps } from "recompose";
+import { compose, defaultProps, withHandlers } from "recompose";
 import { change, FieldArray, formValueSelector } from "redux-form";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import { Button, Icon } from "~/lib/legacy-ui/components";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 import ValidatedField from "./ValidatedField";
-
-const ItemHandle = () => (
-	<div className="form-fields-multi-select__handle">
-		<Icon name="move" />
-	</div>
-);
 
 const ItemDelete = (props) => (
 	<div
@@ -70,61 +67,84 @@ const Item = compose(
 					.forEach(({ fieldName: propertyFieldName }) => resetField(`${field}.${propertyFieldName}`));
 			},
 	}),
-)(({ field, properties, options, rowValues, allValues, handleDelete, handleChange }) => (
-	<div className="form-fields-multi-select__rule">
-		<div className="form-fields-multi-select__rule-control">
-			<ItemHandle />
-		</div>
+)(({ field, properties, options, rowValues, allValues, handleDelete, handleChange, value }) => {
+	const controls = useDragControls();
 
-		<div className="form-fields-multi-select__rule-options">
-			{properties.map(({ fieldName, ...rest }, index) => (
-				<div className="form-fields-multi-select__rule-option" key={fieldName}>
-					<ValidatedField
-						component={NativeSelect}
-						name={`${field}.${fieldName}`}
-						options={options(fieldName, rowValues, allValues)}
-						validation={{ required: true }}
-						onChange={() => handleChange(index)}
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...rest}
-					/>
+	return (
+		<Reorder.Item className="form-fields-multi-select__rule" value={value} dragListener={false} dragControls={controls}>
+			<div className="form-fields-multi-select__rule-control">
+				<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
+					<GripVertical className="cursor-grab" />
 				</div>
-			))}
-		</div>
-		<div className="form-fields-multi-select__rule-control">
-			<ItemDelete onClick={handleDelete} />
-		</div>
-	</div>
-));
+			</div>
+
+			<div className="form-fields-multi-select__rule-options">
+				{properties.map(({ fieldName, ...rest }, index) => (
+					<div className="form-fields-multi-select__rule-option" key={fieldName}>
+						<ValidatedField
+							component={NativeSelect}
+							name={`${field}.${fieldName}`}
+							options={options(fieldName, rowValues, allValues)}
+							validation={{ required: true }}
+							onChange={() => handleChange(index)}
+							// eslint-disable-next-line react/jsx-props-no-spreading
+							{...rest}
+						/>
+					</div>
+				))}
+			</div>
+			<div className="form-fields-multi-select__rule-control">
+				<ItemDelete onClick={handleDelete} />
+			</div>
+		</Reorder.Item>
+	);
+});
 
 const Items = compose(
 	defaultProps({
-		lockAxis: "y",
-		useDragHandle: true,
 		maxItems: null,
 	}),
-	withProps(({ fields }) => ({
-		onSortEnd: ({ oldIndex, newIndex }) => fields.move(oldIndex, newIndex),
-	})),
 )(({ fields, maxItems, ...rest }) => {
 	const hasSpace = maxItems === null || fields.length < maxItems;
 	const showAdd = hasSpace;
 
+	const items = fields.getAll() || [];
+
+	const handleReorder = (newOrder) => {
+		for (let i = 0; i < newOrder.length; i++) {
+			const newHash = hash(newOrder[i]);
+			const oldHash = hash(items[i]);
+			if (newHash !== oldHash) {
+				const oldIndex = items.findIndex((item) => hash(item) === newHash);
+				if (oldIndex !== -1 && oldIndex !== i) {
+					fields.move(oldIndex, i);
+					break;
+				}
+			}
+		}
+	};
+
 	return (
 		<>
 			<div className="form-fields-multi-select">
-				<div className="form-fields-multi-select__rules">
-					{fields.map((field, index) => (
-						<Item
-							index={index}
-							key={field}
-							field={field}
-							fields={fields}
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...rest}
-						/>
-					))}
-				</div>
+				<Reorder.Group className="form-fields-multi-select__rules" onReorder={handleReorder} values={items} axis="y">
+					{fields.map((field: string, index: number) => {
+						const item = fields.get(index);
+						const key = hash(item);
+
+						return (
+							<Item
+								index={index}
+								key={key}
+								field={field}
+								fields={fields}
+								value={item}
+								// eslint-disable-next-line react/jsx-props-no-spreading
+								{...rest}
+							/>
+						);
+					})}
+				</Reorder.Group>
 			</div>
 
 			{showAdd && <AddItem onClick={() => fields.push({})} />}

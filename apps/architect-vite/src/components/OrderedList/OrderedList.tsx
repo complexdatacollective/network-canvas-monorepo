@@ -1,5 +1,5 @@
 import { isArray, noop } from "es-toolkit/compat";
-import { AnimatePresence, Reorder } from "motion/react";
+import { Reorder } from "motion/react";
 import { hash } from "ohash";
 import type React from "react";
 import { useCallback } from "react";
@@ -57,29 +57,25 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 			values={values}
 			axis="y"
 		>
-			<AnimatePresence initial={false}>
-				{values.map((item, index) => {
-					// Create a stable identifier by hashing the item.
-					const key = hash(item);
+			{values.map((item, index) => {
+				const key = hash(item);
+				// Make editing item invisible but keep it in layout for smooth animation
+				const isEditing = editIndex === index;
 
-					// Make editing item invisible but keep it in layout for smooth animation
-					const isEditing = editIndex === index;
-
-					return (
-						<ListItem
-							key={key}
-							layoutId={isEditing ? undefined : `${name}-edit-field-${index}`}
-							value={item}
-							handleDelete={getDeleteHandler(index)}
-							handleClick={() => onClickItem(index)}
-							sortable
-							className={isEditing ? "opacity-0 pointer-events-none" : null}
-						>
-							<Item form={form} {...item} />
-						</ListItem>
-					);
-				})}
-			</AnimatePresence>
+				return (
+					<ListItem
+						key={key}
+						layoutId={isEditing ? undefined : `${name}-edit-field-${index}`}
+						value={item}
+						handleDelete={getDeleteHandler(index)}
+						handleClick={() => onClickItem(index)}
+						sortable
+						className={isEditing ? "opacity-0 pointer-events-none" : null}
+					>
+						<Item form={form} {...item} />
+					</ListItem>
+				);
+			})}
 			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-destructive">{error}</p>}
 		</Reorder.Group>
 	);
