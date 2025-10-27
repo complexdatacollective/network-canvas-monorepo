@@ -49,7 +49,7 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 	}, [createEdge]);
 
 	const edgeFilters = useSelector((state) => getEdgeFilters(state));
-	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, displayEdges);
+	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, displayEdges || []);
 
 	return (
 		<>

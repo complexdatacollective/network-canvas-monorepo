@@ -261,7 +261,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 						<select
 							className="form-fields-select-native__component"
 							{...inputProps}
-							value={inputProps.value ?? "_placeholder"}
+							value={inputProps.value || "_placeholder"}
 							onChange={handleChange}
 							disabled={!!disabled}
 							{...rest}

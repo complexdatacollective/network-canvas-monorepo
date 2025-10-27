@@ -77,6 +77,7 @@ const Filter = () => {
 			}
 			startExpanded={!!currentValue}
 			handleToggleChange={handleToggleChange}
+			layout="vertical"
 		>
 			{shouldShowWarning && (
 				<Tip type="warning">
