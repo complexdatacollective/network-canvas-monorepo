@@ -131,7 +131,7 @@ const PromptFields = ({
 					</Row>
 				</Section>
 				{createEdge && (
-					<Section title="Ordinal Variable">
+					<Section title="Ordinal Variable" layout="vertical">
 						<Row>
 							<ValidatedField
 								name="edgeVariable"
@@ -175,6 +175,7 @@ const PromptFields = ({
 						</p>
 					}
 					id={getFieldId("negativeLabel")}
+					layout="vertical"
 				>
 					<ValidatedField
 						name="negativeLabel"
