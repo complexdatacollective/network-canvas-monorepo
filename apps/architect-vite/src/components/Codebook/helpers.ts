@@ -137,7 +137,13 @@ export const makeGetEntityWithUsage = (index: unknown, mergeProps: Record<string
  * @returns
  */
 export const getEntityProperties = (state, { entity, type }) => {
-	const { name, color, variables } = getType(state, { entity, type });
+	const entityType = getType(state, { entity, type });
+
+	if (!entityType) {
+		return null;
+	}
+
+	const { name, color, variables } = entityType;
 
 	const variableIndex = getVariableIndex(state);
 	const variableMeta = getVariableMetaByIndex(state);

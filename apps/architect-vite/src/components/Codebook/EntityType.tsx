@@ -123,7 +123,7 @@ const withEntityHandlers = compose(
 							Are you sure you want to delete the {name} {entity}? This cannot be undone.
 						</p>
 					),
-					onConfirm: () => deleteType(entity, type),
+					onConfirm: () => deleteType({ entity, type }),
 					confirmLabel: `Delete ${name} ${entity}`,
 				});
 			},
