@@ -226,7 +226,7 @@ export const deleteVariableAsync = createAsyncThunk(
 	"codebook/deleteVariableAsync",
 	async ({ entity, type, variable }: { entity: Entity; type?: string; variable: string }, { dispatch, getState }) => {
 		const state = getState() as RootState;
-		const isUsed = getIsUsed({ formNames: [] })(state);
+		const isUsed = getIsUsed(state);
 
 		if (get(isUsed, variable, false)) {
 			return false;

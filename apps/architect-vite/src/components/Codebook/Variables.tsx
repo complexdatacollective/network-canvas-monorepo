@@ -140,7 +140,7 @@ const withVariableHandlers = compose(
 					type: "Warning",
 					title: `Delete ${name}`,
 					message: <p>Are you sure you want to delete the variable called {name}? This cannot be undone.</p>,
-					onConfirm: () => deleteVariable(entity, type, id),
+					onConfirm: () => deleteVariable({ entity, type, variable: id }),
 					confirmLabel: `Delete ${name}`,
 				});
 			},

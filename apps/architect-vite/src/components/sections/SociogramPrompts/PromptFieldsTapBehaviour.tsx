@@ -24,7 +24,8 @@ export const createVariableHandler = (dispatch, entity, type, form) => async (va
 		...withType,
 	};
 
-	const { variable } = await dispatch(codebookActions.createVariable(entity, type, configuration));
+	const result = await dispatch(codebookActions.createVariable({ entity, type, configuration }));
+	const { variable } = result.payload;
 
 	// If we supplied a field, update it with the result of the variable creation
 	if (field) {

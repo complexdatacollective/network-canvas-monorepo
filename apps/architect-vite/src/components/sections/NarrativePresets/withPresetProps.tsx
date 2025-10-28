@@ -28,14 +28,15 @@ const variableHandlers = withHandlers({
 	handleCreateLayoutVariable:
 		({ form, changeForm, createVariable, entity, type }) =>
 		async (name) => {
-			const { variable } = await createVariable(entity, type, { type: "layout", name });
+			const result = await createVariable({ entity, type, configuration: { type: "layout", name } });
+			const { variable } = result.payload;
 			changeForm(form, "layoutVariable", variable);
 			return variable;
 		},
 	handleDeleteVariable:
 		({ entity, type, deleteVariable }) =>
 		(variable) =>
-			deleteVariable(entity, type, variable),
+			deleteVariable({ entity, type, variable }),
 });
 
 const withPresetProps = compose(connect(mapStateToProps, mapDispatchToProps), variableHandlers);
