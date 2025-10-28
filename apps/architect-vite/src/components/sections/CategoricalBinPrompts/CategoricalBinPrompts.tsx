@@ -1,10 +1,11 @@
 import { compose } from "recompose";
+import { Section } from "~/components/EditorLayout";
 import EditableList from "../../EditableList";
-import withSubject from "../../enhancers/withSubject";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
+import withSubject from "../../enhancers/withSubject";
 import { PromptPreview } from "../NameGeneratorPrompts";
-import PromptFields from "./PromptFields";
 import { itemSelector, normalizeField } from "./helpers";
+import PromptFields from "./PromptFields";
 import withPromptChangeHandler from "./withPromptChangeHandler";
 
 type CategoricalBinPromptsProps = {
@@ -22,24 +23,27 @@ const CategoricalBinPrompts = ({
 	form,
 	disabled,
 }: CategoricalBinPromptsProps) => (
-	<EditableList
-		previewComponent={PromptPreview}
-		editComponent={PromptFields}
-		title="Edit Prompt"
-		onChange={handleChangePrompt}
-		normalize={normalizeField}
-		itemSelector={itemSelector(entity, type)}
-		editProps={{ entity, type }}
-		sectionTitle="Edit Prompts"
-		sectionSummary={
+	<Section
+		disabled={disabled}
+		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
 				handles on the left hand side.
 			</p>
 		}
-		form={form}
-		disabled={disabled}
-	/>
+		title="Prompts"
+	>
+		<EditableList
+			previewComponent={PromptPreview}
+			editComponent={PromptFields}
+			title="Edit Prompt"
+			onChange={handleChangePrompt}
+			normalize={normalizeField}
+			itemSelector={itemSelector(entity, type)}
+			editProps={{ entity, type }}
+			form={form}
+		/>
+	</Section>
 );
 
 export { CategoricalBinPrompts };

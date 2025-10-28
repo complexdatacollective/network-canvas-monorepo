@@ -28,18 +28,10 @@ const NameGeneratorRosterPrompts = ({ form, entity, type, disabled, dataSource }
 		title="Prompts"
 	>
 		<EditableList
-			sectionTitle="Prompts"
 			editComponent={PromptFields}
 			previewComponent={PromptPreview}
 			title="Edit Prompt"
-			sectionSummary={
-				<p>
-					Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
-					handles on the left hand side.
-				</p>
-			}
 			form={form}
-			disabled={disabled}
 			editProps={{ entity, type, dataSource }}
 		/>
 	</Section>

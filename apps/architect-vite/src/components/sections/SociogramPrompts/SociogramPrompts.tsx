@@ -29,18 +29,10 @@ const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: S
 		title="Prompts"
 	>
 		<EditableList
-			sectionTitle="Prompts"
-			sectionSummary={
-				<p>
-					Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
-					handles on the left hand side.
-				</p>
-			}
 			title="Edit Prompt"
 			previewComponent={PromptPreview}
 			editComponent={PromptFields}
 			form={form}
-			disabled={disabled}
 			editProps={{ entity, type, usedVariableIndex }}
 		/>
 	</Section>

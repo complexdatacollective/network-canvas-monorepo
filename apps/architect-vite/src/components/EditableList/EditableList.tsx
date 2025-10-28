@@ -27,10 +27,7 @@ const _withDefaultFieldName = defaultProps({
 const formName = "editable-list-form";
 
 type EditableListProps = {
-	sectionTitle: string;
-	sectionSummary?: React.ReactNode;
 	form: string;
-	disabled?: boolean;
 	sortMode?: "manual";
 	fieldName?: string;
 	title: string;

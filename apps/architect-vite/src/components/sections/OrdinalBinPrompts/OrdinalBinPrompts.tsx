@@ -1,5 +1,6 @@
 import { compose } from "recompose";
 import EditableList from "~/components/EditableList";
+import { Section } from "~/components/EditorLayout";
 import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubjectRequired";
 import withSubject from "~/components/enhancers/withSubject";
 import { itemSelector } from "~/components/sections/CategoricalBinPrompts/helpers";
@@ -24,24 +25,27 @@ const OrdinalBinPrompts = ({
 	form,
 	disabled,
 }: OrdinalBinPromptsProps) => (
-	<EditableList
-		sectionTitle="Prompts"
-		sectionSummary={
+	<Section
+		disabled={disabled}
+		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
 				handles on the left hand side.
 			</p>
 		}
-		previewComponent={PromptPreview}
-		editComponent={PromptFields}
-		title="Edit Prompt"
-		template={template}
-		onChange={handleChangePrompt}
-		itemSelector={itemSelector(entity, type)}
-		editProps={{ entity, type }}
-		form={form}
-		disabled={disabled}
-	/>
+		title="Prompts"
+	>
+		<EditableList
+			previewComponent={PromptPreview}
+			editComponent={PromptFields}
+			title="Edit Prompt"
+			template={template}
+			onChange={handleChangePrompt}
+			itemSelector={itemSelector(entity, type)}
+			editProps={{ entity, type }}
+			form={form}
+		/>
+	</Section>
 );
 
 export { OrdinalBinPrompts };

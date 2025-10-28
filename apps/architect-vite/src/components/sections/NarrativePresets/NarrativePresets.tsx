@@ -1,10 +1,11 @@
+import { isEmpty, omit } from "lodash";
 import { compose } from "recompose";
-import { omit, isEmpty } from "lodash";
+import { Section } from "~/components/EditorLayout";
 import EditableList from "../../EditableList";
-import withSubject from "../../enhancers/withSubject";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
-import PresetPreview from "./PresetPreview";
+import withSubject from "../../enhancers/withSubject";
 import PresetFields from "./PresetFields";
+import PresetPreview from "./PresetPreview";
 
 const normalizePreset = (values) => {
 	if (isEmpty(values.groupVariable)) {
@@ -30,24 +31,27 @@ type NarrativePresetsProps = {
 };
 
 const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProps) => (
-	<EditableList
-		previewComponent={PresetPreview}
-		editComponent={PresetFields}
-		title="Edit Preset"
-		fieldName="presets"
-		template={template}
-		normalize={normalizePreset}
-		sectionTitle="Narrative Presets"
-		sectionSummary={
+	<Section
+		disabled={disabled}
+		summary={
 			<p>
 				Add one or more &quot;presets&quot; below, to create different visualizations that you can switch between within
 				the interview.
 			</p>
 		}
-		form={form}
-		disabled={disabled}
-		editProps={{ entity, type }}
-	/>
+		title="Narrative Presets"
+	>
+		<EditableList
+			previewComponent={PresetPreview}
+			editComponent={PresetFields}
+			title="Edit Preset"
+			fieldName="presets"
+			template={template}
+			normalize={normalizePreset}
+			form={form}
+			editProps={{ entity, type }}
+		/>
+	</Section>
 );
 
 export { NarrativePresets };
