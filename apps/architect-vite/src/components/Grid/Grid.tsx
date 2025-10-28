@@ -15,6 +15,8 @@ interface GridProps {
 	onEditItem: (item: any) => void;
 	meta: Record<string, unknown>;
 	editField?: string;
+	form: string;
+	fieldName?: string;
 }
 
 interface GridState {
@@ -82,7 +84,7 @@ class Grid extends Component<GridProps, GridState> {
 	};
 
 	render() {
-		const { items, capacity, previewComponent, onEditItem, fields, meta, editField = "" } = this.props;
+		const { items, capacity, previewComponent, onEditItem, fields, meta, editField = "", form, fieldName = "items" } = this.props;
 
 		const { error, submitFailed } = meta;
 
@@ -91,8 +93,6 @@ class Grid extends Component<GridProps, GridState> {
 		const gridClasses = cx("grid", {
 			"grid--has-error": submitFailed && error,
 		});
-
-		console.log("Rendering Grid with items:", items);
 
 		if (!items) {
 			return (
@@ -116,7 +116,6 @@ class Grid extends Component<GridProps, GridState> {
 					width={width}
 					onDragStop={this.handleDragStop}
 					onResizeStop={this.handleResizeStop}
-					onLayoutChange={this.handleLayoutChange}
 				>
 					{items.map(({ id, ...item }, index) => (
 						<div key={id} className="grid__item">
@@ -127,6 +126,8 @@ class Grid extends Component<GridProps, GridState> {
 								previewComponent={previewComponent}
 								onEditItem={onEditItem}
 								editField={editField}
+								form={form}
+								fieldName={fieldName}
 								// eslint-disable-next-line react/jsx-props-no-spreading
 								{...item}
 							/>

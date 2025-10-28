@@ -26,7 +26,7 @@ type ItemEditorProps = {
 
 const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 	<>
-		<Section title="Type">
+		<Section title="Type" layout="vertical">
 			<Row>
 				<div id={getFieldId("type")} data-name="Content Type" />
 				<ValidatedField
@@ -39,7 +39,7 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 			</Row>
 		</Section>
 		{type && (
-			<Section title="Content">
+			<Section title="Content" layout="vertical">
 				<Row disabled={!type}>
 					<div id={getFieldId("content")} />
 					<ValidatedField name="content" component={getInputComponent(type)} validation={{ required: true }} />
