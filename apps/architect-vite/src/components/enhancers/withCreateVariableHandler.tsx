@@ -30,7 +30,8 @@ const createVariableHandler = {
 				...withType,
 			};
 
-			const { variable } = await createVariable(entity, type, configuration);
+			const result = await createVariable({ entity, type, configuration });
+			const { variable } = result.payload;
 
 			// If we supplied a field, update it with the result of the variable creation
 			if (field) {
@@ -42,7 +43,7 @@ const createVariableHandler = {
 	handleDeleteVariable:
 		({ deleteVariable, type, entity }) =>
 		(variableId) =>
-			deleteVariable(entity, type, variableId),
+			deleteVariable({ entity, type, variable: variableId }),
 	normalizeKeyDown: () => normalizeKeyDown,
 };
 
