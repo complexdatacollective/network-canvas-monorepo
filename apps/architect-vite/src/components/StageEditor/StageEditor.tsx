@@ -1,11 +1,13 @@
 import type { Stage } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
+import { Redo, Undo } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
+import { getCanRedo, getCanUndo, redo, undo } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
@@ -26,6 +28,17 @@ const StageEditor = (props: StageEditorProps) => {
 
 	const dispatch = useAppDispatch();
 	const [, setLocation] = useLocation();
+
+	const handleUndo = useCallback(() => {
+		dispatch(undo());
+	}, [dispatch]);
+
+	const handleRedo = useCallback(() => {
+		dispatch(redo());
+	}, [dispatch]);
+
+	const canUndo = useSelector((state: RootState) => getCanUndo(state));
+	const canRedo = useSelector((state: RootState) => getCanRedo(state));
 
 	// Get stage metadata from Redux state
 	const stage = useSelector((state: RootState) => getStage(state, id || ""));
@@ -94,7 +107,14 @@ const StageEditor = (props: StageEditorProps) => {
 							Cancel
 						</Button>
 					</div>
+
 					<div className="flex gap-2">
+						<Button key="undo-button" color="platinum" icon={<Undo />} onClick={handleUndo} disabled={!canUndo}>
+							Undo
+						</Button>
+						<Button key="redo-button" color="platinum" icon={<Redo />} onClick={handleRedo} disabled={!canRedo}>
+							Redo
+						</Button>
 						{hasUnsavedChanges && (
 							<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
 								Finished Editing
