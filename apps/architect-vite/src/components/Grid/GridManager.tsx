@@ -1,4 +1,4 @@
-import { compose, defaultProps, withState } from "recompose";
+import { compose, withState } from "recompose";
 import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";
 import { getFieldId, scrollToFirstIssue } from "../../utils/issues";
@@ -54,7 +54,7 @@ const GridManager = ({
 	handleResetEditField,
 	hasSpace,
 	title = null,
-	fieldName,
+	fieldName = "items",
 	capacity,
 	initialValues = null,
 	editComponent: EditComponent,
@@ -91,7 +91,6 @@ const GridManager = ({
 					onEditItem={handleEditField}
 					editField={editField}
 					capacity={capacity}
-					fieldName={fieldName}
 					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...rest}
 				/>
@@ -123,12 +122,8 @@ const GridManager = ({
 	</Section>
 );
 
-const withDefaultFieldName = defaultProps({
-	fieldName: "items",
-});
-
 const withEditingState = withState("editField", "setEditField", null);
 
 export { GridManager };
 
-export default compose(withDefaultFieldName, withEditingState, withEditHandlers)(GridManager);
+export default compose(withEditingState, withEditHandlers)(GridManager);

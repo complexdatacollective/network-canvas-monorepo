@@ -1,6 +1,4 @@
 import { Flipped } from "react-flip-toolkit";
-import { arrayRemove } from "redux-form";
-import { useAppDispatch } from "~/ducks/hooks";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
 type GridItemProps = {
@@ -13,8 +11,6 @@ type GridItemProps = {
 	previewComponent: React.ComponentType<any>;
 	index: number;
 	id: string;
-	form: string;
-	fieldName: string;
 } & Record<string, any>;
 
 const GridItem = ({
@@ -24,13 +20,9 @@ const GridItem = ({
 	previewComponent: PreviewComponent,
 	index,
 	id,
-	form,
-	fieldName,
 	...rest
 }: GridItemProps) => {
-	const dispatch = useAppDispatch();
-
-	const fieldId = `${fieldName}[${index}]`;
+	const fieldId = `${fields.name}[${index}]`;
 	const flipId = editField === fieldId ? `_${fieldId}` : fieldId;
 
 	if (!PreviewComponent) {
@@ -49,26 +41,28 @@ const GridItem = ({
 						/>
 					</div>
 					<div className="grid-item__controls">
-						<div
-							className="grid-item__edit"
+						<button
+							className="grid-item__edit z-10"
 							onMouseDown={(e) => {
 								e.stopPropagation();
 								e.preventDefault();
 								onEditItem(fieldId);
 							}}
+							type="button"
 						>
 							<Icon name="edit" />
-						</div>
-						<div
+						</button>
+						<button
 							className="grid-item__delete"
 							onMouseDown={(e) => {
 								e.stopPropagation();
 								e.preventDefault();
-								dispatch(arrayRemove(form, fieldName, index));
+								fields.remove(index);
 							}}
+							type="button"
 						>
 							<Icon name="delete" />
-						</div>
+						</button>
 					</div>
 				</div>
 			</Flipped>

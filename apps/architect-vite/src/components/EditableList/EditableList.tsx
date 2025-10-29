@@ -3,7 +3,6 @@ import type React from "react";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { defaultProps } from "recompose";
 import type { Validator } from "redux-form";
 import { formValueSelector } from "redux-form";
 import { v4 } from "uuid";
@@ -19,10 +18,6 @@ const notEmpty = (value: unknown) =>
 
 // TODO: Make this a generic that is passed in.
 type FieldType = { variable: string; prompt: string }[];
-
-const _withDefaultFieldName = defaultProps({
-	fieldName: "prompts",
-});
 
 const formName = "editable-list-form";
 

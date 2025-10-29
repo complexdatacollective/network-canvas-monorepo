@@ -1,9 +1,8 @@
 import { connect } from "react-redux";
 import { formValueSelector } from "redux-form";
 
-const mapStateToProps = (state, { form, fields, fieldName }) => {
-	const actualFieldName = fieldName || fields?.name || "items";
-	const items = formValueSelector(form)(state, actualFieldName) || [];
+const mapStateToProps = (state, { form, fields }) => {
+	const items = formValueSelector(form)(state, fields.name || "items") || [];
 	const itemCount = items ? items.length : 0;
 
 	return {

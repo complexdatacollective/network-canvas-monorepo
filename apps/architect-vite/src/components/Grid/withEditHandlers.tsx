@@ -4,22 +4,20 @@ import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import { getRemainingSpace } from "./helpers";
 
-const mapStateToProps = (state, { capacity, form, fieldName, itemSelector, editField, template }) => {
-	const actualFieldName = fieldName || "items";
-	const items = formValueSelector(form)(state, actualFieldName) || [];
+const mapStateToProps = (state, { capacity, form, fieldName = "items", itemSelector, editField, template }) => {
+	const items = formValueSelector(form)(state, fieldName) || [];
 	const itemCount = items ? items.length : 0;
 	const item = itemSelector(state, { form, editField });
 	const hasSpace = getRemainingSpace(items, capacity) > 0;
 
-	// Use the existing item if available, otherwise return null
-	// The new item will be created in handleAddNew when needed
-	const initialValues = item || null;
+	const initialValues = item || { ...template(), id: uuid() };
 
 	return {
 		itemCount,
 		hasSpace,
 		items,
 		initialValues,
+		fieldName,
 	};
 };
 
@@ -39,8 +37,7 @@ const handlers = withHandlers({
 	handleAddNew:
 		({ setEditField, itemCount, fieldName, upsert, template }) =>
 		() => {
-			const actualFieldName = fieldName || "items";
-			const newItemFieldName = `${actualFieldName}[${itemCount}]`;
+			const newItemFieldName = `${fieldName}[${itemCount}]`;
 			// Create the new item with a stable UUID
 			const newItem = { ...template(), id: uuid() };
 			// Add it to the form state immediately
