@@ -8,13 +8,14 @@ const StageEditorPage = () => {
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
 
-	// Get insertAtIndex from URL search params if available (for new stages)
+	// Get insertAtIndex and type from URL search params if available (for new stages)
 	const urlParams = new URLSearchParams(window.location.search);
 	const insertAtIndex = urlParams.get("insertAtIndex") ? Number(urlParams.get("insertAtIndex")) : undefined;
+	const type = urlParams.get("type") || undefined;
 
 	return (
 		<div className="scene">
-			<StageEditor id={stageId} insertAtIndex={insertAtIndex} />
+			<StageEditor id={stageId} insertAtIndex={insertAtIndex} type={type} />
 		</div>
 	);
 };
