@@ -130,6 +130,7 @@
 		--z-fx: 1;
 		--z-panel: 10;
 		--z-default: 100;
+		--z-global-ui: 20;
 		--z-dialog: 1000;
 		--z-modal: 2000;
 		--z-tooltip: 3000;

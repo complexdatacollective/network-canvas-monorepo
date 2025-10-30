@@ -7,11 +7,11 @@
 	justify-content: flex-start;
 	cursor: pointer;
 
-	.toggle__input {
+	.form-field-toggle__input {
 		display: none;
 	}
 
-	.toggle__toggle {
+	.form-field-toggle__toggle {
 		position: relative;
 		width: calc(var(--global-input-element-size) * 2);
 		height: var(--global-input-element-size);
@@ -19,9 +19,9 @@
 		margin-right: calc(0.6rem * 1);
 	}
 
-	.toggle__button {
+	.form-field-toggle__button {
 		position: absolute;
-		background-color: var(--color-input);
+		background-color: var(--color-primary);
 		transition: background var(--animation-duration-fast) var(--animation-easing);
 		border-radius: var(--global-input-element-size);
 		top: 0;
@@ -40,9 +40,9 @@
 		}
 	}
 
-	.toggle__input:checked + .toggle__toggle {
+	.form-field-toggle__input:checked + .form-field-toggle__toggle {
 		.form-field-toggle__button {
-			background-color: var(--color-primary);
+			background-color: var(--color-active);
 
 			&::before {
 				transform: translateX(var(--global-input-element-size));
@@ -54,8 +54,9 @@
 		opacity: 0;
 		background: var(--color-error);
 		color: var(--color-foreground);
-		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-			var(--animation-duration-standard);
+		transition:
+			opacity var(--animation-easing) var(--animation-duration-standard),
+			max-height var(--animation-easing) var(--animation-duration-standard);
 		padding: 0.5rem 0.25rem;
 		display: flex;
 		align-items: center;
@@ -78,7 +79,7 @@
 
 	&.form-field-toggle--disabled {
 		.form-field-toggle {
-			.toggle__button {
+			.form-field-toggle__button {
 				opacity: 0.5;
 			}
 		}
