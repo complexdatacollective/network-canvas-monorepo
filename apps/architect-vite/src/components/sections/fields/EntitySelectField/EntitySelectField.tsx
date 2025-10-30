@@ -115,7 +115,7 @@ const EntitySelectField = ({
 					No {entityType} types currently defined. Use the button below to create one.
 				</p>
 			)}
-			<Button icon="add" onClick={handleOpenCreateNewType}>
+			<Button icon="add" onClick={handleOpenCreateNewType} color="sea-green">
 				Create new {entityType} type
 			</Button>
 			{invalid && touched && (

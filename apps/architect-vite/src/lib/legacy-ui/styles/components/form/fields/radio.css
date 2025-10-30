@@ -8,93 +8,82 @@
 	cursor: pointer;
 	position: relative;
 	margin-bottom: calc(0.6rem * 2);
+}
 
-	&:last-child {
-		margin-bottom: 0;
-	}
+.form-field-radio:last-child {
+	margin-bottom: 0;
+}
 
-	.radio__input {
-		position: absolute;
-		opacity: 0;
-	}
+.form-field-radio__input {
+	position: absolute;
+	opacity: 0;
+}
 
-	.radio__radio {
-		position: relative;
-		width: var(--global-input-element-size);
-		height: var(--global-input-element-size);
-		display: inline-block;
-		margin-right: calc(0.6rem * 1);
+.form-field-radio__radio {
+	position: relative;
+	width: var(--global-input-element-size);
+	height: var(--global-input-element-size);
+	display: inline-block;
+	margin-right: calc(0.6rem * 1);
+	flex-shrink: 0;
+}
 
-		&::before {
-			position: absolute;
-			top: 0;
-			left: 0;
-			content: "";
-			width: 100%;
-			height: 100%;
-			border-radius: 100%;
-			border-color: var(--color-border);
-			border-width: var(--global-input-border-size);
-			border-style: solid;
-			transition: border-color var(--animation-easing) var(--animation-duration-standard);
-		}
+.form-field-radio__radio::before {
+	position: absolute;
+	top: 0;
+	left: 0;
+	content: "";
+	width: 100%;
+	height: 100%;
+	border-radius: 100%;
+	border-color: var(--color-border);
+	border-width: var(--global-input-border-size);
+	border-style: solid;
+	transition: border-color var(--animation-easing) var(--animation-duration-standard);
+}
 
-		&::after {
-			position: absolute;
-			top: calc(var(--global-input-border-size) + var(--global-input-border-space));
-			left: calc(var(--global-input-border-size) + var(--global-input-border-space));
-			content: "";
-			width: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
-			height: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
-			border-radius: 100%;
-			background-color: var(--color-input-active);
-			opacity: 0;
-			transition: opacity var(--animation-easing) var(--animation-duration-standard);
-		}
-	}
+.form-field-radio__radio::after {
+	position: absolute;
+	top: calc(var(--global-input-border-size) + var(--global-input-border-space));
+	left: calc(var(--global-input-border-size) + var(--global-input-border-space));
+	content: "";
+	width: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
+	height: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
+	border-radius: 100%;
+	background-color: var(--color-input-active);
+	opacity: 0;
+	transition: opacity var(--animation-easing) var(--animation-duration-standard);
+}
 
-	&:hover {
-		.form-field-radio__radio {
-			&::before {
-				border-color: var(--color-border);
-			}
-		}
-	}
+.form-field-radio:hover .form-field-radio__radio::before {
+	border-color: var(--color-border);
+}
 
-	.radio__input:checked + .radio__radio {
-		&::before {
-			border-color: var(--color-input-active);
-		}
+.form-field-radio__input:checked + .form-field-radio__radio::before {
+	border-color: var(--color-input-active);
+}
 
-		&::after {
-			opacity: 1;
-		}
-	}
+.form-field-radio__input:checked + .form-field-radio__radio::after {
+	opacity: 1;
+}
 
-	&.radio--disabled {
-		cursor: default;
-		pointer-events: none;
+.form-field-radio.form-field-radio--disabled {
+	cursor: default;
+	pointer-events: none;
+}
 
-		.form-field-radio__radio {
-			&::before {
-				border-color: var(--color-surface-2);
-			}
+.form-field-radio.form-field-radio--disabled .form-field-radio__radio::before {
+	border-color: var(--color-surface-2);
+}
 
-			&::after {
-				opacity: 0;
-			}
-		}
+.form-field-radio.form-field-radio--disabled .form-field-radio__radio::after {
+	opacity: 0;
+}
 
-		&:hover {
-			.form-field-radio__radio {
-				&::before {
-					border-color: var(--color-surface-2);
-				}
+.form-field-radio.form-field-radio--disabled:hover .form-field-radio__radio::before {
+	border-color: var(--color-surface-2);
+}
 
-				&::after {
-					opacity: 0;
-				}
-			}
-		}
-	}
+.form-field-radio.form-field-radio--disabled:hover .form-field-radio__radio::after {
+	opacity: 0;
 }

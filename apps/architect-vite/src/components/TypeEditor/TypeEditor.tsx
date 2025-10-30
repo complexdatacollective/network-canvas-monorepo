@@ -35,58 +35,51 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 	const { name: paletteName, size: paletteSize } = getPalette(entity);
 
 	return (
-		<>
-			<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
-				<Layout>
-					<h2>{type ? `Edit ${entity}` : `Create ${entity}`}</h2>
-				</Layout>
-			</div>
-			<Layout>
-				<Section title={`${capitalize(entity)} Type`} summary={<p>Name this {entity} type.</p>} layout="vertical">
-					<p>
-						This name will be used to identify this type in the codebook, and in your data exports.
-						{entity === "node" && ' Some examples might be "Person", "Place", or "Organization".'}
-						{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
-					</p>
-					<ValidatedField
-						component={Fields.Text}
-						name="name"
-						placeholder="Enter a name for this entity type..."
-						validation={{ required: true, allowedNMToken: `${entity} type name`, uniqueByList: existingTypes }}
-					/>
-				</Section>
+		<Layout>
+			<Section title={`${capitalize(entity)} Type`} summary={<p>Name this {entity} type.</p>} layout="vertical">
+				<p>
+					This name will be used to identify this type in the codebook, and in your data exports.
+					{entity === "node" && ' Some examples might be "Person", "Place", or "Organization".'}
+					{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
+				</p>
+				<ValidatedField
+					component={Fields.Text}
+					name="name"
+					placeholder="Enter a name for this entity type..."
+					validation={{ required: true, allowedNMToken: `${entity} type name`, uniqueByList: existingTypes }}
+				/>
+			</Section>
+			<Section
+				title="Color"
+				id={getFieldId("color")}
+				summary={<p>Choose a color for this {entity} type.</p>}
+				layout="vertical"
+			>
+				<ValidatedField
+					component={ColorPicker}
+					name="color"
+					palette={paletteName}
+					paletteRange={paletteSize}
+					validation={{ required: true }}
+				/>
+			</Section>
+			{entity === "node" && (
 				<Section
-					title="Color"
-					id={getFieldId("color")}
-					summary={<p>Choose a color for this {entity} type.</p>}
+					title="Icon"
+					id={getFieldId("iconVariant")}
+					summary={<p>Choose an icon to display on interfaces that create this {entity}.</p>}
 					layout="vertical"
 				>
 					<ValidatedField
-						component={ColorPicker}
-						name="color"
-						palette={paletteName}
-						paletteRange={paletteSize}
+						component={Fields.RadioGroup}
+						name="iconVariant"
+						options={ICON_OPTIONS}
+						optionComponent={IconOption}
 						validation={{ required: true }}
 					/>
 				</Section>
-				{entity === "node" && (
-					<Section
-						title="Icon"
-						id={getFieldId("iconVariant")}
-						summary={<p>Choose an icon to display on interfaces that create this {entity}.</p>}
-						layout="vertical"
-					>
-						<ValidatedField
-							component={Fields.RadioGroup}
-							name="iconVariant"
-							options={ICON_OPTIONS}
-							optionComponent={IconOption}
-							validation={{ required: true }}
-						/>
-					</Section>
-				)}
-			</Layout>
-		</>
+			)}
+		</Layout>
 	);
 };
 

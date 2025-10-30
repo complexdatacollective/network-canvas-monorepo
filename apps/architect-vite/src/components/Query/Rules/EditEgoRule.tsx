@@ -50,7 +50,7 @@ const EditEgoRule = ({
 	};
 	return (
 		<>
-			<Section title="Ego Variable">
+			<Section title="Ego Variable" layout="vertical">
 				<DetachedField
 					component={NativeSelect}
 					name="attribute"
@@ -61,7 +61,7 @@ const EditEgoRule = ({
 				/>
 			</Section>
 			{optionsWithDefaults.attribute && (
-				<Section title="Operator">
+				<Section title="Operator" layout="vertical">
 					<DetachedField
 						component={NativeSelect}
 						name="operator"
@@ -73,7 +73,7 @@ const EditEgoRule = ({
 				</Section>
 			)}
 			{operatorNeedsValue && (
-				<Section title="Attribute Value">
+				<Section title="Attribute Value" layout="vertical">
 					<EditValue
 						variableType={variableType}
 						placeholder="Enter a value..."
@@ -100,7 +100,7 @@ const EditEgoRule = ({
         </Section>
         )} */}
 			{operatorNeedsOptionCount && (
-				<Section title="Selected Option Count">
+				<Section title="Selected Option Count" layout="vertical">
 					<EditValue
 						variableType="number"
 						placeholder="Enter a value..."

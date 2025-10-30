@@ -1,15 +1,15 @@
+import { get } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { isDirty, isInvalid } from "redux-form";
-import { get } from "es-toolkit/compat";
 import InlineEditScreen from "~/components/InlineEditScreen/InlineEditScreen";
-import TypeEditor from "~/components/TypeEditor/TypeEditor";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import type { RootState } from "~/ducks/store";
-import { getProtocol } from "~/selectors/protocol";
 import { format, parse } from "~/components/TypeEditor/convert";
 import getNewTypeTemplate from "~/components/TypeEditor/getNewTypeTemplate";
+import TypeEditor from "~/components/TypeEditor/TypeEditor";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import type { RootState } from "~/ducks/store";
+import { getProtocol } from "~/selectors/protocol";
 
 const formName = "ENTITY_TYPE_DIALOG";
 

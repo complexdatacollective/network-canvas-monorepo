@@ -61,7 +61,7 @@
 }
 
 .rules-preview-rule:hover {
-	--variable-pill-shadow-color: hsl(var(--rich-black));
+	--variable-pill-shadow-color: hsl(var(--shadow));
 	background-color: var(--color-surface-accent);
 }
 
@@ -75,7 +75,7 @@
 
 .stage-editor-section {
 	--variable-pill-background: var(--color-surface-1);
-	--variable-pill-shadow-color: var(--color-variable-pill-shadow);
+	--variable-pill-shadow-color: var(--shadow);
 }
 
 .stage-editor-section .preview-edge {
@@ -84,7 +84,7 @@
 
 .stage-editor-section .stage-editor-section {
 	--variable-pill-background: var(--color-white);
-	--variable-pill-shadow-color: var(--color-variable-pill-shadow);
+	--variable-pill-shadow-color: var(--shadow);
 }
 
 .stage-editor-section .stage-editor-section .preview-edge {

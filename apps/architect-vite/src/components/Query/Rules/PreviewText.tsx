@@ -47,7 +47,7 @@ type JoinProps = {
 };
 
 export const Join = ({ value = "" }: JoinProps) => (
-	<fieldset className="rules-preview-text__join border-t-4 border-section-background">
+	<fieldset className="rules-preview-text__join">
 		<legend>{value.toLowerCase()}</legend>
 	</fieldset>
 );

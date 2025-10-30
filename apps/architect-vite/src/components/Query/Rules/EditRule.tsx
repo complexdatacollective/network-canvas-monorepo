@@ -1,6 +1,6 @@
 import { Component } from "react";
-import Dialog from "../../NewComponents/Dialog";
 import ExternalLink from "../../ExternalLink";
+import Dialog from "../../NewComponents/Dialog";
 import EditEgoRule from "./EditEgoRule";
 import EditEntityRule from "./EditEntityRule";
 
@@ -50,7 +50,6 @@ class EditRule extends Component<EditRuleProps> {
 				onCancel={onCancel}
 				confirmText="Finish and Close"
 				cancelText="Cancel"
-				confirmColor="primary"
 			>
 				<div>
 					<p>

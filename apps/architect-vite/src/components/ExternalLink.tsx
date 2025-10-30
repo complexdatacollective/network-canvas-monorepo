@@ -16,7 +16,11 @@ const ExternalLink = ({ children, href }: ExternalLinkProps) => {
 	};
 
 	return (
-		<a href={href} onClick={handleClick}>
+		<a
+			href={href}
+			onClick={handleClick}
+			className="font-bold underline decoration-[color:var(--color-action)] underline-offset-4 decoration-2"
+		>
 			{children}
 		</a>
 	);

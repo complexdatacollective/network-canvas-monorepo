@@ -360,8 +360,8 @@
 
 	--color-input: hsl(var(--white));
 	--color-input-foreground: hsl(var(--charcoal));
-	--color-input-placeholder: hsl(var(--platinum));
-	--color-input-active: var(--color-primary);
+	--color-input-placeholder: hsl(var(--color-platinum-dark));
+	--color-input-active: var(--color-active);
 
 	--color-sortable-background: hsl(var(--slate-blue));
 	--color-sortable-foreground: hsl(var(--white));

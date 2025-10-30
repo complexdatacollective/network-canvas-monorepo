@@ -76,6 +76,7 @@
 	flex: 1 0 auto;
 	padding: var(--space-sm) var(--space-md);
 	word-break: keep-all;
+	color: var(--color-input-foreground);
 }
 
 .variable-pill__container .edit-buttons {

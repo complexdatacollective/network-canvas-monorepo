@@ -68,6 +68,7 @@ const EditEntityRule = ({
 						different types.
 					</p>
 				}
+				layout="vertical"
 			>
 				<IssueAnchor fieldName="type" description={`${entityType} Type`} />
 				<DetachedField
@@ -80,7 +81,7 @@ const EditEntityRule = ({
 					validation={{ required: true }}
 				/>
 			</Section>
-			<Section title="Rule Type" disabled={!optionsWithDefaults.type}>
+			<Section title="Rule Type" disabled={!optionsWithDefaults.type} layout="vertical">
 				<DetachedField
 					component={RadioGroup}
 					options={entityRuleTypeOptions(entityType)}
@@ -89,7 +90,7 @@ const EditEntityRule = ({
 				/>
 			</Section>
 			{isTypeRule && optionsWithDefaults.type && (
-				<Section title="Operator">
+				<Section title="Operator" layout="vertical">
 					<DetachedField
 						component={RadioGroup}
 						name="operator"
@@ -101,7 +102,7 @@ const EditEntityRule = ({
 				</Section>
 			)}
 			{isVariableRule && optionsWithDefaults.type && (
-				<Section title="Variable" summary={<p>Select a variable to query.</p>}>
+				<Section title="Variable" summary={<p>Select a variable to query.</p>} layout="vertical">
 					<DetachedField
 						component={NativeSelect}
 						name="attribute"
@@ -113,7 +114,7 @@ const EditEntityRule = ({
 				</Section>
 			)}
 			{isVariableRule && optionsWithDefaults.attribute && (
-				<Section title="Operator">
+				<Section title="Operator" layout="vertical">
 					<DetachedField
 						component={NativeSelect}
 						name="operator"
@@ -125,7 +126,7 @@ const EditEntityRule = ({
 				</Section>
 			)}
 			{isVariableRule && operatorNeedsValue && (
-				<Section title="Attribute Value">
+				<Section title="Attribute Value" layout="vertical">
 					<EditValue
 						variableType={variableType}
 						placeholder="Enter a value..."
@@ -152,7 +153,7 @@ const EditEntityRule = ({
         </Section>
         )} */}
 			{isVariableRule && operatorNeedsOptionCount && (
-				<Section title="Selected Option Count">
+				<Section title="Selected Option Count" layout="vertical">
 					<EditValue
 						variableType="number"
 						placeholder="Enter a value..."
