@@ -76,7 +76,9 @@ const VariablePicker = ({
 
 	return (
 		<>
-			<div className="">
+			<fieldset className="form-fields-variable-picker">
+				{label && <legend>{label}</legend>}
+
 				{value && (
 					<div className="mb-[var(--space-md)]">
 						<AnimatePresence exitBeforeEnter initial={false}>
@@ -86,11 +88,11 @@ const VariablePicker = ({
 						</AnimatePresence>
 					</div>
 				)}
-				<Button icon="add" onClick={() => setShowPicker(true)}>
+				<Button icon="add" onClick={() => setShowPicker(true)} color="sea-green">
 					{value ? "Change Variable" : "Select Variable"}
 				</Button>
 				{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
-			</div>
+			</fieldset>
 			<SpotlightModal show={showPicker} onBlur={hideModal}>
 				<VariableSpotlight
 					entity={entity}

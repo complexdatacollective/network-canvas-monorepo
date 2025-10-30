@@ -134,8 +134,8 @@
 		--z-modal: 2000;
 		--z-tooltip: 3000;
 
-		--picker-size: 40px;
-		--picker-border-size: 2px;
+		--picker-size: 60px;
+		--picker-border-size: 4px;
 
 		--animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
 		--animation-duration-standard: 300ms;

@@ -62,6 +62,10 @@
 	padding-bottom: var(--space-xs);
 }
 
+.variable-spotlight__list .scrollable {
+	mask-image: none;
+}
+
 .variable-spotlight__list ol {
 	list-style: none;
 	padding: 0;

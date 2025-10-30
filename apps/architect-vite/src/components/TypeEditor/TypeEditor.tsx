@@ -36,16 +36,17 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 
 	return (
 		<Layout>
-			<Section title={`${capitalize(entity)} Type`} summary={<p>Name this {entity} type.</p>} layout="vertical">
+			<Section title={`${capitalize(entity)} Type`} layout="vertical">
 				<p>
-					This name will be used to identify this type in the codebook, and in your data exports.
+					Name this {entity} type. This name will be used to identify this type in the codebook, and in your data
+					exports.
 					{entity === "node" && ' Some examples might be "Person", "Place", or "Organization".'}
 					{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
 				</p>
 				<ValidatedField
 					component={Fields.Text}
 					name="name"
-					placeholder="Enter a name for this entity type..."
+					placeholder={`Enter a name for this ${entity} type...`}
 					validation={{ required: true, allowedNMToken: `${entity} type name`, uniqueByList: existingTypes }}
 				/>
 			</Section>

@@ -94,7 +94,7 @@ const EditableList = ({
 					editIndex: editIndex, // Pass editIndex so OrderedList can hide the editing item
 				}}
 			/>
-			<Button onClick={handleAddNew} icon="add">
+			<Button onClick={handleAddNew} icon="add" color="sea-green">
 				Create new
 			</Button>
 			<InlineEditScreen

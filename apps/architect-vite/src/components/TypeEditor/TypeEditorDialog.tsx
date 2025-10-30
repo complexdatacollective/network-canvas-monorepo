@@ -63,10 +63,8 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 	return (
 		<Dialog
 			open={show}
-			onOpenChange={(open) => !open && handleCancel()}
+			onOpenChange={(open) => !open && onCancel()}
 			title={dialogTitle}
-			onCancel={handleCancel}
-			cancelText="Cancel"
 			onConfirm={hasUnsavedChanges ? handleSubmit : undefined}
 			confirmText={hasUnsavedChanges ? (type ? "Update Type" : "Create Type") : undefined}
 		>

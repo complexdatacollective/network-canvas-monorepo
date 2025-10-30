@@ -1,8 +1,3 @@
-.form-fields-color-picker {
-	--color-picker-size: 4.2rem;
-	--color-picker-border-size: 5px;
-}
-
 .form-fields-color-picker__edit {
 	background: var(--color-surface-1);
 	color: var(--color-input-foreground);
@@ -48,14 +43,14 @@
 	border-radius: var(--picker-size);
 	border-color: transparent;
 	border-style: solid;
-	border-width: var(--space-xs);
+	border-width: 2px;
 	transition-duration: var(--animation-duration-standard);
 	transition-timing-function: var(--animation-easing);
 	transition-property: border-color;
 }
 
 .form-fields-color-picker__color.form-fields-color-picker__color--selected {
-	background-color: var(--node-outer-trim-stroke);
+	background-color: var(--color-selected);
 }
 
 .form-fields-color-picker__color.form-fields-color-picker__color--selected::after {
@@ -70,8 +65,9 @@
 	opacity: 0;
 	background: var(--color-error);
 	color: var(--color-error);
-	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-		var(--animation-duration-standard);
+	transition:
+		opacity var(--animation-easing) var(--animation-duration-standard),
+		max-height var(--animation-easing) var(--animation-duration-standard);
 	padding: var(--space-xs) var(--space-xs);
 	display: flex;
 	align-items: center;
