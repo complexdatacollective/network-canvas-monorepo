@@ -1,7 +1,7 @@
+import * as Fields from "~/components/Form/Fields";
 import DataSource from "~/components/Form/Fields/DataSource";
 import ValidatedField from "~/components/Form/ValidatedField";
 import NetworkFilter from "~/components/sections/fields/NetworkFilter";
-import * as Fields from "~/components/Form/Fields";
 import { getFieldId } from "~/utils/issues";
 import Section from "../../EditorLayout/Section";
 
@@ -16,6 +16,8 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 			title="Panel Title"
 			summary={<p>The panel title will be shown above the list of nodes within the panel.</p>}
 			id={getFieldId(`${fieldId}.title`)}
+			layout="vertical"
+			className="bg-slate-blue-dark mt-8"
 		>
 			<ValidatedField
 				name={`${fieldId}.title`}
@@ -33,6 +35,8 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 				</p>
 			}
 			id={getFieldId(`${fieldId}.dataSource`)}
+			layout="vertical"
+			className="bg-slate-blue-dark mt-8"
 		>
 			<ValidatedField
 				component={DataSource}

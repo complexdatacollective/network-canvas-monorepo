@@ -2,7 +2,7 @@ import { get } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose, defaultProps } from "recompose";
-import { Field, change, getFormValues } from "redux-form";
+import { change, Field, getFormValues } from "redux-form";
 import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "~/components/Query";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import Section from "../../EditorLayout/Section";
@@ -16,9 +16,10 @@ type NetworkFilterProps = {
 	changeField: (form: string, name: string, value: unknown) => void;
 	openDialog: (dialog: Record<string, unknown>) => Promise<boolean>;
 	name: string;
+	variant?: "contrast";
 };
 
-const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name }: NetworkFilterProps) => {
+const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name, variant }: NetworkFilterProps) => {
 	const handleToggleChange = useCallback(
 		async (newStatus) => {
 			if (newStatus === true) {
@@ -39,6 +40,11 @@ const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name }: Netwo
 		[openDialog, changeField],
 	);
 
+	const contrastProps =
+		variant === "contrast"
+			? { className: "bg-slate-blue-dark p-4 rounded-md", layout: "vertical" as "vertical" | "horizontal" }
+			: {};
+
 	return (
 		<Section
 			title="Filter"
@@ -46,6 +52,7 @@ const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name }: Netwo
 			summary={<p>You can optionally filter which nodes are shown on in this panel.</p>}
 			startExpanded={!!hasFilter}
 			handleToggleChange={handleToggleChange}
+			{...contrastProps}
 		>
 			<Field name={name} component={FilterField} validate={ruleValidator} />
 		</Section>

@@ -1,6 +1,6 @@
 import { withState } from "recompose";
-import NetworkThumbnail from "~/components/Thumbnail/Network";
 import Radio from "~/components/Form/Fields/Radio";
+import NetworkThumbnail from "~/components/Thumbnail/Network";
 import File from "./File";
 
 type InputProps = {
@@ -54,10 +54,14 @@ const DataSource = (props: DataSourceProps) => {
 	return canUseExisting ? (
 		<div className="form-field-data-source">
 			<div className="form-fields-data-source__option">
-				<Radio input={existingInput} label="Use the network from the in-progress interview" />
+				<Radio
+					input={existingInput}
+					label="Use the network from the in-progress interview"
+					className="text-foreground"
+				/>
 			</div>
 			<div className="form-fields-data-source__option">
-				<Radio input={networkAssetInput} label="Use a network data file" />
+				<Radio input={networkAssetInput} label="Use a network data file" className="text-foreground" />
 				{showNetworkAssetInput && (
 					<div className="form-fields-data-source__option-file">
 						<File

@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "~/utils/cn";
@@ -66,15 +65,6 @@ const Section = ({
 		}
 	}, [isOpen, handleToggleChange]);
 
-	const _sectionClasses = cx(
-		"stage-editor-section border border-platinum-dark w-full relative",
-		{ "stage-editor-section--toggleable": toggleable },
-		{ "stage-editor-section--open": isOpen },
-		{ "stage-editor-section--disabled": disabled },
-		{ "stage-editor-section--group": group },
-		className,
-	);
-
 	const classes = cn(
 		"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
 		"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative px-6 py-4 shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)]",
@@ -82,7 +72,7 @@ const Section = ({
 
 	if (layout === "vertical") {
 		return (
-			<div className="w-full flex flex-col gap-3 bg-[var(--color-surface-2)] rounded-md p-5 mb-4">
+			<div className={cn("w-full flex flex-col gap-3 bg-[var(--color-surface-2)] rounded-md p-5 mb-4", className)}>
 				<legend className="flex items-center justify-between [--color-input:var(--color-navy-taupe)] [--color-input-foreground:white]">
 					<span className="small-heading">
 						{title}
@@ -111,7 +101,7 @@ const Section = ({
 	}
 
 	return (
-		<div className="w-full grid gap-4 grid-cols-[25%_auto] max-w-6xl">
+		<div className={cn("w-full grid gap-4 grid-cols-[25%_auto] max-w-6xl", className)}>
 			<div>
 				<legend className="flex px-6 py-2 rounded items-center justify-between flex-row-reverse bg-border sticky top-2 gap-4 [--color-input:var(--color-navy-taupe)] [--color-input-foreground:white]">
 					<span className="small-heading">

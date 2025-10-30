@@ -58,7 +58,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 			axis="y"
 		>
 			{values.map((item, index) => {
-				const key = hash(item);
+				const key = item.id || hash(item);
 				// Make editing item invisible but keep it in layout for smooth animation
 				const isEditing = editIndex === index;
 
@@ -72,7 +72,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 						sortable
 						className={isEditing ? "opacity-0 pointer-events-none" : null}
 					>
-						<Item form={form} {...item} />
+						<Item form={form} fieldId={`${name}[${index}]`} {...item} />
 					</ListItem>
 				);
 			})}
