@@ -1,7 +1,7 @@
 .codebook {
 	--variable-pill-width: 25rem;
 
-	margin: var(--space-3xl) var(--space-5xl);
+	margin: var(--space-xl) var(--space-5xl);
 	max-width: 80rem;
 }
 

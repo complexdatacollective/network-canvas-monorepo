@@ -16,14 +16,9 @@ const AssetsPage = () => {
 	};
 
 	return (
-		<div className="scene scene--assets">
-			<div className="stage-heading stage-heading--inline">
-				<Layout>
-					<div className="flex items-center gap-4 mb-6">
-						<Button onClick={handleGoBack} color="platinum">
-							← Back to Protocol
-						</Button>
-					</div>
+		<Layout>
+			<div className="flex flex-col gap-6" style={{ margin: "var(--space-xl) var(--space-5xl)", maxWidth: "80rem" }}>
+				<div className="stage-heading">
 					<h1 className="screen-heading">Resource Library</h1>
 					<p>
 						Welcome to the resource library. Here, you can import external data resources which can be used in building
@@ -33,12 +28,15 @@ const AssetsPage = () => {
 						</ExternalLink>{" "}
 						for more information.
 					</p>
-				</Layout>
-			</div>
-			<Layout>
+				</div>
 				<AssetBrowser />
-			</Layout>
-		</div>
+			</div>
+			<div className="flex fixed bottom-0 p-6 bg-cyber-grape w-full">
+				<Button onClick={handleGoBack} color="platinum">
+					Go Back
+				</Button>
+			</div>
+		</Layout>
 	);
 };
 

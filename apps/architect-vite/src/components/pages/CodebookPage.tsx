@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import Codebook from "~/components/Codebook/Codebook";
 import EntityTypeDialog from "~/components/Codebook/EntityTypeDialog";
@@ -43,7 +43,7 @@ const CodebookPage = () => {
 				</p>
 			</div>
 			<Codebook onEditEntity={handleOpenEntityDialog} />
-			<div className="flex fixed bottom-0 p-6 bg-slate-blue-dark w-full">
+			<div className="flex fixed bottom-0 p-6 bg-cyber-grape w-full">
 				<Button onClick={handleGoBack} color="platinum">
 					Go Back
 				</Button>

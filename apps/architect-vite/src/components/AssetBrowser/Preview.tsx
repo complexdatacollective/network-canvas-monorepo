@@ -61,7 +61,7 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	const secondaryButtons =
 		meta.type !== "apikey"
 			? [
-					<Button onClick={handleDownload} icon={<DownloadIcon />} key="download">
+					<Button onClick={handleDownload} icon={<DownloadIcon />} key="download" color="sea-green">
 						Download asset
 					</Button>,
 				]

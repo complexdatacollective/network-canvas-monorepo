@@ -11,7 +11,7 @@
 	transition-timing-function: var(--animation-easing);
 	transition-property: border-color;
 	border-color: transparent;
-	background-color: var(--color-surface-3);
+	background-color: var(--color-surface-accent);
 	overflow: hidden;
 	padding: var(--space-2xl);
 	display: flex;
@@ -44,7 +44,7 @@
 
 .form-dropzone__link {
 	display: inline-block;
-	border-bottom: 2px solid var(--color-info);
+	border-bottom: 2px solid var(--color-action);
 	line-height: 1.2rem;
 	cursor: pointer;
 }
