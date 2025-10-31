@@ -136,79 +136,77 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 	};
 
 	return (
-		<>
-			<BaseVariablePill type={type} ref={ref}>
-				<AnimatePresence initial={false} exitBeforeEnter>
-					{editing ? (
-						<motion.div
-							key="edit"
-							style={{ flex: 1 }}
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-						>
-							<Tippy theme="error" content={validation} visible={!!validation} placement="bottom">
-								<div style={{ width: "100%", flex: "1 auto" }}>
-									<TextInput
-										autoFocus
-										placeholder="Enter a new variable name..."
-										input={{
-											value: newName,
-											onChange: handleUpdateName,
-											onBlur: handleBlur,
-											onKeyDown: handleKeyDown,
-										}}
-										adornmentRight={
-											<motion.div className="edit-buttons">
-												<motion.div
-													title="Finished"
-													aria-label="Finished"
-													initial={{ x: "100%", opacity: 0 }}
-													animate={{ x: 0, opacity: 1 }}
-													transition={{ delay: 0.4 }}
-													role="button"
-													tabIndex="0" // Needed to allow focus
-													id={EDIT_COMPLETE_BUTTON_ID}
-													onClick={onEditComplete}
-													className={cx("edit-buttons__button", { "edit-buttons__button--disabled": !canSubmit })}
-												>
-													<Icon name="tick" />
-												</motion.div>
-												<motion.div
-													title="Cancel"
-													aria-label="Cancel"
-													initial={{ x: "100%", opacity: 0 }}
-													animate={{ x: 0, opacity: 1 }}
-													transition={{ delay: 0.6 }}
-													role="button"
-													tabIndex="0" // Needed to allow focus
-													onClick={handleCancel}
-													className="edit-buttons__button edit-buttons__button--cancel"
-												>
-													<Icon name="cross" color="tomato" />
-												</motion.div>
+		<BaseVariablePill type={type} ref={ref}>
+			<AnimatePresence initial={false} exitBeforeEnter>
+				{editing ? (
+					<motion.div
+						key="edit"
+						style={{ flex: 1 }}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+					>
+						<Tippy theme="error" content={validation} visible={!!validation} placement="bottom">
+							<div style={{ width: "100%", flex: "1 auto" }}>
+								<TextInput
+									autoFocus
+									placeholder="Enter a new variable name..."
+									input={{
+										value: newName,
+										onChange: handleUpdateName,
+										onBlur: handleBlur,
+										onKeyDown: handleKeyDown,
+									}}
+									adornmentRight={
+										<motion.div className="edit-buttons">
+											<motion.div
+												title="Finished"
+												aria-label="Finished"
+												initial={{ x: "100%", opacity: 0 }}
+												animate={{ x: 0, opacity: 1 }}
+												transition={{ delay: 0.4 }}
+												role="button"
+												tabIndex="0" // Needed to allow focus
+												id={EDIT_COMPLETE_BUTTON_ID}
+												onClick={onEditComplete}
+												className={cx("edit-buttons__button", { "edit-buttons__button--disabled": !canSubmit })}
+											>
+												<Icon name="tick" color="sea-green" />
 											</motion.div>
-										}
-									/>
-								</div>
-							</Tippy>
-						</motion.div>
-					) : (
-						<motion.h4
-							key="label"
-							className="label"
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							onClick={() => setIsEditing(true)}
-							title="Click to rename this variable..."
-						>
-							{name}
-						</motion.h4>
-					)}
-				</AnimatePresence>
-			</BaseVariablePill>
-		</>
+											<motion.div
+												title="Cancel"
+												aria-label="Cancel"
+												initial={{ x: "100%", opacity: 0 }}
+												animate={{ x: 0, opacity: 1 }}
+												transition={{ delay: 0.6 }}
+												role="button"
+												tabIndex="0" // Needed to allow focus
+												onClick={handleCancel}
+												className="edit-buttons__button edit-buttons__button--cancel"
+											>
+												<Icon name="cross" color="tomato" />
+											</motion.div>
+										</motion.div>
+									}
+								/>
+							</div>
+						</Tippy>
+					</motion.div>
+				) : (
+					<motion.h4
+						key="label"
+						className="label"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						onClick={() => setIsEditing(true)}
+						title="Click to rename this variable..."
+					>
+						{name}
+					</motion.h4>
+				)}
+			</AnimatePresence>
+		</BaseVariablePill>
 	);
 };
 

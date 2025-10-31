@@ -79,11 +79,11 @@
 }
 
 .codebook .codebook__entity-icon .node {
-	font-size: var(--text-5xl);
+	font-size: var(--text-7xl);
 }
 
 .codebook .codebook__entity-name {
-	padding-left: var(--space-3xl);
+	padding-left: var(--space-lg);
 }
 
 .codebook .codebook__entity-meta {
@@ -127,6 +127,7 @@
 
 .codebook .codebook__variables-heading {
 	vertical-align: middle;
+	text-align: left;
 	text-transform: none;
 }
 
@@ -143,7 +144,7 @@
 	position: absolute;
 	font-size: var(--text-xl);
 	top: -0.15rem;
-	color: var(--color-primary);
+	color: var(--color-action);
 	content: "dir";
 }
 
