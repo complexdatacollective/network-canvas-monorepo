@@ -978,11 +978,11 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 
 	&[name="highlighted"] {
 		.cls-4 {
-			fill: var(--node-color-seq-1);
+			fill: hsl(var(--node-color-seq-1));
 		}
 
 		.cls-5 {
-			fill: var(--node-color-seq-1-dark);
+			fill: hsl(var(--node-color-seq-1-dark));
 		}
 
 		.cls-7 {
@@ -993,88 +993,88 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 		&.icon--node-highlight-seq-1 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-1-dark);
+				fill: hsl(var(--node-color-seq-1-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-1);
+				fill: hsl(var(--node-color-seq-1));
 			}
 		}
 
 		&.icon--node-highlight-seq-2 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-2-dark);
+				fill: hsl(var(--node-color-seq-2-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-2);
+				fill: hsl(var(--node-color-seq-2));
 			}
 		}
 
 		&.icon--node-highlight-seq-3 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-3-dark);
+				fill: hsl(var(--node-color-seq-3-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-3);
+				fill: hsl(var(--node-color-seq-3));
 			}
 		}
 
 		&.icon--node-highlight-seq-4 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-4-dark);
+				fill: hsl(var(--node-color-seq-4-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-4);
+				fill: hsl(var(--node-color-seq-4));
 			}
 		}
 
 		&.icon--node-highlight-seq-5 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-5-dark);
+				fill: hsl(var(--node-color-seq-5-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-5);
+				fill: hsl(var(--node-color-seq-5));
 			}
 		}
 
 		&.icon--node-highlight-seq-6 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-6-dark);
+				fill: hsl(var(--node-color-seq-6-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-6);
+				fill: hsl(var(--node-color-seq-6));
 			}
 		}
 
 		&.icon--node-highlight-seq-7 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-7-dark);
+				fill: hsl(var(--node-color-seq-7-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-7);
+				fill: hsl(var(--node-color-seq-7));
 			}
 		}
 
 		&.icon--node-highlight-seq-8 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--node-color-seq-8-dark);
+				fill: hsl(var(--node-color-seq-8-dark));
 			}
 
 			.cls-2 {
-				fill: var(--node-color-seq-8);
+				fill: hsl(var(--node-color-seq-8));
 			}
 		}
 	}
@@ -1183,88 +1183,99 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 		&.icon--edge-color-seq-1 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-1-dark);
+				fill: hsl(var(--edge-color-seq-1-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-1);
+				fill: hsl(var(--edge-color-seq-1));
 			}
 		}
 
 		&.icon--edge-color-seq-2 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-2-dark);
+				fill: hsl(var(--edge-color-seq-2-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-2);
+				fill: hsl(var(--edge-color-seq-2));
 			}
 		}
 
 		&.icon--edge-color-seq-3 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-3-dark);
+				fill: hsl(var(--edge-color-seq-3-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-3);
+				fill: hsl(var(--edge-color-seq-3));
 			}
 		}
 
 		&.icon--edge-color-seq-4 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-4-dark);
+				fill: hsl(var(--edge-color-seq-4-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-4);
+				fill: hsl(var(--edge-color-seq-4));
 			}
 		}
 
 		&.icon--edge-color-seq-5 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-5-dark);
+				fill: hsl(var(--edge-color-seq-5-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-5);
+				fill: hsl(var(--edge-color-seq-5));
 			}
 		}
 
 		&.icon--edge-color-seq-6 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-6-dark);
+				fill: hsl(var(--edge-color-seq-6-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-6);
+				fill: hsl(var(--edge-color-seq-6));
 			}
 		}
 
 		&.icon--edge-color-seq-7 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-7-dark);
+				fill: hsl(var(--edge-color-seq-7-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-7);
+				fill: hsl(var(--edge-color-seq-7));
 			}
 		}
 
 		&.icon--edge-color-seq-8 {
 			.cls-1,
 			.cls-3 {
-				fill: var(--edge-color-seq-8-dark);
+				fill: hsl(var(--edge-color-seq-8-dark));
 			}
 
 			.cls-2 {
-				fill: var(--edge-color-seq-8);
+				fill: hsl(var(--edge-color-seq-8));
+			}
+		}
+
+		&.icon--edge-color-seq-9 {
+			.cls-1,
+			.cls-3 {
+				fill: hsl(var(--edge-color-seq-9-dark));
+			}
+
+			.cls-2 {
+				fill: hsl(var(--edge-color-seq-9));
 			}
 		}
 	}

@@ -42,7 +42,11 @@ const EntityType = ({
 	onEditEntity,
 }: EntityTypeProps) => {
 	const stages = usage.map(({ id, label }) => (
-		<Link href={`/protocol/stage/${id}`} key={id}>
+		<Link
+			href={`/protocol/stage/${id}`}
+			key={id}
+			className="underline decoration-[color:var(--color-action)] underline-offset-4 px-1"
+		>
 			{label}
 		</Link>
 	));
@@ -65,7 +69,9 @@ const EntityType = ({
 					)}
 				</div>
 				<div className="codebook__entity-control">
-					<Button onClick={handleEdit}>Edit entity</Button>
+					<Button onClick={handleEdit} color="sea-green">
+						Edit entity
+					</Button>
 					<Button color="neon-coral" onClick={handleDelete}>
 						Delete entity
 					</Button>
