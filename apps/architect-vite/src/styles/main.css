@@ -1,5 +1,4 @@
 @import "react-grid-layout/css/styles.css";
 @import "../lib/legacy-ui/styles/all.css";
-/* TODO: Convert ProtocolSummary SCSS to CSS */
-/* @import "../lib/ProtocolSummary/styles/all"; */
+@import "../lib/ProtocolSummary/styles/all.css";
 @import "./components.css";

@@ -74,7 +74,7 @@ const SummaryPage = () => {
 			}}
 		>
 			<Layout className="protocol-summary-page">
-				<div className="stage-heading">
+				<div className="screen-heading">
 					<div className="flex flex-col">
 						<h1 className="screen-heading">Protocol Summary</h1>
 						<p>
@@ -108,7 +108,9 @@ const SummaryPage = () => {
 					<Button onClick={handleGoBack} color="platinum">
 						Go Back
 					</Button>
-					<Button onClick={print}>Print</Button>
+					<Button onClick={print} color="sea-green">
+						Print
+					</Button>
 				</div>
 			</Layout>
 		</SummaryContext.Provider>

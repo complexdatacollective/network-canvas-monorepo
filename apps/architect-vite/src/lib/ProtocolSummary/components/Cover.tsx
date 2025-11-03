@@ -5,14 +5,7 @@ import ProtocolCard from "~/lib/legacy-ui/components/Cards/ProtocolCard";
 import SummaryContext from "./SummaryContext";
 
 const Cover = () => {
-	const { protocol, filePath } = useContext(SummaryContext);
-
-	// Extract filename without extension from file path (web-compatible)
-	const protocolName =
-		filePath
-			?.split(/[/\\]/)
-			.pop()
-			?.replace(/\.[^/.]+$/, "") || "protocol";
+	const { protocol } = useContext(SummaryContext);
 
 	const lastModified = DateTime.fromISO(protocol.lastModified).toHTTP();
 	const date = new Date();
@@ -28,10 +21,10 @@ const Cover = () => {
 				</div>
 			</div>
 			<ProtocolCard
-				name={protocolName}
-				description={protocol.description}
+				name={protocol?.name ?? "Protocol"}
+				description={protocol?.description ?? ""}
 				lastModified={lastModified}
-				schemaVersion={protocol.schemaVersion}
+				schemaVersion={protocol?.schemaVersion ?? 8}
 			/>
 			<br />
 			<br />

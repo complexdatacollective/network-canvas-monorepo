@@ -5,7 +5,7 @@
 	display: flex;
 	overflow: hidden;
 	flex-direction: column-reverse;
-	height: var(--space-5xl);
+	height: var(--space-6xl);
 	position: relative;
 
 	&.protocol-card--clickable {

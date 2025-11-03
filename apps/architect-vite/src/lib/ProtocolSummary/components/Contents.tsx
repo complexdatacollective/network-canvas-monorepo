@@ -1,8 +1,8 @@
+import { groupBy, isEmpty, map, toPairs } from "lodash";
 import React, { useContext } from "react";
-import { map, toPairs, groupBy, isEmpty } from "lodash";
-import SummaryContext from "./SummaryContext";
 import DualLink from "./DualLink";
 import EntityBadge from "./EntityBadge";
+import SummaryContext from "./SummaryContext";
 
 const Contents = () => {
 	const {
@@ -21,9 +21,11 @@ const Contents = () => {
 					<li>Stages</li>
 					<ol>
 						{stages &&
-							map(stages, ({ label, id }) => (
+							map(stages, ({ label, id }, index) => (
 								<li key={id}>
-									<DualLink to={`#stage-${id}`}>{label}</DualLink>
+									<DualLink to={`#stage-${id}`}>
+										{index + 1}. {label}
+									</DualLink>
 								</li>
 							))}
 					</ol>
