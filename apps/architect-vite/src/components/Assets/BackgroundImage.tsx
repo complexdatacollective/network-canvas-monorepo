@@ -1,24 +1,21 @@
 import type React from "react";
 import withAssetUrl from "./withAssetUrl";
 
-const backgroundStyles = (url: string): React.CSSProperties => ({
-	backgroundImage: `url(${url})`,
-	backgroundRepeat: "no-repeat",
-	backgroundSize: "contain",
-	backgroundPosition: "center",
-});
-
 type BackgroundImageProps = {
-	url: string;
+	url?: string;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-const BackgroundImage = ({ url, ...props }: BackgroundImageProps) => (
-	<div
-		style={backgroundStyles(url)}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	/>
-);
+const BackgroundImage = ({ url, className, ...props }: BackgroundImageProps) => {
+	if (!url) {
+		return <div className={className} {...props} />;
+	}
+
+	return (
+		<div className={className} {...props} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+			<img src={url} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+		</div>
+	);
+};
 
 export { BackgroundImage };
 

@@ -6,10 +6,9 @@
 	margin: var(--margin);
 }
 
-.print {
+.print .protocol-summary {
 	--base-font-size: 12px;
-
-	font-size: var(--base-font-size) !important;
+	font-size: var(--base-font-size);
 }
 
 @media print {
@@ -168,4 +167,5 @@ h2.section-heading {
 	max-width: 24rem;
 	margin: 0.5rem;
 	background: white;
+	--variable-pill-shadow-color: var(--color-platinum-dark);
 }

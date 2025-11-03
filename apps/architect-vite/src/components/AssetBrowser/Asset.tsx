@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { DeleteIcon, DownloadIcon, FrameIcon as PreviewIcon } from "lucide-react";
+import { DeleteIcon, DownloadIcon, Eye as PreviewIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import * as Thumbnails from "~/components/Thumbnail";
 
