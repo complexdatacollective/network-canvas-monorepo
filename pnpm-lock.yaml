@@ -265,8 +265,8 @@ importers:
         specifier: ^0.0.206
         version: 0.0.206(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@next/bundle-analyzer':
-        specifier: 16.0.0
-        version: 16.0.0(bufferutil@4.0.9)
+        specifier: 16.0.1
+        version: 16.0.1(bufferutil@4.0.9)
       '@next/third-parties':
         specifier: 15.5.6
         version: 15.5.6(next@15.5.4(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
@@ -1453,8 +1453,8 @@ packages:
     resolution: {integrity: sha512-I5sbpSIAHiB+b6UttofhrN/UJXII+4tZPAq1qugzwCwLIL8EZLV7F/JyHUrEIiGgQpEXzpnjlJ+zwcEhheGvCw==}
     engines: {node: '>=19.0.0'}
 
-  '@next/bundle-analyzer@16.0.0':
-    resolution: {integrity: sha512-OYufQoNm/Im2fYQBdXu9fqUrXaP3lPuPnryW0XNGG7kJiGxH/VWS8zc2/x4aW2LQGn+opqIJYNRXy7k5qV/09g==}
+  '@next/bundle-analyzer@16.0.1':
+    resolution: {integrity: sha512-ds2XBC7hred9g9T16DYXp4llImGf9gBSsfY5k3bklizOtHeo+53EXjKm3AliS/fMTjYfRrv8usdL2wVZa1GIkw==}
 
   '@next/env@13.5.11':
     resolution: {integrity: sha512-fbb2C7HChgM7CemdCY+y3N1n8pcTKdqtQLbC7/EQtPdLvlMUT9JX/dBYl8MMZAtYG4uVMyPFHXckb68q/NRwqg==}
@@ -2300,11 +2300,11 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@22.18.12':
-    resolution: {integrity: sha512-BICHQ67iqxQGFSzfCFTT7MRQ5XcBjG5aeKh5Ok38UBbPe5fxTyE+aHFxwVrGyr8GNlqFMLKD1D3P2K/1ks8tog==}
-
   '@types/node@22.18.8':
     resolution: {integrity: sha512-pAZSHMiagDR7cARo/cch1f3rXy0AEXwsVsVH09FcyeJVAzCnGgmYis7P3JidtTUjyadhTeSo8TgRPswstghDaw==}
+
+  '@types/node@22.19.0':
+    resolution: {integrity: sha512-xpr/lmLPQEj+TUnHmR+Ab91/glhJvsqcjB+yY0Ix9GO70H6Lb4FHH5GeqdOE5btAx7eIMwuHkp4H2MSkLcqWbA==}
 
   '@types/node@24.7.0':
     resolution: {integrity: sha512-IbKooQVqUBrlzWTi79E8Fw78l8k1RNtlDDNWsFZs7XonuQSJ8oNYfEeclhprUldXISRMLzBpILuKgPlIxm+/Yw==}
@@ -5776,11 +5776,11 @@ snapshots:
 
   '@neondatabase/serverless@1.0.2':
     dependencies:
-      '@types/node': 22.18.12
+      '@types/node': 22.19.0
       '@types/pg': 8.11.6
     optional: true
 
-  '@next/bundle-analyzer@16.0.0(bufferutil@4.0.9)':
+  '@next/bundle-analyzer@16.0.1(bufferutil@4.0.9)':
     dependencies:
       webpack-bundle-analyzer: 4.10.1(bufferutil@4.0.9)
     transitivePeerDependencies:
@@ -6557,14 +6557,14 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@22.18.12':
-    dependencies:
-      undici-types: 6.21.0
-    optional: true
-
   '@types/node@22.18.8':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/node@22.19.0':
+    dependencies:
+      undici-types: 6.21.0
+    optional: true
 
   '@types/node@24.7.0':
     dependencies:
