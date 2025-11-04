@@ -147,13 +147,14 @@ const Timeline = () => {
 			<Reorder.Group
 				axis="y"
 				onReorder={handleReorder}
-				className="relative overflow-hidden grid grid-cols-1 gap-28 py-16 justify-items-center [--color-background:var(--color-timeline)]"
+				className="relative overflow-hidden grid grid-cols-1 gap-6 py-16 justify-items-center [--color-background:var(--color-timeline)]"
 				initial="hide"
 				animate="show"
 				variants={lineVariants}
 				values={stages}
 			>
-				{stages.map((stage, index) => (
+				{stages.flatMap((stage, index) => [
+					<InsertButton key={`insert_${index}`} onClick={() => handleInsertStage(index)} />,
 					<Reorder.Item
 						tabIndex={0}
 						key={stage.id}
@@ -176,11 +177,20 @@ const Timeline = () => {
 						<div className="justify-self-start">
 							<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
 						</div>
-					</Reorder.Item>
-				))}
+					</Reorder.Item>,
+				])}
 
-				<motion.div className="mb-40" onClick={() => handleInsertStage(stages.length)}>
-					Add new stage
+				<motion.div
+					className="mb-40 grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
+					onClick={() => handleInsertStage(stages.length)}
+				>
+					<div />
+					<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-foreground text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
+						+
+					</div>
+					<span className="justify-self-start group-hover:font-bold transition-all font-semibold text-lg">
+						Add new stage
+					</span>
 				</motion.div>
 			</Reorder.Group>
 
