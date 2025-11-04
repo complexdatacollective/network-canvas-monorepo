@@ -7,11 +7,11 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import timelineImages from "~/images/timeline";
+import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
 import { cn } from "~/utils/cn";
 import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
 import InsertButton from "./InsertButton";
-import Stage from "./Stage";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
@@ -65,7 +65,7 @@ const Timeline = () => {
 	const [showNewStageDialog, setShowNewStageDialog] = useState(false);
 	const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
 
-	const handleInsertStage = useCallback((index) => {
+	const handleInsertStage = useCallback((index: number) => {
 		setInsertAtIndex(index);
 		setShowNewStageDialog(true);
 	}, []);
@@ -76,7 +76,7 @@ const Timeline = () => {
 	}, []);
 
 	const handleDeleteStage = useCallback(
-		(stageId) => {
+		(stageId: string) => {
 			openDialog({
 				type: "Warning",
 				title: "Delete stage",
@@ -89,30 +89,10 @@ const Timeline = () => {
 	);
 
 	const handleEditStage = useCallback(
-		(id, _origin) => {
+		(id: string) => {
 			setLocation(`/protocol/stage/${id}`);
 		},
 		[setLocation],
-	);
-
-	const _renderStages = useCallback(
-		() =>
-			stages.flatMap((stage, index) => [
-				<InsertButton key={`insert_${index}`} onClick={() => handleInsertStage(index)} />,
-				<Stage
-					key={`stage_${stage.id}`}
-					index={index}
-					stageNumber={index + 1} // Because SortableElement strips index prop
-					id={stage.id}
-					type={stage.type}
-					hasFilter={stage.hasFilter}
-					hasSkipLogic={stage.hasSkipLogic}
-					label={stage.label}
-					onEditStage={handleEditStage}
-					onDeleteStage={handleDeleteStage}
-				/>,
-			]),
-		[stages, handleInsertStage, handleEditStage, handleDeleteStage],
 	);
 
 	const handleReorder = useCallback(
@@ -136,7 +116,7 @@ const Timeline = () => {
 	);
 
 	const itemClasses = cn(
-		"grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
+		"relative grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
 		"hover:bg-timeline-hover transition-colors duration-300 ease-in-out",
 		// Focus state for accessibility
 		"focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-timeline",
@@ -162,7 +142,7 @@ const Timeline = () => {
 						layoutId={`timeline-stage-${stage.id}`}
 						variants={itemVariants}
 						className={itemClasses}
-						onClick={() => handleEditStage(stage.id, stage)}
+						onClick={() => handleEditStage(stage.id)}
 					>
 						<motion.img
 							layoutId={`timeline-stage-${stage.id}`}
@@ -176,6 +156,17 @@ const Timeline = () => {
 						</div>
 						<div className="justify-self-start">
 							<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
+						</div>
+						<div className="absolute -right-40 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+							<Button
+								onClick={(e) => {
+									e.stopPropagation();
+									handleDeleteStage(stage.id);
+								}}
+								color="neon-coral"
+							>
+								Delete stage
+							</Button>
 						</div>
 					</Reorder.Item>,
 				])}

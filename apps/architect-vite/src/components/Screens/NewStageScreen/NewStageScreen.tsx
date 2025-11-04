@@ -8,7 +8,7 @@ import Dialog from "~/components/NewComponents/Dialog";
 import Tag from "~/components/Tag";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
 import InterfaceList from "./InterfaceList";
-import { INTERFACE_TYPES, TAGS, TAG_COLORS } from "./interfaceOptions";
+import { INTERFACE_TYPES, TAG_COLORS, TAGS } from "./interfaceOptions";
 
 const fuseOptions = {
 	threshold: 0.25,
@@ -39,7 +39,7 @@ const search = (query) => {
 };
 
 type NewStageScreenProps = {
-	insertAtIndex: number;
+	insertAtIndex?: number;
 	show: boolean;
 	onCancel: () => void;
 	experiments?: {
@@ -207,6 +207,8 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 			window.removeEventListener("mousemove", handleMouseMove);
 		};
 	}, []);
+
+	if (!insertAtIndex) return null;
 
 	return (
 		<Dialog
