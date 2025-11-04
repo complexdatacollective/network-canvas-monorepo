@@ -29,13 +29,14 @@ export const getAssetPath = (state, dataSource) => {
 export const makeGetNetworkAssetVariables =
 	(state) =>
 	async (dataSource, asOptions = false) => {
-		const assetPath = getAssetPath(state, dataSource);
+		const assetManifest = getAssetManifest(state);
+		const asset = get(assetManifest, dataSource);
 
-		if (!assetPath) {
+		if (!asset) {
 			return null;
 		}
 
-		const variables = await getNetworkVariables(assetPath);
+		const variables = await getNetworkVariables(dataSource);
 
 		if (asOptions) {
 			const variableOptions = variables.map((attribute) => ({ label: attribute, value: attribute }));
@@ -46,13 +47,14 @@ export const makeGetNetworkAssetVariables =
 	};
 
 export const makeGetGeoJsonAssetVariables = (state) => async (dataSource) => {
-	const assetPath = getAssetPath(state, dataSource);
+	const assetManifest = getAssetManifest(state);
+	const asset = get(assetManifest, dataSource);
 
-	if (!assetPath) {
+	if (!asset) {
 		return null;
 	}
 
-	const variables = await getGeoJsonVariables(assetPath);
+	const variables = await getGeoJsonVariables(dataSource);
 
 	const variableOptions = variables.map((attribute) => ({ label: attribute, value: attribute }));
 

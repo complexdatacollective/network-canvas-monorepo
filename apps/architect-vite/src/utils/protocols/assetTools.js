@@ -3,6 +3,7 @@
 import { getVariableNamesFromNetwork, validateNames } from "@codaco/protocol-validation";
 import csv from "csvtojson";
 import { get } from "es-toolkit/compat";
+import { getAssetById } from "~/utils/assetUtils";
 import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 
 /**
@@ -19,35 +20,43 @@ const withExtensionSwitch =
 		const extension = filePathOrUrl.split(".").pop()?.toLowerCase() || "";
 
 		const f = get(configuration, [extension], fallback);
-		return f(filePathOrUrl, ...rest);
+		return f(...rest);
 	};
 
 /**
  * Fetches and parses JSON network data
- * In the future, this will fetch from a remote asset service
+ * Loads from IndexedDB using the asset ID
  */
-const readJsonNetwork = async (_assetUrl) => {
-	// TODO: When assets are stored remotely, this will be:
-	// const response = await fetch(assetUrl);
-	// return response.json();
+const readJsonNetwork = async (assetId) => {
+	const asset = await getAssetById(assetId);
 
-	// For now, return empty network as placeholder
-	console.warn("Asset loading not yet implemented for web. Returning empty network.");
-	return { nodes: [], edges: [] };
+	if (!asset) {
+		throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+	}
+
+	if (typeof asset.data === "string") {
+		// If it's already a string, parse it as JSON
+		return JSON.parse(asset.data);
+	}
+
+	// Convert Blob to text and parse as JSON
+	const text = await asset.data.text();
+	return JSON.parse(text);
 };
 
 /**
  * Fetches and parses CSV network data
- * In the future, this will fetch from a remote asset service
+ * Loads from IndexedDB using the asset ID
  */
-const readCsvNetwork = async (_assetUrl) => {
-	// TODO: When assets are stored remotely, this will be:
-	// const response = await fetch(assetUrl);
-	// const data = await response.text();
+const readCsvNetwork = async (assetId) => {
+	const asset = await getAssetById(assetId);
 
-	// For now, return empty network as placeholder
-	console.warn("CSV asset loading not yet implemented for web. Returning empty network.");
-	const data = "";
+	if (!asset) {
+		throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+	}
+
+	// Convert Blob to text
+	const data = await asset.data.text();
 
 	const nodes = await csv({ checkColumn: true })
 		.fromString(data)
@@ -76,10 +85,17 @@ export const networkReader = withExtensionSwitch({
 
 /**
  * Gets node variables from an external data source
- * @param {buffer} file - The external data source
+ * @param {string} assetId - The asset ID from the asset manifest
  */
-export const getNetworkVariables = async (filePath) => {
-	const network = await networkReader(filePath);
+export const getNetworkVariables = async (assetId) => {
+	// Get the asset to determine its type from the filename
+	const asset = await getAssetById(assetId);
+	if (!asset) {
+		throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+	}
+
+	// Use the asset name to determine file type, pass asset ID to the reader
+	const network = await networkReader(asset.name, assetId);
 
 	if (!network) {
 		return null;
@@ -128,14 +144,24 @@ export const validateAsset = async (filePath) => {
 
 /**
  * Gets variables from a GeoJSON asset
- * In the future, this will fetch from a remote asset service
+ * Loads from IndexedDB using the asset ID
  */
-export const getGeoJsonVariables = async (_assetUrl) => {
-	// TODO: When assets are stored remotely, this will be:
-	// const response = await fetch(assetUrl);
-	// const geoJson = await response.json();
+export const getGeoJsonVariables = async (assetId) => {
+	const asset = await getAssetById(assetId);
 
-	// For now, return empty array as placeholder
-	console.warn("GeoJSON asset loading not yet implemented for web. Returning empty variables.");
+	if (!asset) {
+		throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+	}
+
+	let geoJson;
+	// Convert Blob to text and parse as JSON
+	const text = await asset.data.text();
+	geoJson = JSON.parse(text);
+
+	// Extract property keys from the first feature
+	if (geoJson?.features?.[0]?.properties) {
+		return Object.keys(geoJson.features[0].properties);
+	}
+
 	return [];
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { makeGetGeoJsonAssetVariables, makeGetNetworkAssetVariables } from "~/selectors/assets";
 import { getAssetManifest } from "~/selectors/protocol";

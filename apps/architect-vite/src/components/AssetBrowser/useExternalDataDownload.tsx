@@ -33,8 +33,14 @@ const useExternalDataDownload = () => {
 					return;
 				}
 
+				const blob = asset.data;
+				if (!(blob instanceof Blob)) {
+					console.error(`Asset data is not a Blob: ${id}`);
+					return;
+				}
+
 				// Create a download link
-				const url = URL.createObjectURL(asset.blob);
+				const url = URL.createObjectURL(blob);
 				const link = document.createElement("a");
 				link.href = url;
 				link.download = meta.name || asset.name || "download";
