@@ -2,12 +2,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import ValidatedField from "~/components/Form/ValidatedField";
-import Tip from "~/components/Tip";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import * as Fields from "~/components/Form/Fields";
+import ValidatedField from "~/components/Form/ValidatedField";
+import Tip from "~/components/Tip";
+import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 
 type SearchOptionsProps = {
 	dataSource: string;
@@ -47,6 +47,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 				summary={
 					<p>You can configure which attributes are considered when matching roster nodes to the user&apos;s query.</p>
 				}
+				layout="vertical"
 			>
 				<Tip type="info">
 					<p>
@@ -70,6 +71,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 						considered a match.
 					</p>
 				}
+				layout="vertical"
 			>
 				<Tip>
 					<p>
