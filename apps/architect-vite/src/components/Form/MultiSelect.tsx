@@ -130,12 +130,11 @@ const Items = compose(
 				<Reorder.Group className="form-fields-multi-select__rules" onReorder={handleReorder} values={items} axis="y">
 					{fields.map((field: string, index: number) => {
 						const item = fields.get(index);
-						const key = hash(item);
 
 						return (
 							<Item
 								index={index}
-								key={key}
+								key={field}
 								field={field}
 								fields={fields}
 								value={item}
