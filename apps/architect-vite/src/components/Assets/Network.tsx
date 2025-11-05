@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
+import { compose } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
-import { compose } from "@reduxjs/toolkit";
 import { networkReader } from "../../utils/protocols/assetTools";
 import Table from "./Table";
 import withAssetPath from "./withAssetPath";
@@ -22,19 +22,21 @@ const getColumns = (network) =>
 
 type NetworkProps = {
 	assetPath: string;
+	assetId: string;
+	assetName: string;
 };
 
-const Network = ({ assetPath }: NetworkProps) => {
+const Network = ({ assetPath, assetId, assetName }: NetworkProps) => {
 	const [content, setContent] = useState({ ...initialContent });
 
 	useEffect(() => {
-		if (!assetPath) {
+		if (!assetId || !assetName) {
 			setContent({ ...initialContent });
 			return;
 		}
 
-		networkReader(assetPath).then(setContent);
-	}, [assetPath]);
+		networkReader(assetName, assetId).then(setContent);
+	}, [assetId, assetName]);
 
 	const data = useMemo(() => getRows(content), [content]);
 	const columns = useMemo(() => getColumns(content), [content]);

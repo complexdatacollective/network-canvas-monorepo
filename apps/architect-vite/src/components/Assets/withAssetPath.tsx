@@ -10,6 +10,8 @@ const mapStateToProps = (state, { id }) => {
 
 	return {
 		assetPath,
+		assetId: id,
+		assetName: source,
 	};
 };
 

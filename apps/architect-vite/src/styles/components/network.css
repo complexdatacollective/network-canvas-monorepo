@@ -4,6 +4,17 @@
 
 	border-radius: var(--space-sm);
 	background: var(--table-color);
+	display: block;
+	max-height: 60vh;
+	overflow: auto;
+
+	thead,
+	tbody,
+	tr {
+		display: table;
+		width: 100%;
+		table-layout: fixed;
+	}
 
 	th {
 		font-size: var(--text-sm);
