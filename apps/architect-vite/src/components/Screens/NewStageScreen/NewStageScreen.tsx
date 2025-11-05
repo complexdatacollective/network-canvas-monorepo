@@ -208,7 +208,7 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 		};
 	}, []);
 
-	if (!insertAtIndex) return null;
+	if (insertAtIndex === undefined) return null;
 
 	return (
 		<Dialog

@@ -3,7 +3,7 @@ import StageEditor from "~/components/StageEditor/StageEditor";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 
 const StageEditorPage = () => {
-	const { stageId } = useParams();
+	const { stageId: rawStageId } = useParams();
 
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
@@ -12,6 +12,9 @@ const StageEditorPage = () => {
 	const urlParams = new URLSearchParams(window.location.search);
 	const insertAtIndex = urlParams.get("insertAtIndex") ? Number(urlParams.get("insertAtIndex")) : undefined;
 	const type = urlParams.get("type") || undefined;
+
+	// Treat "new" as undefined since it's for creating new stages
+	const stageId = rawStageId === "new" ? undefined : rawStageId;
 
 	return (
 		<div className="scene">
