@@ -50,7 +50,7 @@ const GridItem = ({
 							}}
 							type="button"
 						>
-							<Icon name="edit" />
+							<Icon name="edit" color="sea-green" />
 						</button>
 						<button
 							className="grid-item__delete"
