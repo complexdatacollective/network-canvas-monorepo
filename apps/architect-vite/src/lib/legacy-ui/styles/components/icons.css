@@ -132,6 +132,26 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 		}
 	}
 
+	&[name="add-a-person"] {
+		.cls-2 {
+			fill: var(--color-platinum);
+		}
+
+		.cls-3 {
+			fill: var(--color-platinum-dark);
+		}
+	}
+
+	&[name="add-a-place"] {
+		.cls-1 {
+			fill: var(--color-platinum-dark);
+		}
+
+		.cls-2 {
+			fill: var(--color-platinum);
+		}
+	}
+
 	&[name="add-a-person-button"],
 	&[name="add-a-relationship-button"] {
 		&.icon--mustard .cls-1,
