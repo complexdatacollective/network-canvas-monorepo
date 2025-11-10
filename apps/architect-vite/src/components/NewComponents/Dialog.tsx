@@ -126,15 +126,14 @@ function Dialog({
 									{children}
 								</div>
 								<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
-									{onCancel && (
-										<BaseDialog.Close
-											render={
-												<Button onClick={onCancel} color="platinum">
-													{cancelText}
-												</Button>
-											}
-										/>
-									)}
+									<BaseDialog.Close
+										render={
+											<Button onClick={onCancel ?? onOpenChange} color="platinum">
+												{cancelText}
+											</Button>
+										}
+									/>
+
 									{onConfirm && (
 										<Button onClick={onConfirm} color={confirmColor}>
 											{confirmText}

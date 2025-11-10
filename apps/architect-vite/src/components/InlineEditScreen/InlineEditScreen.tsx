@@ -45,7 +45,6 @@ const InlineEditScreen = ({
 			title={title || undefined}
 			onConfirm={handleSubmit}
 			confirmText="Save and Close"
-			// onCancel={onCancel}
 		>
 			<Layout>
 				{/* @ts-expect-error - reduxForm enhanced component typing issue */}
