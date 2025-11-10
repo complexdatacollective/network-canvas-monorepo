@@ -86,6 +86,7 @@ const TextInput = ({
 					className="form-field form-field-text__input"
 					placeholder={placeholder?.toString()} // eslint-disable-line
 					type={type}
+					autoFocus={autoFocus}
 					{...input}
 					onBlur={handleBlur}
 					onFocus={handleFocus}
