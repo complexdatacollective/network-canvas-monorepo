@@ -27,7 +27,7 @@ type SectionProps = {
 	className?: string;
 	toggleable?: boolean;
 	startExpanded?: boolean;
-	handleToggleChange?: (state: boolean) => Promise<boolean>;
+	handleToggleChange?: (state: boolean) => Promise<boolean> | boolean;
 	layout?: "horizontal" | "vertical";
 };
 
@@ -41,7 +41,7 @@ const Section = ({
 	className = "",
 	toggleable = false,
 	startExpanded = true,
-	handleToggleChange = (state) => Promise.resolve(state),
+	handleToggleChange = (state) => state,
 	layout = "horizontal",
 }: SectionProps) => {
 	const [isOpen, setIsOpen] = useState(startExpanded);
@@ -91,10 +91,10 @@ const Section = ({
 				{summary && <div className="text-sm text-muted-foreground -mt-1">{summary}</div>}
 
 				{isOpen && children && (
-					<fieldset className={classes}>
+					<>
 						{children}
 						{id && <IssueAnchor fieldName={id} description={title} />}
-					</fieldset>
+					</>
 				)}
 			</div>
 		);

@@ -1,5 +1,5 @@
 import { isArray, noop } from "es-toolkit/compat";
-import { Reorder } from "motion/react";
+import { AnimatePresence, Reorder } from "motion/react";
 import { hash } from "ohash";
 import type React from "react";
 import { useCallback } from "react";
@@ -12,7 +12,7 @@ import ListItem from "./ListItem";
 export type OrderedListProps = {
 	item: React.ComponentType<Record<string, unknown>>;
 	onClickItem?: (index: number) => void;
-	editIndex?: number | null; // Index of item being edited (to hide it)
+	sortable?: boolean;
 };
 
 const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
@@ -21,7 +21,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 		meta: { error, dirty, submitFailed, form },
 		item: Item,
 		onClickItem = noop,
-		editIndex = null, // Extract editIndex prop
+		sortable = true,
 	} = props;
 
 	const dispatch = useAppDispatch();
@@ -57,25 +57,23 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 			values={values}
 			axis="y"
 		>
-			{values.map((item, index) => {
-				const key = item.id || hash(item);
-				// Make editing item invisible but keep it in layout for smooth animation
-				const isEditing = editIndex === index;
-
-				return (
-					<ListItem
-						key={key}
-						layoutId={isEditing ? undefined : `${name}-edit-field-${index}`}
-						value={item}
-						handleDelete={getDeleteHandler(index)}
-						handleClick={() => onClickItem(index)}
-						sortable
-						className={isEditing ? "opacity-0 pointer-events-none" : null}
-					>
-						<Item form={form} fieldId={`${name}[${index}]`} {...item} />
-					</ListItem>
-				);
-			})}
+			<AnimatePresence>
+				{values.map((item, index) => {
+					const key = item.id || hash(item);
+					return (
+						<ListItem
+							key={key}
+							layoutId={`${name}-edit-field-${index}`}
+							value={item}
+							handleDelete={getDeleteHandler(index)}
+							handleClick={() => onClickItem(index)}
+							sortable={sortable}
+						>
+							<Item form={form} fieldId={`${name}[${index}]`} sortable={sortable} {...item} />
+						</ListItem>
+					);
+				})}
+			</AnimatePresence>
 			{(dirty || submitFailed) && error && !isArray(error) && <p className="text-destructive">{error}</p>}
 		</Reorder.Group>
 	);

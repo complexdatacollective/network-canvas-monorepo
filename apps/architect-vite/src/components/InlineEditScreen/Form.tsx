@@ -18,5 +18,5 @@ const Form = ({ handleSubmit, children = null }: FormProps) => (
 export default reduxForm({
 	touchOnBlur: false,
 	touchOnChange: true,
-	enableReinitialize: true,
+	enableReinitialize: false,
 })(Form);

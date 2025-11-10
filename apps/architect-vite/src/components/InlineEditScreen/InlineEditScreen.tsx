@@ -1,8 +1,8 @@
 import { useCallback } from "react";
-import { useDispatch } from "react-redux";
 import { submit } from "redux-form";
 import { Layout } from "~/components/EditorLayout";
 import Dialog from "~/components/NewComponents/Dialog";
+import { useAppDispatch } from "~/ducks/hooks";
 import Form from "./Form";
 import { useBodyScrollLock } from "./useBodyScrollLock";
 
@@ -28,7 +28,7 @@ const InlineEditScreen = ({
 	// Prevent scrolling of the body when the inline edit screen is open
 	useBodyScrollLock(show);
 
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 
 	const handleSubmit = useCallback(() => {
 		dispatch(submit(form));

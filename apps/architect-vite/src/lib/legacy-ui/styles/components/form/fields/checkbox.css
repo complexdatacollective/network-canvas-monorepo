@@ -1,8 +1,4 @@
 .form-field-checkbox {
-	--global-input-element-size: calc(0.6rem * 4);
-	--global-input-border-size: 0.125rem;
-	--global-input-border-space: 0.25rem;
-
 	display: inline-flex;
 	align-items: center;
 	cursor: pointer;

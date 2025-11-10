@@ -32,7 +32,6 @@
 
 .form-field-container {
 	display: block;
-	margin-bottom: 2rem;
 
 	&.form-field-container--inline {
 		margin-bottom: 0;

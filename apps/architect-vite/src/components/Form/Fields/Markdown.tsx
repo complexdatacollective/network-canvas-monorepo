@@ -1,5 +1,5 @@
-import { memo, useMemo, type ComponentType } from "react";
-import ReactMarkdown from "react-markdown";
+import { type AnchorHTMLAttributes, type ClassAttributes, type ComponentType, memo, useMemo } from "react";
+import ReactMarkdown, { type ExtraProps } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGemoji from "remark-gemoji";
@@ -19,7 +19,10 @@ import { ALLOWED_MARKDOWN_TAGS } from "./config";
  */
 const escapeAngleBracket = (value = "") => value.replace(/>/g, "&gt;").replace(/<br&gt;/g, "<br>");
 
-const externalLinkRenderer = ({ href, children }) => (
+const externalLinkRenderer = ({
+	href,
+	children,
+}: ClassAttributes<HTMLAnchorElement> & AnchorHTMLAttributes<HTMLAnchorElement> & ExtraProps) => (
 	<a href={href} target="_blank" rel="noopener noreferrer">
 		{children}
 	</a>

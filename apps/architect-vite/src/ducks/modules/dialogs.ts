@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { v4 as uuid } from "uuid";
 
 // Define dialog types
@@ -105,4 +105,4 @@ export const actionTypes = {
 };
 
 // Export types for use in other parts of the application
-export type { Dialog, DialogsState, ConfirmDialog, NoticeDialog, WarningDialog, ErrorDialog };
+export type { ConfirmDialog, Dialog, DialogsState, ErrorDialog, NoticeDialog, WarningDialog };
