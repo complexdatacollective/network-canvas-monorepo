@@ -30,7 +30,12 @@ const ItemPreview = ({ content = null, assetType = null }: ItemPreviewProps) => 
 		case "audio":
 			return <AudioWithUrl id={content} controls />;
 		default:
-			return <Markdown label={content} />;
+			return (
+				<Markdown
+					label={content ?? ""}
+					className="[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6 [&_ul]:my-4 [&_ol]:my-4 [&_li]:my-1"
+				/>
+			);
 	}
 };
 
