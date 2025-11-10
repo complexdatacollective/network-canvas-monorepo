@@ -1,5 +1,5 @@
 import { get } from "es-toolkit/compat";
-import { motion, Reorder, type Variants } from "motion/react";
+import { motion, Reorder } from "motion/react";
 import { useCallback, useState } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
@@ -14,34 +14,6 @@ import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
 import InsertButton from "./InsertButton";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
-
-export const lineVariants: Variants = {
-	hide: {
-		backgroundImage: "linear-gradient(var(--color-background), var(--color-background))",
-		backgroundRepeat: "no-repeat",
-		backgroundPosition: "center top",
-		backgroundSize: "5px 0%",
-	},
-	show: {
-		backgroundSize: "5px 97%", // Not 100% because of the new stage button at the bottom
-		transition: {
-			backgroundSize: { delay: 1, duration: 1.6, ease: "easeInOut" },
-			delayChildren: 1,
-			staggerChildren: 0.1,
-		},
-	},
-};
-
-const itemVariants = {
-	show: {
-		opacity: 1,
-		y: 0,
-	},
-	hide: {
-		opacity: 0,
-		y: 30,
-	},
-};
 
 const Timeline = () => {
 	const stages = useSelector(getStageList);
@@ -128,10 +100,13 @@ const Timeline = () => {
 				axis="y"
 				onReorder={handleReorder}
 				className="relative overflow-hidden grid grid-cols-1 gap-6 py-16 justify-items-center [--color-background:var(--color-timeline)]"
-				initial="hide"
-				animate="show"
-				variants={lineVariants}
 				values={stages}
+				style={{
+					backgroundImage: "linear-gradient(var(--color-background), var(--color-background))",
+					backgroundRepeat: "no-repeat",
+					backgroundPosition: "center top",
+					backgroundSize: "5px 97%",
+				}}
 			>
 				{stages.flatMap((stage, index) => [
 					<InsertButton key={`insert_${index}`} onClick={() => handleInsertStage(index)} />,
@@ -140,12 +115,10 @@ const Timeline = () => {
 						key={stage.id}
 						value={stage}
 						layoutId={`timeline-stage-${stage.id}`}
-						variants={itemVariants}
 						className={itemClasses}
 						onClick={() => handleEditStage(stage.id)}
 					>
-						<motion.img
-							layoutId={`timeline-stage-${stage.id}`}
+						<img
 							className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
 							src={getTimelineImage(stage.type)}
 							alt={`${stage.type} interface`}

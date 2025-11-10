@@ -1,5 +1,4 @@
 import { get } from "es-toolkit/compat";
-import { motion } from "motion/react";
 import * as Fields from "~/components/Form/Fields";
 import timelineImages from "~/images/timeline";
 import { getFieldId } from "~/utils/issues";
@@ -27,8 +26,7 @@ const StageHeading = ({ id }: { id: string }) => {
 					href={documentationLinkForType}
 					className="before:absolute before:left-[50%] before:border-l-10 before:h-56 before:border-tomato before:-top-13 before:[mask-image:linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]"
 				>
-					<motion.img
-						layoutId={`timeline-stage-${id}`}
+					<img
 						src={getTimelineImage(type)}
 						alt={`${type} interface`}
 						title={`${type} interface`}
