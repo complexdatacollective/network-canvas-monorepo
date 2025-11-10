@@ -56,7 +56,7 @@ export function DialogPopup({ size, header, children, footer, ...props }: Dialog
 }
 
 export function DialogTitle(props: BaseDialog.Title.Props) {
-	return <BaseDialog.Title className="text-2xl font-semibold m-0" {...props} />;
+	return <BaseDialog.Title className="text-2xl font-semibold m-0 pb-6" {...props} />;
 }
 
 export function DialogDescription(props: BaseDialog.Description.Props) {
