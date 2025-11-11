@@ -5,7 +5,7 @@ import {
 	Heading3Icon as H3Icon,
 	Heading4Icon as H4Icon,
 	Heading5Icon as H5Icon,
-	HammerIcon as HorizontalRuleIcon,
+	Minus as HorizontalRuleIcon,
 	ItalicIcon,
 	ListOrderedIcon as OLIcon,
 	QuoteIcon,
