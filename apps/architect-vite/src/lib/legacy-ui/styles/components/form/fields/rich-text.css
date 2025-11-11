@@ -34,6 +34,13 @@
 		border-bottom-color: transparent;
 		transition: border-bottom-color var(--animation-easing) var(--animation-duration-standard);
 
+		/* Remove default browser outline on focus */
+		& [contenteditable],
+		&:focus,
+		&:focus-within {
+			outline: none;
+		}
+
 		/* List styles */
 		ul,
 		ol {
@@ -94,7 +101,8 @@
 		}
 	}
 
-	&:hover {
+	&:hover,
+	&.rich-text--is-active {
 		.rich-text__editable {
 			border-bottom: 2px solid var(--color-input-active);
 		}

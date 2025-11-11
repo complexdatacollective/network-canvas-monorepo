@@ -1,11 +1,13 @@
 import { BookOpen, CodeXml, Download, Trash, UsersRound } from "lucide-react";
-import { useDispatch } from "react-redux";
+import { useState } from "react";
 import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from "~/config";
+import { useAppDispatch } from "~/ducks/hooks";
 import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import { clearAllStorage } from "~/utils/assetDB";
 import { cn } from "~/utils/cn";
 import { openExternalLink } from "../ExternalLink";
 import ProtocolDropzone from "./ProtocolDropzone";
+import ProtocolLoadingOverlay from "./ProtocolLoadingOverlay";
 
 type LaunchCardProps = {
 	icon: React.ReactNode;
@@ -44,77 +46,92 @@ const LaunchCard = ({ icon, title, description, onClick, classNames, devOnly }: 
 );
 
 const LaunchPad = () => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
+	const [isLoading, setIsLoading] = useState(false);
 
-	const downloadSampleProtocol = () => dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL));
+	const handleOpenProtocol = async (action: () => Promise<unknown>) => {
+		setIsLoading(true);
+		try {
+			await action();
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const downloadSampleProtocol = () =>
+		handleOpenProtocol(async () => await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL)));
 
 	const handleClearStorage = () => {
 		clearAllStorage();
 	};
 
-	const installDevelopmentProtocol = () => dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL));
+	const installDevelopmentProtocol = () =>
+		handleOpenProtocol(async () => await dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL)));
 
 	return (
-		<div className="p-8 flex flex-col gap-8 flex-1">
-			<div className="flex flex-col flex-1">
-				<ProtocolDropzone />
+		<>
+			{isLoading && <ProtocolLoadingOverlay />}
+			<div className="p-8 flex flex-col gap-8 flex-1">
+				<div className="flex flex-col flex-1">
+					<ProtocolDropzone onLoadProtocol={handleOpenProtocol} />
 
-				<div className="flex flex-col gap-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-						<LaunchCard
-							icon={<UsersRound />}
-							title="User Community"
-							description="Ask questions and get help"
-							onClick={() => openExternalLink("https://community.networkcanvas.com")}
-							classNames="bg-cerulean-blue"
-						/>
-						<LaunchCard
-							icon={<BookOpen />}
-							title="Documentation"
-							description="Learn how to use Architect"
-							onClick={() => openExternalLink("https://documentation.networkcanvas.com")}
-							classNames="bg-sea-serpent"
-						/>
-						<LaunchCard
-							icon={<Download />}
-							title="Sample Protocol"
-							description="Explore a sample project"
-							onClick={downloadSampleProtocol}
-							classNames="bg-mustard"
-						/>
-					</div>
-				</div>
-			</div>
-
-			{process.env.NODE_ENV === "development" && (
-				<div className="flex flex-col gap-4">
-					<div className="flex items-center gap-4">
-						<div className="bg-accent/10 text-primary rounded-md px-3 py-1 flex gap-2 items-center">
-							<span className="text-sm">Development Tools</span>
+					<div className="flex flex-col gap-4">
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+							<LaunchCard
+								icon={<UsersRound />}
+								title="User Community"
+								description="Ask questions and get help"
+								onClick={() => openExternalLink("https://community.networkcanvas.com")}
+								classNames="bg-cerulean-blue"
+							/>
+							<LaunchCard
+								icon={<BookOpen />}
+								title="Documentation"
+								description="Learn how to use Architect"
+								onClick={() => openExternalLink("https://documentation.networkcanvas.com")}
+								classNames="bg-sea-serpent"
+							/>
+							<LaunchCard
+								icon={<Download />}
+								title="Sample Protocol"
+								description="Explore a sample project"
+								onClick={downloadSampleProtocol}
+								classNames="bg-mustard"
+							/>
 						</div>
-						<div className="flex-1 h-px bg-surface-3" />
-					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-						<LaunchCard
-							icon={<CodeXml />}
-							title="Development Protocol"
-							description="Install development protocol"
-							onClick={installDevelopmentProtocol}
-							devOnly
-							classNames="bg-primary/5 text-primary"
-						/>
-						<LaunchCard
-							icon={<Trash />}
-							title="Clear All Data"
-							description="Clear Redux state, localStorage, and IndexedDB"
-							onClick={handleClearStorage}
-							devOnly
-							classNames="bg-error/5 text-error"
-						/>
 					</div>
 				</div>
-			)}
-		</div>
+
+				{process.env.NODE_ENV === "development" && (
+					<div className="flex flex-col gap-4">
+						<div className="flex items-center gap-4">
+							<div className="bg-accent/10 text-primary rounded-md px-3 py-1 flex gap-2 items-center">
+								<span className="text-sm">Development Tools</span>
+							</div>
+							<div className="flex-1 h-px bg-surface-3" />
+						</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+							<LaunchCard
+								icon={<CodeXml />}
+								title="Development Protocol"
+								description="Install development protocol"
+								onClick={installDevelopmentProtocol}
+								devOnly
+								classNames="bg-primary/5 text-primary"
+							/>
+							<LaunchCard
+								icon={<Trash />}
+								title="Clear All Data"
+								description="Clear Redux state, localStorage, and IndexedDB"
+								onClick={handleClearStorage}
+								devOnly
+								classNames="bg-error/5 text-error"
+							/>
+						</div>
+					</div>
+				)}
+			</div>
+		</>
 	);
 };
 
