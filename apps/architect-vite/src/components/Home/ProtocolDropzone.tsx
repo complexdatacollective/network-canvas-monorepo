@@ -1,20 +1,24 @@
 import { FilePlus, FolderOpen, Upload } from "lucide-react";
 import { useDropzone } from "react-dropzone";
-import { useDispatch } from "react-redux";
+import { useAppDispatch } from "~/ducks/hooks";
 import { createNetcanvas, openLocalNetcanvas } from "~/ducks/modules/userActions/userActions";
 import Button from "~/lib/legacy-ui/components/Button";
 import { cn } from "~/utils/cn";
 
-export default function ProtocolDropzone() {
-	const dispatch = useDispatch();
+type ProtocolDropzoneProps = {
+	onLoadProtocol: (action: () => Promise<unknown>) => Promise<void>;
+};
+
+export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzoneProps) {
+	const dispatch = useAppDispatch();
 
 	const handleCreateNewProtocol = () => {
-		dispatch(createNetcanvas());
+		onLoadProtocol(async () => await dispatch(createNetcanvas()));
 	};
 
 	const onDrop = (acceptedFiles: File[]) => {
 		if (acceptedFiles.length > 0) {
-			dispatch(openLocalNetcanvas(acceptedFiles[0]));
+			onLoadProtocol(async () => await dispatch(openLocalNetcanvas(acceptedFiles[0])));
 		}
 	};
 
