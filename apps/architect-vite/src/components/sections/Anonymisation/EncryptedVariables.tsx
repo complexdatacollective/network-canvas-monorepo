@@ -1,11 +1,10 @@
+import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import * as Fields from "~/components/Form/Fields";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { getNodeTypes } from "~/selectors/codebook";
-
-import { omit } from "es-toolkit/compat";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import Tip from "../../Tip";
@@ -88,7 +87,7 @@ const EncryptedVariables = () => {
 						title={nodeType.name}
 						key={nodeTypeId}
 						startExpanded={hasEncryptedVariable}
-						// eslint-disable-next-line max-len
+						layout="vertical"
 						handleToggleChange={(newState) => handleToggleChange(hasEncryptedVariable, nodeType, newState)}
 						summary={<p>Which variables should be encrypted?</p>}
 					>

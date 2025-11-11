@@ -29,7 +29,7 @@ type DialogPopupProps = ComponentProps<typeof motion.div> & {
 	footer?: ReactNode;
 };
 
-export function DialogPopup({ size, header, children, footer, ...props }: DialogPopupProps) {
+export function DialogPopup({ size, header, children, footer, className, ...props }: DialogPopupProps) {
 	return (
 		<BaseDialog.Popup
 			render={
@@ -38,6 +38,7 @@ export function DialogPopup({ size, header, children, footer, ...props }: Dialog
 						className={cn(
 							"rounded-[10px] m-6 bg-surface-1 text-surface-1-foreground z-[calc(var(--z-default)+2)] max-h-[80vh] overflow-hidden flex flex-col pointer-events-auto",
 							size === "lg" ? "max-w-full" : "max-w-4xl",
+							className,
 						)}
 						{...props}
 					>
@@ -118,9 +119,9 @@ function Dialog({
 									stiffness: 300,
 									damping: 30,
 								}}
+								header={header}
 							>
-								{header && <div className="sticky top-0 bg-accent px-4 py-6 z-10">{header}</div>}
-								<div className="flex-1 overflow-y-auto px-4 py-6">
+								<div className="flex-1">
 									{title && !header && <DialogTitle>{title}</DialogTitle>}
 									{description && <DialogDescription>{description}</DialogDescription>}
 									{children}

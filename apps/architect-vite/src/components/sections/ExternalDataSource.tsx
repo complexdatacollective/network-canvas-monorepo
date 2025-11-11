@@ -2,11 +2,11 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import { getFieldId } from "../../utils/issues";
-import DataSource from "../Form/Fields/DataSource";
-import ValidatedField from "../Form/ValidatedField";
 import withDisabledSubjectRequired from "../enhancers/withDisabledSubjectRequired";
 import withSubject from "../enhancers/withSubject";
+import DataSource from "../Form/Fields/DataSource";
+import ValidatedField from "../Form/ValidatedField";
+import IssueAnchor from "../IssueAnchor";
 
 const withChangeDataSourceHandler = connect(null, { changeForm: change });
 
@@ -28,7 +28,7 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
 			{...props}
 		>
 			<Row>
-				<div id={getFieldId("dataSource")} data-name="Roster data-source" />
+				<IssueAnchor fieldName="dataSource" description="Roster data-source" />
 				<ValidatedField
 					component={DataSource}
 					name="dataSource"

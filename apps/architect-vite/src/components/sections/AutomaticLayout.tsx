@@ -3,8 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
-import { getFieldId } from "../../utils/issues";
 import DetachedField from "../DetachedField";
+import IssueAnchor from "../IssueAnchor";
 
 const FORM_PROPERTY = "behaviours.automaticLayout.enabled";
 
@@ -45,7 +45,7 @@ const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
 			}
 		>
 			<Row>
-				<div id={getFieldId("behaviours.automaticLayout.enabled")} data-name="Layout mode" />
+				<IssueAnchor fieldName="behaviours.automaticLayout.enabled" description="Layout mode" />
 				<p>
 					<strong>Automatic mode</strong> positions nodes when the stage is first shown by simulating physical forces
 					such as attraction and repulsion. This simulation can be paused and resumed within the interview. When paused,

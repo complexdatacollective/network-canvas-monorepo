@@ -485,7 +485,7 @@
 /* Small heading utility - replaces .small-heading placeholder */
 @utility small-heading {
 	font-size: var(--text-sm);
-	font-weight: var(--font-weight-bold);
+	font-weight: 900;
 	line-height: var(--leading-normal);
 	letter-spacing: 0.15em;
 	text-transform: uppercase;

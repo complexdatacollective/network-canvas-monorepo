@@ -2,7 +2,7 @@ import { get } from "es-toolkit/compat";
 import { Row, Section } from "~/components/EditorLayout";
 import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
-import { getFieldId } from "../../../utils/issues";
+import IssueAnchor from "~/components/IssueAnchor";
 import Audio from "../../Form/Fields/Audio";
 import Image from "../../Form/Fields/Image";
 import Video from "../../Form/Fields/Video";
@@ -28,7 +28,7 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 	<>
 		<Section title="Type" layout="vertical">
 			<Row>
-				<div id={getFieldId("type")} data-name="Content Type" />
+				<IssueAnchor fieldName="type" description="Content Type" />
 				<ValidatedField
 					name="type"
 					component={RadioGroup}
@@ -41,7 +41,7 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 		{type && (
 			<Section title="Content" layout="vertical">
 				<Row disabled={!type}>
-					<div id={getFieldId("content")} />
+					<IssueAnchor fieldName="content" description="Content" />
 					<ValidatedField name="content" component={getInputComponent(type)} validation={{ required: true }} />
 				</Row>
 			</Section>

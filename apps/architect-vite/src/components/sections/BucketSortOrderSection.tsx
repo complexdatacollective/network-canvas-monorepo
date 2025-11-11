@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { Row, Section } from "~/components/EditorLayout";
+import { Section } from "~/components/EditorLayout";
 import MultiSelect from "~/components/Form/MultiSelect";
 import Tip from "~/components/Tip";
 
@@ -50,17 +50,15 @@ const BucketSortOrderSection = ({
 			handleToggleChange={handleToggleChange}
 			layout="vertical"
 		>
-			<Row>
-				<Tip>
-					<p>Use the asterisk property to sort by the order that nodes were created.</p>
-				</Tip>
-				<MultiSelect
-					name="bucketSortOrder"
-					properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
-					maxItems={maxItems}
-					options={optionGetter}
-				/>
-			</Row>
+			<Tip>
+				<p>Use the asterisk property to sort by the order that nodes were created.</p>
+			</Tip>
+			<MultiSelect
+				name="bucketSortOrder"
+				properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
+				maxItems={maxItems}
+				options={optionGetter}
+			/>
 		</Section>
 	);
 };

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { getFieldId } from "../../utils/issues";
+import IssueAnchor from "../IssueAnchor";
 import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "../Query";
 import Tip from "../Tip";
 import getEdgeFilteringWarning from "./SociogramPrompts/utils";
@@ -86,7 +86,7 @@ const Filter = () => {
 					</p>
 				</Tip>
 			)}
-			<div id={getFieldId("filter")} data-name="Filter text" />
+			<IssueAnchor fieldName="filter" description="Filter text" />
 			<Field name="filter" component={FilterField} validate={ruleValidator} />
 		</Section>
 	);

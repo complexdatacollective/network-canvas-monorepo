@@ -56,7 +56,7 @@ class Button extends PureComponent<ButtonProps> {
 		} = this.props;
 
 		const buttonClasses = cn(
-			"inline-flex gap-2 items-center justify-center",
+			"inline-flex gap-2 items-center justify-center grow-0 shrink-0 w-auto",
 			// focus state
 			"focus:outline-none focus:ring-2 focus:ring-offset-2",
 			"transition-color duration-200 ease-in-out",

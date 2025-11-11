@@ -3,7 +3,7 @@ import { compose } from "recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
-import { getFieldId } from "../../../utils/issues";
+import IssueAnchor from "~/components/IssueAnchor";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";
 import ValidatedField from "../../Form/ValidatedField";
@@ -60,7 +60,7 @@ class Background extends PureComponent<BackgroundProps> {
 				{!useImage && (
 					<>
 						<Row>
-							<div id={getFieldId("background.concentricCircles")} data-name="Background &gt; Concentric Circles" />
+							<IssueAnchor fieldName="background.concentricCircles" description="Background > Concentric Circles" />
 							<ValidatedField
 								name="background.concentricCircles"
 								component={Fields.Number}
@@ -81,7 +81,7 @@ class Background extends PureComponent<BackgroundProps> {
 				)}
 				{useImage && (
 					<Row>
-						<div id={getFieldId("background.image")} data-name="Background &gt; Image" />
+						<IssueAnchor fieldName="background.image" description="Background > Image" />
 						<ValidatedField
 							name="background.image"
 							component={Image}

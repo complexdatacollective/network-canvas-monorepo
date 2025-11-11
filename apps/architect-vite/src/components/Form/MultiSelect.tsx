@@ -126,7 +126,7 @@ const Items = compose(
 
 	return (
 		<>
-			<div className="form-fields-multi-select">
+			<div className="form-fields-multi-select w-full">
 				<Reorder.Group className="form-fields-multi-select__rules" onReorder={handleReorder} values={items} axis="y">
 					{fields.map((field: string, index: number) => {
 						const item = fields.get(index);
@@ -166,8 +166,8 @@ type MultiSelectProps = {
 };
 
 const MultiSelect = ({ name, properties, options, label = "", ...rest }: MultiSelectProps) => (
-	<div className="form-fields-multi-select">
-		{label && <div className="form-fields-multi-select__label">{label}</div>}
+	<div className="form-fields-multi-select w-full">
+		{label && <h4>{label}</h4>}
 		<FieldArray
 			name={name}
 			component={Items}

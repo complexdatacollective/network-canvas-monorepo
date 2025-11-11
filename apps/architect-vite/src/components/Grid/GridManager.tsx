@@ -1,9 +1,10 @@
 import { compose, withState } from "recompose";
 import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";
-import { getFieldId, scrollToFirstIssue } from "../../utils/issues";
+import { scrollToFirstIssue } from "../../utils/issues";
 import ValidatedFieldArray from "../Form/ValidatedFieldArray";
 import InlineEditScreen from "../InlineEditScreen/InlineEditScreen";
+import IssueAnchor from "../IssueAnchor";
 import Grid from "./Grid";
 import withEditHandlers from "./withEditHandlers";
 
@@ -79,7 +80,7 @@ const GridManager = ({
 		disabled={disabled}
 		contentId={contentId}
 	>
-		<div id={getFieldId(`${fieldName}._error`)} data-name={fieldName} />
+		<IssueAnchor fieldName={`${fieldName}._error`} description={fieldName} />
 		{children}
 		<div className="grid-manager">
 			<div className="grid-manager__items">

@@ -101,15 +101,15 @@ const EntitySelectField = ({
 		[options, value, handleClickItem, PreviewComponent],
 	);
 
-	const classes = cx("form-fields-entity-select", {
+	const classes = cx("form-fields-entity-select flex flex-col items-start gap-4", {
 		"form-fields-entity-select--has-error": hasError,
 	});
 
 	return (
 		<div className={classes}>
-			{label && <h4 className="form-field-label">{label}</h4>}
+			{label && <h4>{label}</h4>}
 
-			<div className="flex-wrap flex [--base-node-size:7rem] mb-[var(--space-md)]">{renderOptions()}</div>
+			<div className="flex-wrap flex [--base-node-size:7rem]">{renderOptions()}</div>
 			{options.length === 0 && (
 				<p className="form-fields-entity-select__empty">
 					No {entityType} types currently defined. Use the button below to create one.

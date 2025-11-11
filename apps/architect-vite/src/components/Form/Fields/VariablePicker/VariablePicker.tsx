@@ -80,7 +80,7 @@ const VariablePicker = ({
 				{label && <legend>{label}</legend>}
 
 				{value && (
-					<div className="mb-[var(--space-md)]">
+					<div>
 						<AnimatePresence exitBeforeEnter initial={false}>
 							<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={value}>
 								{variablePillComponent()}

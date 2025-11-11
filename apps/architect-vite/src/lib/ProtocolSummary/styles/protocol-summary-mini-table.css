@@ -1,12 +1,4 @@
 /* stylelint-disable no-descending-specificity */
-
-.small-heading {
-	text-transform: uppercase;
-	font-weight: 600;
-	font-size: 11px;
-	letter-spacing: 0.15em;
-}
-
 .protocol-summary-mini-table {
 	--table-color: rgb(58 106 117 / 5%);
 	--alternate-row-color: var(--table-color);

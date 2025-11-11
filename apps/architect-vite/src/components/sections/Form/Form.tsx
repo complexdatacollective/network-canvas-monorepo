@@ -6,7 +6,7 @@ import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubj
 import withSubject from "~/components/enhancers/withSubject";
 import TextField from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
-import { getFieldId } from "~/utils/issues";
+import IssueAnchor from "~/components/IssueAnchor";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";
 import { itemSelector, normalizeField } from "./helpers";
@@ -35,7 +35,7 @@ const Form = ({
 		title="Form"
 		summary={
 			<>
-				<div id={getFieldId("form.title")} data-name="Form title" />
+				<IssueAnchor fieldName="form.title" description="Form title" />
 				<p>
 					Add one or more fields to your form to collect attributes about each node the participant creates. Use the
 					drag handle on the left of each prompt adjust its order.

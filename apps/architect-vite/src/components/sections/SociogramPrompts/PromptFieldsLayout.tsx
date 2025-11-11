@@ -5,7 +5,7 @@ import { Row, Section } from "~/components/EditorLayout";
 import withCreateVariableHandlers from "~/components/enhancers/withCreateVariableHandler";
 import { ValidatedField } from "~/components/Form";
 import MultiSelect from "~/components/Form/MultiSelect";
-import { getFieldId } from "~/utils/issues";
+import IssueAnchor from "~/components/IssueAnchor";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import Tip from "../../Tip";
 import { getSortOrderOptionGetter } from "../CategoricalBinPrompts/optionGetters";
@@ -65,7 +65,7 @@ const PromptFields = ({
 			layout="vertical"
 		>
 			<Row>
-				<div id={getFieldId("layout.layoutVariable")} data-name="Layout Variable" />
+				<IssueAnchor fieldName="layout.layoutVariable" description="Layout Variable" />
 				<Tip type="info">
 					<p>
 						If you use the same layout variable across all prompts, the position of nodes will be automatically set as

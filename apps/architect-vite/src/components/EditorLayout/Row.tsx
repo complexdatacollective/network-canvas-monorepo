@@ -1,5 +1,5 @@
-import type React from "react";
 import cx from "classnames";
+import type React from "react";
 
 type RowProps = {
 	disabled?: boolean;
@@ -7,7 +7,7 @@ type RowProps = {
 };
 
 const Row = ({ disabled = false, children = null }: RowProps) => {
-	const rowClasses = cx("stage-editor-row", { "stage-editor-row--disabled": disabled });
+	const rowClasses = cx("not-last:mb-6", { "stage-editor-row--disabled": disabled });
 
 	return <div className={rowClasses}>{children}</div>;
 };

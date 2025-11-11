@@ -19,7 +19,7 @@ const InterfaceList = ({
 	setHighlighted,
 	removeHighlighted,
 }: InterfaceListProps) => (
-	<motion.div className="flex flex-col my-4">
+	<motion.div className="flex flex-col">
 		{items.length === 0 && (
 			<div className="absolute inset-0 flex flex-col items-center justify-center">
 				<p className="text-center mb-4">

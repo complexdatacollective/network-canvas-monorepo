@@ -55,7 +55,7 @@ const Markdown = ({
 	}, [label]);
 
 	return (
-		<div className={className} data-markdown>
+		<span className={className} data-markdown>
 			<ReactMarkdown
 				allowedElements={allowedElements}
 				components={{
@@ -68,7 +68,7 @@ const Markdown = ({
 			>
 				{rawText}
 			</ReactMarkdown>
-		</div>
+		</span>
 	);
 };
 

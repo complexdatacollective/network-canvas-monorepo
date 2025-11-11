@@ -1,5 +1,7 @@
 .form-fields-multi-select {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-md);
 }
 
 .form-fields-multi-select .form-fields-select-native__component {
@@ -16,10 +18,6 @@
 
 .form-fields-multi-select button {
 	margin: 0;
-}
-
-.form-fields-multi-select__rules {
-	margin: 0 0 var(--space-lg);
 }
 
 .form-fields-multi-select__rule {

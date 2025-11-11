@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
-import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
+import Icon from "~/lib/legacy-ui/components/Icon";
 import RichText from "./RichText";
 
 interface RichTextFieldProps {
@@ -47,7 +47,7 @@ const RichTextField = ({
 
 	return (
 		<div className="form-field-container">
-			{anyLabel && <MarkdownLabel label={anyLabel} />}
+			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
 			<div className={seamlessClasses}>
 				<RichText
 					value={input.value}

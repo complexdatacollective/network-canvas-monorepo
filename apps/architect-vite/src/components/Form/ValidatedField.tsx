@@ -3,7 +3,7 @@ import { startCase } from "es-toolkit/compat";
 import type { ComponentType } from "react";
 import { type BaseFieldProps, Field, type Validator, type WrappedFieldProps } from "redux-form";
 import useValidate from "~/hooks/useValidate";
-import { getFieldId } from "~/utils/issues";
+import IssueAnchor from "../IssueAnchor";
 
 // Generic T should contain ONLY the component's unique props (not WrappedFieldProps). F should be the type of the field's value.
 type ValidatedFieldProps<T = {}> = Omit<BaseFieldProps, "validate" | "component" | "props"> & {
@@ -22,7 +22,7 @@ function ValidatedField<T = {}>({ validation, component, componentProps, ...fiel
 	return (
 		<>
 			<Field {...fieldProps} {...componentProps} validate={validations} component={component} />
-			<div id={getFieldId(`${fieldProps.name}._error`)} data-name={startCase(fieldProps.name)} />
+			<IssueAnchor fieldName={`${fieldProps.name}._error`} description={startCase(fieldProps.name)} />
 		</>
 	);
 }

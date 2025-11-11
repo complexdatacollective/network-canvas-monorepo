@@ -27,10 +27,7 @@
 .form-field__error {
 	opacity: 0;
 	color: var(--color-error-foreground);
-	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-		var(--animation-duration-standard);
-}
-
-.form-field-container {
-	@apply mb-4;
+	transition:
+		opacity var(--animation-easing) var(--animation-duration-standard),
+		max-height var(--animation-easing) var(--animation-duration-standard);
 }

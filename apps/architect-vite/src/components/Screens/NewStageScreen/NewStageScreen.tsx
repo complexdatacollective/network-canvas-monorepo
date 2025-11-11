@@ -233,7 +233,7 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 							<div className="flex-shrink-0 text-white">
 								<h4 className="text-sm font-semibold">Filter by capabilities:</h4>
 							</div>
-							<div className="flex flex-wrap gap-2">
+							<div className="flex flex-wrap gap-2 text-navy-taupe">
 								{tags.map(({ value, selected, disabled }) => (
 									<Tag
 										key={value}
@@ -254,16 +254,14 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 			onCancel={onCancel}
 			size="lg"
 		>
-			<div className="h-full">
-				<InterfaceList
-					items={filteredInterfaces}
-					onSelect={handleSelectInterface}
-					highlightedIndex={cursorActive ? cursor : undefined}
-					handleClearSearchAndFilter={handleClearSearchAndFilter}
-					setHighlighted={handleSetHighlight}
-					removeHighlighted={handleRemoveHighlight}
-				/>
-			</div>
+			<InterfaceList
+				items={filteredInterfaces}
+				onSelect={handleSelectInterface}
+				highlightedIndex={cursorActive ? cursor : undefined}
+				handleClearSearchAndFilter={handleClearSearchAndFilter}
+				setHighlighted={handleSetHighlight}
+				removeHighlighted={handleRemoveHighlight}
+			/>
 		</Dialog>
 	);
 };

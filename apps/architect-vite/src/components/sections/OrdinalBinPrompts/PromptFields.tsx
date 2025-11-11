@@ -2,6 +2,7 @@ import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import ColorPicker from "~/components/Form/Fields/ColorPicker";
+import IssueAnchor from "~/components/IssueAnchor";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import { getSortOrderOptionGetter } from "~/components/sections/CategoricalBinPrompts/optionGetters";
@@ -105,7 +106,7 @@ const PromptFields = ({
 				layout="vertical"
 			>
 				<Row>
-					<div id={getFieldId("color")} data-name="Gradient color" />
+					<IssueAnchor fieldName="color" description="Gradient color" />
 					<ValidatedField
 						label="Which color would you like to use for this scale?"
 						component={ColorPicker}

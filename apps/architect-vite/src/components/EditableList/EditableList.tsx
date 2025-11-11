@@ -4,7 +4,6 @@ import { AnimatePresence } from "motion/react";
 import type React from "react";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useSelector } from "react-redux";
 import type { Validator } from "redux-form";
 import { formValueSelector } from "redux-form";
@@ -85,7 +84,7 @@ const EditableList = ({
 	const initialValuesForEdit = currentItemValues || templateValues;
 
 	return (
-		<>
+		<div className="flex flex-col gap-4 items-start">
 			{children}
 			<ValidatedField<OrderedListProps>
 				name={fieldName}
@@ -101,48 +100,47 @@ const EditableList = ({
 			<Button onClick={handleAddNew} icon="add" color="sea-green">
 				Create new
 			</Button>
-			{createPortal(
-				<Dialog.Root open={isOpen} onOpenChange={handleCancelEdit}>
-					<AnimatePresence>
-						{isOpen && (
-							<Dialog.Portal keepMounted>
-								<DialogBackdrop onClick={handleCancelEdit} />
-								<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
-									<DialogPopup
-										layoutId={`${fieldName}-edit-field-${editIndex}`}
-										key="editable-list-dialog"
-										header={<h2 className="m-0">{title}</h2>}
-										footer={
-											<>
-												<Dialog.Close
-													render={
-														<Button onClick={handleCancelEdit} color="platinum">
-															Cancel
-														</Button>
-													}
-												/>
-												<Button type="submit" color="sea-green">
-													Save
-												</Button>
-											</>
-										}
-									>
-										<Layout>
-											<EditComponent
-												form="editable-list-form"
-												{...(initialValuesForEdit as FieldType[number])}
-												{...editProps}
+
+			<Dialog.Root open={isOpen} onOpenChange={handleCancelEdit}>
+				<AnimatePresence>
+					{isOpen && (
+						<Dialog.Portal keepMounted>
+							<DialogBackdrop onClick={handleCancelEdit} />
+							<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
+								<DialogPopup
+									layoutId={`${fieldName}-edit-field-${editIndex}`}
+									key="editable-list-dialog"
+									header={<h2 className="m-0">{title}</h2>}
+									footer={
+										<>
+											<Dialog.Close
+												render={
+													<Button onClick={handleCancelEdit} color="platinum">
+														Cancel
+													</Button>
+												}
 											/>
-										</Layout>
-									</DialogPopup>
-								</Form>
-							</Dialog.Portal>
-						)}
-					</AnimatePresence>
-				</Dialog.Root>,
-				document.body,
-			)}
-		</>
+											<Button type="submit" color="sea-green">
+												Save
+											</Button>
+										</>
+									}
+									className="bg-surface-2"
+								>
+									<Layout>
+										<EditComponent
+											form="editable-list-form"
+											{...(initialValuesForEdit as FieldType[number])}
+											{...editProps}
+										/>
+									</Layout>
+								</DialogPopup>
+							</Form>
+						</Dialog.Portal>
+					)}
+				</AnimatePresence>
+			</Dialog.Root>
+		</div>
 	);
 };
 export default EditableList;

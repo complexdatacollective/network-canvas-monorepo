@@ -6,7 +6,7 @@ type IssueAnchorProps = {
 };
 
 const IssueAnchor = ({ fieldName, description }: IssueAnchorProps) => (
-	<div id={getFieldId(fieldName)} data-name={description} />
+	<div id={getFieldId(fieldName)} data-name={description} className="hidden" />
 );
 
 export default IssueAnchor;

@@ -4,8 +4,8 @@ import { formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import ValidatedField from "~/components/Form/ValidatedField";
+import IssueAnchor from "~/components/IssueAnchor";
 import Tip from "~/components/Tip";
-import { getFieldId } from "~/utils/issues";
 import BinSortOrderSection from "../BinSortOrderSection";
 import BucketSortOrderSection from "../BucketSortOrderSection";
 import { getSortOrderOptionGetter } from "../CategoricalBinPrompts/optionGetters";
@@ -25,24 +25,24 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 	return (
 		<>
 			<Section title="One to Many Dyad Census Prompts" layout="vertical">
-				<Row>
-					<div id={getFieldId("text")} data-title="Dyad Census Prompts" />
+				<IssueAnchor fieldName="text" description="Dyad Census Prompts" />
+				<p>
+					One to Many Dyad Census prompts guide your participant in evaluating relationships between a single focal node
+					and several target nodes. (for example, &apos;friendship&apos;, &apos;material support&apos; or
+					&apos;conflict&apos;). Enter prompt text below, and select an edge type that will be created when the
+					participant selects a target node.
+				</p>
+				<Tip type="info">
 					<p>
-						One to Many Dyad Census prompts guide your participant in evaluating relationships between a single focal
-						node and several target nodes. (for example, &apos;friendship&apos;, &apos;material support&apos; or
-						&apos;conflict&apos;). Enter prompt text below, and select an edge type that will be created when the
-						participant selects a target node.
+						Remember to write your prompt text so that it clearly indicates the participant is evaluating the
+						relationship between one specific individual and each of the others shown. Use phrases such as &apos;
+						<strong>which of the following people</strong>
+						&apos;, or &apos;
+						<strong>select all people with whom this person</strong>
+						&apos; to indicate that the participant should focus on selecting from the group.
 					</p>
-					<Tip type="info">
-						<p>
-							Remember to write your prompt text so that it clearly indicates the participant is evaluating the
-							relationship between one specific individual and each of the others shown. Use phrases such as &apos;
-							<strong>which of the following people</strong>
-							&apos;, or &apos;
-							<strong>select all people with whom this person</strong>
-							&apos; to indicate that the participant should focus on selecting from the group.
-						</p>
-					</Tip>
+				</Tip>
+				<Row>
 					<ValidatedField
 						name="text"
 						component={RichText}
