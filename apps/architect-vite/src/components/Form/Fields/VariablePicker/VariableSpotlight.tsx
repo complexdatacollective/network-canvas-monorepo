@@ -1,4 +1,3 @@
-import { Dialog } from "@base-ui-components/react/dialog";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
@@ -69,7 +68,7 @@ const Divider = ({ legend }: DividerProps) => (
 
 type VariableSpotlightProps = {
 	open: boolean;
-	onOpenChange?: (open: boolean) => void;
+	onOpenChange: (open: boolean) => void;
 	disallowCreation?: boolean;
 	onSelect: (value: string) => void;
 	entity: string;
@@ -300,13 +299,13 @@ const VariableSpotlight = ({
 	};
 
 	return (
-		<Modal show={open} onOpenChange={onOpenChange}>
-			<Dialog.Popup
-				render={<motion.div />}
-				className="variable-spotlight"
+		<Modal open={open} onOpenChange={onOpenChange}>
+			<motion.div
+				className="w-xl bg-surface-1 text-surface-1-foreground fixed top-10 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 rounded-lg overflow-hidden"
 				variants={containerVariants}
 				initial="hidden"
 				animate="visible"
+				exit="hidden"
 				transition={{
 					type: "spring",
 				}}
@@ -354,7 +353,7 @@ const VariableSpotlight = ({
 					)}
 					{renderResults()}
 				</motion.main>
-			</Dialog.Popup>
+			</motion.div>
 		</Modal>
 	);
 };

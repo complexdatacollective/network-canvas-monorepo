@@ -94,7 +94,7 @@ const VariablePicker = ({
 			</fieldset>
 			<VariableSpotlight
 				open={showPicker}
-				onOpenChange={hideModal}
+				onOpenChange={setShowPicker}
 				entity={entity}
 				type={type}
 				onSelect={handleSelectVariable}

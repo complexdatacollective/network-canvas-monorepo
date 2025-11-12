@@ -1,9 +1,9 @@
 "use client";
 
 import { Dialog as BaseDialog } from "@base-ui-components/react/dialog";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import type { ComponentProps, ReactNode } from "react";
-import { Button } from "~/lib/legacy-ui/components";
+import { Button, Modal } from "~/lib/legacy-ui/components";
 import { cn } from "~/utils/cn";
 
 export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
@@ -116,46 +116,39 @@ function Dialog({
 	...popupProps
 }: DialogProps) {
 	return (
-		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
-			<AnimatePresence>
-				{open && (
-					<BaseDialog.Portal keepMounted container={document.body}>
-						<DialogBackdrop />
-						<DialogPopup header={header} footer={footer} {...popupProps}>
-							<div className="flex-1">
-								{title && !header && <DialogTitle>{title}</DialogTitle>}
-								{description && <DialogDescription>{description}</DialogDescription>}
-								{children}
-							</div>
+		<Modal open={open} onOpenChange={onOpenChange}>
+			<DialogPopup header={header} footer={footer} {...popupProps}>
+				<div className="flex-1">
+					{title && !header && <DialogTitle>{title}</DialogTitle>}
+					{description && <DialogDescription>{description}</DialogDescription>}
+					{children}
+				</div>
 
-							<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
-								{!footer && (
-									<BaseDialog.Close
-										render={
-											<Button
-												onClick={() => {
-													onCancel?.();
-													onOpenChange(false);
-												}}
-												color="platinum"
-											>
-												{cancelText}
-											</Button>
-										}
-									/>
-								)}
+				<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
+					{!footer && (
+						<BaseDialog.Close
+							render={
+								<Button
+									onClick={() => {
+										onCancel?.();
+										onOpenChange(false);
+									}}
+									color="platinum"
+								>
+									{cancelText}
+								</Button>
+							}
+						/>
+					)}
 
-								{onConfirm && (
-									<Button onClick={onConfirm} color={confirmColor}>
-										{confirmText}
-									</Button>
-								)}
-							</div>
-						</DialogPopup>
-					</BaseDialog.Portal>
-				)}
-			</AnimatePresence>
-		</BaseDialog.Root>
+					{onConfirm && (
+						<Button onClick={onConfirm} color={confirmColor}>
+							{confirmText}
+						</Button>
+					)}
+				</div>
+			</DialogPopup>
+		</Modal>
 	);
 }
 

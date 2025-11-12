@@ -1,21 +1,22 @@
 import { Dialog as BaseDialog } from "@base-ui-components/react/dialog";
 import { AnimatePresence } from "motion/react";
-import type { ReactElement } from "react";
+import type { ReactNode } from "react";
 import { DialogBackdrop } from "~/components/NewComponents/Dialog";
 
-type ModalProps = {
-	show: boolean;
-	children?: ReactElement | null;
-	zIndex?: number | null;
-	onOpenChange?: (open: boolean) => void;
-};
-
-const Modal = ({ children, show = false, onOpenChange }: ModalProps) => {
+export default function Modal({
+	open,
+	onOpenChange,
+	children,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	children: ReactNode;
+}) {
 	return (
-		<BaseDialog.Root open={show} onOpenChange={onOpenChange}>
+		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
 			<AnimatePresence>
-				{show && (
-					<BaseDialog.Portal keepMounted>
+				{open && (
+					<BaseDialog.Portal keepMounted container={document.body}>
 						<DialogBackdrop />
 						{children}
 					</BaseDialog.Portal>
@@ -23,8 +24,4 @@ const Modal = ({ children, show = false, onOpenChange }: ModalProps) => {
 			</AnimatePresence>
 		</BaseDialog.Root>
 	);
-};
-
-export { Modal };
-
-export default Modal;
+}
