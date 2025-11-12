@@ -1,4 +1,3 @@
-import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -20,55 +19,20 @@ interface CardDisplayOptionsProps {
 
 const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
-	const variableOptionsGetter = useMemo(() => getVariableOptionsGetter(variableOptions), [variableOptions]);
+	const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
 	const maxVariableOptions = variableOptions.length;
 
 	const dispatch = useDispatch();
 	const getFormValue = formValueSelector("edit-stage");
 	const hasCardDisplayOptions = useSelector((state) => getFormValue(state, "cardOptions.additionalProperties"));
 
-	const handleToggleCardDisplayOptions = useCallback(
-		(nextState) => {
-			if (nextState === false) {
-				dispatch(change("edit-stage", "cardOptions.additionalProperties", null));
-			}
+	const handleToggleCardDisplayOptions = (nextState) => {
+		if (nextState === false) {
+			dispatch(change("edit-stage", "cardOptions.additionalProperties", null));
+		}
 
-			return true;
-		},
-		[dispatch],
-	);
-
-	// Memoize the preview component to prevent unnecessary re-renders
-	const PreviewComponent = useMemo(
-		() => (props) => (
-			<MultiSelectPreview
-				{...props}
-				properties={[
-					{
-						fieldName: "variable",
-					},
-					{
-						fieldName: "label",
-						component: Fields.Text,
-						placeholder: "Label",
-					},
-				]}
-				options={variableOptionsGetter}
-			/>
-		),
-		[variableOptionsGetter],
-	);
-
-	const normalizeItems = useCallback(
-		(items) =>
-			Array.isArray(items)
-				? items.map((item) => ({
-						...item,
-						id: item.id || v4(),
-					}))
-				: items,
-		[],
-	);
+		return true;
+	};
 
 	return (
 		<Section
@@ -107,9 +71,23 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 						maxItems={maxVariableOptions}
 						sortable={true}
 						title="Additional Property"
-						previewComponent={PreviewComponent}
+						previewComponent={(props) => (
+							<MultiSelectPreview
+								{...props}
+								properties={[
+									{
+										fieldName: "variable",
+									},
+									{
+										fieldName: "label",
+										component: Fields.Text,
+										placeholder: "Label",
+									},
+								]}
+								options={variableOptionsGetter}
+							/>
+						)}
 						template={() => ({ id: v4() })}
-						normalize={normalizeItems}
 						validation={{}}
 					/>
 				)}

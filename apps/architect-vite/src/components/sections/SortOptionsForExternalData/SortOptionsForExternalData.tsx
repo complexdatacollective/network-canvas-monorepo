@@ -1,4 +1,3 @@
-import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -20,62 +19,22 @@ type SortOptionsProps = {
 
 const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
-	const variableOptionsGetter = useMemo(() => getVariableOptionsGetter(variableOptions), [variableOptions]);
+	const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
 	const maxVariableOptions = variableOptions.length;
-	const sortOrderOptionGetter = useMemo(() => getSortOrderOptionGetter(variableOptions), [variableOptions]);
+	const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
 
 	const dispatch = useDispatch();
 	const getFormValue = formValueSelector("edit-stage");
 	const hasSortOrder = useSelector((state) => getFormValue(state, "sortOptions.sortOrder"));
 	const hasSortableProperties = useSelector((state) => getFormValue(state, "sortOptions.sortableProperties"));
 
-	const handleToggleSortOptions = useCallback(
-		(nextState) => {
-			if (nextState === false) {
-				dispatch(change("edit-stage", "sortOptions", null));
-			}
+	const handleToggleSortOptions = (nextState) => {
+		if (nextState === false) {
+			dispatch(change("edit-stage", "sortOptions", null));
+		}
 
-			return true;
-		},
-		[dispatch],
-	);
-
-	// Memoize preview components to prevent unnecessary re-renders
-	const SortOrderPreviewComponent = useMemo(
-		() => (props) => (
-			<MultiSelectPreview {...props} properties={[{ fieldName: "property" }, { fieldName: "direction" }]} options={sortOrderOptionGetter} />
-		),
-		[sortOrderOptionGetter],
-	);
-
-	const SortablePropertiesPreviewComponent = useMemo(
-		() => (props) => (
-			<MultiSelectPreview
-				{...props}
-				properties={[
-					{ fieldName: "variable" },
-					{
-						fieldName: "label",
-						component: Text,
-						placeholder: "Label",
-					},
-				]}
-				options={variableOptionsGetter}
-			/>
-		),
-		[variableOptionsGetter],
-	);
-
-	const normalizeItems = useCallback(
-		(items) =>
-			Array.isArray(items)
-				? items.map((item) => ({
-						...item,
-						id: item.id || v4(),
-					}))
-				: items,
-		[],
-	);
+		return true;
+	};
 
 	return (
 		<Section
@@ -105,9 +64,14 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 					maxItems={1}
 					sortable={true}
 					title="Sort Order"
-					previewComponent={SortOrderPreviewComponent}
+					previewComponent={(props) => (
+						<MultiSelectPreview
+							{...props}
+							properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
+							options={sortOrderOptionGetter}
+						/>
+					)}
 					template={() => ({ id: v4() })}
-					normalize={normalizeItems}
 					validation={{}}
 				/>
 			</Row>
@@ -124,9 +88,21 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 					maxItems={maxVariableOptions}
 					sortable={true}
 					title="Sortable Property"
-					previewComponent={SortablePropertiesPreviewComponent}
+					previewComponent={(props) => (
+						<MultiSelectPreview
+							{...props}
+							properties={[
+								{ fieldName: "variable" },
+								{
+									fieldName: "label",
+									component: Text,
+									placeholder: "Label",
+								},
+							]}
+							options={variableOptionsGetter}
+						/>
+					)}
 					template={() => ({ id: v4() })}
-					normalize={normalizeItems}
 					validation={{}}
 				/>
 			</Row>

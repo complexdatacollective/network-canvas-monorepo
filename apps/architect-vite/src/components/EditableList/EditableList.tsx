@@ -113,7 +113,6 @@ const EditableList = ({
 				name={fieldName}
 				component={OrderedList}
 				validation={validation}
-				normalize={normalize}
 				componentProps={{
 					sortable,
 					item: PreviewComponent,
