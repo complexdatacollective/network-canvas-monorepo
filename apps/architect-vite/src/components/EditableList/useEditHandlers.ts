@@ -9,6 +9,7 @@ type UseEditHandlersOptions = {
 	onChange?: (value: unknown) => Promise<unknown> | unknown;
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
+	inlineEditing?: boolean;
 };
 
 // Default functions defined outside component to prevent recreating on every render
@@ -20,6 +21,7 @@ export const useEditHandlers = ({
 	onChange,
 	normalize = defaultNormalize,
 	template = defaultTemplate,
+	inlineEditing = false,
 }: UseEditHandlersOptions) => {
 	const { form } = useFormContext();
 	const dispatch = useAppDispatch();
@@ -53,8 +55,16 @@ export const useEditHandlers = ({
 
 	const handleAddNew = useCallback(() => {
 		const items = getItems();
-		setEditIndex(items.length);
-	}, [getItems]);
+		if (inlineEditing) {
+			// In inline mode, directly add the new item without opening dialog
+			const newItem = template();
+			const newValues = [...items, newItem];
+			dispatch(change(form, fieldName, newValues));
+		} else {
+			// In dialog mode, open the edit dialog for a new item
+			setEditIndex(items.length);
+		}
+	}, [getItems, inlineEditing, template, dispatch, form, fieldName]);
 
 	const handleSaveEdit = useCallback(
 		async (value: unknown) => {

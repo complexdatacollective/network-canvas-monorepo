@@ -31,7 +31,9 @@ type EditableListProps = {
 	sortable?: boolean;
 	children?: React.ReactNode;
 	previewComponent: ComponentType<FieldType>;
-	editComponent: React.ComponentType<FieldType[number]> & { form: string };
+	editComponent?: React.ComponentType<FieldType[number]> & { form: string };
+	inlineEditing?: boolean;
+	maxItems?: number | null;
 	editProps?: Record<string, unknown>;
 	validation?: Record<string, Validator> | Record<ValidationName, Validation>;
 	// Optional props for customizing hook behavior
@@ -47,6 +49,8 @@ const EditableList = ({
 	children = null,
 	validation = { notEmpty },
 	editComponent: EditComponent,
+	inlineEditing,
+	maxItems = null,
 	title,
 	editProps = {},
 	previewComponent: PreviewComponent,
@@ -57,11 +61,16 @@ const EditableList = ({
 	itemSelector,
 }: EditableListProps) => {
 	const { form } = useFormContext();
+
+	// Default to inline editing if no edit component provided
+	const isInlineEditing = inlineEditing ?? !EditComponent;
+
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
 		fieldName,
 		onChange,
 		normalize,
 		template,
+		inlineEditing: isInlineEditing,
 	});
 
 	const isOpen = editIndex !== null;
@@ -84,6 +93,14 @@ const EditableList = ({
 	const templateValues = useMemo(() => template(), [editIndex]);
 	const initialValuesForEdit = currentItemValues || templateValues;
 
+	// Get current field values to check maxItems
+	const fieldValues = useSelector((state: unknown) => {
+		const selector = formValueSelector(form);
+		return selector(state, fieldName) || [];
+	});
+
+	const isAtMaxItems = maxItems !== null && Array.isArray(fieldValues) && fieldValues.length >= maxItems;
+
 	return (
 		<div className="flex flex-col gap-4 items-start">
 			{label && (
@@ -101,42 +118,50 @@ const EditableList = ({
 					item: PreviewComponent,
 					onClickItem: handleTriggerEdit,
 					editIndex: editIndex, // Pass editIndex so it can be used in layout ID
+					inlineEditing: isInlineEditing,
 				}}
 			/>
-			<Button onClick={handleAddNew} icon="add" color="sea-green">
-				Create new
-			</Button>
-
-			<Dialog
-				open={isOpen}
-				onOpenChange={handleCancelEdit}
-				layoutId={`${fieldName}-edit-field-${editIndex}`}
-				initial={undefined}
-				animate={undefined}
-				exit={undefined}
-				header={<h2 className="m-0">{title}</h2>}
-				footer={
-					<>
-						<Dialog.Close
-							render={
-								<Button onClick={handleCancelEdit} color="platinum">
-									Cancel
-								</Button>
-							}
-						/>
-						<Button type="submit" color="sea-green">
-							Save
-						</Button>
-					</>
-				}
-				className="bg-surface-2"
-			>
-				<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
-					<Layout>
-						<EditComponent form="editable-list-form" {...(initialValuesForEdit as FieldType[number])} {...editProps} />
-					</Layout>
-				</Form>
-			</Dialog>
+			{!isAtMaxItems && (
+				<Button onClick={handleAddNew} icon="add" color="sea-green">
+					Create new
+				</Button>
+			)}
+			{!isInlineEditing && EditComponent && (
+				<Dialog
+					open={isOpen}
+					onOpenChange={handleCancelEdit}
+					layoutId={`${fieldName}-edit-field-${editIndex}`}
+					initial={undefined}
+					animate={undefined}
+					exit={undefined}
+					header={<h2 className="m-0">{title}</h2>}
+					footer={
+						<>
+							<Dialog.Close
+								render={
+									<Button onClick={handleCancelEdit} color="platinum">
+										Cancel
+									</Button>
+								}
+							/>
+							<Button type="submit" color="sea-green">
+								Save
+							</Button>
+						</>
+					}
+					className="bg-surface-2"
+				>
+					<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
+						<Layout>
+							<EditComponent
+								form="editable-list-form"
+								{...(initialValuesForEdit as FieldType[number])}
+								{...editProps}
+							/>
+						</Layout>
+					</Form>
+				</Dialog>
+			)}
 		</div>
 	);
 };

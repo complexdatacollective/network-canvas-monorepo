@@ -1,10 +1,12 @@
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
+import { v4 } from "uuid";
 import { Row, Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import MultiSelect from "~/components/Form/MultiSelect";
+import EditableList from "~/components/EditableList";
+import MultiSelectPreview from "~/components/Form/MultiSelectPreview";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import * as Fields from "~/components/Form/Fields";
 import Tip from "../../Tip";
@@ -62,20 +64,31 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 					</p>
 				)}
 				{maxVariableOptions > 0 && (
-					<MultiSelect
-						name="cardOptions.additionalProperties"
+					<EditableList
+						form="edit-stage"
+						fieldName="cardOptions.additionalProperties"
+						inlineEditing={true}
 						maxItems={maxVariableOptions}
-						properties={[
-							{
-								fieldName: "variable",
-							},
-							{
-								fieldName: "label",
-								component: Fields.Text,
-								placeholder: "Label",
-							},
-						]}
-						options={variableOptionsGetter}
+						sortable={true}
+						title="Additional Property"
+						previewComponent={(props) => (
+							<MultiSelectPreview
+								{...props}
+								properties={[
+									{
+										fieldName: "variable",
+									},
+									{
+										fieldName: "label",
+										component: Fields.Text,
+										placeholder: "Label",
+									},
+								]}
+								options={variableOptionsGetter}
+							/>
+						)}
+						template={() => ({ id: v4() })}
+						validation={{}}
 					/>
 				)}
 			</Row>

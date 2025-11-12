@@ -1,8 +1,10 @@
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
+import { v4 } from "uuid";
 import { Row, Section } from "~/components/EditorLayout";
-import MultiSelect from "~/components/Form/MultiSelect";
+import EditableList from "~/components/EditableList";
+import MultiSelectPreview from "~/components/Form/MultiSelectPreview";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
@@ -55,11 +57,22 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 					Create one or more rules to determine the default sort order or the roster, when it is first shown to the
 					participant. By default, Interviewer will use the order that nodes are defined in your data file.
 				</p>
-				<MultiSelect
-					name="sortOptions.sortOrder"
+				<EditableList
+					form="edit-stage"
+					fieldName="sortOptions.sortOrder"
+					inlineEditing={true}
 					maxItems={1}
-					properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
-					options={sortOrderOptionGetter}
+					sortable={true}
+					title="Sort Order"
+					previewComponent={(props) => (
+						<MultiSelectPreview
+							{...props}
+							properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
+							options={sortOrderOptionGetter}
+						/>
+					)}
+					template={() => ({ id: v4() })}
+					validation={{}}
 				/>
 			</Row>
 			<Row>
@@ -68,18 +81,29 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 					This interface allows the participant to sort the roster, to help with locating a specific member. Select one
 					or more attributes from your roster that the participant can use to sort the list.
 				</p>
-				<MultiSelect
-					name="sortOptions.sortableProperties"
+				<EditableList
+					form="edit-stage"
+					fieldName="sortOptions.sortableProperties"
+					inlineEditing={true}
 					maxItems={maxVariableOptions}
-					properties={[
-						{ fieldName: "variable" },
-						{
-							fieldName: "label",
-							component: Text,
-							placeholder: "Label",
-						},
-					]}
-					options={variableOptionsGetter}
+					sortable={true}
+					title="Sortable Property"
+					previewComponent={(props) => (
+						<MultiSelectPreview
+							{...props}
+							properties={[
+								{ fieldName: "variable" },
+								{
+									fieldName: "label",
+									component: Text,
+									placeholder: "Label",
+								},
+							]}
+							options={variableOptionsGetter}
+						/>
+					)}
+					template={() => ({ id: v4() })}
+					validation={{}}
 				/>
 			</Row>
 		</Section>

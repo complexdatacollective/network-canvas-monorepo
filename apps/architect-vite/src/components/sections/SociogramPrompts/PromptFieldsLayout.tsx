@@ -1,10 +1,12 @@
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
+import { v4 } from "uuid";
+import EditableList from "~/components/EditableList";
 import { Row, Section } from "~/components/EditorLayout";
 import withCreateVariableHandlers from "~/components/enhancers/withCreateVariableHandler";
 import { ValidatedField } from "~/components/Form";
-import MultiSelect from "~/components/Form/MultiSelect";
+import MultiSelectPreview from "~/components/Form/MultiSelectPreview";
 import IssueAnchor from "~/components/IssueAnchor";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import Tip from "../../Tip";
@@ -99,11 +101,22 @@ const PromptFields = ({
 					layout="vertical"
 				>
 					<Row>
-						<MultiSelect
-							name="sortOrder"
-							properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
+						<EditableList
+							form={form}
+							fieldName="sortOrder"
+							inlineEditing={true}
 							maxItems={5}
-							options={getSortOrderOptionGetter(variableOptions)}
+							sortable={true}
+							title="Sort Order"
+							previewComponent={(props) => (
+								<MultiSelectPreview
+									{...props}
+									properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
+									options={getSortOrderOptionGetter(variableOptions)}
+								/>
+							)}
+							template={() => ({ id: v4() })}
+							validation={{}}
 						/>
 					</Row>
 				</Section>

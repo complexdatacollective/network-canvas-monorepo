@@ -7,6 +7,7 @@ type ListItemProps = ComponentProps<typeof Reorder.Item> & {
 	handleDelete: () => void;
 	handleClick: () => void;
 	sortable?: boolean;
+	inlineEditing?: boolean;
 	value: string | number | Record<string, unknown>;
 	className?: string | null;
 };
@@ -17,6 +18,7 @@ const ListItem = ({
 	handleClick,
 	className,
 	sortable = true,
+	inlineEditing = false,
 	value,
 	...rest
 }: ListItemProps) => {
@@ -24,7 +26,8 @@ const ListItem = ({
 
 	const componentClasses = cx(
 		"group",
-		"bg-accent text-accent-foreground flex rounded px-4 justify-between items-center gap-4 select-none cursor-pointer shadow",
+		"bg-accent text-accent-foreground flex rounded px-4 justify-between items-center gap-4 select-none shadow",
+		!inlineEditing && "cursor-pointer",
 		className,
 	);
 
