@@ -8,8 +8,8 @@ const Protocol = () => {
 	useProtocolLoader();
 
 	return (
-		<div className="relative flex flex-col h-full">
-			<div className="overflow-auto">
+		<div className="relative flex flex-col h-dvh">
+			<div className="overflow-y-auto">
 				<Overview />
 				<Timeline />
 			</div>

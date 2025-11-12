@@ -16,11 +16,7 @@ const StageEditorPage = () => {
 	// Treat "new" as undefined since it's for creating new stages
 	const stageId = rawStageId === "new" ? undefined : rawStageId;
 
-	return (
-		<div className="scene">
-			<StageEditor id={stageId} insertAtIndex={insertAtIndex} type={type} />
-		</div>
-	);
+	return <StageEditor id={stageId} insertAtIndex={insertAtIndex} type={type} />;
 };
 
 export default StageEditorPage;

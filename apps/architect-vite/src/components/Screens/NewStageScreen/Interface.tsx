@@ -19,8 +19,8 @@ const InterfaceThumbnail = ({
 	type: interfaceType,
 	onClick,
 	highlighted = false,
-	setHighlighted = null,
-	removeHighlighted = null,
+	setHighlighted,
+	removeHighlighted,
 }: InterfaceThumbnailProps) => {
 	const ref = useRef(null);
 	const meta = useMemo(() => find(INTERFACE_TYPES, ["type", interfaceType]), [interfaceType]);
@@ -51,20 +51,18 @@ const InterfaceThumbnail = ({
 	return (
 		<motion.div
 			ref={ref}
-			className={`flex-1 cursor-pointer px-16 py-4 border-b-2 border-divider ${highlighted ? "bg-action" : ""}`}
+			className={`flex-1 cursor-pointer py-4 border-b-2 border-divider ${highlighted ? "bg-action" : ""}`}
 			onClick={handleSelect}
 			onMouseEnter={setHighlighted}
 			onMouseLeave={removeHighlighted}
 		>
-			<div className="mx-auto flex items-center">
-				<div className="flex-none w-60 mr-6">
-					<img className="w-full rounded-lg" src={image} alt={title} />
-				</div>
+			<div className="flex items-center gap-10 mx-6">
+				<img className="w-40 h-auto shrink-0 rounded-lg" src={image} alt={title} />
 				<div className="flex flex-col">
-					<h2 className={`text-2xl font-bold mb-2 ${highlighted ? "text-white" : ""}`}>{title}</h2>
+					<h4 className={`mb-2 mt-0 ${highlighted ? "text-white" : ""}`}>{title}</h4>
 					<div className={`mb-3 ${highlighted ? "text-white" : ""}`}>{description}</div>
 					<div className="flex flex-wrap gap-2">
-						{tags.map((tag) => (
+						{tags.map((tag: string) => (
 							<Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
 								{tag}
 							</Tag>

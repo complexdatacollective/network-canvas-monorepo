@@ -10,7 +10,7 @@ import timelineImages from "~/images/timeline";
 import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
 import { cn } from "~/utils/cn";
-import NewStageScreen from "../Screens/NewStageScreen/NewStageScreen";
+import NewStageScreen from "../Screens/NewStageScreen";
 import InsertButton from "./InsertButton";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
@@ -157,8 +157,7 @@ const Timeline = () => {
 					</span>
 				</motion.div>
 			</Reorder.Group>
-
-			<NewStageScreen show={showNewStageDialog} insertAtIndex={insertAtIndex} onCancel={handleNewStageCancel} />
+			<NewStageScreen open={showNewStageDialog} insertAtIndex={insertAtIndex} onOpenChange={setShowNewStageDialog} />
 		</>
 	);
 };

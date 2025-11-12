@@ -49,10 +49,7 @@ const ControlBar = ({ buttons = null, secondaryButtons = null, className }: Cont
 
 	return (
 		<motion.div
-			className={cn(
-				"text-primary-foreground bg-primary fixed bottom-0 z-20 w-full flex justify-between py-4 px-6 gap-10",
-				className,
-			)}
+			className={cn("text-primary-foreground bg-primary w-full flex justify-between py-4 px-6 gap-10", className)}
 			variants={barVariants}
 		>
 			<div className="flex justify-between items-center max-w-6xl mx-auto w-full">

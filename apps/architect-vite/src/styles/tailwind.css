@@ -546,6 +546,10 @@
 	}
 }
 
+@utility section-container {
+	@apply relative shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)] w-full overflow-hidden;
+}
+
 /* Clickable utilities - enhanced 3D effect with multiple depths */
 @utility clickable {
 	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);

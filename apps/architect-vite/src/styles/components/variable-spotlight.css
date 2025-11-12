@@ -1,6 +1,5 @@
 .variable-spotlight {
 	position: relative;
-	margin-top: var(--space-xl);
 	width: 45rem;
 	display: flex;
 	flex-direction: column;

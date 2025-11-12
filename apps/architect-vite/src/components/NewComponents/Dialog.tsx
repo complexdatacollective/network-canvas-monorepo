@@ -11,10 +11,11 @@ export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
 		<BaseDialog.Backdrop
 			render={
 				<motion.div
-					className="fixed inset-0 z-[var(--z-default)] bg-rich-black/50 backdrop-blur-sm flex items-center justify-center"
+					className="fixed inset-0 min-h-dvh bg-rich-black/50 backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					exit={{ opacity: 0 }}
+					transition={{ duration: 0.5 }}
 				/>
 			}
 			{...props}
@@ -24,7 +25,7 @@ export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
 
 type DialogPopupProps = ComponentProps<typeof motion.div> & {
 	size?: "lg";
-	header: ReactNode;
+	header?: ReactNode;
 	children: ReactNode;
 	footer?: ReactNode;
 };
@@ -32,25 +33,44 @@ type DialogPopupProps = ComponentProps<typeof motion.div> & {
 export function DialogPopup({ size, header, children, footer, className, ...props }: DialogPopupProps) {
 	return (
 		<BaseDialog.Popup
+			className={cn(
+				"w-3xl",
+				"fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden",
+				"bg-surface-1 text-surface-1-foreground max-h-[80vh] flex flex-col",
+				"shadow-xl",
+				className,
+			)}
 			render={
-				<div className="fixed inset-0 z-[calc(var(--z-default)+1)] flex items-center justify-center pointer-events-none">
-					<motion.div
-						className={cn(
-							"rounded-[10px] m-6 bg-surface-1 text-surface-1-foreground z-[calc(var(--z-default)+2)] max-h-[80vh] overflow-hidden flex flex-col pointer-events-auto",
-							size === "lg" ? "max-w-full" : "max-w-4xl",
-							className,
-						)}
-						{...props}
-					>
-						{header && <div className="sticky top-0 bg-accent text-accent-foreground px-4 py-6 z-10">{header}</div>}
-						<div className="flex-1 overflow-y-auto px-4 py-6">{children}</div>
-						{footer && (
-							<div className="sticky bottom-0 bg-accent text-accent-foreground px-4 py-6 flex justify-end gap-2.5">
-								{footer}
-							</div>
-						)}
-					</motion.div>
-				</div>
+				<motion.div
+					initial={{ opacity: 0, y: "-10%", scale: 1.1 }}
+					animate={{
+						opacity: 1,
+						y: 0,
+						scale: 1,
+						filter: "blur(0px)",
+					}}
+					exit={{
+						opacity: 0,
+						y: "-10%",
+						scale: 1.5,
+						filter: "blur(10px)",
+					}}
+					transition={{
+						type: "spring",
+						stiffness: 300,
+						damping: 30,
+					}}
+					style={{ zIndex: 1000 }}
+					{...props}
+				>
+					{header && <div className="sticky top-0 bg-accent text-accent-foreground px-4 py-6">{header}</div>}
+					<div className="flex-1 overflow-y-auto px-4 py-6">{children}</div>
+					{footer && (
+						<div className="sticky bottom-0 bg-accent text-accent-foreground px-4 py-6 flex justify-end gap-2.5">
+							{footer}
+						</div>
+					)}
+				</motion.div>
 			}
 		/>
 	);
@@ -70,14 +90,15 @@ type DialogProps = {
 	title?: string;
 	description?: string;
 	header?: ReactNode;
+	footer?: ReactNode;
 	children?: ReactNode;
 	onConfirm?: () => void;
 	onCancel?: () => void;
 	confirmText?: string;
 	cancelText?: string;
-	confirmColor?: unknown; // todo
+	confirmColor?: ComponentProps<typeof Button>["color"];
 	size?: "lg";
-};
+} & ComponentProps<typeof motion.div>;
 
 function Dialog({
 	open,
@@ -85,64 +106,52 @@ function Dialog({
 	title = "Confirm",
 	description,
 	header,
+	footer,
 	children,
 	onConfirm,
 	onCancel,
 	confirmText = "Confirm",
 	cancelText = "Cancel",
 	confirmColor = "sea-green",
-	size,
+	...popupProps
 }: DialogProps) {
 	return (
 		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
 			<AnimatePresence>
 				{open && (
-					<BaseDialog.Portal keepMounted>
-						<DialogBackdrop>
-							<DialogPopup
-								size={size}
-								initial={{ opacity: 0, y: "-10%", scale: 1.1 }}
-								animate={{
-									opacity: 1,
-									y: 0,
-									scale: 1,
-									filter: "blur(0px)",
-								}}
-								exit={{
-									opacity: 0,
-									y: "-10%",
-									scale: 1.5,
-									filter: "blur(10px)",
-								}}
-								transition={{
-									type: "spring",
-									stiffness: 300,
-									damping: 30,
-								}}
-								header={header}
-							>
-								<div className="flex-1">
-									{title && !header && <DialogTitle>{title}</DialogTitle>}
-									{description && <DialogDescription>{description}</DialogDescription>}
-									{children}
-								</div>
-								<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
+					<BaseDialog.Portal keepMounted container={document.body}>
+						<DialogBackdrop />
+						<DialogPopup header={header} footer={footer} {...popupProps}>
+							<div className="flex-1">
+								{title && !header && <DialogTitle>{title}</DialogTitle>}
+								{description && <DialogDescription>{description}</DialogDescription>}
+								{children}
+							</div>
+
+							<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
+								{!footer && (
 									<BaseDialog.Close
 										render={
-											<Button onClick={onCancel ?? onOpenChange} color="platinum">
+											<Button
+												onClick={() => {
+													onCancel?.();
+													onOpenChange(false);
+												}}
+												color="platinum"
+											>
 												{cancelText}
 											</Button>
 										}
 									/>
+								)}
 
-									{onConfirm && (
-										<Button onClick={onConfirm} color={confirmColor}>
-											{confirmText}
-										</Button>
-									)}
-								</div>
-							</DialogPopup>
-						</DialogBackdrop>
+								{onConfirm && (
+									<Button onClick={onConfirm} color={confirmColor}>
+										{confirmText}
+									</Button>
+								)}
+							</div>
+						</DialogPopup>
 					</BaseDialog.Portal>
 				)}
 			</AnimatePresence>
@@ -150,4 +159,11 @@ function Dialog({
 	);
 }
 
-export default Dialog;
+// Attach BaseDialog.Close to Dialog for convenience
+type DialogComponent = typeof Dialog & {
+	Close: typeof BaseDialog.Close;
+};
+
+(Dialog as DialogComponent).Close = BaseDialog.Close;
+
+export default Dialog as DialogComponent;

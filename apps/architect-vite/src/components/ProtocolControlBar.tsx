@@ -96,7 +96,6 @@ const ProtocolControlBar = () => {
 					icon={downloadSuccess ? <Check /> : <Download />}
 				/>,
 			]}
-			className="sticky top-0 z-10"
 		/>
 	);
 };

@@ -2,7 +2,6 @@ import { get, has } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Button } from "~/lib/legacy-ui/components";
-import SpotlightModal from "./SpotlightModal";
 import EditableVariablePill, { SimpleVariablePill } from "./VariablePill";
 import VariableSpotlight from "./VariableSpotlight";
 
@@ -93,17 +92,17 @@ const VariablePicker = ({
 				</Button>
 				{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
 			</fieldset>
-			<SpotlightModal show={showPicker} onBlur={hideModal}>
-				<VariableSpotlight
-					entity={entity}
-					type={type}
-					onSelect={handleSelectVariable}
-					onCancel={hideModal}
-					options={options}
-					onCreateOption={handleCreateOption}
-					disallowCreation={disallowCreation}
-				/>
-			</SpotlightModal>
+			<VariableSpotlight
+				open={showPicker}
+				onOpenChange={hideModal}
+				entity={entity}
+				type={type}
+				onSelect={handleSelectVariable}
+				onCancel={hideModal}
+				options={options}
+				onCreateOption={handleCreateOption}
+				disallowCreation={disallowCreation}
+			/>
 		</>
 	);
 };

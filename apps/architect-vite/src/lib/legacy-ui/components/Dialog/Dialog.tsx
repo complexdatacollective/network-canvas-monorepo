@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import cx from "classnames";
-import Modal from "../Modal";
+import type { ReactNode } from "react";
+import NewDialog from "~/components/NewComponents/Dialog";
 import Icon from "../Icon";
 
 interface DialogProps {
@@ -30,7 +30,7 @@ const Dialog = ({
 	onBlur = () => {},
 	classNames,
 }: DialogProps) => (
-	<Modal show={show} onBlur={onBlur}>
+	<NewDialog open={show} onOpenChange={() => onBlur()}>
 		<div
 			className={cx("dialog", { [`dialog--${type}`]: type }, classNames, "bg-slate-blue-dark text-accent-foreground")}
 		>
@@ -48,7 +48,7 @@ const Dialog = ({
 			</div>
 			<footer className="dialog__footer">{options}</footer>
 		</div>
-	</Modal>
+	</NewDialog>
 );
 
 export { Dialog };

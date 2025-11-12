@@ -1,6 +1,4 @@
-import { Dialog } from "@base-ui-components/react/dialog";
 import type { Validation, ValidationName } from "@codaco/protocol-validation";
-import { AnimatePresence } from "motion/react";
 import type React from "react";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
@@ -13,8 +11,9 @@ import OrderedList, { type OrderedListProps } from "~/components/OrderedList/Ord
 import { Button } from "~/lib/legacy-ui/components";
 import { useFormContext } from "../Editor";
 import Layout from "../EditorLayout";
+import { MarkdownLabel } from "../Form/Fields";
 import Form from "../InlineEditScreen/Form";
-import { DialogBackdrop, DialogPopup } from "../NewComponents/Dialog";
+import Dialog from "../NewComponents/Dialog";
 import { useEditHandlers } from "./useEditHandlers";
 
 const notEmpty = (value: unknown) =>
@@ -24,6 +23,7 @@ const notEmpty = (value: unknown) =>
 type FieldType = { variable: string; prompt: string }[];
 
 type EditableListProps = {
+	label?: string;
 	form: string;
 	sortMode?: "manual";
 	title: string;
@@ -42,6 +42,7 @@ type EditableListProps = {
 };
 
 const EditableList = ({
+	label,
 	fieldName = "prompts",
 	children = null,
 	validation = { notEmpty },
@@ -85,6 +86,11 @@ const EditableList = ({
 
 	return (
 		<div className="flex flex-col gap-4 items-start">
+			{label && (
+				<h4>
+					<MarkdownLabel label={label} />
+				</h4>
+			)}
 			{children}
 			<ValidatedField<OrderedListProps>
 				name={fieldName}
@@ -101,45 +107,36 @@ const EditableList = ({
 				Create new
 			</Button>
 
-			<Dialog.Root open={isOpen} onOpenChange={handleCancelEdit}>
-				<AnimatePresence>
-					{isOpen && (
-						<Dialog.Portal keepMounted>
-							<DialogBackdrop onClick={handleCancelEdit} />
-							<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
-								<DialogPopup
-									layoutId={`${fieldName}-edit-field-${editIndex}`}
-									key="editable-list-dialog"
-									header={<h2 className="m-0">{title}</h2>}
-									footer={
-										<>
-											<Dialog.Close
-												render={
-													<Button onClick={handleCancelEdit} color="platinum">
-														Cancel
-													</Button>
-												}
-											/>
-											<Button type="submit" color="sea-green">
-												Save
-											</Button>
-										</>
-									}
-									className="bg-surface-2"
-								>
-									<Layout>
-										<EditComponent
-											form="editable-list-form"
-											{...(initialValuesForEdit as FieldType[number])}
-											{...editProps}
-										/>
-									</Layout>
-								</DialogPopup>
-							</Form>
-						</Dialog.Portal>
-					)}
-				</AnimatePresence>
-			</Dialog.Root>
+			<Dialog
+				open={isOpen}
+				onOpenChange={handleCancelEdit}
+				layoutId={`${fieldName}-edit-field-${editIndex}`}
+				initial={undefined}
+				animate={undefined}
+				exit={undefined}
+				header={<h2 className="m-0">{title}</h2>}
+				footer={
+					<>
+						<Dialog.Close
+							render={
+								<Button onClick={handleCancelEdit} color="platinum">
+									Cancel
+								</Button>
+							}
+						/>
+						<Button type="submit" color="sea-green">
+							Save
+						</Button>
+					</>
+				}
+				className="bg-surface-2"
+			>
+				<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
+					<Layout>
+						<EditComponent form="editable-list-form" {...(initialValuesForEdit as FieldType[number])} {...editProps} />
+					</Layout>
+				</Form>
+			</Dialog>
 		</div>
 	);
 };

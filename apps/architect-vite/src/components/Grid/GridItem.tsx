@@ -42,7 +42,7 @@ const GridItem = ({
 					</div>
 					<div className="grid-item__controls">
 						<button
-							className="grid-item__edit z-10"
+							className="grid-item__edit"
 							onMouseDown={(e) => {
 								e.stopPropagation();
 								e.preventDefault();

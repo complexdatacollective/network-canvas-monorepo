@@ -1,10 +1,11 @@
+import { Dialog } from "@base-ui-components/react/dialog";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import Search from "~/components/Form/Fields/Search";
-import { Icon, Scroller } from "~/lib/legacy-ui/components";
+import { Icon, Modal, Scroller } from "~/lib/legacy-ui/components";
 import { allowedVariableName, uniqueByList } from "~/utils/validations";
 import { getVariablesForSubject } from "../../../../selectors/codebook";
 import { sortByLabel } from "../../../Codebook/helpers";
@@ -67,6 +68,8 @@ const Divider = ({ legend }: DividerProps) => (
 );
 
 type VariableSpotlightProps = {
+	open: boolean;
+	onOpenChange?: (open: boolean) => void;
 	disallowCreation?: boolean;
 	onSelect: (value: string) => void;
 	entity: string;
@@ -81,6 +84,8 @@ type VariableSpotlightProps = {
 };
 
 const VariableSpotlight = ({
+	open,
+	onOpenChange,
 	entity,
 	type = null,
 	onSelect,
@@ -118,8 +123,8 @@ const VariableSpotlight = ({
 	const hasFilterTerm = useMemo(() => filterTerm.length > 0, [filterTerm]);
 	const hasFilterResults = useMemo(() => sortedAndFilteredItems.length > 0, [sortedAndFilteredItems]);
 
-	const existingVariableNames = useMemo(() =>
-		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
+	const existingVariableNames = Object.keys(existingVariables).map((variable) =>
+		get(existingVariables[variable], "name"),
 	);
 
 	const invalidVariableName = useMemo(() => {
@@ -295,59 +300,62 @@ const VariableSpotlight = ({
 	};
 
 	return (
-		<motion.div
-			className="variable-spotlight"
-			variants={containerVariants}
-			initial="hidden"
-			animate="visible"
-			transition={{
-				type: "spring",
-			}}
-		>
-			<header className="variable-spotlight__header">
-				<Search
-					autoFocus
-					placeholder={disallowCreation ? "Find a variable..." : "Create or find a variable..."}
-					input={{
-						value: filterTerm,
-						onChange: handleFilter,
-						onKeyDown: handleKeyDown,
-					}}
-				/>
-			</header>
-			<motion.main
-				className="variable-spotlight__list"
-				variants={resultsVariants}
-				transition={{ duration: 0.2, ease: "easeInOut" }}
+		<Modal show={open} onOpenChange={onOpenChange}>
+			<Dialog.Popup
+				render={<motion.div />}
+				className="variable-spotlight"
+				variants={containerVariants}
+				initial="hidden"
+				animate="visible"
+				transition={{
+					type: "spring",
+				}}
 			>
-				{!disallowCreation && !hasOptions && (
-					<div className="variable-spotlight__empty">
-						<Icon name="info" />
-						<div>
-							<p>
-								To create your first variable of this type, type a name above and press enter. See our&nbsp;
-								<ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
-									documentation on variable naming
-								</ExternalLink>
-								&nbsp;for more information.
-							</p>
+				<header className="variable-spotlight__header">
+					<Search
+						autoFocus
+						placeholder={disallowCreation ? "Find a variable..." : "Create or find a variable..."}
+						input={{
+							value: filterTerm,
+							onChange: handleFilter,
+							onKeyDown: handleKeyDown,
+						}}
+					/>
+				</header>
+				<motion.main
+					className="variable-spotlight__list"
+					variants={resultsVariants}
+					transition={{ duration: 0.2, ease: "easeInOut" }}
+				>
+					{!disallowCreation && !hasOptions && (
+						<div className="variable-spotlight__empty">
+							<Icon name="info" />
+							<div>
+								<p>
+									To create your first variable of this type, type a name above and press enter. See our&nbsp;
+									<ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
+										documentation on variable naming
+									</ExternalLink>
+									&nbsp;for more information.
+								</p>
+							</div>
 						</div>
-					</div>
-				)}
-				{disallowCreation && !hasFilterTerm && !hasOptions && (
-					<div className="variable-spotlight__empty">
-						<Icon name="warning" />
-						<div>
-							<p>
-								No variables exist for you to select, and you cannot create a new variable from here. Please create one
-								or more variables elsewhere in your protocol, and return here to select them.
-							</p>
+					)}
+					{disallowCreation && !hasFilterTerm && !hasOptions && (
+						<div className="variable-spotlight__empty">
+							<Icon name="warning" />
+							<div>
+								<p>
+									No variables exist for you to select, and you cannot create a new variable from here. Please create
+									one or more variables elsewhere in your protocol, and return here to select them.
+								</p>
+							</div>
 						</div>
-					</div>
-				)}
-				{renderResults()}
-			</motion.main>
-		</motion.div>
+					)}
+					{renderResults()}
+				</motion.main>
+			</Dialog.Popup>
+		</Modal>
 	);
 };
 

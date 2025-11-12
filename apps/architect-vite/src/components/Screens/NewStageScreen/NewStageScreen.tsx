@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import Search from "~/components/Form/Fields/Search";
 import Dialog from "~/components/NewComponents/Dialog";
 import Tag from "~/components/Tag";
+import { Button } from "~/lib/legacy-ui/components";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
 import InterfaceList from "./InterfaceList";
 import { INTERFACE_TYPES, TAG_COLORS, TAGS } from "./interfaceOptions";
@@ -40,14 +41,14 @@ const search = (query) => {
 
 type NewStageScreenProps = {
 	insertAtIndex?: number;
-	show: boolean;
-	onCancel: () => void;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	experiments?: {
 		encryptedVariables?: boolean;
 	};
 };
 
-const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: NewStageScreenProps) => {
+const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }: NewStageScreenProps) => {
 	const [, setLocation] = useLocation();
 	const [selectedTags, setSelectedTags] = useState([]);
 	const [query, setQuery] = useState("");
@@ -114,7 +115,7 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 
 	const handleSelectInterface = useCallback(
 		(interfaceType) => {
-			onCancel(); // Close the dialog
+			onOpenChange(false); // Close the dialog
 
 			const params = new URLSearchParams();
 			params.set("type", interfaceType);
@@ -123,7 +124,7 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 			}
 			setLocation(`/protocol/stage/new?${params.toString()}`);
 		},
-		[insertAtIndex, onCancel, setLocation],
+		[insertAtIndex, onOpenChange, setLocation],
 	);
 
 	// Navigate within the list of results using the keyboard
@@ -212,12 +213,12 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 
 	return (
 		<Dialog
-			open={show}
-			onOpenChange={(open) => !open && onCancel()}
+			open={open}
+			onOpenChange={onOpenChange}
 			header={
 				<div className="flex flex-col gap-4">
-					<h2 className="text-2xl text-white">Select an Interface Type</h2>
-					<div className="flex flex-col gap-3">
+					<h2 className="m-0">Select an Interface Type</h2>
+					<div className="flex flex-col gap-4">
 						<div className="w-full">
 							<Search
 								placeholder="Search interfaces by name or keyword..."
@@ -229,11 +230,11 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 								autoFocus
 							/>
 						</div>
-						<div className="flex items-center gap-3">
+						<div className="flex items-center gap-4">
 							<div className="flex-shrink-0 text-white">
 								<h4 className="text-sm font-semibold">Filter by capabilities:</h4>
 							</div>
-							<div className="flex flex-wrap gap-2 text-navy-taupe">
+							<div className="flex flex-wrap gap-1 text-navy-taupe">
 								{tags.map(({ value, selected, disabled }) => (
 									<Tag
 										key={value}
@@ -251,8 +252,12 @@ const NewStageScreen = ({ insertAtIndex, show, onCancel, experiments = {} }: New
 					</div>
 				</div>
 			}
-			onCancel={onCancel}
-			size="lg"
+			footer={
+				<Button onClick={() => onOpenChange(false)} color="platinum">
+					Cancel
+				</Button>
+			}
+			className="h-[80%]"
 		>
 			<InterfaceList
 				items={filteredInterfaces}

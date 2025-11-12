@@ -4,7 +4,8 @@ import { cn } from "~/utils/cn";
 import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
-const containerClasses = "p-6 shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)]";
+const containerClasses =
+	"p-6 shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)] relative";
 
 type SectionProps = {
 	id?: string | null;

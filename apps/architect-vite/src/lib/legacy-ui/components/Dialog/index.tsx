@@ -1,7 +1,7 @@
-export { default } from "./Dialog.tsx";
-export { default as Error } from "./Error.tsx";
-export { default as UserError } from "./UserError.tsx";
-export { default as Warning } from "./Warning.tsx";
-export { default as Confirm } from "./Confirm.tsx";
-export { default as Notice } from "./Notice.tsx";
-export { default as Simple } from "./Simple.tsx";
+export { default as Confirm } from "./Confirm";
+export { default } from "./Dialog";
+export { default as Error } from "./Error";
+export { default as Notice } from "./Notice";
+export { default as Simple } from "./Simple";
+export { default as UserError } from "./UserError";
+export { default as Warning } from "./Warning";
