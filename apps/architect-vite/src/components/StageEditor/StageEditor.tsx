@@ -85,22 +85,26 @@ const StageEditor = (props: StageEditorProps) => {
 
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-			<StageHeading id={stage?.id} />
-			<div className="flex flex-col gap-10 w-full mb-32">{renderSections(sections)}</div>
-			<div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-accent z-panel">
-				<div className="flex justify-between items-center max-w-6xl mx-auto">
-					<div className="flex gap-2">
-						<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
-							Cancel
-						</Button>
-					</div>
-
-					<div className="flex gap-2">
-						{hasUnsavedChanges && (
-							<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
-								Finished Editing
+			<div className="relative flex flex-col h-full">
+				<div className="overflow-auto flex flex-col items-center basis-auto">
+					<StageHeading id={stage?.id} />
+					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
+				</div>
+				<div className="p-4 bg-surface-accent z-panel shrink-0 grow-0">
+					<div className="flex justify-between items-center max-w-6xl mx-auto">
+						<div className="flex gap-2">
+							<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
+								Cancel
 							</Button>
-						)}
+						</div>
+
+						<div className="flex gap-2">
+							{hasUnsavedChanges && (
+								<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
+									Finished Editing
+								</Button>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>

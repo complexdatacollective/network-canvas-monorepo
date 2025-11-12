@@ -72,12 +72,12 @@ const ProtocolControlBar = () => {
 					color="platinum"
 					icon={
 						<div>
-							<img src={logoutIcon} alt="Return to start screen" />
+							<img src={logoutIcon} alt="Close project" />
 						</div>
 					}
 					onClick={handleReturnToStart}
 				>
-					Return to start screen
+					Close Project
 				</Button>,
 			]}
 			buttons={[
@@ -96,6 +96,7 @@ const ProtocolControlBar = () => {
 					icon={downloadSuccess ? <Check /> : <Download />}
 				/>,
 			]}
+			className="sticky top-0 z-10"
 		/>
 	);
 };

@@ -1,19 +1,7 @@
 import { Route, Switch } from "wouter";
 import Home from "~/components/Home/Home";
-import { AssetsPage, CodebookPage, StageEditorPage, SummaryPage } from "~/components/pages";
 import Protocol from "~/components/Protocol";
-
-const _appVariants = {
-	show: {
-		opacity: 1,
-		transition: {
-			when: "beforeChildren",
-		},
-	},
-	hide: {
-		opacity: 0,
-	},
-};
+import { AssetsPage, CodebookPage, StageEditorPage, SummaryPage } from "~/components/pages";
 
 const Routes = () => {
 	return (

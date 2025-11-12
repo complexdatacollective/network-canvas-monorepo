@@ -1,20 +1,20 @@
 import ProtocolControlBar from "~/components/ProtocolControlBar";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
-import Timeline from "./Timeline";
-// import ExperimentalTimeline from "./Timeline/ExperimentalTimeline";
 import Overview from "./Overview";
+import Timeline from "./Timeline";
 
 const Protocol = () => {
 	// Use the protocol loader hook to handle URL-based protocol loading
 	useProtocolLoader();
 
 	return (
-		<>
-			<Overview />
-			<Timeline />
-			{/* <ExperimentalTimeline /> */}
+		<div className="relative flex flex-col h-full">
+			<div className="overflow-auto">
+				<Overview />
+				<Timeline />
+			</div>
 			<ProtocolControlBar />
-		</>
+		</div>
 	);
 };
 

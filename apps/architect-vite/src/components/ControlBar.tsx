@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
+import { cn } from "~/utils/cn";
 
 const barVariants = {
 	visible: {
@@ -36,7 +37,7 @@ type ControlBarProps = {
 	className?: string;
 };
 
-const ControlBar = ({ buttons = null, secondaryButtons = null }: ControlBarProps) => {
+const ControlBar = ({ buttons = null, secondaryButtons = null, className }: ControlBarProps) => {
 	const buttonLayout = [
 		<motion.div className="flex gap-4" key="secondary">
 			{secondaryButtons && Array.from(secondaryButtons).map(animatedButton)}
@@ -48,10 +49,15 @@ const ControlBar = ({ buttons = null, secondaryButtons = null }: ControlBarProps
 
 	return (
 		<motion.div
-			className="text-primary-foreground bg-primary fixed bottom-0 z-20 w-full flex justify-between py-4 px-6 gap-10"
+			className={cn(
+				"text-primary-foreground bg-primary fixed bottom-0 z-20 w-full flex justify-between py-4 px-6 gap-10",
+				className,
+			)}
 			variants={barVariants}
 		>
-			<AnimatePresence>{buttonLayout}</AnimatePresence>
+			<div className="flex justify-between items-center max-w-6xl mx-auto w-full">
+				<AnimatePresence>{buttonLayout}</AnimatePresence>
+			</div>
 		</motion.div>
 	);
 };

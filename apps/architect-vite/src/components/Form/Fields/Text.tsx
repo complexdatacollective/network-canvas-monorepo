@@ -78,7 +78,7 @@ const TextInput = ({
 
 	return (
 		<div className="form-field-container" hidden={hidden}>
-			{anyLabel && <MarkdownLabel label={anyLabel} />}
+			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
 			<div className={seamlessClasses}>
 				<input
 					id={id.current}

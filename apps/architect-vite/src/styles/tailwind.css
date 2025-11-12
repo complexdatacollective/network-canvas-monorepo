@@ -186,10 +186,11 @@
 		font-size: var(--base-font-size);
 		font-family: "Quicksand", sans-serif;
 		font-optical-sizing: auto;
+		@apply h-full w-full;
 	}
 
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground overflow-hidden h-full w-full;
 	}
 
 	/* These two tags are semantic, so I think its okay to apply styles to them directly in the global styles. */

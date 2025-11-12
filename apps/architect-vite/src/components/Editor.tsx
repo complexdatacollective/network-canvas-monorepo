@@ -1,6 +1,6 @@
 import { merge } from "es-toolkit/compat";
 import React, { createContext, useContext, useState } from "react";
-import { Form, reduxForm, type ConfigProps, type InjectedFormProps } from "redux-form";
+import { type ConfigProps, Form, type InjectedFormProps, reduxForm } from "redux-form";
 import Issues from "./Issues";
 
 type EditorOwnProps = Partial<ConfigProps<Record<string, unknown>, EditorOwnProps>> & {
@@ -82,7 +82,7 @@ const Editor = (props: EditorProps) => {
 
 	return (
 		<FormContext.Provider value={contextValue}>
-			<Form onSubmit={handleSubmit} className="flex gap-6 flex-col mx-6">
+			<Form onSubmit={handleSubmit} className="flex-1 h-full w-full">
 				{children}
 			</Form>
 			<Issues show={isIssuesVisible} hideIssues={hideIssues} />
