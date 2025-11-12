@@ -1,7 +1,8 @@
 import cx from "classnames";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import NewDialog from "~/components/NewComponents/Dialog";
 import Icon from "../Icon";
+import Modal from "../Modal";
 
 interface DialogProps {
 	children?: ReactNode;
@@ -30,25 +31,50 @@ const Dialog = ({
 	onBlur = () => {},
 	classNames,
 }: DialogProps) => (
-	<NewDialog open={show} onOpenChange={() => onBlur()}>
-		<div
-			className={cx("dialog", { [`dialog--${type}`]: type }, classNames, "bg-slate-blue-dark text-accent-foreground")}
+	<Modal open={show} onOpenChange={() => onBlur()}>
+		<motion.div
+			initial={{ opacity: 0, y: "-10%", scale: 1.1 }}
+			animate={{
+				opacity: 1,
+				y: 0,
+				scale: 1,
+				filter: "blur(0px)",
+			}}
+			exit={{
+				opacity: 0,
+				y: "-10%",
+				scale: 1.5,
+				filter: "blur(10px)",
+			}}
+			transition={{
+				type: "spring",
+				stiffness: 300,
+				damping: 30,
+			}}
+			style={{ zIndex: 1000 }}
+			className={cx(
+				"dialog",
+				{ [`dialog--${type}`]: type },
+				classNames,
+				"p-6 flex gap-6",
+				"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden",
+			)}
 		>
-			<div className="dialog__main">
+			<div className="flex gap-6">
 				{icon && (
-					<div className="dialog__main-icon">
+					<div className="flex items-center justify-center">
 						<Icon name={icon} />
 					</div>
 				)}
-				<div className="dialog__main-content">
-					<h2 className="dialog__main-title">{title}</h2>
+				<div className="">
+					<h2>{title}</h2>
 					{message}
 					{children}
 				</div>
 			</div>
-			<footer className="dialog__footer">{options}</footer>
-		</div>
-	</NewDialog>
+			<footer className="flex gap-4 justify-end">{options}</footer>
+		</motion.div>
+	</Modal>
 );
 
 export { Dialog };
