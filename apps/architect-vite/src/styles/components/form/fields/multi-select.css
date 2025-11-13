@@ -27,7 +27,8 @@
 	border-radius: var(--space-xs);
 	z-index: var(--z-fx);
 	transition: background-color var(--animation-easing) var(--animation-duration-standard);
-	padding: var(--space-sm) 0;
+	padding: var(--space-md) 0;
+	align-items: center;
 }
 
 .form-fields-multi-select__rule:not(:last-of-type) {
@@ -50,8 +51,8 @@
 
 .form-fields-multi-select__rule-option {
 	display: flex;
-	align-items: center;
-	margin-left: var(--space-xs);
+	align-items: start;
+	margin-left: var(--space-md);
 	flex: 1 1 100%;
 }
 
@@ -71,9 +72,26 @@
 	position: relative;
 }
 
+.form-fields-multi-select__rule-option .form-field-container h4 {
+	margin: 0;
+}
+
 .form-fields-multi-select__rule-option .form-field-container .form-field,
 .form-fields-multi-select__rule-option .form-fields-select-native__wrapper .form-field {
 	margin: 0;
+}
+
+.form-fields-multi-select__rule-option .form-field-container input,
+.form-fields-multi-select__rule-option .form-field-container textarea {
+	border-radius: var(--radius);
+	border: 0;
+	padding-bottom: var(--space-sm);
+}
+
+.form-fields-multi-select__rule-option .form-fields-select-native__wrapper select {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border: 0;
 }
 
 .form-fields-multi-select__rule-option .form-field-container .form-field-text__error,
