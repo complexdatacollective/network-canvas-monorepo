@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { v4 } from "uuid";
-import EditableList from "~/components/EditableList";
 import { Section } from "~/components/EditorLayout";
-import MultiSelectPreview from "~/components/Form/MultiSelectPreview";
+import MultiSelect from "~/components/Form/MultiSelect";
 import Tip from "~/components/Tip";
 
 type BucketSortOrderSectionProps = {
@@ -55,22 +53,11 @@ const BucketSortOrderSection = ({
 			<Tip>
 				<p>Use the asterisk property to sort by the order that nodes were created.</p>
 			</Tip>
-			<EditableList
-				form={form}
-				fieldName="bucketSortOrder"
-				inlineEditing={true}
+			<MultiSelect
+				name="bucketSortOrder"
+				properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
 				maxItems={maxItems}
-				sortable={true}
-				title="Bucket Sort Order"
-				previewComponent={(props) => (
-					<MultiSelectPreview
-						{...props}
-						properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
-						options={optionGetter}
-					/>
-				)}
-				template={() => ({ id: v4() })}
-				validation={{}}
+				options={optionGetter}
 			/>
 		</Section>
 	);

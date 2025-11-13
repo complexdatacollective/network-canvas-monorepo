@@ -1,9 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import { v4 } from "uuid";
 import { Row, Section } from "~/components/EditorLayout";
-import EditableList from "~/components/EditableList";
-import MultiSelectPreview from "~/components/Form/MultiSelectPreview";
+import MultiSelect from "~/components/Form/MultiSelect";
 
 type BinSortOrderSectionProps = {
 	form: string;
@@ -50,22 +48,11 @@ const BinSortOrderSection = ({
 			layout="vertical"
 		>
 			<Row>
-				<EditableList
-					form={form}
-					fieldName="binSortOrder"
-					inlineEditing={true}
+				<MultiSelect
+					name="binSortOrder"
+					properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
 					maxItems={maxItems}
-					sortable={true}
-					title="Bin Sort Order"
-					previewComponent={(props) => (
-						<MultiSelectPreview
-							{...props}
-							properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
-							options={optionGetter}
-						/>
-					)}
-					template={() => ({ id: v4() })}
-					validation={{}}
+					options={optionGetter}
 				/>
 			</Row>
 		</Section>

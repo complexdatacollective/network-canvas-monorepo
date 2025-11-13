@@ -13,7 +13,6 @@ export type OrderedListProps = {
 	item: React.ComponentType<Record<string, unknown>>;
 	onClickItem?: (index: number) => void;
 	sortable?: boolean;
-	inlineEditing?: boolean;
 };
 
 const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
@@ -23,7 +22,6 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 		item: Item,
 		onClickItem = noop,
 		sortable = true,
-		inlineEditing = false,
 	} = props;
 
 	const dispatch = useAppDispatch();
@@ -44,7 +42,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 		[dispatch, form, name],
 	);
 
-	const handleReorder = (newOrder) => {
+	const handleReorder = (newOrder: T[]) => {
 		onChange(newOrder);
 	};
 
@@ -63,8 +61,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 							layoutId={`${name}-edit-field-${index}`}
 							value={item}
 							handleDelete={getDeleteHandler(index)}
-							handleClick={inlineEditing ? noop : () => onClickItem(index)}
-							inlineEditing={inlineEditing}
+							handleClick={() => onClickItem(index)}
 							sortable={sortable}
 						>
 							<Item form={form} fieldId={`${name}[${index}]`} sortable={sortable} {...item} />
