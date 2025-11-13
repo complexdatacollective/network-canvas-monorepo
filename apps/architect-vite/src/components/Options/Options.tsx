@@ -3,7 +3,9 @@ import cx from "classnames";
 import { Reorder } from "motion/react";
 import { hash } from "ohash";
 import type React from "react";
-import { FieldArray } from "redux-form";
+import { connect } from "react-redux";
+import { change, FieldArray } from "redux-form";
+import { v4 as uuid } from "uuid";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
 import Option from "./Option";
@@ -34,18 +36,45 @@ type OptionsFieldProps = {
 		move: (from: number, to: number) => void;
 		push: (value: Partial<OptionValue>) => void;
 		remove: (index: number) => void;
+		name: string;
 	};
 	meta: {
 		error?: string;
 		submitFailed: boolean;
+		form: string;
 	};
+	form?: string;
+	fieldsName?: string;
+	updateField?: (form: string, fieldName: string, value: string) => void;
 };
 
-export const OptionsField = ({ fields, meta: { error, submitFailed } }: OptionsFieldProps) => {
+const mapStateToOptionsFieldProps = (state: unknown, { meta: { form }, fields: { name: fieldsName } }) => ({
+	form,
+	fieldsName,
+});
+
+const mapDispatchToOptionsFieldProps = (dispatch: unknown) => ({
+	updateField: (form: string, fieldName: string, value: string) => dispatch(change(form, fieldName, value)),
+});
+
+const OptionsFieldComponent = ({
+	fields,
+	meta: { error, submitFailed },
+	form,
+	fieldsName,
+	updateField,
+}: OptionsFieldProps) => {
 	const classes = cx("options", { "options--has-error": submitFailed && error });
 
 	// Get all options as an array
 	const options = fields.getAll() || [];
+
+	// Ensure all options have stable IDs
+	options.forEach((option, index) => {
+		if (!option._id && updateField && form && fieldsName) {
+			updateField(form, `${fieldsName}[${index}]._id`, uuid());
+		}
+	});
 
 	const handleReorder = (newOrder: OptionValue[]) => {
 		for (let i = 0; i < newOrder.length; i++) {
@@ -67,18 +96,19 @@ export const OptionsField = ({ fields, meta: { error, submitFailed } }: OptionsF
 				<Reorder.Group className="options__options" onReorder={handleReorder} values={options} axis="y">
 					{fields.map((field: string, index: number) => {
 						const option = fields.get(index);
-						const key = hash(option);
 
-						return <Option key={key} value={option} index={index} field={field} fields={fields} />;
+						return <Option key={option._id} value={option} index={index} field={field} fields={fields} />;
 					})}
 				</Reorder.Group>
 
 				<FieldError show={submitFailed && !!error} error={error} />
 			</div>
-			<AddItem onClick={() => fields.push({})} />
+			<AddItem onClick={() => fields.push({ _id: uuid() })} />
 		</div>
 	);
 };
+
+export const OptionsField = connect(mapStateToOptionsFieldProps, mapDispatchToOptionsFieldProps)(OptionsFieldComponent);
 
 type OptionsProps = {
 	name: string;

@@ -27,24 +27,25 @@
 	border-radius: var(--space-xs);
 	z-index: var(--z-fx);
 	transition: background-color var(--animation-easing) var(--animation-duration-standard);
+	padding: var(--space-sm) 0;
 }
 
 .form-fields-multi-select__rule:not(:last-of-type) {
-	margin-bottom: var(--space-xs);
+	margin-bottom: var(--space-md);
 }
 
 .form-fields-multi-select__rule-control {
 	flex-grow: 0;
 	display: flex;
 	align-items: center;
-	padding: 0 var(--space-lg);
+	padding: 0 var(--space-md);
 }
 
 .form-fields-multi-select__rule-options {
 	flex: 1;
 	display: flex;
-	align-items: flex-start;
-	padding: var(--space-xs) var(--space-lg);
+	align-items: center;
+	padding: 0 var(--space-md);
 }
 
 .form-fields-multi-select__rule-option {
@@ -93,7 +94,6 @@
 	opacity: 1;
 }
 
-.form-fields-multi-select__delete,
 .form-fields-multi-select__add,
 .form-fields-multi-select__handle {
 	cursor: pointer;
@@ -106,15 +106,12 @@
 	color: var(--color-sortable-foreground);
 }
 
-.form-fields-multi-select__delete .icon,
 .form-fields-multi-select__add .icon,
 .form-fields-multi-select__handle .icon {
 	width: 1.2rem;
 	height: 1.2rem;
 }
 
-.form-fields-multi-select__delete .icon .cls-1,
-.form-fields-multi-select__delete .icon .cls-2,
 .form-fields-multi-select__add .icon .cls-1,
 .form-fields-multi-select__add .icon .cls-2,
 .form-fields-multi-select__handle .icon .cls-1,
@@ -153,7 +150,6 @@
 	color: var(--color-error-foreground);
 }
 
-.form-fields-multi-select__field--has-error .form-fields-multi-select__delete,
 .form-fields-multi-select__field--has-error .form-fields-multi-select__handle {
 	background-color: transparent;
 	filter: brightness(100);

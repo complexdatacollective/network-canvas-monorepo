@@ -1,24 +1,15 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
-import { GripVertical } from "lucide-react";
-import { Reorder, useDragControls } from "motion/react";
+import { GripVertical, Trash2 } from "lucide-react";
+import { motion, Reorder, useDragControls } from "motion/react";
 import { hash } from "ohash";
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers } from "recompose";
 import { change, FieldArray, formValueSelector } from "redux-form";
+import { v4 as uuid } from "uuid";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
-import { Button, Icon } from "~/lib/legacy-ui/components";
+import { Button } from "~/lib/legacy-ui/components";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 import ValidatedField from "./ValidatedField";
-
-const ItemDelete = (props) => (
-	<div
-		className="form-fields-multi-select__delete"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
-		<Icon name="delete" />
-	</div>
-);
 
 const AddItem = (props) => (
 	<Button
@@ -71,7 +62,7 @@ const Item = compose(
 	const controls = useDragControls();
 
 	return (
-		<Reorder.Item className="form-fields-multi-select__rule" value={value} dragListener={false} dragControls={controls}>
+		<Reorder.Item className="group form-fields-multi-select__rule" value={value} dragListener={false} dragControls={controls}>
 			<div className="form-fields-multi-select__rule-control">
 				<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
 					<GripVertical className="cursor-grab" />
@@ -94,21 +85,48 @@ const Item = compose(
 				))}
 			</div>
 			<div className="form-fields-multi-select__rule-control">
-				<ItemDelete onClick={handleDelete} />
+				<motion.div
+					layout
+					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"
+				>
+					<Trash2
+						onClick={(e) => {
+							e.stopPropagation();
+							handleDelete();
+						}}
+					/>
+				</motion.div>
 			</div>
 		</Reorder.Item>
 	);
+});
+
+const mapStateToItemsProps = (state, { meta: { form }, fields: { name: fieldsName } }) => ({
+	form,
+	fieldsName,
+});
+
+const mapDispatchToItemsProps = (dispatch) => ({
+	updateField: (form, fieldName, value) => dispatch(change(form, fieldName, value)),
 });
 
 const Items = compose(
 	defaultProps({
 		maxItems: null,
 	}),
-)(({ fields, maxItems, ...rest }) => {
+	connect(mapStateToItemsProps, mapDispatchToItemsProps),
+)(({ fields, maxItems, form, fieldsName, updateField, ...rest }) => {
 	const hasSpace = maxItems === null || fields.length < maxItems;
 	const showAdd = hasSpace;
 
 	const items = fields.getAll() || [];
+
+	// Ensure all items have stable IDs
+	items.forEach((item, index) => {
+		if (!item._id) {
+			updateField(form, `${fieldsName}[${index}]._id`, uuid());
+		}
+	});
 
 	const handleReorder = (newOrder) => {
 		for (let i = 0; i < newOrder.length; i++) {
@@ -134,7 +152,7 @@ const Items = compose(
 						return (
 							<Item
 								index={index}
-								key={field}
+								key={item._id}
 								field={field}
 								fields={fields}
 								value={item}
@@ -146,7 +164,7 @@ const Items = compose(
 				</Reorder.Group>
 			</div>
 
-			{showAdd && <AddItem onClick={() => fields.push({})} />}
+			{showAdd && <AddItem onClick={() => fields.push({ _id: uuid() })} />}
 
 			{!showAdd && fields.length === 0 && (
 				<p>
