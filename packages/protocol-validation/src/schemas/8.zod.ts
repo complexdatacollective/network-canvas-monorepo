@@ -1,5 +1,6 @@
 import { VariableNameSchema } from "@codaco/shared-consts";
 import { z } from "zod";
+import { validations } from "./8/variables";
 
 export const ComponentTypes = {
 	Boolean: "Boolean",
@@ -33,30 +34,6 @@ export const ComponentTypesKeys = Object.keys(ComponentTypes) as (keyof typeof C
 export const VariableTypesKeys = Object.keys(VariableTypes) as (keyof typeof VariableTypes)[];
 export type VariableType = (typeof VariableTypesKeys)[number];
 export type ComponentType = (typeof ComponentTypesKeys)[number];
-
-// Validation Schema
-export const validations = {
-	required: z.boolean().optional(),
-	requiredAcceptsNull: z.boolean().optional(),
-	minLength: z.number().int().optional(),
-	maxLength: z.number().int().optional(),
-	minValue: z.number().int().optional(),
-	maxValue: z.number().int().optional(),
-	minSelected: z.number().int().optional(),
-	maxSelected: z.number().int().optional(),
-	unique: z.boolean().optional(),
-	differentFrom: z.string().optional(),
-	sameAs: z.string().optional(),
-	greaterThanVariable: z.string().optional(),
-	lessThanVariable: z.string().optional(),
-};
-
-export const ValidationsSchema = z.object(validations);
-
-export type Validation = z.infer<typeof ValidationsSchema>;
-
-// Validation keys
-export type ValidationName = keyof Validation;
 
 // Options Schema for categorical and ordinal variables
 const categoricalOptionsSchema = z.array(
