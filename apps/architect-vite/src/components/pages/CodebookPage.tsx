@@ -34,16 +34,20 @@ const CodebookPage = () => {
 	}, []);
 
 	return (
-		<Layout>
-			<div className="stage-heading">
-				<h1 className="screen-heading">Codebook</h1>
-				<p>
-					Below you can find an overview of the node and edge types that you have defined while creating your interview.
-					Entities that are unused may be deleted.
-				</p>
+		<div className="relative flex flex-col h-dvh">
+			<div className="overflow-y-auto">
+				<Layout>
+					<div className="stage-heading">
+						<h1 className="screen-heading">Codebook</h1>
+						<p>
+							Below you can find an overview of the node and edge types that you have defined while creating your interview.
+							Entities that are unused may be deleted.
+						</p>
+					</div>
+					<Codebook onEditEntity={handleOpenEntityDialog} />
+				</Layout>
 			</div>
-			<Codebook onEditEntity={handleOpenEntityDialog} />
-			<div className="flex fixed bottom-0 p-6 bg-cyber-grape w-full">
+			<div className="flex p-6 bg-cyber-grape w-full shrink-0">
 				<Button onClick={handleGoBack} color="platinum">
 					Go Back
 				</Button>
@@ -54,7 +58,7 @@ const CodebookPage = () => {
 				type={dialogState.type}
 				onClose={handleCloseDialog}
 			/>
-		</Layout>
+		</div>
 	);
 };
 
