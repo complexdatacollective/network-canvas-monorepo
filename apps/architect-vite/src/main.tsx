@@ -6,25 +6,32 @@ import { AppErrorBoundary } from "./components/Errors";
 import AppView from "./components/ViewManager/views/App";
 import { store } from "./ducks/store";
 
-if (import.meta.env.PROD) {
+const isProd = import.meta.env.PROD;
+
+// Initialize PostHog only in production
+if (isProd) {
 	posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
 		api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
 		defaults: "2025-05-24",
 	});
-} else {
-	// dev: disable sending events
-	posthog.init("dev-disabled", {
-		loaded: (client) => client.opt_out_capturing(),
-	});
 }
 
-// TODO: Re add StrictMode when Redux form is removed
-createRoot(document.getElementById("root") as Element).render(
-	<PostHogProvider client={posthog}>
+const root = document.getElementById("root") as Element;
+
+createRoot(root).render(
+	isProd ? (
+		<PostHogProvider client={posthog}>
+			<AppErrorBoundary>
+				<Provider store={store}>
+					<AppView />
+				</Provider>
+			</AppErrorBoundary>
+		</PostHogProvider>
+	) : (
 		<AppErrorBoundary>
 			<Provider store={store}>
 				<AppView />
 			</Provider>
 		</AppErrorBoundary>
-	</PostHogProvider>,
+	),
 );
