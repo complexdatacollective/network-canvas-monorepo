@@ -40,7 +40,7 @@ export async function bundleProtocol(protocol: Protocol): Promise<Blob> {
 	const zip = new JSZip();
 
 	// Remove app state props
-	const { name, isValid, ...cleanProtocol } = protocol as any;
+	const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as any;
 	const protocolJson = JSON.stringify(cleanProtocol, null, 2);
 	zip.file("protocol.json", protocolJson);
 
