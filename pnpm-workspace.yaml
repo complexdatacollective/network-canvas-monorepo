@@ -43,7 +43,7 @@ catalog:
   tailwindcss: ^3.4.18
   tailwindcss-animate: ^1.0.7
   typescript: 5.9.3
-  vite: ^7.1.12
+  vite: ^7.1.11
   vite-plugin-dts: ^4.5.4
   vitest: ^3.2.4
   zod: ^4.1.12
