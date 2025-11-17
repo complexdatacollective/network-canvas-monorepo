@@ -13,7 +13,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 		<>
 			<PromptText />
 			<Section
-				title="Assign additional Variables"
+				title="Assign Additional Variables"
 				summary={
 					<p>
 						This feature allows you to assign a variable and associated value to any nodes created on this prompt. You

@@ -124,14 +124,14 @@ const EditableList = ({
 								</Button>
 							}
 						/>
-						<Button type="submit" color="sea-green">
+						<Button type="submit" form="editable-list-form" color="sea-green">
 							Save
 						</Button>
 					</>
 				}
 				className="bg-surface-2"
 			>
-				<Form form="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
+				<Form form="editable-list-form" id="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
 					<Layout>
 						<EditComponent form="editable-list-form" {...(initialValuesForEdit as FieldType[number])} {...editProps} />
 					</Layout>
