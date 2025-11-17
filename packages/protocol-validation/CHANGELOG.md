@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 7.1.0
+
+### Minor Changes
+
+- c0c9e2b: Fix typo in filter rule operators
+
 ## 7.0.1
 
 ### Patch Changes
