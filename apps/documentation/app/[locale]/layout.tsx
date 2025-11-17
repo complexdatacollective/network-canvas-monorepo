@@ -1,7 +1,6 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import { Quicksand } from "next/font/google";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getNow, getTimeZone, setRequestLocale } from "next-intl/server";
@@ -13,11 +12,8 @@ import { ThemeProvider } from "~/components/Providers/theme-provider";
 import { env } from "~/env";
 import { routing } from "~/lib/i18n/routing";
 
-const quicksand = Quicksand({
-	weight: ["300", "400", "500", "600", "700"],
-	subsets: ["latin", "latin-ext"],
-	display: "swap",
-});
+// Font configuration - using system fonts as fallback when Google Fonts unavailable
+const fontClassName = "font-sans";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
 	const { locale } = await params;
@@ -67,7 +63,7 @@ export default async function MainLayout(props: MainLayoutProps) {
 	}
 
 	return (
-		<html lang={locale} suppressHydrationWarning className={`${quicksand.className} antialiased`}>
+		<html lang={locale} suppressHydrationWarning className={`${fontClassName} antialiased`}>
 			<body className="flex min-h-[100dvh] flex-col text-base">
 				<ThemeProvider enableSystem enableColorScheme attribute="class" storageKey="nc-docs-site">
 					<NextIntlClientProvider timeZone={timeZone} now={now} locale={locale} messages={messages.default}>

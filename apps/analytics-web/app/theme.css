@@ -5,6 +5,13 @@
  */
 @import "@codaco/tailwind-config/tailwind.css";
 
+/* Source paths for class detection */
+@source "../pages/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
+@source "../src/**/*.{ts,tsx}";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
 /*
  * Semantic Color Mappings
  * Defines how brand colors map to semantic tokens.

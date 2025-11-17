@@ -4,7 +4,15 @@
  * This serves as the source of truth for styling consistency across the monorepo.
  */
 @import "@codaco/tailwind-config/tailwind.css";
-@import "@tailwindcss/typography";
+
+/* Plugins */
+@plugin "@tailwindcss/typography";
+
+/* Source paths for class detection */
+@source "../lib/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../app/**/*.{ts,tsx}";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
 
 /*
  * Semantic Color Mappings
@@ -109,7 +117,15 @@ html.dark {
 /* App-specific base styles */
 @layer base {
 	code {
-		@apply text-base-sm bg-rich-black/10 dark:bg-white/5 p-[0.2rem] rounded-sm;
+		font-size: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
+		line-height: 1.5;
+		background-color: hsl(var(--rich-black) / 0.1);
+		padding: 0.2rem;
+		border-radius: 0.125rem;
+	}
+
+	html.dark code {
+		background-color: hsl(var(--white) / 0.05);
 	}
 }
 
@@ -155,13 +171,27 @@ html.dark {
 	--docsearch-footer-background: #fff;
 	--docsearch-footer-shadow: 0 -1px 0 0 rgb(224, 227, 232), 0 -3px 6px 0 rgba(69, 98, 155, 0.12);
 
-	@apply w-full! h-10! rounded-input! bg-input! m-0! px-2! focusable!;
+	width: 100% !important;
+	height: 2.5rem !important;
+	border-radius: 0.75rem !important;
+	background-color: hsl(var(--input)) !important;
+	margin: 0 !important;
+	padding-left: 0.5rem !important;
+	padding-right: 0.5rem !important;
 
 	border: 1px solid hsl(var(--border));
 	font-weight: inherit;
 	color: inherit;
 
+	&:focus-visible {
+		outline-width: 4px;
+		outline-offset: 4px;
+		outline-color: hsl(var(--mustard));
+	}
+
 	.DocSearch-Button-Placeholder {
-		@apply px-3! text-sm!;
+		padding-left: 0.75rem !important;
+		padding-right: 0.75rem !important;
+		font-size: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem) !important;
 	}
 }

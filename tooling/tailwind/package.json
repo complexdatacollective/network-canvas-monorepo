@@ -4,21 +4,15 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		"./fresco": "./fresco.ts",
 		"./globals.css": "./globals.css",
 		"./tailwind.css": "./tailwind.css"
 	},
 	"license": "MIT",
 	"scripts": {
-		"clean": "rm -rf .turbo node_modules",
-		"typecheck": "tsc --noEmit"
+		"clean": "rm -rf .turbo node_modules"
 	},
 	"dependencies": {
 		"tailwindcss": "catalog:",
 		"@tailwindcss/postcss": "catalog:"
-	},
-	"devDependencies": {
-		"@codaco/tsconfig": "workspace:*",
-		"typescript": "catalog:"
 	}
 }

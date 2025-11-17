@@ -115,20 +115,6 @@
 	--tomato--dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
 
 	--white: 0 0% 100%;
-
-	/* Fluid typography scale
-	 * https://www.fluid-type-scale.com/calculate?minFontSize=14&minWidth=400&minRatio=1.25&maxFontSize=18&maxWidth=1920&maxRatio=1.25
-	 */
-	--font-size-sm: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem);
-	--font-size-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
-	--font-size-base: clamp(1rem, 0.31vw + 0.88rem, 1.13rem);
-	--font-size-lg: clamp(1.25rem, 0.39vw + 1.09rem, 1.41rem);
-	--font-size-xl: clamp(1.56rem, 0.49vw + 1.37rem, 1.76rem);
-	--font-size-2xl: clamp(1.95rem, 0.61vw + 1.71rem, 2.2rem);
-	--font-size-3xl: clamp(2.44rem, 0.76vw + 2.14rem, 2.75rem);
-	--font-size-4xl: clamp(3.05rem, 0.95vw + 2.67rem, 3.43rem);
-	--font-size-5xl: clamp(3.81rem, 1.19vw + 3.34rem, 4.29rem);
-	--font-size-6xl: clamp(4.77rem, 1.49vw + 4.17rem, 5.36rem);
 }
 
 /*
@@ -203,17 +189,19 @@
 	--color-link: hsl(var(--link));
 	--color-ring: hsl(var(--ring));
 
-	/* Typography */
-	--font-size-sm: var(--font-size-sm);
-	--font-size-base-sm: var(--font-size-base-sm);
-	--font-size-base: var(--font-size-base);
-	--font-size-lg: var(--font-size-lg);
-	--font-size-xl: var(--font-size-xl);
-	--font-size-2xl: var(--font-size-2xl);
-	--font-size-3xl: var(--font-size-3xl);
-	--font-size-4xl: var(--font-size-4xl);
-	--font-size-5xl: var(--font-size-5xl);
-	--font-size-6xl: var(--font-size-6xl);
+	/* Typography - Fluid type scale
+	 * https://www.fluid-type-scale.com/calculate?minFontSize=14&minWidth=400&minRatio=1.25&maxFontSize=18&maxWidth=1920&maxRatio=1.25
+	 */
+	--font-size-sm: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem);
+	--font-size-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
+	--font-size-base: clamp(1rem, 0.31vw + 0.88rem, 1.13rem);
+	--font-size-lg: clamp(1.25rem, 0.39vw + 1.09rem, 1.41rem);
+	--font-size-xl: clamp(1.56rem, 0.49vw + 1.37rem, 1.76rem);
+	--font-size-2xl: clamp(1.95rem, 0.61vw + 1.71rem, 2.2rem);
+	--font-size-3xl: clamp(2.44rem, 0.76vw + 2.14rem, 2.75rem);
+	--font-size-4xl: clamp(3.05rem, 0.95vw + 2.67rem, 3.43rem);
+	--font-size-5xl: clamp(3.81rem, 1.19vw + 3.34rem, 4.29rem);
+	--font-size-6xl: clamp(4.77rem, 1.49vw + 4.17rem, 5.36rem);
 
 	/* Line Heights */
 	--line-height-sm: 1.5;
