@@ -1,0 +1,66 @@
+/*
+ * Analytics Web App Theme Configuration
+ * Extends the base Tailwind CSS v4 configuration with app-specific semantic colors.
+ * Uses the same semantic color mappings as the documentation app for consistency.
+ */
+@import "@codaco/tailwind-config/tailwind.css";
+
+/*
+ * Semantic Color Mappings
+ * Defines how brand colors map to semantic tokens.
+ * Note: This app uses light mode only, consistent with documentation app's light mode.
+ */
+:root {
+	/* Light Mode Semantic Colors */
+	--background: var(--platinum);
+	--foreground: var(--cyber-grape);
+
+	--primary: var(--cyber-grape);
+	--primary-foreground: var(--white);
+
+	--secondary: var(--neon-coral);
+	--secondary-foreground: var(--white);
+
+	--muted: var(--platinum);
+	--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
+		calc(var(--cyber-grape-lightness) - 10%);
+
+	--accent: var(--slate-blue);
+	--accent-foreground: var(--white);
+
+	--destructive: var(--tomato);
+	--destructive-foreground: var(--white);
+
+	--warning: var(--neon-carrot);
+	--warning-foreground: var(--white);
+
+	--info: var(--cerulean-blue);
+	--info-foreground: var(--white);
+
+	--success: var(--sea-green);
+	--success-foreground: var(--white);
+
+	--border: var(--platinum--dark);
+
+	--link: var(--neon-coral);
+
+	--card: var(--white);
+	--card-foreground: var(--cyber-grape);
+
+	--panel: var(--platinum);
+
+	--ring: var(--mustard);
+
+	--input: var(--white);
+	--input-foreground: var(--cyber-grape);
+
+	--popover: var(--white);
+	--popover-foreground: var(--cyber-grape);
+}
+
+/* App-specific base styles */
+@layer base {
+	code {
+		@apply text-sm;
+	}
+}

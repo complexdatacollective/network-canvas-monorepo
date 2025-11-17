@@ -1,0 +1,167 @@
+/*
+ * Documentation App Theme Configuration
+ * Extends the base Tailwind CSS v4 configuration with app-specific semantic colors.
+ * This serves as the source of truth for styling consistency across the monorepo.
+ */
+@import "@codaco/tailwind-config/tailwind.css";
+@import "@tailwindcss/typography";
+
+/*
+ * Semantic Color Mappings
+ * Define how brand colors map to semantic tokens for light and dark modes.
+ */
+:root {
+	/* Light Mode Semantic Colors */
+	--background: var(--platinum);
+	--foreground: var(--cyber-grape);
+
+	--primary: var(--cyber-grape);
+	--primary-foreground: var(--white);
+
+	--secondary: var(--neon-coral);
+	--secondary-foreground: var(--white);
+
+	--muted: var(--platinum);
+	--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
+		calc(var(--cyber-grape-lightness) - 10%);
+
+	--accent: var(--slate-blue);
+	--accent-foreground: var(--white);
+
+	--destructive: var(--tomato);
+	--destructive-foreground: var(--white);
+
+	--warning: var(--neon-carrot);
+	--warning-foreground: var(--white);
+
+	--info: var(--cerulean-blue);
+	--info-foreground: var(--white);
+
+	--success: var(--sea-green);
+	--success-foreground: var(--white);
+
+	--border: var(--platinum--dark);
+
+	--link: var(--neon-coral);
+
+	--card: var(--white);
+	--card-foreground: var(--cyber-grape);
+
+	--panel: var(--platinum);
+
+	--ring: var(--mustard);
+
+	--input: var(--white);
+	--input-foreground: var(--cyber-grape);
+
+	--popover: var(--white);
+	--popover-foreground: var(--cyber-grape);
+}
+
+html.dark {
+	/* Dark Mode Semantic Colors */
+	--background: var(--navy-taupe);
+	--foreground: var(--platinum);
+
+	--primary: var(--neon-coral);
+	--primary-foreground: var(--white);
+
+	--secondary: var(--neon-coral);
+	--secondary-foreground: var(--white);
+
+	--muted: var(--platinum);
+	--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
+		calc(var(--cyber-grape-lightness) - 10%);
+
+	--accent: var(--slate-blue);
+	--accent-foreground: var(--white);
+
+	--destructive: var(--tomato);
+	--destructive-foreground: var(--white);
+
+	--warning: var(--neon-carrot);
+	--warning-foreground: var(--white);
+
+	--info: var(--cerulean-blue);
+	--info-foreground: var(--white);
+
+	--success: var(--sea-green);
+	--success-foreground: var(--white);
+
+	--border: var(--slate-blue);
+
+	--link: var(--neon-coral);
+
+	--card: var(--cyber-grape);
+	--card-foreground: var(--platinum);
+
+	--panel: var(--platinum);
+
+	--ring: var(--mustard);
+
+	--input: var(--cyber-grape);
+	--input-foreground: var(--white);
+
+	--popover: var(--cyber-grape);
+	--popover-foreground: var(--platinum);
+}
+
+/* App-specific base styles */
+@layer base {
+	code {
+		@apply text-base-sm bg-rich-black/10 dark:bg-white/5 p-[0.2rem] rounded-sm;
+	}
+}
+
+/* DocSearch Integration */
+.DocSearch-Button {
+	--docsearch-primary-color: hsl(var(--primary));
+	--docsearch-text-color: hsl(var(--foreground));
+	--docsearch-spacing: 2.5rem;
+	--docsearch-icon-stroke-width: 2px;
+	--docsearch-highlight-color: var(--docsearch-primary-color);
+	--docsearch-muted-color: rgb(150, 159, 175);
+	--docsearch-container-background: hsl(var(--background));
+	--docsearch-logo-color: hsl(var(--primary));
+
+	/* modal */
+	--docsearch-modal-width: 560px;
+	--docsearch-modal-height: 600px;
+	--docsearch-modal-background: rgb(245, 246, 247);
+	--docsearch-modal-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.5), 0 3px 8px 0 rgba(85, 90, 100, 1);
+
+	/* searchbox */
+	--docsearch-searchbox-height: 2.5rem;
+	--docsearch-searchbox-background: hsl(var(--input));
+	--docsearch-searchbox-focus-background: hsl(var(--input));
+	--docsearch-searchbox-shadow: none;
+
+	/* hit */
+	--docsearch-hit-height: 56px;
+	--docsearch-hit-color: rgb(68, 73, 80);
+	--docsearch-hit-active-color: #fff;
+	--docsearch-hit-background: #fff;
+	--docsearch-hit-shadow: 0 1px 3px 0 rgb(212, 217, 225);
+
+	/* key */
+	--docsearch-key-gradient: linear-gradient(-225deg, rgb(213, 219, 228) 0%, rgb(248, 248, 248) 100%);
+	--docsearch-key-shadow: inset 0 -2px 0 0 rgb(205, 205, 230), inset 0 0 1px 1px #fff,
+		0 1px 2px 1px rgba(30, 35, 90, 0.4);
+	--docsearch-key-pressed-shadow: inset 0 -2px 0 0 #cdcde6, inset 0 0 1px 1px #fff,
+		0 1px 1px 0 rgba(30, 35, 90, 0.4);
+
+	/* footer */
+	--docsearch-footer-height: 44px;
+	--docsearch-footer-background: #fff;
+	--docsearch-footer-shadow: 0 -1px 0 0 rgb(224, 227, 232), 0 -3px 6px 0 rgba(69, 98, 155, 0.12);
+
+	@apply w-full! h-10! rounded-input! bg-input! m-0! px-2! focusable!;
+
+	border: 1px solid hsl(var(--border));
+	font-weight: inherit;
+	color: inherit;
+
+	.DocSearch-Button-Placeholder {
+		@apply px-3! text-sm!;
+	}
+}

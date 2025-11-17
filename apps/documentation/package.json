@@ -41,7 +41,7 @@
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@microflash/rehype-figure": "^2.1.4",
-		"@tailwindcss/container-queries": "catalog:",
+		"@tailwindcss/postcss": "catalog:",
 		"@tailwindcss/typography": "catalog:",
 		"@types/hast": "^3.0.4",
 		"@types/node": "catalog:",

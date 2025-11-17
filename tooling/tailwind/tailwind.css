@@ -1,0 +1,329 @@
+/*
+ * Network Canvas - Base Tailwind CSS v4 Configuration
+ * This file serves as the shared foundation for all apps in the monorepo.
+ */
+@import "tailwindcss";
+
+/*
+ * Brand Color Definitions
+ * These CSS custom properties define the Network Canvas color palette.
+ * Colors are defined in HSL format for flexibility with alpha values.
+ */
+:root {
+	/* Dark variant modifier */
+	--dark-mod: 5%;
+
+	/* Primary brand colors */
+	--neon-coral-hue: 342;
+	--neon-coral-saturation: 76.9%;
+	--neon-coral-lightness: 50.8%;
+	--neon-coral: var(--neon-coral-hue) var(--neon-coral-saturation) var(--neon-coral-lightness);
+	--neon-coral--dark: var(--neon-coral-hue) var(--neon-coral-saturation) calc(var(--neon-coral-lightness) - var(--dark-mod));
+
+	--mustard-hue: 46;
+	--mustard-saturation: 100%;
+	--mustard-lightness: 47%;
+	--mustard: var(--mustard-hue) var(--mustard-saturation) var(--mustard-lightness);
+	--mustard--dark: var(--mustard-hue) var(--mustard-saturation) calc(var(--mustard-lightness) - var(--dark-mod));
+
+	--sea-green-hue: 168;
+	--sea-green-saturation: 100%;
+	--sea-green-lightness: 40%;
+	--sea-green: var(--sea-green-hue) var(--sea-green-saturation) var(--sea-green-lightness);
+	--sea-green--dark: var(--sea-green-hue) var(--sea-green-saturation) calc(var(--sea-green-lightness) - var(--dark-mod));
+
+	--slate-blue-hue: 237;
+	--slate-blue-saturation: 79%;
+	--slate-blue-lightness: 65%;
+	--slate-blue: var(--slate-blue-hue) var(--slate-blue-saturation) var(--slate-blue-lightness);
+	--slate-blue--dark: var(--slate-blue-hue) var(--slate-blue-saturation) calc(var(--slate-blue-lightness) - var(--dark-mod));
+
+	--navy-taupe-hue: 248;
+	--navy-taupe-saturation: 34%;
+	--navy-taupe-lightness: 25%;
+	--navy-taupe: var(--navy-taupe-hue) var(--navy-taupe-saturation) var(--navy-taupe-lightness);
+	--navy-taupe--dark: var(--navy-taupe-hue) var(--navy-taupe-saturation) calc(var(--navy-taupe-lightness) - var(--dark-mod));
+
+	--cyber-grape-hue: 240;
+	--cyber-grape-saturation: 33%;
+	--cyber-grape-lightness: 29%;
+	--cyber-grape: var(--cyber-grape-hue) var(--cyber-grape-saturation) var(--cyber-grape-lightness);
+	--cyber-grape--dark: var(--cyber-grape-hue) var(--cyber-grape-saturation) calc(var(--cyber-grape-lightness) - var(--dark-mod));
+
+	--rich-black-hue: 240;
+	--rich-black-saturation: 35%;
+	--rich-black-lightness: 10%;
+	--rich-black: var(--rich-black-hue) var(--rich-black-saturation) var(--rich-black-lightness);
+
+	--charcoal-hue: 231;
+	--charcoal-saturation: 4%;
+	--charcoal-lightness: 43%;
+	--charcoal: var(--charcoal-hue) var(--charcoal-saturation) var(--charcoal-lightness);
+
+	--platinum-hue: 210;
+	--platinum-saturation: 43%;
+	--platinum-lightness: 95%;
+	--platinum: var(--platinum-hue) var(--platinum-saturation) var(--platinum-lightness);
+	--platinum--dark: var(--platinum-hue) var(--platinum-saturation) calc(var(--platinum-lightness) - var(--dark-mod));
+
+	--sea-serpent-hue: 190;
+	--sea-serpent-saturation: 87%;
+	--sea-serpent-lightness: 47%;
+	--sea-serpent: var(--sea-serpent-hue) var(--sea-serpent-saturation) var(--sea-serpent-lightness);
+	--sea-serpent--dark: var(--sea-serpent-hue) var(--sea-serpent-saturation) calc(var(--sea-serpent-lightness) - var(--dark-mod));
+
+	--purple-pizazz-hue: 291;
+	--purple-pizazz-saturation: 86%;
+	--purple-pizazz-lightness: 52%;
+	--purple-pizazz: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) var(--purple-pizazz-lightness);
+	--purple-pizazz--dark: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) calc(var(--purple-pizazz-lightness) - var(--dark-mod));
+
+	--paradise-pink-hue: 331;
+	--paradise-pink-saturation: 100%;
+	--paradise-pink-lightness: 57%;
+	--paradise-pink: var(--paradise-pink-hue) var(--paradise-pink-saturation) var(--paradise-pink-lightness);
+	--paradise-pink--dark: var(--paradise-pink-hue) var(--paradise-pink-saturation) calc(var(--paradise-pink-lightness) - var(--dark-mod));
+
+	--cerulean-blue-hue: 216;
+	--cerulean-blue-saturation: 100%;
+	--cerulean-blue-lightness: 53%;
+	--cerulean-blue: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) var(--cerulean-blue-lightness);
+	--cerulean-blue--dark: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) calc(var(--cerulean-blue-lightness) - var(--dark-mod));
+
+	--kiwi-hue: 103;
+	--kiwi-saturation: 46%;
+	--kiwi-lightness: 56%;
+	--kiwi: var(--kiwi-hue) var(--kiwi-saturation) var(--kiwi-lightness);
+	--kiwi--dark: var(--kiwi-hue) var(--kiwi-saturation) calc(var(--kiwi-lightness) - var(--dark-mod));
+
+	--neon-carrot-hue: 32;
+	--neon-carrot-saturation: 90%;
+	--neon-carrot-lightness: 55%;
+	--neon-carrot: var(--neon-carrot-hue) var(--neon-carrot-saturation) var(--neon-carrot-lightness);
+	--neon-carrot--dark: var(--neon-carrot-hue) var(--neon-carrot-saturation) calc(var(--neon-carrot-lightness) - var(--dark-mod));
+
+	--barbie-pink-hue: 328;
+	--barbie-pink-saturation: 100%;
+	--barbie-pink-lightness: 47%;
+	--barbie-pink: var(--barbie-pink-hue) var(--barbie-pink-saturation) var(--barbie-pink-lightness);
+	--barbie-pink--dark: var(--barbie-pink-hue) var(--barbie-pink-saturation) calc(var(--barbie-pink-lightness) - var(--dark-mod));
+
+	--tomato-hue: 356;
+	--tomato-saturation: 77%;
+	--tomato-lightness: 54%;
+	--tomato: var(--tomato-hue) var(--tomato-saturation) var(--tomato-lightness);
+	--tomato--dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
+
+	--white: 0 0% 100%;
+
+	/* Fluid typography scale
+	 * https://www.fluid-type-scale.com/calculate?minFontSize=14&minWidth=400&minRatio=1.25&maxFontSize=18&maxWidth=1920&maxRatio=1.25
+	 */
+	--font-size-sm: clamp(0.8rem, 0.25vw + 0.7rem, 0.9rem);
+	--font-size-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
+	--font-size-base: clamp(1rem, 0.31vw + 0.88rem, 1.13rem);
+	--font-size-lg: clamp(1.25rem, 0.39vw + 1.09rem, 1.41rem);
+	--font-size-xl: clamp(1.56rem, 0.49vw + 1.37rem, 1.76rem);
+	--font-size-2xl: clamp(1.95rem, 0.61vw + 1.71rem, 2.2rem);
+	--font-size-3xl: clamp(2.44rem, 0.76vw + 2.14rem, 2.75rem);
+	--font-size-4xl: clamp(3.05rem, 0.95vw + 2.67rem, 3.43rem);
+	--font-size-5xl: clamp(3.81rem, 1.19vw + 3.34rem, 4.29rem);
+	--font-size-6xl: clamp(4.77rem, 1.49vw + 4.17rem, 5.36rem);
+}
+
+/*
+ * Tailwind v4 Theme Configuration
+ * Uses @theme inline to reference CSS variables defined above
+ */
+@theme inline {
+	/* Brand Colors - NC Palette */
+	--color-neon-coral: hsl(var(--neon-coral));
+	--color-neon-coral-dark: hsl(var(--neon-coral--dark));
+	--color-sea-green: hsl(var(--sea-green));
+	--color-sea-green-dark: hsl(var(--sea-green--dark));
+	--color-slate-blue: hsl(var(--slate-blue));
+	--color-slate-blue-dark: hsl(var(--slate-blue--dark));
+	--color-navy-taupe: hsl(var(--navy-taupe));
+	--color-navy-taupe-dark: hsl(var(--navy-taupe--dark));
+	--color-cyber-grape: hsl(var(--cyber-grape));
+	--color-cyber-grape-dark: hsl(var(--cyber-grape--dark));
+	--color-mustard: hsl(var(--mustard));
+	--color-mustard-dark: hsl(var(--mustard--dark));
+	--color-rich-black: hsl(var(--rich-black));
+	--color-charcoal: hsl(var(--charcoal));
+	--color-platinum: hsl(var(--platinum));
+	--color-platinum-dark: hsl(var(--platinum--dark));
+	--color-sea-serpent: hsl(var(--sea-serpent));
+	--color-sea-serpent-dark: hsl(var(--sea-serpent--dark));
+	--color-purple-pizazz: hsl(var(--purple-pizazz));
+	--color-purple-pizazz-dark: hsl(var(--purple-pizazz--dark));
+	--color-paradise-pink: hsl(var(--paradise-pink));
+	--color-paradise-pink-dark: hsl(var(--paradise-pink--dark));
+	--color-cerulean-blue: hsl(var(--cerulean-blue));
+	--color-cerulean-blue-dark: hsl(var(--cerulean-blue--dark));
+	--color-kiwi: hsl(var(--kiwi));
+	--color-kiwi-dark: hsl(var(--kiwi--dark));
+	--color-neon-carrot: hsl(var(--neon-carrot));
+	--color-neon-carrot-dark: hsl(var(--neon-carrot--dark));
+	--color-barbie-pink: hsl(var(--barbie-pink));
+	--color-barbie-pink-dark: hsl(var(--barbie-pink--dark));
+	--color-tomato: hsl(var(--tomato));
+	--color-tomato-dark: hsl(var(--tomato--dark));
+	--color-white: hsl(var(--white));
+	--color-transparent: transparent;
+
+	/* Semantic Colors - These will be defined per-app in theme.css */
+	--color-background: hsl(var(--background));
+	--color-foreground: hsl(var(--foreground));
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
+	--color-success: hsl(var(--success));
+	--color-success-foreground: hsl(var(--success-foreground));
+	--color-info: hsl(var(--info));
+	--color-info-foreground: hsl(var(--info-foreground));
+	--color-warning: hsl(var(--warning));
+	--color-warning-foreground: hsl(var(--warning-foreground));
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
+	--color-popover: hsl(var(--popover));
+	--color-popover-foreground: hsl(var(--popover-foreground));
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
+	--color-panel: hsl(var(--panel));
+	--color-panel-foreground: hsl(var(--foreground));
+	--color-input: hsl(var(--input));
+	--color-input-foreground: hsl(var(--input-foreground));
+	--color-border: hsl(var(--border));
+	--color-link: hsl(var(--link));
+	--color-ring: hsl(var(--ring));
+
+	/* Typography */
+	--font-size-sm: var(--font-size-sm);
+	--font-size-base-sm: var(--font-size-base-sm);
+	--font-size-base: var(--font-size-base);
+	--font-size-lg: var(--font-size-lg);
+	--font-size-xl: var(--font-size-xl);
+	--font-size-2xl: var(--font-size-2xl);
+	--font-size-3xl: var(--font-size-3xl);
+	--font-size-4xl: var(--font-size-4xl);
+	--font-size-5xl: var(--font-size-5xl);
+	--font-size-6xl: var(--font-size-6xl);
+
+	/* Line Heights */
+	--line-height-sm: 1.5;
+	--line-height-base-sm: 1.5;
+	--line-height-base: 1.5;
+	--line-height-lg: 1.5;
+	--line-height-xl: 1.4;
+	--line-height-2xl: 1.2;
+	--line-height-3xl: 1.2;
+	--line-height-4xl: 1.15;
+	--line-height-5xl: 1.1;
+	--line-height-6xl: 1.1;
+
+	/* Border Radius */
+	--radius-input: var(--radius-xl);
+
+	/* Animations */
+	--animate-wiggle: wiggle 1s ease-in-out infinite;
+	--animate-shake: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
+	--animate-indeterminate-progress-bar: indeterminate-progress-bar 1s infinite linear;
+	--animate-background-gradient: background-gradient 5s infinite ease-in-out;
+}
+
+/* Keyframe Animations */
+@keyframes wiggle {
+	0%,
+	100% {
+		transform: rotate(-3deg);
+	}
+	50% {
+		transform: rotate(3deg);
+	}
+}
+
+@keyframes accordion-down {
+	from {
+		height: 0;
+	}
+	to {
+		height: var(--radix-accordion-content-height);
+	}
+}
+
+@keyframes accordion-up {
+	from {
+		height: var(--radix-accordion-content-height);
+	}
+	to {
+		height: 0;
+	}
+}
+
+@keyframes indeterminate-progress-bar {
+	0% {
+		transform: translateX(0) scaleX(0);
+	}
+	40% {
+		transform: translateX(0) scaleX(0.4);
+	}
+	100% {
+		transform: translateX(100%) scaleX(0.5);
+	}
+}
+
+@keyframes background-gradient {
+	0%,
+	50% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+}
+
+@keyframes shake {
+	10%,
+	90% {
+		transform: translate3d(-1px, 0, 0);
+	}
+	20%,
+	80% {
+		transform: translate3d(2px, 0, 0);
+	}
+	30%,
+	50%,
+	70% {
+		transform: translate3d(-4px, 0, 0);
+	}
+	40%,
+	60% {
+		transform: translate3d(4px, 0, 0);
+	}
+}
+
+/* Base Layer Styles */
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+
+/* Utility Classes */
+@layer utilities {
+	.focusable {
+		@apply focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-mustard;
+	}
+}
