@@ -53,7 +53,7 @@ const activeProtocolSlice = createSlice({
 				state.lastSavedTimeline = action.payload.timelineLocus;
 			}
 		},
-		clearActiveProtocol: (_state, _action: null) => {
+		clearActiveProtocol: (_state) => {
 			assetDb.assets.clear(); // Clear asset database
 			return initialState;
 		},
@@ -117,6 +117,21 @@ const activeProtocolSlice = createSlice({
 export const { setActiveProtocol, updateProtocol, updateProtocolOptions, markProtocolSaved, clearActiveProtocol } =
 	activeProtocolSlice.actions;
 export const { selectActiveProtocol } = activeProtocolSlice.selectors;
+
+// Export action creators object for backwards compatibility with tests
+export const actionCreators = {
+	setActiveProtocol,
+	updateProtocol,
+	updateProtocolOptions,
+	markProtocolSaved,
+	clearActiveProtocol,
+};
+
+// Additional selectors
+export const selectHasActiveProtocol = (state: RootState): boolean => {
+	const protocol = selectActiveProtocol(state.activeProtocol);
+	return protocol !== null && Object.keys(protocol).length > 0;
+};
 
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
