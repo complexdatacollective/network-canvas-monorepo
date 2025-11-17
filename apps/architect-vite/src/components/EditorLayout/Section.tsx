@@ -55,7 +55,7 @@ const Section = ({
 		}
 	}, [isOpen, handleToggleChange]);
 
-	const classes = cn(layout === "horizontal" && containerClasses, "relative");
+	const classes = cn(layout === "horizontal" && containerClasses, layout === "horizontal" && "min-w-2xl", "relative");
 
 	return (
 		<div
