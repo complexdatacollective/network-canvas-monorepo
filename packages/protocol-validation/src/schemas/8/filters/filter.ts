@@ -16,24 +16,24 @@ export const filterRuleSchema = z
 					.string()
 					.optional()
 					.generateMock(() => getNodeVariableId()),
-				operator: z.enum([
+				operator: z.union([
 					// TODO: this can be narrowed based on `type` and `attribute`
-					"EXISTS",
-					"NOT_EXISTS",
-					"EXACTLY",
-					"NOT",
-					"GREATER_THAN",
-					"GREATER_THAN_OR_EQUAL",
-					"LESS_THAN",
-					"LESS_THAN_OR_EQUAL",
-					"INCLUDES",
-					"EXCLUDES",
-					"OPTIONS_GREATER_THAN",
-					"OPTIONS_LESS_THAN",
-					"OPTIONS_EQUALS",
-					"OPTIONS_NOT_EQUALS",
-					"CONTAINS",
-					"DOES NOT CONTAIN",
+					z.literal("EXISTS"),
+					z.literal("NOT_EXISTS"),
+					z.literal("EXACTLY"),
+					z.literal("NOT"),
+					z.literal("GREATER_THAN"),
+					z.literal("GREATER_THAN_OR_EQUAL"),
+					z.literal("LESS_THAN"),
+					z.literal("LESS_THAN_OR_EQUAL"),
+					z.literal("INCLUDES"),
+					z.literal("EXCLUDES"),
+					z.literal("OPTIONS_GREATER_THAN"),
+					z.literal("OPTIONS_LESS_THAN"),
+					z.literal("OPTIONS_EQUALS"),
+					z.literal("OPTIONS_NOT_EQUALS"),
+					z.literal("CONTAINS"),
+					z.literal("DOES_NOT_CONTAIN"),
 				]),
 
 				value: z
