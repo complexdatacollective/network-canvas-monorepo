@@ -603,13 +603,6 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.17
-    devDependencies:
-      '@codaco/tsconfig':
-        specifier: workspace:*
-        version: link:../typescript
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
 
   tooling/typescript: {}
 
