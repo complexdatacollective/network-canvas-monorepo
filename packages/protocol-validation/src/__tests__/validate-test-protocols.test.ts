@@ -1,6 +1,6 @@
-import { extractProtocol } from "src/utils/extractProtocol";
 import { beforeAll, describe, expect, it } from "vitest";
 import { migrateProtocol, type Protocol, validateProtocol } from "..";
+import { extractProtocol } from "../utils/extractProtocol";
 import { downloadAndDecryptProtocols } from "./utils";
 
 // Store protocols and their filenames separately

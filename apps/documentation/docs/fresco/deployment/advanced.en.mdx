@@ -1,6 +1,6 @@
 ---
 title: Advanced Deployment
-date: 17th July 2024
+date: 9th October 2025
 ---
 
 <SummaryCard duration="30 minutes">
@@ -59,8 +59,8 @@ Create an `.env` file somewhere on your host machine using the template below. T
 # Required environment variables
 # -------------------
 
-POSTGRES_PRISMA_URL=
-POSTGRES_URL_NON_POOLING=
+DATABASE_URL=
+DATABASE_URL_UNPOOLED=
 
 PUBLIC_URL=
 ```
@@ -83,8 +83,8 @@ Fresco requires two connection strings to PostgreSQL:
 
 | **Variable**                 | **Details**                                                                                                                                                                 |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **POSTGRES_PRISMA_URL**      | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users. |
-| **POSTGRES_URL_NON_POOLING** | A non-pooling connection URL for Prisma. This is primarily used for database migrations when upgrading.                                                                     |
+| **DATABASE_URL**      | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users. |
+| **DATABASE_URL_UNPOOLED** | A non-pooling connection URL for Prisma. This is primarily used for database migrations when upgrading.                                                                     |
 
 If you do not have a connection pooler such as PgBouncer, you can use the same connection string for both variables (although this may lead to database errors under heavy load).
 
@@ -106,8 +106,8 @@ Add your connection strings to the `.env` file:
 UPLOADTHING_SECRET=sk-your-secret-key
 UPLOADTHING_APP_ID=your-app-id
 
-POSTGRES_PRISMA_URL=postgresql://username:password@hostname:port/dbname
-POSTGRES_URL_NON_POOLING=postgresql://username:password@hostname:port/dbname
+DATABASE_URL=postgresql://username:password@hostname:port/dbname
+DATABASE_URL_UNPOOLED=postgresql://username:password@hostname:port/dbname
 
 PUBLIC_URL=
 ```
@@ -132,8 +132,8 @@ Add your URL to the `.env` file:
 # -------------------
 # Required environment variables
 # -------------------
-POSTGRES_PRISMA_URL=postgresql://username:password@hostname:port/dbname
-POSTGRES_URL_NON_POOLING=postgresql://username:password@hostname:port/dbname
+DATABASE_URL=postgresql://username:password@hostname:port/dbname
+DATABASE_URL_UNPOOLED=postgresql://username:password@hostname:port/dbname
 
 PUBLIC_URL=https://your-public-url.com
 ```
@@ -161,8 +161,8 @@ You can optionally use [Docker Compose](https://docs.docker.com/compose/) to man
 services:
   fresco:
     environment:
-      - POSTGRES_PRISMA_URL=postgresql://username:password@postgres:5432/fresco
-      - POSTGRES_URL_NON_POOLING=postgresql://username:password@postgres:5432/fresco
+      - DATABASE_URL=postgresql://username:password@postgres:5432/fresco
+      - DATABASE_URL_UNPOOLED=postgresql://username:password@postgres:5432/fresco
       - PUBLIC_URL=https://your-public-url.com
     image: 'ghcr.io/complexdatacollective/fresco:latest'
     depends_on:

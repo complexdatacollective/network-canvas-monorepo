@@ -94,14 +94,21 @@ const FolderTriggerContent = ({
 	href?: Route | URL;
 	isOpen: boolean;
 	alwaysOpen?: boolean;
-}) => {
-	const content = (
+} & React.HTMLAttributes<HTMLElement>) => {
+	const className = "flex flex-1 items-center justify-between";
+	const children = (
 		<>
 			{label} <FolderChevron isOpen={isOpen} alwaysOpen={alwaysOpen} />
 		</>
 	);
 
-	return href ? <Link href={href}>{content}</Link> : <div>{content}</div>;
+	return href ? (
+		<Link href={href} className={className}>
+			{children}
+		</Link>
+	) : (
+		<div className={className}>{children}</div>
+	);
 };
 
 const SidebarFolder = ({
@@ -148,7 +155,9 @@ const SidebarFolder = ({
 				)}
 				asChild
 			>
-				<FolderTriggerContent label={label} href={href} isOpen={isOpen} alwaysOpen={alwaysOpen} />
+				<div>
+					<FolderTriggerContent label={label} href={href} isOpen={isOpen} alwaysOpen={alwaysOpen} />
+				</div>
 			</CollapsibleTrigger>
 			<MotionCollapsibleContent
 				className="ml-2 flex flex-col overflow-y-hidden"
@@ -213,6 +222,11 @@ const renderSidebarItem = (
 				{sortedChildren.map((child) => renderSidebarItem(child, locale, sidebarContainerRef))}
 			</SidebarFolder>
 		);
+	}
+
+	// Skip pages that are hidden from sidebar
+	if (item.hidden) {
+		return null;
 	}
 
 	const sourceFile = processSourceFile(item.type, locale, item.sourceFile);

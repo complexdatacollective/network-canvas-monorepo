@@ -19,7 +19,7 @@
 		"@radix-ui/react-select": "catalog:",
 		"@radix-ui/react-slot": "catalog:",
 		"@radix-ui/react-tooltip": "catalog:",
-		"class-variance-authority": "^0.7.1",
+		"class-variance-authority": "catalog:",
 		"lucide-react": "catalog:",
 		"tailwind-merge": "catalog:"
 	},
