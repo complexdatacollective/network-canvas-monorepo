@@ -5,8 +5,6 @@ import Dialog from "~/components/NewComponents/Dialog";
 import { useAppDispatch } from "~/ducks/hooks";
 import { Button } from "~/lib/legacy-ui/components";
 import Form from "./Form";
-import { useBodyScrollLock } from "./useBodyScrollLock";
-
 interface InlineEditScreenProps {
 	show?: boolean;
 	form: string;
@@ -26,8 +24,6 @@ const InlineEditScreen = ({
 	children = null,
 	initialValues,
 }: InlineEditScreenProps) => {
-	// Prevent scrolling of the body when the inline edit screen is open
-	useBodyScrollLock(show);
 
 	const dispatch = useAppDispatch();
 
