@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		/* Semantic slots */
+		--background: var(--platinum);
+		--foreground: var(--cyber-grape);
+
+		--primary: var(--cyber-grape);
+		--primary-foreground: var(--white);
+
+		--secondary: var(--neon-coral);
+		--secondary-foreground: var(--white);
+
+		--muted: var(--platinum);
+		--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
+			calc(var(--cyber-grape-lightness) - 10%);
+
+		--accent: var(--slate-blue);
+		--accent-foreground: var(--white);
+
+		--destructive: var(--tomato);
+		--destructive-foreground: var(--white);
+
+		--warning: var(--neon-carrot);
+		--warning-foreground: var(--white);
+
+		--info: var(--cerulean-blue);
+		--info-foreground: var(--white);
+
+		--success: var(--sea-green);
+		--success-foreground: var(--white);
+
+		--border: var(--platinum--dark);
+
+		--link: var(--neon-coral);
+
+		--card: 0 0% 100%;
+
+		--panel: var(--platinum);
+
+		--input: 0 0% 100%;
+		--input-foreground: var(--cyber-grape);
+
+		--popover: var(--white);
+		--popover-foreground: var(--foreground);
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	code {
+		@apply text-sm;
+	}
+}
