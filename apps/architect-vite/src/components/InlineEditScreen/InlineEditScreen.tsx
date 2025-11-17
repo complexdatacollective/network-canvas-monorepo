@@ -3,6 +3,7 @@ import { submit } from "redux-form";
 import { Layout } from "~/components/EditorLayout";
 import Dialog from "~/components/NewComponents/Dialog";
 import { useAppDispatch } from "~/ducks/hooks";
+import { Button } from "~/lib/legacy-ui/components";
 import Form from "./Form";
 import { useBodyScrollLock } from "./useBodyScrollLock";
 
@@ -42,9 +43,23 @@ const InlineEditScreen = ({
 					onCancel();
 				}
 			}}
-			title={title || undefined}
-			onConfirm={handleSubmit}
-			confirmText="Save and Close"
+			header={title ? <h2 className="m-0">{title}</h2> : undefined}
+			footer={
+				<>
+					<Button
+						onClick={() => {
+							onCancel();
+						}}
+						color="platinum"
+					>
+						Cancel
+					</Button>
+					<Button onClick={handleSubmit} color="sea-green">
+						Save and Close
+					</Button>
+				</>
+			}
+			className="bg-surface-2"
 		>
 			<Layout>
 				{/* @ts-expect-error - reduxForm enhanced component typing issue */}
