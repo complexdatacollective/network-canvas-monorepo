@@ -1,7 +1,8 @@
-type PathSegment = string | { arrayKey: true };
+type PathSegment = string | { arrayKey: true } | { wildcardKey: true };
 
 /**
  * Parse a path string like "stages[].panels[].filter" into segments
+ * Supports wildcard notation with * to match all keys in an object
  */
 function parsePath(path: string): PathSegment[] {
 	const segments: PathSegment[] = [];
@@ -15,6 +16,9 @@ function parsePath(path: string): PathSegment[] {
 				segments.push(key);
 			}
 			segments.push({ arrayKey: true });
+		} else if (part === "*") {
+			// Wildcard - match all keys in an object
+			segments.push({ wildcardKey: true });
 		} else {
 			segments.push(part);
 		}
@@ -34,13 +38,29 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
 
 	const [currentSegment, ...restSegments] = remainingSegments;
 
-	if (typeof currentSegment === "object" && currentSegment.arrayKey) {
+	if (typeof currentSegment === "object" && "arrayKey" in currentSegment) {
 		// Process array elements
 		if (!Array.isArray(obj)) {
 			return obj;
 		}
 
 		return obj.map((item) => traverseAndApply(item, restSegments, fn));
+	}
+
+	if (typeof currentSegment === "object" && "wildcardKey" in currentSegment) {
+		// Process all keys in the object
+		if (typeof obj !== "object" || obj === null) {
+			return obj;
+		}
+
+		const objAsRecord = obj as Record<string, unknown>;
+		const result: Record<string, unknown> = {};
+
+		for (const [key, value] of Object.entries(objAsRecord)) {
+			result[key] = traverseAndApply(value, restSegments, fn);
+		}
+
+		return result;
 	}
 
 	// Process object property
@@ -64,16 +84,27 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
 /**
  * Process an object by applying a transformation function to values at specified paths.
  * Supports array notation with [] to process all elements in an array.
+ * Supports wildcard notation with * to process all keys in an object.
  *
  * @param obj - The object to process
  * @param transformations - Array of path-function pairs to apply
  * @returns A new object with transformations applied
  *
  * @example
+ * // Array notation
  * traverseAndTransform(data, [
  *   {
  *     paths: ["stages[].panels[].filter"],
  *     fn: (filter) => modifiedFilter
+ *   }
+ * ]);
+ *
+ * @example
+ * // Wildcard notation
+ * traverseAndTransform(data, [
+ *   {
+ *     paths: ["codebook.node.*"],
+ *     fn: (entityDefinition) => modifiedDefinition
  *   }
  * ]);
  */

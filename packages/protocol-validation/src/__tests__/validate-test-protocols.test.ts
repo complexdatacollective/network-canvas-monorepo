@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateProtocol, type Protocol, validateProtocol } from "..";
+import { migrateProtocol, type VersionedProtocol, validateProtocol } from "..";
 import { extractProtocol } from "../utils/extractProtocol";
 import { downloadAndDecryptProtocols } from "./utils";
 
 // Store protocols and their filenames separately
-const protocols: Protocol[] = [];
+const protocols: VersionedProtocol[] = [];
 const protocolFilenames: string[] = [];
 
 describe("Test protocols", () => {
