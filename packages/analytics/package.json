@@ -25,6 +25,7 @@
 		"vitest": "catalog:"
 	},
 	"dependencies": {
+		"@codaco/shared-consts": "workspace:*",
 		"zod": "catalog:"
 	}
 }

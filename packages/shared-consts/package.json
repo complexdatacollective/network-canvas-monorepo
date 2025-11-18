@@ -20,6 +20,8 @@
 		"build": "tsc --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"clean": "rm -rf .turbo node_modules dist",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": [
@@ -36,7 +38,8 @@
 		"@types/node": "catalog:",
 		"typescript": "catalog:",
 		"vite": "catalog:",
-		"vite-plugin-dts": "catalog:"
+		"vite-plugin-dts": "catalog:",
+		"vitest": "catalog:"
 	},
 	"dependencies": {
 		"zod": "catalog:"

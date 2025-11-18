@@ -1,5 +1,5 @@
+import { ensureError } from "@codaco/shared-consts";
 import { type VersionedProtocol, VersionedProtocolSchema } from "../schemas";
-import { ensureError } from "../utils/ensureError";
 
 /**
  * Enhanced validateProtocol that uses Zod 4 with integrated cross-reference validation.

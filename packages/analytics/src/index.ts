@@ -1,6 +1,6 @@
+import { ensureError } from "@codaco/shared-consts";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
-import { ensureError } from "./utils";
 
 // Todo: it would be great to work out a way to support arbitrary types here.
 export const eventTypes = [
