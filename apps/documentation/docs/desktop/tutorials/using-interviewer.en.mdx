@@ -24,7 +24,7 @@ To get the most from this tutorial, you should have first:
 - Read and understood the [project overview](/en/desktop/project-information/project-overview).
 - To follow along using your own computer or device, you should have [downloaded and installed Interviewer](https://networkcanvas.com/download).
 
-Please note that we have created a separate tutorial article covering how to create a protocol, called [building a protocol using Architect](/en/desktop/tutorials/building-a-protocol). We suggest you continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read this articles in any order you wish.
+Please note that a separate tutorial article covers how to create a protocol, called [building a protocol using Architect](/en/desktop/tutorials/building-a-protocol). You should continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read these articles in any order you wish.
 
 </PrerequisitesSection>
 </SummaryCard>
@@ -35,9 +35,9 @@ Network Canvas Interviewer is an interview administration tool that is designed 
 
 Interviewer runs on both tablet devices using touch screens, and desktop computers using either touch or conventional keyboard and mouse inputs. Its interfaces are optimized for the specific needs of network interviews, and are highly flexible and customizable. Interviewer uses Network Canvas protocol files to configure itself to show the screens and stages that you have designed for your study.
 
-Once you have collected data with Interviewer, it can export network datafiles to your device or computer.
+Once you have collected data with Interviewer, you can export network datafiles to your device or computer.
 
-What follows is an introduction to the software, which describes some of its key features and concepts. To follow along, open Interviewer on your own computer or device.
+The following introduction to the software describes some of its key features and concepts. To follow along, open Interviewer on your own computer or device.
 
 ## The start screen
 
@@ -196,45 +196,45 @@ device, which may help with engagement.
 
 ## Stages and interfaces
 
-With a Network Canvas interview protocol, each interview is made up of a series of screens that we call "stages", where a specific task is to be completed. You can have as many stages in your interview as you feel you need, and as you will see in other tutorials, there are many ways to structure your interview using different combinations of screens and different front or back loadings of tasks.
+With a Network Canvas interview protocol, each interview is made up of a series of screens called "stages", where a specific task is completed. You can have as many stages in your interview as you need, and as you will see in other tutorials, there are many ways to structure your interview using different combinations of screens and different front or back loadings of tasks.
 
-Each stage is an _instance_ of a specialized task-based screen that we call an ["Interface"](../key-concepts/interfaces). That is to say that an Interface is the broad "category" of task, and a stage is the specifically configured version of that task in your interview. Each Interface is designed for a specific data collection task, such as generating names, collecting ordinal data, or showing a form. Each Interface has dedicated documentation (see the "Interface Documentation" section on the left) that explains its features, and gives hints about when and where you should use it.
+Each stage is an _instance_ of a specialized task-based screen called an ["Interface"](../key-concepts/interfaces). An Interface is the broad "category" of task, and a stage is the specifically configured version of that task in your interview. Each Interface is designed for a specific data collection task, such as generating names, collecting ordinal data, or showing a form. Each Interface has dedicated documentation (see the "Interface Documentation" section on the left) that explains its features and provides guidance on when and where to use it.
 
-## The information interface
+## The Information interface
 
-The first screens within the sample interview protocol all use the [information interface](../interface-documentation/information), with the very first being the welcome stage.
+The first screens within the sample interview protocol all use the [Information interface](../interface-documentation/information), with the very first being the welcome stage.
 
 ![The welcome stage](/assets/img/sample-protocol/welcome-info.png)
 
-The information interface can be used to build stages that communicate information to a participant, such as providing a study description or instructions for completing a task on a subsequent screen. It can also contain media, such as audio, images or video. We have used numerous Information Interfaces throughout this sample protocol to clarify the primary tasks performed in Interviewer, but we will not describe them in this article to avoid redundancy.
+You can use the Information interface to build stages that communicate information to a participant, such as providing a study description or instructions for completing a task on a subsequent screen. It can also contain media, such as audio, images, or video. This sample protocol uses numerous Information interfaces to clarify the primary tasks performed in Interviewer, but this article will not describe them to avoid redundancy.
 
 ## Ego data collection
 
-After clicking "next" to pass through two additional information stages, you will arrive at the first data collection stage in the sample protocol.
+After clicking **next** to pass through two additional Information stages, you will arrive at the first data collection stage in the sample protocol.
 
-While Interviewer is optimized for collecting data about network members from an ego-centric perspective, we also provide the ability for researchers to capture data about the participant (ego) through the [ego form](../interface-documentation/ego-form) interface. It allows the researcher to show an arbitrary [form](../key-concepts/forms) to the participant, where responses will be stored in a dedicated section of the interview data model devoted to ego data.
+While Interviewer is optimized for collecting data about network members from an ego-centric perspective, it also provides the ability for researchers to capture data about the participant (ego) through the [Ego Form](../interface-documentation/ego-form) interface. This interface allows the researcher to show an arbitrary [form](../key-concepts/forms) to the participant, where responses are stored in a dedicated section of the interview data model devoted to ego data.
 
 The first use-case for ego data collection demonstrated is an example of a participant consent form.
 
-![A participant consent form built using the ego form interface](/assets/img/sample-protocol/consent-form.png)
+![A participant consent form built using the Ego Form interface](/assets/img/sample-protocol/consent-form.png)
 
-It shows a single form 'field' that represents a boolean attribute corresponding to the consent status of the participant. Once the question is answered, the attribute will be included in the network data model, and will be exported along with the interview data. It can be used to direct the flow of the interview, using [skip logic](../key-concepts/skip-logic).
+It shows a single form field that represents a boolean attribute corresponding to the consent status of the participant. Once the question is answered, the attribute is included in the network data model and exported along with the interview data. You can use it to direct the flow of the interview using [skip logic](../key-concepts/skip-logic).
 
-The next ego form interface shows a more full-featured example of this interface. In this particular stage, we ask for a variety of individual level data using numerous input control types.
+The next Ego Form interface shows a more full-featured example of this interface. In this particular stage, the form asks for a variety of individual level data using numerous input control types.
 
 ![A more full-featured ego data collection form, showing a variety of input controls](/assets/img/sample-protocol/ego-form.png)
 
-The form includes [validation](../key-concepts/field-validation), which requires you to enter the first and last name before proceeding onto the next screen.
+The form includes [validation](../key-concepts/field-validation), which requires you to enter the first and last name before proceeding to the next screen.
 
-## Name Generators
+## Name generators
 
-After clicking through a further information screen, we encounter the first name generator stage of the sample interview. Name generation is of course a fundamental task in all network interviewing, and so the Network Canvas software offers configurable and customizable behaviours to suit different research designs. We will now briefly discuss these in turn, in the context of the sample protocol.
+After clicking through a further Information screen, you encounter the first name generator stage of the sample interview. Name generation is a fundamental task in all network interviewing, and the Network Canvas software offers configurable and customizable behaviors to suit different research designs. This section briefly discusses these in turn, in the context of the sample protocol.
 
-### Quick add
+### Quick Add
 
-The first name generator stage uses the "[quick add](../interface-documentation/name-generator-using-quick-add)" name generator Interface. It is designed to be ultra-low response burden, and only requires that a participant provide a name or label in order to create a node.
+The first name generator stage uses the [Quick Add Name Generator](../interface-documentation/name-generator-using-quick-add) interface. It is designed to be ultra-low response burden and only requires that a participant provide a name or label to create a node.
 
-To add nodes, click the "add" button in the bottom right, which will reveal the label input. Enter a name, and press enter (or click the node icon), and notice that a node will appear in the main node list. When you are finished, either click the button again, or click away, to close the input.
+To add nodes, click the **add** button in the bottom right, which reveals the label input. Enter a name and press enter (or click the node icon), and notice that a node appears in the main node list. When you are finished, either click the button again or click away to close the input.
 
 ![A Quick-Add Name Generator](/assets/img/sample-protocol/quick-add.png)
 
@@ -296,15 +296,15 @@ Since this roster is so large, this interface does not display the roster in its
 
 ## General purpose form interfaces
 
-For situations where general purpose data collection is required, we provided form-based interfaces that show a form on a 'per-alter' or 'per-edge' basis.
+For situations where general purpose data collection is required, form-based interfaces show a form on a per-alter or per-edge basis.
 
-Clicking next from the university roster stage, you will immediately arrive on a stage that uses the [per-alter form](../interface-documentation/per-alter-form) interface to ask followup name interpreter questions about all alters that were named on the previous screen.
+Clicking next from the university roster stage, you will immediately arrive on a stage that uses the [Per-Alter Form](../interface-documentation/per-alter-form) interface to ask follow-up name interpreter questions about all alters that were named on the previous screen.
 
-![The per-alter form interface](/assets/img/sample-protocol/per-alter-form.png)
+![The Per-Alter Form interface](/assets/img/sample-protocol/per-alter-form.png)
 
-As with all [forms](../key-concepts/forms) used by Interviewer, the Per Alter Form allows you to capture different types of data in a series of fields utilizing a variety of input controls. Any data in these forms is stored directly on the alter as attributes. The Per Alter Form stage will cycle through all alters of a given type in the interview network, presenting the form for each.
+As with all [forms](../key-concepts/forms) used by Interviewer, the Per-Alter Form allows you to capture different types of data in a series of fields utilizing a variety of input controls. Any data in these forms is stored directly on the alter as attributes. The Per-Alter Form stage cycles through all alters of a given type in the interview network, presenting the form for each.
 
-There is also a per alter _edge_ version of this interface, which is identical except for dealing with edges between alters, rather than alters themselves. It can be used to ask edge interpreter questions about the quality of a given relation.
+There is also a per-alter _edge_ version of this interface, which is identical except for dealing with edges between alters rather than alters themselves. You can use it to ask edge interpreter questions about the quality of a given relation.
 
 ## The sociogram interface
 
@@ -354,11 +354,17 @@ It allows you to drag nodes into colorful circles, each representing a categoric
 
 ## Managing interview flow with skip logic and network filtering
 
-One of the simplest ways to reduce response burden in an interview is to avoid showing the participant questions that are not applicable (or redundant) based on earlier answers. In conventional survey software, sections of an interview can be skipped based on responses. Interviewer extends this concept, and allows the researcher to construct powerful queries built on the structure of the interview network itself, which can then be used to determine the flow of the interview as well as which interview network members should be shown on a stage. These queries can be applied to both [skip logic](../key-concepts/skip-logic) and stage level [network filtering](../key-concepts/network-filtering).
+One of the simplest ways to reduce response burden in an interview is to avoid showing the participant questions that are not applicable (or redundant) based on earlier answers. In conventional survey software, sections of an interview can be skipped based on responses. Interviewer extends this concept and allows the researcher to construct powerful queries built on the structure of the interview network itself, which can then be used to determine the flow of the interview as well as which interview network members should be shown on a stage. You can apply these queries to both [skip logic](../key-concepts/skip-logic) and stage-level network filtering.
 
-Following the categorical bin stage above, there is a further categorical bin. However, skip logic rules have been defined which direct that the stage should only be shown only if a participant has named any alters of type "Person" with whom they discuss social network research. Recall the **quick add** name generator earlier in the interview, which asked participants to list any people with whom they have discussed social networks research: nodes nominated on that stage were given an attribute which we have used to create this skip logic query. If no alters were generated on that screen, The next categorical bin will be skipped.
+Following the Categorical Bin stage above, there is a further Categorical Bin. However, skip logic rules have been defined which direct that the stage should only be shown if a participant has named any alters of type "Person" with whom they discuss social network research. Recall the **Quick Add** Name Generator earlier in the interview, which asked participants to list any people with whom they have discussed social networks research: nodes nominated on that stage were given an attribute which has been used to create this skip logic query. If no alters were generated on that screen, the next Categorical Bin will be skipped.
 
-Similarly, network filtering is configured using a rule which filters out all alters on this stage except those with whom the participant has discussed social networks research. This minimizes the scope of the task, and removes the need to add a "not applicable" category.
+Similarly, network filtering is configured using a rule which filters out all alters on this stage except those with whom the participant has discussed social networks research. This minimizes the scope of the task and removes the need to add a "not applicable" category.
+
+<TipBox>
+
+For more information on network filtering, see the [network filtering guide](/en/desktop/key-concepts/network-filtering).
+
+</TipBox>
 
 You may wish to navigate back and forth between the quick add name generator and this stage to see the skip logic and network filtering in action.
 
@@ -370,15 +376,15 @@ to it.
 
 </TipBox>
 
-## The Narrative Interface
+## The Narrative interface
 
-The final stage of the sample protocol demonstrates an interface that is designed for qualitative personal network's research. The [narrative](../interface-documentation/narrative) interface does not collect any additional data, but rather can map data collected elsewhere in the interview to aspects of the visual representation of the network. It therefore aims to represent aspects of the participant's network back to them, with the intent to facilitate narrative interrogation of the data in an interview setting.
+The final stage of the sample protocol demonstrates an interface that is designed for qualitative personal networks research. The [Narrative](../interface-documentation/narrative) interface does not collect any additional data but rather maps data collected elsewhere in the interview to aspects of the visual representation of the network. It aims to represent aspects of the participant's network back to them with the intent to facilitate narrative interrogation of the data in an interview setting.
 
 ![](/assets/img/sample-protocol/narrative.png)
 
-The preset menu in the bottom right allows the researcher or the respondent to switch between different predefined visual styles. In this example, we can see the two edge types we created previously ("know" and "conflict") and the boolean attributes we assigned during our variable toggling task on the Sociogram Interface. We can also see the categorical groupings collected on the Categorical Bin Interface. Each preset can be toggled on or off by tapping on the attribute or edge in the menu.
+The preset menu in the bottom right allows the researcher or the participant to switch between different predefined visual styles. In this example, you can see the two edge types created previously ("know" and "conflict") and the boolean attributes assigned during the variable toggling task on the Sociogram interface. You can also see the categorical groupings collected on the Categorical Bin interface. Each preset can be toggled on or off by tapping on the attribute or edge in the menu.
 
-The narrative Interface also supports free-form annotation using the mouse, a finger, or a stylus. The annotation will disappear in five seconds unless you click the freeze icon to the left of the preset menu. With the freeze button engaged, all annotations will remain until you disable the freeze function or use the reset annotation button. Although these annotations are not yet recorded by the software, you can optionally use additional screen recording and audio recording software to keep a record of the interactions on this Interface.
+The Narrative interface also supports free-form annotation using the mouse, a finger, or a stylus. The annotation will disappear in five seconds unless you click the freeze icon to the left of the preset menu. With the freeze button engaged, all annotations will remain until you disable the freeze function or use the reset annotation button. Although these annotations are not yet recorded by the software, you can optionally use additional screen recording and audio recording software to keep a record of the interactions on this interface.
 
 ## The Finish Screen
 
@@ -430,4 +436,8 @@ Position data from layout variables used on the Sociogram interface in Interview
 
 ## Next Steps
 
-Now that you have experienced the general flow of an interview in Network Canvas Interviewer from the participant perspective, you may wish to learn about how to begin to create your own protocol. For this, we suggest our article on [building a protocol using Architect](/en/desktop/tutorials/building-a-protocol).
+Now that you have experienced the general flow of an interview in Network Canvas Interviewer from the participant perspective, you may wish to:
+
+- Learn how to create your own protocol in [building a protocol using Architect](/en/desktop/tutorials/building-a-protocol)
+- Export your interview data using the [Data Export guide](/en/desktop/key-concepts/data-export)
+- Explore the full [Protocol and Data Workflows](/en/desktop/tutorials/protocol-and-data-workflows) for conducting research
