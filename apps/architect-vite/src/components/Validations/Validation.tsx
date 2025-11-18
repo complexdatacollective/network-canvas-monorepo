@@ -1,6 +1,7 @@
 import { map } from "lodash";
+import { Trash2 } from "lucide-react";
+import { motion } from "motion/react";
 import Number from "~/components/Form/Fields/Number";
-import { Icon } from "~/lib/legacy-ui/components";
 import NativeSelect from "../Form/Fields/NativeSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 
@@ -57,7 +58,7 @@ const Validation = ({
 	};
 
 	return (
-		<div className="form-fields-multi-select__rule">
+		<div className="form-fields-multi-select__rule group">
 			<div className="form-fields-multi-select__rule-options">
 				<div className="form-fields-multi-select__rule-option">
 					<NativeSelect
@@ -84,16 +85,17 @@ const Validation = ({
 				)}
 			</div>
 			<div className="form-fields-multi-select__rule-control">
-				<div
-					className="form-fields-multi-select__delete"
+				<motion.div
+					layout
+					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"
 					onClick={() => onDelete(itemKey || "")}
 					onKeyDown={handleDeleteKeyDown}
 					role="button"
 					tabIndex={0}
 					aria-label="Delete validation rule"
 				>
-					<Icon name="delete" />
-				</div>
+					<Trash2 />
+				</motion.div>
 			</div>
 		</div>
 	);
