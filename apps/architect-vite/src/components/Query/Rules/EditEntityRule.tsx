@@ -17,6 +17,11 @@ import { entityRuleTypeOptions, entityRuleTypes, withEntityRuleType } from "./wi
 import withOptions from "./withOptions";
 import withRuleChangeHandler from "./withRuleChangeHandler";
 
+type OptionItem = {
+	value: string | number;
+	label: string;
+};
+
 type EditEntityRuleProps = {
 	entityRuleType?: string;
 	handleChangeEntityRuleType: (value: string) => void;
@@ -24,12 +29,12 @@ type EditEntityRuleProps = {
 		options?: Record<string, unknown>;
 		type: string;
 	};
-	typeOptions: any[];
+	typeOptions: OptionItem[];
 	variableType?: string;
-	variablesAsOptions: any[];
-	variableOptions?: any[];
-	operatorOptions: any[];
-	handleRuleChange: (value: any) => void;
+	variablesAsOptions: OptionItem[];
+	variableOptions?: OptionItem[];
+	operatorOptions: OptionItem[];
+	handleRuleChange: (value: Record<string, unknown>) => void;
 };
 
 const EditEntityRule = ({

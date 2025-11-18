@@ -6,7 +6,7 @@ import useValidate from "~/hooks/useValidate";
 import IssueAnchor from "../IssueAnchor";
 
 // Generic T should contain ONLY the component's unique props (not WrappedFieldProps). F should be the type of the field's value.
-type ValidatedFieldProps<T = {}> = Omit<BaseFieldProps, "validate" | "component" | "props"> & {
+type ValidatedFieldProps<T = Record<string, never>> = Omit<BaseFieldProps, "validate" | "component" | "props"> & {
 	validation: Record<string, Validator> | Record<ValidationName, Validation>;
 	component: ComponentType<WrappedFieldProps & T>;
 	componentProps?: T;
@@ -16,7 +16,12 @@ type ValidatedFieldProps<T = {}> = Omit<BaseFieldProps, "validate" | "component"
  * A wrapper around redux-form's Field component that converts our validation
  * objects into a format that redux-form can understand.
  */
-function ValidatedField<T = {}>({ validation, component, componentProps, ...fieldProps }: ValidatedFieldProps<T>) {
+function ValidatedField<T = Record<string, never>>({
+	validation,
+	component,
+	componentProps,
+	...fieldProps
+}: ValidatedFieldProps<T>) {
 	const validations = useValidate(validation);
 
 	return (

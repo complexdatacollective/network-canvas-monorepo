@@ -13,7 +13,8 @@ const validate = (validations) => {
 		if (!isNull(value)) {
 			return acc;
 		}
-		return [...acc, key];
+		acc.push(key);
+		return acc;
 	}, []);
 
 	if (check.length === 0) {
@@ -56,7 +57,7 @@ type ExistingVariable = {
 
 type ValidationsFieldProps = {
 	input: {
-		value: Array<[string, any]>;
+		value: Array<[string, unknown]>;
 	};
 	options?: ValidationOption[];
 	existingVariables: Record<string, ExistingVariable>;
@@ -65,7 +66,7 @@ type ValidationsFieldProps = {
 		error?: string;
 	};
 	children?: React.ReactNode;
-	onUpdate?: (key: string, value: any, itemKey: string) => void;
+	onUpdate?: (key: string, value: unknown, itemKey: string) => void;
 	onDelete?: (itemKey: string) => void;
 };
 
@@ -105,12 +106,12 @@ const ValidationsField = ({
 type ValidationsProps = {
 	name: string;
 	validationOptions?: ValidationOption[];
-	value?: Record<string, any>;
+	value?: Record<string, unknown>;
 	addNew: boolean;
 	setAddNew: (value: boolean) => void;
-	handleChange: (key: string, value: any, itemKey: string) => void;
+	handleChange: (key: string, value: unknown, itemKey: string) => void;
 	handleDelete: (itemKey: string) => void;
-	handleAddNew: (key: string, value: any, itemKey: string) => void;
+	handleAddNew: (key: string, value: unknown, itemKey: string) => void;
 	existingVariables?: Record<string, ExistingVariable>;
 };
 

@@ -1,10 +1,12 @@
 import Rules from "./Rules";
 
+type Rule = Record<string, unknown>;
+
 type FilterProps = {
-	onChange: (value: any) => void;
-	openDialog: (dialog: any) => void;
-	rules?: any[];
-	codebook: Record<string, any>;
+	onChange: (value: unknown) => void;
+	openDialog: (dialog: unknown) => void;
+	rules?: Rule[];
+	codebook: Record<string, unknown>;
 	join?: string;
 	error?: string;
 };

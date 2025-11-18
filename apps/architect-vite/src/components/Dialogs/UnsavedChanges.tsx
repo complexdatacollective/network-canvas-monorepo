@@ -1,4 +1,4 @@
-const UnsavedChanges = (options: any) => ({
+const UnsavedChanges = (options: Record<string, unknown>) => ({
 	type: "Warning",
 	title: "Unsaved changes will be lost",
 	message: <p>Your protocol has changes that have not yet been saved. Continuing will discard these changes!</p>,

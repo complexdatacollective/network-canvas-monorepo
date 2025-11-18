@@ -11,7 +11,9 @@ type ItemPreviewProps = {
 	assetType?: string | null;
 };
 
-const mapStateToProps = (state: any, { content }: { content: string }) => {
+type RootState = Record<string, unknown>;
+
+const mapStateToProps = (state: RootState, { content }: { content: string }) => {
 	const assetManifest = getAssetManifest(state);
 
 	const assetType = get(assetManifest, [content, "type"]);

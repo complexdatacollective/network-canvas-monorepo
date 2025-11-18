@@ -14,12 +14,10 @@ async function getAllProtocolAssets(protocol: Protocol) {
 			const assetData = await assetDb.assets.get(assetId);
 
 			if (!assetData) {
-				console.warn(`Asset ${assetId} not found in IndexedDB`);
 				continue;
 			}
 
 			if (typeof assetData.data === "string") {
-				console.log(`Skipping string asset: ${assetId}`);
 				continue;
 			}
 
@@ -28,9 +26,7 @@ async function getAllProtocolAssets(protocol: Protocol) {
 				source: assetDefinition.source,
 				data: assetData.data,
 			});
-		} catch (error) {
-			console.error(`Error retrieving asset ${assetId}:`, error);
-		}
+		} catch (_error) {}
 	}
 
 	return assets;
@@ -50,12 +46,9 @@ export async function bundleProtocol(protocol: Protocol): Promise<Blob> {
 		const assetsFolder = zip.folder("assets");
 		if (assetsFolder) {
 			for (const asset of assets) {
-				console.log(`Adding asset to bundle: ${asset.source}`);
 				assetsFolder.file(asset.source, asset.data);
 			}
 		}
-
-		console.log(`Bundled ${assets.length} assets with protocol`);
 	}
 
 	const blob = await zip.generateAsync({
@@ -89,10 +82,7 @@ export async function downloadProtocolAsNetcanvas(protocol: Protocol): Promise<v
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
-
-		console.log(`Downloaded protocol: ${a.download}`);
 	} catch (error) {
-		console.error("Error downloading protocol:", error);
 		throw new Error(`Failed to download protocol: ${error instanceof Error ? error.message : "Unknown error"}`);
 	}
 }

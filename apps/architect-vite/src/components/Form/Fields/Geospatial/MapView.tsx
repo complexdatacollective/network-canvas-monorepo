@@ -119,7 +119,7 @@ const MapView = ({
 		return () => {
 			mapRef.current?.remove();
 		};
-	}, [mapOptions, mapboxAPIKey]);
+	}, [mapboxAPIKey, center, style, zoom]);
 
 	return (
 		<Dialog

@@ -114,14 +114,12 @@ class ExportAnimation {
 				return nodes;
 			}
 
-			return [
-				...nodes,
-				{
-					...node,
-					a,
-					h,
-				},
-			];
+			nodes.push({
+				...node,
+				a,
+				h,
+			});
+			return nodes;
 		}, []);
 
 		this.nodes = [
@@ -167,7 +165,7 @@ const ExportSprite = ({ size = 500, percentProgress, statusText = "Exporting ite
 				animation.current.destroy();
 			}
 		};
-	}, [el.current, size]);
+	}, [size]);
 
 	return (
 		<div className="export-sprite" ref={el} style={{ width: size, height: size }}>

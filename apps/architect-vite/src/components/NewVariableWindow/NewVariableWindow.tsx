@@ -21,14 +21,14 @@ type NewVariableWindowProps = {
 	variableType?: string | null;
 	allowVariableTypes?: string[] | null;
 	onComplete: () => void;
-	handleCreateNewVariable: (values: any) => void;
+	handleCreateNewVariable: (values: Record<string, unknown>) => void;
 	onCancel: () => void;
 	initialValues?: Record<string, unknown> | null;
 	existingVariableNames: string[];
 };
 
 class NewVariableWindow extends Component<NewVariableWindowProps> {
-	validateName = (value) => {
+	validateName = (value: string) => {
 		const { existingVariableNames } = this.props;
 		return uniqueByList(existingVariableNames)(value);
 	};

@@ -22,7 +22,6 @@ const Icon = ({ color = "", name, className = "", style = {}, ...rest }: IconPro
 	const IconComponent = useMemo(() => icons(name), [name]);
 
 	if (!IconComponent) {
-		console.warn("Invalid icon name:", name);
 		return null;
 	}
 

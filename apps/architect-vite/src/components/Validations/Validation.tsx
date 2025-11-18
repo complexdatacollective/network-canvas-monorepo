@@ -49,6 +49,13 @@ const Validation = ({
 		label: variableValue.name,
 		value: variableKey,
 	}));
+	const handleDeleteKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			onDelete(itemKey || "");
+		}
+	};
+
 	return (
 		<div className="form-fields-multi-select__rule">
 			<div className="form-fields-multi-select__rule-options">
@@ -77,7 +84,14 @@ const Validation = ({
 				)}
 			</div>
 			<div className="form-fields-multi-select__rule-control">
-				<div className="form-fields-multi-select__delete" onClick={() => onDelete(itemKey || "")}>
+				<div
+					className="form-fields-multi-select__delete"
+					onClick={() => onDelete(itemKey || "")}
+					onKeyDown={handleDeleteKeyDown}
+					role="button"
+					tabIndex={0}
+					aria-label="Delete validation rule"
+				>
 					<Icon name="delete" />
 				</div>
 			</div>

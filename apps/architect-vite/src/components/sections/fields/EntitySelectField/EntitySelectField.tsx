@@ -51,22 +51,25 @@ const EntitySelectField = ({
 
 	const hasError = !!touched && !!error;
 
-	const handleClickItem = (clickedItem) => {
-		if (!value || !promptBeforeChange) {
-			onChange(clickedItem);
-			return;
-		}
+	const handleClickItem = useCallback(
+		(clickedItem) => {
+			if (!value || !promptBeforeChange) {
+				onChange(clickedItem);
+				return;
+			}
 
-		dispatch(
-			dialogActions.openDialog({
-				type: "Confirm",
-				title: `Change ${entityType} type?`,
-				message: promptBeforeChange,
-				onConfirm: () => onChange(clickedItem),
-				confirmLabel: "Continue",
-			}),
-		);
-	};
+			dispatch(
+				dialogActions.openDialog({
+					type: "Confirm",
+					title: `Change ${entityType} type?`,
+					message: promptBeforeChange,
+					onConfirm: () => onChange(clickedItem),
+					confirmLabel: "Continue",
+				}),
+			);
+		},
+		[value, promptBeforeChange, onChange, dispatch, entityType],
+	);
 
 	const handleOpenCreateNewType = useCallback(() => {
 		setShowNewTypeDialog(true);

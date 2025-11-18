@@ -9,13 +9,10 @@ import { getFormNames, getFormValues } from "redux-form";
  */
 export const getForms = (formNames) => (state) => {
 	const reduce = (names) =>
-		names.reduce(
-			(memo, formName) => ({
-				...memo,
-				[formName]: getFormValues(formName)(state),
-			}),
-			{},
-		);
+		names.reduce((memo, formName) => {
+			memo[formName] = getFormValues(formName)(state);
+			return memo;
+		}, {});
 
 	if (!formNames) {
 		const allFormNames = getFormNames(state);

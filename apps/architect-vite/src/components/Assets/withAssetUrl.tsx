@@ -31,10 +31,7 @@ const withAssetUrl = <P extends WithAssetUrlProps>(WrappedComponent: React.Compo
 						currentUrl = blobUrl;
 						setUrl(blobUrl);
 					}
-				} catch (err) {
-					// Silently fail
-					console.warn("Failed to load asset:", id, err);
-				}
+				} catch (_err) {}
 			};
 
 			loadAsset();

@@ -9,7 +9,7 @@ type BucketSortOrderSectionProps = {
 	form: string;
 	disabled?: boolean;
 	maxItems?: number;
-	optionGetter: () => any;
+	optionGetter: () => Array<{ label: string; value: string }>;
 	summary?: React.ReactNode;
 };
 

@@ -12,7 +12,7 @@ import { SUBJECT_INDEPENDENT_FIELDS } from "./NodeType";
 
 type FilteredEdgeTypeProps = {
 	form: string;
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const { form } = props;

@@ -29,7 +29,7 @@ interface VariableOption {
 // Helper selectors
 const getFormsSelector = (formNames: string[]) =>
 	createSelector([(state: RootState) => state], (state) => {
-		const forms: Record<string, any> = {};
+		const forms: Record<string, unknown> = {};
 		formNames.forEach((formName) => {
 			forms[formName] = getFormValues(formName)(state);
 		});
@@ -40,7 +40,7 @@ const getAllFormsSelector = createSelector([(state: RootState) => state], (state
 	const allFormNames = getFormNames(state);
 	// Ensure allFormNames is an array
 	const formNamesArray = Array.isArray(allFormNames) ? allFormNames : [];
-	const forms: Record<string, any> = {};
+	const forms: Record<string, unknown> = {};
 	formNamesArray.forEach((formName) => {
 		forms[formName] = getFormValues(formName)(state);
 	});
@@ -129,13 +129,10 @@ export const makeGetIsUsed = (options: GetIsUsedOptions = {}) => {
 			const data = excludePaths.length > 0 ? omit(cloneDeep(searchLocations), excludePaths) : searchLocations;
 			const flattenedData = JSON.stringify(data);
 
-			const isUsed = variableIds.reduce<IsUsedMap>(
-				(memo, variableId) => ({
-					...memo,
-					[variableId]: flattenedData.includes(`"${variableId}"`),
-				}),
-				{},
-			);
+			const isUsed = variableIds.reduce<IsUsedMap>((memo, variableId) => {
+				memo[variableId] = flattenedData.includes(`"${variableId}"`);
+				return memo;
+			}, {});
 
 			return isUsed;
 		},

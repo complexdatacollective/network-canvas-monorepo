@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const useNewVariableWindowState = (initialProps, onComplete) => {
 	const [meta, setMeta] = useState({});
@@ -6,14 +6,14 @@ const useNewVariableWindowState = (initialProps, onComplete) => {
 	const [windowOpen, setWindowOpen] = useState(false);
 	const handleOnComplete = useRef();
 
-	const closeWindow = () => setWindowOpen(false);
+	const closeWindow = useCallback(() => setWindowOpen(false), []);
 
 	useEffect(() => {
 		handleOnComplete.current = (...args) => {
 			onComplete(...args, meta);
 			closeWindow();
 		};
-	}, [meta]);
+	}, [meta, closeWindow, onComplete]);
 
 	const openWindow = (newProps, newMeta) => {
 		setDynamicProps((prevProps) => ({

@@ -13,7 +13,7 @@ type VariableOption = {
 
 type AssignAttributesProps = {
 	variableOptions: VariableOption[];
-	fields: FieldArrayFieldsProps<any>;
+	fields: FieldArrayFieldsProps<{ variable: string; value: boolean }>;
 	type: string;
 	entity: string;
 	handleAddNew: () => void;

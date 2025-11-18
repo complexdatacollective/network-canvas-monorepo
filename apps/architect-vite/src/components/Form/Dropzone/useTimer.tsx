@@ -7,6 +7,7 @@ const useTimer = (callback, delay, props) => {
 		const timer = setTimeout(() => f.current(), delay);
 
 		return () => clearTimeout(timer);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, props);
 };
 

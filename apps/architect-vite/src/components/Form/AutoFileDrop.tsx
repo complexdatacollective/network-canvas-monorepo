@@ -25,7 +25,13 @@ const autoFileDrop = compose(
 	connect(null, mapDispatchToProps),
 	withHandlers({
 		onDrop:
-			({ importAsset, onDrop }: { importAsset: any; onDrop: (ids: string[]) => void }) =>
+			({
+				importAsset,
+				onDrop,
+			}: {
+				importAsset: (filePath: string) => Promise<{ id: string }>;
+				onDrop: (ids: string[]) => void;
+			}) =>
 			(filePaths: string[]) =>
 				Promise.all(filePaths.map((filePath) => importAsset(filePath).then(({ id }: { id: string }) => id))).then(
 					(ids) => onDrop(ids),

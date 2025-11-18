@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import { compose } from "recompose";
 import windowRootConsumer from "./windowRootConsumer";
 
-const getDisplayName = (WrappedComponent: ComponentType<any>) =>
+const getDisplayName = (WrappedComponent: ComponentType<Record<string, unknown>>) =>
 	WrappedComponent.displayName || WrappedComponent.name || "Component";
 
 /*
@@ -13,7 +13,7 @@ const getDisplayName = (WrappedComponent: ComponentType<any>) =>
  */
 interface WindowComponentProps {
 	windowRoot?: Element | null;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 const withWindow = <P extends object>(WrappedComponent: ComponentType<P>, defaultRoot: Element = document.body) => {

@@ -19,15 +19,20 @@ const defaultOptions = {
 	value: "",
 };
 
+type OptionItem = {
+	value: string | number;
+	label: string;
+};
+
 type EditEgoRuleProps = {
 	rule: {
 		options?: Record<string, unknown>;
 	};
 	variableType?: string;
-	variablesAsOptions: any[];
-	variableOptions?: any[];
-	operatorOptions: any[];
-	handleRuleChange: (value: any) => void;
+	variablesAsOptions: OptionItem[];
+	variableOptions?: OptionItem[];
+	operatorOptions: OptionItem[];
+	handleRuleChange: (value: Record<string, unknown>) => void;
 };
 
 const EditEgoRule = ({

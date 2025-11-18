@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import icons from "../assets/img/icons";
 
-type IconComponent = ComponentType<any>;
+type IconComponent = ComponentType<Record<string, unknown>>;
 
 const getNCIcon = (name: string): IconComponent | null => {
 	if (!Object.hasOwn(icons, name)) {

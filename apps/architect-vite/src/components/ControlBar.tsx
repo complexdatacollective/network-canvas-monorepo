@@ -25,11 +25,14 @@ const buttonVariants = {
 	hidden: { opacity: 0, y: 10 },
 };
 
-const animatedButton = (button: React.ReactNode, index: number) => (
-	<motion.div key={(button as any)?.key || index} variants={buttonVariants} exit="hidden" layout>
-		{button}
-	</motion.div>
-);
+const animatedButton = (button: React.ReactNode, index: number) => {
+	const key = typeof button === "object" && button !== null && "key" in button ? String(button.key) : String(index);
+	return (
+		<motion.div key={key} variants={buttonVariants} exit="hidden" layout>
+			{button}
+		</motion.div>
+	);
+};
 
 type ControlBarProps = {
 	buttons?: React.ReactNode[] | null;

@@ -48,17 +48,15 @@ export const getLayout = (items: GridItem[] = [], capacity = 4) => {
 			const h = parseSize(size);
 			const maxH = h + remainingSpace === 3 ? 2 : h + remainingSpace;
 
-			return [
-				...memo,
-				{
-					i: id,
-					y,
-					w: 1,
-					h,
-					x: 0,
-					maxH,
-				},
-			];
+			memo.push({
+				i: id,
+				y,
+				w: 1,
+				h,
+				x: 0,
+				maxH,
+			});
+			return memo;
 		},
 		[
 			{

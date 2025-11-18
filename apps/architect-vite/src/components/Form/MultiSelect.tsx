@@ -53,9 +53,9 @@ const Item = compose(
 			({ properties, field, resetField }) =>
 			(index) => {
 				// Reset any fields after this one in the property index
-				properties
-					.slice(index + 1)
-					.forEach(({ fieldName: propertyFieldName }) => resetField(`${field}.${propertyFieldName}`));
+				for (const { fieldName: propertyFieldName } of properties.slice(index + 1)) {
+					resetField(`${field}.${propertyFieldName}`);
+				}
 			},
 	}),
 )(({ field, properties, options, rowValues, allValues, handleDelete, handleChange, value }) => {
@@ -106,7 +106,7 @@ const Item = compose(
 	);
 });
 
-const mapStateToItemsProps = (state, { meta: { form }, fields: { name: fieldsName } }) => ({
+const mapStateToItemsProps = (_state, { meta: { form }, fields: { name: fieldsName } }) => ({
 	form,
 	fieldsName,
 });

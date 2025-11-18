@@ -16,7 +16,7 @@ interface RelativeDatePickerProps {
 		before?: number;
 		after?: number;
 	};
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 const RelativeDatePicker = ({ parameters = {}, ...rest }: RelativeDatePickerProps) => {

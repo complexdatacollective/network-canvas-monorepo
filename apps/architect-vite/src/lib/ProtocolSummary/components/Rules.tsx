@@ -27,7 +27,7 @@ const Rules = ({ filter = null }: RulesProps) => {
 	return (
 		<div className="protocol-summary-rules">
 			{rules.map(({ type, options }, n) => (
-				<React.Fragment key={`rule-${type}-${n}`}>
+				<React.Fragment key={`rule-${type}-${JSON.stringify(options)}-${n}`}>
 					<div className="protocol-summary-rules__rule">
 						<Rule type={type} options={options} codebook={protocol.codebook} />
 					</div>

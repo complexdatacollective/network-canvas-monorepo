@@ -28,6 +28,12 @@ class SpotlightModal extends Component<SpotlightModalProps> {
 			onBlur(event);
 		};
 
+		const handleKeyDown = (event: React.KeyboardEvent) => {
+			if (event.key === "Escape" && event.target === event.currentTarget) {
+				onBlur(event as unknown as React.MouseEvent);
+			}
+		};
+
 		const variants = {
 			visible: {
 				opacity: 1,
@@ -51,7 +57,14 @@ class SpotlightModal extends Component<SpotlightModalProps> {
 						animate="visible"
 						exit="hidden"
 					>
-						<div className="modal__background" onClick={handleBlur} />
+						<div
+							className="modal__background"
+							onClick={handleBlur}
+							onKeyDown={handleKeyDown}
+							role="button"
+							tabIndex={-1}
+							aria-label="Close modal"
+						/>
 						<div className="spotlight-modal__content">{children}</div>
 					</motion.div>
 				)}

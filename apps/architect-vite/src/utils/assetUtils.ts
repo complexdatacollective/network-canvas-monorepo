@@ -10,7 +10,6 @@ export const saveProtocolAssets = async (assets: ExtractedAsset[]): Promise<void
 	const assetPromises = assets.map(async (asset) => {
 		// Skip apikey assets as they're not actual files
 		if (typeof asset.data === "string") {
-			console.log(`Skipping apikey asset: ${asset.name}`);
 			return;
 		}
 
@@ -18,7 +17,6 @@ export const saveProtocolAssets = async (assets: ExtractedAsset[]): Promise<void
 	});
 
 	await Promise.all(assetPromises);
-	console.log("All assets extracted and saved to IndexedDB");
 };
 
 export const getAssetById = async (assetId: string): Promise<ExtractedAsset | undefined> => {
@@ -27,7 +25,6 @@ export const getAssetById = async (assetId: string): Promise<ExtractedAsset | un
 
 export const createBlobUrl = (asset: ExtractedAsset): string => {
 	if (typeof asset.data === "string") {
-		console.warn(`Asset ${asset.name} is not a Blob, cannot create Blob URL.`);
 		return asset.data; // Return the string directly if it's not a Blob
 	}
 

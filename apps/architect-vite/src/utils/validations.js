@@ -14,7 +14,10 @@ const messageWithDefault = (message, defaultMessage) => {
 // or a single value
 const coerceArray = (value) => {
 	if (value instanceof Object) {
-		return value.reduce((acc, individual) => [...acc, individual.value], []);
+		return value.reduce((acc, individual) => {
+			acc.push(individual.value);
+			return acc;
+		}, []);
 	}
 	if (Array.isArray(value)) {
 		return value;

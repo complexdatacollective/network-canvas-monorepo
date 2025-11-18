@@ -31,7 +31,7 @@ vi.mock("~/hooks/useProtocolLoader", () => ({
 // Mock motion/react to avoid animation issues in tests
 vi.mock("motion/react", () => ({
 	motion: {
-		div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+		div: ({ children, ...props }: Record<string, unknown> & { children?: ReactNode }) => <div {...props}>{children}</div>,
 	},
 	useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
 }));
@@ -64,12 +64,14 @@ const createTestStore = () => {
 	});
 };
 
-const createWrapper = (store: any) => {
+type TestStore = ReturnType<typeof createTestStore>;
+
+const createWrapper = (store: TestStore) => {
 	return ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 };
 
 describe("Protocol Component", () => {
-	let store: any;
+	let store: TestStore;
 
 	beforeEach(() => {
 		store = createTestStore();

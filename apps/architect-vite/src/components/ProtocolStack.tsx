@@ -14,8 +14,22 @@ const ProtocolStack = ({ protocol }: ProtocolStackProps) => {
 		navigate(`/protocol/${protocol.id}`);
 	};
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			navigate(`/protocol/${protocol.id}`);
+		}
+	};
+
 	return (
-		<div className="protocol-stack" onClick={handleClick}>
+		<div
+			className="protocol-stack"
+			onClick={handleClick}
+			onKeyDown={handleKeyDown}
+			role="button"
+			tabIndex={0}
+			aria-label={`Open protocol ${protocol.name}`}
+		>
 			<div className="protocol-stack__preview">
 				<Flipped flipId={protocol.id}>
 					<div className="protocol-stack__stack">

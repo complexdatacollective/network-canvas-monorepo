@@ -50,8 +50,23 @@ const Tag = ({
 		color === "white" && "bg-white",
 	);
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (!disabled && onClick && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			onClick(id);
+		}
+	};
+
 	return (
-		<div className={componentClasses} onClick={() => !disabled && onClick && onClick(id)}>
+		<div
+			className={componentClasses}
+			onClick={() => !disabled && onClick && onClick(id)}
+			onKeyDown={handleKeyDown}
+			role={onClick ? "button" : undefined}
+			tabIndex={onClick && !disabled ? 0 : -1}
+			aria-label={typeof children === "string" ? children : undefined}
+			aria-disabled={disabled}
+		>
 			<div className={dotClasses} />
 			{children}
 		</div>

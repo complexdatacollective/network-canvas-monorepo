@@ -14,11 +14,15 @@ const EncryptedVariables = () => {
 	const openDialog = useCallback((dialog) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
 	const nodeTypes = useSelector((state) => getNodeTypes(state));
 
-	const handleEncryptionToggle = (variableId, encrypted, variable) => {
-		const properties = encrypted ? { ...variable, encrypted: true } : omit(variable, "encrypted");
+	const handleEncryptionToggle = useCallback(
+		(variableId, encrypted, variable) => {
+			const properties = encrypted ? { ...variable, encrypted: true } : omit(variable, "encrypted");
 
-		dispatch(codebookActions.updateVariableByUUID(variableId, properties, false));
-	};
+			dispatch(codebookActions.updateVariableByUUID(variableId, properties, false));
+		},
+		[dispatch],
+	);
+
 	const handleToggleChange = useCallback(
 		async (hasEncryptedVariable, nodeType, newState) => {
 			if (!hasEncryptedVariable || newState === true) {
@@ -43,7 +47,7 @@ const EncryptedVariables = () => {
 
 			return false;
 		},
-		[openDialog],
+		[openDialog, handleEncryptionToggle],
 	);
 	return (
 		<Section

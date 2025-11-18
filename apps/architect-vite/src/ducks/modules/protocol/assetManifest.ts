@@ -63,18 +63,14 @@ export const importAssetAsync = createAsyncThunk(
 			// Validate asset
 			await validateAsset(filePath).catch((error) => {
 				dispatch(invalidAssetErrorDialog(error, filePath));
-				console.error("Validation error", error);
 				throw error;
 			});
 
 			// Import asset
 			const result = await fsImportAsset(workingPath, filePath).catch((error) => {
-				console.error("Import error", error);
 				dispatch(importAssetErrorDialog(error, filePath));
 				throw error;
 			});
-
-			console.info("Asset import OK");
 
 			const importPayload: ImportAssetCompletePayload = {
 				id: uuid(),
@@ -114,10 +110,7 @@ const assetManifestSlice = createSlice({
 				source: filename,
 			};
 		},
-		importAssetFailed: (_state, action: PayloadAction<ImportAssetFailedPayload>) => {
-			// Could be used to track error states in the future
-			console.error("Asset import failed:", action.payload.error);
-		},
+		importAssetFailed: (_state, _action: PayloadAction<ImportAssetFailedPayload>) => {},
 		deleteAsset: (state, action: PayloadAction<string>) => {
 			const assetId = action.payload;
 			// Don't delete from disk, this allows us to rollback the protocol.

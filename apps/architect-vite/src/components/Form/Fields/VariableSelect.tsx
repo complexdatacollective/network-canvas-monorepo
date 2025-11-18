@@ -13,12 +13,17 @@ const mapStateToProps = (state, { entity, type }) => {
 	return { reserved: existingVariables };
 };
 
+type VariableOption = {
+	value: string;
+	label: string;
+};
+
 type VariableSelectProps = {
-	reserved?: any[];
+	reserved?: VariableOption[];
 	entity?: string;
 	type?: string;
 	variable?: string;
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 // TODO: For now just map existing variables, but later could also append create handlers!
 const VariableSelect = ({

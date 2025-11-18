@@ -1,17 +1,18 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubject } from "~/selectors/codebook";
 import { getCodebook } from "~/selectors/protocol";
 import { asOptions } from "~/selectors/utils";
 
-export const getLayoutVariablesForSubject = (state: any, { entity, type }: { entity: string; type: string }) => {
+export const getLayoutVariablesForSubject = (state: RootState, { entity, type }: { entity: string; type: string }) => {
 	const variableOptions = getVariableOptionsForSubject(state, { entity, type });
 	const layoutOptions = variableOptions.filter(({ type: variableType }) => variableType === "layout");
 
 	return layoutOptions;
 };
 
-export const getHighlightVariablesForSubject = (state: any, { type, entity }: { type: string; entity: string }) => {
+export const getHighlightVariablesForSubject = (state: RootState, { type, entity }: { type: string; entity: string }) => {
 	// All defined variables that match nodeType
 	const variableOptions = getVariableOptionsForSubject(state, { entity, type });
 
@@ -25,7 +26,7 @@ export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {
 	return asOptions(codebook.edge);
 });
 
-export const getEdgeFilters = (state: any) => {
+export const getEdgeFilters = (state: RootState) => {
 	const getStageValue = formValueSelector("edit-stage");
 	const currentFilters = getStageValue(state, "filter");
 

@@ -5,8 +5,8 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
 
 type VirtualizedTableProps = {
-	columns: Column<Record<string, any>>[];
-	data: Record<string, any>[];
+	columns: Column<Record<string, unknown>>[];
+	data: Record<string, unknown>[];
 };
 
 const VirtualizedTable = ({ columns, data }: VirtualizedTableProps) => {
@@ -54,8 +54,9 @@ const VirtualizedTable = ({ columns, data }: VirtualizedTableProps) => {
 				<div {...getTableProps()} className="table">
 					<div>
 						{headerGroups.map((headerGroup, groupIndex) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: react-table headerGroups array is stable
 							// eslint-disable-next-line react/jsx-props-no-spreading
-							<div {...headerGroup.getHeaderGroupProps()} className="tr" key={groupIndex}>
+							<div {...headerGroup.getHeaderGroupProps()} className="tr" key={`header-group-${groupIndex}`}>
 								{headerGroup.headers.map((column) => (
 									// eslint-disable-next-line react/jsx-props-no-spreading
 									<div {...column.getHeaderProps()} className="th" key={column.id}>

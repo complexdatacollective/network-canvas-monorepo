@@ -21,16 +21,17 @@ import SkipLogic from "./SkipLogic";
 
 const getInterfaceImage = (type: string) => get(interfaceImage, type);
 
-const variablesOnStage = (index: any[]) => (stageId: string) =>
-	index.reduce((memo, variable) => {
+const variablesOnStage = (index: Array<{ id: string; name: string; stages: string[] }>) => (stageId: string) =>
+	index.reduce<Array<[string, string]>>((memo, variable) => {
 		if (!variable.stages.includes(stageId)) {
 			return memo;
 		}
-		return [...memo, [variable.id, variable.name]];
+		memo.push([variable.id, variable.name]);
+		return memo;
 	}, []);
 
 type StageProps = {
-	configuration: Record<string, any>;
+	configuration: Record<string, unknown>;
 	id: string;
 	label: string;
 	stageNumber: number;

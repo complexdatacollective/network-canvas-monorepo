@@ -17,9 +17,8 @@ const getComponent = (options) => {
 
 type ParametersProps = {
 	type: string;
-	component: any;
-	[key: string]: any;
-};
+	component: React.ComponentType<Record<string, unknown>>;
+} & Record<string, unknown>;
 
 const Parameters = ({ type, component, ...rest }: ParametersProps) => {
 	const ParameterComponent = getComponent({ type, component });

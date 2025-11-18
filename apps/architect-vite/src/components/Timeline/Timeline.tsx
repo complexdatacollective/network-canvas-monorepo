@@ -27,7 +27,7 @@ const Timeline = () => {
 	);
 
 	const openDialog = useCallback(
-		(config: any) => {
+		(config: Record<string, unknown>) => {
 			dispatch(dialogsActions.openDialog(config));
 		},
 		[dispatch],
@@ -42,7 +42,7 @@ const Timeline = () => {
 		setShowNewStageDialog(true);
 	}, []);
 
-	const handleNewStageCancel = useCallback(() => {
+	const _handleNewStageCancel = useCallback(() => {
 		setShowNewStageDialog(false);
 		setInsertAtIndex(undefined);
 	}, []);

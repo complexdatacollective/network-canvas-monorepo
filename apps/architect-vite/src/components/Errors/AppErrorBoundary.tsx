@@ -16,7 +16,6 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 
 	componentDidCatch(error: Error) {
 		this.setState({ error });
-		console.log(error); // eslint-disable-line no-console
 	}
 
 	render() {

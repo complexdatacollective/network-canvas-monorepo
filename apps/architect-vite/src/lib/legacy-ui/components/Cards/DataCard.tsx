@@ -3,7 +3,7 @@ import { noop } from "lodash";
 
 interface DataCardProps {
 	label: string;
-	data?: Record<string, any>;
+	data?: Record<string, unknown>;
 	onClick?: () => void;
 	allowDrag?: boolean;
 }
@@ -14,8 +14,21 @@ const DataCard = ({ label, data = {}, onClick = noop, allowDrag = false }: DataC
 		"data-card--can-click": onClick !== noop,
 	});
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (onClick !== noop && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			onClick();
+		}
+	};
+
 	return (
-		<div className={classes} onClick={onClick}>
+		<div
+			className={classes}
+			onClick={onClick}
+			onKeyDown={handleKeyDown}
+			role={onClick !== noop ? "button" : undefined}
+			tabIndex={onClick !== noop ? 0 : undefined}
+		>
 			<div className="data-card__label">
 				<h2>{label}</h2>
 			</div>

@@ -4,17 +4,18 @@ import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/store";
 import { getFieldId } from "~/utils/issues";
-
-type RootState = {
-	[key: string]: any;
-};
 
 const InterviewerScript = () => {
 	const getFormValue = formValueSelector("edit-stage");
 	const currentValue = useSelector((state: RootState) => getFormValue(state, "interviewScript"));
 	const dispatch = useDispatch();
-	const openDialog = useCallback((dialog: any) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
+	const openDialog = useCallback(
+		(dialog: { type: string; title: string; message: string; confirmLabel?: string }) =>
+			dispatch(dialogActions.openDialog(dialog)),
+		[dispatch],
+	);
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {

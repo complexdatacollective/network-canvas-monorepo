@@ -11,19 +11,21 @@ import PreviewRules from "./PreviewRules";
 import withDraftRule from "./withDraftRule";
 import withRulesChangeHandlers from "./withRulesChangeHandlers";
 
+type Rule = Record<string, unknown>;
+
 type RulesProps = {
 	type?: "filter" | "query";
-	rules?: any[];
+	rules?: Rule[];
 	join?: string;
 	error?: string;
 	meta?: Record<string, unknown>;
 	codebook: Record<string, unknown>;
 	draftRule?: Record<string, unknown>;
 	handleChangeJoin: (value: string) => void;
-	handleChangeDraft: (value: any) => void;
+	handleChangeDraft: (value: Record<string, unknown>) => void;
 	handleCancelDraft: () => void;
 	handleSaveDraft: () => void;
-	handleClickRule: (rule: any) => void;
+	handleClickRule: (rule: Rule) => void;
 	handleDeleteRule: (index: number) => void;
 	handleCreateAlterRule: () => void;
 	handleCreateEdgeRule: () => void;

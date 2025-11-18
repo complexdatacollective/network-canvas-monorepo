@@ -12,7 +12,7 @@ const NewTypeDialog = ({
 	show = false,
 	entityType,
 	onComplete = () => {},
-	onCancel = () => {},
+	onCancel: _onCancel = () => {},
 }: NewTypeDialogProps) => {
 	const [showEditor, setShowEditor] = useState(false);
 

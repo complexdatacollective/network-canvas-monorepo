@@ -88,7 +88,7 @@ const TypeOperator = ({ value = "" }: TypeOperatorProps) => (
 );
 
 type ValueProps = {
-	value?: string | number | boolean | any[];
+	value?: string | number | boolean | Array<string | number>;
 };
 
 const Value = ({ value = "" }: ValueProps) => {
@@ -151,7 +151,7 @@ type PreviewTextOptions = {
 	attribute?: string;
 	operator?: string;
 	type?: string;
-	value?: string | number | boolean | any[];
+	value?: string | number | boolean | Array<string | number>;
 	variableType?: string;
 	typeColor?: string;
 	typeLabel?: string;

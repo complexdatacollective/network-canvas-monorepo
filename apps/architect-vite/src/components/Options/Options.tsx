@@ -48,7 +48,7 @@ type OptionsFieldProps = {
 	updateField?: (form: string, fieldName: string, value: string) => void;
 };
 
-const mapStateToOptionsFieldProps = (state: unknown, { meta: { form }, fields: { name: fieldsName } }) => ({
+const mapStateToOptionsFieldProps = (_state: unknown, { meta: { form }, fields: { name: fieldsName } }) => ({
 	form,
 	fieldsName,
 });

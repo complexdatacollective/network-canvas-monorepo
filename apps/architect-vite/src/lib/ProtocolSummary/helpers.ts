@@ -1,9 +1,28 @@
 import { flatMap, get, reduce } from "lodash";
 import { paths, utils } from "../../selectors/indexes";
 
+type VariableConfiguration = {
+	name: string;
+	type: string;
+	component?: string;
+	[key: string]: unknown;
+};
+
+type Field = {
+	variable: string;
+	prompt?: string;
+	[key: string]: unknown;
+};
+
 const buildVariableEntry =
-	(protocol: any, variablePaths: Record<string, unknown>, fields: any[], entity: string, entityType: string) =>
-	(variableConfiguration: any, variableId: string) => {
+	(
+		protocol: { stages?: Array<{ id: string; [key: string]: unknown }> },
+		variablePaths: Record<string, unknown>,
+		fields: Field[],
+		entity: string,
+		entityType: string,
+	) =>
+	(variableConfiguration: VariableConfiguration, variableId: string) => {
 		const usage = reduce(
 			variablePaths,
 			(memo, id, variablePath) => {
@@ -34,7 +53,22 @@ const buildVariableEntry =
 		};
 	};
 
-export const getCodebookIndex = (protocol: any) => {
+type Protocol = {
+	stages?: Array<{
+		id: string;
+		form?: {
+			fields: Field[];
+		};
+		[key: string]: unknown;
+	}>;
+	codebook?: {
+		node?: Record<string, { variables?: Record<string, VariableConfiguration> }>;
+		edge?: Record<string, { variables?: Record<string, VariableConfiguration> }>;
+		ego?: { variables?: Record<string, VariableConfiguration> };
+	};
+};
+
+export const getCodebookIndex = (protocol: Protocol) => {
 	if (!protocol || !protocol.stages) {
 		return {};
 	}

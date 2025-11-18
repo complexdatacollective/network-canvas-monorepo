@@ -56,10 +56,11 @@ const collectPath = (objPath, obj, memoPath) => {
 	if (rest.length > 0) {
 		return reduce(
 			nextObj || [],
-			(memo, item, index) => ({
-				...memo,
-				...collectPath(rest, item, `${path}[${index}]`),
-			}),
+			(memo, item, index) => {
+				const collected = collectPath(rest, item, `${path}[${index}]`);
+				Object.assign(memo, collected);
+				return memo;
+			},
 			{},
 		);
 	}
@@ -68,10 +69,10 @@ const collectPath = (objPath, obj, memoPath) => {
 	if (Array.isArray(nextObj) && scanArray) {
 		const result = reduce(
 			nextObj || [],
-			(memo, item, index) => ({
-				...memo,
-				[`${path}[${index}]`]: item,
-			}),
+			(memo, item, index) => {
+				memo[`${path}[${index}]`] = item;
+				return memo;
+			},
 			{},
 		);
 
@@ -127,10 +128,8 @@ export const collectMappedPath = (paths, obj, mapFunc) => {
 			if (result === undefined) {
 				return acc;
 			}
-			return {
-				...acc,
-				[result[1]]: result[0],
-			};
+			acc[result[1]] = result[0];
+			return acc;
 		},
 		{},
 	);
@@ -142,10 +141,8 @@ export const collectPaths = (objPaths, object) =>
 			? collectMappedPath(objPath[0], object, objPath[1])
 			: collectPath(objPath, object);
 
-		return {
-			...acc,
-			...next,
-		};
+		Object.assign(acc, next);
+		return acc;
 	}, {});
 
 export default collectPath;

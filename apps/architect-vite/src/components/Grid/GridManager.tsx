@@ -17,29 +17,29 @@ type GridManagerProps = {
 	contentId?: string | null;
 	title?: string | null;
 	children?: React.ReactNode;
-	previewComponent: React.ComponentType<any>;
-	editComponent: React.ComponentType<any>;
-	validation?: Record<string, any>;
+	previewComponent: React.ComponentType<Record<string, unknown>>;
+	editComponent: React.ComponentType<Record<string, unknown>>;
+	validation?: Record<string, unknown>;
 	editField?: string | null;
 	handleEditField: (field: string) => void;
 	handleAddNew: () => void;
-	handleUpdate: (values: any) => void;
+	handleUpdate: (values: Record<string, unknown>) => void;
 	handleResetEditField: () => void;
 	hasSpace: boolean;
 	capacity: number;
-	initialValues?: any;
+	initialValues?: Record<string, unknown> | null;
 	itemCount: number;
-	itemSelector: (state: any, props: any) => any;
-	items: any[];
-	normalize: (item: any) => any;
+	itemSelector: (state: unknown, props: unknown) => unknown;
+	items: Array<Record<string, unknown>>;
+	normalize: (item: Record<string, unknown>) => Record<string, unknown>;
 	setEditField: (field: string | null) => void;
-	template?: any;
-	upsert: (item: any) => void;
-} & Record<string, any>;
+	template?: Record<string, unknown> | null;
+	upsert: (item: Record<string, unknown>) => void;
+} & Record<string, unknown>;
 
-const notEmpty = (value: any) => (value && value.length > 0 ? undefined : "You must create at least one item");
+const notEmpty = (value: unknown) => (value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item");
 
-const _handleSubmitFail = (issues: any) => {
+const _handleSubmitFail = (issues: Record<string, unknown>) => {
 	scrollToFirstIssue(issues);
 };
 

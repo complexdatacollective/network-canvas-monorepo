@@ -32,13 +32,13 @@ const useAssetData = (id: string) => {
 			return;
 		}
 
-		getNetworkAssetVariables(id).then((v) => {
+		void getNetworkAssetVariables(id).then((v) => {
 			if (!v) {
 				return;
 			}
 			setVariables(v.join(", "));
 		});
-	}, []);
+	}, [data.type, getNetworkAssetVariables, id]);
 
 	// TODO: When assets are stored remotely, this will be:
 	// const url = `https://assets.example.com/${encodeURIComponent(assetPath)}`;

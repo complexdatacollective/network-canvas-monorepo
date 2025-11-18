@@ -72,7 +72,11 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	}, [query, selectedTags, experiments]);
 
 	const filteredInterfaceTags = useMemo(
-		() => filteredInterfaces.reduce((acc, { tags }) => [...acc, ...tags], []),
+		() =>
+			filteredInterfaces.reduce((acc, { tags }) => {
+				acc.push(...tags);
+				return acc;
+			}, []),
 		[filteredInterfaces],
 	);
 
@@ -105,13 +109,10 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 		}
 	}, [mouseMoved]);
 
-	const handleUpdateQuery = useCallback(
-		(eventOrValue) => {
-			const newQuery = get(eventOrValue, ["target", "value"], eventOrValue);
-			setQuery(newQuery);
-		},
-		[setQuery],
-	);
+	const handleUpdateQuery = useCallback((eventOrValue) => {
+		const newQuery = get(eventOrValue, ["target", "value"], eventOrValue);
+		setQuery(newQuery);
+	}, []);
 
 	const handleSelectInterface = useCallback(
 		(interfaceType) => {
@@ -207,7 +208,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 		return () => {
 			window.removeEventListener("mousemove", handleMouseMove);
 		};
-	}, []);
+	}, [handleMouseMove]);
 
 	if (insertAtIndex === undefined) return null;
 

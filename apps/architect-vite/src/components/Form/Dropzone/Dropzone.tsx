@@ -25,7 +25,6 @@ type DropzoneProps = {
 const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled = false }: DropzoneProps) => {
 	const [state, setState] = useState(initialState);
 
-	const acceptsKey = accepts.toString();
 	const isDisabled = disabled || state.isActive;
 
 	useTimer(
@@ -36,48 +35,54 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 		[state.isHover, state.isError],
 	);
 
-	const startHandler = (e) => {
-		e.preventDefault();
-		e.stopPropagation();
+	const startHandler = useCallback(
+		(e) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-		if (isDisabled) {
-			return false;
-		}
+			if (isDisabled) {
+				return false;
+			}
 
-		setState((previousState) => ({ ...previousState, isActive: true }));
+			setState((previousState) => ({ ...previousState, isActive: true }));
 
-		return true;
-	};
+			return true;
+		},
+		[isDisabled],
+	);
 
-	const resetState = () => {
+	const resetState = useCallback(() => {
 		setState((previousState) => ({ ...previousState, ...initialState }));
-	};
+	}, []);
 
-	const submitPaths = (filePaths) => {
-		const isAcceptable = acceptsPaths(accepts, filePaths);
+	const submitPaths = useCallback(
+		(filePaths) => {
+			const isAcceptable = acceptsPaths(accepts, filePaths);
 
-		if (!isAcceptable) {
-			const extensions = getRejectedExtensions(accepts, filePaths);
-			const errorMessage = `This asset type does not support ${extensions.join(", ")} extension(s). Supported types are: ${accepts.join(", ")}.`;
+			if (!isAcceptable) {
+				const extensions = getRejectedExtensions(accepts, filePaths);
+				const errorMessage = `This asset type does not support ${extensions.join(", ")} extension(s). Supported types are: ${accepts.join(", ")}.`;
+				setState((previousState) => ({
+					...previousState,
+					isActive: false,
+					isError: true,
+					error: errorMessage,
+				}));
+				return;
+			}
+
 			setState((previousState) => ({
 				...previousState,
-				isActive: false,
-				isError: true,
-				error: errorMessage,
+				isAcceptable: true,
+				isError: false,
+				error: null,
+				isLoading: true,
 			}));
-			return;
-		}
 
-		setState((previousState) => ({
-			...previousState,
-			isAcceptable: true,
-			isError: false,
-			error: null,
-			isLoading: true,
-		}));
-
-		onDrop(filePaths).finally(resetState);
-	};
+			onDrop(filePaths).finally(resetState);
+		},
+		[accepts, onDrop, resetState],
+	);
 
 	const handleClick = useCallback(
 		(e) => {
@@ -99,7 +104,7 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 				submitPaths(filePaths);
 			});
 		},
-		[acceptsKey, isDisabled, submitPaths],
+		[accepts, resetState, startHandler, submitPaths],
 	);
 
 	const handleDrop = useCallback(
@@ -125,12 +130,12 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 
 			submitPaths(filePaths);
 		},
-		[acceptsKey, isDisabled, submitPaths],
+		[startHandler, submitPaths],
 	);
 
 	const handleDragLeave = useCallback(() => {
 		setState((previousState) => ({ ...previousState, isHover: false }));
-	});
+	}, []);
 
 	const handleDragEnter = useCallback(() => {
 		if (isDisabled) {

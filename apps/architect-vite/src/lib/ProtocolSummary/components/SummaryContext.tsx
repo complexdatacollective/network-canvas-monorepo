@@ -1,9 +1,17 @@
 import type { Protocol } from "@codaco/protocol-validation";
 import { createContext } from "react";
 
+type IndexEntry = {
+	id: string;
+	name: string;
+	type: string;
+	stages: string[];
+	[key: string]: unknown;
+};
+
 type SummaryContextType = {
 	protocol: Protocol | null;
-	index: any[];
+	index: IndexEntry[];
 };
 
 const SummaryContext = createContext<SummaryContextType>({ protocol: null, index: [] });

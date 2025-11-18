@@ -15,14 +15,21 @@ import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import BinSortOrderSection from "../BinSortOrderSection";
 import BucketSortOrderSection from "../BucketSortOrderSection";
 
+type SelectOption = {
+	label: string;
+	value: string;
+	type?: string;
+	[key: string]: unknown;
+};
+
 interface PromptFieldsProps {
-	variableOptions?: Array<any>;
+	variableOptions?: SelectOption[];
 	entity: string;
 	type: string;
-	changeForm: (form: string, field: string, value: any) => void;
+	changeForm: (form: string, field: string, value: unknown) => void;
 	form: string;
 	variable?: string | null;
-	optionsForVariableDraft?: Array<any>;
+	optionsForVariableDraft?: SelectOption[];
 }
 
 const PromptFields = ({

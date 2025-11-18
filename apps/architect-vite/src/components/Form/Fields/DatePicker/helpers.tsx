@@ -3,24 +3,29 @@ import { DateTime, Info } from "luxon";
 
 export const now = () => DateTime.local();
 
-export const isEmpty = (value: any) => value === null || value === "";
+export const isEmpty = (value: unknown) => value === null || value === "";
 
 export const getFirstDayOfMonth = (dateObj: { year?: number | null; month?: number | null; day?: number | null }) =>
 	DateTime.fromObject({ ...dateObj, day: 1 }).toFormat("c");
 
-export const asNullObject = (keys: string[]) => keys.reduce((acc, key) => ({ ...acc, [key]: null }), {});
+export const asNullObject = (keys: string[]) =>
+	keys.reduce((acc, key) => {
+		acc[key] = null;
+		return acc;
+	}, {});
 
-export const getProperties = (obj: Record<string, any>) =>
+export const getProperties = (obj: Record<string, unknown>) =>
 	Object.keys(obj).reduce<string[]>((acc, key) => {
 		if (!obj[key]) {
 			return acc;
 		}
-		return [...acc, key];
+		acc.push(key);
+		return acc;
 	}, []);
 
 export const hasProperties =
 	(includes: string[] = [], excludes: string[] = []) =>
-	(obj: Record<string, any>) => {
+	(obj: Record<string, unknown>) => {
 		const props = getProperties(obj);
 		const hasIncludes = difference(includes, props).length === 0;
 		const noExcludes = intersection(props, excludes).length === 0;

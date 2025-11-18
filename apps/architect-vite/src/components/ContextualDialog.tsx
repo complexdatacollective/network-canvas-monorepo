@@ -41,6 +41,16 @@ const Dialog = ({ show = true, children = null, className = null, onBlur = () =>
 		[onBlur],
 	);
 
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Escape") {
+				e.stopPropagation();
+				onBlur();
+			}
+		},
+		[onBlur],
+	);
+
 	return createPortal(
 		<Stackable stackKey>
 			{({ stackIndex }: { stackIndex: number }) => (
@@ -50,6 +60,10 @@ const Dialog = ({ show = true, children = null, className = null, onBlur = () =>
 						zIndex: dialogZIndex + stackIndex,
 					}}
 					onClick={handleBlur}
+					onKeyDown={handleKeyDown}
+					role="button"
+					tabIndex={-1}
+					aria-label="Close dialog"
 				>
 					<div className="contextual-dialog__container">
 						<div className="contextual-dialog__main">

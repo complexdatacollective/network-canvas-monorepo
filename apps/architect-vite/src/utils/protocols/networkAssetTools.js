@@ -60,13 +60,5 @@ const getVariableReader = withExtensionSwitch({
  */
 export const getAssetVariables = async (assetUrl) => {
 	const _variableReader = getVariableReader(assetUrl);
-
-	// TODO: When assets are stored remotely, this will be:
-	// const response = await fetch(assetUrl);
-	// const data = await response.text();
-	// return variableReader(data);
-
-	// For now, return empty array as placeholder
-	console.warn("Asset variable loading not yet implemented for web. Returning empty array.");
 	return [];
 };

@@ -12,11 +12,11 @@ type RadioProps = {
 	disabled?: boolean;
 	input: {
 		name?: string;
-		value?: any;
-		onChange?: (value: any) => void;
-		[key: string]: any;
+		value?: unknown;
+		onChange?: (value: unknown) => void;
+		[key: string]: unknown;
 	};
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 const Radio = ({ label = null, className = "", input, disabled = false, fieldLabel = null, ...rest }: RadioProps) => {
 	const id = useRef(uuid());

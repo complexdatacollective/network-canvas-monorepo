@@ -38,6 +38,13 @@ class Mode extends PureComponent<ModeProps> {
 		return input.value === option;
 	};
 
+	handleKeyDown = (index: number, disabled: boolean) => (e: React.KeyboardEvent) => {
+		if (!disabled && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			this.handleClickMode(index);
+		}
+	};
+
 	renderMode = (option: OptionType, index: number) => {
 		const {
 			input: { value },
@@ -56,6 +63,11 @@ class Mode extends PureComponent<ModeProps> {
 			<div
 				className={optionClasses}
 				onClick={disabled ? null : () => this.handleClickMode(index)}
+				onKeyDown={this.handleKeyDown(index, disabled)}
+				role="button"
+				tabIndex={disabled ? -1 : 0}
+				aria-label={typeof optionLabel === "string" ? optionLabel : undefined}
+				aria-disabled={disabled}
 				key={optionValue}
 				// eslint-disable-next-line react/jsx-props-no-spreading
 				{...optionRest}

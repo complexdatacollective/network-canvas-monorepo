@@ -29,13 +29,11 @@ const useExternalDataDownload = () => {
 				// Get the asset from IndexedDB
 				const asset = await getAssetById(id);
 				if (!asset) {
-					console.error(`Asset not found: ${id}`);
 					return;
 				}
 
 				const blob = asset.data;
 				if (!(blob instanceof Blob)) {
-					console.error(`Asset data is not a Blob: ${id}`);
 					return;
 				}
 
@@ -52,9 +50,7 @@ const useExternalDataDownload = () => {
 
 				// Clean up blob URL
 				URL.revokeObjectURL(url);
-			} catch (error) {
-				console.error("Error downloading asset:", error);
-			}
+			} catch (_error) {}
 		},
 		[getAssetInfo],
 	);

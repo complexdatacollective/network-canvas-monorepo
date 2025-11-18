@@ -5,6 +5,6 @@ type ConstraintsContextType = {
 };
 
 const constrain = (constraints: unknown[]) =>
-	withContext<ConstraintsContextType, {}>({ constraints: () => null }, () => ({ constraints }));
+	withContext<ConstraintsContextType, Record<string, never>>({ constraints: () => null }, () => ({ constraints }));
 
 export default constrain;

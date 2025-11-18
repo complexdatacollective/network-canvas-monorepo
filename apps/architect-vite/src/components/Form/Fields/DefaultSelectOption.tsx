@@ -30,6 +30,16 @@ const DefaultSelectOption = (props: DefaultSelectOptionProps) => {
 			onDeleteOption(data.value);
 		}
 	};
+
+	const handleDeleteKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			e.stopPropagation();
+			if (onDeleteOption) {
+				onDeleteOption(data.value);
+			}
+		}
+	};
 	/* eslint-enable */
 
 	const classes = cx("form-fields-select__item", { "form-fields-select__item--warning": isWarning });
@@ -55,7 +65,14 @@ const DefaultSelectOption = (props: DefaultSelectOptionProps) => {
 			<div className="form-fields-select__item-label">{label}</div>
 
 			{showDelete && (
-				<div className="form-fields-select__item-delete" onClick={handleClickDelete}>
+				<div
+					className="form-fields-select__item-delete"
+					onClick={handleClickDelete}
+					onKeyDown={handleDeleteKeyDown}
+					role="button"
+					tabIndex={0}
+					aria-label="Delete option"
+				>
 					<Icon name="delete" />
 				</div>
 			)}

@@ -31,8 +31,5 @@ export default function Icon({ name, ...props }: IconProps) {
 
 		return <LucideIcon {...props} />;
 	}
-
-	// Invalid icon name
-	console.warn(`Icon "${name}" not found in customIcons or lucide-react icons.`);
 	return null;
 }

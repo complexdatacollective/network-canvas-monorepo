@@ -11,7 +11,9 @@ const mapStateToProps = (state: RootState) => ({
 	toasts: state.toasts,
 });
 
-const mapDispatchToProps = (dispatch: any) => ({
+type AppDispatch = (action: unknown) => void;
+
+const mapDispatchToProps = (dispatch: AppDispatch) => ({
 	removeToast: bindActionCreators(toastActions.removeToast, dispatch),
 });
 

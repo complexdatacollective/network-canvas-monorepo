@@ -16,7 +16,7 @@ import RangePicker from "./RangePicker";
 interface DatePickerInputProps {
 	onChange?: (value: string) => void;
 	value?: string | null;
-	parameters?: Record<string, any>;
+	parameters?: Record<string, unknown>;
 	parentRef: RefObject<HTMLElement>;
 	placeholder?: string | null;
 }
@@ -41,17 +41,17 @@ const DatePickerInput = ({
 				onChangeInput(newValue);
 			}
 		},
-		[value, setPanelsOpen, onChangeInput],
+		[value, onChangeInput],
 	);
 
-	const handleClickOutside = (e: MouseEvent) => {
+	const handleClickOutside = useCallback((e: MouseEvent) => {
 		if (ref.current?.contains(e.target as Node)) {
 			// inside click
 			return;
 		}
 		// outside click
 		setPanelsOpen(false);
-	};
+	}, []);
 
 	useScrollTo(parentRef, (open: boolean) => open, [panelsOpen, parentRef]);
 
@@ -65,7 +65,7 @@ const DatePickerInput = ({
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
-	}, [panelsOpen]);
+	}, [panelsOpen, handleClickOutside]);
 
 	// treat empty string as no value (for Redux Forms)
 	const initialDate = isEmpty(value) ? null : value;

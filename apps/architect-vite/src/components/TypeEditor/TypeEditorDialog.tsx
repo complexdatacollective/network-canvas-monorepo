@@ -32,7 +32,7 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 	}, [submitting, dispatch]);
 
 	// Cancel handler with unsaved changes confirmation
-	const handleCancel = useCallback((): boolean => {
+	const _handleCancel = useCallback((): boolean => {
 		if (!hasUnsavedChanges) {
 			onCancel();
 			return true;
@@ -48,7 +48,7 @@ const TypeEditorDialog = ({ entity, type, show, onCancel, onComplete }: TypeEdit
 				onConfirm: () => {
 					onCancel();
 				},
-			}) as any,
+			}) as unknown,
 		);
 		return false;
 	}, [hasUnsavedChanges, onCancel, dispatch]);

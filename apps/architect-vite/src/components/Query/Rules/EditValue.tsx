@@ -33,11 +33,16 @@ const getLabel = (type, value) => {
 	return value ? "True" : "False";
 };
 
+type OptionItem = {
+	value: string | number;
+	label: string;
+};
+
 type EditValueProps = {
 	value: string | number | boolean;
-	options?: any[];
-	onChange?: (value: any) => void;
-	fieldComponent: React.ComponentType<any>;
+	options?: OptionItem[];
+	onChange?: (value: unknown) => void;
+	fieldComponent: React.ComponentType<Record<string, unknown>>;
 	variableType: string;
 };
 
