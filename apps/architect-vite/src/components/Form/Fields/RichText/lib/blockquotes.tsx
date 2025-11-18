@@ -1,7 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 
-import { get } from "lodash";
-import { type BaseEditor, type Descendant, type Element, Node, type NodeEntry, type Path, Transforms } from "slate";
+import { type BaseEditor, type Descendant, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
 import { getBlocks } from "./utils";
 
 interface BlockNode extends Element {
@@ -10,8 +9,8 @@ interface BlockNode extends Element {
 }
 
 const toggleBlock = (editor: BaseEditor, block: NodeEntry<BlockNode>): void => {
-	const type = get(block, [0, "type"]);
-	const path = get(block, [1], []);
+	const [node, path] = block;
+	const type = node.type;
 
 	switch (type) {
 		case "block_quote":
@@ -56,7 +55,7 @@ export const toggleBlockquote = (editor: BaseEditor): void => {
 
 	// Merge adjacent block quotes
 	reversedPaths.forEach((path, index) => {
-		const nextPath = get(reversedPaths, [index + 1]);
+		const nextPath = reversedPaths[index + 1];
 		if (!nextPath) {
 			return;
 		}
