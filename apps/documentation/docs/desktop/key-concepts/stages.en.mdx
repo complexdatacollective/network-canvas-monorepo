@@ -1,0 +1,485 @@
+---
+title: Stages
+---
+
+<Definition>
+Stages are the individual steps in a Network Canvas interview. Each stage is a configured instance of an Interface that collects specific data or presents information to participants.
+</Definition>
+
+## Overview
+
+When you design a protocol in Architect, you create a sequence of stages that participants progress through during the interview. Each stage serves a specific purpose—collecting names, gathering attributes, showing information, or creating network relationships.
+
+Stages are the building blocks of your interview protocol. By combining different types of stages in a thoughtful sequence, you create an interview that is engaging for participants while collecting the network data you need.
+
+## Stages vs. Interfaces
+
+Understanding the relationship between stages and Interfaces is essential:
+
+**[Interfaces](/en/desktop/key-concepts/interfaces):** Templates or types of data collection tools
+- Generic and reusable
+- Define what kind of data can be collected
+- Examples: Name Generator, Ego Form, Sociogram
+
+**Stages:** Configured instances of Interfaces in your protocol
+- Specific to your protocol
+- Configured with your questions, variables, and settings
+- Each stage has a name and appears in a specific order
+
+**Analogy:** If an Interface is like a form template (blank), a stage is like a filled-out form configured for a specific purpose.
+
+### Example
+
+**Interface:** Name Generator (using forms)
+
+**Stages you might create:**
+1. Stage 1: "Name close friends" - A Name Generator stage configured to ask "Who are your close friends?"
+2. Stage 2: "Name family members" - Another Name Generator stage configured to ask "Who are your family members?"
+
+Both stages use the same Interface (Name Generator), but each is configured differently with unique questions, prompts, and settings.
+
+## The stage timeline
+
+In Architect, stages appear in a timeline view that shows:
+- The order stages appear in the interview
+- The name of each stage
+- The Interface type used
+- Whether stages have [skip logic](/en/desktop/key-concepts/skip-logic) enabled
+
+![The Architect timeline showing multiple stages](/assets/img/key-concepts/stages/timeline.png)
+
+Participants experience stages in order from left to right (or top to bottom), though [skip logic](/en/desktop/key-concepts/skip-logic) can conditionally skip stages based on interview data.
+
+## Creating stages
+
+### Adding a stage
+
+To add a stage to your protocol in Architect:
+
+1. Click the **Add new stage** button in the timeline
+2. Select an Interface type from the list
+3. Configure the stage settings
+4. Give the stage a descriptive name
+5. Save your stage
+
+### Stage configuration
+
+Each stage has configuration options that depend on the Interface type:
+
+**Common to all stages:**
+- **Stage name:** Descriptive name for your reference (not shown to participants)
+- **[Prompts](/en/desktop/key-concepts/prompts):** Questions or instructions shown to participants
+- **[Skip logic](/en/desktop/key-concepts/skip-logic):** Conditions for showing or skipping the stage
+
+**Interface-specific settings:**
+
+**Name Generators:**
+- Node type to create
+- [Forms](/en/desktop/key-concepts/forms) for collecting alter attributes
+- Side panels for additional functionality
+- [Network filtering](/en/desktop/key-concepts/network-filtering) for side panels
+
+**Forms (Ego Form, Per-Alter Form):**
+- Form fields and [variables](/en/desktop/key-concepts/variables)
+- [Input controls](/en/desktop/key-concepts/input-controls)
+- [Validation rules](/en/desktop/key-concepts/field-validation)
+- Network filtering (for alter/edge forms)
+
+**Bins (Categorical Bin, Ordinal Bin):**
+- Variable to assign
+- Bin definitions (categories or order)
+- [Network filtering](/en/desktop/key-concepts/network-filtering)
+
+**Sociogram:**
+- Edge types to collect
+- Layout variables
+- Background images
+- Edge creation rules
+
+**Information Interface:**
+- Content to display (text, images, video)
+- [Resources](/en/desktop/key-concepts/resources) to include
+
+## Stage ordering
+
+### Reordering stages
+
+You can rearrange stages by dragging and dropping them in the timeline. The order matters because:
+
+1. **Data dependencies:** Later stages can use data collected in earlier stages
+2. **Participant experience:** The sequence affects interview flow and comprehension
+3. **Skip logic:** Conditions are evaluated based on data collected so far
+
+### Best practices for ordering
+
+**Start with context:**
+- Begin with Information stages that explain the interview
+- Introduce concepts before asking about them
+
+**Build progressively:**
+- Name Generators early (create the network)
+- Name Interpreters after (collect attributes about named alters)
+- Sociograms after alters are known (create relationships)
+
+**Group related content:**
+- Multiple stages about the same topic together
+- Use consistent Interface types for similar questions
+
+**Consider burden:**
+- Easier tasks early (builds engagement)
+- More demanding tasks in the middle (when attention is high)
+- Lighter tasks toward the end (prevent fatigue)
+
+**Enable filtering and skip logic:**
+- Variables must be set before they can be used
+- Set up filtering/sorting variables before stages that need them
+
+### Example stage sequence
+
+```
+1. Information: Welcome and instructions
+2. Name Generator: "Who are people you know?"
+3. Categorical Bin: "How do you know each person?"
+4. Per-Alter Form: "Details about family members" (filtered to family)
+5. Per-Alter Form: "Details about friends" (filtered to friends)
+6. Sociogram: "Who knows each other?"
+7. Ordinal Bin: "How close are you to each person?"
+8. Information: Thank you and next steps
+```
+
+## Stage naming
+
+### Why stage names matter
+
+Stage names help you:
+- Understand the protocol structure at a glance
+- Find specific stages quickly
+- Document your protocol for others
+- Remember your design decisions later
+
+### Naming best practices
+
+**Be descriptive:**
+- ✅ "Name close friends"
+- ✅ "Collect alter demographics"
+- ✅ "Show study information"
+- ✗ "Stage 1"
+- ✗ "Name generator"
+- ✗ "Form"
+
+**Use consistent patterns:**
+- Start with verb: "Name...", "Collect...", "Show..."
+- Include the topic: "...close friends", "...demographics"
+- Reference filtering if applicable: "...about family members"
+
+**Keep them concise:**
+- Aim for 3-6 words
+- Avoid full sentences
+- Use abbreviations sparingly (only if clear)
+
+**Examples by Interface type:**
+
+**Name Generators:**
+- "Name close friends"
+- "Name family members"
+- "Select coworkers from roster"
+
+**Forms:**
+- "Ego demographics"
+- "Alter relationship details"
+- "Family member information"
+
+**Bins:**
+- "Categorize by relationship type"
+- "Rank by closeness"
+- "Sort by contact frequency"
+
+**Sociograms:**
+- "Show friendships"
+- "Map family connections"
+- "Identify support network"
+
+**Information:**
+- "Welcome screen"
+- "Explain network concepts"
+- "Thank you message"
+
+## Stage preview
+
+You can preview individual stages or the entire protocol:
+
+**Preview single stage:**
+1. Select a stage from the timeline
+2. Click **Preview** in the stage editor
+3. Interact with the stage as a participant would
+4. Make adjustments based on the preview
+
+**Preview protocol:**
+1. Click **Preview Protocol** in Architect
+2. Experience the entire interview flow
+3. Test skip logic and filtering
+4. Verify stage order and transitions
+
+**Why preview matters:**
+- Catch configuration errors
+- Test participant experience
+- Verify skip logic works correctly
+- Check that [network filtering](/en/desktop/key-concepts/network-filtering) displays appropriate content
+- Ensure [prompts](/en/desktop/key-concepts/prompts) are clear
+
+## Managing stages
+
+### Editing stages
+
+To edit an existing stage:
+1. Click the stage in the timeline
+2. Modify settings in the stage editor
+3. Save your changes
+
+**Note:** Changes apply immediately to the protocol. If you're using the protocol for data collection, consider versioning to track changes.
+
+### Duplicating stages
+
+To create a similar stage quickly:
+1. Select a stage
+2. Click the duplicate button
+3. Modify the duplicated stage as needed
+
+**Use cases:**
+- Creating multiple similar Per-Alter Form stages for different filtered groups
+- Setting up parallel stages for different node types
+- Reusing complex configurations
+
+### Deleting stages
+
+To remove a stage:
+1. Select the stage
+2. Click the delete button
+3. Confirm deletion
+
+**Warning:** Deleting stages cannot be undone. Consider:
+- Will this affect skip logic that references this stage?
+- Are variables created here used elsewhere?
+- Is data already collected using this stage?
+
+## Special stage types
+
+### Information stages
+
+Information stages don't collect data—they display content to participants:
+- Instructions and explanations
+- Consent information
+- Videos or images
+- Thank you messages
+
+**Best practices:**
+- Keep content concise
+- Use clear language
+- Include visuals when helpful
+- Don't overload with text
+
+### Ego form stages
+
+Ego Form stages collect data about the participant (ego):
+- Demographics
+- Attitudes
+- Behaviors
+- Consent
+
+**Best practices:**
+- Collect ego data early (often after introduction)
+- Keep ego forms focused (one topic per stage)
+- Consider using multiple shorter forms instead of one long form
+
+### Final stages
+
+The last stage in your protocol should:
+- Thank participants
+- Explain next steps
+- Provide contact information
+- Indicate the interview is complete
+
+## Stages in the interview
+
+### How participants experience stages
+
+When participants complete an interview in Interviewer:
+
+1. **Start screen:** Select which protocol to use
+2. **Enter case ID:** Identify the interview session
+3. **First stage loads:** Begin the interview
+4. **Progress through stages:** Complete each stage in sequence
+5. **Skip logic evaluated:** Some stages may be skipped automatically
+6. **Final stage:** Interview concludes
+7. **Return to start screen:** Session can be exported
+
+### Stage transitions
+
+Participants move between stages by:
+- Clicking **Next** (or similar button) to advance
+- Having stages skipped automatically via [skip logic](/en/desktop/key-concepts/skip-logic)
+- Navigating backward (if protocol allows)
+
+### Progress indication
+
+Participants can see:
+- Current stage name (if configured)
+- Progress through the protocol (stage X of Y)
+- How many stages remain
+
+## Stages and data collection
+
+### Data scope by stage type
+
+**Name Generator stages:**
+- Create nodes (alters)
+- Collect initial alter attributes
+- Define network members
+
+**Name Interpreter stages:**
+- Add attributes to existing nodes
+- Create edges between nodes
+- Categorize or sort nodes
+
+**Ego Form stages:**
+- Collect participant-level data
+- One record per interview
+
+**Sociogram stages:**
+- Create edges between alters
+- Assign edge attributes
+- Store layout information
+
+### Data persistence
+
+Data collected in stages persists throughout the interview:
+- Alters created in one stage appear in later stages
+- Attributes assigned early are available later
+- [Skip logic](/en/desktop/key-concepts/skip-logic) can use any previously collected data
+- [Network filtering](/en/desktop/key-concepts/network-filtering) can filter on any assigned variable
+
+## Advanced stage configuration
+
+### Skip logic
+
+[Skip logic](/en/desktop/key-concepts/skip-logic) allows stages to be conditionally shown or skipped:
+- Show stage only if ego is above certain age
+- Skip stage if no alters were named
+- Display stage only for specific participant types
+
+See the [Skip Logic guide](/en/desktop/key-concepts/skip-logic) for details.
+
+### Network filtering
+
+[Network filtering](/en/desktop/key-concepts/network-filtering) controls which nodes or edges appear within a stage:
+- Show only family members on a form
+- Display only close friends in a bin
+- Filter to alters with specific attributes
+
+See the [Network Filtering guide](/en/desktop/key-concepts/network-filtering) for details.
+
+### Multiple prompts
+
+Some stages support multiple prompts:
+- Present different questions for the same Interface
+- Collect different variables using the same stage
+- Reduce total stage count while maintaining flexibility
+
+See the [Prompts guide](/en/desktop/key-concepts/prompts) for details.
+
+## Best practices
+
+### Plan before building
+
+1. **Outline interview flow:** Sketch the sequence on paper first
+2. **Define data needs:** List what you need to collect
+3. **Group related questions:** Combine when appropriate, separate when needed
+4. **Consider participant burden:** Balance detail with completion rates
+
+### Design for the participant
+
+1. **Clear progression:** Logical flow from stage to stage
+2. **Consistent formatting:** Similar stages look similar
+3. **Helpful instructions:** Explain what to do at each stage
+4. **Reasonable length:** Aim for 30-45 minute total interview time
+
+### Test thoroughly
+
+1. **Preview individual stages:** Check each stage works correctly
+2. **Preview full protocol:** Test entire interview flow
+3. **Test skip logic:** Verify conditions work as intended
+4. **Pilot with real users:** Get feedback before main data collection
+
+### Document your protocol
+
+1. **Use descriptive stage names:** Future you will thank present you
+2. **Comment complex configurations:** Note why you made certain choices
+3. **Version your protocol:** Track changes over time
+4. **Share with team:** Ensure collaborators understand the structure
+
+## Troubleshooting
+
+### Stage not appearing in interview
+
+**Possible causes:**
+- Skip logic is hiding the stage
+- Stage is after a stage that ends the interview
+- Protocol not saved
+
+**Solutions:**
+- Review skip logic conditions
+- Check stage order in timeline
+- Ensure protocol was saved after changes
+
+### Stage showing empty network
+
+**Possible causes:**
+- [Network filtering](/en/desktop/key-concepts/network-filtering) too restrictive
+- No alters match filter criteria
+- Alters not created on earlier stage
+
+**Solutions:**
+- Review filter rules
+- Check that filtering variables are set on earlier stages
+- Verify alters are being created
+
+### Can't delete stage
+
+**Possible causes:**
+- Stage is referenced in skip logic
+- Variables created here used elsewhere
+
+**Solutions:**
+- Remove skip logic references first
+- Remove or reassign variables
+- Check all stages for dependencies
+
+### Stage configuration not saving
+
+**Possible causes:**
+- Validation errors in configuration
+- Required fields missing
+
+**Solutions:**
+- Check for error messages
+- Verify all required fields completed
+- Try saving individual sections first
+
+## Related concepts
+
+- [Interfaces](/en/desktop/key-concepts/interfaces) - Understanding the Interface types you configure as stages
+- [Prompts](/en/desktop/key-concepts/prompts) - Configure participant-facing questions for each stage
+- [Skip Logic](/en/desktop/key-concepts/skip-logic) - Conditionally show or skip stages
+- [Network Filtering](/en/desktop/key-concepts/network-filtering) - Control which entities appear within a stage
+- [Variables](/en/desktop/key-concepts/variables) - Define the data collected at each stage
+- [Forms](/en/desktop/key-concepts/forms) - Build forms used in form-based stages
+- [Resources](/en/desktop/key-concepts/resources) - Add media and content to stages
+
+## Next steps
+
+Now that you understand stages, you can:
+
+1. Review the [building a protocol tutorial](/en/desktop/tutorials/building-a-protocol) to practice creating stages
+2. Learn about different [Interfaces](/en/desktop/key-concepts/interfaces) to understand your stage options
+3. Explore [Skip Logic](/en/desktop/key-concepts/skip-logic) to create adaptive protocols
+4. Study [Network Filtering](/en/desktop/key-concepts/network-filtering) to show relevant content on each stage
