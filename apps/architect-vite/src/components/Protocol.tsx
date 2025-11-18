@@ -9,7 +9,7 @@ const Protocol = () => {
 
 	return (
 		<div className="relative flex flex-col h-dvh">
-			<div className="overflow-y-auto">
+			<div className="flex-1 overflow-y-auto">
 				<Overview />
 				<Timeline />
 			</div>

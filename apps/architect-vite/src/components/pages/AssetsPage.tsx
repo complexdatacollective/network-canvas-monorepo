@@ -17,7 +17,7 @@ const AssetsPage = () => {
 
 	return (
 		<div className="relative flex flex-col h-dvh">
-			<div className="overflow-y-auto">
+			<div className="flex-1 overflow-y-auto">
 				<Layout>
 					<div
 						className="flex flex-col gap-6"
