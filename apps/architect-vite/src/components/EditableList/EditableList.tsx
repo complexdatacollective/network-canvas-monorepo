@@ -81,7 +81,7 @@ const EditableList = ({
 	});
 
 	// Memoize template result to prevent form reinitialization
-	const templateValues = useMemo(() => template(), [editIndex]);
+	const templateValues = useMemo(() => template(), [template]);
 	const initialValuesForEdit = currentItemValues || templateValues;
 
 	return (

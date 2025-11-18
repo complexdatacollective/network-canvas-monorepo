@@ -50,7 +50,7 @@ interface Dialog {
 	type: keyof typeof DialogVariants;
 	onConfirm?: (dialog: Dialog) => void;
 	onCancel?: (dialog: Dialog) => void;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 interface DialogsProps {

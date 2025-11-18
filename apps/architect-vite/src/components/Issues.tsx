@@ -80,6 +80,13 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 
 	const handleClickTitleBar = () => setOpen((toggle) => !toggle);
 
+	const handleTitleBarKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			setOpen((toggle) => !toggle);
+		}
+	};
+
 	const handleClickIssue = (e: React.MouseEvent) => {
 		e.preventDefault();
 
@@ -124,7 +131,15 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 					}}
 				>
 					<div className="issues__panel">
-						<div className="issues__title-bar" onClick={handleClickTitleBar}>
+						<div
+							className="issues__title-bar"
+							onClick={handleClickTitleBar}
+							onKeyDown={handleTitleBarKeyDown}
+							role="button"
+							tabIndex={0}
+							aria-label={`${open ? "Collapse" : "Expand"} issues panel`}
+							aria-expanded={open}
+						>
 							<div className="issues__title-bar-icon">
 								<Icon name="info" color="white" />
 							</div>

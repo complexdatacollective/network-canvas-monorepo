@@ -43,7 +43,7 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 
 			return false;
 		},
-		[dispatch, openDialog, panels],
+		[dispatch, openDialog, panels, form],
 	);
 
 	const isFull = panels && panels.length === 2;

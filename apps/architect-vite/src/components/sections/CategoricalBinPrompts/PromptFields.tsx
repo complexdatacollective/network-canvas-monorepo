@@ -14,16 +14,22 @@ import { getSortOrderOptionGetter } from "./optionGetters";
 import withVariableHandlers from "./withVariableHandlers";
 import withVariableOptions from "./withVariableOptions";
 
+type VariableOption = {
+	label: string;
+	value: string;
+	type: string;
+};
+
 type PromptFieldsProps = {
-	changeForm: (form: string, field: string, value: any) => void;
+	changeForm: (form: string, field: string, value: unknown) => void;
 	entity: string;
 	form: string;
 	onCreateOtherVariable: (value: string, field: string) => void;
-	optionsForVariableDraft?: any[];
+	optionsForVariableDraft?: Array<Record<string, unknown>>;
 	otherVariable?: string;
 	type: string;
 	variable?: string;
-	variableOptions?: any[];
+	variableOptions?: VariableOption[];
 };
 
 const PromptFields = ({

@@ -56,6 +56,7 @@ const useScrollTo = (
 			clearTimeout(timer.current);
 			timer.current = scrollFocus(ref.current, delay) ?? undefined;
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, watch);
 };
 

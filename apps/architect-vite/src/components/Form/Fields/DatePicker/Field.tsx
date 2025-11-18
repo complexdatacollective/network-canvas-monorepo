@@ -6,10 +6,10 @@ import DatePicker from "./DatePicker";
 
 interface FieldInput {
 	name: string;
-	value?: any;
-	onBlur?: (value: any) => void;
-	onChange?: (value: any) => void;
-	onFocus?: (event: any) => void;
+	value?: unknown;
+	onBlur?: (value: unknown) => void;
+	onChange?: (value: unknown) => void;
+	onFocus?: (event: React.FocusEvent) => void;
 }
 
 interface FieldMeta {
@@ -19,7 +19,7 @@ interface FieldMeta {
 }
 
 interface DatePickerFieldProps {
-	parameters?: Record<string, any>;
+	parameters?: Record<string, unknown>;
 	input: FieldInput;
 	meta?: FieldMeta;
 	label?: string | null;

@@ -14,15 +14,17 @@ import withVariableOptions from "./withVariableOptions";
 
 type SelectOption = {
 	label: string;
-	value: string | any[] | boolean;
+	value: string;
+	type?: string;
+	[key: string]: unknown;
 };
 
 type PromptFieldsProps = {
 	form: string;
-	changeForm: (form: string, field: string, value: any) => void;
+	changeForm: (form: string, field: string, value: unknown) => void;
 	edgesForSubject?: string[];
-	handleCreateEdge: (option: string) => any;
-	handleChangeCreateEdge: (value: any) => void;
+	handleCreateEdge: (option: string) => string;
+	handleChangeCreateEdge: (value: string) => void;
 	createEdge?: string | null;
 	edgeVariable?: string | null;
 	variableOptions?: SelectOption[];

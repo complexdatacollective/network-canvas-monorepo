@@ -12,7 +12,7 @@ const handlers = withHandlers({
 	handleChangePrompt:
 		({ updateVariable, changeForm, form }) =>
 		async ({ createEdge, edgeVariable, variableOptions, ...rest }) => {
-			changeForm(form, "_modified", new Date().getTime()); // TODO: can we avoid this?
+			changeForm(form, "_modified", Date.now()); // TODO: can we avoid this?
 			await updateVariable("edge", createEdge, edgeVariable, { options: variableOptions }, true);
 			return { edgeVariable, createEdge, ...rest };
 		},

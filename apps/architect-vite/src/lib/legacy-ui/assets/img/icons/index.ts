@@ -56,7 +56,7 @@ import toggleOn from "./toggle-on.svg.react";
 import trashBin from "./trash-bin.svg.react";
 import warning from "./warning.svg.react";
 
-type IconsMap = Record<string, ComponentType<any>>;
+type IconsMap = Record<string, ComponentType<Record<string, unknown>>>;
 
 const icons: IconsMap = {
 	"add-a-context-button": addAContext,

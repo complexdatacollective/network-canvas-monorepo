@@ -94,19 +94,16 @@ const createTimelineReducer = <T>(
 
 					// If point in timeline cannot be found do nothing
 					if (locusIndex === -1) {
-						console.warn(`Timeline locus "${locus}" not found in timeline. Cannot jump to it.`);
 						return;
 					}
 
 					// no events in timeline yet
 					if (timeline.length === 1) {
-						console.warn(`Timeline locus "${locus}" is the only point in the timeline. Cannot jump to it.`);
 						return;
 					}
 
 					// the last point in the timeline is the present
 					if (locusIndex === timeline.length - 1) {
-						console.warn(`Timeline locus "${locus}" is the current point in the timeline. Cannot jump to it.`);
 						return;
 					}
 
@@ -169,7 +166,7 @@ const createTimelineReducer = <T>(
 					}
 
 					// Clean up null values from past array (for backwards compatibility with persisted state)
-					if (state.past && state.past.some((p) => p === null || p === undefined)) {
+					if (state.past?.some((p) => p === null || p === undefined)) {
 						state.past = state.past.filter((p) => p !== null && p !== undefined);
 					}
 

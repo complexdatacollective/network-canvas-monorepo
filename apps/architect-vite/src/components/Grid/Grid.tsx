@@ -11,8 +11,8 @@ interface GridProps {
 	fields: Record<string, unknown>;
 	items: Array<Record<string, unknown>>;
 	capacity: number;
-	previewComponent: React.ComponentType<any>;
-	onEditItem: (item: any) => void;
+	previewComponent: React.ComponentType<Record<string, unknown>>;
+	onEditItem: (item: string) => void;
 	meta: Record<string, unknown>;
 	editField?: string;
 	form: string;

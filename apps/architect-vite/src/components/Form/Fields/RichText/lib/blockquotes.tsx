@@ -1,24 +1,23 @@
 /* eslint-disable import/prefer-default-export */
 
-import { get } from "lodash";
-import { type BaseEditor, Node, type NodeEntry, type Path, Transforms } from "slate";
+import { type BaseEditor, type Descendant, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
 import { getBlocks } from "./utils";
 
-interface BlockNode {
+interface BlockNode extends Element {
 	type: string;
-	children?: any[];
+	children: Descendant[];
 }
 
 const toggleBlock = (editor: BaseEditor, block: NodeEntry<BlockNode>): void => {
-	const type = get(block, [0, "type"]);
-	const path = get(block, [1], []);
+	const [node, path] = block;
+	const type = node.type;
 
 	switch (type) {
 		case "block_quote":
 			// de-blockquote
 			Transforms.unwrapNodes(editor, {
 				at: path,
-				match: (n: any) => n.type === "block_quote",
+				match: (n) => Element.isElement(n) && n.type === "block_quote",
 				mode: "all",
 			});
 			break;
@@ -27,7 +26,7 @@ const toggleBlock = (editor: BaseEditor, block: NodeEntry<BlockNode>): void => {
 			// Unwrap all list items
 			Transforms.unwrapNodes(editor, {
 				at: path,
-				match: (n: any) => n.type === "list_item",
+				match: (n) => Element.isElement(n) && n.type === "list_item",
 				mode: "all",
 			});
 			// Set top level element to a block quote
@@ -49,11 +48,14 @@ export const toggleBlockquote = (editor: BaseEditor): void => {
 		toggleBlock(editor, block);
 	});
 
-	const reversedPaths = blocks.reduce((acc: Path[], [, path]: NodeEntry<BlockNode>) => [path, ...acc], []);
+	const reversedPaths = blocks.reduce((acc: Path[], [, path]: NodeEntry<BlockNode>) => {
+		acc.unshift(path);
+		return acc;
+	}, []);
 
 	// Merge adjacent block quotes
 	reversedPaths.forEach((path, index) => {
-		const nextPath = get(reversedPaths, [index + 1]);
+		const nextPath = reversedPaths[index + 1];
 		if (!nextPath) {
 			return;
 		}

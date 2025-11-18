@@ -70,7 +70,7 @@ const TextInput = ({
 	label = null,
 	fieldLabel = null,
 	className = "",
-	autoFocus = false,
+	autoFocus: _autoFocus = false,
 	hidden = false,
 	dateFormat = "YYYY-MM-DD",
 }: TextInputProps) => {
@@ -79,7 +79,7 @@ const TextInput = ({
 	useEffect(() => {
 		const newValue = getParsedValue(dateFormat)(input.value);
 		input.onChange(newValue);
-	}, [dateFormat]);
+	}, [dateFormat, input.onChange, input.value]);
 
 	const seamlessClasses = cx(className, "form-field-text", {
 		"form-field-text--has-focus": active,

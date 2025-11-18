@@ -18,7 +18,7 @@ interface BooleanProps {
 	onChange?: (value: BooleanValue) => void;
 }
 
-const Boolean = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
+const BooleanField = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
 	<div className="form-field boolean">
 		<div className="boolean__options">
 			{options.map(({ label, value: optionValue, classes, icon, negative }) => (
@@ -41,4 +41,4 @@ const Boolean = ({ noReset, options = [], value = null, onChange = () => {} }: B
 	</div>
 );
 
-export default Boolean;
+export default BooleanField;

@@ -73,21 +73,78 @@ const Asset = ({
 		{ "asset-browser-asset--is-used": isUsed },
 	);
 
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				onClick(id);
+			}
+		},
+		[onClick, id],
+	);
+
+	const handlePreviewKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onPreview(id);
+			}
+		},
+		[onPreview, id],
+	);
+
+	const handleDownloadKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onDownload(id);
+			}
+		},
+		[onDownload, id],
+	);
+
+	const handleDeleteKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				e.stopPropagation();
+				onDelete?.(id, isUsed);
+			}
+		},
+		[onDelete, isUsed, id],
+	);
+
 	return (
-		<div onClick={handleClick} className={assetClasses}>
+		<div onClick={handleClick} onKeyDown={handleKeyDown} role="button" tabIndex={0} className={assetClasses}>
 			<div className="asset-browser-asset__preview">
 				<PreviewComponent id={id} />
 			</div>
 
 			<div className="asset-browser-asset__controls">
 				{onPreview && (
-					<div className="asset-browser-asset__control" onClick={handlePreview}>
+					<div
+						className="asset-browser-asset__control"
+						onClick={handlePreview}
+						onKeyDown={handlePreviewKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Preview asset"
+					>
 						<PreviewIcon />
 					</div>
 				)}
 
 				{onDownload && (
-					<div className="asset-browser-asset__control" onClick={handleDownload}>
+					<div
+						className="asset-browser-asset__control"
+						onClick={handleDownload}
+						onKeyDown={handleDownloadKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Download asset"
+					>
 						<DownloadIcon />
 					</div>
 				)}
@@ -96,7 +153,11 @@ const Asset = ({
 					<div
 						className="asset-browser-asset__control asset-browser-asset__control--delete"
 						onClick={handleDelete}
+						onKeyDown={handleDeleteKeyDown}
+						role="button"
+						tabIndex={0}
 						title={isUsed ? "This asset is in use by the protocol and cannot be deleted" : ""}
+						aria-label={isUsed ? "Cannot delete - asset in use" : "Delete asset"}
 					>
 						<DeleteIcon />
 					</div>

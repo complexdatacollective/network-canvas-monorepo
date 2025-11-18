@@ -8,10 +8,10 @@ type GridItemProps = {
 	};
 	editField?: string | null;
 	onEditItem: (fieldId: string) => void;
-	previewComponent: React.ComponentType<any>;
+	previewComponent: React.ComponentType<Record<string, unknown>>;
 	index: number;
 	id: string;
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 const GridItem = ({
 	fields,

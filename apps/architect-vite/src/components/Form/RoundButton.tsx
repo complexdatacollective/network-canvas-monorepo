@@ -20,7 +20,7 @@ const RoundButton = ({
 }: RoundButtonProps) => (
 	<button
 		className={cx("form-round-button", className, { [`form-round-button--${size}`]: !!size })}
-		type={type as any}
+		type={type as "button" | "submit" | "reset"}
 		{...props}
 	>
 		{(icon && <Icon name={icon} />) || content}

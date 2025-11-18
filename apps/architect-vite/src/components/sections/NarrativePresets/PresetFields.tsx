@@ -9,16 +9,21 @@ import Section from "../../EditorLayout/Section";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import withPresetProps from "./withPresetProps";
 
+type SelectOption = {
+	label: string;
+	value: string;
+};
+
 type PresetFieldsProps = {
 	form: string;
-	edgesForSubject?: any[];
+	edgesForSubject?: SelectOption[];
 	entity: string;
 	groupVariable?: string;
-	groupVariablesForSubject?: any[];
+	groupVariablesForSubject?: SelectOption[];
 	handleCreateLayoutVariable: () => void;
-	highlightVariablesForSubject?: any[];
+	highlightVariablesForSubject?: SelectOption[];
 	layoutVariable?: string;
-	layoutVariablesForSubject?: any[];
+	layoutVariablesForSubject?: SelectOption[];
 	type: string;
 };
 

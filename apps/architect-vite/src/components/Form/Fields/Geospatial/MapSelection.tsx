@@ -4,18 +4,20 @@ import Button from "~/lib/legacy-ui/components/Button";
 
 import MapView from "./MapView";
 
+type MapValue = {
+	center?: number[];
+	tokenAssetId?: string;
+	initialZoom?: number;
+	dataSourceAssetId?: string;
+	color?: string;
+	targetFeatureProperty?: string;
+	style?: string;
+};
+
 type MapSelectionProps = {
 	input: {
-		value: {
-			center?: number[];
-			tokenAssetId?: string;
-			initialZoom?: number;
-			dataSourceAssetId?: string;
-			color?: string;
-			targetFeatureProperty?: string;
-			style?: string;
-		};
-		onChange: (value: any) => void;
+		value: MapValue;
+		onChange: (value: MapValue) => void;
 	};
 };
 

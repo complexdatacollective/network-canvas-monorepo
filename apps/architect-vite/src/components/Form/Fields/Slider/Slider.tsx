@@ -15,7 +15,7 @@ interface SliderInputProps {
 	options?: SliderOption[];
 	value: string | number | null;
 	type: string;
-	onBlur: (value: any) => void;
+	onBlur: (value: string | number | null) => void;
 	parameters?: {
 		minLabel?: string;
 		maxLabel?: string;
@@ -131,8 +131,8 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 					<Ticks count={tickCount}>
 						{({ ticks }) => (
 							<div className="form-field-slider__ticks">
-								{ticks.map((tick, index) => (
-									<Tick tick={tick} key={`${getLabelForValue}_${index}`} getLabelForValue={getLabelForValue} />
+								{ticks.map((tick) => (
+									<Tick tick={tick} key={tick.id} getLabelForValue={getLabelForValue} />
 								))}
 							</div>
 						)}

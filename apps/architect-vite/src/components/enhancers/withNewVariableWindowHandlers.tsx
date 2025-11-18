@@ -52,7 +52,7 @@ const showVariableWindow = mapProps(({ newVariableProperties, ...rest }) => ({
 const withNewVariableWindowHandlers = compose(newVariablePropertiesState, newVariableHandlers, showVariableWindow);
 
 export type WithNewVariableWindowHandlersProps = {
-	openNewVariableWindow: (variableName: string, variableOptions?: Record<string, any>) => void;
+	openNewVariableWindow: (variableName: string, variableOptions?: Record<string, unknown>) => void;
 	closeNewVariableWindow: () => void;
 	newVariableName?: string;
 	showNewVariableWindow: boolean;

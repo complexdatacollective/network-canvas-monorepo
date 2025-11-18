@@ -12,7 +12,7 @@ type Stage = {
 	type: string;
 	label: string;
 	prompts?: Array<{ id: string | number }>;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 type StagesState = Stage[];
@@ -67,13 +67,20 @@ export const deleteStageAsync = createAsyncThunk(
 		if (stage?.type === "Anonymisation") {
 			// Remove encrypted from all variables
 			const nodeTypes = getNodeTypes(state);
-			const encryptedVariables = Object.values(nodeTypes).reduce((acc: any[], nodeType: any) => {
-				const nodeTypeVariables = Object.entries(nodeType.variables || {})
-					.filter(([, variable]: [string, any]) => variable.encrypted)
-					.map(([variableId, variable]: [string, any]) => ({ ...variable, id: variableId }));
+			const encryptedVariables = Object.values(nodeTypes).reduce(
+				(
+					acc: Array<{ id: string; encrypted?: boolean; [key: string]: unknown }>,
+					nodeType: { variables?: Record<string, { encrypted?: boolean; [key: string]: unknown }> },
+				) => {
+					const nodeTypeVariables = Object.entries(nodeType.variables || {})
+						.filter(([, variable]) => variable.encrypted)
+						.map(([variableId, variable]) => ({ ...variable, id: variableId }));
 
-				return [...acc, ...nodeTypeVariables];
-			}, []);
+					acc.push(...nodeTypeVariables);
+					return acc;
+				},
+				[],
+			);
 
 			// Note: This dispatches a codebook action - will need to be updated when codebook is modernized
 			encryptedVariables.forEach((variable) => {
@@ -128,7 +135,6 @@ const stagesSlice = createSlice({
 			const { oldIndex, newIndex } = action.payload;
 
 			if (oldIndex < 0 || oldIndex >= state.length || newIndex < 0 || newIndex >= state.length) {
-				console.warn("moveStage: invalid index");
 				return;
 			}
 

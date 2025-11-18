@@ -3,11 +3,22 @@ import { type ReactNode, useState } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-const getErrorMessage = (error: any) => !!error && (error.friendlyMessage ? error.friendlyMessage : error.toString());
+const getErrorMessage = (error: Error | string | { friendlyMessage?: string; toString: () => string } | null) =>
+	!!error &&
+	(typeof error === "object" && "friendlyMessage" in error && error.friendlyMessage
+		? error.friendlyMessage
+		: error.toString());
 
-const getMessage = ({ error, message }: { error: any; message: any }) => (error ? getErrorMessage(error) : message);
+const getMessage = ({
+	error,
+	message,
+}: {
+	error: Error | string | { friendlyMessage?: string } | null;
+	message: React.ReactNode;
+}) => (error ? getErrorMessage(error as Error | string | { friendlyMessage?: string; toString: () => string }) : message);
 
-const getStack = (error: any) => !!error && error.stack;
+const getStack = (error: Error | string | { stack?: string } | null) =>
+	!!error && typeof error === "object" && "stack" in error && error.stack;
 
 interface AdditionalInformationProps {
 	stack?: string;

@@ -59,25 +59,19 @@ export const useEditHandlers = ({
 	const handleSaveEdit = useCallback(
 		async (value: unknown) => {
 			if (editIndex === null) return;
-
-			try {
-				let valueToSave = value;
-				if (onChange) {
-					const result = await onChange(value);
-					if (result !== undefined) {
-						valueToSave = result;
-					}
+			let valueToSave = value;
+			if (onChange) {
+				const result = await onChange(value);
+				if (result !== undefined) {
+					valueToSave = result;
 				}
-
-				const normalizedValue = normalize(valueToSave);
-
-				const fieldPath = `${fieldName}[${editIndex}]`;
-				dispatch(change(form, fieldPath, normalizedValue));
-				clearEditField();
-			} catch (error) {
-				console.error("Error updating field:", error);
-				throw error;
 			}
+
+			const normalizedValue = normalize(valueToSave);
+
+			const fieldPath = `${fieldName}[${editIndex}]`;
+			dispatch(change(form, fieldPath, normalizedValue));
+			clearEditField();
 		},
 		[editIndex, onChange, normalize, dispatch, form, fieldName, clearEditField],
 	);

@@ -9,8 +9,12 @@ import PromptPreview from "./PromptPreview";
 import withPromptChangeHandler from "./withPromptChangeHandler";
 
 type TieStrengthCensusPromptsProps = {
-	handleChangePrompt: (prompts: any[]) => void;
-} & Record<string, any>;
+	handleChangePrompt: (prompts: unknown[]) => void;
+	form: string;
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+};
 
 const TieStrengthCensusPrompts = ({
 	handleChangePrompt,
@@ -18,7 +22,7 @@ const TieStrengthCensusPrompts = ({
 	entity,
 	type,
 	disabled,
-}: TieStrengthCensusPromptsProps & { form: string; entity?: string; type?: string; disabled?: boolean }) => (
+}: TieStrengthCensusPromptsProps) => (
 	<Section
 		disabled={disabled}
 		summary={

@@ -30,7 +30,7 @@ const Counter = ({ incomingValue }: CounterProps) => {
 		});
 
 		return () => controls.stop();
-	}, [incomingValue]);
+	}, [incomingValue, counterValue]);
 
 	return <span ref={nodeRef} />;
 };

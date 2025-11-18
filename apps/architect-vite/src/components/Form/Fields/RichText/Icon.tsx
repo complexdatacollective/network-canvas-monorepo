@@ -18,7 +18,7 @@ interface IconProps {
 	name: string;
 }
 
-const icons: Record<string, any> = {
+const icons: Record<string, React.ComponentType<{ style?: React.CSSProperties }>> = {
 	bold: BoldIcon,
 	italic: ItalicIcon,
 	quote: QuoteIcon,

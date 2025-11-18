@@ -32,8 +32,9 @@ const Pips = ({ large = false, count = 0, currentIndex = 0 }: PipsProps) => {
 	return (
 		<motion.div className={className} variants={container} initial="hidden" animate="show">
 			{[...Array(count)].map((_, index) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: Pips are visual indicators with no unique IDs - index represents their position
 				<motion.div
-					key={index}
+					key={`pip-${index}`}
 					className={`pips__pip ${index === currentIndex ? "pips__pip--active" : ""}`}
 					variants={item}
 				/>

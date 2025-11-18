@@ -35,7 +35,7 @@ const withNormalize = (editor: NormalizeEditor): NormalizeEditor => {
 			// Force the first node to always be a paragraph and merge any
 			// later nodes
 			for (const [child, childPath] of Node.children(editor, path)) {
-				if (Element.isElement(child) && childPath[0] === 0 && (child as any).type !== "paragraph") {
+				if (Element.isElement(child) && childPath[0] === 0 && child.type !== "paragraph") {
 					Transforms.setNodes(editor, { type: "paragraph", break: false }, { at: childPath });
 				} else if (Element.isElement(child)) {
 					Transforms.mergeNodes(editor, { at: childPath });

@@ -8,7 +8,7 @@ type SelectOptionVariableProps = {
 		name: string;
 		description: string;
 	};
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 const SelectOptionVariable = (props: SelectOptionVariableProps) => {
 	const {

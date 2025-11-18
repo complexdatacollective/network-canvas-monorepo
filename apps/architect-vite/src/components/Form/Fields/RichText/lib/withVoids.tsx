@@ -11,7 +11,7 @@ interface VoidEditor extends BaseEditor {
 const withVoids = (editor: VoidEditor): VoidEditor => {
 	const { isVoid } = editor;
 	editor.isVoid = (element: Element) => {
-		if (VOID_TYPES.includes((element as any).type)) {
+		if ("type" in element && VOID_TYPES.includes(element.type as string)) {
 			return true;
 		}
 		return isVoid(element);

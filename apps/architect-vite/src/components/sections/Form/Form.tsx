@@ -12,7 +12,7 @@ import { itemSelector, normalizeField } from "./helpers";
 import withFormHandlers from "./withFormHandlers";
 
 type FormProps = {
-	handleChangeFields: (fields: any[]) => void;
+	handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
 	form: string;
 	disabled?: boolean;
 	disableFormTitle?: boolean;

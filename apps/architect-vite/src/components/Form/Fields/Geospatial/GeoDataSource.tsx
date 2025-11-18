@@ -9,7 +9,7 @@ type GeoDataSourceProps = {
 		value: string;
 	};
 	canUseExisting?: boolean;
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 const GeoDataSource = (props: GeoDataSourceProps) => {
 	const { input } = props;

@@ -5,7 +5,7 @@ import Prompt from "./Prompt";
 type PromptType = {
 	id?: string;
 	text?: string;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 type PromptsProps = {

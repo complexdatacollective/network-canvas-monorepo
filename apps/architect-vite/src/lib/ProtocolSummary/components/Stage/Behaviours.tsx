@@ -2,7 +2,7 @@ import { map } from "lodash";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";
 
-const behaviorLabel = (behaviourValue: any, behaviourKey: string) => {
+const behaviorLabel = (behaviourValue: unknown, behaviourKey: string) => {
 	switch (behaviourKey) {
 		case "allowRepositioning":
 			return { label: "Repositioning enabled", value: behaviourValue };
@@ -19,7 +19,7 @@ const behaviorLabel = (behaviourValue: any, behaviourKey: string) => {
 	}
 };
 
-const behaviourRows = (behaviours: Record<string, any>) =>
+const behaviourRows = (behaviours: Record<string, unknown>) =>
 	map(behaviours, (behaviourValue, behaviourKey) => {
 		const labelValue = behaviorLabel(behaviourValue, behaviourKey);
 		return [labelValue.label, renderValue(labelValue.value)];
@@ -29,7 +29,7 @@ type BehavioursProps = {
 	behaviours?: {
 		allowRepositioning?: boolean;
 		freeDraw?: boolean;
-		[key: string]: any;
+		[key: string]: unknown;
 	} | null;
 };
 

@@ -5,7 +5,6 @@
  * @returns The destination path in /tmp/.
  */
 const getLocalDirectoryFromArchivePath = () => {
-	console.log("getLocalDirectoryFromArchivePath not implemented");
 	return "";
 };
 

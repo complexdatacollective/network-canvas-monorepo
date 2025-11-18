@@ -6,7 +6,7 @@ import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 
-const propStageId = (_: any, props: { stageId: string }) => props.stageId;
+const propStageId = (_: RootState, props: { stageId: string }) => props.stageId;
 
 // During transition, check both old and new stores
 export const getProtocol = (state: RootState) => {
@@ -129,13 +129,14 @@ export const getIsProtocolValid = (_state: RootState): boolean => {
 // Timeline selector
 export const getTimelineLocus = (state: RootState) => {
 	// Check new activeProtocol store first
-	const activeProtocolTimeline = (state as any).activeProtocol?.timeline;
+	const activeProtocolTimeline = (state as RootState & { activeProtocol?: { timeline?: unknown[] } }).activeProtocol
+		?.timeline;
 	if (activeProtocolTimeline?.length > 0) {
 		return activeProtocolTimeline[activeProtocolTimeline.length - 1];
 	}
 
 	// Fall back to old protocol store
-	const protocolTimeline = (state as any).protocol?.timeline;
+	const protocolTimeline = (state as RootState & { protocol?: { timeline?: unknown[] } }).protocol?.timeline;
 	if (protocolTimeline?.length > 0) {
 		return protocolTimeline[protocolTimeline.length - 1];
 	}

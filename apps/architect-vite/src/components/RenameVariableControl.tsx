@@ -47,7 +47,7 @@ const RenameVariableControl = ({
 
 	const validate = useMemo(
 		() => [isRequired, uniqueByList(existingVariableNames), isAllowedVariableName],
-		[existingVariableNames.join()],
+		[existingVariableNames],
 	);
 
 	const handleClose = useCallback(() => {
@@ -74,7 +74,7 @@ const RenameVariableControl = ({
 
 	const handleOpen = useCallback(() => {
 		setIsOpen(true);
-	}, [setIsOpen]);
+	}, []);
 
 	const initialValues = useMemo(
 		() => ({

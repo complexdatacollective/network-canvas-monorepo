@@ -78,10 +78,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 					await updateType(entity, type, values);
 				}
 				onClose();
-			} catch (error) {
-				// Error handling is done by redux-form
-				console.error("Failed to save entity type:", error);
-			}
+			} catch (_error) {}
 		},
 		[createType, updateType, onClose, entity, type, isNew, invalid],
 	);
@@ -102,7 +99,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 				onConfirm: () => {
 					onClose();
 				},
-			}) as any,
+			}) as unknown,
 		);
 	}, [hasUnsavedChanges, onClose, dispatch]);
 

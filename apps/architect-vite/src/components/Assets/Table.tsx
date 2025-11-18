@@ -1,7 +1,7 @@
 import { ArrowDown as ArrowDropDownIcon, ArrowUp as ArrowDropUpIcon } from "lucide-react";
-import { useSortBy, useTable } from "react-table";
+import { type Column, useSortBy, useTable } from "react-table";
 
-const getSortIcon = (column) => {
+const getSortIcon = (column: Column<Record<string, unknown>>) => {
 	if (!column.isSorted) {
 		return null;
 	}
@@ -9,8 +9,8 @@ const getSortIcon = (column) => {
 };
 
 type TableProps = {
-	data: any[];
-	columns: any[];
+	data: Record<string, unknown>[];
+	columns: Column<Record<string, unknown>>[];
 };
 
 const Table = ({ data, columns }: TableProps) => {
@@ -20,9 +20,9 @@ const Table = ({ data, columns }: TableProps) => {
 		<table {...getTableProps()} className="network">
 			<thead>
 				{headerGroups.map((headerGroup) => (
-					<tr {...headerGroup.getHeaderGroupProps()}>
+					<tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
 						{headerGroup.headers.map((column) => (
-							<th {...column.getHeaderProps(column.getSortByToggleProps())}>
+							<th {...column.getHeaderProps(column.getSortByToggleProps())} key={column.id}>
 								{column.render("Header")}
 								{getSortIcon(column)}
 							</th>
@@ -35,9 +35,11 @@ const Table = ({ data, columns }: TableProps) => {
 					prepareRow(row);
 
 					return (
-						<tr {...row.getRowProps()}>
+						<tr {...row.getRowProps()} key={row.id}>
 							{row.cells.map((cell) => (
-								<td {...cell.getCellProps()}>{cell.render("Cell")}</td>
+								<td {...cell.getCellProps()} key={cell.column.id}>
+									{cell.render("Cell")}
+								</td>
 							))}
 						</tr>
 					);

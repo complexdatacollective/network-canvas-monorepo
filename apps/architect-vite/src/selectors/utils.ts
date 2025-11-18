@@ -6,7 +6,7 @@ type Item = {
 	name: string;
 	type?: string;
 	color?: string;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 type Option = {

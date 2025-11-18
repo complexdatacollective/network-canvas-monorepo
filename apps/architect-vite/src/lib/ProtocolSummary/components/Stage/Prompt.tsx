@@ -42,8 +42,8 @@ const attributes = [
 	["otherOptionLabel", "Other option label", (text) => text],
 ];
 const reduceAttribute =
-	(prompt: any) =>
-	(acc: any[], [path, label, renderer]: [string, string, (val: any) => any]) => {
+	(prompt: Record<string, unknown>) =>
+	(acc: unknown[], [path, label, renderer]: [string, string, (val: unknown) => unknown]) => {
 		const value = get(prompt, path, null);
 		if (isNull(value)) {
 			return acc;
@@ -55,7 +55,7 @@ type PromptProps = {
 	text: string;
 	additionalAttributes?: Array<{
 		variable: string;
-		value: any;
+		value: unknown;
 	}>;
 	edges?: {
 		create?: string;
@@ -66,7 +66,7 @@ type PromptProps = {
 	} | null;
 	createEdge?: string | null;
 	edgeVariable?: string | null;
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 const Prompt = ({ text, additionalAttributes = [], ...prompt }: PromptProps) => {

@@ -104,7 +104,7 @@ const getVariableIndex = createSelector(getProtocol, (protocol) => collectPaths(
 const getAssetIndex = createSelector(getProtocol, (protocol) => collectPaths(paths.assets, protocol));
 
 const combineLists = (lists) =>
-	lists.map((list) => (!isArray(list) ? values(list) : list)).reduce((acc, list) => [...acc, ...list], []);
+	lists.map((list) => (!isArray(list) ? values(list) : list)).reduce((acc, list) => acc.concat(list), []);
 
 /**
  * Creates a Set of items from arrays or path objects

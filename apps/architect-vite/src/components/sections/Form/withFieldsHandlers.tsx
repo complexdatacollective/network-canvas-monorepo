@@ -22,7 +22,7 @@ type UseFieldHandlerProps = {
 export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) => {
 	const dispatch = useDispatch();
 	const changeField = useCallback(
-		(field: string, value: any) => dispatch(change(form, field, value)),
+		(field: string, value: unknown) => dispatch(change(form, field, value)),
 		[dispatch, form],
 	);
 	const deleteVariable = useCallback(
@@ -62,7 +62,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	const variableOptions = useMemo(() => {
 		const filtered = baseVariableOptions
 			// If not a variable with corresponding component, we can't use it here.
-			.filter(({ type: variableType }: any) => VARIABLE_TYPES_WITH_COMPONENTS.includes(variableType));
+			.filter(({ type: variableType }: { type: string }) => VARIABLE_TYPES_WITH_COMPONENTS.includes(variableType));
 
 		// with New variable
 		return isNewVariable ? filtered.concat([{ label: createNewVariable, value: createNewVariable }]) : filtered;
@@ -79,7 +79,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	const metaForType = find(INPUT_OPTIONS, { value: component });
 
 	const handleChangeComponent = useCallback(
-		(_e: any, value: string) => {
+		(_e: unknown, value: string) => {
 			const typeForComponent = getTypeForComponent(value);
 
 			// If we have changed type, also reset validation since options may not be
@@ -99,7 +99,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	);
 
 	const handleChangeVariable = useCallback(
-		(_: any, value: any) => {
+		(_: unknown, value: string) => {
 			// Either load settings from codebook, or reset
 			const options = get(existingVariables, [value, "options"], null);
 			const parameters = get(existingVariables, [value, "parameters"], null);
@@ -126,7 +126,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	);
 
 	const handleNewVariable = useCallback(
-		(value: any) => {
+		(value: string) => {
 			changeField("_createNewVariable", value);
 			changeField("variable", value);
 			return value;

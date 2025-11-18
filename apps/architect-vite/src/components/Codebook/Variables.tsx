@@ -13,9 +13,12 @@ const SortDirection = {
 	DESC: Symbol("DESC"),
 };
 
-const reverseSort = (direction) => (direction === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC);
+type SortDirectionType = typeof SortDirection.ASC | typeof SortDirection.DESC;
 
-const rowClassName = (index) => {
+const reverseSort = (direction: SortDirectionType) =>
+	direction === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC;
+
+const rowClassName = (index: number) => {
 	const isEven = index % 2 === 0;
 	return cx("codebook__variables-row", {
 		"codebook__variables-row--even": isEven,
@@ -27,8 +30,8 @@ type HeadingProps = {
 	children: React.ReactNode;
 	name: string;
 	sortBy: string;
-	sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC;
-	onSort: (options: { sortBy: string; sortDirection: any }) => void;
+	sortDirection: SortDirectionType;
+	onSort: (options: { sortBy: string; sortDirection: SortDirectionType }) => void;
 };
 
 const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps) => {
@@ -50,14 +53,23 @@ const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps
 	);
 };
 
+type Variable = {
+	id: string;
+	name: string;
+	component: string;
+	inUse: boolean;
+	usage: unknown;
+	usageString?: string;
+};
+
 type VariablesProps = {
 	entity: string;
 	onDelete?: (id: string) => void;
-	sort: (options: { sortBy: string; sortDirection: any }) => void;
+	sort: (options: { sortBy: string; sortDirection: SortDirectionType }) => void;
 	sortBy: string;
-	sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC;
+	sortDirection: SortDirectionType;
 	type?: string;
-	variables?: any[];
+	variables?: Variable[];
 };
 
 const Variables = ({
@@ -66,7 +78,7 @@ const Variables = ({
 	sortBy,
 	sortDirection,
 	sort,
-	type = null,
+	type: _type = null,
 }: VariablesProps) => {
 	const headingProps = {
 		sortBy,
@@ -147,7 +159,7 @@ const withVariableHandlers = compose(
 	}),
 );
 
-const homogenizedProp = (item, prop) => {
+const homogenizedProp = (item: Variable, prop: string) => {
 	const v = get(item, prop, "");
 	if (!isString(v)) {
 		return v;
@@ -155,7 +167,7 @@ const homogenizedProp = (item, prop) => {
 	return v.toUpperCase();
 };
 
-const sortByProp = (sortBy) => (a, b) => {
+const sortByProp = (sortBy: string) => (a: Variable, b: Variable) => {
 	const sortPropA = homogenizedProp(a, sortBy);
 	const sortPropB = homogenizedProp(b, sortBy);
 	if (sortPropA < sortPropB) {
@@ -167,11 +179,11 @@ const sortByProp = (sortBy) => (a, b) => {
 	return 0;
 };
 
-const sort = (sortBy) => (list) => list.sort(sortByProp(sortBy));
+const sort = (sortBy: string) => (list: Variable[]) => list.sort(sortByProp(sortBy));
 
 const reverse =
-	(sortDirection = SortDirection.ASC) =>
-	(list) =>
+	(sortDirection: SortDirectionType = SortDirection.ASC) =>
+	(list: Variable[]) =>
 		sortDirection === SortDirection.DESC ? [...list].reverse() : list;
 
 const withSort = compose(

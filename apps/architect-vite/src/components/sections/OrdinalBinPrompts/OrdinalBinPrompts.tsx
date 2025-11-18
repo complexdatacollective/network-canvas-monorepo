@@ -11,7 +11,7 @@ import PromptFields from "./PromptFields";
 const template = () => ({ color: "ord-color-seq-1" });
 
 interface OrdinalBinPromptsProps {
-	handleChangePrompt: (data: any) => void;
+	handleChangePrompt: (data: unknown) => void;
 	entity?: string | null;
 	type?: string | null;
 	form: string;

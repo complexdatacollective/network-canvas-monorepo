@@ -18,7 +18,7 @@ export const hasChanges = (state, locus) => {
 	}
 
 	const { timeline } = protocol;
-	const locusIndex = timeline.findIndex((id) => id === locus);
+	const locusIndex = timeline.indexOf(locus);
 
 	// If locus is not found in timeline, no changes
 	if (locusIndex === -1) {

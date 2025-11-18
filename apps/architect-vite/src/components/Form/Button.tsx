@@ -8,7 +8,7 @@ type ButtonProps = {
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const Button = ({ children = null, className = "", type = "button", ...props }: ButtonProps) => (
-	<button className={cx("form-button", className)} type={type as any} {...props}>
+	<button className={cx("form-button", className)} type={type as "button" | "submit" | "reset"} {...props}>
 		{children}
 	</button>
 );

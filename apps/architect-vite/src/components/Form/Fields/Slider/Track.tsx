@@ -9,7 +9,7 @@ interface TrackProps {
 		value: number;
 		percent: number;
 	};
-	getTrackProps: () => any;
+	getTrackProps: () => Record<string, unknown>;
 }
 
 const Track = ({ source, target, getTrackProps }: TrackProps) => (

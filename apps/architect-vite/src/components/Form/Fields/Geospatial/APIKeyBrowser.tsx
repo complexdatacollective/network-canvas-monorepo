@@ -32,14 +32,14 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 			onSelect(assetId);
 			close();
 		},
-		[onSelect],
+		[onSelect, close],
 	);
 
 	const handleSubmit = useCallback(
 		(formValues) => {
 			dispatch(addApiKeyAsset(formValues.keyName, formValues.keyValue));
 		},
-		[close],
+		[dispatch],
 	);
 
 	const cancelButton = (

@@ -15,13 +15,11 @@ type OptionType = {
 
 type OptionsProps = {
 	form: string;
-	formSelector: (variable: string) => any;
-	changeField: (form: string, field: string, value: any) => void;
+	formSelector: (variable: string) => unknown;
+	changeField: (form: string, field: string, value: unknown) => void;
 };
 
-type RootState = {
-	[key: string]: any;
-};
+type RootState = Record<string, unknown>;
 
 const mapStateToProps = (state: RootState, { form }: { form: string }) => {
 	const selector = formValueSelector(form);
@@ -48,7 +46,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(
 			if (isNull(currentOptions) || isEmpty(currentOptions)) {
 				changeField(form, "options", initialValues);
 			}
-		}, [form, formSelector, changeField, initialValues]);
+		}, [form, formSelector, changeField]);
 
 		return (
 			<div className="type-editor__subsection">

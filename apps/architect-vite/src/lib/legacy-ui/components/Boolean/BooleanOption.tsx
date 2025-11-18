@@ -40,8 +40,23 @@ const BooleanOption = ({
 		return <Markdown label={label} className="form-field-inline-label" />;
 	};
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			onClick();
+		}
+	};
+
 	return (
-		<div className={classNames} onClick={onClick} style={{ position: "relative" }}>
+		<div
+			className={classNames}
+			onClick={onClick}
+			onKeyDown={handleKeyDown}
+			role="button"
+			tabIndex={0}
+			aria-pressed={selected}
+			style={{ position: "relative" }}
+		>
 			{/* {resizeListener} */}
 			{customIcon || <RoundCheckbox checked={selected} negative={negative} />}
 			{renderLabel()}

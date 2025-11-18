@@ -222,7 +222,7 @@ const VariableSpotlight = ({
 		if (cursor > sortedAndFilteredItems.length - 1) {
 			setCursor(sortedAndFilteredItems.length - 1);
 		}
-	}, [sortedAndFilteredItems, filterTerm, cursor, hasFilterResults]);
+	}, [sortedAndFilteredItems, cursor, hasFilterResults]);
 
 	const handleFilter = (e) => {
 		// throw new Error();

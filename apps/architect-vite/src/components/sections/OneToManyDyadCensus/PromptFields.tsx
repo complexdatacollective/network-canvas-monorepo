@@ -12,9 +12,15 @@ import { getSortOrderOptionGetter } from "../CategoricalBinPrompts/optionGetters
 import withVariableOptions from "../CategoricalBinPrompts/withVariableOptions";
 import EntitySelectField from "../fields/EntitySelectField/EntitySelectField";
 
+type SelectOption = {
+	label: string;
+	value: string;
+	[key: string]: unknown;
+};
+
 type PromptFieldsProps = {
 	form: string;
-	variableOptions?: any[];
+	variableOptions?: SelectOption[];
 };
 
 const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {

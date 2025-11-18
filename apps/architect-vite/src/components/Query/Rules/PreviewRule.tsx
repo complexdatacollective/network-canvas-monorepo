@@ -19,18 +19,34 @@ type PreviewRuleProps = {
 	handleDelete: () => void;
 };
 
-const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: PreviewRuleProps) => (
-	<>
-		<div className="rules-preview-rule" onClick={onClick}>
-			<div className="rules-preview-rule__text">
-				<RuleText type={type} options={options} />
+const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: PreviewRuleProps) => {
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			onClick();
+		}
+	};
+
+	return (
+		<>
+			<div
+				className="rules-preview-rule"
+				onClick={onClick}
+				onKeyDown={handleKeyDown}
+				role="button"
+				tabIndex={0}
+				aria-label="Edit rule"
+			>
+				<div className="rules-preview-rule__text">
+					<RuleText type={type} options={options} />
+				</div>
+				<button type="button" className="rules-preview-rule__delete" onClick={handleDelete}>
+					<Icon name="delete" />
+				</button>
 			</div>
-			<button type="button" className="rules-preview-rule__delete" onClick={handleDelete}>
-				<Icon name="delete" />
-			</button>
-		</div>
-		{join && <Join value={join} />}
-	</>
-);
+			{join && <Join value={join} />}
+		</>
+	);
+};
 
 export default compose(withDeleteHandler, withDisplayOptions)(PreviewRule);

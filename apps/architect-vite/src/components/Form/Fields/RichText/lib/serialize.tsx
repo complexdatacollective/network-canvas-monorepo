@@ -3,12 +3,12 @@ import type { Descendant } from "slate";
 
 interface TextNode {
 	text: string;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 interface ElementNode {
 	children: (TextNode | ElementNode)[];
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 type SlateNode = TextNode | ElementNode;

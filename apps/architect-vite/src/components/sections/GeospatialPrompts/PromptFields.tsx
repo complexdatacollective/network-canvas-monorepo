@@ -14,7 +14,7 @@ type PromptFieldsProps = {
 	variableOptions: Array<{ type: string }>;
 	entity?: string;
 	type?: string;
-	changeForm?: (form: string, field: string, value: any) => void;
+	changeForm?: (form: string, field: string, value: unknown) => void;
 	form: string;
 };
 

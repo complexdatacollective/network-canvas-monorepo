@@ -8,7 +8,7 @@ import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
  * Reads protocolId from URL params and sets the active protocol
  */
 export const useProtocolLoader = () => {
-	const [, navigate] = useLocation();
+	const [, _navigate] = useLocation();
 
 	// Get the stored protocol
 	const activeProtocol = useSelector(selectActiveProtocol);
@@ -20,7 +20,7 @@ export const useProtocolLoader = () => {
 			return;
 		}
 		// navigate("/protocol");
-	}, [activeProtocol, navigate]);
+	}, [activeProtocol]);
 };
 
 export default useProtocolLoader;

@@ -8,16 +8,22 @@ import withAssetPath from "~/components/Assets/withAssetPath";
 import Dialog from "~/components/Dialog/Dialog";
 import { Button } from "~/lib/legacy-ui/components";
 
-const getRenderer = (meta) => {
+type AssetMeta = Record<string, unknown> & {
+	type?: string;
+	name?: string;
+	value?: string;
+};
+
+const getRenderer = (meta: AssetMeta) => {
 	switch (meta.type) {
 		case "image":
 			return Assets.BackgroundImage;
 		case "audio":
 			// eslint-disable-next-line
-			return ({ id }) => <Assets.Audio id={id} controls />;
+			return ({ id }: { id: string }) => <Assets.Audio id={id} controls />;
 		case "video":
 			// eslint-disable-next-line
-			return ({ id }) => <Assets.Video id={id} controls />;
+			return ({ id }: { id: string }) => <Assets.Video id={id} controls />;
 		case "network":
 			return Assets.Network;
 		case "geojson":
@@ -31,10 +37,10 @@ const getRenderer = (meta) => {
 
 type PreviewProps = {
 	id: string;
-	meta: Record<string, any>;
+	meta: AssetMeta;
 	assetPath: string;
 	show?: boolean;
-	onDownload?: (path: string, meta: Record<string, any>) => void;
+	onDownload?: (path: string, meta: AssetMeta) => void;
 	onClose?: () => void;
 };
 
@@ -49,7 +55,7 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 		if (meta.value) {
 			navigator.clipboard.writeText(meta.value);
 		}
-	}, []);
+	}, [meta.value]);
 
 	const primaryButtons = [
 		<Button onClick={onClose} color="white" key="close">

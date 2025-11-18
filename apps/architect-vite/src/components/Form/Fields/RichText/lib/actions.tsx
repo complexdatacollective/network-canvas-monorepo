@@ -62,7 +62,7 @@ const toggleBlock = (editor: BaseEditor, format: string): void => {
 	}
 };
 
-const toggleMark = (editor: BaseEditor, format: string, _SlateTransforms?: any, _SlateEditor?: any): void => {
+const toggleMark = (editor: BaseEditor, format: string): void => {
 	const isActive = isMarkActive(editor, format);
 
 	if (isActive) {

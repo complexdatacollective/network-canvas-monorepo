@@ -38,8 +38,6 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 	if (!proceed) {
 		return;
 	}
-
-	console.log("Opening protocol file...");
 	try {
 		const fileName = file.name.toLowerCase();
 
@@ -56,8 +54,6 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		if (!migratedProtocol) {
 			throw new Error("Protocol migration failed or was canceled.");
 		}
-
-		console.log("Protocol migration complete:", migratedProtocol);
 
 		// Validate the protocol
 		const validationResult = await validateProtocol(migratedProtocol);
@@ -77,8 +73,7 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		);
 
 		navigate("/protocol");
-	} catch (error) {
-		console.error("Error reading protocol file:", error);
+	} catch (_error) {
 		return false;
 	}
 });
@@ -104,33 +99,28 @@ const checkSchemaVersion = (protocol: Protocol): schemaVersionStates => {
 
 // helper function so we can use loadingLock
 const handleProtocolMigration = createAsyncThunk("protocol/openOrUpgrade", async (protocol: Protocol, { dispatch }) => {
-	try {
-		const schemaVersionStatus = checkSchemaVersion(protocol);
-		switch (schemaVersionStatus) {
-			case schemaVersionStates.OK: {
-				return protocol;
-			}
-			case schemaVersionStates.UPGRADE_PROTOCOL: {
-				const migrationNotes = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
-				const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, migrationNotes);
-
-				const confirm = await dispatch(upgradeDialog).unwrap();
-				if (!confirm) {
-					return false;
-				}
-
-				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION);
-				return migratedProtocol as Protocol;
-			}
-			case schemaVersionStates.UPGRADE_APP:
-				await dispatch(appUpgradeRequiredDialog(protocol.schemaVersion));
-				return false;
-			default:
-				return false;
+	const schemaVersionStatus = checkSchemaVersion(protocol);
+	switch (schemaVersionStatus) {
+		case schemaVersionStates.OK: {
+			return protocol;
 		}
-	} catch (e) {
-		console.error("Error opening protocol:", e);
-		throw e;
+		case schemaVersionStates.UPGRADE_PROTOCOL: {
+			const migrationNotes = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
+			const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, migrationNotes);
+
+			const confirm = await dispatch(upgradeDialog).unwrap();
+			if (!confirm) {
+				return false;
+			}
+
+			const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION);
+			return migratedProtocol as Protocol;
+		}
+		case schemaVersionStates.UPGRADE_APP:
+			await dispatch(appUpgradeRequiredDialog(protocol.schemaVersion));
+			return false;
+		default:
+			return false;
 	}
 });
 
@@ -214,14 +204,8 @@ export const exportNetcanvas = createAsyncThunk("webUserActions/exportNetcanvas"
 	if (!protocol) {
 		throw new Error("No active protocol to export");
 	}
-
-	try {
-		await downloadProtocolAsNetcanvas(protocol);
-		return true;
-	} catch (error) {
-		console.error("Error exporting protocol:", error);
-		throw error;
-	}
+	await downloadProtocolAsNetcanvas(protocol);
+	return true;
 });
 
 export const openRemoteNetcanvas = createAsyncThunk(
@@ -272,8 +256,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			);
 
 			navigate("/protocol");
-		} catch (error) {
-			console.error("Error opening remote Netcanvas:", error);
+		} catch (_error) {
 		} finally {
 			controller.abort();
 		}
@@ -282,7 +265,5 @@ export const openRemoteNetcanvas = createAsyncThunk(
 
 export const openRemoteFrescoNetcanvas = createAsyncThunk(
 	"webUserActions/openRemoteFrescoNetcanvas",
-	async (_url: string, { dispatch }) => {
-		console.log("Not implemented yet for remote Fresco Netcanvas");
-	},
+	async (_url: string, { dispatch }) => {},
 );

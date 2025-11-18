@@ -22,16 +22,31 @@ const ProgressBar = ({
 	orientation = "vertical",
 	percentProgress = 0,
 	nudge = true,
-}: ProgressBarProps) => (
-	<div
-		className={cx("progress-bar", `progress-bar--${orientation}`, {
-			"progress-bar--indeterminate": indeterminate || percentProgress === null,
-			"progress-bar--complete": percentProgress === 100 && nudge,
-		})}
-		onClick={onClick}
-	>
-		<div className="progress-bar__filler" style={fillerValue(orientation, percentProgress)} />
-	</div>
-);
+}: ProgressBarProps) => {
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			onClick();
+		}
+	};
+
+	const hasClickHandler = onClick !== (() => {});
+
+	return (
+		<div
+			className={cx("progress-bar", `progress-bar--${orientation}`, {
+				"progress-bar--indeterminate": indeterminate || percentProgress === null,
+				"progress-bar--complete": percentProgress === 100 && nudge,
+			})}
+			onClick={onClick}
+			onKeyDown={handleKeyDown}
+			role={hasClickHandler ? "button" : undefined}
+			tabIndex={hasClickHandler ? 0 : undefined}
+			aria-label={hasClickHandler ? `Progress: ${percentProgress}%` : undefined}
+		>
+			<div className="progress-bar__filler" style={fillerValue(orientation, percentProgress)} />
+		</div>
+	);
+};
 
 export default ProgressBar;

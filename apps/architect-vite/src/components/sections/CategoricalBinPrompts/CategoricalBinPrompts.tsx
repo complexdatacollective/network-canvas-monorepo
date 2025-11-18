@@ -9,7 +9,7 @@ import PromptFields from "./PromptFields";
 import withPromptChangeHandler from "./withPromptChangeHandler";
 
 type CategoricalBinPromptsProps = {
-	handleChangePrompt: (value: any) => void;
+	handleChangePrompt: (value: Record<string, unknown>) => void;
 	entity?: string;
 	type?: string;
 	form: string;

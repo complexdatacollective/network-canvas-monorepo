@@ -44,9 +44,9 @@ const RangePicker = ({
 	const datePickerRef = React.createRef<HTMLDivElement>();
 	const scrollRef = React.createRef<HTMLDivElement>();
 
-	const datePickerKey = !!datePickerRef.current;
-	const scrollRefKey = scrollRef.current?.getAttribute("data-value");
-	const rangeKey = range.toString();
+	const _datePickerKey = !!datePickerRef.current;
+	const _scrollRefKey = scrollRef.current?.getAttribute("data-value");
+	const _rangeKey = range.toString();
 
 	useEffect(() => {
 		// only scroll year
@@ -63,11 +63,18 @@ const RangePicker = ({
 		const { offsetTop } = scrollRef.current;
 		const { offsetHeight } = scrollRef.current;
 		datePickerRef.current.scrollTop = offsetTop - offsetHeight * 0.5;
-	}, [rangeKey, datePickerKey, scrollRefKey, value, type]);
+	}, [value, type, datePickerRef.current, scrollRef.current]);
 
 	const classes = cx("date-picker__range-picker", { [`date-picker__range-picker--${type}`]: !!type });
 
 	const padding = times(offset, (index) => <div key={`padding${index}`} className="date-picker__range-item" />);
+
+	const handleKeyDown = (itemValue: number) => (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			onSelect(itemValue);
+		}
+	};
 
 	const scrollToValue = getScrollToValue(range, today);
 	return (
@@ -87,6 +94,11 @@ const RangePicker = ({
 						<div
 							className={itemStyle}
 							onClick={() => onSelect(d.value)}
+							onKeyDown={handleKeyDown(d.value)}
+							role="button"
+							tabIndex={d.isOutOfRange ? -1 : 0}
+							aria-label={`Select ${d.label}`}
+							aria-disabled={d.isOutOfRange}
 							ref={ref}
 							data-value={d.value}
 							key={`item${d.value}`}

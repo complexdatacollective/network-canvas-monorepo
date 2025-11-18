@@ -1,8 +1,12 @@
 import PreviewRule from "./PreviewRule";
 
+type Rule = Record<string, unknown> & {
+	id: string;
+};
+
 type PreviewRulesProps = {
 	join?: string;
-	rules: any[];
+	rules: Rule[];
 	codebook: Record<string, unknown>;
 	onClickRule: (id: string) => void;
 	onDeleteRule: (id: string) => void;

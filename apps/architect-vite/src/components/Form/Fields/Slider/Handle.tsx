@@ -5,14 +5,14 @@ import MarkdownLabel from "../MarkdownLabel";
 interface HandleProps {
 	domain: [number, number];
 	handle: {
-		id: any;
+		id: string;
 		value: number;
 		percent: number;
 	};
 	isActive?: boolean;
 	isDisabled?: boolean;
 	showTooltips?: boolean;
-	getHandleProps: (id: any, props?: any) => any;
+	getHandleProps: (id: string, props?: Record<string, unknown>) => Record<string, unknown>;
 	getLabelForValue: (value: number) => string | null;
 }
 

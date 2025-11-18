@@ -26,7 +26,8 @@ export const getRejectedExtensions = (accepts, paths) =>
 		if (memo.includes(extension)) {
 			return memo;
 		}
-		return [...memo, extension];
+		memo.push(extension);
+		return memo;
 	}, []);
 
 export const getAcceptsExtensions = (accepts) => accepts.map((accept) => accept.substr(1));

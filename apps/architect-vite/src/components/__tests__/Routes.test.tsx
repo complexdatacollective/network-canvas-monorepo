@@ -12,9 +12,14 @@ import Routes from "../Routes";
 const mockLocation = vi.fn();
 const mockNavigate = vi.fn();
 
+type RouteProps = {
+	path: string;
+	component: React.ComponentType<Record<string, unknown>>;
+} & Record<string, unknown>;
+
 vi.mock("wouter", () => ({
 	useLocation: () => ["/", mockNavigate],
-	Route: ({ path, component: Component, ...props }: any) => {
+	Route: ({ path, component: Component, ...props }: RouteProps) => {
 		const currentPath = mockLocation();
 		// Simple path matching for testing
 		if (path === currentPath || (path === "/protocol" && currentPath.startsWith("/protocol/"))) {
@@ -62,12 +67,14 @@ const createTestStore = () => {
 	});
 };
 
-const createWrapper = (store: any) => {
+type TestStore = ReturnType<typeof createTestStore>;
+
+const createWrapper = (store: TestStore) => {
 	return ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 };
 
 describe("Routes", () => {
-	let store: any;
+	let store: TestStore;
 
 	beforeEach(() => {
 		store = createTestStore();

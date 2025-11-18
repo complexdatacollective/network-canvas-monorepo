@@ -37,7 +37,7 @@ const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name, variant
 			changeField(form, name, null);
 			return Promise.resolve(true);
 		},
-		[openDialog, changeField],
+		[openDialog, changeField, form, hasFilter, name],
 	);
 
 	const contrastProps =

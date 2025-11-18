@@ -5,7 +5,7 @@ import ReactDOM from "react-dom";
 import { compose, getContext } from "recompose";
 import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
-function getDisplayName(WrappedComponent: React.ComponentType<any>) {
+function getDisplayName(WrappedComponent: React.ComponentType<unknown>) {
 	return WrappedComponent.displayName || WrappedComponent.name || "Component";
 }
 

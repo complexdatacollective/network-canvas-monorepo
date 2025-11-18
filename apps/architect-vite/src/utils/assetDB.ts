@@ -27,9 +27,5 @@ export async function clearAllStorage() {
 
 		// Reload the page to reset Redux state
 		window.location.reload();
-
-		console.log("Storage cleared and app reloaded");
-	} catch (error) {
-		console.error("Error clearing storage:", error);
-	}
+	} catch (_error) {}
 }

@@ -4,7 +4,7 @@ import { PureComponent } from "react";
 import ReactSelect from "react-select";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
-const getValue = (options, value) => {
+const getValue = (options: SelectOption[], value: unknown) => {
 	const foundValue = options.find((option) => option.value === value);
 	if (!foundValue) {
 		return null;
@@ -14,7 +14,7 @@ const getValue = (options, value) => {
 };
 
 type SelectOption = {
-	value: any;
+	value: unknown;
 	label?: string;
 	__createNewOption__?: boolean;
 };
@@ -22,11 +22,11 @@ type SelectOption = {
 type SelectProps = {
 	className?: string;
 	options?: SelectOption[];
-	selectOptionComponent?: React.ComponentType<any>;
+	selectOptionComponent?: React.ComponentType<{ data: SelectOption; [key: string]: unknown }>;
 	onDeleteOption?: (() => void) | null;
 	createNewOption?: boolean;
 	onCreateNew?: (() => void) | null;
-	input?: Record<string, any>;
+	input?: Record<string, unknown>;
 	label?: string | null;
 	children?: React.ReactNode;
 	meta?: {
@@ -42,7 +42,7 @@ class Select extends PureComponent<SelectProps> {
 		return getValue(options, input.value);
 	}
 
-	handleChange = (option) => {
+	handleChange = (option: SelectOption) => {
 		const { onCreateNew, input } = this.props;
 
 		/* eslint-disable no-underscore-dangle */

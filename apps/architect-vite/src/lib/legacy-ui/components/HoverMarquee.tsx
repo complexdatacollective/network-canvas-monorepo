@@ -11,7 +11,7 @@ interface HoverMarqueeProps {
 const HoverMarquee = ({ speed = 100, children }: HoverMarqueeProps) => {
 	const containerRef = useRef(null);
 	const contentRef = useRef(null);
-	const [resizeListener, sizes] = useResizeAware();
+	const [resizeListener, _sizes] = useResizeAware();
 
 	const contentVariants = {
 		hover: {
@@ -27,7 +27,7 @@ const HoverMarquee = ({ speed = 100, children }: HoverMarqueeProps) => {
 		const delta = contentRef.current.offsetWidth - containerRef.current.offsetWidth;
 		contentVariants.hover.left = `-${delta}px`;
 		contentVariants.hover.transition.duration = delta / speed;
-	}, [containerRef.current, contentRef.current, sizes]);
+	}, [speed]);
 
 	return (
 		<div className="hover-marquee" ref={containerRef}>

@@ -10,8 +10,8 @@ interface SliderFieldProps {
 	input: {
 		name: string;
 		value: string | number | null;
-		onBlur: (value: any) => void;
-		onChange: (value: any) => void;
+		onBlur: (value: string | number | null) => void;
+		onChange: (value: string | number | null) => void;
 		onDragStart: () => void;
 		onDrop: () => void;
 		onFocus: () => void;

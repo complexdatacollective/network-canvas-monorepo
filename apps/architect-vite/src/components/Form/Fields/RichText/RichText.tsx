@@ -39,16 +39,16 @@ const HOTKEYS: Record<string, string> = {
 	"mod+i": "italic",
 };
 
-const [withEditList, listOnKeyDown, { Editor, Transforms }] = EditListPlugin({
+const [withEditList, listOnKeyDown] = EditListPlugin({
 	maxDepth: 1, // Restrict list depth to one, for now.
 });
 
 const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) => {
 	Object.keys(HOTKEYS).forEach((hotkey) => {
-		if (isHotkey(hotkey, event as any)) {
+		if (isHotkey(hotkey, event)) {
 			event.preventDefault();
 			const mark = HOTKEYS[hotkey];
-			toggleMark(editor, mark, Transforms, Editor);
+			toggleMark(editor, mark);
 		}
 	});
 };
@@ -131,24 +131,28 @@ const RichText = ({
 				withHistory,
 				withReact,
 			)(createEditor() as CustomEditor),
-		[disallowedTypesWithDefaults.join()],
+		[withOptions],
 	);
 
 	// Test if there is no text content in the tree
-	const childrenAreEmpty = (children: any[]): boolean =>
+	const childrenAreEmpty = (children: Descendant[]): boolean =>
 		children.every((child) => {
 			// Thematic break has no text, but still counts as content.
-			if (child.type === "thematic_break") {
+			if ("type" in child && child.type === "thematic_break") {
 				return false;
 			}
 
-			if (child.children) {
+			if ("children" in child && child.children) {
 				return childrenAreEmpty(child.children);
 			}
 
 			// The regexp here means that content only containing spaces or
 			// tabs will be considered empty!
-			return isEmpty(child.text) || !/\S/.test(child.text);
+			if ("text" in child) {
+				return isEmpty(child.text) || !/\S/.test(child.text);
+			}
+
+			return true;
 		});
 
 	const getSerializedValue = () => {
@@ -168,7 +172,7 @@ const RichText = ({
 	// Set starting state from prop value on start up
 	useEffect(() => {
 		setInitialValue().then(() => setIsInitialized(true));
-	}, []);
+	}, [setInitialValue]);
 
 	// Set value again when initial value changes
 	useEffect(() => {
@@ -177,7 +181,7 @@ const RichText = ({
 			return;
 		}
 		setInitialValue();
-	}, [initialValue]);
+	}, [initialValue, lastChange, setInitialValue]);
 
 	// Update upstream on change
 	useEffect(() => {
@@ -194,7 +198,7 @@ const RichText = ({
 
 		setLastChange(nextValue);
 		onChange(nextValue);
-	}, [value]);
+	}, [getSerializedValue, isInitialized, lastChange, onChange]);
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {

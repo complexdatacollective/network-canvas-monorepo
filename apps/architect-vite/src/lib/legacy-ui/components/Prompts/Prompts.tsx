@@ -25,7 +25,7 @@ const Prompts = ({ currentPrompt, prompts, speakable = false }: PromptsProps) =>
 
 	useEffect(() => {
 		prevPromptRef.current = currentIndex;
-	}, [currentPrompt]);
+	}, [currentIndex]);
 
 	const backwards = useMemo(() => currentIndex < (prevPromptRef.current ?? 0), [currentIndex]);
 

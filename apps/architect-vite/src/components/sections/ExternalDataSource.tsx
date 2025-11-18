@@ -11,8 +11,8 @@ import IssueAnchor from "../IssueAnchor";
 const withChangeDataSourceHandler = connect(null, { changeForm: change });
 
 type ExternalDataSourceProps = {
-	changeForm: (form: string, field: string, value: any) => void;
-} & Record<string, any>;
+	changeForm: (form: string, field: string, value: unknown) => void;
+} & Record<string, unknown>;
 
 const ExternalDataSource = (props: ExternalDataSourceProps) => {
 	const handleChangeDataSource = () => {

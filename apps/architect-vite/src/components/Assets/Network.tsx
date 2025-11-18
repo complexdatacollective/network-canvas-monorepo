@@ -26,7 +26,7 @@ type NetworkProps = {
 	assetName: string;
 };
 
-const Network = ({ assetPath, assetId, assetName }: NetworkProps) => {
+const Network = ({ assetPath: _assetPath, assetId, assetName }: NetworkProps) => {
 	const [content, setContent] = useState({ ...initialContent });
 
 	useEffect(() => {

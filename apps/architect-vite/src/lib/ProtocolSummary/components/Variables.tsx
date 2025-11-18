@@ -7,13 +7,13 @@ import { renderValue } from "./helpers";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";
 
-const getStageName = (protocol: any) => (stageId: string) => {
+const getStageName = (protocol: unknown) => (stageId: string) => {
 	const stageConfiguration = find(protocol.stages, ["id", stageId]);
 	return get(stageConfiguration, "label");
 };
 
 // TODO: Make this part of the index?
-const makeGetUsedIn = (protocol: any) => (indexEntry: any) => {
+const makeGetUsedIn = (protocol: unknown) => (indexEntry: unknown) => {
 	const stages = get(indexEntry, "stages", []);
 
 	return stages.map((stageId: string) => [stageId, getStageName(protocol)(stageId)]);
@@ -26,7 +26,7 @@ type VariablesProps = {
 const Variables = ({ variables }: VariablesProps) => {
 	const { protocol, index } = useContext(SummaryContext);
 
-	const getUsedIn = makeGetUsedIn(protocol, index);
+	const getUsedIn = makeGetUsedIn(protocol);
 
 	const sortedVariables = sortBy(toPairs(variables), [(variable) => variable[1].name.toLowerCase()]);
 
@@ -51,7 +51,10 @@ const Variables = ({ variables }: VariablesProps) => {
 
 						const indexEntry = index.find(({ id }) => id === variableId);
 
-						const optionsRows = options?.map(({ value, label }) => [renderValue(value), <Markdown label={label} />]);
+						const optionsRows = options?.map(({ value, label }) => [
+							<span key={`val-${value}`}>{renderValue(value)}</span>,
+							<Markdown key={`label-${value}`} label={label} />,
+						]);
 
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>
@@ -65,8 +68,8 @@ const Variables = ({ variables }: VariablesProps) => {
 									{options && <MiniTable rows={[["Value", "Label"], ...optionsRows]} />}
 								</td>
 								<td>
-									{getUsedIn(indexEntry).map(([stageId, stageName], n) => (
-										<React.Fragment key={n}>
+									{getUsedIn(indexEntry).map(([stageId, stageName]) => (
+										<React.Fragment key={stageId}>
 											<DualLink to={`#stage-${stageId}`}>{stageName}</DualLink>
 											<br />
 										</React.Fragment>

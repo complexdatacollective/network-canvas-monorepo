@@ -1,11 +1,7 @@
 import type { Protocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
-import activeProtocolReducer, {
-	actionCreators,
-	selectActiveProtocol,
-	selectHasActiveProtocol,
-} from "../activeProtocol";
+import activeProtocolReducer, { actionCreators } from "../activeProtocol";
 import { createStage } from "../protocol/stages";
 
 const mockProtocol: Protocol = {
@@ -48,7 +44,7 @@ const mockProtocol2: Protocol = {
 
 describe("activeProtocol", () => {
 	describe("reducer", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -150,7 +146,7 @@ describe("activeProtocol", () => {
 	});
 
 	describe("selectors", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -239,7 +235,7 @@ describe("activeProtocol", () => {
 	});
 
 	describe("sub-reducers integration", () => {
-		let store: any;
+		let store: ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
 
 		beforeEach(() => {
 			store = configureStore({

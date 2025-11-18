@@ -10,7 +10,7 @@ type EditRuleProps = {
 		options?: Record<string, unknown>;
 	};
 	codebook: Record<string, unknown>;
-	onChange: (value: any) => void;
+	onChange: (value: Record<string, unknown>) => void;
 	onSave: () => void;
 	onCancel: () => void;
 };

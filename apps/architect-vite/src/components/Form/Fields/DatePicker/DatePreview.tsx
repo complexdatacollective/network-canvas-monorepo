@@ -46,6 +46,51 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 				onClick(false);
 			};
 
+			const handlePreviewKeyDown = (e: React.KeyboardEvent) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					if (!isComplete) {
+						onClick();
+					}
+				}
+			};
+
+			const handleYearKeyDown = (e: React.KeyboardEvent) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					e.stopPropagation();
+					onChange({ year: null, month: null, day: null });
+					onClick();
+				}
+			};
+
+			const handleMonthKeyDown = (e: React.KeyboardEvent) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					e.stopPropagation();
+					onChange({ month: null, day: null });
+					onClick();
+				}
+			};
+
+			const handleDayKeyDown = (e: React.KeyboardEvent) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					e.stopPropagation();
+					onChange({ day: null });
+					onClick();
+				}
+			};
+
+			const handleClearKeyDown = (e: React.KeyboardEvent) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					e.stopPropagation();
+					onChange({ year: null, month: null, day: null });
+					onClick(false);
+				}
+			};
+
 			const previewClass = cx("date-picker__preview", { "date-picker__preview--is-empty": isEmpty });
 
 			if (!isActive && isEmpty && placeholder) {
@@ -53,6 +98,10 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 					<motion.div
 						className={previewClass}
 						onClick={handleClickPreview}
+						onKeyDown={handlePreviewKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Select date"
 						// layout
 						ref={previewRef}
 					>
@@ -65,12 +114,20 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 				<motion.div
 					className={previewClass}
 					onClick={handleClickPreview}
+					onKeyDown={handlePreviewKeyDown}
+					role="button"
+					tabIndex={0}
+					aria-label="Date picker"
 					// layout
 					ref={previewRef}
 				>
 					<div
 						className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.year })}
 						onClick={handleClickYear}
+						onKeyDown={handleYearKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Clear year"
 					>
 						{date.year || "Year"}
 					</div>
@@ -79,6 +136,10 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 						<div
 							className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.month })}
 							onClick={handleClickMonth}
+							onKeyDown={handleMonthKeyDown}
+							role="button"
+							tabIndex={0}
+							aria-label="Clear month"
 						>
 							{date.month ? getMonthName(date.month) : "Month"}
 						</div>
@@ -88,6 +149,10 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 						<div
 							className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.day })}
 							onClick={handleClickDay}
+							onKeyDown={handleDayKeyDown}
+							role="button"
+							tabIndex={0}
+							aria-label="Clear day"
 						>
 							{date.day || "Day"}
 						</div>
@@ -97,6 +162,10 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 							"date-picker__preview-clear--is-visible": !isEmpty || isActive,
 						})}
 						onClick={handleClear}
+						onKeyDown={handleClearKeyDown}
+						role="button"
+						tabIndex={0}
+						aria-label="Clear date"
 					>
 						clear
 					</div>

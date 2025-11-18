@@ -1,5 +1,5 @@
 import { noop } from "lodash";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useIsMounted from "./useIsMounted";
 
 interface SpeechReturnValues {
@@ -54,6 +54,14 @@ const useSpeech = (text: string, lang = window.navigator.language): SpeechReturn
 		[lang, voices],
 	);
 
+	const stop = useCallback(() => {
+		if (error) {
+			return;
+		}
+		speechSynthesis.cancel();
+		setIsSpeaking(false);
+	}, [error]);
+
 	const speak = () => {
 		if (error) {
 			return;
@@ -74,14 +82,6 @@ const useSpeech = (text: string, lang = window.navigator.language): SpeechReturn
 		speechSynthesis.speak(utterance);
 	};
 
-	const stop = () => {
-		if (error) {
-			return;
-		}
-		speechSynthesis.cancel();
-		setIsSpeaking(false);
-	};
-
 	useEffect(() => {
 		if (!voiceForLanguage) {
 			setError(`No voice available for language "${lang}". Cannot speak!`);
@@ -90,7 +90,7 @@ const useSpeech = (text: string, lang = window.navigator.language): SpeechReturn
 		return () => {
 			stop();
 		};
-	}, [voiceForLanguage, lang]);
+	}, [voiceForLanguage, lang, stop]);
 
 	return {
 		speak,
