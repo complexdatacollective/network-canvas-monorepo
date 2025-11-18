@@ -39,7 +39,7 @@ const HOTKEYS: Record<string, string> = {
 	"mod+i": "italic",
 };
 
-const [withEditList, listOnKeyDown, { Editor, Transforms }] = EditListPlugin({
+const [withEditList, listOnKeyDown] = EditListPlugin({
 	maxDepth: 1, // Restrict list depth to one, for now.
 });
 
@@ -48,7 +48,7 @@ const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) =
 		if (isHotkey(hotkey, event)) {
 			event.preventDefault();
 			const mark = HOTKEYS[hotkey];
-			toggleMark(editor, mark, Transforms, Editor);
+			toggleMark(editor, mark);
 		}
 	});
 };
