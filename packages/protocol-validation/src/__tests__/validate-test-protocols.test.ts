@@ -13,7 +13,7 @@ describe("Test protocols", () => {
 
 		// Extract all protocols and keep track of filenames separately
 		for (const [filename, buffer] of protocolBuffers.entries()) {
-			const protocol = await extractProtocol(buffer);
+			const { protocol } = await extractProtocol(buffer);
 			protocols.push(protocol);
 			protocolFilenames.push(filename);
 		}
@@ -25,12 +25,14 @@ describe("Test protocols", () => {
 
 	// Use a single test with detailed logging for each protocol
 	it("should validate each protocol individually with detailed logging", async () => {
-		const _totalCount = protocols.length;
-
 		for (let i = 0; i < protocols.length; i++) {
-			// biome-ignore lint/style/noNonNullAssertion: duh
-			const protocol = protocols[i]!;
-			const _filename = protocolFilenames[i];
+			const protocol = protocols[i];
+			if (!protocol) {
+				continue;
+			}
+
+			const filename = protocolFilenames[i];
+
 			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
 			// Earlier versions used semver strings which should be ignored
 			if (typeof protocol.schemaVersion !== "number" || protocol.schemaVersion < 7 || protocol.schemaVersion > 8) {
@@ -39,10 +41,11 @@ describe("Test protocols", () => {
 
 			const startTime = Date.now();
 			const result = await validateProtocol(protocol);
-			const _duration = Date.now() - startTime;
+			const duration = Date.now() - startTime;
 
 			// If there are errors, log them (using unified errors array)
 			if (!result.success) {
+				console.error(`Validation failed for ${filename} (${duration}ms):`, result.error);
 			}
 
 			// Test each protocol individually but within the same test
@@ -54,6 +57,7 @@ describe("Test protocols", () => {
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
+					console.error(`Migration validation failed for ${filename}:`, migrationResult.error);
 				}
 
 				expect.soft(migrationResult.success).toBe(true);
