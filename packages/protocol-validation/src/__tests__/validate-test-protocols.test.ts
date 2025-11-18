@@ -33,9 +33,13 @@ describe("Test protocols", () => {
 
 			const filename = protocolFilenames[i];
 
+			const protocolVersion = Number(protocol.schemaVersion ?? 0);
+
 			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
 			// Earlier versions used semver strings which should be ignored
-			if (typeof protocol.schemaVersion !== "number" || protocol.schemaVersion < 7 || protocol.schemaVersion > 8) {
+			if (protocolVersion !== 7 && protocolVersion !== 8) {
+				// biome-ignore lint/suspicious/noConsole: logging
+				console.log(`Skipping unsupported schema version for ${filename}: ${protocol.schemaVersion}`);
 				continue;
 			}
 
@@ -45,6 +49,7 @@ describe("Test protocols", () => {
 
 			// If there are errors, log them (using unified errors array)
 			if (!result.success) {
+				// biome-ignore lint/suspicious/noConsole: logging
 				console.error(`Validation failed for ${filename} (${duration}ms):`, result.error);
 			}
 
