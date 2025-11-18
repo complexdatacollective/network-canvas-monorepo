@@ -58,7 +58,7 @@ describe("ensureError", () => {
 		const result = ensureError(circular);
 		expect(result).toBeInstanceOf(Error);
 		expect(result.message).toMatch(
-			/^This value was thrown as is, not through an Error: \[Unable to stringify the thrown value\]$/
+			/^This value was thrown as is, not through an Error: \[Unable to stringify the thrown value\]$/,
 		);
 	});
 

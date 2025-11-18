@@ -317,6 +317,7 @@ describe("NCBlob", () => {
 			blob.animationPosition(21000);
 			const secondEnd = blob.endFrameTime;
 
+			// biome-ignore lint/style/noNonNullAssertion: test
 			expect(secondEnd).toBeGreaterThan(firstEnd!);
 			expect(blob.startFrameTime).toBe(21000);
 		});
@@ -346,6 +347,7 @@ describe("NCBlob", () => {
 			blob2.animationPosition(0);
 
 			// Blob2 with 2x speed should have shorter animation duration
+			// biome-ignore lint/style/noNonNullAssertion: test
 			expect(blob2.endFrameTime! - blob2.startFrameTime!).toBe((blob1.endFrameTime! - blob1.startFrameTime!) * 2);
 		});
 	});

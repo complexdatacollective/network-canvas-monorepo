@@ -20,7 +20,6 @@
 	"devDependencies": {
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
-		"@testing-library/react": "^16.1.0",
 		"@types/d3-interpolate-path": "^2.0.3",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
