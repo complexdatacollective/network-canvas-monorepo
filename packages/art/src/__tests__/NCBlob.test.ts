@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // We need to extract the NCBlob class to test it separately
 // For now, we'll define a minimal version for testing the logic
