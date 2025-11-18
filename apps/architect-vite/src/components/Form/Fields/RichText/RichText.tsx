@@ -131,7 +131,7 @@ const RichText = ({
 				withHistory,
 				withReact,
 			)(createEditor() as CustomEditor),
-		[withOptions],
+		[disallowedTypesWithDefaults.join()],
 	);
 
 	// Test if there is no text content in the tree
@@ -172,7 +172,7 @@ const RichText = ({
 	// Set starting state from prop value on start up
 	useEffect(() => {
 		setInitialValue().then(() => setIsInitialized(true));
-	}, [setInitialValue]);
+	}, []);
 
 	// Set value again when initial value changes
 	useEffect(() => {
@@ -181,7 +181,7 @@ const RichText = ({
 			return;
 		}
 		setInitialValue();
-	}, [initialValue, lastChange, setInitialValue]);
+	}, [initialValue, setInitialValue]);
 
 	// Update upstream on change
 	useEffect(() => {
