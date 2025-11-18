@@ -1,6 +1,6 @@
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
-import { validateProtocolAsync } from "../modules/protocolValidation";
 import { selectActiveProtocol } from "../modules/activeProtocol";
+import { validateProtocolAsync } from "../modules/protocolValidation";
 import type { RootState } from "../modules/root";
 import type { AppDispatch } from "../store";
 

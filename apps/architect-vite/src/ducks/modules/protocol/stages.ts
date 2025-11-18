@@ -1,9 +1,9 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { compact, omit } from "es-toolkit/compat";
 import { v1 as uuid } from "uuid";
 import type { RootState } from "~/ducks/modules/root";
-import { getStage } from "~/selectors/protocol";
 import { getNodeTypes } from "~/selectors/codebook";
+import { getStage } from "~/selectors/protocol";
 import prune from "~/utils/prune";
 
 // Types

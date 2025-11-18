@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import mockState from "../../../../__tests__/testState.json";
-import { getLayoutVariablesForSubject, getHighlightVariablesForSubject, getEdgesForSubject } from "../selectors";
+import { getEdgesForSubject, getHighlightVariablesForSubject, getLayoutVariablesForSubject } from "../selectors";
 
 vi.mock("redux-form", () => ({
 	formValueSelector: () => () => "1234-1234-4",

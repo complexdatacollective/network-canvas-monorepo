@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import testState from "../../../__tests__/testState.json";
-import { getVariableOptionsForSubject, getAllVariablesByUUID, makeGetVariable } from "..";
+import { getAllVariablesByUUID, getVariableOptionsForSubject, makeGetVariable } from "..";
 
 describe("codebook selectors", () => {
 	describe("getVariableOptionsForSubject()", () => {

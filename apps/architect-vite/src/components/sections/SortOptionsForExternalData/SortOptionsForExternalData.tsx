@@ -2,11 +2,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import MultiSelect from "~/components/Form/MultiSelect";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import { Text } from "~/components/Form/Fields";
+import MultiSelect from "~/components/Form/MultiSelect";
+import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
 

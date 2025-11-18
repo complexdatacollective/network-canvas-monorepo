@@ -1,5 +1,5 @@
-import { compose, withHandlers } from "recompose";
 import { connect } from "react-redux";
+import { compose, withHandlers } from "recompose";
 import { formValueSelector } from "redux-form";
 import { getVariableOptionsForSubject } from "../../selectors/codebook";
 

@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-
 import { readFile, readJson } from "fs-extra";
-import * as assets from "../assets";
+import { describe, expect, it, vi } from "vitest";
 import mockState from "../../__tests__/testState.json";
+import * as assets from "../assets";
 
 vi.mock("fs-extra");
 

@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
-import { actionCreators as assetActions } from "../../ducks/modules/protocol/assetManifest";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
+import { actionCreators as assetActions } from "../../ducks/modules/protocol/assetManifest";
 
 const connectActions = connect(null, {
 	deleteAsset: assetActions.deleteAsset,

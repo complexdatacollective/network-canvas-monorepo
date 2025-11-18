@@ -58,12 +58,7 @@ const Option = ({ field, handleDelete, value }: OptionProps) => {
 	const controls = useDragControls();
 
 	return (
-		<Reorder.Item
-			className="options__option"
-			value={value}
-			dragListener={false}
-			dragControls={controls}
-		>
+		<Reorder.Item className="options__option" value={value} dragListener={false} dragControls={controls}>
 			<div className="options__option-controls options__option-controls--center">
 				<div className="options__option-handle" onPointerDown={(e) => controls.start(e)}>
 					<GripVertical className="cursor-grab" />

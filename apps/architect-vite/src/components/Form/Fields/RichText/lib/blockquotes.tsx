@@ -1,6 +1,7 @@
 /* eslint-disable import/prefer-default-export */
-import { Transforms, Node, type BaseEditor, type Path, type NodeEntry } from "slate";
+
 import { get } from "lodash";
+import { type BaseEditor, Node, type NodeEntry, type Path, Transforms } from "slate";
 import { getBlocks } from "./utils";
 
 interface BlockNode {

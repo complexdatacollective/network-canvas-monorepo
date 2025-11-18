@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { useFocused } from "slate-react";
 
 interface RichTextContainerProps {

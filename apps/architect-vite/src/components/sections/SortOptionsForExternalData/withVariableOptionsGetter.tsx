@@ -1,4 +1,4 @@
-import { compose, withProps, defaultProps } from "recompose";
+import { compose, defaultProps, withProps } from "recompose";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
 
 const defaultVariableOptions = defaultProps({

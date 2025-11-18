@@ -1,7 +1,7 @@
-import { useContext } from "react";
 import { map } from "lodash";
-import SummaryContext from "./SummaryContext";
+import { useContext } from "react";
 import Stage from "./Stage";
+import SummaryContext from "./SummaryContext";
 
 const Stages = () => {
 	const {

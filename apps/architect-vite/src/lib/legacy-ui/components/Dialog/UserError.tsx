@@ -1,5 +1,5 @@
-import Dialog from "./Dialog";
 import Button from "../Button";
+import Dialog from "./Dialog";
 
 const getErrorMessage = (error) => !!error && (error.friendlyMessage ? error.friendlyMessage : error.toString());
 

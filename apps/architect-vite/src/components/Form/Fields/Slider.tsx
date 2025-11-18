@@ -1,7 +1,7 @@
 import cx from "classnames";
 import Icon from "~/lib/legacy-ui/components/Icon";
-import Slider from "./Slider/Slider";
 import MarkdownLabel from "./MarkdownLabel";
+import Slider from "./Slider/Slider";
 
 interface SliderFieldProps {
 	label?: React.ReactNode;

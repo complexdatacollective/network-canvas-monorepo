@@ -1,11 +1,11 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import { useCallback } from "react";
 import cx from "classnames";
-import Checkbox from "./Checkbox";
-import { asOptionObject, getValue } from "./utils/options";
+import { useCallback } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import Checkbox from "./Checkbox";
 import MarkdownLabel from "./MarkdownLabel";
+import { asOptionObject, getValue } from "./utils/options";
 
 interface CheckboxGroupProps {
 	options?: unknown[];

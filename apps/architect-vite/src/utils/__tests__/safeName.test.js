@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import { range } from "lodash";
+import { describe, expect, it } from "vitest";
 import safeName from "../safeName";
 
 const testString = range(32, 127)

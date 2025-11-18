@@ -1,5 +1,5 @@
-import File from "./File";
 import { Video } from "../../Assets";
+import File from "./File";
 
 type VideoInputProps = {
 	input?: {

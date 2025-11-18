@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, formValues } from "redux-form";
-import NativeSelect from "~/components/Form/Fields/NativeSelect";
-import ValidatedField from "~/components/Form/ValidatedField";
 import { DatePicker } from "~/components/Form/Fields";
 import { DATE_FORMATS, DATE_TYPES } from "~/components/Form/Fields/DatePicker";
+import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import ValidatedField from "~/components/Form/ValidatedField";
 
 const dateTypes = DATE_TYPES.map((type) => ({
 	...type,

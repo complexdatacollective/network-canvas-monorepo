@@ -1,5 +1,5 @@
-import type React from "react";
 import cx from "classnames";
+import type React from "react";
 
 type ButtonProps = {
 	children?: React.ReactNode;

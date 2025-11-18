@@ -1,7 +1,7 @@
 import { isMatch } from "lodash";
-import Scalar from "./Scalar";
 import DatePicker from "./DatePicker";
 import RelativeDatePicker from "./RelativeDatePicker";
+import Scalar from "./Scalar";
 
 const definitions = [
 	[Scalar, { type: "scalar" }],

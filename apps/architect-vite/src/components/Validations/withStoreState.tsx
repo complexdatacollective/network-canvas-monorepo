@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { formValueSelector, change } from "redux-form";
+import { change, formValueSelector } from "redux-form";
 import { getValidationOptionsForVariableType } from "./options";
 
 const mapStateToProps = (state, { form, name, variableType, entity }) => {

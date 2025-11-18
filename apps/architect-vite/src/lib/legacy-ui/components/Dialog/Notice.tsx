@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import Dialog from "./Dialog";
 import Button from "../Button";
+import Dialog from "./Dialog";
 
 interface NoticeProps {
 	title: string;

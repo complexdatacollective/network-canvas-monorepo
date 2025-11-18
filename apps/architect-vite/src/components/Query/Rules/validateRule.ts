@@ -1,5 +1,5 @@
 import { isArray, isEmpty, isNil } from "lodash";
-import { operatorsWithValue, operatorsWithOptionCount } from "./options";
+import { operatorsWithOptionCount, operatorsWithValue } from "./options";
 
 const validateField = (value) => {
 	if (isArray(value)) {
@@ -27,7 +27,7 @@ const validateRule = (rule) => {
 
 	switch (rule.type) {
 		case "alter": {
-			if (Object.prototype.hasOwnProperty.call(options, "attribute")) {
+			if (Object.hasOwn(options, "attribute")) {
 				if (operatorsWithValue.has(options.operator) || operatorsWithOptionCount.has(options.operator)) {
 					return validateFields(["type", "attribute", "operator", "value"], options);
 				}
@@ -42,7 +42,7 @@ const validateRule = (rule) => {
 			return validateFields(["attribute", "operator"], options);
 		}
 		case "edge":
-			if (Object.prototype.hasOwnProperty.call(options, "attribute")) {
+			if (Object.hasOwn(options, "attribute")) {
 				if (operatorsWithValue.has(options.operator) || operatorsWithOptionCount.has(options.operator)) {
 					return validateFields(["type", "attribute", "operator", "value"], options);
 				}

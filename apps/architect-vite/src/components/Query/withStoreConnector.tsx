@@ -1,7 +1,7 @@
-import { connect } from "react-redux";
 import { bindActionCreators } from "@reduxjs/toolkit";
-import { getCodebook } from "~/selectors/protocol";
+import { connect } from "react-redux";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import { getCodebook } from "~/selectors/protocol";
 
 const mapStateToProps = (state) => ({
 	codebook: getCodebook(state),

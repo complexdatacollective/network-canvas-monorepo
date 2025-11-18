@@ -1,5 +1,5 @@
-import { withHandlers } from "recompose";
 import { isArray, isNil, keys, pick } from "lodash";
+import { withHandlers } from "recompose";
 import { makeGetOptionsWithDefaults } from "./defaultRule";
 import { operatorsWithOptionCount } from "./options";
 

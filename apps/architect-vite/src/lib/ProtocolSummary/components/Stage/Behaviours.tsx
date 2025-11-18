@@ -1,6 +1,6 @@
 import { map } from "lodash";
-import MiniTable from "../MiniTable";
 import { renderValue } from "../helpers";
+import MiniTable from "../MiniTable";
 
 const behaviorLabel = (behaviourValue: any, behaviourKey: string) => {
 	switch (behaviourKey) {

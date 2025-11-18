@@ -1,7 +1,7 @@
 import { Component } from "react";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";
-import { selectRecentProtocols, type StoredProtocol } from "~/ducks/modules/protocols";
+import { type StoredProtocol, selectRecentProtocols } from "~/ducks/modules/protocols";
 import type { RootState } from "~/ducks/modules/root";
 import ProtocolStack from "./ProtocolStack";
 

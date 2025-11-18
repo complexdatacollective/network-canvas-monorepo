@@ -1,4 +1,4 @@
-import { getFormValues, getFormNames } from "redux-form";
+import { getFormNames, getFormValues } from "redux-form";
 
 /**
  * Returns the redux form values for the given form names.

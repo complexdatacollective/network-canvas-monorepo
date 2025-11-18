@@ -1,4 +1,4 @@
-import { toPairs, isArray, isEmpty, isObject, isNull, isUndefined } from "lodash";
+import { isArray, isEmpty, isNull, isObject, isUndefined, toPairs } from "lodash";
 
 const assignForType = (memo, key, value) => {
 	if (isArray(memo)) {

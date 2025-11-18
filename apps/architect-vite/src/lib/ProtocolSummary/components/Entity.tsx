@@ -1,5 +1,5 @@
-import Variables from "./Variables";
 import EntityBadge from "./EntityBadge";
+import Variables from "./Variables";
 
 type EntityProps = {
 	type?: string | null;

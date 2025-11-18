@@ -1,10 +1,10 @@
-import { useCallback } from "react";
-import { round, get, isNil } from "lodash";
 import cx from "classnames";
-import { Slider, Handles, Tracks, Ticks } from "react-compound-slider";
+import { get, isNil, round } from "lodash";
+import { useCallback } from "react";
+import { Handles, Slider, Ticks, Tracks } from "react-compound-slider";
 import Handle from "./Handle";
-import Track from "./Track";
 import Tick from "./Tick";
+import Track from "./Track";
 
 interface SliderOption {
 	value: string | number;

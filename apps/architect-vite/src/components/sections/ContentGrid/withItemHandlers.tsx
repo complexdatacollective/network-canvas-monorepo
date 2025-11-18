@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
-import { formValueSelector, change } from "redux-form";
 import { compose, withHandlers } from "recompose";
+import { change, formValueSelector } from "redux-form";
 
 const mapStateToProps = (state, { form }) => {
 	const type = formValueSelector(form)(state, "type");

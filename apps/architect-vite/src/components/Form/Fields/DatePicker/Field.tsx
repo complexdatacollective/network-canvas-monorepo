@@ -1,8 +1,8 @@
-import React, { Component, type RefObject } from "react";
 import cx from "classnames";
+import React, { Component, type RefObject } from "react";
+import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import DatePicker from "./DatePicker";
-import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 
 interface FieldInput {
 	name: string;

@@ -1,7 +1,7 @@
-import { Element as SlateElement, Editor, Transforms, type BaseEditor } from "slate";
 import { EditListPlugin } from "@productboard/slate-edit-list";
-import { insertThematicBreak } from "./utils";
+import { type BaseEditor, Editor, Element as SlateElement, Transforms } from "slate";
 import { BLOCK_TYPES } from "./options";
+import { insertThematicBreak } from "./utils";
 
 const LIST_TYPES = ["ul_list", "ol_list"];
 

@@ -3,9 +3,9 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import remark from "remark";
 import strip from "strip-markdown";
+import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 import useSpeech from "../../hooks/useSpeech";
 import useTimeout from "../../hooks/useTimeout";
-import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 
 // Words read per second (approximate). Used to calculate underline duration.
 const WORDS_PER_SECOND = 0.3;

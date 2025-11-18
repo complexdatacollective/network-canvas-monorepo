@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
-import reducer, { actionCreators, test, createStageAsync, deleteStageAsync } from "../stages";
+import { describe, expect, it } from "vitest";
 import type { Stage } from "../stages";
+import reducer, { actionCreators, createStageAsync, deleteStageAsync, test } from "../stages";
 
 const mockStages: Stage[] = [
 	{ id: "3", type: "Information", label: "Foo" },

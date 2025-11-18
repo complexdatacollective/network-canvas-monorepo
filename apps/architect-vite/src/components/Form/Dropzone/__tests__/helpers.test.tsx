@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { acceptsPaths, getRejectedExtensions, getAcceptsExtensions } from "../helpers";
+import { acceptsPaths, getAcceptsExtensions, getRejectedExtensions } from "../helpers";
 
 // acceptsPaths = (accepts, paths) =>
 // getRejectedExtensions = (accepts, paths) =>

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { parse, format } from "../convert";
+import { format, parse } from "../convert";
 
 const mockConfiguration = {
 	label: "Person",

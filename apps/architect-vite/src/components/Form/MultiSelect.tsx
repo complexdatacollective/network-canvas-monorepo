@@ -62,7 +62,12 @@ const Item = compose(
 	const controls = useDragControls();
 
 	return (
-		<Reorder.Item className="group form-fields-multi-select__rule" value={value} dragListener={false} dragControls={controls}>
+		<Reorder.Item
+			className="group form-fields-multi-select__rule"
+			value={value}
+			dragListener={false}
+			dragControls={controls}
+		>
 			<div className="form-fields-multi-select__rule-control">
 				<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
 					<GripVertical className="cursor-grab" />

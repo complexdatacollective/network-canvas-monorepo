@@ -2,8 +2,8 @@ import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { getFieldId } from "~/utils/issues";
 
 type RootState = {

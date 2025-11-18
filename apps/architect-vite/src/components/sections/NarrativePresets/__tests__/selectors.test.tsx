@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { getNarrativeVariables, getEdgesForSubject } from "../selectors";
+import { describe, expect, it } from "vitest";
+import { getEdgesForSubject, getNarrativeVariables } from "../selectors";
 
 const subject = {
 	entity: "node",

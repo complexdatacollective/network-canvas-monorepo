@@ -2,8 +2,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import {
 	selectAllProtocols,
 	selectProtocolById,
-	selectRecentProtocols,
 	selectProtocolExists,
+	selectRecentProtocols,
 } from "~/ducks/modules/protocols";
 
 // Re-export the main selectors from the protocols module for convenience

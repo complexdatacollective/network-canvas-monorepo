@@ -1,6 +1,6 @@
-import { map, get, reduce } from "lodash";
+import { get, map, reduce } from "lodash";
 import { withProps } from "recompose";
-import { validTypes, operatorsAsOptions, operatorsByType } from "./options";
+import { operatorsAsOptions, operatorsByType, validTypes } from "./options";
 
 const getVariablesAsOptions = (variables) => {
 	const variablesAsOptions = reduce(

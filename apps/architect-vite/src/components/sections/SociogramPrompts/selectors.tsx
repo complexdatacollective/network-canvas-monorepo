@@ -1,5 +1,5 @@
-import { formValueSelector } from "redux-form";
 import { createSelector } from "@reduxjs/toolkit";
+import { formValueSelector } from "redux-form";
 import { getVariableOptionsForSubject } from "~/selectors/codebook";
 import { getCodebook } from "~/selectors/protocol";
 import { asOptions } from "~/selectors/utils";

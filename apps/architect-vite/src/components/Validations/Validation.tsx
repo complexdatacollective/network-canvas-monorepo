@@ -1,6 +1,6 @@
 import { map } from "lodash";
-import { Icon } from "~/lib/legacy-ui/components";
 import Number from "~/components/Form/Fields/Number";
+import { Icon } from "~/lib/legacy-ui/components";
 import NativeSelect from "../Form/Fields/NativeSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 

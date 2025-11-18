@@ -40,8 +40,8 @@ const CodebookPage = () => {
 					<div className="stage-heading">
 						<h1 className="screen-heading">Codebook</h1>
 						<p>
-							Below you can find an overview of the node and edge types that you have defined while creating your interview.
-							Entities that are unused may be deleted.
+							Below you can find an overview of the node and edge types that you have defined while creating your
+							interview. Entities that are unused may be deleted.
 						</p>
 					</div>
 					<Codebook onEditEntity={handleOpenEntityDialog} />

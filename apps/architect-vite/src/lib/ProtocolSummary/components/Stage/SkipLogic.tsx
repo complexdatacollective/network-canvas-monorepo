@@ -1,5 +1,5 @@
-import Rules from "../Rules";
 import MiniTable from "../MiniTable";
+import Rules from "../Rules";
 
 type SkipLogicProps = {
 	skipLogic: Record<string, unknown>;

@@ -1,11 +1,11 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import { useCallback } from "react";
 import cx from "classnames";
-import ToggleButton from "./ToggleButton";
+import { useCallback } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
-import { asOptionObject, getValue } from "./utils/options";
 import MarkdownLabel from "./MarkdownLabel";
+import ToggleButton from "./ToggleButton";
+import { asOptionObject, getValue } from "./utils/options";
 
 interface ToggleButtonGroupProps {
 	options?: unknown[];

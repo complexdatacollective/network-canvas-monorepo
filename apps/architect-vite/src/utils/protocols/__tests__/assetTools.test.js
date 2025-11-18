@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-
 import { readFile, readJson } from "fs-extra";
+import { describe, expect, it, vi } from "vitest";
 import { getNetworkVariables, validateAsset } from "../assetTools";
 
 vi.mock("fs-extra");

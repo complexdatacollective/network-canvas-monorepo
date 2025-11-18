@@ -131,7 +131,12 @@ const EditableList = ({
 				}
 				className="bg-surface-2"
 			>
-				<Form form="editable-list-form" id="editable-list-form" onSubmit={handleSaveEdit} initialValues={initialValuesForEdit}>
+				<Form
+					form="editable-list-form"
+					id="editable-list-form"
+					onSubmit={handleSaveEdit}
+					initialValues={initialValuesForEdit}
+				>
 					<Layout>
 						<EditComponent form="editable-list-form" {...(initialValuesForEdit as FieldType[number])} {...editProps} />
 					</Layout>

@@ -1,4 +1,4 @@
-import { it, expect } from "vitest";
+import { expect, it } from "vitest";
 
 import { getAllVariablesByUUID } from "../../../selectors/codebook";
 import { getUsage, getUsageAsStageMeta } from "../helpers";

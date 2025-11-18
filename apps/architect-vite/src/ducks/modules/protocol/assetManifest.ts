@@ -1,7 +1,7 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import path from "node:path";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import path from "node:path";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
 import { importAsset as fsImportAsset } from "~/utils/protocols";
 import { validateAsset } from "~/utils/protocols/assetTools";

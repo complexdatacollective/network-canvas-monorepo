@@ -1,9 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
 import cx from "classnames";
-import MarkdownLabel from "./MarkdownLabel";
 import Boolean from "~/lib/legacy-ui/components/Boolean/Boolean";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import MarkdownLabel from "./MarkdownLabel";
 
 interface BooleanOption {
 	label: string | (() => string);

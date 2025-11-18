@@ -1,14 +1,14 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { find, get, has, isEmpty, omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import { getIsUsed } from "~/selectors/codebook/isUsed";
-import prune from "~/utils/prune";
-import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "~/selectors/codebook";
-import { makeGetUsageForType } from "~/selectors/usage";
-import safeName from "~/utils/safeName";
-import { getNextCategoryColor } from "./utils/helpers";
-import { actionCreators as stageActions } from "./stages";
 import type { RootState } from "~/ducks/modules/root";
+import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "~/selectors/codebook";
+import { getIsUsed } from "~/selectors/codebook/isUsed";
+import { makeGetUsageForType } from "~/selectors/usage";
+import prune from "~/utils/prune";
+import safeName from "~/utils/safeName";
+import { actionCreators as stageActions } from "./stages";
+import { getNextCategoryColor } from "./utils/helpers";
 
 // Types
 type Entity = "node" | "edge" | "ego";

@@ -11,12 +11,11 @@ import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION } from "~/config";
 import { appUpgradeRequiredDialog, mayUpgradeProtocolDialog } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
-import { getHasUnsavedChanges } from "~/selectors/protocol";
+import { getHasUnsavedChanges, getTimelineLocus } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { markProtocolSaved, setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
-import { getTimelineLocus } from "~/selectors/protocol";
 
 export const checkUnsavedChanges = createAsyncThunk(
 	"webUserActions/checkUnsavedChanges",

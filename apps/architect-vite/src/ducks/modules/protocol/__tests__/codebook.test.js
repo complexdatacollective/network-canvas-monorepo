@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-
 import { set } from "es-toolkit/compat";
 import configureStore from "redux-mock-store";
 import { v4 as uuid } from "uuid";
+import { describe, expect, it, vi } from "vitest";
 import { getThunkMocks } from "~/__tests__/helpers";
 import testState from "../../../../__tests__/testState.json";
 import reducer, { actionCreators, actionTypes, test } from "../codebook";

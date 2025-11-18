@@ -1,9 +1,9 @@
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
-import type { SectionProps } from "..";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
+import type { SectionProps } from "..";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 

@@ -1,5 +1,5 @@
-import File from "./File";
 import { BackgroundImage } from "../../Assets";
+import File from "./File";
 
 const ImageInput = (props) => (
 	<File

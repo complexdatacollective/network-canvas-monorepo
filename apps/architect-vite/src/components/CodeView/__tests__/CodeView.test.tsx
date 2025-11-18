@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeAll, vi } from "vitest";
-
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { getFormValues } from "redux-form";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import CodeView from "../CodeView";
 
 vi.mock("redux-form");

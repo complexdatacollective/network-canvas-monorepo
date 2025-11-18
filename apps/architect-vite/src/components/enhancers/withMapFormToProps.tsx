@@ -1,6 +1,6 @@
+import { first, isArray } from "lodash";
 import { connect } from "react-redux";
 import { formValueSelector } from "redux-form";
-import { first, isArray } from "lodash";
 
 const getAsArray = (fieldOrFields = []) => (isArray(fieldOrFields) ? fieldOrFields : [fieldOrFields]);
 

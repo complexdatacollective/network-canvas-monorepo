@@ -1,15 +1,14 @@
 import { useCallback } from "react";
-import * as Fields from "~/components/Form/Fields";
+import { useDispatch } from "react-redux";
 
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
 import ControlBar from "~/components/ControlBar";
 import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
+import * as Fields from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Button from "~/lib/legacy-ui/components/Button";
-
-import { useDispatch } from "react-redux";
 
 import { addApiKeyAsset } from "../../../../ducks/modules/protocol/assetManifest";
 import BasicForm from "../../../BasicForm";

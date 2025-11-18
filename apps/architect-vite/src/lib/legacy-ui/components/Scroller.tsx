@@ -1,7 +1,7 @@
-import React, { useRef, useCallback, useImperativeHandle } from "react";
-import { clamp } from "lodash";
 import cx from "classnames";
+import { clamp } from "lodash";
 import type { ReactNode } from "react";
+import React, { useCallback, useImperativeHandle, useRef } from "react";
 
 interface ScrollerProps {
 	className?: string;

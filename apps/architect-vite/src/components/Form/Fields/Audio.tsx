@@ -1,5 +1,5 @@
-import File from "./File";
 import { Audio } from "../../Assets";
+import File from "./File";
 
 const AudioInput = (props) => (
 	<File

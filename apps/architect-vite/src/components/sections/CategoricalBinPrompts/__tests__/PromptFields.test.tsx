@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-
-import { Provider } from "react-redux";
-import { reduxForm, change } from "redux-form";
-import { render } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
-import { rootReducer } from "../../../../ducks/modules/root";
+import { render } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { change, reduxForm } from "redux-form";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { actionCreators as codebookActions } from "../../../../ducks/modules/protocol/codebook";
+import { rootReducer } from "../../../../ducks/modules/root";
 import PromptFields from "../PromptFields";
 
 // Mock the Option component to include test ID

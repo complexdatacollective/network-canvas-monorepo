@@ -1,6 +1,6 @@
-import { compose, withState, withHandlers } from "recompose";
-import { templates } from "./options";
+import { compose, withHandlers, withState } from "recompose";
 import { getDefaultOptions } from "./defaultRule";
+import { templates } from "./options";
 
 const generateRule = (type, options = {}) => ({
 	type,

@@ -1,6 +1,6 @@
-import type React from "react";
 import cx from "classnames";
 import { motion } from "motion/react";
+import type React from "react";
 
 const springy = {
 	show: {

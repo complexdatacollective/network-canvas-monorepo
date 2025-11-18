@@ -1,9 +1,9 @@
 import { useContext } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
+import { getVariableMeta } from "../helpers";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
 import Variable from "../Variable";
-import { getVariableMeta } from "../helpers";
 
 type FormFieldType = {
 	prompt: string;

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { required, minLength, maxLength, minValue, maxValue, minSelected, maxSelected } from "../validations";
+import { describe, expect, it } from "vitest";
+import { maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } from "../validations";
 
 describe("Validations", () => {
 	describe("required()", () => {

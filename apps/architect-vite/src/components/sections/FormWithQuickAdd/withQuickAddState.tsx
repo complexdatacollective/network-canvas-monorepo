@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
-import { formValueSelector, change } from "redux-form";
-import { compose, withState, withHandlers } from "recompose";
+import { compose, withHandlers, withState } from "recompose";
+import { change, formValueSelector } from "redux-form";
 
 const withQuickAddState = connect(
 	(state, { form }) => ({

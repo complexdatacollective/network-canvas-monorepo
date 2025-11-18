@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
 import cx from "classnames";
-import { times, find } from "lodash";
+import { find, times } from "lodash";
+import React, { useEffect } from "react";
 import type { RangeItem } from "./DatePicker/helpers";
 
 interface RangePickerProps {

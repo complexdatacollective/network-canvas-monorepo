@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
 import fs from "fs-extra";
+import { describe, expect, it, vi } from "vitest";
 import getAssetData from "../getAssetData";
 
 const mockData = {

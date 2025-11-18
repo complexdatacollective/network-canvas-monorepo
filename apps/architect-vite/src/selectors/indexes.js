@@ -1,7 +1,7 @@
-import { isArray, values } from "lodash";
 import { createSelector } from "@reduxjs/toolkit";
-import { getProtocol } from "./protocol";
+import { isArray, values } from "lodash";
 import collectPath, { collectPaths } from "../utils/collectPaths";
+import { getProtocol } from "./protocol";
 
 const mapSubject =
 	(entityType) =>

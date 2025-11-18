@@ -4,9 +4,9 @@ import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
+import * as Fields from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
-import * as Fields from "~/components/Form/Fields";
 import Tip from "../../Tip";
 import getVariableOptionsGetter from "../SortOptionsForExternalData/getVariableOptionsGetter";
 

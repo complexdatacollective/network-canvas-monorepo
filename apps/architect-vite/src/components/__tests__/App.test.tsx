@@ -1,7 +1,7 @@
-import { describe, it, expect, afterAll, vi } from "vitest";
+import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import App from "../ViewManager/views/App";
 
 // Mock the components that App renders

@@ -1,7 +1,7 @@
+import { groupBy, isEmpty, map, toPairs } from "lodash";
 import { useContext } from "react";
-import { map, toPairs, groupBy, isEmpty } from "lodash";
-import SummaryContext from "./SummaryContext";
 import Asset from "./Asset";
+import SummaryContext from "./SummaryContext";
 
 const AssetManifest = () => {
 	const {

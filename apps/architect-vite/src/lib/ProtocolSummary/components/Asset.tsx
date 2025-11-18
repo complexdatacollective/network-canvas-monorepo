@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 import { useEffect, useRef, useState } from "react";
-import useAssetData from "./useAssetData";
 import MiniTable from "./MiniTable";
+import useAssetData from "./useAssetData";
 
 type AssetProps = {
 	id: string;

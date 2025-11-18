@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import { useCallback } from "react";
-import { useTable, useBlockLayout, type Column } from "react-table";
-import { FixedSizeList } from "react-window";
+import { type Column, useBlockLayout, useTable } from "react-table";
 import AutoSizer from "react-virtualized-auto-sizer";
+import { FixedSizeList } from "react-window";
 
 type VirtualizedTableProps = {
 	columns: Column<Record<string, any>>[];

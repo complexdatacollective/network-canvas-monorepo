@@ -1,6 +1,6 @@
-import { connect } from "react-redux";
 import { isEmpty } from "lodash";
-import { withHandlers, compose } from "recompose";
+import { connect } from "react-redux";
+import { compose, withHandlers } from "recompose";
 import { clearFields } from "redux-form";
 
 const mapDispatchToProps = (dispatch, props) => ({

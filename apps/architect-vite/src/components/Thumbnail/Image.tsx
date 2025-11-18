@@ -1,5 +1,5 @@
-import type React from "react";
 import cx from "classnames";
+import type React from "react";
 import withAssetUrl from "~/components/Assets/withAssetUrl";
 
 type ImageThumbnailProps = {

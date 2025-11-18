@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useRef } from "react";
 
 interface ZoomPanViewportProps {
 	children: ReactNode;

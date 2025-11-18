@@ -6,8 +6,8 @@ import { Row, Section } from "~/components/EditorLayout";
 // Screen message listeners removed as part of screen system refactor
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
-import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 import Filter from "./Filter";
+import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 import { SUBJECT_INDEPENDENT_FIELDS } from "./NodeType";
 
 type FilteredEdgeTypeProps = {

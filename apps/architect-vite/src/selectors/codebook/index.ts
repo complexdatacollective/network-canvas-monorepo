@@ -1,10 +1,10 @@
+import type { Codebook, EdgeDefinition, EgoDefinition, NodeDefinition, Variables } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { find, get, isObject } from "es-toolkit/compat";
-import type { Codebook, Variables, NodeDefinition, EdgeDefinition, EgoDefinition } from "@codaco/protocol-validation";
 import type { RootState } from "~/ducks/store";
 import { getCodebook } from "../protocol";
 import { asOptions } from "../utils";
-import { makeOptionsWithIsUsedSelector, type GetIsUsedOptions } from "./isUsed";
+import { type GetIsUsedOptions, makeOptionsWithIsUsedSelector } from "./isUsed";
 
 // Types
 interface Subject {

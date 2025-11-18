@@ -1,11 +1,11 @@
 import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
 import React, { useContext } from "react";
-import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
 import Markdown from "~/components/Form/Fields/Markdown";
+import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
 import DualLink from "./DualLink";
+import { renderValue } from "./helpers";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";
-import { renderValue } from "./helpers";
 
 const getStageName = (protocol: any) => (stageId: string) => {
 	const stageConfiguration = find(protocol.stages, ["id", stageId]);

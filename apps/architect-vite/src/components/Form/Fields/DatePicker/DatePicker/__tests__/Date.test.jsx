@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-
 import { render } from "@testing-library/react";
-import DatePicker from "../DatePicker";
+import { describe, expect, it, vi } from "vitest";
 import Date from "../Date";
+import DatePicker from "../DatePicker";
 
 describe("<Date>", () => {
 	it("can render", () => {

@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { compose } from "recompose";
-import Variables from "./Variables";
 import { getEntityProperties } from "./helpers";
+import Variables from "./Variables";
 
 type EgoTypeProps = {
 	variables?: any[];

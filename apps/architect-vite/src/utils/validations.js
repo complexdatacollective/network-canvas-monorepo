@@ -1,4 +1,4 @@
-import { get, isEmpty, map, toPairs, isEqual, isUndefined, isNil, isNull, isRegExp } from "lodash";
+import { get, isEmpty, isEqual, isNil, isNull, isRegExp, isUndefined, map, toPairs } from "lodash";
 import { DateTime } from "luxon";
 
 // Simple function to allow returning a custom message if provided, and
@@ -188,9 +188,7 @@ export const getValidations = (validationOptions = {}) =>
 		if (typeof options === "function") {
 			return options;
 		}
-		return Object.hasOwnProperty.call(validations, type)
-			? validations[type](options)
-			: () => `Validation "${type}" not found`;
+		return Object.hasOwn(validations, type) ? validations[type](options) : () => `Validation "${type}" not found`;
 	});
 
 export const getValidator = (validation = {}) => {

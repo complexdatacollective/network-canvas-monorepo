@@ -1,6 +1,6 @@
+import type { Asset, Codebook } from "@codaco/protocol-validation";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import type { Codebook, Asset } from "@codaco/protocol-validation";
 import { getEdgeIndex, getNodeIndex } from "~/selectors/indexes";
 import { getNetworkAssets } from "~/selectors/protocol";
 import { makeGetEntityWithUsage } from "./helpers";

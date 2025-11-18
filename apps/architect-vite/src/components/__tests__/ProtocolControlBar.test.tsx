@@ -1,9 +1,8 @@
-import { describe, it, expect } from "vitest";
-
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
-import ProtocolControlBar from "../ProtocolControlBar";
+import { describe, expect, it } from "vitest";
 import testState from "../../__tests__/testState.json";
+import ProtocolControlBar from "../ProtocolControlBar";
 
 const mockProps = {
 	saveProtocol: () => {},

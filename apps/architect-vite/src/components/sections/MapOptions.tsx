@@ -1,18 +1,15 @@
 import { compose } from "recompose";
 import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
-import NativeSelect from "~/components/Form/Fields/NativeSelect";
-
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import { Row, Section } from "../EditorLayout";
-import ValidatedField from "../Form/ValidatedField";
-
+import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
+import { Row, Section } from "../EditorLayout";
+import ExternalLink from "../ExternalLink";
 import ColorPicker from "../Form/Fields/ColorPicker";
 import GeoAPIKey from "../Form/Fields/Geospatial/GeoAPIKey";
 import GeoDataSource from "../Form/Fields/Geospatial/GeoDataSource";
 import MapSelection from "../Form/Fields/Geospatial/MapSelection";
-
-import ExternalLink from "../ExternalLink";
+import ValidatedField from "../Form/ValidatedField";
 
 const mapboxStyleOptions = [
 	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },

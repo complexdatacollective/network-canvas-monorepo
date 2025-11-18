@@ -1,6 +1,6 @@
-import { useRef } from "react";
 import Tippy, { type TippyProps } from "@tippyjs/react";
 import type { ComponentType, ReactNode } from "react";
+import { useRef } from "react";
 
 type WithTooltipProps = {
 	tooltip?: ReactNode;

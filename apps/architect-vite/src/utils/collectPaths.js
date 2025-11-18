@@ -1,4 +1,4 @@
-import { get, reduce, isArray } from "lodash";
+import { get, isArray, reduce } from "lodash";
 
 /**
  * Collect _values_ that match path from `obj`. We are using this

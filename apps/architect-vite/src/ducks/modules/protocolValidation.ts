@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { validateProtocol, type ValidationResult } from "@codaco/protocol-validation";
 import type { Protocol } from "@codaco/protocol-validation";
+import { type ValidationResult, validateProtocol } from "@codaco/protocol-validation";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 type ProtocolValidationState = {
 	validationResult: ValidationResult | null;

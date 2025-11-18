@@ -1,7 +1,7 @@
 import { useContext } from "react";
-import Variable from "../Variable";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
+import Variable from "../Variable";
 
 type QuickAddProps = {
 	quickAdd?: string | null;

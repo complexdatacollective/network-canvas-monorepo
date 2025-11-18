@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { hasSubmitFailed, getFormSyncErrors } from "redux-form";
+import { getFormSyncErrors, hasSubmitFailed } from "redux-form";
 
 const makeMapStateToProps = (form) => (state) => ({
 	submitFailed: hasSubmitFailed(form)(state),

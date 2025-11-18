@@ -1,5 +1,5 @@
-import Section from "./Section";
 import Group from "./Group";
+import Section from "./Section";
 
 const Tips = () => (
 	<Section>

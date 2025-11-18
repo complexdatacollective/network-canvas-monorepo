@@ -1,5 +1,5 @@
-import { createContext } from "react";
 import type { Interval } from "luxon";
+import { createContext } from "react";
 import type { DateObject } from "./helpers";
 
 export interface DatePickerContextType {

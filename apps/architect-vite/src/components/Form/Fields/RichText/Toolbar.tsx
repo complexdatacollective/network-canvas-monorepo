@@ -1,12 +1,12 @@
-import { useSlate } from "slate-react";
 import { includes } from "lodash";
+import type { BaseEditor } from "slate";
+import type { HistoryEditor } from "slate-history";
+import type { ReactEditor } from "slate-react";
+import { useSlate } from "slate-react";
 import { isBlockActive, smartInsertThematicBreak } from "./lib/actions";
 import { toggleBlockquote } from "./lib/blockquotes";
-import { MarkButton, BlockButton, ToolbarButton } from "./ToolbarButton";
 import { TOOLBAR_ITEMS } from "./lib/options";
-import type { BaseEditor } from "slate";
-import type { ReactEditor } from "slate-react";
-import type { HistoryEditor } from "slate-history";
+import { BlockButton, MarkButton, ToolbarButton } from "./ToolbarButton";
 
 type CustomEditor = BaseEditor &
 	ReactEditor &

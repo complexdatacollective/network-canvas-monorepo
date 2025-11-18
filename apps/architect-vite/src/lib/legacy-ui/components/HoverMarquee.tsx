@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import useResizeAware from "react-resize-aware";
-import type { ReactNode } from "react";
 
 interface HoverMarqueeProps {
 	speed?: number;

@@ -1,6 +1,6 @@
+import cx from "classnames";
 import type React from "react";
 import { useRef } from "react";
-import cx from "classnames";
 import { v4 as uuid } from "uuid";
 
 type SwitchProps = {

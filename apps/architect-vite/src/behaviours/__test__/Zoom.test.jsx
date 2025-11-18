@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 /* eslint-disable react/jsx-props-no-spreading */
 
 import { render } from "@testing-library/react";

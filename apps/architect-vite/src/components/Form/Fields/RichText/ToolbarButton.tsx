@@ -1,7 +1,7 @@
-import { useSlate } from "slate-react";
 import cx from "classnames";
+import { useSlate } from "slate-react";
 import Icon from "./Icon";
-import { toggleBlock, toggleMark, isMarkActive, isBlockActive } from "./lib/actions";
+import { isBlockActive, isMarkActive, toggleBlock, toggleMark } from "./lib/actions";
 
 interface ToolbarButtonProps {
 	isActive?: boolean;

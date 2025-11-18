@@ -4,7 +4,7 @@ import icons from "../assets/img/icons";
 type IconComponent = ComponentType<any>;
 
 const getNCIcon = (name: string): IconComponent | null => {
-	if (!Object.prototype.hasOwnProperty.call(icons, name)) {
+	if (!Object.hasOwn(icons, name)) {
 		return null;
 	}
 	return icons[name];

@@ -1,8 +1,8 @@
 /* eslint-disable import/prefer-default-export */
 
-import { first, get } from "lodash";
-import csvParse from "csv-parse";
 import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
+import csvParse from "csv-parse";
+import { first, get } from "lodash";
 
 /**
  * Generate a switching function that takes a filepath/URL as an argument

@@ -1,8 +1,8 @@
-import { connect } from "react-redux";
 import { filter, map } from "lodash";
-import { compose, withState, withHandlers } from "recompose";
-import { getAssetManifest } from "~/selectors/protocol";
+import { connect } from "react-redux";
+import { compose, withHandlers, withState } from "recompose";
 import { getAssetIndex, utils as indexUtils } from "~/selectors/indexes";
+import { getAssetManifest } from "~/selectors/protocol";
 
 const filterByAssetType = (assetType, assets) =>
 	assetType ? filter(assets, ({ type }) => type === assetType) : assets;

@@ -1,7 +1,7 @@
-import { useContext } from "react";
 import { toPairs } from "lodash";
-import SummaryContext from "./SummaryContext";
+import { useContext } from "react";
 import Entity from "./Entity";
+import SummaryContext from "./SummaryContext";
 
 const Codebook = () => {
 	const {

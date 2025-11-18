@@ -1,9 +1,9 @@
-import { connect } from "react-redux";
-import { formValueSelector } from "redux-form";
-import { compose, withHandlers } from "recompose";
 import { values } from "lodash";
-import { getVariablesForSubject } from "../../selectors/codebook";
+import { connect } from "react-redux";
+import { compose, withHandlers } from "recompose";
+import { formValueSelector } from "redux-form";
 import { actionCreators as codebookActions } from "../../ducks/modules/protocol/codebook";
+import { getVariablesForSubject } from "../../selectors/codebook";
 
 export const form = "create-new-variable";
 

@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import { Editor, Range, Transforms, type BaseEditor, type NodeEntry, type Node } from "slate";
+import { type BaseEditor, Editor, type Node, type NodeEntry, Range, Transforms } from "slate";
 
 export const getContainerBlockAtCursor = (editor: BaseEditor): NodeEntry<Node> | undefined =>
 	Editor.above(editor, {

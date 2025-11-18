@@ -5,6 +5,7 @@ import Dialog from "~/components/NewComponents/Dialog";
 import { useAppDispatch } from "~/ducks/hooks";
 import { Button } from "~/lib/legacy-ui/components";
 import Form from "./Form";
+
 interface InlineEditScreenProps {
 	show?: boolean;
 	form: string;
@@ -24,7 +25,6 @@ const InlineEditScreen = ({
 	children = null,
 	initialValues,
 }: InlineEditScreenProps) => {
-
 	const dispatch = useAppDispatch();
 
 	const handleSubmit = useCallback(() => {

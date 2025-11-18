@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign,no-restricted-syntax */
-import { Transforms, Node, Element, type NodeEntry, type BaseEditor } from "slate";
+import { type BaseEditor, Element, Node, type NodeEntry, Transforms } from "slate";
 
 interface NormalizeEditor extends BaseEditor {
 	inline?: boolean;

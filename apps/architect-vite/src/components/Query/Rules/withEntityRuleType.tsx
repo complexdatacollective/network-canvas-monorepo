@@ -1,6 +1,6 @@
-import { compose, withState, withHandlers } from "recompose";
-import { templates } from "./options";
+import { compose, withHandlers, withState } from "recompose";
 import { makeGetOptionsWithDefaults } from "./defaultRule";
+import { templates } from "./options";
 
 const VARIABLE_RULE = "ALTER/VARIABLE";
 const TYPE_RULE = "ALTER/TYPE";

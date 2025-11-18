@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
+import { compose, withHandlers } from "recompose";
 import { change } from "redux-form";
-import { withHandlers, compose } from "recompose";
 import { getEdgesForSubject } from "../SociogramPrompts/selectors";
 
 const mapDispatchToProps = {
