@@ -299,7 +299,7 @@ describe("NCBlob", () => {
 			blob.speed = 1;
 
 			blob.animationPosition(0); // Initialize
-			const initialDirection = blob.animateForward;
+			const _initialDirection = blob.animateForward;
 
 			blob.animationPosition(21000); // Past end time
 
@@ -346,9 +346,7 @@ describe("NCBlob", () => {
 			blob2.animationPosition(0);
 
 			// Blob2 with 2x speed should have shorter animation duration
-			expect(blob2.endFrameTime! - blob2.startFrameTime!).toBe(
-				(blob1.endFrameTime! - blob1.startFrameTime!) * 2,
-			);
+			expect(blob2.endFrameTime! - blob2.startFrameTime!).toBe((blob1.endFrameTime! - blob1.startFrameTime!) * 2);
 		});
 	});
 
@@ -382,6 +380,5 @@ describe("NCBlob", () => {
 			expect(blob.positionX).toBeLessThan(500);
 			expect(blob.positionY).toBeLessThan(500);
 		});
-
 	});
 });

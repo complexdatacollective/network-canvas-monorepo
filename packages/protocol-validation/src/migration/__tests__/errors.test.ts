@@ -147,8 +147,7 @@ describe("Migration Errors", () => {
 		});
 
 		it("should handle complex error messages", () => {
-			const complexMessage =
-				"Multiple validation errors: field 'name' is required, field 'age' must be a number";
+			const complexMessage = "Multiple validation errors: field 'name' is required, field 'age' must be a number";
 			const error = new ValidationError(complexMessage, 8);
 			expect(error.message).toContain(complexMessage);
 			expect(error.message).toContain("version 8");

@@ -3,12 +3,7 @@ import { describe, expect, it } from "vitest";
 // Test the resizeCanvas utility function logic
 describe("resizeCanvas utility", () => {
 	// Extract and test the resize logic
-	const resizeCanvas = (
-		canvas: HTMLCanvasElement,
-		width: number,
-		height: number,
-		ratio: number,
-	): boolean => {
+	const resizeCanvas = (canvas: HTMLCanvasElement, width: number, height: number, ratio: number): boolean => {
 		if (canvas.width !== width * ratio || canvas.height !== height * ratio) {
 			canvas.width = width * ratio;
 			canvas.height = height * ratio;

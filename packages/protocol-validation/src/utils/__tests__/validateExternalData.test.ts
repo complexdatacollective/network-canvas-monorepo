@@ -5,10 +5,7 @@ describe("validateExternalData", () => {
 	describe("getVariableNamesFromNetwork", () => {
 		it("should extract unique attribute names from nodes", () => {
 			const network = {
-				nodes: [
-					{ attributes: { name: "Alice", age: "30" } },
-					{ attributes: { name: "Bob", gender: "M" } },
-				],
+				nodes: [{ attributes: { name: "Alice", age: "30" } }, { attributes: { name: "Bob", gender: "M" } }],
 				edges: [],
 			};
 
@@ -33,14 +30,8 @@ describe("validateExternalData", () => {
 
 		it("should extract unique attribute names from both nodes and edges", () => {
 			const network = {
-				nodes: [
-					{ attributes: { name: "Alice", age: "30" } },
-					{ attributes: { name: "Bob", location: "NYC" } },
-				],
-				edges: [
-					{ attributes: { type: "friend", weight: "5" } },
-					{ attributes: { type: "colleague" } },
-				],
+				nodes: [{ attributes: { name: "Alice", age: "30" } }, { attributes: { name: "Bob", location: "NYC" } }],
+				edges: [{ attributes: { type: "friend", weight: "5" } }, { attributes: { type: "colleague" } }],
 			};
 
 			const result = getVariableNamesFromNetwork(network);
@@ -119,7 +110,7 @@ describe("validateExternalData", () => {
 					{
 						attributes: {
 							"user.name": "Alice",
-							"user_id": "123",
+							user_id: "123",
 							"data-value": "test",
 							"ns:field": "value",
 						},
@@ -239,12 +230,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should allow complex valid combinations", () => {
-			const validNames = [
-				"user.first-name",
-				"data_value_123",
-				"xml:ns:field",
-				"item-type.sub_field:name",
-			];
+			const validNames = ["user.first-name", "data_value_123", "xml:ns:field", "item-type.sub_field:name"];
 
 			const result = validateNames(validNames);
 			expect(result).toBe(false);

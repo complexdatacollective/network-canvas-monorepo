@@ -1,14 +1,14 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	AnalyticsEventSchema,
+	createRouteHandler,
+	eventTypes,
+	makeEventTracker,
 	type RawEvent,
 	RawEventSchema,
 	type TrackableEvent,
 	TrackableEventSchema,
-	createRouteHandler,
-	eventTypes,
-	makeEventTracker,
 } from "../index";
 
 // Mock fetch globally
@@ -221,12 +221,10 @@ describe("createRouteHandler", () => {
 		});
 
 		it("should use 'Unknown' country code when IP fetch fails", async () => {
-			mockFetch
-				.mockRejectedValueOnce(new Error("IP fetch failed"))
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => ({ success: true }),
-				});
+			mockFetch.mockRejectedValueOnce(new Error("IP fetch failed")).mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ success: true }),
+			});
 
 			const handler = createRouteHandler({
 				installationId: "test-install",
@@ -337,11 +335,9 @@ describe("createRouteHandler", () => {
 			expect(response.status).toBe(200);
 			expect(data.message).toBe("Event forwarded successfully");
 
-			const platformCall = mockFetch.mock.calls.find((call) =>
-				call[0].includes("test-platform.com/api/event"),
-			);
+			const platformCall = mockFetch.mock.calls.find((call) => call[0].includes("test-platform.com/api/event"));
 			expect(platformCall).toBeDefined();
-			expect(platformCall![1]).toMatchObject({
+			expect(platformCall?.[1]).toMatchObject({
 				method: "POST",
 				keepalive: true,
 				headers: {
@@ -415,9 +411,7 @@ describe("createRouteHandler", () => {
 			const data = await response.json();
 
 			expect(response.status).toBe(500);
-			expect(data.error).toBe(
-				"Analytics platform rejected the event as invalid. Please check the event schema",
-			);
+			expect(data.error).toBe("Analytics platform rejected the event as invalid. Please check the event schema");
 		});
 
 		it("should return 500 with specific error for 404 response from platform", async () => {
@@ -584,12 +578,10 @@ describe("createRouteHandler", () => {
 			expect(response.status).toBe(200);
 			expect(data.message).toBe("Event forwarded successfully");
 
-			const platformCall = mockFetch.mock.calls.find((call) =>
-				call[0].includes("custom-platform.com/api/event"),
-			);
+			const platformCall = mockFetch.mock.calls.find((call) => call[0].includes("custom-platform.com/api/event"));
 			expect(platformCall).toBeDefined();
 
-			const sentEvent = JSON.parse(platformCall![1]?.body as string);
+			const sentEvent = JSON.parse(platformCall?.[1]?.body as string);
 			expect(sentEvent).toMatchObject({
 				type: "InterviewCompleted",
 				timestamp: "2024-01-01T00:00:00.000Z",
@@ -729,7 +721,8 @@ describe("makeEventTracker", () => {
 		const result = await trackEvent(event);
 
 		expect(result).toEqual({
-			error: "Internal server error when sending analytics event: Internal Server Error. Check the route handler implementation.",
+			error:
+				"Internal server error when sending analytics event: Internal Server Error. Check the route handler implementation.",
 			success: false,
 		});
 	});
