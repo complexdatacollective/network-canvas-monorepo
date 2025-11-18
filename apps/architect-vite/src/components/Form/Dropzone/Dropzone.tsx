@@ -1,22 +1,32 @@
 import cx from "classnames";
-import { times } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
 import { Icon, Spinner } from "~/lib/legacy-ui/components";
-import { openDialog } from "~/utils/dialogs";
-import { acceptsPaths, getAcceptsExtensions, getRejectedExtensions } from "./helpers";
+import { acceptsFiles, getAcceptsExtensions, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";
 
-const initialState = {
+type DropzoneState = {
+	isActive: boolean;
+	isAcceptable: boolean;
+	isDisabled: boolean;
+	isLoading: boolean;
+	isError: boolean;
+	isHover: boolean;
+	error: string | null;
+};
+
+const initialState: DropzoneState = {
 	isActive: false, // is doing something
 	isAcceptable: false, // can accept file
 	isDisabled: false, // is disabled
 	isLoading: false, // file is being imported
 	isError: false,
+	isHover: false,
 	error: null,
 };
 
 type DropzoneProps = {
-	onDrop: (filePaths: string[]) => Promise<unknown>;
+	onDrop: (files: File[]) => Promise<unknown>;
 	className?: string;
 	accepts?: string[];
 	disabled?: boolean;
@@ -35,32 +45,39 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 		[state.isHover, state.isError],
 	);
 
-	const startHandler = useCallback(
-		(e) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			if (isDisabled) {
-				return false;
-			}
-
-			setState((previousState) => ({ ...previousState, isActive: true }));
-
-			return true;
-		},
-		[isDisabled],
-	);
-
 	const resetState = useCallback(() => {
 		setState((previousState) => ({ ...previousState, ...initialState }));
 	}, []);
 
-	const submitPaths = useCallback(
-		(filePaths) => {
-			const isAcceptable = acceptsPaths(accepts, filePaths);
+	const handleDrop = useCallback(
+		(acceptedFiles: File[], fileRejections: { file: File }[]) => {
+			if (isDisabled) {
+				return;
+			}
+
+			setState((previousState) => ({ ...previousState, isActive: true }));
+
+			// Handle file rejections from react-dropzone
+			if (fileRejections.length > 0) {
+				const extensions = fileRejections.map((rejection: { file: File }) => {
+					const match = /(\.[A-Za-z0-9]+)$/.exec(rejection.file.name);
+					return match ? match[1] : rejection.file.name;
+				});
+				const errorMessage = `This asset type does not support ${extensions.join(", ")} extension(s). Supported types are: ${accepts.join(", ")}.`;
+				setState((previousState) => ({
+					...previousState,
+					isActive: false,
+					isError: true,
+					error: errorMessage,
+				}));
+				return;
+			}
+
+			// Additional validation for accepted files
+			const isAcceptable = acceptsFiles(accepts, acceptedFiles);
 
 			if (!isAcceptable) {
-				const extensions = getRejectedExtensions(accepts, filePaths);
+				const extensions = getRejectedExtensions(accepts, acceptedFiles);
 				const errorMessage = `This asset type does not support ${extensions.join(", ")} extension(s). Supported types are: ${accepts.join(", ")}.`;
 				setState((previousState) => ({
 					...previousState,
@@ -79,74 +96,35 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 				isLoading: true,
 			}));
 
-			onDrop(filePaths).finally(resetState);
+			onDrop(acceptedFiles).finally(resetState);
 		},
-		[accepts, onDrop, resetState],
+		[accepts, onDrop, resetState, isDisabled],
 	);
 
-	const handleClick = useCallback(
-		(e) => {
-			if (!startHandler(e)) {
-				return;
-			}
-
-			const extensions = getAcceptsExtensions(accepts);
-
-			openDialog({
-				filters: [{ name: "Asset", extensions }],
-				defaultPath: "",
-			}).then(({ canceled, filePaths }) => {
-				if (canceled) {
-					resetState();
-					return;
-				}
-
-				submitPaths(filePaths);
-			});
+	// Convert accepts array to react-dropzone format
+	const acceptObject = accepts.reduce(
+		(acc, ext) => {
+			// Group extensions by MIME type category
+			// For now, use a generic MIME type that accepts any file with the extension
+			acc["application/octet-stream"] = acc["application/octet-stream"] || [];
+			acc["application/octet-stream"].push(ext);
+			return acc;
 		},
-		[accepts, resetState, startHandler, submitPaths],
+		{} as Record<string, string[]>,
 	);
 
-	const handleDrop = useCallback(
-		(e) => {
-			if (!startHandler(e)) {
-				return;
-			}
-
-			const { files } = e.dataTransfer;
-			const filePaths = times(files.length, (i) => files.item(i).path);
-
-			// If the user drags a file attachment from a browser, we get a url instead of a file
-			if (!files || filePaths.length < 1) {
-				const urlName = e.dataTransfer.getData?.("URL");
-
-				if (urlName) {
-					const errorMessage =
-						"Dragging files from this source is not currently supported. Please download the file to your computer and try again.";
-					setState((previousState) => ({ ...previousState, isActive: false, error: errorMessage }));
-					return;
-				}
-			}
-
-			submitPaths(filePaths);
-		},
-		[startHandler, submitPaths],
-	);
-
-	const handleDragLeave = useCallback(() => {
-		setState((previousState) => ({ ...previousState, isHover: false }));
-	}, []);
-
-	const handleDragEnter = useCallback(() => {
-		if (isDisabled) {
-			return;
-		}
-		setState((previousState) => ({ ...previousState, isHover: true }));
-	}, [isDisabled]);
+	const { getRootProps, getInputProps, isDragActive } = useDropzone({
+		onDrop: handleDrop,
+		accept: Object.keys(acceptObject).length > 0 ? acceptObject : undefined,
+		disabled: isDisabled,
+		multiple: false,
+		noClick: false,
+		noKeyboard: false,
+	});
 
 	const dropzoneClasses = cx(className, {
 		[`${className}--active`]: state.isActive,
-		[`${className}--hover`]: state.isHover,
+		[`${className}--hover`]: isDragActive,
 		[`${className}--loading`]: state.isLoading,
 		[`${className}--error`]: state.isError,
 		[`${className}--disabled`]: isDisabled,
@@ -157,13 +135,9 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 	});
 
 	return (
-		<div onDrop={handleDrop}>
-			<div
-				className={dropzoneClasses}
-				onClick={handleClick}
-				onDragEnter={handleDragEnter}
-				onDragLeave={handleDragLeave}
-			>
+		<div>
+			<div {...getRootProps()} className={dropzoneClasses}>
+				<input {...getInputProps()} />
 				<div className={`${className}__container`} />
 				<div className={`${className}__label`}>
 					Drag and drop a file here to import it, or&nbsp;

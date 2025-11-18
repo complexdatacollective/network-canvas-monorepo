@@ -29,12 +29,12 @@ const autoFileDrop = compose(
 				importAsset,
 				onDrop,
 			}: {
-				importAsset: (filePath: string) => Promise<{ id: string }>;
+				importAsset: (file: File) => Promise<{ id: string }>;
 				onDrop: (ids: string[]) => void;
 			}) =>
-			(filePaths: string[]) =>
-				Promise.all(filePaths.map((filePath) => importAsset(filePath).then(({ id }: { id: string }) => id))).then(
-					(ids) => onDrop(ids),
+			(files: File[]) =>
+				Promise.all(files.map((file) => importAsset(file).then(({ id }: { id: string }) => id))).then((ids) =>
+					onDrop(ids),
 				),
 	}),
 );

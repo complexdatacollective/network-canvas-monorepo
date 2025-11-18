@@ -1,33 +1,34 @@
-const getExtension = (path) => {
-	const match = /(.[A-Za-z0-9]+)$/.exec(path);
+const getExtension = (filename: string) => {
+	const match = /(.[A-Za-z0-9]+)$/.exec(filename);
 	if (!match) {
 		return null;
 	}
 	return match[1];
 };
 
-const matchExtension = (path, extension) => RegExp(`${extension}$`).test(path.toLowerCase());
+const matchExtension = (filename: string, extension: string) =>
+	RegExp(`${extension}$`).test(filename.toLowerCase());
 
-const acceptsPath = (accepts) => (path) => accepts.some((accept) => matchExtension(path, accept));
+const acceptsFile = (accepts: string[]) => (file: File) => accepts.some((accept) => matchExtension(file.name, accept));
 
-export const acceptsPaths = (accepts, paths) => {
-	if (!paths || paths.length === 0) {
+export const acceptsFiles = (accepts: string[], files: File[]) => {
+	if (!files || files.length === 0) {
 		return false;
 	}
-	return paths.every(acceptsPath(accepts));
+	return files.every(acceptsFile(accepts));
 };
 
-export const getRejectedExtensions = (accepts, paths) =>
-	paths.reduce((memo, path) => {
-		if (acceptsPath(accepts)(path)) {
+export const getRejectedExtensions = (accepts: string[], files: File[]) =>
+	files.reduce((memo: string[], file: File) => {
+		if (acceptsFile(accepts)(file)) {
 			return memo;
 		}
-		const extension = getExtension(path);
-		if (memo.includes(extension)) {
+		const extension = getExtension(file.name);
+		if (!extension || memo.includes(extension)) {
 			return memo;
 		}
 		memo.push(extension);
 		return memo;
 	}, []);
 
-export const getAcceptsExtensions = (accepts) => accepts.map((accept) => accept.substr(1));
+export const getAcceptsExtensions = (accepts: string[]) => accepts.map((accept) => accept.substring(1));

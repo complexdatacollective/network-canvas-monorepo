@@ -1,9 +1,10 @@
-import path from "node:path";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
+import { saveAssetToDb } from "~/utils/assetUtils";
+import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
-import { importAsset as fsImportAsset } from "~/utils/protocols";
 import { validateAsset } from "~/utils/protocols/assetTools";
 
 // Types
@@ -37,53 +38,55 @@ type AddApiKeyAssetPayload = {
 	value: string;
 };
 
-// Helper function
-const getNameFromFilename = (filename: string) => path.parse(filename).base;
-
 // Async thunks
 export const importAssetAsync = createAsyncThunk(
 	"assetManifest/importAssetAsync",
-	async (filePath: string, { dispatch, getState, rejectWithValue }) => {
-		const name = getNameFromFilename(filePath);
+	async (file: File, { dispatch, rejectWithValue }) => {
+		const name = file.name;
+		const assetId = uuid();
 
 		dispatch(assetManifestSlice.actions.importAsset(name));
 
-		// Note: In the original code, workingPath was always null
-		// This suggests the asset import functionality may not be fully implemented
-		const workingPath = null;
-
-		if (!workingPath) {
-			const error = new Error("No working path found, possibly no active protocol.");
-			dispatch(assetManifestSlice.actions.importAssetFailed({ filename: filePath, error }));
-			dispatch(importAssetErrorDialog(error, filePath));
-			return rejectWithValue(error.message);
-		}
-
 		try {
 			// Validate asset
-			await validateAsset(filePath).catch((error) => {
-				dispatch(invalidAssetErrorDialog(error, filePath));
+			await validateAsset(file).catch((error) => {
+				dispatch(invalidAssetErrorDialog(error, name));
 				throw error;
 			});
 
-			// Import asset
-			const result = await fsImportAsset(workingPath, filePath).catch((error) => {
-				dispatch(importAssetErrorDialog(error, filePath));
-				throw error;
-			});
+			// Convert File to Blob and create ExtractedAsset
+			const blob = new Blob([file], { type: file.type });
+			const asset: ExtractedAsset = {
+				id: assetId,
+				name: file.name,
+				data: blob,
+			};
+
+			// Store in IndexedDB
+			await saveAssetToDb(asset);
+
+			// Get asset type for manifest
+			const assetType = getSupportedAssetType(file.name);
+
+			if (!assetType) {
+				throw new Error(`Unsupported asset type for file: ${file.name}`);
+			}
 
 			const importPayload: ImportAssetCompletePayload = {
-				id: uuid(),
-				filename: result.filePath,
+				id: assetId,
+				filename: file.name, // Used as source in manifest
 				name,
-				assetType: result.assetType,
+				assetType,
 			};
 
 			dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
 			return importPayload;
 		} catch (error) {
-			const errorPayload = { filename: filePath, error: error as Error };
-			dispatch(assetManifestSlice.actions.importAssetFailed(errorPayload));
+			dispatch(assetManifestSlice.actions.importAssetFailed({
+				filename: name,
+				error: error as Error,
+			}));
+			dispatch(importAssetErrorDialog(error as Error, name));
 			return rejectWithValue((error as Error).message);
 		}
 	},

@@ -26,7 +26,7 @@ const AssetBrowserWindow = ({
 			cancelText="Cancel"
 		>
 			<Layout>
-				<AssetBrowser type={type} onSelect={onSelect} selected={selected} disableDelete />
+				<AssetBrowser type={type} onSelect={onSelect} selected={selected} disableDelete sectionLayout="vertical" />
 			</Layout>
 		</Dialog>
 	);

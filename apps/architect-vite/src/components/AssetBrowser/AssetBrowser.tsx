@@ -13,6 +13,7 @@ type AssetBrowserProps = {
 	onSelect?: (assetId: string) => void;
 	onDelete?: () => void;
 	disableDelete?: boolean;
+	sectionLayout: "horizontal" | "vertical";
 };
 
 const AssetBrowser = ({
@@ -21,6 +22,7 @@ const AssetBrowser = ({
 	onSelect = () => {},
 	onDelete = () => {},
 	disableDelete = false,
+	sectionLayout,
 }: AssetBrowserProps) => {
 	const handleCreate = useCallback(
 		(assetIds) => {
@@ -40,10 +42,10 @@ const AssetBrowser = ({
 
 	return (
 		<>
-			<Section title="Import a New Resource">
+			<Section title="Import a New Resource" layout={sectionLayout}>
 				<NewAsset onCreate={handleCreate} type={type} />
 			</Section>
-			<Section title="Resource Library">
+			<Section title="Resource Library" layout={sectionLayout}>
 				<Assets
 					onSelect={onSelect}
 					onPreview={handleShowPreview}

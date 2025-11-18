@@ -8,12 +8,13 @@ import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
  *
  * Uses the mime type where possible, and falls back to the file extension.
  *
- * @param {string} asset - the filename of the asset
- * @return {string} Returns one of network, image, audio, video, geojson, env, or returns false if
+ * @param {string} filename - the filename of the asset
+ * @return {string} Returns one of network, image, audio, video, geojson, or returns false if
  * type is unsupported
  */
-export const getSupportedAssetType = (filePath) => {
-	const extension = toLower(path.extname(filePath));
+export const getSupportedAssetType = (filename) => {
+	const match = /(\.[A-Za-z0-9]+)$/.exec(filename);
+	const extension = match ? toLower(match[1]) : "";
 
 	const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) => type.includes(extension));
 

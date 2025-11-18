@@ -103,8 +103,34 @@ export const getNetworkVariables = async (assetId) => {
 	return getVariableNamesFromNetwork(network);
 };
 
-const validateNetwork = async (filePath) => {
-	const network = await networkReader(filePath);
+/**
+ * Validates a network file (CSV or JSON)
+ * @param {File} file - The File object to validate
+ */
+const validateNetwork = async (file) => {
+	// Read file content based on extension
+	const extension = file.name.split(".").pop()?.toLowerCase() || "";
+
+	let network;
+
+	if (extension === "json") {
+		const text = await file.text();
+		network = JSON.parse(text);
+	} else if (extension === "csv") {
+		const text = await file.text();
+		const csv = await import("csvtojson");
+		const nodes = await csv
+			.default({ checkColumn: true })
+			.fromString(text)
+			.then((rows) => rows.map((attributes) => ({ attributes })))
+			.catch((e) => {
+				if (e.toString().includes("column_mismatched")) {
+					e.code = "COLUMN_MISMATCHED";
+				}
+				throw e;
+			});
+		network = { nodes };
+	}
 
 	if (get(network, "nodes", []).length === 0 && get(network, "edges", []).length === 0) {
 		throw new Error("Network asset doesn't include any nodes or edges");
@@ -126,17 +152,17 @@ const validateNetwork = async (filePath) => {
 
 /**
  * Checks that imported asset is valid
- * @param {buffer} file - The file to check.
+ * @param {File} file - The File object to validate
  */
-export const validateAsset = async (filePath) => {
-	const assetType = getSupportedAssetType(filePath);
+export const validateAsset = async (file) => {
+	const assetType = getSupportedAssetType(file.name);
 
 	if (!assetType) {
 		throw new Error("Asset type not supported");
 	}
 
 	if (assetType === "network") {
-		await validateNetwork(filePath);
+		await validateNetwork(file);
 	}
 
 	return true;
