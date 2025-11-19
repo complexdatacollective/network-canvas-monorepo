@@ -34,7 +34,7 @@ describe("extractProtocol", () => {
 		expect(JSZip.loadAsync).toHaveBeenCalledWith(buffer);
 		expect(mockZip.file).toHaveBeenCalledWith("protocol.json");
 		expect(mockZipFile.async).toHaveBeenCalledWith("string");
-		expect(result).toEqual(mockProtocol);
+		expect(result).toEqual({ protocol: mockProtocol, assets: [] });
 	});
 
 	it("should throw error when protocol.json is not found in zip", async () => {
@@ -129,9 +129,6 @@ describe("extractProtocol", () => {
 				edge: {},
 				ego: {},
 			},
-			assetManifest: {
-				images: ["image1.png", "image2.jpg"],
-			},
 		};
 
 		const mockZipFile = {
@@ -147,7 +144,7 @@ describe("extractProtocol", () => {
 		const buffer = Buffer.from("mock zip content");
 		const result = await extractProtocol(buffer);
 
-		expect(result).toEqual(mockProtocol);
+		expect(result).toEqual({ protocol: mockProtocol, assets: [] });
 	});
 
 	it("should handle protocol with special characters", async () => {
@@ -170,7 +167,7 @@ describe("extractProtocol", () => {
 		const buffer = Buffer.from("mock zip content");
 		const result = await extractProtocol(buffer);
 
-		expect(result).toEqual(mockProtocol);
+		expect(result).toEqual({ protocol: mockProtocol, assets: [] });
 	});
 
 	it("should handle minimal protocol structure", async () => {
@@ -191,7 +188,7 @@ describe("extractProtocol", () => {
 		const buffer = Buffer.from("mock zip content");
 		const result = await extractProtocol(buffer);
 
-		expect(result).toEqual(mockProtocol);
+		expect(result).toEqual({ protocol: mockProtocol, assets: [] });
 	});
 
 	it("should handle protocol with null values", async () => {
@@ -215,7 +212,7 @@ describe("extractProtocol", () => {
 		const buffer = Buffer.from("mock zip content");
 		const result = await extractProtocol(buffer);
 
-		expect(result).toEqual(mockProtocol);
+		expect(result).toEqual({ protocol: mockProtocol, assets: [] });
 	});
 
 	it("should throw error when async method fails", async () => {
