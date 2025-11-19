@@ -74,6 +74,7 @@ function validateNetlifyRedirects(redirects: NetlifyRedirect[]): void {
 
 	for (let i = 0; i < redirects.length; i++) {
 		const redirect = redirects[i];
+		if (!redirect) continue;
 
 		// Check for invalid path parameter syntax (should use splat)
 		if (redirect.from.includes("/:path") && !redirect.to.includes(":path")) {
@@ -154,6 +155,7 @@ function validateVercelRedirects(redirects: VercelRedirect[]): void {
 
 	for (let i = 0; i < redirects.length; i++) {
 		const redirect = redirects[i];
+		if (!redirect) continue;
 
 		// Detect catch-all rules (Vercel style)
 		if (redirect.source.match(/\/:\w+\*$/) || redirect.source.match(/\/:\w+\([^)]+\)\*$/)) {
