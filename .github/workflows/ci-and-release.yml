@@ -54,13 +54,24 @@ jobs:
       
       - name: Build shared-consts
         run: pnpm --filter @codaco/shared-consts build
-      
+
+      - name: Build protocol-validation
+        run: pnpm --filter @codaco/protocol-validation build
+
       # Upload shared-consts build as artifact
       - name: Upload shared-consts build
         uses: actions/upload-artifact@v4
         with:
           name: shared-consts-dist
           path: packages/shared-consts/dist
+          retention-days: 1
+
+      # Upload protocol-validation build as artifact
+      - name: Upload protocol-validation build
+        uses: actions/upload-artifact@v4
+        with:
+          name: protocol-validation-dist
+          path: packages/protocol-validation/dist
           retention-days: 1
 
   lint:
@@ -89,10 +100,16 @@ jobs:
         with:
           name: shared-consts-dist
           path: packages/shared-consts/dist
-      
+
+      - name: Download protocol-validation build
+        uses: actions/download-artifact@v4
+        with:
+          name: protocol-validation-dist
+          path: packages/protocol-validation/dist
+
       - name: Check formatting
         run: pnpm lint
-      
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -132,7 +149,13 @@ jobs:
         with:
           name: shared-consts-dist
           path: packages/shared-consts/dist
-      
+
+      - name: Download protocol-validation build
+        uses: actions/download-artifact@v4
+        with:
+          name: protocol-validation-dist
+          path: packages/protocol-validation/dist
+
       - name: Create .env file and run tests
         run: |
           echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
@@ -175,7 +198,13 @@ jobs:
       with:
         name: shared-consts-dist
         path: packages/shared-consts/dist
-    
+
+    - name: Download protocol-validation build
+      uses: actions/download-artifact@v4
+      with:
+        name: protocol-validation-dist
+        path: packages/protocol-validation/dist
+
     # Build only packages with changesets
     - name: Build changed packages only
       run: pnpm run build:changed-packages

@@ -1,0 +1,27 @@
+.protocol-summary-asset-manifest {
+	page-break-before: always;
+}
+
+.protocol-summary-asset-manifest h2 {
+	text-transform: capitalize;
+}
+
+.protocol-summary-asset-manifest__group {
+	margin-top: 2rem;
+}
+
+.protocol-summary-asset-manifest__asset-media {
+	background: #808080;
+	display: inline-block;
+	font-size: 0;
+	width: 50%;
+}
+
+.protocol-summary-asset-manifest__asset-media img,
+.protocol-summary-asset-manifest__asset-media video {
+	width: 100%;
+}
+
+.protocol-summary-asset-manifest__asset-media + .protocol-summary-mini-table {
+	margin-top: 0;
+}

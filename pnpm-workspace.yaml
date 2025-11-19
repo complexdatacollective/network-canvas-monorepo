@@ -48,3 +48,6 @@ onlyBuiltDependencies:
   - core-js
   - esbuild
   - sharp
+  - '@parcel/watcher'
+  - '@swc/core'
+  - '@tailwindcss/oxide'

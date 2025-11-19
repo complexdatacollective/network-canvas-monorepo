@@ -10,7 +10,7 @@
 		"prebuild": "pnpm writeSidebarJson",
 		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
 		"start": "pnpm next start",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
 		"@codaco/art": "workspace:*",

@@ -1,0 +1,39 @@
+.protocol-stack {
+	width: 100%;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.protocol-stack__preview {
+	width: 12vmin;
+	height: auto;
+}
+
+.protocol-stack__stack-cover {
+	margin-bottom: 1rem;
+}
+
+.protocol-stack__label {
+	margin: 0;
+	text-align: center;
+	color: var(--color-primary-foreground);
+	max-height: 100%;
+	max-width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: var(--text-xl);
+	margin-bottom: 1rem;
+}
+
+.protocol-stack__filepath {
+	margin: 0;
+	text-align: center;
+	color: var(--color-primary-foreground);
+	max-height: 100%;
+	max-width: 100%;
+	word-break: break-all;
+	font-size: 80%;
+}

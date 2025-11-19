@@ -1,0 +1,92 @@
+.rules-preview-rule {
+	padding: var(--space-sm) var(--space-md);
+	cursor: pointer;
+	display: flex;
+	border-radius: var(--radius);
+	width: 95%;
+	margin: 0 auto;
+	height: 5rem;
+	align-items: center;
+}
+
+.rules-preview-rule__text {
+	--base-node-size: 7rem;
+	flex-grow: 1;
+	color: var(--text-dark);
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.rules-preview-rule__text .preview-node,
+.rules-preview-rule__text .preview-edge,
+.rules-preview-rule__text .variable-pill {
+	zoom: 0.8;
+	margin: 0;
+	max-width: 24rem;
+	color: var(--text-dark);
+}
+
+.rules-preview-rule__text .preview-edge,
+.rules-preview-rule__text .variable-pill {
+	margin: 0 0.8rem;
+}
+
+.rules-preview-rule__delete {
+	flex-grow: 0;
+	flex-basis: var(--space-lg);
+	border: 0;
+	width: var(--space-lg);
+	height: var(--space-lg);
+	margin: 0 0 0 var(--space-sm);
+	border-radius: var(--space-lg);
+	opacity: 0;
+	transition: opacity var(--animation-duration-fast) var(--animation-easing);
+	cursor: pointer;
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: var(--color-error);
+}
+
+.rules-preview-rule__delete .icon {
+	width: var(--space-md);
+	height: var(--space-md);
+}
+
+.rules-preview-rule__delete .icon .cls-1,
+.rules-preview-rule__delete .icon .cls-2 {
+	fill: var(--color-sortable-foreground);
+}
+
+.rules-preview-rule:hover {
+	--variable-pill-shadow-color: hsl(var(--shadow));
+	background-color: var(--color-surface-accent);
+}
+
+.rules-preview-rule:hover .rules-preview-rule__delete {
+	opacity: 1;
+}
+
+.rules-preview-rule:hover .rules-preview-rule__text {
+	color: var(--color-primary-foreground);
+}
+
+.stage-editor-section {
+	--variable-pill-background: var(--color-surface-1);
+	--variable-pill-shadow-color: var(--shadow);
+}
+
+.stage-editor-section .preview-edge {
+	background: var(--variable-pill-background);
+}
+
+.stage-editor-section .stage-editor-section {
+	--variable-pill-background: var(--color-white);
+	--variable-pill-shadow-color: var(--shadow);
+}
+
+.stage-editor-section .stage-editor-section .preview-edge {
+	background: var(--variable-pill-background);
+}

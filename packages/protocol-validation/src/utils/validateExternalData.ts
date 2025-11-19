@@ -2,7 +2,7 @@
 // they are compatable with XML export formats
 
 type Item = {
-	attributes: Record<string, string>;
+	attributes: Record<string, string | undefined>;
 };
 
 type Network = {
@@ -31,7 +31,7 @@ const getUniqueAttributes = (items: Item[]) => {
 export const getVariableNamesFromNetwork = (network: Network) =>
 	(["nodes", "edges"] as Array<keyof Network>).flatMap((entity) => getUniqueAttributes(network[entity] || []));
 
-export const validateNames = (items = []) => {
+export const validateNames = (items: string[] = []) => {
 	const errors = items.filter((item) => allowedVariableName(item) !== undefined);
 
 	if (errors.length === 0) {

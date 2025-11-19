@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SchemaVersion } from "~/schemas";
 import {
 	MigrationError,
 	MigrationNotPossibleError,
@@ -35,19 +36,19 @@ describe("Migration Errors", () => {
 
 	describe("MigrationNotPossibleError", () => {
 		it("should create error with version information", () => {
-			const error = new MigrationNotPossibleError(6, 8);
+			const error = new MigrationNotPossibleError(6 as SchemaVersion, 8);
 			expect(error).toBeInstanceOf(MigrationError);
 			expect(error.name).toBe("MigrationNotPossibleError");
 			expect(error.message).toBe("Migration to this version is not possible (6 -> 8).");
 		});
 
 		it("should format message correctly for different versions", () => {
-			const error = new MigrationNotPossibleError(7, 9);
+			const error = new MigrationNotPossibleError(7, 9 as SchemaVersion);
 			expect(error.message).toContain("7 -> 9");
 		});
 
 		it("should inherit from MigrationError", () => {
-			const error = new MigrationNotPossibleError(6, 8);
+			const error = new MigrationNotPossibleError(6 as SchemaVersion, 8);
 			expect(error).toBeInstanceOf(MigrationError);
 			expect(error).toBeInstanceOf(Error);
 		});
@@ -64,7 +65,7 @@ describe("Migration Errors", () => {
 		});
 
 		it("should format message correctly", () => {
-			const error = new VersionMismatchError(9, 6);
+			const error = new VersionMismatchError(9 as SchemaVersion, 6 as SchemaVersion);
 			expect(error.message).toContain("9 -> 6");
 			expect(error.message).toContain("Source version must be lower than target version");
 		});
@@ -158,7 +159,7 @@ describe("Migration Errors", () => {
 		it("should allow checking specific error types", () => {
 			const errors = [
 				new MigrationError("base"),
-				new MigrationNotPossibleError(6, 8),
+				new MigrationNotPossibleError(6 as SchemaVersion, 8),
 				new VersionMismatchError(8, 7),
 				new MigrationStepError(7),
 				new SchemaVersionDetectionError(),
@@ -172,7 +173,7 @@ describe("Migration Errors", () => {
 		});
 
 		it("should distinguish between error types", () => {
-			const notPossibleError = new MigrationNotPossibleError(6, 8);
+			const notPossibleError = new MigrationNotPossibleError(6 as SchemaVersion, 8);
 			const versionMismatchError = new VersionMismatchError(8, 7);
 
 			expect(notPossibleError).toBeInstanceOf(MigrationNotPossibleError);
@@ -203,7 +204,7 @@ describe("Migration Errors", () => {
 					case "validation":
 						throw new ValidationError("Invalid", 8);
 					case "notPossible":
-						throw new MigrationNotPossibleError(6, 8);
+						throw new MigrationNotPossibleError(6 as SchemaVersion, 8);
 					default:
 						throw new Error("Unknown");
 				}
