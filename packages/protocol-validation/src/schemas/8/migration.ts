@@ -64,7 +64,7 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 					({
 						...(protocol as Record<string, unknown>),
 						schemaVersion: 8 as const,
-						experiments: undefined,
+						experiments: {},
 					}) as V,
 			},
 		]);

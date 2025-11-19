@@ -8,21 +8,21 @@ export class MigrationError extends Error {
 }
 
 export class MigrationNotPossibleError extends MigrationError {
-	constructor(from: SchemaVersion, to: SchemaVersion) {
+	constructor(from: number, to: number) {
 		super(`Migration to this version is not possible (${from} -> ${to}).`);
 		this.name = "MigrationNotPossibleError";
 	}
 }
 
 export class VersionMismatchError extends MigrationError {
-	constructor(from: SchemaVersion, to: SchemaVersion) {
+	constructor(from: number, to: number) {
 		super(`Nonsensical migration path (${from} -> ${to}). Source version must be lower than target version.`);
 		this.name = "VersionMismatchError";
 	}
 }
 
 export class MigrationStepError extends MigrationError {
-	constructor(version: SchemaVersion) {
+	constructor(version: number) {
 		super(`Migration step failed at version ${version}.`);
 		this.name = "MigrationStepError";
 	}
