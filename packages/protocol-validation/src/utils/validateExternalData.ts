@@ -5,7 +5,7 @@ import type { NcEntity } from "@codaco/shared-consts";
 
 // External data types - represent imported data before conversion to full NcNetwork format
 // These reference the shared types but allow for the simpler structure of external data
-export type Item = Pick<NcEntity, "attributes">;
+type Item = Pick<NcEntity, "attributes">;
 export type Network = {
 	nodes: Item[];
 	edges: Item[];
