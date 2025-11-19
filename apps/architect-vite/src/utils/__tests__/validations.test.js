@@ -185,7 +185,7 @@ describe("Validations", () => {
 		});
 	});
 
-	it.todo("uniqueArrayAttributr()");
+	it.todo("uniqueArrayAttribute()");
 
 	it.todo("uniqueByList()");
 
