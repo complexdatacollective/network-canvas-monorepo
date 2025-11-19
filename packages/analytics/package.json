@@ -10,15 +10,19 @@
 		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
 		"publish": "pnpm build && npm publish --access public",
 		"dev": "npm run build -- --watch",
-		"typecheck": "tsc --build --noEmit"
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
 	},
 	"peerDependencies": {
 		"next": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
+		"@types/node": "catalog:",
 		"tsup": "^8.5.1",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	},
 	"dependencies": {
 		"zod": "catalog:"

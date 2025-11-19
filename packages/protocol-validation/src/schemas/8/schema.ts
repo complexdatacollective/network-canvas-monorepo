@@ -337,6 +337,6 @@ const ProtocolSchema = z
 		};
 	});
 
-export type Protocol = z.infer<typeof ProtocolSchema>;
+export type ProtocolSchemaV8 = z.infer<typeof ProtocolSchema>;
 
 export default ProtocolSchema;
