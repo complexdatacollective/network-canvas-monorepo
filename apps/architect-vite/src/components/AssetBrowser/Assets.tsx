@@ -74,6 +74,7 @@ const Assets = ({
 					<RadioGroup
 						options={ASSET_TYPES}
 						input={{
+							name: "assetType",
 							onChange: (value: unknown) => onUpdateAssetFilter(value as string | null),
 							value: assetType,
 						}}

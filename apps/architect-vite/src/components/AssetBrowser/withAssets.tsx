@@ -1,21 +1,21 @@
-import type { ExtractedAsset } from "@codaco/protocol-validation";
 import { filter, map } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers, withState } from "recompose";
+import type { Asset } from "~/ducks/modules/protocol/assetManifest";
 import type { RootState } from "~/ducks/modules/root";
 import { getAssetIndex, utils as indexUtils } from "~/selectors/indexes";
 import { getAssetManifest } from "~/selectors/protocol";
 
-type AssetWithId = ExtractedAsset & { id: string };
+type AssetWithId = Asset;
 type AssetWithUsage = AssetWithId & { isUsed: boolean };
 
 const filterByAssetType = (assetType: string | null, assets: AssetWithId[]): AssetWithId[] =>
 	assetType ? filter(assets, ({ type }) => type === assetType) : assets;
 
-const withKeysAsIds = (assets: Record<string, ExtractedAsset>): AssetWithId[] =>
+const withKeysAsIds = (assets: Record<string, Asset>): AssetWithId[] =>
 	map(assets, (asset, id) => ({ ...asset, id }));
 
-const filterAssets = (assetType: string | null, assets: Record<string, ExtractedAsset>): AssetWithId[] =>
+const filterAssets = (assetType: string | null, assets: Record<string, Asset>): AssetWithId[] =>
 	filterByAssetType(assetType, withKeysAsIds(assets));
 
 type FilterHandlerProps = {

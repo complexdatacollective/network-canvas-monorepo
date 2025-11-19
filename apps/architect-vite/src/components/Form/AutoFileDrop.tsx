@@ -1,5 +1,6 @@
 import { bindActionCreators, type Dispatch } from "@reduxjs/toolkit";
 import { has } from "es-toolkit/compat";
+import type React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps } from "recompose";
 import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
@@ -41,4 +42,4 @@ const autoFileDrop = compose(
 
 export { autoFileDrop };
 
-export default autoFileDrop(Dropzone);
+export default autoFileDrop(Dropzone as React.ComponentType<unknown>);

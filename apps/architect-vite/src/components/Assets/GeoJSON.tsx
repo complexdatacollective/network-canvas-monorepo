@@ -23,7 +23,7 @@ const getGeoJSON = async (assetId: string): Promise<GeoJSON> => {
 	if (!asset) {
 		return { features: [] };
 	}
-	const text = await asset.data.text();
+	const text = typeof asset.data === "string" ? asset.data : await asset.data.text();
 	return JSON.parse(text) as GeoJSON;
 };
 

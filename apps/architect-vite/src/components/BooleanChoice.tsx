@@ -66,11 +66,13 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(
 							This option will set the value <strong>true</strong> when selected.
 						</p>
 						<ValidatedField
-							label="Label"
 							component={RichText}
 							name="options[0].label"
 							validation={{ required: true }}
-							disallowedTypes={["history", "quote"]}
+							componentProps={{
+								label: "Label",
+								disallowedTypes: ["history", "quote"],
+							}}
 						/>
 						<Field label="Style option as negative" component={Toggle} name="options[0].negative" />
 					</div>
@@ -80,11 +82,13 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(
 							This option will set the value <strong>false</strong> when selected.
 						</p>
 						<ValidatedField
-							label="Label"
 							component={RichText}
 							name="options[1].label"
 							validation={{ required: true }}
-							disallowedTypes={["history", "quote"]}
+							componentProps={{
+								label: "Label",
+								disallowedTypes: ["history", "quote"],
+							}}
 						/>
 						<Field label="Style option as negative" component={Toggle} name="options[1].negative" />
 					</div>

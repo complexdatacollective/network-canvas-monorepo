@@ -9,6 +9,8 @@ import { getEntityProperties } from "./helpers";
 import Tag from "./Tag";
 import Variables from "./Variables";
 
+type Entity = "node" | "edge" | "ego";
+
 type UsageItem = {
 	id: string;
 	label: string;
@@ -16,8 +18,9 @@ type UsageItem = {
 
 type Variable = Record<string, unknown>;
 
+// Props expected by the unwrapped component
 type EntityTypeProps = {
-	entity: string;
+	entity: Entity;
 	type: string;
 	name: string;
 	color: string;
@@ -26,6 +29,15 @@ type EntityTypeProps = {
 	handleDelete?: () => void;
 	handleEdit?: () => void;
 	variables?: Variable[];
+	onEditEntity?: (entity: string, type?: string) => void;
+};
+
+// Props expected by the exported wrapped component
+export type EntityTypeOwnProps = {
+	entity: Entity;
+	type: string;
+	inUse?: boolean;
+	usage: UsageItem[];
 	onEditEntity?: (entity: string, type?: string) => void;
 };
 
@@ -55,7 +67,7 @@ const EntityType = ({
 		<div className="codebook__entity">
 			<div className="codebook__entity-detail">
 				<div className="codebook__entity-icon">
-					<EntityIcon color={color} entity={entity} type={type} />
+					<EntityIcon color={color} entity={entity} />
 				</div>
 				<div className="codebook__entity-name">
 					<h2>{name}</h2>
@@ -88,7 +100,7 @@ const EntityType = ({
 };
 
 type StateProps = {
-	entity: string;
+	entity: Entity;
 	type: string;
 };
 
@@ -148,4 +160,6 @@ const withEntityHandlers = compose(
 	}),
 );
 
-export default compose(connect(mapStateToProps), withEntityHandlers)(EntityType as React.ComponentType<unknown>);
+export default compose(connect(mapStateToProps), withEntityHandlers)(
+	EntityType as React.ComponentType<unknown>,
+) as React.ComponentType<EntityTypeOwnProps>;

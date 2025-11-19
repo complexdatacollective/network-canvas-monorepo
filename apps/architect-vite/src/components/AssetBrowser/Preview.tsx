@@ -35,13 +35,16 @@ const getRenderer = (meta: AssetMeta) => {
 	}
 };
 
-type PreviewProps = {
+type PreviewOwnProps = {
 	id: string;
-	meta: AssetMeta;
-	assetPath: string;
 	show?: boolean;
 	onDownload?: (path: string, meta: AssetMeta) => void;
 	onClose?: () => void;
+};
+
+type PreviewProps = PreviewOwnProps & {
+	meta: AssetMeta;
+	assetPath: string;
 };
 
 const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onClose = () => {} }: PreviewProps) => {
