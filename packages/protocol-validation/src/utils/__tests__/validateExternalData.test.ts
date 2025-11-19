@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { Network } from "../validateExternalData";
 import { getVariableNamesFromNetwork, validateNames } from "../validateExternalData";
 
 describe("validateExternalData", () => {
 	describe("getVariableNamesFromNetwork", () => {
 		it("should extract unique attribute names from nodes", () => {
-			const network = {
+			const network: Network = {
 				nodes: [{ attributes: { name: "Alice", age: "30" } }, { attributes: { name: "Bob", gender: "M" } }],
 				edges: [],
 			};
@@ -15,7 +16,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should extract unique attribute names from edges", () => {
-			const network = {
+			const network: Network = {
 				nodes: [],
 				edges: [
 					{ attributes: { type: "friend", since: "2020" } },
@@ -29,7 +30,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should extract unique attribute names from both nodes and edges", () => {
-			const network = {
+			const network: Network = {
 				nodes: [{ attributes: { name: "Alice", age: "30" } }, { attributes: { name: "Bob", location: "NYC" } }],
 				edges: [{ attributes: { type: "friend", weight: "5" } }, { attributes: { type: "colleague" } }],
 			};
@@ -40,7 +41,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should not duplicate attribute names across items", () => {
-			const network = {
+			const network: Network = {
 				nodes: [
 					{ attributes: { name: "Alice", age: "30" } },
 					{ attributes: { name: "Bob", age: "25" } },
@@ -55,7 +56,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should handle empty nodes array", () => {
-			const network = {
+			const network: Network = {
 				nodes: [],
 				edges: [{ attributes: { type: "friend" } }],
 			};
@@ -65,7 +66,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should handle empty edges array", () => {
-			const network = {
+			const network: Network = {
 				nodes: [{ attributes: { name: "Alice" } }],
 				edges: [],
 			};
@@ -75,7 +76,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should handle empty network", () => {
-			const network = {
+			const network: Network = {
 				nodes: [],
 				edges: [],
 			};
@@ -85,7 +86,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should handle undefined nodes or edges", () => {
-			const network = {
+			const network: Network = {
 				nodes: undefined as never,
 				edges: undefined as never,
 			};
@@ -95,7 +96,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should handle items with no attributes", () => {
-			const network = {
+			const network: Network = {
 				nodes: [{ attributes: {} }],
 				edges: [{ attributes: {} }],
 			};
@@ -105,7 +106,7 @@ describe("validateExternalData", () => {
 		});
 
 		it("should handle complex attribute names", () => {
-			const network = {
+			const network: Network = {
 				nodes: [
 					{
 						attributes: {

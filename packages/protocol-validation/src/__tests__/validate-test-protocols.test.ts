@@ -62,6 +62,7 @@ describe("Test protocols", () => {
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
+					// biome-ignore lint/suspicious/noConsole: logging
 					console.error(`Migration validation failed for ${filename}:`, migrationResult.error);
 				}
 

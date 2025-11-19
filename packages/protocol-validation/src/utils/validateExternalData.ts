@@ -1,11 +1,11 @@
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 
-type Item = {
+export type Item = {
 	attributes: Record<string, string>;
 };
 
-type Network = {
+export type Network = {
 	nodes: Item[];
 	edges: Item[];
 };
@@ -31,7 +31,7 @@ const getUniqueAttributes = (items: Item[]) => {
 export const getVariableNamesFromNetwork = (network: Network) =>
 	(["nodes", "edges"] as Array<keyof Network>).flatMap((entity) => getUniqueAttributes(network[entity] || []));
 
-export const validateNames = (items = []) => {
+export const validateNames = (items: string[] = []) => {
 	const errors = items.filter((item) => allowedVariableName(item) !== undefined);
 
 	if (errors.length === 0) {

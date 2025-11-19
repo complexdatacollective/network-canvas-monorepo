@@ -529,7 +529,7 @@ describe("createRouteHandler", () => {
 				json: async () => {
 					throw new Error("Invalid JSON");
 				},
-			} as NextRequest;
+			} as unknown as NextRequest;
 
 			const response = await handler(request);
 			const data = await response.json();
@@ -635,7 +635,8 @@ describe("makeEventTracker", () => {
 			}),
 		);
 
-		const sentData = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+		// biome-ignore lint/style/noNonNullAssertion: test code - we know these values exist after fetch call
+		const sentData = JSON.parse(mockFetch.mock.calls[0]![1]!.body as string);
 		expect(sentData).toMatchObject({
 			type: "AppSetup",
 			timestamp: "2024-01-01T12:00:00.000Z",
@@ -763,7 +764,8 @@ describe("makeEventTracker", () => {
 
 		expect(result).toEqual({ error: null, success: true });
 
-		const sentData = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+		// biome-ignore lint/style/noNonNullAssertion: test code - we know these values exist after fetch call
+		const sentData = JSON.parse(mockFetch.mock.calls[0]![1]!.body as string);
 		expect(sentData).toMatchObject({
 			type: "Error",
 			message: "Something went wrong",
@@ -795,7 +797,8 @@ describe("makeEventTracker", () => {
 
 		expect(result).toEqual({ error: null, success: true });
 
-		const sentData = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+		// biome-ignore lint/style/noNonNullAssertion: test code - we know these values exist after fetch call
+		const sentData = JSON.parse(mockFetch.mock.calls[0]![1]!.body as string);
 		expect(sentData.metadata).toEqual({
 			protocolId: "proto-123",
 			version: "2.0.0",
