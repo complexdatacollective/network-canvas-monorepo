@@ -6,8 +6,7 @@ const getExtension = (filename: string) => {
 	return match[1];
 };
 
-const matchExtension = (filename: string, extension: string) =>
-	RegExp(`${extension}$`).test(filename.toLowerCase());
+const matchExtension = (filename: string, extension: string) => RegExp(`${extension}$`).test(filename.toLowerCase());
 
 const acceptsFile = (accepts: string[]) => (file: File) => accepts.some((accept) => matchExtension(file.name, accept));
 

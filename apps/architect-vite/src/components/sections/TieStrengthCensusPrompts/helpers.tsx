@@ -26,10 +26,5 @@ export const itemSelector =
 	};
 
 // Strip variableOptions
-export const normalizeField = ({
-	variableOptions,
-	...prompt
-}: {
-	variableOptions?: unknown;
-	[key: string]: unknown;
-}) => prompt;
+export const normalizeField = ({ variableOptions, ...prompt }: { variableOptions?: unknown; [key: string]: unknown }) =>
+	prompt;

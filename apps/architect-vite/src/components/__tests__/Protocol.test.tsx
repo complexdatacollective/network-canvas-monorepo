@@ -31,7 +31,9 @@ vi.mock("~/hooks/useProtocolLoader", () => ({
 // Mock motion/react to avoid animation issues in tests
 vi.mock("motion/react", () => ({
 	motion: {
-		div: ({ children, ...props }: Record<string, unknown> & { children?: ReactNode }) => <div {...props}>{children}</div>,
+		div: ({ children, ...props }: Record<string, unknown> & { children?: ReactNode }) => (
+			<div {...props}>{children}</div>
+		),
 	},
 	useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
 }));

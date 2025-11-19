@@ -24,7 +24,9 @@ const store = configureStore({
 			.concat(logger)
 			.prepend(protocolValidationListenerMiddleware.middleware),
 	enhancers: (getDefaultEnhancers) =>
-		getDefaultEnhancers().concat(rememberEnhancer(window.localStorage, rememberedKeys) as unknown as ReturnType<typeof getDefaultEnhancers>[0]),
+		getDefaultEnhancers().concat(
+			rememberEnhancer(window.localStorage, rememberedKeys) as unknown as ReturnType<typeof getDefaultEnhancers>[0],
+		),
 });
 
 export { store };

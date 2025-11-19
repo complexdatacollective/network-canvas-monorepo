@@ -12,7 +12,10 @@ export const getLayoutVariablesForSubject = (state: RootState, { entity, type }:
 	return layoutOptions;
 };
 
-export const getHighlightVariablesForSubject = (state: RootState, { type, entity }: { type: string; entity: string }) => {
+export const getHighlightVariablesForSubject = (
+	state: RootState,
+	{ type, entity }: { type: string; entity: string },
+) => {
 	// All defined variables that match nodeType
 	const variableOptions = getVariableOptionsForSubject(state, { entity, type });
 

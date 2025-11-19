@@ -9,7 +9,13 @@ type VariableListProps = {
 	sort: (key: string) => void;
 };
 
-const Variables = ({ variables = [], sortBy, sortDirection, sort, onDelete: _onDelete = () => {} }: VariableListProps) => {
+const Variables = ({
+	variables = [],
+	sortBy,
+	sortDirection,
+	sort,
+	onDelete: _onDelete = () => {},
+}: VariableListProps) => {
 	const headingProps = {
 		sortBy,
 		sortDirection,

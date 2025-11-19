@@ -1,11 +1,11 @@
-import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import { saveAssetToDb } from "~/utils/assetUtils";
-import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
+import { saveAssetToDb } from "~/utils/assetUtils";
 import { validateAsset } from "~/utils/protocols/assetTools";
+import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 
 // Types
 type AssetType = "video" | "audio" | "image" | "network" | "geojson" | "apikey";
@@ -82,10 +82,12 @@ export const importAssetAsync = createAsyncThunk(
 			dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
 			return importPayload;
 		} catch (error) {
-			dispatch(assetManifestSlice.actions.importAssetFailed({
-				filename: name,
-				error: error as Error,
-			}));
+			dispatch(
+				assetManifestSlice.actions.importAssetFailed({
+					filename: name,
+					error: error as Error,
+				}),
+			);
 			dispatch(importAssetErrorDialog(error as Error, name));
 			return rejectWithValue((error as Error).message);
 		}

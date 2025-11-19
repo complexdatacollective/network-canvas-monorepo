@@ -15,7 +15,8 @@ const getMessage = ({
 }: {
 	error: Error | string | { friendlyMessage?: string } | null;
 	message: React.ReactNode;
-}) => (error ? getErrorMessage(error as Error | string | { friendlyMessage?: string; toString: () => string }) : message);
+}) =>
+	error ? getErrorMessage(error as Error | string | { friendlyMessage?: string; toString: () => string }) : message;
 
 const getStack = (error: Error | string | { stack?: string } | null) =>
 	!!error && typeof error === "object" && "stack" in error && error.stack;

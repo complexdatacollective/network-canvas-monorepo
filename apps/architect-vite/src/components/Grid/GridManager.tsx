@@ -37,7 +37,8 @@ type GridManagerProps = {
 	upsert: (item: Record<string, unknown>) => void;
 } & Record<string, unknown>;
 
-const notEmpty = (value: unknown) => (value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item");
+const notEmpty = (value: unknown) =>
+	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item";
 
 const _handleSubmitFail = (issues: Record<string, unknown>) => {
 	scrollToFirstIssue(issues);
