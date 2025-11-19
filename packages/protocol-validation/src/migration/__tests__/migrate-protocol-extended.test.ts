@@ -138,7 +138,7 @@ describe("Protocol Migration - Extended Tests", () => {
 			const migrated = migrateProtocol(v7Doc);
 
 			expect(migrated).toHaveProperty("experiments");
-			expect(migrated.experiments).toBeUndefined();
+			expect(migrated.experiments).toEqual({});
 		});
 
 		it("should handle null values in optional fields", () => {
