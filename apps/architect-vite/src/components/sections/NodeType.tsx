@@ -1,7 +1,9 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { difference, get, keys } from "lodash";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import Row from "../EditorLayout/Row";
 import Section from "../EditorLayout/Section";
 import ValidatedField from "../Form/ValidatedField";
@@ -22,16 +24,16 @@ interface NodeTypeProps {
 const NodeType = (props: NodeTypeProps) => {
 	const { form, withFilter = false } = props;
 
-	const dispatch = useDispatch();
-	const formValues = useSelector((state) => getFormValues(form)(state));
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const formValues = useSelector((state: RootState) => getFormValues(form)(state));
 	const fields = keys(formValues);
 
 	const _currentSubject = get(formValues, "subject");
 
 	const handleResetStage = useCallback(() => {
 		const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
-		fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
-	});
+		fieldsToReset.forEach((field) => dispatch(change(form, field, null) as UnknownAction));
+	}, [dispatch, fields, form]);
 
 	// TODO: Restore auto-selection of newly created types when type creation dialogs
 	// are properly integrated with form state management

@@ -1,4 +1,4 @@
-import { bindActionCreators } from "@reduxjs/toolkit";
+import { bindActionCreators, type Dispatch } from "@reduxjs/toolkit";
 import { has } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps } from "recompose";
@@ -6,7 +6,7 @@ import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
 import { actionCreators as assetActions } from "~/ducks/modules/protocol/assetManifest";
 import Dropzone from "./Dropzone";
 
-const mapDispatchToProps = (dispatch) => ({
+const mapDispatchToProps = (dispatch: Dispatch) => ({
 	importAsset: bindActionCreators(assetActions.importAsset, dispatch),
 });
 

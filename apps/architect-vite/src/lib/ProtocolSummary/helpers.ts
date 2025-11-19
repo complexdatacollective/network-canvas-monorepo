@@ -23,7 +23,7 @@ const buildVariableEntry =
 		entityType: string,
 	) =>
 	(variableConfiguration: VariableConfiguration, variableId: string) => {
-		const usage = reduce(
+		const usage = reduce<Record<string, unknown>, string[]>(
 			variablePaths,
 			(memo, id, variablePath) => {
 				if (id !== variableId) {
@@ -34,7 +34,7 @@ const buildVariableEntry =
 			[],
 		);
 
-		const stages = usage.map((path) => {
+		const stages = usage.map((path: string) => {
 			const [stagePath] = path.split(".");
 			return get(protocol, `${stagePath}.id`);
 		});
@@ -69,7 +69,7 @@ type Protocol = {
 };
 
 export const getCodebookIndex = (protocol: Protocol) => {
-	if (!protocol || !protocol.stages) {
+	if (!protocol || !protocol.stages || !protocol.codebook) {
 		return {};
 	}
 
@@ -84,16 +84,21 @@ export const getCodebookIndex = (protocol: Protocol) => {
 	});
 
 	const protocolEntities = [
-		...(protocol.codebook.node ? ["node"] : []),
-		...(protocol.codebook.edge ? ["edge"] : []),
-		...(protocol.codebook.ego ? ["ego"] : []),
+		...(protocol.codebook?.node ? ["node"] : []),
+		...(protocol.codebook?.edge ? ["edge"] : []),
+		...(protocol.codebook?.ego ? ["ego"] : []),
 	];
 
 	const index = flatMap(protocolEntities, (entity) => {
-		const entityConfigurations = entity === "ego" ? { ego: protocol.codebook[entity] } : protocol.codebook[entity];
+		const codebook = protocol.codebook!;
+		const entityConfigurations =
+			entity === "ego" ? { ego: codebook.ego } : (codebook as Record<string, unknown>)[entity];
 
 		return flatMap(entityConfigurations, (entityConfiguration, entityType) =>
-			flatMap(entityConfiguration.variables, buildVariableEntry(protocol, variablePaths, fields, entity, entityType)),
+			flatMap(
+				(entityConfiguration as { variables?: Record<string, VariableConfiguration> }).variables,
+				buildVariableEntry(protocol, variablePaths, fields, entity, String(entityType)),
+			),
 		);
 	});
 

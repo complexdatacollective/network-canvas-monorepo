@@ -1,9 +1,11 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import CheckboxGroup from "~/components/Form/Fields/CheckboxGroup";
 import Text from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { RootState } from "~/ducks/modules/root";
 import Row from "../../EditorLayout/Row";
 import Section from "../../EditorLayout/Section";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
@@ -31,47 +33,51 @@ const PresetFields = ({
 	form,
 	edgesForSubject = [],
 	entity,
-	groupVariable = null,
+	groupVariable = undefined,
 	groupVariablesForSubject = [],
 	handleCreateLayoutVariable,
 	highlightVariablesForSubject = [],
-	layoutVariable = null,
+	layoutVariable = undefined,
 	layoutVariablesForSubject = [],
 	type,
 }: PresetFieldsProps) => {
 	const getFormValue = formValueSelector(form);
 
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const hasGroupVariable = !!groupVariable;
-	const displayEdges = useSelector((state) => getFormValue(state, "edges.display"));
+	const displayEdges = useSelector(
+		(state: RootState) => getFormValue(state, "edges.display") as Record<string, unknown>[],
+	);
 	const hasDisplayEdges = displayEdges && displayEdges.length > 0;
-	const highlightVariables = useSelector((state) => getFormValue(state, "highlight"));
+	const highlightVariables = useSelector(
+		(state: RootState) => getFormValue(state, "highlight") as Record<string, unknown>[],
+	);
 	const hasHighlightVariables = highlightVariables && highlightVariables.length > 0;
 
-	const handleToggleHighlightVariables = (open) => {
+	const handleToggleHighlightVariables = (open: boolean) => {
 		if (open) {
 			return true;
 		}
 
-		dispatch(change(form, "highlight", null));
+		dispatch(change(form, "highlight", null) as UnknownAction);
 		return true;
 	};
 
-	const handleToggleDisplayEdges = (open) => {
+	const handleToggleDisplayEdges = (open: boolean) => {
 		if (open) {
 			return true;
 		}
 
-		dispatch(change(form, "edges", null));
+		dispatch(change(form, "edges", null) as UnknownAction);
 		return true;
 	};
 
-	const handleToggleGroupVariable = (open) => {
+	const handleToggleGroupVariable = (open: boolean) => {
 		if (open) {
 			return true;
 		}
 
-		dispatch(change(form, "groupVariable", null));
+		dispatch(change(form, "groupVariable", null) as UnknownAction);
 		return true;
 	};
 
@@ -90,10 +96,12 @@ const PresetFields = ({
 				<Row>
 					<ValidatedField
 						name="label"
-						label="Preset label"
 						component={Text}
-						placeholder="Enter a label for the preset..."
 						validation={{ required: true }}
+						componentProps={{
+							label: "Preset label",
+							placeholder: "Enter a label for the preset...",
+						}}
 					/>
 				</Row>
 			</Section>
@@ -106,12 +114,14 @@ const PresetFields = ({
 					<ValidatedField
 						name="layoutVariable"
 						component={VariablePicker}
-						entity={entity}
-						type={type}
 						validation={{ required: true }}
-						options={layoutVariablesForSubject}
-						onCreateOption={handleCreateLayoutVariable}
-						variable={layoutVariable}
+						componentProps={{
+							entity,
+							type,
+							options: layoutVariablesForSubject,
+							onCreateOption: handleCreateLayoutVariable,
+							variable: layoutVariable,
+						}}
 					/>
 				</Row>
 			</Section>
@@ -119,7 +129,7 @@ const PresetFields = ({
 				title="Group Variable"
 				summary={<p>Select a categorical variable which will be used to draw convex hulls around nodes.</p>}
 				toggleable
-				disabled={!groupVariablesForSubject.length > 0}
+				disabled={groupVariablesForSubject.length === 0}
 				startExpanded={hasGroupVariable && groupVariablesForSubject.length > 0}
 				handleToggleChange={handleToggleGroupVariable}
 				layout="vertical"
@@ -147,7 +157,7 @@ const PresetFields = ({
 				toggleable
 				startExpanded={hasDisplayEdges && edgesForSubject.length > 0}
 				handleToggleChange={handleToggleDisplayEdges}
-				disabled={!edgesForSubject.length > 0}
+				disabled={edgesForSubject.length === 0}
 				summary={<p>Select one or more edge types to display on this narrative preset.</p>}
 				layout="vertical"
 			>
@@ -171,7 +181,7 @@ const PresetFields = ({
 				}
 				toggleable
 				startExpanded={hasHighlightVariables && highlightVariablesForSubject.length > 0}
-				disabled={!highlightVariablesForSubject.length > 0}
+				disabled={highlightVariablesForSubject.length === 0}
 				handleToggleChange={handleToggleHighlightVariables}
 				layout="vertical"
 			>
@@ -189,4 +199,4 @@ const PresetFields = ({
 	);
 };
 
-export default compose(withPresetProps)(PresetFields);
+export default compose<PresetFieldsProps, PresetFieldsProps>(withPresetProps)(PresetFields);

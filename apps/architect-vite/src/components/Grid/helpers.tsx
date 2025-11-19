@@ -20,9 +20,10 @@ export const parseSize = (size: string): number => {
 	}
 };
 
-type GridItem = {
+export type GridItem = {
 	size: string;
 	id: string;
+	[key: string]: unknown;
 };
 
 export const getRemainingSpace = (items: GridItem[] = [], capacity = 0): number =>

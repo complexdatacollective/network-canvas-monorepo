@@ -1,8 +1,10 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
+import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../DetachedField";
 import IssueAnchor from "../IssueAnchor";
 
@@ -12,10 +14,8 @@ type AutomaticLayoutProps = {
 	form: string;
 };
 
-type RootState = Record<string, unknown>;
-
 const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 
@@ -23,12 +23,12 @@ const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
 
 	const handleChooseLayoutMode = () => {
 		if (useAutomaticLayout) {
-			dispatch(change("edit-stage", FORM_PROPERTY, false));
+			dispatch(change("edit-stage", FORM_PROPERTY, false) as UnknownAction);
 			setUseAutomaticLayout(false);
 			return;
 		}
 
-		dispatch(change("edit-stage", FORM_PROPERTY, true));
+		dispatch(change("edit-stage", FORM_PROPERTY, true) as UnknownAction);
 		setUseAutomaticLayout(true);
 	};
 

@@ -1,21 +1,39 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
+import type { Dispatch } from "react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 import { getNodeTypes } from "~/selectors/codebook";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import Tip from "../../Tip";
 
+interface Variable {
+	name: string;
+	encrypted?: boolean;
+	[key: string]: unknown;
+}
+
+interface NodeType {
+	name: string;
+	variables?: Record<string, Variable>;
+	[key: string]: unknown;
+}
+
 const EncryptedVariables = () => {
-	const dispatch = useDispatch();
-	const openDialog = useCallback((dialog) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
-	const nodeTypes = useSelector((state) => getNodeTypes(state));
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const openDialog = useCallback(
+		(dialog: Parameters<typeof dialogActions.openDialog>[0]) => dispatch(dialogActions.openDialog(dialog)),
+		[dispatch],
+	);
+	const nodeTypes = useSelector((state: RootState) => getNodeTypes(state) as Record<string, NodeType>);
 
 	const handleEncryptionToggle = useCallback(
-		(variableId, encrypted, variable) => {
+		(variableId: string, encrypted: boolean, variable: Variable) => {
 			const properties = encrypted ? { ...variable, encrypted: true } : omit(variable, "encrypted");
 
 			dispatch(codebookActions.updateVariableByUUID(variableId, properties, false));
@@ -24,7 +42,7 @@ const EncryptedVariables = () => {
 	);
 
 	const handleToggleChange = useCallback(
-		async (hasEncryptedVariable, nodeType, newState) => {
+		async (hasEncryptedVariable: boolean, nodeType: NodeType, newState: boolean) => {
 			if (!hasEncryptedVariable || newState === true) {
 				return true;
 			}
@@ -38,7 +56,7 @@ const EncryptedVariables = () => {
 
 			if (confirm) {
 				Object.entries(nodeType.variables || {}).forEach(([variableId, variable]) => {
-					if (variable.encrypted) {
+					if (variable?.encrypted) {
 						handleEncryptionToggle(variableId, false, variable);
 					}
 				});
@@ -64,7 +82,7 @@ const EncryptedVariables = () => {
 			}
 		>
 			{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
-				const hasEncryptedVariable = Object.values(nodeType.variables || {}).some((variable) => variable.encrypted);
+				const hasEncryptedVariable = Object.values(nodeType.variables || {}).some((variable) => variable?.encrypted);
 
 				// Memoize these calculations to avoid recreating arrays on every render
 				const variables = nodeType.variables || {};
@@ -80,7 +98,7 @@ const EncryptedVariables = () => {
 				const encryptedVariableIds = useMemo(
 					() =>
 						Object.entries(variables)
-							.filter(([, variable]) => variable.encrypted)
+							.filter(([, variable]) => variable?.encrypted)
 							.map(([variableId]) => variableId),
 					[variables],
 				);
@@ -105,10 +123,10 @@ const EncryptedVariables = () => {
 								component={Fields.CheckboxGroup}
 								options={variableOptions}
 								value={encryptedVariableIds}
-								onChange={(selectedValues) => {
+								onChange={(selectedValues: string[]) => {
 									Object.entries(variables).forEach(([variableId, variable]) => {
 										const shouldEncrypt = selectedValues.includes(variableId);
-										if (variable.encrypted !== shouldEncrypt) {
+										if (variable?.encrypted !== shouldEncrypt) {
 											handleEncryptionToggle(variableId, shouldEncrypt, variable);
 										}
 									});

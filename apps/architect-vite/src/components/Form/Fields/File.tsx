@@ -18,7 +18,7 @@ type MetaProps = {
 	touched?: boolean;
 };
 
-type FileInputProps = {
+export type FileInputProps = {
 	setShowBrowser: (show: boolean) => void;
 	onCloseBrowser?: () => void;
 	input: InputProps;

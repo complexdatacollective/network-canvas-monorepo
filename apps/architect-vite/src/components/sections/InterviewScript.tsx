@@ -1,3 +1,4 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
@@ -10,7 +11,7 @@ import { getFieldId } from "~/utils/issues";
 const InterviewerScript = () => {
 	const getFormValue = formValueSelector("edit-stage");
 	const currentValue = useSelector((state: RootState) => getFormValue(state, "interviewScript"));
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const openDialog = useCallback(
 		(dialog: { type: string; title: string; message: string; confirmLabel?: string }) =>
 			dispatch(dialogActions.openDialog(dialog)),
@@ -32,7 +33,7 @@ const InterviewerScript = () => {
 			});
 
 			if (confirm) {
-				dispatch(change("edit-stage", "interviewScript", null));
+				dispatch(change("edit-stage", "interviewScript", null) as UnknownAction);
 				return true;
 			}
 

@@ -12,9 +12,18 @@ const initialContent = {
 	columns: [],
 };
 
-const getRows = (network) => get(network, ["nodes"], []).map(({ attributes }) => attributes);
+type NetworkNode = {
+	attributes: Record<string, unknown>;
+};
 
-const getColumns = (network) =>
+type NetworkData = {
+	nodes: NetworkNode[];
+};
+
+const getRows = (network: NetworkData): Record<string, unknown>[] =>
+	get(network, ["nodes"], []).map(({ attributes }: NetworkNode) => attributes);
+
+const getColumns = (network: NetworkData) =>
 	getVariableNamesFromNetwork(network).map((col) => ({
 		Header: col,
 		accessor: col,

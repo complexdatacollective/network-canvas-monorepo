@@ -20,9 +20,8 @@ const IntroductionPanel = ({ interfaceType }: IntroductionPanelProps) => {
 				<IssueAnchor fieldName="introductionPanel.title" description="Title (Introduction panel)" />
 				<ValidatedField
 					name="introductionPanel.title"
-					label="Title"
 					component={TextField}
-					maxLength="50"
+					componentProps={{ label: "Title", maxLength: "50" }}
 					validation={{ required: true }}
 				/>
 			</Row>
@@ -30,8 +29,8 @@ const IntroductionPanel = ({ interfaceType }: IntroductionPanelProps) => {
 				<IssueAnchor fieldName="introductionPanel.text" description="Text (Introduction panel)" />
 				<ValidatedField
 					name="introductionPanel.text"
-					label="Introduction text"
 					component={RichText}
+					componentProps={{ label: "Introduction text" }}
 					validation={{ required: true }}
 				/>
 			</Row>

@@ -26,7 +26,12 @@ type SelectProps = {
 	onDeleteOption?: (() => void) | null;
 	createNewOption?: boolean;
 	onCreateNew?: (() => void) | null;
-	input?: Record<string, unknown>;
+	input?: {
+		value: unknown;
+		onChange: (value: unknown) => void;
+		onBlur?: (value: unknown) => void;
+		[key: string]: unknown;
+	};
 	label?: string | null;
 	children?: React.ReactNode;
 	meta?: {
@@ -36,18 +41,32 @@ type SelectProps = {
 	};
 };
 
+const defaultSelectProps: Partial<SelectProps> = {
+	options: [],
+	input: { value: null, onChange: () => {} },
+	meta: {},
+	onDeleteOption: null,
+	createNewOption: false,
+	onCreateNew: null,
+};
+
 class Select extends PureComponent<SelectProps> {
+	static defaultProps = defaultSelectProps;
+
 	get value() {
-		const { options, input } = this.props;
+		const { options = [], input } = this.props;
+		if (!input) return null;
 		return getValue(options, input.value);
 	}
 
-	handleChange = (option: SelectOption) => {
+	handleChange = (option: SelectOption | null) => {
 		const { onCreateNew, input } = this.props;
+
+		if (!option || !input) return;
 
 		/* eslint-disable no-underscore-dangle */
 		if (option.__createNewOption__) {
-			onCreateNew();
+			onCreateNew?.();
 			return;
 		}
 		/* eslint-enable */
@@ -56,7 +75,7 @@ class Select extends PureComponent<SelectProps> {
 
 	handleBlur = () => {
 		const { input } = this.props;
-		if (!input.onBlur) {
+		if (!input?.onBlur) {
 			return;
 		}
 		input.onBlur(input.value);
@@ -65,15 +84,20 @@ class Select extends PureComponent<SelectProps> {
 	render() {
 		const {
 			className,
-			input: { onBlur, ...input },
-			options,
+			input,
+			options = [],
 			children,
 			selectOptionComponent,
 			label,
 			createNewOption,
-			meta: { invalid, error, touched },
+			meta = {},
 			...rest
 		} = this.props;
+
+		if (!input) return null;
+
+		const { onBlur, ...inputRest } = input;
+		const { invalid, error, touched } = meta;
 
 		const optionsWithNew = createNewOption ? [...options, { __createNewOption__: createNewOption }] : options;
 
@@ -87,10 +111,10 @@ class Select extends PureComponent<SelectProps> {
 					className="form-fields-select"
 					classNamePrefix="form-fields-select"
 					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...input}
+					{...(inputRest as Record<string, unknown>)}
 					options={optionsWithNew}
 					value={this.value}
-					components={{ Option: selectOptionComponent }}
+					components={selectOptionComponent ? { Option: selectOptionComponent } : undefined}
 					styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
 					menuPortalTarget={document.body}
 					onChange={this.handleChange}
@@ -101,7 +125,7 @@ class Select extends PureComponent<SelectProps> {
 					onBlur={this.handleBlur}
 					blurInputOnSelect={false}
 					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...rest}
+					{...(rest as Record<string, unknown>)}
 				>
 					{children}
 				</ReactSelect>

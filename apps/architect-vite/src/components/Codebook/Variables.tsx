@@ -53,12 +53,17 @@ const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps
 	);
 };
 
+interface UsageItem {
+	label: string;
+	id?: string;
+}
+
 type Variable = {
 	id: string;
 	name: string;
 	component: string;
 	inUse: boolean;
-	usage: unknown;
+	usage: UsageItem[];
 	usageString?: string;
 };
 
@@ -78,7 +83,7 @@ const Variables = ({
 	sortBy,
 	sortDirection,
 	sort,
-	type: _type = null,
+	type: _type,
 }: VariablesProps) => {
 	const headingProps = {
 		sortBy,
@@ -137,16 +142,25 @@ const Variables = ({
 	);
 };
 
+interface WithVariableHandlersProps {
+	deleteVariable: (params: { entity: string; type?: string; variable: string }) => void;
+	openDialog: (dialog: unknown) => void;
+	entity: string;
+	type?: string;
+	variables: Variable[];
+}
+
 const withVariableHandlers = compose(
 	connect(null, {
 		openDialog: dialogActionCreators.openDialog,
 		deleteVariable: codebookActionCreators.deleteVariable,
 	}),
-	withHandlers({
+	withHandlers<WithVariableHandlersProps, { onDelete: (id: string) => void }>({
 		onDelete:
-			({ deleteVariable, openDialog, entity, type, variables }) =>
-			(id) => {
-				const { name } = variables.find((v) => v.id === id);
+			({ deleteVariable, openDialog, entity, type, variables }: WithVariableHandlersProps) =>
+			(id: string) => {
+				const variable = variables.find((v: Variable) => v.id === id);
+				const { name } = variable || { name: "Unknown" };
 
 				openDialog({
 					type: "Warning",
@@ -186,6 +200,16 @@ const reverse =
 	(list: Variable[]) =>
 		sortDirection === SortDirection.DESC ? [...list].reverse() : list;
 
+interface WithSortProps {
+	sortBy: string;
+	sortDirection: SortDirectionType;
+	variables: Variable[];
+}
+
+interface WithSortOutput {
+	variables: Variable[];
+}
+
 const withSort = compose(
 	withStateHandlers(
 		{
@@ -195,17 +219,21 @@ const withSort = compose(
 		{
 			sort:
 				() =>
-				({ sortBy, sortDirection }) => ({
+				({ sortBy, sortDirection }: { sortBy: string; sortDirection: SortDirectionType }) => ({
 					sortBy,
 					sortDirection,
 				}),
 		},
 	),
-	withProps(({ sortBy, sortDirection, variables }) => ({
-		variables: compose(reverse(sortDirection), sort(sortBy))(variables),
-	})),
+	withProps<WithSortOutput, WithSortProps>(({ sortBy, sortDirection, variables }: WithSortProps) => {
+		const sorted = sort(sortBy)(variables);
+		const reversed = reverse(sortDirection)(sorted);
+		return {
+			variables: reversed,
+		};
+	}),
 );
 
 export { Heading, rowClassName, SortDirection, withSort };
 
-export default compose(withVariableHandlers, withSort)(Variables);
+export default compose(withVariableHandlers, withSort)(Variables as React.ComponentType<unknown>);

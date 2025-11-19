@@ -1,8 +1,10 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { openDialog } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 import IssueAnchor from "../IssueAnchor";
 import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "../Query";
 import Tip from "../Tip";
@@ -10,8 +12,12 @@ import getEdgeFilteringWarning from "./SociogramPrompts/utils";
 
 const FilterField = withFieldConnector(withStoreConnector(FilterQuery));
 
-export const handleFilterDeactivate = async (openDialog) => {
-	const result = await openDialog({
+type OpenDialogFunction = typeof openDialog;
+
+export const handleFilterDeactivate = async (
+	openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>,
+) => {
+	const result = await openDialogFn({
 		type: "Warning",
 		title: "This will clear your filter",
 		message: "This will clear your filter, and delete any rules you have created. Do you want to continue?",
@@ -23,17 +29,21 @@ export const handleFilterDeactivate = async (openDialog) => {
 
 const Filter = () => {
 	const getFormValue = formValueSelector("edit-stage");
-	const dispatch = useDispatch();
-	const currentValue = useSelector((state) => getFormValue(state, "filter"));
-	const openDialog = useCallback((dialog) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const currentValue = useSelector(
+		(state: RootState) => getFormValue(state, "filter") as { rules?: unknown[] } | undefined,
+	);
 
 	// get edge creation and display values for edges across all prompts
-	const prompts = useSelector((state) => getFormValue(state, "prompts"));
+	const prompts = useSelector(
+		(state: RootState) =>
+			getFormValue(state, "prompts") as Array<{ edges?: { create?: string; display?: string[] } }> | undefined,
+	);
 
 	const { edgeCreationValues, edgeDisplayValues } = useMemo(() => {
 		if (!prompts) return { edgeCreationValues: [], edgeDisplayValues: [] };
-		const creationValues = [];
-		const displayValues = [];
+		const creationValues: string[] = [];
+		const displayValues: string[] = [];
 		prompts.forEach((prompt) => {
 			if (prompt?.edges?.create) creationValues.push(prompt.edges.create);
 			if (prompt?.edges?.display) displayValues.push(...prompt.edges.display);
@@ -48,21 +58,21 @@ const Filter = () => {
 	}, [currentValue, edgeCreationValues, edgeDisplayValues]);
 
 	const handleToggleChange = useCallback(
-		async (newState) => {
+		async (newState: boolean) => {
 			if (!currentValue || newState === true) {
 				return true;
 			}
 
-			const confirm = await handleFilterDeactivate(openDialog);
+			const confirm = await handleFilterDeactivate((dialog) => dispatch(openDialog(dialog)));
 
 			if (confirm) {
-				dispatch(change("edit-stage", "filter", null));
+				dispatch(change("edit-stage", "filter", null) as UnknownAction);
 				return true;
 			}
 
 			return false;
 		},
-		[dispatch, openDialog, currentValue],
+		[dispatch, currentValue],
 	);
 
 	return (

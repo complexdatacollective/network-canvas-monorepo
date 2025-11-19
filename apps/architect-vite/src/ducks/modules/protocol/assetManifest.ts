@@ -1,4 +1,4 @@
-import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
+import type { ExtractedAsset } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";

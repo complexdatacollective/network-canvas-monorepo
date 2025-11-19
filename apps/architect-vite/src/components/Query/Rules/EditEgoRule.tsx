@@ -13,13 +13,13 @@ import withOptions from "./withOptions";
 import withRuleChangeHandler from "./withRuleChangeHandler";
 
 const defaultOptions = {
-	type: null,
-	attribute: null,
-	operator: null,
+	type: "",
+	attribute: "",
+	operator: "",
 	value: "",
 };
 
-type OptionItem = {
+export type OptionItem = {
 	value: string | number;
 	label: string;
 };
@@ -37,9 +37,9 @@ type EditEgoRuleProps = {
 
 const EditEgoRule = ({
 	rule,
-	variableType = null,
+	variableType,
 	variablesAsOptions,
-	variableOptions = null,
+	variableOptions = [],
 	operatorOptions,
 	handleRuleChange,
 }: EditEgoRuleProps) => {
@@ -119,4 +119,4 @@ const EditEgoRule = ({
 	);
 };
 
-export default compose(withOptions, withRuleChangeHandler)(EditEgoRule);
+export default compose<EditEgoRuleProps, Partial<EditEgoRuleProps>>(withOptions, withRuleChangeHandler)(EditEgoRule);

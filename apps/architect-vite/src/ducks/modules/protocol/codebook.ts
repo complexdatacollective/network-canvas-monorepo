@@ -119,8 +119,8 @@ export const createEdgeAsync = createAsyncThunk(
 	async (configuration: Partial<EntityType>, { dispatch, getState }) => {
 		const entity: Entity = "edge";
 		const state = getState() as RootState;
-		const protocol = state.protocol?.present || state.activeProtocol;
-		const color = configuration.color || getNextCategoryColor(protocol, entity);
+		const protocol = state.activeProtocol?.present || state.activeProtocol;
+		const color = configuration.color ?? getNextCategoryColor(protocol, entity);
 		const type = uuid();
 
 		const payload: CreateTypePayload = {
@@ -241,9 +241,9 @@ export const deleteVariableAsync = createAsyncThunk(
 const getDeleteAction = ({ type, ...owner }: { type: string; id?: string; stageId?: string; promptId?: string }) => {
 	switch (type) {
 		case "stage":
-			return stageActions.deleteStage(owner.id);
+			return stageActions.deleteStage(owner.id!);
 		case "prompt":
-			return stageActions.deletePrompt(owner.stageId, owner.promptId, true);
+			return stageActions.deletePrompt(owner.stageId!, owner.promptId!, true);
 		default:
 			// noop
 			return { type: "NO_OP" };
@@ -325,17 +325,17 @@ const getStateWithUpdatedVariable = (
 
 	const variableConfiguration = merge
 		? {
-				...get(state, [...entityPath, "variables", variable], {}),
+				...((get(state, [...entityPath, "variables", variable]) as Partial<Variable> | undefined) ?? {}),
 				...configuration,
 			}
 		: configuration;
 
 	const newVariables = {
-		...get(state, [...entityPath, "variables"], {}),
+		...((get(state, [...entityPath, "variables"]) as Record<string, Variable> | undefined) ?? {}),
 		[variable]: variableConfiguration,
 	};
 
-	const typeConfiguration = get(state, entityPath, {});
+	const typeConfiguration = (get(state, entityPath) as Partial<EntityType> | undefined) ?? {};
 
 	return getStateWithUpdatedType(state, entity, type, {
 		...typeConfiguration,
@@ -375,7 +375,7 @@ const codebookSlice = createSlice({
 		updateVariable: (state, action: PayloadAction<UpdateVariablePayload>) => {
 			const { variable, configuration, merge = false } = action.payload;
 
-			const variables = getAllVariableUUIDsByEntity(state);
+			const variables = getAllVariableUUIDsByEntity(state as unknown as CodebookState);
 			const variableInfo = find(variables, ["uuid", variable]);
 
 			if (!variableInfo) {
@@ -383,7 +383,7 @@ const codebookSlice = createSlice({
 			}
 
 			const { entity, entityType } = variableInfo;
-			return getStateWithUpdatedVariable(state, entity, entityType, variable, configuration, merge);
+			return getStateWithUpdatedVariable(state, entity, entityType ?? undefined, variable, configuration, merge);
 		},
 		deleteVariable: (state, action: PayloadAction<DeleteVariablePayload>) => {
 			const { entity, type, variable } = action.payload;

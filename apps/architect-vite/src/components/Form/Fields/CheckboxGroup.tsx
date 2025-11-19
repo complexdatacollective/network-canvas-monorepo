@@ -5,10 +5,11 @@ import { useCallback } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import Checkbox from "./Checkbox";
 import MarkdownLabel from "./MarkdownLabel";
+import type { Option } from "./utils/options";
 import { asOptionObject, getValue } from "./utils/options";
 
 interface CheckboxGroupProps {
-	options?: unknown[];
+	options?: Option[];
 	className?: string | null;
 	label?: string | null;
 	fieldLabel?: string | null;
@@ -17,7 +18,16 @@ interface CheckboxGroupProps {
 		value?: unknown[];
 		onChange: (value: unknown[]) => void;
 	};
-	optionComponent?: React.ComponentType<unknown>;
+	optionComponent?: React.ComponentType<{
+		className?: string;
+		input: {
+			value: unknown;
+			checked?: boolean;
+			onChange: () => void;
+		};
+		label: string;
+		[key: string]: unknown;
+	}>;
 	meta?: {
 		error?: string;
 		invalid?: boolean;
@@ -38,9 +48,11 @@ const CheckboxGroup = ({
 
 	const handleClickOption = useCallback(
 		(index: number) => {
-			const option = getValue(options[index]);
-			const isChecked = value.includes(option);
-			const newValue = isChecked ? value.filter((val) => val !== option) : [...value, option];
+			const option = options[index];
+			if (!option) return;
+			const optionValue = getValue(option);
+			const isChecked = value.includes(optionValue);
+			const newValue = isChecked ? value.filter((val) => val !== optionValue) : [...value, optionValue];
 
 			input.onChange(newValue);
 		},
@@ -55,7 +67,7 @@ const CheckboxGroup = ({
 	);
 
 	const renderOption = useCallback(
-		(option: unknown, index: number) => {
+		(option: Option, index: number) => {
 			const OptionComponent = optionComponent;
 			const { value: optionValue, label: optionLabel, ...optionRest } = asOptionObject(option);
 
@@ -91,9 +103,7 @@ const CheckboxGroup = ({
 	return (
 		<div className={classNames}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className="form-field" name={input.name}>
-				{options.map(renderOption)}
-			</div>
+			<div className="form-field">{options.map(renderOption)}</div>
 			{invalid && touched && (
 				<div className="form-field-checkbox-group__error">
 					<Icon name="warning" />

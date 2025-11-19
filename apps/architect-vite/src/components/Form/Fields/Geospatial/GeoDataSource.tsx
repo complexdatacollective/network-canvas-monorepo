@@ -20,7 +20,7 @@ const GeoDataSource = (props: GeoDataSourceProps) => {
 			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...props}
 		>
-			{(id) => <GeoJSONThumbnail id={id} />}
+			{(id: string) => <GeoJSONThumbnail id={id} />}
 		</File>
 	);
 };

@@ -53,7 +53,7 @@ const DatePickerInput = ({
 		setPanelsOpen(false);
 	}, []);
 
-	useScrollTo(parentRef, (open: boolean) => open, [panelsOpen, parentRef]);
+	useScrollTo(parentRef, (panelsOpenArg: unknown) => !!panelsOpenArg, [panelsOpen, parentRef]);
 
 	useEffect(() => {
 		if (panelsOpen) {

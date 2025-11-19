@@ -1,8 +1,8 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import JSZip from "jszip";
 import { assetDb } from "./assetDB";
 
-async function getAllProtocolAssets(protocol: Protocol) {
+async function getAllProtocolAssets(protocol: CurrentProtocol) {
 	const assets: Array<{ id: string; source: string; data: Blob | string }> = [];
 
 	if (!protocol.assetManifest) {
@@ -21,6 +21,11 @@ async function getAllProtocolAssets(protocol: Protocol) {
 				continue;
 			}
 
+			// Skip apikey type assets as they don't have a source property
+			if (assetDefinition.type === "apikey") {
+				continue;
+			}
+
 			assets.push({
 				id: assetId,
 				source: assetDefinition.source,
@@ -32,7 +37,7 @@ async function getAllProtocolAssets(protocol: Protocol) {
 	return assets;
 }
 
-export async function bundleProtocol(protocol: Protocol): Promise<Blob> {
+export async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 	const zip = new JSZip();
 
 	// Remove app state props
@@ -59,7 +64,7 @@ export async function bundleProtocol(protocol: Protocol): Promise<Blob> {
 	return blob;
 }
 
-export async function downloadProtocolAsNetcanvas(protocol: Protocol): Promise<void> {
+export async function downloadProtocolAsNetcanvas(protocol: CurrentProtocol): Promise<void> {
 	try {
 		const blob = await bundleProtocol(protocol);
 
@@ -72,7 +77,9 @@ export async function downloadProtocolAsNetcanvas(protocol: Protocol): Promise<v
 		const minutes = String(now.getMinutes()).padStart(2, "0");
 		const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
 
-		const fileName = `${protocol.name.replace(/\s+/g, "_")}-${timestamp}.netcanvas`;
+		// Use name from protocol, or default to "protocol" if not present
+		const protocolName = "name" in protocol && typeof protocol.name === "string" ? protocol.name : "protocol";
+		const fileName = `${protocolName.replace(/\s+/g, "_")}-${timestamp}.netcanvas`;
 
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");

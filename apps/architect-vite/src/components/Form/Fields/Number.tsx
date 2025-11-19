@@ -31,7 +31,14 @@ const NumberInput = ({ input = {}, placeholder, ...props }: NumberInputProps) =>
 		},
 	};
 
-	return <TextInput type="number" placeholder={placeholder || "Enter a number..."} input={enhancedInput} {...props} />;
+	return (
+		<TextInput
+			type="number"
+			placeholder={placeholder || "Enter a number..."}
+			input={enhancedInput}
+			{...(props as Record<string, unknown>)}
+		/>
+	);
 };
 
 export default NumberInput;

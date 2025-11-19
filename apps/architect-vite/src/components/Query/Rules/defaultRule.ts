@@ -6,14 +6,14 @@ const DEFAULT_OPTIONS = {
 	operator: null,
 };
 
-const DEFAULT_VALUES = {
+const DEFAULT_VALUES: Record<string, unknown> = {
 	boolean: false,
 	categorical: [],
 };
 
-const getDefaultValue = (variableType) => DEFAULT_VALUES[variableType] || "";
+const getDefaultValue = (variableType: string) => DEFAULT_VALUES[variableType] || "";
 
-export const getDefaultOptions = (attributes, variableType) => {
+export const getDefaultOptions = (attributes: string[] | undefined, variableType: string) => {
 	// generate default options object with all possible attributes
 	const defaultOptions = {
 		...DEFAULT_OPTIONS,
@@ -28,7 +28,8 @@ export const getDefaultOptions = (attributes, variableType) => {
 	return pick(defaultOptions, attributes);
 };
 
-export const makeGetOptionsWithDefaults = (attributes, variableType) => (options) => ({
-	...getDefaultOptions(attributes, variableType),
-	...options,
-});
+export const makeGetOptionsWithDefaults =
+	(attributes: string[] | undefined, variableType: string) => (options: Record<string, unknown>) => ({
+		...getDefaultOptions(attributes, variableType),
+		...options,
+	});

@@ -1,8 +1,10 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { difference, get, keys } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { RootState } from "~/ducks/modules/root";
 // Screen message listeners removed as part of screen system refactor
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
@@ -17,14 +19,14 @@ type FilteredEdgeTypeProps = {
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const { form } = props;
 
-	const dispatch = useDispatch();
-	const formValues = useSelector((state) => getFormValues(form)(state));
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const formValues = useSelector((state: RootState) => getFormValues(form)(state));
 	const fields = keys(formValues);
 
 	const handleResetStage = useCallback(() => {
 		const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
-		fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
-	});
+		fieldsToReset.forEach((field) => dispatch(change(form, field, null) as UnknownAction));
+	}, [dispatch, fields, form]);
 
 	const _currentSubject = get(formValues, "subject");
 

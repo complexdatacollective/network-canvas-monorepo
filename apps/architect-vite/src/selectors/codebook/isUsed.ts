@@ -37,7 +37,7 @@ const getFormsSelector = (formNames: string[]) =>
 	});
 
 const getAllFormsSelector = createSelector([(state: RootState) => state], (state) => {
-	const allFormNames = getFormNames(state);
+	const allFormNames = getFormNames(state as unknown as Parameters<typeof getFormNames>[0]);
 	// Ensure allFormNames is an array
 	const formNamesArray = Array.isArray(allFormNames) ? allFormNames : [];
 	const forms: Record<string, unknown> = {};
@@ -75,14 +75,14 @@ const getVariableValidationsSelector = createSelector([getCodebook], (codebook):
 
 	// Process nodes
 	if (codebook.node) {
-		for (const entityDefinition of Object.values(codebook.node)) {
+		for (const entityDefinition of Object.values(codebook.node) as NodeDefinition[]) {
 			validations.push(...getEntityVariableValidations(entityDefinition));
 		}
 	}
 
 	// Process edges
 	if (codebook.edge) {
-		for (const entityDefinition of Object.values(codebook.edge)) {
+		for (const entityDefinition of Object.values(codebook.edge) as EdgeDefinition[]) {
 			validations.push(...getEntityVariableValidations(entityDefinition));
 		}
 	}

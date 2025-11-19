@@ -1,4 +1,5 @@
 import { get, isNull } from "lodash";
+import type { ReactNode } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import EntityBadge from "../EntityBadge";
 import { renderValue } from "../helpers";
@@ -25,25 +26,25 @@ const SortOrder = ({ rules }: SortOrderProps) => {
 	return <ol className="protocol-summary-stage__prompts-sort">{result}</ol>;
 };
 
-const attributes = [
-	["layout.layoutVariable", "Layout variable", (id) => <Variable id={id} />],
-	["variable", "Variable", (id) => <Variable id={id} />],
-	["edges.create", "Creates edge", (type) => <EntityBadge entity="edge" type={type} tiny link />],
-	["createEdge", "Creates edge", (type) => <EntityBadge entity="edge" type={type} tiny link />],
-	["edgeVariable", "Edge Strength Variable", (id) => <Variable id={id} />],
-	["highlight.allowHighlighting", "Allow highlighting", (allow) => renderValue(allow)],
-	["highlight.variable", "Highlight variable", (id) => <Variable id={id} />],
-	["negativeLabel", "Negative Option Label", (text) => text],
-	["sortOrder", "Sort by property", (rules) => <SortOrder rules={rules} />],
-	["binSortOrder", "Bin sort order", (rules) => <SortOrder rules={rules} />],
-	["bucketSortOrder", "Bucket sort order", (rules) => <SortOrder rules={rules} />],
-	["otherVariable", "Other variable", (id) => <Variable id={id} />],
-	["otherVariablePrompt", "Other variable prompt", (text) => text],
-	["otherOptionLabel", "Other option label", (text) => text],
+const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [
+	["layout.layoutVariable", "Layout variable", (id: unknown) => <Variable id={String(id)} />],
+	["variable", "Variable", (id: unknown) => <Variable id={String(id)} />],
+	["edges.create", "Creates edge", (type: unknown) => <EntityBadge entity="edge" type={String(type)} tiny link />],
+	["createEdge", "Creates edge", (type: unknown) => <EntityBadge entity="edge" type={String(type)} tiny link />],
+	["edgeVariable", "Edge Strength Variable", (id: unknown) => <Variable id={String(id)} />],
+	["highlight.allowHighlighting", "Allow highlighting", (allow: unknown) => renderValue(allow)],
+	["highlight.variable", "Highlight variable", (id: unknown) => <Variable id={String(id)} />],
+	["negativeLabel", "Negative Option Label", (text: unknown) => String(text)],
+	["sortOrder", "Sort by property", (rules: unknown) => <SortOrder rules={rules as SortOrderProps["rules"]} />],
+	["binSortOrder", "Bin sort order", (rules: unknown) => <SortOrder rules={rules as SortOrderProps["rules"]} />],
+	["bucketSortOrder", "Bucket sort order", (rules: unknown) => <SortOrder rules={rules as SortOrderProps["rules"]} />],
+	["otherVariable", "Other variable", (id: unknown) => <Variable id={String(id)} />],
+	["otherVariablePrompt", "Other variable prompt", (text: unknown) => String(text)],
+	["otherOptionLabel", "Other option label", (text: unknown) => String(text)],
 ];
 const reduceAttribute =
 	(prompt: Record<string, unknown>) =>
-	(acc: unknown[], [path, label, renderer]: [string, string, (val: unknown) => unknown]) => {
+	(acc: ReactNode[][], [path, label, renderer]: [string, string, (val: unknown) => ReactNode]) => {
 		const value = get(prompt, path, null);
 		if (isNull(value)) {
 			return acc;
@@ -70,16 +71,16 @@ type PromptProps = {
 };
 
 const Prompt = ({ text, additionalAttributes = [], ...prompt }: PromptProps) => {
-	const attributeRows = attributes.reduce(reduceAttribute(prompt), []);
+	const attributeRows = attributes.reduce(reduceAttribute(prompt), [] as ReactNode[][]);
 
-	const additionalAttributeRows = additionalAttributes.map(({ variable: variableId, value }) => [
-		<Variable id={variableId} />,
+	const additionalAttributeRows: ReactNode[][] = additionalAttributes.map(({ variable: variableId, value }) => [
+		<Variable key={variableId} id={variableId} />,
 		renderValue(value),
 	]);
 
 	return (
 		<div className="protocol-summary-stage__prompts-item">
-			<Markdown label={text} />
+			<Markdown value={text} />
 			{attributeRows.length > 0 && <MiniTable rotated rows={attributeRows} />}
 			{additionalAttributes.length > 0 && <MiniTable rows={[["Variable", "Value"], ...additionalAttributeRows]} />}
 		</div>

@@ -32,7 +32,7 @@ const BucketSortOrderSection = ({
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const hasBucketSortOrder = useSelector((state) => formSelector(state, "bucketSortOrder"));
 
-	const handleToggleChange = (nextState) => {
+	const handleToggleChange = (nextState: boolean) => {
 		if (nextState === false) {
 			dispatch(change(form, "bucketSortOrder", null));
 		}

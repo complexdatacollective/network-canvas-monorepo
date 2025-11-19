@@ -100,7 +100,6 @@ const TextInput = ({
 			<div className={seamlessClasses}>
 				<input
 					id={id.current}
-					name={input.name}
 					className="form-field form-field-text form-field-text__input"
 					placeholder={dateFormat.toUpperCase()} // eslint-disable-line
 					// eslint-disable-next-line react/jsx-props-no-spreading

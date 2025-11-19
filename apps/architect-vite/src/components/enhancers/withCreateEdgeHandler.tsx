@@ -12,8 +12,16 @@ const mapDispatchToProps = {
 
 const createEdgeHandler = {
 	handleCreateEdge:
-		({ changeField, createEdge, form }) =>
-		(name) => {
+		({
+			changeField,
+			createEdge,
+			form,
+		}: {
+			changeField: typeof change;
+			createEdge: typeof codebookActions.createEdge;
+			form: string;
+		}) =>
+		(name: string) => {
 			const { type } = createEdge({ name });
 
 			// Update select field to newly created edge

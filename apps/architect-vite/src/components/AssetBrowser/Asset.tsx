@@ -8,20 +8,23 @@ type AssetProps = {
 	isUsed?: boolean;
 	onClick?: (id: string) => void;
 	onDelete?: ((id: string, isUsed: boolean) => void) | null;
-	onDownload?: (id: string) => void;
-	onPreview?: (id: string) => void;
+	onDownload?: ((id: string) => void) | null;
+	onPreview?: ((id: string) => void) | null;
 	type: string;
 };
 
 const FallBackAssetComponent = () => <div>No preview component available for this asset type.</div>;
 
-const ASSET_COMPONENTS = {
-	image: Thumbnails.Image,
-	video: Thumbnails.Video,
-	audio: Thumbnails.Audio,
-	network: Thumbnails.Network,
-	apikey: Thumbnails.APIKey,
-	geojson: Thumbnails.GeoJSON,
+type AssetType = "image" | "video" | "audio" | "network" | "apikey" | "geojson";
+
+// Use a more lenient type since these are HOC-wrapped components
+const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<Record<string, unknown>>> = {
+	image: Thumbnails.Image as React.ComponentType<Record<string, unknown>>,
+	video: Thumbnails.Video as React.ComponentType<Record<string, unknown>>,
+	audio: Thumbnails.Audio as React.ComponentType<Record<string, unknown>>,
+	network: Thumbnails.Network as React.ComponentType<Record<string, unknown>>,
+	apikey: Thumbnails.APIKey as React.ComponentType<Record<string, unknown>>,
+	geojson: Thumbnails.GeoJSON as React.ComponentType<Record<string, unknown>>,
 };
 
 const Asset = ({
@@ -29,8 +32,8 @@ const Asset = ({
 	isUsed = false,
 	onClick = () => {},
 	onDelete = null,
-	onDownload = () => {},
-	onPreview = () => {},
+	onDownload = null,
+	onPreview = null,
 	type,
 }: AssetProps) => {
 	const handleClick = useCallback(
@@ -52,7 +55,9 @@ const Asset = ({
 	const handlePreview = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
-			onPreview(id);
+			if (onPreview) {
+				onPreview(id);
+			}
 		},
 		[onPreview, id],
 	);
@@ -60,12 +65,17 @@ const Asset = ({
 	const handleDownload = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
-			onDownload(id);
+			if (onDownload) {
+				onDownload(id);
+			}
 		},
 		[onDownload, id],
 	);
 
-	const PreviewComponent = useMemo(() => ASSET_COMPONENTS[type] || FallBackAssetComponent, [type]);
+	const PreviewComponent = useMemo(() => {
+		const assetType = type as AssetType;
+		return ASSET_COMPONENTS[assetType] || FallBackAssetComponent;
+	}, [type]);
 
 	const assetClasses = cx(
 		"asset-browser-asset",
@@ -88,7 +98,9 @@ const Asset = ({
 			if (e.key === "Enter" || e.key === " ") {
 				e.preventDefault();
 				e.stopPropagation();
-				onPreview(id);
+				if (onPreview) {
+					onPreview(id);
+				}
 			}
 		},
 		[onPreview, id],
@@ -99,7 +111,9 @@ const Asset = ({
 			if (e.key === "Enter" || e.key === " ") {
 				e.preventDefault();
 				e.stopPropagation();
-				onDownload(id);
+				if (onDownload) {
+					onDownload(id);
+				}
 			}
 		},
 		[onDownload, id],

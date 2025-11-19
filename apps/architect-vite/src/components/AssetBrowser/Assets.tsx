@@ -17,8 +17,8 @@ type AssetType = {
 	id: string;
 	isUsed: boolean;
 	name: string;
-	source: string;
-	type: "image" | "video" | "audio" | "network";
+	source?: string;
+	type: "image" | "video" | "audio" | "network" | "apikey" | "geojson";
 };
 
 type AssetsProps = {
@@ -26,11 +26,12 @@ type AssetsProps = {
 	assets?: AssetType[];
 	assetType?: string | null;
 	onUpdateAssetFilter: (value: string | null) => void;
-	onSelect?: () => void;
-	onDelete?: (() => void) | null;
-	onDownload?: () => void;
-	onPreview?: () => void;
+	onSelect?: (id: string) => void;
+	onDelete?: ((id: string, isUsed: boolean) => void) | null;
+	onDownload?: (id: string) => void;
+	onPreview?: (id: string) => void;
 	disableDelete?: boolean;
+	selected?: string | null;
 };
 
 const Assets = ({
@@ -38,15 +39,16 @@ const Assets = ({
 	assets = [],
 	assetType = null,
 	onUpdateAssetFilter,
-	onSelect = () => {},
+	onSelect,
 	onDelete = null,
-	onDownload = () => {},
-	onPreview = () => {},
+	onDownload,
+	onPreview,
 	disableDelete = false,
+	selected = null,
 }: AssetsProps) => {
 	const handleDelete = disableDelete ? null : onDelete;
 
-	const renderedAssets = assets.map(({ id, name, source, type: thumbnailType, isUsed }) => {
+	const renderedAssets = assets.map(({ id, type: thumbnailType, isUsed }) => {
 		// disable download for apikey type
 		const handleDownload = thumbnailType === "apikey" ? null : onDownload;
 
@@ -54,8 +56,6 @@ const Assets = ({
 			<div className="asset-browser-assets__asset" key={id}>
 				<Asset
 					id={id}
-					name={name}
-					source={source}
 					type={thumbnailType}
 					isUsed={isUsed}
 					onClick={onSelect}
@@ -74,7 +74,7 @@ const Assets = ({
 					<RadioGroup
 						options={ASSET_TYPES}
 						input={{
-							onChange: onUpdateAssetFilter,
+							onChange: (value: unknown) => onUpdateAssetFilter(value as string | null),
 							value: assetType,
 						}}
 						label="Show types:"
@@ -88,4 +88,7 @@ const Assets = ({
 	);
 };
 
-export default compose(withAssets)(Assets);
+// Type assertion for the HOC-wrapped component
+export default compose(withAssets)(Assets) as React.ComponentType<
+	Omit<AssetsProps, "assets" | "assetType" | "onUpdateAssetFilter">
+>;

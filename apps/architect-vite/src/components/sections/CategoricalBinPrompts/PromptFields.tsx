@@ -38,9 +38,9 @@ const PromptFields = ({
 	form,
 	onCreateOtherVariable,
 	optionsForVariableDraft = [],
-	otherVariable = null,
+	otherVariable = undefined,
 	type,
-	variable = null,
+	variable = undefined,
 	variableOptions = [],
 }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
@@ -49,9 +49,9 @@ const PromptFields = ({
 		initialValues: { name: null, type: null },
 	};
 
-	const handleCreatedNewVariable = (id, { field }) => changeForm(form, field, id);
+	const handleCreatedNewVariable = (id: string, { field }: { field: string }) => changeForm(form, field, id);
 
-	const handleToggleOtherVariable = (nextState) => {
+	const handleToggleOtherVariable = (nextState: boolean) => {
 		if (nextState === false) {
 			changeForm(form, "otherVariable", null);
 			changeForm(form, "otherVariablePrompt", null);
@@ -66,7 +66,7 @@ const PromptFields = ({
 		handleCreatedNewVariable,
 	);
 
-	const handleNewVariable = (name) =>
+	const handleNewVariable = (name: string) =>
 		openNewVariableWindow({ initialValues: { name, type: "categorical" } }, { field: "variable" });
 
 	const categoricalVariableOptions = variableOptions.filter(({ type: variableType }) => variableType === "categorical");
@@ -75,7 +75,7 @@ const PromptFields = ({
 
 	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
 
-	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length + (!!otherVariable && 1);
+	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length + (otherVariable ? 1 : 0);
 
 	const showVariableOptionsTip = totalOptionsLength > 8;
 
@@ -87,12 +87,14 @@ const PromptFields = ({
 					<ValidatedField
 						name="variable"
 						component={VariablePicker}
-						type={type}
-						entity={entity}
-						options={categoricalVariableOptions}
-						onCreateOption={handleNewVariable}
 						validation={{ required: true }}
-						variable={variable}
+						componentProps={{
+							type,
+							entity,
+							options: categoricalVariableOptions,
+							onCreateOption: handleNewVariable,
+							variable,
+						}}
 					/>
 				</Row>
 				{variable && (
@@ -134,32 +136,38 @@ const PromptFields = ({
 					<ValidatedField
 						name="otherVariable"
 						component={VariablePicker}
-						entity={entity}
-						type={type}
-						options={otherVariableOptions}
-						onCreateOption={(value) => onCreateOtherVariable(value, "otherVariable")}
 						validation={{ required: true }}
-						variable={otherVariable}
+						componentProps={{
+							entity,
+							type,
+							options: otherVariableOptions,
+							onCreateOption: (value: string) => onCreateOtherVariable(value, "otherVariable"),
+							variable: otherVariable,
+						}}
 					/>
 				</Row>
 				<Row>
 					<ValidatedField
 						name="otherOptionLabel"
 						component={RichTextField}
-						inline
-						placeholder="Enter a label (such as &quot;other&quot;) for this bin..."
-						label="Label for Bin"
 						validation={{ required: true }}
+						componentProps={{
+							inline: true,
+							placeholder: "Enter a label (such as &quot;other&quot;) for this bin...",
+							label: "Label for Bin",
+						}}
 					/>
 				</Row>
 				<Row>
 					<ValidatedField
 						name="otherVariablePrompt"
 						component={RichTextField}
-						inline
-						placeholder="Enter a question prompt to show when the other option is triggered..."
-						label="Question Prompt for Dialog"
 						validation={{ required: true }}
+						componentProps={{
+							inline: true,
+							placeholder: "Enter a question prompt to show when the other option is triggered...",
+							label: "Question Prompt for Dialog",
+						}}
 					/>
 				</Row>
 			</Section>
@@ -167,13 +175,17 @@ const PromptFields = ({
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions)}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 			/>
 			<BinSortOrderSection
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions)}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 			/>
 			<NewVariableWindow
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -183,4 +195,4 @@ const PromptFields = ({
 	);
 };
 
-export default compose(withVariableOptions, withVariableHandlers)(PromptFields);
+export default compose<PromptFieldsProps, PromptFieldsProps>(withVariableOptions, withVariableHandlers)(PromptFields);

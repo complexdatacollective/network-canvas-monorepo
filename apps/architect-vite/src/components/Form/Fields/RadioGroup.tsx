@@ -6,10 +6,11 @@ import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "./MarkdownLabel";
 import Radio from "./Radio";
+import type { Option } from "./utils/options";
 import { asOptionObject, getValue } from "./utils/options";
 
 interface RadioGroupProps {
-	options?: unknown[];
+	options?: Option[];
 	label?: string | null;
 	input: {
 		value: unknown;
@@ -23,7 +24,15 @@ interface RadioGroupProps {
 		invalid?: boolean;
 		touched?: boolean;
 	};
-	optionComponent?: React.ComponentType<unknown>;
+	optionComponent?: React.ComponentType<{
+		input: {
+			value: unknown;
+			checked?: boolean;
+			onChange: () => void;
+		};
+		label: string;
+		[key: string]: unknown;
+	}>;
 }
 
 const RadioGroup = ({
@@ -39,13 +48,16 @@ const RadioGroup = ({
 
 	const onChange = useCallback(
 		(index: number) => {
-			input.onChange(getValue(options[index]));
+			const option = options[index];
+			if (option) {
+				input.onChange(getValue(option));
+			}
 		},
 		[input, options],
 	);
 
 	const renderOption = useCallback(
-		(option: unknown, index: number) => {
+		(option: Option, index: number) => {
 			const { value: optionValue, label: optionLabel, ...optionRest } = asOptionObject(option);
 			const selected = optionValue === input.value;
 
@@ -78,9 +90,7 @@ const RadioGroup = ({
 	return (
 		<div className={containerClassNames}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className={classNames} name={input.name}>
-				{options.map(renderOption)}
-			</div>
+			<div className={classNames}>{options.map(renderOption)}</div>
 			{invalid && touched && (
 				<div className="form-field-radio-group__error">
 					<Icon name="warning" />

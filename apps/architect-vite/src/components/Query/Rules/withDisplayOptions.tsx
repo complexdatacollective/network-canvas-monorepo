@@ -1,23 +1,54 @@
 import { get } from "es-toolkit/compat";
 import { withProps } from "recompose";
 
+type OptionItem = {
+	value: string | number;
+	label: string;
+};
+
+type InputProps = {
+	type: string;
+	options: {
+		type?: string;
+		attribute?: string;
+		value?: string | number | (string | number)[];
+		[key: string]: unknown;
+	};
+	codebook: {
+		node?: Record<string, { name: string; color: string; variables?: Record<string, unknown> }>;
+		edge?: Record<string, { name: string; color: string; variables?: Record<string, unknown> }>;
+		ego?: { variables?: Record<string, unknown> };
+		[key: string]: unknown;
+	};
+};
+
 // convert options to labels
-const withDisplayOptions = withProps(({ type, options, codebook }) => {
+const withDisplayOptions = withProps<{ options: unknown }, InputProps>(({ type, options, codebook }: InputProps) => {
 	const entityType = type === "alter" ? "node" : "edge";
-	const entityRoot = type === "ego" ? ["ego"] : [entityType, options.type];
-	const typeLabel = get(codebook, [entityType, options.type, "name"], options.type); // noop for ego
-	const typeColor = get(codebook, [entityType, options.type, "color"], "#000"); // noop for ego
-	const variableLabel = get(codebook, [...entityRoot, "variables", options.attribute, "name"], options.attribute);
+	const entityRoot = type === "ego" ? (["ego"] as const) : ([entityType, options.type] as const);
+	const typeLabel = get(codebook, [entityType, options.type, "name"] as const, options.type); // noop for ego
+	const typeColor = get(codebook, [entityType, options.type, "color"] as const, "#000"); // noop for ego
+	const variableLabel = get(
+		codebook,
+		[...entityRoot, "variables", options.attribute, "name"] as unknown[],
+		options.attribute,
+	);
 
-	const variableType = get(codebook, [...entityRoot, "variables", options.attribute, "type"], "string");
+	const variableType = get(
+		codebook,
+		[...entityRoot, "variables", options.attribute, "type"] as unknown[],
+		"string",
+	) as string;
 
-	const variableOptions = get(codebook, [...entityRoot, "variables", options.attribute, "options"]);
+	const variableOptions = get(codebook, [...entityRoot, "variables", options.attribute, "options"] as unknown[]) as
+		| OptionItem[]
+		| undefined;
 
-	const valueOption = variableOptions?.find(({ value }) => value === options.value);
+	const valueOption = variableOptions?.find(({ value }: OptionItem) => value === options.value);
 
 	const valueWithFormatting = () => {
-		const getOptionLabel = (item) => {
-			const option = variableOptions.find(({ value: optionValue }) => optionValue === item);
+		const getOptionLabel = (item: string | number) => {
+			const option = variableOptions?.find(({ value: optionValue }: OptionItem) => optionValue === item);
 			return option ? option.label : item;
 		};
 
@@ -29,7 +60,7 @@ const withDisplayOptions = withProps(({ type, options, codebook }) => {
 					return options.value.map(getOptionLabel);
 				}
 
-				return getOptionLabel(options.value);
+				return getOptionLabel(options.value as string | number);
 			default:
 				return valueOption ? valueOption.label : options.value;
 		}

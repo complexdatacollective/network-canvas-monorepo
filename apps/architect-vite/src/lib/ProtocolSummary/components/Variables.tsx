@@ -1,4 +1,5 @@
 import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
+import type { ReactNode } from "react";
 import React, { useContext } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
@@ -7,14 +8,32 @@ import { renderValue } from "./helpers";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";
 
-const getStageName = (protocol: unknown) => (stageId: string) => {
+type ProtocolType = {
+	stages?: Array<{ id: string; label: string }>;
+	[key: string]: unknown;
+};
+
+type IndexEntry = {
+	id: string;
+	stages?: string[];
+	[key: string]: unknown;
+};
+
+type VariableConfig = {
+	name: string;
+	type: string;
+	options?: Array<{ value: unknown; label: string }>;
+	[key: string]: unknown;
+};
+
+const getStageName = (protocol: ProtocolType) => (stageId: string) => {
 	const stageConfiguration = find(protocol.stages, ["id", stageId]);
 	return get(stageConfiguration, "label");
 };
 
 // TODO: Make this part of the index?
-const makeGetUsedIn = (protocol: unknown) => (indexEntry: unknown) => {
-	const stages = get(indexEntry, "stages", []);
+const makeGetUsedIn = (protocol: ProtocolType) => (indexEntry: IndexEntry | undefined) => {
+	const stages = get(indexEntry, "stages", []) as string[];
 
 	return stages.map((stageId: string) => [stageId, getStageName(protocol)(stageId)]);
 };
@@ -26,9 +45,11 @@ type VariablesProps = {
 const Variables = ({ variables }: VariablesProps) => {
 	const { protocol, index } = useContext(SummaryContext);
 
-	const getUsedIn = makeGetUsedIn(protocol);
+	const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
 
-	const sortedVariables = sortBy(toPairs(variables), [(variable) => variable[1].name.toLowerCase()]);
+	const sortedVariables = sortBy(toPairs(variables), [
+		(variable) => (variable[1] as VariableConfig).name.toLowerCase(),
+	]);
 
 	return (
 		<div className="protocol-summary-variables">
@@ -47,19 +68,23 @@ const Variables = ({ variables }: VariablesProps) => {
 						</tr>
 					)}
 					{sortedVariables.map(([variableId, variableConfiguration]) => {
-						const { name, type, options } = variableConfiguration;
+						const config = variableConfiguration as VariableConfig;
+						const { name, type, options } = config;
 
-						const indexEntry = index.find(({ id }) => id === variableId);
+						const indexEntry = index.find(({ id }: { id: string }) => id === variableId) as IndexEntry | undefined;
 
-						const optionsRows = options?.map(({ value, label }) => [
-							<span key={`val-${value}`}>{renderValue(value)}</span>,
-							<Markdown key={`label-${value}`} label={label} />,
-						]);
+						const optionsRows: ReactNode[][] =
+							options?.map(({ value, label }: { value: unknown; label: string }) => [
+								<span key={`val-${String(value)}`}>{renderValue(value)}</span>,
+								<Markdown key={`label-${String(value)}`} value={label} />,
+							]) ?? [];
 
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>
 								<td>
-									<SimpleVariablePill label={name} type={type} />
+									<SimpleVariablePill label={name} type={type}>
+										{name}
+									</SimpleVariablePill>
 								</td>
 								<td>
 									{type}
@@ -69,8 +94,8 @@ const Variables = ({ variables }: VariablesProps) => {
 								</td>
 								<td>
 									{getUsedIn(indexEntry).map(([stageId, stageName]) => (
-										<React.Fragment key={stageId}>
-											<DualLink to={`#stage-${stageId}`}>{stageName}</DualLink>
+										<React.Fragment key={String(stageId)}>
+											<DualLink to={`#stage-${String(stageId)}`}>{String(stageName)}</DualLink>
 											<br />
 										</React.Fragment>
 									))}

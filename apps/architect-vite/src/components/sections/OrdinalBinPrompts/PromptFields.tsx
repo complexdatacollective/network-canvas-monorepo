@@ -37,7 +37,7 @@ const PromptFields = ({
 	entity,
 	form,
 	type,
-	variable = null,
+	variable = undefined,
 	variableOptions = [],
 	optionsForVariableDraft = [],
 }: PromptFieldsProps) => {
@@ -47,14 +47,14 @@ const PromptFields = ({
 		initialValues: { name: null, type: null },
 	};
 
-	const handleCreatedNewVariable = (id, { field }) => changeForm(form, field, id);
+	const handleCreatedNewVariable = (id: string, { field }: { field: string }) => changeForm(form, field, id);
 
 	const [newVariableWindowProps, openNewVariableWindow] = useNewVariableWindowState(
 		newVariableWindowInitialProps,
 		handleCreatedNewVariable,
 	);
 
-	const handleNewVariable = (name) =>
+	const handleNewVariable = (name: string) =>
 		openNewVariableWindow({ initialValues: { name, type: "ordinal" } }, { field: "variable" });
 
 	const ordinalVariableOptions = variableOptions.filter(({ type: variableType }) => variableType === "ordinal");
@@ -74,12 +74,14 @@ const PromptFields = ({
 					<ValidatedField
 						name="variable"
 						component={VariablePicker}
-						entity={entity}
-						type={type}
-						options={ordinalVariableOptions}
-						onCreateOption={handleNewVariable}
 						validation={{ required: true }}
-						variable={variable}
+						componentProps={{
+							entity,
+							type,
+							options: ordinalVariableOptions,
+							onCreateOption: handleNewVariable,
+							variable,
+						}}
 					/>
 				</Row>
 			</Section>
@@ -115,12 +117,14 @@ const PromptFields = ({
 				<Row>
 					<IssueAnchor fieldName="color" description="Gradient color" />
 					<ValidatedField
-						label="Which color would you like to use for this scale?"
-						component={ColorPicker}
 						name="color"
-						palette="ord-color-seq"
-						paletteRange={8}
+						component={ColorPicker}
 						validation={{ required: true }}
+						componentProps={{
+							label: "Which color would you like to use for this scale?",
+							palette: "ord-color-seq",
+							paletteRange: 8,
+						}}
 					/>
 				</Row>
 			</Section>
@@ -128,13 +132,17 @@ const PromptFields = ({
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions)}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 			/>
 			<BinSortOrderSection
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions)}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 			/>
 			<NewVariableWindow
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -144,4 +152,4 @@ const PromptFields = ({
 	);
 };
 
-export default compose(withVariableOptions, withVariableHandlers)(PromptFields);
+export default compose<PromptFieldsProps, PromptFieldsProps>(withVariableOptions, withVariableHandlers)(PromptFields);

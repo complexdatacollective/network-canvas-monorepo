@@ -2,13 +2,26 @@ import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { getVariablesForSubject } from "../../selectors/codebook";
 
-const store = connect((state, { entity, type, form, field }) => {
-	const variable = formValueSelector(form)(state, `${field}.variable`);
+type OwnProps = {
+	entity: "node" | "edge" | "ego";
+	type?: string;
+	form: string;
+	field: string;
+};
+
+type HandlerProps = OwnProps & {
+	onDelete: (index: number) => void;
+	index: number;
+};
+
+const store = connect((state: RootState, { entity, type, form, field }: OwnProps) => {
+	const variable = formValueSelector(form)(state, `${field}.variable`) as string | undefined;
 	const codebookVariables = getVariablesForSubject(state, { entity, type });
-	const variableType = get(codebookVariables, [variable, "type"]);
-	const options = get(codebookVariables, [variable, "options"]);
+	const variableType = variable ? get(codebookVariables, [variable, "type"]) : undefined;
+	const options = variable ? get(codebookVariables, [variable, "options"]) : undefined;
 
 	return {
 		variableType,
@@ -17,9 +30,9 @@ const store = connect((state, { entity, type, form, field }) => {
 	};
 });
 
-const handlers = withHandlers({
+const handlers = withHandlers<HandlerProps, {}>({
 	handleDelete:
-		({ onDelete, index }) =>
+		({ onDelete, index }: HandlerProps) =>
 		() =>
 			onDelete(index),
 });

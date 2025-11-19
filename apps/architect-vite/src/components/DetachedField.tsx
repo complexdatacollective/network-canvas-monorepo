@@ -33,6 +33,7 @@ type DetachedFieldProps = {
 		[key: string]: unknown;
 	}>;
 	meta?: Record<string, unknown>;
+	[key: string]: unknown; // Allow additional props to be passed through
 };
 
 /*
@@ -70,7 +71,7 @@ class DetachedField extends Component<DetachedFieldProps, DetachedFieldState> {
 		const nextValue = getValue(eventOrValue);
 		this.setState({ touched: true });
 		this.validate(nextValue);
-		onChange(eventOrValue, nextValue, value, name);
+		onChange(eventOrValue, nextValue, value, name ?? null);
 	};
 
 	validate(value: unknown) {
@@ -105,7 +106,7 @@ class DetachedField extends Component<DetachedFieldProps, DetachedFieldState> {
 
 		const input = {
 			value,
-			name,
+			name: name ?? null,
 			onChange: this.handleChange,
 		};
 
@@ -122,4 +123,4 @@ class DetachedField extends Component<DetachedFieldProps, DetachedFieldState> {
 	}
 }
 
-export default compose(defaultProps({ validation: {} }))(DetachedField);
+export default compose(defaultProps({ validation: {} }))(DetachedField as React.ComponentType<unknown>);

@@ -23,7 +23,7 @@ const AnonymisationValidation = ({ form }: AnonymisationValidationProps) => {
 
 	const hasValidation = useSelector(hasValidationSelector);
 
-	const handleToggleValidation = (nextState) => {
+	const handleToggleValidation = (nextState: boolean) => {
 		if (nextState === false) {
 			dispatch(change(form, "validation", null));
 		}

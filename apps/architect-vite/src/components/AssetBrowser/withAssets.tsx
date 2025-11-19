@@ -1,24 +1,41 @@
+import type { ExtractedAsset } from "@codaco/protocol-validation";
 import { filter, map } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers, withState } from "recompose";
+import type { RootState } from "~/ducks/modules/root";
 import { getAssetIndex, utils as indexUtils } from "~/selectors/indexes";
 import { getAssetManifest } from "~/selectors/protocol";
 
-const filterByAssetType = (assetType, assets) =>
+type AssetWithId = ExtractedAsset & { id: string };
+type AssetWithUsage = AssetWithId & { isUsed: boolean };
+
+const filterByAssetType = (assetType: string | null, assets: AssetWithId[]): AssetWithId[] =>
 	assetType ? filter(assets, ({ type }) => type === assetType) : assets;
 
-const withKeysAsIds = (assets) => map(assets, (asset, id) => ({ ...asset, id }));
+const withKeysAsIds = (assets: Record<string, ExtractedAsset>): AssetWithId[] =>
+	map(assets, (asset, id) => ({ ...asset, id }));
 
-const filterAssets = (assetType, assets) => filterByAssetType(assetType, withKeysAsIds(assets));
+const filterAssets = (assetType: string | null, assets: Record<string, ExtractedAsset>): AssetWithId[] =>
+	filterByAssetType(assetType, withKeysAsIds(assets));
 
-const filterHandlers = withHandlers({
+type FilterHandlerProps = {
+	setAssetType: (assetType: string | null) => void;
+};
+
+const filterHandlers = withHandlers<FilterHandlerProps, {}>({
 	onUpdateAssetFilter:
-		({ setAssetType }) =>
-		(assetType) =>
+		({ setAssetType }: FilterHandlerProps) =>
+		(assetType: string | null) =>
 			setAssetType(assetType),
 });
 
-const mapStateToProps = (state, { assetType, selected }) => {
+type OwnProps = {
+	assetType: string | null;
+	selected: string | null;
+	type?: string | null;
+};
+
+const mapStateToProps = (state: RootState, { assetType, selected }: OwnProps) => {
 	const allAssets = getAssetManifest(state);
 	const filteredAssets = filterAssets(assetType, allAssets);
 	// Get asset usage index
@@ -26,7 +43,7 @@ const mapStateToProps = (state, { assetType, selected }) => {
 	const assetSearch = indexUtils.buildSearch([assetIndex]);
 
 	// Check for asset usage
-	const assets = filteredAssets.map((asset) => {
+	const assets: AssetWithUsage[] = filteredAssets.map((asset) => {
 		const isUsed = assetSearch.has(asset.id) || asset.id === selected;
 
 		return {
@@ -40,8 +57,8 @@ const mapStateToProps = (state, { assetType, selected }) => {
 	};
 };
 
-const withAssets = compose(
-	withState("assetType", "setAssetType", ({ type }) => type),
+const withAssets = compose<OwnProps, OwnProps>(
+	withState("assetType", "setAssetType", ({ type }: OwnProps) => type),
 	filterHandlers,
 	connect(mapStateToProps),
 );

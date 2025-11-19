@@ -1,4 +1,4 @@
-import type { Protocol as ProtocolType } from "@codaco/protocol-validation";
+import type { CurrentProtocol as ProtocolType } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";

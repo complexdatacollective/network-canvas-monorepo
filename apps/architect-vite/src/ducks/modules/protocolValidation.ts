@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { type ValidationResult, validateProtocol } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
@@ -6,7 +6,7 @@ type ProtocolValidationState = {
 	validationResult: ValidationResult | null;
 	isValidating: boolean;
 	validationError: string | null;
-	lastValidatedProtocol: Protocol | null;
+	lastValidatedProtocol: CurrentProtocol | null;
 };
 
 const initialState: ProtocolValidationState = {
@@ -19,7 +19,7 @@ const initialState: ProtocolValidationState = {
 // Async thunk for protocol validation
 export const validateProtocolAsync = createAsyncThunk(
 	"protocolValidation/validate",
-	async (protocol: Protocol, { rejectWithValue }) => {
+	async (protocol: CurrentProtocol, { rejectWithValue }) => {
 		try {
 			const result = await validateProtocol(protocol);
 			return { result, protocol };

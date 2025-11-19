@@ -1,7 +1,21 @@
 import { isArray, isEmpty, isNil } from "lodash";
 import { operatorsWithOptionCount, operatorsWithValue } from "./options";
 
-const validateField = (value) => {
+type RuleOptions = {
+	operator?: string;
+	attribute?: string;
+	type?: string;
+	value?: unknown;
+	[key: string]: unknown;
+};
+
+type Rule = {
+	type: string;
+	options?: RuleOptions;
+	id?: string;
+};
+
+const validateField = (value: unknown): boolean => {
 	if (isArray(value)) {
 		return value.length > 0;
 	}
@@ -20,9 +34,12 @@ const validateField = (value) => {
 	}
 };
 
-const validateFields = (fields = [], options = {}) => fields.every((field) => validateField(options[field]));
+const validateFields = (fields: string[] = [], options: RuleOptions = {}): boolean =>
+	fields.every((field) => validateField(options[field]));
 
-const validateRule = (rule) => {
+const validateRule = (rule: Rule | null): boolean => {
+	if (!rule) return false;
+
 	const options = rule.options || {};
 
 	switch (rule.type) {
@@ -53,5 +70,7 @@ const validateRule = (rule) => {
 			return false;
 	}
 };
+
+export type { Rule, RuleOptions };
 
 export default validateRule;

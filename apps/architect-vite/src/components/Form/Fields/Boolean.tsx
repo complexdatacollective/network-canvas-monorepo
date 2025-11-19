@@ -5,6 +5,8 @@ import Boolean from "~/lib/legacy-ui/components/Boolean/Boolean";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "./MarkdownLabel";
 
+type BooleanValue = boolean | string | number | null;
+
 interface BooleanOption {
 	label: string | (() => string);
 	value: boolean | string | number;
@@ -20,8 +22,8 @@ interface BooleanFieldProps {
 	className?: string;
 	input: {
 		name: string;
-		value: unknown;
-		onChange: (value: unknown) => void;
+		value: BooleanValue;
+		onChange: (value: BooleanValue) => void;
 	};
 	disabled?: boolean;
 	options?: BooleanOption[];
@@ -60,7 +62,7 @@ const BooleanField = ({
 	const anyLabel = fieldLabel || label;
 
 	return (
-		<div className={componentClasses} name={input.name}>
+		<div className={componentClasses}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
 			<div className="form-field-boolean__control">
 				<Boolean options={options} value={input.value} onChange={input.onChange} noReset={noReset} />

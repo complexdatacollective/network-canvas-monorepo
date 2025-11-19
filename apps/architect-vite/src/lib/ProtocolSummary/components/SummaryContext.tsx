@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createContext } from "react";
 
 type IndexEntry = {
@@ -10,7 +10,7 @@ type IndexEntry = {
 };
 
 type SummaryContextType = {
-	protocol: Protocol | null;
+	protocol: CurrentProtocol | null;
 	index: IndexEntry[];
 };
 

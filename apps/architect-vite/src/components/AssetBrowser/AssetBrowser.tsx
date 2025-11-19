@@ -7,25 +7,33 @@ import Assets from "./Assets";
 import NewAsset from "./NewAsset";
 import withAssetActions from "./withAssetActions";
 
-type AssetBrowserProps = {
-	type?: string;
-	selected?: string;
+// Props injected by withAssetActions HOC
+type InjectedProps = {
+	onDelete: (assetId: string, isUsed: boolean) => void;
+};
+
+// Props that the component accepts from outside
+type AssetBrowserOwnProps = {
+	type?: string | null;
+	selected?: string | null;
 	onSelect?: (assetId: string) => void;
-	onDelete?: () => void;
 	disableDelete?: boolean;
 	sectionLayout: "horizontal" | "vertical";
 };
+
+// Combined props type
+type AssetBrowserProps = AssetBrowserOwnProps & Partial<InjectedProps>;
 
 const AssetBrowser = ({
 	type = null,
 	selected = null,
 	onSelect = () => {},
-	onDelete = () => {},
+	onDelete,
 	disableDelete = false,
 	sectionLayout,
 }: AssetBrowserProps) => {
 	const handleCreate = useCallback(
-		(assetIds) => {
+		(assetIds: string[]) => {
 			if (assetIds.length !== 1) {
 				return;
 			} // if multiple files were uploaded
@@ -61,4 +69,5 @@ const AssetBrowser = ({
 	);
 };
 
-export default compose(withAssetActions)(AssetBrowser);
+// Type assertion for the HOC-wrapped component
+export default compose(withAssetActions)(AssetBrowser) as React.ComponentType<AssetBrowserOwnProps>;
