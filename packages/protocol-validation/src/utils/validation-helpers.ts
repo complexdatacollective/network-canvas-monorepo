@@ -1,4 +1,12 @@
-import type { Codebook, EntityDefinition, FilterRule, StageSubject, Variable } from "../schemas/8/schema";
+import type {
+	Codebook,
+	EdgeDefinition,
+	EntityDefinition,
+	FilterRule,
+	NodeDefinition,
+	StageSubject,
+	Variable,
+} from "../schemas/8/schema";
 
 /**
  * Check if an entity (node/edge type) exists in the codebook
@@ -95,11 +103,11 @@ export const getAllEntityNames = (codebook: Codebook): string[] => {
 	const names: string[] = [];
 
 	if (codebook.node) {
-		names.push(...Object.values(codebook.node).map((entity) => entity.name));
+		names.push(...(Object.values(codebook.node) as NodeDefinition[]).map((entity) => entity.name));
 	}
 
 	if (codebook.edge) {
-		names.push(...Object.values(codebook.edge).map((entity) => entity.name));
+		names.push(...(Object.values(codebook.edge) as EdgeDefinition[]).map((entity) => entity.name));
 	}
 
 	return names;
@@ -110,7 +118,7 @@ export const getAllEntityNames = (codebook: Codebook): string[] => {
  */
 export const getVariableNames = (variables?: EntityDefinition["variables"]): string[] => {
 	if (!variables) return [];
-	return Object.values(variables).map((v) => v.name);
+	return (Object.values(variables) as Variable[]).map((v) => v.name);
 };
 
 /**

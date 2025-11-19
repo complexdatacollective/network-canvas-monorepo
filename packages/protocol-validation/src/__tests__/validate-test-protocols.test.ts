@@ -7,7 +7,10 @@ import { downloadAndDecryptProtocols } from "./utils";
 const protocols: VersionedProtocol[] = [];
 const protocolFilenames: string[] = [];
 
-describe("Test protocols", () => {
+// Skip these tests if GITHUB_TOKEN is not available
+const hasGitHubToken = !!process.env.GITHUB_TOKEN;
+
+describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 	beforeAll(async () => {
 		const protocolBuffers = await downloadAndDecryptProtocols();
 
@@ -62,6 +65,7 @@ describe("Test protocols", () => {
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
+					// biome-ignore lint/suspicious/noConsole: logging
 					console.error(`Migration validation failed for ${filename}:`, migrationResult.error);
 				}
 
