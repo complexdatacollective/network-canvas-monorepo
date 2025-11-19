@@ -1,0 +1,52 @@
+name: Documentation Test Redirects
+
+on:
+  deployment_status
+
+permissions:
+  contents: read
+  deployments: read
+
+jobs:
+  check_paths:
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.event.deployment_status.environment, 'preview') && github.event.deployment_status.state == 'success' && contains(github.event.deployment_status.environment_url, 'documentation')}}
+    outputs:
+      docs_changed: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper path filtering
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docs:
+              - 'apps/documentation/**'
+
+  test_redirects:
+    needs: check_paths
+    if: ${{ needs.check_paths.outputs.docs_changed == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        working-directory: apps/documentation
+        run: pnpm install --frozen-lockfile
+
+      - name: Test redirects on preview deployment
+        working-directory: apps/documentation
+        env:
+          DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url }}
+        run: pnpm test-redirects

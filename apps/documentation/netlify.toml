@@ -74,7 +74,6 @@
   status = 301
 
 [[redirects]]
-  from = "/:path"
-  to = "/en/desktop/:path"
+  from = "/*"
+  to = "/en/desktop/:splat"
   status = 301
-  force = true
