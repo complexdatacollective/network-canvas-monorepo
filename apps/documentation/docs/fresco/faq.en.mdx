@@ -59,9 +59,34 @@ The specific steps for backing up your data will depend on how you have deployed
 
 If you are using a different database provider, you will need to follow the backup procedures for the specific technologies you are using.
 
-## Is the data storage HIPAA/GDPR compliant? Is it secure?
+## Is Fresco GDPR compliant?
 
-Fresco is designed to be self-hosted, which means that you have full control over the data storage and security. You can deploy Fresco on your own server or use a cloud platform like Netlify. If you are using a cloud platform, you should review their security and compliance documentation to ensure that it meets your needs.
+Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
+
+**For Interviewer (Desktop/Tablet App):**
+- All participant data is stored only on your local device
+- No participant data is transmitted externally unless you manually export it
+- The app does not collect analytics or crash logs
+- Device-level protections (disk encryption, access controls) are your responsibility
+
+**For Fresco (Self-Hosted Web Application):**
+- You deploy and host Fresco on your own infrastructure
+- All participant data remains under your control at all times
+- Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
+- Study assets are stored in S3 via UploadThing (server-side encryption enforced)
+- GDPR-compliant hosting is possible when selecting an EU region (available on paid UploadThing plans)
+- Optional anonymous usage/error analytics can be disabled
+
+**Your Responsibilities:**
+As the Data Controller, you are responsible for:
+- Establishing a lawful basis for processing participant data
+- Selecting GDPR-compliant hosting regions
+- Implementing appropriate data security measures
+- Maintaining data retention and deletion policies
+- Enabling participant rights (access, rectification, erasure)
+
+**Learn More:**
+For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/fresco/gdpr-compliance).
 
 ## Why can I only create a single user account?
 
