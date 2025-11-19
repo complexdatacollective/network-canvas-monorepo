@@ -89,6 +89,6 @@ const Assets = ({
 };
 
 // Type assertion for the HOC-wrapped component
-export default compose(withAssets)(Assets) as React.ComponentType<
+export default compose(withAssets)(Assets as React.ComponentType<unknown>) as React.ComponentType<
 	Omit<AssetsProps, "assets" | "assetType" | "onUpdateAssetFilter">
 >;

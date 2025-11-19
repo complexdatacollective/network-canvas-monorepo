@@ -56,4 +56,4 @@ const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProp
 
 export { NarrativePresets };
 
-export default compose(withSubject, withDisabledSubjectRequired)(NarrativePresets);
+export default compose(withSubject, withDisabledSubjectRequired)(NarrativePresets as React.ComponentType<unknown>);

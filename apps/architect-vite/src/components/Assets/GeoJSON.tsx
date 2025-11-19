@@ -64,4 +64,4 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
 	return <Table data={data} columns={columns} />;
 };
 
-export default withAssetPath(GeoJSONTable);
+export default withAssetPath(GeoJSONTable as React.ComponentType<unknown>);

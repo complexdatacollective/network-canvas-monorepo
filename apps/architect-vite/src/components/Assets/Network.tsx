@@ -53,4 +53,4 @@ const Network = ({ assetPath: _assetPath, assetId, assetName }: NetworkProps) =>
 	return <Table data={data} columns={columns} />;
 };
 
-export default compose(withAssetPath)(Network);
+export default compose(withAssetPath)(Network as React.ComponentType<unknown>);

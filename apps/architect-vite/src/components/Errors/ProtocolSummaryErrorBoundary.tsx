@@ -1,8 +1,11 @@
-import { remote } from "electron";
 import { Component, type ReactNode } from "react";
 import Button from "~/lib/legacy-ui/components/Button";
 
-const closeWindow = () => remote.getCurrentWindow().hide();
+// Browser-only implementation - electron functionality removed
+const closeWindow = () => {
+	console.log("Window close requested - needs reimplementation for web");
+	window.close();
+};
 
 type ProtocolSummaryErrorBoundaryProps = {
 	children?: ReactNode;

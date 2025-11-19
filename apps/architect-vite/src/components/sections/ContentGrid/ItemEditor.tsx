@@ -17,7 +17,7 @@ const contentInputs = {
 	video: Video,
 };
 
-const getInputComponent = (type) => get(contentInputs, type, RichText);
+const getInputComponent = (type: string) => get(contentInputs, type, RichText);
 
 type ItemEditorProps = {
 	type?: string;

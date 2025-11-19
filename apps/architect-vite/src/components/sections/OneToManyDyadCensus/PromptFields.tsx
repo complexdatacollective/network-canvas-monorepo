@@ -108,4 +108,6 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 	);
 };
 
-export default compose<PromptFieldsProps, PromptFieldsProps>(withVariableOptions)(PromptFields);
+export default compose<PromptFieldsProps, PromptFieldsProps>(withVariableOptions)(
+	PromptFields as React.ComponentType<unknown>,
+);

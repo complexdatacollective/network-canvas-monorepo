@@ -38,4 +38,6 @@ const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: S
 	</Section>
 );
 
-export default compose(withSubject, withFormUsedVariableIndex, withDisabledSubjectRequired)(SociogramPrompts);
+export default compose(withSubject, withFormUsedVariableIndex, withDisabledSubjectRequired)(
+	SociogramPrompts as React.ComponentType<unknown>,
+);

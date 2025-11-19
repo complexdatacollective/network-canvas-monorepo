@@ -26,7 +26,7 @@ const withMappedFieldComponent = withProps(({ variableType }) => ({
 	fieldComponent: variableType && INPUT_TYPES[variableType] ? INPUT_TYPES[variableType] : Text,
 }));
 
-const getLabel = (type, value) => {
+const getLabel = (type: string, value: string | number | boolean): string | null => {
 	if (type !== "boolean") {
 		return null;
 	}

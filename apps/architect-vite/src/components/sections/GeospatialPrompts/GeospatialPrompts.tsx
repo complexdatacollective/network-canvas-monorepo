@@ -36,4 +36,4 @@ const GeospatialPrompts = ({ form, entity, type, disabled }: GeospatialPromptsPr
 	</Section>
 );
 
-export default compose(withSubject, withDisabledSubjectRequired)(GeospatialPrompts);
+export default compose(withSubject, withDisabledSubjectRequired)(GeospatialPrompts as React.ComponentType<unknown>);

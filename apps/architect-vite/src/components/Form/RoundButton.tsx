@@ -11,8 +11,8 @@ type RoundButtonProps = {
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const RoundButton = ({
-	icon = null,
-	content = null,
+	icon = null as string | null,
+	content = null as string | null,
 	size = "default",
 	className = "",
 	type = "button",

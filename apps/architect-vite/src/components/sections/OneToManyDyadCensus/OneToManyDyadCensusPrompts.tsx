@@ -37,4 +37,6 @@ const OneToManyDyadCensusPrompts = ({ form, entity, type, disabled }: OneToManyD
 
 export { OneToManyDyadCensusPrompts };
 
-export default compose(withSubject, withDisabledSubjectRequired)(OneToManyDyadCensusPrompts);
+export default compose(withSubject, withDisabledSubjectRequired)(
+	OneToManyDyadCensusPrompts as React.ComponentType<unknown>,
+);

@@ -49,4 +49,4 @@ const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: Prev
 	);
 };
 
-export default compose(withDeleteHandler, withDisplayOptions)(PreviewRule);
+export default compose(withDeleteHandler, withDisplayOptions)(PreviewRule as React.ComponentType<unknown>);

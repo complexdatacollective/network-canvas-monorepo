@@ -1,5 +1,5 @@
 import { get, isEqual } from "lodash";
-import { DateTime, Info } from "luxon";
+import { DateTime } from "luxon";
 
 export const now = () => DateTime.local();
 
@@ -30,7 +30,12 @@ export const isComplete =
  */
 export const isEmpty = () => (date: DateObject) => isEqual(date, { year: null, month: null, day: null });
 
-export const getMonthName = (numericMonth: number) => get(Info.months(), numericMonth - 1, numericMonth);
+// Get month names - using DateTime instead of Info for compatibility
+const monthNames = Array.from({ length: 12 }, (_, i) =>
+	DateTime.local(2000, i + 1, 1).toFormat("LLLL")
+);
+
+export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);
 
 export interface RangeItem {
 	value: number;

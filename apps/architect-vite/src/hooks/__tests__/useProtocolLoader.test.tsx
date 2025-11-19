@@ -1,4 +1,3 @@
-import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -6,6 +5,7 @@ import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import activeProtocolReducer from "~/ducks/modules/activeProtocol";
 import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
+import type { ProtocolWithMetadata } from "~/types";
 import useProtocolLoader from "../useProtocolLoader";
 
 // Mock wouter hooks
@@ -17,7 +17,7 @@ vi.mock("wouter", () => ({
 	useParams: () => mockUseParams(),
 }));
 
-const mockProtocol: CurrentProtocol = {
+const mockProtocol: ProtocolWithMetadata = {
 	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,

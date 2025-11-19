@@ -119,4 +119,6 @@ const EditEgoRule = ({
 	);
 };
 
-export default compose<EditEgoRuleProps, Partial<EditEgoRuleProps>>(withOptions, withRuleChangeHandler)(EditEgoRule);
+export default compose<EditEgoRuleProps, Partial<EditEgoRuleProps>>(withOptions, withRuleChangeHandler)(
+	EditEgoRule as React.ComponentType<unknown>,
+);

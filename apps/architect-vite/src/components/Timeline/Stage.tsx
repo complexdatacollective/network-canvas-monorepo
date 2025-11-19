@@ -6,15 +6,15 @@ import { Button } from "~/lib/legacy-ui/components";
 import getAbsoluteBoundingRect from "~/utils/getAbsoluteBoundingRect";
 import EditStageButton from "./EditStageButton";
 
-const findPos = (node) => {
+const findPos = (node: HTMLElement): number => {
 	let curtop = 0;
 	let curtopscroll = 0;
-	let n = node;
+	let n: HTMLElement | null = node;
 	do {
 		curtop += n.offsetTop;
-		curtopscroll += n.offsetParent ? n.offsetParent.scrollTop : 0;
-		n = n.offsetParent;
-	} while (n.offsetParent);
+		curtopscroll += n.offsetParent ? (n.offsetParent as HTMLElement).scrollTop : 0;
+		n = n.offsetParent as HTMLElement | null;
+	} while (n?.offsetParent);
 	return curtop - curtopscroll;
 };
 

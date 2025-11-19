@@ -88,4 +88,6 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 
 export { SortOptions };
 
-export default compose(withMapFormToProps("dataSource"), withDisabledAssetRequired)(SortOptions);
+export default compose(withMapFormToProps("dataSource"), withDisabledAssetRequired)(
+	SortOptions as React.ComponentType<unknown>,
+);

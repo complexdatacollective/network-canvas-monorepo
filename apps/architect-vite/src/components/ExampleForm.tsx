@@ -1,4 +1,4 @@
-import Modal from "~/lib/legacy-ui/Modal";
+import { Modal } from "~/lib/legacy-ui/components";
 
 /*
  *  <ExampleForm

@@ -6,10 +6,10 @@ import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
 import Validation from "./Validation";
 
-const validate = (validations) => {
+const validate = (validations: Record<string, unknown>): string | undefined => {
 	const values = toPairs(validations);
 
-	const check = values.reduce((acc, [key, value]) => {
+	const check = values.reduce((acc: string[], [key, value]) => {
 		if (!isNull(value)) {
 			return acc;
 		}
@@ -24,9 +24,9 @@ const validate = (validations) => {
 	return `Validations (${check.join(", ")}) must have values`;
 };
 
-const format = (value = {}) => toPairs(value);
+const format = (value: Record<string, unknown> = {}) => toPairs(value);
 
-const getOptionsWithUsedDisabled = (options, used) =>
+const getOptionsWithUsedDisabled = (options: ValidationOption[], used: string[]) =>
 	options.map((option) => {
 		if (!used.includes(option.value)) {
 			return option;

@@ -100,4 +100,6 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 
 export { SearchOptions };
 
-export default compose(withMapFormToProps(["dataSource"]), withDisabledAssetRequired)(SearchOptions);
+export default compose(withMapFormToProps(["dataSource"]), withDisabledAssetRequired)(
+	SearchOptions as React.ComponentType<unknown>,
+);

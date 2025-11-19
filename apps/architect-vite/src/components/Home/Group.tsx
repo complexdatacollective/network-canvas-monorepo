@@ -18,11 +18,11 @@ type GroupProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 const Group = ({
-	children = null,
-	color = null,
-	icon = null,
+	children = null as React.ReactNode,
+	color = null as string | null,
+	icon = null as string | null,
 	tada = false,
-	className = null,
+	className = null as string | null,
 	center = false,
 	...rest
 }: GroupProps) => {

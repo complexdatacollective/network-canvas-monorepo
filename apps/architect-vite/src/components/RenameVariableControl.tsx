@@ -111,9 +111,15 @@ const RenameVariableControl = ({
 	);
 };
 
-const mapStateToProps = (state, { entity, type, id }) => {
+interface OwnProps {
+	entity: "node" | "edge" | "ego";
+	type: string;
+	id: string;
+}
+
+const mapStateToProps = (state: RootState, { entity, type, id }: OwnProps) => {
 	const entityDefinition = getType(state, { entity, type });
-	const name = get(entityDefinition, ["variables", id, "name"], "");
+	const name = get(entityDefinition, ["variables", id, "name"], "") as string;
 	const existingVariables = getVariablesForSubject(state, { entity, type });
 	const existingVariableNames = values(existingVariables).map((variable) => variable.name);
 

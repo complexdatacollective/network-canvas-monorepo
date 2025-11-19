@@ -48,4 +48,6 @@ const TieStrengthCensusPrompts = ({
 
 export { TieStrengthCensusPrompts };
 
-export default compose(withSubject, withDisabledSubjectRequired, withPromptChangeHandler)(TieStrengthCensusPrompts);
+export default compose(withSubject, withDisabledSubjectRequired, withPromptChangeHandler)(
+	TieStrengthCensusPrompts as React.ComponentType<unknown>,
+);

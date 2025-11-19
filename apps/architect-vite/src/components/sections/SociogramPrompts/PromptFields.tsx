@@ -6,7 +6,7 @@ import TapBehaviourSection from "./PromptFieldsTapBehaviour";
 import withCanCreateEdgesState from "./withCanCreateEdgesState";
 
 // TODO no prop spreading
-const PromptFields = (props) => (
+const PromptFields = (props: Record<string, unknown>) => (
 	<div>
 		<PromptText />
 		<FieldsLayout {...props} />
@@ -15,4 +15,4 @@ const PromptFields = (props) => (
 	</div>
 );
 
-export default compose(withCanCreateEdgesState)(PromptFields);
+export default compose(withCanCreateEdgesState)(PromptFields as React.ComponentType<unknown>);

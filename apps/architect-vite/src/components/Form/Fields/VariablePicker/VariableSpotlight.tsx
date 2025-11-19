@@ -224,14 +224,14 @@ const VariableSpotlight = ({
 		}
 	}, [sortedAndFilteredItems, cursor, hasFilterResults]);
 
-	const handleFilter = (e) => {
+	const handleFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
 		// throw new Error();
 		const value = get(e, "target.value", "");
 		setFilterTerm(value);
 	};
 
 	// Navigate within the list of results using the keyboard
-	const handleKeyDown = (e) => {
+	const handleKeyDown = (e: React.KeyboardEvent) => {
 		// Close the picker when pressing escape
 		if (e.key === "Escape") {
 			onCancel();

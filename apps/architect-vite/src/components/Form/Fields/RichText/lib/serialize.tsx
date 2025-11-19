@@ -30,7 +30,7 @@ const escapeNode = (node: SlateNode): SlateNode => {
 	if ("children" in node && node.children) {
 		return {
 			...node,
-			children: node.children.map((child) => escapeNode(child)),
+			children: node.children.map((child: SlateNode) => escapeNode(child)),
 		};
 	}
 

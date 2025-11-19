@@ -3,7 +3,7 @@ import { compose } from "@reduxjs/toolkit";
 import { isEmpty } from "es-toolkit/compat";
 import isHotkey from "is-hotkey";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type BaseEditor, createEditor, type Descendant, Transforms as SlateTransforms } from "slate";
+import { createEditor, type Descendant, Editor, Transforms as SlateTransforms } from "slate";
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";
 import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
@@ -18,7 +18,7 @@ import withVoids from "./lib/withVoids";
 import RichTextContainer from "./RichTextContainer";
 import Toolbar from "./Toolbar";
 
-type CustomEditor = BaseEditor &
+type CustomEditor = Editor &
 	ReactEditor &
 	HistoryEditor & {
 		inline?: boolean;

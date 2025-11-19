@@ -109,13 +109,13 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 		}
 	}, [mouseMoved]);
 
-	const handleUpdateQuery = useCallback((eventOrValue) => {
-		const newQuery = get(eventOrValue, ["target", "value"], eventOrValue);
+	const handleUpdateQuery = useCallback((eventOrValue: React.ChangeEvent<HTMLInputElement> | string) => {
+		const newQuery = get(eventOrValue, ["target", "value"], eventOrValue) as string;
 		setQuery(newQuery);
 	}, []);
 
 	const handleSelectInterface = useCallback(
-		(interfaceType) => {
+		(interfaceType: string) => {
 			onOpenChange(false); // Close the dialog
 
 			const params = new URLSearchParams();

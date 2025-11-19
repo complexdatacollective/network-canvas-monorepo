@@ -148,4 +148,4 @@ const withEntityHandlers = compose(
 	}),
 );
 
-export default compose(connect(mapStateToProps), withEntityHandlers)(EntityType);
+export default compose(connect(mapStateToProps), withEntityHandlers)(EntityType as React.ComponentType<unknown>);

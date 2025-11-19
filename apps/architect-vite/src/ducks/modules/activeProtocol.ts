@@ -114,8 +114,13 @@ const activeProtocolSlice = createSlice({
 });
 
 // Extract actions and selectors
-export const { setActiveProtocol, updateProtocol, updateProtocolOptions, markProtocolSaved, clearActiveProtocol } =
-	activeProtocolSlice.actions;
+const actions = activeProtocolSlice.actions;
+export const setActiveProtocol = actions.setActiveProtocol!;
+export const updateProtocol = actions.updateProtocol!;
+export const updateProtocolOptions = actions.updateProtocolOptions!;
+export const markProtocolSaved = actions.markProtocolSaved!;
+export const clearActiveProtocol = actions.clearActiveProtocol!;
+
 export const { selectActiveProtocol } = activeProtocolSlice.selectors;
 
 // Export action creators object for backwards compatibility with tests

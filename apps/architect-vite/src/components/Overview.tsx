@@ -116,4 +116,4 @@ const mapStateToProps = (state: RootState) => {
 	};
 };
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(Overview);
+export default compose(connect(mapStateToProps, mapDispatchToProps))(Overview as React.ComponentType<unknown>);

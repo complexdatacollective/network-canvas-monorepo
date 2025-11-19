@@ -64,7 +64,7 @@ class RecentProtocols extends Component<RecentProtocolsProps> {
 	}
 }
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: RootState) => ({
 	recentProtocols: getRecentProtocols(state),
 });
 

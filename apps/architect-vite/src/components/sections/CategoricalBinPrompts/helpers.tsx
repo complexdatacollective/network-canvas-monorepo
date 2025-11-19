@@ -1,11 +1,12 @@
 /* eslint-disable import/prefer-default-export */
 
 import { formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { getOptionsForVariable } from "../../../selectors/codebook";
 
 export const itemSelector =
-	(entity, type) =>
-	(state, { form, editField }) => {
+	(entity: string | null, type: string | null) =>
+	(state: RootState, { form, editField }: { form: string; editField: string }) => {
 		const prompt = formValueSelector(form)(state, editField);
 
 		if (!prompt) {
@@ -21,4 +22,5 @@ export const itemSelector =
 	};
 
 // Strip variableOptions
-export const normalizeField = ({ variableOptions, ...prompt }) => prompt;
+export const normalizeField = ({ variableOptions, ...prompt }: { variableOptions?: unknown; [key: string]: unknown }) =>
+	prompt;

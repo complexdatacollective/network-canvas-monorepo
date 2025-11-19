@@ -5,6 +5,7 @@ import { compose, defaultProps } from "recompose";
 import { change, Field, getFormValues } from "redux-form";
 import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "~/components/Query";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 import Section from "../../EditorLayout/Section";
 import { handleFilterDeactivate } from "../Filter";
 
@@ -59,7 +60,7 @@ const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name, variant
 	);
 };
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: RootState, props: { form: string; name: string }) => ({
 	hasFilter: get(getFormValues(props.form)(state), props.name, null) !== null,
 });
 
@@ -68,4 +69,6 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export default compose(defaultProps({ name: "filter" }), connect(mapStateToProps, mapDispatchToProps))(NetworkFilter);
+export default compose(defaultProps({ name: "filter" }), connect(mapStateToProps, mapDispatchToProps))(
+	NetworkFilter as React.ComponentType<unknown>,
+);

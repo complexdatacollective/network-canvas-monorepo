@@ -9,4 +9,4 @@ type RuleProps = {
 
 const Rule = ({ type, options }: RuleProps) => <RuleText type={type} options={options} />;
 
-export default compose(withDisplayOptions)(Rule);
+export default compose(withDisplayOptions)(Rule as React.ComponentType<unknown>);

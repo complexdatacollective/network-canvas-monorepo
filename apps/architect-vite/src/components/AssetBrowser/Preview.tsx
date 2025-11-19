@@ -58,7 +58,7 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	}, [meta.value]);
 
 	const primaryButtons = [
-		<Button onClick={onClose} color="white" key="close">
+		<Button onClick={onClose} color="platinum" key="close">
 			Close preview
 		</Button>,
 	];
@@ -103,4 +103,4 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	);
 };
 
-export default compose(withAssetMeta, withAssetPath)(Preview);
+export default compose(withAssetMeta, withAssetPath)(Preview as React.ComponentType<unknown>) as React.ComponentType<PreviewOwnProps>;

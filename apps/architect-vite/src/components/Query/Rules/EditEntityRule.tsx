@@ -176,4 +176,4 @@ export default compose<EditEntityRuleProps, Partial<EditEntityRuleProps>>(
 	withEntityRuleType,
 	withRuleChangeHandler,
 	withOptions,
-)(EditEntityRule);
+)(EditEntityRule as React.ComponentType<unknown>);

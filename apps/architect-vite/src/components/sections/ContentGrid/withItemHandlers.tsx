@@ -1,8 +1,13 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 
-const mapStateToProps = (state, { form }) => {
+interface OwnProps {
+	form: string;
+}
+
+const mapStateToProps = (state: RootState, { form }: OwnProps) => {
 	const type = formValueSelector(form)(state, "type");
 
 	return {
@@ -16,7 +21,11 @@ const mapDispatchToProps = {
 
 const itemState = connect(mapStateToProps, mapDispatchToProps);
 
-const itemHandlers = withHandlers({
+type HandlerProps = ReturnType<typeof mapStateToProps> &
+	typeof mapDispatchToProps &
+	OwnProps;
+
+const itemHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	handleChangeType:
 		({ changeForm, form }) =>
 		() => {

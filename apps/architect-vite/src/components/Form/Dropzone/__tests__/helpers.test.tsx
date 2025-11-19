@@ -37,7 +37,7 @@ describe("getRejectedExtensions(accepts, files)", () => {
 });
 
 describe("getAcceptsExtensions(accepts)", () => {
-	it('given a list of file extensions, it returns them without the "." (for the electron open file dialog)', () => {
+	it('given a list of file extensions, it returns them without the "."', () => {
 		const accepts = [".foo", ".bar", ".baz4", ".b3uzz"];
 
 		expect(getAcceptsExtensions(accepts)).toEqual(["foo", "bar", "baz4", "b3uzz"]);
