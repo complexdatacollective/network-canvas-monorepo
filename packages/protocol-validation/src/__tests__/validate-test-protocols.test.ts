@@ -1,13 +1,16 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { migrateProtocol, type Protocol, validateProtocol } from "..";
+import { migrateProtocol, type VersionedProtocol, validateProtocol } from "..";
 import { extractProtocol } from "../utils/extractProtocol";
 import { downloadAndDecryptProtocols } from "./utils";
 
 // Store protocols and their filenames separately
-const protocols: Protocol[] = [];
+const protocols: VersionedProtocol[] = [];
 const protocolFilenames: string[] = [];
 
-describe("Test protocols", () => {
+// Skip these tests if GITHUB_TOKEN is not available
+const hasGitHubToken = !!process.env.GITHUB_TOKEN;
+
+describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 	beforeAll(async () => {
 		const protocolBuffers = await downloadAndDecryptProtocols();
 
@@ -25,24 +28,32 @@ describe("Test protocols", () => {
 
 	// Use a single test with detailed logging for each protocol
 	it("should validate each protocol individually with detailed logging", async () => {
-		const _totalCount = protocols.length;
-
 		for (let i = 0; i < protocols.length; i++) {
-			// biome-ignore lint/style/noNonNullAssertion: duh
-			const protocol = protocols[i]!;
-			const _filename = protocolFilenames[i];
+			const protocol = protocols[i];
+			if (!protocol) {
+				continue;
+			}
+
+			const filename = protocolFilenames[i];
+
+			const protocolVersion = Number(protocol.schemaVersion ?? 0);
+
 			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
 			// Earlier versions used semver strings which should be ignored
-			if (typeof protocol.schemaVersion !== "number" || protocol.schemaVersion < 7 || protocol.schemaVersion > 8) {
+			if (protocolVersion !== 7 && protocolVersion !== 8) {
+				// biome-ignore lint/suspicious/noConsole: logging
+				console.log(`Skipping unsupported schema version for ${filename}: ${protocol.schemaVersion}`);
 				continue;
 			}
 
 			const startTime = Date.now();
 			const result = await validateProtocol(protocol);
-			const _duration = Date.now() - startTime;
+			const duration = Date.now() - startTime;
 
 			// If there are errors, log them (using unified errors array)
 			if (!result.success) {
+				// biome-ignore lint/suspicious/noConsole: logging
+				console.error(`Validation failed for ${filename} (${duration}ms):`, result.error);
 			}
 
 			// Test each protocol individually but within the same test
@@ -54,6 +65,8 @@ describe("Test protocols", () => {
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
+					// biome-ignore lint/suspicious/noConsole: logging
+					console.error(`Migration validation failed for ${filename}:`, migrationResult.error);
 				}
 
 				expect.soft(migrationResult.success).toBe(true);

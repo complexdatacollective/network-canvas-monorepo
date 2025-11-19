@@ -19,7 +19,7 @@ export * from "./variables";
 // Import what we need for the ProtocolSchema
 import { getAssetId } from "~/utils/mock-seeds";
 import { assetSchema } from "./assets";
-import { CodebookSchema } from "./codebook";
+import { CodebookSchema, type EdgeDefinition, type NodeDefinition } from "./codebook";
 import { ExperimentsSchema, type StageSubject } from "./common";
 import { stageSchema } from "./stages";
 
@@ -305,14 +305,14 @@ const ProtocolSchema = z
 
 		// 5b. Validate node variables
 		if (protocol.codebook.node) {
-			for (const [nodeType, nodeDef] of Object.entries(protocol.codebook.node)) {
+			for (const [nodeType, nodeDef] of Object.entries(protocol.codebook.node) as [string, NodeDefinition][]) {
 				validateVariableReferences(nodeDef.variables, ["codebook", "node", nodeType, "variables"], "node", nodeType);
 			}
 		}
 
 		// 5c. Validate edge variables
 		if (protocol.codebook.edge) {
-			for (const [edgeType, edgeDef] of Object.entries(protocol.codebook.edge)) {
+			for (const [edgeType, edgeDef] of Object.entries(protocol.codebook.edge) as [string, EdgeDefinition][]) {
 				validateVariableReferences(edgeDef.variables, ["codebook", "edge", edgeType, "variables"], "edge", edgeType);
 			}
 		}
@@ -337,6 +337,6 @@ const ProtocolSchema = z
 		};
 	});
 
-export type Protocol = z.infer<typeof ProtocolSchema>;
+export type ProtocolSchemaV8 = z.infer<typeof ProtocolSchema>;
 
 export default ProtocolSchema;

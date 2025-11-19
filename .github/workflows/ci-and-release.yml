@@ -116,6 +116,9 @@ jobs:
       - name: Knip
         run: pnpm knip
 
+      - name: Validate redirects
+        run: pnpm --filter @codaco/documentation validate-redirects
+
   test:
     needs: setup
     runs-on: ubuntu-latest
