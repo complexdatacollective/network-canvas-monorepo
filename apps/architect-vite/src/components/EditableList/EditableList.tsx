@@ -1,4 +1,4 @@
-import type { Validation, ValidationName } from "@codaco/protocol-validation";
+import type { Validation } from "@codaco/protocol-validation";
 import type React from "react";
 import type { ComponentType } from "react";
 import { useMemo } from "react";

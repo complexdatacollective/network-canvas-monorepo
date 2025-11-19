@@ -5,11 +5,6 @@ import { getAssetById } from "~/utils/assetUtils";
 import Table from "./Table";
 import withAssetPath from "./withAssetPath";
 
-const initialContent = {
-	geojson: { features: [] },
-	columns: [],
-};
-
 type GeoJSONFeature = {
 	properties: Record<string, unknown>;
 };

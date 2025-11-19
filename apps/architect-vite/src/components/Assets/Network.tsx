@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { getVariableNamesFromNetwork, type Network } from "@codaco/protocol-validation";
+import { getVariableNamesFromNetwork, type Network as NetworkType } from "@codaco/protocol-validation";
 import { compose } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
@@ -17,7 +17,7 @@ type NetworkNode = {
 };
 
 type NetworkData = {
-	network: Network;
+	network: NetworkType;
 	nodes?: NetworkNode[];
 };
 
