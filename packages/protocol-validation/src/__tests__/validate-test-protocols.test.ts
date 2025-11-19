@@ -62,7 +62,6 @@ describe("Test protocols", () => {
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
-					console.error(`Migration validation failed for ${filename}:`, migrationResult.error);
 				}
 
 				expect.soft(migrationResult.success).toBe(true);
