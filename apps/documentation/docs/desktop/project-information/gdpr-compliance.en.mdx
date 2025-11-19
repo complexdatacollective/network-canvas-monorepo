@@ -19,6 +19,25 @@ This guide is designed for researchers, ethics committees, IT departments, and d
 
 The Network Canvas development team does not act as a Data Controller or Data Processor. No participant data is ever received, transmitted to, or stored by the developers. Researchers retain full control and responsibility for all participant data, and GDPR compliance is achieved through proper deployment, configuration, and institutional policies.
 
+## Interviewer vs Fresco: Key Differences
+
+| Aspect | Interviewer (Desktop/Tablet) | Fresco (Self-Hosted Web) |
+|--------|------------------------------|--------------------------|
+| **Data Storage Location** | All participant data stored only on your local device | Interview data stored in Postgres database; study assets stored in S3 via UploadThing |
+| **Data Transmission** | No participant data transmitted externally unless you manually export it | Data remains on your infrastructure; no transmission to developers |
+| **Encryption** | Device-level protections required (disk encryption, access controls are your responsibility) | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced |
+| **Analytics/Telemetry** | Does not collect analytics or crash logs | Optional anonymous usage/error analytics (can be disabled) |
+| **GDPR-Compliant Hosting** | Not applicable (local device storage) | Possible when selecting an EU region (available on paid UploadThing plans) |
+| **Your Control** | Complete control over participant data on your device | All participant data remains under your control at all times |
+| **Infrastructure** | Your device | Your deployed infrastructure (hosting, database, storage) |
+
+**Your Responsibilities as Data Controller:**
+- Establishing a lawful basis for processing participant data
+- Selecting GDPR-compliant hosting regions (Fresco only)
+- Implementing appropriate data security measures
+- Maintaining data retention and deletion policies
+- Enabling participant rights (access, rectification, erasure)
+
 ## Roles under GDPR
 
 ### Data Controller
