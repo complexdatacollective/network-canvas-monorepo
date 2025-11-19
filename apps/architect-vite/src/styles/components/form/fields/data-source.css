@@ -1,0 +1,20 @@
+.form-fields-data-source {
+	margin: var(--space-sm) 0 0;
+
+	&:first-child {
+		margin: 0;
+	}
+
+	&-file {
+		max-height: 500px;
+		opacity: 1;
+		transition:
+			opacity var(--animation-easing) var(--animation-duration-standard),
+			max-height var(--animation-easing) var(--animation-duration-standard);
+
+		&.form-fields-data-source-file--hide {
+			max-height: 0;
+			opacity: 0;
+		}
+	}
+}

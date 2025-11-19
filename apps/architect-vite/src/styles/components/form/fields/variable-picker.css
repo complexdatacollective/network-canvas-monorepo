@@ -1,0 +1,22 @@
+@reference '../../../tailwind.css';
+
+.form-fields-variable-picker {
+	--variable-pill-background: var(--color-white);
+	--variable-pill-shadow-color: var(--color-variable-pill-shadow);
+	border: 2px dashed var(--color-border);
+	padding: var(--space-md);
+	border-radius: var(--radius);
+}
+
+.form-fields-variable-picker > legend {
+	padding: 0 var(--space-md);
+}
+
+.form-fields-variable-picker .variable-pill {
+	margin-bottom: var(--space-md);
+}
+
+.form-fields-variable-picker .form-fields-variable-picker__error {
+	color: var(--color-error);
+	margin-bottom: 0;
+}

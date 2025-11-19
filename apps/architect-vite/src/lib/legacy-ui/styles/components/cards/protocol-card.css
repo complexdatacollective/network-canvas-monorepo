@@ -1,0 +1,180 @@
+.protocol-card {
+	background: hsl(var(--platinum));
+	color: hsl(var(--navy-taupe));
+	border-radius: var(--radius);
+	display: flex;
+	overflow: hidden;
+	flex-direction: column-reverse;
+	height: var(--space-6xl);
+	position: relative;
+
+	&.protocol-card--clickable {
+		cursor: pointer;
+		transition: all 0.2s ease;
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		}
+	}
+
+	&.protocol-card--selected {
+		&:before {
+			content: "";
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			border: var(--space-xs) solid hsl(var(--mustard));
+			border-radius: var(--radius);
+		}
+	}
+
+	&.protocol-card--condensed {
+		cursor: pointer;
+		transition: all 0.1s ease;
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		}
+		flex-direction: row;
+		height: var(--space-4xl);
+
+		.protocol-card__icon-section {
+			padding: 0;
+			flex: 0 0 var(--space-3xl);
+
+			.status-icon {
+				margin-left: 0;
+			}
+
+			.protocol-icon {
+				height: var(--space-lg);
+				width: var(--space-lg);
+			}
+		}
+
+		.protocol-card__main-section {
+			padding: var(--space-md) var(--space-lg);
+			width: calc(100% - var(--space-3xl));
+
+			.protocol-name {
+				display: block;
+				flex: none;
+				font-size: var(--text-base);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+		}
+	}
+
+	.protocol-card__icon-section {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		color: #aab0fd;
+		background: hsl(var(--slate-blue-dark));
+		flex-direction: row;
+		padding: var(--space-md) var(--space-xl);
+		flex: 0 0 auto;
+		min-height: 0;
+
+		.protocol-icon {
+			height: 100%;
+			flex: 0 0 var(--space-xl);
+			display: flex;
+
+			.icon {
+				flex: 0 1 auto;
+				height: 100% !important;
+				width: 100% !important;
+			}
+		}
+
+		.protocol-meta {
+			flex: 1 1 auto;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+
+			h6 {
+				margin: var(--space-xs);
+				text-transform: uppercase;
+				letter-spacing: 0.15em;
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				font-size: var(--text-xs);
+			}
+		}
+	}
+
+	.protocol-card__main-section {
+		padding: var(--space-lg) var(--space-xl) var(--space-md);
+		flex-direction: column;
+		display: flex;
+		justify-content: center;
+		min-height: 0; /* This is needed so that the flexbox can shrink to the absolute height parent */
+		flex: 1 1 auto;
+
+		.protocol-name {
+			flex: 0 0 auto;
+			margin: 0;
+			align-items: center;
+			display: flex;
+			hyphens: auto;
+		}
+
+		.protocol-description {
+			overflow-x: hidden;
+			overflow-y: auto;
+			-webkit-overflow-scrolling: touch;
+			scroll-behavior: smooth;
+			padding-top: var(--space-md);
+			flex: 1 1 auto;
+			font-size: var(--text-sm);
+
+			&.protocol-card--condensed {
+				flex: 0 auto;
+				font-size: var(--text-xs);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				width: 100%;
+			}
+		}
+	}
+
+	.status-icon {
+		height: var(--space-2xl);
+		width: var(--space-2xl);
+		text-align: center;
+		/* background: var(--color-warning); */
+		padding: var(--space-md);
+		margin-left: var(--space-md);
+		border-radius: 50%;
+		display: inline-block;
+
+		&.protocol-card--outdated {
+			background: var(--color-warning);
+		}
+
+		.icon {
+			width: 100% !important;
+			height: 100% !important;
+		}
+	}
+
+	&.protocol-card--obsolete {
+		.protocol-card__icon-section {
+			color: #ff9dbb;
+			background: var(--color-error);
+		}
+
+		.protocol-name,
+		.protocol-description {
+			opacity: 0.35;
+		}
+	}
+}

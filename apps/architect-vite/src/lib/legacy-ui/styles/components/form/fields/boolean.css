@@ -1,0 +1,149 @@
+.form-field-boolean {
+	--global-input-element-size: calc(0.6rem * 4);
+	--global-input-border-size: 0.125rem;
+	margin-bottom: 2rem;
+}
+
+.form-field-boolean .form-field-boolean__error {
+	opacity: 0;
+	background: var(--color-error);
+	color: var(--color-foreground);
+	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+		var(--animation-duration-standard);
+	padding: 0.5rem 0.25rem;
+	display: flex;
+	align-items: center;
+}
+
+.form-field-boolean .form-field-boolean__error svg {
+	max-height: 1.2rem;
+
+}
+
+.form-field-boolean.form-field-boolean--has-error .form-field-boolean__error {
+	opacity: 1;
+}
+
+.form-field-boolean.form-field-boolean--has-error .form-field {
+	margin-bottom: 0;
+	border: 0.125rem solid var(--color-error);
+}
+
+.boolean .boolean__options {
+	display: flex;
+	width: 100%;
+}
+
+.boolean .boolean__reset {
+	cursor: pointer;
+	display: block;
+	font-size: 0.9rem;
+	margin-top: 1rem;
+	color: var(--color-input-foreground);
+	text-decoration: underline;
+}
+
+.boolean-option {
+	--depth: 1;
+	--base-shadow: 0.2rem;
+	--base-blur: 0.2rem;
+	--adjusted-shadow-size: calc(var(--base-shadow) * var(--depth));
+	--adjusted-blur: calc(var(--base-blur) * var(--depth));
+
+	box-shadow: 0 var(--adjusted-shadow-size) rgba(17, 21, 27, 0.664);
+	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
+		var(--animation-duration-fast) var(--animation-easing);
+	cursor: pointer;
+	flex: 1 1 100%;
+	width: 100%; /* for when used outside of flex container */
+	display: inline-flex;
+	border-color: transparent;
+	border-width: var(--global-input-border-size);
+	border-style: solid;
+	padding: calc(0.6rem * 2);
+	border-radius: var(--radius);
+	align-items: center;
+	margin-right: calc(0.6rem * 0.5);
+	margin-left: 0;
+	background: var(--color-input);
+	color: var(--color-input-foreground);
+}
+
+.boolean-option:not(:disabled):hover {
+	text-decoration: none;
+	cursor: pointer;
+	transform: translateY(calc(-1 * var(--adjusted-shadow-size)));
+	box-shadow: 0 calc(var(--adjusted-shadow-size) * 2) var(--adjusted-blur) 0 rgba(0, 0, 0, 0.35);
+}
+
+.boolean-option:not(:disabled):active {
+	box-shadow: unset;
+	transform: translateY(var(--adjusted-shadow-size));
+}
+
+.boolean-option.boolean--collapsed {
+	border-width: calc(var(--global-input-border-size) * 2);
+	justify-content: center;
+	padding: calc(0.6rem * 2) calc(0.6rem * 1);
+}
+
+.boolean-option.boolean--collapsed .form-field-inline-label {
+	text-align: center;
+}
+
+.boolean-option.boolean--collapsed .round-checkbox {
+	display: none;
+}
+
+.boolean-option:last-child {
+	margin-right: 0;
+}
+
+.boolean-option.boolean-option--selected {
+	border-color: var(--color-input-active);
+}
+
+.boolean-option.boolean-option--selected.boolean-option--negative {
+	border-color: var(--color-error);
+}
+
+.round-checkbox {
+	flex: 0 0 var(--global-input-element-size);
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	box-sizing: content-box;
+	width: var(--global-input-element-size);
+	height: var(--global-input-element-size);
+	border-radius: 100%;
+	border-color: var(--color-border);
+	border-width: var(--global-input-border-size);
+	border-style: solid;
+	transition-property: border-color, background-color;
+	transition-duration: var(--animation-duration-standard);
+	transition-timing-function: var(--animation-easing);
+	margin-right: calc(0.6rem * 2);
+
+}
+
+.round-checkbox svg {
+	width: calc(var(--global-input-element-size) * 0.5);
+	height: calc(var(--global-input-element-size) * 0.5);
+	opacity: 0;
+	transition-property: opacity;
+	transition-duration: var(--animation-duration-standard);
+	transition-timing-function: var(--animation-easing);
+}
+
+.round-checkbox.round-checkbox--checked {
+	background-color: var(--color-input-active);
+	border-color: transparent;
+}
+
+.round-checkbox.round-checkbox--checked.round-checkbox--negative {
+	background-color: var(--color-error);
+}
+
+.round-checkbox.round-checkbox--checked svg {
+	opacity: 1;
+}

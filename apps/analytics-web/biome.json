@@ -16,6 +16,7 @@
 		},
 		"domains": {
 			"next": "recommended",
+			"test": "recommended",
 			"react": "recommended"
 		}
 	}

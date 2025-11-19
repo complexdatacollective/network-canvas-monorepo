@@ -12,7 +12,7 @@ const getProtocolJsonAsObject = async (zip: Zip): Promise<VersionedProtocol> => 
 	return JSON.parse(protocolString);
 };
 
-type ExtractedAsset = {
+export type ExtractedAsset = {
 	id: string; // The asset ID from protocol manifest (key)
 	name: string; // Original filename from manifest
 	data: Blob | string; // The actual file data

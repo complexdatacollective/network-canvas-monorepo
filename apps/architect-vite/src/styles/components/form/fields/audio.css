@@ -1,0 +1,10 @@
+.form-fields-audio {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: flex-end;
+
+	& audio {
+		width: 100%;
+	}
+}

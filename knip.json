@@ -7,6 +7,8 @@
 		"apps/documentation": {
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},
-		"packages/protocol-validation": {}
-	}
+		"packages/protocol-validation": {},
+		"apps/architect-vite": {}
+	},
+	"ignoreWorkspaces": ["apps/architect-vite"]
 }

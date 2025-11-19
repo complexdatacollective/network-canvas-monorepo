@@ -1,0 +1,22 @@
+.rules-preview-rules {
+	background-color: hsl(var(--color-input));
+	border-radius: 1rem 1rem 0 0;
+}
+
+.rules-preview-rules__rule {
+	width: 100%;
+}
+
+.rules-preview-rules__rules {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	width: 100%;
+	padding: var(--space-md) 0;
+}
+
+.rules-preview-rules__empty {
+	padding: 1em var(--space-md);
+	color: var(--text-dark);
+	font-style: italic;
+}

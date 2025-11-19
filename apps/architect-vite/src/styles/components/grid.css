@@ -1,0 +1,144 @@
+/* Grid layout styles */
+.grid .layout {
+	height: 450px;
+	background: var(--color-surface-accent);
+	border-radius: 1rem;
+}
+
+.grid .grid__item {
+	position: relative;
+}
+
+.grid .grid__item .react-resizable-handle {
+	background: transparent;
+}
+
+.grid .grid__item .react-resizable-handle::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	width: 1rem;
+	height: 1rem;
+	border-bottom-right-radius: 0.5rem;
+	border-bottom: 2px solid var(--color-active);
+	border-right: 2px solid var(--color-active);
+}
+
+.grid .grid__error {
+	opacity: 0;
+	background-color: var(--color-error);
+	color: var(--color-primary-foreground);
+	border-radius: 0.5rem;
+	max-height: 0;
+	margin-top: 1.2rem;
+	padding: 0.5rem;
+	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+		var(--animation-duration-standard);
+}
+
+.grid .grid__error .icon {
+	height: 1.2rem;
+}
+
+.grid.grid--has-error .grid__error {
+	opacity: 1;
+	max-height: 50px;
+}
+
+/* Grid manager styles */
+.grid-manager__add {
+	margin-top: 1rem;
+}
+
+.grid-manager__add .button {
+	margin: 0;
+}
+
+/* Grid item styles */
+.grid-item {
+	position: absolute;
+	height: 100%;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+	justify-content: flex-start;
+	background-color: var(--color-sortable-background);
+	color: var(--color-sortable-foreground);
+	border-radius: 0.5rem;
+	overflow: hidden;
+}
+
+.grid-item__controls {
+	flex: 0 1 auto;
+	display: flex;
+	align-items: center;
+	padding: 0.5rem;
+	gap: 0.5rem;
+}
+
+.grid-item__edit,
+.grid-item__delete {
+	cursor: pointer;
+	padding: 0.5rem;
+	border-radius: 0.25rem;
+	transition: background-color 0.2s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	border: none;
+	color: inherit;
+}
+
+.grid-item__edit:hover {
+	background-color: rgba(0, 0, 0, 0.1);
+}
+
+.grid-item__delete {
+	margin-left: 0.5rem;
+}
+
+.grid-item__delete:hover {
+	background-color: rgba(239, 68, 68, 0.2);
+}
+
+.grid-item__edit .icon,
+.grid-item__delete .icon {
+	height: 1.2rem;
+	width: 1.2rem;
+}
+
+.grid-item__delete .icon .cls-1,
+.grid-item__delete .icon .cls-2 {
+	fill: var(--color-sortable-foreground);
+}
+
+.grid-item__content {
+	flex-grow: 1;
+	flex-basis: 100%;
+	display: flex;
+	align-items: center;
+	overflow-y: auto;
+	padding: 1rem 2rem;
+}
+
+.grid-item__content div {
+	height: 100%;
+	width: 100%;
+}
+
+.grid-item__content .assets {
+	background-color: var(--color-sortable-background);
+	color: var(--color-sortable-foreground);
+	height: auto;
+}
+
+.grid-item audio {
+	width: 100%;
+}
+
+.grid-item video {
+	width: 100%;
+	height: 100%;
+}

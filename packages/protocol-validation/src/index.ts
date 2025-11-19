@@ -1,4 +1,4 @@
-import { extractProtocol } from "./utils/extractProtocol";
+import { type ExtractedAsset, extractProtocol } from "./utils/extractProtocol";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
 import validateProtocol from "./validation/validate-protocol";
 
@@ -25,7 +25,7 @@ export {
 	VersionedProtocolSchema,
 } from "./schemas";
 
-export { extractProtocol, getVariableNamesFromNetwork, validateNames, validateProtocol };
+export { extractProtocol, type ExtractedAsset, getVariableNamesFromNetwork, validateNames, validateProtocol };
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from "./schemas";

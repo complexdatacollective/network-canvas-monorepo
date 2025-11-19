@@ -1,0 +1,20 @@
+import Rules from "./Rules";
+
+type Rule = Record<string, unknown>;
+
+type FilterProps = {
+	onChange: (value: unknown) => void;
+	openDialog: (dialog: unknown) => void;
+	rules?: Rule[];
+	codebook: Record<string, unknown>;
+	join?: string;
+	error?: string;
+};
+
+const Filter = ({ rules = [], join = null, codebook, onChange, openDialog, error = null }: FilterProps) => (
+	<Rules rules={rules} join={join} onChange={onChange} openDialog={openDialog} codebook={codebook} error={error} />
+);
+
+export { Filter };
+
+export default Filter;

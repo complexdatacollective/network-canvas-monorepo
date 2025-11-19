@@ -1,0 +1,39 @@
+.protocol-summary-contents .heading {
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: 0.15em;
+	margin: 1.2rem 0;
+}
+
+.protocol-summary-contents__section li {
+	margin: 0.6rem 0;
+}
+
+.protocol-summary-contents__section > ol {
+	padding-inline-start: 0;
+}
+
+.protocol-summary-contents__section > ol > li {
+	list-style: none;
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: 0.15em;
+	margin: 1.2rem 0;
+}
+
+.protocol-summary-contents__section ol ol,
+.protocol-summary-contents__section ol ul {
+	padding-inline-start: 2rem;
+}
+
+.protocol-summary-contents__section a {
+	color: hsl(var(--neon-coral));
+}
+
+.protocol-summary-contents__section ul li {
+	padding-inline-start: 0;
+	display: flex;
+	align-items: center;
+}

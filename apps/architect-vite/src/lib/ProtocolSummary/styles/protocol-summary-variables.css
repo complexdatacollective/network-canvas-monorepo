@@ -1,0 +1,66 @@
+/* stylelint-disable no-descending-specificity */
+.protocol-summary-variables__data {
+	width: 100%;
+}
+
+.protocol-summary-variables__data > thead > tr > th,
+.protocol-summary-variables__data > thead > tr > td,
+.protocol-summary-variables__data > tbody > tr > th,
+.protocol-summary-variables__data > tbody > tr > td {
+	max-width: 7cm;
+}
+
+.protocol-summary-variables__data > thead > tr > th {
+	padding: 0.75rem;
+	vertical-align: top;
+	padding-right: 1rem;
+	background: hsl(var(--platinum));
+}
+
+.protocol-summary-variables__data > tbody > tr > td {
+	padding: 0.75rem;
+	vertical-align: top;
+	border-top: hsl(var(--platinum-dark)) 1px solid;
+}
+
+.protocol-summary-variables__data > tbody > tr > td:first-of-type {
+	word-break: break-word;
+	hyphens: auto;
+}
+
+.protocol-summary-variables__options div,
+.protocol-summary-variables__options p,
+.protocol-summary-variables__details div,
+.protocol-summary-variables__details p {
+	display: inline;
+}
+
+.protocol-summary-variables__details > tbody > tr > th,
+.protocol-summary-variables__details > tbody > tr > td {
+	vertical-align: top;
+	padding: 1rem 1rem 0 0;
+}
+
+.protocol-summary-variables__details > tbody > tr:first-child > th,
+.protocol-summary-variables__details > tbody > tr:first-child > td {
+	padding: 0 1rem 0 0;
+}
+
+.protocol-summary-variables__options > tbody > tr > td {
+	vertical-align: top;
+	padding: 0.25rem 1rem;
+	background-color: hsl(var(--platinum));
+}
+
+.protocol-summary-variables__options > tbody > tr:nth-child(2n) > td {
+	background-color: hsl(var(--platinum-dark));
+}
+
+.protocol-summary-variables .protocol-summary-mini-table {
+	margin: 0;
+	max-width: 7cm;
+}
+
+.protocol-summary-variables a {
+	color: hsl(var(--neon-coral));
+}

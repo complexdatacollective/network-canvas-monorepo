@@ -1,0 +1,38 @@
+.code-view {
+	position: absolute;
+	z-index: var(--z-fx);
+	top: 0;
+	left: 0;
+	width: 100%;
+	background: var(--settings);
+	color: var(--color-primary-foreground);
+	font-weight: var(--font-weight-semibold);
+	user-select: text !important;
+}
+
+.code-view > * {
+	user-select: text !important;
+}
+
+.code-view pre {
+	white-space: pre-wrap;
+}
+
+.code-view pre > * {
+	user-select: text !important;
+}
+
+.code-view__content {
+	padding: var(--space-xl);
+	height: 65vh;
+	width: 100%;
+	overflow-y: scroll;
+	overflow-x: hidden;
+	cursor: text;
+}
+
+.code-view__controls {
+	padding: var(--space-md) var(--space-xl);
+	background: hsl(var(--mustard-dark));
+	cursor: pointer;
+}
