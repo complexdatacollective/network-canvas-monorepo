@@ -1,6 +1,6 @@
 import type { Stage } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
@@ -10,7 +10,8 @@ import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
-import { getStage, getStageIndex } from "~/selectors/protocol";
+import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
+import { uploadProtocolForPreview } from "~/utils/uploadPreview";
 import { formName } from "./configuration";
 import { getInterface } from "./Interfaces";
 import StageHeading from "./StageHeading";
@@ -30,6 +31,7 @@ const StageEditor = (props: StageEditorProps) => {
 	// Get stage metadata from Redux state
 	const stage = useSelector((state: RootState) => getStage(state, id || ""));
 	const stageIndex = useSelector((state: RootState) => getStageIndex(state, id || ""));
+	const protocol = useSelector(getProtocol);
 	const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
 	const interfaceType = stage?.type || type || "Information";
 	const template = getInterface(interfaceType).template || {};
@@ -37,6 +39,9 @@ const StageEditor = (props: StageEditorProps) => {
 
 	// Get form state
 	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
+
+	// Preview state
+	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
 
 	// Handle form submission
 	const onSubmit = useCallback(
@@ -75,6 +80,40 @@ const StageEditor = (props: StageEditorProps) => {
 		);
 		return false;
 	}, [hasUnsavedChanges, setLocation, dispatch]);
+
+	const handlePreview = useCallback(async () => {
+		if (!protocol) {
+			dispatch(
+				dialogActions.openDialog({
+					type: "Error",
+					title: "Preview Error",
+					message: "No protocol loaded",
+				}),
+			);
+			return;
+		}
+
+		setIsUploadingPreview(true);
+
+		try {
+			// Pass the current stage index so preview starts at this stage
+			const startStage = stageIndex !== -1 ? stageIndex : 0;
+			const { previewUrl } = await uploadProtocolForPreview(protocol, startStage);
+
+			// Open preview in new window
+			window.open(previewUrl, "_blank", "noopener,noreferrer");
+		} catch (error) {
+			dispatch(
+				dialogActions.openDialog({
+					type: "Error",
+					title: "Preview Failed",
+					message: error instanceof Error ? error.message : "Failed to upload protocol for preview",
+				}),
+			);
+		} finally {
+			setIsUploadingPreview(false);
+		}
+	}, [protocol, stageIndex, dispatch]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
 	const renderSections = (sectionsList: unknown[]) =>
@@ -92,13 +131,13 @@ const StageEditor = (props: StageEditorProps) => {
 				</div>
 				<div className="p-4 bg-surface-accent z-panel shrink-0 grow-0">
 					<div className="flex justify-between items-center max-w-6xl mx-auto">
+						<Button key="cancel" onClick={handleCancel} color="platinum">
+							Cancel
+						</Button>
 						<div className="flex gap-2">
-							<Button key="cancel" onClick={handleCancel} color="platinum" iconPosition="right">
-								Cancel
+							<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview}>
+								{isUploadingPreview ? "Uploading..." : "Preview"}
 							</Button>
-						</div>
-
-						<div className="flex gap-2">
 							{hasUnsavedChanges && (
 								<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
 									Finished Editing
