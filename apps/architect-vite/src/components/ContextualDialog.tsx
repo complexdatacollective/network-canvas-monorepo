@@ -27,10 +27,6 @@ type DialogProps = {
 };
 
 const Dialog = ({ show = true, children = null, className = null, onBlur = () => {} }: DialogProps) => {
-	if (!show) {
-		return null;
-	}
-
 	const dialogZIndex = getCSSVariableAsNumber("--z-dialog");
 
 	const handleBlur = useCallback(
@@ -50,6 +46,10 @@ const Dialog = ({ show = true, children = null, className = null, onBlur = () =>
 		},
 		[onBlur],
 	);
+
+	if (!show) {
+		return null;
+	}
 
 	return createPortal(
 		<Stackable stackKey>

@@ -49,4 +49,4 @@ jobs:
         working-directory: apps/documentation
         env:
           DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url }}
-        run: pnpm test-redirects
+        run: pnpm run test-redirects

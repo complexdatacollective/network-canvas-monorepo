@@ -16,6 +16,7 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "^6.35.1",
+		"@codaco/analytics": "workspace:*",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-dropdown-menu": "catalog:",
@@ -39,6 +40,7 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
+		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@faker-js/faker": "catalog:",
 		"@types/node": "catalog:",

@@ -12,7 +12,7 @@ if [ "$current_branch" = "main" ]; then
   }
   
   # Run type checking
-  pnpm typecheck-all || {
+  pnpm run typecheck-all || {
     echo "❌ Type checking failed. Please fix all type errors before pushing to main."
     exit 1
   }
