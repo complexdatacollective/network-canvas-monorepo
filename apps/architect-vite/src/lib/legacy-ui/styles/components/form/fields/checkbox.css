@@ -1,0 +1,82 @@
+.form-field-checkbox {
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+	position: relative;
+	margin-bottom: calc(0.6rem * 2);
+}
+
+.form-field-checkbox:last-child {
+	margin-bottom: 0;
+}
+
+.form-field-checkbox .form-field-checkbox__input {
+	position: absolute;
+	opacity: 0;
+}
+
+.form-field-checkbox .form-field-checkbox__checkbox {
+	position: relative;
+	width: var(--global-input-element-size);
+	height: var(--global-input-element-size);
+	display: inline-flex;
+	margin-right: calc(0.6rem * 1);
+}
+
+.form-field-checkbox .form-field-checkbox__checkbox::before {
+	position: absolute;
+	top: 0;
+	left: 0;
+	content: "";
+	width: 100%;
+	height: 100%;
+	border-color: var(--color-border);
+	border-width: var(--global-input-border-size);
+	border-style: solid;
+	transition: border-color var(--animation-easing) var(--animation-duration-standard);
+}
+
+.form-field-checkbox .form-field-checkbox__checkbox::after {
+	position: absolute;
+	content: "";
+	top: calc(var(--global-input-border-size) + var(--global-input-border-space));
+	left: calc(var(--global-input-border-size) + var(--global-input-border-space));
+	width: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
+	height: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
+	background-color: var(--color-active);
+	opacity: 0;
+	transition: opacity var(--animation-easing) var(--animation-duration-standard);
+}
+
+.form-field-checkbox:hover .form-field-checkbox__checkbox::before {
+	border-color: var(--color-focus);
+}
+
+.form-field-checkbox .form-field-checkbox__input:checked + .form-field-checkbox__checkbox::before {
+	border-color: var(--color-border);
+}
+
+.form-field-checkbox .form-field-checkbox__input:checked + .form-field-checkbox__checkbox::after {
+	opacity: 1;
+}
+
+.form-field-checkbox.form-field-checkbox--disabled {
+	cursor: default;
+	pointer-events: none;
+}
+
+.form-field-checkbox.form-field-checkbox--disabled .form-field-checkbox__checkbox::before {
+	border-color: hsl(var(--charcoal));
+}
+
+.form-field-checkbox.form-field-checkbox--disabled .form-field-checkbox__checkbox::after {
+	opacity: 0;
+}
+
+.form-field-checkbox.form-field-checkbox--disabled:hover .form-field-checkbox__checkbox::before {
+	border-color: hsl(var(--charcoal));
+}
+
+.form-field-checkbox.form-field-checkbox--disabled:hover .form-field-checkbox__checkbox::after {
+	opacity: 0;
+}

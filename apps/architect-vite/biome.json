@@ -1,0 +1,28 @@
+{
+	"root": false,
+	"$schema": "https://biomejs.dev/schemas/2.3.6/schema.json",
+	"extends": "//",
+	"files": {
+		"ignoreUnknown": true,
+		"includes": ["**", "!node_modules", "!dist", "!build"]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"a11y": "warn",
+			"correctness": {
+				"noUnusedVariables": {
+					"level": "error",
+					"options": {
+						"ignoreRestSiblings": true
+					}
+				}
+			}
+		},
+		"domains": {
+			"react": "recommended",
+			"test": "recommended"
+		}
+	}
+}

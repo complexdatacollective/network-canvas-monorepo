@@ -1,0 +1,38 @@
+.control-bar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: var(--space-md) var(--space-xl);
+}
+
+.control-bar .button[data-variant="save"] {
+	position: relative;
+}
+
+.control-bar .button[data-variant="save"] .spinner {
+	--circle-size: 0.5rem;
+}
+
+.control-bar__primary-buttons {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 1 auto;
+}
+
+.control-bar__primary-buttons > :not(:last-child) {
+	margin-right: var(--space-md);
+}
+
+.control-bar__secondary-buttons {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	flex: 1 auto;
+}
+
+.control-bar__secondary-buttons > :not(:last-child) {
+	margin-right: var(--space-md);
+}

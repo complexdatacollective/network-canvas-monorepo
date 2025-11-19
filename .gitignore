@@ -24,8 +24,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 **/.vercel
@@ -38,6 +41,10 @@ next-env.d.ts
 .turbo
 
 dist
+
+# protocol validation test protocols
+/packages/protocol-validation/src/__tests__/data
+**/src/__tests__/.cache
 
 # Serena cache: https://github.com/oraios/serena/issues/283
 /.serena/cache
