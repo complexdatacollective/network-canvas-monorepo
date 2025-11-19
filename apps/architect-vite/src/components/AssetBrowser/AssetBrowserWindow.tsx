@@ -1,4 +1,5 @@
 import { Layout } from "~/components/EditorLayout";
+import { Button } from "~/lib/legacy-ui/components";
 import Dialog from "../NewComponents/Dialog";
 import AssetBrowser from "./AssetBrowser";
 
@@ -21,9 +22,21 @@ const AssetBrowserWindow = ({
 		<Dialog
 			open={show}
 			onOpenChange={(open) => !open && onCancel()}
-			title="Resource Browser"
 			onCancel={onCancel}
 			cancelText="Cancel"
+			header={<h2 className="m-0">Resource Browser</h2>}
+			footer={
+				<>
+					<Button
+						onClick={() => {
+							onCancel();
+						}}
+						color="platinum"
+					>
+						Cancel
+					</Button>
+				</>
+			}
 		>
 			<Layout>
 				<AssetBrowser type={type} onSelect={onSelect} selected={selected} disableDelete sectionLayout="vertical" />
