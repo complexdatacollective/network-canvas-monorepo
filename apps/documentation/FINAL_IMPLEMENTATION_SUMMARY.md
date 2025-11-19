@@ -198,7 +198,7 @@ User request: "Our users have been requesting documentation that covers GDPR. I 
 
 **Size:** 677 lines (~23,600 bytes)
 
-**Location:** `/docs/fresco/gdpr-compliance.en.mdx`
+**Location:** `/docs/desktop/project-information/gdpr-compliance.en.mdx`
 
 **Target Audience:**
 - Researchers deploying Network Canvas tools
@@ -421,7 +421,7 @@ User request: "Our users have been requesting documentation that covers GDPR. I 
 3. `docs/desktop/key-concepts/input-controls.en.mdx` - Input controls catalog and guide
 4. `docs/desktop/key-concepts/field-validation.en.mdx` - Field validation system guide
 5. `docs/desktop/key-concepts/variables.en.mdx` - Variables guide (all types, scope, naming)
-6. `docs/fresco/gdpr-compliance.en.mdx` - Comprehensive GDPR compliance guide
+6. `docs/desktop/project-information/gdpr-compliance.en.mdx` - Comprehensive GDPR compliance guide
 
 **Files Improved (17):**
 
