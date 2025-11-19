@@ -1,10 +1,11 @@
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 
-export type Item = {
-	attributes: Record<string, string>;
-};
+import type { NcEntity } from "@codaco/shared-consts";
 
+// External data types - represent imported data before conversion to full NcNetwork format
+// These reference the shared types but allow for the simpler structure of external data
+export type Item = Pick<NcEntity, "attributes">;
 export type Network = {
 	nodes: Item[];
 	edges: Item[];
@@ -29,7 +30,7 @@ const getUniqueAttributes = (items: Item[]) => {
 };
 
 export const getVariableNamesFromNetwork = (network: Network) =>
-	(["nodes", "edges"] as Array<keyof Network>).flatMap((entity) => getUniqueAttributes(network[entity] || []));
+	(["nodes", "edges"] as const).flatMap((entity) => getUniqueAttributes(network[entity] || []));
 
 export const validateNames = (items: string[] = []) => {
 	const errors = items.filter((item) => allowedVariableName(item) !== undefined);
