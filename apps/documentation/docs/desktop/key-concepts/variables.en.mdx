@@ -22,121 +22,35 @@ Network Canvas supports several variable types, each designed for different kind
 
 ### Text (String)
 
-**Purpose:** Collect text-based responses like names, descriptions, or open-ended answers.
-
-**Input controls available:**
-- Text Input (single line)
-- Text Area (multiple lines)
-
-**Examples:**
-- Alter name: "John Smith"
-- Relationship description: "We met at work and became close friends"
-- Notes about an alter
-
-**In exported data:** Appears as text strings in CSV, text elements in GraphML
+Text variables collect text-based responses like names, descriptions, or open-ended answers. Available input controls include Text Input (single line) and Text Area (multiple lines). Examples include alter name ("John Smith"), relationship description ("We met at work and became close friends"), and notes about an alter. In exported data, text variables appear as text strings in CSV and as text elements in GraphML.
 
 ### Number
 
-**Purpose:** Collect numerical data like ages, counts, ratings, or measurements.
-
-**Input controls available:**
-- Number Input
-
-**Examples:**
-- Age: 34
-- Number of interactions per week: 5
-- Years known: 12
-
-**In exported data:** Appears as numeric values suitable for statistical analysis
+Number variables collect numerical data like ages, counts, ratings, or measurements. The available input control is Number Input. Examples include age (34), number of interactions per week (5), and years known (12). In exported data, number variables appear as numeric values suitable for statistical analysis.
 
 ### Boolean
 
-**Purpose:** Collect binary true/false or yes/no data.
-
-**Input controls available:**
-- Toggle
-- Checkbox (single)
-
-**Examples:**
-- Lives nearby: true/false
-- Provides emotional support: yes/no
-- Family member: true/false
-
-**In exported data:** Appears as TRUE/FALSE in CSV, boolean values in GraphML
+Boolean variables collect binary true/false or yes/no data. Available input controls include Toggle and Checkbox (single). Examples include lives nearby (true/false), provides emotional support (yes/no), and family member (true/false). In exported data, boolean variables appear as TRUE/FALSE in CSV and as boolean values in GraphML.
 
 ### Categorical (Nominal)
 
-**Purpose:** Collect data where options have no inherent order—responses are distinct categories.
-
-**Input controls available:**
-- Radio Button Group (single selection)
-- Toggle Button Group (single selection)
-- Checkbox Group (multiple selection)
-
-**Examples:**
-- Gender: Male, Female, Non-binary, Other
-- Relationship type: Friend, Family, Colleague, Neighbor
-- Communication methods: Phone, Email, In-person, Text (multiple possible)
-
-**In exported data:**
-- Single-select: One column with category value
-- Multi-select: Multiple columns (one per option) with TRUE/FALSE values
+Categorical variables collect data where options have no inherent order—responses are distinct categories. Available input controls include Radio Button Group (single selection), Toggle Button Group (single selection), and Checkbox Group (multiple selection). Examples include gender (Male, Female, Non-binary, Other), relationship type (Friend, Family, Colleague, Neighbor), and communication methods (Phone, Email, In-person, Text, with multiple possible). In exported data, single-select categorical variables appear as one column with the category value, while multi-select categorical variables appear as multiple columns (one per option) with TRUE/FALSE values.
 
 ### Ordinal
 
-**Purpose:** Collect data where options have a meaningful order or ranking.
-
-**Input controls available:**
-- Likert Scale
-- Radio Button Group
-- Toggle Button Group
-
-**Examples:**
-- Closeness: Not close, Somewhat close, Very close, Extremely close
-- Contact frequency: Never, Rarely, Monthly, Weekly, Daily
-- Agreement: Strongly disagree, Disagree, Neutral, Agree, Strongly agree
-
-**In exported data:** Can be treated as ordered categories for ordinal analysis
+Ordinal variables collect data where options have a meaningful order or ranking. Available input controls include Likert Scale, Radio Button Group, and Toggle Button Group. Examples include closeness (Not close, Somewhat close, Very close, Extremely close), contact frequency (Never, Rarely, Monthly, Weekly, Daily), and agreement (Strongly disagree, Disagree, Neutral, Agree, Strongly agree). In exported data, ordinal variables can be treated as ordered categories for ordinal analysis.
 
 ### Scalar (Continuous)
 
-**Purpose:** Collect continuous numerical data along a scale.
-
-**Input controls available:**
-- Visual Analog Scale (VAS)
-
-**Examples:**
-- Emotional closeness: 0-100 scale
-- Trust level: 0-100 scale
-- Relationship strength: 0-100 scale
-
-**In exported data:** Numeric values suitable for continuous statistical analysis
+Scalar variables collect continuous numerical data along a scale. The available input control is Visual Analog Scale (VAS). Examples include emotional closeness (0-100 scale), trust level (0-100 scale), and relationship strength (0-100 scale). In exported data, scalar variables appear as numeric values suitable for continuous statistical analysis.
 
 ### Date
 
-**Purpose:** Collect specific dates.
-
-**Input controls available:**
-- Date Picker
-
-**Examples:**
-- Date of birth
-- Last contact date
-- When relationship began
-
-**In exported data:** Date values in standard format (YYYY-MM-DD)
+Date variables collect specific dates. The available input control is Date Picker. Examples include date of birth, last contact date, and when a relationship began. In exported data, date variables appear as date values in standard format (YYYY-MM-DD).
 
 ### Layout (Coordinates)
 
-**Purpose:** Store the x/y position of nodes on Sociogram interfaces.
-
-**Input controls:** None (automatically captured from Sociogram)
-
-**Examples:**
-- Node position on Sociogram
-- Spatial layout coordinates
-
-**In exported data:** X and Y coordinate values (normalized 0-1 or pixel coordinates based on export options)
+Layout variables store the x/y position of nodes on Sociogram interfaces. There are no input controls for layout variables, as they are automatically captured from Sociogram interactions. Examples include node position on Sociogram and spatial layout coordinates. In exported data, layout variables appear as X and Y coordinate values (normalized 0-1 or pixel coordinates based on export options).
 
 ## How variables work
 
@@ -151,34 +65,17 @@ You create variables when configuring [Interfaces](/en/desktop/key-concepts/inte
 
 ### Variable scope
 
-Variables are scoped to entity types:
+Variables are scoped to entity types.
 
-**Ego variables:** Collect data about the participant
-- Age, gender, demographics
-- Network-level measures
-- Session metadata
-- One value per interview
+Ego variables collect data about the participant, such as age, gender, and demographics, as well as network-level measures and session metadata. There is one value per interview for each ego variable.
 
-**Node variables:** Collect data about alters
-- Alter attributes (name, age, relationship type)
-- Characteristics and demographics
-- Multiple values per interview (one per alter)
+Node variables collect data about alters, including alter attributes (name, age, relationship type) and characteristics and demographics. There are multiple values per interview (one per alter) for each node variable.
 
-**Edge variables:** Collect data about relationships between alters
-- Relationship attributes (strength, frequency, type)
-- Tie characteristics
-- Multiple values per interview (one per edge)
+Edge variables collect data about relationships between alters, including relationship attributes (strength, frequency, type) and tie characteristics. There are multiple values per interview (one per edge) for each edge variable.
 
 ### Variable reuse
 
-Once you create a variable, you can use it across multiple stages in your protocol:
-
-**Benefits:**
-- Consistency: Same variable definition everywhere
-- Efficiency: Define once, use many times
-- Data quality: Consistent data structure
-
-**Important:** Changes to a variable (type, input control, validation) apply to all uses of that variable throughout the protocol.
+Once you create a variable, you can use it across multiple stages in your protocol. This provides consistency (same variable definition everywhere), efficiency (define once, use many times), and data quality (consistent data structure). Note that changes to a variable (type, input control, validation) apply to all uses of that variable throughout the protocol.
 
 ### Variable persistence
 
@@ -270,19 +167,9 @@ Use the [Codebook](/en/desktop/key-concepts/codebook) in Architect:
 
 ### Modifying variables
 
-**Can be changed:**
-- Input control (if compatible with variable type)
-- Validation rules
-- Options for categorical variables
+You can change the input control (if compatible with variable type), validation rules, and options for categorical variables. You cannot change the variable type (which is set when first created with an input control) or the variable name (which would break references).
 
-**Cannot be changed:**
-- Variable type (set when first created with an input control)
-- Variable name (would break references)
-
-**To change immutable properties:**
-1. Create a new variable with desired settings
-2. Replace old variable with new one on all stages
-3. Delete old variable from codebook
+To change immutable properties, create a new variable with the desired settings, replace the old variable with the new one on all stages, and delete the old variable from the codebook.
 
 ### Deleting variables
 

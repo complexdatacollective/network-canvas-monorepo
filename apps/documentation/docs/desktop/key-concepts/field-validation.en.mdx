@@ -35,214 +35,55 @@ The validation options available depend on the [input control](/en/desktop/key-c
 
 ### Required Field Validation
 
-**Available for:** All input control types
+Required field validation is available for all input control types and ensures the participant provides a response before proceeding. The field cannot be left empty or blank. To configure this, toggle the "Required" option in the validation section.
 
-**Description:** Ensures the participant provides a response before proceeding. The field cannot be left empty or blank.
+Use required validation for essential data points that are critical to your research, variables needed for later stages (such as name variables used as labels), and consent fields. Do not use required validation for optional information that may not apply to all participants, sensitive questions where participants should have the right to skip, or fields where "no response" is a valid data point.
 
-**Configuration:**
-- Toggle the "Required" option in the validation section
-
-**When to use:**
-- Essential data points that are critical to your research
-- Variables needed for later stages (e.g., name variables used as labels)
-- Consent fields
-
-**When NOT to use:**
-- Optional information that may not apply to all participants
-- Sensitive questions where participants should have the right to skip
-- Fields where "no response" is a valid data point
-
-**Example uses:**
-- Consent acknowledgment (required)
-- Alter names in name generators (required)
-- Demographic information that's central to your study (required)
-
-**Error message:** "This field is required"
+Common uses include consent acknowledgment, alter names in name generators, and demographic information that's central to your study. The error message displayed is "This field is required."
 
 ### Text Field Validation
 
-**Available for:** Text Input, Text Area
+Text field validation is available for Text Input and Text Area controls.
 
-#### Minimum Length
+Minimum length validation ensures the text response contains at least a specified number of characters. Configure this by setting a minimum character count. Use this when you need substantive responses (such as descriptions or narratives) or to prevent single-character or trivial responses. For example, you might require "Please describe your relationship (minimum 10 characters)". The error message displayed is "Response must be at least [X] characters."
 
-**Description:** Ensures the text response contains at least a specified number of characters.
-
-**Configuration:**
-- Set minimum character count
-
-**When to use:**
-- When you need substantive responses (e.g., descriptions, narratives)
-- To prevent single-character or trivial responses
-
-**Example:** "Please describe your relationship (minimum 10 characters)"
-
-**Error message:** "Response must be at least [X] characters"
-
-#### Maximum Length
-
-**Description:** Limits the text response to a specified number of characters.
-
-**Configuration:**
-- Set maximum character count
-
-**When to use:**
-- Database field size limitations
-- Maintaining consistent response lengths
-- Encouraging concise responses
-
-**Example:** Name fields limited to 50 characters
-
-**Error message:** "Response must be no more than [X] characters"
-
-**Best practices:**
-- Set reasonable limits that don't feel arbitrary
-- Ensure the visible field size reflects the character limit
-- Consider that some names or descriptions may be legitimately long
+Maximum length validation limits the text response to a specified number of characters. Configure this by setting a maximum character count. Use this for database field size limitations, maintaining consistent response lengths, or encouraging concise responses. For example, you might limit name fields to 50 characters. The error message displayed is "Response must be no more than [X] characters." Set reasonable limits that don't feel arbitrary, ensure the visible field size reflects the character limit, and consider that some names or descriptions may be legitimately long.
 
 ### Number Field Validation
 
-**Available for:** Number Input
+Number field validation is available for Number Input controls.
 
-#### Minimum Value
+Minimum value validation ensures the number entered is greater than or equal to a specified minimum value. Configure this by setting a minimum acceptable value. Use this for age restrictions (such as minimum age 18), ensuring positive values where negative numbers don't make sense, or range constraints based on your research design. For example, you might require that age must be at least 18. The error message displayed is "Value must be at least [X]."
 
-**Description:** Ensures the number entered is greater than or equal to a specified minimum value.
-
-**Configuration:**
-- Set minimum acceptable value
-
-**When to use:**
-- Age restrictions (e.g., minimum age 18)
-- Ensuring positive values where negative numbers don't make sense
-- Range constraints based on your research design
-
-**Example:** Age must be at least 18
-
-**Error message:** "Value must be at least [X]"
-
-#### Maximum Value
-
-**Description:** Ensures the number entered is less than or equal to a specified maximum value.
-
-**Configuration:**
-- Set maximum acceptable value
-
-**When to use:**
-- Realistic upper bounds (e.g., age less than 120)
-- Constraining ranges to valid values
-- Preventing data entry errors
-
-**Example:** Age must be less than 120
-
-**Error message:** "Value must be no more than [X]"
-
-**Best practices:**
-- Set realistic ranges that cover legitimate responses
-- Consider edge cases (e.g., is 0 a valid response?)
-- Combine minimum and maximum to create valid ranges
+Maximum value validation ensures the number entered is less than or equal to a specified maximum value. Configure this by setting a maximum acceptable value. Use this for realistic upper bounds (such as age less than 120), constraining ranges to valid values, or preventing data entry errors. For example, you might require that age must be less than 120. The error message displayed is "Value must be no more than [X]." Set realistic ranges that cover legitimate responses, consider edge cases (such as whether 0 is a valid response), and combine minimum and maximum to create valid ranges.
 
 ### Date Field Validation
 
-**Available for:** Date Picker
+Date field validation is available for Date Picker controls.
 
-#### Start Date Range
+Start date range validation sets the earliest date that can be selected. Configure this by specifying the earliest valid date. Use this for preventing impossible past dates (such as birth dates in the future), limiting responses to a study period, or ensuring dates fall within a relevant timeframe. For example, you might specify that "Visit date must be after January 1, 2020."
 
-**Description:** Sets the earliest date that can be selected.
-
-**Configuration:**
-- Specify the earliest valid date
-
-**When to use:**
-- Preventing impossible past dates (e.g., birth dates in the future)
-- Limiting responses to a study period
-- Ensuring dates fall within a relevant timeframe
-
-**Example:** "Visit date must be after January 1, 2020"
-
-#### End Date Range
-
-**Description:** Sets the latest date that can be selected.
-
-**Configuration:**
-- Specify the latest valid date
-
-**When to use:**
-- Preventing future dates where inappropriate
-- Limiting responses to a study period
-- Ensuring dates are realistic
-
-**Example:** "Birth date must be before today"
-
-**Best practices:**
-- Use "today" as the end date for events that can't be in the future
-- For historical events, set appropriate ranges
-- Consider whether precision is needed (exact date vs. month/year)
+End date range validation sets the latest date that can be selected. Configure this by specifying the latest valid date. Use this for preventing future dates where inappropriate, limiting responses to a study period, or ensuring dates are realistic. For example, you might specify that "Birth date must be before today." Use "today" as the end date for events that can't be in the future. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
 
 ### Categorical Field Validation
 
-**Available for:** Radio Button Group, Toggle Button Group, Checkbox Group
+Categorical field validation is available for Radio Button Group, Toggle Button Group, and Checkbox Group controls.
 
-#### Minimum Selections
+Minimum selections validation, for Checkbox Groups, requires participants to select at least a specified number of options. Configure this by setting a minimum number of selections. Use this for ensuring participants engage with the question or when at least one option must apply. For example, you might require "Select at least one language you speak." The error message displayed is "Please select at least [X] option(s)."
 
-**Description:** For Checkbox Groups, requires participants to select at least a specified number of options.
+Maximum selections validation, for Checkbox Groups, limits participants to selecting no more than a specified number of options. Configure this by setting a maximum number of selections. Use this for forcing prioritization, limiting to top choices, or addressing database or analysis constraints. For example, you might require "Select your top 3 preferred contact methods." The error message displayed is "Please select no more than [X] option(s)."
 
-**Configuration:**
-- Set minimum number of selections
-
-**When to use:**
-- Ensuring participants engage with the question
-- When at least one option must apply
-
-**Example:** "Select at least one language you speak"
-
-**Error message:** "Please select at least [X] option(s)"
-
-#### Maximum Selections
-
-**Description:** For Checkbox Groups, limits participants to selecting no more than a specified number of options.
-
-**Configuration:**
-- Set maximum number of selections
-
-**When to use:**
-- Forcing prioritization
-- Limiting to top choices
-- Database or analysis constraints
-
-**Example:** "Select your top 3 preferred contact methods"
-
-**Error message:** "Please select no more than [X] option(s)"
-
-#### Required Selection
-
-**Description:** For Radio Button Groups and Toggle Button Groups, ensures an option is selected.
-
-**Configuration:**
-- Toggle "Required" validation
-
-**When to use:**
-- When a choice must be made
-- Mutually exclusive options where one must apply
-
-**Example:** "Please indicate your gender" (required)
+Required selection validation, for Radio Button Groups and Toggle Button Groups, ensures an option is selected. Configure this by toggling "Required" validation. Use this when a choice must be made or for mutually exclusive options where one must apply. For example, you might require "Please indicate your gender."
 
 ## Validation Strategies
 
 ### Progressive Validation
 
-Start with minimal validation early in the interview and increase validation requirements for critical data points later.
-
-**Early stages:** Optional fields, broader ranges
-**Later stages:** More required fields, stricter ranges
-
-**Rationale:** Builds rapport before introducing constraints; participants are more invested later
+Start with minimal validation early in the interview and increase validation requirements for critical data points later. Early stages should use optional fields and broader ranges, while later stages can have more required fields and stricter ranges. This approach builds rapport before introducing constraints, and participants are more invested later in the interview.
 
 ### Context-Appropriate Validation
 
-Match validation strictness to the sensitivity and importance of the data.
-
-**High stakes data:** Stricter validation, required fields
-**Exploratory data:** Looser validation, optional fields
-**Sensitive data:** Consider making fields optional even if valuable
+Match validation strictness to the sensitivity and importance of the data. High stakes data should have stricter validation and required fields. Exploratory data can use looser validation and optional fields. For sensitive data, consider making fields optional even if the data would be valuable.
 
 ### Validation and Skip Logic
 
@@ -270,15 +111,7 @@ Network Canvas provides standard error messages for each validation type:
 
 ### User Experience Considerations
 
-**Error messages appear:**
-- Next to the specific field that failed validation
-- In red text to draw attention
-- Immediately when the participant attempts to proceed
-
-**Best practices:**
-- Test your validation rules with pilot participants
-- Ensure error messages are clear and actionable
-- Don't show error messages before the participant attempts to submit
+Error messages appear next to the specific field that failed validation, in red text to draw attention, and immediately when the participant attempts to proceed. Test your validation rules with pilot participants, ensure error messages are clear and actionable, and don't show error messages before the participant attempts to submit.
 
 ## Common Validation Patterns
 
@@ -340,65 +173,15 @@ Additional Comments:
 
 ## Validation Best Practices
 
-### 1. Validate Purposefully
+Validate purposefully by using validation to ensure data quality for analysis, requiring only truly essential fields, and setting realistic ranges and limits. Don't over-validate because you can, don't require fields out of habit, and don't set arbitrary restrictions.
 
-**Do:**
-- Use validation to ensure data quality for analysis
-- Require only truly essential fields
-- Set realistic ranges and limits
+Consider participant experience by testing validation with pilot participants, allowing participants to skip sensitive questions, and providing clear, helpful error messages. Don't create frustrating validation hurdles, don't validate fields that reduce engagement, and don't use validation as a substitute for clear instructions.
 
-**Don't:**
-- Over-validate because you can
-- Require fields out of habit
-- Set arbitrary restrictions
+Balance quality and burden by prioritizing validation for critical variables, making optional fields truly optional, and considering the cumulative burden of multiple validated fields. Don't require everything "just in case," don't apply the same strict validation across all fields, and don't ignore participant fatigue in long forms.
 
-### 2. Consider Participant Experience
+Plan for edge cases by considering legitimate outliers (such as very young or old participants), thinking about cultural variations (such as name lengths or date formats), and accounting for "prefer not to answer" scenarios. Don't set ranges so tight they exclude valid responses, don't assume all participants fit typical patterns, and don't force responses where none may apply.
 
-**Do:**
-- Test validation with pilot participants
-- Allow participants to skip sensitive questions
-- Provide clear, helpful error messages
-
-**Don't:**
-- Create frustrating validation hurdles
-- Validate fields that reduce engagement
-- Use validation as a substitute for clear instructions
-
-### 3. Balance Quality and Burden
-
-**Do:**
-- Prioritize validation for critical variables
-- Make optional fields truly optional
-- Consider the cumulative burden of multiple validated fields
-
-**Don't:**
-- Require everything "just in case"
-- Apply the same strict validation across all fields
-- Ignore participant fatigue in long forms
-
-### 4. Plan for Edge Cases
-
-**Do:**
-- Consider legitimate outliers (e.g., very young/old participants)
-- Think about cultural variations (e.g., name lengths, date formats)
-- Account for "prefer not to answer" scenarios
-
-**Don't:**
-- Set ranges so tight they exclude valid responses
-- Assume all participants fit typical patterns
-- Force responses where none may apply
-
-### 5. Test Thoroughly
-
-**Do:**
-- Test all validation rules in [Preview Mode](/en/desktop/tutorials/building-a-protocol#preview-mode)
-- Try to break your validation with edge cases
-- Get feedback from colleagues and pilot participants
-
-**Don't:**
-- Assume validation works without testing
-- Wait until data collection to discover validation issues
-- Ignore participant feedback about validation frustrations
+Test thoroughly by testing all validation rules in [Preview Mode](/en/desktop/tutorials/building-a-protocol#preview-mode), trying to break your validation with edge cases, and getting feedback from colleagues and pilot participants. Don't assume validation works without testing, don't wait until data collection to discover validation issues, and don't ignore participant feedback about validation frustrations.
 
 ## When NOT to Use Validation
 

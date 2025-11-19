@@ -17,37 +17,17 @@ This document is **not** a certification of GDPR compliance. Instead, it clarifi
 
 This guide is designed for researchers, ethics committees, IT departments, and data protection officers who need to understand how Network Canvas tools handle personal data and what measures are needed to ensure GDPR compliance.
 
-**Key Points:**
-- The Network Canvas development team does not act as a Data Controller or Data Processor
-- No participant data is ever received, transmitted to, or stored by the developers
-- Researchers retain full control and responsibility for all participant data
-- GDPR compliance is achieved through proper deployment, configuration, and institutional policies
+The Network Canvas development team does not act as a Data Controller or Data Processor. No participant data is ever received, transmitted to, or stored by the developers. Researchers retain full control and responsibility for all participant data, and GDPR compliance is achieved through proper deployment, configuration, and institutional policies.
 
 ## Roles under GDPR
 
 ### Data Controller
 
-The **research institution or individual researcher** deploying the software is always the Data Controller. You determine:
-
-- Why participant data is collected
-- Which data is collected
-- How long data is stored
-- What lawful basis applies under GDPR
-- How consent and subject rights are managed
-- Where data is hosted and who has access
+The **research institution or individual researcher** deploying the software is always the Data Controller. As the Data Controller, you determine why participant data is collected, which data is collected, how long data is stored, what lawful basis applies under GDPR, how consent and subject rights are managed, and where data is hosted and who has access to it.
 
 ### Fresco and Interviewer developers
 
-The Network Canvas development team:
-
-- Provides the open-source software
-- Does **not** receive or host participant data
-- Does **not** monitor researcher use
-- Does **not** operate a data processing service
-
-**Therefore, the developers do not act as a Data Processor under GDPR.**
-
-All data processing occurs entirely within infrastructure controlled by the researcher.
+The Network Canvas development team provides the open-source software but does not receive or host participant data, does not monitor researcher use, and does not operate a data processing service. **Therefore, the developers do not act as a Data Processor under GDPR.** All data processing occurs entirely within infrastructure controlled by the researcher.
 
 ## Interviewer (Desktop/Tablet application)
 
@@ -55,64 +35,29 @@ Interviewer is a fully offline application designed to run on researcher-control
 
 ### Data storage
 
-**All interview data is stored locally on your device:**
-- Data resides within the application sandbox on the local filesystem
-- Data is exported **only when you manually export it**
-- No automatic uploads or transmissions occur
+All interview data is stored locally on your device. Data resides within the application sandbox on the local filesystem and is exported only when you manually export it. No automatic uploads or transmissions occur.
 
-**What this means for GDPR:**
-- You have complete control over participant data
-- Data residency is determined by the physical location of your device
-- No third parties have access to the data through the software
+For GDPR purposes, this means you have complete control over participant data. Data residency is determined by the physical location of your device, and no third parties have access to the data through the software.
 
 ### Network communication
 
-Interviewer performs **minimal network communication**:
-
-**Update check:**
-- Queries the GitHub API to check for new versions
-- **No participant data or identifiable information is transmitted**
-- The request contains only the current version number
-
-**No other network requests:**
-- Beyond the update check, Interviewer makes no external connections
-- All data processing occurs entirely offline
+Interviewer performs minimal network communication. The application queries the GitHub API to check for new versions, but no participant data or identifiable information is transmitted in these requests—only the current version number is sent. Beyond this update check, Interviewer makes no external connections, and all data processing occurs entirely offline.
 
 ### Telemetry and third-party services
 
-**Interviewer does not include:**
-- Analytics or crash reporting
-- External scripts, fonts, or services
-- Tracking mechanisms of any kind
-- Third-party data processors
+Interviewer does not include analytics or crash reporting, external scripts, fonts, or services, tracking mechanisms of any kind, or third-party data processors.
 
 ### Other stored data
 
-**Application preferences:**
-- UI configuration settings are stored locally
-- These preferences do **not** contain participant data
-- They cannot be used to identify participants
+Application preferences for UI configuration are stored locally. These preferences do not contain participant data and cannot be used to identify participants.
 
 ### Encryption and device security
 
 **Important:** Interviewer does not perform internal encryption of its stored data.
 
-**Your responsibilities:**
-- Enable device-level encryption (FileVault on macOS, BitLocker on Windows, device encryption on mobile)
-- Implement secure device access policies (passwords, biometric authentication)
-- Establish safe export and storage procedures for exported data
-- Maintain physical security of devices
+You are responsible for enabling device-level encryption (such as FileVault on macOS, BitLocker on Windows, or device encryption on mobile platforms), implementing secure device access policies using passwords or biometric authentication, establishing safe export and storage procedures for exported data, and maintaining physical security of devices.
 
-**GDPR implications:**
-
-Using Interviewer in a GDPR-compliant manner requires:
-- Securing the device where data is stored
-- Regulating who can access the device
-- Managing exported files securely
-- Maintaining data retention and deletion policies
-- Ensuring devices are not lost or stolen
-
-The software itself neither sends nor shares participant data, but you must implement appropriate technical and organizational measures to protect it.
+Using Interviewer in a GDPR-compliant manner requires securing the device where data is stored, regulating who can access the device, managing exported files securely, maintaining data retention and deletion policies, and ensuring devices are not lost or stolen. The software itself neither sends nor shares participant data, but you must implement appropriate technical and organizational measures to protect it.
 
 ## Fresco (Self-hosted web application)
 
@@ -120,17 +65,7 @@ Fresco is a web-based platform deployed entirely by researchers. The software do
 
 ### Deployment and hosting
 
-**Fresco can be deployed to:**
-- Vercel
-- Netlify
-- Researcher-managed Docker infrastructure
-- Any platform that supports Next.js applications
-
-**In every case:**
-- All participant data remains under your control
-- The developers cannot access any data
-- Your chosen hosting provider must meet GDPR requirements
-- You are responsible for selecting appropriate data residency options
+Fresco can be deployed to Vercel, Netlify, researcher-managed Docker infrastructure, or any platform that supports Next.js applications. In every case, all participant data remains under your control, and the developers cannot access any data. Your chosen hosting provider must meet GDPR requirements, and you are responsible for selecting appropriate data residency options.
 
 ### Postgres storage (interview data)
 
@@ -138,43 +73,13 @@ Fresco stores interview responses and study configuration in a **Postgres** data
 
 #### Default deployment: Neon
 
-The recommended hosting provider (Neon) offers:
+The recommended hosting provider, Neon, offers encryption at rest for all data, encryption in transit using TLS connections, automatic backups with point-in-time recovery, and role-based access control. For GDPR compliance, Neon provides EU hosting regions, data residency guarantees, compliance with EU data protection regulations, and Data Processing Agreements (DPAs).
 
-**Security features:**
-- Encryption at rest for all data
-- Encryption in transit (TLS connections)
-- Automatic backups with point-in-time recovery
-- Role-based access control
-
-**GDPR compliance features:**
-- EU hosting regions available
-- Data residency guarantees
-- Compliance with EU data protection regulations
-- Data Processing Agreement (DPA) available
-
-**Configuration requirements:**
-- Select an EU region when creating your database
-- Configure access restrictions appropriately
-- Implement retention policies according to your study requirements
+When configuring your Neon database, select an EU region when creating your database, configure access restrictions appropriately, and implement retention policies according to your study requirements.
 
 #### Self-hosted Postgres
 
-For Docker deployments, you must configure:
-
-**Encryption:**
-- Disk encryption for the database volume
-- TLS for all database connections
-- Encryption at rest if required by your institution
-
-**Access control:**
-- Secure authentication mechanisms
-- Network restrictions (firewall rules)
-- Regular security updates
-
-**Backups:**
-- Automated backup procedures
-- Secure backup storage
-- Tested recovery procedures
+For Docker deployments, you must configure disk encryption for the database volume, TLS for all database connections, and encryption at rest if required by your institution. Access control should include secure authentication mechanisms, network restrictions using firewall rules, and regular security updates. You must also implement automated backup procedures, secure backup storage, and tested recovery procedures.
 
 ### S3-compatible storage (study assets only)
 
@@ -184,89 +89,35 @@ Fresco does **not** store binary data collected from participants during intervi
 
 </TipBox>
 
-**What Fresco stores in S3:**
-- Study introduction videos and images
-- Protocol logos and branding
-- Explanatory materials
-- **Roster files (CSV/JSON)** - which may contain participant personally identifiable information (PII) depending on your study design
+Fresco stores study introduction videos and images, protocol logos and branding, explanatory materials, and roster files (CSV/JSON) in S3—and these roster files may contain participant personally identifiable information (PII) depending on your study design.
 
 #### UploadThing
 
-Fresco uses **UploadThing**, which stores files in **Amazon S3**.
+Fresco uses UploadThing, which stores files in Amazon S3. You cannot choose a different storage provider, as Fresco requires UploadThing for asset management.
 
-**Important limitations:**
-- You cannot choose a different storage provider
-- Fresco requires UploadThing for asset management
+The free UploadThing plan uses US-based S3 storage by default, which may not be suitable for GDPR-sensitive data. Paid plans allow selection of S3 storage region, with EU regions available for GDPR-compliant storage. Region selection ensures data residency in the EU.
 
-**GDPR compliance options:**
+All S3 assets are automatically encrypted at rest, and Fresco enforces server-side encryption using SSE-S3 or SSE-KMS. Access is controlled through signed URLs, and files are not publicly accessible.
 
-**Free plan:**
-- Uses US-based S3 storage by default
-- May not be suitable for GDPR-sensitive data
-
-**Paid plans:**
-- Allow selection of S3 storage region
-- **EU regions available** for GDPR-compliant storage
-- Region selection ensures data residency in the EU
-
-**Security features:**
-- All S3 assets are automatically **encrypted at rest**
-- Fresco enforces server-side encryption (SSE-S3 or SSE-KMS)
-- Access is controlled through signed URLs
-- Files are not publicly accessible
-
-**GDPR implications:**
-
-If your roster data contains PII, you must:
-- Use a paid UploadThing plan
-- Select an EU region (or other GDPR-aligned region)
-- Ensure your institutional policies allow S3 storage
-- Document this in your data protection impact assessment
-- Include UploadThing in your data processing records
+If your roster data contains PII, you must use a paid UploadThing plan, select an EU region (or other GDPR-aligned region), ensure your institutional policies allow S3 storage, document this in your data protection impact assessment, and include UploadThing in your data processing records.
 
 ### Telemetry, analytics, and update checks
 
-**Optional anonymous analytics:**
-- Fresco includes optional usage and error analytics
-- These analytics contain **no participant data**
-- Analytics collect only: feature usage, error types, performance metrics
-- You can disable analytics in Fresco settings
-- Analytics can also be blocked at the network or firewall level
+Fresco includes optional usage and error analytics that contain no participant data. These analytics collect only feature usage, error types, and performance metrics. You can disable analytics in Fresco settings or block them at the network or firewall level.
 
-**Update checks:**
-- Triggered only when viewing the Settings screen
-- Queries the GitHub API for version information
-- **No identifiable information is transmitted**
+Update checks are triggered only when viewing the Settings screen. These checks query the GitHub API for version information, and no identifiable information is transmitted.
 
 ### Logging and tracking
 
-**Fresco does not:**
-- Log IP addresses of participants
-- Log request metadata that could identify participants
-- Use cookies beyond essential session handling
-- Include third-party frontend scripts or tracking pixels
-- Share data with advertising or analytics platforms
+Fresco does not log IP addresses of participants, log request metadata that could identify participants, use cookies beyond essential session handling, include third-party frontend scripts or tracking pixels, or share data with advertising or analytics platforms.
 
-**Session cookies:**
-- Used only for researcher authentication to the dashboard
-- Not used for participant tracking
-- Encrypted and HTTP-only for security
+Session cookies are used only for researcher authentication to the dashboard. They are not used for participant tracking and are encrypted and HTTP-only for security.
 
 ### Data sensitivity
 
-Although Fresco stores no participant photos or files uploaded during interviews, **interview data itself is highly likely to constitute personal data under GDPR**.
+Although Fresco stores no participant photos or files uploaded during interviews, **interview data itself is highly likely to constitute personal data under GDPR**. This includes participant responses to survey questions, network data showing relationships between people, potentially sensitive information about participants and their social networks, and metadata such as interview start/end times and session identifiers.
 
-**Types of data collected:**
-- Participant responses to survey questions
-- Network data (relationships between people)
-- Potentially sensitive information about participants and their social networks
-- Metadata (interview start/end times, session identifiers)
-
-**GDPR classification:**
-- This data should be treated as personal data
-- May include special categories of personal data depending on your study
-- Requires appropriate legal basis for processing
-- Must be protected with technical and organizational measures
+This data should be treated as personal data and may include special categories of personal data depending on your study. It requires an appropriate legal basis for processing and must be protected with technical and organizational measures.
 
 ## Responsibilities of researchers (Data Controllers)
 
@@ -274,372 +125,137 @@ To use Fresco or Interviewer in a GDPR-compliant manner, you must fulfill these 
 
 ### 1. Establish a lawful basis for data collection
 
-**Under GDPR Article 6, you must have a lawful basis for processing:**
+Under GDPR Article 6, you must have a lawful basis for processing personal data. Common lawful bases for research include consent (explicit, informed, and freely given consent from participants), public interest (research conducted in the public interest), and legitimate interests (research purposes with appropriate safeguards).
 
-**Common lawful bases for research:**
-- **Consent** - Explicit, informed, freely given consent from participants
-- **Public interest** - Research conducted in the public interest
-- **Legitimate interests** - Research purposes with appropriate safeguards
+For special categories of data under GDPR Article 9, you must have explicit consent for processing sensitive data, or the processing must be necessary for research purposes with appropriate safeguards.
 
-**For special categories of data (GDPR Article 9):**
-- Explicit consent for processing sensitive data, or
-- Processing necessary for research purposes with appropriate safeguards
-
-**Document:**
-- Which lawful basis you are relying on
-- How you obtained consent (if applicable)
-- Safeguards in place for sensitive data
+You should document which lawful basis you are relying on, how you obtained consent (if applicable), and what safeguards are in place for sensitive data.
 
 ### 2. Ensure compliant hosting
 
-**For Fresco deployments:**
+For Fresco deployments, choose hosting providers that offer GDPR-compliant hosting, verify they provide Data Processing Agreements (DPAs), and ensure they offer EU or appropriate regional hosting.
 
-**Hosting provider selection:**
-- Choose providers that offer GDPR-compliant hosting
-- Verify they provide Data Processing Agreements (DPAs)
-- Ensure they offer EU or appropriate regional hosting
+For Postgres (whether using Neon or self-hosted), select an EU region for data residency, configure encryption at rest and in transit, implement secure access controls, and limit access to authorized personnel only. For S3 storage via UploadThing, use a paid plan to select an EU region, verify region selection in the UploadThing dashboard, and document this choice in your compliance records.
 
-**Postgres (Neon or self-hosted):**
-- Select EU region for data residency
-- Configure encryption at rest and in transit
-- Implement secure access controls
-- Limit access to authorized personnel only
-
-**S3 storage (UploadThing):**
-- Use paid plan to select EU region
-- Verify region selection in UploadThing dashboard
-- Document this choice in your compliance records
-
-**Access management:**
-- Implement role-based access control
-- Use strong authentication (multi-factor where possible)
-- Regularly review who has access to data
-- Remove access promptly when no longer needed
+Implement role-based access control, use strong authentication (multi-factor where possible), regularly review who has access to data, and remove access promptly when no longer needed.
 
 ### 3. Maintain device security (Interviewer)
 
-**Physical security:**
-- Secure storage when not in use
-- Controlled access to devices
-- Procedures for lost or stolen devices
-
-**Technical security:**
-- Enable full disk encryption
-- Use strong passwords or biometric authentication
-- Keep operating system and security patches up to date
-- Install anti-malware software
-
-**Export security:**
-- Secure transfer of exported data
-- Encryption of data in transit and at rest
-- Secure deletion of data from devices when no longer needed
+Ensure secure storage of devices when not in use, maintain controlled access to devices, and establish procedures for lost or stolen devices. Enable full disk encryption, use strong passwords or biometric authentication, keep operating system and security patches up to date, and install anti-malware software. When exporting data, ensure secure transfer of exported data, encrypt data in transit and at rest, and securely delete data from devices when no longer needed.
 
 ### 4. Implement data governance policies
 
-**Data minimization:**
-- Collect only data necessary for your research
-- Avoid collecting excessive personal information
-- Regularly review what data you are collecting
+Collect only data necessary for your research, avoid collecting excessive personal information, and regularly review what data you are collecting. Define how long data will be stored, document retention periods in your privacy notice, and implement automated deletion where possible. Establish procedures for secure data deletion, delete data when retention periods expire, and honor participant deletion requests promptly.
 
-**Retention:**
-- Define how long data will be stored
-- Document retention periods in your privacy notice
-- Implement automated deletion where possible
-
-**Deletion:**
-- Establish procedures for secure data deletion
-- Delete data when retention period expires
-- Honor participant deletion requests promptly
-
-**Pseudonymization/Anonymization:**
-- Consider pseudonymizing data where possible
-- Use case IDs instead of names during data collection
-- Separate directly identifying information from research data
+Consider pseudonymizing data where possible, use case IDs instead of names during data collection, and separate directly identifying information from research data.
 
 ### 5. Enable participant rights
 
-Under GDPR, participants have rights that you must facilitate:
+Under GDPR, participants have rights that you must facilitate. Participants can request copies of their data (right of access), and you must provide data in an accessible format and respond within one month. Participants can request corrections to their data (right to rectification), and you must update data when errors are identified.
 
-**Right of access:**
-- Participants can request copies of their data
-- Provide data in accessible format
-- Respond within one month
+Participants can request deletion of their data (right to erasure or "right to be forgotten"). You must honor these requests unless there are legitimate grounds to refuse, and you must document any refusals with clear justification. Participants also have the right to data portability, meaning you must provide data in machine-readable format when requested and enable transfer to another controller if requested.
 
-**Right to rectification:**
-- Participants can request corrections to their data
-- Update data when errors are identified
-
-**Right to erasure ("right to be forgotten"):**
-- Participants can request deletion of their data
-- Honor requests unless there are legitimate grounds to refuse
-- Document any refusals with clear justification
-
-**Right to data portability:**
-- Provide data in machine-readable format when requested
-- Enable transfer to another controller if requested
-
-**Fresco and Interviewer do not automate these processes** but they do not obstruct their implementation. You must establish procedures to honor these rights.
+Fresco and Interviewer do not automate these processes but they do not obstruct their implementation. You must establish procedures to honor these rights.
 
 ### 6. Conduct data protection impact assessments
 
-**When required:**
-- Large-scale processing of special category data
-- Systematic monitoring of participants
-- Processing that may result in high risk to participants
-
-**What to assess:**
-- Nature, scope, context, and purposes of processing
-- Necessity and proportionality of processing
-- Risks to participants' rights and freedoms
-- Measures to address risks
+Data protection impact assessments are required for large-scale processing of special category data, systematic monitoring of participants, or processing that may result in high risk to participants. You should assess the nature, scope, context, and purposes of processing; the necessity and proportionality of processing; risks to participants' rights and freedoms; and measures to address those risks.
 
 ### 7. Maintain records of processing activities
 
-**Document:**
-- Purposes of processing
-- Categories of data subjects and personal data
-- Categories of recipients
-- Data transfers (if any)
-- Retention periods
-- Security measures
+Document the purposes of processing, categories of data subjects and personal data, categories of recipients, data transfers (if any), retention periods, and security measures in place.
 
 ### 8. Provide clear privacy information
 
-**Privacy notice must include:**
-- Identity of the Data Controller (you/your institution)
-- Purposes of data collection
-- Lawful basis for processing
-- How long data will be stored
-- Participant rights and how to exercise them
-- Contact details for data protection queries
-- How to lodge a complaint with supervisory authority
+Your privacy notice must include the identity of the Data Controller (you or your institution), purposes of data collection, lawful basis for processing, how long data will be stored, participant rights and how to exercise them, contact details for data protection queries, and how to lodge a complaint with the supervisory authority.
 
 ## Security best practices
 
 ### For Interviewer
 
-**Device security:**
-- Enable full disk encryption on all devices
-- Use strong passwords (minimum 12 characters, mixed case, numbers, symbols)
-- Enable automatic screen locking after inactivity
-- Install security updates promptly
-- Use anti-malware software
-- Restrict physical access to devices
+Enable full disk encryption on all devices and use strong passwords with a minimum of 12 characters including mixed case, numbers, and symbols. Enable automatic screen locking after inactivity, install security updates promptly, use anti-malware software, and restrict physical access to devices.
 
-**Data export security:**
-- Export data only when necessary
-- Transfer exported files using encrypted connections
-- Store exported data on encrypted drives or servers
-- Delete exported files from devices after transfer
-- Maintain audit logs of data exports
+Export data only when necessary, transfer exported files using encrypted connections, store exported data on encrypted drives or servers, delete exported files from devices after transfer, and maintain audit logs of data exports.
 
-**Personnel security:**
-- Train staff on data protection requirements
-- Limit device access to authorized personnel only
-- Use separate user accounts (don't share accounts)
-- Implement separation of duties where appropriate
+Train staff on data protection requirements, limit device access to authorized personnel only, use separate user accounts rather than sharing accounts, and implement separation of duties where appropriate.
 
 ### For Fresco
 
-**Infrastructure security:**
-- Use HTTPS for all connections (automatically enforced)
-- Keep platform and dependencies updated
-- Monitor for security vulnerabilities
-- Implement intrusion detection if possible
+Use HTTPS for all connections (automatically enforced), keep platform and dependencies updated, monitor for security vulnerabilities, and implement intrusion detection if possible.
 
-**Access security:**
-- Use strong, unique passwords for admin account
-- Consider implementing additional authentication layers
-- Regularly review access logs
-- Limit dashboard access to authorized IP ranges if possible
+Use strong, unique passwords for admin accounts, consider implementing additional authentication layers, regularly review access logs, and limit dashboard access to authorized IP ranges if possible.
 
-**Database security:**
-- Restrict database access to application only
-- Use strong database credentials
-- Enable database encryption
-- Implement regular automated backups
-- Test backup restoration procedures
+Restrict database access to the application only, use strong database credentials, enable database encryption, implement regular automated backups, and test backup restoration procedures.
 
-**Network security:**
-- Deploy behind institutional firewall if possible
-- Use VPN for remote access to admin dashboard
-- Monitor for unusual access patterns
-- Implement rate limiting to prevent abuse
+Deploy behind an institutional firewall if possible, use VPN for remote access to the admin dashboard, monitor for unusual access patterns, and implement rate limiting to prevent abuse.
 
 ## Data breach procedures
 
-**Preparation:**
-- Establish a data breach response plan
-- Identify who is responsible for breach response
-- Document procedures before a breach occurs
+Establish a data breach response plan, identify who is responsible for breach response, and document procedures before a breach occurs.
 
-**In case of breach:**
-- Contain the breach immediately
-- Assess the severity and scope
-- Notify your Data Protection Officer (if applicable)
-- Notify supervisory authority within 72 hours if high risk
-- Notify affected participants if high risk to their rights
-- Document all actions taken
+In case of a breach, contain it immediately and assess the severity and scope. Notify your Data Protection Officer (if applicable), notify the supervisory authority within 72 hours if there is high risk, notify affected participants if there is high risk to their rights, and document all actions taken.
 
-**Prevention:**
-- Regular security audits
-- Penetration testing for Fresco deployments
-- Staff training on security practices
-- Incident response drills
+Prevent breaches through regular security audits, penetration testing for Fresco deployments, staff training on security practices, and incident response drills.
 
 ## International data transfers
 
-**Within the EU:**
-- No additional measures required
-- Data remains within GDPR jurisdiction
+Within the EU, no additional measures are required, as data remains within GDPR jurisdiction. To countries outside the EU, ensure an adequate level of protection exists, use Standard Contractual Clauses if needed, document transfer mechanisms, and conduct a transfer impact assessment.
 
-**To countries outside the EU:**
-- Ensure adequate level of protection exists
-- Use Standard Contractual Clauses if needed
-- Document transfer mechanisms
-- Conduct transfer impact assessment
-
-**For Network Canvas deployments:**
-- Choose EU regions for all services (Neon, UploadThing)
-- Avoid transferring data outside the EU unless necessary
-- If transfers are required, implement appropriate safeguards
+For Network Canvas deployments, choose EU regions for all services (Neon, UploadThing), avoid transferring data outside the EU unless necessary, and if transfers are required, implement appropriate safeguards.
 
 ## Demonstrating compliance
 
-**Documentation you should maintain:**
-- Privacy notices provided to participants
-- Consent forms (if applicable)
-- Data Processing Impact Assessments
-- Records of processing activities
-- Data Processing Agreements with service providers
-- Security policies and procedures
-- Staff training records
-- Incident response procedures
+Maintain documentation including privacy notices provided to participants, consent forms (if applicable), Data Processing Impact Assessments, records of processing activities, Data Processing Agreements with service providers, security policies and procedures, staff training records, and incident response procedures.
 
-**Regular reviews:**
-- Annual review of data processing activities
-- Regular security audits
-- Staff training updates
-- Review of service provider compliance
+Conduct annual reviews of data processing activities, regular security audits, staff training updates, and reviews of service provider compliance.
 
 ## Working with ethics committees and IT departments
 
 ### For ethics committees
 
-**Questions to address in ethics applications:**
+When preparing ethics applications, address what lawful basis you will use for processing personal data, where participant data will be stored, what security measures are in place, how participant rights will be honored, what the data retention period will be, and how data will be securely destroyed.
 
-- What is the lawful basis for processing personal data?
-- Where will participant data be stored?
-- What security measures are in place?
-- How will participant rights be honored?
-- What is the data retention period?
-- How will data be securely destroyed?
-
-**Network Canvas-specific information:**
-
-- Interviewer: Data stored locally on encrypted devices
-- Fresco: Data stored in EU-region Postgres and S3
-- No data transmitted to software developers
-- Full control over data at all times
+For Network Canvas-specific information, note that Interviewer stores data locally on encrypted devices, Fresco stores data in EU-region Postgres and S3, no data is transmitted to software developers, and you maintain full control over data at all times.
 
 ### For IT departments
 
-**Infrastructure requirements:**
+For Interviewer, infrastructure requirements include desktop or tablet devices with disk encryption, secure storage facilities for devices, a secure network for data export and transfer, and regular security updates.
 
-**Interviewer:**
-- Desktop/tablet devices with disk encryption
-- Secure storage facilities for devices
-- Secure network for data export/transfer
-- Regular security updates
+For Fresco, you need Next.js hosting (Vercel, Netlify, or Docker), a Postgres database (we recommend Neon with an EU region), an UploadThing account (paid plan with EU S3 region), and HTTPS enabled (which is automatic on hosting platforms).
 
-**Fresco:**
-- Next.js hosting (Vercel, Netlify, or Docker)
-- Postgres database (recommend Neon with EU region)
-- UploadThing account (paid plan with EU S3 region)
-- HTTPS enabled (automatic on hosting platforms)
-
-**Security considerations:**
-- All data remains within researcher control
-- No third-party data processors beyond hosting infrastructure
-- Standard web application security practices apply
-- Regular security updates required
+All data remains within researcher control, with no third-party data processors beyond hosting infrastructure. Standard web application security practices apply, and regular security updates are required.
 
 ## Specific scenarios
 
 ### Collecting sensitive personal data
 
-**GDPR Article 9 special categories:**
-- Racial or ethnic origin
-- Political opinions
-- Religious or philosophical beliefs
-- Trade union membership
-- Genetic data
-- Biometric data
-- Health data
-- Sex life or sexual orientation
+GDPR Article 9 defines special categories of personal data including racial or ethnic origin, political opinions, religious or philosophical beliefs, trade union membership, genetic data, biometric data, health data, and data concerning sex life or sexual orientation.
 
-**Additional requirements:**
-- Explicit consent or other Article 9 lawful basis
-- Higher standard of security measures
-- Stricter data minimization
-- Enhanced privacy notices
-- More rigorous Data Protection Impact Assessment
+Processing these categories requires explicit consent or another Article 9 lawful basis, a higher standard of security measures, stricter data minimization, enhanced privacy notices, and a more rigorous Data Protection Impact Assessment.
 
-**Using Network Canvas for sensitive data:**
-- Deploy Fresco in EU region only
-- Enable maximum security features
-- Implement additional access controls
-- Consider additional encryption layers
-- Document all safeguards thoroughly
+When using Network Canvas for sensitive data, deploy Fresco in an EU region only, enable maximum security features, implement additional access controls, consider additional encryption layers, and document all safeguards thoroughly.
 
 ### Longitudinal studies
 
-**Challenges:**
-- Need to re-identify participants for follow-up
-- Extended data retention periods
-- Multiple consent points
+Longitudinal studies present challenges including the need to re-identify participants for follow-up, extended data retention periods, and multiple consent points.
 
-**Solutions:**
-- Use pseudonymous identifiers where possible
-- Store linking key separately from research data
-- Update privacy notices for each wave
-- Refresh consent if processing changes
-- Implement secure participant identification procedures
+Address these challenges by using pseudonymous identifiers where possible, storing the linking key separately from research data, updating privacy notices for each wave, refreshing consent if processing changes, and implementing secure participant identification procedures.
 
 ### Multi-site studies
 
-**Challenges:**
-- Data transfers between sites
-- Multiple Data Controllers
-- Coordinating compliance
+Multi-site studies involve challenges such as data transfers between sites, multiple Data Controllers, and the need to coordinate compliance.
 
-**Solutions:**
-- Establish clear Data Controller roles
-- Implement Data Sharing Agreements
-- Use consistent security measures across sites
-- Coordinate privacy notices
-- Consider joint Data Controller arrangement
+Address these by establishing clear Data Controller roles, implementing Data Sharing Agreements, using consistent security measures across sites, coordinating privacy notices, and considering a joint Data Controller arrangement.
 
 ## Conclusion
 
 Fresco and Interviewer are designed to give researchers complete control over participant data, enabling GDPR-compliant research when deployed and configured appropriately.
 
-**Key takeaways:**
+The software developers are not involved in data processing—all data remains under your control. GDPR compliance is your responsibility as Data Controller; the software enables compliance but does not guarantee it. Proper configuration is essential: choose EU regions, enable encryption, and implement security measures. Documentation is crucial—maintain records of all compliance measures. Regular review is necessary, as compliance is an ongoing process, not a one-time achievement.
 
-1. **The software developers are not involved in data processing** - All data remains under your control
-2. **GDPR compliance is your responsibility as Data Controller** - The software enables compliance but does not guarantee it
-3. **Proper configuration is essential** - Choose EU regions, enable encryption, implement security measures
-4. **Documentation is crucial** - Maintain records of all compliance measures
-5. **Regular review is necessary** - Compliance is an ongoing process, not a one-time achievement
+GDPR compliance is achieved through appropriate hosting choices (EU regions, compliant providers), robust security practices (encryption, access control, monitoring), clear institutional policies (retention, deletion, participant rights), proper documentation (privacy notices, DPIAs, processing records), and regular review and updates (security audits, policy reviews).
 
-**GDPR compliance is achieved through:**
-- Appropriate hosting choices (EU regions, compliant providers)
-- Robust security practices (encryption, access control, monitoring)
-- Clear institutional policies (retention, deletion, participant rights)
-- Proper documentation (privacy notices, DPIAs, processing records)
-- Regular review and updates (security audits, policy reviews)
-
-**The software provides the foundation for GDPR-compliant research. Your deployment decisions, security practices, and institutional policies determine whether that foundation results in actual compliance.**
+The software provides the foundation for GDPR-compliant research. Your deployment decisions, security practices, and institutional policies determine whether that foundation results in actual compliance.
 
 ## Additional resources
 
@@ -666,12 +282,6 @@ Fresco and Interviewer are designed to give researchers complete control over pa
 
 ## Getting help
 
-If you have questions about GDPR compliance with Network Canvas:
-
-1. **Review this guide thoroughly** - Most questions are addressed here
-2. **Consult your Data Protection Officer** - They can provide institution-specific guidance
-3. **Contact your ethics committee** - They can advise on compliance for your specific study
-4. **Engage your IT department** - They can assist with technical implementation
-5. **Reach out to the community** - Visit our [User Community](https://community.networkcanvas.com/) for peer support
+If you have questions about GDPR compliance with Network Canvas, start by reviewing this guide thoroughly, as most questions are addressed here. Consult your Data Protection Officer for institution-specific guidance, contact your ethics committee for advice on compliance for your specific study, engage your IT department for assistance with technical implementation, and reach out to our [User Community](https://community.networkcanvas.com/) for peer support.
 
 **The Network Canvas team cannot provide legal advice on GDPR compliance.** We can only explain how the software works and what data it processes. Compliance decisions must be made by you in consultation with your legal and compliance advisors.

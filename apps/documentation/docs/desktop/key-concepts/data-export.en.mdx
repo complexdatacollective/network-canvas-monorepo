@@ -157,47 +157,23 @@ Network Canvas provides several specialized export options that affect how your 
 
 ### Merge sessions by protocol
 
-**What it does:** Combines all interview sessions into a single file (or set of files for CSV).
+This option combines all interview sessions into a single file (or set of files for CSV).
 
-**Options:**
-- **Enabled:** Creates one combined file containing all interviews
-  - CSV: Single ego file, single alter file per type, single edge file per type
-  - GraphML: Not applicable (GraphML is always per-session)
-- **Disabled:** Creates separate files for each interview session
+When enabled, this creates one combined file containing all interviews. For CSV exports, you get a single ego file, a single alter file per type, and a single edge file per type. For GraphML, this option is not applicable, as GraphML is always exported per-session. When disabled, the export creates separate files for each interview session.
 
-**When to enable:**
-- You want all your data in one place for analysis
-- You're importing into statistical software that works better with combined datasets
-- You're using the egoR package in R
+Enable this option when you want all your data in one place for analysis, when you're importing into statistical software that works better with combined datasets, or when you're using the egoR package in R. Disable it when you want to analyze individual interviews separately, when you need to track which data came from which interview session, or when you're doing quality checks on individual interviews.
 
-**When to disable:**
-- You want to analyze individual interviews separately
-- You need to track which data came from which interview session
-- You're doing quality checks on individual interviews
-
-**Important:** Even when merged, ego networks remain separate—the data is combined into shared files, but network boundaries are preserved through the ego identifiers.
+Even when merged, ego networks remain separate—the data is combined into shared files, but network boundaries are preserved through the ego identifiers.
 
 ### Use screen layout coordinates
 
-**What it does:** Converts normalized node positions from Sociogram interfaces into screen-specific pixel coordinates.
+This option converts normalized node positions from Sociogram interfaces into screen-specific pixel coordinates.
 
-**Background:** Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
+Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
 
-**Options:**
-- **Enabled:** Converts normalized coordinates to pixel coordinates based on screen size
-  - Interviewer: Uses the actual screen dimensions from the interview device
-  - Fresco: Uses a hardcoded size of 1920 x 1080 pixels
-- **Disabled (default):** Exports normalized coordinates (0-1 range)
+When enabled, this converts normalized coordinates to pixel coordinates based on screen size. In Interviewer, it uses the actual screen dimensions from the interview device. In Fresco, it uses a hardcoded size of 1920 x 1080 pixels. When disabled (the default), it exports normalized coordinates in the 0-1 range.
 
-**When to enable:**
-- You want to recreate the exact visual layout as it appeared during the interview
-- You're importing into visualization software that expects pixel coordinates
-- You need coordinates that match specific screen dimensions
-
-**When to disable:**
-- You want device-independent coordinates that work on any canvas size
-- You're comparing layouts created on different screen sizes
-- You want maximum flexibility for visualization
+Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
 
 **Example:**
 
