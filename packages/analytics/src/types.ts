@@ -147,11 +147,6 @@ export interface Analytics {
 	getFeatureFlag: (flagKey: string) => string | boolean | undefined;
 
 	/**
-	 * Get all active feature flags
-	 */
-	getFeatureFlags: () => Record<string, string | boolean>;
-
-	/**
 	 * Reload feature flags from PostHog
 	 */
 	reloadFeatureFlags: () => void;

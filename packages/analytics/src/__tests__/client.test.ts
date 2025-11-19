@@ -5,16 +5,16 @@ import type { AnalyticsConfig } from "../types";
 // Mock posthog-js
 vi.mock("posthog-js", () => ({
 	default: {
-		init: vi.fn(),
+		init: vi.fn().mockReturnValue({
+			register: vi.fn(),
+			debug: vi.fn(),
+		}),
 		capture: vi.fn(),
 		isFeatureEnabled: vi.fn(),
 		getFeatureFlag: vi.fn(),
-		getFeatureFlags: vi.fn(),
 		reloadFeatureFlags: vi.fn(),
 		identify: vi.fn(),
 		reset: vi.fn(),
-		register: vi.fn(),
-		debug: vi.fn(),
 	},
 }));
 
@@ -60,8 +60,9 @@ describe("createAnalytics", () => {
 				debug: vi.fn(),
 			};
 
-			vi.mocked(posthog.init).mockImplementation((_, options) => {
+			vi.mocked(posthog.init).mockImplementation((_token, options) => {
 				options?.loaded?.(mockPosthogInstance as never);
+				return mockPosthogInstance as never;
 			});
 
 			createAnalytics(mockConfig);
@@ -77,8 +78,9 @@ describe("createAnalytics", () => {
 				debug: vi.fn(),
 			};
 
-			vi.mocked(posthog.init).mockImplementation((_, options) => {
+			vi.mocked(posthog.init).mockImplementation((_token, options) => {
 				options?.loaded?.(mockPosthogInstance as never);
+				return mockPosthogInstance as never;
 			});
 
 			const debugConfig = { ...mockConfig, debug: true };
@@ -210,16 +212,6 @@ describe("createAnalytics", () => {
 			expect(posthog.getFeatureFlag).toHaveBeenCalledWith("experiment");
 		});
 
-		it("should get all feature flags", () => {
-			const analytics = createAnalytics(mockConfig);
-			const flags = { "feature-1": true, "feature-2": "variant" };
-			vi.mocked(posthog.getFeatureFlags).mockReturnValue(flags as never);
-
-			const result = analytics.getFeatureFlags();
-
-			expect(result).toEqual(flags);
-		});
-
 		it("should reload feature flags", () => {
 			const analytics = createAnalytics(mockConfig);
 
@@ -234,7 +226,6 @@ describe("createAnalytics", () => {
 
 			expect(analytics.isFeatureEnabled("test")).toBe(false);
 			expect(analytics.getFeatureFlag("test")).toBeUndefined();
-			expect(analytics.getFeatureFlags()).toEqual({});
 		});
 	});
 

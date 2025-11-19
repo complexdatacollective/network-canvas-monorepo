@@ -94,18 +94,6 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 			}
 		},
 
-		getFeatureFlags: () => {
-			if (disabled) return {};
-
-			try {
-				return posthog.getFeatureFlags() as Record<string, string | boolean>;
-			} catch (_e) {
-				if (debug) {
-				}
-				return {};
-			}
-		},
-
 		reloadFeatureFlags: () => {
 			if (disabled) return;
 
@@ -154,7 +142,6 @@ function createNoOpAnalytics(installationId: string): Analytics {
 		trackError: () => {},
 		isFeatureEnabled: () => false,
 		getFeatureFlag: () => undefined,
-		getFeatureFlags: () => ({}),
 		reloadFeatureFlags: () => {},
 		identify: () => {},
 		reset: () => {},

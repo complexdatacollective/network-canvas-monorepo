@@ -73,13 +73,6 @@ class ServerAnalytics implements Analytics {
 	/**
 	 * Feature flags are not supported in server-side mode
 	 */
-	getFeatureFlags(): Record<string, string | boolean> {
-		return {};
-	}
-
-	/**
-	 * Feature flags are not supported in server-side mode
-	 */
 	reloadFeatureFlags(): void {}
 
 	/**
