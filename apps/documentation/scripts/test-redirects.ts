@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/** biome-ignore-all lint/suspicious/noConsole: test logging */
 /**
  * Tests redirect rules against a live deployment
  * Verifies that redirects work correctly on the actual site
@@ -121,7 +122,7 @@ async function main() {
 	}
 
 	// Report results
-	console.log("\n" + "=".repeat(80) + "\n");
+	console.log(`\n${"=".repeat(80)}\n`);
 
 	const passed = results.filter((r) => r.success);
 	const failed = results.filter((r) => !r.success);

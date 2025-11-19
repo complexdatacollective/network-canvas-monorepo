@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/** biome-ignore-all lint/suspicious/noConsole: test logging */
 /**
  * Validates redirect configurations in netlify.toml and vercel.json
  * Catches common issues before deployment:
@@ -54,7 +55,7 @@ function parseNetlifyToml(content: string): NetlifyRedirect[] {
 		} else if (trimmed.startsWith("to = ")) {
 			currentRedirect.to = trimmed.match(/to = "(.+)"/)?.[1] || "";
 		} else if (trimmed.startsWith("status = ")) {
-			currentRedirect.status = Number.parseInt(trimmed.match(/status = (\d+)/)?.[1] || "301");
+			currentRedirect.status = Number.parseInt(trimmed.match(/status = (\d+)/)?.[1] || "301", 10);
 		} else if (trimmed.startsWith("force = ")) {
 			currentRedirect.force = trimmed.includes("true");
 		}
