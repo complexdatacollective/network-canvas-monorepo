@@ -19,13 +19,22 @@
 const POSTHOG_HOST = "us.i.posthog.com";
 const POSTHOG_ASSETS_HOST = "us-assets.i.posthog.com";
 
+interface Env {
+	POSTHOG_API_KEY?: string;
+}
+
 export default {
-	async fetch(request, _env) {
+	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
 
 		// Handle CORS preflight requests
 		if (request.method === "OPTIONS") {
 			return handleOptions(request);
+		}
+
+		// Validate API key is configured
+		if (!env.POSTHOG_API_KEY) {
+			return new Response("PostHog API key not configured", { status: 500 });
 		}
 
 		// Determine which PostHog endpoint to use
@@ -39,10 +48,14 @@ export default {
 		// Build the target URL
 		const targetUrl = new URL(url.pathname + url.search, `https://${targetHost}`);
 
-		// Clone the request with the new URL
+		// Clone and modify headers to inject API key
+		const headers = new Headers(request.headers);
+		headers.set("Authorization", `Bearer ${env.POSTHOG_API_KEY}`);
+
+		// Clone the request with the new URL and headers
 		const modifiedRequest = new Request(targetUrl, {
 			method: request.method,
-			headers: request.headers,
+			headers: headers,
 			body: request.body,
 			redirect: "follow",
 		});
@@ -68,7 +81,7 @@ export default {
 /**
  * Handle CORS preflight OPTIONS requests
  */
-function handleOptions(_request) {
+function handleOptions(_request: Request): Response {
 	const headers = {
 		"Access-Control-Allow-Origin": "*",
 		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
