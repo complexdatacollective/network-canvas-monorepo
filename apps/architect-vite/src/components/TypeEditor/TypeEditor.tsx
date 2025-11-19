@@ -1,7 +1,7 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { capitalize, toPairs } from "es-toolkit/compat";
 import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { change, formValueSelector } from "redux-form";
 import { Layout, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
@@ -85,10 +85,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 	);
 };
 
-const mapStateToProps = (
-	state: RootState,
-	{ type, isNew }: { type?: string | null; isNew?: boolean },
-) => {
+const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | null; isNew?: boolean }) => {
 	const codebook = getCodebook(state);
 
 	const getNames = (

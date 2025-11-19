@@ -1,6 +1,6 @@
 import { BackgroundImage } from "../../Assets";
-import File from "./File";
 import type { FileInputProps } from "./File";
+import File from "./File";
 
 type ImageInputProps = Omit<FileInputProps, "children" | "type">;
 

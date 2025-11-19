@@ -1,7 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
-import { useCallback, useMemo } from "react";
 import type { Dispatch } from "react";
+import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
@@ -26,7 +26,10 @@ interface NodeType {
 
 const EncryptedVariables = () => {
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
-	const openDialog = useCallback((dialog: Parameters<typeof dialogActions.openDialog>[0]) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
+	const openDialog = useCallback(
+		(dialog: Parameters<typeof dialogActions.openDialog>[0]) => dispatch(dialogActions.openDialog(dialog)),
+		[dispatch],
+	);
 	const nodeTypes = useSelector((state: RootState) => getNodeTypes(state) as Record<string, NodeType>);
 
 	const handleEncryptionToggle = useCallback(

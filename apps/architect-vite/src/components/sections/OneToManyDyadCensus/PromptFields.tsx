@@ -1,12 +1,12 @@
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import ValidatedField from "~/components/Form/ValidatedField";
 import IssueAnchor from "~/components/IssueAnchor";
 import Tip from "~/components/Tip";
+import type { RootState } from "~/ducks/modules/root";
 import BinSortOrderSection from "../BinSortOrderSection";
 import BucketSortOrderSection from "../BucketSortOrderSection";
 import { getSortOrderOptionGetter } from "../CategoricalBinPrompts/optionGetters";
@@ -79,7 +79,9 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				form={form}
 				disabled={!edgeVariable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 				summary={
 					<p>
 						The focal nodes are presented one at a time. You may optionally configure a list of rules to determine how
@@ -92,7 +94,9 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				form={form}
 				disabled={!edgeVariable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 				summary={
 					<p>
 						You may also configure one or more sort rules that determine the order that the target nodes are sorted in

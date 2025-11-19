@@ -1,10 +1,10 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { difference, get, keys } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
+import type { RootState } from "~/ducks/modules/root";
 // Screen message listeners removed as part of screen system refactor
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";

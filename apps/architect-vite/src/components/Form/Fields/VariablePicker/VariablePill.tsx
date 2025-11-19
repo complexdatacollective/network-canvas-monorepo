@@ -1,16 +1,16 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import Tippy from "@tippyjs/react";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useMemo, useRef, useState } from "react";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import TextInput from "~/components/Form/Fields/Text";
 import { getIconForType } from "~/config/variables";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
+import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import type { RootState } from "~/ducks/store";
 import { Icon } from "~/lib/legacy-ui/components";
 import { getVariablesForSubject, makeGetVariableWithEntity } from "~/selectors/codebook";
-import type { RootState } from "~/ducks/store";
 import { cn } from "~/utils/cn";
 import { allowedVariableName, required as requiredValidation, uniqueByList } from "~/utils/validations";
 

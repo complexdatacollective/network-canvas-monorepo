@@ -91,12 +91,14 @@ export const getCodebookIndex = (protocol: Protocol) => {
 
 	const index = flatMap(protocolEntities, (entity) => {
 		const codebook = protocol.codebook!;
-		const entityConfigurations = entity === "ego"
-			? { ego: codebook.ego }
-			: (codebook as Record<string, unknown>)[entity];
+		const entityConfigurations =
+			entity === "ego" ? { ego: codebook.ego } : (codebook as Record<string, unknown>)[entity];
 
 		return flatMap(entityConfigurations, (entityConfiguration, entityType) =>
-			flatMap((entityConfiguration as { variables?: Record<string, VariableConfiguration> }).variables, buildVariableEntry(protocol, variablePaths, fields, entity, String(entityType))),
+			flatMap(
+				(entityConfiguration as { variables?: Record<string, VariableConfiguration> }).variables,
+				buildVariableEntry(protocol, variablePaths, fields, entity, String(entityType)),
+			),
 		);
 	});
 

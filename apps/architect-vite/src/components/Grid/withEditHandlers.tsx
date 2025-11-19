@@ -1,8 +1,8 @@
 import type { Dispatch } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers } from "recompose";
-import { change, formValueSelector } from "redux-form";
 import type { UnknownAction } from "redux";
+import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import type { RootState } from "~/ducks/modules/root";
 import { getRemainingSpace } from "./helpers";
@@ -34,13 +34,18 @@ type DispatchProps = {
 	upsert: (fieldId: string, value: GridItem) => void;
 };
 
-type HandlerProps = StateProps & DispatchProps & OwnProps & {
-	setEditField: (fieldId?: string) => void;
-	normalize?: (value: GridItem) => GridItem;
-	onChange?: (value: GridItem) => void;
-};
+type HandlerProps = StateProps &
+	DispatchProps &
+	OwnProps & {
+		setEditField: (fieldId?: string) => void;
+		normalize?: (value: GridItem) => GridItem;
+		onChange?: (value: GridItem) => void;
+	};
 
-const mapStateToProps = (state: RootState, { capacity, form, fieldName = "items", itemSelector, editField, template }: OwnProps): StateProps => {
+const mapStateToProps = (
+	state: RootState,
+	{ capacity, form, fieldName = "items", itemSelector, editField, template }: OwnProps,
+): StateProps => {
 	const items = (formValueSelector(form)(state, fieldName) as GridItem[] | undefined) || [];
 	const itemCount = items ? items.length : 0;
 	const item = itemSelector(state, { form, editField });
@@ -100,7 +105,8 @@ const withEditHandlers = compose(
 	defaultProps({
 		normalize: (value: GridItem) => value,
 		template: () => ({ size: "SMALL" }),
-		itemSelector: (state: RootState, { form, editField }: { form: string; editField?: string }) => formValueSelector(form)(state, editField) as GridItem | undefined,
+		itemSelector: (state: RootState, { form, editField }: { form: string; editField?: string }) =>
+			formValueSelector(form)(state, editField) as GridItem | undefined,
 	}),
 	connect(mapStateToProps, mapDispatchToProps),
 	handlers,

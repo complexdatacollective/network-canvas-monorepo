@@ -1,15 +1,17 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import type { RootState } from "~/ducks/modules/root";
 import { Section } from "~/components/EditorLayout";
 import SkipLogicFields from "~/components/sections/fields/SkipLogicFields";
 import { openDialog } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 
 type OpenDialogFunction = typeof openDialog;
 
-export const handleDeactivateSkipLogic = async (openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>) => {
+export const handleDeactivateSkipLogic = async (
+	openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>,
+) => {
 	const result = await openDialogFn({
 		type: "Warning",
 		title: "This will clear your skip logic",

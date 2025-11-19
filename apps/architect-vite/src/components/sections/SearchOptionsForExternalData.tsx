@@ -1,14 +1,14 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import type { RootState } from "~/ducks/modules/root";
 import { Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import * as Fields from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
+import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 
 type SearchOptionsProps = {

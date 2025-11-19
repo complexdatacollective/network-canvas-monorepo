@@ -103,9 +103,7 @@ const CheckboxGroup = ({
 	return (
 		<div className={classNames}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className="form-field">
-				{options.map(renderOption)}
-			</div>
+			<div className="form-field">{options.map(renderOption)}</div>
 			{invalid && touched && (
 				<div className="form-field-checkbox-group__error">
 					<Icon name="warning" />

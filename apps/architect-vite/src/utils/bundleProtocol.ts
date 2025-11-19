@@ -78,8 +78,7 @@ export async function downloadProtocolAsNetcanvas(protocol: CurrentProtocol): Pr
 		const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
 
 		// Use name from protocol, or default to "protocol" if not present
-		const protocolName =
-			"name" in protocol && typeof protocol.name === "string" ? protocol.name : "protocol";
+		const protocolName = "name" in protocol && typeof protocol.name === "string" ? protocol.name : "protocol";
 		const fileName = `${protocolName.replace(/\s+/g, "_")}-${timestamp}.netcanvas`;
 
 		const url = URL.createObjectURL(blob);

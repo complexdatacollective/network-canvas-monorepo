@@ -45,9 +45,13 @@ const PresetFields = ({
 
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const hasGroupVariable = !!groupVariable;
-	const displayEdges = useSelector((state: RootState) => getFormValue(state, "edges.display") as Record<string, unknown>[]);
+	const displayEdges = useSelector(
+		(state: RootState) => getFormValue(state, "edges.display") as Record<string, unknown>[],
+	);
 	const hasDisplayEdges = displayEdges && displayEdges.length > 0;
-	const highlightVariables = useSelector((state: RootState) => getFormValue(state, "highlight") as Record<string, unknown>[]);
+	const highlightVariables = useSelector(
+		(state: RootState) => getFormValue(state, "highlight") as Record<string, unknown>[],
+	);
 	const hasHighlightVariables = highlightVariables && highlightVariables.length > 0;
 
 	const handleToggleHighlightVariables = (open: boolean) => {

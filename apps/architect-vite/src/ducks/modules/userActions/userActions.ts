@@ -98,31 +98,34 @@ const checkSchemaVersion = (protocol: CurrentProtocol): schemaVersionStates => {
 };
 
 // helper function so we can use loadingLock
-const handleProtocolMigration = createAsyncThunk("protocol/openOrUpgrade", async (protocol: CurrentProtocol, { dispatch }) => {
-	const schemaVersionStatus = checkSchemaVersion(protocol);
-	switch (schemaVersionStatus) {
-		case schemaVersionStates.OK: {
-			return protocol;
-		}
-		case schemaVersionStates.UPGRADE_PROTOCOL: {
-			const migrationNotes = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
-			const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, [migrationNotes]);
-
-			const confirm = await dispatch(upgradeDialog).unwrap();
-			if (!confirm) {
-				return false;
+const handleProtocolMigration = createAsyncThunk(
+	"protocol/openOrUpgrade",
+	async (protocol: CurrentProtocol, { dispatch }) => {
+		const schemaVersionStatus = checkSchemaVersion(protocol);
+		switch (schemaVersionStatus) {
+			case schemaVersionStates.OK: {
+				return protocol;
 			}
+			case schemaVersionStates.UPGRADE_PROTOCOL: {
+				const migrationNotes = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
+				const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, [migrationNotes]);
 
-			const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION);
-			return migratedProtocol as CurrentProtocol;
+				const confirm = await dispatch(upgradeDialog).unwrap();
+				if (!confirm) {
+					return false;
+				}
+
+				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION);
+				return migratedProtocol as CurrentProtocol;
+			}
+			case schemaVersionStates.UPGRADE_APP:
+				await dispatch(appUpgradeRequiredDialog(protocol.schemaVersion));
+				return false;
+			default:
+				return false;
 		}
-		case schemaVersionStates.UPGRADE_APP:
-			await dispatch(appUpgradeRequiredDialog(protocol.schemaVersion));
-			return false;
-		default:
-			return false;
-	}
-});
+	},
+);
 
 // Create a new protocol
 export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas", async (_, { dispatch }) => {

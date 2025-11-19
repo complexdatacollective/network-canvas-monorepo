@@ -1,7 +1,7 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";

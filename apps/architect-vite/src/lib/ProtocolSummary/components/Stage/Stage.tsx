@@ -53,7 +53,15 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	const prompts = configuration.prompts as unknown[] | undefined;
 	const form = configuration.form as { title?: string; fields?: unknown[] } | undefined;
 	const behaviours = configuration.behaviours as Record<string, unknown> | undefined;
-	const presets = configuration.presets as { label: string; layoutVariable?: string; groupVariable?: string; edges?: { display?: string[] }; highlight?: string[] }[] | undefined;
+	const presets = configuration.presets as
+		| {
+				label: string;
+				layoutVariable?: string;
+				groupVariable?: string;
+				edges?: { display?: string[] };
+				highlight?: string[];
+		  }[]
+		| undefined;
 	const title = configuration.title as string | undefined;
 	const items = configuration.items as { id?: string; type?: string; content?: string; size?: string }[] | undefined;
 	const interviewScript = configuration.interviewScript as string | undefined;
@@ -73,12 +81,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 										<tr>
 											<td>Subject</td>
 											<td>
-												<EntityBadge
-													small
-													type={subject.type}
-													entity={subject.entity}
-													link
-												/>
+												<EntityBadge small type={subject.type} entity={subject.entity} link />
 											</td>
 										</tr>
 									)}

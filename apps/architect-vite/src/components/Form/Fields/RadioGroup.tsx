@@ -90,9 +90,7 @@ const RadioGroup = ({
 	return (
 		<div className={containerClassNames}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className={classNames}>
-				{options.map(renderOption)}
-			</div>
+			<div className={classNames}>{options.map(renderOption)}</div>
 			{invalid && touched && (
 				<div className="form-field-radio-group__error">
 					<Icon name="warning" />

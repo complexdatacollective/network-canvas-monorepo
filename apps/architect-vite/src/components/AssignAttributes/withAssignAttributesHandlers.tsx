@@ -27,7 +27,7 @@ type HandlerProps = OwnProps & {
 
 // TODO: isUsed
 const mapStateToProps = (state: RootState, { entity, type, form, fields }: OwnProps) => {
-	const usedVariables = (formValueSelector(form)(state, fields.name) as AttributeValue[] | undefined || []).map(
+	const usedVariables = ((formValueSelector(form)(state, fields.name) as AttributeValue[] | undefined) || []).map(
 		({ variable }) => variable,
 	);
 	const variableOptions = getVariableOptionsForSubject(state, { entity, type });

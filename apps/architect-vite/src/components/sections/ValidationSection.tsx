@@ -1,12 +1,12 @@
-import { createSelector } from "@reduxjs/toolkit";
 import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 import { get, pickBy } from "es-toolkit/compat";
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
 import Validations from "~/components/Validations";
+import type { RootState } from "~/ducks/modules/root";
 import { getFieldId } from "../../utils/issues";
 
 type ExistingVariable = {

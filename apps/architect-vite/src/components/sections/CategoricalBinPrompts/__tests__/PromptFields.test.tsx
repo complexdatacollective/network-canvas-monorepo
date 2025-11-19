@@ -2,8 +2,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
-import { change, reduxForm } from "redux-form";
 import type { InjectedFormProps } from "redux-form";
+import { change, reduxForm } from "redux-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { actionCreators as codebookActions } from "../../../../ducks/modules/protocol/codebook";
 import type { RootState } from "../../../../ducks/modules/root";
@@ -68,9 +68,15 @@ const initialState = {
 
 const MockForm = reduxForm({
 	form: mockFormName,
-})(({ handleSubmit, children }: InjectedFormProps & { children: ReactNode }) => <form onSubmit={handleSubmit}>{children}</form>);
+})(({ handleSubmit, children }: InjectedFormProps & { children: ReactNode }) => (
+	<form onSubmit={handleSubmit}>{children}</form>
+));
 
-const getSubject = (node: ReactNode, store: ReturnType<typeof createTestStore>, { form }: { form: Record<string, unknown> }) =>
+const getSubject = (
+	node: ReactNode,
+	store: ReturnType<typeof createTestStore>,
+	{ form }: { form: Record<string, unknown> },
+) =>
 	render(
 		<Provider store={store}>
 			<MockForm {...form}>{node}</MockForm>

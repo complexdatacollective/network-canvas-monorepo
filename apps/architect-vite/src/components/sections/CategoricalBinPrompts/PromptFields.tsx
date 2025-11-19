@@ -175,13 +175,17 @@ const PromptFields = ({
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 			/>
 			<BinSortOrderSection
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]}
+				optionGetter={
+					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
+				}
 			/>
 			<NewVariableWindow
 				// eslint-disable-next-line react/jsx-props-no-spreading

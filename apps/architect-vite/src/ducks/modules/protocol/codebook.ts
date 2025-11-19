@@ -325,17 +325,17 @@ const getStateWithUpdatedVariable = (
 
 	const variableConfiguration = merge
 		? {
-				...(get(state, [...entityPath, "variables", variable]) as Partial<Variable> | undefined ?? {}),
+				...((get(state, [...entityPath, "variables", variable]) as Partial<Variable> | undefined) ?? {}),
 				...configuration,
 			}
 		: configuration;
 
 	const newVariables = {
-		...(get(state, [...entityPath, "variables"]) as Record<string, Variable> | undefined ?? {}),
+		...((get(state, [...entityPath, "variables"]) as Record<string, Variable> | undefined) ?? {}),
 		[variable]: variableConfiguration,
 	};
 
-	const typeConfiguration = get(state, entityPath) as Partial<EntityType> | undefined ?? {};
+	const typeConfiguration = (get(state, entityPath) as Partial<EntityType> | undefined) ?? {};
 
 	return getStateWithUpdatedType(state, entity, type, {
 		...typeConfiguration,

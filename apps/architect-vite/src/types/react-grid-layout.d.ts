@@ -42,12 +42,54 @@ declare module "react-grid-layout" {
 		droppingItem?: Partial<Layout>;
 		resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
 		onLayoutChange?: (layout: Layout[]) => void;
-		onDragStart?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
-		onDrag?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
-		onDragStop?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
-		onResizeStart?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
-		onResize?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
-		onResizeStop?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
+		onDragStart?: (
+			layout: Layout[],
+			oldItem: Layout,
+			newItem: Layout,
+			placeholder: Layout,
+			event: MouseEvent,
+			element: HTMLElement,
+		) => void;
+		onDrag?: (
+			layout: Layout[],
+			oldItem: Layout,
+			newItem: Layout,
+			placeholder: Layout,
+			event: MouseEvent,
+			element: HTMLElement,
+		) => void;
+		onDragStop?: (
+			layout: Layout[],
+			oldItem: Layout,
+			newItem: Layout,
+			placeholder: Layout,
+			event: MouseEvent,
+			element: HTMLElement,
+		) => void;
+		onResizeStart?: (
+			layout: Layout[],
+			oldItem: Layout,
+			newItem: Layout,
+			placeholder: Layout,
+			event: MouseEvent,
+			element: HTMLElement,
+		) => void;
+		onResize?: (
+			layout: Layout[],
+			oldItem: Layout,
+			newItem: Layout,
+			placeholder: Layout,
+			event: MouseEvent,
+			element: HTMLElement,
+		) => void;
+		onResizeStop?: (
+			layout: Layout[],
+			oldItem: Layout,
+			newItem: Layout,
+			placeholder: Layout,
+			event: MouseEvent,
+			element: HTMLElement,
+		) => void;
 		onDrop?: (layout: Layout[], item: Layout, event: Event) => void;
 		children?: React.ReactNode;
 		height?: number;

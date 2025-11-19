@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
+import type { ReactNode } from "react";
 import React, { useContext } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
@@ -47,7 +47,9 @@ const Variables = ({ variables }: VariablesProps) => {
 
 	const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
 
-	const sortedVariables = sortBy(toPairs(variables), [(variable) => (variable[1] as VariableConfig).name.toLowerCase()]);
+	const sortedVariables = sortBy(toPairs(variables), [
+		(variable) => (variable[1] as VariableConfig).name.toLowerCase(),
+	]);
 
 	return (
 		<div className="protocol-summary-variables">
@@ -71,10 +73,11 @@ const Variables = ({ variables }: VariablesProps) => {
 
 						const indexEntry = index.find(({ id }: { id: string }) => id === variableId) as IndexEntry | undefined;
 
-						const optionsRows: ReactNode[][] = options?.map(({ value, label }: { value: unknown; label: string }) => [
-							<span key={`val-${String(value)}`}>{renderValue(value)}</span>,
-							<Markdown key={`label-${String(value)}`} value={label} />,
-						]) ?? [];
+						const optionsRows: ReactNode[][] =
+							options?.map(({ value, label }: { value: unknown; label: string }) => [
+								<span key={`val-${String(value)}`}>{renderValue(value)}</span>,
+								<Markdown key={`label-${String(value)}`} value={label} />,
+							]) ?? [];
 
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>

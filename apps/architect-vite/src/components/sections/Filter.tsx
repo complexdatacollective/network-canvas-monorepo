@@ -14,7 +14,9 @@ const FilterField = withFieldConnector(withStoreConnector(FilterQuery));
 
 type OpenDialogFunction = typeof openDialog;
 
-export const handleFilterDeactivate = async (openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>) => {
+export const handleFilterDeactivate = async (
+	openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>,
+) => {
 	const result = await openDialogFn({
 		type: "Warning",
 		title: "This will clear your filter",
@@ -28,10 +30,15 @@ export const handleFilterDeactivate = async (openDialogFn: (dialog: Parameters<O
 const Filter = () => {
 	const getFormValue = formValueSelector("edit-stage");
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
-	const currentValue = useSelector((state: RootState) => getFormValue(state, "filter") as { rules?: unknown[] } | undefined);
+	const currentValue = useSelector(
+		(state: RootState) => getFormValue(state, "filter") as { rules?: unknown[] } | undefined,
+	);
 
 	// get edge creation and display values for edges across all prompts
-	const prompts = useSelector((state: RootState) => getFormValue(state, "prompts") as Array<{ edges?: { create?: string; display?: string[] } }> | undefined);
+	const prompts = useSelector(
+		(state: RootState) =>
+			getFormValue(state, "prompts") as Array<{ edges?: { create?: string; display?: string[] } }> | undefined,
+	);
 
 	const { edgeCreationValues, edgeDisplayValues } = useMemo(() => {
 		if (!prompts) return { edgeCreationValues: [], edgeDisplayValues: [] };

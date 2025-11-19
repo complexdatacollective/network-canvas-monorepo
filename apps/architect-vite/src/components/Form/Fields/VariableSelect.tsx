@@ -8,10 +8,7 @@ const withVariableValidator = withProps(({ validation }) => ({
 	validation: { ...validation, allowedVariableName: "variable name" },
 }));
 
-const mapStateToProps = (
-	state: RootState,
-	{ entity, type }: { entity: "node" | "edge" | "ego"; type?: string },
-) => {
+const mapStateToProps = (state: RootState, { entity, type }: { entity: "node" | "edge" | "ego"; type?: string }) => {
 	const existingVariables = getVariableOptionsForSubject(state, { entity, type });
 
 	return { reserved: existingVariables };

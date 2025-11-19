@@ -19,14 +19,7 @@ interface CheckboxProps {
 	[key: string]: unknown;
 }
 
-const Checkbox = ({
-	label,
-	className = "",
-	input,
-	disabled = false,
-	fieldLabel,
-	...rest
-}: CheckboxProps) => {
+const Checkbox = ({ label, className = "", input, disabled = false, fieldLabel, ...rest }: CheckboxProps) => {
 	const id = useRef(uuid());
 
 	const componentClasses = cx("form-field-checkbox", className, {

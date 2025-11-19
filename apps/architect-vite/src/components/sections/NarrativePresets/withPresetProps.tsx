@@ -1,15 +1,12 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getEdgesForSubject, getNarrativeVariables } from "./selectors";
 
-const mapStateToProps = (
-	state: RootState,
-	{ entity, type, form }: { entity: string; type: string; form: string },
-) => {
+const mapStateToProps = (state: RootState, { entity, type, form }: { entity: string; type: string; form: string }) => {
 	const narrativeVariables = getNarrativeVariables(state, { entity, type });
 	const edgesForSubject = getEdgesForSubject(state, { entity, type });
 	const formSelector = formValueSelector(form);

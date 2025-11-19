@@ -69,6 +69,9 @@ const createVariableHandler = {
  *   <div handler={() => handleCreateVariable(value, type)} />
  * )
  */
-const withCreateVariableHandler = compose(connect(null, mapDispatchToProps), withHandlers<HandlerProps, {}>(createVariableHandler));
+const withCreateVariableHandler = compose(
+	connect(null, mapDispatchToProps),
+	withHandlers<HandlerProps, {}>(createVariableHandler),
+);
 
 export default withCreateVariableHandler;

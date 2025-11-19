@@ -1,4 +1,4 @@
-import { extractProtocol, type ExtractedAsset } from "./utils/extractProtocol";
+import { type ExtractedAsset, extractProtocol } from "./utils/extractProtocol";
 import { getVariableNamesFromNetwork, validateNames } from "./utils/validateExternalData";
 import validateProtocol from "./validation/validate-protocol";
 

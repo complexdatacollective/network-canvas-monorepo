@@ -2,11 +2,11 @@ import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/store";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
+import type { RootState } from "~/ducks/store";
 import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
@@ -21,29 +21,29 @@ import getEdgeFilteringWarning from "./utils";
 export const createVariableHandler =
 	(dispatch: Dispatch<UnknownAction>, entity: string, type: string, form: string) =>
 	async (variableName: string, variableType: string, field: string) => {
-	const withType = variableType ? { type: variableType } : {};
+		const withType = variableType ? { type: variableType } : {};
 
-	const configuration = {
-		name: variableName,
-		...withType,
+		const configuration = {
+			name: variableName,
+			...withType,
+		};
+
+		const result = await dispatch(
+			codebookActions.createVariable({
+				entity: entity as "node" | "edge" | "ego",
+				type,
+				configuration,
+			}) as unknown as UnknownAction,
+		);
+		const { variable } = (result as unknown as { payload: { variable: string } }).payload;
+
+		// If we supplied a field, update it with the result of the variable creation
+		if (field) {
+			dispatch(change(form, field, variable) as UnknownAction);
+		}
+
+		return variable;
 	};
-
-	const result = await dispatch(
-		codebookActions.createVariable({
-			entity: entity as "node" | "edge" | "ego",
-			type,
-			configuration,
-		}) as unknown as UnknownAction,
-	);
-	const { variable } = (result as unknown as { payload: { variable: string } }).payload;
-
-	// If we supplied a field, update it with the result of the variable creation
-	if (field) {
-		dispatch(change(form, field, variable) as UnknownAction);
-	}
-
-	return variable;
-};
 
 const TAP_BEHAVIOURS = {
 	CREATE_EDGES: "create edges",
@@ -60,8 +60,8 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const getFormValue = formValueSelector(form);
 	const hasCreateEdgeBehaviour = useSelector((state: RootState) => !!getFormValue(state, "edges.create"));
-	const hasToggleAttributeBehaviour = useSelector((state: RootState) =>
-		!!getFormValue(state, "highlight.allowHighlighting"),
+	const hasToggleAttributeBehaviour = useSelector(
+		(state: RootState) => !!getFormValue(state, "highlight.allowHighlighting"),
 	);
 	const highlightVariable = useSelector((state: RootState) => getFormValue(state, "highlight.variable"));
 

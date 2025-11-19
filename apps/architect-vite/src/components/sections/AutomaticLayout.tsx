@@ -1,10 +1,10 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
+import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../DetachedField";
 import IssueAnchor from "../IssueAnchor";
 

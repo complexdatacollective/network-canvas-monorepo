@@ -5,8 +5,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Number } from "~/components/Form/Fields";
-import type { RootState } from "~/ducks/modules/root";
 import { openDialog } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 import Tip from "../Tip";
@@ -33,8 +33,12 @@ const minValidation = (value: number | null | undefined, allValues: Record<strin
 
 const MinMaxAlterLimits = () => {
 	const formSelector = useMemo(() => formValueSelector("edit-stage"), []);
-	const currentMinValue = useSelector((state: RootState) => formSelector(state, "behaviours.minNodes") as number | undefined);
-	const currentMaxValue = useSelector((state: RootState) => formSelector(state, "behaviours.maxNodes") as number | undefined);
+	const currentMinValue = useSelector(
+		(state: RootState) => formSelector(state, "behaviours.minNodes") as number | undefined,
+	);
+	const currentMaxValue = useSelector(
+		(state: RootState) => formSelector(state, "behaviours.maxNodes") as number | undefined,
+	);
 	const hasMultiplePrompts = useSelector((state: RootState) => {
 		const prompts = formSelector(state, "prompts") as unknown[] | undefined;
 		return !!prompts && prompts.length > 1;

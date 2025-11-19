@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import GridLayout, { type Layout } from "react-grid-layout";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import GridItem from "./GridItem";
-import { convertSize, getLayout, type GridItem as GridItemData, trimSize } from "./helpers";
+import { convertSize, type GridItem as GridItemData, getLayout, trimSize } from "./helpers";
 import withItems from "./withItems";
 
 interface FieldArrayApi {

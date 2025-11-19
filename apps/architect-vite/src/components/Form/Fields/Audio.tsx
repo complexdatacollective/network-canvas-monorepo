@@ -1,6 +1,6 @@
 import { Audio } from "../../Assets";
-import File from "./File";
 import type { FileInputProps } from "./File";
+import File from "./File";
 
 type AudioInputProps = Omit<FileInputProps, "children" | "type">;
 
