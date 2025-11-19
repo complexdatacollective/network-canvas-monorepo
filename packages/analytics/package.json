@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/analytics",
-	"version": "8.0.0",
+	"version": "9.0.0",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -16,6 +16,9 @@
 	},
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"description": "PostHog analytics wrapper for Network Canvas applications with installation ID tracking and error reporting",
+	"publishConfig": {
+		"tag": "alpha"
+	},
 	"scripts": {
 		"build": "tsup src/index.ts src/server.ts --format esm --dts --clean --sourcemap",
 		"publish": "pnpm build && npm publish --access public",
