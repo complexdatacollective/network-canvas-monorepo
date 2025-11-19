@@ -1,18 +1,47 @@
 import { compose, withHandlers } from "recompose";
 import { v4 as uuid } from "uuid";
-import validateRule from "./validateRule";
+import validateRule, { type Rule } from "./validateRule";
+
+type FilterValue = {
+	join?: string;
+	rules: Rule[];
+};
+
+type OwnProps = {
+	rules: Rule[];
+	join?: string;
+	onChange: (value: FilterValue) => void;
+	openDialog: (dialog: {
+		type: string;
+		title: string;
+		message?: string;
+		canCancel?: boolean;
+		onConfirm?: () => void;
+	}) => void;
+};
+
+type FirstHandlerProps = OwnProps & {
+	updateJoin: (join: string) => void;
+	updateRule: (rule: Rule) => void;
+	deleteRule: (ruleId: string) => void;
+};
+
+type SecondHandlerProps = FirstHandlerProps & {
+	draftRule: Rule | null;
+	resetDraft: () => void;
+};
 
 const withRulesChangeHandlers = compose(
-	withHandlers({
-		updateJoin: (props) => (join) =>
+	withHandlers<OwnProps, {}>({
+		updateJoin: (props: OwnProps) => (join: string) =>
 			props.onChange({
 				join,
 				rules: props.rules,
 			}),
 		updateRule:
-			({ rules, join, onChange }) =>
-			(rule) => {
-				let updatedRules = [];
+			({ rules, join, onChange }: OwnProps) =>
+			(rule: Rule) => {
+				let updatedRules: Rule[] = [];
 
 				if (!rule.id) {
 					updatedRules = [...rules, { ...rule, id: uuid() }];
@@ -31,8 +60,8 @@ const withRulesChangeHandlers = compose(
 				});
 			},
 		deleteRule:
-			({ join, rules, onChange }) =>
-			(ruleId) => {
+			({ join, rules, onChange }: OwnProps) =>
+			(ruleId: string) => {
 				const updateRules = rules.filter((rule) => rule.id !== ruleId);
 
 				if (updateRules.length < 2) {
@@ -49,12 +78,12 @@ const withRulesChangeHandlers = compose(
 				});
 			},
 	}),
-	withHandlers({
+	withHandlers<SecondHandlerProps, {}>({
 		handleChangeJoin:
-			({ updateJoin }) =>
-			(join) =>
+			({ updateJoin }: SecondHandlerProps) =>
+			(join: string) =>
 				updateJoin(join),
-		handleSaveDraft: (props) => () => {
+		handleSaveDraft: (props: SecondHandlerProps) => () => {
 			const { draftRule, openDialog, updateRule, resetDraft } = props;
 
 			if (!validateRule(draftRule)) {
@@ -68,12 +97,14 @@ const withRulesChangeHandlers = compose(
 				return;
 			}
 
-			updateRule(draftRule);
+			if (draftRule) {
+				updateRule(draftRule);
+			}
 			resetDraft();
 		},
 		handleDeleteRule:
-			({ openDialog, deleteRule }) =>
-			(ruleId) =>
+			({ openDialog, deleteRule }: SecondHandlerProps) =>
+			(ruleId: string) =>
 				openDialog({
 					type: "Confirm",
 					title: "Are you sure you want to delete this rule?",

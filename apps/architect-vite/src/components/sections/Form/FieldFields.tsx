@@ -36,8 +36,8 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 		handleChangeComponent,
 	} = useFieldHandlers({
 		form,
-		entity,
-		type,
+		entity: entity ?? undefined,
+		type: type ?? undefined,
 	});
 
 	return (
@@ -55,13 +55,15 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					<ValidatedField
 						name="variable"
 						component={VariablePicker}
-						variable={variable}
-						entity={entity}
-						type={type}
-						options={variableOptions} // from variables
-						onCreateOption={handleNewVariable} // reset later fields, create variable of no type?
-						onChange={handleChangeVariable} // read/reset component options validation
 						validation={{ required: true }}
+						componentProps={{
+							variable,
+							entity,
+							type,
+							options: variableOptions,
+							onCreateOption: handleNewVariable,
+							onChange: handleChangeVariable,
+						}}
 					/>
 				</Row>
 			</Section>
@@ -75,9 +77,11 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					<ValidatedField
 						name="prompt"
 						component={RichText}
-						inline
-						placeholder="What is this person's name?"
 						validation={{ required: true }}
+						componentProps={{
+							inline: true,
+							placeholder: "What is this person's name?",
+						}}
 					/>
 				</Row>
 			</Section>
@@ -101,17 +105,19 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					<ValidatedField
 						name="component"
 						component={NativeSelect}
-						placeholder="Select an input control"
-						options={componentOptions}
 						validation={{ required: true }}
-						onChange={handleChangeComponent}
-						sortOptionsByLabel={!isNewVariable}
+						componentProps={{
+							placeholder: "Select an input control",
+							options: componentOptions,
+							onChange: handleChangeComponent,
+							sortOptionsByLabel: !isNewVariable,
+						}}
 					/>
 					{isNewVariable && variableType && (
 						<Tip>
 							<p>
 								The selected input control will cause this variable to be defined as type{" "}
-								<strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input
+								<strong>{String(variableType)}</strong>. Once set, this cannot be changed (although you may change the input
 								control within this type).
 							</p>
 						</Tip>
@@ -121,7 +127,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 							<div>
 								<p>
 									A pre-existing variable is currently selected. You cannot change a variable type after it has been
-									created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If
+									created, so only <strong>{String(variableType)}</strong> compatible input controls can be selected above. If
 									you would like to use a different input control type, you will need to create a new variable.
 								</p>
 							</div>
@@ -132,10 +138,10 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					<Row>
 						<h4>Preview</h4>
 						<InputPreview
-							label={metaForType?.label}
-							value={metaForType?.value}
-							description={metaForType?.description}
-							image={metaForType?.image}
+							label={metaForType?.label ?? ""}
+							value={metaForType?.value ?? ""}
+							description={metaForType?.description ?? ""}
+							image={metaForType?.image ?? ""}
 						/>
 					</Row>
 				)}
@@ -153,7 +159,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					layout="vertical"
 				>
 					<Row>
-						<Options name="options" label="Options" form={form} />
+						<Options name="options" label="Options" />
 					</Row>
 				</Section>
 			)}
@@ -167,15 +173,15 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 			{isVariableTypeWithParameters(variableType) && (
 				<Section layout="vertical" title="Input Options" id={getFieldId("parameters")}>
 					<Row>
-						<Parameters type={variableType} component={component} name="parameters" form={form} />
+						<Parameters type={String(variableType)} component={String(component ?? "")} name="parameters" form={form} />
 					</Row>
 				</Section>
 			)}
 			<ValidationSection
 				form={form}
 				disabled={!variableType}
-				entity={entity}
-				variableType={variableType}
+				entity={entity ?? ""}
+				variableType={String(variableType ?? "")}
 				existingVariables={omit(existingVariables, variable)}
 			/>
 		</>

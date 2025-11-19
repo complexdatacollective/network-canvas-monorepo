@@ -3,12 +3,14 @@ import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useMemo, useRef, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import TextInput from "~/components/Form/Fields/Text";
 import { getIconForType } from "~/config/variables";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { Icon } from "~/lib/legacy-ui/components";
 import { getVariablesForSubject, makeGetVariableWithEntity } from "~/selectors/codebook";
+import type { RootState } from "~/ducks/store";
 import { cn } from "~/utils/cn";
 import { allowedVariableName, required as requiredValidation, uniqueByList } from "~/utils/validations";
 
@@ -63,25 +65,26 @@ type EditableVariablePillProps = {
 };
 
 const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
-	const dispatch = useDispatch();
-	const ref = useRef();
+	const dispatch = useAppDispatch();
+	const ref = useRef<HTMLDivElement>(null);
 
 	const [editing, setIsEditing] = useState(false);
 	const [canSubmit, setCanSubmit] = useState(false);
-	const [validation, setValidation] = useState(null);
+	const [validation, setValidation] = useState<string | null>(null);
 
 	const variableSelector = useMemo(() => makeGetVariableWithEntity(uuid), [uuid]);
-	const { name, type, entity, entityType } = useSelector(variableSelector);
+	const variable = useAppSelector(variableSelector);
+	const { name, type, entity, entityType } = variable ?? {};
 
-	const [newName, setNewName] = useState(name);
+	const [newName, setNewName] = useState(name ?? "");
 
 	const handleCancel = () => {
 		setIsEditing(false);
 		setValidation(null);
-		setNewName(name);
+		setNewName(name ?? "");
 	};
 
-	const handleBlur = (e) => {
+	const handleBlur = (e: React.FocusEvent) => {
 		// relatedTarget is the element that the focus event was fired from
 		const target = get(e, "relatedTarget.id", null);
 
@@ -94,29 +97,29 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 
 	const onEditComplete = () => {
 		const action = codebookActions.updateVariableByUUID(uuid, { name: newName }, true);
-		dispatch(action);
+		dispatch(action as UnknownAction);
 		setValidation(null);
 		setIsEditing(false);
 	};
 
 	const existingVariablesSelector = useMemo(
-		() => (state) => getVariablesForSubject(state, { entity, type: entityType }),
+		() => (state: RootState) => getVariablesForSubject(state, { entity, type: entityType }),
 		[entity, entityType],
 	);
-	const existingVariables = useSelector(existingVariablesSelector);
+	const existingVariables = useAppSelector(existingVariablesSelector);
 
 	const existingVariableNames = useMemo(
 		() => Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
 		[existingVariables],
 	);
 
-	const handleUpdateName = (event) => {
+	const handleUpdateName = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const {
 			target: { value },
 		} = event;
 		setNewName(value);
 
-		const required = requiredValidation(true, "You must enter a variable name", true)(value);
+		const required = requiredValidation("You must enter a variable name")(value);
 		const unique = uniqueByList(existingVariableNames)(value);
 		const allowed = allowedVariableName()(value);
 
@@ -125,7 +128,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		setCanSubmit(!validationResult);
 	};
 
-	const handleKeyDown = (e) => {
+	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter") {
 			e.preventDefault(); // Prevent any parent form from submitting
 
@@ -136,8 +139,8 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 	};
 
 	return (
-		<BaseVariablePill type={type} ref={ref}>
-			<AnimatePresence initial={false} exitBeforeEnter>
+		<BaseVariablePill type={type!} ref={ref}>
+			<AnimatePresence initial={false} mode="wait">
 				{editing ? (
 					<motion.div
 						key="edit"
@@ -166,7 +169,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 												animate={{ x: 0, opacity: 1 }}
 												transition={{ delay: 0.4 }}
 												role="button"
-												tabIndex="0" // Needed to allow focus
+												tabIndex={0} // Needed to allow focus
 												id={EDIT_COMPLETE_BUTTON_ID}
 												onClick={onEditComplete}
 												className={cx("edit-buttons__button", { "edit-buttons__button--disabled": !canSubmit })}
@@ -180,7 +183,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 												animate={{ x: 0, opacity: 1 }}
 												transition={{ delay: 0.6 }}
 												role="button"
-												tabIndex="0" // Needed to allow focus
+												tabIndex={0} // Needed to allow focus
 												onClick={handleCancel}
 												className="edit-buttons__button edit-buttons__button--cancel"
 											>
@@ -202,7 +205,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 						onClick={() => setIsEditing(true)}
 						title="Click to rename this variable..."
 					>
-						{name}
+						{name ?? ""}
 					</motion.h4>
 				)}
 			</AnimatePresence>

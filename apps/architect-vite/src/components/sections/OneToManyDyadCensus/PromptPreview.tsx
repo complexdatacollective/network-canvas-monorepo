@@ -4,6 +4,6 @@ type PromptPreviewProps = {
 	text: string;
 };
 
-const PromptPreview = ({ text }: PromptPreviewProps) => <Markdown label={text} />;
+const PromptPreview = ({ text }: PromptPreviewProps) => <Markdown value={text} />;
 
 export default PromptPreview;

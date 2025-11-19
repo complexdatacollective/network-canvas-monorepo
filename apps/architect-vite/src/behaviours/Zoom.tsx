@@ -1,11 +1,10 @@
 import anime from "animejs";
 import type React from "react";
-import { PureComponent } from "react";
-import ReactDOM from "react-dom";
+import { createRef, PureComponent } from "react";
 import { compose, getContext } from "recompose";
 import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
-function getDisplayName(WrappedComponent: React.ComponentType<unknown>) {
+function getDisplayName<P>(WrappedComponent: React.ComponentType<P>) {
 	return WrappedComponent.displayName || WrappedComponent.name || "Component";
 }
 
@@ -22,8 +21,10 @@ const withConstraintContext = getContext<ConstraintsContextType>({ constraints: 
 
 const Zoom = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
 	class Zoomable extends PureComponent<P & ZoomableProps> {
-		private root!: HTMLElement;
-		private node!: Element;
+		static displayName = `Zoomable(${getDisplayName(WrappedComponent)})`;
+
+		private root: HTMLElement | null = null;
+		private nodeRef = createRef<HTMLDivElement>();
 
 		static defaultProps = {
 			zoomColors: ["#ff6ec7", "#4cbb17"],
@@ -31,21 +32,26 @@ const Zoom = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
 		};
 
 		componentDidMount() {
-			const [root] = document.getElementsByTagName("body");
-			this.root = root;
-			this.node = ReactDOM.findDOMNode(this) as Element;
-			this.node.addEventListener("click", this.onClick);
+			const roots = document.getElementsByTagName("body");
+			this.root = roots[0] || null;
+			if (this.nodeRef.current) {
+				this.nodeRef.current.addEventListener("click", this.onClick);
+			}
 		}
 
 		componentWillUnmount() {
-			this.node.removeEventListener("click", this.onClick);
+			if (this.nodeRef.current) {
+				this.nodeRef.current.removeEventListener("click", this.onClick);
+			}
 		}
 
 		onClick = () => {
-			const { constraints = [0, 0, 0, 0], zoomColors = ["#ff6ec7", "#4cbb17"] } = this.props;
-			const [top, right, bottom, left] = constraints;
+			if (!this.nodeRef.current || !this.root) return;
 
-			const start = (this.node as Element).getBoundingClientRect();
+			const { constraints = [0, 0, 0, 0], zoomColors = ["#ff6ec7", "#4cbb17"] } = this.props;
+			const [top = 0, right = 0, bottom = 0, left = 0] = constraints;
+
+			const start = this.nodeRef.current.getBoundingClientRect();
 			const pseudoElement = document.createElement("div");
 
 			const targetWidth = window.innerWidth - right - left;
@@ -100,16 +106,20 @@ const Zoom = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
 					opacity: [1, 0],
 				})
 				.finished.then(() => {
-					this.root.removeChild(pseudoElement);
+					if (this.root) {
+						this.root.removeChild(pseudoElement);
+					}
 				});
 		};
 
 		render() {
-			return <WrappedComponent {...(this.props as P)} />;
+			return (
+				<div ref={this.nodeRef}>
+					<WrappedComponent {...(this.props as P)} />
+				</div>
+			);
 		}
 	}
-
-	Zoomable.displayName = `Zoomable(${getDisplayName(WrappedComponent)})`;
 
 	return Zoomable;
 };

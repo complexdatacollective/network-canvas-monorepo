@@ -1,6 +1,7 @@
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import ValidatedField from "~/components/Form/ValidatedField";
@@ -26,7 +27,7 @@ type PromptFieldsProps = {
 const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
 	const getFormValue = formValueSelector(form);
-	const edgeVariable = useSelector((state) => getFormValue(state, "createEdge"));
+	const edgeVariable = useSelector((state: RootState) => getFormValue(state, "createEdge") as string);
 
 	return (
 		<>
@@ -52,20 +53,24 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 					<ValidatedField
 						name="text"
 						component={RichText}
-						inline
-						className="stage-editor-section-prompt__textarea"
-						label="Prompt Text"
-						placeholder="Enter text for the prompt here..."
 						validation={{ required: true, maxLength: 220 }}
+						componentProps={{
+							inline: true,
+							className: "stage-editor-section-prompt__textarea",
+							label: "Prompt Text",
+							placeholder: "Enter text for the prompt here...",
+						}}
 					/>
 				</Row>
 				<Row>
 					<ValidatedField
-						entityType="edge"
 						name="createEdge"
 						component={EntitySelectField}
-						label="Create edges of the following type"
 						validation={{ required: true }}
+						componentProps={{
+							entityType: "edge",
+							label: "Create edges of the following type",
+						}}
 					/>
 				</Row>
 			</Section>
@@ -74,7 +79,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				form={form}
 				disabled={!edgeVariable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions)}
+				optionGetter={getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]}
 				summary={
 					<p>
 						The focal nodes are presented one at a time. You may optionally configure a list of rules to determine how
@@ -87,7 +92,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				form={form}
 				disabled={!edgeVariable}
 				maxItems={sortMaxItems}
-				optionGetter={getSortOrderOptionGetter(variableOptions)}
+				optionGetter={getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]}
 				summary={
 					<p>
 						You may also configure one or more sort rules that determine the order that the target nodes are sorted in
@@ -99,4 +104,4 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 	);
 };
 
-export default compose(withVariableOptions)(PromptFields);
+export default compose<PromptFieldsProps, PromptFieldsProps>(withVariableOptions)(PromptFields);

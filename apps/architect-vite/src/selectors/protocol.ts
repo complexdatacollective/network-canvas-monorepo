@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
 import { UnsavedChanges } from "~/components/Dialogs";
@@ -30,14 +30,14 @@ export const getCodebook = (state: RootState) => {
 	return protocol?.codebook || null;
 };
 
-export const getStageList = createSelector([getProtocol], (protocol: Protocol) => {
+export const getStageList = createSelector([getProtocol], (protocol: CurrentProtocol) => {
 	const stages = protocol ? protocol.stages : [];
 
 	return stages.map((stage) => ({
 		id: stage.id,
 		type: stage.type,
 		label: stage.label,
-		hasFilter: !!stage.filter,
+		hasFilter: "filter" in stage ? !!stage.filter : false,
 		hasSkipLogic: !!stage.skipLogic,
 	}));
 });
@@ -137,7 +137,7 @@ export const getTimelineLocus = (state: RootState) => {
 
 	// Fall back to old protocol store
 	const protocolTimeline = (state as RootState & { protocol?: { timeline?: unknown[] } }).protocol?.timeline;
-	if (protocolTimeline?.length > 0) {
+	if (protocolTimeline && protocolTimeline.length > 0) {
 		return protocolTimeline[protocolTimeline.length - 1];
 	}
 

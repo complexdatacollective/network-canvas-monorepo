@@ -20,11 +20,11 @@ interface CheckboxProps {
 }
 
 const Checkbox = ({
-	label = null,
+	label,
 	className = "",
 	input,
 	disabled = false,
-	fieldLabel = null,
+	fieldLabel,
 	...rest
 }: CheckboxProps) => {
 	const id = useRef(uuid());
@@ -33,17 +33,21 @@ const Checkbox = ({
 		"form-field-checkbox--disabled": disabled,
 	});
 
+	const { name, value, onChange, ...inputRest } = input;
+
 	return (
 		<label className={componentClasses} htmlFor={id.current}>
 			<input
 				className="form-field-checkbox__input"
 				id={id.current}
+				name={name}
 				// input.checked is only provided by redux form if type="checkbox" or type="radio" is
 				// provided to <Field />, so for the case that it isn't we can rely on the more reliable
 				// input.value
-				checked={!!input.value}
-				{...input}
-				{...rest}
+				checked={!!value}
+				onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
+				{...(inputRest as Record<string, unknown>)}
+				{...(rest as Record<string, unknown>)}
 				type="checkbox"
 			/>
 			<div className="form-field-checkbox__checkbox" />

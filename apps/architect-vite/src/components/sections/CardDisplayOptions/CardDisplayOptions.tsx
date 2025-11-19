@@ -24,7 +24,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 	const getFormValue = formValueSelector("edit-stage");
 	const hasCardDisplayOptions = useSelector((state) => getFormValue(state, "cardOptions.additionalProperties"));
 
-	const handleToggleCardDisplayOptions = (nextState) => {
+	const handleToggleCardDisplayOptions = (nextState: boolean) => {
 		if (nextState === false) {
 			dispatch(change("edit-stage", "cardOptions.additionalProperties", null));
 		}

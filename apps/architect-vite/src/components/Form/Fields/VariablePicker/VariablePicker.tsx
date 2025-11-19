@@ -29,26 +29,26 @@ type VariablePickerProps = {
 
 const VariablePicker = ({
 	options = [],
-	entity = null,
-	type = null,
+	entity,
+	type,
 	label = "Create or Select a Variable",
 	onCreateOption = () => {},
 	disallowCreation = false,
-	meta = { error: null, invalid: false, touched: false },
-	input = { value: null, onChange: () => {} },
+	meta = {},
+	input = {},
 }: VariablePickerProps) => {
 	const [showPicker, setShowPicker] = useState(false);
 
 	const { error, invalid, touched } = meta;
 	const { value, onChange } = input;
 
-	const handleSelectVariable = (variable) => {
-		onChange(variable);
+	const handleSelectVariable = (variable: string) => {
+		onChange?.(variable);
 		setShowPicker(false);
 	};
 
-	const handleCreateOption = (variable) => {
-		onChange(null);
+	const handleCreateOption = (variable: string) => {
+		onChange?.("");
 		setShowPicker(false);
 		onCreateOption(variable);
 	};
@@ -62,13 +62,13 @@ const VariablePicker = ({
 		);
 
 		if (has(found, "type")) {
-			return <EditableVariablePill uuid={found.value} />;
+			return <EditableVariablePill uuid={found?.value ?? ""} />;
 		}
 
-		const selectedLabel = get(found, "label", null);
-		const selectedValue = get(found, "value", null);
+		const selectedLabel = get(found, "label", null) as string | null;
+		const selectedValue = get(found, "value", null) as string | null;
 
-		const finalLabel = selectedLabel || selectedValue;
+		const finalLabel = selectedLabel || selectedValue || "";
 
 		return <SimpleVariablePill label={finalLabel} />;
 	};
@@ -80,7 +80,7 @@ const VariablePicker = ({
 
 				{value && (
 					<div>
-						<AnimatePresence exitBeforeEnter initial={false}>
+						<AnimatePresence mode="wait" initial={false}>
 							<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={value}>
 								{variablePillComponent()}
 							</motion.div>

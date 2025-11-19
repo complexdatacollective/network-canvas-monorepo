@@ -9,8 +9,8 @@ const definitions = [
 	[RelativeDatePicker, { type: "datetime", component: "RelativeDatePicker" }],
 ];
 
-const getComponent = (options) => {
-	const [component] = definitions.find(([, pattern]) => isMatch(options, pattern));
+const getComponent = (options: { type: string; component?: string }) => {
+	const [component] = definitions.find(([, pattern]) => isMatch(options, pattern)) ?? [];
 
 	return component;
 };

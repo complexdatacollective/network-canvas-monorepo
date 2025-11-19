@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createSlice, current, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
 import { pick } from "es-toolkit/compat";
 import type { AppDispatch } from "~/ducks/store";
@@ -11,7 +11,7 @@ import type { RootState } from "./root";
 
 // Types
 type ActiveProtocolState =
-	| (Protocol & {
+	| (CurrentProtocol & {
 			name: string;
 			isValid: boolean;
 			lastSavedAt: number | null;
@@ -26,7 +26,7 @@ const activeProtocolSlice = createSlice({
 	name: "activeProtocol",
 	initialState,
 	reducers: {
-		setActiveProtocol: (_state, action: PayloadAction<Protocol & { name: string }>) => {
+		setActiveProtocol: (_state, action: PayloadAction<CurrentProtocol & { name: string }>) => {
 			// Replace the entire state with the new protocol
 			return {
 				...action.payload,

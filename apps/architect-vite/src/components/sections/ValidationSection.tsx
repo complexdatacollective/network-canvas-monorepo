@@ -1,8 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { get, pickBy } from "es-toolkit/compat";
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
 import Validations from "~/components/Validations";
 import { getFieldId } from "../../utils/issues";
@@ -26,22 +28,22 @@ const ValidationSection = ({
 	variableType = "",
 	existingVariables,
 }: ValidationSectionProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 
 	// Create memoized selector for hasValidation
 	const hasValidationSelector = useMemo(() => {
 		const formSelector = formValueSelector(form);
 		return createSelector(
-			[(state) => formSelector(state, "validation")],
+			[(state: RootState) => formSelector(state, "validation")],
 			(validation) => validation && Object.keys(validation).length > 0,
 		);
 	}, [form]);
 
 	const hasValidation = useSelector(hasValidationSelector);
 
-	const handleToggleValidation = (nextState) => {
+	const handleToggleValidation = (nextState: boolean) => {
 		if (nextState === false) {
-			dispatch(change(form, "validation", null));
+			dispatch(change(form, "validation", null) as UnknownAction);
 		}
 
 		return true;

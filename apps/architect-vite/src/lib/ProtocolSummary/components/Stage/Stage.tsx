@@ -43,6 +43,21 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 
 	const stageVariables = sortBy(variablesOnStage(index)(id), [(variable) => variable[1].toLowerCase()]);
 
+	const subject = configuration.subject as { type: string; entity: string } | undefined;
+	const filter = configuration.filter as Record<string, unknown> | undefined;
+	const skipLogic = configuration.skipLogic as Record<string, unknown> | undefined;
+	const introductionPanel = configuration.introductionPanel as { title: string; text: string } | undefined;
+	const dataSource = configuration.dataSource as string | undefined;
+	const quickAdd = configuration.quickAdd as string | undefined;
+	const panels = configuration.panels as { id: string; title: string; dataSource: string }[] | undefined;
+	const prompts = configuration.prompts as unknown[] | undefined;
+	const form = configuration.form as { title?: string; fields?: unknown[] } | undefined;
+	const behaviours = configuration.behaviours as Record<string, unknown> | undefined;
+	const presets = configuration.presets as { label: string; layoutVariable?: string; groupVariable?: string; edges?: { display?: string[] }; highlight?: string[] }[] | undefined;
+	const title = configuration.title as string | undefined;
+	const items = configuration.items as { id?: string; type?: string; content?: string; size?: string }[] | undefined;
+	const interviewScript = configuration.interviewScript as string | undefined;
+
 	return (
 		<div className="protocol-summary-stage page-break-marker" id={`stage-${id}`}>
 			<div className="protocol-summary-stage__heading">
@@ -51,17 +66,17 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 						<div className="stage-label" data-number={stageNumber}>
 							<h1>{label}</h1>
 						</div>
-						{configuration.subject && !isEmpty(stageVariables) && (
+						{subject && !isEmpty(stageVariables) && (
 							<table className="protocol-summary-mini-table protocol-summary-mini-table--rotated">
 								<tbody>
-									{configuration.subject && (
+									{subject && (
 										<tr>
 											<td>Subject</td>
 											<td>
 												<EntityBadge
 													small
-													type={configuration.subject.type}
-													entity={configuration.subject.entity}
+													type={subject.type}
+													entity={subject.entity}
 													link
 												/>
 											</td>
@@ -93,34 +108,34 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
             </h4> */}
 					</div>
 				</div>
-				{configuration.filter && (
+				{filter && (
 					<div className="protocol-summary-stage__heading-section">
 						<div className="protocol-summary-stage__heading-section-content">
 							<h2 className="section-heading">Network Filtering</h2>
-							<MiniTable rotated wide rows={[["Rules", <Filter filter={configuration.filter} />]]} />
+							<MiniTable rotated wide rows={[["Rules", <Filter filter={filter} />]]} />
 						</div>
 					</div>
 				)}
-				{configuration.skipLogic && (
+				{skipLogic && (
 					<div className="protocol-summary-stage__heading-section">
 						<div className="protocol-summary-stage__heading-section-content">
 							<h2 className="section-heading">Skip Logic</h2>
-							<SkipLogic skipLogic={configuration.skipLogic} />
+							<SkipLogic skipLogic={skipLogic} />
 						</div>
 					</div>
 				)}
 				<div className="protocol-summary-stage__content">
-					<IntroductionPanel introductionPanel={configuration.introductionPanel} />
-					<DataSource dataSource={configuration.dataSource} />
-					<QuickAdd quickAdd={configuration.quickAdd} />
-					<Panels panels={configuration.panels} />
-					<Prompts prompts={configuration.prompts} />
-					<Form form={configuration.form} />
-					<Behaviours behaviours={configuration.behaviours} />
-					<Presets presets={configuration.presets} />
-					<PageHeading heading={configuration.title} />
-					<Items items={configuration.items} />
-					<InterviewScript interviewScript={configuration.interviewScript} />
+					<IntroductionPanel introductionPanel={introductionPanel ?? null} />
+					<DataSource dataSource={dataSource ?? null} />
+					<QuickAdd quickAdd={quickAdd ?? null} />
+					<Panels panels={panels ?? null} />
+					<Prompts prompts={prompts ?? null} />
+					<Form form={form ?? null} />
+					<Behaviours behaviours={behaviours ?? null} />
+					<Presets presets={presets ?? null} />
+					<PageHeading heading={title ?? null} />
+					<Items items={items ?? null} />
+					<InterviewScript interviewScript={interviewScript ?? null} />
 				</div>
 			</div>
 		</div>

@@ -1,15 +1,18 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { change, reduxForm } from "redux-form";
+import type { InjectedFormProps } from "redux-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { actionCreators as codebookActions } from "../../../../ducks/modules/protocol/codebook";
+import type { RootState } from "../../../../ducks/modules/root";
 import { rootReducer } from "../../../../ducks/modules/root";
 import PromptFields from "../PromptFields";
 
 // Mock the Option component to include test ID
 vi.mock("../../../Options/Option", () => ({
-	default: ({ children, ...props }) => (
+	default: ({ children, ...props }: { children: ReactNode }) => (
 		<div data-testid="option" {...props}>
 			{children}
 		</div>
@@ -22,7 +25,7 @@ vi.mock("../../PromptText", () => ({
 }));
 
 vi.mock("../../../Form/ValidatedField", () => ({
-	default: ({ children, ...props }) => (
+	default: ({ children, ...props }: { children?: ReactNode }) => (
 		<div data-testid="validated-field" {...props}>
 			{children}
 		</div>
@@ -65,9 +68,9 @@ const initialState = {
 
 const MockForm = reduxForm({
 	form: mockFormName,
-})(({ handleSubmit, children }) => <form onSubmit={handleSubmit}>{children}</form>);
+})(({ handleSubmit, children }: InjectedFormProps & { children: ReactNode }) => <form onSubmit={handleSubmit}>{children}</form>);
 
-const getSubject = (node, store, { form }) =>
+const getSubject = (node: ReactNode, store: ReturnType<typeof createTestStore>, { form }: { form: Record<string, unknown> }) =>
 	render(
 		<Provider store={store}>
 			<MockForm {...form}>{node}</MockForm>
@@ -75,7 +78,7 @@ const getSubject = (node, store, { form }) =>
 	);
 
 // Create a store factory function
-const createTestStore = (initialState) =>
+const createTestStore = (initialState: Partial<RootState>) =>
 	configureStore({
 		reducer: rootReducer,
 		preloadedState: initialState,
@@ -86,8 +89,8 @@ const createTestStore = (initialState) =>
 	});
 
 // eslint-disable-next-line import/prefer-default-export
-export const testPromptFields = (PromptFieldsComponent, name = "") => {
-	let mockStore;
+export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, name = "") => {
+	let mockStore: ReturnType<typeof createTestStore>;
 
 	beforeEach(() => {
 		mockStore = createTestStore(initialState);
@@ -124,10 +127,15 @@ export const testPromptFields = (PromptFieldsComponent, name = "") => {
 				expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
 
 				mockStore.dispatch(
-					codebookActions.createVariable("node", "person", {
-						name: "fizz",
-						type: "foo",
-						options: [1, 2, 3],
+					codebookActions.createVariable({
+						entity: "node",
+						type: "person",
+						variable: "809895df-bbd7-4c76-ac58-e6ada2625f9b",
+						configuration: {
+							name: "fizz",
+							type: "foo",
+							options: [1, 2, 3],
+						},
 					}),
 				);
 

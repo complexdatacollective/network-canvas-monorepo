@@ -182,7 +182,7 @@ export const validateLine = (line: unknown): { success: true; data: Line } | { s
 	}
 	return {
 		success: false,
-		errors: result.error.errors.map((err) => `${err.path.join(".")}: ${err.message}`),
+		errors: result.error.issues.map((err) => `${err.path.join(".")}: ${err.message}`),
 	};
 };
 
@@ -298,7 +298,7 @@ const buildTimelineWithConvergence = (
 		// Create each branch path
 		for (let i = 0; i < numBranches; i++) {
 			const branchPath = createBranchPath(allNodes, finishStageId, currentDepth + 1, maxDepth);
-			if (branchPath.length > 0) {
+			if (branchPath.length > 0 && branchPath[0]) {
 				branchPaths.push(branchPath[0]); // First node of the branch path
 			}
 		}
@@ -351,9 +351,11 @@ const createBranchPath = (
 		// Link to previous stage in this path
 		if (i > 0) {
 			const prevId = pathIds[i - 1];
-			const prevNode = allNodes[prevId];
-			if (prevNode && prevNode.kind === "stage") {
-				allNodes[prevId] = { ...prevNode, next: stageId };
+			if (prevId) {
+				const prevNode = allNodes[prevId];
+				if (prevNode && prevNode.kind === "stage") {
+					allNodes[prevId] = { ...prevNode, next: stageId };
+				}
 			}
 		}
 
@@ -368,7 +370,9 @@ const createBranchPath = (
 	// Handle convergence for the last stage in this branch path
 	if (pathIds.length > 0) {
 		const lastStageId = pathIds[pathIds.length - 1];
-		handleBranchConvergence(lastStageId, allNodes, finishStageId, currentDepth);
+		if (lastStageId) {
+			handleBranchConvergence(lastStageId, allNodes, finishStageId, currentDepth);
+		}
 	}
 
 	return pathIds;

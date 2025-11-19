@@ -7,7 +7,7 @@ import IssueAnchor from "../IssueAnchor";
 
 // Generic T should contain ONLY the component's unique props (not WrappedFieldProps). F should be the type of the field's value.
 type ValidatedFieldProps<T = Record<string, never>> = Omit<BaseFieldProps, "validate" | "component" | "props"> & {
-	validation: Record<string, Validator> | Record<ValidationName, Validation>;
+	validation: Record<string, Validator> | Partial<Validation>;
 	component: ComponentType<WrappedFieldProps & T>;
 	componentProps?: T;
 };

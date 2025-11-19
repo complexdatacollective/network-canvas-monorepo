@@ -59,19 +59,23 @@ const Toggle = ({
 		"form-field-toggle--has-error": invalid && touched && error,
 	});
 
+	const { name, value, onChange, ...inputRest } = input;
+
 	return (
-		<div className={containerClassNames} name={input.name}>
+		<div className={containerClassNames}>
 			{fieldLabel && <MarkdownLabel label={fieldLabel} />}
 			<label className={componentClasses} htmlFor={id.current} title={title}>
 				<input
 					className="form-field-toggle__input"
 					id={id.current}
-					{...input}
-					{...rest}
-					checked={!!input.value}
+					name={name}
+					checked={!!value}
+					onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
 					disabled={disabled}
 					type="checkbox"
 					value="true"
+					{...(inputRest as Record<string, unknown>)}
+					{...(rest as Record<string, unknown>)}
 				/>
 				<div className="form-field-toggle__toggle">
 					<span className="form-field-toggle__button" />

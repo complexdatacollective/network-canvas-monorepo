@@ -1,16 +1,18 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { get, isNull, isUndefined } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Number } from "~/components/Form/Fields";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
+import { openDialog } from "~/ducks/modules/dialogs";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 import Tip from "../Tip";
 
-const maxValidation = (value, allValues) => {
-	const minValue = get(allValues, "behaviours.minNodes", null);
+const maxValidation = (value: number | null | undefined, allValues: Record<string, unknown>) => {
+	const minValue = get(allValues, "behaviours.minNodes", null) as number | null;
 
 	if (isUndefined(minValue) || isNull(minValue) || !value) {
 		return undefined;
@@ -19,8 +21,8 @@ const maxValidation = (value, allValues) => {
 	return value >= minValue ? undefined : "Maximum number of alters must be greater than or equal to the minimum number";
 };
 
-const minValidation = (value, allValues) => {
-	const maxValue = get(allValues, "behaviours.maxNodes");
+const minValidation = (value: number | null | undefined, allValues: Record<string, unknown>) => {
+	const maxValue = get(allValues, "behaviours.maxNodes") as number | null | undefined;
 
 	if (isUndefined(maxValue) || isNull(maxValue) || !value) {
 		return undefined;
@@ -31,38 +33,39 @@ const minValidation = (value, allValues) => {
 
 const MinMaxAlterLimits = () => {
 	const formSelector = useMemo(() => formValueSelector("edit-stage"), []);
-	const currentMinValue = useSelector((state) => formSelector(state, "behaviours.minNodes"));
-	const currentMaxValue = useSelector((state) => formSelector(state, "behaviours.maxNodes"));
-	const hasMultiplePrompts = useSelector((state) => {
-		const prompts = formSelector(state, "prompts");
+	const currentMinValue = useSelector((state: RootState) => formSelector(state, "behaviours.minNodes") as number | undefined);
+	const currentMaxValue = useSelector((state: RootState) => formSelector(state, "behaviours.maxNodes") as number | undefined);
+	const hasMultiplePrompts = useSelector((state: RootState) => {
+		const prompts = formSelector(state, "prompts") as unknown[] | undefined;
 		return !!prompts && prompts.length > 1;
 	});
 
-	const dispatch = useDispatch();
-	const openDialog = useCallback((dialog) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 
 	const handleToggleChange = useCallback(
-		async (newState) => {
+		async (newState: boolean) => {
 			if ((isUndefined(currentMinValue) && isUndefined(currentMaxValue)) || newState === true) {
 				return true;
 			}
 
-			const confirm = await openDialog({
-				type: "Warning",
-				title: "This will clear your values",
-				message: "This will clear the minimum and maximum alter values. Do you want to continue?",
-				confirmLabel: "Clear values",
-			});
+			const confirm = await dispatch(
+				openDialog({
+					type: "Warning",
+					title: "This will clear your values",
+					message: "This will clear the minimum and maximum alter values. Do you want to continue?",
+					confirmLabel: "Clear values",
+				}),
+			);
 
 			if (confirm) {
-				dispatch(change("edit-stage", "behaviours.minNodes", null));
-				dispatch(change("edit-stage", "behaviours.maxNodes", null));
+				dispatch(change("edit-stage", "behaviours.minNodes", null) as UnknownAction);
+				dispatch(change("edit-stage", "behaviours.maxNodes", null) as UnknownAction);
 				return true;
 			}
 
 			return false;
 		},
-		[dispatch, openDialog, currentMinValue, currentMaxValue],
+		[dispatch, currentMinValue, currentMaxValue],
 	);
 
 	const startExpanded = useMemo(
@@ -98,10 +101,15 @@ const MinMaxAlterLimits = () => {
 					name="minNodes"
 					label="Minimum Number of Alters. (0 = no minimum)"
 					component={Number}
-					placeholder="0"
+					componentProps={{
+						placeholder: "0",
+					}}
 					validation={{
 						lessThanMax: minValidation,
-						positiveNumber: true,
+						positiveNumber: (value: number | null | undefined) => {
+							if (!value && value !== 0) return undefined;
+							return value >= 0 ? undefined : "Must be a positive number";
+						},
 					}}
 				/>
 				<IssueAnchor fieldName="behaviours.maxNodes" description="Maximum alters" />
@@ -109,10 +117,15 @@ const MinMaxAlterLimits = () => {
 					name="maxNodes"
 					label="Maximum Number of Alters. _(Leave empty for no maximum)_"
 					component={Number}
-					placeholder="Infinity"
+					componentProps={{
+						placeholder: "Infinity",
+					}}
 					validation={{
 						greaterThanMin: maxValidation,
-						minValue: 1,
+						minValue: (value: number | null | undefined) => {
+							if (!value) return undefined;
+							return value >= 1 ? undefined : "Must be at least 1";
+						},
 					}}
 				/>
 			</FormSection>

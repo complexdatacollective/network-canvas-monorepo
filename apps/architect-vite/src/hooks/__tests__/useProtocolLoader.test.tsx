@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -17,7 +17,7 @@ vi.mock("wouter", () => ({
 	useParams: () => mockUseParams(),
 }));
 
-const mockProtocol: Protocol = {
+const mockProtocol: CurrentProtocol = {
 	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,

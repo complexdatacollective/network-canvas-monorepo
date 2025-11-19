@@ -4,7 +4,7 @@ import RuleText, { Join } from "./PreviewText";
 import withDisplayOptions from "./withDisplayOptions";
 
 const withDeleteHandler = withHandlers({
-	handleDelete: (props) => (e) => {
+	handleDelete: (props: { onDelete: () => void }) => (e: React.MouseEvent) => {
 		e.stopPropagation();
 
 		props.onDelete();

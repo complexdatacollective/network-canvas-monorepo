@@ -1,10 +1,13 @@
 import { capitalize, toPairs } from "es-toolkit/compat";
 import { useEffect, useMemo } from "react";
-import { connect, useDispatch, useSelector } from "react-redux";
+import { connect } from "react-redux";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { change, formValueSelector } from "redux-form";
 import { Layout, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import * as Fields from "~/components/Form/Fields";
+import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
+import type { RootState } from "~/ducks/store";
 import { getCodebook } from "~/selectors/protocol";
 import { getFieldId } from "~/utils/issues";
 import ColorPicker from "../Form/Fields/ColorPicker";
@@ -21,14 +24,14 @@ type TypeEditorProps = {
 };
 
 const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
-	const formIcon = useSelector((state) => formSelector(state, "iconVariant"));
+	const formIcon = useAppSelector((state: RootState) => formSelector(state, "iconVariant"));
 
 	// Provide a default icon
 	useEffect(() => {
 		if (entity === "node" && !formIcon) {
-			dispatch(change(form, "iconVariant", ICON_OPTIONS[0]));
+			dispatch(change(form, "iconVariant", ICON_OPTIONS[0]) as UnknownAction);
 		}
 	}, [entity, form, formIcon, dispatch]);
 
@@ -46,8 +49,8 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 				<ValidatedField
 					component={Fields.Text}
 					name="name"
-					placeholder={`Enter a name for this ${entity} type...`}
-					validation={{ required: true, allowedNMToken: `${entity} type name`, uniqueByList: existingTypes }}
+					validation={{ required: true, allowedNMToken: true, uniqueByList: existingTypes }}
+					componentProps={{ placeholder: `Enter a name for this ${entity} type...` }}
 				/>
 			</Section>
 			<Section
@@ -59,9 +62,8 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 				<ValidatedField
 					component={ColorPicker}
 					name="color"
-					palette={paletteName}
-					paletteRange={paletteSize}
 					validation={{ required: true }}
+					componentProps={{ palette: paletteName, paletteRange: paletteSize }}
 				/>
 			</Section>
 			{entity === "node" && (
@@ -74,9 +76,8 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 					<ValidatedField
 						component={Fields.RadioGroup}
 						name="iconVariant"
-						options={ICON_OPTIONS}
-						optionComponent={IconOption}
 						validation={{ required: true }}
+						componentProps={{ options: ICON_OPTIONS, optionComponent: IconOption }}
 					/>
 				</Section>
 			)}
@@ -84,11 +85,17 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 	);
 };
 
-const mapStateToProps = (state, { type, isNew }) => {
+const mapStateToProps = (
+	state: RootState,
+	{ type, isNew }: { type?: string | null; isNew?: boolean },
+) => {
 	const codebook = getCodebook(state);
 
-	const getNames = (codebookTypeDefinitions, excludeType) => {
-		const names = [];
+	const getNames = (
+		codebookTypeDefinitions: Record<string, { name: string }>,
+		excludeType?: string | false | null,
+	): string[] => {
+		const names: string[] = [];
 		toPairs(codebookTypeDefinitions).forEach(([id, definition]) => {
 			if (excludeType && id === excludeType) {
 				return;

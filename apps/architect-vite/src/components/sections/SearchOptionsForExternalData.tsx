@@ -1,6 +1,8 @@
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { RootState } from "~/ducks/modules/root";
 import { Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
@@ -16,13 +18,13 @@ type SearchOptionsProps = {
 
 const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const getFormValue = formValueSelector("edit-stage");
-	const hasSearchOptions = useSelector((state) => getFormValue(state, "searchOptions"));
+	const hasSearchOptions = useSelector((state: RootState) => getFormValue(state, "searchOptions"));
 
 	const handleToggleSearchOptions = (nextState: boolean) => {
 		if (nextState === false) {
-			dispatch(change("edit-stage", "searchOptions", null));
+			dispatch(change("edit-stage", "searchOptions", null) as UnknownAction);
 		}
 
 		return true;

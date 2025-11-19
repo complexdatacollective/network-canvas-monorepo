@@ -87,25 +87,37 @@ const EntityType = ({
 	);
 };
 
-const mapStateToProps = (state, { entity, type }) => {
+type StateProps = {
+	entity: string;
+	type: string;
+};
+
+const mapStateToProps = (state: unknown, { entity, type }: StateProps) => {
 	const entityProperties = getEntityProperties(state, { entity, type });
 
 	return entityProperties;
 };
+
+type ConnectedProps = {
+	openDialog: typeof dialogActionCreators.openDialog;
+	deleteType: typeof codebookActionCreators.deleteType;
+};
+
+type HandlerProps = ConnectedProps & EntityTypeProps;
 
 const withEntityHandlers = compose(
 	connect(null, {
 		openDialog: dialogActionCreators.openDialog,
 		deleteType: codebookActionCreators.deleteType,
 	}),
-	withHandlers({
+	withHandlers<HandlerProps, {}>({
 		handleEdit:
-			({ entity, type, onEditEntity }) =>
+			({ entity, type, onEditEntity }: HandlerProps) =>
 			() => {
 				onEditEntity?.(entity, type);
 			},
 		handleDelete:
-			({ deleteType, openDialog, entity, type, name, inUse }) =>
+			({ deleteType, openDialog, entity, type, name, inUse }: HandlerProps) =>
 			() => {
 				if (inUse) {
 					openDialog({

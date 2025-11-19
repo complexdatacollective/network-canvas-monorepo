@@ -48,11 +48,13 @@ const Attribute = ({
 						name={`${field}.variable`}
 						component={VariablePicker}
 						validation={{ required: true }}
-						options={variableOptions}
-						onCreateOption={(value) => handleCreateVariable(value, "boolean", `${field}.variable`)}
-						entity={entity}
-						type={type}
-						variable={variable}
+						componentProps={{
+							options: variableOptions,
+							onCreateOption: (value: string) => handleCreateVariable(value, "boolean", `${field}.variable`),
+							entity,
+							type,
+							variable,
+						}}
 					/>
 				</div>
 				{variable && (
@@ -60,13 +62,15 @@ const Attribute = ({
 						<legend>Set value of variable to:</legend>
 						<ValidatedField
 							name={`${field}.value`}
-							options={[
-								{ label: "True", value: true },
-								{ label: "False", value: false, negative: true },
-							]}
 							component={Fields.Boolean}
 							validation={{ required: true }}
-							noReset
+							componentProps={{
+								options: [
+									{ label: "True", value: true },
+									{ label: "False", value: false, negative: true },
+								],
+								noReset: true,
+							}}
 						/>
 					</fieldset>
 				)}
@@ -85,4 +89,4 @@ const Attribute = ({
 	);
 };
 
-export default compose(withAttributeHandlers, withCreateVariableHandler)(Attribute);
+export default compose(withAttributeHandlers, withCreateVariableHandler)(Attribute as React.ComponentType<unknown>);

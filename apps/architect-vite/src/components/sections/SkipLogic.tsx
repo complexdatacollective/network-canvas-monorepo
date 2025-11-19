@@ -1,12 +1,16 @@
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { RootState } from "~/ducks/modules/root";
 import { Section } from "~/components/EditorLayout";
 import SkipLogicFields from "~/components/sections/fields/SkipLogicFields";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { openDialog } from "~/ducks/modules/dialogs";
 
-export const handleDeactivateSkipLogic = async (openDialog) => {
-	const result = await openDialog({
+type OpenDialogFunction = typeof openDialog;
+
+export const handleDeactivateSkipLogic = async (openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>) => {
+	const result = await openDialogFn({
 		type: "Warning",
 		title: "This will clear your skip logic",
 		message: "This will clear your skip logic, and delete any rules you have created. Do you want to continue?",
@@ -17,30 +21,29 @@ export const handleDeactivateSkipLogic = async (openDialog) => {
 };
 
 const SkipLogicSection = () => {
-	const dispatch = useDispatch();
-	const openDialog = useCallback((dialog) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 
 	const getFormValue = formValueSelector("edit-stage");
-	const hasSkipLogic = useSelector((state) => getFormValue(state, "skipLogic"));
+	const hasSkipLogic = useSelector((state: RootState) => getFormValue(state, "skipLogic"));
 
 	const handleToggleChange = useCallback(
-		async (newState) => {
+		async (newState: boolean) => {
 			// When turning skip logic on
 			if (!hasSkipLogic || newState === true) {
 				return true;
 			}
 
 			// When turning skip logic off, confirm that the user wants to clear the skip logic
-			const confirm = await handleDeactivateSkipLogic(openDialog);
+			const confirm = await handleDeactivateSkipLogic((dialog) => dispatch(openDialog(dialog)));
 
 			if (confirm) {
-				dispatch(change("edit-stage", "skipLogic", null));
+				dispatch(change("edit-stage", "skipLogic", null) as UnknownAction);
 				return true;
 			}
 
 			return false;
 		},
-		[dispatch, openDialog, hasSkipLogic],
+		[dispatch, hasSkipLogic],
 	);
 
 	return (

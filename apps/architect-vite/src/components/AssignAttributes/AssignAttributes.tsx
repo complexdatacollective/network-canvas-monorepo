@@ -35,27 +35,39 @@ const AssignAttributes = ({
 	<div className="assign-attributes">
 		{fields.length > 0 && (
 			<div className="assign-attributes__attributes">
-				{fields.map((field, index) => (
-					<Attribute
-						key={field}
-						index={index}
-						entity={entity}
-						type={type}
-						form={form}
-						field={field}
-						variableOptions={variableOptions}
-						onCreateNew={handleCreateNewVariable}
-						onDelete={handleDelete}
-					/>
-				))}
+				{fields.map((field, index) => {
+					const AttributeComponent = Attribute as React.ComponentType<{
+						index: number;
+						entity: string;
+						type: string;
+						form: string;
+						field: string;
+						variableOptions: VariableOption[];
+						onCreateNew: (value: string) => void;
+						onDelete: (index: number) => void;
+					}>;
+					return (
+						<AttributeComponent
+							key={field}
+							index={index}
+							entity={entity}
+							type={type}
+							form={form}
+							field={field}
+							variableOptions={variableOptions}
+							onCreateNew={handleCreateNewVariable}
+							onDelete={handleDelete}
+						/>
+					);
+				})}
 			</div>
 		)}
 		<div className="assign-attributes__add">
-			<Button color="primary" icon="add" onClick={handleAddNew}>
+			<Button color="neon-coral" icon="add" onClick={handleAddNew}>
 				Add new variable to assign
 			</Button>
 		</div>
 	</div>
 );
 
-export default withAssignAttributesHandlers(AssignAttributes);
+export default withAssignAttributesHandlers(AssignAttributes as React.ComponentType<unknown>);

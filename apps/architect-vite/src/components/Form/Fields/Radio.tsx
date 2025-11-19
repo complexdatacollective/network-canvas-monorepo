@@ -18,12 +18,14 @@ type RadioProps = {
 	};
 } & Record<string, unknown>;
 
-const Radio = ({ label = null, className = "", input, disabled = false, fieldLabel = null, ...rest }: RadioProps) => {
+const Radio = ({ label, className = "", input, disabled = false, fieldLabel, ...rest }: RadioProps) => {
 	const id = useRef(uuid());
 
 	const componentClasses = cx("form-field-radio", className, {
 		"form-field-radio--disabled": disabled,
 	});
+
+	const { name, value, onChange, ...inputRest } = input;
 
 	return (
 		<label className={componentClasses} htmlFor={id.current}>
@@ -31,12 +33,14 @@ const Radio = ({ label = null, className = "", input, disabled = false, fieldLab
 				type="radio"
 				className="form-field-radio__input"
 				id={id.current}
+				name={name}
 				// input.checked is only provided by redux form if type="checkbox" or type="radio" is
 				// provided to <Field />, so for the case that it isn't we can rely on the more reliable
 				// input.value
-				checked={!!input.value}
-				{...input}
-				{...rest}
+				checked={!!value}
+				onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.checked)}
+				{...(inputRest as Record<string, unknown>)}
+				{...(rest as Record<string, unknown>)}
 			/>
 			<div className="form-field-radio__radio" />
 			{label &&

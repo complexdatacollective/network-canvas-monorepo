@@ -1,53 +1,71 @@
 import { compose, withHandlers, withState } from "recompose";
 import { getDefaultOptions } from "./defaultRule";
 import { templates } from "./options";
+import type { Rule, RuleOptions } from "./validateRule";
 
-const generateRule = (type, options = {}) => ({
+const generateRule = (type: string, options: RuleOptions = {}): Rule => ({
 	type,
 	options: { operator: undefined, ...options },
 });
 
-const withDraftRule = compose(
+type OwnProps = {
+	rules: Rule[];
+};
+
+type StateProps = {
+	draftRule: Rule | null;
+	setDraftRule: (rule: Rule | null) => void;
+};
+
+type FirstHandlerProps = StateProps & OwnProps;
+
+type SecondHandlerProps = FirstHandlerProps & {
+	resetDraft: () => void;
+	startDraft: (ruleId: string) => void;
+	createDraft: (type: string, options?: RuleOptions) => void;
+};
+
+const withDraftRule = compose<OwnProps, OwnProps>(
 	withState("draftRule", "setDraftRule", null),
-	withHandlers({
+	withHandlers<FirstHandlerProps, {}>({
 		resetDraft:
-			({ setDraftRule }) =>
+			({ setDraftRule }: FirstHandlerProps) =>
 			() =>
 				setDraftRule(null),
 		startDraft:
-			({ setDraftRule, rules }) =>
-			(ruleId) => {
+			({ setDraftRule, rules }: FirstHandlerProps) =>
+			(ruleId: string) => {
 				const rule = rules.find(({ id }) => id === ruleId);
-				setDraftRule(rule);
+				setDraftRule(rule || null);
 			},
 		createDraft:
-			({ setDraftRule }) =>
-			(type, options) =>
+			({ setDraftRule }: FirstHandlerProps) =>
+			(type: string, options?: RuleOptions) =>
 				setDraftRule(generateRule(type, options)),
 	}),
-	withHandlers({
+	withHandlers<SecondHandlerProps, {}>({
 		handleCreateAlterRule:
-			({ createDraft }) =>
+			({ createDraft }: SecondHandlerProps) =>
 			() =>
 				createDraft("alter", getDefaultOptions(templates.alterTypeRule)),
 		handleCreateEdgeRule:
-			({ createDraft }) =>
+			({ createDraft }: SecondHandlerProps) =>
 			() =>
 				createDraft("edge", getDefaultOptions(templates.edgeTypeRule)),
 		handleCreateEgoRule:
-			({ createDraft }) =>
+			({ createDraft }: SecondHandlerProps) =>
 			() =>
 				createDraft("ego", getDefaultOptions(templates.egoRule)),
 		handleClickRule:
-			({ startDraft }) =>
-			(ruleId) =>
+			({ startDraft }: SecondHandlerProps) =>
+			(ruleId: string) =>
 				startDraft(ruleId),
 		handleChangeDraft:
-			({ setDraftRule }) =>
-			(rule) =>
+			({ setDraftRule }: SecondHandlerProps) =>
+			(rule: Rule) =>
 				setDraftRule(rule),
 		handleCancelDraft:
-			({ resetDraft }) =>
+			({ resetDraft }: SecondHandlerProps) =>
 			() =>
 				resetDraft(),
 	}),

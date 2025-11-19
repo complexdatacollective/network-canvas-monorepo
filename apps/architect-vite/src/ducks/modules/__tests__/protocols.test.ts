@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
 import protocolsReducer, {
@@ -12,7 +12,7 @@ import protocolsReducer, {
 	updateProtocolMetadata,
 } from "../protocols";
 
-const mockProtocol: Protocol = {
+const mockProtocol: CurrentProtocol = {
 	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,
@@ -25,7 +25,7 @@ const mockProtocol: Protocol = {
 	assetManifest: {},
 };
 
-const mockProtocol2: Protocol = {
+const mockProtocol2: CurrentProtocol = {
 	name: "Another Protocol",
 	description: "another description",
 	schemaVersion: 8,

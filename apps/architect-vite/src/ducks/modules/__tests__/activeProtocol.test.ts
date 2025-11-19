@@ -1,10 +1,10 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
 import activeProtocolReducer, { actionCreators } from "../activeProtocol";
 import { createStage } from "../protocol/stages";
 
-const mockProtocol: Protocol = {
+const mockProtocol: CurrentProtocol & { name: string } = {
 	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,
@@ -17,7 +17,7 @@ const mockProtocol: Protocol = {
 	assetManifest: {},
 };
 
-const mockProtocol2: Protocol = {
+const mockProtocol2: CurrentProtocol & { name: string } = {
 	name: "Another Protocol",
 	description: "another description",
 	schemaVersion: 8,
@@ -26,13 +26,27 @@ const mockProtocol2: Protocol = {
 			id: "stage-1",
 			type: "NameGenerator",
 			label: "Test Stage",
+			form: {
+				title: "Test Form",
+				fields: [],
+			},
+			subject: {
+				entity: "node",
+				type: "person",
+			},
+			prompts: [
+				{
+					id: "prompt-1",
+					text: "Test prompt",
+				},
+			],
 		},
 	],
 	codebook: {
 		node: {
 			person: {
 				name: "Person",
-				color: "blue",
+				color: "node-color-seq-1",
 				variables: {},
 			},
 		},
@@ -44,7 +58,8 @@ const mockProtocol2: Protocol = {
 
 describe("activeProtocol", () => {
 	describe("reducer", () => {
-		let store: ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		type TestStore = ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		let store: TestStore;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -52,7 +67,7 @@ describe("activeProtocol", () => {
 					activeProtocol: activeProtocolReducer,
 				},
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
-			});
+			}) as TestStore;
 		});
 
 		it("should have an empty initial state", () => {
@@ -146,7 +161,8 @@ describe("activeProtocol", () => {
 	});
 
 	describe("selectors", () => {
-		let store: ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		type TestStore = ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		let store: TestStore;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -154,7 +170,7 @@ describe("activeProtocol", () => {
 					activeProtocol: activeProtocolReducer,
 				},
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
-			});
+			}) as TestStore;
 		});
 
 		it("should select null when no active protocol", () => {
@@ -192,7 +208,7 @@ describe("activeProtocol", () => {
 
 		it("should return false for empty protocol object", () => {
 			// Directly set empty state
-			store.dispatch(actionCreators.setActiveProtocol({} as Protocol));
+			store.dispatch(actionCreators.setActiveProtocol({} as CurrentProtocol & { name: string }));
 
 			const state = store.getState();
 			const protocol = state.activeProtocol;
@@ -235,7 +251,8 @@ describe("activeProtocol", () => {
 	});
 
 	describe("sub-reducers integration", () => {
-		let store: ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		type TestStore = ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		let store: TestStore;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -243,7 +260,7 @@ describe("activeProtocol", () => {
 					activeProtocol: activeProtocolReducer,
 				},
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
-			});
+			}) as TestStore;
 		});
 
 		it("should process sub-reducers when protocol data exists", () => {
@@ -260,7 +277,20 @@ describe("activeProtocol", () => {
 
 		it("should not process sub-reducers when no protocol data", () => {
 			// Try to dispatch an action that would normally be handled by sub-reducers
-			store.dispatch(createStage({ stage: { id: "test" } }));
+			store.dispatch(
+				createStage({
+					stage: {
+						id: "test",
+						type: "NameGenerator",
+						label: "Test Stage",
+						subject: {
+							entity: "node",
+							type: "person",
+						},
+						prompts: [],
+					},
+				}),
+			);
 
 			const state = store.getState().activeProtocol;
 

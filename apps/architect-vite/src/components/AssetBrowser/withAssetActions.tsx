@@ -3,16 +3,22 @@ import { compose, withHandlers } from "recompose";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
 import { actionCreators as assetActions } from "../../ducks/modules/protocol/assetManifest";
 
+type ConnectedActions = {
+	deleteAsset: typeof assetActions.deleteAsset;
+	importAsset: typeof assetActions.importAsset;
+	openDialog: typeof dialogActions.openDialog;
+};
+
 const connectActions = connect(null, {
 	deleteAsset: assetActions.deleteAsset,
 	importAsset: assetActions.importAsset,
 	openDialog: dialogActions.openDialog,
 });
 
-const assetHandlers = withHandlers({
+const assetHandlers = withHandlers<ConnectedActions, {}>({
 	onDelete:
-		({ deleteAsset, openDialog }) =>
-		(assetId, isUsed = false) => {
+		({ deleteAsset, openDialog }: ConnectedActions) =>
+		(assetId: string, isUsed = false) => {
 			if (isUsed) {
 				openDialog({
 					type: "Notice",

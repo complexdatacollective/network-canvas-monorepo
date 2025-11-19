@@ -12,25 +12,25 @@ type SpotlightModalProps = {
 class SpotlightModal extends Component<SpotlightModalProps> {
 	static defaultProps = {
 		show: false,
-		zIndex: null,
-		children: null,
+		zIndex: undefined,
+		children: undefined,
 		onBlur: () => {},
 	};
 	render() {
 		const { children, show, zIndex, onBlur } = this.props;
 
-		const style = zIndex ? { zIndex } : null;
+		const style = zIndex ? { zIndex } : undefined;
 
-		const handleBlur = (event) => {
+		const handleBlur = (event: React.MouseEvent) => {
 			if (event.target !== event.currentTarget) {
 				return;
 			}
-			onBlur(event);
+			onBlur?.(event);
 		};
 
 		const handleKeyDown = (event: React.KeyboardEvent) => {
 			if (event.key === "Escape" && event.target === event.currentTarget) {
-				onBlur(event as unknown as React.MouseEvent);
+				onBlur?.(event as unknown as React.MouseEvent);
 			}
 		};
 

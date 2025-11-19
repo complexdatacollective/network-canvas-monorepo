@@ -2,7 +2,7 @@ import AutoFileDrop from "../Form/AutoFileDrop";
 
 type NewAssetProps = {
 	type?: string | null;
-	onCreate?: () => void;
+	onCreate?: (ids: string[]) => void;
 };
 
 /**
@@ -10,7 +10,7 @@ type NewAssetProps = {
  *
  * Value should be assetId
  */
-const NewAsset = ({ type = null, onCreate = () => {} }: NewAssetProps) => (
+const NewAsset = ({ type = null, onCreate }: NewAssetProps) => (
 	<>
 		<AutoFileDrop type={type} onDrop={onCreate} />
 	</>

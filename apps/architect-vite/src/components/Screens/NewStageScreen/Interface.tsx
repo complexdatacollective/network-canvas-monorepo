@@ -5,7 +5,7 @@ import Tag from "~/components/Tag";
 import timelineImages from "~/images/timeline";
 import { INTERFACE_TYPES, TAG_COLORS } from "./interfaceOptions";
 
-const getTimelineImage = (type) => get(timelineImages, type);
+const getTimelineImage = (type: string) => get(timelineImages, type);
 
 type InterfaceThumbnailProps = {
 	type: string;
@@ -22,17 +22,17 @@ const InterfaceThumbnail = ({
 	setHighlighted,
 	removeHighlighted,
 }: InterfaceThumbnailProps) => {
-	const ref = useRef(null);
+	const ref = useRef<HTMLDivElement>(null);
 	const meta = useMemo(() => find(INTERFACE_TYPES, ["type", interfaceType]), [interfaceType]);
 	const image = getTimelineImage(interfaceType);
-	const { title, tags, description } = meta;
+	const { title, tags, description } = meta ?? { title: "", tags: [], description: "" };
 
 	if (!meta) {
 		throw Error(`${interfaceType} definition not found`);
 	}
 
 	const handleSelect = useCallback(
-		(e) => {
+		(e: React.MouseEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
 
@@ -42,7 +42,7 @@ const InterfaceThumbnail = ({
 	);
 
 	useEffect(() => {
-		if (highlighted) {
+		if (highlighted && ref.current) {
 			// Move element into view when it is selected
 			ref.current.scrollIntoView({ block: "nearest" });
 		}

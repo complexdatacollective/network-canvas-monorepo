@@ -72,7 +72,7 @@ const DataSource = (props: DataSourceProps) => {
 							// eslint-disable-next-line react/jsx-props-no-spreading
 							{...props}
 						>
-							{(id) => <NetworkThumbnail id={id} />}
+							{(id: string) => <NetworkThumbnail id={id} />}
 						</File>
 					</div>
 				)}
@@ -85,7 +85,7 @@ const DataSource = (props: DataSourceProps) => {
 			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...props}
 		>
-			{(id) => <NetworkThumbnail id={id} />}
+			{(id: string) => <NetworkThumbnail id={id} />}
 		</File>
 	);
 };

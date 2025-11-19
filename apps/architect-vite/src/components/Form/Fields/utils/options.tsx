@@ -2,7 +2,7 @@
 
 import { get, isString } from "lodash";
 
-type Option = string | { value: unknown; label: string; [key: string]: unknown };
+export type Option = string | { value: unknown; label: string; [key: string]: unknown };
 
 const toString = (value: unknown): string => (isString(value) ? value : JSON.stringify(value));
 

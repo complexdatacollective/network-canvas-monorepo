@@ -1,6 +1,8 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/store";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
@@ -16,7 +18,9 @@ import getEdgeFilteringWarning from "./utils";
 // This was created as part of removing the HOC pattern used throughout the app.
 // It replaces withCreateVariableHandler. Other uses of this handler could be
 // updated to use this function.
-export const createVariableHandler = (dispatch, entity, type, form) => async (variableName, variableType, field) => {
+export const createVariableHandler =
+	(dispatch: Dispatch<UnknownAction>, entity: string, type: string, form: string) =>
+	async (variableName: string, variableType: string, field: string) => {
 	const withType = variableType ? { type: variableType } : {};
 
 	const configuration = {
@@ -24,12 +28,18 @@ export const createVariableHandler = (dispatch, entity, type, form) => async (va
 		...withType,
 	};
 
-	const result = await dispatch(codebookActions.createVariable({ entity, type, configuration }));
-	const { variable } = result.payload;
+	const result = await dispatch(
+		codebookActions.createVariable({
+			entity: entity as "node" | "edge" | "ego",
+			type,
+			configuration,
+		}) as unknown as UnknownAction,
+	);
+	const { variable } = (result as unknown as { payload: { variable: string } }).payload;
 
 	// If we supplied a field, update it with the result of the variable creation
 	if (field) {
-		dispatch(change(form, field, variable));
+		dispatch(change(form, field, variable) as UnknownAction);
 	}
 
 	return variable;
@@ -47,13 +57,17 @@ type TapBehaviourProps = {
 };
 
 const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const getFormValue = formValueSelector(form);
-	const hasCreateEdgeBehaviour = useSelector((state) => !!getFormValue(state, "edges.create"));
-	const hasToggleAttributeBehaviour = useSelector((state) => !!getFormValue(state, "highlight.allowHighlighting"));
-	const highlightVariable = useSelector((state) => getFormValue(state, "highlight.variable"));
+	const hasCreateEdgeBehaviour = useSelector((state: RootState) => !!getFormValue(state, "edges.create"));
+	const hasToggleAttributeBehaviour = useSelector((state: RootState) =>
+		!!getFormValue(state, "highlight.allowHighlighting"),
+	);
+	const highlightVariable = useSelector((state: RootState) => getFormValue(state, "highlight.variable"));
 
-	const highlightVariablesForSubject = useSelector((state) => getHighlightVariablesForSubject(state, { type, entity }));
+	const highlightVariablesForSubject = useSelector((state: RootState) =>
+		getHighlightVariablesForSubject(state, { type, entity }),
+	);
 
 	const handleCreateVariable = createVariableHandler(dispatch, entity, type, form);
 
@@ -71,35 +85,35 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 
 	const [tapBehaviour, setTapBehaviour] = React.useState(initialState());
 
-	const handleChangeTapBehaviour = (behaviour) => {
+	const handleChangeTapBehaviour = (behaviour: string | null) => {
 		setTapBehaviour(behaviour);
 		if (behaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES) {
 			// Reset edge creation
-			dispatch(change(form, "edges.create", null));
-			dispatch(change(form, "highlight.allowHighlighting", true));
+			dispatch(change(form, "edges.create", null) as UnknownAction);
+			dispatch(change(form, "highlight.allowHighlighting", true) as UnknownAction);
 		}
 
 		if (behaviour === TAP_BEHAVIOURS.CREATE_EDGES) {
 			// Reset attribute highlighting
-			dispatch(change(form, "highlight.allowHighlighting", false));
-			dispatch(change(form, "highlight.variable", null));
+			dispatch(change(form, "highlight.allowHighlighting", false) as UnknownAction);
+			dispatch(change(form, "highlight.variable", null) as UnknownAction);
 		}
 	};
 
-	const handleToggleChange = (value) => {
+	const handleToggleChange = (value: boolean) => {
 		if (value) {
 			return true;
 		}
 
 		// Reset edge creation
-		dispatch(change(form, "edges.create", null));
-		dispatch(change(form, "highlight.allowHighlighting", false));
-		dispatch(change(form, "highlight.variable", null));
+		dispatch(change(form, "edges.create", null) as UnknownAction);
+		dispatch(change(form, "highlight.allowHighlighting", false) as UnknownAction);
+		dispatch(change(form, "highlight.variable", null) as UnknownAction);
 
 		return true;
 	};
 
-	const selectedValue = useSelector((state) => getFormValue(state, "edges.create"));
+	const selectedValue = useSelector((state: RootState) => getFormValue(state, "edges.create"));
 
 	const edgeFilters = useSelector(getEdgeFilters);
 	const showNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, [selectedValue]);
@@ -155,14 +169,16 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 					<ValidatedField
 						name="highlight.variable"
 						component={VariablePicker}
-						entity={entity}
-						type={type}
-						label="Boolean Attribute to Toggle"
-						placeholder="Select or create a boolean variable"
-						onCreateOption={(value) => handleCreateVariable(value, "boolean", "highlight.variable")}
 						validation={{ required: true }}
-						options={highlightVariablesForSubject}
-						variable={highlightVariable}
+						componentProps={{
+							entity,
+							type,
+							label: "Boolean Attribute to Toggle",
+							placeholder: "Select or create a boolean variable",
+							onCreateOption: (value: string) => handleCreateVariable(value, "boolean", "highlight.variable"),
+							options: highlightVariablesForSubject,
+							variable: highlightVariable,
+						}}
 					/>
 				)}
 				{tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
@@ -178,11 +194,13 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 						)}
 
 						<ValidatedField
-							entityType="edge"
 							name="edges.create"
 							component={EntitySelectField}
-							label="Create edges of the following type"
 							validation={{ required: true }}
+							componentProps={{
+								entityType: "edge",
+								label: "Create edges of the following type",
+							}}
 						/>
 					</>
 				)}

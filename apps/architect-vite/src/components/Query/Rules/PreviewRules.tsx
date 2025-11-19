@@ -13,7 +13,7 @@ type PreviewRulesProps = {
 };
 
 const PreviewRules = ({ join = null, rules, codebook, onClickRule, onDeleteRule }: PreviewRulesProps) => {
-	const getJoin = (index) => (rules.length !== 1 && index < rules.length - 1 ? join : null);
+	const getJoin = (index: number) => (rules.length !== 1 && index < rules.length - 1 ? join : null);
 
 	return (
 		<div className="rules-preview-rules">

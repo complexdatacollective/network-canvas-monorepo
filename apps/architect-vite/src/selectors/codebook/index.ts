@@ -99,12 +99,12 @@ export const getAllVariablesByUUIDSelector = createSelector([getCodebook], (code
 	};
 
 	// Process node types
-	for (const nodeType of Object.values(nodeTypes)) {
+	for (const nodeType of Object.values(nodeTypes) as NodeDefinition[]) {
 		addVariables(nodeType.variables);
 	}
 
 	// Process edge types
-	for (const edgeType of Object.values(edgeTypes)) {
+	for (const edgeType of Object.values(edgeTypes) as EdgeDefinition[]) {
 		addVariables(edgeType.variables);
 	}
 
@@ -136,12 +136,12 @@ export const getAllVariablesByUUID = (codebook: Codebook): Variables => {
 	};
 
 	// Process node types
-	for (const nodeType of Object.values(nodeTypes)) {
+	for (const nodeType of Object.values(nodeTypes) as NodeDefinition[]) {
 		addVariables(nodeType.variables);
 	}
 
 	// Process edge types
-	for (const edgeType of Object.values(edgeTypes)) {
+	for (const edgeType of Object.values(edgeTypes) as EdgeDefinition[]) {
 		addVariables(edgeType.variables);
 	}
 
@@ -161,29 +161,31 @@ export const getAllVariablesByEntitySelector = createSelector([getCodebook], (co
 	const { node: nodeTypes = {}, edge: edgeTypes = {}, ego } = codebook;
 
 	// Process nodes
-	for (const [nodeType, typeData] of Object.entries(nodeTypes)) {
+	for (const [nodeType, typeData] of Object.entries(nodeTypes) as [string, NodeDefinition][]) {
 		const nodeVariables = typeData.variables || {};
 		for (const [uuid, variable] of Object.entries(nodeVariables)) {
+			if (!variable || typeof variable !== "object") continue;
 			variables.push({
 				uuid,
-				name: variable.name,
+				name: (variable as { name: string }).name,
 				entity: "node",
 				entityType: nodeType,
-				type: variable.type,
+				type: (variable as { type: string }).type,
 			});
 		}
 	}
 
 	// Process edges
-	for (const [edgeType, typeData] of Object.entries(edgeTypes)) {
+	for (const [edgeType, typeData] of Object.entries(edgeTypes) as [string, EdgeDefinition][]) {
 		const edgeVariables = typeData.variables || {};
 		for (const [uuid, variable] of Object.entries(edgeVariables)) {
+			if (!variable || typeof variable !== "object") continue;
 			variables.push({
 				uuid,
-				name: variable.name,
+				name: (variable as { name: string }).name,
 				entity: "edge",
 				entityType: edgeType,
-				type: variable.type,
+				type: (variable as { type: string }).type,
 			});
 		}
 	}
@@ -191,12 +193,13 @@ export const getAllVariablesByEntitySelector = createSelector([getCodebook], (co
 	// Process ego
 	const egoVariables = ego?.variables || {};
 	for (const [uuid, variable] of Object.entries(egoVariables)) {
+		if (!variable || typeof variable !== "object") continue;
 		variables.push({
 			uuid,
-			name: variable.name,
+			name: (variable as { name: string }).name,
 			entity: "ego",
 			entityType: null,
-			type: variable.type,
+			type: (variable as { type: string }).type,
 		});
 	}
 
@@ -211,29 +214,31 @@ export const getAllVariableUUIDsByEntity = (codebook: Codebook): VariableWithEnt
 	const { node: nodeTypes = {}, edge: edgeTypes = {}, ego } = codebook;
 
 	// Process nodes
-	for (const [nodeType, typeData] of Object.entries(nodeTypes)) {
+	for (const [nodeType, typeData] of Object.entries(nodeTypes) as [string, NodeDefinition][]) {
 		const nodeVariables = typeData.variables || {};
 		for (const [uuid, variable] of Object.entries(nodeVariables)) {
+			if (!variable || typeof variable !== "object") continue;
 			variables.push({
 				uuid,
-				name: variable.name,
+				name: (variable as { name: string }).name,
 				entity: "node",
 				entityType: nodeType,
-				type: variable.type,
+				type: (variable as { type: string }).type,
 			});
 		}
 	}
 
 	// Process edges
-	for (const [edgeType, typeData] of Object.entries(edgeTypes)) {
+	for (const [edgeType, typeData] of Object.entries(edgeTypes) as [string, EdgeDefinition][]) {
 		const edgeVariables = typeData.variables || {};
 		for (const [uuid, variable] of Object.entries(edgeVariables)) {
+			if (!variable || typeof variable !== "object") continue;
 			variables.push({
 				uuid,
-				name: variable.name,
+				name: (variable as { name: string }).name,
 				entity: "edge",
 				entityType: edgeType,
-				type: variable.type,
+				type: (variable as { type: string }).type,
 			});
 		}
 	}
@@ -241,12 +246,13 @@ export const getAllVariableUUIDsByEntity = (codebook: Codebook): VariableWithEnt
 	// Process ego
 	const egoVariables = ego?.variables || {};
 	for (const [uuid, variable] of Object.entries(egoVariables)) {
+		if (!variable || typeof variable !== "object") continue;
 		variables.push({
 			uuid,
-			name: variable.name,
+			name: (variable as { name: string }).name,
 			entity: "ego",
 			entityType: null,
-			type: variable.type,
+			type: (variable as { type: string }).type,
 		});
 	}
 

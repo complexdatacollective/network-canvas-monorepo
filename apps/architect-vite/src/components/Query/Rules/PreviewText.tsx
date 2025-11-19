@@ -3,7 +3,7 @@ import { SimpleVariablePill } from "../../Form/Fields/VariablePicker/VariablePil
 import PreviewEdge from "../../sections/fields/EntitySelectField/PreviewEdge";
 import PreviewNode from "../../sections/fields/EntitySelectField/PreviewNode";
 
-const operatorsAsText = (isEgo) => ({
+const operatorsAsText = (isEgo: boolean) => ({
 	EXISTS: "where",
 	NOT_EXISTS: "without",
 	EXACTLY: isEgo ? "that is exactly equal to" : "is exactly equal to",
@@ -27,7 +27,7 @@ const typeOperatorsAsText = {
 	NOT_EXISTS: "does not exist",
 };
 
-const formatValue = (value) => {
+const formatValue = (value: string | number | boolean | Array<string | number>): string | number | boolean => {
 	switch (typeof value) {
 		case "boolean":
 			return value ? "true" : "false";
@@ -106,11 +106,25 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (type === "ego") {
 		return (
 			<>
-				<span style={{ "--node--label": "var(--text-dark)" }}>
+				<span style={{ "--node--label": "var(--text-dark)" } as React.CSSProperties}>
 					<PreviewNode label="Ego" color="color-platinum" />
 				</span>
 				<Copy>has</Copy>
-				<SimpleVariablePill label={options.attribute} type={options.variableType} />
+				<SimpleVariablePill
+					label={options.attribute ?? ""}
+					type={
+						(options.variableType as
+							| "number"
+							| "text"
+							| "boolean"
+							| "ordinal"
+							| "categorical"
+							| "scalar"
+							| "datetime"
+							| "layout"
+							| "location") ?? "text"
+					}
+				/>
 				<Operator value={options.operator} isEgo />
 				<Value value={options.value} />
 			</>
@@ -122,7 +136,7 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (isNil(options.attribute)) {
 		return (
 			<>
-				<PreviewComponent color={options.typeColor} label={options.typeLabel} />
+				<PreviewComponent color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
 				<TypeOperator value={options.operator} />
 			</>
 		);
@@ -130,7 +144,7 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (isNil(options.value)) {
 		return (
 			<>
-				<PreviewComponent color={options.typeColor} label={options.typeLabel} />
+				<PreviewComponent color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
 				<Operator value={options.operator} />
 				<Variable>{options.attribute}</Variable>
 			</>
@@ -138,9 +152,23 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	}
 	return (
 		<>
-			<PreviewComponent color={options.typeColor} label={options.typeLabel} />
+			<PreviewComponent color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
 			<Copy>where</Copy>
-			<SimpleVariablePill label={options.attribute} type={options.variableType} />
+			<SimpleVariablePill
+				label={options.attribute ?? ""}
+				type={
+					(options.variableType as
+						| "number"
+						| "text"
+						| "boolean"
+						| "ordinal"
+						| "categorical"
+						| "scalar"
+						| "datetime"
+						| "layout"
+						| "location") ?? "text"
+				}
+			/>
 			<Operator value={options.operator} />
 			<Value value={options.value} />
 		</>

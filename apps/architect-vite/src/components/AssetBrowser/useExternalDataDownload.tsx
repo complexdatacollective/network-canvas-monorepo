@@ -12,7 +12,7 @@ const useExternalDataDownload = () => {
 	const assetManifest = useSelector(getAssetManifest);
 
 	const getAssetInfo = useCallback(
-		(id) => {
+		(id: string) => {
 			const source = get(assetManifest, [id, "source"], "");
 			const meta = get(assetManifest, id, defaultMeta);
 			const assetPath = `assets/${source}`;

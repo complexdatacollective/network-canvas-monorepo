@@ -1,4 +1,4 @@
-import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
+import type { ExtractedAsset } from "@codaco/protocol-validation";
 import Dexie, { type EntityTable } from "dexie";
 
 export const assetDb = new Dexie("ArchitectAssetDB") as Dexie & {

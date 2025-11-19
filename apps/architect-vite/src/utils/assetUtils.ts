@@ -1,4 +1,4 @@
-import type { ExtractedAsset } from "@codaco/protocol-validation/dist/src/utils/extractProtocol";
+import type { ExtractedAsset } from "@codaco/protocol-validation";
 import { assetDb } from "./assetDB";
 
 export const saveAssetToDb = async (asset: ExtractedAsset): Promise<void> => {

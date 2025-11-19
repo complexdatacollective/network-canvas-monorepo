@@ -1,4 +1,4 @@
-import type { Protocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -39,7 +39,7 @@ vi.mock("~/components/Protocol", () => ({
 	default: () => <div data-testid="protocol">Protocol Component</div>,
 }));
 
-const mockProtocol: Protocol = {
+const mockProtocol: CurrentProtocol = {
 	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,

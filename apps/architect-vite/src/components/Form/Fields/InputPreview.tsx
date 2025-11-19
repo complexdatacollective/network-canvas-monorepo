@@ -2,7 +2,7 @@ import { get } from "es-toolkit/compat";
 
 import inputImages from "../../../images/inputs";
 
-const getInputImage = (type) => get(inputImages, type);
+const getInputImage = (type: string) => get(inputImages, type);
 
 type InputPreviewProps = {
 	image: string;

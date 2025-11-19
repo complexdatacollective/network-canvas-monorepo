@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const useTimer = (callback, delay, props) => {
+const useTimer = (callback: () => void, delay: number, props: unknown[]) => {
 	const f = useRef(callback);
 
 	useEffect(() => {

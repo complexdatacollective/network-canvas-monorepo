@@ -24,19 +24,19 @@ const fuseOptions = {
 
 const fuse = new Fuse(INTERFACE_TYPES, fuseOptions);
 
-const interfaceHasAllSelectedTags = (selectedTags, interfaceTags) => {
+const interfaceHasAllSelectedTags = (selectedTags: string[], interfaceTags: string[]) => {
 	if (selectedTags.length === 0) {
 		return true;
 	}
-	return selectedTags.every((tag) => interfaceTags.includes(tag));
+	return selectedTags.every((tag: string) => interfaceTags.includes(tag));
 };
 
-const search = (query) => {
+const search = (query: string) => {
 	if (query.length === 0) {
 		return INTERFACE_TYPES;
 	}
 	const result = fuse.search(query);
-	return result.sort((a, b) => a.score - b.score).map((item) => item.item);
+	return result.sort((a, b) => (a.score ?? 0) - (b.score ?? 0)).map((item) => item.item);
 };
 
 type NewStageScreenProps = {
@@ -50,7 +50,7 @@ type NewStageScreenProps = {
 
 const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }: NewStageScreenProps) => {
 	const [, setLocation] = useLocation();
-	const [selectedTags, setSelectedTags] = useState([]);
+	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [query, setQuery] = useState("");
 	const [cursor, setCursor] = useState(0);
 	const [cursorActive, setCursorActive] = useState(false);
@@ -59,7 +59,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	const _locus = useSelector(getTimelineLocus);
 
 	const filteredInterfaces = useMemo(() => {
-		let interfaces = search(query, selectedTags).filter(({ tags: interfaceTags }) =>
+		let interfaces = search(query).filter(({ tags: interfaceTags }) =>
 			// eslint-disable-next-line implicit-arrow-linebreak
 			interfaceHasAllSelectedTags(selectedTags, interfaceTags),
 		);
@@ -91,7 +91,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	);
 
 	const handleTagClick = useCallback(
-		(tag) => {
+		(tag: string) => {
 			if (selectedTags.includes(tag)) {
 				setSelectedTags(selectedTags.filter((t) => t !== tag));
 				return;
@@ -130,7 +130,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 
 	// Navigate within the list of results using the keyboard
 	const handleKeyDown = useCallback(
-		(e) => {
+		(e: React.KeyboardEvent) => {
 			if (e.key === "ArrowUp" || e.key === "ArrowDown") {
 				e.preventDefault(); // Prevent moving cursor within search input
 				if (!cursorActive) {
@@ -175,7 +175,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	}, [mouseMoved]);
 
 	const handleSetHighlight = useCallback(
-		(index) => {
+		(index: number) => {
 			if (!mouseMoved) {
 				return;
 			}
@@ -188,7 +188,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	const handleClearSearchAndFilter = useCallback(() => {
 		setQuery("");
 		setSelectedTags([]);
-	});
+	}, []);
 
 	const hasQuery = query !== "";
 
@@ -272,7 +272,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	);
 };
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: unknown) => ({
 	experiments: getExperiments(state),
 });
 

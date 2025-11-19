@@ -11,7 +11,7 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export const normalizeKeyDown = (event) => {
+export const normalizeKeyDown = (event: React.KeyboardEvent) => {
 	const check = safeName(event.key);
 
 	if (isEmpty(check)) {
@@ -19,10 +19,24 @@ export const normalizeKeyDown = (event) => {
 	}
 };
 
+type ConnectedProps = {
+	createVariable: typeof codebookActions.createVariable;
+	deleteVariable: typeof codebookActions.deleteVariable;
+	changeField: typeof change;
+};
+
+type OwnProps = {
+	type: string;
+	entity: string;
+	form: string;
+};
+
+type HandlerProps = ConnectedProps & OwnProps;
+
 const createVariableHandler = {
 	handleCreateVariable:
-		({ changeField, createVariable, type, entity, form }) =>
-		async (variableName, variableType, field) => {
+		({ changeField, createVariable, type, entity, form }: HandlerProps) =>
+		async (variableName: string, variableType?: string, field?: string) => {
 			const withType = variableType ? { type: variableType } : {};
 
 			const configuration = {
@@ -31,7 +45,7 @@ const createVariableHandler = {
 			};
 
 			const result = await createVariable({ entity, type, configuration });
-			const { variable } = result.payload;
+			const { variable } = result.payload as { variable: string };
 
 			// If we supplied a field, update it with the result of the variable creation
 			if (field) {
@@ -41,8 +55,8 @@ const createVariableHandler = {
 			return variable;
 		},
 	handleDeleteVariable:
-		({ deleteVariable, type, entity }) =>
-		(variableId) =>
+		({ deleteVariable, type, entity }: HandlerProps) =>
+		(variableId: string) =>
 			deleteVariable({ entity, type, variable: variableId }),
 	normalizeKeyDown: () => normalizeKeyDown,
 };
@@ -55,6 +69,6 @@ const createVariableHandler = {
  *   <div handler={() => handleCreateVariable(value, type)} />
  * )
  */
-const withCreateVariableHandler = compose(connect(null, mapDispatchToProps), withHandlers(createVariableHandler));
+const withCreateVariableHandler = compose(connect(null, mapDispatchToProps), withHandlers<HandlerProps, {}>(createVariableHandler));
 
 export default withCreateVariableHandler;

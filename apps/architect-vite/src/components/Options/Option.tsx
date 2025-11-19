@@ -11,10 +11,24 @@ import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
 import type { OptionValue } from "./Options";
 
-const isNumberLike = (value) => Number.parseInt(value, 10) === value; // eslint-disable-line
+const isNumberLike = (value: string) => Number.parseInt(value, 10) === value; // eslint-disable-line
 
 const deleteOption =
-	({ fields, openDialog, index }) =>
+	({
+		fields,
+		openDialog,
+		index,
+	}: {
+		fields: { remove: (index: number) => void };
+		openDialog: (options: {
+			type: string;
+			title: string;
+			message: string;
+			onConfirm: () => void;
+			confirmLabel: string;
+		}) => void;
+		index: number;
+	}) =>
 	() => {
 		openDialog({
 			type: "Warning",

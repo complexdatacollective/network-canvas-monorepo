@@ -17,7 +17,7 @@ import { entityRuleTypeOptions, entityRuleTypes, withEntityRuleType } from "./wi
 import withOptions from "./withOptions";
 import withRuleChangeHandler from "./withRuleChangeHandler";
 
-type OptionItem = {
+export type OptionItem = {
 	value: string | number;
 	label: string;
 };
@@ -38,13 +38,13 @@ type EditEntityRuleProps = {
 };
 
 const EditEntityRule = ({
-	entityRuleType = null,
+	entityRuleType,
 	handleChangeEntityRuleType,
 	rule,
 	typeOptions,
-	variableType = null,
+	variableType,
 	variablesAsOptions,
-	variableOptions = null,
+	variableOptions = [],
 	operatorOptions,
 	handleRuleChange,
 }: EditEntityRuleProps) => {
@@ -172,4 +172,8 @@ const EditEntityRule = ({
 	);
 };
 
-export default compose(withEntityRuleType, withRuleChangeHandler, withOptions)(EditEntityRule);
+export default compose<EditEntityRuleProps, Partial<EditEntityRuleProps>>(
+	withEntityRuleType,
+	withRuleChangeHandler,
+	withOptions,
+)(EditEntityRule);

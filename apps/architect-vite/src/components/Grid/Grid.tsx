@@ -1,19 +1,30 @@
 import cx from "classnames";
 import { throttle } from "lodash";
 import React, { Component } from "react";
-import GridLayout from "react-grid-layout";
+import GridLayout, { type Layout } from "react-grid-layout";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import GridItem from "./GridItem";
-import { convertSize, getLayout, trimSize } from "./helpers";
+import { convertSize, getLayout, type GridItem as GridItemData, trimSize } from "./helpers";
 import withItems from "./withItems";
 
+interface FieldArrayApi {
+	name: string;
+	swap: (indexA: number, indexB: number) => void;
+	splice: (index: number, removeNum: number, value?: unknown) => void;
+	remove: (index: number) => void;
+}
+
 interface GridProps {
-	fields: Record<string, unknown>;
-	items: Array<Record<string, unknown>>;
+	fields: FieldArrayApi;
+	items: GridItemData[];
 	capacity: number;
 	previewComponent: React.ComponentType<Record<string, unknown>>;
 	onEditItem: (item: string) => void;
-	meta: Record<string, unknown>;
+	meta: {
+		error?: React.ReactNode;
+		submitFailed?: boolean;
+		[key: string]: unknown;
+	};
 	editField?: string;
 	form: string;
 	fieldName?: string;
@@ -43,11 +54,11 @@ class Grid extends Component<GridProps, GridState> {
 		clearInterval(this.resizeSensor);
 	}
 
-	setWidth = throttle((width) => {
+	setWidth = throttle((width: number) => {
 		this.setState({ width });
 	}, 500);
 
-	handleDragStop = (layout, from) => {
+	handleDragStop = (layout: Layout[], from: Layout) => {
 		const { fields, items } = this.props;
 		const newOrder = layout.sort((a, b) => a.y - b.y).map(({ i }) => i);
 		const oldIndex = items.findIndex(({ id }) => id === from.i);
@@ -58,7 +69,7 @@ class Grid extends Component<GridProps, GridState> {
 		fields.swap(oldIndex, newIndex);
 	};
 
-	handleResizeStop = (_layout, from, to) => {
+	handleResizeStop = (_layout: Layout[], from: Layout, to: Layout) => {
 		const { fields, items, capacity } = this.props;
 		const index = items.findIndex(({ id }) => id === from.i);
 		const size = convertSize(trimSize(from.h, to.h, items, capacity));
@@ -76,7 +87,12 @@ class Grid extends Component<GridProps, GridState> {
 			return;
 		}
 
-		const nextWidth = this.ref.current.parentElement.offsetWidth;
+		const parent = this.ref.current.parentElement;
+		if (!parent) {
+			return;
+		}
+
+		const nextWidth = parent.offsetWidth;
 
 		if (width !== nextWidth) {
 			this.setWidth(nextWidth);

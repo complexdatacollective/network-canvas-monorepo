@@ -1,6 +1,8 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { Row, Section } from "~/components/EditorLayout";
 import * as Fields from "~/components/Form/Fields";
 import DetachedField from "../../DetachedField";
@@ -12,20 +14,20 @@ type RemoveAfterConsiderationProps = {
 const FORM_PROPERTY = "behaviours.removeAfterConsideration";
 
 const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
-	const formValue = useSelector((state) => !!formSelector(state, FORM_PROPERTY));
+	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 
 	const [removeAfterConsideration, setRemoveAfterConsideration] = useState(formValue);
 
 	const handleChooseRemoveAfterConsideration = () => {
 		if (removeAfterConsideration) {
-			dispatch(change("edit-stage", FORM_PROPERTY, false));
+			dispatch(change("edit-stage", FORM_PROPERTY, false) as UnknownAction);
 			setRemoveAfterConsideration(false);
 			return;
 		}
 
-		dispatch(change("edit-stage", FORM_PROPERTY, true));
+		dispatch(change("edit-stage", FORM_PROPERTY, true) as UnknownAction);
 		setRemoveAfterConsideration(true);
 	};
 	return (
