@@ -139,7 +139,7 @@ export const allowedVariableName =
 		return undefined;
 	};
 
-export const allowedNMToken = allowedVariableName;
+export { allowedVariableName as allowedNMToken };
 
 export const validRegExp = (_, message) => (value) => {
 	try {

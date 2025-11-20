@@ -200,5 +200,3 @@ export const INTERFACE_TYPES: InterfaceType[] = [
 		description: "An interface that allows the participant to set a passphrase for node anonymisation.",
 	},
 ];
-
-export default INTERFACE_TYPES;

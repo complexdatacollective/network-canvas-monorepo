@@ -22,5 +22,3 @@ export const useProtocolLoader = () => {
 		// navigate("/protocol");
 	}, [activeProtocol]);
 };
-
-export default useProtocolLoader;
