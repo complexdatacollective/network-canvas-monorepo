@@ -7,7 +7,7 @@ import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
  * Hook to handle loading protocols based on route parameters
  * Reads protocolId from URL params and sets the active protocol
  */
-export const useProtocolLoader = () => {
+const useProtocolLoader = () => {
 	const [, _navigate] = useLocation();
 
 	// Get the stored protocol
