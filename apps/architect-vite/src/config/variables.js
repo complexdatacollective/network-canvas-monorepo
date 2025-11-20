@@ -223,7 +223,6 @@ export {
 	getComponentsForType,
 	getIconForType,
 	getTypeForComponent,
-	INPUT_OPTIONS,
 	INPUT_OPTIONS as inputOptions,
 	isBooleanWithOptions,
 	isOrdinalOrCategoricalType,
