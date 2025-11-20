@@ -1,5 +1,11 @@
 # @codaco/analytics
 
+## 10.0.0
+
+### Major Changes
+
+- b3d4d4b: Initial alpha release of the new analytics package with PostHog integration
+
 ## 9.0.0
 
 ### Major Changes

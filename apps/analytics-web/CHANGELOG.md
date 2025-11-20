@@ -1,5 +1,7 @@
 # analytics-web
 
+## 1.0.2
+
 ## 1.0.2-alpha.0
 
 ### Patch Changes
