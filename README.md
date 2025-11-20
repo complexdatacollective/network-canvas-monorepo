@@ -8,21 +8,26 @@ Network Canvas helps researchers collect data about social, personal, and profes
 
 ## 📦 Repository Structure
 
-This monorepo is organized into three main categories:
+This monorepo is organized into four main categories:
 
 ### Apps
 
-- **`analytics-web/`** - Analytics dashboard and data visualization platform
-- **`documentation/`** - Documentation website and user guides
-- **`architect-vite/`** - Protocol design and management application
+- **`analytics-web/`** - Next.js based analytics dashboard with Clerk authentication and Postgres database
+- **`documentation/`** - Next.js documentation website with MDX support and search functionality
 
 ### Packages
 
-- **`analytics/`** - Core analytics utilities and functions
-- **`art/`** - UI components and design system elements
-- **`protocol-validation/`** - Protocol schema validation and migration tools
+- **`analytics/`** - PostHog analytics wrapper for Network Canvas applications with installation ID tracking
+- **`art/`** - UI components and design system elements using blobs and d3-interpolate-path
+- **`development-protocol/`** - Development protocol assets for testing and local development
+- **`protocol-validation/`** - Protocol schema validation and migration tools with Zod schemas
 - **`shared-consts/`** - Shared constants and type definitions
-- **`ui/`** - Reusable React UI components
+- **`ui/`** - Reusable React UI components built on shadcn/ui and Tailwind CSS
+
+### Workers
+
+- **`development-protocol/`** - Cloudflare Worker for serving development protocol files
+- **`posthog-proxy/`** - Cloudflare Worker for proxying PostHog analytics requests
 
 ### Tooling
 
@@ -40,8 +45,8 @@ This monorepo is organized into three main categories:
 
 ```bash
 # Clone the repository
-git clone https://github.com/complexdatacollective/network-canvas.git
-cd network-canvas
+git clone https://github.com/complexdatacollective/network-canvas-monorepo.git
+cd network-canvas-monorepo
 
 # Install dependencies
 pnpm install
@@ -75,6 +80,17 @@ pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
 ```
 
+### Working with Cloudflare Workers
+
+```bash
+# Develop a worker locally
+pnpm --filter development-protocol-worker dev
+pnpm --filter posthog-proxy-worker dev
+
+# Deploy a worker to Cloudflare
+pnpm --filter development-protocol-worker deploy
+```
+
 ## 🛠️ Development Tools
 
 This monorepo uses modern development tools and practices:
@@ -83,6 +99,7 @@ This monorepo uses modern development tools and practices:
 - **📦 Package Manager**: pnpm with workspace support
 - **🎨 Code Formatting**: Biome for consistent code style
 - **🔧 Type Checking**: TypeScript with shared configurations
+- **☁️ Edge Computing**: Cloudflare Workers for serverless functions
 - **🚀 CI/CD**: GitHub Actions with optimized workflows
 - **📋 Change Management**: Changesets for version management
 
@@ -174,7 +191,7 @@ This project is licensed under the terms specified in individual package LICENSE
 
 - **Main Website**: [Network Canvas](https://networkcanvas.com)
 - **Documentation**: [Network Canvas Documentation](https://documentation.networkcanvas.com)
-- **Issues**: [GitHub Issues](https://github.com/complexdatacollective/network-canvas/issues)
+- **Issues**: [GitHub Issues](https://github.com/complexdatacollective/network-canvas-monorepo/issues)
 
 ---
 
