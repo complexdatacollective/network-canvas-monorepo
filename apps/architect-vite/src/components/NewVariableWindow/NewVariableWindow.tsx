@@ -1,7 +1,7 @@
 import { Component } from "react";
 import { Field } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import Select from "~/components/Form/Fields/Select";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
@@ -65,7 +65,7 @@ class NewVariableWindow extends Component<NewVariableWindowProps> {
 					<div id={getFieldId("name")} />
 					<Field
 						name="name"
-						component={Fields.Text}
+						component={Text}
 						placeholder="e.g. Nickname"
 						validate={[isRequired, this.validateName, isAllowedVariableName]}
 						normalize={safeName}

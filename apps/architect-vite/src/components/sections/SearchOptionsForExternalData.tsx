@@ -5,7 +5,7 @@ import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import * as Fields from "~/components/Form/Fields";
+import { CheckboxGroup, LikertScale } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
 import type { RootState } from "~/ducks/modules/root";
@@ -60,7 +60,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 				<ValidatedField
 					label="Which attributes should be searchable?"
 					name="searchOptions.matchProperties"
-					component={Fields.CheckboxGroup}
+					component={CheckboxGroup}
 					options={variableOptions}
 					validation={{ minSelected: 1 }}
 				/>
@@ -83,7 +83,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 				</Tip>
 				<ValidatedField
 					name="searchOptions.fuzziness"
-					component={Fields.LikertScale}
+					component={LikertScale}
 					type="ordinal"
 					options={[
 						{ value: 0.75, label: "Low accuracy" },

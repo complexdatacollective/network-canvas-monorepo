@@ -2,7 +2,7 @@ import { PureComponent } from "react";
 import { compose } from "recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Boolean as BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";
 import IssueAnchor from "~/components/IssueAnchor";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";
@@ -30,7 +30,7 @@ class Background extends PureComponent<BackgroundProps> {
 			>
 				<Row>
 					<DetachedField
-						component={Fields.Boolean}
+						component={BooleanField}
 						value={useImage}
 						options={[
 							{
@@ -63,7 +63,7 @@ class Background extends PureComponent<BackgroundProps> {
 							<IssueAnchor fieldName="background.concentricCircles" description="Background > Concentric Circles" />
 							<ValidatedField
 								name="background.concentricCircles"
-								component={Fields.Number}
+								component={NumberField}
 								label="Number of concentric circles to use:"
 								type="number"
 								normalize={(value) => Number.parseInt(value, 10) || value}
@@ -73,7 +73,7 @@ class Background extends PureComponent<BackgroundProps> {
 						<Row>
 							<Field
 								name="background.skewedTowardCenter"
-								component={Fields.Toggle}
+								component={Toggle}
 								label="Skew the size of the circles so that the middle is proportionally larger."
 							/>
 						</Row>

@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { CheckboxGroup } from "~/components/Form/Fields";
 import Tip from "../../Tip";
 import { getEdgeFilters, getEdgesForSubject } from "./selectors";
 import getEdgeFilteringWarning from "./utils";
@@ -100,7 +100,7 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 				)}
 				<Field
 					name="edges.display"
-					component={Fields.CheckboxGroup}
+					component={CheckboxGroup}
 					options={displayEdgesOptions}
 					label="Display edges of the following type(s)"
 				/>

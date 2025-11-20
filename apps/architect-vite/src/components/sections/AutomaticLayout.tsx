@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Boolean as BooleanField } from "~/components/Form/Fields";
 import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../DetachedField";
 import IssueAnchor from "../IssueAnchor";
@@ -56,7 +56,7 @@ const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
 			</Row>
 			<Row>
 				<DetachedField
-					component={Fields.Boolean}
+					component={BooleanField}
 					onChange={handleChooseLayoutMode}
 					value={useAutomaticLayout}
 					validation={{ required: true }}

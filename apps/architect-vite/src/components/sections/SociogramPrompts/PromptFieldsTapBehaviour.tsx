@@ -3,7 +3,7 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Boolean as BooleanField } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
 import type { RootState } from "~/ducks/store";
@@ -137,7 +137,7 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 		>
 			<Row>
 				<DetachedField
-					component={Fields.Boolean}
+					component={BooleanField}
 					onChange={handleChangeTapBehaviour}
 					value={tapBehaviour}
 					validation={{ required: true }}

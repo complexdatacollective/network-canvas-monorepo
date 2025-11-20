@@ -6,7 +6,7 @@ import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPre
 import ControlBar from "~/components/ControlBar";
 import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Button from "~/lib/legacy-ui/components/Button";
 
@@ -71,7 +71,7 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 					<Section title="Create New API Key">
 						<div data-name="API Key Name" />
 						<ValidatedField
-							component={Fields.Text}
+							component={Text}
 							label="API Key Name"
 							type="text"
 							placeholder="Name this key"
@@ -80,7 +80,7 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 						/>
 						<div data-name="API Key Value" />
 						<ValidatedField
-							component={Fields.Text}
+							component={Text}
 							label="API Key"
 							type="text"
 							placeholder="Enter an API Key..."

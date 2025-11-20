@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Boolean as BooleanField } from "~/components/Form/Fields";
 import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../../DetachedField";
 
@@ -43,7 +43,7 @@ const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
 		>
 			<Row>
 				<DetachedField
-					component={Fields.Boolean}
+					component={BooleanField}
 					onChange={handleChooseRemoveAfterConsideration}
 					value={removeAfterConsideration}
 					validation={{ required: true }}

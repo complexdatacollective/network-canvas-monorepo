@@ -4,7 +4,7 @@ import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import Tip from "../../Tip";
@@ -71,7 +71,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 							},
 							{
 								fieldName: "label",
-								component: Fields.Text,
+								component: Text,
 								placeholder: "Label",
 							},
 						]}

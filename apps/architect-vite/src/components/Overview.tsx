@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
-import * as Fields from "~/components/Form/Fields";
+import { TextArea } from "~/components/Form/Fields";
 import { updateProtocolOptions } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
@@ -49,7 +49,7 @@ const Overview = ({
 					<h1 className="overview-name">{name}</h1>
 				</div>
 				<div>
-					<Fields.TextArea
+					<TextArea
 						placeholder="Enter a description for your protocol..."
 						input={{
 							value: description,

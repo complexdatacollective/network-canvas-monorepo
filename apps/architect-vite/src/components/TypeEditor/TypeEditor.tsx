@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Layout, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
-import * as Fields from "~/components/Form/Fields";
+import { RadioGroup, Text } from "~/components/Form/Fields";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/store";
 import { getCodebook } from "~/selectors/protocol";
@@ -47,7 +47,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 					{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
 				</p>
 				<ValidatedField
-					component={Fields.Text}
+					component={Text}
 					name="name"
 					validation={{ required: true, allowedNMToken: true, uniqueByList: existingTypes }}
 					componentProps={{ placeholder: `Enter a name for this ${entity} type...` }}
@@ -74,7 +74,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 					layout="vertical"
 				>
 					<ValidatedField
-						component={Fields.RadioGroup}
+						component={RadioGroup}
 						name="iconVariant"
 						validation={{ required: true }}
 						componentProps={{ options: ICON_OPTIONS, optionComponent: IconOption }}

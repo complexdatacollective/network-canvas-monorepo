@@ -1,4 +1,4 @@
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import DataSource from "~/components/Form/Fields/DataSource";
 import ValidatedField from "~/components/Form/ValidatedField";
 import NetworkFilter from "~/components/sections/fields/NetworkFilter";
@@ -21,7 +21,7 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 		>
 			<ValidatedField
 				name={`${fieldId}.title`}
-				component={Fields.Text}
+				component={Text}
 				placeholder="Panel title"
 				validation={{ required: true }}
 			/>

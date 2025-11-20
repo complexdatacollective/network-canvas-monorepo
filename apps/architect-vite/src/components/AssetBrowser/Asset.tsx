@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { DeleteIcon, DownloadIcon, Eye as PreviewIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import * as Thumbnails from "~/components/Thumbnail";
+import { APIKey, Audio, GeoJSON, Image, Network, Video } from "~/components/Thumbnail";
 
 type AssetProps = {
 	id: string;
@@ -19,12 +19,12 @@ type AssetType = "image" | "video" | "audio" | "network" | "apikey" | "geojson";
 
 // Use a more lenient type since these are HOC-wrapped components
 const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<Record<string, unknown>>> = {
-	image: Thumbnails.Image as React.ComponentType<Record<string, unknown>>,
-	video: Thumbnails.Video as React.ComponentType<Record<string, unknown>>,
-	audio: Thumbnails.Audio as React.ComponentType<Record<string, unknown>>,
-	network: Thumbnails.Network as React.ComponentType<Record<string, unknown>>,
-	apikey: Thumbnails.APIKey as React.ComponentType<Record<string, unknown>>,
-	geojson: Thumbnails.GeoJSON as React.ComponentType<Record<string, unknown>>,
+	image: Image as React.ComponentType<Record<string, unknown>>,
+	video: Video as React.ComponentType<Record<string, unknown>>,
+	audio: Audio as React.ComponentType<Record<string, unknown>>,
+	network: Network as React.ComponentType<Record<string, unknown>>,
+	apikey: APIKey as React.ComponentType<Record<string, unknown>>,
+	geojson: GeoJSON as React.ComponentType<Record<string, unknown>>,
 };
 
 const Asset = ({

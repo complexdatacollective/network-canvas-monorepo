@@ -1,6 +1,20 @@
 import { omit } from "lodash";
 import { useCallback } from "react";
-import * as DialogVariants from "./Dialog/index";
+import Confirm from "./Dialog/Confirm";
+import Error from "./Dialog/Error";
+import Notice from "./Dialog/Notice";
+import Simple from "./Dialog/Simple";
+import UserError from "./Dialog/UserError";
+import Warning from "./Dialog/Warning";
+
+const DialogVariants = {
+	Confirm,
+	Error,
+	Notice,
+	Simple,
+	UserError,
+	Warning,
+} as const;
 
 /*
  * Displays a stack of Dialogs.

@@ -1,5 +1,5 @@
 import { compose } from "recompose";
-import * as Fields from "~/components/Form/Fields";
+import { Boolean as BooleanField } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import withCreateVariableHandler from "../enhancers/withCreateVariableHandler";
@@ -62,7 +62,7 @@ const Attribute = ({
 						<legend>Set value of variable to:</legend>
 						<ValidatedField
 							name={`${field}.value`}
-							component={Fields.Boolean}
+							component={BooleanField}
 							validation={{ required: true }}
 							componentProps={{
 								options: [

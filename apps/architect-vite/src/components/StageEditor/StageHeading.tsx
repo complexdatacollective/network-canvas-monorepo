@@ -1,5 +1,5 @@
 import { get } from "es-toolkit/compat";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import timelineImages from "~/images/timeline";
 import { useFormContext } from "../Editor";
 import ValidatedField from "../Form/ValidatedField";
@@ -42,7 +42,7 @@ const StageHeading = ({ id }: { id: string }) => {
 				<h2>Stage Name</h2>
 				<ValidatedField
 					name="label"
-					component={Fields.Text}
+					component={Text}
 					placeholder="Enter your stage name here"
 					className="stage-editor-section-title"
 					maxLength="50"

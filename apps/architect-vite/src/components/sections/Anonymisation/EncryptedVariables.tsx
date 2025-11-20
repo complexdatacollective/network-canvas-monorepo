@@ -4,7 +4,7 @@ import type { Dispatch } from "react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { CheckboxGroup } from "~/components/Form/Fields";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 import { getNodeTypes } from "~/selectors/codebook";
@@ -120,7 +120,7 @@ const EncryptedVariables = () => {
 							}}
 						>
 							<DetachedField
-								component={Fields.CheckboxGroup}
+								component={CheckboxGroup}
 								options={variableOptions}
 								value={encryptedVariableIds}
 								onChange={(selectedValues: string[]) => {
