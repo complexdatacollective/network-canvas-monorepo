@@ -32,4 +32,4 @@ const mapStateToProps = (state: RootState) => {
 	return entityProperties;
 };
 
-export default compose(connect(mapStateToProps))(EgoType);
+export default compose(connect(mapStateToProps))(EgoType as React.ComponentType<unknown>);

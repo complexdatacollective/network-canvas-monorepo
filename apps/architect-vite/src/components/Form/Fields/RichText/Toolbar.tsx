@@ -1,5 +1,5 @@
 import { includes } from "lodash";
-import type { BaseEditor } from "slate";
+import { Editor } from "slate";
 import type { HistoryEditor } from "slate-history";
 import type { ReactEditor } from "slate-react";
 import { useSlate } from "slate-react";
@@ -8,7 +8,7 @@ import { toggleBlockquote } from "./lib/blockquotes";
 import { TOOLBAR_ITEMS } from "./lib/options";
 import { BlockButton, MarkButton, ToolbarButton } from "./ToolbarButton";
 
-type CustomEditor = BaseEditor &
+type CustomEditor = Editor &
 	ReactEditor &
 	HistoryEditor & {
 		disallowedTypes?: string[];

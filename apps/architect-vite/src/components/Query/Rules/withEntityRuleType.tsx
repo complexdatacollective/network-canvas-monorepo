@@ -10,7 +10,7 @@ const entityRuleTypes = {
 	TYPE_RULE,
 };
 
-const entityRuleTypeOptions = (entityType) => [
+const entityRuleTypeOptions = (entityType: string) => [
 	{ label: `Attribute - rule based on the value of this ${entityType} type's attributes.`, value: VARIABLE_RULE },
 	{
 		label: `Presence - based on the presence or absence of this ${entityType} type in the interview network.`,
@@ -39,15 +39,15 @@ const withEntityRuleType = compose(
 	),
 	withHandlers({
 		handleChangeEntityRuleType:
-			({ setEntityRuleType, onChange, rule }) =>
-			(entityRuleType) => {
+			({ setEntityRuleType, onChange, rule }: { setEntityRuleType: (type: string) => void; onChange: (rule: Record<string, unknown>) => void; rule: Record<string, unknown> }) =>
+			(entityRuleType: string) => {
 				setEntityRuleType(entityRuleType);
 
 				const ruleTemplate = entityRuleType === TYPE_RULE ? templates.entityTypeRule : templates.entityVariableRule;
 
 				// 'reset' rule options, but keep type
 				const options = makeGetOptionsWithDefaults(ruleTemplate)({
-					type: rule.options.type,
+					type: (rule.options as Record<string, unknown>).type,
 				});
 
 				onChange({

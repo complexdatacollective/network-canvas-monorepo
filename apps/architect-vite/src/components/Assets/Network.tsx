@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
+import { getVariableNamesFromNetwork, type Network as NetworkType } from "@codaco/protocol-validation";
 import { compose } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
@@ -8,7 +8,7 @@ import Table from "./Table";
 import withAssetPath from "./withAssetPath";
 
 const initialContent = {
-	network: { nodes: [] },
+	network: { nodes: [], edges: [] },
 	columns: [],
 };
 
@@ -17,14 +17,15 @@ type NetworkNode = {
 };
 
 type NetworkData = {
-	nodes: NetworkNode[];
+	network: NetworkType;
+	nodes?: NetworkNode[];
 };
 
-const getRows = (network: NetworkData): Record<string, unknown>[] =>
-	get(network, ["nodes"], []).map(({ attributes }: NetworkNode) => attributes);
+const getRows = (data: NetworkData): Record<string, unknown>[] =>
+	get(data, ["nodes"], []).map(({ attributes }: NetworkNode) => attributes);
 
-const getColumns = (network: NetworkData) =>
-	getVariableNamesFromNetwork(network).map((col) => ({
+const getColumns = (data: NetworkData) =>
+	getVariableNamesFromNetwork(data.network).map((col) => ({
 		Header: col,
 		accessor: col,
 	}));
@@ -53,4 +54,4 @@ const Network = ({ assetPath: _assetPath, assetId, assetName }: NetworkProps) =>
 	return <Table data={data} columns={columns} />;
 };
 
-export default compose(withAssetPath)(Network);
+export default compose(withAssetPath)(Network as React.ComponentType<unknown>);

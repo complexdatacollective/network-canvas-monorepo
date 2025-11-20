@@ -2,7 +2,8 @@ import cx from "classnames";
 import type React from "react";
 import { useCallback } from "react";
 import { createPortal } from "react-dom";
-import Stackable from "~/components/Stackable";
+// TODO: Stackable component is missing - using default stackIndex of 0
+// import Stackable from "~/components/Stackable";
 import { getCSSVariableAsNumber } from "~/lib/legacy-ui/utils/CSSVariables";
 
 type ControlsProps = {
@@ -51,28 +52,27 @@ const Dialog = ({ show = true, children = null, className = null, onBlur = () =>
 		return null;
 	}
 
+	// TODO: Stackable component is missing - using default stackIndex of 0
+	const stackIndex = 0;
+
 	return createPortal(
-		<Stackable stackKey>
-			{({ stackIndex }: { stackIndex: number }) => (
-				<div
-					className={cx("contextual-dialog", className)}
-					style={{
-						zIndex: dialogZIndex + stackIndex,
-					}}
-					onClick={handleBlur}
-					onKeyDown={handleKeyDown}
-					role="button"
-					tabIndex={-1}
-					aria-label="Close dialog"
-				>
-					<div className="contextual-dialog__container">
-						<div className="contextual-dialog__main">
-							<div className="contextual-dialog__content">{children}</div>
-						</div>
-					</div>
+		<div
+			className={cx("contextual-dialog", className)}
+			style={{
+				zIndex: dialogZIndex + stackIndex,
+			}}
+			onClick={handleBlur}
+			onKeyDown={handleKeyDown}
+			role="button"
+			tabIndex={-1}
+			aria-label="Close dialog"
+		>
+			<div className="contextual-dialog__container">
+				<div className="contextual-dialog__main">
+					<div className="contextual-dialog__content">{children}</div>
 				</div>
-			)}
-		</Stackable>,
+			</div>
+		</div>,
 		document.body,
 	);
 };

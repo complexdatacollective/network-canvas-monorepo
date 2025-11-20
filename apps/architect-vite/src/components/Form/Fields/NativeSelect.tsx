@@ -1,3 +1,4 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
@@ -90,7 +91,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 
 			// Setting input to null above will 'touch' the select, triggering validation
 			// which we don't want yet. We 'un-touch' the input to resolve this.
-			dispatch(untouch(form, inputProps.name));
+			dispatch(untouch(form, inputProps.name) as UnknownAction);
 			if (onCreateNew) {
 				onCreateNew();
 				return;
@@ -232,7 +233,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								// Make interaction with this input also touch the parent so we can control
 								// validation better.
 								onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-									dispatch(untouch(form, inputProps.name));
+									dispatch(untouch(form, inputProps.name) as UnknownAction);
 									setNewOptionValue(event.target.value);
 								},
 							}}

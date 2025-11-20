@@ -128,4 +128,4 @@ const withEditingState = withState("editField", "setEditField", null);
 
 export { GridManager };
 
-export default compose(withEditingState, withEditHandlers)(GridManager);
+export default compose(withEditingState, withEditHandlers)(GridManager as React.ComponentType<unknown>);

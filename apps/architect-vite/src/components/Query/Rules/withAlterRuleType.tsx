@@ -39,15 +39,15 @@ const withAlterRuleType = compose(
 	),
 	withHandlers({
 		handleChangeAlterRuleType:
-			({ setAlterRuleType, onChange, rule }) =>
-			(alterRuleType) => {
+			({ setAlterRuleType, onChange, rule }: { setAlterRuleType: (type: string) => void; onChange: (rule: Record<string, unknown>) => void; rule: Record<string, unknown> }) =>
+			(alterRuleType: string) => {
 				setAlterRuleType(alterRuleType);
 
 				const ruleTemplate = alterRuleType === TYPE_ALTER ? templates.alterTypeRule : templates.alterVariableRule;
 
 				// 'reset' rule options, but keep type
 				const options = makeGetOptionsWithDefaults(ruleTemplate)({
-					type: rule.options.type,
+					type: (rule.options as Record<string, unknown>).type,
 				});
 
 				onChange({

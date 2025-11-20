@@ -1,6 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 
-import { type BaseEditor, type Descendant, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
+import { type Descendant, Editor, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
 import { getBlocks } from "./utils";
 
 interface BlockNode extends Element {
@@ -8,7 +8,7 @@ interface BlockNode extends Element {
 	children: Descendant[];
 }
 
-const toggleBlock = (editor: BaseEditor, block: NodeEntry<BlockNode>): void => {
+const toggleBlock = (editor: Editor, block: NodeEntry<BlockNode>): void => {
 	const [node, path] = block;
 	const type = node.type;
 
@@ -41,7 +41,7 @@ const toggleBlock = (editor: BaseEditor, block: NodeEntry<BlockNode>): void => {
 
 // Supports blockquotes containing paragraphs
 // and converting list items into block quotes
-export const toggleBlockquote = (editor: BaseEditor): void => {
+export const toggleBlockquote = (editor: Editor): void => {
 	const blocks = getBlocks(editor);
 
 	blocks.forEach((block) => {

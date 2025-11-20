@@ -44,4 +44,4 @@ export default compose(
 	withMapFormToProps("dataSource"),
 	withDisabledSubjectRequired,
 	withDisabledAssetRequired,
-)(NameGeneratorRosterPrompts);
+)(NameGeneratorRosterPrompts as React.ComponentType<unknown>);

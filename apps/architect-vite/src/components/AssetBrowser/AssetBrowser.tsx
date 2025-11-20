@@ -70,4 +70,4 @@ const AssetBrowser = ({
 };
 
 // Type assertion for the HOC-wrapped component
-export default compose(withAssetActions)(AssetBrowser) as React.ComponentType<AssetBrowserOwnProps>;
+export default compose(withAssetActions)(AssetBrowser as React.ComponentType<unknown>) as React.ComponentType<AssetBrowserOwnProps>;

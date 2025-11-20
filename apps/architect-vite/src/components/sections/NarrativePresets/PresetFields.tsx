@@ -199,4 +199,6 @@ const PresetFields = ({
 	);
 };
 
-export default compose<PresetFieldsProps, PresetFieldsProps>(withPresetProps)(PresetFields);
+export default compose<PresetFieldsProps, PresetFieldsProps>(withPresetProps)(
+	PresetFields as React.ComponentType<unknown>,
+);

@@ -17,10 +17,12 @@ interface ConfirmDialog extends BaseDialog {
 
 interface NoticeDialog extends BaseDialog {
 	type: "Notice";
+	confirmLabel?: string;
 }
 
 interface WarningDialog extends BaseDialog {
 	type: "Warning";
+	confirmLabel?: string;
 }
 
 interface ErrorDialog extends Omit<BaseDialog, "title" | "message"> {
@@ -38,14 +40,27 @@ const initialState: DialogsState = {
 	dialogs: [],
 };
 
+// Type for dialog config when opening dialogs
+type DialogConfig =
+	| (Omit<ConfirmDialog, "id" | "onConfirm" | "onCancel"> & {
+			onConfirm?: () => void;
+			onCancel?: () => void;
+	  })
+	| (Omit<NoticeDialog, "id" | "onConfirm" | "onCancel"> & {
+			onConfirm?: () => void;
+			onCancel?: () => void;
+	  })
+	| (Omit<WarningDialog, "id" | "onConfirm" | "onCancel"> & {
+			onConfirm?: () => void;
+			onCancel?: () => void;
+	  })
+	| (Omit<ErrorDialog, "id" | "onConfirm" | "onCancel"> & {
+			onConfirm?: () => void;
+			onCancel?: () => void;
+	  });
+
 // Async thunk for opening dialogs with promise support
-export const openDialog = createAsyncThunk<
-	boolean,
-	Omit<Dialog, "id" | "onConfirm" | "onCancel"> & {
-		onConfirm?: () => void;
-		onCancel?: () => void;
-	}
->("dialogs/openDialog", async (dialogConfig, { dispatch }) => {
+export const openDialog = createAsyncThunk<boolean, DialogConfig>("dialogs/openDialog", async (dialogConfig, { dispatch }) => {
 	return new Promise<boolean>((resolve) => {
 		const onConfirm = () => {
 			if (dialogConfig.onConfirm) {
@@ -105,4 +120,4 @@ export const actionTypes = {
 };
 
 // Export types for use in other parts of the application
-export type { ConfirmDialog, Dialog, DialogsState, ErrorDialog, NoticeDialog, WarningDialog };
+export type { ConfirmDialog, Dialog, DialogConfig, DialogsState, ErrorDialog, NoticeDialog, WarningDialog };

@@ -97,4 +97,4 @@ class Background extends PureComponent<BackgroundProps> {
 
 export { Background };
 
-export default compose(withBackgroundChangeHandler)(Background);
+export default compose(withBackgroundChangeHandler)(Background as React.ComponentType<unknown>);

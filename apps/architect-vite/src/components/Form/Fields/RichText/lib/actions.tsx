@@ -1,5 +1,5 @@
 import { EditListPlugin } from "@productboard/slate-edit-list";
-import { type BaseEditor, Editor, Element as SlateElement, Transforms } from "slate";
+import { Editor, Element as SlateElement, Transforms } from "slate";
 import { BLOCK_TYPES } from "./options";
 import { insertThematicBreak } from "./utils";
 
@@ -25,7 +25,7 @@ const getNewType = ({ isActive, isList, format }: GetNewTypeParams): string => {
 	return format;
 };
 
-const isBlockActive = (editor: BaseEditor, format: string): boolean => {
+const isBlockActive = (editor: Editor, format: string): boolean => {
 	const [match] = Editor.nodes(editor, {
 		match: (n) => !Editor.isEditor(n) && SlateElement.isElement(n) && n.type === format,
 	});
@@ -33,12 +33,12 @@ const isBlockActive = (editor: BaseEditor, format: string): boolean => {
 	return !!match;
 };
 
-const isMarkActive = (editor: BaseEditor, format: string): boolean => {
+const isMarkActive = (editor: Editor, format: string): boolean => {
 	const marks = Editor.marks(editor);
 	return marks ? marks[format] === true : false;
 };
 
-const toggleBlock = (editor: BaseEditor, format: string): void => {
+const toggleBlock = (editor: Editor, format: string): void => {
 	const isActive = isBlockActive(editor, format);
 	const isList = LIST_TYPES.includes(format);
 
@@ -62,7 +62,7 @@ const toggleBlock = (editor: BaseEditor, format: string): void => {
 	}
 };
 
-const toggleMark = (editor: BaseEditor, format: string): void => {
+const toggleMark = (editor: Editor, format: string): void => {
 	const isActive = isMarkActive(editor, format);
 
 	if (isActive) {
@@ -72,7 +72,7 @@ const toggleMark = (editor: BaseEditor, format: string): void => {
 	}
 };
 
-const smartInsertThematicBreak = (editor: BaseEditor): void => {
+const smartInsertThematicBreak = (editor: Editor): void => {
 	const isWithinBlock = BLOCK_TYPES.some((format) => isBlockActive(editor, format));
 
 	if (isWithinBlock) {

@@ -1,3 +1,4 @@
+// @ts-expect-error - components export exists at runtime but may not be typed in v3.x
 import { components as ReactSelectComponents } from "react-select";
 
 const { Option } = ReactSelectComponents;

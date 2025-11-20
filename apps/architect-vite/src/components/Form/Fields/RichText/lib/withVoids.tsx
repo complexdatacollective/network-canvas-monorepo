@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
 
-import type { BaseEditor, Element } from "slate";
+import { Editor, type Element } from "slate";
 
 const VOID_TYPES = ["thematic_break"];
 
-interface VoidEditor extends BaseEditor {
+interface VoidEditor extends Editor {
 	isVoid: (element: Element) => boolean;
 }
 

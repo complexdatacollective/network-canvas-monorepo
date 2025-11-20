@@ -19,7 +19,7 @@ const newVariableInitialState = {
 	variableOptions: {},
 };
 
-const parseVariableName = (variableName) => (typeof variableName === "string" ? variableName : "");
+const parseVariableName = (variableName: unknown): string => (typeof variableName === "string" ? variableName : "");
 
 const newVariablePropertiesState = withState(
 	"newVariableProperties",
@@ -29,14 +29,14 @@ const newVariablePropertiesState = withState(
 
 const newVariableHandlers = withHandlers({
 	openNewVariableWindow:
-		({ setNewVariableProperties }) =>
-		(variableName, variableOptions = {}) =>
+		({ setNewVariableProperties }: { setNewVariableProperties: (props: { variableName: string; variableOptions: Record<string, unknown> }) => void }) =>
+		(variableName: unknown, variableOptions: Record<string, unknown> = {}) =>
 			setNewVariableProperties({
 				variableName: parseVariableName(variableName),
 				variableOptions,
 			}),
 	closeNewVariableWindow:
-		({ setNewVariableProperties }) =>
+		({ setNewVariableProperties }: { setNewVariableProperties: (props: typeof newVariableInitialState) => void }) =>
 		() =>
 			setNewVariableProperties(newVariableInitialState),
 	normalizeKeyDown: () => normalizeKeyDown,

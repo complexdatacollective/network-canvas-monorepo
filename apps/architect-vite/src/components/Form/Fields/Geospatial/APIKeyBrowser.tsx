@@ -28,7 +28,7 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 	const [preview, handleShowPreview] = useExternalDataPreview();
 
 	const handleSelectAsset = useCallback(
-		(assetId) => {
+		(assetId: string) => {
 			onSelect(assetId);
 			close();
 		},
@@ -36,7 +36,7 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 	);
 
 	const handleSubmit = useCallback(
-		(formValues) => {
+		(formValues: { keyName: string; keyValue: string }) => {
 			dispatch(addApiKeyAsset(formValues.keyName, formValues.keyValue));
 		},
 		[dispatch],

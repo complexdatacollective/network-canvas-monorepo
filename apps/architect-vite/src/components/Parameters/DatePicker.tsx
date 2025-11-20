@@ -1,3 +1,4 @@
+import type { Dispatch } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
@@ -88,7 +89,7 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 	);
 };
 
-const mapDispatchToProps = (dispatch, { name, form }) => ({
+const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; form: string }) => ({
 	setSelectDefault: () => dispatch(change(form, `${name}.type`, "full")),
 	resetRangeFields: () => {
 		dispatch(change(form, `${name}.max`, null));
@@ -96,4 +97,6 @@ const mapDispatchToProps = (dispatch, { name, form }) => ({
 	},
 });
 
-export default compose(connect(null, mapDispatchToProps), formValues({ type: "parameters.type" }))(DateTimeParameters);
+export default compose(connect(null, mapDispatchToProps), formValues({ type: "parameters.type" }))(
+	DateTimeParameters as React.ComponentType<unknown>,
+);

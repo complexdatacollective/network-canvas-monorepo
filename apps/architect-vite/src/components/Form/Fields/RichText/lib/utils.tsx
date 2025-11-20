@@ -1,13 +1,13 @@
 /* eslint-disable import/prefer-default-export */
-import { type BaseEditor, Editor, type Node, type NodeEntry, Range, Transforms } from "slate";
+import { Editor, type Node, type NodeEntry, Range, Transforms } from "slate";
 
-export const getContainerBlockAtCursor = (editor: BaseEditor): NodeEntry<Node> | undefined =>
+export const getContainerBlockAtCursor = (editor: Editor): NodeEntry<Node> | undefined =>
 	Editor.above(editor, {
 		match: (n) => Editor.isBlock(editor, n),
 		mode: "highest",
 	});
 
-export const getContainerBlocksAtSelection = (editor: BaseEditor): NodeEntry<Node>[] => {
+export const getContainerBlocksAtSelection = (editor: Editor): NodeEntry<Node>[] => {
 	const nodes = Editor.nodes(editor);
 
 	const blocks: NodeEntry<Node>[] = [];
@@ -23,7 +23,7 @@ export const getContainerBlocksAtSelection = (editor: BaseEditor): NodeEntry<Nod
 	return blocks;
 };
 
-export const getBlocks = (editor: BaseEditor): NodeEntry<Node>[] => {
+export const getBlocks = (editor: Editor): NodeEntry<Node>[] => {
 	const { selection } = editor;
 	const isCollapsed = selection && Range.isCollapsed(selection);
 
@@ -35,7 +35,7 @@ export const getBlocks = (editor: BaseEditor): NodeEntry<Node>[] => {
 	return getContainerBlocksAtSelection(editor);
 };
 
-export const insertThematicBreak = (editor: BaseEditor): void => {
+export const insertThematicBreak = (editor: Editor): void => {
 	Transforms.insertNodes(editor, [
 		{ type: "thematic_break", children: [{ text: "" }] },
 		{ type: "paragraph", children: [{ text: "" }] },

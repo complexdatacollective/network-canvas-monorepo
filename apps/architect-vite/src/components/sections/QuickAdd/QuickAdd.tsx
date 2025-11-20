@@ -63,4 +63,4 @@ export default compose(
 	withQuickAddVariable,
 	withOptions,
 	withCreateVariableHandler,
-)(QuickAdd);
+)(QuickAdd as React.ComponentType<unknown>);

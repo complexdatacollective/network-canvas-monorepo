@@ -17,4 +17,4 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
 	removeToast: bindActionCreators(toastActions.removeToast, dispatch),
 });
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(UIToastManager);
+export default compose(connect(mapStateToProps, mapDispatchToProps))(UIToastManager as React.ComponentType<unknown>);

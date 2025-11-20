@@ -35,8 +35,8 @@ type RulesProps = {
 const Rules = ({
 	type = "filter",
 	rules = [],
-	join = null,
-	error = null,
+	join = null as string | null,
+	error = null as string | null,
 	meta = {},
 	codebook,
 	draftRule = {},
@@ -116,4 +116,4 @@ const Rules = ({
 
 export { Rules };
 
-export default compose(withDraftRule, withRulesChangeHandlers)(Rules);
+export default compose(withDraftRule, withRulesChangeHandlers)(Rules as React.ComponentType<unknown>);

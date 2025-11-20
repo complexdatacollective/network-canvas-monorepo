@@ -1,5 +1,5 @@
 import { difference, get, intersection } from "lodash";
-import { DateTime, Info } from "luxon";
+import { DateTime } from "luxon";
 
 export const now = () => DateTime.local();
 
@@ -32,4 +32,9 @@ export const hasProperties =
 		return hasIncludes && noExcludes;
 	};
 
-export const getMonthName = (numericMonth: number) => get(Info.months(), numericMonth - 1, numericMonth);
+// Get month names - using DateTime instead of Info for compatibility
+const monthNames = Array.from({ length: 12 }, (_, i) =>
+	DateTime.local(2000, i + 1, 1).toFormat("LLLL")
+);
+
+export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);

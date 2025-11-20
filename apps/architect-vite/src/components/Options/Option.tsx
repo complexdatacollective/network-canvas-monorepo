@@ -121,4 +121,4 @@ export default compose<OptionProps, OptionBaseProps>(
 	withHandlers({
 		handleDelete: deleteOption,
 	}),
-)(Option);
+)(Option as React.ComponentType<unknown>);

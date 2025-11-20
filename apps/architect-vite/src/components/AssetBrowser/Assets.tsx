@@ -74,6 +74,7 @@ const Assets = ({
 					<RadioGroup
 						options={ASSET_TYPES}
 						input={{
+							name: "assetType",
 							onChange: (value: unknown) => onUpdateAssetFilter(value as string | null),
 							value: assetType,
 						}}
@@ -89,6 +90,6 @@ const Assets = ({
 };
 
 // Type assertion for the HOC-wrapped component
-export default compose(withAssets)(Assets) as React.ComponentType<
+export default compose(withAssets)(Assets as React.ComponentType<unknown>) as React.ComponentType<
 	Omit<AssetsProps, "assets" | "assetType" | "onUpdateAssetFilter">
 >;

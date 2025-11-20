@@ -1,4 +1,4 @@
-import type { Validation, ValidationName } from "@codaco/protocol-validation";
+import type { Validation } from "@codaco/protocol-validation";
 import type React from "react";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
@@ -33,7 +33,7 @@ type EditableListProps = {
 	previewComponent: ComponentType<FieldType>;
 	editComponent: React.ComponentType<FieldType[number]> & { form: string };
 	editProps?: Record<string, unknown>;
-	validation?: Record<string, Validator> | Record<ValidationName, Validation>;
+	validation?: Record<string, Validator> | Partial<Validation>;
 	// Optional props for customizing hook behavior
 	onChange?: (value: unknown) => Promise<unknown> | unknown;
 	normalize?: (value: unknown) => unknown;

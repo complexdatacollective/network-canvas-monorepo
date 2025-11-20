@@ -1,18 +1,25 @@
 import { get } from "es-toolkit/compat";
 import { formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { getAssetManifest } from "~/selectors/protocol";
 import Grid from "../../Grid";
 import ItemEditor from "./ItemEditor";
 import ItemPreview from "./ItemPreview";
 import { capacity } from "./options";
 
-const normalizeType = (item) => ({
+type Item = {
+	type: string;
+	content?: string;
+	[key: string]: unknown;
+};
+
+const normalizeType = (item: Item): Item => ({
 	...item,
 	type: item.type === "text" ? "text" : "asset",
 });
 
-const denormalizeType = (state, { form, editField }) => {
-	const item = formValueSelector(form)(state, editField);
+const denormalizeType = (state: RootState, { form, editField }: { form: string; editField: string }): Item | null => {
+	const item = formValueSelector(form)(state, editField) as Item | undefined;
 
 	if (!item) {
 		return null;
@@ -23,15 +30,15 @@ const denormalizeType = (state, { form, editField }) => {
 	}
 
 	const assetManifest = getAssetManifest(state);
-	const manifestType = get(assetManifest, [item.content, "type"]);
+	const manifestType = get(assetManifest, [item.content ?? "", "type"]);
 
 	return {
 		...item,
-		type: manifestType,
+		type: manifestType as string,
 	};
 };
 
-const ContentGrid = (props) => (
+const ContentGrid = (props: Record<string, unknown>) => (
 	<Grid
 		previewComponent={ItemPreview}
 		editComponent={ItemEditor}
@@ -39,8 +46,8 @@ const ContentGrid = (props) => (
 		itemSelector={denormalizeType}
 		title="Edit Items"
 		capacity={capacity}
-		form={props.form}
-		disabled={props.disabled}
+		form={props.form as string}
+		disabled={props.disabled as boolean}
 		{...props}
 	/>
 );

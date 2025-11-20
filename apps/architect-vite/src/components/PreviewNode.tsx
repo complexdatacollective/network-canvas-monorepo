@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
-import Node from "~/lib/legacy-ui/Node";
+import { Node } from "~/lib/legacy-ui/components";
 import { getNodeTypes } from "../selectors/codebook";
 
 type NodeType = {

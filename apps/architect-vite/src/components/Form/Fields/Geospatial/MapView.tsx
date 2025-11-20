@@ -48,7 +48,7 @@ const MapView = ({
 	const [center, setCenter] = useState(mapOptions.center || [0, 0]);
 	const [zoom, setZoom] = useState(mapOptions.initialZoom || 0);
 
-	const saveMapSelection = (newCenter, newZoom) => {
+	const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
 		onChange({
 			...mapOptions,
 			center: newCenter,

@@ -38,4 +38,4 @@ const DyadCensusPrompts = ({ form, entity, type, disabled }: DyadCensusPromptsPr
 
 export { DyadCensusPrompts };
 
-export default compose(withSubject, withDisabledSubjectRequired)(DyadCensusPrompts);
+export default compose(withSubject, withDisabledSubjectRequired)(DyadCensusPrompts as React.ComponentType<unknown>);

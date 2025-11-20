@@ -26,11 +26,11 @@ const mapStateToProps = (state: RootState, { content }: { content: string }) => 
 const ItemPreview = ({ content = null, assetType = null }: ItemPreviewProps) => {
 	switch (assetType) {
 		case "image":
-			return <BackgroundImageWithUrl id={content} />;
+			return <BackgroundImageWithUrl id={content ?? ""} />;
 		case "video":
-			return <VideoWithUrl id={content} controls />;
+			return <VideoWithUrl id={content ?? ""} controls />;
 		case "audio":
-			return <AudioWithUrl id={content} controls />;
+			return <AudioWithUrl id={content ?? ""} controls />;
 		default:
 			return (
 				<Markdown

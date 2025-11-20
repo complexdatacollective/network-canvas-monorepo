@@ -35,13 +35,16 @@ const getRenderer = (meta: AssetMeta) => {
 	}
 };
 
-type PreviewProps = {
+type PreviewOwnProps = {
 	id: string;
-	meta: AssetMeta;
-	assetPath: string;
 	show?: boolean;
 	onDownload?: (path: string, meta: AssetMeta) => void;
 	onClose?: () => void;
+};
+
+type PreviewProps = PreviewOwnProps & {
+	meta: AssetMeta;
+	assetPath: string;
 };
 
 const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onClose = () => {} }: PreviewProps) => {
@@ -58,7 +61,7 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	}, [meta.value]);
 
 	const primaryButtons = [
-		<Button onClick={onClose} color="white" key="close">
+		<Button onClick={onClose} color="platinum" key="close">
 			Close preview
 		</Button>,
 	];
@@ -103,4 +106,4 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	);
 };
 
-export default compose(withAssetMeta, withAssetPath)(Preview);
+export default compose(withAssetMeta, withAssetPath)(Preview as React.ComponentType<unknown>) as React.ComponentType<PreviewOwnProps>;

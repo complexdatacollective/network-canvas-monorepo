@@ -36,4 +36,4 @@ const NameGeneratorPrompts = ({
 
 export { NameGeneratorPrompts };
 
-export default compose(withSubject, withDisabledSubjectRequired)(NameGeneratorPrompts);
+export default compose(withSubject, withDisabledSubjectRequired)(NameGeneratorPrompts as React.ComponentType<unknown>);

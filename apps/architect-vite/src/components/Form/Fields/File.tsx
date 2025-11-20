@@ -80,7 +80,7 @@ const FileInput = ({
 					{error}
 				</div>
 			)}
-			<div className="form-fields-file__preview">{children(value)}</div>
+			<div className="form-fields-file__preview">{children?.(value)}</div>
 			<div className="form-fields-file__browse">
 				<Button onClick={handleBrowseLibrary} color="sea-green">
 					{!value ? "Select resource" : "Update resource"}

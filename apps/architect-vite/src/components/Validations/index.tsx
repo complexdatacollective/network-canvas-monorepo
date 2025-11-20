@@ -5,4 +5,4 @@ import withUpdateHandlers from "./withUpdateHandlers";
 
 const withAddNew = withState("addNew", "setAddNew", false);
 
-export default compose(withStoreState, withAddNew, withUpdateHandlers)(Validations);
+export default compose(withStoreState, withAddNew, withUpdateHandlers)(Validations as React.ComponentType<unknown>);

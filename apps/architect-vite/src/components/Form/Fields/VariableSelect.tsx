@@ -29,9 +29,9 @@ type VariableSelectProps = {
 // TODO: For now just map existing variables, but later could also append create handlers!
 const VariableSelect = ({
 	reserved = [],
-	entity = null,
-	type = null,
-	variable = null,
+	entity = null as string | null,
+	type = null as string | null,
+	variable = null as string | null,
 	...props
 }: VariableSelectProps) => (
 	<div className="form-fields-variable-select">
@@ -44,4 +44,4 @@ const VariableSelect = ({
 	</div>
 );
 
-export default compose(connect(mapStateToProps, {}), withVariableValidator)(VariableSelect);
+export default compose(connect(mapStateToProps, {}), withVariableValidator)(VariableSelect as React.ComponentType<unknown>);

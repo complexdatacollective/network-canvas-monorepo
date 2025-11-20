@@ -1,8 +1,10 @@
+import type { Dispatch } from "@reduxjs/toolkit";
 import type React from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 import { DatePicker } from "~/components/Form/Fields";
 import { DATE_FORMATS } from "~/components/Form/Fields/DatePicker";
 import Number from "~/components/Form/Fields/Number";
@@ -70,12 +72,14 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 	);
 };
 
-const mapStateToProps = (state, { name, form }) => ({
+const mapStateToProps = (state: RootState, { name, form }: { name: string; form: string }) => ({
 	anchorValue: formValueSelector(form)(state, `${name}.anchor`),
 });
 
-const mapDispatchToProps = (dispatch, { name, form }) => ({
+const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; form: string }) => ({
 	resetField: () => dispatch(change(form, `${name}.anchor`, null)),
 });
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(RelativeDatePickerParameters);
+export default compose(connect(mapStateToProps, mapDispatchToProps))(
+	RelativeDatePickerParameters as React.ComponentType<unknown>,
+);
