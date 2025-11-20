@@ -9,7 +9,7 @@ export const convertSize = (size: number): string => {
 	}
 };
 
-export const parseSize = (size: string): number => {
+const parseSize = (size: string): number => {
 	switch (size) {
 		case "MEDIUM":
 			return 2;

@@ -30,7 +30,7 @@ type DialogPopupProps = ComponentProps<typeof motion.div> & {
 	footer?: ReactNode;
 };
 
-export function DialogPopup({ size, header, children, footer, className, ...props }: DialogPopupProps) {
+function DialogPopup({ size, header, children, footer, className, ...props }: DialogPopupProps) {
 	return (
 		<BaseDialog.Popup
 			className={cn(
@@ -76,11 +76,11 @@ export function DialogPopup({ size, header, children, footer, className, ...prop
 	);
 }
 
-export function DialogTitle(props: BaseDialog.Title.Props) {
+function DialogTitle(props: BaseDialog.Title.Props) {
 	return <BaseDialog.Title className="text-2xl font-semibold m-0 pb-6" {...props} />;
 }
 
-export function DialogDescription(props: BaseDialog.Description.Props) {
+function DialogDescription(props: BaseDialog.Description.Props) {
 	return <BaseDialog.Description className="text-base text-surface-2-foreground" {...props} />;
 }
 

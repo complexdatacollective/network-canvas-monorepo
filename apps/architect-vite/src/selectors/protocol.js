@@ -1,8 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
 
-const propStageId = (_, props) => props.stageId;
-
 export const getProtocol = (state) => {
 	// First check new activeProtocol store (with timeline)
 	if (state.activeProtocol?.present) {
@@ -52,10 +50,6 @@ export const getStageIndex = (state, id) => {
 
 	return stageIndex;
 };
-
-// TODO: replace this with getStage
-export const makeGetStage = () =>
-	createSelector(getProtocol, propStageId, (protocol, stageId) => find(protocol.stages, ["id", stageId]));
 
 const networkTypes = new Set(["network", "async:network"]);
 

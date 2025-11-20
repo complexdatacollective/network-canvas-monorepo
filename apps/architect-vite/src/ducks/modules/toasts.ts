@@ -64,12 +64,3 @@ export const actionCreators = {
 	updateToast: (id: string, toast: Partial<Toast>) => updateToast({ id, toast }),
 	removeToast: (id: string) => removeToast(id),
 };
-
-export const actionTypes = {
-	ADD_TOAST: "toasts/addToastSync",
-	REMOVE_TOAST: "toasts/removeToast",
-	UPDATE_TOAST: "toasts/updateToast",
-};
-
-// Export types for use in other parts of the application
-export type { Toast, ToastsState };

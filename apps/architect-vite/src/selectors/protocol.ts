@@ -1,12 +1,8 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
-import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
-import { UnsavedChanges } from "~/components/Dialogs";
 import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
-import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
-
-const propStageId = (_: RootState, props: { stageId: string }) => props.stageId;
 
 // During transition, check both old and new stores
 export const getProtocol = (state: RootState) => {
@@ -58,12 +54,6 @@ export const getStageIndex = (state: RootState, id: string) => {
 	return stageIndex;
 };
 
-// TODO: replace this with getStage
-export const makeGetStage = () =>
-	createSelector(getProtocol, propStageId, (protocol, stageId) =>
-		protocol ? find(protocol.stages, ["id", stageId]) : null,
-	);
-
 const networkTypes = new Set(["network", "async:network"]);
 
 // TODO: Does this method make sense here?
@@ -106,21 +96,6 @@ export const getHasUnsavedChanges = (state: RootState): boolean => {
 	return currentTimeline !== lastSavedTimeline;
 };
 
-export const checkUnsavedChanges = createAsyncThunk("protocol/check-unsaved-changes", (_, thunkAPI) => {
-	const state = thunkAPI.getState() as RootState;
-	const hasUnsavedChanges = getHasUnsavedChanges(state);
-
-	if (!hasUnsavedChanges) {
-		return Promise.resolve(true);
-	}
-
-	const unsavedChangesDialog = UnsavedChanges({
-		confirmLabel: "Discard changes and continue",
-	});
-
-	return thunkAPI.dispatch(dialogsActions.openDialog(unsavedChangesDialog)).unwrap();
-});
-
 export const getIsProtocolValid = (_state: RootState): boolean => {
 	// Return validation result from Redux state
 	return true;
@@ -142,9 +117,4 @@ export const getTimelineLocus = (state: RootState) => {
 	}
 
 	return null;
-};
-
-// New selectors for the activeProtocol store
-export const hasActiveProtocol = (state: RootState): boolean => {
-	return Boolean(selectActiveProtocol(state));
 };

@@ -97,6 +97,6 @@ const FileInput = ({
 	);
 };
 
-export { FileInput };
+export type { FileInputProps };
 
 export default withShowBrowser(FileInput);

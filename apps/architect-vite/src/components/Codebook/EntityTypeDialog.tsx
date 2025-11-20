@@ -121,5 +121,4 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 	);
 };
 
-export { formName };
 export default EntityTypeDialog;

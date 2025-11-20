@@ -156,7 +156,7 @@ export const validRegExp = (_, message) => (value) => {
 const validations = {
 	ISODate,
 	allowedVariableName,
-	allowedNMToken,
+	allowedNMToken: allowedVariableName,
 	maxLength,
 	maxSelected,
 	maxValue,
@@ -209,5 +209,3 @@ export const getValidator = (validation = {}) => {
 		return errors;
 	};
 };
-
-export default validations;

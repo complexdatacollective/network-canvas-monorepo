@@ -29,9 +29,7 @@ const mapStateToProps = (state: RootState, { entity, type }: OwnProps) => {
 
 const mapDispatchToProps = { createVariable: codebookActions.createVariable };
 
-type HandlerProps = ReturnType<typeof mapStateToProps> &
-	typeof mapDispatchToProps &
-	OwnProps;
+type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
 
 const newVariableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	handleCreateNewVariable:

@@ -23,7 +23,7 @@ export const getAssetById = async (assetId: string): Promise<ExtractedAsset | un
 	return await assetDb.assets.get(assetId);
 };
 
-export const createBlobUrl = (asset: ExtractedAsset): string => {
+const createBlobUrl = (asset: ExtractedAsset): string => {
 	if (typeof asset.data === "string") {
 		return asset.data; // Return the string directly if it's not a Blob
 	}

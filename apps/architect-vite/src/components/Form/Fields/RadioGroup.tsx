@@ -101,5 +101,4 @@ const RadioGroup = ({
 	);
 };
 
-export { RadioGroup };
 export default RadioGroup;

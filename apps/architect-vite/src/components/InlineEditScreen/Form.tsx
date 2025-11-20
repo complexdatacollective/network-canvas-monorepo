@@ -9,7 +9,7 @@ type FormProps = {
 };
 
 // Props that the wrapped component will accept
-export type WrappedFormProps = {
+type WrappedFormProps = {
 	form: string;
 	children?: React.ReactNode;
 	id?: string;

@@ -48,6 +48,8 @@ const CategoricalBinPrompts = ({
 
 export { CategoricalBinPrompts };
 
-export default compose(withSubject, withDisabledSubjectRequired, withPromptChangeHandler)(
-	CategoricalBinPrompts as React.ComponentType<unknown>,
-);
+export default compose(
+	withSubject,
+	withDisabledSubjectRequired,
+	withPromptChangeHandler,
+)(CategoricalBinPrompts as React.ComponentType<unknown>);

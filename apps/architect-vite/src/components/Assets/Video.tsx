@@ -19,6 +19,4 @@ const Video = ({ url, description = "", ...props }: VideoProps) => (
 	</video>
 );
 
-export { Video };
-
 export default withAssetUrl(Video);

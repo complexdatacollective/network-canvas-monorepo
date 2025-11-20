@@ -60,33 +60,36 @@ type DialogConfig =
 	  });
 
 // Async thunk for opening dialogs with promise support
-export const openDialog = createAsyncThunk<boolean, DialogConfig>("dialogs/openDialog", async (dialogConfig, { dispatch }) => {
-	return new Promise<boolean>((resolve) => {
-		const onConfirm = () => {
-			if (dialogConfig.onConfirm) {
-				dialogConfig.onConfirm();
-			}
-			resolve(true);
-		};
+export const openDialog = createAsyncThunk<boolean, DialogConfig>(
+	"dialogs/openDialog",
+	async (dialogConfig, { dispatch }) => {
+		return new Promise<boolean>((resolve) => {
+			const onConfirm = () => {
+				if (dialogConfig.onConfirm) {
+					dialogConfig.onConfirm();
+				}
+				resolve(true);
+			};
 
-		const onCancel = () => {
-			if (dialogConfig.onCancel) {
-				dialogConfig.onCancel();
-			}
-			resolve(false);
-		};
+			const onCancel = () => {
+				if (dialogConfig.onCancel) {
+					dialogConfig.onCancel();
+				}
+				resolve(false);
+			};
 
-		const id = uuid();
-		const dialog: Dialog = {
-			...dialogConfig,
-			id,
-			onConfirm,
-			onCancel,
-		} as Dialog;
+			const id = uuid();
+			const dialog: Dialog = {
+				...dialogConfig,
+				id,
+				onConfirm,
+				onCancel,
+			} as Dialog;
 
-		dispatch(addDialog(dialog));
-	});
-});
+			dispatch(addDialog(dialog));
+		});
+	},
+);
 
 // Create the dialogs slice
 const dialogsSlice = createSlice({
@@ -118,6 +121,3 @@ export const actionTypes = {
 	OPEN_DIALOG: "dialogs/addDialog",
 	CLOSE_DIALOG: "dialogs/closeDialog",
 };
-
-// Export types for use in other parts of the application
-export type { ConfirmDialog, Dialog, DialogConfig, DialogsState, ErrorDialog, NoticeDialog, WarningDialog };

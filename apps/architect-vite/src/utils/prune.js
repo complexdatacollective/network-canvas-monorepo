@@ -55,6 +55,4 @@ const pruneProtocol = (protocol) =>
 		return resolve(result);
 	});
 
-export { pruneProtocol };
-
 export default pruneObjects;

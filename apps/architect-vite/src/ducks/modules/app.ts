@@ -49,6 +49,3 @@ export const actionTypes = {
 	SET_PROPERTY: "app/setProperty",
 	CLEAR_PROPERTY: "app/clearProperty",
 };
-
-// Export types for use in other parts of the application
-export type { AppState };

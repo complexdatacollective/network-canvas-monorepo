@@ -33,7 +33,7 @@ type EntityTypeProps = {
 };
 
 // Props expected by the exported wrapped component
-export type EntityTypeOwnProps = {
+type EntityTypeOwnProps = {
 	entity: Entity;
 	type: string;
 	inUse?: boolean;
@@ -160,6 +160,7 @@ const withEntityHandlers = compose(
 	}),
 );
 
-export default compose(connect(mapStateToProps), withEntityHandlers)(
-	EntityType as React.ComponentType<unknown>,
-) as React.ComponentType<EntityTypeOwnProps>;
+export default compose(
+	connect(mapStateToProps),
+	withEntityHandlers,
+)(EntityType as React.ComponentType<unknown>) as React.ComponentType<EntityTypeOwnProps>;

@@ -1,6 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 
-import { type Descendant, Editor, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
+import { type Descendant, type Editor, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
 import { getBlocks } from "./utils";
 
 interface BlockNode extends Element {

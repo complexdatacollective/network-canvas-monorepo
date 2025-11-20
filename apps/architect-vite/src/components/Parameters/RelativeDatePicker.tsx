@@ -4,12 +4,12 @@ import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
 import { DatePicker } from "~/components/Form/Fields";
 import { DATE_FORMATS } from "~/components/Form/Fields/DatePicker";
 import Number from "~/components/Form/Fields/Number";
 import Toggle from "~/components/Form/Fields/Toggle";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { RootState } from "~/ducks/modules/root";
 
 type RelativeDatePickerParametersProps = {
 	name: string;

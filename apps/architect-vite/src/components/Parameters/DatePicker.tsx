@@ -97,6 +97,7 @@ const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; 
 	},
 });
 
-export default compose(connect(null, mapDispatchToProps), formValues({ type: "parameters.type" }))(
-	DateTimeParameters as React.ComponentType<unknown>,
-);
+export default compose(
+	connect(null, mapDispatchToProps),
+	formValues({ type: "parameters.type" }),
+)(DateTimeParameters as React.ComponentType<unknown>);

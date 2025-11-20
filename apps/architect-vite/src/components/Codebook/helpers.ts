@@ -7,7 +7,7 @@ import type {
 	Variables,
 } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
-import { compact, get, map, reduce, uniq } from "es-toolkit/compat";
+import { compact, get, reduce, uniq } from "es-toolkit/compat";
 import type { RootState } from "~/ducks/store";
 import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
 import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
@@ -24,11 +24,11 @@ interface StageMeta {
  * @param {Object} state Application state
  * @returns {Object[]} Stage meta sorted by index in state
  */
-export const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] =>
+const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] =>
 	protocol.stages.map(({ label, id }: Stage) => ({ label, id })),
 );
 
-export const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
+const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
 	const variables = getAllVariablesByUUID(codebook);
 	return variables;
 });
@@ -46,7 +46,7 @@ const getStageIndexFromPath = (path: string): string | null => {
 const codebookVariableReferenceRegex =
 	/codebook\.(ego|node\[([^\]]+)\]|edge\[([^\]]+)\])\.variables\[(.*?)\].validation\.(sameAs|differentFrom)/;
 
-export const getCodebookVariableIndexFromValidationPath = (path: string): string | null => {
+const getCodebookVariableIndexFromValidationPath = (path: string): string | null => {
 	const match = path.match(codebookVariableReferenceRegex);
 
 	return get(match, 4, null);

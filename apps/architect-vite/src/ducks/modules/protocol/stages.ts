@@ -173,9 +173,6 @@ const stagesSlice = createSlice({
 	},
 });
 
-// Export actions
-export const { createStage, updateStage, moveStage, deleteStage, deletePrompt } = stagesSlice.actions;
-
 // Export action creators (thunks)
 export const actionCreators = {
 	createStage: createStageAsync,
@@ -198,8 +195,7 @@ export const test = {
 		stagesSlice.actions.deletePrompt({ stageId, promptId, deleteEmptyStage }),
 };
 
-// Export types
-export type { Stage, StagesState };
+// Note: StagesState is only used internally
 
 // Export the reducer as default
 export default stagesSlice.reducer;

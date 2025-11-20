@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Icon, Spinner } from "~/lib/legacy-ui/components";
-import { acceptsFiles, getAcceptsExtensions, getRejectedExtensions } from "./helpers";
+import { acceptsFiles, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";
 
 type DropzoneState = {
@@ -154,7 +154,5 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 		</div>
 	);
 };
-
-export { Dropzone };
 
 export default Dropzone;

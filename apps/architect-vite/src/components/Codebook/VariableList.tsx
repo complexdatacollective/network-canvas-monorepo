@@ -48,6 +48,4 @@ const Variables = ({
 	);
 };
 
-export { Variables };
-
 export default compose(withSort)(Variables as React.ComponentType<unknown>);

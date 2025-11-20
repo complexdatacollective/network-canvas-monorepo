@@ -11,7 +11,7 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export const normalizeKeyDown = (event: React.KeyboardEvent) => {
+const normalizeKeyDown = (event: React.KeyboardEvent) => {
 	const check = safeName(event.key);
 
 	if (isEmpty(check)) {

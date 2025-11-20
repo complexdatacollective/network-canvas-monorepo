@@ -17,6 +17,4 @@ const BackgroundImage = ({ url, className, ...props }: BackgroundImageProps) => 
 	);
 };
 
-export { BackgroundImage };
-
 export default withAssetUrl(BackgroundImage);

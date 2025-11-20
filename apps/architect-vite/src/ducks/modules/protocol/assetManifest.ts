@@ -134,10 +134,6 @@ const assetManifestSlice = createSlice({
 	},
 });
 
-// Export actions
-export const { importAsset, importAssetComplete, importAssetFailed, deleteAsset, addApiKeyAsset } =
-	assetManifestSlice.actions;
-
 // Export action creators
 export const actionCreators = {
 	importAsset: importAssetAsync,
@@ -162,7 +158,7 @@ export const test = {
 };
 
 // Export types
-export type { Asset, AssetManifestState, AssetType };
+export type { Asset };
 
 // Export the reducer as default
 export default assetManifestSlice.reducer;

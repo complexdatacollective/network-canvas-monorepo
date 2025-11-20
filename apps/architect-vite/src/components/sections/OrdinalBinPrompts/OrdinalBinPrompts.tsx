@@ -50,6 +50,8 @@ const OrdinalBinPrompts = ({
 
 export { OrdinalBinPrompts };
 
-export default compose(withSubject, withDisabledSubjectRequired, withPromptChangeHandler)(
-	OrdinalBinPrompts as React.ComponentType<unknown>,
-);
+export default compose(
+	withSubject,
+	withDisabledSubjectRequired,
+	withPromptChangeHandler,
+)(OrdinalBinPrompts as React.ComponentType<unknown>);

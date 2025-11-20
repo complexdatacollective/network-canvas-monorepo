@@ -69,6 +69,9 @@ const Form = ({
 
 export { Form };
 
-export default compose(withSubject, withFormHandlers, withDisabledFormTitle, withDisabledSubjectRequired)(
-	Form as React.ComponentType<unknown>,
-);
+export default compose(
+	withSubject,
+	withFormHandlers,
+	withDisabledFormTitle,
+	withDisabledSubjectRequired,
+)(Form as React.ComponentType<unknown>);

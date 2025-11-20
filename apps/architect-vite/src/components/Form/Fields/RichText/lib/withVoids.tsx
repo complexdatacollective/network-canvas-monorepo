@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 
-import { Editor, type Element } from "slate";
+import type { Editor, Element } from "slate";
 
 const VOID_TYPES = ["thematic_break"];
 

@@ -69,6 +69,7 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export default compose(defaultProps({ name: "filter" }), connect(mapStateToProps, mapDispatchToProps))(
-	NetworkFilter as React.ComponentType<unknown>,
-);
+export default compose(
+	defaultProps({ name: "filter" }),
+	connect(mapStateToProps, mapDispatchToProps),
+)(NetworkFilter as React.ComponentType<unknown>);

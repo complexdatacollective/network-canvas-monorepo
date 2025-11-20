@@ -108,7 +108,7 @@ const OptionsFieldComponent = ({
 	);
 };
 
-export const OptionsField = connect(mapStateToOptionsFieldProps, mapDispatchToOptionsFieldProps)(OptionsFieldComponent);
+const OptionsField = connect(mapStateToOptionsFieldProps, mapDispatchToOptionsFieldProps)(OptionsFieldComponent);
 
 type OptionsProps = {
 	name: string;

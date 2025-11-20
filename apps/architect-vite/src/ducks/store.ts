@@ -33,5 +33,4 @@ export { store };
 
 // Export types for use throughout the application
 export type AppDispatch = typeof store.dispatch;
-export type AppStore = typeof store;
 export type { RootState };

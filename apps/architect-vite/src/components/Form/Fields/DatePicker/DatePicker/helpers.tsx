@@ -31,9 +31,7 @@ export const isComplete =
 export const isEmpty = () => (date: DateObject) => isEqual(date, { year: null, month: null, day: null });
 
 // Get month names - using DateTime instead of Info for compatibility
-const monthNames = Array.from({ length: 12 }, (_, i) =>
-	DateTime.local(2000, i + 1, 1).toFormat("LLLL")
-);
+const monthNames = Array.from({ length: 12 }, (_, i) => DateTime.local(2000, i + 1, 1).toFormat("LLLL"));
 
 export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);
 

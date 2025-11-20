@@ -2,7 +2,7 @@ import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
 import activeProtocolReducer, { actionCreators } from "../activeProtocol";
-import { createStage } from "../protocol/stages";
+import { test as stagesTest } from "../protocol/stages";
 
 const mockProtocol: CurrentProtocol & { name: string } = {
 	name: "Test Protocol",
@@ -278,17 +278,15 @@ describe("activeProtocol", () => {
 		it("should not process sub-reducers when no protocol data", () => {
 			// Try to dispatch an action that would normally be handled by sub-reducers
 			store.dispatch(
-				createStage({
-					stage: {
-						id: "test",
-						type: "NameGenerator",
-						label: "Test Stage",
-						subject: {
-							entity: "node",
-							type: "person",
-						},
-						prompts: [],
+				stagesTest.createStage({
+					id: "test",
+					type: "NameGenerator",
+					label: "Test Stage",
+					subject: {
+						entity: "node",
+						type: "person",
 					},
+					prompts: [],
 				}),
 			);
 

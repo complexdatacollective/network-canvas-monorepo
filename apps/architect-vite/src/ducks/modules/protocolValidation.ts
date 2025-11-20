@@ -59,8 +59,7 @@ const protocolValidationSlice = createSlice({
 	},
 });
 
-export const { clearValidation } = protocolValidationSlice.actions;
 export default protocolValidationSlice.reducer;
 
-// Export types
-export type { ProtocolValidationState, ValidationResult };
+// Note: ValidationResult is re-exported from @codaco/protocol-validation at the top of this file
+// ProtocolValidationState is only used internally

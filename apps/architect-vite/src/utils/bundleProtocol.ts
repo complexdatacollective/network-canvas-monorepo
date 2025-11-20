@@ -37,7 +37,7 @@ async function getAllProtocolAssets(protocol: CurrentProtocol) {
 	return assets;
 }
 
-export async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
+async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 	const zip = new JSZip();
 
 	// Remove app state props

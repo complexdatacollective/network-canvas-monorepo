@@ -170,45 +170,4 @@ const makeGetDeleteImpact = createSelector(getProtocol, makeGetUsageForType, (pr
 	),
 );
 
-/**
- * Returns a flat list of all nodes and edges in protocol
- * @returns {array} in format: [{ entity, type }, ...]
- */
-const getTypes = createSelector(getProtocol, (protocol) =>
-	flatMap(protocol.codebook, (entityTypes, entity) => map(entityTypes, (_, type) => ({ entity, type }))),
-);
-
-const makeGetObjectLabel = createSelector(getProtocol, (protocol) =>
-	memoize(
-		(protocolObject) => {
-			switch (protocolObject.type) {
-				case "form":
-					return protocol.forms[protocolObject.id].title;
-				case "stage":
-					return protocol.stages.find(({ id }) => id === protocolObject.id).label;
-				case "prompt": {
-					const stageLabel = protocol.stages.find(({ id }) => id === protocolObject.stageId).label;
-					const promptLabel = protocol.stages
-						.find(({ id }) => id === protocolObject.stageId)
-						.prompts.find(({ id }) => id === protocolObject.promptId).text;
-					return `${stageLabel} -> ${promptLabel}`;
-				}
-				default:
-					return "";
-			}
-		},
-		(protocolObject) =>
-			`${protocolObject.type}: ${
-				protocolObject.type === "prompt" ? `${protocolObject.stageId}:${protocolObject.promptId}` : protocolObject.id
-			}`,
-	),
-);
-
-export {
-	getTypeUsageIndex,
-	getSociogramTypeUsageIndex,
-	makeGetUsageForType,
-	makeGetDeleteImpact,
-	makeGetObjectLabel,
-	getTypes,
-};
+export { getTypeUsageIndex, getSociogramTypeUsageIndex, makeGetUsageForType, makeGetDeleteImpact };

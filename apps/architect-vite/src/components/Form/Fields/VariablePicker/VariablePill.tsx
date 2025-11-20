@@ -21,7 +21,7 @@ type BaseVariablePillProps = {
 	children: React.ReactNode;
 };
 
-export const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children }, ref) => {
+const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children }, ref) => {
 	const icon = useMemo(() => getIconForType(type), [type]);
 	// const backgroundColor = useMemo(() => getColorForType(type), [type]);
 

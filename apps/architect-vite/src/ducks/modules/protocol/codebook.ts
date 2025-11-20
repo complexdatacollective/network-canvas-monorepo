@@ -399,10 +399,6 @@ const codebookSlice = createSlice({
 	},
 });
 
-// Export actions
-export const { createType, updateType, deleteType, createVariable, updateVariable, deleteVariable } =
-	codebookSlice.actions;
-
 // Export action creators
 export const actionCreators = {
 	updateType: updateTypeAsync,
@@ -431,8 +427,7 @@ export const test = {
 		codebookSlice.actions.deleteVariable({ entity, type, variable }),
 };
 
-// Export types
-export type { Entity, Variable, EntityType, CodebookState };
+// Note: Types Entity, Variable, EntityType, and CodebookState are only used internally
 
 // Export the reducer as default
 export default codebookSlice.reducer;

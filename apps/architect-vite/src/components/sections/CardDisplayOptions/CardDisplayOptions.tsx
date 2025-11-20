@@ -85,6 +85,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 
 export { CardDisplayOptions };
 
-export default compose(withMapFormToProps("dataSource"), withDisabledAssetRequired)(
-	CardDisplayOptions as React.ComponentType<unknown>,
-);
+export default compose(
+	withMapFormToProps("dataSource"),
+	withDisabledAssetRequired,
+)(CardDisplayOptions as React.ComponentType<unknown>);

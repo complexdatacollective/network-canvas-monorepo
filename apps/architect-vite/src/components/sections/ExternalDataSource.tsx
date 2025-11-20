@@ -43,6 +43,8 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
 
 export { ExternalDataSource };
 
-export default compose(withChangeDataSourceHandler, withSubject, withDisabledSubjectRequired)(
-	ExternalDataSource as React.ComponentType<unknown>,
-);
+export default compose(
+	withChangeDataSourceHandler,
+	withSubject,
+	withDisabledSubjectRequired,
+)(ExternalDataSource as React.ComponentType<unknown>);

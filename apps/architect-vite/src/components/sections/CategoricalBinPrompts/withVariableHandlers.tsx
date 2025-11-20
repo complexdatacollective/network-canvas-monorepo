@@ -1,8 +1,8 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, getFormValues } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
 import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import type { RootState } from "~/ducks/modules/root";
 
 interface OwnProps {
 	form: string;
@@ -22,9 +22,7 @@ const mapDispatchToProps = {
 
 const deleteVariableState = connect(mapStateToProps, mapDispatchToProps);
 
-type HandlerProps = ReturnType<typeof mapStateToProps> &
-	typeof mapDispatchToProps &
-	OwnProps;
+type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
 
 const variableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	onCreateOtherVariable:

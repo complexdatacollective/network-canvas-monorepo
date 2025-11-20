@@ -8,13 +8,13 @@ export const isEmpty = (value: unknown) => value === null || value === "";
 export const getFirstDayOfMonth = (dateObj: { year?: number | null; month?: number | null; day?: number | null }) =>
 	DateTime.fromObject({ ...dateObj, day: 1 }).toFormat("c");
 
-export const asNullObject = (keys: string[]) =>
+const asNullObject = (keys: string[]) =>
 	keys.reduce((acc, key) => {
 		acc[key] = null;
 		return acc;
 	}, {});
 
-export const getProperties = (obj: Record<string, unknown>) =>
+const getProperties = (obj: Record<string, unknown>) =>
 	Object.keys(obj).reduce<string[]>((acc, key) => {
 		if (!obj[key]) {
 			return acc;
@@ -33,8 +33,6 @@ export const hasProperties =
 	};
 
 // Get month names - using DateTime instead of Info for compatibility
-const monthNames = Array.from({ length: 12 }, (_, i) =>
-	DateTime.local(2000, i + 1, 1).toFormat("LLLL")
-);
+const monthNames = Array.from({ length: 12 }, (_, i) => DateTime.local(2000, i + 1, 1).toFormat("LLLL"));
 
 export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);

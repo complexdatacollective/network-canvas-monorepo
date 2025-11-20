@@ -142,6 +142,7 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 	);
 };
 
-export default compose(withMapFormToProps(["mapOptions"]), withDisabledAPIKeyRequired)(
-	MapOptions as React.ComponentType<unknown>,
-);
+export default compose(
+	withMapFormToProps(["mapOptions"]),
+	withDisabledAPIKeyRequired,
+)(MapOptions as React.ComponentType<unknown>);

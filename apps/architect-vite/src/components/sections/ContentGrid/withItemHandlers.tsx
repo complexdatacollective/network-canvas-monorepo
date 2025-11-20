@@ -21,9 +21,7 @@ const mapDispatchToProps = {
 
 const itemState = connect(mapStateToProps, mapDispatchToProps);
 
-type HandlerProps = ReturnType<typeof mapStateToProps> &
-	typeof mapDispatchToProps &
-	OwnProps;
+type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
 
 const itemHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	handleChangeType:

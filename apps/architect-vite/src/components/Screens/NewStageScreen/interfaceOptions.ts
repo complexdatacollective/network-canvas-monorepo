@@ -1,4 +1,4 @@
-export const CATEGORIES = {
+const CATEGORIES = {
 	GENERATORS: "Name and Edge Generators",
 	SOCIOGRAMS: "Sociograms",
 	INTERPRETERS: "Name and Edge Interpreters",
@@ -28,7 +28,7 @@ export const TAG_COLORS = {
 } as const;
 
 // Define the interface types as a const array first
-export const INTERFACE_TYPE_NAMES = [
+const INTERFACE_TYPE_NAMES = [
 	"NameGenerator",
 	"NameGeneratorQuickAdd",
 	"NameGeneratorRoster",
@@ -48,11 +48,11 @@ export const INTERFACE_TYPE_NAMES = [
 ] as const;
 
 // Type helpers
-export type InterfaceTypeName = (typeof INTERFACE_TYPE_NAMES)[number];
-export type Category = (typeof CATEGORIES)[keyof typeof CATEGORIES];
-export type Tag = (typeof TAGS)[keyof typeof TAGS];
+type InterfaceTypeName = (typeof INTERFACE_TYPE_NAMES)[number];
+type Category = (typeof CATEGORIES)[keyof typeof CATEGORIES];
+type Tag = (typeof TAGS)[keyof typeof TAGS];
 
-export type InterfaceType = {
+type InterfaceType = {
 	type: InterfaceTypeName;
 	tags: Tag[];
 	category: Category;

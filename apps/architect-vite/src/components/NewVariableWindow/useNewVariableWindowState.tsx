@@ -3,10 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type WindowProps = Record<string, unknown>;
 type Meta = Record<string, unknown>;
 
-const useNewVariableWindowState = (
-	initialProps: WindowProps,
-	onComplete: (...args: unknown[]) => void,
-) => {
+const useNewVariableWindowState = (initialProps: WindowProps, onComplete: (...args: unknown[]) => void) => {
 	const [meta, setMeta] = useState<Meta>({});
 	const [dynamicProps, setDynamicProps] = useState<WindowProps>({});
 	const [windowOpen, setWindowOpen] = useState(false);

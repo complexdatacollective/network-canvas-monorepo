@@ -240,4 +240,3 @@ export const timelineActionCreators = {
 };
 
 export default createTimelineReducer;
-export type { TimelineOptions, TimelineState };

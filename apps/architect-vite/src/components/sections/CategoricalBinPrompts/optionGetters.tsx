@@ -24,28 +24,30 @@ const getOptionProperties = (option: VariableOption): OptionProperties => ({
  * This optionGetter is for sortOrder, which defines properties for `property` and `direction`
  * columns.
  */
-const getSortOrderOptionGetter = (variableOptions: VariableOption[]) => (property: string, _rowValues: unknown, allValues: Record<string, unknown>[]) => {
-	switch (property) {
-		case "property": {
-			const used = map(allValues, "property") as string[];
+const getSortOrderOptionGetter =
+	(variableOptions: VariableOption[]) =>
+	(property: string, _rowValues: unknown, allValues: Record<string, unknown>[]) => {
+		switch (property) {
+			case "property": {
+				const used = map(allValues, "property") as string[];
 
-			return [{ value: "*", label: "*" }, ...variableOptions]
-				.filter((option) => !NON_SORTABLE_TYPES.includes(option.type ?? ""))
-				.map((option) =>
-					!used.includes(option.value)
-						? getOptionProperties(option)
-						: { ...getOptionProperties(option), disabled: true },
-				);
+				return [{ value: "*", label: "*" }, ...variableOptions]
+					.filter((option) => !NON_SORTABLE_TYPES.includes(option.type ?? ""))
+					.map((option) =>
+						!used.includes(option.value)
+							? getOptionProperties(option)
+							: { ...getOptionProperties(option), disabled: true },
+					);
+			}
+			case "direction":
+				return [
+					{ value: "desc", label: "Descending" },
+					{ value: "asc", label: "Ascending" },
+				];
+			default:
+				return [];
 		}
-		case "direction":
-			return [
-				{ value: "desc", label: "Descending" },
-				{ value: "asc", label: "Ascending" },
-			];
-		default:
-			return [];
-	}
-};
+	};
 
 const optionGetters = {
 	getSortOrderOptionGetter,

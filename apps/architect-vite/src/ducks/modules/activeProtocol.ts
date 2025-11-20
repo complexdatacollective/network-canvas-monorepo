@@ -141,9 +141,6 @@ export const selectHasActiveProtocol = (state: RootState): boolean => {
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
 
-// Export types for use in other parts of the application
-export type { ActiveProtocolState };
-
 export const getCanUndo = (state: RootState): boolean => {
 	const past = state.activeProtocol?.past || [];
 	if (past.length === 0) return false;
