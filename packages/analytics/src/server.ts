@@ -105,12 +105,13 @@ class ServerAnalytics implements Analytics {
 
 	/**
 	 * Send event to PostHog using fetch API
+	 * Note: API key authentication is handled by the Cloudflare Worker proxy,
+	 * so we don't include it in the payload.
 	 */
 	private async sendToPostHog(event: string, properties: Record<string, unknown>): Promise<void> {
 		if (this.disabled) return;
 
 		const payload = {
-			api_key: this.config.apiKey,
 			event,
 			properties: {
 				...properties,
@@ -156,7 +157,7 @@ let serverAnalyticsInstance: ServerAnalytics | null = null;
  * import { initServerAnalytics } from '@codaco/analytics/server';
  *
  * initServerAnalytics({
- *   installationId: process.env.INSTALLATION_ID!,
+ *   installationId: 'your-unique-installation-id',
  * });
  * ```
  */
@@ -195,23 +196,16 @@ export function getServerAnalytics(): Analytics {
 }
 
 /**
- * Convenience export for direct usage without initialization
- * This will auto-initialize on first use with environment variables
+ * Convenience export for direct usage
+ * Requires calling initServerAnalytics() first
  */
 export const serverAnalytics = new Proxy({} as Analytics, {
 	get(_target, prop) {
 		if (!serverAnalyticsInstance) {
-			// Auto-initialize with minimal config from env
-			const installationId = process.env.INSTALLATION_ID || process.env.NEXT_PUBLIC_INSTALLATION_ID;
-
-			if (!installationId) {
-				throw new Error(
-					"INSTALLATION_ID environment variable is required for server-side analytics. " +
-						"Set INSTALLATION_ID or NEXT_PUBLIC_INSTALLATION_ID, or call initServerAnalytics() manually.",
-				);
-			}
-
-			serverAnalyticsInstance = new ServerAnalytics({ installationId });
+			throw new Error(
+				"Server analytics not initialized. Call initServerAnalytics({ installationId: '...' }) first " +
+					"(e.g., in your root layout or middleware).",
+			);
 		}
 
 		return serverAnalyticsInstance[prop as keyof Analytics];

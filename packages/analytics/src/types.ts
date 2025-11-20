@@ -50,17 +50,26 @@ export type ErrorProperties = z.infer<typeof ErrorPropertiesSchema>;
 
 /**
  * Analytics configuration options
+ *
+ * This package is designed to work exclusively with the Cloudflare Worker
+ * reverse proxy at ph-relay.networkcanvas.com. All authentication is handled
+ * by the worker, so the API key is optional.
  */
 export interface AnalyticsConfig {
 	/**
-	 * PostHog API host (e.g., "https://ph-relay.networkcanvas.com")
-	 * Defaults to the reverse proxy endpoint
+	 * PostHog API host - should point to the Cloudflare Worker reverse proxy
+	 * Defaults to "https://ph-relay.networkcanvas.com"
 	 */
 	apiHost?: string;
 
 	/**
-	 * PostHog project API key
-	 * Defaults to the public key from environment variables
+	 * PostHog project API key (optional)
+	 *
+	 * When using the reverse proxy (default), authentication is handled by the
+	 * Cloudflare Worker. A placeholder key will be used for client-side PostHog
+	 * initialization if not provided.
+	 *
+	 * Only set this if you need to override the default behavior.
 	 */
 	apiKey?: string;
 

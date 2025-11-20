@@ -148,12 +148,16 @@ describe("Configuration", () => {
 			expect(merged.debug).toBe(true);
 		});
 
-		it("should throw error when API key is missing", () => {
+		it("should use placeholder API key when none provided (proxy mode)", () => {
 			const userConfig = {
 				installationId: "test-123",
 			};
 
-			expect(() => mergeConfig(userConfig)).toThrow("PostHog API key is required");
+			const merged = mergeConfig(userConfig);
+
+			// When using proxy mode, a placeholder key is automatically provided
+			expect(merged.apiKey).toBe("phc_proxy_mode_placeholder");
+			expect(merged.installationId).toBe("test-123");
 		});
 
 		it("should merge PostHog options", () => {
@@ -178,7 +182,7 @@ describe("Configuration", () => {
 
 describe("Environment Variables", () => {
 	describe("isDisabledByEnv", () => {
-		it("should detect when analytics is disabled", () => {
+		it("should return a boolean value", () => {
 			// This test depends on the actual env vars
 			// In a real test, you would mock process.env
 			const result = isDisabledByEnv();

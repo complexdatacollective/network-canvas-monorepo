@@ -3,10 +3,22 @@
 	"workspaces": {
 		"packages/ui": {},
 		"apps/analytics-web": {},
-		"packages/analytics": {},
+		"packages/analytics": {
+			"entry": ["src/index.ts", "src/server.ts"]
+		},
 		"apps/documentation": {
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},
-		"packages/protocol-validation": {}
+		"packages/protocol-validation": {},
+		"workers/development-protocol": {
+			"entry": ["src/index.ts"],
+			"ignoreBinaries": ["wrangler"],
+			"ignoreDependencies": ["wrangler"]
+		},
+		"workers/posthog-proxy": {
+			"entry": ["src/index.ts"],
+			"ignoreBinaries": ["wrangler"],
+			"ignoreDependencies": ["wrangler"]
+		}
 	}
 }

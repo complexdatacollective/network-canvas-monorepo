@@ -6,6 +6,8 @@ PostHog analytics wrapper for Network Canvas applications with installation ID t
 
 This package provides a simplified abstraction over PostHog analytics, designed specifically for Network Canvas applications. It ensures that every analytics event includes an installation ID, making it possible to track deployments without compromising user privacy.
 
+**Important:** This package is designed to work exclusively with the Cloudflare Worker reverse proxy at `ph-relay.networkcanvas.com`. All PostHog authentication is handled by the worker, so you don't need to configure API keys in your application.
+
 ## Features
 
 - **Installation ID Tracking**: Automatically includes installation ID with every event
@@ -24,18 +26,15 @@ pnpm add @codaco/analytics
 
 ## Quick Start
 
-### Environment Variables
+**Minimal environment variables!** Only `DISABLE_ANALYTICS` is supported for disabling tracking. All other configuration is passed directly to the analytics provider.
 
-Create a `.env.local` file:
+### Environment Variables (Optional)
 
 ```bash
-# Required
-NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_api_key_here
-NEXT_PUBLIC_INSTALLATION_ID=your-unique-installation-id
-
-# Optional
-NEXT_PUBLIC_POSTHOG_HOST=https://ph-relay.networkcanvas.com
-NEXT_PUBLIC_DISABLE_ANALYTICS=false
+# Optional: Disable all analytics tracking
+DISABLE_ANALYTICS=true
+# or for Next.js client-side
+NEXT_PUBLIC_DISABLE_ANALYTICS=true
 ```
 
 ### Client-Side Usage (React)
@@ -50,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AnalyticsProvider
           config={{
-            installationId: process.env.NEXT_PUBLIC_INSTALLATION_ID!,
+            installationId: 'your-unique-installation-id',
           }}
         >
           {children}
@@ -87,7 +86,14 @@ export function MyComponent() {
 ### Server-Side Usage
 
 ```ts
-// In API routes or server actions
+// First, initialize in your root layout or middleware
+import { initServerAnalytics } from '@codaco/analytics/server';
+
+initServerAnalytics({
+  installationId: 'your-unique-installation-id',
+});
+
+// Then use in API routes or server actions
 import { serverAnalytics } from '@codaco/analytics/server';
 
 export async function POST(request: Request) {
@@ -140,10 +146,13 @@ interface AnalyticsConfig {
   // Required: Unique identifier for this installation
   installationId: string;
 
-  // Optional: PostHog API key (defaults to env var)
+  // Optional: PostHog API key
+  // Defaults to a placeholder (authentication handled by the proxy)
   apiKey?: string;
 
-  // Optional: PostHog API host (defaults to reverse proxy)
+  // Optional: PostHog API host
+  // Hardcoded to "https://ph-relay.networkcanvas.com" by default
+  // Only override if using a different proxy endpoint
   apiHost?: string;
 
   // Optional: Disable all tracking
@@ -238,16 +247,17 @@ serverAnalytics.trackError(error);
 
 #### `initServerAnalytics(config)`
 
-Manually initialize server analytics (optional, for advanced use cases).
+Initialize server analytics (required before using serverAnalytics).
 
 ```ts
 import { initServerAnalytics, getServerAnalytics } from '@codaco/analytics/server';
 
-// In your app startup
+// In your app startup (e.g., root layout)
 initServerAnalytics({
-  installationId: process.env.INSTALLATION_ID!,
-  apiKey: process.env.POSTHOG_KEY,
-  apiHost: process.env.POSTHOG_HOST,
+  installationId: 'your-unique-installation-id',
+  // Optional overrides:
+  // disabled: false,
+  // debug: true,
 });
 
 // Later, in your code
@@ -261,11 +271,12 @@ analytics.trackEvent('app_setup');
 
 ### Default Settings
 
-The package comes with sensible defaults:
+The package comes with sensible defaults (no environment variables needed):
 
 ```typescript
 {
-  apiHost: "https://ph-relay.networkcanvas.com",
+  apiHost: "https://ph-relay.networkcanvas.com", // Hardcoded
+  apiKey: "phc_proxy_mode_placeholder", // Placeholder for proxy mode
   disabled: false,
   debug: false,
   posthogOptions: {
@@ -280,21 +291,37 @@ The package comes with sensible defaults:
 }
 ```
 
-### Environment Variables
+### Configuration
 
-- `NEXT_PUBLIC_POSTHOG_KEY` - Your PostHog project API key (**required**)
-- `NEXT_PUBLIC_POSTHOG_HOST` - PostHog API host (defaults to reverse proxy)
-- `NEXT_PUBLIC_INSTALLATION_ID` - Installation ID (required for server analytics)
-- `NEXT_PUBLIC_DISABLE_ANALYTICS` - Set to `"true"` to disable all tracking
-- `DISABLE_ANALYTICS` - Server-side disable flag
+All configuration is passed directly via the `config` prop.
+
+**Environment Variables:**
+- `DISABLE_ANALYTICS` or `NEXT_PUBLIC_DISABLE_ANALYTICS` - Set to `"true"` to disable all tracking
+
+No other environment variables are used (API host and key are hardcoded for proxy mode).
 
 ### Disabling Analytics
 
-Analytics can be disabled in multiple ways:
+Analytics can be disabled in two ways:
 
-1. **Environment variable**: `NEXT_PUBLIC_DISABLE_ANALYTICS=true`
-2. **Config option**: `<AnalyticsProvider config={{ disabled: true }}>`
-3. **Per-instance**: When disabled, all methods become no-ops
+**1. Via environment variable (recommended for development/testing):**
+```bash
+DISABLE_ANALYTICS=true
+# or for Next.js client-side
+NEXT_PUBLIC_DISABLE_ANALYTICS=true
+```
+
+**2. Via config prop:**
+```tsx
+<AnalyticsProvider config={{
+  installationId: 'your-id',
+  disabled: true
+}}>
+  {children}
+</AnalyticsProvider>
+```
+
+When disabled (by either method), all analytics methods become no-ops (no tracking occurs).
 
 ## Feature Flags & A/B Testing
 
@@ -364,6 +391,8 @@ Quick summary of changes:
 
 ## Architecture
 
+This package uses a reverse proxy architecture for security and reliability:
+
 ```
 ┌─────────────────────┐
 │  React App          │
@@ -372,6 +401,7 @@ Quick summary of changes:
 │  useAnalytics()     │
 │     ↓               │
 │  PostHog JS SDK     │
+│  (no API key)       │
 └──────────┬──────────┘
            │
            │ HTTPS
@@ -381,9 +411,13 @@ Quick summary of changes:
 │  (Reverse Proxy)    │
 │  ph-relay.network   │
 │  canvas.com         │
+│                     │
+│  • Injects API key  │
+│  • Adds CORS        │
+│  • Bypasses blockers│
 └──────────┬──────────┘
            │
-           │ HTTPS
+           │ HTTPS + Auth
            ↓
 ┌─────────────────────┐
 │  PostHog Cloud      │
@@ -394,6 +428,12 @@ Quick summary of changes:
 │  A/B Testing        │
 └─────────────────────┘
 ```
+
+**Benefits:**
+- API key stays secure (server-side only)
+- Avoids ad-blockers
+- Uses your own domain
+- Centralized authentication
 
 ## Best Practices
 
@@ -420,11 +460,12 @@ Quick summary of changes:
 
 ### Events not appearing in PostHog
 
-1. Check that `NEXT_PUBLIC_POSTHOG_KEY` is set
-2. Verify the reverse proxy is running
+1. Verify the reverse proxy is running at `ph-relay.networkcanvas.com`
+2. Check that the Cloudflare Worker has the `POSTHOG_API_KEY` environment variable set
 3. Enable debug mode: `debug: true` in config
 4. Check browser console for errors
 5. Verify PostHog dashboard shows your project
+6. Test the proxy endpoint directly: `curl https://ph-relay.networkcanvas.com`
 
 ### Feature flags not working
 

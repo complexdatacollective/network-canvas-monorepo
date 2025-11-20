@@ -13,7 +13,7 @@
  *   return (
  *     <AnalyticsProvider
  *       config={{
- *         installationId: process.env.NEXT_PUBLIC_INSTALLATION_ID!,
+ *         installationId: 'your-unique-installation-id',
  *       }}
  *     >
  *       {children}

@@ -34,11 +34,10 @@ const SharedEventAndErrorSchema = z.object({
 /**
  * Raw events are the payload that is sent to trackEvent
  */
-export const RawEventSchema = z.discriminatedUnion("type", [
+const RawEventSchema = z.discriminatedUnion("type", [
 	SharedEventAndErrorSchema.merge(EventSchema),
 	SharedEventAndErrorSchema.merge(ErrorSchema),
 ]);
-export type RawEvent = z.infer<typeof RawEventSchema>;
 
 /**
  * Trackable events include a timestamp
@@ -47,8 +46,7 @@ const TrackablePropertiesSchema = z.object({
 	timestamp: z.string(),
 });
 
-export const TrackableEventSchema = z.intersection(RawEventSchema, TrackablePropertiesSchema);
-export type TrackableEvent = z.infer<typeof TrackableEventSchema>;
+const TrackableEventSchema = z.intersection(RawEventSchema, TrackablePropertiesSchema);
 
 /**
  * Analytics events include installation ID and country code
