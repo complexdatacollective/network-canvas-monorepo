@@ -1,6 +1,6 @@
 {
 	"name": "analytics-web",
-	"version": "1.0.1",
+	"version": "1.0.2-alpha.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -16,7 +16,6 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "^6.35.1",
-		"@codaco/analytics": "workspace:*",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-dropdown-menu": "catalog:",

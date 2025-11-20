@@ -1,5 +1,5 @@
 {
-	"extends": "@codaco/tsconfig/base.json",
+	"extends": "@codaco/tsconfig/web.json",
 	"compilerOptions": {
 		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
 	},

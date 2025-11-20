@@ -3,11 +3,12 @@
 	"linter": {
 		"enabled": true,
 		"domains": {
-			"solid": "none"
+			"project": "all"
 		},
 		"rules": {
 			"recommended": true,
 			"correctness": {
+				"useImportExtensions": "off",
 				"noUnusedImports": "error",
 				"noUnusedVariables": "error"
 			},
@@ -51,7 +52,11 @@
 		"ignoreUnknown": true,
 		"includes": ["**", "!**/public/**/*.*", "!!**/*.css"]
 	},
-	"javascript": { "formatter": { "quoteStyle": "double" } },
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
 	"css": {
 		"parser": {
 			"cssModules": true,

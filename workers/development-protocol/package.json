@@ -1,0 +1,19 @@
+{
+	"name": "development-protocol-worker",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	},
+	"dependencies": {
+		"@octokit/types": "^16.0.0"
+	}
+}

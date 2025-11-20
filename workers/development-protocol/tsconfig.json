@@ -1,8 +1,8 @@
 {
-	"extends": "@codaco/tsconfig/web.json",
+	"extends": "@codaco/tsconfig/base.json",
 	"compilerOptions": {
 		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
 	},
-	"include": ["*.ts", "src"],
+	"include": ["src", "worker-configuration.d.ts"],
 	"exclude": ["node_modules"]
 }
