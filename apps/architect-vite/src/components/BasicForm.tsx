@@ -24,4 +24,4 @@ const BasicForm = ({ children, form, submit: submitForm }: BasicFormProps) => {
 	return <form onSubmit={onSubmit}>{children}</form>;
 };
 
-export default compose(reduxForm({}), connect(null, { submit }))(BasicForm as React.ComponentType<unknown>);
+export default compose(reduxForm({}), connect(null, { submit }))(BasicForm);
