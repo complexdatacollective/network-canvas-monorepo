@@ -3,34 +3,43 @@ title: Codebook
 ---
 
 <Definition>
-  An area of the protocol accessible from Architect that contains all variables
-  and entity types.
+  The codebook is a centralized view in Architect that displays all entity types and variables defined in your protocol, helping you maintain consistency and plan your data analysis.
 </Definition>
 
 ## Details
 
-The protocol's codebook gives an overview of the entities and variables defined for the protocol. Architect automatically constructs the codebook as you create variables in a protocol. The codebook can be visualized in the codebook view. To access the codebook in Architect, click on the "Manage codebook" button at the top of a protocol file.
+The protocol's codebook provides an overview of all entities and variables defined in your protocol. This centralized view helps you ensure consistency across stages and makes it easier to plan your data analysis before deploying your interview.
 
-![Clicking the 'Manage codebook' button in Architect will navigate to the codebook view](/assets/img/key-concepts/codebook/manage-codebook.png)
+Architect automatically constructs the codebook as you create variables in your protocol. To access the codebook in Architect, click the **Manage codebook** button at the top of a protocol file.
 
-## Entity Types
+![Clicking the Manage codebook button in Architect navigates to the codebook view](/assets/img/key-concepts/codebook/manage-codebook.png)
 
-The codebook organizes entities by entity type -- Ego, Node, and Edge, and organizes variables by entity. Node and edge types can be edited from the codebook using the "Edit Entity" button. Each node and edge type lists the stages that they are used on, and you can navigate to those stages by clicking on one of the "used in" stage names.
+## Entity types
+
+The codebook organizes entities by entity type -- ego, node, and edge, and organizes variables by entity. You can edit node and edge types from the codebook using the **Edit Entity** button. Each node and edge type lists the stages where they are used, and you can navigate to those stages by clicking on one of the "used in" stage names.
 
 ![A view of the codebook in Architect](/assets/img/key-concepts/codebook/codebook.png)
 
 ## Variables
 
-Each variable lists the name, type, input control, and where it is used. You can navigate to any of the stages a variable is used in by clicking on one of the "used in" stage names just like the entity types.
+Each variable lists the name, type, [input control](/en/desktop/key-concepts/input-controls), and where it is used. You can navigate to any of the stages a variable is used in by clicking on one of the "used in" stage names just like the entity types.
 
 ![Entity types and variables both indicate which stages they are used in.](/assets/img/key-concepts/codebook/used-in.png)
 
-If a variable is defined but later becomes obsolete, you can see this as an unused variable within the codebook, marked "not in use". Only variables that are unused can be deleted from the codebook. Entity types can also only be deleted if they are unsused in the protocol.
+If a variable is defined but later becomes obsolete, you can see this as an unused variable within the codebook, marked **not in use**. Only variables that are unused can be deleted from the codebook. Entity types can also only be deleted if they are unused in the protocol.
 
 ![Variables marked 'not in use' and unused entity types can be deleted in the codebook view.](/assets/img/key-concepts/codebook/unused-variables.png)
 
-## Network Assets
+## Network assets
 
-Codebooks also contain a summary of Network Assets when [external network data](/en/desktop/key-concepts/resources/#network) has been included in a protocol. The heading row of network data will be used as the variable names, and codebook lists these variable names as a summary for each external network asset.
+Codebooks also contain a summary of network assets when [external network data](/en/desktop/key-concepts/resources/#network) has been included in a protocol. The heading row of network data will be used as the variable names, and the codebook lists these variable names as a summary for each external network asset.
 
 ![A summary of the variables from an external network file.](/assets/img/key-concepts/codebook/network-data.png)
+
+## Related concepts
+
+- [Variables](/en/desktop/key-concepts/variables) - Understanding variable types and configuration
+- [Input Controls](/en/desktop/key-concepts/input-controls) - Choose appropriate controls for your variables
+- [Resources](/en/desktop/key-concepts/resources) - Import external data files including network rosters
+- [Forms](/en/desktop/key-concepts/forms) - Create forms using variables from your codebook
+- [Interfaces](/en/desktop/key-concepts/interfaces) - Learn about Interfaces that use variables from the codebook

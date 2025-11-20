@@ -53,7 +53,7 @@ Once you have created or opened a protocol, you will be taken to the **protocol 
 
 ![The overview screen](/assets/img/architect-guide/overview-screen.png)
 
-The panel at the top is the protocol card that you will see when you import this protocol into Interviewer. It shows the protocol name and description, and has three buttons for downloading the printable codebook, accessing the protocol's [resource library](/en/desktop/key-concepts/resources) and managing the [codebook](/en/desktop/key-concepts/codebook) (these areas are discussed later). The protocol description is optional. Whatever you enter will show up in the Interviewer App on the start screen.
+The protocol card at the top displays the protocol name and description, and provides three buttons: download printable codebook, access resource library, and manage codebook. This card appears when you import the protocol into Interviewer. The protocol description is optional and will appear in the Interviewer app on the start screen.
 
 In Fresco, the protocol name will be displayed on the protocols page. For more information about protocol management in Fresco, see the [using Fresco](/en/fresco/using-fresco#uploading-protocols) tutorial.
 
@@ -63,51 +63,51 @@ Since we have just created a new protocol, we have a single button at the bottom
 
 ## Adding a stage
 
-We are going to begin by configuring an Information Interface.
+You will begin by configuring an Information interface.
 
-Click the add new stage button. You will see a screen that provides a menu of all available Interfaces within the app. Interfaces are grouped together by type, with the example below showing all available name generators.
+Click the **add new stage** button. A screen appears showing a menu of all available Interfaces within the app. Interfaces are grouped together by type, with the example below showing all available name generators.
 
 ![](/assets/img/architect-guide/add-a-stage.png)
 
-Each Interface is designed for a specific task within a network interview. For now, scroll down and select the "Information" Interface from the "Utilities" section. You can also find the "Information" Interface by searching for it or selecting the "Display Data" filter.
+Each Interface is designed for a specific task within a network interview. For now, scroll down and select the **Information** interface from the **Utilities** section. You can also find the Information interface by searching for it or selecting the **Display Data** filter.
 
 ![](/assets/img/architect-guide/information-interface.png)
 
 Selecting an Interface will open the stage editor, which is where the configuration of the Interface takes place.
 
-### Setting the Stage Name
+### Setting the stage name
 
-All stages have a name, which is shown next to the stage icon in the timeline and lets you quickly differentiate between stages of the same type. We will call our stage "Welcome", so enter this text under "Stage Name". When creating your own protocols, we encourage you to use a system for naming your stages.
+All stages have a name, which appears next to the stage icon in the timeline and helps you quickly differentiate between stages of the same type. Enter "Welcome" under **Stage Name**. When creating your own protocols, use a consistent system for naming your stages.
 
-### Page Heading
+### Page heading
 
-The page heading allows you to customize a large title element that will show at the top of your Information Interface. Here we will give the heading, "Welcome to the Sample Protocol." Next, we will add the information we want displayed on the screen.
+The page heading allows you to customize a large title element that appears at the top of your Information interface. Enter "Welcome to the Sample Protocol" as the heading. Next, add the information you want displayed on the screen.
 
 ### Items
 
-The Items panel allows you to add various types of media you would like included on the screen. You have the option to add image, video, audio, or text content. Each resource used will be displayed in vertical blocks according to the order you add them. Content blocks can also be reordered by dragging.
+The items panel allows you to add various types of media to the screen. You can add image, video, audio, or text content. Each resource appears in vertical blocks according to the order you add them. You can also reorder content blocks by dragging.
 
-To add a resource to this screen, click the 'add new item' button at the bottom of the panel. A new screen will open where you can choose between the media types available. Text content can be added directly in markdown. Image, audio, and video files can be added by selecting the type and browsing for the file to add, either from a location on your device or from the resource library (if you have added content there).
+To add a resource to this screen, click the **add new item** button at the bottom of the panel. A new screen opens where you can choose between the available media types. You can add text content directly in markdown. Add image, audio, and video files by selecting the type and browsing for the file, either from a location on your device or from the [resource library](/en/desktop/key-concepts/resources).
 
 ![](/assets/img/architect-guide/edit-item.png)
 
-As in the previous Interviewer session, we will not go through the configuration of each Information Interface included in the sample protocol here. As a reminder, Information Interfaces can be used as frequently as you like throughout your protocol to help describe an upcoming task, orient a participant to a series of prompts, or present participants with a resource to consider.
+This tutorial will not cover the configuration of each Information interface included in the sample protocol. You can use Information interfaces as frequently as needed throughout your protocol to describe an upcoming task, orient a participant to a series of prompts, or present participants with a resource to consider.
 
-Once we have added all resources that we want to include on this stage, we click the "Save and Return" button in the bottom right. This action saves our stage and returns us to the timeline view where our newly configured stage is now visible.
+Once you have added all resources for this stage, click the **Save and Return** button in the bottom right. This saves your stage and returns you to the timeline view where your newly configured stage is now visible.
 
 ![](/assets/img/architect-guide/completed-stage.png)
 
-## Creating Name Generators
+## Creating name generators
 
-We will now create three separate name generator stages, which appear as stages 4, 6, and 8 in the sample protocol. The first one uses a "quick add" name generator, followed by one that utilizes a "side panel", and finally a name generator that uses forms.
+You will now create three separate name generator stages, which appear as stages 4, 6, and 8 in the sample protocol. The first one uses a Quick Add Name Generator, followed by one that utilizes a side panel, and finally a name generator that uses forms.
 
 ## Name Generator using Quick Add
 
-First, within the timeline view, we click the add a stage button. From the interface menu, we select the "Name Generator (using quick add)." When the new stage opens, we define a stage name as we did for the previous stage.
+First, within the timeline view, click the **add a stage** button. From the interface menu, select the **Name Generator (using Quick Add)** interface. When the new stage opens, define a stage name as you did for the previous stage.
 
-### Creating a New Node Type
+### Creating a new node type
 
-Before we can continue, we must tell Architect which type of node this interface will create. Since this is our first name generator, we have no node types defined yet. Click the "Create New Node Type" button to begin the process of creating one.
+Before you can continue, you must tell Architect which type of node this interface will create. Since this is your first name generator, you have no node types defined yet. Click the **Create New Node Type** button to begin the process of creating one.
 
 <KeyConcept title='Key Concept: Node and Edge "Types"'>
 
@@ -119,25 +119,25 @@ are entirely up to you to decide upon.
 
 </KeyConcept>
 
-Our name generator will ask about people, so we will name our node type "Person". We can select a color to differentiate this node type from others, though in this case we will leave the default coral color selected.
+Your name generator will ask about people, so name the node type "Person". You can select a color to differentiate this node type from others, though in this case leave the default coral color selected.
 
-Finally we will select the person icon to use for this node type. This icon is shown in Interviewer wherever the participant has the opportunity to create a new node of this type.
+Finally, select the person icon to use for this node type. This icon appears in Interviewer wherever the participant has the opportunity to create a new node of this type.
 
 ![](/assets/img/architect-guide/node-type.png)
 
-Click "Save and Return" to create the node type, and return to the name generator edit screen.
+Click **Save and Return** to create the node type and return to the name generator edit screen.
 
-### Creating a Quick Add Variable
+### Creating a Quick Add variable
 
-Next, we need to create a quick add variable that will be used to store data enter for each alter nominated by the participant. Unless you have a good reason not to, this variable should be called "name". Interviewer will use this variable as the label for every node created on this stage. To create a new variable, select the dropdown menu and click "create new" and type the name of your variable (e.g., "name"). Click the "Create" button and you will see the new variable name selected as the quick add variable.
+Next, create a Quick Add variable that will store data entered for each alter nominated by the participant. Unless you have a good reason not to, this variable should be called "name". Interviewer will use this variable as the label for every node created on this stage. To create a new variable, select the dropdown menu and click **create new**, then type the name of your variable (e.g., "name"). Click the **Create** button and you will see the new variable name selected as the Quick Add variable.
 
-### Creating Prompts
+### Creating prompts
 
-Next we must provide some questions to prompt the participant into adding alters within the interview.
+Next, provide some questions to prompt the participant to add alters within the interview.
 
-Most stages use the concept of "prompts" to allow you to define questions to put to the participant during the interview. You are free to explain the task to the participant in ways that are meaningful to your study.
+Most stages use the concept of "prompts" to allow you to define questions for the participant during the interview. You can explain the task to the participant in ways that are meaningful to your study.
 
-You can have multiple prompts on a single stage, or a single prompt per stage - the choice is yours. You may wish to think about grouping prompts by theme, and then having one stage for each theme. For example, a "Name Generator (family)" stage could contain prompts about family alters, and "Name Generator (colleagues)" could contain prompts about professional alters.
+You can have multiple prompts on a single stage or a single prompt per stage. Consider grouping prompts by theme and creating one stage for each theme. For example, a "Name Generator (family)" stage could contain prompts about family alters, and a "Name Generator (colleagues)" stage could contain prompts about professional alters.
 
 <KeyConcept title="Key Concept: Prompts">
 
@@ -146,17 +146,17 @@ emphasis and rhythm. To create this formatting, use markdown syntax.
 
 </KeyConcept>
 
-Click the "Create New" button in the prompt section, to open the new prompt edit form.
+Click the **Create New** button in the prompt section to open the new prompt edit form.
 
 ![](/assets/img/architect-guide/edit-prompt.png)
 
-Our first prompt will ask the participant to name the people with whom they have felt close to or discussed important matters. Enter the text "Within the past 6 months, who have you felt close to, or discussed important personal matters with?", and click "Save and Close".
+Your first prompt will ask the participant to name the people with whom they have felt close to or discussed important matters. Enter the text "Within the past 6 months, who have you felt close to, or discussed important personal matters with?" and click **Save and Close**.
 
-### Preview Mode
+### Preview mode
 
-We can now take the opportunity to see what our stage will look like in our finished interview by using the "Preview" feature.
+You can now see what your stage will look like in the finished interview by using the preview feature.
 
-Clicking it will open a window with the current stage loaded, and show the interface functioning as it will in Interviewer on a study device.
+Click the **Preview** button to open a window with the current stage loaded, showing the interface functioning as it will in Interviewer on a study device.
 
 <KeyConcept title="Key Concept: Preview Mode">
 
@@ -168,21 +168,21 @@ It is important to note that although you can enter data in preview mode - for e
 
 </KeyConcept>
 
-Click the pink "Preview" button in the bottom left hand corner of the stage editor, and the preview window will open.
+Click the pink **Preview** button in the bottom left corner of the stage editor to open the preview window.
 
 ![](/assets/img/architect-guide/preview-mode.png)
 
-We can then click "Save and Return" on the stage editor to return to our timeline view, but now with our new stage visible.
+Click **Save and Return** on the stage editor to return to the timeline view with your new stage visible.
 
-## Quick Add with a Side Panel
+## Quick Add with a side panel
 
-Next, we are going to configure another Name Generator (using quick add) interface, only this time we will include a side panel.
+Next, configure another Name Generator (using Quick Add) interface, but this time include a side panel.
 
-First, we will create a stage name, select the person node type (which we previously created), assign the quick add variable of "name", and create a new prompt. The prompt for this stage will be, "Within the **past 6 months,** who have you discussed **social networks research** with?" .
+First, create a stage name, select the person node type (which you previously created), assign the Quick Add variable of "name", and create a new prompt. The prompt for this stage will be "Within the **past 6 months,** who have you discussed **social networks research** with?"
 
-Now, we will add the side panel. Click the "Add New Panel" and give the panel the title "People you have previously mentioned." This title will appear across the top of the side panel and will contextualize the nodes that appear to the participant.
+Now, add the side panel. Click **Add New Panel** and give the panel the title "People you have previously mentioned." This title will appear across the top of the side panel and will contextualize the nodes that appear to the participant.
 
-Next, we need to choose a data source for this side panel. We have two options: either we use the network constructed during the interview or we bring in an external data file (e.g., a roster) that will populate within the side panel. In this example, we will choose to use the network from the in-progress interview.
+Next, choose a data source for this side panel. You have two options: either use the network constructed during the interview or bring in an external data file (e.g., a roster) that will populate within the side panel. In this example, choose to use the network from the in-progress interview.
 
 ![](/assets/img/architect-guide/side-panel.png)
 
@@ -196,21 +196,21 @@ Changes&quot; button in the bottom bar when on the timeline view, or select
 
 </TipBox>
 
-## Name Generator using Forms
+## Name Generator using forms
 
-We will now create a new name generator stage that uses a form to capture data on alters named. As before, we add a new stage (selecting the Name Generator (using forms) from the interface menu) and add a stage name. Next we will create a new node type for "Clinic" on this stage as we will be asking a prompt about clinics rather than people. Once we create the node type for Clinic, we move on to edit the form.
+You will now create a new name generator stage that uses a form to capture data on alters named. As before, add a new stage (selecting the Name Generator (using forms) from the interface menu) and add a stage name. Next, create a new node type for "Clinic" on this stage as you will be asking a prompt about clinics rather than people. Once you create the node type for Clinic, move on to edit the form.
 
 ### Form
 
-This section is where we will define the fields that will be shown on the form when the participant creates a node on this name generator.
+This section is where you will define the fields that will be shown on the form when the participant creates a node on this name generator.
 
 Fields capture data about alters or ego, and are where specific variables are defined.
 
-First, let's start with creating a title for the form to orient the participant to the information we want to collect. Enter the title "Add a Clinic or Health Care Provider."
+First, create a title for the form to orient the participant to the information you want to collect. Enter the title "Add a Clinic or Health Care Provider."
 
-Next, we will define the fields of the form. By clicking "Create New" in the fields panel, a new screen opens which asks us to define a variable for the field, the question prompt, an input control, and to select any validation we may want to include.
+Next, define the fields of the form. By clicking **Create New** in the fields panel, a new screen opens which asks you to define a variable for the field, the question prompt, an input control, and to select any validation you may want to include.
 
-For the first field, we want to know the name of the clinic the participant is nominating so we use the variable "name" that we previously created by clicking "Select Variable" and selecting it from the list. Next, we will enter the text for this field label and in our example we will use a question prompt, "What is the name of this clinic?"
+For the first field, you want to know the name of the clinic the participant is nominating so use the variable "name" that you previously created by clicking **Select Variable** and selecting it from the list. Next, enter the text for this field label. In this example, use the question prompt "What is the name of this clinic?"
 
 ![](/assets/img/architect-guide/form-fields.png)
 
@@ -224,32 +224,32 @@ Otherwise, click an existing variable from the list.
 
 </TipBox>
 
-Finally, we choose the input control that will be shown to collect this variable.
+Finally, choose the input control that will be shown to collect this variable.
 
 <KeyConcept title="Key Concept: Input controls">
 
-Architect and Interviewer implement many different types of input control (text, number, checkbox group, toggle, radio button group, toggle button group, date picker, likert scale, visual analog scale).
+Architect and Interviewer implement many different types of input control (Text Input, Number Input, Checkbox Group, Toggle, Radio Button Group, Toggle Button Group, Date Picker, Likert Scale, Visual Analog Scale).
 
-This is because the most appropriate interface for assigning a variable depends very much on the specific nature of the variable, and not just on its data type. For example, when collecting an ordinal variable that represents a likert scale, you might prefer a range slider OR a group of radio buttons.
+The most appropriate input control for a variable depends on the specific nature of the variable, not just its data type. For example, when collecting an ordinal variable that represents a Likert scale, you might prefer a Visual Analog Scale or a Radio Button Group. For more information, see the [input controls guide](/en/desktop/key-concepts/input-controls).
 
 </KeyConcept>
 
-Because we are asking for the name of the clinic - a simple text variable - a text input is the most appropriate option.
+Because you are asking for the name of the clinic (a simple text variable), a Text Input is the most appropriate option.
 
-Finally, we can define our validation requirements -- if any -- for this field. We will indicate that this text field is required. The validation options available vary depending on the type of variable. By adding a validation of required, the participant will necessarily include information in this field before they can proceed.
+Finally, define validation requirements for this field. Indicate that this text field is required. The validation options available vary depending on the type of variable. By adding a required validation, the participant must include information in this field before they can proceed. For more information, see the [field validation guide](/en/desktop/key-concepts/field-validation).
 
 ![](/assets/img/architect-guide/validation.png)
 
-Click "Save and Close", and we have created our first form field.
+Click **Save and Close** to create your first form field.
 
-Now, using the process we learned above, we will create the two additional fields for this form.
+Now, using the process you learned above, create the two additional fields for this form.
 
-Create the following fields, with appropriate input controls, question prompts and options:
+Create the following fields with appropriate input controls, question prompts, and options:
 
-- A `last_visit` variable, using the DatePicker input control, prompt of "When was your visit?", and an appropriate start range
+- A `last_visit` variable, using the Date Picker input control, prompt of "When was your visit?", and an appropriate start range
 - A `visit_purpose` variable, using the Text Area input control, and a prompt of "In your own words, what was the purpose of your visit?"
 
-After completing the form, we will configure the prompt for the stage. Click "Create New" in the prompts section, and enter the text, "Within **the past 12 months,** which **clinics** or **healthcare providers** have you visited?"
+After completing the form, configure the prompt for the stage. Click **Create New** in the prompts section and enter the text "Within **the past 12 months,** which **clinics** or **healthcare providers** have you visited?"
 
 ![](/assets/img/architect-guide/fields-inputs-prompts.png)
 
@@ -317,30 +317,30 @@ Next, we will create the following fields with associated variables, question pr
 
 ![](/assets/img/architect-guide/ego-form-fields.png)
 
-To demonstrate the range of input control options, we implemented far more fields than are likely to be best practice for a form within an interview. You can [learn more about input controls here](../key-concepts/input-controls)
+To demonstrate the range of input control options, this example implements far more fields than would typically be best practice for a form within an interview. For more information, see the [input controls guide](/en/desktop/key-concepts/input-controls).
 
-We click "Save and Return" and go back to the timeline view to implement the next stage.
+Click **Save and Return** to go back to the timeline view and implement the next stage.
 
-## Creating a Per Alter Form
+## Creating a Per-Alter Form
 
-Let's next repeat that process, but this time creating a form that will capture data from alters on the Per Alter Form Interface. Create a new stage using the Per Alter Form Interface and set the stage name. Next, select the node type "University" and scroll down to configure the Information Panel.
+Next, repeat that process, but this time create a form that will capture data from alters on the Per-Alter Form interface. Create a new stage using the Per-Alter Form interface and set the stage name. Next, select the node type "University" and scroll down to configure the information panel.
 
 ![](/assets/img/architect-guide/per-alter-form.png)
 
-We will now add just two fields to this form. Here are the details you need, following the same process as above:
+Add just two fields to this form. Here are the details you need, following the same process as above:
 
-- Variable called `visit_or_study`, prompt of "Did you visit this university, or study there?", input control of "Radio Group" with options "Visited" and "Studied", "Required" validation
-- Variable called `overall_review`, prompt of "Overall, how would you describe your experience at this university?", input control of "Likert Scale" with options "Excellent", "Above Average", "Average", "Below Average", "Poor"
+- Variable called `visit_or_study`, prompt of "Did you visit this university, or study there?", input control of Radio Button Group with options "Visited" and "Studied", Required validation
+- Variable called `overall_review`, prompt of "Overall, how would you describe your experience at this university?", input control of Likert Scale with options "Excellent", "Above Average", "Average", "Below Average", "Poor"
 
-As before, save when you are finished, and return to the overview screen of your protocol.
+When finished, save and return to the overview screen of your protocol.
 
-## Creating Sociograms
+## Creating sociograms
 
-For the next stage, we use the Sociogram Interface. The Sociogram is an interface designed to allow participants to interact with the alters produced within Name Generator stages in three principle ways.
+For the next stage, use the Sociogram interface. The Sociogram is an interface designed to allow participants to interact with the alters produced within Name Generator stages in three principal ways:
 
 1. Layout, where the participant spatially arranges the nodes
 2. Edge creation, where the participant can create alter-alter ties
-3. Variable toggling, where the participant can nominate alters has having a given boolean attribute
+3. Variable toggling, where the participant can nominate alters as having a given boolean attribute
 
 Create the stage, set a stage name, and select the "Person" node type.
 
@@ -454,9 +454,9 @@ Simply navigate to a stage that creates nodes from within preview mode, create s
 
 </TipBox>
 
-## Creating an Ordinal Bin
+## Creating an ordinal bin
 
-We now wish to create an Ordinal Bin interface so that we can quickly and efficiently ask our participant about the frequency of contact they have with each alter. From the timeline overview, add a new stage using the Ordinal Bin interface.
+You now want to create an Ordinal Bin interface to quickly and efficiently ask your participant about the frequency of contact they have with each alter. From the timeline overview, add a new stage using the Ordinal Bin interface.
 
 <KeyConcept title="Key Concept: 'Bins' and 'Buckets'">
 

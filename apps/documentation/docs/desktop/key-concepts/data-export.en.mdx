@@ -1,0 +1,466 @@
+---
+title: Data Export
+---
+
+<Definition>
+Data export allows you to extract interview data from Interviewer or Fresco in standardized formats suitable for analysis in external tools.
+</Definition>
+
+## Overview
+
+After conducting interviews using Interviewer or Fresco, you need to export the data for analysis. Network Canvas provides flexible export options that allow you to export data in formats compatible with statistical software, network analysis programs, and spreadsheet applications.
+
+The export process transforms your interview data—including ego attributes, alter attributes, and edge data—into structured files that you can import into analysis tools such as R, Python, SPSS, UCINET, Gephi, and many others.
+
+## Export locations
+
+The export process differs slightly depending on which Network Canvas application you're using:
+
+**Interviewer (desktop applications):**
+- Export from the **Manage or Export Sessions** card on the start screen
+- Export data directly to your local filesystem
+- See [Protocol and Data Workflows](/en/desktop/tutorials/protocol-and-data-workflows#data-export) for detailed Interviewer workflows
+
+**Fresco (web-based):**
+- Export from the interviews page in the dashboard
+- Download exported data through your browser
+- See [Using Fresco](/en/fresco/using-fresco#exporting-data) for detailed Fresco workflows
+
+## File types
+
+Network Canvas supports two file formats for data export. Choose the format that best suits your analysis needs.
+
+### CSV format
+
+**What it is:** Comma-Separated Values (CSV) files are plain text files that represent tabular data. The CSV export creates multiple files, one for each type of entity in your network data.
+
+**Best for:**
+- Statistical analysis in R, Python, SPSS, Stata, SAS
+- Spreadsheet applications (Excel, Google Sheets, LibreOffice Calc)
+- The egoR package in R
+- Custom data processing workflows
+
+**What you get:**
+
+The CSV export creates separate files for each entity type in your protocol:
+
+#### Ego attribute list
+- **One row per ego** (participant)
+- **Filename format:** `caseID_sessionUUID_ego.csv`
+- **Contains:**
+  - Ego-level variables you collected
+  - Session metadata (start time, finish time, protocol name, etc.)
+  - Network Canvas identifiers (ego UUID, case ID, session ID)
+
+**Example structure:**
+```csv
+ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionFinish
+1,abc123-def456,case_001,34,Male,2025-01-15 10:30,2025-01-15 11:15
+2,ghi789-jkl012,case_002,28,Female,2025-01-15 14:00,2025-01-15 14:45
+```
+
+#### Alter attribute list
+- **One row per alter** (nominated node)
+- **Filename format:** `caseID_sessionUUID_alterType.csv`
+- **Contains:**
+  - All alter attributes you collected
+  - Network Canvas identifiers (alter UUID, ego UUID)
+  - Export-specific incrementing ID (unique only within this export)
+
+**Example structure:**
+```csv
+ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,contact_frequency
+1,1,xyz789,abc123-def456,John,32,true,Daily
+1,2,uvw456,abc123-def456,Sarah,29,true,Weekly
+2,1,rst123,ghi789-jkl012,Michael,31,false,Monthly
+```
+
+**Important notes:**
+- If your protocol defines multiple node types (e.g., "Person" and "Organization"), you'll receive a separate file for each type
+- The `alter_id` is an incrementing integer unique only within each ego's network and this specific export
+- The `networkCanvasUUID` is the permanent unique identifier for each alter
+
+#### Edge attribute list
+- **One row per edge** (relationship between alters)
+- **Filename format:** `caseID_sessionUUID_edgeType.csv`
+- **Contains:**
+  - Edge attributes you collected
+  - Source and target identifiers (both UUID and export ID)
+  - Link to ego network (`networkCanvasEgoUUID`)
+
+**Example structure:**
+```csv
+ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,friendship,1,2,xyz789,uvw456,strong,high
+```
+
+**Important notes:**
+- The `from` and `to` columns reference the `alter_id` from the alter attribute list
+- Multiple edge types create separate files
+- Empty edge files are created even if no edges were collected
+
+### GraphML format
+
+**What it is:** GraphML is an XML-based open standard for representing graph data. It stores the complete network structure in a single file.
+
+**Best for:**
+- Network visualization software (Gephi, NodeXL, Visone)
+- Network analysis programs (UCINET, Pajek, ORA)
+- Graph databases and tools that work with graph structures
+- Preserving the complete network structure in one file
+
+**What you get:**
+
+- **One file per interview session**
+- **Filename format:** `caseID_sessionUUID.graphml`
+- **Contains:**
+  - Complete network structure (nodes and edges)
+  - All node and edge attributes
+  - Ego attributes (stored as graph-level attributes)
+
+**Example structure:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="undirected">
+    <node id="alter_1">
+      <data key="name">John</data>
+      <data key="age">32</data>
+    </node>
+    <node id="alter_2">
+      <data key="name">Sarah</data>
+      <data key="age">29</data>
+    </node>
+    <edge source="alter_1" target="alter_2">
+      <data key="relationship_strength">strong</data>
+    </edge>
+  </graph>
+</graphml>
+```
+
+### Choosing between CSV and GraphML
+
+| Consideration | CSV | GraphML |
+|--------------|-----|---------|
+| **Analysis focus** | Statistical analysis, ego network metrics | Network visualization, graph analysis |
+| **File count** | Multiple files (one per entity type) | Single file per session |
+| **Readability** | Human-readable, opens in Excel | XML format, needs specialized software |
+| **R compatibility** | Native support, works with egoR | Requires graph packages (igraph, network) |
+| **Data structure** | Relational (separate tables) | Graph (nodes and edges) |
+| **Best for beginners** | ✓ More familiar format | May require learning curve |
+
+**Our recommendation:** Export data in **both formats** when first working with Network Canvas data. This allows you to experiment and determine which format works best with your analysis workflow.
+
+## Export options
+
+Network Canvas provides several specialized export options that affect how your data is formatted. You can usually leave these at their default values unless you have specific requirements.
+
+### Merge sessions by protocol
+
+This option combines all interview sessions into a single file (or set of files for CSV).
+
+When enabled, this creates one combined file containing all interviews. For CSV exports, you get a single ego file, a single alter file per type, and a single edge file per type. For GraphML, this option is not applicable, as GraphML is always exported per-session. When disabled, the export creates separate files for each interview session.
+
+Enable this option when you want all your data in one place for analysis, when you're importing into statistical software that works better with combined datasets, or when you're using the egoR package in R. Disable it when you want to analyze individual interviews separately, when you need to track which data came from which interview session, or when you're doing quality checks on individual interviews.
+
+Even when merged, ego networks remain separate—the data is combined into shared files, but network boundaries are preserved through the ego identifiers.
+
+### Use screen layout coordinates
+
+This option converts normalized node positions from Sociogram interfaces into screen-specific pixel coordinates.
+
+Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
+
+When enabled, this converts normalized coordinates to pixel coordinates based on screen size. In Interviewer, it uses the actual screen dimensions from the interview device. In Fresco, it uses a hardcoded size of 1920 x 1080 pixels. When disabled (the default), it exports normalized coordinates in the 0-1 range.
+
+Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
+
+**Example:**
+
+**Normalized (default):**
+```csv
+alter_id,name,x,y
+1,John,0.25,0.33
+2,Sarah,0.75,0.67
+```
+
+**Screen coordinates (1920x1080):**
+```csv
+alter_id,name,x,y
+1,John,480,356
+2,Sarah,1440,724
+```
+
+### Additional export considerations
+
+**Unique identifiers:** Network Canvas generates unique identifiers (UUIDs) for all entities:
+- `networkCanvasEgoUUID` - Unique ego identifier across all sessions
+- `networkCanvasUUID` - Unique alter identifier
+- `networkCanvasCaseID` - Case identifier you provided or auto-generated
+- `networkCanvasSessionID` - Unique session identifier
+
+These identifiers allow you to:
+- Merge data from multiple exports
+- Link data to external sources
+- Track participants across multiple interview sessions (if applicable)
+
+**Session metadata:** Ego files include valuable metadata:
+- `sessionStart` - Interview start timestamp
+- `sessionFinish` - Interview end timestamp
+- `sessionExported` - Export timestamp
+- `networkCanvasProtocolName` - Protocol used
+
+## Export workflows
+
+### Exporting from Interviewer
+
+1. Open Interviewer
+2. On the start screen, click the **Manage or Export Sessions** card
+3. Select the interview sessions you want to export
+4. Click the export button
+5. Choose your file type (CSV or GraphML)
+6. Configure export options if needed
+7. Choose a save location:
+   - **Windows/macOS/Linux:** Standard file browser appears
+   - **iOS/Android:** Share dialog appears—choose your storage location
+
+**Tips:**
+- Export regularly to avoid data loss
+- Use cloud storage apps on tablets for automatic backup
+- See [Protocol and Data Workflows](/en/desktop/tutorials/protocol-and-data-workflows) for detailed workflows
+
+### Exporting from Fresco
+
+1. Log into your Fresco dashboard
+2. Navigate to the interviews page
+3. Select interviews to export (or use **Export all** option)
+4. Click the **Export selected** button
+5. Choose your file type (CSV or GraphML)
+6. Configure export options if needed
+7. Click **Start export process**
+8. Download the exported file when ready
+
+**Tips:**
+- Track export status on the interviews page
+- Use **Export all unexported interviews** for incremental exports
+- Export incomplete interview URLs to follow up with participants
+- See [Using Fresco](/en/fresco/using-fresco#exporting-data) for detailed workflows
+
+## Data structure details
+
+### Understanding the ego-alter-edge structure
+
+Network Canvas organizes personal network data using a standard ego network structure:
+
+```
+Ego (participant)
+├── Alter 1 (network member)
+├── Alter 2 (network member)
+├── Alter 3 (network member)
+└── Edges (relationships between alters)
+    ├── Alter 1 → Alter 2
+    └── Alter 2 → Alter 3
+```
+
+**Ego level:** One row per participant, containing:
+- Participant demographics
+- Aggregated network measures (if calculated)
+- Session metadata
+
+**Alter level:** Multiple rows per participant (one per nominated alter), containing:
+- Alter attributes
+- Ego-alter tie attributes
+- Reference to ego (ego_id or networkCanvasEgoUUID)
+
+**Edge level:** Relationships between alters within each ego network, containing:
+- Edge attributes
+- Source and target alter references
+- Reference to ego network
+
+### Working with multiple entity types
+
+If your protocol defines multiple node types (e.g., "Person" and "Place"), the export structure reflects this:
+
+**CSV export:**
+- Separate alter files: `case_001_session_123_Person.csv` and `case_001_session_123_Place.csv`
+- Each file contains only alters of that specific type
+- Edges between different types appear in the edge files with appropriate type indicators
+
+**GraphML export:**
+- All node types in one file
+- Node type identified by attribute
+
+### Handling missing data
+
+Network Canvas handles missing data as follows:
+
+**CSV format:**
+- Optional fields left blank: Empty cell
+- Boolean variables not answered: Empty cell
+- Multi-select checkboxes not selected: FALSE or empty
+
+**GraphML format:**
+- Optional attributes without values: Attribute tag omitted
+- Required attributes: Empty string value
+
+**Best practice:** Document your protocol's required vs. optional fields so you know which missing values are expected.
+
+## Using exported data
+
+### In R (statistical analysis)
+
+Network Canvas CSV exports are designed to work seamlessly with R, particularly the egoR package:
+
+```r
+library(egoR)
+
+# Read Network Canvas data
+ego_data <- read_egonet(
+  egos = "path/to/ego.csv",
+  alters = "path/to/alters_Person.csv",
+  edges = "path/to/edges_friendship.csv"
+)
+
+# Or use ideanet package (see tutorial)
+library(ideanet)
+nc_data <- nc_read(
+  path = "path/to/export/folder",
+  protocol = "path/to/protocol.netcanvas"
+)
+```
+
+**See also:** [Working with Network Canvas Data in R](/en/desktop/tutorials/working-with-data)
+
+### In Python
+
+```python
+import pandas as pd
+import networkx as nx
+
+# CSV approach
+egos = pd.read_csv('ego.csv')
+alters = pd.read_csv('alters_Person.csv')
+edges = pd.read_csv('edges_friendship.csv')
+
+# GraphML approach
+G = nx.read_graphml('case_001_session_123.graphml')
+```
+
+### In network visualization software
+
+**Gephi:**
+1. Open Gephi
+2. File → Open → Select GraphML file
+3. Graph displays with all attributes available
+
+**UCINET:**
+1. Import GraphML or CSV
+2. Convert to UCINET format if needed
+3. Run network analysis procedures
+
+### In spreadsheet software
+
+**Excel, Google Sheets, LibreOffice Calc:**
+1. Open CSV files directly
+2. Each file opens as a separate spreadsheet
+3. Use ego_id to link across files
+4. Pivot tables and formulas work with the data
+
+## Best practices
+
+### During data collection
+
+1. **Export frequently:** Don't wait until all interviews are complete
+2. **Test exports early:** Export test data to verify format meets your needs
+3. **Verify data structure:** Check that all expected variables appear in exports
+4. **Document your protocol:** Keep notes on variable names and their meanings
+
+### File organization
+
+1. **Create dedicated folders:** Keep exports organized by study, date, or wave
+2. **Use consistent naming:** Develop a naming convention for export folders
+3. **Version control:** Keep track of which protocol version produced which exports
+4. **Backup regularly:** Store exports in multiple locations (local + cloud)
+
+### Data integrity
+
+1. **Verify counts:** Check that the number of participants matches expectations
+2. **Check for duplicates:** Ensure case IDs are unique if intended
+3. **Validate ranges:** Spot-check that variable values are within expected ranges
+4. **Review metadata:** Session times can help identify problematic interviews
+
+### Preparing for analysis
+
+1. **Export both formats initially:** Determine which works best for your workflow
+2. **Document transformations:** Keep notes on any data cleaning or recoding
+3. **Preserve raw exports:** Keep original exports before any modifications
+4. **Create codebooks:** Document variable meanings, especially categorical values
+
+## Troubleshooting
+
+### Common export issues
+
+**Problem: Export button is grayed out**
+- **Cause:** No sessions selected
+- **Solution:** Select at least one interview session
+
+**Problem: Exported files are empty**
+- **Cause:** No data collected for that entity type
+- **Solution:** Verify your protocol collected the expected data; check that interviews were completed
+
+**Problem: Can't find exported files**
+- **Cause:** Unclear save location
+- **Solution (Interviewer):** Check default Documents folder or recent downloads
+- **Solution (Fresco):** Check browser's download folder
+
+**Problem: CSV files won't open in Excel**
+- **Cause:** File encoding or comma-separator issues
+- **Solution:** Use "Import Data" feature in Excel instead of double-clicking; specify UTF-8 encoding
+
+**Problem: Missing variables in export**
+- **Cause:** Variables defined but not used on any stages, or validation prevented completion
+- **Solution:** Verify variables are actually used in protocol; check that forms were completed
+
+**Problem: Alter IDs don't match between files**
+- **Cause:** Using incrementing alter_id instead of networkCanvasUUID
+- **Solution:** Use `networkCanvasUUID` for linking across exports; `alter_id` is export-specific
+
+### Data quality checks
+
+After exporting, verify:
+
+1. **Record counts match expectations**
+   - Number of ego records = number of completed interviews
+   - Alter counts seem reasonable
+   - Edge counts make sense given network size
+
+2. **Variable completeness**
+   - Required fields are populated
+   - Optional fields show expected missingness
+   - No unexpected missing data patterns
+
+3. **Value ranges**
+   - Categorical variables use expected categories
+   - Numerical values within realistic ranges
+   - Dates are reasonable
+
+4. **Identifier integrity**
+   - Case IDs are unique (unless repeat interviews intended)
+   - UUIDs are present for all entities
+   - Ego-alter-edge linkages are valid
+
+## Related concepts
+
+- [Protocol and Data Workflows](/en/desktop/tutorials/protocol-and-data-workflows) - Complete workflows for protocol deployment and data export
+- [Using Fresco](/en/fresco/using-fresco) - Export data from Fresco-based studies
+- [Working with Data in R](/en/desktop/tutorials/working-with-data) - Detailed tutorial on analyzing Network Canvas data in R
+- [Variables](/en/desktop/key-concepts/variables) - Understanding the variables you'll see in exports
+
+## Next steps
+
+Now that you understand data export, you can:
+
+1. Export test data from a sample interview to verify format
+2. Practice importing exported data into your analysis software
+3. Review the [Working with Data tutorial](/en/desktop/tutorials/working-with-data) for R analysis workflows
+4. Plan your data organization strategy for your study

@@ -3,51 +3,44 @@ title: Resources
 ---
 
 <Definition>
-
-External files, such as audio, images, video, and network roster data, that can be used within your interview protocol.
-
+Resources are external files, such as audio, images, video, and network roster data, that you can use within your interview protocol.
 </Definition>
 
 ## Details
 
-In Architect, 'resources' are any external files that you use within your interview. These can be media files, such as audio, images, or even video. They can also be network data files that you can use as a roster. Careful use of resources can improve the interview experience for your participants, or enable different types of interview workflow.
+In Architect, resources are any external files that you use within your interview. These can be media files, such as audio, images, or video. They can also be network data files that you can use as a roster. Careful use of resources can improve the interview experience for your participants or enable different types of interview workflow.
 
-Once added to your protocol in Architect, resources are stored within the `.netcanvas` file itself. Because of this, you will need to handle updating or removing resources from within Architect.
+Once you add resources to your protocol in Architect, they are stored within the `.netcanvas` file itself. Because of this, you must handle updating or removing resources from within Architect.
 
 <TipBox danger>
 
-Using large numbers of resources, or resources that are poorly optimized, in your
-protocol can **heavily** impact performance. This means that protocols take longer
-to install on devices, and some stages may take much longer to load. Special care
-must be taken to appropriately resize and compress your resources before importing
-them, and you must ensure that you have tested your protocol on your intended field
-devices to ascertain performance levels.
+Using large numbers of resources or poorly optimized resources in your protocol can heavily impact performance. This means that protocols take longer to install on devices and some stages may take much longer to load. Take special care to appropriately resize and compress your resources before importing them, and ensure that you test your protocol on your intended field devices to verify performance levels.
 
-As a general guide, you should aim to have your total protocol file size be less than 10mb.
+As a general guide, aim to keep your total protocol file size under 10MB.
 
 </TipBox>
 
-## Adding Resources to a Stage
+## Adding resources to a stage
 
-Many stages allow you to add resources directly while configuring them. This is designed to provide a more seamless flow when creating your interview protocol. Examples of this include background images on the Sociogram interface, roster files in either of the roster Name Generators, and media files on the Information interface.
+Many stages allow you to add resources directly while configuring them. This is designed to provide a more seamless flow when creating your interview protocol. Examples of this include background images on the Sociogram Interface, roster files in either of the roster Name Generators, and media files on the Information Interface.
 
-If the stage you are supporting uses a resource it will provide an interface for you to add it directly, and will give instructions about which type of resource is required.
+If the stage you are configuring uses a resource, it will provide an interface for you to add it directly and will give instructions about which type of resource is required.
 
 ![](/assets/img/key-concepts/assets/bg-asset.png)
 
-## Adding and Removing Resources from the Resource Library
+## Adding and removing resources from the resource library
 
-For a more broad overview of all resources within your current protocol, click the 'resource library' button in the upper right hand corner of the protocol overview card, when looking at the timeline. This will open the Resource Library.
+For a broader overview of all resources within your current protocol, click the **resource library** button in the upper right hand corner of the protocol overview card when looking at the timeline. This will open the resource library.
 
 ![](/assets/img/key-concepts/assets/manage-assets-button.png)
 
-Under the resource library screen, you can browse, filter, and delete any existing resources, as well as add new ones. To add a new resource to the resource library, simply drag and drop a file into the designated area, or browse for the file you wish to import.
+In the resource library screen, you can browse, filter, and delete any existing resources, as well as add new ones. To add a new resource to the resource library, drag and drop a file into the designated area or browse for the file you wish to import.
 
 ![](/assets/img/key-concepts/assets/asset-library.png)
 
-You will notice that existing resources that are unused show a red "unused" pill. This indicates that they are able to be deleted. Attempting to delete an resource that is in use within your interview will be prevented. You must first update or remove all uses of a resource before you can delete it.
+You will notice that existing resources that are unused show a red **unused** pill. This indicates that you can delete them. Attempting to delete a resource that is in use within your interview will be prevented. You must first update or remove all uses of a resource before you can delete it.
 
-## Supported File Types
+## Supported file types
 
 ### Image
 
@@ -63,4 +56,11 @@ Interviewer supports MP4 and MOV video file formats. Take special care when usin
 
 ### Network
 
-Interviewer supports network data in CSV format. The heading row will be used to set variable names for any nodes brought in to the interview. Ensure that you have a column called "name" to take advantage of automatic [node labelling](/en/desktop/advanced-topics/node-labelling). Download a simple example CSV file from [here](/assets/previousInterview.csv).
+Interviewer supports network data in CSV format. The heading row will be used to set [variable](/en/desktop/key-concepts/variables) names for any nodes brought into the interview. Ensure that you have a column called `name` to take advantage of automatic [node labelling](/en/desktop/advanced-topics/node-labelling). Download a simple example CSV file from [here](/assets/previousInterview.csv).
+
+## Related concepts
+
+- [Interfaces](/en/desktop/key-concepts/interfaces) - Learn which Interfaces use resources
+- [Codebook](/en/desktop/key-concepts/codebook) - View network asset summaries in the codebook
+- [Network Filtering](/en/desktop/key-concepts/network-filtering) - Filter roster data on stages
+- [Variables](/en/desktop/key-concepts/variables) - Understand how roster columns become variables
