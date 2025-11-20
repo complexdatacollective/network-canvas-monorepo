@@ -1,13 +1,6 @@
-interface GitHubRelease {
-	tag_name: string;
-	name: string;
-	assets: GitHubAsset[];
-}
+import type { Endpoints } from "@octokit/types";
 
-interface GitHubAsset {
-	name: string;
-	browser_download_url: string;
-}
+type GitHubRelease = Endpoints["GET /repos/{owner}/{repo}/releases"]["response"]["data"][number];
 
 export default {
 	async fetch(request: Request): Promise<Response> {
@@ -45,8 +38,8 @@ export default {
 				.filter((release) => release.name?.includes("@codaco/development-protocol-"))
 				.sort((a, b) => {
 					// Extract timestamp from release name (format: @codaco/development-protocol-YYYYMMDDHHMMSS-SHA)
-					const timestampA = a.name.match(/@codaco\/development-protocol-(\d{14})/)?.[1] || "0";
-					const timestampB = b.name.match(/@codaco\/development-protocol-(\d{14})/)?.[1] || "0";
+					const timestampA = a.name?.match(/@codaco\/development-protocol-(\d{14})/)?.[1] || "0";
+					const timestampB = b.name?.match(/@codaco\/development-protocol-(\d{14})/)?.[1] || "0";
 					return timestampB.localeCompare(timestampA); // Sort descending (latest first)
 				});
 
@@ -54,7 +47,11 @@ export default {
 				return new Response("No development protocol releases found", { status: 404 });
 			}
 
-			const release = developmentReleases[0]; // Get the latest development protocol release
+			// Get the latest development protocol release
+			const release = developmentReleases[0];
+			if (!release) {
+				return new Response("No development protocol releases found", { status: 404 });
+			}
 
 			// Find the Development.netcanvas asset
 			const developmentAsset = release.assets.find((asset) => asset.name === "Development.netcanvas");
@@ -82,8 +79,7 @@ export default {
 					"Cache-Control": "public, max-age=300", // Cache for 5 minutes
 				},
 			});
-		} catch (error) {
-			console.error("Error fetching Development.netcanvas:", error);
+		} catch (_error) {
 			return new Response("Internal server error", { status: 500 });
 		}
 	},

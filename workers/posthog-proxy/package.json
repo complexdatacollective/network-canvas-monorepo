@@ -9,6 +9,7 @@
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
 		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}

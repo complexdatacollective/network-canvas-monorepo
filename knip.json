@@ -10,15 +10,7 @@
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},
 		"packages/protocol-validation": {},
-		"workers/development-protocol": {
-			"entry": ["src/index.ts"],
-			"ignoreBinaries": ["wrangler"],
-			"ignoreDependencies": ["wrangler"]
-		},
-		"workers/posthog-proxy": {
-			"entry": ["src/index.ts"],
-			"ignoreBinaries": ["wrangler"],
-			"ignoreDependencies": ["wrangler"]
-		}
+		"workers/development-protocol": {},
+		"workers/posthog-proxy": {}
 	}
 }

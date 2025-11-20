@@ -51,7 +51,11 @@
 		"ignoreUnknown": true,
 		"includes": ["**", "!**/public/**/*.*", "!!**/*.css"]
 	},
-	"javascript": { "formatter": { "quoteStyle": "double" } },
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
 	"css": {
 		"parser": {
 			"cssModules": true,
