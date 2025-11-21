@@ -1,7 +1,21 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
-import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
+import type { ActiveProtocolState } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
+
+// Selector that properly handles the TimelineState wrapping in RootState
+export const selectActiveProtocol = (state: RootState): ActiveProtocolState => {
+	// The activeProtocol in RootState is wrapped by the timeline middleware
+	// We need to extract the present value
+	const timelineState = state.activeProtocol;
+
+	if (timelineState && typeof timelineState === "object" && "present" in timelineState) {
+		return (timelineState as unknown as { present: ActiveProtocolState }).present ?? null;
+	}
+
+	// Fallback for raw state (shouldn't happen in normal operation)
+	return (timelineState as unknown as ActiveProtocolState) ?? null;
+};
 
 // During transition, check both old and new stores
 export const getProtocol = (state: RootState) => {
@@ -116,4 +130,19 @@ export const getTimelineLocus = (state: RootState) => {
 	}
 
 	return null;
+};
+
+// Undo/redo selectors
+export const getCanUndo = (state: RootState): boolean => {
+	const past = state.activeProtocol?.past || [];
+	if (past.length === 0) return false;
+
+	// Don't allow undo if it would take us back to a null state
+	const wouldBePresent = past[past.length - 1];
+	return wouldBePresent !== null && wouldBePresent !== undefined;
+};
+
+export const getCanRedo = (state: RootState): boolean => {
+	const future = state.activeProtocol?.future || [];
+	return future.length > 0;
 };

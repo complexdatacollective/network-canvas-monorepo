@@ -7,10 +7,9 @@ import { timelineActions } from "../middleware/timeline";
 import assetManifest from "./protocol/assetManifest";
 import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
-import type { RootState } from "./root";
 
 // Types
-type ActiveProtocolState =
+export type ActiveProtocolState =
 	| (CurrentProtocol & {
 			name: string;
 			isValid: boolean;
@@ -125,36 +124,8 @@ export const actionCreators = {
 	clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
 };
 
-// Export a custom selector that properly handles the TimelineState wrapping in RootState
-export const selectActiveProtocol = (state: RootState) => {
-	// The activeProtocol in RootState is wrapped by the timeline middleware
-	// We need to extract the present value
-	const timelineState = state.activeProtocol;
-
-	if (timelineState && typeof timelineState === "object" && "present" in timelineState) {
-		return (timelineState as unknown as { present: ActiveProtocolState }).present ?? null;
-	}
-
-	// Fallback for raw state (shouldn't happen in normal operation)
-	return (timelineState as unknown as ActiveProtocolState) ?? null;
-};
-
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
-
-export const getCanUndo = (state: RootState): boolean => {
-	const past = state.activeProtocol?.past || [];
-	if (past.length === 0) return false;
-
-	// Don't allow undo if it would take us back to a null state
-	const wouldBePresent = past[past.length - 1];
-	return wouldBePresent !== null && wouldBePresent !== undefined;
-};
-
-export const getCanRedo = (state: RootState): boolean => {
-	const future = state.activeProtocol?.future || [];
-	return future.length > 0;
-};
 
 export const undo = () => (dispatch: AppDispatch) => {
 	dispatch(timelineActions.undo());

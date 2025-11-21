@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
-import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
+import { selectActiveProtocol } from "~/selectors/protocol";
 
 /**
  * Hook to handle loading protocols based on route parameters

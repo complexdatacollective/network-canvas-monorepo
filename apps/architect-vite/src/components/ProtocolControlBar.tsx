@@ -4,12 +4,13 @@ import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import { useAppDispatch } from "~/ducks/hooks";
-import { clearActiveProtocol, getCanRedo, getCanUndo, redo, undo } from "~/ducks/modules/activeProtocol";
+import { clearActiveProtocol, redo, undo } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { checkUnsavedChanges, exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import type { RootState } from "~/ducks/store";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button } from "~/lib/legacy-ui/components";
+import { getCanRedo, getCanUndo } from "~/selectors/protocol";
 
 const ProtocolControlBar = () => {
 	const dispatch = useAppDispatch();
