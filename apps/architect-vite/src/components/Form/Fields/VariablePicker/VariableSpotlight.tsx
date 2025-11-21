@@ -44,12 +44,41 @@ const ListItem = ({
 		{ "spotlight-list-item--disabled": disabled },
 	);
 
+	const handleClick = () => {
+		if (onSelect && !disabled) {
+			onSelect();
+		}
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (onSelect && !disabled && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			onSelect();
+		}
+	};
+
+	if (onSelect) {
+		return (
+			<li ref={ref}>
+				<button
+					type="button"
+					className={classes}
+					onClick={handleClick}
+					onKeyDown={handleKeyDown}
+					onMouseEnter={setSelected}
+					onMouseLeave={removeSelected}
+					disabled={disabled}
+				>
+					{children}
+					{selected && <kbd>Enter&nbsp;&#8629;</kbd>}
+				</button>
+			</li>
+		);
+	}
+
 	return (
-		<li onMouseEnter={setSelected} onMouseLeave={removeSelected} ref={ref}>
-			<div className={classes} onClick={onSelect}>
-				{children}
-				{selected && <kbd>Enter&nbsp;&#8629;</kbd>}
-			</div>
+		<li ref={ref}>
+			<div className={classes}>{children}</div>
 		</li>
 	);
 };

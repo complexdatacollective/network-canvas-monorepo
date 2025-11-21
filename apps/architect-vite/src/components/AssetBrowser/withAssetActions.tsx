@@ -15,7 +15,7 @@ const connectActions = connect(null, {
 	openDialog: dialogActions.openDialog,
 });
 
-const assetHandlers = withHandlers<ConnectedActions, {}>({
+const assetHandlers = withHandlers<ConnectedActions, object>({
 	onDelete:
 		({ deleteAsset, openDialog }: ConnectedActions) =>
 		(assetId: string, isUsed = false) => {

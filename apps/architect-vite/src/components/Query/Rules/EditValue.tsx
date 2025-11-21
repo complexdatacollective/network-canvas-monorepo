@@ -1,7 +1,7 @@
 import { withProps } from "recompose";
 import DetachedField from "~/components/DetachedField";
 import {
-	Number,
+	Number as NumberField,
 	// CheckboxGroup,
 	RadioGroup,
 	Text,
@@ -11,7 +11,7 @@ import {
 // Todo: reinstate CheckboxGroup support when we switch to schema 8
 const INPUT_TYPES = {
 	string: Text,
-	number: Number,
+	number: NumberField,
 	boolean: Toggle,
 	categorical: RadioGroup,
 	ordinal: RadioGroup,

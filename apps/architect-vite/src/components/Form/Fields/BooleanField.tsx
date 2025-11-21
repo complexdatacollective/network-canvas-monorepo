@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
 import cx from "classnames";
-import Boolean from "~/lib/legacy-ui/components/Boolean/Boolean";
+import BooleanToggle from "~/lib/legacy-ui/components/Boolean/Boolean";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "./MarkdownLabel";
 
@@ -65,7 +65,7 @@ const BooleanField = ({
 		<div className={componentClasses}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
 			<div className="form-field-boolean__control">
-				<Boolean options={options} value={input.value} onChange={input.onChange} noReset={noReset} />
+				<BooleanToggle options={options} value={input.value} onChange={input.onChange} noReset={noReset} />
 				{invalid && touched && (
 					<div className="form-field-boolean__error">
 						<Icon name="warning" />

@@ -26,10 +26,10 @@ const appSlice = createSlice({
 });
 
 // Internal action creators (not exported - app module not currently used)
-const { setProperty, clearProperty } = appSlice.actions;
+const { setProperty: _setProperty, clearProperty: _clearProperty } = appSlice.actions;
 
 // Selector (internal use only)
-const getProperty = (key: string) => (state: RootState) => get(state, ["app", key]);
+const _getProperty = (key: string) => (state: RootState) => get(state, ["app", key]);
 
 // Export the reducer as default
 export default appSlice.reducer;

@@ -32,7 +32,9 @@ const NodeType = (props: NodeTypeProps) => {
 
 	const handleResetStage = useCallback(() => {
 		const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
-		fieldsToReset.forEach((field) => dispatch(change(form, field, null) as UnknownAction));
+		fieldsToReset.forEach((field) => {
+			dispatch(change(form, field, null) as UnknownAction);
+		});
 	}, [dispatch, fields, form]);
 
 	// TODO: Restore auto-selection of newly created types when type creation dialogs

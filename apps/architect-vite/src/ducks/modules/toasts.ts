@@ -17,7 +17,7 @@ type ToastsState = Toast[];
 const initialState: ToastsState = [];
 
 // Async thunk for adding toasts that returns the generated ID (currently unused)
-const addToast = createAsyncThunk<string, Partial<Toast> & { id?: string }>(
+const _addToast = createAsyncThunk<string, Partial<Toast> & { id?: string }>(
 	"toasts/addToast",
 	async (toastConfig, { dispatch }) => {
 		const id = toastConfig.id || uuid();
@@ -53,7 +53,7 @@ const toastsSlice = createSlice({
 });
 
 // Internal action creators (not exported directly)
-const { addToastSync, updateToast: updateToastAction, removeToast: removeToastAction } = toastsSlice.actions;
+const { addToastSync, updateToast: _updateToastAction, removeToast: removeToastAction } = toastsSlice.actions;
 
 // Export convenience wrapper with cleaner API (currently only removeToast is used)
 export const removeToast = (id: string) => removeToastAction(id);

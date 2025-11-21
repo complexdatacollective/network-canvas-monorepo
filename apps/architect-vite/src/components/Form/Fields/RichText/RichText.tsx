@@ -109,17 +109,19 @@ const RichText = ({
 	const [lastChange, setLastChange] = useState(initialValue);
 
 	// Use the inline prop to optionally merge additional disallowed items
-	const disallowedTypesWithDefaults = [
-		...disallowedTypes,
-		...[...(inline ? INLINE_DISALLOWED_ITEMS : [])],
-		...ALWAYS_DISALLOWED,
-	];
+	const disallowedTypesWithDefaults = useMemo(
+		() => [...disallowedTypes, ...[...(inline ? INLINE_DISALLOWED_ITEMS : [])], ...ALWAYS_DISALLOWED],
+		[disallowedTypes, inline],
+	);
 
-	const withOptions = (e: CustomEditor) =>
-		Object.assign(e, {
-			inline,
-			disallowedTypes: disallowedTypesWithDefaults,
-		});
+	const withOptions = useCallback(
+		(e: CustomEditor) =>
+			Object.assign(e, {
+				inline,
+				disallowedTypes: disallowedTypesWithDefaults,
+			}),
+		[inline, disallowedTypesWithDefaults],
+	);
 
 	const editor = useMemo(
 		() =>
@@ -131,48 +133,54 @@ const RichText = ({
 				withHistory,
 				withReact,
 			)(createEditor() as CustomEditor),
-		[disallowedTypesWithDefaults.join()],
+		[withOptions],
 	);
 
 	// Test if there is no text content in the tree
-	const childrenAreEmpty = (children: Descendant[]): boolean =>
-		children.every((child) => {
-			// Thematic break has no text, but still counts as content.
-			if ("type" in child && child.type === "thematic_break") {
-				return false;
-			}
+	const childrenAreEmpty = useCallback((children: Descendant[]): boolean => {
+		const checkEmpty = (nodes: Descendant[]): boolean =>
+			nodes.every((child) => {
+				// Thematic break has no text, but still counts as content.
+				if ("type" in child && child.type === "thematic_break") {
+					return false;
+				}
 
-			if ("children" in child && child.children) {
-				return childrenAreEmpty(child.children);
-			}
+				if ("children" in child && child.children) {
+					return checkEmpty(child.children);
+				}
 
-			// The regexp here means that content only containing spaces or
-			// tabs will be considered empty!
-			if ("text" in child) {
-				return isEmpty(child.text) || !/\S/.test(child.text);
-			}
+				// The regexp here means that content only containing spaces or
+				// tabs will be considered empty!
+				if ("text" in child) {
+					return isEmpty(child.text) || !/\S/.test(child.text);
+				}
 
-			return true;
-		});
+				return true;
+			});
+		return checkEmpty(children);
+	}, []);
 
-	const getSerializedValue = () => {
+	const getSerializedValue = useCallback(() => {
 		if (childrenAreEmpty(editor.children)) {
 			return "";
 		}
 		return serialize(value);
-	};
+	}, [childrenAreEmpty, editor.children, value]);
 
-	const setInitialValue = () =>
-		parse(initialValue).then((parsedValue) => {
-			// we need to reset the cursor state because the value length may have changed
-			SlateTransforms.deselect(editor);
-			setValue(parsedValue);
-		});
+	const setInitialValue = useCallback(
+		() =>
+			parse(initialValue).then((parsedValue) => {
+				// we need to reset the cursor state because the value length may have changed
+				SlateTransforms.deselect(editor);
+				setValue(parsedValue);
+			}),
+		[editor, initialValue],
+	);
 
 	// Set starting state from prop value on start up
 	useEffect(() => {
 		setInitialValue().then(() => setIsInitialized(true));
-	}, []);
+	}, [setInitialValue]);
 
 	// Set value again when initial value changes
 	useEffect(() => {
@@ -181,7 +189,7 @@ const RichText = ({
 			return;
 		}
 		setInitialValue();
-	}, [initialValue, setInitialValue]);
+	}, [initialValue, setInitialValue, lastChange]);
 
 	// Update upstream on change
 	useEffect(() => {

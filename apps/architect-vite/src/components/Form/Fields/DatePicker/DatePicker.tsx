@@ -2,7 +2,7 @@ import cx from "classnames";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FocusEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import useScrollTo from "~/lib/legacy-ui/hooks/useScrollTo";
-import Date from "./DatePicker/Date";
+import DateComponent from "./DatePicker/DateComponent";
 import DatePicker from "./DatePicker/DatePicker";
 import Days from "./DatePicker/Days";
 import Months from "./DatePicker/Months";
@@ -87,7 +87,7 @@ const DatePickerInput = ({
 			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...parameters}
 		>
-			<Date>
+			<DateComponent>
 				{({ date, range: dateRange, isComplete, type, onChange }) => {
 					const canSetMonth = ["full", "month"].includes(type || "");
 					const canSetDay = ["full"].includes(type || "");
@@ -179,7 +179,7 @@ const DatePickerInput = ({
 						</LayoutGroup>
 					);
 				}}
-			</Date>
+			</DateComponent>
 		</DatePicker>
 	);
 };

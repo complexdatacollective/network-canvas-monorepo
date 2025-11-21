@@ -80,13 +80,6 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 
 	const handleClickTitleBar = () => setOpen((toggle) => !toggle);
 
-	const handleTitleBarKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			setOpen((toggle) => !toggle);
-		}
-	};
-
 	const handleClickIssue = (e: React.MouseEvent) => {
 		e.preventDefault();
 
@@ -131,12 +124,10 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 					}}
 				>
 					<div className="issues__panel">
-						<div
+						<button
+							type="button"
 							className="issues__title-bar"
 							onClick={handleClickTitleBar}
-							onKeyDown={handleTitleBarKeyDown}
-							role="button"
-							tabIndex={0}
 							aria-label={`${open ? "Collapse" : "Expand"} issues panel`}
 							aria-expanded={open}
 						>
@@ -147,7 +138,7 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 							<motion.div className="issues__title-bar-toggle" animate={{ rotate: isVisible ? 180 : 0 }}>
 								<Icon name="chevron-up" color="white" className="issues-toggle" />
 							</motion.div>
-						</div>
+						</button>
 						<motion.ol className="issues__issues" initial={{ height: 0 }} animate={{ height: open ? "auto" : 0 }}>
 							{renderIssues()}
 						</motion.ol>

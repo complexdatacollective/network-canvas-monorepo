@@ -6,7 +6,7 @@ import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import { DatePicker } from "~/components/Form/Fields";
 import { DATE_FORMATS } from "~/components/Form/Fields/DatePicker";
-import Number from "~/components/Form/Fields/Number";
+import NumberField from "~/components/Form/Fields/Number";
 import Toggle from "~/components/Form/Fields/Toggle";
 import ValidatedField from "~/components/Form/ValidatedField";
 import type { RootState } from "~/ducks/modules/root";
@@ -61,13 +61,13 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 				Days before is the number of days prior to the anchor date that can be selected from. Defaults to 180 days if
 				left blank.
 			</p>
-			<Field label="" component={Number} name={`${name}.before`} placeholder="180" />
+			<Field label="" component={NumberField} name={`${name}.before`} placeholder="180" />
 			<h4>Days After</h4>
 			<p>
 				Days after is the number of days after the anchor date that can be selected from. Defaults to 0 days if left
 				blank.
 			</p>
-			<Field label="" component={Number} name={`${name}.after`} placeholder="0" />
+			<Field label="" component={NumberField} name={`${name}.after`} placeholder="0" />
 		</>
 	);
 };

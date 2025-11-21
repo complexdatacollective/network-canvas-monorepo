@@ -71,25 +71,16 @@ const Stage = ({
 		});
 	};
 
-	const handleNotchKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			handleEditStage();
-		}
-	};
-
 	return (
 		<motion.div className={componentClasses} variants={variants}>
-			<div
+			<button
+				type="button"
 				className="timeline-stage__notch"
 				onClick={handleEditStage}
-				onKeyDown={handleNotchKeyDown}
-				role="button"
-				tabIndex={0}
 				aria-label={`Edit stage ${stageNumber}`}
 			>
 				{stageNumber}
-			</div>
+			</button>
 			<EditStageButton
 				ref={previewRef}
 				onEditStage={handleEditStage}

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import { Boolean as BooleanField } from "~/components/Form/Fields";
+import { BooleanField } from "~/components/Form/Fields";
 import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../../DetachedField";
 

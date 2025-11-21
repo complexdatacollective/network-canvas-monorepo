@@ -68,6 +68,34 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 		},
 		[openDialog, handleEncryptionToggle],
 	);
+
+	const nodeTypeVariableData = useMemo(
+		() =>
+			Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
+				const variables = nodeType.variables || {};
+				const hasEncryptedVariable = Object.values(variables).some((variable) => variable?.encrypted);
+
+				const variableOptions = Object.entries(variables).map(([variableId, variable]) => ({
+					value: variableId,
+					label: variable.name,
+				}));
+
+				const encryptedVariableIds = Object.entries(variables)
+					.filter(([, variable]) => variable?.encrypted)
+					.map(([variableId]) => variableId);
+
+				return {
+					nodeTypeId,
+					nodeType,
+					variables,
+					hasEncryptedVariable,
+					variableOptions,
+					encryptedVariableIds,
+				};
+			}),
+		[nodeTypes],
+	);
+
 	return (
 		<Section
 			title="Encrypted Variables"
@@ -82,29 +110,8 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 				</>
 			}
 		>
-			{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
-				const hasEncryptedVariable = Object.values(nodeType.variables || {}).some((variable) => variable?.encrypted);
-
-				// Memoize these calculations to avoid recreating arrays on every render
-				const variables = nodeType.variables || {};
-				const variableOptions = useMemo(
-					() =>
-						Object.entries(variables).map(([variableId, variable]) => ({
-							value: variableId,
-							label: variable.name,
-						})),
-					[variables],
-				);
-
-				const encryptedVariableIds = useMemo(
-					() =>
-						Object.entries(variables)
-							.filter(([, variable]) => variable?.encrypted)
-							.map(([variableId]) => variableId),
-					[variables],
-				);
-
-				return (
+			{nodeTypeVariableData.map(
+				({ nodeTypeId, nodeType, variables, hasEncryptedVariable, variableOptions, encryptedVariableIds }) => (
 					<Section
 						toggleable
 						title={nodeType.name}
@@ -135,8 +142,8 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 							/>
 						</div>
 					</Section>
-				);
-			})}
+				),
+			)}
 		</Section>
 	);
 };

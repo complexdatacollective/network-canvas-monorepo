@@ -70,7 +70,7 @@ type ItemHandlerProps = ItemOwnProps &
 
 const Item = compose(
 	connect(mapStateToItemProps, mapDispatchToItemProps),
-	withHandlers<ItemHandlerProps, {}>({
+	withHandlers<ItemHandlerProps, object>({
 		handleDelete:
 			({ fields, openDialog, index }: ItemHandlerProps) =>
 			() => {

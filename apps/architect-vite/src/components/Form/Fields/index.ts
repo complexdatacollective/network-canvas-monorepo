@@ -1,5 +1,5 @@
 // Export all field components
-export { default as Boolean } from "./Boolean";
+export { default as BooleanField } from "./BooleanField";
 export { default as CheckboxGroup } from "./CheckboxGroup";
 export { default as DatePicker } from "./DatePicker";
 export { default as LikertScale } from "./LikertScale";

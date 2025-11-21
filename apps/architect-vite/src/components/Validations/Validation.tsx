@@ -1,7 +1,7 @@
 import { map } from "lodash";
 import { Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import Number from "~/components/Form/Fields/Number";
+import NumberField from "~/components/Form/Fields/Number";
 import NativeSelect from "../Form/Fields/NativeSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 
@@ -70,7 +70,7 @@ const Validation = ({
 				</div>
 				{isValidationWithNumberValue(itemKey) && (
 					<div className="form-fields-multi-select__rule-option">
-						<Number input={valueInputProps} validation={{ required: true }} />
+						<NumberField input={valueInputProps} validation={{ required: true }} />
 					</div>
 				)}
 				{isValidationWithListValue(itemKey) && (

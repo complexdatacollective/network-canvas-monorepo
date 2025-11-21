@@ -115,7 +115,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 					<div className="protocol-summary-stage__heading-section">
 						<div className="protocol-summary-stage__heading-section-content">
 							<h2 className="section-heading">Network Filtering</h2>
-							<MiniTable rotated wide rows={[["Rules", <Filter filter={filter} />]]} />
+							<MiniTable rotated wide rows={[["Rules", <Filter key="filter" filter={filter} />]]} />
 						</div>
 					</div>
 				)}

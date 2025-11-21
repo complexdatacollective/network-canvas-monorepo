@@ -30,9 +30,10 @@ const Toast = ({
 	CustomIcon = null,
 	className = "",
 }: ToastProps) => {
-	if (autoDismiss && dismissHandler) {
-		useTimeout(dismissHandler, dismissDuration);
-	}
+	useTimeout(
+		autoDismiss && dismissHandler ? dismissHandler : () => {},
+		autoDismiss && dismissHandler ? dismissDuration : null,
+	);
 
 	const getIcon = () => {
 		if (CustomIcon) {

@@ -58,6 +58,14 @@ const activeProtocolSlice = createSlice({
 			return initialState;
 		},
 	},
+	selectors: {
+		selectActiveProtocol: (state) => {
+			if (state && typeof state === "object" && "present" in state) {
+				return (state as { present: ActiveProtocolState }).present ?? null;
+			}
+			return state;
+		},
+	},
 	extraReducers: (builder) => {
 		builder.addDefaultCase((state, action: UnknownAction) => {
 			if (!state) return state;
@@ -103,34 +111,16 @@ const activeProtocolSlice = createSlice({
 			}
 		});
 	},
-	selectors: {
-		selectActiveProtocol: (state) => {
-			if (state && typeof state === "object" && "present" in state) {
-				return (state as { present: ActiveProtocolState }).present ?? null;
-			}
-			return state;
-		},
-	},
 });
 
 // Extract actions and selectors
-const actions = activeProtocolSlice.actions;
-export const setActiveProtocol = actions.setActiveProtocol!;
-const updateProtocol = actions.updateProtocol!;
-export const updateProtocolOptions = actions.updateProtocolOptions!;
-export const markProtocolSaved = actions.markProtocolSaved!;
-export const clearActiveProtocol = actions.clearActiveProtocol!;
+export const setActiveProtocol = activeProtocolSlice.actions.setActiveProtocol;
+export const updateProtocol = activeProtocolSlice.actions.updateProtocol;
+export const updateProtocolOptions = activeProtocolSlice.actions.updateProtocolOptions;
+export const markProtocolSaved = activeProtocolSlice.actions.markProtocolSaved;
+export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;
 
 export const { selectActiveProtocol } = activeProtocolSlice.selectors;
-
-// Export action creators object for backwards compatibility with tests
-export const actionCreators = {
-	setActiveProtocol,
-	updateProtocol,
-	updateProtocolOptions,
-	markProtocolSaved,
-	clearActiveProtocol,
-};
 
 // Export the reducer as default
 export default activeProtocolSlice.reducer;

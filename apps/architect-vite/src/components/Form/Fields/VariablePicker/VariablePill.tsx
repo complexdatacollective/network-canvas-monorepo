@@ -138,8 +138,12 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		}
 	};
 
+	if (!type) {
+		return null;
+	}
+
 	return (
-		<BaseVariablePill type={type!} ref={ref}>
+		<BaseVariablePill type={type} ref={ref}>
 			<AnimatePresence initial={false} mode="wait">
 				{editing ? (
 					<motion.div

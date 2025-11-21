@@ -19,7 +19,7 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
 				wide
 				rows={[
 					["Action", action],
-					["Rules", <Rules filter={filter} />],
+					["Rules", <Rules key="rules" filter={filter} />],
 				]}
 			/>
 		</div>

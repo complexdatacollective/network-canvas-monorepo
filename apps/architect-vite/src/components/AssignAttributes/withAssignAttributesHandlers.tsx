@@ -48,7 +48,7 @@ const mapStateToProps = (state: RootState, { entity, type, form, fields }: OwnPr
 
 const mapDispatchToProps = {};
 
-const assignAttributesHandlers = withHandlers<HandlerProps, {}>({
+const assignAttributesHandlers = withHandlers<HandlerProps, object>({
 	handleDelete:
 		({ fields }: HandlerProps) =>
 		(index: number) => {

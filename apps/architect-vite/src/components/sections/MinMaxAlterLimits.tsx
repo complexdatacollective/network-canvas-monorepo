@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import { Number } from "~/components/Form/Fields";
+import { Number as NumberField } from "~/components/Form/Fields";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
@@ -105,7 +105,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 				<ValidatedField
 					name="minNodes"
 					label="Minimum Number of Alters. (0 = no minimum)"
-					component={Number}
+					component={NumberField}
 					componentProps={{
 						placeholder: "0",
 					}}
@@ -121,7 +121,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 				<ValidatedField
 					name="maxNodes"
 					label="Maximum Number of Alters. _(Leave empty for no maximum)_"
-					component={Number}
+					component={NumberField}
 					componentProps={{
 						placeholder: "Infinity",
 					}}

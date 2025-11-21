@@ -1,4 +1,4 @@
-import type { Validation, ValidationName } from "@codaco/protocol-validation";
+import type { Validation } from "@codaco/protocol-validation";
 import { startCase } from "es-toolkit/compat";
 import type { ComponentType } from "react";
 import { type BaseFieldProps, Field, type Validator, type WrappedFieldProps } from "redux-form";

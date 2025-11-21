@@ -29,7 +29,6 @@ type EntityTypeProps = {
 	handleDelete?: () => void;
 	handleEdit?: () => void;
 	variables?: Variable[];
-	onEditEntity?: (entity: string, type?: string) => void;
 };
 
 // Props expected by the exported wrapped component
@@ -51,7 +50,6 @@ const EntityType = ({
 	variables = [],
 	handleEdit = () => {},
 	handleDelete = () => {},
-	onEditEntity,
 }: EntityTypeProps) => {
 	const stages = usage.map(({ id, label }) => (
 		<Link
@@ -115,14 +113,17 @@ type ConnectedProps = {
 	deleteType: typeof deleteTypeAsync;
 };
 
-type HandlerProps = ConnectedProps & EntityTypeProps;
+type HandlerProps = ConnectedProps &
+	EntityTypeProps & {
+		onEditEntity?: (entity: string, type?: string) => void;
+	};
 
 const withEntityHandlers = compose(
 	connect(null, {
 		openDialog: dialogActionCreators.openDialog,
 		deleteType: deleteTypeAsync,
 	}),
-	withHandlers<HandlerProps, {}>({
+	withHandlers<HandlerProps, object>({
 		handleEdit:
 			({ entity, type, onEditEntity }: HandlerProps) =>
 			() => {

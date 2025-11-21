@@ -21,11 +21,12 @@ const Tag = ({
 	disabled = false,
 }: TagProps) => {
 	const componentClasses = cn(
-		"inline-flex py-1 rounded-full cursor-pointer items-center justify-center text-xs uppercase tracking-widest font-semibold border-2 border-transparent gap-2 px-2",
+		"inline-flex py-1 rounded-full items-center justify-center text-xs uppercase tracking-widest font-semibold border-2 border-transparent gap-2 px-2",
 		selected && "text-white bg-slate-blue",
 		light && "text-dark bg-platinum",
 		disabled && !!onClick && "",
 		disabled && "opacity-50 cursor-not-allowed",
+		onClick && !disabled && "cursor-pointer",
 	);
 
 	const dotClasses = cn(
@@ -50,23 +51,24 @@ const Tag = ({
 		color === "white" && "bg-white",
 	);
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (!disabled && onClick && (e.key === "Enter" || e.key === " ")) {
+	const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+		if (!disabled && onClick) {
 			e.preventDefault();
 			onClick(id);
 		}
 	};
 
+	if (onClick) {
+		return (
+			<button type="button" className={componentClasses} onClick={handleClick} disabled={disabled}>
+				<div className={dotClasses} />
+				{children}
+			</button>
+		);
+	}
+
 	return (
-		<div
-			className={componentClasses}
-			onClick={() => !disabled && onClick && onClick(id)}
-			onKeyDown={handleKeyDown}
-			role={onClick ? "button" : undefined}
-			tabIndex={onClick && !disabled ? 0 : -1}
-			aria-label={typeof children === "string" ? children : undefined}
-			aria-disabled={disabled}
-		>
+		<div className={componentClasses}>
 			<div className={dotClasses} />
 			{children}
 		</div>

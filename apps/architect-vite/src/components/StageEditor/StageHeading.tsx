@@ -9,7 +9,7 @@ import { getInterface } from "./Interfaces";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
-const StageHeading = ({ id }: { id: string }) => {
+const StageHeading = ({ _id }: { _id?: string }) => {
 	const { values } = useFormContext();
 
 	const type = get(values, "type") as string;

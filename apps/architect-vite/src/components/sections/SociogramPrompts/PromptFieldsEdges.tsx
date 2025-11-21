@@ -15,7 +15,7 @@ type DisplayEdgesProps = {
 	type: string;
 };
 
-const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
+const DisplayEdges = ({ form, _entity, _type }: DisplayEdgesProps) => {
 	const dispatch = useDispatch();
 
 	// Fix 1: Use the already memoized selector directly

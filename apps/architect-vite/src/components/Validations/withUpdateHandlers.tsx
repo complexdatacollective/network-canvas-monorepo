@@ -57,7 +57,7 @@ type HandlerProps = {
 	setAddNew?: (value: boolean) => void;
 };
 
-const withUpdateHandlers = withHandlers<HandlerProps, {}>({
+const withUpdateHandlers = withHandlers<HandlerProps, object>({
 	handleDelete:
 		({ update, value: previousValue }: HandlerProps) =>
 		(key: string) => {

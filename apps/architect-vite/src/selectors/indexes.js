@@ -119,7 +119,9 @@ const buildSearch = (include = [], exclude = []) => {
 	const combinedExclude = combineLists(exclude);
 	const lookup = new Set(combinedInclude);
 
-	combinedExclude.forEach((value) => lookup.delete(value));
+	combinedExclude.forEach((value) => {
+		lookup.delete(value);
+	});
 
 	return lookup;
 };

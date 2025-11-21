@@ -71,7 +71,7 @@ const createVariableHandler = {
  */
 const withCreateVariableHandler = compose(
 	connect(null, mapDispatchToProps),
-	withHandlers<HandlerProps, {}>(createVariableHandler),
+	withHandlers<HandlerProps, object>(createVariableHandler),
 );
 
 export default withCreateVariableHandler;

@@ -8,19 +8,12 @@ type UseEditHandlersOptions = {
 	fieldName: string;
 	onChange?: (value: unknown) => Promise<unknown> | unknown;
 	normalize?: (value: unknown) => unknown;
-	template?: () => Record<string, unknown>;
 };
 
 // Default functions defined outside component to prevent recreating on every render
 const defaultNormalize = (value: unknown) => value;
-const defaultTemplate = () => ({});
 
-export const useEditHandlers = ({
-	fieldName,
-	onChange,
-	normalize = defaultNormalize,
-	template = defaultTemplate,
-}: UseEditHandlersOptions) => {
+export const useEditHandlers = ({ fieldName, onChange, normalize = defaultNormalize }: UseEditHandlersOptions) => {
 	const { form } = useFormContext();
 	const dispatch = useAppDispatch();
 	const store = useStore();

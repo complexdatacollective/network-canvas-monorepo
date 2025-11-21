@@ -139,8 +139,6 @@ const allowedVariableName =
 		return undefined;
 	};
 
-const allowedNMToken = allowedVariableName;
-
 const validRegExp = (_, message) => (value) => {
 	try {
 		const regexp = new RegExp(value);

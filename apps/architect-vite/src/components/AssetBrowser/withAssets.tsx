@@ -21,7 +21,7 @@ type FilterHandlerProps = {
 	setAssetType: (assetType: string | null) => void;
 };
 
-const filterHandlers = withHandlers<FilterHandlerProps, {}>({
+const filterHandlers = withHandlers<FilterHandlerProps, object>({
 	onUpdateAssetFilter:
 		({ setAssetType }: FilterHandlerProps) =>
 		(assetType: string | null) =>

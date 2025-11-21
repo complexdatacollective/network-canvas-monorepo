@@ -23,7 +23,7 @@ type TypeEditorProps = {
 	existingTypes: string[];
 };
 
-const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProps) => {
+const TypeEditor = ({ form, entity, _type = null, existingTypes }: TypeEditorProps) => {
 	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formIcon = useAppSelector((state: RootState) => formSelector(state, "iconVariant"));

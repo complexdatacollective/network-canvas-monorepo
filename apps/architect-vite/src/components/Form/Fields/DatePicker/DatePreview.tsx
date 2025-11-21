@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { motion } from "motion/react";
 import React, { type MouseEvent } from "react";
-import Date from "./DatePicker/Date";
+import DateComponent from "./DatePicker/DateComponent";
 import { getMonthName } from "./helpers";
 
 type DatePreviewProps = {
@@ -11,7 +11,7 @@ type DatePreviewProps = {
 };
 
 const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null }: DatePreviewProps) => (
-	<Date>
+	<DateComponent>
 		{({ date, type, onChange, isComplete, isEmpty }) => {
 			const previewRef = React.createRef<HTMLDivElement>();
 
@@ -55,42 +55,6 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 				}
 			};
 
-			const handleYearKeyDown = (e: React.KeyboardEvent) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					e.stopPropagation();
-					onChange({ year: null, month: null, day: null });
-					onClick();
-				}
-			};
-
-			const handleMonthKeyDown = (e: React.KeyboardEvent) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					e.stopPropagation();
-					onChange({ month: null, day: null });
-					onClick();
-				}
-			};
-
-			const handleDayKeyDown = (e: React.KeyboardEvent) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					e.stopPropagation();
-					onChange({ day: null });
-					onClick();
-				}
-			};
-
-			const handleClearKeyDown = (e: React.KeyboardEvent) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					e.stopPropagation();
-					onChange({ year: null, month: null, day: null });
-					onClick(false);
-				}
-			};
-
 			const previewClass = cx("date-picker__preview", { "date-picker__preview--is-empty": isEmpty });
 
 			if (!isActive && isEmpty && placeholder) {
@@ -121,58 +85,50 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 					// layout
 					ref={previewRef}
 				>
-					<div
+					<button
+						type="button"
 						className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.year })}
 						onClick={handleClickYear}
-						onKeyDown={handleYearKeyDown}
-						role="button"
-						tabIndex={0}
 						aria-label="Clear year"
 					>
 						{date.year || "Year"}
-					</div>
+					</button>
 					{["full", "month"].includes(type || "") && <div className="date-picker__preview-divider">/</div>}
 					{["full", "month"].includes(type || "") && (
-						<div
+						<button
+							type="button"
 							className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.month })}
 							onClick={handleClickMonth}
-							onKeyDown={handleMonthKeyDown}
-							role="button"
-							tabIndex={0}
 							aria-label="Clear month"
 						>
 							{date.month ? getMonthName(date.month) : "Month"}
-						</div>
+						</button>
 					)}
 					{["full"].includes(type || "") && <div className="date-picker__preview-divider">/</div>}
 					{["full"].includes(type || "") && (
-						<div
+						<button
+							type="button"
 							className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.day })}
 							onClick={handleClickDay}
-							onKeyDown={handleDayKeyDown}
-							role="button"
-							tabIndex={0}
 							aria-label="Clear day"
 						>
 							{date.day || "Day"}
-						</div>
+						</button>
 					)}
-					<div
+					<button
+						type="button"
 						className={cx("date-picker__preview-clear", {
 							"date-picker__preview-clear--is-visible": !isEmpty || isActive,
 						})}
 						onClick={handleClear}
-						onKeyDown={handleClearKeyDown}
-						role="button"
-						tabIndex={0}
 						aria-label="Clear date"
 					>
 						clear
-					</div>
+					</button>
 				</motion.div>
 			);
 		}}
-	</Date>
+	</DateComponent>
 );
 
 export default DatePreview;

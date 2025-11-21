@@ -15,20 +15,14 @@ const useAssetData = (id: string) => {
 	} = useContext(SummaryContext);
 
 	const data = get(assetManifest, id);
-
-	if (!data) {
-		return {};
-	}
-
 	const [variables, setVariables] = useState<string | null>(null);
 
 	const stubbedState = stubState(assetManifest, workingPath);
-
 	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
 	const assetPath = getAssetPath(stubbedState, id);
 
 	useEffect(() => {
-		if (data.type !== "network") {
+		if (!data || data.type !== "network") {
 			return;
 		}
 
@@ -38,7 +32,11 @@ const useAssetData = (id: string) => {
 			}
 			setVariables(v.join(", "));
 		});
-	}, [data.type, getNetworkAssetVariables, id]);
+	}, [data, data?.type, getNetworkAssetVariables, id]);
+
+	if (!data) {
+		return {};
+	}
 
 	// TODO: When assets are stored remotely, this will be:
 	// const url = `https://assets.example.com/${encodeURIComponent(assetPath)}`;

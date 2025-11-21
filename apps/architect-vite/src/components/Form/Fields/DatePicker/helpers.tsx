@@ -8,7 +8,7 @@ export const isEmpty = (value: unknown) => value === null || value === "";
 export const getFirstDayOfMonth = (dateObj: { year?: number | null; month?: number | null; day?: number | null }) =>
 	DateTime.fromObject({ ...dateObj, day: 1 }).toFormat("c");
 
-const asNullObject = (keys: string[]) =>
+const _asNullObject = (keys: string[]) =>
 	keys.reduce((acc, key) => {
 		acc[key] = null;
 		return acc;

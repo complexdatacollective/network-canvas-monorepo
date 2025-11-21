@@ -62,6 +62,7 @@ const Handle = ({
 				aria-valuenow={value}
 				className={markerClasses}
 				style={{ left: `${percent}%` }}
+				tabIndex={0}
 			/>
 		</>
 	);

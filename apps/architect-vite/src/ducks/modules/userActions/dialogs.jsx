@@ -7,7 +7,7 @@ const getFriendlyMessage = (_e, _meta = {}) => {
 	return <p>Error!</p>;
 };
 
-const netcanvasFileErrorHandler = (e, meta = {}) => {
+const _netcanvasFileErrorHandler = (e, meta = {}) => {
 	const friendlyMessage = getFriendlyMessage(e, meta);
 
 	if (friendlyMessage) {
@@ -20,7 +20,7 @@ const netcanvasFileErrorHandler = (e, meta = {}) => {
 	});
 };
 
-const importErrorDialog = (e) => {
+const _importErrorDialog = (e) => {
 	e.friendlyMessage = (
 		<p>
 			There was an error downloading or importing the sample protocol. Please consult the error message below for
@@ -37,7 +37,7 @@ const importErrorDialog = (e) => {
 	});
 };
 
-const validationErrorDialog = (e) => {
+const _validationErrorDialog = (e) => {
 	e.friendlyMessage = (
 		<>
 			<p>

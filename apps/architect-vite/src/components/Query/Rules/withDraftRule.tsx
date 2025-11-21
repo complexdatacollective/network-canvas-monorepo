@@ -27,7 +27,7 @@ type SecondHandlerProps = FirstHandlerProps & {
 
 const withDraftRule = compose<OwnProps, OwnProps>(
 	withState("draftRule", "setDraftRule", null),
-	withHandlers<FirstHandlerProps, {}>({
+	withHandlers<FirstHandlerProps, object>({
 		resetDraft:
 			({ setDraftRule }: FirstHandlerProps) =>
 			() =>
@@ -43,7 +43,7 @@ const withDraftRule = compose<OwnProps, OwnProps>(
 			(type: string, options?: RuleOptions) =>
 				setDraftRule(generateRule(type, options)),
 	}),
-	withHandlers<SecondHandlerProps, {}>({
+	withHandlers<SecondHandlerProps, object>({
 		handleCreateAlterRule:
 			({ createDraft }: SecondHandlerProps) =>
 			() =>

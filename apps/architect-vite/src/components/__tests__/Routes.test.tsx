@@ -135,7 +135,7 @@ describe("Routes", () => {
 	it("should handle unknown routes", () => {
 		mockLocation.mockReturnValue("/unknown-route");
 
-		const { container } = render(<Routes />, {
+		render(<Routes />, {
 			wrapper: createWrapper(store),
 		});
 

@@ -1,5 +1,5 @@
 import { compose } from "recompose";
-import { Boolean as BooleanField } from "~/components/Form/Fields";
+import { BooleanField } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import withCreateVariableHandler from "../enhancers/withCreateVariableHandler";
@@ -33,13 +33,6 @@ const Attribute = ({
 	entity,
 	type,
 }: AttributeProps) => {
-	const handleDeleteKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			handleDelete();
-		}
-	};
-
 	return (
 		<div className="assign-attributes-attribute bg-section-background">
 			<div className="assign-attributes-attribute__wrapper">
@@ -75,16 +68,14 @@ const Attribute = ({
 					</fieldset>
 				)}
 			</div>
-			<div
+			<button
+				type="button"
 				className="assign-attributes-attribute__delete"
 				onClick={handleDelete}
-				onKeyDown={handleDeleteKeyDown}
-				role="button"
-				tabIndex={0}
 				aria-label="Delete attribute"
 			>
 				<Icon name="delete" />
-			</div>
+			</button>
 		</div>
 	);
 };

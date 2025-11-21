@@ -9,9 +9,10 @@ type VariableProps = {
 };
 
 const Variable = ({ id }: VariableProps) => {
+	const { index } = useContext(SummaryContext);
+
 	if (!id) return null;
 
-	const { index } = useContext(SummaryContext);
 	const meta = getVariableMeta(index, id);
 
 	return (

@@ -69,13 +69,6 @@ const RangePicker = ({
 
 	const padding = times(offset, (index) => <div key={`padding${index}`} className="date-picker__range-item" />);
 
-	const handleKeyDown = (itemValue: number) => (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			onSelect(itemValue);
-		}
-	};
-
 	const scrollToValue = getScrollToValue(range, today);
 	return (
 		<div className={classes} ref={datePickerRef}>
@@ -91,20 +84,18 @@ const RangePicker = ({
 					const ref = scrollToValue === d.value ? scrollRef : null;
 
 					return (
-						<div
+						<button
+							type="button"
 							className={itemStyle}
 							onClick={() => onSelect(d.value)}
-							onKeyDown={handleKeyDown(d.value)}
-							role="button"
-							tabIndex={d.isOutOfRange ? -1 : 0}
 							aria-label={`Select ${d.label}`}
-							aria-disabled={d.isOutOfRange}
+							disabled={d.isOutOfRange}
 							ref={ref}
 							data-value={d.value}
 							key={`item${d.value}`}
 						>
 							<div className="date-picker__highlight">{d.label}</div>
-						</div>
+						</button>
 					);
 				})}
 			</div>
