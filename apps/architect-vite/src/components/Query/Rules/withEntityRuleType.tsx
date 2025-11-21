@@ -67,5 +67,3 @@ const withEntityRuleType = compose(
 );
 
 export { withEntityRuleType, entityRuleTypes, entityRuleTypeOptions };
-
-export default withEntityRuleType;

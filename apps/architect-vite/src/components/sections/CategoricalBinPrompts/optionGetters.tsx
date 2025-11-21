@@ -49,10 +49,4 @@ const getSortOrderOptionGetter =
 		}
 	};
 
-const optionGetters = {
-	getSortOrderOptionGetter,
-};
-
 export { getSortOrderOptionGetter };
-
-export default optionGetters;

@@ -10,7 +10,8 @@ import type { RootState } from "~/ducks/modules/root";
 
 type OpenDialogFunction = typeof openDialog;
 
-export const handleDeactivateSkipLogic = async (
+// Internal helper for confirming skip logic deactivation
+const handleDeactivateSkipLogic = async (
 	openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>,
 ) => {
 	const result = await openDialogFn({

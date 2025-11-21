@@ -13,6 +13,4 @@ const ImageThumbnail = ({ url, contain = false, ...props }: ImageThumbnailProps)
 	return <div className={className} style={{ backgroundImage: url ? `url(${url})` : undefined }} {...props} />;
 };
 
-export { ImageThumbnail };
-
 export default withAssetUrl(ImageThumbnail);

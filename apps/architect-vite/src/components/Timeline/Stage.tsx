@@ -108,5 +108,3 @@ const Stage = ({
 };
 
 export { Stage as UnconnectedStage };
-
-export default Stage;

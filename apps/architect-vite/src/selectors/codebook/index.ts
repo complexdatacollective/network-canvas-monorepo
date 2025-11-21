@@ -70,7 +70,7 @@ export const getVariablesForSubject = (state: RootState, subject: Subject): Vari
 	getVariablesForSubjectSelector(state, subject);
 
 // Memoized selector for getting all variables flattened by UUID
-const getAllVariablesByUUIDSelector = createSelector([getCodebook], (codebook): Variables => {
+const _getAllVariablesByUUIDSelector = createSelector([getCodebook], (codebook): Variables => {
 	if (!codebook) {
 		return {};
 	}
@@ -310,8 +310,8 @@ export const getVariableOptionsForSubject = (
 	isUsedOptions: GetIsUsedOptions = {},
 ): VariableOption[] => getVariableOptionsForSubjectSelector(state, subject, isUsedOptions);
 
-// Memoized selector for getting options for a specific variable
-export const getOptionsForVariableSelector = createSelector(
+// Internal memoized selector for getting options for a specific variable (used by getOptionsForVariable below)
+const getOptionsForVariableSelector = createSelector(
 	[getVariablesForSubjectSelector, (_state: RootState, _subject: Subject, variable: string) => variable],
 	(variables, variable): unknown[] => {
 		return get(variables, [variable, "options"], []);

@@ -112,6 +112,4 @@ const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | nu
 	};
 };
 
-export { TypeEditor as UnconnectedTypeEditor };
-
 export default connect(mapStateToProps)(TypeEditor);

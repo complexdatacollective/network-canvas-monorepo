@@ -18,7 +18,8 @@ import getEdgeFilteringWarning from "./utils";
 // This was created as part of removing the HOC pattern used throughout the app.
 // It replaces withCreateVariableHandler. Other uses of this handler could be
 // updated to use this function.
-export const createVariableHandler =
+// Internal helper - not exported
+const createVariableHandler =
 	(dispatch: Dispatch<UnknownAction>, entity: string, type: string, form: string) =>
 	async (variableName: string, variableType: string, field: string) => {
 		const withType = variableType ? { type: variableType } : {};

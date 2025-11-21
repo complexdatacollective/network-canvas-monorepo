@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/store";
 import { getOptionsForVariable } from "../../../selectors/codebook";
@@ -24,7 +22,3 @@ export const itemSelector =
 			variableOptions,
 		};
 	};
-
-// Strip variableOptions
-export const normalizeField = ({ variableOptions, ...prompt }: { variableOptions?: unknown; [key: string]: unknown }) =>
-	prompt;
