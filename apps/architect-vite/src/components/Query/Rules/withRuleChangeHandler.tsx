@@ -6,8 +6,19 @@ import { operatorsWithOptionCount } from "./options";
 const RULE_ORDER = ["type", "attribute", "operator", "value"];
 
 const withRuleChangeHandlers = withHandlers({
-	handleRuleChange: ({ onChange, rule, variableType }: { onChange: (rule: Record<string, unknown>) => void; rule: Record<string, unknown>; variableType: string }) => {
-		const getOptionsWithDefaults = makeGetOptionsWithDefaults(keys((rule.options as Record<string, unknown>)), variableType);
+	handleRuleChange: ({
+		onChange,
+		rule,
+		variableType,
+	}: {
+		onChange: (rule: Record<string, unknown>) => void;
+		rule: Record<string, unknown>;
+		variableType: string;
+	}) => {
+		const getOptionsWithDefaults = makeGetOptionsWithDefaults(
+			keys(rule.options as Record<string, unknown>),
+			variableType,
+		);
 
 		return (_event: unknown, value: unknown, _oldValue: unknown, name: string) => {
 			const resetFromIndex = RULE_ORDER.indexOf(name) + 1;

@@ -98,8 +98,6 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 	);
 };
 
-export { SearchOptions };
-
 export default compose(
 	withMapFormToProps(["dataSource"]),
 	withDisabledAssetRequired,

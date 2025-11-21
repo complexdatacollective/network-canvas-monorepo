@@ -35,8 +35,6 @@ const OneToManyDyadCensusPrompts = ({ form, entity, type, disabled }: OneToManyD
 	</Section>
 );
 
-export { OneToManyDyadCensusPrompts };
-
 export default compose(
 	withSubject,
 	withDisabledSubjectRequired,

@@ -48,8 +48,6 @@ const OrdinalBinPrompts = ({
 	</Section>
 );
 
-export { OrdinalBinPrompts };
-
 export default compose(
 	withSubject,
 	withDisabledSubjectRequired,

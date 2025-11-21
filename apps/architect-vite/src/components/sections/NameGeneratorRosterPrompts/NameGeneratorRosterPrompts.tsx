@@ -37,8 +37,6 @@ const NameGeneratorRosterPrompts = ({ form, entity, type, disabled, dataSource }
 	</Section>
 );
 
-export { NameGeneratorRosterPrompts };
-
 export default compose(
 	withSubject,
 	withMapFormToProps("dataSource"),

@@ -41,8 +41,6 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
 	);
 };
 
-export { ExternalDataSource };
-
 export default compose(
 	withChangeDataSourceHandler,
 	withSubject,

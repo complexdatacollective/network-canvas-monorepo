@@ -67,8 +67,6 @@ const Form = ({
 	</Section>
 );
 
-export { Form };
-
 export default compose(
 	withSubject,
 	withFormHandlers,

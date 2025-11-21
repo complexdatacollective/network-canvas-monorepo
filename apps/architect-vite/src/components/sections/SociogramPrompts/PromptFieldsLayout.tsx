@@ -112,8 +112,6 @@ const PromptFields = ({
 	);
 };
 
-export { PromptFields };
-
 export default compose(
 	withLayoutOptions,
 	withCanCreateEdgesState,

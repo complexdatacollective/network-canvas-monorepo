@@ -39,7 +39,15 @@ const withEntityRuleType = compose(
 	),
 	withHandlers({
 		handleChangeEntityRuleType:
-			({ setEntityRuleType, onChange, rule }: { setEntityRuleType: (type: string) => void; onChange: (rule: Record<string, unknown>) => void; rule: Record<string, unknown> }) =>
+			({
+				setEntityRuleType,
+				onChange,
+				rule,
+			}: {
+				setEntityRuleType: (type: string) => void;
+				onChange: (rule: Record<string, unknown>) => void;
+				rule: Record<string, unknown>;
+			}) =>
 			(entityRuleType: string) => {
 				setEntityRuleType(entityRuleType);
 

@@ -25,6 +25,4 @@ const Query = ({ rules = [], join = null, codebook, onChange, openDialog, error 
 	/>
 );
 
-export { Query };
-
 export default Query;

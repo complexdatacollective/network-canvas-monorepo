@@ -52,6 +52,4 @@ const ContentGrid = (props: Record<string, unknown>) => (
 	/>
 );
 
-export { ContentGrid };
-
 export default ContentGrid;

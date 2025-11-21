@@ -55,8 +55,6 @@ const QuickAdd = ({
 		</Section>
 	);
 
-export { QuickAdd };
-
 export default compose(
 	withSubject,
 	withDisabledSubjectRequired,

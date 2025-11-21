@@ -46,8 +46,6 @@ const CategoricalBinPrompts = ({
 	</Section>
 );
 
-export { CategoricalBinPrompts };
-
 export default compose(
 	withSubject,
 	withDisabledSubjectRequired,

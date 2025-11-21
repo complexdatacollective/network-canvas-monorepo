@@ -86,8 +86,6 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 	);
 };
 
-export { SortOptions };
-
 export default compose(
 	withMapFormToProps("dataSource"),
 	withDisabledAssetRequired,

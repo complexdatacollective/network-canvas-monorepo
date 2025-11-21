@@ -46,8 +46,6 @@ const TieStrengthCensusPrompts = ({
 	</Section>
 );
 
-export { TieStrengthCensusPrompts };
-
 export default compose(
 	withSubject,
 	withDisabledSubjectRequired,
