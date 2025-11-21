@@ -2,7 +2,7 @@ import { PureComponent } from "react";
 import { compose } from "recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import { Boolean as BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";
+import { BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";
 import IssueAnchor from "~/components/IssueAnchor";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import DetachedField from "../../DetachedField";
@@ -31,7 +31,7 @@ class Background extends PureComponent<BackgroundProps> {
 			>
 				<Row>
 					<DetachedField
-						component={BooleanField}
+						component={BooleanField as React.ComponentType<Record<string, unknown>>}
 						value={useImage}
 						options={[
 							{
@@ -53,7 +53,9 @@ class Background extends PureComponent<BackgroundProps> {
 								),
 							},
 						]}
-						onChange={handleChooseBackgroundType}
+						onChange={(_event: unknown, nextValue: unknown, _currentValue: unknown, _name: string | null) =>
+							handleChooseBackgroundType(nextValue as boolean)
+						}
 						label="Choose a background type"
 						noReset
 					/>
@@ -65,10 +67,12 @@ class Background extends PureComponent<BackgroundProps> {
 							<ValidatedField
 								name="background.concentricCircles"
 								component={NumberField}
-								label="Number of concentric circles to use:"
-								type="number"
 								normalize={(value) => Number.parseInt(value, 10) || value}
 								validation={{ required: true, positiveNumber: true }}
+								componentProps={{
+									label: "Number of concentric circles to use:",
+									type: "number",
+								}}
 							/>
 						</Row>
 						<Row>
@@ -85,9 +89,11 @@ class Background extends PureComponent<BackgroundProps> {
 						<IssueAnchor fieldName="background.image" description="Background > Image" />
 						<ValidatedField
 							name="background.image"
-							component={Image}
-							label="Background image"
+							component={Image as React.ComponentType<Record<string, unknown>>}
 							validation={{ required: true }}
+							componentProps={{
+								label: "Background image",
+							}}
 						/>
 					</Row>
 				)}
@@ -97,5 +103,5 @@ class Background extends PureComponent<BackgroundProps> {
 }
 
 export default compose(withBackgroundChangeHandler)(
-	Background,
+	Background as unknown as React.ComponentType<unknown>,
 ) as unknown as React.ComponentType<StageEditorSectionProps>;

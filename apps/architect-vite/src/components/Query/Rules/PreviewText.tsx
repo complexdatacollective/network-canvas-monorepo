@@ -124,7 +124,9 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 							| "layout"
 							| "location") ?? "text"
 					}
-				/>
+				>
+					{options.attribute ?? ""}
+				</SimpleVariablePill>
 				<Operator value={options.operator} isEgo />
 				<Value value={options.value} />
 			</>
@@ -168,7 +170,9 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 						| "layout"
 						| "location") ?? "text"
 				}
-			/>
+			>
+				{options.attribute ?? ""}
+			</SimpleVariablePill>
 			<Operator value={options.operator} />
 			<Value value={options.value} />
 		</>

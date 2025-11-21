@@ -7,7 +7,9 @@ import SummaryContext from "./SummaryContext";
 const Cover = () => {
 	const { protocol } = useContext(SummaryContext);
 
-	const lastModified = DateTime.fromISO(protocol.lastModified).toHTTP();
+	const lastModified = protocol.lastModified
+		? DateTime.fromISO(protocol.lastModified).toHTTP()
+		: DateTime.now().toHTTP();
 	const date = new Date();
 	const now = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 
@@ -21,10 +23,10 @@ const Cover = () => {
 				</div>
 			</div>
 			<ProtocolCard
-				name={protocol?.name ?? "Protocol"}
-				description={protocol?.description ?? ""}
-				lastModified={lastModified}
-				schemaVersion={protocol?.schemaVersion ?? 8}
+				name={protocol.name ?? "Protocol"}
+				description={protocol.description ?? ""}
+				lastModified={lastModified ?? null}
+				schemaVersion={protocol.schemaVersion ?? 8}
 			/>
 			<br />
 			<br />

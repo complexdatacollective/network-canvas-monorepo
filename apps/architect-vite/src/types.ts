@@ -7,7 +7,7 @@ import type { CurrentProtocol } from "@codaco/protocol-validation";
  */
 export type ProtocolWithMetadata = CurrentProtocol & {
 	name?: string;
-	description?: string;
 	lastModified?: string;
 	filePath?: string;
+	workingPath?: string;
 };

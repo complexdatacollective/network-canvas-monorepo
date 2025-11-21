@@ -1,7 +1,9 @@
+import type React from "react";
 import { compose } from "recompose";
 import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
 import { Row, Section } from "../EditorLayout";
 import ExternalLink from "../ExternalLink";
@@ -70,9 +72,11 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 				<div data-name="Map Options Mapbox Key" />
 				<ValidatedField
 					name="mapOptions.tokenAssetId"
-					component={GeoAPIKey}
-					label="Mapbox API Key"
+					component={GeoAPIKey as React.ComponentType}
 					validation={{ required: true }}
+					componentProps={{
+						label: "Mapbox API Key",
+					}}
 				/>
 			</Section>
 			<Section
@@ -87,20 +91,21 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 				<Row>
 					<div data-name="Layer data-source" />
 					<ValidatedField
-						component={GeoDataSource}
+						component={GeoDataSource as React.ComponentType}
 						name="mapOptions.dataSourceAssetId"
-						id="dataSourceAssetId"
 						validation={{ required: true }}
 					/>
 				</Row>
 				{variableOptions && variableOptions.length > 0 && (
 					<Row>
 						<ValidatedField
-							label="Which property should be used for map selection?"
 							name="mapOptions.targetFeatureProperty"
-							component={NativeSelect}
-							options={variableOptions}
+							component={NativeSelect as React.ComponentType}
 							validation={{ required: true }}
+							componentProps={{
+								label: "Which property should be used for map selection?",
+								options: variableOptions,
+							}}
 						/>
 					</Row>
 				)}
@@ -108,21 +113,25 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 			<Section title="Map Style">
 				<Row>
 					<ValidatedField
-						component={ColorPicker}
+						component={ColorPicker as React.ComponentType}
 						name="mapOptions.color"
-						palette={paletteName}
-						paletteRange={paletteSize}
 						validation={{ required: true }}
-						label="Which color would you like to use for this stage's map outlines and selections?"
+						componentProps={{
+							palette: paletteName,
+							paletteRange: paletteSize,
+							label: "Which color would you like to use for this stage's map outlines and selections?",
+						}}
 					/>
 				</Row>
 				<Row>
 					<ValidatedField
-						component={NativeSelect}
+						component={NativeSelect as React.ComponentType}
 						name="mapOptions.style"
-						options={mapboxStyleOptions}
 						validation={{ required: true }}
-						label="Which mapbox style would you like to use for the map itself?"
+						componentProps={{
+							options: mapboxStyleOptions,
+							label: "Which mapbox style would you like to use for the map itself?",
+						}}
 					/>
 				</Row>
 			</Section>
@@ -133,9 +142,11 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 			>
 				<ValidatedField
 					name="mapOptions"
-					component={MapSelection}
-					label="Initial Map View"
+					component={MapSelection as React.ComponentType}
 					validation={{ required: true }}
+					componentProps={{
+						label: "Initial Map View",
+					}}
 				/>
 			</Section>
 		</>

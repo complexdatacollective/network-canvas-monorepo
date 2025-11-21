@@ -1,8 +1,8 @@
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
-import { render } from "@testing-library/react";
+import { type RenderResult, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
-import type { InjectedFormProps } from "redux-form";
 import { change, reduxForm } from "redux-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createVariableAsync } from "../../../../ducks/modules/protocol/codebook";
@@ -12,7 +12,7 @@ import PromptFields from "../PromptFields";
 
 // Mock the Option component to include test ID
 vi.mock("../../../Options/Option", () => ({
-	default: ({ children, ...props }: { children: ReactNode }) => (
+	default: ({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) => (
 		<div data-testid="option" {...props}>
 			{children}
 		</div>
@@ -25,7 +25,7 @@ vi.mock("../../PromptText", () => ({
 }));
 
 vi.mock("../../../Form/ValidatedField", () => ({
-	default: ({ children, ...props }: { children?: ReactNode }) => (
+	default: ({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) => (
 		<div data-testid="validated-field" {...props}>
 			{children}
 		</div>
@@ -34,52 +34,78 @@ vi.mock("../../../Form/ValidatedField", () => ({
 
 const mockFormName = "foo";
 
-const initialState = {
-	protocol: {
-		timeline: [],
-		present: {
-			codebook: {
-				node: {
-					person: {
-						variables: {
-							bazz: {
-								name: "bazz",
-								options: [
-									{ value: "a", label: "a" },
-									{ value: "b", label: "b" },
-									{ value: "c", label: "c" },
-									{ value: "d", label: "d" },
-								],
-							},
-							buzz: {
-								name: "buzz",
-								options: [
-									{ value: 1, label: "1" },
-									{ value: 2, label: "2" },
-								],
-							},
-						},
+const protocolFixture: CurrentProtocol = {
+	schemaVersion: 8,
+	codebook: {
+		node: {
+			person: {
+				name: "Person",
+				color: "node-color-seq-1",
+				variables: {
+					bazz: {
+						name: "bazz",
+						type: "categorical",
+						options: [
+							{ value: "a", label: "a" },
+							{ value: "b", label: "b" },
+							{ value: "c", label: "c" },
+							{ value: "d", label: "d" },
+						],
+					},
+					buzz: {
+						name: "buzz",
+						type: "categorical",
+						options: [
+							{ value: "1", label: "1" },
+							{ value: "2", label: "2" },
+						],
 					},
 				},
 			},
 		},
+		edge: {},
+		ego: {},
 	},
+	stages: [],
+	assetManifest: {},
 };
+
+const initialState = {
+	form: {},
+	app: {},
+	dialogs: {
+		dialogs: [],
+	},
+	activeProtocol: {
+		timeline: [],
+		present: protocolFixture,
+		past: [],
+		future: [],
+		futureTimeline: [],
+	},
+	protocolValidation: {
+		validationResult: null,
+		isValidating: false,
+		validationError: null,
+		lastValidatedProtocol: null,
+	},
+	toasts: [],
+	protocols: {},
+} as unknown as Partial<RootState>;
+
+const MockFormComponent = (props: { children?: ReactNode; [key: string]: unknown }) => <form>{props.children}</form>;
 
 const MockForm = reduxForm({
 	form: mockFormName,
-})(({ handleSubmit, children }: InjectedFormProps & { children: ReactNode }) => (
-	<form onSubmit={handleSubmit}>{children}</form>
-));
+	// redux-form library has complex typing that doesn't work well with TypeScript strict mode
+	// biome-ignore lint/suspicious/noExplicitAny: redux-form requires this
+})(MockFormComponent as any);
 
-const getSubject = (
-	node: ReactNode,
-	store: ReturnType<typeof createTestStore>,
-	{ form }: { form: Record<string, unknown> },
-) =>
+const getSubject = (node: ReactNode, store: ReturnType<typeof createTestStore>): RenderResult =>
 	render(
 		<Provider store={store}>
-			<MockForm {...form}>{node}</MockForm>
+			{/* @ts-expect-error MockForm from reduxForm doesn't properly type children in JSX */}
+			<MockForm>{node}</MockForm>
 		</Provider>,
 	);
 
@@ -94,8 +120,16 @@ const createTestStore = (initialState: Partial<RootState>) =>
 			}),
 	});
 
+type PromptFieldsTestProps = {
+	form: string;
+	entity: "node" | "edge" | "ego";
+	type: string;
+	changeForm: (form: string, field: string, value: unknown) => void;
+	onCreateOtherVariable: (value: string, field: string) => void;
+};
+
 // eslint-disable-next-line import/prefer-default-export
-export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, name = "") => {
+export const testPromptFields = (PromptFieldsComponent: React.ComponentType<PromptFieldsTestProps>, name = "") => {
 	let mockStore: ReturnType<typeof createTestStore>;
 
 	beforeEach(() => {
@@ -107,27 +141,15 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 	describe(name, () => {
 		describe("PromptFields", () => {
 			it("when variable is created, variable options are updated", () => {
-				const formProps = {
-					initialValues: {
-						variable: "bazz",
-						variableOptions: [
-							{ label: "bazz", value: "bazz" },
-							{ label: "buzz", value: "buzz" },
-						],
-					},
-				};
-				const additionalProps = { form: formProps };
-
 				const subject = getSubject(
 					<PromptFieldsComponent
 						form={mockFormName}
 						entity="node"
 						type="person"
-						handleDeleteVariable={vi.fn()}
-						handleUpdate={vi.fn()}
+						changeForm={vi.fn()}
+						onCreateOtherVariable={vi.fn()}
 					/>,
 					mockStore,
-					additionalProps,
 				);
 
 				expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
@@ -136,10 +158,9 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 					createVariableAsync({
 						entity: "node",
 						type: "person",
-						variable: "809895df-bbd7-4c76-ac58-e6ada2625f9b",
 						configuration: {
 							name: "fizz",
-							type: "foo",
+							type: "categorical",
 							options: [1, 2, 3],
 						},
 					}),
@@ -149,13 +170,14 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 
 				subject.rerender(
 					<Provider store={mockStore}>
-						<MockForm {...formProps}>
+						{/* @ts-expect-error MockForm from reduxForm doesn't properly type children in JSX */}
+						<MockForm>
 							<PromptFieldsComponent
 								form={mockFormName}
 								entity="node"
 								type="person"
-								handleDeleteVariable={vi.fn()}
-								handleUpdate={vi.fn()}
+								changeForm={vi.fn()}
+								onCreateOtherVariable={vi.fn()}
 							/>
 						</MockForm>
 					</Provider>,
@@ -165,27 +187,15 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 			});
 
 			it("when variable is changed, variable options are updated", () => {
-				const formProps = {
-					initialValues: {
-						variable: "bazz",
-						variableOptions: [
-							{ label: "bazz", value: "bazz" },
-							{ label: "buzz", value: "buzz" },
-						],
-					},
-				};
-				const additionalProps = { form: formProps };
-
 				const subject = getSubject(
 					<PromptFieldsComponent
 						form={mockFormName}
 						entity="node"
 						type="person"
-						handleDeleteVariable={vi.fn()}
-						handleUpdate={vi.fn()}
+						changeForm={vi.fn()}
+						onCreateOtherVariable={vi.fn()}
 					/>,
 					mockStore,
-					additionalProps,
 				);
 
 				expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
@@ -194,13 +204,14 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 
 				subject.rerender(
 					<Provider store={mockStore}>
-						<MockForm {...formProps}>
+						{/* @ts-expect-error MockForm from reduxForm doesn't properly type children in JSX */}
+						<MockForm>
 							<PromptFieldsComponent
 								form={mockFormName}
 								entity="node"
 								type="person"
-								handleDeleteVariable={vi.fn()}
-								handleUpdate={vi.fn()}
+								changeForm={vi.fn()}
+								onCreateOtherVariable={vi.fn()}
 							/>
 						</MockForm>
 					</Provider>,
@@ -212,4 +223,4 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 	});
 };
 
-testPromptFields(PromptFields);
+testPromptFields(PromptFields as unknown as React.ComponentType<PromptFieldsTestProps>);

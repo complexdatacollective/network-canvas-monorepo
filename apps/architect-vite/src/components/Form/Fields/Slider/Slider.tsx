@@ -12,9 +12,9 @@ type SliderOption = {
 };
 
 type SliderInputProps = {
-	options?: SliderOption[];
+	options?: SliderOption[] | null;
 	value: string | number | null;
-	type: string;
+	type: string | null;
 	onBlur: (value: string | number | null) => void;
 	parameters?: {
 		minLabel?: string;
@@ -27,9 +27,10 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 	const isVisualAnalogScale = useCallback(() => type === "VAS", [type]);
 
 	const getSliderProps = useCallback(() => {
-		const domain: [number, number] = isLikert() ? [0, options.length - 1] : [0, 1];
+		const optionsArray = options ?? [];
+		const domain: [number, number] = isLikert() ? [0, optionsArray.length - 1] : [0, 1];
 		const step = isLikert() ? 1 : 0.0005;
-		const values = isLikert() ? [options.findIndex((option) => option.value === value)] : [value as number];
+		const values = isLikert() ? [optionsArray.findIndex((option) => option.value === value)] : [value as number];
 
 		return {
 			domain,
@@ -39,24 +40,25 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 	}, [isLikert, options, value]);
 
 	const getTickCount = useCallback(() => {
+		const optionsArray = options ?? [];
 		switch (type) {
 			case "LIKERT":
-				return options.length - 1;
+				return optionsArray.length - 1;
 			case "VAS":
 				return 1;
 			default:
 				return null;
 		}
-	}, [type, options.length]);
+	}, [type, options]);
 
 	const getLabelForValue = useCallback(
 		(val: number): string | null => {
 			if (isLikert()) {
-				return get(options, [val, "label"]);
+				return get(options, [val, "label"]) ?? null;
 			}
 			if (isVisualAnalogScale()) {
 				const index = val === 0 ? "minLabel" : "maxLabel";
-				return get(parameters, index);
+				return get(parameters, index) ?? null;
 			}
 			return round(val * 100).toString();
 		},
@@ -66,7 +68,9 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 	const normalizeValue = useCallback(
 		(val: number) => {
 			if (isLikert()) {
-				return options[val].value;
+				const optionsArray = options ?? [];
+				const option = optionsArray[val];
+				return option ? option.value : 0;
 			}
 			return round(val, 3);
 		},
@@ -78,8 +82,10 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 	 * we are using handleSlideEnd() to capture changes.
 	 */
 	const handleSlideEnd = useCallback(
-		(val: number[]) => {
-			const normalizedValue = normalizeValue(val[0]);
+		(val: readonly number[]) => {
+			const firstVal = val[0];
+			if (firstVal === undefined) return;
+			const normalizedValue = normalizeValue(firstVal);
 			// Use input.onBlur rather than input.onChange so that we can set 'touched'
 			onBlur(normalizedValue);
 		},
@@ -97,6 +103,10 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 		{ "form-field-slider__slider--vas": isVisualAnalogScale() },
 		{ "form-field-slider__slider--not-set": isNotSet },
 	);
+
+	if (!type) {
+		return null;
+	}
 
 	return (
 		<div className="form-field">

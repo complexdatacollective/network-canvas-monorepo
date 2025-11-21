@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type React from "react";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
@@ -18,4 +19,4 @@ const NetworkThumbnail = ({ id, meta = { name: "" } }: NetworkThumbnailProps) =>
 	</div>
 );
 
-export default withAssetMeta(NetworkThumbnail);
+export default withAssetMeta(NetworkThumbnail) as React.ComponentType<{ id: string }>;

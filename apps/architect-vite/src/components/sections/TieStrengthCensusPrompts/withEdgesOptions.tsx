@@ -7,7 +7,7 @@ const mapDispatchToProps = {
 	changeForm: change,
 };
 
-const mapStateToProps = (state) => {
+const mapStateToProps = (state: unknown) => {
 	const edgesForSubject = getEdgesForSubject(state);
 
 	return {
@@ -19,8 +19,8 @@ const handlers = withHandlers({
 	// createEdge select has changed value, so we must reset rest
 	// of the dependent fields.
 	handleChangeCreateEdge:
-		({ changeForm, form }) =>
-		(value) => {
+		({ changeForm, form }: { changeForm: typeof change; form: string }) =>
+		(value: unknown) => {
 			if (!value) return;
 			changeForm(form, "createEdge", value);
 		},

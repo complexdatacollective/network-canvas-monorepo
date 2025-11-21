@@ -1,4 +1,4 @@
-import type { Dispatch } from "@reduxjs/toolkit";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
@@ -21,7 +21,7 @@ type DateTimeParametersProps = {
 };
 
 const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeFields }: DateTimeParametersProps) => {
-	const dateFormat = type ? DATE_FORMATS[type] : DATE_FORMATS.full;
+	const dateFormat = type ? DATE_FORMATS[type as keyof typeof DATE_FORMATS] : DATE_FORMATS.full;
 	const [useDateFormat, setUseDateFormat] = useState(type);
 
 	useEffect(() => {
@@ -39,13 +39,15 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 				and a day. You may optionally choose to collect only a year and a month, or only a year.
 			</p>
 			<ValidatedField
-				label=""
 				component={NativeSelect}
 				name={`${name}.type`}
-				options={dateTypes}
 				validation={{ required: true }}
+				componentProps={{
+					label: "",
+					options: dateTypes,
+				}}
 				onChange={(_, value) => {
-					setUseDateFormat(value);
+					setUseDateFormat(value as string);
 					resetRangeFields();
 				}}
 			/>
@@ -56,15 +58,17 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 				starting in the year 1920.
 			</p>
 			<ValidatedField
-				label=""
 				component={DatePicker}
 				name={`${name}.min`}
 				validation={{ ISODate: dateFormat }}
-				placeholder="Select a start range date..."
-				parameters={{
-					type: useDateFormat,
-					min: "1000-01-01",
-					max: "3000-12-31",
+				componentProps={{
+					label: "",
+					placeholder: "Select a start range date...",
+					parameters: {
+						type: useDateFormat,
+						min: "1000-01-01",
+						max: "3000-12-31",
+					},
 				}}
 			/>
 			<br />
@@ -74,15 +78,17 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 				default to ending at the current date.
 			</p>
 			<ValidatedField
-				label=""
 				component={DatePicker}
 				name={`${name}.max`}
 				validation={{ ISODate: dateFormat }}
-				placeholder="Select an end range date, or leave empty to use interview date..."
-				parameters={{
-					type: useDateFormat,
-					min: "1000-01-01",
-					max: "3000-12-31",
+				componentProps={{
+					label: "",
+					placeholder: "Select an end range date, or leave empty to use interview date...",
+					parameters: {
+						type: useDateFormat,
+						min: "1000-01-01",
+						max: "3000-12-31",
+					},
 				}}
 			/>
 		</>
@@ -90,10 +96,10 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 };
 
 const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; form: string }) => ({
-	setSelectDefault: () => dispatch(change(form, `${name}.type`, "full")),
+	setSelectDefault: () => dispatch(change(form, `${name}.type`, "full") as UnknownAction),
 	resetRangeFields: () => {
-		dispatch(change(form, `${name}.max`, null));
-		dispatch(change(form, `${name}.min`, null));
+		dispatch(change(form, `${name}.max`, null) as UnknownAction);
+		dispatch(change(form, `${name}.min`, null) as UnknownAction);
 	},
 });
 

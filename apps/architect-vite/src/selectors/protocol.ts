@@ -1,4 +1,3 @@
-import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
 import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
@@ -26,7 +25,7 @@ export const getCodebook = (state: RootState) => {
 	return protocol?.codebook || null;
 };
 
-export const getStageList = createSelector([getProtocol], (protocol: CurrentProtocol) => {
+export const getStageList = createSelector([getProtocol], (protocol) => {
 	const stages = protocol ? protocol.stages : [];
 
 	return stages.map((stage) => ({

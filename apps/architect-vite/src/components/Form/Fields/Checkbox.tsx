@@ -5,7 +5,7 @@ import { memo, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import MarkdownLabel from "./MarkdownLabel";
 
-type CheckboxProps = {
+export type CheckboxProps = {
 	label?: React.ReactNode;
 	fieldLabel?: string;
 	className?: string;

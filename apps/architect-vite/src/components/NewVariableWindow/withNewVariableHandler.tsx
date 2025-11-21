@@ -1,3 +1,4 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { values } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
@@ -10,6 +11,12 @@ export const form = "create-new-variable";
 
 type Entity = "node" | "edge" | "ego";
 
+type Variable = {
+	name: string;
+	type: string;
+	[key: string]: unknown;
+};
+
 type OwnProps = {
 	entity: Entity;
 	type: string;
@@ -19,7 +26,7 @@ type OwnProps = {
 const mapStateToProps = (state: RootState, { entity, type }: OwnProps) => {
 	const variableType = formValueSelector(form)(state, "type");
 	const existingVariables = getVariablesForSubject(state, { entity, type });
-	const existingVariableNames = values(existingVariables).map(({ name }) => name);
+	const existingVariableNames = values(existingVariables).map(({ name }: Variable) => name);
 
 	return {
 		variableType,
@@ -29,14 +36,29 @@ const mapStateToProps = (state: RootState, { entity, type }: OwnProps) => {
 
 const mapDispatchToProps = { createVariable: createVariableAsync };
 
-type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
+type StateProps = ReturnType<typeof mapStateToProps>;
+type DispatchProps = typeof mapDispatchToProps;
 
-const newVariableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
+type HandlerProps = StateProps & DispatchProps & OwnProps;
+
+const newVariableHandlers = withHandlers<
+	HandlerProps,
+	{ handleCreateNewVariable: (configuration: Partial<Variable>) => Promise<void> }
+>({
 	handleCreateNewVariable:
 		({ entity, type, createVariable, onComplete }) =>
-		async (configuration: Record<string, unknown>) => {
-			const { variable } = await createVariable(entity, type, configuration);
-			onComplete(variable);
+		async (configuration: Partial<Variable>) => {
+			type CreateVariableResult = UnknownAction & { payload?: { entity: Entity; type?: string; variable: string } };
+			const thunk = createVariable as unknown as (params: {
+				entity: Entity;
+				type?: string;
+				configuration: Partial<Variable>;
+			}) => Promise<CreateVariableResult>;
+			const result = await thunk({ entity, type, configuration });
+			// Extract variable from the fulfilled payload
+			if (result?.payload?.variable) {
+				onComplete(result.payload.variable);
+			}
 		},
 });
 

@@ -52,7 +52,7 @@ type InterfaceTypeName = (typeof INTERFACE_TYPE_NAMES)[number];
 type Category = (typeof CATEGORIES)[keyof typeof CATEGORIES];
 type Tag = (typeof TAGS)[keyof typeof TAGS];
 
-type InterfaceType = {
+export type InterfaceType = {
 	type: InterfaceTypeName;
 	tags: Tag[];
 	category: Category;

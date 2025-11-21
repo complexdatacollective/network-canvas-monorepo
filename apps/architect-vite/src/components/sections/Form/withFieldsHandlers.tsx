@@ -13,6 +13,8 @@ import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubjectSelector, getVariablesForSubjectSelector } from "~/selectors/codebook";
 
+type Entity = "node" | "edge" | "ego";
+
 type UseFieldHandlerProps = {
 	form: string;
 	entity: string;
@@ -22,11 +24,11 @@ type UseFieldHandlerProps = {
 export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) => {
 	const dispatch = useDispatch();
 	const changeField = useCallback(
-		(field: string, value: unknown) => dispatch(change(form, field, value)),
+		(field: string, value: unknown) => dispatch(change(form, field, value) as never),
 		[dispatch, form],
 	);
 	const deleteVariable = useCallback(
-		(variable: string) => dispatch(deleteVariableAsync({ entity, type, variable })),
+		(variable: string) => dispatch(deleteVariableAsync({ entity: entity as Entity, type, variable }) as never),
 		[dispatch, entity, type],
 	);
 
@@ -62,7 +64,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	const variableOptions = useMemo(() => {
 		const filtered = baseVariableOptions
 			// If not a variable with corresponding component, we can't use it here.
-			.filter(({ type: variableType }: { type: string }) => VARIABLE_TYPES_WITH_COMPONENTS.includes(variableType));
+			.filter((option) => VARIABLE_TYPES_WITH_COMPONENTS.includes(option.type as string));
 
 		// with New variable
 		return isNewVariable ? filtered.concat([{ label: createNewVariable, value: createNewVariable }]) : filtered;

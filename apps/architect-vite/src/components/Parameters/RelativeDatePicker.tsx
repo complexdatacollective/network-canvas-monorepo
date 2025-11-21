@@ -1,4 +1,4 @@
-import type { Dispatch } from "@reduxjs/toolkit";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import type React from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
@@ -30,14 +30,13 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 			</p>
 			<Toggle
 				input={{
-					checked: !!useInterviewDate,
+					name: `${name}.useInterviewDate`,
 					value: useInterviewDate,
-					onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-						// Use event rather than state here because we are also changing state in this function.
-						if (event.target.checked) {
+					onChange: (checked: boolean) => {
+						if (checked) {
 							resetField();
 						}
-						setUseInterviewDate(!!event.target.checked);
+						setUseInterviewDate(checked);
 					},
 				}}
 				label="Use interview date"
@@ -46,13 +45,14 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 			{!useInterviewDate && (
 				<ValidatedField
 					label="Specific Anchor Date"
-					component={DatePicker}
+					component={DatePicker as any}
 					name={`${name}.anchor`}
 					validation={{ required: !useInterviewDate, ISODate: dateFormat }}
-					dateFormat={dateFormat}
-					parameters={{
-						min: "1000-01-01",
-						max: "3000-01-01",
+					componentProps={{
+						parameters: {
+							min: "1000-01-01",
+							max: "3000-01-01",
+						},
 					}}
 				/>
 			)}
@@ -72,14 +72,17 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 	);
 };
 
-const mapStateToProps = (state: RootState, { name, form }: { name: string; form: string }) => ({
+type ConnectProps = {
+	name: string;
+	form: string;
+};
+
+const mapStateToProps = (state: RootState, { name, form }: ConnectProps) => ({
 	anchorValue: formValueSelector(form)(state, `${name}.anchor`),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; form: string }) => ({
-	resetField: () => dispatch(change(form, `${name}.anchor`, null)),
+const mapDispatchToProps = (dispatch: Dispatch, { name, form }: ConnectProps) => ({
+	resetField: () => dispatch(change(form, `${name}.anchor`, null) as UnknownAction),
 });
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(
-	RelativeDatePickerParameters as React.ComponentType<unknown>,
-);
+export default compose(connect(mapStateToProps, mapDispatchToProps))(RelativeDatePickerParameters as any);

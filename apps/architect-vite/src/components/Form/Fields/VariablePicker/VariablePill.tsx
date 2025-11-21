@@ -1,4 +1,4 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
+import type { VariableType } from "@codaco/protocol-validation";
 import Tippy from "@tippyjs/react";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
@@ -17,7 +17,7 @@ import { validations } from "~/utils/validations";
 const EDIT_COMPLETE_BUTTON_ID = "editCompleteButton";
 
 type BaseVariablePillProps = {
-	type: "number" | "text" | "boolean" | "ordinal" | "categorical" | "scalar" | "datetime" | "layout" | "location";
+	type: VariableType;
 	children: React.ReactNode;
 };
 
@@ -97,13 +97,17 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 
 	const onEditComplete = () => {
 		const action = updateVariableByUUID(uuid, { name: newName }, true);
-		dispatch(action as UnknownAction);
+		dispatch(action);
 		setValidation(null);
 		setIsEditing(false);
 	};
 
 	const existingVariablesSelector = useMemo(
-		() => (state: RootState) => getVariablesForSubject(state, { entity, type: entityType }),
+		() => (state: RootState) => {
+			const validEntity = (entity || "") as "node" | "edge" | "ego";
+			const validType = (entityType || "node") as "node" | "edge" | "ego";
+			return getVariablesForSubject(state, { entity: validEntity, type: validType });
+		},
 		[entity, entityType],
 	);
 	const existingVariables = useAppSelector(existingVariablesSelector);
@@ -143,7 +147,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 	}
 
 	return (
-		<BaseVariablePill type={type} ref={ref}>
+		<BaseVariablePill type={type as VariableType} ref={ref}>
 			<AnimatePresence initial={false} mode="wait">
 				{editing ? (
 					<motion.div

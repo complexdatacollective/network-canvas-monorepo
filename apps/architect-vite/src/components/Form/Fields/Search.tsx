@@ -7,20 +7,24 @@ import Text from "./Text";
 type SearchProps = {
 	input?: {
 		value?: string;
-		onChange?: (value: string) => void;
+		onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+		onKeyDown?: (e: React.KeyboardEvent) => void;
 		[key: string]: unknown;
 	};
 	color?: string;
+	autoFocus?: boolean;
+	placeholder?: string;
 	[key: string]: unknown;
 };
 
-const Search = ({ input = { onChange: noop }, color, ...props }: SearchProps) => {
+const Search = ({ input = { onChange: noop }, color, autoFocus, placeholder, ...props }: SearchProps) => {
 	const hasValue = !isEmpty(get({ input, ...props }, ["input", "value"], ""));
 
 	const onChange = get({ input, ...props }, ["input", "onChange"], noop);
 
 	const handleClear = () => {
-		onChange("");
+		const fakeEvent = { target: { value: "" } } as React.ChangeEvent<HTMLInputElement>;
+		onChange(fakeEvent);
 	};
 
 	const adornmentLeft = color && <SearchIcon style={{ color }} />;
@@ -36,7 +40,16 @@ const Search = ({ input = { onChange: noop }, color, ...props }: SearchProps) =>
 		/>
 	);
 
-	return <Text adornmentLeft={adornmentLeft} adornmentRight={adornmentRight} {...{ input, ...props }} type="search" />;
+	return (
+		<Text
+			adornmentLeft={adornmentLeft}
+			adornmentRight={adornmentRight}
+			input={input}
+			autoFocus={autoFocus}
+			placeholder={placeholder}
+			type="search"
+		/>
+	);
 };
 
 export default Search;

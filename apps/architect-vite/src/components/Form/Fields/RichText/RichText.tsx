@@ -1,5 +1,4 @@
 import { EditListPlugin } from "@productboard/slate-edit-list";
-import { compose } from "@reduxjs/toolkit";
 import { isEmpty } from "es-toolkit/compat";
 import isHotkey from "is-hotkey";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -48,7 +47,9 @@ const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) =
 		if (isHotkey(hotkey, event)) {
 			event.preventDefault();
 			const mark = HOTKEYS[hotkey];
-			toggleMark(editor, mark);
+			if (mark) {
+				toggleMark(editor, mark);
+			}
 		}
 	});
 };
@@ -115,26 +116,25 @@ const RichText = ({
 	);
 
 	const withOptions = useCallback(
-		(e: CustomEditor) =>
-			Object.assign(e, {
-				inline,
-				disallowedTypes: disallowedTypesWithDefaults,
-			}),
+		(e: Editor) => {
+			const customE = e as CustomEditor;
+			customE.inline = inline;
+			customE.disallowedTypes = disallowedTypesWithDefaults;
+			return customE;
+		},
 		[inline, disallowedTypesWithDefaults],
 	);
 
-	const editor = useMemo(
-		() =>
-			compose(
-				withVoids,
-				withNormalize,
-				withOptions,
-				withEditList,
-				withHistory,
-				withReact,
-			)(createEditor() as CustomEditor),
-		[withOptions],
-	);
+	const editor = useMemo(() => {
+		const baseEditor = createEditor();
+		const withReactEditor = withReact(baseEditor);
+		const withHistoryEditor = withHistory(withReactEditor);
+		const withListEditor = withEditList(withHistoryEditor);
+		const withNormalizeEditor = withNormalize(withListEditor);
+		const withVoidsEditor = withVoids(withNormalizeEditor);
+		const withOptionsEditor = withOptions(withVoidsEditor);
+		return withOptionsEditor as CustomEditor;
+	}, [withOptions]);
 
 	// Test if there is no text content in the tree
 	const childrenAreEmpty = useCallback((children: Descendant[]): boolean => {
@@ -210,8 +210,8 @@ const RichText = ({
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
-			hotkeyOnKeyDown(editor)(event);
-			listOnKeyDown(editor)(event);
+			hotkeyOnKeyDown(editor as CustomEditor)(event);
+			listOnKeyDown(editor as Editor)(event);
 		},
 		[editor],
 	);

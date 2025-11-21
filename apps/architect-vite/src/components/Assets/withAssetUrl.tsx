@@ -44,7 +44,7 @@ const withAssetUrl = <P extends WithAssetUrlProps>(WrappedComponent: React.Compo
 			};
 		}, [id]);
 
-		return <WrappedComponent {...(restProps as P)} url={url} />;
+		return <WrappedComponent {...({ ...restProps, url } as unknown as P)} />;
 	};
 
 	WithAssetUrlComponent.displayName = `withAssetUrl(${WrappedComponent.displayName || WrappedComponent.name})`;

@@ -1,4 +1,3 @@
-import { omit } from "lodash";
 import { useCallback } from "react";
 import Confirm from "./Dialog/Confirm";
 import ErrorDialog from "./Dialog/Error";
@@ -88,27 +87,24 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 		(dialog: Dialog) => {
 			const onConfirm = () => handleConfirm(dialog);
 			const onCancel = () => handleCancel(dialog);
-			const commonProps = {
-				show: true,
-				key: dialog.id,
-				onConfirm,
-				onCancel,
-				...omit(dialog, ["onConfirm", "onCancel"]),
-			};
+			const { onConfirm: dialogOnConfirm, onCancel: dialogOnCancel, id, type, title } = dialog;
+			const resolvedTitle = typeof title === "string" ? title : "";
+			const confirmCallback = dialogOnConfirm ? () => dialogOnConfirm(dialog) : onConfirm;
+			const cancelCallback = dialogOnCancel ? () => dialogOnCancel(dialog) : onCancel;
 
-			switch (dialog.type) {
+			switch (type) {
 				case "Confirm":
-					return <Confirm {...commonProps} />;
+					return <Confirm key={id} show title={resolvedTitle} onConfirm={confirmCallback} onCancel={cancelCallback} />;
 				case "Error":
-					return <ErrorDialog {...commonProps} />;
+					return <ErrorDialog key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
 				case "Notice":
-					return <Notice {...commonProps} />;
+					return <Notice key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
 				case "Simple":
-					return <Simple {...commonProps} />;
+					return <Simple key={id} show title={resolvedTitle} onBlur={cancelCallback} />;
 				case "UserError":
-					return <UserErrorDialog {...commonProps} />;
+					return <UserErrorDialog key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
 				case "Warning":
-					return <Warning {...commonProps} />;
+					return <Warning key={id} show title={resolvedTitle} onConfirm={confirmCallback} onCancel={cancelCallback} />;
 				default:
 					// TypeScript ensures this is exhaustive
 					return null;

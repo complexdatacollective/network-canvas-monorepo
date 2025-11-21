@@ -37,12 +37,17 @@ const OrdinalBinPrompts = ({
 		title="Prompts"
 	>
 		<EditableList
-			previewComponent={PromptPreview}
+			previewComponent={PromptPreview as React.ComponentType<Record<string, unknown>>}
 			editComponent={PromptFields}
 			title="Edit Prompt"
 			template={template}
 			onChange={handleChangePrompt}
-			itemSelector={itemSelector(entity, type)}
+			itemSelector={
+				itemSelector(entity, type) as (
+					state: Record<string, unknown>,
+					params: { form: string; editField: string },
+				) => unknown
+			}
 			editProps={{ entity, type }}
 			form={form}
 		/>

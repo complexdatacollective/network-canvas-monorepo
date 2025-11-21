@@ -12,8 +12,9 @@
 		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
-		"@base-ui-components/react": "1.0.0-beta.0",
+		"@base-ui-components/react": "1.0.0-beta.6",
 		"@codaco/protocol-validation": "workspace:*",
+		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@posthog/react": "^1.4.0",
 		"@productboard/slate-edit-list": "^0.21.5",
@@ -74,8 +75,8 @@
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/react": "^16.2.0",
 		"@types/is-hotkey": "^0.1.10",
-		"fs-extra": "^11.2.0",
 		"@types/lodash": "^4.17.20",
+		"@types/luxon": "^3.7.1",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@types/react-table": "^7.7.20",

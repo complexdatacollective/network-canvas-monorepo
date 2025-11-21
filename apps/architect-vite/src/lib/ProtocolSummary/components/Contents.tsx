@@ -4,14 +4,18 @@ import DualLink from "./DualLink";
 import EntityBadge from "./EntityBadge";
 import SummaryContext from "./SummaryContext";
 
-const Contents = () => {
-	const {
-		protocol: { stages, codebook, assetManifest },
-	} = useContext(SummaryContext);
+type Asset = {
+	name?: string;
+	type?: string;
+	[key: string]: unknown;
+};
 
-	const nodes = toPairs(codebook.node);
-	const edges = toPairs(codebook.edge);
-	const assets = groupBy(toPairs(assetManifest), ([, asset]) => asset.type);
+const Contents = () => {
+	const { protocol } = useContext(SummaryContext);
+
+	const nodes = toPairs(protocol.codebook?.node ?? {});
+	const edges = toPairs(protocol.codebook?.edge ?? {});
+	const assets = groupBy(toPairs(protocol.assetManifest ?? {}), ([, asset]) => (asset as Asset).type);
 
 	return (
 		<div className="protocol-summary-contents">
@@ -20,8 +24,8 @@ const Contents = () => {
 				<ol>
 					<li>Stages</li>
 					<ol>
-						{stages &&
-							map(stages, ({ label, id }, index) => (
+						{protocol.stages &&
+							map(protocol.stages, ({ label, id }, index) => (
 								<li key={id}>
 									<DualLink to={`#stage-${id}`}>
 										{index + 1}. {label}
@@ -31,7 +35,7 @@ const Contents = () => {
 					</ol>
 					<li>Codebook</li>
 					<ul>
-						{codebook.ego && (
+						{protocol.codebook?.ego && (
 							<li>
 								<DualLink to="#ego">Ego</DualLink>
 							</li>
@@ -68,7 +72,7 @@ const Contents = () => {
 											<ul>
 												{typeAssets.map(([id, asset]) => (
 													<li key={id}>
-														<DualLink to={`#asset-${id}`}>{asset.name}</DualLink>
+														<DualLink to={`#asset-${id}`}>{(asset as Asset).name}</DualLink>
 													</li>
 												))}
 											</ul>

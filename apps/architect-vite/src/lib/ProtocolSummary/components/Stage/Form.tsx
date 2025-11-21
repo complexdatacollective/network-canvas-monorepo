@@ -24,15 +24,16 @@ const Form = ({ form = null }: FormProps) => {
 		return null;
 	}
 
-	const fieldRows = form.fields?.map(({ prompt, variable }) => {
-		const meta = getVariableMeta(index, variable);
+	const fieldRows =
+		form.fields?.map(({ prompt, variable }) => {
+			const meta = getVariableMeta(index, variable);
 
-		return [
-			<Variable key={`var-${variable}`} id={variable} />,
-			<span key={`comp-${variable}`}>{meta.component}</span>,
-			<Markdown key={`prompt-${variable}`} label={prompt} />,
-		];
-	});
+			return [
+				<Variable key={`var-${variable}`} id={variable} />,
+				<span key={`comp-${variable}`}>{meta.component ?? ""}</span>,
+				<Markdown key={`prompt-${variable}`} label={prompt} />,
+			];
+		}) ?? [];
 
 	return (
 		<div className="protocol-summary-stage__form">

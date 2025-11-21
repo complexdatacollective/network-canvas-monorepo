@@ -19,12 +19,12 @@ type AssetType = "image" | "video" | "audio" | "network" | "apikey" | "geojson";
 
 // Use a more lenient type since these are HOC-wrapped components
 const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<Record<string, unknown>>> = {
-	image: Image as React.ComponentType<Record<string, unknown>>,
-	video: Video as React.ComponentType<Record<string, unknown>>,
-	audio: Audio as React.ComponentType<Record<string, unknown>>,
-	network: Network as React.ComponentType<Record<string, unknown>>,
-	apikey: APIKey as React.ComponentType<Record<string, unknown>>,
-	geojson: GeoJSON as React.ComponentType<Record<string, unknown>>,
+	image: Image as unknown as React.ComponentType<Record<string, unknown>>,
+	video: Video as unknown as React.ComponentType<Record<string, unknown>>,
+	audio: Audio as unknown as React.ComponentType<Record<string, unknown>>,
+	network: Network as unknown as React.ComponentType<Record<string, unknown>>,
+	apikey: APIKey as unknown as React.ComponentType<Record<string, unknown>>,
+	geojson: GeoJSON as unknown as React.ComponentType<Record<string, unknown>>,
 };
 
 const Asset = ({

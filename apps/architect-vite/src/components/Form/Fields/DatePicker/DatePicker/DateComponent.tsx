@@ -16,7 +16,7 @@ type DateProps = {
 	children: (props: DateRenderProps) => ReactNode;
 };
 
-const DateComponent = ({ children }: DateProps) => {
+const DateComponent = ({ children }: DateProps): ReactNode => {
 	const { onChange, date, range, type } = useContext(DatePickerContext);
 
 	return children({
@@ -26,7 +26,7 @@ const DateComponent = ({ children }: DateProps) => {
 		type,
 		isComplete: isComplete(type)(date),
 		isEmpty: isEmpty(type)(date),
-	}) as JSX.Element;
+	});
 };
 
 export default DateComponent;

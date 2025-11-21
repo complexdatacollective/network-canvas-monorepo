@@ -11,8 +11,8 @@ import withPromptChangeHandler from "./withPromptChangeHandler";
 
 type CategoricalBinPromptsProps = {
 	handleChangePrompt: (value: Record<string, unknown>) => void;
-	entity?: string;
-	type?: string;
+	entity?: string | null;
+	type?: string | null;
 	form: string;
 	disabled?: boolean;
 };
@@ -35,12 +35,17 @@ const CategoricalBinPrompts = ({
 		title="Prompts"
 	>
 		<EditableList
-			previewComponent={PromptPreview}
+			previewComponent={PromptPreview as React.ComponentType<Record<string, unknown>>}
 			editComponent={PromptFields}
 			title="Edit Prompt"
-			onChange={handleChangePrompt}
-			normalize={normalizeField}
-			itemSelector={itemSelector(entity, type)}
+			onChange={(value: unknown) => handleChangePrompt(value as Record<string, unknown>)}
+			normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
+			itemSelector={
+				itemSelector(entity, type) as (
+					state: Record<string, unknown>,
+					params: { form: string; editField: string },
+				) => unknown
+			}
 			editProps={{ entity, type }}
 			form={form}
 		/>

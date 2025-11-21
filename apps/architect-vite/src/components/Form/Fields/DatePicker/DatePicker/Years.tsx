@@ -14,15 +14,15 @@ type YearsProps = {
 /**
  * Supplies `years` range based on min/max props.
  */
-const Years = ({ children }: YearsProps) => {
+const Years = ({ children }: YearsProps): ReactNode => {
 	const { range: dateRange } = useContext(DatePickerContext);
 
-	if (!dateRange) {
-		return children({ years: [] }) as JSX.Element;
+	if (!dateRange || !dateRange.start || !dateRange.end) {
+		return children({ years: [] });
 	}
 
 	const years = range(dateRange.start.year, dateRange.end.year + 1).map((y) => formatRangeItem(y));
-	return children({ years }) as JSX.Element;
+	return children({ years });
 };
 
 export default Years;

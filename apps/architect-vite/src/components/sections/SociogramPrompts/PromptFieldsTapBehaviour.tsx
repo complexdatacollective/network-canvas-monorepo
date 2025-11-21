@@ -1,9 +1,10 @@
+import type { FilterRule } from "@codaco/protocol-validation";
 import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import { Boolean as BooleanField } from "~/components/Form/Fields";
+import BooleanField from "~/components/Form/Fields/BooleanField";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
 import type { RootState } from "~/ducks/store";
@@ -86,7 +87,13 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 
 	const [tapBehaviour, setTapBehaviour] = React.useState(initialState());
 
-	const handleChangeTapBehaviour = (behaviour: string | null) => {
+	const handleChangeTapBehaviour = (
+		eventOrValue: unknown,
+		nextValue: unknown,
+		_currentValue: unknown,
+		_name: string | null,
+	) => {
+		const behaviour = (typeof eventOrValue === "string" ? eventOrValue : nextValue) as string | null;
 		setTapBehaviour(behaviour);
 		if (behaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES) {
 			// Reset edge creation
@@ -114,9 +121,9 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 		return true;
 	};
 
-	const selectedValue = useSelector((state: RootState) => getFormValue(state, "edges.create"));
+	const selectedValue = useSelector((state: RootState) => getFormValue(state, "edges.create")) as string;
 
-	const edgeFilters = useSelector(getEdgeFilters);
+	const edgeFilters = useSelector(getEdgeFilters) as FilterRule[];
 	const showNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, [selectedValue]);
 
 	return (
@@ -138,7 +145,7 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 		>
 			<Row>
 				<DetachedField
-					component={BooleanField}
+					component={BooleanField as React.ComponentType<Record<string, unknown>>}
 					onChange={handleChangeTapBehaviour}
 					value={tapBehaviour}
 					validation={{ required: true }}
@@ -196,7 +203,7 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 
 						<ValidatedField
 							name="edges.create"
-							component={EntitySelectField}
+							component={EntitySelectField as React.ComponentType<Record<string, unknown>>}
 							validation={{ required: true }}
 							componentProps={{
 								entityType: "edge",

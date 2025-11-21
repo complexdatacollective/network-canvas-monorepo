@@ -32,13 +32,13 @@ const PromptFields = ({
 		initialValues: { name: null, type: VARIABLE_TYPE },
 	};
 
-	const handleCreatedNewVariable = (id, { field }) => changeForm(form, field, id);
+	const handleCreatedNewVariable = (id: string, params: { field: string }) => changeForm(form, params.field, id);
 
 	const [newVariableWindowProps, openNewVariableWindow] = useNewVariableWindowState(
 		newVariableWindowInitialProps,
 		handleCreatedNewVariable,
 	);
-	const handleNewVariable = (name) => {
+	const handleNewVariable = (name: string) => {
 		openNewVariableWindow({ initialValues: { name, type: VARIABLE_TYPE } }, { field: "variable" });
 	};
 
@@ -52,12 +52,13 @@ const PromptFields = ({
 					<ValidatedField
 						name="variable"
 						component={VariablePicker}
-						type={type}
-						entity={entity}
-						options={geoVariableOptions}
-						onCreateOption={handleNewVariable}
 						validation={{ required: true }}
-						variable={variable}
+						componentProps={{
+							type,
+							entity,
+							options: geoVariableOptions,
+							onCreateOption: handleNewVariable,
+						}}
 					/>
 				</Row>
 			</Section>

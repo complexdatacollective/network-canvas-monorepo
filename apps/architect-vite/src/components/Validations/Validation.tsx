@@ -31,19 +31,34 @@ const Validation = ({
 	itemValue = null,
 	existingVariables,
 }: ValidationProps) => {
-	const handleKeyChange = (option: string) => onUpdate(option, itemValue, itemKey || "");
+	const handleKeyChange = (option: string | null) => {
+		onUpdate(option || "", itemValue, itemKey || "");
+	};
 
-	const handleValueChange = (newValue: boolean | number | string | null) =>
+	const handleNumberValueChange = (newValue: number | null) => {
 		onUpdate(itemKey || "", newValue, itemKey || "");
+	};
+
+	const handleListValueChange = (newValue: string | null) => {
+		onUpdate(itemKey || "", newValue, itemKey || "");
+	};
 
 	const keyInputProps = {
-		value: itemKey,
+		name: "validation-key",
+		value: itemKey ?? null,
 		onChange: handleKeyChange,
 	};
 
-	const valueInputProps = {
-		value: itemValue || "",
-		onChange: handleValueChange,
+	const numberValueInputProps = {
+		name: "validation-value",
+		value: typeof itemValue === "number" ? itemValue : null,
+		onChange: handleNumberValueChange,
+	};
+
+	const listValueInputProps = {
+		name: "validation-value",
+		value: typeof itemValue === "string" ? itemValue : null,
+		onChange: handleListValueChange,
 	};
 
 	const existingVariableOptions = map(existingVariables, (variableValue, variableKey) => ({
@@ -68,16 +83,16 @@ const Validation = ({
 						placeholder="Select validation rule"
 					/>
 				</div>
-				{isValidationWithNumberValue(itemKey) && (
+				{itemKey && isValidationWithNumberValue(itemKey) && (
 					<div className="form-fields-multi-select__rule-option">
-						<NumberField input={valueInputProps} validation={{ required: true }} />
+						<NumberField input={numberValueInputProps} validation={{ required: true }} />
 					</div>
 				)}
-				{isValidationWithListValue(itemKey) && (
+				{itemKey && isValidationWithListValue(itemKey) && (
 					<div className="form-fields-multi-select__rule-option">
 						<NativeSelect
 							options={existingVariableOptions}
-							input={valueInputProps}
+							input={listValueInputProps}
 							validation={{ required: true }}
 							placeholder="Select comparison variable"
 						/>

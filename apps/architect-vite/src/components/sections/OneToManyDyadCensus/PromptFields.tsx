@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { formValueSelector } from "redux-form";
@@ -25,7 +26,8 @@ type PromptFieldsProps = {
 };
 
 const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
-	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
+	const getOptions = getSortOrderOptionGetter(variableOptions);
+	const sortMaxItems = getOptions("property", undefined, []).length;
 	const getFormValue = formValueSelector(form);
 	const edgeVariable = useSelector((state: RootState) => getFormValue(state, "createEdge") as string);
 
@@ -52,7 +54,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				<Row>
 					<ValidatedField
 						name="text"
-						component={RichText}
+						component={RichText as ComponentType<Record<string, unknown>>}
 						validation={{ required: true, maxLength: 220 }}
 						componentProps={{
 							inline: true,
@@ -65,7 +67,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				<Row>
 					<ValidatedField
 						name="createEdge"
-						component={EntitySelectField}
+						component={EntitySelectField as ComponentType<Record<string, unknown>>}
 						validation={{ required: true }}
 						componentProps={{
 							entityType: "edge",
@@ -79,9 +81,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				form={form}
 				disabled={!edgeVariable}
 				maxItems={sortMaxItems}
-				optionGetter={
-					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
-				}
+				optionGetter={() => getOptions("property", undefined, [])}
 				summary={
 					<p>
 						The focal nodes are presented one at a time. You may optionally configure a list of rules to determine how
@@ -94,9 +94,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 				form={form}
 				disabled={!edgeVariable}
 				maxItems={sortMaxItems}
-				optionGetter={
-					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
-				}
+				optionGetter={() => getOptions("property", undefined, [])}
 				summary={
 					<p>
 						You may also configure one or more sort rules that determine the order that the target nodes are sorted in
@@ -108,6 +106,4 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 	);
 };
 
-export default compose<PromptFieldsProps, PromptFieldsProps>(withVariableOptions)(
-	PromptFields as React.ComponentType<unknown>,
-);
+export default compose<PromptFieldsProps, Record<string, never>>(withVariableOptions)(PromptFields);

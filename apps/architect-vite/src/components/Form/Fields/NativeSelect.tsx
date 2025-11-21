@@ -179,24 +179,24 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	 *   - error: parent select error message. Will usually be "Required"
 	 */
 
-	const calculateMeta = useMemo(
-		() => ({
+	const calculateMeta = useMemo(() => {
+		const localInvalid = !isValidCreateOption(newOptionValue);
+		return {
 			touched: touched || (newOptionValue !== null && !isValidCreateOption(newOptionValue)),
 			invalid: !isValidCreateOption(newOptionValue) || valueButNotSubmitted || (newOptionValue === null && invalid),
-			localInvalid: !isValidCreateOption(newOptionValue),
+			localInvalid,
 			error: newOptionError || notSubmittedError || error,
-		}),
-		[
-			touched,
-			invalid,
-			error,
-			newOptionValue,
-			newOptionError,
-			valueButNotSubmitted,
-			notSubmittedError,
-			isValidCreateOption,
-		],
-	);
+		};
+	}, [
+		touched,
+		invalid,
+		error,
+		newOptionValue,
+		newOptionError,
+		valueButNotSubmitted,
+		notSubmittedError,
+		isValidCreateOption,
+	]);
 
 	const sortedOptions = useMemo(
 		() => (sortOptionsByLabel ? sortBy(options, "label") : options),
@@ -238,7 +238,11 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								},
 							}}
 							placeholder={createInputPlaceholder}
-							meta={calculateMeta}
+							meta={{
+								touched: calculateMeta.touched,
+								invalid: calculateMeta.invalid,
+								error: calculateMeta.error ?? undefined,
+							}}
 						/>
 						<div className="button-footer">
 							<Button color="platinum" onClick={() => setShowCreateOptionForm(false)}>

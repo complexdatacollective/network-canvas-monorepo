@@ -39,7 +39,7 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 				{variables.length > 0 && (
 					<div className="codebook__entity-variables">
 						<h3>Variables:</h3>
-						<VariableList variables={variables} />
+						<VariableList />
 					</div>
 				)}
 			</div>

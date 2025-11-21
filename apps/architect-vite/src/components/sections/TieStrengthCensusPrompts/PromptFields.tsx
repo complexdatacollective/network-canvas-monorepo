@@ -1,4 +1,5 @@
 import { compose } from "@reduxjs/toolkit";
+import type { ComponentType } from "react";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import RichText from "~/components/Form/Fields/RichText/Field";
@@ -48,7 +49,10 @@ const PromptFields = ({
 		initialValues: { name: null, type: null },
 	};
 
-	const handleCreatedNewVariable = (id: string, { field }: { field: string }) => changeForm(form, field, id);
+	const handleCreatedNewVariable = (...args: unknown[]) => {
+		const [id, params] = args as [string, { field: string }];
+		changeForm(form, params.field, id);
+	};
 
 	const [newVariableWindowProps, openNewVariableWindow] = useNewVariableWindowState(
 		newVariableWindowInitialProps,
@@ -80,12 +84,14 @@ const PromptFields = ({
 					</p>
 					<ValidatedField
 						name="text"
-						component={RichText}
-						inline
-						className="stage-editor-section-prompt__textarea"
-						label="Prompt Text"
-						placeholder="Enter text for the prompt here..."
+						component={RichText as ComponentType<Record<string, unknown>>}
 						validation={{ required: true, maxLength: 220 }}
+						componentProps={{
+							inline: true,
+							className: "stage-editor-section-prompt__textarea",
+							label: "Prompt Text",
+							placeholder: "Enter text for the prompt here...",
+						}}
 					/>
 				</Row>
 			</Section>
@@ -117,18 +123,20 @@ const PromptFields = ({
 					<Row>
 						<ValidatedField
 							name="createEdge"
-							component={NativeSelect}
-							options={edgesForSubject}
-							onCreateOption={(option) => {
-								handleChangeCreateEdge(handleCreateEdge(option));
-							}}
-							onChange={handleChangeCreateEdge}
-							placeholder="Select or create an edge type"
-							createLabelText="✨ Create new edge type ✨"
-							createInputLabel="New edge type name"
-							createInputPlaceholder="Enter an edge type..."
-							label="Select an edge type"
+							component={NativeSelect as ComponentType<Record<string, unknown>>}
 							validation={{ required: true, allowedNMToken: "edge type name" }}
+							componentProps={{
+								label: "Select an edge type",
+								options: edgesForSubject,
+								onCreateOption: (option: string) => {
+									handleChangeCreateEdge(handleCreateEdge(option));
+								},
+								onChange: (_e: unknown, value: string) => handleChangeCreateEdge(value),
+								placeholder: "Select or create an edge type",
+								createLabelText: "✨ Create new edge type ✨",
+								createInputLabel: "New edge type name",
+								createInputPlaceholder: "Enter an edge type...",
+							}}
 						/>
 					</Row>
 				</Section>
@@ -138,13 +146,14 @@ const PromptFields = ({
 							<ValidatedField
 								name="edgeVariable"
 								component={VariablePicker}
-								entity="edge"
-								type={createEdge}
-								label="Select an ordinal variable for this edge type"
-								options={variableOptions}
-								onCreateOption={handleNewVariable}
 								validation={{ required: true }}
-								variable={edgeVariable}
+								componentProps={{
+									entity: "edge",
+									type: createEdge ?? undefined,
+									label: "Select an ordinal variable for this edge type",
+									options: variableOptions,
+									onCreateOption: handleNewVariable,
+								}}
 							/>
 						</Row>
 						{edgeVariable && (
@@ -181,12 +190,14 @@ const PromptFields = ({
 				>
 					<ValidatedField
 						name="negativeLabel"
-						component={RichText}
-						inline
-						className="stage-editor-section-prompt__textarea"
-						label="Label for the decline option"
-						placeholder="Enter text for the negative label here..."
+						component={RichText as ComponentType<Record<string, unknown>>}
 						validation={{ required: true, maxLength: 220 }}
+						componentProps={{
+							inline: true,
+							className: "stage-editor-section-prompt__textarea",
+							label: "Label for the decline option",
+							placeholder: "Enter text for the negative label here...",
+						}}
 					/>
 				</Section>
 			</Section>

@@ -25,26 +25,10 @@ const Codebook = () => {
 		<div className="landscape">
 			{codebook.ego && <Entity entity="ego" variables={codebook.ego.variables} />}
 			{nodes.map(([id, node]) => (
-				<Entity
-					key={id}
-					entity="node"
-					type={id}
-					color={node.color}
-					iconVariant={node.iconVariant}
-					name={node.name}
-					variables={node.variables}
-				/>
+				<Entity key={id} entity="node" type={id} variables={node.variables} />
 			))}
 			{edges.map(([id, edge]) => (
-				<Entity
-					key={id}
-					entity="edge"
-					type={id}
-					color={edge.color}
-					iconVariant={edge.iconVariant}
-					name={edge.name}
-					variables={edge.variables}
-				/>
+				<Entity key={id} entity="edge" type={id} variables={edge.variables} />
 			))}
 		</div>
 	);

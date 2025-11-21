@@ -35,12 +35,14 @@ const TieStrengthCensusPrompts = ({
 		title="Prompts"
 	>
 		<EditableList
-			previewComponent={PromptPreview}
+			previewComponent={PromptPreview as React.ComponentType<Record<string, unknown>>}
 			editComponent={PromptFields}
 			title="Edit Prompt"
 			fieldName="prompts"
-			itemSelector={itemSelector()}
-			onChange={handleChangePrompt}
+			itemSelector={
+				itemSelector() as (state: Record<string, unknown>, params: { form: string; editField: string }) => unknown
+			}
+			onChange={(prompts: unknown) => handleChangePrompt(prompts as unknown[])}
 			form={form}
 			editProps={{ entity, type }}
 		/>

@@ -72,20 +72,24 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 						<div data-name="API Key Name" />
 						<ValidatedField
 							component={Text}
-							label="API Key Name"
-							type="text"
-							placeholder="Name this key"
 							name="keyName"
 							validation={{ required: true }}
+							componentProps={{
+								label: "API Key Name",
+								type: "text",
+								placeholder: "Name this key",
+							}}
 						/>
 						<div data-name="API Key Value" />
 						<ValidatedField
 							component={Text}
-							label="API Key"
-							type="text"
-							placeholder="Enter an API Key..."
 							name="keyValue"
 							validation={{ required: true }}
+							componentProps={{
+								label: "API Key",
+								type: "text",
+								placeholder: "Enter an API Key...",
+							}}
 						/>
 						<Button key="save" type="submit" iconPosition="right" icon="arrow-right">
 							Create Key

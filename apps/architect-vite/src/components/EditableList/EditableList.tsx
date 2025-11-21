@@ -19,10 +19,7 @@ import { useEditHandlers } from "./useEditHandlers";
 const notEmpty = (value: unknown) =>
 	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item.";
 
-// TODO: Make this a generic that is passed in.
-type FieldType = { variable: string; prompt: string }[];
-
-type EditableListProps = {
+type EditableListProps<T = Record<string, unknown>> = {
 	label?: string;
 	form: string;
 	sortMode?: "manual";
@@ -30,18 +27,18 @@ type EditableListProps = {
 	fieldName?: string;
 	sortable?: boolean;
 	children?: React.ReactNode;
-	previewComponent: ComponentType<FieldType>;
-	editComponent: React.ComponentType<FieldType[number]> & { form: string };
+	previewComponent: ComponentType<Record<string, unknown>>;
+	editComponent: React.ComponentType<T>;
 	editProps?: Record<string, unknown>;
 	validation?: Record<string, Validator> | Partial<Validation>;
 	// Optional props for customizing hook behavior
 	onChange?: (value: unknown) => Promise<unknown> | unknown;
 	normalize?: (value: unknown) => unknown;
 	template?: () => Record<string, unknown>;
-	itemSelector?: (state: unknown, params: { form: string; editField: string }) => unknown;
+	itemSelector?: (state: Record<string, unknown>, params: { form: string; editField: string }) => unknown;
 };
 
-const EditableList = ({
+const EditableList = <T extends Record<string, unknown> = Record<string, unknown>>({
 	label,
 	fieldName = "prompts",
 	children = null,
@@ -55,7 +52,7 @@ const EditableList = ({
 	template = () => ({ id: v4() }), // Function to provide a template for new items
 	sortable = true,
 	itemSelector,
-}: EditableListProps) => {
+}: EditableListProps<T>) => {
 	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
 		fieldName,
@@ -67,17 +64,17 @@ const EditableList = ({
 	const isOpen = editIndex !== null;
 
 	// Get current item values for editing & enrich with codebook data using itemSelector
-	const currentItemValues = useSelector((state: unknown) => {
+	const currentItemValues = useSelector((state: Record<string, unknown>) => {
 		if (editIndex === null) return null;
 
 		const editFieldPath = `${fieldName}[${editIndex}]`;
 
 		if (itemSelector) {
-			return itemSelector(state, { form, editField: editFieldPath });
+			return itemSelector(state, { form, editField: editFieldPath }) as Record<string, unknown>;
 		}
 
 		const selector = formValueSelector(form);
-		return selector(state, `${fieldName}[${editIndex}]`);
+		return selector(state, `${fieldName}[${editIndex}]`) as Record<string, unknown>;
 	});
 
 	// Memoize template result to prevent form reinitialization
@@ -138,7 +135,7 @@ const EditableList = ({
 					initialValues={initialValuesForEdit}
 				>
 					<Layout>
-						<EditComponent form="editable-list-form" {...(initialValuesForEdit as FieldType[number])} {...editProps} />
+						<EditComponent {...(initialValuesForEdit as T)} {...editProps} />
 					</Layout>
 				</Form>
 			</Dialog>

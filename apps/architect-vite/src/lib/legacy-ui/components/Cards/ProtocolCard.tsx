@@ -3,7 +3,7 @@ import Icon from "../Icon";
 
 type ProtocolCardProps = {
 	schemaVersion: number;
-	lastModified: string; // Expects ISO 8601 datetime string
+	lastModified: string | null; // Expects ISO 8601 datetime string
 	name: string;
 	installationDate?: string | null; // Expects ISO 8601 datetime string
 	description?: string | null;

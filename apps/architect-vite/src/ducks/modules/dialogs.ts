@@ -1,11 +1,12 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { ReactNode } from "react";
 import { v4 as uuid } from "uuid";
 
 // Define dialog types
 type BaseDialog = {
 	id: string;
 	title: string;
-	message?: string;
+	message?: ReactNode;
 	onConfirm?: () => void;
 	onCancel?: () => void;
 };

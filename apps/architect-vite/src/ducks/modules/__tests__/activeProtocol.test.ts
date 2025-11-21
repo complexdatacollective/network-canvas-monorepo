@@ -94,6 +94,8 @@ describe("activeProtocol", () => {
 			store.dispatch(actionCreators.updateProtocol(updates));
 
 			const state = store.getState().activeProtocol;
+			expect(state).not.toBeNull();
+			if (!state) return;
 			expect(state.description).toBe("updated description");
 			expect(state.name).toBe(mockProtocol.name); // Other fields preserved
 		});
@@ -107,6 +109,8 @@ describe("activeProtocol", () => {
 			store.dispatch(actionCreators.updateProtocolOptions(options));
 
 			const state = store.getState().activeProtocol;
+			expect(state).not.toBeNull();
+			if (!state) return;
 			expect(state.name).toBe("Updated Name");
 			expect(state.description).toBe("Updated Description");
 			expect(state.stages).toEqual(mockProtocol.stages); // Other fields preserved
@@ -144,6 +148,8 @@ describe("activeProtocol", () => {
 			);
 
 			const state = store.getState().activeProtocol;
+			expect(state).not.toBeNull();
+			if (!state) return;
 			expect(state.name).toBe("Updated Name");
 			expect(state.description).toBe("Updated Description");
 		});
@@ -270,9 +276,11 @@ describe("activeProtocol", () => {
 			const state = store.getState().activeProtocol;
 
 			// Verify the protocol was set correctly
+			expect(state).not.toBeNull();
+			if (!state) return;
 			expect(state.name).toBe("Another Protocol");
 			expect(state.stages).toHaveLength(1);
-			expect(state.codebook.node.person).toBeDefined();
+			expect(state.codebook.node?.person).toBeDefined();
 		});
 
 		it("should not process sub-reducers when no protocol data", () => {

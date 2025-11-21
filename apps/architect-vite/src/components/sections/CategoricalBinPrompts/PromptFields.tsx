@@ -1,7 +1,8 @@
+import type { ComponentType } from "react";
 import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
-import RichTextField from "~/components/Form/Fields/RichText";
+import { Field as RichTextField } from "~/components/Form/Fields/RichText";
 import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import PromptText from "~/components/sections/PromptText";
@@ -49,7 +50,10 @@ const PromptFields = ({
 		initialValues: { name: null, type: null },
 	};
 
-	const handleCreatedNewVariable = (id: string, { field }: { field: string }) => changeForm(form, field, id);
+	const handleCreatedNewVariable = (...args: unknown[]) => {
+		const [id, params] = args as [string, { field: string }];
+		changeForm(form, params.field, id);
+	};
 
 	const handleToggleOtherVariable = (nextState: boolean) => {
 		if (nextState === false) {
@@ -73,7 +77,8 @@ const PromptFields = ({
 
 	const otherVariableOptions = variableOptions.filter(({ type: variableType }) => variableType === "text");
 
-	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
+	const getOptions = getSortOrderOptionGetter(variableOptions);
+	const sortMaxItems = getOptions("property", undefined, []).length;
 
 	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length + (otherVariable ? 1 : 0);
 
@@ -149,7 +154,7 @@ const PromptFields = ({
 				<Row>
 					<ValidatedField
 						name="otherOptionLabel"
-						component={RichTextField}
+						component={RichTextField as ComponentType<Record<string, unknown>>}
 						validation={{ required: true }}
 						componentProps={{
 							inline: true,
@@ -161,7 +166,7 @@ const PromptFields = ({
 				<Row>
 					<ValidatedField
 						name="otherVariablePrompt"
-						component={RichTextField}
+						component={RichTextField as ComponentType<Record<string, unknown>>}
 						validation={{ required: true }}
 						componentProps={{
 							inline: true,
@@ -175,17 +180,13 @@ const PromptFields = ({
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={
-					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
-				}
+				optionGetter={() => getOptions("property", undefined, [])}
 			/>
 			<BinSortOrderSection
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={
-					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
-				}
+				optionGetter={() => getOptions("property", undefined, [])}
 			/>
 			<NewVariableWindow
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -195,7 +196,7 @@ const PromptFields = ({
 	);
 };
 
-export default compose<PromptFieldsProps, PromptFieldsProps>(
+export default compose<PromptFieldsProps, Record<string, never>>(
 	withVariableOptions,
 	withVariableHandlers,
-)(PromptFields as React.ComponentType<unknown>);
+)(PromptFields);

@@ -17,7 +17,7 @@ type DatePickerInputProps = {
 	onChange?: (value: string) => void;
 	value?: string | null;
 	parameters?: Record<string, unknown>;
-	parentRef: RefObject<HTMLElement>;
+	parentRef: RefObject<HTMLElement | null>;
 	placeholder?: string | null;
 };
 
@@ -134,7 +134,7 @@ const DatePickerInput = ({
 																today={todayYear}
 																range={years}
 																value={date.year}
-																offset={dateRange ? dateRange.start.year % 5 : 0}
+																offset={dateRange?.start ? dateRange.start.year % 5 : 0}
 																onSelect={(y) => onChange({ year: y, month: null, day: null })}
 															/>
 														)}

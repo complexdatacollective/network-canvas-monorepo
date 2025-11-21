@@ -23,7 +23,7 @@ type TypeEditorProps = {
 	existingTypes: string[];
 };
 
-const TypeEditor = ({ form, entity, _type = null, existingTypes }: TypeEditorProps) => {
+const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProps) => {
 	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formIcon = useAppSelector((state: RootState) => formSelector(state, "iconVariant"));
@@ -47,7 +47,7 @@ const TypeEditor = ({ form, entity, _type = null, existingTypes }: TypeEditorPro
 					{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
 				</p>
 				<ValidatedField
-					component={Text}
+					component={Text as unknown as import("react").ComponentType<Record<string, unknown>>}
 					name="name"
 					validation={{ required: true, allowedNMToken: true, uniqueByList: existingTypes }}
 					componentProps={{ placeholder: `Enter a name for this ${entity} type...` }}
@@ -60,7 +60,7 @@ const TypeEditor = ({ form, entity, _type = null, existingTypes }: TypeEditorPro
 				layout="vertical"
 			>
 				<ValidatedField
-					component={ColorPicker}
+					component={ColorPicker as unknown as import("react").ComponentType<Record<string, unknown>>}
 					name="color"
 					validation={{ required: true }}
 					componentProps={{ palette: paletteName, paletteRange: paletteSize }}
@@ -74,7 +74,7 @@ const TypeEditor = ({ form, entity, _type = null, existingTypes }: TypeEditorPro
 					layout="vertical"
 				>
 					<ValidatedField
-						component={RadioGroup}
+						component={RadioGroup as unknown as import("react").ComponentType<Record<string, unknown>>}
 						name="iconVariant"
 						validation={{ required: true }}
 						componentProps={{ options: ICON_OPTIONS, optionComponent: IconOption }}
@@ -89,9 +89,10 @@ const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | nu
 	const codebook = getCodebook(state);
 
 	const getNames = (
-		codebookTypeDefinitions: Record<string, { name: string }>,
+		codebookTypeDefinitions: Record<string, { name: string }> | undefined,
 		excludeType?: string | false | null,
 	): string[] => {
+		if (!codebookTypeDefinitions) return [];
 		const names: string[] = [];
 		toPairs(codebookTypeDefinitions).forEach(([id, definition]) => {
 			if (excludeType && id === excludeType) {
@@ -102,8 +103,8 @@ const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | nu
 		return names;
 	};
 
-	const nodes = getNames(codebook.node, !isNew && type);
-	const edges = getNames(codebook.edge, !isNew && type);
+	const nodes = codebook ? getNames(codebook.node, !isNew && type) : [];
+	const edges = codebook ? getNames(codebook.edge, !isNew && type) : [];
 
 	const existingTypes = nodes.concat(edges);
 

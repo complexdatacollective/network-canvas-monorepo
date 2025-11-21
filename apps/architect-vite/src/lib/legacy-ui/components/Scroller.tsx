@@ -16,10 +16,10 @@ type ScrollerRef = {
 
 const Scroller = React.forwardRef<ScrollerRef, ScrollerProps>(
 	({ className = "", children, useSmoothScrolling = true, onScroll = () => {} }, ref) => {
-		const scrollableRef = useRef();
+		const scrollableRef = useRef<HTMLDivElement>(null);
 
 		useImperativeHandle(ref, () => ({
-			scrollTo: (...args) => scrollableRef.current.scrollTo(...args),
+			scrollTo: (...args) => scrollableRef.current?.scrollTo(...args),
 		}));
 
 		const handleScroll = useCallback(() => {

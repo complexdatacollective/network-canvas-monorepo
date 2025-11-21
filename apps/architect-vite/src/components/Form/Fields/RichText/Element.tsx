@@ -6,11 +6,10 @@ type CustomElement = {
 	children: Descendant[];
 };
 
-interface ElementProps extends RenderElementProps {
-	element: CustomElement;
-}
-
-const Element = ({ attributes, children, element }: ElementProps) => {
+const Element = (props: RenderElementProps) => {
+	const { attributes, children, element } = props as RenderElementProps & {
+		element: CustomElement;
+	};
 	switch (element.type) {
 		case "ul_list":
 			return <ul {...attributes}>{children}</ul>;

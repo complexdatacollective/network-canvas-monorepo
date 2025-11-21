@@ -3,7 +3,7 @@ import { ALLOWED_MARKDOWN_INLINE_LABEL_TAGS, ALLOWED_MARKDOWN_LABEL_TAGS } from 
 import Markdown from "./Markdown";
 
 type MarkdownLabelProps = {
-	label: string;
+	label: React.ReactNode;
 	className?: string;
 	inline?: boolean;
 };
@@ -12,7 +12,7 @@ const MarkdownLabel = ({ label, className, inline = false }: MarkdownLabelProps)
 	<Markdown
 		className={className}
 		allowedElements={inline ? ALLOWED_MARKDOWN_INLINE_LABEL_TAGS : ALLOWED_MARKDOWN_LABEL_TAGS}
-		label={label}
+		label={String(label ?? "")}
 	/>
 );
 

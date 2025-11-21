@@ -5,8 +5,6 @@ import Button from "~/lib/legacy-ui/components/Button";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
 
-const withShowBrowser = withState("showBrowser", "setShowBrowser", ({ showBrowser }) => !!showBrowser);
-
 type InputProps = {
 	value: string;
 	onChange: (value: string) => void;
@@ -30,6 +28,16 @@ export type FileInputProps = {
 	className?: string;
 	children?: (id: string) => React.ReactNode;
 };
+
+export type FileInputPropsWithoutHOC = Omit<FileInputProps, "showBrowser" | "setShowBrowser"> & {
+	showBrowser?: boolean;
+};
+
+const withShowBrowser = withState<FileInputPropsWithoutHOC, boolean, "showBrowser", "setShowBrowser">(
+	"showBrowser",
+	"setShowBrowser",
+	({ showBrowser }) => !!showBrowser,
+);
 
 const FileInput = ({
 	setShowBrowser,

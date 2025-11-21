@@ -1,7 +1,7 @@
 import { get, isEqual } from "lodash";
 import { DateTime } from "luxon";
 
-export const now = () => DateTime.local();
+export const now = () => DateTime.now();
 
 export type DateObject = {
 	year: number | null;
@@ -28,10 +28,13 @@ export const isComplete =
 /**
  * Is date object empty
  */
-export const isEmpty = () => (date: DateObject) => isEqual(date, { year: null, month: null, day: null });
+export const isEmpty = (_type: string | null) => (date: DateObject) =>
+	isEqual(date, { year: null, month: null, day: null });
 
 // Get month names - using DateTime instead of Info for compatibility
-const monthNames = Array.from({ length: 12 }, (_, i) => DateTime.local(2000, i + 1, 1).toFormat("LLLL"));
+const monthNames = Array.from({ length: 12 }, (_, i) =>
+	DateTime.fromObject({ year: 2000, month: i + 1, day: 1 }).toFormat("LLLL"),
+);
 
 export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);
 

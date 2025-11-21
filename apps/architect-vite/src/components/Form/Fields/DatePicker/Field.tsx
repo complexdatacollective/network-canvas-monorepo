@@ -30,7 +30,7 @@ type DatePickerFieldProps = {
 };
 
 class DatePickerField extends Component<DatePickerFieldProps> {
-	ref: RefObject<HTMLDivElement>;
+	ref: RefObject<HTMLDivElement | null>;
 
 	constructor(props: DatePickerFieldProps) {
 		super(props);
@@ -63,8 +63,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 				<div className={formFieldClasses} data-name={input.name}>
 					<DatePicker
 						parameters={parameters}
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...input}
+						value={typeof input.value === "string" ? input.value : null}
 						onChange={input.onBlur}
 						parentRef={this.ref}
 						placeholder={placeholder}

@@ -7,6 +7,7 @@ type SimpleDialogProps = {
 	show?: boolean;
 	options?: React.ReactElement[];
 	title: string;
+	message?: ReactNode;
 	onBlur?: () => void;
 	className?: string;
 	style?: CSSProperties;
@@ -16,15 +17,15 @@ type SimpleDialogProps = {
  * A relatively unstyled dialog for use in other kinds of modals
  */
 const SimpleDialog = ({
-	children = null,
+	children,
 	show = false,
 	options = [],
 	title,
 	onBlur = () => {},
-	className = null,
+	className,
 	style = {},
 }: SimpleDialogProps) => (
-	<Modal show={show} onBlur={onBlur}>
+	<Modal open={show} onOpenChange={() => onBlur()}>
 		<div className={cx("dialog", "dialog--simple", className)} style={style}>
 			<div className="dialog__main">
 				<div className="dialog__main-content">

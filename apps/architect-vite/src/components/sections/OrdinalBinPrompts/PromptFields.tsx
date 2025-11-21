@@ -1,3 +1,4 @@
+import type React from "react";
 import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
@@ -47,7 +48,10 @@ const PromptFields = ({
 		initialValues: { name: null, type: null },
 	};
 
-	const handleCreatedNewVariable = (id: string, { field }: { field: string }) => changeForm(form, field, id);
+	const handleCreatedNewVariable = (...args: unknown[]) => {
+		const [id, params] = args as [string, { field: string }];
+		changeForm(form, params.field, id);
+	};
 
 	const [newVariableWindowProps, openNewVariableWindow] = useNewVariableWindowState(
 		newVariableWindowInitialProps,
@@ -59,7 +63,8 @@ const PromptFields = ({
 
 	const ordinalVariableOptions = variableOptions.filter(({ type: variableType }) => variableType === "ordinal");
 
-	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
+	const getOptions = getSortOrderOptionGetter(variableOptions);
+	const sortMaxItems = getOptions("property", undefined, []).length;
 
 	const totalOptionsLength = optionsForVariableDraft?.length;
 
@@ -118,7 +123,7 @@ const PromptFields = ({
 					<IssueAnchor fieldName="color" description="Gradient color" />
 					<ValidatedField
 						name="color"
-						component={ColorPicker}
+						component={ColorPicker as React.ComponentType}
 						validation={{ required: true }}
 						componentProps={{
 							label: "Which color would you like to use for this scale?",
@@ -132,17 +137,13 @@ const PromptFields = ({
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={
-					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
-				}
+				optionGetter={() => getOptions("property", undefined, [])}
 			/>
 			<BinSortOrderSection
 				form={form}
 				disabled={!variable}
 				maxItems={sortMaxItems}
-				optionGetter={
-					getSortOrderOptionGetter(variableOptions) as (property: string) => { label: string; value: string }[]
-				}
+				optionGetter={() => getOptions("property", undefined, [])}
 			/>
 			<NewVariableWindow
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -152,7 +153,7 @@ const PromptFields = ({
 	);
 };
 
-export default compose<PromptFieldsProps, PromptFieldsProps>(
+export default compose<PromptFieldsProps, Record<string, never>>(
 	withVariableOptions,
 	withVariableHandlers,
-)(PromptFields as React.ComponentType<unknown>);
+)(PromptFields);

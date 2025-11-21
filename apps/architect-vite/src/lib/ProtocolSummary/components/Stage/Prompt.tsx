@@ -75,12 +75,12 @@ const Prompt = ({ text, additionalAttributes = [], ...prompt }: PromptProps) => 
 
 	const additionalAttributeRows: ReactNode[][] = additionalAttributes.map(({ variable: variableId, value }) => [
 		<Variable key={variableId} id={variableId} />,
-		renderValue(value),
+		<span key={`val-${variableId}`}>{renderValue(value)}</span>,
 	]);
 
 	return (
 		<div className="protocol-summary-stage__prompts-item">
-			<Markdown value={text} />
+			<Markdown label={text} />
 			{attributeRows.length > 0 && <MiniTable rotated rows={attributeRows} />}
 			{additionalAttributes.length > 0 && <MiniTable rows={[["Variable", "Value"], ...additionalAttributeRows]} />}
 		</div>

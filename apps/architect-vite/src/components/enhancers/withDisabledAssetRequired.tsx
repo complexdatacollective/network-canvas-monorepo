@@ -1,5 +1,11 @@
 import { withProps } from "recompose";
 
-const withDisabledAssetRequired = withProps(({ dataSource }) => ({ disabled: !dataSource }));
+type PropsWithDataSource = {
+	dataSource?: string;
+};
+
+const withDisabledAssetRequired = withProps<{ disabled: boolean }, PropsWithDataSource>(({ dataSource }) => ({
+	disabled: !dataSource,
+}));
 
 export default withDisabledAssetRequired;

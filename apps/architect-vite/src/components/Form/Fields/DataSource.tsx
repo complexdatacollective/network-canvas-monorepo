@@ -1,6 +1,8 @@
-import { withState } from "recompose";
+import type React from "react";
+import { compose, withState } from "recompose";
 import Radio from "~/components/Form/Fields/Radio";
 import NetworkThumbnail from "~/components/Thumbnail/Network";
+import type { FileInputPropsWithoutHOC } from "./File";
 import File from "./File";
 
 type InputProps = {
@@ -8,17 +10,31 @@ type InputProps = {
 	onChange: (value: string) => void;
 };
 
-type DataSourceProps = {
+type MetaProps = {
+	error?: string;
+	invalid?: boolean;
+	touched?: boolean;
+};
+
+type BaseDataSourceProps = {
 	input: InputProps;
-	setSelectNetworkAsset: (value: boolean) => void;
 	canUseExisting?: boolean;
+	meta?: MetaProps;
+};
+
+type DataSourcePropsWithState = BaseDataSourceProps & {
+	setSelectNetworkAsset: (value: boolean) => void;
 	selectNetworkAsset: boolean;
 };
 
-const withSelectNetworkAsset = withState("selectNetworkAsset", "setSelectNetworkAsset", false);
+const withSelectNetworkAsset = withState<BaseDataSourceProps, boolean, "selectNetworkAsset", "setSelectNetworkAsset">(
+	"selectNetworkAsset",
+	"setSelectNetworkAsset",
+	false,
+);
 
-const DataSource = (props: DataSourceProps) => {
-	const { input, setSelectNetworkAsset, canUseExisting = false, selectNetworkAsset } = props;
+const DataSource = (props: DataSourcePropsWithState) => {
+	const { input, setSelectNetworkAsset, canUseExisting = false, selectNetworkAsset, meta } = props;
 
 	const handleClickUseExisting = () => {
 		if (input.value === "existing") {
@@ -28,8 +44,6 @@ const DataSource = (props: DataSourceProps) => {
 	};
 
 	const handleClickUseNetworkAsset = () => {
-		// if (this.props.input.value === 'existing') { return; }
-		// this.props.input.onChange('existing');
 		setSelectNetworkAsset(true);
 	};
 
@@ -51,6 +65,13 @@ const DataSource = (props: DataSourceProps) => {
 		onClick: handleClickUseNetworkAsset,
 	};
 
+	const fileProps: FileInputPropsWithoutHOC = {
+		input,
+		meta: meta ?? {},
+		type: "network",
+		selected: input.value,
+	};
+
 	return canUseExisting ? (
 		<div className="form-field-data-source">
 			<div className="form-fields-data-source__option">
@@ -64,14 +85,7 @@ const DataSource = (props: DataSourceProps) => {
 				<Radio input={networkAssetInput} label="Use a network data file" className="text-foreground" />
 				{showNetworkAssetInput && (
 					<div className="form-fields-data-source__option-file">
-						<File
-							type="network"
-							showBrowser={selectNetworkAsset}
-							onCloseBrowser={handleCloseBrowser}
-							selected={input.value}
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...props}
-						>
+						<File {...fileProps} showBrowser={selectNetworkAsset} onCloseBrowser={handleCloseBrowser}>
 							{(id: string) => <NetworkThumbnail id={id} />}
 						</File>
 					</div>
@@ -79,15 +93,8 @@ const DataSource = (props: DataSourceProps) => {
 			</div>
 		</div>
 	) : (
-		<File
-			type="network"
-			selected={input.value}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-		>
-			{(id: string) => <NetworkThumbnail id={id} />}
-		</File>
+		<File {...fileProps}>{(id: string) => <NetworkThumbnail id={id} />}</File>
 	);
 };
 
-export default withSelectNetworkAsset(DataSource);
+export default compose(withSelectNetworkAsset)(DataSource as React.ComponentType<unknown>);

@@ -14,9 +14,11 @@ const withDeleteHandler = withHandlers({
 type PreviewRuleProps = {
 	type: string;
 	options: Record<string, unknown>;
-	join?: string;
+	join?: string | null;
 	onClick: () => void;
 	handleDelete: () => void;
+	onDelete?: () => void;
+	codebook?: Record<string, unknown>;
 };
 
 const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: PreviewRuleProps) => {
@@ -35,4 +37,4 @@ const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: Prev
 	);
 };
 
-export default compose(withDeleteHandler, withDisplayOptions)(PreviewRule as React.ComponentType<unknown>);
+export default compose<PreviewRuleProps, Partial<PreviewRuleProps>>(withDeleteHandler, withDisplayOptions)(PreviewRule);

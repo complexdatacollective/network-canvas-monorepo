@@ -2,9 +2,9 @@
 
 import Prompt from "./Prompt";
 
-type PromptType = {
+export type PromptType = {
 	id?: string;
-	text?: string;
+	text: string;
 	[key: string]: unknown;
 };
 

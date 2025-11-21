@@ -3,7 +3,7 @@ import TextInput from "./Text";
 type NumberInputProps = {
 	input?: {
 		name?: string;
-		value?: string;
+		value?: string | number | null;
 		onChange?: (value: number | null) => void;
 		onBlur?: (value: number | null) => void;
 		[key: string]: unknown;

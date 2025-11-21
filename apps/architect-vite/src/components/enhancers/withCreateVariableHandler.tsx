@@ -31,6 +31,8 @@ type OwnProps = {
 	form: string;
 };
 
+type Entity = "node" | "edge" | "ego";
+
 type HandlerProps = ConnectedProps & OwnProps;
 
 const createVariableHandler = {
@@ -44,8 +46,12 @@ const createVariableHandler = {
 				...withType,
 			};
 
-			const result = await createVariable({ entity, type, configuration });
-			const { variable } = result.payload as { variable: string };
+			const result = (await createVariable({
+				entity: entity as Entity,
+				type,
+				configuration,
+			})) as unknown as { payload: { entity: Entity; type?: string; variable: string } };
+			const variable = result.payload.variable;
 
 			// If we supplied a field, update it with the result of the variable creation
 			if (field) {
@@ -57,7 +63,7 @@ const createVariableHandler = {
 	handleDeleteVariable:
 		({ deleteVariable, type, entity }: HandlerProps) =>
 		(variableId: string) =>
-			deleteVariable({ entity, type, variable: variableId }),
+			deleteVariable({ entity: entity as Entity, type, variable: variableId }),
 	normalizeKeyDown: () => normalizeKeyDown,
 };
 

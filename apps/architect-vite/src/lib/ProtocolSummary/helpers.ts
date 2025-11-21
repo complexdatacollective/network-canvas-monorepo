@@ -1,3 +1,4 @@
+import type { Codebook } from "@codaco/protocol-validation";
 import { flatMap, get, reduce } from "lodash";
 import { paths, utils } from "../../selectors/indexes";
 
@@ -96,7 +97,7 @@ export const getCodebookIndex = (protocol: Protocol) => {
 		}
 
 		const entityConfigurations =
-			entity === "ego" ? { ego: codebook.ego } : (codebook as Record<string, unknown>)[entity];
+			entity === "ego" ? { ego: codebook.ego } : (codebook as Codebook)[entity as "node" | "edge"];
 
 		return flatMap(entityConfigurations, (entityConfiguration, entityType) =>
 			flatMap(

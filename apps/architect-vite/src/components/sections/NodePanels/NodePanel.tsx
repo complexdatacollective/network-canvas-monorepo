@@ -22,8 +22,10 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 			<ValidatedField
 				name={`${fieldId}.title`}
 				component={Text}
-				placeholder="Panel title"
 				validation={{ required: true }}
+				componentProps={{
+					placeholder: "Panel title",
+				}}
 			/>
 		</Section>
 		<Section
@@ -39,18 +41,15 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 			className="bg-slate-blue-dark mt-8"
 		>
 			<ValidatedField
-				component={DataSource}
+				component={DataSource as React.ComponentType<Record<string, unknown>>}
 				name={`${fieldId}.dataSource`}
 				validation={{ required: true }}
-				canUseExisting
+				componentProps={{
+					canUseExisting: true,
+				}}
 			/>
 		</Section>
-		<NetworkFilter
-			form={form}
-			variant="contrast"
-			name={`${fieldId}.filter`}
-			title="Filter nodes displayed in this panel"
-		/>
+		<NetworkFilter form={form} variant="contrast" name={`${fieldId}.filter`} />
 	</>
 );
 

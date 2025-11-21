@@ -1,16 +1,17 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { Reorder } from "motion/react";
 import { hash } from "ohash";
 import type React from "react";
 import { connect } from "react-redux";
-import { change, FieldArray } from "redux-form";
+import { change, FieldArray, type WrappedFieldArrayProps } from "redux-form";
 import { v4 as uuid } from "uuid";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
 import Option from "./Option";
 
-export type OptionValue = VariableOptions[number];
+export type OptionValue = VariableOptions[number] & { _id?: string };
 
 const minTwoOptions = (value: unknown) =>
 	!value || (Array.isArray(value) && value.length < 2)
@@ -48,13 +49,22 @@ type OptionsFieldProps = {
 	updateField?: (form: string, fieldName: string, value: string) => void;
 };
 
-const mapStateToOptionsFieldProps = (_state: unknown, { meta: { form }, fields: { name: fieldsName } }) => ({
+type FieldArrayState = {
+	meta: { form: string };
+	fields: { name: string };
+};
+
+const mapStateToOptionsFieldProps = (
+	_state: unknown,
+	{ meta: { form }, fields: { name: fieldsName } }: FieldArrayState,
+) => ({
 	form,
 	fieldsName,
 });
 
-const mapDispatchToOptionsFieldProps = (dispatch: unknown) => ({
-	updateField: (form: string, fieldName: string, value: string) => dispatch(change(form, fieldName, value)),
+const mapDispatchToOptionsFieldProps = (dispatch: Dispatch) => ({
+	updateField: (form: string, fieldName: string, value: string) =>
+		dispatch(change(form, fieldName, value) as UnknownAction),
 });
 
 const OptionsFieldComponent = ({

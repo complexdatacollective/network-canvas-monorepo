@@ -11,7 +11,7 @@ import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
 import type { OptionValue } from "./Options";
 
-const isNumberLike = (value: string) => Number.parseInt(value, 10) === value; // eslint-disable-line
+const isNumberLike = (value: string) => Number.parseInt(value, 10).toString() === value; // eslint-disable-line
 
 const deleteOption =
 	({
@@ -81,26 +81,25 @@ const Option = ({ field, handleDelete, value }: OptionProps) => {
 			<div className="options__option-values">
 				<div className="options__option-value">
 					<h4 className="options__option-label">Label</h4>
-					<ValidatedField
-						component={RichTextField}
-						inline
-						type="text"
+					<ValidatedField<{ inline?: boolean; placeholder?: string }>
+						component={RichTextField as React.ComponentType<Record<string, unknown>>}
+						componentProps={{
+							inline: true,
+							placeholder: "Enter a label...",
+						}}
 						name={`${field}.label`}
-						placeholder="Enter a label..."
-						// @ts-expect-error - validation prop type issue
 						validation={{ required: true, uniqueArrayAttribute: true }}
 					/>
 				</div>
 				<div className="options__option-value">
 					<h4 className="options__option-label">Value</h4>
-					<ValidatedField
-						component={TextField}
-						type="text"
+					<ValidatedField<{ parse?: (value: string) => string | number; placeholder?: string }>
+						component={TextField as React.ComponentType<Record<string, unknown>>}
+						componentProps={{
+							parse: (value: string) => (isNumberLike(value) ? toNumber(value) : value),
+							placeholder: "Enter a value...",
+						}}
 						name={`${field}.value`}
-						parse={(value) => (isNumberLike(value) ? toNumber(value) : value)}
-						placeholder="Enter a value..."
-						// @ts-expect-error - validation prop type issue
-						// option values must also respect allowedVariableName (NMTOKEN) rules
 						validation={{ required: true, uniqueArrayAttribute: true, allowedVariableName: "option value" }}
 					/>
 				</div>
@@ -116,9 +115,11 @@ const mapDispatchToItemProps = {
 	openDialog: dialogsActions.openDialog,
 };
 
+type ConnectedProps = OptionBaseProps & { openDialog: typeof dialogsActions.openDialog };
+
 export default compose<OptionProps, OptionBaseProps>(
 	connect(null, mapDispatchToItemProps),
-	withHandlers({
-		handleDelete: deleteOption,
+	withHandlers<ConnectedProps, { handleDelete: () => void }>({
+		handleDelete: deleteOption as (props: ConnectedProps) => () => void,
 	}),
-)(Option as React.ComponentType<unknown>);
+)(Option);

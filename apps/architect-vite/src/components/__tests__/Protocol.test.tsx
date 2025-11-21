@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import activeProtocolReducer from "~/ducks/modules/activeProtocol";
 import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
 import type { ProtocolWithMetadata } from "~/types";
 import Protocol from "../Protocol";
@@ -38,9 +37,12 @@ vi.mock("motion/react", () => ({
 	useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
 }));
 
+const mockProtocolName = "Test Protocol";
+const mockProtocolDescription = "test description";
+
 const mockProtocol: ProtocolWithMetadata = {
-	name: "Test Protocol",
-	description: "test description",
+	name: mockProtocolName,
+	description: mockProtocolDescription,
 	schemaVersion: 8,
 	stages: [],
 	codebook: {
@@ -55,12 +57,7 @@ const createTestStore = () => {
 	return configureStore({
 		reducer: {
 			protocols: protocolsReducer,
-			activeProtocol: {
-				present: activeProtocolReducer,
-				past: () => [],
-				future: () => [],
-				timeline: () => [],
-			},
+			activeProtocol: (state = { present: null, past: [], future: [] }) => state,
 		},
 		middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
 	});
@@ -82,16 +79,21 @@ describe("Protocol Component", () => {
 
 	it("should render protocol components when protocol is loaded", () => {
 		// Add protocol to store
+		const protocolWithName = {
+			...mockProtocol,
+			name: mockProtocolName,
+		};
+
 		store.dispatch(
 			addProtocol({
 				protocol: mockProtocol,
-				name: mockProtocol.name,
-				description: mockProtocol.description,
+				name: mockProtocolName,
+				description: mockProtocolDescription,
 			}),
 		);
 
-		// Set as active protocol
-		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: mockProtocol });
+		// Set as active protocol with name
+		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: protocolWithName });
 
 		mockUseProtocolLoader.mockReturnValue({
 			isLoading: false,
@@ -166,6 +168,11 @@ describe("Protocol Component", () => {
 
 	it("should update when protocol changes", () => {
 		// Add protocols to store
+		const protocol2 = {
+			...mockProtocol,
+			name: "Protocol 2",
+		};
+
 		store.dispatch(
 			addProtocol({
 				protocol: mockProtocol,
@@ -176,7 +183,7 @@ describe("Protocol Component", () => {
 
 		store.dispatch(
 			addProtocol({
-				protocol: { ...mockProtocol, name: "Protocol 2" },
+				protocol: protocol2,
 				name: "Protocol 2",
 				description: "Second protocol",
 			}),

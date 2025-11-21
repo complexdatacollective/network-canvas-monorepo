@@ -32,12 +32,12 @@ const Presets = ({ presets = null }: PresetsProps) => {
 									rows={[
 										[
 											"Layout variable",
-											<Variable key={`layout-${preset.layoutVariable}`} id={preset.layoutVariable} link />,
+											<Variable key={`layout-${preset.layoutVariable}`} id={preset.layoutVariable ?? ""} />,
 										],
 										[
 											"Show edges",
 											<ul key="show-edges">
-												{get(preset, "edges.display", []).map((edge) => (
+												{get(preset, "edges.display", []).map((edge: string) => (
 													<li key={edge}>
 														<EntityBadge entity="edge" type={edge} tiny link />
 													</li>
@@ -46,14 +46,14 @@ const Presets = ({ presets = null }: PresetsProps) => {
 										],
 										[
 											"Group variable",
-											<Variable key={`group-${preset.groupVariable}`} id={preset.groupVariable} link />,
+											<Variable key={`group-${preset.groupVariable}`} id={preset.groupVariable ?? ""} />,
 										],
 										[
 											"Highlight attributes",
 											<ul key="highlight">
-												{get(preset, "highlight", []).map((id) => (
+												{get(preset, "highlight", []).map((id: string) => (
 													<li key={id}>
-														<Variable id={id} link />
+														<Variable id={id} />
 														<br />
 													</li>
 												))}

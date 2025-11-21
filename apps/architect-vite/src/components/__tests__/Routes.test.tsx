@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import activeProtocolReducer from "~/ducks/modules/activeProtocol";
 import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
 import type { ProtocolWithMetadata } from "~/types";
 import Routes from "../Routes";
@@ -39,9 +38,12 @@ vi.mock("~/components/Protocol", () => ({
 	default: () => <div data-testid="protocol">Protocol Component</div>,
 }));
 
+const mockProtocolName = "Test Protocol";
+const mockProtocolDescription = "test description";
+
 const mockProtocol: ProtocolWithMetadata = {
-	name: "Test Protocol",
-	description: "test description",
+	name: mockProtocolName,
+	description: mockProtocolDescription,
 	schemaVersion: 8,
 	stages: [],
 	codebook: {
@@ -56,12 +58,7 @@ const createTestStore = () => {
 	return configureStore({
 		reducer: {
 			protocols: protocolsReducer,
-			activeProtocol: {
-				present: activeProtocolReducer,
-				past: () => [],
-				future: () => [],
-				timeline: () => [],
-			},
+			activeProtocol: (state = { present: null, past: [], future: [] }) => state,
 		},
 		middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
 	});
@@ -97,8 +94,8 @@ describe("Routes", () => {
 		store.dispatch(
 			addProtocol({
 				protocol: mockProtocol,
-				name: mockProtocol.name,
-				description: mockProtocol.description,
+				name: mockProtocolName,
+				description: mockProtocolDescription,
 			}),
 		);
 

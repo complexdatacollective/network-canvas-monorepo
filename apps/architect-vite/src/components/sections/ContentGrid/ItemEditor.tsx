@@ -32,9 +32,11 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 				<ValidatedField
 					name="type"
 					component={RadioGroup}
-					options={typeOptions}
 					validation={{ required: true }}
-					onChange={handleChangeType}
+					componentProps={{
+						options: typeOptions,
+					}}
+					onChange={(_event, value) => handleChangeType(value as string)}
 				/>
 			</Row>
 		</Section>

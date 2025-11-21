@@ -47,7 +47,7 @@ const protocolsSlice = createSlice({
 		updateProtocol: (state, action: PayloadAction<{ id?: string; protocol: CurrentProtocol }>) => {
 			// If no id provided, assume single protocol mode (use first protocol)
 			const id = action.payload.id || Object.keys(state)[0];
-			if (state[id]) {
+			if (id && state[id]) {
 				state[id].protocol = action.payload.protocol;
 				state[id].updatedAt = Date.now();
 				state[id].lastModified = Date.now();
@@ -55,7 +55,7 @@ const protocolsSlice = createSlice({
 		},
 		updateProtocolMetadata: (state, action: PayloadAction<{ id?: string; name?: string; description?: string }>) => {
 			const id = action.payload.id || Object.keys(state)[0];
-			if (state[id]) {
+			if (id && state[id]) {
 				if (action.payload.name !== undefined) {
 					state[id].name = action.payload.name;
 				}

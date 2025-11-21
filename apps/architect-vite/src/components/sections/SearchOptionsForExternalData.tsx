@@ -59,11 +59,13 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 					</p>
 				</Tip>
 				<ValidatedField
-					label="Which attributes should be searchable?"
 					name="searchOptions.matchProperties"
-					component={CheckboxGroup}
-					options={variableOptions}
+					component={CheckboxGroup as React.ComponentType<Record<string, unknown>>}
 					validation={{ minSelected: 1 }}
+					componentProps={{
+						label: "Which attributes should be searchable?",
+						options: variableOptions,
+					}}
 				/>
 			</Section>
 			<Section
@@ -84,15 +86,17 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 				</Tip>
 				<ValidatedField
 					name="searchOptions.fuzziness"
-					component={LikertScale}
-					type="ordinal"
-					options={[
-						{ value: 0.75, label: "Low accuracy" },
-						{ value: 0.5, label: "Medium accuracy" },
-						{ value: 0.25, label: "High accuracy" },
-						{ value: 0, label: "Exact" },
-					]}
+					component={LikertScale as React.ComponentType<Record<string, unknown>>}
 					validation={{ requiredAcceptsZero: true }}
+					componentProps={{
+						type: "ordinal",
+						options: [
+							{ value: 0.75, label: "Low accuracy" },
+							{ value: 0.5, label: "Medium accuracy" },
+							{ value: 0.25, label: "High accuracy" },
+							{ value: 0, label: "Exact" },
+						],
+					}}
 				/>
 			</Section>
 		</Section>

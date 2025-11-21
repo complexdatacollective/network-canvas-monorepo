@@ -33,19 +33,21 @@ const activeProtocolSlice = createSlice({
 				isValid: true, // Assume new protocol is valid initially
 				lastSavedAt: null,
 				lastSavedTimeline: null,
-			};
+			} as ActiveProtocolState;
 		},
 		updateProtocol: (state, action: PayloadAction<Partial<ActiveProtocolState>>) => {
+			if (!state) return state;
 			return {
 				...state,
 				...action.payload,
-			};
+			} as ActiveProtocolState;
 		},
 		updateProtocolOptions: (state, action: PayloadAction<{ name?: string; description?: string }>) => {
+			if (!state) return state;
 			return {
 				...state,
 				...pick(action.payload, ["name", "description"]),
-			};
+			} as ActiveProtocolState;
 		},
 		markProtocolSaved: (state, action: PayloadAction<{ timestamp: number; timelineLocus: string }>) => {
 			if (state) {
@@ -56,14 +58,6 @@ const activeProtocolSlice = createSlice({
 		clearActiveProtocol: (_state) => {
 			assetDb.assets.clear(); // Clear asset database
 			return initialState;
-		},
-	},
-	selectors: {
-		selectActiveProtocol: (state) => {
-			if (state && typeof state === "object" && "present" in state) {
-				return (state as { present: ActiveProtocolState }).present ?? null;
-			}
-			return state;
 		},
 	},
 	extraReducers: (builder) => {
@@ -82,23 +76,26 @@ const activeProtocolSlice = createSlice({
 
 				// If the sub-reducer returns a different reference, it made a change
 				if (newStages !== currentStages) {
-					state.stages = newStages;
+					// Cast the stages to the correct type
+					state.stages = newStages as typeof state.stages;
 					hasChange = true;
 				}
 			}
 			if (state.assetManifest) {
 				const currentAssetManifest = current(state.assetManifest);
-				const newAssetManifest = assetManifest(currentAssetManifest, action);
+				const newAssetManifest = assetManifest(currentAssetManifest as Record<string, unknown>, action);
 				if (newAssetManifest !== currentAssetManifest) {
-					state.assetManifest = newAssetManifest;
+					// Cast the assetManifest to the correct type
+					state.assetManifest = newAssetManifest as typeof state.assetManifest;
 					hasChange = true;
 				}
 			}
 			if (state.codebook) {
 				const currentCodebook = current(state.codebook);
-				const newCodebook = codebook(currentCodebook, action);
+				const newCodebook = codebook(currentCodebook as Record<string, unknown>, action);
 				if (newCodebook !== currentCodebook) {
-					state.codebook = newCodebook;
+					// Cast the codebook to the correct type
+					state.codebook = newCodebook as typeof state.codebook;
 					hasChange = true;
 				}
 			}
@@ -107,7 +104,7 @@ const activeProtocolSlice = createSlice({
 			// This is critical for the timeline middleware to detect changes
 			if (hasChange) {
 				// Force a new object reference by spreading
-				return { ...state };
+				return { ...state } as ActiveProtocolState;
 			}
 		});
 	},
@@ -120,7 +117,27 @@ export const updateProtocolOptions = activeProtocolSlice.actions.updateProtocolO
 export const markProtocolSaved = activeProtocolSlice.actions.markProtocolSaved;
 export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;
 
-export const { selectActiveProtocol } = activeProtocolSlice.selectors;
+export const actionCreators = {
+	setActiveProtocol: activeProtocolSlice.actions.setActiveProtocol,
+	updateProtocol: activeProtocolSlice.actions.updateProtocol,
+	updateProtocolOptions: activeProtocolSlice.actions.updateProtocolOptions,
+	markProtocolSaved: activeProtocolSlice.actions.markProtocolSaved,
+	clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
+};
+
+// Export a custom selector that properly handles the TimelineState wrapping in RootState
+export const selectActiveProtocol = (state: RootState) => {
+	// The activeProtocol in RootState is wrapped by the timeline middleware
+	// We need to extract the present value
+	const timelineState = state.activeProtocol;
+
+	if (timelineState && typeof timelineState === "object" && "present" in timelineState) {
+		return (timelineState as unknown as { present: ActiveProtocolState }).present ?? null;
+	}
+
+	// Fallback for raw state (shouldn't happen in normal operation)
+	return (timelineState as unknown as ActiveProtocolState) ?? null;
+};
 
 // Export the reducer as default
 export default activeProtocolSlice.reducer;

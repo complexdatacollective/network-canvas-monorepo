@@ -267,6 +267,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
+      '@codaco/shared-consts':
+        specifier: workspace:*
+        version: link:../../packages/shared-consts
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
@@ -445,6 +448,9 @@ importers:
       '@types/lodash':
         specifier: ^4.17.20
         version: 4.17.20
+      '@types/luxon':
+        specifier: ^3.7.1
+        version: 3.7.1
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.5
@@ -3210,6 +3216,9 @@ packages:
 
   '@types/lodash@4.17.20':
     resolution: {integrity: sha512-H3MHACvFUEiujabxhaI/ImO6gUrd8oOurg7LQtS7mbwIXA/cUqWrvBsaeJ23aZEPk1TAYkurjfMbSELfoCXlGA==}
+
+  '@types/luxon@3.7.1':
+    resolution: {integrity: sha512-H3iskjFIAn5SlJU7OuxUmTEpebK6TKB8rxZShDslBMZJ5u9S//KM1sbdAisiSrqwLQncVjnpi2OK2J51h+4lsg==}
 
   '@types/mapbox__point-geometry@0.1.4':
     resolution: {integrity: sha512-mUWlSxAmYLfwnRBmgYV86tgYmMIICX4kza8YnE/eIlywGe2XoOxlpVnXWwir92xRLjwyarqwpu2EJKD2pk0IUA==}
@@ -8594,6 +8603,8 @@ snapshots:
   '@types/is-hotkey@0.1.10': {}
 
   '@types/lodash@4.17.20': {}
+
+  '@types/luxon@3.7.1': {}
 
   '@types/mapbox__point-geometry@0.1.4': {}
 

@@ -34,7 +34,9 @@ type EditEntityRuleProps = {
 	variablesAsOptions: OptionItem[];
 	variableOptions?: OptionItem[];
 	operatorOptions: OptionItem[];
-	handleRuleChange: (value: Record<string, unknown>) => void;
+	handleRuleChange: (event: unknown, value: unknown, oldValue: unknown, name: string | null) => void;
+	codebook?: Record<string, unknown>;
+	onChange?: (value: Record<string, unknown>) => void;
 };
 
 const EditEntityRule = ({
@@ -52,11 +54,17 @@ const EditEntityRule = ({
 	const options = rule?.options;
 	const getOptionsWithDefaults = makeGetOptionsWithDefaults(variableType, ["type", "operator", "attributes", "value"]);
 	const optionsWithDefaults = getOptionsWithDefaults(options);
-	const operatorNeedsValue = operatorsWithValue.has(optionsWithDefaults.operator);
+	const operatorNeedsValue =
+		optionsWithDefaults.operator && typeof optionsWithDefaults.operator === "string"
+			? operatorsWithValue.has(optionsWithDefaults.operator)
+			: false;
 	// const operatorNeedsRegExp = operatorsWithRegExp.has(optionsWithDefaults.operator);
 	const isVariableRule = entityRuleType === entityRuleTypes.VARIABLE_RULE;
 	const isTypeRule = entityRuleType === entityRuleTypes.TYPE_RULE;
-	const operatorNeedsOptionCount = operatorsWithOptionCount.has(optionsWithDefaults.operator);
+	const operatorNeedsOptionCount =
+		optionsWithDefaults.operator && typeof optionsWithDefaults.operator === "string"
+			? operatorsWithOptionCount.has(optionsWithDefaults.operator)
+			: false;
 	const countFriendlyValue = !isNil(optionsWithDefaults.value) ? optionsWithDefaults.value : "";
 	const optionsWithCounts = {
 		...optionsWithDefaults,
@@ -77,7 +85,7 @@ const EditEntityRule = ({
 			>
 				<IssueAnchor fieldName="type" description={`${entityType} Type`} />
 				<DetachedField
-					component={EntitySelectField}
+					component={EntitySelectField as React.ComponentType<Record<string, unknown>>}
 					entityType={entityType === "alter" ? "node" : "edge"}
 					name="type"
 					options={typeOptions}
@@ -88,16 +96,16 @@ const EditEntityRule = ({
 			</Section>
 			<Section title="Rule Type" disabled={!optionsWithDefaults.type} layout="vertical">
 				<DetachedField
-					component={RadioGroup}
+					component={RadioGroup as React.ComponentType<Record<string, unknown>>}
 					options={entityRuleTypeOptions(entityType)}
 					value={entityRuleType}
-					onChange={handleChangeEntityRuleType}
+					onChange={(_event, value) => handleChangeEntityRuleType(value as string)}
 				/>
 			</Section>
 			{isTypeRule && optionsWithDefaults.type && (
 				<Section title="Operator" layout="vertical">
 					<DetachedField
-						component={RadioGroup}
+						component={RadioGroup as React.ComponentType<Record<string, unknown>>}
 						name="operator"
 						options={operatorOptions}
 						onChange={handleRuleChange}
@@ -109,7 +117,7 @@ const EditEntityRule = ({
 			{isVariableRule && optionsWithDefaults.type && (
 				<Section title="Variable" summary={<p>Select a variable to query.</p>} layout="vertical">
 					<DetachedField
-						component={NativeSelect}
+						component={NativeSelect as React.ComponentType<Record<string, unknown>>}
 						name="attribute"
 						options={variablesAsOptions}
 						onChange={handleRuleChange}
@@ -121,7 +129,7 @@ const EditEntityRule = ({
 			{isVariableRule && optionsWithDefaults.attribute && (
 				<Section title="Operator" layout="vertical">
 					<DetachedField
-						component={NativeSelect}
+						component={NativeSelect as React.ComponentType<Record<string, unknown>>}
 						name="operator"
 						options={operatorOptions}
 						onChange={handleRuleChange}
@@ -136,7 +144,13 @@ const EditEntityRule = ({
 						variableType={variableType}
 						placeholder="Enter a value..."
 						onChange={handleRuleChange}
-						value={optionsWithDefaults.value}
+						value={
+							typeof optionsWithDefaults.value === "string" ||
+							typeof optionsWithDefaults.value === "number" ||
+							typeof optionsWithDefaults.value === "boolean"
+								? optionsWithDefaults.value
+								: ""
+						}
 						options={variableOptions}
 						validation={{ required: true }}
 					/>
@@ -163,7 +177,13 @@ const EditEntityRule = ({
 						variableType="number"
 						placeholder="Enter a value..."
 						onChange={handleRuleChange}
-						value={optionsWithCounts.value}
+						value={
+							typeof optionsWithCounts.value === "string" ||
+							typeof optionsWithCounts.value === "number" ||
+							typeof optionsWithCounts.value === "boolean"
+								? optionsWithCounts.value
+								: 0
+						}
 						validation={{ requiredAcceptsZero: true }}
 					/>
 				</Section>
@@ -172,8 +192,15 @@ const EditEntityRule = ({
 	);
 };
 
-export default compose<EditEntityRuleProps, Partial<EditEntityRuleProps>>(
+export default compose<
+	EditEntityRuleProps,
+	{
+		rule?: { options?: Record<string, unknown>; type?: string };
+		codebook?: Record<string, unknown>;
+		onChange?: (value: Record<string, unknown>) => void;
+	}
+>(
 	withEntityRuleType,
 	withRuleChangeHandler,
 	withOptions,
-)(EditEntityRule as React.ComponentType<unknown>);
+)(EditEntityRule);

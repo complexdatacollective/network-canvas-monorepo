@@ -42,11 +42,13 @@ const Form = ({
 		{!disableFormTitle && (
 			<ValidatedField
 				name="form.title"
-				label="Form heading text (e.g 'Add a person')"
 				component={TextField}
-				placeholder="Enter your title here"
-				className="stage-editor-section-title"
 				validation={{ required: true }}
+				componentProps={{
+					label: "Form heading text (e.g 'Add a person')",
+					placeholder: "Enter your title here",
+					className: "stage-editor-section-title",
+				}}
 			/>
 		)}
 		<EditableList
@@ -56,12 +58,17 @@ const Form = ({
 				type,
 				entity,
 			}}
-			previewComponent={FieldPreview}
+			previewComponent={FieldPreview as React.ComponentType<Record<string, unknown>>}
 			fieldName="form.fields"
 			title="Edit Field"
-			onChange={handleChangeFields}
-			normalize={normalizeField}
-			itemSelector={itemSelector(entity, type)}
+			onChange={(value: unknown) => handleChangeFields(value as Array<Record<string, unknown>>)}
+			normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
+			itemSelector={
+				itemSelector(entity, type) as (
+					state: Record<string, unknown>,
+					params: { form: string; editField: string },
+				) => unknown
+			}
 			form={form}
 		/>
 	</Section>

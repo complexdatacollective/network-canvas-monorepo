@@ -18,13 +18,21 @@ const getScrollToValue = (range: RangeItem[], today: number | null | undefined) 
 		return null;
 	}
 
+	if (range.length === 0) {
+		return null;
+	}
+
 	const findToday = find(range, ({ value }) => value === today);
 	if (findToday) {
 		return findToday.value;
 	}
 
-	const first = range[0].value;
-	const last = range[range.length - 1].value;
+	const first = range[0]?.value;
+	const last = range[range.length - 1]?.value;
+
+	if (first === undefined || last === undefined) {
+		return null;
+	}
 
 	if (Math.abs(today - first) < Math.abs(today - last)) {
 		return first;
@@ -41,8 +49,8 @@ const RangePicker = ({
 	onSelect = () => {},
 	offset = 0,
 }: RangePickerProps) => {
-	const datePickerRef = React.createRef<HTMLDivElement>();
-	const scrollRef = React.createRef<HTMLDivElement>();
+	const datePickerRef = React.createRef<HTMLDivElement | null>();
+	const scrollRef = React.createRef<HTMLButtonElement | null>();
 
 	const _datePickerKey = !!datePickerRef.current;
 	const _scrollRefKey = scrollRef.current?.getAttribute("data-value");

@@ -1,3 +1,4 @@
+import type { Variable } from "@codaco/protocol-validation";
 import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import React, { useContext } from "react";
@@ -16,13 +17,6 @@ type ProtocolType = {
 type IndexEntry = {
 	id: string;
 	stages?: string[];
-	[key: string]: unknown;
-};
-
-type VariableConfig = {
-	name: string;
-	type: string;
-	options?: Array<{ value: unknown; label: string }>;
 	[key: string]: unknown;
 };
 
@@ -47,9 +41,7 @@ const Variables = ({ variables }: VariablesProps) => {
 
 	const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
 
-	const sortedVariables = sortBy(toPairs(variables), [
-		(variable) => (variable[1] as VariableConfig).name.toLowerCase(),
-	]);
+	const sortedVariables = sortBy(toPairs(variables), [(variable) => (variable[1] as Variable).name.toLowerCase()]);
 
 	return (
 		<div className="protocol-summary-variables">
@@ -68,16 +60,20 @@ const Variables = ({ variables }: VariablesProps) => {
 						</tr>
 					)}
 					{sortedVariables.map(([variableId, variableConfiguration]) => {
-						const config = variableConfiguration as VariableConfig;
-						const { name, type, options } = config;
+						const config = variableConfiguration as Variable;
+						const { name, type } = config;
 
 						const indexEntry = index.find(({ id }: { id: string }) => id === variableId) as IndexEntry | undefined;
 
-						const optionsRows: ReactNode[][] =
-							options?.map(({ value, label }: { value: unknown; label: string }) => [
-								<span key={`val-${String(value)}`}>{renderValue(value)}</span>,
-								<Markdown key={`label-${String(value)}`} value={label} />,
-							]) ?? [];
+						let optionsRows: ReactNode[][] = [];
+
+						if ("options" in config) {
+							optionsRows =
+								config.options?.map(({ value, label }) => [
+									<span key={`val-${String(value)}`}>{renderValue(value)}</span>,
+									<Markdown key={`label-${String(value)}`} label={label} />,
+								]) ?? [];
+						}
 
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>
@@ -90,7 +86,7 @@ const Variables = ({ variables }: VariablesProps) => {
 									{type}
 									<br />
 									<br />
-									{options && <MiniTable rows={[["Value", "Label"], ...optionsRows]} />}
+									{optionsRows.length > 0 && <MiniTable rows={[["Value", "Label"], ...optionsRows]} />}
 								</td>
 								<td>
 									{getUsedIn(indexEntry).map(([stageId, stageName]) => (

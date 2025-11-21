@@ -1,3 +1,4 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -7,6 +8,7 @@ import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import Tip from "../../Tip";
 import getVariableOptionsGetter from "../SortOptionsForExternalData/getVariableOptionsGetter";
@@ -23,11 +25,13 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 
 	const dispatch = useDispatch();
 	const getFormValue = formValueSelector("edit-stage");
-	const hasCardDisplayOptions = useSelector((state) => getFormValue(state, "cardOptions.additionalProperties"));
+	const hasCardDisplayOptions = useSelector((state: RootState) =>
+		getFormValue(state, "cardOptions.additionalProperties"),
+	);
 
 	const handleToggleCardDisplayOptions = (nextState: boolean) => {
 		if (nextState === false) {
-			dispatch(change("edit-stage", "cardOptions.additionalProperties", null));
+			dispatch(change("edit-stage", "cardOptions.additionalProperties", null) as unknown as UnknownAction);
 		}
 
 		return true;

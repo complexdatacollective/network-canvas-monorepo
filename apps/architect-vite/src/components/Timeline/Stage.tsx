@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { DeleteIcon } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import { useRef } from "react";
 import { Button } from "~/lib/legacy-ui/components";
 import getAbsoluteBoundingRect from "~/utils/getAbsoluteBoundingRect";
@@ -18,7 +18,7 @@ const findPos = (node: HTMLElement): number => {
 	return curtop - curtopscroll;
 };
 
-const variants = {
+const variants: Variants = {
 	show: {
 		scale: 1,
 		opacity: 1,
@@ -55,7 +55,7 @@ const Stage = ({
 }: StageProps) => {
 	const componentClasses = cx("timeline-stage", className);
 
-	const previewRef = useRef();
+	const previewRef = useRef<HTMLDivElement>(null);
 
 	const handleEditStage = () => {
 		if (!previewRef.current) {
@@ -66,8 +66,10 @@ const Stage = ({
 		const find = findPos(previewRef.current);
 
 		onEditStage(id, {
-			...rect,
 			top: find,
+			left: rect.left,
+			width: rect.width,
+			height: rect.height,
 		});
 	};
 

@@ -19,10 +19,10 @@ type WarningProps = {
  */
 const Warning = ({
 	title,
-	message = null,
+	message,
 	canCancel = true,
 	onConfirm,
-	onCancel = null,
+	onCancel,
 	confirmLabel = "OK",
 	cancelLabel = "Cancel",
 	show = false,
@@ -34,7 +34,9 @@ const Warning = ({
 		title={title}
 		message={message}
 		options={[
-			canCancel ? <Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} /> : null,
+			...(canCancel && onCancel
+				? [<Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} />]
+				: []),
 			<Button key="confirm" onClick={onConfirm} color="mustard" content={confirmLabel} />,
 		]}
 	/>

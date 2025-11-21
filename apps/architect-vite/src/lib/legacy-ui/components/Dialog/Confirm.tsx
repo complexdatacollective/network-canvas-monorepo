@@ -18,10 +18,10 @@ type ConfirmProps = {
  */
 const Confirm = ({
 	title,
-	message = null,
+	message,
 	canCancel = true,
 	onConfirm,
-	onCancel = null,
+	onCancel,
 	confirmLabel = "OK",
 	cancelLabel = "Cancel",
 	show = false,
@@ -34,7 +34,9 @@ const Confirm = ({
 		message={message}
 		onBlur={onCancel}
 		options={[
-			canCancel ? <Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} /> : null,
+			...(canCancel && onCancel
+				? [<Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} />]
+				: []),
 			<Button key="confirm" onClick={onConfirm} color="sea-green" content={confirmLabel} />,
 		]}
 	/>

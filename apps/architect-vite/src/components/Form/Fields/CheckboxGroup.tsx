@@ -3,6 +3,7 @@
 import cx from "classnames";
 import { useCallback } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import type { CheckboxProps } from "./Checkbox";
 import Checkbox from "./Checkbox";
 import MarkdownLabel from "./MarkdownLabel";
 import type { Option } from "./utils/options";
@@ -18,16 +19,7 @@ type CheckboxGroupProps = {
 		value?: unknown[];
 		onChange: (value: unknown[]) => void;
 	};
-	optionComponent?: React.ComponentType<{
-		className?: string;
-		input: {
-			value: unknown;
-			checked?: boolean;
-			onChange: () => void;
-		};
-		label: string;
-		[key: string]: unknown;
-	}>;
+	optionComponent?: React.ComponentType<CheckboxProps>;
 	meta?: {
 		error?: string;
 		invalid?: boolean;
@@ -76,6 +68,7 @@ const CheckboxGroup = ({
 					className="form-field-checkbox-group__option"
 					key={index}
 					input={{
+						name: `option-${index}`,
 						value: index,
 						checked: isOptionChecked(optionValue),
 						onChange: () => handleClickOption(index),

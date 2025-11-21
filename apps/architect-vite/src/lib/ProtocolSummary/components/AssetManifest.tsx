@@ -3,16 +3,19 @@ import { useContext } from "react";
 import Asset from "./Asset";
 import SummaryContext from "./SummaryContext";
 
-const AssetManifest = () => {
-	const {
-		protocol: { assetManifest },
-	} = useContext(SummaryContext);
+type AssetData = {
+	type?: string;
+	[key: string]: unknown;
+};
 
-	if (!assetManifest) {
+const AssetManifest = () => {
+	const { protocol } = useContext(SummaryContext);
+
+	if (!protocol.assetManifest) {
 		return null;
 	}
 
-	const assets = groupBy(toPairs(assetManifest), ([, asset]) => asset.type);
+	const assets = groupBy(toPairs(protocol.assetManifest), ([, asset]) => (asset as AssetData).type);
 
 	if (isEmpty(assets)) {
 		return null;

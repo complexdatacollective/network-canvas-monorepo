@@ -1,6 +1,10 @@
 import { withProps } from "recompose";
 
-const withDisabledFormTitle = withProps(({ interfaceType }) => {
+type PropsWithInterfaceType = {
+	interfaceType?: string;
+};
+
+const withDisabledFormTitle = withProps<{ disableFormTitle: boolean }, PropsWithInterfaceType>(({ interfaceType }) => {
 	if (interfaceType === "EgoForm" || interfaceType === "AlterForm" || interfaceType === "AlterEdgeForm") {
 		return { disableFormTitle: true };
 	}

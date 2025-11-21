@@ -8,9 +8,12 @@ interface BlockNode extends Element {
 	children: Descendant[];
 }
 
-const toggleBlock = (editor: Editor, block: NodeEntry<BlockNode>): void => {
+const toggleBlock = (editor: Editor, block: NodeEntry<Node>): void => {
 	const [node, path] = block;
-	const type = node.type;
+	if (!Element.isElement(node)) {
+		return;
+	}
+	const type = (node as BlockNode).type;
 
 	switch (type) {
 		case "block_quote":
@@ -48,7 +51,7 @@ export const toggleBlockquote = (editor: Editor): void => {
 		toggleBlock(editor, block);
 	});
 
-	const reversedPaths = blocks.reduce((acc: Path[], [, path]: NodeEntry<BlockNode>) => {
+	const reversedPaths = blocks.reduce((acc: Path[], [, path]: NodeEntry<Node>) => {
 		acc.unshift(path);
 		return acc;
 	}, []);
@@ -59,8 +62,15 @@ export const toggleBlockquote = (editor: Editor): void => {
 		if (!nextPath) {
 			return;
 		}
-		const next = Node.get(editor, nextPath) as BlockNode;
-		const current = Node.get(editor, path) as BlockNode;
+		const nextNode = Node.get(editor, nextPath);
+		const currentNode = Node.get(editor, path);
+
+		if (!Element.isElement(nextNode) || !Element.isElement(currentNode)) {
+			return;
+		}
+
+		const next = nextNode as BlockNode;
+		const current = currentNode as BlockNode;
 		if (current.type === "block_quote" && next.type === "block_quote") {
 			Transforms.mergeNodes(editor, { at: path });
 		}

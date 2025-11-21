@@ -1,6 +1,4 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
-import type { Dispatch } from "react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
@@ -8,6 +6,7 @@ import { CheckboxGroup } from "~/components/Form/Fields";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
+import type { AppDispatch } from "~/ducks/store";
 import { getNodeTypes } from "~/selectors/codebook";
 import { updateVariableByUUID } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
@@ -26,9 +25,12 @@ type NodeType = {
 };
 
 const EncryptedVariables = (_props: StageEditorSectionProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useDispatch<AppDispatch>();
 	const openDialog = useCallback(
-		(dialog: Parameters<typeof dialogActions.openDialog>[0]) => dispatch(dialogActions.openDialog(dialog)),
+		async (dialog: Parameters<typeof dialogActions.openDialog>[0]) => {
+			const result = await dispatch(dialogActions.openDialog(dialog));
+			return result.payload as boolean;
+		},
 		[dispatch],
 	);
 	const nodeTypes = useSelector((state: RootState) => getNodeTypes(state) as Record<string, NodeType>);
@@ -37,7 +39,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 		(variableId: string, encrypted: boolean, variable: Variable) => {
 			const properties = encrypted ? { ...variable, encrypted: true } : omit(variable, "encrypted");
 
-			dispatch(updateVariableByUUID(variableId, properties, false));
+			void dispatch(updateVariableByUUID(variableId, properties, false));
 		},
 		[dispatch],
 	);
@@ -131,9 +133,9 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 								component={CheckboxGroup}
 								options={variableOptions}
 								value={encryptedVariableIds}
-								onChange={(selectedValues: string[]) => {
+								onChange={(_event: unknown, nextValue: string[]) => {
 									Object.entries(variables).forEach(([variableId, variable]) => {
-										const shouldEncrypt = selectedValues.includes(variableId);
+										const shouldEncrypt = nextValue.includes(variableId);
 										if (variable?.encrypted !== shouldEncrypt) {
 											handleEncryptionToggle(variableId, shouldEncrypt, variable);
 										}

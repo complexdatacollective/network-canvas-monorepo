@@ -59,7 +59,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 					title: "This will clear your values",
 					message: "This will clear the minimum and maximum alter values. Do you want to continue?",
 					confirmLabel: "Clear values",
-				}),
+				}) as UnknownAction,
 			);
 
 			if (confirm) {
@@ -104,11 +104,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 				<IssueAnchor fieldName="behaviours.minNodes" description="Minimum alters" />
 				<ValidatedField
 					name="minNodes"
-					label="Minimum Number of Alters. (0 = no minimum)"
 					component={NumberField}
-					componentProps={{
-						placeholder: "0",
-					}}
 					validation={{
 						lessThanMax: minValidation,
 						positiveNumber: (value: number | null | undefined) => {
@@ -116,21 +112,25 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 							return value >= 0 ? undefined : "Must be a positive number";
 						},
 					}}
+					componentProps={{
+						label: "Minimum Number of Alters. (0 = no minimum)",
+						placeholder: "0",
+					}}
 				/>
 				<IssueAnchor fieldName="behaviours.maxNodes" description="Maximum alters" />
 				<ValidatedField
 					name="maxNodes"
-					label="Maximum Number of Alters. _(Leave empty for no maximum)_"
 					component={NumberField}
-					componentProps={{
-						placeholder: "Infinity",
-					}}
 					validation={{
 						greaterThanMin: maxValidation,
 						minValue: (value: number | null | undefined) => {
 							if (!value) return undefined;
 							return value >= 1 ? undefined : "Must be at least 1";
 						},
+					}}
+					componentProps={{
+						label: "Maximum Number of Alters. _(Leave empty for no maximum)_",
+						placeholder: "Infinity",
 					}}
 				/>
 			</FormSection>

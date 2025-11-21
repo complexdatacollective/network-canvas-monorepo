@@ -1,8 +1,8 @@
 import { Audio } from "../../Assets";
-import type { FileInputProps } from "./File";
+import type { FileInputPropsWithoutHOC } from "./File";
 import File from "./File";
 
-type AudioInputProps = Omit<FileInputProps, "children" | "type">;
+type AudioInputProps = Omit<FileInputPropsWithoutHOC, "children" | "type">;
 
 const AudioInput = (props: AudioInputProps) => (
 	<File

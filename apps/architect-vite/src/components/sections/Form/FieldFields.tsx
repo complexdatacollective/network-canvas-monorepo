@@ -1,4 +1,5 @@
 import { omit } from "es-toolkit/compat";
+import type { ComponentType } from "react";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
@@ -36,8 +37,8 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 		handleChangeComponent,
 	} = useFieldHandlers({
 		form,
-		entity: entity ?? undefined,
-		type: type ?? undefined,
+		entity: entity ?? "",
+		type: type ?? "",
 	});
 
 	return (
@@ -54,12 +55,11 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 					)}
 					<ValidatedField
 						name="variable"
-						component={VariablePicker}
+						component={VariablePicker as ComponentType<Record<string, unknown>>}
 						validation={{ required: true }}
 						componentProps={{
-							variable,
-							entity,
-							type,
+							entity: entity ?? undefined,
+							type: type ?? undefined,
 							options: variableOptions,
 							onCreateOption: handleNewVariable,
 							onChange: handleChangeVariable,
@@ -76,7 +76,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				<Row>
 					<ValidatedField
 						name="prompt"
-						component={RichText}
+						component={RichText as ComponentType<Record<string, unknown>>}
 						validation={{ required: true }}
 						componentProps={{
 							inline: true,
@@ -104,13 +104,13 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				<Row>
 					<ValidatedField
 						name="component"
-						component={NativeSelect}
+						component={NativeSelect as ComponentType<Record<string, unknown>>}
 						validation={{ required: true }}
 						componentProps={{
 							placeholder: "Select an input control",
 							options: componentOptions,
-							onChange: handleChangeComponent,
 							sortOptionsByLabel: !isNewVariable,
+							onChange: handleChangeComponent,
 						}}
 					/>
 					{isNewVariable && variableType && (
@@ -135,15 +135,10 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 						</Tip>
 					)}
 				</Row>
-				{variableType && (
+				{variableType && metaForType && typeof metaForType.label === "string" && (
 					<Row>
 						<h4>Preview</h4>
-						<InputPreview
-							label={metaForType?.label ?? ""}
-							value={metaForType?.value ?? ""}
-							description={metaForType?.description ?? ""}
-							image={metaForType?.image ?? ""}
-						/>
+						<InputPreview label={metaForType.label} description={metaForType.description} image={metaForType.image} />
 					</Row>
 				)}
 			</Section>
@@ -174,7 +169,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 			{isVariableTypeWithParameters(variableType) && (
 				<Section layout="vertical" title="Input Options" id={getFieldId("parameters")}>
 					<Row>
-						<Parameters type={String(variableType)} component={String(component ?? "")} name="parameters" form={form} />
+						<Parameters type={String(variableType)} component={component ?? ""} name="parameters" form={form} />
 					</Row>
 				</Section>
 			)}
@@ -182,7 +177,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				form={form}
 				disabled={!variableType}
 				entity={entity ?? ""}
-				variableType={String(variableType ?? "")}
+				variableType={typeof variableType === "string" ? variableType : undefined}
 				existingVariables={omit(existingVariables, variable)}
 			/>
 		</>

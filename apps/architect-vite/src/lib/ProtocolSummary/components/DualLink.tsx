@@ -6,9 +6,9 @@ type DualLinkProps = {
 	className?: string;
 };
 
-const DualLink = ({ to, children = null, className = null }: DualLinkProps) => (
+const DualLink = ({ to, children = null, className }: DualLinkProps) => (
 	<>
-		<a href={to} className={className}>
+		<a href={to} className={className ?? undefined}>
 			{children}
 		</a>
 	</>

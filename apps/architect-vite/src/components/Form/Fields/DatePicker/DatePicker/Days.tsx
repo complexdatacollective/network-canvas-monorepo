@@ -15,18 +15,24 @@ type DaysProps = {
 /**
  * Supplies `days` range based on currently selected month.
  */
-const Days = ({ children }: DaysProps) => {
+const Days = ({ children }: DaysProps): ReactNode => {
 	const { date, range: dateRange } = useContext(DatePickerContext);
 
-	const days = range(1, DateTime.fromObject(date).daysInMonth + 1).map((day) => {
-		const d = DateTime.fromObject({ ...date, day });
+	// Handle null values by providing defaults for DateTime
+	const year = date.year ?? new Date().getFullYear();
+	const month = date.month ?? 1;
+
+	const daysInMonth = DateTime.fromObject({ year, month }).daysInMonth ?? 30;
+
+	const days = range(1, daysInMonth + 1).map((day) => {
+		const d = DateTime.fromObject({ year, month, day });
 		if (dateRange?.contains(d)) {
 			return formatRangeItem(day);
 		}
 		return formatRangeItem(day, { isOutOfRange: true });
 	});
 
-	return children({ days }) as JSX.Element;
+	return children({ days });
 };
 
 export default Days;

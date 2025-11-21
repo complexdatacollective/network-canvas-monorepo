@@ -13,19 +13,23 @@ const getMessage = ({
 	error,
 	message,
 }: {
-	error: Error | string | { friendlyMessage?: string } | null;
-	message: React.ReactNode;
-}) =>
+	error?: Error | string | { friendlyMessage?: string } | null;
+	message?: React.ReactNode;
+}): React.ReactNode =>
 	error ? getErrorMessage(error as Error | string | { friendlyMessage?: string; toString: () => string }) : message;
 
-const getStack = (error: Error | string | { stack?: string } | null) =>
-	!!error && typeof error === "object" && "stack" in error && error.stack;
+const getStack = (error: Error | string | { friendlyMessage?: string } | null): string | undefined => {
+	if (error && typeof error === "object" && "stack" in error) {
+		return error.stack;
+	}
+	return undefined;
+};
 
 type AdditionalInformationProps = {
 	stack?: string;
 };
 
-const AdditionalInformation = ({ stack = null }: AdditionalInformationProps) => {
+const AdditionalInformation = ({ stack }: AdditionalInformationProps) => {
 	const [expanded, setExpanded] = useState(false);
 
 	const buttonText = expanded ? "Hide details \u25b2" : "Show details \u25bc";
@@ -60,14 +64,14 @@ type ErrorDialogProps = {
  * explicitly click Acknowledge to close.
  */
 const ErrorDialog = ({
-	error = null,
-	message = null,
+	error,
+	message,
 	onConfirm,
 	show = false,
 	confirmLabel = "OK",
 	title = "Something went wrong!",
 }: ErrorDialogProps) => {
-	const stack = getStack(error);
+	const stack = error ? getStack(error) : undefined;
 
 	return (
 		<Dialog

@@ -32,10 +32,9 @@ const defaultMarkdownRenderers = {
 	a: externalLinkRenderer,
 };
 
-type MarkdownProps = ComponentType<typeof ReactMarkdown> & {
+type MarkdownProps = {
 	label: string;
-	// Subset of ALLOWED_MARKDOWN_TAGS
-	allowedElements?: typeof ALLOWED_MARKDOWN_TAGS;
+	allowedElements?: readonly string[];
 	markdownRenderers?: Record<string, ComponentType<unknown>>;
 	className?: string;
 };

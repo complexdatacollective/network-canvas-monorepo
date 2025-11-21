@@ -1,3 +1,4 @@
+import type { VariableType } from "@codaco/protocol-validation";
 import { useContext } from "react";
 import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
 import DualLink from "./DualLink";
@@ -14,10 +15,13 @@ const Variable = ({ id }: VariableProps) => {
 	if (!id) return null;
 
 	const meta = getVariableMeta(index, id);
+	const name = getVariableName(index, id);
 
 	return (
 		<DualLink to={`#variable-${id}`} className="protocol-summary-variable">
-			<SimpleVariablePill label={getVariableName(index, id)} type={meta.type} />
+			<SimpleVariablePill label={name} type={meta.type as VariableType}>
+				{name}
+			</SimpleVariablePill>
 		</DualLink>
 	);
 };

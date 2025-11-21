@@ -1,23 +1,26 @@
 import { isMatch } from "lodash";
+import type React from "react";
 import DatePicker from "./DatePicker";
 import RelativeDatePicker from "./RelativeDatePicker";
 import Scalar from "./Scalar";
 
-const definitions = [
+type ComponentType = React.ComponentType<Record<string, unknown>>;
+
+const definitions: Array<[ComponentType, { type: string; component?: string }]> = [
 	[Scalar, { type: "scalar" }],
 	[DatePicker, { type: "datetime", component: "DatePicker" }],
 	[RelativeDatePicker, { type: "datetime", component: "RelativeDatePicker" }],
 ];
 
-const getComponent = (options: { type: string; component?: string }) => {
-	const [component] = definitions.find(([, pattern]) => isMatch(options, pattern)) ?? [];
+const getComponent = (options: { type: string; component?: string }): ComponentType | undefined => {
+	const found = definitions.find(([, pattern]) => isMatch(options, pattern));
 
-	return component;
+	return found ? found[0] : undefined;
 };
 
 type ParametersProps = {
 	type: string;
-	component: React.ComponentType<Record<string, unknown>>;
+	component?: string;
 } & Record<string, unknown>;
 
 const Parameters = ({ type, component, ...rest }: ParametersProps) => {

@@ -43,7 +43,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 								entity={node.entity}
 								type={node.type}
 								inUse={node.inUse}
-								usage={node.usage}
+								usage={[...node.usage]}
 								onEditEntity={onEditEntity}
 							/>
 						))}
@@ -60,7 +60,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 								entity={edge.entity}
 								type={edge.type}
 								inUse={edge.inUse}
-								usage={edge.usage}
+								usage={[...edge.usage]}
 								onEditEntity={onEditEntity}
 							/>
 						))}

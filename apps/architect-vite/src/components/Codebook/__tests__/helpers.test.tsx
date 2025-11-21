@@ -11,26 +11,30 @@ const state = {
 					variables: {
 						1: {
 							name: "name",
-							type: "text",
+							type: "text" as const,
 						},
 					},
 				},
 				node: {
 					person: {
+						name: "Person",
+						color: "node-color-seq-1" as const,
 						variables: {
 							2: {
 								name: "name",
-								type: "text",
+								type: "text" as const,
 							},
 						},
 					},
 				},
 				edge: {
 					friend: {
+						name: "Friend",
+						color: "edge-color-seq-1" as const,
 						variables: {
 							3: {
 								name: "name",
-								type: "text",
+								type: "text" as const,
 							},
 						},
 					},

@@ -1,9 +1,19 @@
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-const getErrorMessage = (error) => !!error && (error.friendlyMessage ? error.friendlyMessage : error.toString());
+const getErrorMessage = (error: Error | string | { friendlyMessage?: string } | null) =>
+	!!error &&
+	(typeof error === "object" && "friendlyMessage" in error && error.friendlyMessage
+		? error.friendlyMessage
+		: error?.toString());
 
-const getMessage = ({ error, message }) => (error ? getErrorMessage(error) : message);
+const getMessage = ({
+	error,
+	message,
+}: {
+	error?: Error | string | { friendlyMessage?: string } | null;
+	message?: string;
+}) => (error ? getErrorMessage(error) : message);
 
 type ErrorDialogProps = {
 	error?: Error | string | { friendlyMessage?: string };
@@ -19,8 +29,8 @@ type ErrorDialogProps = {
  * explicitly click Acknowledge to close.
  */
 const ErrorDialog = ({
-	error = null,
-	message = null,
+	error,
+	message,
 	onConfirm,
 	show = false,
 	confirmLabel = "OK",

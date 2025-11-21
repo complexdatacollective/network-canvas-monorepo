@@ -1,11 +1,14 @@
+import type { VariableOption } from "@codaco/protocol-validation";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
+import type { FormAction } from "redux-form";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import withCreateVariableHandlers from "~/components/enhancers/withCreateVariableHandler";
 import { ValidatedField } from "~/components/Form";
 import MultiSelect from "~/components/Form/MultiSelect";
 import IssueAnchor from "~/components/IssueAnchor";
+import type { RootState } from "~/ducks/modules/root";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import Tip from "../../Tip";
 import { getSortOrderOptionGetter } from "../CategoricalBinPrompts/optionGetters";
@@ -47,11 +50,11 @@ const PromptFields = ({
 }: PromptFieldsProps) => {
 	const dispatch = useDispatch();
 	const getFormValue = formValueSelector(form);
-	const hasSortOrder = useSelector((state) => getFormValue(state, "sortOrder"));
+	const hasSortOrder = useSelector((state: RootState) => getFormValue(state, "sortOrder"));
 
 	const handleToggleSortOrder = (nextState: boolean) => {
 		if (nextState === false) {
-			dispatch(change(form, "sortOrder", null));
+			dispatch(change(form, "sortOrder", null) as FormAction);
 		}
 
 		return true;
@@ -74,14 +77,16 @@ const PromptFields = ({
 				</Tip>
 				<ValidatedField
 					name="layout.layoutVariable"
-					label="Create or select a variable to store node coordinates"
-					type={type}
-					entity={entity}
 					component={VariablePicker}
 					validation={{ required: true }}
-					options={layoutVariablesForSubject}
-					onCreateOption={(value) => handleCreateVariable(value, "layout", "layout.layoutVariable")}
-					variable={layoutVariable}
+					componentProps={{
+						label: "Create or select a variable to store node coordinates",
+						type,
+						entity,
+						options: layoutVariablesForSubject,
+						onCreateOption: (value: string) => handleCreateVariable(value, "layout", "layout.layoutVariable"),
+						variable: layoutVariable,
+					}}
 				/>
 			</Row>
 			{allowPositioning && (
@@ -103,7 +108,13 @@ const PromptFields = ({
 							name="sortOrder"
 							properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
 							maxItems={5}
-							options={getSortOrderOptionGetter(variableOptions)}
+							options={(property: string, rowValues: unknown, allValues: unknown): VariableOption[] =>
+								getSortOrderOptionGetter(variableOptions as VariableOption[])(
+									property,
+									rowValues,
+									allValues as Record<string, unknown>[],
+								)
+							}
 						/>
 					</Row>
 				</Section>

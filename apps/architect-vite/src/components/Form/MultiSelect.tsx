@@ -27,7 +27,7 @@ type ItemValue = {
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
 	<Button
-		color="primary"
+		color="sea-green"
 		icon="add"
 		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
@@ -68,89 +68,114 @@ type ItemHandlerProps = ItemOwnProps &
 		) => Array<Record<string, unknown>>;
 	};
 
-const Item = compose(
-	connect(mapStateToItemProps, mapDispatchToItemProps),
-	withHandlers<ItemHandlerProps, object>({
-		handleDelete:
-			({ fields, openDialog, index }: ItemHandlerProps) =>
-			() => {
-				openDialog({
-					type: "Warning",
-					title: "Remove item",
-					message: "Are you sure you want to remove this item?",
-					onConfirm: () => {
-						fields.remove(index);
-					},
-					confirmLabel: "Remove item",
-				});
-			},
-		handleChange:
-			({ properties, field, resetField }: ItemHandlerProps) =>
-			(index: number) => {
-				// Reset any fields after this one in the property index
-				for (const { fieldName: propertyFieldName } of properties.slice(index + 1)) {
-					resetField(`${field}.${propertyFieldName}`);
-				}
-			},
-	}),
-)(
-	({
-		field,
-		properties,
-		options,
-		rowValues,
-		allValues,
-		handleDelete,
-		handleChange,
-		value,
-	}: ItemHandlerProps & { value: ItemValue; handleDelete: () => void; handleChange: (index: number) => void }) => {
-		const controls = useDragControls();
+type ItemHandlers = {
+	handleDelete: () => void;
+	handleChange: (index: number) => void;
+};
 
-		return (
-			<Reorder.Item
-				className="group form-fields-multi-select__rule"
-				value={value}
-				dragListener={false}
-				dragControls={controls}
-			>
-				<div className="form-fields-multi-select__rule-control">
-					<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
-						<GripVertical className="cursor-grab" />
-					</div>
+type ItemComponentProps = ItemHandlerProps & {
+	value: ItemValue;
+} & ItemHandlers;
+
+const ItemComponent: React.FC<ItemComponentProps> = ({
+	field,
+	properties,
+	options,
+	rowValues,
+	allValues,
+	handleDelete,
+	handleChange,
+	value,
+}) => {
+	const controls = useDragControls();
+
+	return (
+		<Reorder.Item
+			className="group form-fields-multi-select__rule"
+			value={value}
+			dragListener={false}
+			dragControls={controls}
+		>
+			<div className="form-fields-multi-select__rule-control">
+				<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
+					<GripVertical className="cursor-grab" />
 				</div>
+			</div>
 
-				<div className="form-fields-multi-select__rule-options">
-					{properties.map(({ fieldName, ...rest }, index) => (
+			<div className="form-fields-multi-select__rule-options">
+				{properties.map(({ fieldName }, index) => {
+					const selectOptions = options(fieldName, rowValues, allValues);
+					return (
 						<div className="form-fields-multi-select__rule-option" key={fieldName}>
 							<ValidatedField
-								component={NativeSelect}
+								component={NativeSelect as React.ComponentType<Record<string, unknown>>}
 								name={`${field}.${fieldName}`}
-								options={options(fieldName, rowValues, allValues)}
+								componentProps={{
+									options: selectOptions,
+								}}
 								validation={{ required: true }}
 								onChange={() => handleChange(index)}
-								// eslint-disable-next-line react/jsx-props-no-spreading
-								{...rest}
 							/>
 						</div>
-					))}
-				</div>
-				<div className="form-fields-multi-select__rule-control">
-					<motion.div
-						layout
-						className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"
-					>
-						<Trash2
-							onClick={(e) => {
-								e.stopPropagation();
-								handleDelete();
-							}}
-						/>
-					</motion.div>
-				</div>
-			</Reorder.Item>
-		);
-	},
-);
+					);
+				})}
+			</div>
+			<div className="form-fields-multi-select__rule-control">
+				<motion.div
+					layout
+					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"
+				>
+					<Trash2
+						onClick={(e) => {
+							e.stopPropagation();
+							handleDelete();
+						}}
+					/>
+				</motion.div>
+			</div>
+		</Reorder.Item>
+	);
+};
+
+const ItemWithHandlers = withHandlers<ItemHandlerProps, ItemHandlers>({
+	handleDelete:
+		({ fields, openDialog, index }: ItemHandlerProps) =>
+		() => {
+			openDialog({
+				type: "Warning",
+				title: "Remove item",
+				message: "Are you sure you want to remove this item?",
+				onConfirm: () => {
+					fields.remove(index);
+				},
+				confirmLabel: "Remove item",
+			});
+		},
+	handleChange:
+		({ properties, field, resetField }: ItemHandlerProps) =>
+		(index: number) => {
+			// Reset any fields after this one in the property index
+			for (const { fieldName: propertyFieldName } of properties.slice(index + 1)) {
+				resetField(`${field}.${propertyFieldName}`);
+			}
+		},
+})(ItemComponent);
+
+type ItemExportProps = ItemOwnProps & {
+	index: number;
+	properties: PropertyField[];
+	options: (
+		fieldName: string,
+		rowValues: ItemValue | undefined,
+		allValues: ItemValue[] | undefined,
+	) => Array<Record<string, unknown>>;
+	value: ItemValue;
+};
+
+const Item = connect(
+	mapStateToItemProps,
+	mapDispatchToItemProps,
+)(ItemWithHandlers) as unknown as React.ComponentType<ItemExportProps>;
 
 type ItemsOwnProps = {
 	meta: { form: string };
@@ -179,13 +204,17 @@ type ItemsProps = ItemsOwnProps &
 		) => Array<Record<string, unknown>>;
 	};
 
-const Items = compose(
-	defaultProps({
-		maxItems: null,
-	}),
-	connect(mapStateToItemsProps, mapDispatchToItemsProps),
-)(({ fields, maxItems, form, fieldsName, updateField, ...rest }: ItemsProps) => {
-	const hasSpace = maxItems === null || fields.length < maxItems;
+type ItemsComponentProps = WrappedFieldArrayProps<ItemValue> & ItemsProps;
+
+const ItemsComponent: React.FC<ItemsComponentProps> = ({
+	fields,
+	maxItems = null,
+	form,
+	fieldsName,
+	updateField,
+	...rest
+}) => {
+	const hasSpace = maxItems === null || fields.length < (maxItems ?? 0);
 	const showAdd = hasSpace;
 
 	const items = (fields.getAll() as ItemValue[]) || [];
@@ -242,7 +271,12 @@ const Items = compose(
 			)}
 		</>
 	);
-});
+};
+
+const ItemsConnected = connect(mapStateToItemsProps, mapDispatchToItemsProps);
+const Items = ItemsConnected(
+	ItemsComponent as React.ComponentType<ItemsComponentProps>,
+) as unknown as React.ComponentType<WrappedFieldArrayProps<ItemValue> & ItemsProps>;
 
 type MultiSelectProps = {
 	name: string;
@@ -257,7 +291,7 @@ const MultiSelect = ({ name, properties, options, label = "", ...rest }: MultiSe
 		{label && <h4>{label}</h4>}
 		<FieldArray
 			name={name}
-			component={Items}
+			component={Items as unknown as React.ComponentType<WrappedFieldArrayProps<ItemValue> & Record<string, unknown>>}
 			properties={properties}
 			options={options}
 			// eslint-disable-next-line react/jsx-props-no-spreading

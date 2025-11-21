@@ -1,8 +1,14 @@
 import { map } from "es-toolkit/compat";
+import type { RootState } from "~/ducks/modules/root";
 import { getVariableOptionsForSubject } from "~/selectors/codebook";
 import { getCodebook } from "~/selectors/protocol";
 
-export const getNarrativeVariables = (state, subject) => {
+type Subject = {
+	entity: "node" | "edge" | "ego";
+	type?: string;
+};
+
+export const getNarrativeVariables = (state: RootState, subject: Subject) => {
 	const variables = getVariableOptionsForSubject(state, subject);
 
 	const layoutVariablesForSubject = variables.filter(({ type }) => type === "layout");
@@ -16,8 +22,10 @@ export const getNarrativeVariables = (state, subject) => {
 	};
 };
 
-export const getEdgesForSubject = (state) => {
+export const getEdgesForSubject = (state: RootState) => {
 	const codebook = getCodebook(state);
+
+	if (!codebook) return [];
 
 	return map(codebook.edge, (edge, edgeId) => ({
 		label: edge.name,

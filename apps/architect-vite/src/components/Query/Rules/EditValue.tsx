@@ -19,13 +19,6 @@ const INPUT_TYPES = {
 	// ordinal: CheckboxGroup,
 };
 
-/**
- * Convert variable type to input type
- */
-const withMappedFieldComponent = withProps(({ variableType }) => ({
-	fieldComponent: variableType && INPUT_TYPES[variableType] ? INPUT_TYPES[variableType] : Text,
-}));
-
 const getLabel = (type: string, value: string | number | boolean): string | null => {
 	if (type !== "boolean") {
 		return null;
@@ -41,19 +34,21 @@ type OptionItem = {
 type EditValueProps = {
 	value: string | number | boolean;
 	options?: OptionItem[];
-	onChange?: (value: unknown) => void;
-	fieldComponent: React.ComponentType<Record<string, unknown>>;
-	variableType: string;
+	onChange?: (event: unknown, value: unknown, oldValue: unknown, name: string | null) => void;
+	fieldComponent?: React.ComponentType<Record<string, unknown>>;
+	variableType?: string;
+	placeholder?: string;
+	validation?: Record<string, unknown>;
 };
 
 const EditValue = ({
 	fieldComponent: FieldComponent,
 	value,
-	variableType,
+	variableType = "string",
 	onChange = () => {},
 	options = [],
 	...rest
-}: EditValueProps) => (
+}: EditValueProps & { fieldComponent: React.ComponentType<Record<string, unknown>> }) => (
 	<DetachedField
 		component={FieldComponent}
 		label={getLabel(variableType, value)}
@@ -65,5 +60,24 @@ const EditValue = ({
 		{...rest}
 	/>
 );
+
+type InputProps = {
+	variableType?: string;
+};
+
+type MappedProps = {
+	fieldComponent: React.ComponentType<Record<string, unknown>>;
+};
+
+const withMappedFieldComponent = withProps<MappedProps, InputProps>(({ variableType }: InputProps): MappedProps => {
+	const fieldComponent: React.ComponentType<Record<string, unknown>> =
+		variableType && INPUT_TYPES[variableType as keyof typeof INPUT_TYPES]
+			? (INPUT_TYPES[variableType as keyof typeof INPUT_TYPES] as React.ComponentType<Record<string, unknown>>)
+			: Text;
+
+	return {
+		fieldComponent,
+	};
+});
 
 export default withMappedFieldComponent(EditValue);

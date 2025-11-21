@@ -1,9 +1,9 @@
 import { pick } from "lodash";
 
 const DEFAULT_OPTIONS = {
-	type: null,
-	attribute: null,
-	operator: null,
+	type: undefined,
+	attribute: undefined,
+	operator: undefined,
 };
 
 const DEFAULT_VALUES: Record<string, unknown> = {
@@ -13,11 +13,11 @@ const DEFAULT_VALUES: Record<string, unknown> = {
 
 const getDefaultValue = (variableType: string) => DEFAULT_VALUES[variableType] || "";
 
-export const getDefaultOptions = (attributes: string[] | undefined, variableType: string) => {
+export const getDefaultOptions = (attributes: string[] | undefined, variableType?: string) => {
 	// generate default options object with all possible attributes
 	const defaultOptions = {
 		...DEFAULT_OPTIONS,
-		value: getDefaultValue(variableType),
+		value: getDefaultValue(variableType || ""),
 	};
 
 	if (!attributes) {
@@ -29,7 +29,7 @@ export const getDefaultOptions = (attributes: string[] | undefined, variableType
 };
 
 export const makeGetOptionsWithDefaults =
-	(attributes: string[] | undefined, variableType: string) => (options: Record<string, unknown>) => ({
+	(variableType?: string, attributes?: string[]) => (options?: Record<string, unknown>) => ({
 		...getDefaultOptions(attributes, variableType),
 		...options,
 	});

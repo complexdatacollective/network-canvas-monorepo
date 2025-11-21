@@ -26,11 +26,11 @@ export const normalizeField = (field: Record<string, unknown>) => omit(field, ["
 
 // Merge item with variable info from codebook
 export const itemSelector =
-	(entity: string, type: string) =>
+	(entity: string | null, type: string | null) =>
 	(state: RootState, { form, editField }: { form: string; editField: string }) => {
 		const item = formValueSelector(form)(state, editField) as Record<string, unknown> | undefined;
 
-		if (!item) {
+		if (!item || !entity) {
 			return null;
 		}
 

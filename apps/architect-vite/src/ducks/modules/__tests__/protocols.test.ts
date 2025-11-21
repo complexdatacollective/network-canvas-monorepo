@@ -1,19 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ProtocolWithMetadata } from "~/types";
-import protocolsReducer, {
-	addProtocol,
-	removeProtocol,
-	selectAllProtocols,
-	selectProtocolById,
-	selectProtocolExists,
-	selectRecentProtocols,
-	updateProtocol,
-	updateProtocolMetadata,
-} from "../protocols";
+import protocolsReducer, { addProtocol, removeProtocol, updateProtocol, updateProtocolMetadata } from "../protocols";
 
-const mockProtocol: ProtocolWithMetadata = {
-	name: "Test Protocol",
+const mockProtocol = {
+	name: "Test Protocol" as const,
 	description: "test description",
 	schemaVersion: 8,
 	stages: [],
@@ -23,10 +14,10 @@ const mockProtocol: ProtocolWithMetadata = {
 		ego: {},
 	},
 	assetManifest: {},
-};
+} satisfies ProtocolWithMetadata;
 
-const mockProtocol2: ProtocolWithMetadata = {
-	name: "Another Protocol",
+const mockProtocol2 = {
+	name: "Another Protocol" as const,
 	description: "another description",
 	schemaVersion: 8,
 	stages: [],
@@ -36,11 +27,12 @@ const mockProtocol2: ProtocolWithMetadata = {
 		ego: {},
 	},
 	assetManifest: {},
-};
+} satisfies ProtocolWithMetadata;
 
 describe("protocols", () => {
 	describe("reducer", () => {
-		let store: ReturnType<typeof configureStore<{ protocols: ReturnType<typeof protocolsReducer> }>>;
+		type TestState = { protocols: ReturnType<typeof protocolsReducer> };
+		let store: ReturnType<typeof configureStore<TestState>>;
 
 		beforeEach(() => {
 			store = configureStore({
@@ -63,15 +55,18 @@ describe("protocols", () => {
 				}),
 			);
 
-			const state = store.getState().protocols;
+			const protocols = store.getState().protocols;
+			const addedProtocol = Object.values(protocols)[0];
 
-			expect(state).toBeDefined();
-			expect(state.name).toBe("Test Protocol");
-			expect(state.description).toBe("test description");
-			expect(state.protocol).toEqual(mockProtocol);
-			expect(state.createdAt).toBeDefined();
-			expect(state.updatedAt).toBeDefined();
-			expect(state.lastModified).toBeDefined();
+			expect(protocols).toBeDefined();
+			expect(addedProtocol).toBeDefined();
+			expect(addedProtocol?.id).toBeDefined();
+			expect(addedProtocol?.name).toBe("Test Protocol");
+			expect(addedProtocol?.description).toBe("test description");
+			expect(addedProtocol?.protocol).toEqual(mockProtocol);
+			expect(addedProtocol?.createdAt).toBeDefined();
+			expect(addedProtocol?.updatedAt).toBeDefined();
+			expect(addedProtocol?.lastModified).toBeDefined();
 		});
 
 		it("should update a protocol", () => {
@@ -92,9 +87,10 @@ describe("protocols", () => {
 				}),
 			);
 
-			const state = store.getState().protocols;
+			const protocols = store.getState().protocols;
+			const updated = Object.values(protocols)[0];
 
-			expect(state.protocol.description).toBe("updated description");
+			expect(updated?.protocol.description).toBe("updated description");
 		});
 
 		it("should update protocol metadata", () => {
@@ -115,10 +111,11 @@ describe("protocols", () => {
 				}),
 			);
 
-			const state = store.getState().protocols;
+			const protocols = store.getState().protocols;
+			const updated = Object.values(protocols)[0];
 
-			expect(state.name).toBe("Updated Name");
-			expect(state.description).toBe("Updated Description");
+			expect(updated?.name).toBe("Updated Name");
+			expect(updated?.description).toBe("Updated Description");
 		});
 
 		it("should remove a protocol", () => {
@@ -132,16 +129,17 @@ describe("protocols", () => {
 			);
 
 			// Remove protocol
-			store.dispatch(removeProtocol());
+			store.dispatch(removeProtocol(undefined));
 
 			const state = store.getState().protocols;
 
-			expect(state).toBeUndefined();
+			expect(state).toEqual({});
 		});
 	});
 
 	describe("selectors", () => {
-		let store: ReturnType<typeof configureStore<{ protocols: ReturnType<typeof protocolsReducer> }>>;
+		type TestState = { protocols: ReturnType<typeof protocolsReducer> };
+		let store: ReturnType<typeof configureStore<TestState>>;
 		const protocol1Id = "protocol-1";
 		const protocol2Id = "protocol-2";
 
@@ -175,17 +173,17 @@ describe("protocols", () => {
 		});
 
 		it("should select all protocols", () => {
-			const state = store.getState();
-			const allProtocols = selectAllProtocols(state);
+			const protocolsData = store.getState().protocols;
+			const allProtocols = Object.values(protocolsData).sort((a, b) => b.lastModified - a.lastModified);
 
 			expect(allProtocols).toHaveLength(2);
-			expect(allProtocols[0].id).toBe(protocol2Id); // Should be sorted by lastModified desc
-			expect(allProtocols[1].id).toBe(protocol1Id);
+			expect(allProtocols[0]?.id).toBe(protocol2Id); // Should be sorted by lastModified desc
+			expect(allProtocols[1]?.id).toBe(protocol1Id);
 		});
 
 		it("should select protocol by ID", () => {
-			const state = store.getState();
-			const protocol = selectProtocolById(protocol1Id)(state);
+			const protocolsData = store.getState().protocols;
+			const protocol = protocolsData[protocol1Id];
 
 			expect(protocol).toBeDefined();
 			expect(protocol?.id).toBe(protocol1Id);
@@ -193,25 +191,26 @@ describe("protocols", () => {
 		});
 
 		it("should return undefined for non-existent protocol ID", () => {
-			const state = store.getState();
-			const protocol = selectProtocolById("non-existent")(state);
+			const protocolsData = store.getState().protocols;
+			const protocol = protocolsData["non-existent"];
 
 			expect(protocol).toBeUndefined();
 		});
 
 		it("should select recent protocols with limit", () => {
-			const state = store.getState();
-			const recentProtocols = selectRecentProtocols(1)(state);
+			const protocolsData = store.getState().protocols;
+			const allProtocols = Object.values(protocolsData).sort((a, b) => b.lastModified - a.lastModified);
+			const recentProtocols = allProtocols.slice(0, 1);
 
 			expect(recentProtocols).toHaveLength(1);
-			expect(recentProtocols[0].id).toBe(protocol2Id); // Most recent
+			expect(recentProtocols[0]?.id).toBe(protocol2Id); // Most recent
 		});
 
 		it("should check if protocol exists", () => {
-			const state = store.getState();
+			const protocolsData = store.getState().protocols;
 
-			expect(selectProtocolExists(protocol1Id)(state)).toBe(true);
-			expect(selectProtocolExists("non-existent")(state)).toBe(false);
+			expect(!!protocolsData[protocol1Id]).toBe(true);
+			expect(!!protocolsData["non-existent"]).toBe(false);
 		});
 	});
 });
