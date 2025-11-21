@@ -5,6 +5,7 @@ import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/store";
 import { getFieldId } from "~/utils/issues";

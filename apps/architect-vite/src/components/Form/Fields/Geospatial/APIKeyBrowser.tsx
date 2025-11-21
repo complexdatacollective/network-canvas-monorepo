@@ -7,8 +7,8 @@ import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
 import { Text } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
+import { useAppDispatch } from "~/ducks/hooks";
 import Button from "~/lib/legacy-ui/components/Button";
-
 import { addApiKeyAsset } from "../../../../ducks/modules/protocol/assetManifest";
 import BasicForm from "../../../BasicForm";
 

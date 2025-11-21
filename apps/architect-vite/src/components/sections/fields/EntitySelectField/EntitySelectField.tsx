@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import NewTypeDialog from "~/components/Dialog/NewTypeDialog";
+import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
 import Button from "~/lib/legacy-ui/components/Button";

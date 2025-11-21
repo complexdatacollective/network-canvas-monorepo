@@ -9,6 +9,7 @@ import { CheckboxGroup, LikertScale } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Tip from "~/components/Tip";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 

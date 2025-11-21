@@ -9,6 +9,7 @@ import {
 	INPUT_OPTIONS,
 	VARIABLE_TYPES_WITH_COMPONENTS,
 } from "~/config/variables";
+import { useAppDispatch } from "~/ducks/hooks";
 import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubjectSelector, getVariablesForSubjectSelector } from "~/selectors/codebook";

@@ -5,6 +5,7 @@ import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Validations from "~/components/Validations";
+import { useAppDispatch } from "~/ducks/hooks";
 
 const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
 	const dispatch = useAppDispatch();

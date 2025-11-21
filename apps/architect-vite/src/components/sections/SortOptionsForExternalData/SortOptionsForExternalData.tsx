@@ -9,6 +9,7 @@ import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";

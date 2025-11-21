@@ -7,6 +7,7 @@ import { Row, Section } from "~/components/EditorLayout";
 import BooleanField from "~/components/Form/Fields/BooleanField";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/store";
 import { createVariableAsync } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
