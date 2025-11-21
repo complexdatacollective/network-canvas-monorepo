@@ -60,7 +60,7 @@ export type SectionComponent = ComponentType<StageEditorSectionProps>;
 /**
  * Configuration for a stage editor interface.
  */
-export type InterfaceConfig = {
+type InterfaceConfig = {
 	/** Array of section components to render in the editor */
 	readonly sections: readonly SectionComponent[];
 	/** URL to documentation for this interface type */
@@ -85,8 +85,9 @@ type InterfaceRegistry = {
 /**
  * Registry object containing configuration for all stage editor interfaces.
  * Each key corresponds to a stage type from the protocol validation schema.
+ * Internal use only - not exported.
  */
-export const INTERFACE_CONFIGS = {
+const INTERFACE_CONFIGS = {
 	AlterEdgeForm: {
 		sections: [FilteredEdgeType, IntroductionPanel, Form, SkipLogic, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/per-alter-edge-form/",

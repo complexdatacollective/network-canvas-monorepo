@@ -13,7 +13,7 @@ import Filter from "./Filter";
 import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 import { SUBJECT_INDEPENDENT_FIELDS } from "./NodeType";
 
-export type FilteredEdgeTypeProps = StageEditorSectionProps;
+type FilteredEdgeTypeProps = StageEditorSectionProps;
 
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const { form } = props;

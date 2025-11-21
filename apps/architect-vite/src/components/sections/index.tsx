@@ -1,5 +1,6 @@
 // Re-export the StageEditorSectionProps as SectionProps for backward compatibility
-export type { StageEditorSectionProps as SectionProps } from "~/components/StageEditor/Interfaces";
+type SectionProps = import("~/components/StageEditor/Interfaces").StageEditorSectionProps;
+
 export { default as AnonymisationExplanation } from "./Anonymisation/AnonymisationExplanation";
 export { default as AnonymisationValidation } from "./Anonymisation/AnonymisationValidation";
 export { default as EncryptedVariables } from "./Anonymisation/EncryptedVariables";

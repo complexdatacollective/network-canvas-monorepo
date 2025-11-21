@@ -7,7 +7,7 @@ import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-export type DyadCensusPromptsProps = StageEditorSectionProps & {
+type DyadCensusPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;

@@ -19,7 +19,7 @@ const defaultOptions = {
 	value: "",
 };
 
-export type OptionItem = {
+type OptionItem = {
 	value: string | number;
 	label: string;
 };

@@ -9,7 +9,7 @@ import withSubject from "../../enhancers/withSubject";
 import { PromptPreview } from "../NameGeneratorPrompts";
 import PromptFields from "../NameGeneratorPrompts/PromptFields";
 
-export type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
+type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;

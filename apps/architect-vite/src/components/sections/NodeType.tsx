@@ -17,7 +17,7 @@ import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 // reset when the subject changes.
 export const SUBJECT_INDEPENDENT_FIELDS = ["id", "type", "label", "interviewScript", "introductionPanel"];
 
-export type NodeTypeProps = StageEditorSectionProps & {
+type NodeTypeProps = StageEditorSectionProps & {
 	withFilter?: boolean;
 };
 

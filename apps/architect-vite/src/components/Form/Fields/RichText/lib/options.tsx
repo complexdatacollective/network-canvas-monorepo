@@ -4,7 +4,8 @@ const MARKS = ["bold", "italic"];
 
 const HISTORY = ["history"];
 
-export const MODES = {
+// Internal use only - not exported
+const MODES = {
 	full: "full",
 	inline: "inline",
 } as const;

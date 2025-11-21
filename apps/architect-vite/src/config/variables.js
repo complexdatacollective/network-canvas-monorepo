@@ -74,7 +74,8 @@ export const VARIABLE_TYPES = {
 	},
 };
 
-export const COMPONENTS = {
+// Internal config object - not exported
+const COMPONENTS = {
 	TextInput: {
 		label: "Text Input",
 		value: "Text",
@@ -155,7 +156,8 @@ export const COMPONENTS = {
 	},
 };
 
-export const VARIABLE_TYPES_COMPONENTS = [
+// Internal config - not exported
+const VARIABLE_TYPES_COMPONENTS = [
 	["number", [COMPONENTS.NumberInput], "-- Number Types -- "],
 	["scalar", [COMPONENTS.VisualAnalogScale], "-- Scalar Types --"],
 	["datetime", [COMPONENTS.DatePicker, COMPONENTS.RelativeDatePicker], "-- Date Types --"],
@@ -165,9 +167,11 @@ export const VARIABLE_TYPES_COMPONENTS = [
 	["categorical", [COMPONENTS.CheckboxGroup, COMPONENTS.ToggleButtonGroup], "-- Categorical Types --"],
 ];
 
-export const VARIABLE_TYPES_WITH_OPTIONS = ["ordinal", "categorical"];
+// Internal config - not exported
+const VARIABLE_TYPES_WITH_OPTIONS = ["ordinal", "categorical"];
 
-export const VARIABLE_TYPES_WITH_PARAMETERS = ["scalar", "datetime"];
+// Internal config - not exported
+const VARIABLE_TYPES_WITH_PARAMETERS = ["scalar", "datetime"];
 
 export const VARIABLE_TYPES_WITH_COMPONENTS = VARIABLE_TYPES_COMPONENTS.map(([type]) => type);
 
@@ -223,9 +227,7 @@ export {
 	getComponentsForType,
 	getIconForType,
 	getTypeForComponent,
-	INPUT_OPTIONS as inputOptions,
 	isBooleanWithOptions,
 	isOrdinalOrCategoricalType,
 	isVariableTypeWithParameters,
-	VARIABLE_OPTIONS as variableOptions,
 };

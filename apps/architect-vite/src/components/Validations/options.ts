@@ -68,6 +68,7 @@ const isValidationWithNumberValue = (validation: string): boolean =>
 	VALIDATIONS_WITH_NUMBER_VALUES.includes(validation);
 const isValidationWithListValue = (validation: string): boolean => VALIDATIONS_WITH_LIST_VALUES.includes(validation);
 
+// Internal helper - not exported
 const getValidationsForVariableType = (variableType: string): string[] =>
 	get(VALIDATIONS, variableType, []) as string[];
 
@@ -81,12 +82,8 @@ const getValidationOptionsForVariableType = (variableType: string, entity: strin
 	}));
 
 export {
-	getValidationsForVariableType,
 	getValidationOptionsForVariableType,
 	isValidationWithNumberValue,
 	isValidationWithListValue,
 	isValidationWithoutValue,
-	VALIDATIONS,
 };
-
-export default VALIDATIONS;

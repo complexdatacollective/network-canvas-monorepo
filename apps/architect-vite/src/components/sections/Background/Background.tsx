@@ -10,7 +10,7 @@ import Image from "../../Form/Fields/Image";
 import ValidatedField from "../../Form/ValidatedField";
 import withBackgroundChangeHandler from "./withBackgroundChangeHandler";
 
-export type BackgroundProps = StageEditorSectionProps & {
+type BackgroundProps = StageEditorSectionProps & {
 	handleChooseBackgroundType: (value: boolean) => void;
 	useImage: boolean;
 };

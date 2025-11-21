@@ -17,7 +17,7 @@ import { entityRuleTypeOptions, entityRuleTypes, withEntityRuleType } from "./wi
 import withOptions from "./withOptions";
 import withRuleChangeHandler from "./withRuleChangeHandler";
 
-export type OptionItem = {
+type OptionItem = {
 	value: string | number;
 	label: string;
 };

@@ -12,7 +12,7 @@ import FieldPreview from "./FieldPreview";
 import { itemSelector, normalizeField } from "./helpers";
 import withFormHandlers from "./withFormHandlers";
 
-export type FormProps = StageEditorSectionProps & {
+type FormProps = StageEditorSectionProps & {
 	handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
 	disabled?: boolean;
 	disableFormTitle?: boolean;

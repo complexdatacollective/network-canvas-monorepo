@@ -2,10 +2,11 @@
 import { z } from "zod";
 
 declare module "zod" {
-	type ZodType = {
+	// biome-ignore lint/style/useConsistentTypeDefinitions: needs to extend interface
+	interface ZodType {
 		generateMock(): z.output<this>;
 		generateMock<T extends z.output<this>>(generator: (() => T) | ((data: z.output<this>) => T)): this;
-	};
+	}
 }
 
 // Default mock generators for primitive types
