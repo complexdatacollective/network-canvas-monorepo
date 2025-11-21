@@ -2,7 +2,7 @@ import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { has } from "es-toolkit/compat";
 import { useCallback } from "react";
-import { connect, useDispatch } from "react-redux";
+import { connect } from "react-redux";
 import type { FormAction } from "redux-form";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
@@ -29,7 +29,7 @@ type NodePanelsProps = {
 };
 
 const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...rest }: NodePanelsProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const openDialog = useCallback(
 		(dialog: DialogConfig) => dispatch(dialogActions.openDialog(dialog) as UnknownAction),
 		[dispatch],

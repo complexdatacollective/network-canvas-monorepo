@@ -5,7 +5,7 @@ import { Reorder } from "motion/react";
 import { hash } from "ohash";
 import type React from "react";
 import { connect } from "react-redux";
-import { change, FieldArray, type WrappedFieldArrayProps } from "redux-form";
+import { change, FieldArray } from "redux-form";
 import { v4 as uuid } from "uuid";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
@@ -126,13 +126,7 @@ type OptionsProps = {
 };
 
 const Options = ({ name, label = "", ...rest }: OptionsProps) => (
-	<FieldArray
-		name={name}
-		component={OptionsField}
-		validate={minTwoOptions}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...rest}
-	/>
+	<FieldArray name={name} component={OptionsField} validate={minTwoOptions} {...rest} />
 );
 
 export default Options;

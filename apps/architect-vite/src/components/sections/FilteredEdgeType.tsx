@@ -1,7 +1,7 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { difference, get, keys } from "es-toolkit/compat";
 import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
@@ -18,7 +18,7 @@ type FilteredEdgeTypeProps = StageEditorSectionProps;
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const { form } = props;
 
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const formValues = useSelector((state: RootState) => getFormValues(form)(state));
 	const fields = keys(formValues);
 

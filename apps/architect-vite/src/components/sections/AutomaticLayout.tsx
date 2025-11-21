@@ -1,6 +1,6 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { Boolean as BooleanField } from "~/components/Form/Fields";
@@ -12,7 +12,7 @@ import IssueAnchor from "../IssueAnchor";
 const FORM_PROPERTY = "behaviours.automaticLayout.enabled";
 
 const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 

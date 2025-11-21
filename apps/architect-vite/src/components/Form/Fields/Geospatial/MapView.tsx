@@ -1,5 +1,5 @@
 import { get } from "es-toolkit/compat";
-import type { Map } from "mapbox-gl";
+import type { Map as MapboxMap } from "mapbox-gl";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
@@ -43,7 +43,7 @@ const MapView = ({
 	const assetManifest = useSelector(getAssetManifest);
 	const mapboxAPIKey = tokenAssetId ? get(assetManifest, [tokenAssetId, "value"], "") : "";
 
-	const mapRef = useRef<Map | null>(null);
+	const mapRef = useRef<MapboxMap | null>(null);
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 
 	const [center, setCenter] = useState<[number, number]>((mapOptions.center as [number, number]) || [0, 0]);

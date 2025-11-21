@@ -4,7 +4,7 @@ import { GripVertical, Trash2 } from "lucide-react";
 import { motion, Reorder, useDragControls } from "motion/react";
 import { hash } from "ohash";
 import { connect } from "react-redux";
-import { compose, defaultProps, withHandlers } from "recompose";
+import { withHandlers } from "recompose";
 import type { UnknownAction } from "redux";
 import type { WrappedFieldArrayProps } from "redux-form";
 import { change, FieldArray, formValueSelector } from "redux-form";

@@ -1,4 +1,5 @@
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import { useAppDispatch } from "~/ducks/hooks";
 import Dialogs from "~/lib/legacy-ui/components/Dialogs";
 import { closeDialog } from "../ducks/modules/dialogs";
 import type { RootState } from "../ducks/modules/root";
@@ -12,7 +13,7 @@ type LegacyDialog = {
 };
 
 const DialogManager = () => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const dialogs = useSelector((state: RootState) => state.dialogs.dialogs);
 
 	const handleCloseDialog = (id: string) => {

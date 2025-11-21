@@ -1,6 +1,6 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { BooleanField } from "~/components/Form/Fields";
@@ -14,7 +14,7 @@ type RemoveAfterConsiderationProps = {
 const FORM_PROPERTY = "behaviours.removeAfterConsideration";
 
 const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 

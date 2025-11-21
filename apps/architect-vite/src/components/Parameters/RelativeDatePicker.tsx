@@ -1,5 +1,4 @@
 import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import type React from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
@@ -45,7 +44,7 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 			{!useInterviewDate && (
 				<ValidatedField
 					label="Specific Anchor Date"
-					component={DatePicker as any}
+					component={DatePicker}
 					name={`${name}.anchor`}
 					validation={{ required: !useInterviewDate, ISODate: dateFormat }}
 					componentProps={{
@@ -85,4 +84,6 @@ const mapDispatchToProps = (dispatch: Dispatch, { name, form }: ConnectProps) =>
 	resetField: () => dispatch(change(form, `${name}.anchor`, null) as UnknownAction),
 });
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(RelativeDatePickerParameters as any);
+export default compose<RelativeDatePickerParametersProps, ConnectProps>(connect(mapStateToProps, mapDispatchToProps))(
+	RelativeDatePickerParameters,
+);

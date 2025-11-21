@@ -1,6 +1,6 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
@@ -25,7 +25,7 @@ const handleDeactivateSkipLogic = async (
 };
 
 const SkipLogicSection = (_props: StageEditorSectionProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 
 	const getFormValue = formValueSelector("edit-stage");
 	const hasSkipLogic = useSelector((state: RootState) => getFormValue(state, "skipLogic"));

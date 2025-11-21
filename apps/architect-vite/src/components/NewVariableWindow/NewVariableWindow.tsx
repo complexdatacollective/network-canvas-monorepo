@@ -1,4 +1,3 @@
-import type { Component as ReactComponent } from "react";
 import { Component } from "react";
 import { Field } from "redux-form";
 import { Section } from "~/components/EditorLayout";

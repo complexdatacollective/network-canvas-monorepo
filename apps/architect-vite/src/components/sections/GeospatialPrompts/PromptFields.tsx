@@ -18,14 +18,7 @@ type PromptFieldsProps = {
 	form: string;
 };
 
-const PromptFields = ({
-	variable = "",
-	variableOptions,
-	entity = "",
-	type = "",
-	changeForm = () => {},
-	form,
-}: PromptFieldsProps) => {
+const PromptFields = ({ variableOptions, entity = "", type = "", changeForm = () => {}, form }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
 		entity,
 		type,
@@ -62,10 +55,7 @@ const PromptFields = ({
 					/>
 				</Row>
 			</Section>
-			<NewVariableWindow
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...newVariableWindowProps}
-			/>
+			<NewVariableWindow {...newVariableWindowProps} />
 		</>
 	);
 };

@@ -1,5 +1,5 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import { useDispatch, useSelector } from "react-redux";
+import type { UnknownAction } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
@@ -19,7 +19,7 @@ type SearchOptionsProps = {
 
 const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector("edit-stage");
 	const hasSearchOptions = useSelector((state: RootState) => getFormValue(state, "searchOptions"));
 

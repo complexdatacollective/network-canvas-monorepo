@@ -1,8 +1,9 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
+import { useAppDispatch } from "~/ducks/hooks";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 import IssueAnchor from "../IssueAnchor";
@@ -10,11 +11,7 @@ import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConn
 import Tip from "../Tip";
 import getEdgeFilteringWarning from "./SociogramPrompts/utils";
 
-const FilterField = withFieldConnector(withStoreConnector(FilterQuery) as unknown) as React.ComponentType<
-	Record<string, unknown>
->;
-
-type OpenDialogFunction = typeof openDialog;
+const FilterField = withFieldConnector(withStoreConnector(FilterQuery));
 
 export const handleFilterDeactivate = async (openDialogFn: () => Promise<boolean>) => {
 	const result = await openDialogFn();
@@ -23,7 +20,7 @@ export const handleFilterDeactivate = async (openDialogFn: () => Promise<boolean
 
 const Filter = () => {
 	const getFormValue = formValueSelector("edit-stage");
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const currentValue = useSelector(
 		(state: RootState) => getFormValue(state, "filter") as { rules?: unknown[] } | undefined,
 	);
@@ -73,7 +70,7 @@ const Filter = () => {
 			);
 
 			if (confirm) {
-				dispatch(change("edit-stage", "filter", null) as UnknownAction);
+				dispatch(change("edit-stage", "filter", null));
 				return true;
 			}
 

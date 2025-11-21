@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import NewTypeDialog from "~/components/Dialog/NewTypeDialog";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
@@ -37,7 +37,7 @@ const EntitySelectField = ({
 	meta: { error, invalid, touched },
 	promptBeforeChange = null,
 }: EntitySelectFieldProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const edgeOptions = useSelector(getEdgeOptions);
 	const nodeOptions = useSelector(getNodeOptions);
 	const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);

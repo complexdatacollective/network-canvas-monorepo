@@ -1,8 +1,8 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import { get, pickBy } from "es-toolkit/compat";
 import { useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import Validations from "~/components/Validations";
@@ -28,7 +28,7 @@ const ValidationSection = ({
 	variableType = "",
 	existingVariables,
 }: ValidationSectionProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 
 	// Create memoized selector for hasValidation
 	const hasValidationSelector = useMemo(() => {

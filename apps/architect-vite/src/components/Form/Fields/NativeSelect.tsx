@@ -3,7 +3,6 @@ import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
-import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
 import { Text } from "~/components/Form/Fields";
 import { Button } from "~/lib/legacy-ui/components";
@@ -78,7 +77,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	const [showCreateOptionForm, setShowCreateOptionForm] = useState(false);
 	const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
 	const [newOptionError, setNewOptionError] = useState<string | false>(false);
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 
 	const { onBlur, ...inputProps } = input;
 	const { invalid = false, error = null, touched = false, form } = meta;

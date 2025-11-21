@@ -1,7 +1,7 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { difference, get, keys } from "lodash";
 import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/modules/root";
@@ -24,7 +24,7 @@ type NodeTypeProps = StageEditorSectionProps & {
 const NodeType = (props: NodeTypeProps) => {
 	const { form, withFilter = false } = props;
 
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const formValues = useSelector((state: RootState) => getFormValues(form)(state));
 	const fields = keys(formValues);
 

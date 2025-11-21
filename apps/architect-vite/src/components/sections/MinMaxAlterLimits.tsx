@@ -1,7 +1,7 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { get, isNull, isUndefined } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Number as NumberField } from "~/components/Form/Fields";
@@ -45,7 +45,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 		return !!prompts && prompts.length > 1;
 	});
 
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {

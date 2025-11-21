@@ -1,4 +1,4 @@
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import MultiSelect from "~/components/Form/MultiSelect";
@@ -25,7 +25,7 @@ const BinSortOrderSection = ({
 	optionGetter,
 	summary = getDefaultSummary(),
 }: BinSortOrderSectionProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector(form);
 	const hasBinSortOrder = useSelector((state) => getFormValue(state, "binSortOrder"));
 

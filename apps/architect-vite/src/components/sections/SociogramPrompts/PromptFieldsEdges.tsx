@@ -2,7 +2,7 @@
 import type { FilterRule } from "@codaco/protocol-validation";
 import { union } from "es-toolkit/compat";
 import { useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import type { FormAction } from "redux-form";
 import { change, Field, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
@@ -26,7 +26,7 @@ type DisplayEdgesProps = {
 };
 
 const DisplayEdges = ({ form }: DisplayEdgesProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 
 	// Fix 1: Use the already memoized selector directly
 	const edgesForSubject = useSelector(getEdgesForSubject);

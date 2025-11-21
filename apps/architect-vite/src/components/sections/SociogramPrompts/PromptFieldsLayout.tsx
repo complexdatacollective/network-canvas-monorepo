@@ -1,5 +1,5 @@
-import type { VariableOption } from "@codaco/protocol-validation";
-import { useDispatch, useSelector } from "react-redux";
+import type { VariableOptions } from "@codaco/protocol-validation";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import type { FormAction } from "redux-form";
 import { change, formValueSelector } from "redux-form";
@@ -8,6 +8,7 @@ import withCreateVariableHandlers from "~/components/enhancers/withCreateVariabl
 import { ValidatedField } from "~/components/Form";
 import MultiSelect from "~/components/Form/MultiSelect";
 import IssueAnchor from "~/components/IssueAnchor";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import Tip from "../../Tip";
@@ -22,10 +23,7 @@ type LayoutVariableOption = {
 	value: string;
 };
 
-type VariableOption = {
-	label: string;
-	value: string | number | boolean;
-};
+type VariableOption = VariableOptions[number];
 
 type PromptFieldsProps = {
 	form: string;
@@ -48,7 +46,7 @@ const PromptFields = ({
 	type,
 	variableOptions,
 }: PromptFieldsProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector(form);
 	const hasSortOrder = useSelector((state: RootState) => getFormValue(state, "sortOrder"));
 

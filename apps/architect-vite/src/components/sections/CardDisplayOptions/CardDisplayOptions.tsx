@@ -1,5 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
@@ -23,7 +23,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 	const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
 	const maxVariableOptions = variableOptions.length;
 
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector("edit-stage");
 	const hasCardDisplayOptions = useSelector((state: RootState) =>
 		getFormValue(state, "cardOptions.additionalProperties"),

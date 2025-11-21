@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useDispatch } from "react-redux";
 
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
@@ -24,7 +23,7 @@ type APIKeyBrowserProps = {
 
 const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = null }: APIKeyBrowserProps) => {
 	const formName = "create-api-key";
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const [preview, handleShowPreview] = useExternalDataPreview();
 
 	const handleSelectAsset = useCallback(

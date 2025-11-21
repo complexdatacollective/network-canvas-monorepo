@@ -1,5 +1,5 @@
 import type { VariableOption } from "@codaco/protocol-validation";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import type { FormAction } from "redux-form";
 import { change, formValueSelector } from "redux-form";
@@ -25,7 +25,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 	const maxVariableOptions = variableOptions.length;
 	const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
 
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector("edit-stage");
 	const hasSortOrder = useSelector((state: RootState) => getFormValue(state, "sortOptions.sortOrder"));
 	const hasSortableProperties = useSelector((state: RootState) =>

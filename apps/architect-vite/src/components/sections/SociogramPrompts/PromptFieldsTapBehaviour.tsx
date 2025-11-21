@@ -1,7 +1,7 @@
 import type { FilterRule } from "@codaco/protocol-validation";
 import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import BooleanField from "~/components/Form/Fields/BooleanField";
@@ -59,7 +59,7 @@ type TapBehaviourProps = {
 };
 
 const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector(form);
 	const hasCreateEdgeBehaviour = useSelector((state: RootState) => !!getFormValue(state, "edges.create"));
 	const hasToggleAttributeBehaviour = useSelector(

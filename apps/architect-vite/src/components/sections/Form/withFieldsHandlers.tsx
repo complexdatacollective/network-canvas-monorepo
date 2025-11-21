@@ -1,6 +1,6 @@
 import { find, get, has } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import {
 	formattedInputOptions,
@@ -22,7 +22,7 @@ type UseFieldHandlerProps = {
 };
 
 export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const changeField = useCallback(
 		(field: string, value: unknown) => dispatch(change(form, field, value) as never),
 		[dispatch, form],
