@@ -9,12 +9,12 @@ import Options from "~/components/Options";
 import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
 import { getFieldId } from "~/utils/issues";
 import safeName from "~/utils/safeName";
-import { allowedVariableName, required, uniqueByList } from "~/utils/validations";
+import { validations } from "~/utils/validations";
 import withNewVariableHandler, { form } from "./withNewVariableHandler";
 
-const isRequired = required();
+const isRequired = validations.required();
 
-const isAllowedVariableName = allowedVariableName();
+const isAllowedVariableName = validations.allowedVariableName();
 
 type NewVariableWindowProps = {
 	show?: boolean;
@@ -30,7 +30,7 @@ type NewVariableWindowProps = {
 class NewVariableWindow extends Component<NewVariableWindowProps> {
 	validateName = (value: string) => {
 		const { existingVariableNames } = this.props;
-		return uniqueByList(existingVariableNames)(value);
+		return validations.uniqueByList(existingVariableNames)(value);
 	};
 
 	filteredVariableOptions() {

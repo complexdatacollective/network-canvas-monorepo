@@ -1,3 +1,4 @@
+import type { StageType } from "@codaco/protocol-validation";
 import { get } from "es-toolkit/compat";
 import { Text } from "~/components/Form/Fields";
 import timelineImages from "~/images/timeline";
@@ -17,7 +18,7 @@ const StageHeading = ({ id }: { id: string }) => {
 		return null;
 	}
 
-	const documentationLinkForType = get(getInterface(type), "documentation", null);
+	const documentationLinkForType = get(getInterface(type as StageType), "documentation", null);
 
 	return (
 		<div className="w-full grid gap-8 grid-cols-[20rem_auto] max-w-7xl my-10">

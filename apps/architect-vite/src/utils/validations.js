@@ -43,7 +43,7 @@ const isRoughlyEqual = (left, right) => {
 	return isEqual(left, right);
 };
 
-export const required = (isRequired, message) => (value) => {
+const required = (isRequired, message) => (value) => {
 	if (!isRequired) {
 		return undefined;
 	}
@@ -51,39 +51,39 @@ export const required = (isRequired, message) => (value) => {
 	return hasValue(value) ? undefined : messageWithDefault(message, "Required");
 };
 
-export const requiredAcceptsZero = (isRequired, message) => (value) =>
+const requiredAcceptsZero = (isRequired, message) => (value) =>
 	!isNil(value) && isRequired ? undefined : messageWithDefault(message, "Required");
 
-export const requiredAcceptsNull = (isRequired, message) => (value) =>
+const requiredAcceptsNull = (isRequired, message) => (value) =>
 	!isUndefined(value) && isRequired ? undefined : messageWithDefault(message, "Required");
 
-export const positiveNumber = (_, message) => (value) =>
+const positiveNumber = (_, message) => (value) =>
 	value && Math.sign(value) === -1 ? messageWithDefault(message, "Number must be positive") : undefined;
 
-export const maxLength = (max, message) => (value) =>
+const maxLength = (max, message) => (value) =>
 	!isNull(value) && !isUndefined(value) && value.length > max
 		? messageWithDefault(message, `Must be ${max} characters or less`)
 		: undefined;
-export const minLength = (min, message) => (value) =>
+const minLength = (min, message) => (value) =>
 	isNull(value) || isUndefined(value) || value.length < min
 		? messageWithDefault(message, `Must be ${min} characters or more`)
 		: undefined;
 
-export const minValue = (min, message) => (value) =>
+const minValue = (min, message) => (value) =>
 	!isNull(value) && value < min ? messageWithDefault(message, `Must be at least ${min}`) : undefined;
-export const maxValue = (max, message) => (value) =>
+const maxValue = (max, message) => (value) =>
 	value && value > max ? messageWithDefault(message, `Must be less than ${max}`) : undefined;
 
-export const minSelected = (min, message) => (value) =>
+const minSelected = (min, message) => (value) =>
 	!value || coerceArray(value).length < min
 		? messageWithDefault(message, `You must choose a minimum of ${min} option(s)`)
 		: undefined;
-export const maxSelected = (max, message) => (value) =>
+const maxSelected = (max, message) => (value) =>
 	!isEmpty(value) && coerceArray(value).length > max
 		? messageWithDefault(message, `You must choose a maximum of ${max} option(s)`)
 		: undefined;
 
-export const uniqueArrayAttribute = (_, message) => (value, allValues, __, name) => {
+const uniqueArrayAttribute = (_, message) => (value, allValues, __, name) => {
 	if (!value) {
 		return undefined;
 	}
@@ -106,7 +106,7 @@ export const uniqueArrayAttribute = (_, message) => (value, allValues, __, name)
 	return undefined;
 };
 
-export const uniqueByList = (list, message) => (value) => {
+const uniqueByList = (list, message) => (value) => {
 	if (!value) {
 		return undefined;
 	}
@@ -120,7 +120,7 @@ export const uniqueByList = (list, message) => (value) => {
 	return undefined;
 };
 
-export const ISODate = (dateFormat, message) => (value) => {
+const ISODate = (dateFormat, message) => (value) => {
 	const dt = DateTime.fromISO(value);
 	if ((value && dateFormat.length !== value.length) || (value && !dt.isValid)) {
 		return messageWithDefault(message, `Date is not valid (${dateFormat.toUpperCase()})`);
@@ -130,7 +130,7 @@ export const ISODate = (dateFormat, message) => (value) => {
 
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
-export const allowedVariableName =
+const allowedVariableName =
 	(name = "variable name") =>
 	(value) => {
 		if (!/^[a-zA-Z0-9._\-:]+$/.test(value)) {
@@ -139,9 +139,9 @@ export const allowedVariableName =
 		return undefined;
 	};
 
-export { allowedVariableName as allowedNMToken };
+const allowedNMToken = allowedVariableName;
 
-export const validRegExp = (_, message) => (value) => {
+const validRegExp = (_, message) => (value) => {
 	try {
 		const regexp = new RegExp(value);
 		if (isRegExp(regexp)) {
@@ -153,7 +153,7 @@ export const validRegExp = (_, message) => (value) => {
 	}
 };
 
-const validations = {
+export const validations = {
 	ISODate,
 	allowedVariableName,
 	allowedNMToken: allowedVariableName,

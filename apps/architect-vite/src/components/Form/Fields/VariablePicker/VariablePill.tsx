@@ -12,7 +12,7 @@ import type { RootState } from "~/ducks/store";
 import { Icon } from "~/lib/legacy-ui/components";
 import { getVariablesForSubject, makeGetVariableWithEntity } from "~/selectors/codebook";
 import { cn } from "~/utils/cn";
-import { allowedVariableName, required as requiredValidation, uniqueByList } from "~/utils/validations";
+import { validations } from "~/utils/validations";
 
 const EDIT_COMPLETE_BUTTON_ID = "editCompleteButton";
 
@@ -119,9 +119,9 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		} = event;
 		setNewName(value);
 
-		const required = requiredValidation("You must enter a variable name")(value);
-		const unique = uniqueByList(existingVariableNames)(value);
-		const allowed = allowedVariableName()(value);
+		const required = validations.required("You must enter a variable name")(value);
+		const unique = validations.uniqueByList(existingVariableNames)(value);
+		const allowed = validations.allowedVariableName()(value);
 
 		const validationResult = required || unique || allowed || undefined;
 		setValidation(validationResult);

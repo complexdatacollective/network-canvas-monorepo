@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import Search from "~/components/Form/Fields/Search";
 import { Icon, Modal, Scroller } from "~/lib/legacy-ui/components";
-import { allowedVariableName, uniqueByList } from "~/utils/validations";
+import { validations } from "~/utils/validations";
 import { getVariablesForSubject } from "../../../../selectors/codebook";
 import { sortByLabel } from "../../../Codebook/helpers";
 import ExternalLink from "../../../ExternalLink";
@@ -127,8 +127,8 @@ const VariableSpotlight = ({
 	);
 
 	const invalidVariableName = useMemo(() => {
-		const unique = uniqueByList(existingVariableNames)(filterTerm);
-		const allowed = allowedVariableName()(filterTerm);
+		const unique = validations.uniqueByList(existingVariableNames)(filterTerm);
+		const allowed = validations.allowedVariableName()(filterTerm);
 
 		return unique || allowed || undefined;
 	}, [filterTerm, existingVariableNames]);
