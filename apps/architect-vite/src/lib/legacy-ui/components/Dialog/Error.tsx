@@ -83,6 +83,4 @@ const ErrorDialog = ({
 	);
 };
 
-export { ErrorDialog };
-
 export default ErrorDialog;

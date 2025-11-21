@@ -1,20 +1,11 @@
 import { omit } from "lodash";
 import { useCallback } from "react";
 import Confirm from "./Dialog/Confirm";
-import Error from "./Dialog/Error";
+import ErrorDialog from "./Dialog/Error";
 import Notice from "./Dialog/Notice";
 import Simple from "./Dialog/Simple";
-import UserError from "./Dialog/UserError";
+import UserErrorDialog from "./Dialog/UserError";
 import Warning from "./Dialog/Warning";
-
-const DialogVariants = {
-	Confirm,
-	Error,
-	Notice,
-	Simple,
-	UserError,
-	Warning,
-} as const;
 
 /*
  * Displays a stack of Dialogs.
@@ -61,7 +52,7 @@ const DialogVariants = {
  */
 type Dialog = {
 	id: string;
-	type: keyof typeof DialogVariants;
+	type: "Confirm" | "Error" | "Notice" | "Simple" | "UserError" | "Warning";
 	onConfirm?: (dialog: Dialog) => void;
 	onCancel?: (dialog: Dialog) => void;
 	[key: string]: unknown;
@@ -95,21 +86,33 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 
 	const renderDialog = useCallback(
 		(dialog: Dialog) => {
-			const Dialog = DialogVariants[dialog.type];
-
 			const onConfirm = () => handleConfirm(dialog);
 			const onCancel = () => handleCancel(dialog);
+			const commonProps = {
+				show: true,
+				key: dialog.id,
+				onConfirm,
+				onCancel,
+				...omit(dialog, ["onConfirm", "onCancel"]),
+			};
 
-			return (
-				<Dialog
-					show
-					key={dialog.id}
-					onConfirm={onConfirm}
-					onCancel={onCancel}
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...omit(dialog, ["onConfirm", "onCancel"])}
-				/>
-			);
+			switch (dialog.type) {
+				case "Confirm":
+					return <Confirm {...commonProps} />;
+				case "Error":
+					return <ErrorDialog {...commonProps} />;
+				case "Notice":
+					return <Notice {...commonProps} />;
+				case "Simple":
+					return <Simple {...commonProps} />;
+				case "UserError":
+					return <UserErrorDialog {...commonProps} />;
+				case "Warning":
+					return <Warning {...commonProps} />;
+				default:
+					// TypeScript ensures this is exhaustive
+					return null;
+			}
 		},
 		[handleConfirm, handleCancel],
 	);

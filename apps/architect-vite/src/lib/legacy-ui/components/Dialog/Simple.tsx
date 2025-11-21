@@ -37,6 +37,4 @@ const SimpleDialog = ({
 	</Modal>
 );
 
-export { SimpleDialog };
-
 export default SimpleDialog;

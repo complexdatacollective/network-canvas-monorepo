@@ -40,6 +40,4 @@ const Warning = ({
 	/>
 );
 
-export { Warning };
-
 export default Warning;

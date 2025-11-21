@@ -40,6 +40,4 @@ const Confirm = ({
 	/>
 );
 
-export { Confirm };
-
 export default Confirm;

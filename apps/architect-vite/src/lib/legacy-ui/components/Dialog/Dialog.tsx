@@ -77,6 +77,4 @@ const Dialog = ({
 	</Modal>
 );
 
-export { Dialog };
-
 export default Dialog;

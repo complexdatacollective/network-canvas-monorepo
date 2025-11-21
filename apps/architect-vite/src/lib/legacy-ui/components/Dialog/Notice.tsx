@@ -25,6 +25,4 @@ const Notice = ({ title, message = null, onConfirm, confirmLabel = "OK", show = 
 	/>
 );
 
-export { Notice };
-
 export default Notice;
