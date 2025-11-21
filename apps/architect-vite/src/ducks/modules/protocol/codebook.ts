@@ -241,9 +241,15 @@ export const deleteVariableAsync = createAsyncThunk(
 const getDeleteAction = ({ type, ...owner }: { type: string; id?: string; stageId?: string; promptId?: string }) => {
 	switch (type) {
 		case "stage":
-			return stageActions.deleteStage(owner.id!);
+			if (owner.id === undefined) {
+				throw new Error("Stage ID is required for deleting a stage");
+			}
+			return stageActions.deleteStage(owner.id);
 		case "prompt":
-			return stageActions.deletePrompt(owner.stageId!, owner.promptId!, true);
+			if (owner.stageId === undefined || owner.promptId === undefined) {
+				throw new Error("Stage ID and Prompt ID are required for deleting a prompt");
+			}
+			return stageActions.deletePrompt(owner.stageId, owner.promptId, true);
 		default:
 			// noop
 			return { type: "NO_OP" };
@@ -300,7 +306,7 @@ const getStateWithUpdatedType = (
 			? configuration
 			: {
 					...state[entity],
-					[type!]: configuration,
+					[type as string]: configuration,
 				};
 
 	return {

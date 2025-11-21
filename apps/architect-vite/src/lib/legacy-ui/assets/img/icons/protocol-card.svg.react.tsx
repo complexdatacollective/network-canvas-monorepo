@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 export default function SVG(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236.5 310.9" {...props}>
+		<svg aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236.5 310.9" {...props}>
 			{" "}
 			<g id="Server">
 				{" "}

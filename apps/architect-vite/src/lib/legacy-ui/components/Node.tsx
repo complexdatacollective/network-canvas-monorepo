@@ -16,7 +16,7 @@ type UINodeProps = {
  * Renders a Node.
  */
 
-const Node = forwardRef<HTMLDivElement, UINodeProps>((props, ref) => {
+const Node = forwardRef<HTMLDivElement | HTMLButtonElement, UINodeProps>((props, ref) => {
 	const {
 		label = "Node",
 		color = "node-color-seq-1",
@@ -44,9 +44,10 @@ const Node = forwardRef<HTMLDivElement, UINodeProps>((props, ref) => {
 
 	const labelWithEllipsis = label.length < 22 ? label : `${label.substring(0, 18)}\u{AD}...`; // Add ellipsis for really long labels
 
-	return (
-		<div className={classes} onClick={() => handleClick?.()} ref={ref}>
+	const content = (
+		<>
 			<svg
+				aria-hidden="true"
 				viewBox="0 0 500 500"
 				xmlns="http://www.w3.org/2000/svg"
 				className="node__node"
@@ -69,6 +70,20 @@ const Node = forwardRef<HTMLDivElement, UINodeProps>((props, ref) => {
 					<div className={labelClasses()}>{labelWithEllipsis}</div>
 				</div>
 			)}
+		</>
+	);
+
+	if (handleClick) {
+		return (
+			<button type="button" className={classes} onClick={handleClick} ref={ref as React.Ref<HTMLButtonElement>}>
+				{content}
+			</button>
+		);
+	}
+
+	return (
+		<div className={classes} ref={ref as React.Ref<HTMLDivElement>}>
+			{content}
 		</div>
 	);
 });

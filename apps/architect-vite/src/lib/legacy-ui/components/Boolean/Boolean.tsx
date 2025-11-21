@@ -35,7 +35,9 @@ const BooleanField = ({ noReset, options = [], value = null, onChange = () => {}
 		</div>
 		{!noReset && (
 			<div className="boolean__reset">
-				<div onClick={() => onChange(null)}>Reset answer</div>
+				<button type="button" onClick={() => onChange(null)}>
+					Reset answer
+				</button>
 			</div>
 		)}
 	</div>

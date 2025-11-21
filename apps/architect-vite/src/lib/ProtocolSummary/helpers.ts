@@ -90,7 +90,11 @@ export const getCodebookIndex = (protocol: Protocol) => {
 	];
 
 	const index = flatMap(protocolEntities, (entity) => {
-		const codebook = protocol.codebook!;
+		const codebook = protocol.codebook;
+		if (!codebook) {
+			return [];
+		}
+
 		const entityConfigurations =
 			entity === "ego" ? { ego: codebook.ego } : (codebook as Record<string, unknown>)[entity];
 
