@@ -10,27 +10,27 @@ import { Button } from "~/lib/legacy-ui/components";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import { getValidator } from "~/utils/validations";
 
-interface Option {
+type Option = {
 	label: string;
 	value: string;
 	disabled?: boolean;
-}
+};
 
-interface InputProps {
+type InputProps = {
 	onChange: (value: string | null) => void;
 	onBlur?: () => void;
 	value?: string | null;
 	name: string;
-}
+};
 
-interface MetaProps {
+type MetaProps = {
 	invalid?: boolean;
 	error?: string | null;
 	touched?: boolean;
 	form: string;
-}
+};
 
-interface NativeSelectProps {
+type NativeSelectProps = {
 	className?: string;
 	label?: string | null;
 	options?: Option[];
@@ -48,7 +48,7 @@ interface NativeSelectProps {
 	input: InputProps;
 	meta?: MetaProps;
 	entity?: string;
-}
+};
 
 const NativeSelect: React.FC<NativeSelectProps> = ({
 	label = null,

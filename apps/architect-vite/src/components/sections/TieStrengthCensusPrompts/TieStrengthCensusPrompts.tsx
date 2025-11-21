@@ -1,5 +1,6 @@
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -50,4 +51,4 @@ export default compose(
 	withSubject,
 	withDisabledSubjectRequired,
 	withPromptChangeHandler,
-)(TieStrengthCensusPrompts as React.ComponentType<unknown>);
+)(TieStrengthCensusPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;

@@ -4,13 +4,13 @@ import { type ReactNode, useContext } from "react";
 import DatePickerContext from "./DatePickerContext";
 import { formatRangeItem, type RangeItem } from "./helpers";
 
-interface DaysRenderProps {
+type DaysRenderProps = {
 	days: RangeItem[];
-}
+};
 
-interface DaysProps {
+type DaysProps = {
 	children: (props: DaysRenderProps) => ReactNode;
-}
+};
 
 /**
  * Supplies `days` range based on currently selected month.

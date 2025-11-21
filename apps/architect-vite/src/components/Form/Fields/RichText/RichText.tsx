@@ -25,14 +25,14 @@ type CustomEditor = Editor &
 		disallowedTypes?: string[];
 	};
 
-interface RichTextProps {
+type RichTextProps = {
 	value?: string;
 	placeholder?: string;
 	onChange?: (value: string) => void;
 	inline?: boolean;
 	disallowedTypes?: string[];
 	autoFocus?: boolean;
-}
+};
 
 const HOTKEYS: Record<string, string> = {
 	"mod+b": "bold",

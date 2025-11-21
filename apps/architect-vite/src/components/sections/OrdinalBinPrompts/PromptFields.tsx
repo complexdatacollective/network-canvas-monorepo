@@ -22,7 +22,7 @@ type SelectOption = {
 	[key: string]: unknown;
 };
 
-interface PromptFieldsProps {
+type PromptFieldsProps = {
 	variableOptions?: SelectOption[];
 	entity: string;
 	type: string;
@@ -30,7 +30,7 @@ interface PromptFieldsProps {
 	form: string;
 	variable?: string | null;
 	optionsForVariableDraft?: SelectOption[];
-}
+};
 
 const PromptFields = ({
 	changeForm,

@@ -10,7 +10,7 @@ import { Text } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Button from "~/lib/legacy-ui/components/Button";
 
-import { actionCreators as assetManifestActions } from "../../../../ducks/modules/protocol/assetManifest";
+import { addApiKeyAsset } from "../../../../ducks/modules/protocol/assetManifest";
 import BasicForm from "../../../BasicForm";
 
 type APIKeyBrowserProps = {
@@ -37,7 +37,7 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 
 	const handleSubmit = useCallback(
 		(formValues: { keyName: string; keyValue: string }) => {
-			dispatch(assetManifestActions.addApiKeyAsset(formValues.keyName, formValues.keyValue));
+			dispatch(addApiKeyAsset(formValues.keyName, formValues.keyValue));
 		},
 		[dispatch],
 	);

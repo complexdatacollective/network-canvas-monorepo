@@ -1,8 +1,8 @@
 import { get, isEmpty } from "lodash";
 
-interface MockCSSVariables {
+type MockCSSVariables = {
 	[key: string]: string | number;
-}
+};
 
 const mockCSSVariables: MockCSSVariables = {
 	"--light-background": "#227733",

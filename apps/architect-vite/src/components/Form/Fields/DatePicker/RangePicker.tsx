@@ -3,14 +3,14 @@ import { find, times } from "lodash";
 import React, { useEffect } from "react";
 import type { RangeItem } from "./DatePicker/helpers";
 
-interface RangePickerProps {
+type RangePickerProps = {
 	type?: string | null;
 	today?: number | null;
 	range: RangeItem[];
 	value?: number | null;
 	onSelect?: (value: number) => void;
 	offset?: number;
-}
+};
 
 // If today's date isn't in range, what's the closest value?
 const getScrollToValue = (range: RangeItem[], today: number | null | undefined) => {

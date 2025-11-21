@@ -7,26 +7,26 @@ import { asOptions } from "../utils";
 import { type GetIsUsedOptions, makeOptionsWithIsUsedSelector } from "./isUsed";
 
 // Types
-interface Subject {
+type Subject = {
 	entity: "node" | "edge" | "ego";
 	type?: string;
-}
+};
 
-interface VariableWithEntity {
+type VariableWithEntity = {
 	uuid: string;
 	name: string;
 	entity: "node" | "edge" | "ego";
 	entityType: string | null;
 	type: string;
-}
+};
 
-interface VariableOption {
+type VariableOption = {
 	label: string;
 	value: string;
 	type?: string;
 	color?: string;
 	isUsed?: boolean;
-}
+};
 
 type NodeTypes = Record<string, NodeDefinition>;
 type EdgeTypes = Record<string, EdgeDefinition>;

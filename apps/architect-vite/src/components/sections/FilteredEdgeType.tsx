@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/modules/root";
 // Screen message listeners removed as part of screen system refactor
 import { ValidatedField } from "../Form";
@@ -12,9 +13,7 @@ import Filter from "./Filter";
 import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 import { SUBJECT_INDEPENDENT_FIELDS } from "./NodeType";
 
-type FilteredEdgeTypeProps = {
-	form: string;
-} & Record<string, unknown>;
+export type FilteredEdgeTypeProps = StageEditorSectionProps;
 
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const { form } = props;

@@ -2,12 +2,12 @@ import type { Interval } from "luxon";
 import { createContext } from "react";
 import type { DateObject } from "./helpers";
 
-interface DatePickerContextType {
+type DatePickerContextType = {
 	onChange: (values: Partial<DateObject>) => void;
 	range: Interval | null;
 	date: DateObject;
 	type: string | null;
-}
+};
 
 const DatePickerContext = createContext<DatePickerContextType>({
 	onChange: () => {},

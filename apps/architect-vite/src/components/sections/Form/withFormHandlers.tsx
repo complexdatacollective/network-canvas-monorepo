@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, SubmissionError } from "redux-form";
 import { getTypeForComponent } from "~/config/variables";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { createVariableAsync, updateVariableAsync } from "~/ducks/modules/protocol/codebook";
 import { makeGetVariable } from "../../../selectors/codebook";
 import { getCodebookProperties } from "./helpers";
 
@@ -74,8 +74,8 @@ const formHandlers = withHandlers({
 
 const mapDispatchToProps = {
 	changeForm: change,
-	updateVariable: codebookActions.updateVariable,
-	createVariable: codebookActions.createVariable,
+	updateVariable: updateVariableAsync,
+	createVariable: createVariableAsync,
 };
 
 const mapStateToProps = (state) => ({

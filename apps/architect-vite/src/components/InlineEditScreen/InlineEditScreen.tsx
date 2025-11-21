@@ -6,7 +6,7 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { Button } from "~/lib/legacy-ui/components";
 import Form from "./Form";
 
-interface InlineEditScreenProps {
+type InlineEditScreenProps = {
 	show?: boolean;
 	form: string;
 	title?: string | null;
@@ -14,7 +14,7 @@ interface InlineEditScreenProps {
 	onCancel: () => void;
 	children?: React.ReactNode;
 	initialValues?: Record<string, unknown>;
-}
+};
 
 const InlineEditScreen = ({
 	show = false,

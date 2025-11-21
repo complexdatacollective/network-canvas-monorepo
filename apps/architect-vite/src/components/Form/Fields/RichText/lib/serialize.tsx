@@ -1,15 +1,15 @@
 import { serialize } from "remark-slate";
 import type { Descendant } from "slate";
 
-interface TextNode {
+type TextNode = {
 	text: string;
 	[key: string]: unknown;
-}
+};
 
-interface ElementNode {
+type ElementNode = {
 	children: (TextNode | ElementNode)[];
 	[key: string]: unknown;
-}
+};
 
 type SlateNode = TextNode | ElementNode;
 

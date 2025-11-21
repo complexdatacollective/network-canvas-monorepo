@@ -1,7 +1,7 @@
 import cx from "classnames";
 import Icon from "../Icon";
 
-interface ProtocolCardProps {
+type ProtocolCardProps = {
 	schemaVersion: number;
 	lastModified: string; // Expects ISO 8601 datetime string
 	name: string;
@@ -13,7 +13,7 @@ interface ProtocolCardProps {
 	isObsolete?: boolean;
 	condensed?: boolean;
 	selected?: boolean;
-}
+};
 
 const formatDate = (timeString: string | null) => timeString && new Date(timeString).toLocaleString(undefined);
 

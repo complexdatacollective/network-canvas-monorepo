@@ -14,10 +14,10 @@ import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
 import { getVariableIndex, utils } from "~/selectors/indexes";
 import { getCodebook, getProtocol } from "~/selectors/protocol";
 
-interface StageMeta {
+type StageMeta = {
 	label: string;
 	id: string;
-}
+};
 
 /**
  * Extract basic stage meta by index from the app state
@@ -72,10 +72,10 @@ export const getUsage = (index: Record<string, string>, value: string): string[]
 		[],
 	);
 
-interface UsageMeta {
+type UsageMeta = {
 	label: string;
 	id?: string;
-}
+};
 
 /**
  * Get stage meta (wtf is stage meta, Steve? 🤦) that matches "usage array"
@@ -154,10 +154,10 @@ export const makeGetEntityWithUsage = (index: Record<string, string>, mergeProps
 		};
 	});
 
-interface EntityPropertiesParams {
+type EntityPropertiesParams = {
 	entity: "node" | "edge" | "ego";
 	type?: string;
-}
+};
 
 type VariableWithUsage = Variable & {
 	id: string;
@@ -166,11 +166,11 @@ type VariableWithUsage = Variable & {
 	usageString?: string;
 };
 
-interface EntityProperties {
+type EntityProperties = {
 	name: string;
 	color?: string;
 	variables: Record<string, VariableWithUsage>;
-}
+};
 
 /**
  * Returns entity meta data for use in the codebook.

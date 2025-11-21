@@ -2,13 +2,13 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import { v4 as uuid } from "uuid";
 
 // Define dialog types
-interface BaseDialog {
+type BaseDialog = {
 	id: string;
 	title: string;
 	message?: string;
 	onConfirm?: () => void;
 	onCancel?: () => void;
-}
+};
 
 interface ConfirmDialog extends BaseDialog {
 	type: "Confirm";
@@ -32,9 +32,9 @@ interface ErrorDialog extends Omit<BaseDialog, "title" | "message"> {
 
 type Dialog = ConfirmDialog | NoticeDialog | WarningDialog | ErrorDialog;
 
-interface DialogsState {
+type DialogsState = {
 	dialogs: Dialog[];
-}
+};
 
 const initialState: DialogsState = {
 	dialogs: [],
@@ -115,9 +115,4 @@ export default dialogsSlice.reducer;
 export const actionCreators = {
 	openDialog,
 	closeDialog: (id: string) => closeDialog(id),
-};
-
-export const actionTypes = {
-	OPEN_DIALOG: "dialogs/addDialog",
-	CLOSE_DIALOG: "dialogs/closeDialog",
 };

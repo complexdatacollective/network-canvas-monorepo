@@ -13,13 +13,13 @@ import Panel from "./Panel";
 import Panels from "./Panels";
 import RangePicker from "./RangePicker";
 
-interface DatePickerInputProps {
+type DatePickerInputProps = {
 	onChange?: (value: string) => void;
 	value?: string | null;
 	parameters?: Record<string, unknown>;
 	parentRef: RefObject<HTMLElement>;
 	placeholder?: string | null;
-}
+};
 
 const DatePickerInput = ({
 	onChange: onChangeInput = () => {},

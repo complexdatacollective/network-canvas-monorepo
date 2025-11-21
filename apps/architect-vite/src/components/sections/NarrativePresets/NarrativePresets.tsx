@@ -1,6 +1,7 @@
 import { isEmpty, omit } from "lodash";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -54,4 +55,7 @@ const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProp
 	</Section>
 );
 
-export default compose(withSubject, withDisabledSubjectRequired)(NarrativePresets as React.ComponentType<unknown>);
+export default compose(
+	withSubject,
+	withDisabledSubjectRequired,
+)(NarrativePresets) as unknown as React.ComponentType<StageEditorSectionProps>;

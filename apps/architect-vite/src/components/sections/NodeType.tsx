@@ -3,6 +3,7 @@ import { difference, get, keys } from "lodash";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/modules/root";
 import Row from "../EditorLayout/Row";
 import Section from "../EditorLayout/Section";
@@ -16,10 +17,9 @@ import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 // reset when the subject changes.
 export const SUBJECT_INDEPENDENT_FIELDS = ["id", "type", "label", "interviewScript", "introductionPanel"];
 
-interface NodeTypeProps {
-	form: string;
+export type NodeTypeProps = StageEditorSectionProps & {
 	withFilter?: boolean;
-}
+};
 
 const NodeType = (props: NodeTypeProps) => {
 	const { form, withFilter = false } = props;
@@ -65,7 +65,6 @@ const NodeType = (props: NodeTypeProps) => {
 	);
 };
 
-// eslint-disable-next-line react/jsx-props-no-spreading
 export const FilteredNodeType = (props: NodeTypeProps) => <NodeType withFilter {...props} />;
 
 export default NodeType;

@@ -4,11 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/store";
 import { getFieldId } from "~/utils/issues";
 
-const InterviewerScript = () => {
+const InterviewerScript = (_props: StageEditorSectionProps) => {
 	const getFormValue = formValueSelector("edit-stage");
 	const currentValue = useSelector((state: RootState) => getFormValue(state, "interviewScript"));
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();

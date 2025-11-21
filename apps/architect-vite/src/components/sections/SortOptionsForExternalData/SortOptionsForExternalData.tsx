@@ -6,6 +6,7 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
@@ -89,4 +90,4 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 export default compose(
 	withMapFormToProps("dataSource"),
 	withDisabledAssetRequired,
-)(SortOptions as React.ComponentType<unknown>);
+)(SortOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

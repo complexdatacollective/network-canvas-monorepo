@@ -3,9 +3,9 @@ import { get } from "lodash";
 import type { RootState } from "./root";
 
 // Define the shape of the app state
-interface AppState {
+type AppState = {
 	[key: string]: unknown;
-}
+};
 
 const initialState: AppState = {};
 
@@ -25,27 +25,11 @@ const appSlice = createSlice({
 	},
 });
 
-// Export the action creators
-export const { setProperty, clearProperty } = appSlice.actions;
+// Internal action creators (not exported - app module not currently used)
+const { setProperty, clearProperty } = appSlice.actions;
+
+// Selector (internal use only)
+const getProperty = (key: string) => (state: RootState) => get(state, ["app", key]);
 
 // Export the reducer as default
 export default appSlice.reducer;
-
-// Selectors (maintaining compatibility with existing code)
-const getProperty = (key: string) => (state: RootState) => get(state, ["app", key]);
-
-export const selectors = {
-	getProperty,
-};
-
-// Action creators (maintaining compatibility with existing code)
-export const actionCreators = {
-	setProperty: (key: string, value: unknown) => setProperty({ key, value }),
-	clearProperty: (key: string) => clearProperty({ key }),
-};
-
-// Action types (maintaining compatibility with existing code)
-export const actionTypes = {
-	SET_PROPERTY: "app/setProperty",
-	CLEAR_PROPERTY: "app/clearProperty",
-};

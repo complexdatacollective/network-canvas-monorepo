@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-interface WarningProps {
+type WarningProps = {
 	title: string;
 	message?: ReactNode;
 	canCancel?: boolean;
@@ -11,7 +11,7 @@ interface WarningProps {
 	confirmLabel?: string;
 	cancelLabel?: string;
 	show?: boolean;
-}
+};
 
 /*
  * Designed to present warnings to the user. Unlike some other Dialog types user

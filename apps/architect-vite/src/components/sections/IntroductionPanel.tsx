@@ -1,14 +1,11 @@
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import TextField from "~/components/Form/Fields/Text";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 
-type IntroductionPanelProps = {
-	interfaceType: string;
-};
-
-const IntroductionPanel = ({ interfaceType }: IntroductionPanelProps) => {
+const IntroductionPanel = ({ interfaceType }: StageEditorSectionProps) => {
 	const summaryText =
 		interfaceType === "Geospatial"
 			? "This panel is shown prior to the interface, and should serve as an introduction to the task."

@@ -3,9 +3,9 @@ import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
 
-interface OwnProps {
+type OwnProps = {
 	form: string;
-}
+};
 
 const mapStateToProps = (state: RootState, { form }: OwnProps) => {
 	const type = formValueSelector(form)(state, "type");

@@ -1,9 +1,10 @@
 import { Section } from "~/components/EditorLayout";
 import { Text } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 
-const Title = () => (
+const Title = (_props: StageEditorSectionProps) => (
 	<Section
 		title="Page Heading"
 		summary={<p>Use the page heading to show a large title element on your information stage.</p>}

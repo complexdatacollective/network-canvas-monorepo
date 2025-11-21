@@ -145,4 +145,4 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 export default compose(
 	withMapFormToProps(["mapOptions"]),
 	withDisabledAPIKeyRequired,
-)(MapOptions as React.ComponentType<unknown>);
+)(MapOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

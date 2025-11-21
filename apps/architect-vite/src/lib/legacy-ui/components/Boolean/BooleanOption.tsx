@@ -4,14 +4,14 @@ import { memo } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import RoundCheckbox from "./RoundCheckbox";
 
-interface BooleanOptionProps {
+type BooleanOptionProps = {
 	classes?: string | null;
 	selected?: boolean;
 	label: string | (() => ReactNode);
 	onClick?: () => void;
 	customIcon?: (() => ReactNode) | null;
 	negative?: boolean;
-}
+};
 
 const BooleanOption = ({
 	classes = null,

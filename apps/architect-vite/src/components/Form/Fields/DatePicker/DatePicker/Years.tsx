@@ -3,13 +3,13 @@ import { type ReactNode, useContext } from "react";
 import DatePickerContext from "./DatePickerContext";
 import { formatRangeItem, type RangeItem } from "./helpers";
 
-interface YearsRenderProps {
+type YearsRenderProps = {
 	years: RangeItem[];
-}
+};
 
-interface YearsProps {
+type YearsProps = {
 	children: (props: YearsRenderProps) => ReactNode;
-}
+};
 
 /**
  * Supplies `years` range based on min/max props.

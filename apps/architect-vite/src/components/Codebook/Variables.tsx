@@ -3,7 +3,7 @@ import { get, isString } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps, withStateHandlers } from "recompose";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
-import { actionCreators as codebookActionCreators } from "~/ducks/modules/protocol/codebook";
+import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import EditableVariablePill from "../Form/Fields/VariablePicker/VariablePill";
 import ControlsColumn from "./ControlsColumn";
 import UsageColumn from "./UsageColumn";
@@ -53,10 +53,10 @@ const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps
 	);
 };
 
-interface UsageItem {
+type UsageItem = {
 	label: string;
 	id?: string;
-}
+};
 
 type Variable = {
 	id: string;
@@ -142,18 +142,18 @@ const Variables = ({
 	);
 };
 
-interface WithVariableHandlersProps {
+type WithVariableHandlersProps = {
 	deleteVariable: (params: { entity: string; type?: string; variable: string }) => void;
 	openDialog: (dialog: unknown) => void;
 	entity: string;
 	type?: string;
 	variables: Variable[];
-}
+};
 
 const withVariableHandlers = compose(
 	connect(null, {
 		openDialog: dialogActionCreators.openDialog,
-		deleteVariable: codebookActionCreators.deleteVariable,
+		deleteVariable: deleteVariableAsync,
 	}),
 	withHandlers<WithVariableHandlersProps, { onDelete: (id: string) => void }>({
 		onDelete:
@@ -200,15 +200,15 @@ const reverse =
 	(list: Variable[]) =>
 		sortDirection === SortDirection.DESC ? [...list].reverse() : list;
 
-interface WithSortProps {
+type WithSortProps = {
 	sortBy: string;
 	sortDirection: SortDirectionType;
 	variables: Variable[];
-}
+};
 
-interface WithSortOutput {
+type WithSortOutput = {
 	variables: Variable[];
-}
+};
 
 const withSort = compose(
 	withStateHandlers(

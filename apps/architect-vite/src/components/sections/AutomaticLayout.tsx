@@ -4,17 +4,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { Boolean as BooleanField } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../DetachedField";
 import IssueAnchor from "../IssueAnchor";
 
 const FORM_PROPERTY = "behaviours.automaticLayout.enabled";
 
-type AutomaticLayoutProps = {
-	form: string;
-};
-
-const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
+const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));

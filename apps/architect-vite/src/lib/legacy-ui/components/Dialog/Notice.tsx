@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-interface NoticeProps {
+type NoticeProps = {
 	title: string;
 	message?: ReactNode;
 	onConfirm: () => void;
 	confirmLabel?: string;
 	show?: boolean;
-}
+};
 
 /*
  * Designed to present notices to the user.

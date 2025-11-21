@@ -1,5 +1,6 @@
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withCreateVariableHandler from "../../enhancers/withCreateVariableHandler";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -61,4 +62,4 @@ export default compose(
 	withQuickAddVariable,
 	withOptions,
 	withCreateVariableHandler,
-)(QuickAdd as React.ComponentType<unknown>);
+)(QuickAdd) as unknown as React.ComponentType<StageEditorSectionProps>;

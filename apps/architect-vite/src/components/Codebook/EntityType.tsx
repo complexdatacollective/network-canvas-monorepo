@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { Link } from "wouter";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
-import { actionCreators as codebookActionCreators } from "~/ducks/modules/protocol/codebook";
+import { deleteTypeAsync } from "~/ducks/modules/protocol/codebook";
 import { Button } from "~/lib/legacy-ui/components";
 import EntityIcon from "./EntityIcon";
 import { getEntityProperties } from "./helpers";
@@ -112,7 +112,7 @@ const mapStateToProps = (state: unknown, { entity, type }: StateProps) => {
 
 type ConnectedProps = {
 	openDialog: typeof dialogActionCreators.openDialog;
-	deleteType: typeof codebookActionCreators.deleteType;
+	deleteType: typeof deleteTypeAsync;
 };
 
 type HandlerProps = ConnectedProps & EntityTypeProps;
@@ -120,7 +120,7 @@ type HandlerProps = ConnectedProps & EntityTypeProps;
 const withEntityHandlers = compose(
 	connect(null, {
 		openDialog: dialogActionCreators.openDialog,
-		deleteType: codebookActionCreators.deleteType,
+		deleteType: deleteTypeAsync,
 	}),
 	withHandlers<HandlerProps, {}>({
 		handleEdit:

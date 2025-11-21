@@ -7,7 +7,7 @@ import React, { useMemo, useRef, useState } from "react";
 import TextInput from "~/components/Form/Fields/Text";
 import { getIconForType } from "~/config/variables";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { updateVariableByUUID } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { Icon } from "~/lib/legacy-ui/components";
 import { getVariablesForSubject, makeGetVariableWithEntity } from "~/selectors/codebook";
@@ -96,7 +96,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 	};
 
 	const onEditComplete = () => {
-		const action = codebookActions.updateVariableByUUID(uuid, { name: newName }, true);
+		const action = updateVariableByUUID(uuid, { name: newName }, true);
 		dispatch(action as UnknownAction);
 		setValidation(null);
 		setIsEditing(false);

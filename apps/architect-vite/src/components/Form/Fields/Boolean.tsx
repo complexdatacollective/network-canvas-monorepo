@@ -7,15 +7,15 @@ import MarkdownLabel from "./MarkdownLabel";
 
 type BooleanValue = boolean | string | number | null;
 
-interface BooleanOption {
+type BooleanOption = {
 	label: string | (() => string);
 	value: boolean | string | number;
 	classes?: string;
 	icon?: () => React.ReactNode;
 	negative?: boolean;
-}
+};
 
-interface BooleanFieldProps {
+type BooleanFieldProps = {
 	label?: string | null;
 	fieldLabel?: string | null;
 	noReset?: boolean;
@@ -32,7 +32,7 @@ interface BooleanFieldProps {
 		invalid?: boolean;
 		touched?: boolean;
 	};
-}
+};
 
 const BooleanField = ({
 	label = null,

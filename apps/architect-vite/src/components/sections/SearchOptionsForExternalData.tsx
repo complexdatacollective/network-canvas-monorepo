@@ -7,6 +7,7 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { CheckboxGroup, LikertScale } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Tip from "~/components/Tip";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
@@ -101,4 +102,4 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 export default compose(
 	withMapFormToProps(["dataSource"]),
 	withDisabledAssetRequired,
-)(SearchOptions as React.ComponentType<unknown>);
+)(SearchOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

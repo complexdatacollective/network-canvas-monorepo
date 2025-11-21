@@ -9,7 +9,7 @@ import {
 	INPUT_OPTIONS,
 	VARIABLE_TYPES_WITH_COMPONENTS,
 } from "~/config/variables";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubjectSelector, getVariablesForSubjectSelector } from "~/selectors/codebook";
 
@@ -26,7 +26,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 		[dispatch, form],
 	);
 	const deleteVariable = useCallback(
-		(variable: string) => dispatch(codebookActions.deleteVariable({ entity, type, variable })),
+		(variable: string) => dispatch(deleteVariableAsync({ entity, type, variable })),
 		[dispatch, entity, type],
 	);
 

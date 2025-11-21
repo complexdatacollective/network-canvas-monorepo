@@ -233,10 +233,4 @@ const createTimelineReducer = <T>(
 	return timelineSlice.reducer;
 };
 
-// export action creators for the timeline actions
-export const timelineActionCreators = {
-	jump: (locus: string) => timelineActions.jump(locus),
-	reset: () => timelineActions.reset(),
-};
-
 export default createTimelineReducer;

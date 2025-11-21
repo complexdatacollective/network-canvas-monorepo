@@ -399,18 +399,9 @@ const codebookSlice = createSlice({
 	},
 });
 
-// Export action creators
-export const actionCreators = {
-	updateType: updateTypeAsync,
-	createType: createTypeAsync,
-	createEdge: createEdgeAsync,
-	deleteType: deleteTypeAsync,
-	createVariable: createVariableAsync,
-	deleteVariable: deleteVariableAsync,
-	updateVariable: updateVariableAsync,
-	updateVariableByUUID: (variable: string, properties: Partial<Variable>, merge = false) =>
-		updateVariableAsync({ variable, configuration: properties, merge }),
-};
+// Export convenience wrapper for updateVariableAsync with cleaner API
+export const updateVariableByUUID = (variable: string, properties: Partial<Variable>, merge = false) =>
+	updateVariableAsync({ variable, configuration: properties, merge });
 
 // Export for backwards compatibility and testing
 export const test = {

@@ -1,10 +1,10 @@
 declare module "luxon" {
-	export interface DateTimeOptions {
+	export type DateTimeOptions = {
 		zone?: string;
 		locale?: string;
-	}
+	};
 
-	export interface DateObjectUnits {
+	export type DateObjectUnits = {
 		year?: number | null;
 		month?: number | null;
 		day?: number | null;
@@ -12,7 +12,7 @@ declare module "luxon" {
 		minute?: number | null;
 		second?: number | null;
 		millisecond?: number | null;
-	}
+	};
 
 	export class DateTime {
 		static now(): DateTime;
@@ -41,7 +41,7 @@ declare module "luxon" {
 		invalidReason: string | null;
 	}
 
-	export interface DurationObject {
+	export type DurationObject = {
 		years?: number;
 		months?: number;
 		weeks?: number;
@@ -50,7 +50,7 @@ declare module "luxon" {
 		minutes?: number;
 		seconds?: number;
 		milliseconds?: number;
-	}
+	};
 
 	export class Duration {
 		static fromObject(obj: DurationObject): Duration;
@@ -67,10 +67,10 @@ declare module "luxon" {
 		toObject(): DurationObject;
 	}
 
-	export interface IntervalObject {
+	export type IntervalObject = {
 		start: DateTime;
 		end: DateTime;
-	}
+	};
 
 	export class Interval {
 		static fromDateTimes(start: DateTime, end: DateTime): Interval;

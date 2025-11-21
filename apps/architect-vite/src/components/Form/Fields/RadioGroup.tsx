@@ -9,7 +9,7 @@ import Radio from "./Radio";
 import type { Option } from "./utils/options";
 import { asOptionObject, getValue } from "./utils/options";
 
-interface RadioGroupProps {
+type RadioGroupProps = {
 	options?: Option[];
 	label?: string | null;
 	input: {
@@ -33,7 +33,7 @@ interface RadioGroupProps {
 		label: string;
 		[key: string]: unknown;
 	}>;
-}
+};
 
 const RadioGroup = ({
 	options = [],

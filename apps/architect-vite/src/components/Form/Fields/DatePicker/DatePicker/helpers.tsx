@@ -3,11 +3,11 @@ import { DateTime } from "luxon";
 
 export const now = () => DateTime.local();
 
-export interface DateObject {
+export type DateObject = {
 	year: number | null;
 	month: number | null;
 	day: number | null;
-}
+};
 
 /**
  * Is date object fully complete?
@@ -35,11 +35,11 @@ const monthNames = Array.from({ length: 12 }, (_, i) => DateTime.local(2000, i +
 
 export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);
 
-export interface RangeItem {
+export type RangeItem = {
 	value: number;
 	label: string | number;
 	isOutOfRange?: boolean;
-}
+};
 
 export const formatRangeItem = (value: number, props: Partial<RangeItem> = {}): RangeItem => ({
 	value,

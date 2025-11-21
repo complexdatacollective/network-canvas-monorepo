@@ -1,9 +1,9 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { createEdgeAsync } from "~/ducks/modules/protocol/codebook";
 
 const mapDispatchToProps = {
-	createEdge: codebookActions.createEdge,
+	createEdge: createEdgeAsync,
 };
 
 // TODO: This should be the top level withCreateEdgeHandler enhancer but currently

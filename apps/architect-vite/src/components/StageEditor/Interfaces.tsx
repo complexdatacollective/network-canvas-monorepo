@@ -38,28 +38,24 @@ import {
 import { FilteredNodeType } from "~/components/sections/NodeType";
 
 /**
- * Common props that all stage editor section components can receive.
- * Not all sections use all props - they are provided by the StageEditor
- * component when rendering sections.
+ * Props that are passed to all stage editor section components.
+ * These props are provided by the StageEditor component when rendering sections.
+ * Individual section components may use some or all of these props.
  */
 export type StageEditorSectionProps = {
-	/** Redux form name (e.g., "edit-stage") */
-	form?: string;
-	/** Path to stage in Redux state (e.g., "stages[0]") */
-	stagePath?: string | null;
+	/** Redux form name (always "edit-stage") */
+	form: string;
+	/** Path to stage in Redux state (e.g., "stages[0]"), or null if creating a new stage */
+	stagePath: string | null;
 	/** Type of the interface/stage being edited */
-	interfaceType?: string;
+	interfaceType: StageType;
 };
 
 /**
  * Type for stage editor section components.
- * Uses ComponentType<any> to allow for various section-specific props
- * while still being able to receive the common StageEditorSectionProps.
- * The any type is necessary here because sections have diverse prop requirements
- * and may be wrapped with HOCs that add additional props.
+ * All section components must accept at least the StageEditorSectionProps.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SectionComponent = ComponentType<any>;
+export type SectionComponent = ComponentType<StageEditorSectionProps>;
 
 /**
  * Configuration for a stage editor interface.
@@ -196,7 +192,9 @@ export const INTERFACE_CONFIGS = {
  *
  * @example
  * const config = getInterface("NameGenerator");
- * // Returns: { sections: [...], documentation: "...", name: "Name Generator (using forms)" }
+ * // Returns: { sections: [
+			...,
+		], documentation: "...", name: "Name Generator (using forms)" }
  */
 export function getInterface(interfaceType: StageType): InterfaceConfig {
 	const config = INTERFACE_CONFIGS[interfaceType];

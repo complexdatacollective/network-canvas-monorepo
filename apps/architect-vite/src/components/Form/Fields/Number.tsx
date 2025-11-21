@@ -1,6 +1,6 @@
 import TextInput from "./Text";
 
-interface NumberInputProps {
+type NumberInputProps = {
 	input?: {
 		name?: string;
 		value?: string;
@@ -10,7 +10,7 @@ interface NumberInputProps {
 	};
 	placeholder?: string;
 	[key: string]: unknown;
-}
+};
 
 const toInt = (value: string): number | null => {
 	const int = Number.parseInt(value, 10);

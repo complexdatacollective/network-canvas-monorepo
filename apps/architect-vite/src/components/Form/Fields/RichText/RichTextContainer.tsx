@@ -2,9 +2,9 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useFocused } from "slate-react";
 
-interface RichTextContainerProps {
+type RichTextContainerProps = {
 	children: ReactNode;
-}
+};
 
 const RichTextContainer = ({ children }: RichTextContainerProps) => {
 	const focused = useFocused();

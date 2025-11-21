@@ -7,7 +7,7 @@ import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "./MarkdownLabel";
 
-interface ToggleProps {
+type ToggleProps = {
 	label?: string | null;
 	title?: string;
 	fieldLabel?: string | null;
@@ -25,7 +25,7 @@ interface ToggleProps {
 		touched?: boolean;
 	};
 	[key: string]: unknown;
-}
+};
 
 const Toggle = ({
 	label = null,

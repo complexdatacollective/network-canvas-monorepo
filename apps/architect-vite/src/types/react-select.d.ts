@@ -1,13 +1,13 @@
 declare module "react-select" {
 	import type { ComponentType, ReactNode } from "react";
 
-	export interface SelectOption {
+	export type SelectOption = {
 		value: unknown;
 		label?: string;
 		[key: string]: unknown;
-	}
+	};
 
-	export interface SelectProps {
+	export type SelectProps = {
 		className?: string;
 		classNamePrefix?: string;
 		options?: SelectOption[];
@@ -38,7 +38,7 @@ declare module "react-select" {
 		};
 		children?: ReactNode;
 		[key: string]: unknown;
-	}
+	};
 
 	const ReactSelect: ComponentType<SelectProps>;
 	export default ReactSelect;

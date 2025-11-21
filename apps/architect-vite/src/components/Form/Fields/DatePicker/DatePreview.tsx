@@ -4,11 +4,11 @@ import React, { type MouseEvent } from "react";
 import Date from "./DatePicker/Date";
 import { getMonthName } from "./helpers";
 
-interface DatePreviewProps {
+type DatePreviewProps = {
 	onClick?: (open?: boolean) => void;
 	isActive?: boolean;
 	placeholder?: string | null;
-}
+};
 
 const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null }: DatePreviewProps) => (
 	<Date>

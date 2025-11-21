@@ -8,7 +8,7 @@ import MarkdownLabel from "./MarkdownLabel";
 import type { Option } from "./utils/options";
 import { asOptionObject, getValue } from "./utils/options";
 
-interface CheckboxGroupProps {
+type CheckboxGroupProps = {
 	options?: Option[];
 	className?: string | null;
 	label?: string | null;
@@ -33,7 +33,7 @@ interface CheckboxGroupProps {
 		invalid?: boolean;
 		touched?: boolean;
 	};
-}
+};
 
 const CheckboxGroup = ({
 	options = [],

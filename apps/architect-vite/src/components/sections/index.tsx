@@ -1,3 +1,5 @@
+// Re-export the StageEditorSectionProps as SectionProps for backward compatibility
+export type { StageEditorSectionProps as SectionProps } from "~/components/StageEditor/Interfaces";
 export { default as AnonymisationExplanation } from "./Anonymisation/AnonymisationExplanation";
 export { default as AnonymisationValidation } from "./Anonymisation/AnonymisationValidation";
 export { default as EncryptedVariables } from "./Anonymisation/EncryptedVariables";
@@ -31,10 +33,3 @@ export { default as SociogramPrompts } from "./SociogramPrompts";
 export { default as SortOptionsForExternalData } from "./SortOptionsForExternalData";
 export { default as TieStrengthCensusPrompts } from "./TieStrengthCensusPrompts";
 export { default as Title } from "./Title";
-
-export type SectionProps = {
-	form: string;
-	stagePath: string;
-	hasSubmitFailed: boolean;
-	interfaceType: string;
-};

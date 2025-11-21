@@ -1,10 +1,10 @@
 import type { Descendant } from "slate";
 import type { RenderElementProps } from "slate-react";
 
-interface CustomElement {
+type CustomElement = {
 	type: string;
 	children: Descendant[];
-}
+};
 
 interface ElementProps extends RenderElementProps {
 	element: CustomElement;

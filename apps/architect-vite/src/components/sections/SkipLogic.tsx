@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import SkipLogicFields from "~/components/sections/fields/SkipLogicFields";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
@@ -22,7 +23,7 @@ export const handleDeactivateSkipLogic = async (
 	return result;
 };
 
-const SkipLogicSection = () => {
+const SkipLogicSection = (_props: StageEditorSectionProps) => {
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 
 	const getFormValue = formValueSelector("edit-stage");

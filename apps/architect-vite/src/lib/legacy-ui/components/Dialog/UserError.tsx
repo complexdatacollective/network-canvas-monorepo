@@ -5,14 +5,14 @@ const getErrorMessage = (error) => !!error && (error.friendlyMessage ? error.fri
 
 const getMessage = ({ error, message }) => (error ? getErrorMessage(error) : message);
 
-interface ErrorDialogProps {
+type ErrorDialogProps = {
 	error?: Error | string | { friendlyMessage?: string };
 	message?: string;
 	onConfirm: () => void;
 	show?: boolean;
 	confirmLabel?: string;
 	title?: string;
-}
+};
 
 /*
  * Designed to present errors to the user. Unlike some other Dialog types user must

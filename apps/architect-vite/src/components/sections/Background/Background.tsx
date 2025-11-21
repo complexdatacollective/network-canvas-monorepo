@@ -4,12 +4,13 @@ import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { Boolean as BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";
 import IssueAnchor from "~/components/IssueAnchor";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";
 import ValidatedField from "../../Form/ValidatedField";
 import withBackgroundChangeHandler from "./withBackgroundChangeHandler";
 
-type BackgroundProps = {
+export type BackgroundProps = StageEditorSectionProps & {
 	handleChooseBackgroundType: (value: boolean) => void;
 	useImage: boolean;
 };
@@ -95,4 +96,6 @@ class Background extends PureComponent<BackgroundProps> {
 	}
 }
 
-export default compose(withBackgroundChangeHandler)(Background as React.ComponentType<unknown>);
+export default compose(withBackgroundChangeHandler)(
+	Background,
+) as unknown as React.ComponentType<StageEditorSectionProps>;

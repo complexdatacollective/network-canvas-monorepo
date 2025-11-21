@@ -4,14 +4,14 @@ import { DATE_FORMATS, type DateType, DEFAULT_MIN_DATE, DEFAULT_TYPE } from "./c
 import DatePickerContext from "./DatePickerContext";
 import { type DateObject, isComplete, isEmpty, now } from "./helpers";
 
-interface DatePickerProps {
+type DatePickerProps = {
 	children?: ReactNode;
 	date?: string | null;
 	min?: string | null;
 	max?: string | null;
 	onChange?: (date: string) => void;
 	type?: DateType | null;
-}
+};
 
 /**
  * Get date object from an ISO string

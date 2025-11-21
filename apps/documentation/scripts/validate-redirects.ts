@@ -15,25 +15,25 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-interface NetlifyRedirect {
+type NetlifyRedirect = {
 	from: string;
 	to: string;
 	status: number;
 	force?: boolean;
-}
+};
 
-interface VercelRedirect {
+type VercelRedirect = {
 	source: string;
 	destination: string;
 	permanent: boolean;
-}
+};
 
-interface ValidationIssue {
+type ValidationIssue = {
 	severity: "error" | "warning";
 	file: string;
 	rule: string;
 	message: string;
-}
+};
 
 const issues: ValidationIssue[] = [];
 

@@ -6,12 +6,12 @@ import Handle from "./Handle";
 import Tick from "./Tick";
 import Track from "./Track";
 
-interface SliderOption {
+type SliderOption = {
 	value: string | number;
 	label: string;
-}
+};
 
-interface SliderInputProps {
+type SliderInputProps = {
 	options?: SliderOption[];
 	value: string | number | null;
 	type: string;
@@ -20,7 +20,7 @@ interface SliderInputProps {
 		minLabel?: string;
 		maxLabel?: string;
 	};
-}
+};
 
 const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: SliderInputProps) => {
 	const isLikert = useCallback(() => type === "LIKERT", [type]);

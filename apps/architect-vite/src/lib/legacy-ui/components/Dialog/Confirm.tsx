@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-interface ConfirmProps {
+type ConfirmProps = {
 	title: string;
 	message?: ReactNode;
 	canCancel?: boolean;
@@ -11,7 +11,7 @@ interface ConfirmProps {
 	confirmLabel?: string;
 	cancelLabel?: string;
 	show?: boolean;
-}
+};
 
 /*
  * Designed to present yes/no choices to the user.

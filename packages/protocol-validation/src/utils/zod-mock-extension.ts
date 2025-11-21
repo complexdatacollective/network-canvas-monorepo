@@ -2,10 +2,10 @@
 import { z } from "zod";
 
 declare module "zod" {
-	interface ZodType {
+	type ZodType = {
 		generateMock(): z.output<this>;
 		generateMock<T extends z.output<this>>(generator: (() => T) | ((data: z.output<this>) => T)): this;
-	}
+	};
 }
 
 // Default mock generators for primitive types

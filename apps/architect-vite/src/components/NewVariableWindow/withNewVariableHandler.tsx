@@ -3,18 +3,18 @@ import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
-import { actionCreators as codebookActions } from "../../ducks/modules/protocol/codebook";
+import { createVariableAsync } from "../../ducks/modules/protocol/codebook";
 import { getVariablesForSubject } from "../../selectors/codebook";
 
 export const form = "create-new-variable";
 
 type Entity = "node" | "edge" | "ego";
 
-interface OwnProps {
+type OwnProps = {
 	entity: Entity;
 	type: string;
 	onComplete: (variable: string) => void;
-}
+};
 
 const mapStateToProps = (state: RootState, { entity, type }: OwnProps) => {
 	const variableType = formValueSelector(form)(state, "type");
@@ -27,7 +27,7 @@ const mapStateToProps = (state: RootState, { entity, type }: OwnProps) => {
 	};
 };
 
-const mapDispatchToProps = { createVariable: codebookActions.createVariable };
+const mapDispatchToProps = { createVariable: createVariableAsync };
 
 type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
 

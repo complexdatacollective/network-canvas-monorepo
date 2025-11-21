@@ -7,7 +7,7 @@ import { Boolean as BooleanField } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
 import type { RootState } from "~/ducks/store";
-import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
+import { createVariableAsync } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import EntitySelectField from "../fields/EntitySelectField/EntitySelectField";
@@ -29,7 +29,7 @@ export const createVariableHandler =
 		};
 
 		const result = await dispatch(
-			codebookActions.createVariable({
+			createVariableAsync({
 				entity: entity as "node" | "edge" | "ego",
 				type,
 				configuration,

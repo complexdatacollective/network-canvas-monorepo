@@ -1,5 +1,6 @@
 import { get } from "es-toolkit/compat";
 import { formValueSelector } from "redux-form";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/modules/root";
 import { getAssetManifest } from "~/selectors/protocol";
 import Grid from "../../Grid";
@@ -38,7 +39,7 @@ const denormalizeType = (state: RootState, { form, editField }: { form: string; 
 	};
 };
 
-const ContentGrid = (props: Record<string, unknown>) => (
+const ContentGrid = (props: StageEditorSectionProps) => (
 	<Grid
 		previewComponent={ItemPreview}
 		editComponent={ItemEditor}
@@ -46,8 +47,8 @@ const ContentGrid = (props: Record<string, unknown>) => (
 		itemSelector={denormalizeType}
 		title="Edit Items"
 		capacity={capacity}
-		form={props.form as string}
-		disabled={props.disabled as boolean}
+		form={props.form}
+		disabled={false}
 		{...props}
 	/>
 );

@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { CSSProperties, ReactNode } from "react";
 import Modal from "../Modal";
 
-interface SimpleDialogProps {
+type SimpleDialogProps = {
 	children?: ReactNode;
 	show?: boolean;
 	options?: React.ReactElement[];
@@ -10,7 +10,7 @@ interface SimpleDialogProps {
 	onBlur?: () => void;
 	className?: string;
 	style?: CSSProperties;
-}
+};
 
 /**
  * A relatively unstyled dialog for use in other kinds of modals

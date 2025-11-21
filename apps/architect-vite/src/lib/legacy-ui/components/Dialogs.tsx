@@ -59,18 +59,18 @@ const DialogVariants = {
  *   },
  * ]
  */
-interface Dialog {
+type Dialog = {
 	id: string;
 	type: keyof typeof DialogVariants;
 	onConfirm?: (dialog: Dialog) => void;
 	onCancel?: (dialog: Dialog) => void;
 	[key: string]: unknown;
-}
+};
 
-interface DialogsProps {
+type DialogsProps = {
 	dialogs?: Dialog[];
 	closeDialog: (id: string) => void;
-}
+};
 
 const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 	const handleConfirm = useCallback(

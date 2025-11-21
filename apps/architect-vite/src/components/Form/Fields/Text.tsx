@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "./MarkdownLabel";
 
-interface TextInputProps {
+type TextInputProps = {
 	input?: {
 		name?: string;
 		value?: string;
@@ -29,7 +29,7 @@ interface TextInputProps {
 	hidden?: boolean;
 	adornmentLeft?: React.ReactNode;
 	adornmentRight?: React.ReactNode;
-}
+};
 
 const TextInput = ({
 	input = {},

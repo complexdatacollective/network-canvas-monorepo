@@ -1,9 +1,10 @@
 import { Row, Section } from "~/components/EditorLayout";
 import { RichText, Text } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { ValidatedField } from "../../Form";
 import IssueAnchor from "../../IssueAnchor";
 
-const AnonymisationExplanation = () => (
+const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
 	<Section
 		title="Task Explanation"
 		summary={<p>Use this section to explain the anonymisation process to your participants.</p>}

@@ -4,7 +4,7 @@ import { get, isEmpty, noop } from "lodash";
 import { CrossIcon as ClearIcon, SearchIcon } from "lucide-react";
 import Text from "./Text";
 
-interface SearchProps {
+type SearchProps = {
 	input?: {
 		value?: string;
 		onChange?: (value: string) => void;
@@ -12,7 +12,7 @@ interface SearchProps {
 	};
 	color?: string;
 	[key: string]: unknown;
-}
+};
 
 const Search = ({ input = { onChange: noop }, color, ...props }: SearchProps) => {
 	const hasValue = !isEmpty(get({ input, ...props }, ["input", "value"], ""));

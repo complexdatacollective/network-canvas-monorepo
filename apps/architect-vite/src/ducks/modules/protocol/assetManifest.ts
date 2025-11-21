@@ -134,14 +134,11 @@ const assetManifestSlice = createSlice({
 	},
 });
 
-// Export action creators
-export const actionCreators = {
-	importAsset: importAssetAsync,
-	deleteAsset: (id: string) => assetManifestSlice.actions.deleteAsset(id),
-	addApiKeyAsset: (name: string, value: string) => {
-		const id = uuid();
-		return assetManifestSlice.actions.addApiKeyAsset({ id, name, value });
-	},
+// Export convenience wrappers with cleaner API
+export const deleteAsset = (id: string) => assetManifestSlice.actions.deleteAsset(id);
+export const addApiKeyAsset = (name: string, value: string) => {
+	const id = uuid();
+	return assetManifestSlice.actions.addApiKeyAsset({ id, name, value });
 };
 
 // Export for backwards compatibility and testing

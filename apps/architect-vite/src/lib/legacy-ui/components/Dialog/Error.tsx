@@ -21,9 +21,9 @@ const getMessage = ({
 const getStack = (error: Error | string | { stack?: string } | null) =>
 	!!error && typeof error === "object" && "stack" in error && error.stack;
 
-interface AdditionalInformationProps {
+type AdditionalInformationProps = {
 	stack?: string;
-}
+};
 
 const AdditionalInformation = ({ stack = null }: AdditionalInformationProps) => {
 	const [expanded, setExpanded] = useState(false);
@@ -46,14 +46,14 @@ const AdditionalInformation = ({ stack = null }: AdditionalInformationProps) => 
 	);
 };
 
-interface ErrorDialogProps {
+type ErrorDialogProps = {
 	error?: Error | string | { friendlyMessage?: string };
 	message?: ReactNode;
 	onConfirm: () => void;
 	show?: boolean;
 	confirmLabel?: string;
 	title?: string;
-}
+};
 
 /*
  * Designed to present errors to the user. Unlike some other Dialog types user must

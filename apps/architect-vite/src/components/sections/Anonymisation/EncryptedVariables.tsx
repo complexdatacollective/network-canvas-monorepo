@@ -5,26 +5,27 @@ import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
 import { CheckboxGroup } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 import { getNodeTypes } from "~/selectors/codebook";
-import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
+import { updateVariableByUUID } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import Tip from "../../Tip";
 
-interface Variable {
+type Variable = {
 	name: string;
 	encrypted?: boolean;
 	[key: string]: unknown;
-}
+};
 
-interface NodeType {
+type NodeType = {
 	name: string;
 	variables?: Record<string, Variable>;
 	[key: string]: unknown;
-}
+};
 
-const EncryptedVariables = () => {
+const EncryptedVariables = (_props: StageEditorSectionProps) => {
 	const dispatch = useDispatch<Dispatch<UnknownAction>>();
 	const openDialog = useCallback(
 		(dialog: Parameters<typeof dialogActions.openDialog>[0]) => dispatch(dialogActions.openDialog(dialog)),
@@ -36,7 +37,7 @@ const EncryptedVariables = () => {
 		(variableId: string, encrypted: boolean, variable: Variable) => {
 			const properties = encrypted ? { ...variable, encrypted: true } : omit(variable, "encrypted");
 
-			dispatch(codebookActions.updateVariableByUUID(variableId, properties, false));
+			dispatch(updateVariableByUUID(variableId, properties, false));
 		},
 		[dispatch],
 	);

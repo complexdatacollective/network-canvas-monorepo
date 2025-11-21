@@ -1,4 +1,4 @@
-interface TrackProps {
+type TrackProps = {
 	source: {
 		id: string;
 		value: number;
@@ -10,7 +10,7 @@ interface TrackProps {
 		percent: number;
 	};
 	getTrackProps: () => Record<string, unknown>;
-}
+};
 
 const Track = ({ source, target, getTrackProps }: TrackProps) => (
 	<div

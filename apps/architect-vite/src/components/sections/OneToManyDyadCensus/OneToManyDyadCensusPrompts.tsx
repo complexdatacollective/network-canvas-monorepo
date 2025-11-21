@@ -1,13 +1,13 @@
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-type OneToManyDyadCensusPromptsProps = {
-	form: string;
+export type OneToManyDyadCensusPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
@@ -38,4 +38,4 @@ const OneToManyDyadCensusPrompts = ({ form, entity, type, disabled }: OneToManyD
 export default compose(
 	withSubject,
 	withDisabledSubjectRequired,
-)(OneToManyDyadCensusPrompts as React.ComponentType<unknown>);
+)(OneToManyDyadCensusPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;

@@ -2,10 +2,10 @@
 
 import Slider from "./Slider";
 
-interface LikertScaleProps {
+type LikertScaleProps = {
 	options: unknown[];
 	[key: string]: unknown;
-}
+};
 
 const LikertScale = (props: LikertScaleProps) => <Slider {...props} />;
 

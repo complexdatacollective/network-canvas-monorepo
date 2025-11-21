@@ -3,7 +3,7 @@ import Icon from "~/lib/legacy-ui/components/Icon";
 import MarkdownLabel from "./MarkdownLabel";
 import Slider from "./Slider/Slider";
 
-interface SliderFieldProps {
+type SliderFieldProps = {
 	label?: React.ReactNode;
 	className?: string;
 	hidden?: boolean;
@@ -31,7 +31,7 @@ interface SliderFieldProps {
 	}> | null;
 	fieldLabel?: string | null;
 	type: string;
-}
+};
 
 const getSliderType = (variableType: string) => {
 	switch (variableType) {

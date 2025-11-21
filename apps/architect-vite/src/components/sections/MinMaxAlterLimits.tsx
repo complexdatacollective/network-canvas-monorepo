@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Number } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 import { ValidatedField } from "../Form";
@@ -31,7 +32,7 @@ const minValidation = (value: number | null | undefined, allValues: Record<strin
 	return value <= maxValue ? undefined : "Minimum number of alters must be less than or equal to the maximum number";
 };
 
-const MinMaxAlterLimits = () => {
+const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 	const formSelector = useMemo(() => formValueSelector("edit-stage"), []);
 	const currentMinValue = useSelector(
 		(state: RootState) => formSelector(state, "behaviours.minNodes") as number | undefined,

@@ -3,13 +3,10 @@ import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Validations from "~/components/Validations";
 
-interface AnonymisationValidationProps {
-	form: string;
-}
-
-const AnonymisationValidation = ({ form }: AnonymisationValidationProps) => {
+const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
 	const dispatch = useDispatch();
 
 	// Create memoized selector for hasValidation

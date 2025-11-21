@@ -3,6 +3,7 @@ import EditableList from "~/components/EditableList";
 import { Section } from "~/components/EditorLayout";
 import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubjectRequired";
 import withSubject from "~/components/enhancers/withSubject";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { itemSelector } from "~/components/sections/CategoricalBinPrompts/helpers";
 import withPromptChangeHandler from "~/components/sections/CategoricalBinPrompts/withPromptChangeHandler";
 import { PromptPreview } from "~/components/sections/NameGeneratorPrompts";
@@ -10,13 +11,13 @@ import PromptFields from "./PromptFields";
 
 const template = () => ({ color: "ord-color-seq-1" });
 
-interface OrdinalBinPromptsProps {
+type OrdinalBinPromptsProps = {
 	handleChangePrompt: (data: unknown) => void;
 	entity?: string | null;
 	type?: string | null;
 	form: string;
 	disabled?: boolean;
-}
+};
 
 const OrdinalBinPrompts = ({
 	handleChangePrompt,
@@ -52,4 +53,4 @@ export default compose(
 	withSubject,
 	withDisabledSubjectRequired,
 	withPromptChangeHandler,
-)(OrdinalBinPrompts as React.ComponentType<unknown>);
+)(OrdinalBinPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;

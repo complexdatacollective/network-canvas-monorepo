@@ -14,9 +14,9 @@ import {
 	UndoIcon,
 } from "lucide-react";
 
-interface IconProps {
+type IconProps = {
 	name: string;
-}
+};
 
 const icons: Record<string, React.ComponentType<{ style?: React.CSSProperties }>> = {
 	bold: BoldIcon,

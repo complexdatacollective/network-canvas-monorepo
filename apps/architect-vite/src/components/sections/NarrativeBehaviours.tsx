@@ -1,9 +1,10 @@
 import { Field, FormSection } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Toggle } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import IssueAnchor from "../IssueAnchor";
 
-const NarrativeBehaviours = () => (
+const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
 	<Section title="Narrative Behaviours">
 		<FormSection name="behaviours">
 			<IssueAnchor fieldName="freeDraw" description="Free draw" />

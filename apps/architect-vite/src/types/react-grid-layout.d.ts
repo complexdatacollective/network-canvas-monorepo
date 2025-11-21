@@ -1,7 +1,7 @@
 declare module "react-grid-layout" {
 	import type * as React from "react";
 
-	export interface Layout {
+	export type Layout = {
 		i: string;
 		x: number;
 		y: number;
@@ -15,9 +15,9 @@ declare module "react-grid-layout" {
 		isDraggable?: boolean;
 		isResizable?: boolean;
 		resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
-	}
+	};
 
-	export interface GridLayoutProps {
+	export type GridLayoutProps = {
 		className?: string;
 		style?: React.CSSProperties;
 		width?: number;
@@ -93,7 +93,7 @@ declare module "react-grid-layout" {
 		onDrop?: (layout: Layout[], item: Layout, event: Event) => void;
 		children?: React.ReactNode;
 		height?: number;
-	}
+	};
 
 	export default class GridLayout extends React.Component<GridLayoutProps> {}
 }

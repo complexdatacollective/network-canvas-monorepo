@@ -1,10 +1,10 @@
 declare module "animejs" {
-	interface AnimeTimelineInstance {
+	type AnimeTimelineInstance = {
 		add(params: AnimeParams): this;
 		finished: Promise<void>;
-	}
+	};
 
-	interface AnimeParams {
+	type AnimeParams = {
 		targets: Element | Element[] | string;
 		[key: string]: unknown;
 		duration?: number;
@@ -17,11 +17,11 @@ declare module "animejs" {
 		scaleY?: number | [number, number];
 		opacity?: number | [number, number];
 		backgroundColor?: string | string[];
-	}
+	};
 
-	interface AnimeInstance {
+	type AnimeInstance = {
 		timeline(): AnimeTimelineInstance;
-	}
+	};
 
 	const anime: AnimeInstance;
 	export default anime;

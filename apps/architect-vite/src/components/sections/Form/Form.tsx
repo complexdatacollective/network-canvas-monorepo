@@ -6,14 +6,14 @@ import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubj
 import withSubject from "~/components/enhancers/withSubject";
 import TextField from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";
 import { itemSelector, normalizeField } from "./helpers";
 import withFormHandlers from "./withFormHandlers";
 
-type FormProps = {
+export type FormProps = StageEditorSectionProps & {
 	handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
-	form: string;
 	disabled?: boolean;
 	disableFormTitle?: boolean;
 	type?: string | null;
@@ -72,4 +72,4 @@ export default compose(
 	withFormHandlers,
 	withDisabledFormTitle,
 	withDisabledSubjectRequired,
-)(Form as React.ComponentType<unknown>);
+)(Form) as unknown as React.ComponentType<StageEditorSectionProps>;

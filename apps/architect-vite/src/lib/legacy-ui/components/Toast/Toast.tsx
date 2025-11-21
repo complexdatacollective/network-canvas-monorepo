@@ -7,7 +7,7 @@ import Icon from "../Icon";
 
 type ToastType = "info" | "warning" | "error" | "success";
 
-interface ToastProps {
+type ToastProps = {
 	id: string | number;
 	title: string;
 	content: ReactNode | (() => ReactNode);
@@ -17,7 +17,7 @@ interface ToastProps {
 	dismissDuration?: number;
 	CustomIcon?: ReactNode | null;
 	className?: string;
-}
+};
 
 const Toast = ({
 	id,

@@ -7,7 +7,7 @@ import { format, parse } from "~/components/TypeEditor/convert";
 import getNewTypeTemplate from "~/components/TypeEditor/getNewTypeTemplate";
 import TypeEditor from "~/components/TypeEditor/TypeEditor";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { createTypeAsync, updateTypeAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getProtocol } from "~/selectors/protocol";
 
@@ -46,7 +46,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 	const updateType = useCallback(
 		(entityType: string, typeKey: string, form: Record<string, unknown>) => {
 			// @ts-expect-error - thunk action returns promise
-			return dispatch(codebookActions.updateType({ entity: entityType, type: typeKey, configuration: parse(form) }));
+			return dispatch(updateTypeAsync({ entity: entityType, type: typeKey, configuration: parse(form) }));
 		},
 		[dispatch],
 	);
@@ -54,7 +54,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 	const createType = useCallback(
 		(entityType: string, form: Record<string, unknown>) => {
 			// @ts-expect-error - thunk action returns promise
-			return dispatch(codebookActions.createType({ entity: entityType, configuration: parse(form) }));
+			return dispatch(createTypeAsync({ entity: entityType, configuration: parse(form) }));
 		},
 		[dispatch],
 	);

@@ -5,7 +5,7 @@ import { Provider } from "react-redux";
 import type { InjectedFormProps } from "redux-form";
 import { change, reduxForm } from "redux-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { actionCreators as codebookActions } from "../../../../ducks/modules/protocol/codebook";
+import { createVariableAsync } from "../../../../ducks/modules/protocol/codebook";
 import type { RootState } from "../../../../ducks/modules/root";
 import { rootReducer } from "../../../../ducks/modules/root";
 import PromptFields from "../PromptFields";
@@ -133,7 +133,7 @@ export const testPromptFields = (PromptFieldsComponent: typeof PromptFields, nam
 				expect(subject.container.querySelectorAll('[data-testid="option"]')).toHaveLength(2);
 
 				mockStore.dispatch(
-					codebookActions.createVariable({
+					createVariableAsync({
 						entity: "node",
 						type: "person",
 						variable: "809895df-bbd7-4c76-ac58-e6ada2625f9b",

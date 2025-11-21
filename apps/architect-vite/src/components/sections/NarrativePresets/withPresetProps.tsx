@@ -2,7 +2,7 @@ import type { UnknownAction } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { createVariableAsync, deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getEdgesForSubject, getNarrativeVariables } from "./selectors";
 
@@ -22,16 +22,16 @@ const mapStateToProps = (state: RootState, { entity, type, form }: { entity: str
 };
 
 const mapDispatchToProps = {
-	createVariable: codebookActions.createVariable,
-	deleteVariable: codebookActions.deleteVariable,
+	createVariable: createVariableAsync,
+	deleteVariable: deleteVariableAsync,
 	changeForm: change,
 };
 
 type HandlerProps = {
 	form: string;
 	changeForm: typeof change;
-	createVariable: typeof codebookActions.createVariable;
-	deleteVariable: typeof codebookActions.deleteVariable;
+	createVariable: typeof createVariableAsync;
+	deleteVariable: typeof deleteVariableAsync;
 	entity: string;
 	type: string;
 };

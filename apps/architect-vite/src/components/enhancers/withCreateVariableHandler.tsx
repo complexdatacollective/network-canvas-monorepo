@@ -2,12 +2,12 @@ import { isEmpty } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change } from "redux-form";
-import { actionCreators as codebookActions } from "../../ducks/modules/protocol/codebook";
+import { createVariableAsync, deleteVariableAsync } from "../../ducks/modules/protocol/codebook";
 import safeName from "../../utils/safeName";
 
 const mapDispatchToProps = {
-	createVariable: codebookActions.createVariable,
-	deleteVariable: codebookActions.deleteVariable,
+	createVariable: createVariableAsync,
+	deleteVariable: deleteVariableAsync,
 	changeField: change,
 };
 
@@ -20,8 +20,8 @@ const normalizeKeyDown = (event: React.KeyboardEvent) => {
 };
 
 type ConnectedProps = {
-	createVariable: typeof codebookActions.createVariable;
-	deleteVariable: typeof codebookActions.deleteVariable;
+	createVariable: typeof createVariableAsync;
+	deleteVariable: typeof deleteVariableAsync;
 	changeField: typeof change;
 };
 

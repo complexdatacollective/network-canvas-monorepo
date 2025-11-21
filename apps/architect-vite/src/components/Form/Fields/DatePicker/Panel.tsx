@@ -2,12 +2,12 @@ import cx from "classnames";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
-interface PanelProps {
+type PanelProps = {
 	type?: string | null;
 	isComplete?: boolean;
 	isActive?: boolean;
 	children?: ReactNode;
-}
+};
 
 const getAnimation = ({ isComplete, isActive }: { isComplete: boolean; isActive: boolean }) => {
 	if (isComplete) {

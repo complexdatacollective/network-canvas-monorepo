@@ -3,12 +3,12 @@
 import type { ReactNode } from "react";
 import type { RenderLeafProps } from "slate-react";
 
-interface CustomLeaf {
+type CustomLeaf = {
 	bold?: boolean;
 	italic?: boolean;
 	underline?: boolean;
 	text: string;
-}
+};
 
 interface LeafProps extends RenderLeafProps {
 	leaf: CustomLeaf;

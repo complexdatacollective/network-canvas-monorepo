@@ -3,12 +3,12 @@ import { useSlate } from "slate-react";
 import Icon from "./Icon";
 import { isBlockActive, isMarkActive, toggleBlock, toggleMark } from "./lib/actions";
 
-interface ToolbarButtonProps {
+type ToolbarButtonProps = {
 	isActive?: boolean;
 	icon: string;
 	tooltip: string;
 	action: () => void;
-}
+};
 
 export const ToolbarButton = ({ isActive = false, icon, tooltip, action }: ToolbarButtonProps) => (
 	<button
@@ -24,11 +24,11 @@ export const ToolbarButton = ({ isActive = false, icon, tooltip, action }: Toolb
 	</button>
 );
 
-interface BlockButtonProps {
+type BlockButtonProps = {
 	format: string;
 	icon: string;
 	tooltip?: string | null;
-}
+};
 
 export const BlockButton = ({ format, icon, tooltip = null }: BlockButtonProps) => {
 	const editor = useSlate();
@@ -42,11 +42,11 @@ export const BlockButton = ({ format, icon, tooltip = null }: BlockButtonProps) 
 	);
 };
 
-interface MarkButtonProps {
+type MarkButtonProps = {
 	format: string;
 	icon: string;
 	tooltip?: string | null;
-}
+};
 
 export const MarkButton = ({ format, icon, tooltip = null }: MarkButtonProps) => {
 	const editor = useSlate();

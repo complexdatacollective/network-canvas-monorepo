@@ -6,14 +6,15 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import Tip from "../../Tip";
 import getVariableOptionsGetter from "../SortOptionsForExternalData/getVariableOptionsGetter";
 
-interface CardDisplayOptionsProps {
+type CardDisplayOptionsProps = {
 	dataSource: string;
 	disabled: boolean;
-}
+};
 
 const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
@@ -86,4 +87,4 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 export default compose(
 	withMapFormToProps("dataSource"),
 	withDisabledAssetRequired,
-)(CardDisplayOptions as React.ComponentType<unknown>);
+)(CardDisplayOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

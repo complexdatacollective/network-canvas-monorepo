@@ -116,7 +116,7 @@ const activeProtocolSlice = createSlice({
 // Extract actions and selectors
 const actions = activeProtocolSlice.actions;
 export const setActiveProtocol = actions.setActiveProtocol!;
-export const updateProtocol = actions.updateProtocol!;
+const updateProtocol = actions.updateProtocol!;
 export const updateProtocolOptions = actions.updateProtocolOptions!;
 export const markProtocolSaved = actions.markProtocolSaved!;
 export const clearActiveProtocol = actions.clearActiveProtocol!;
@@ -130,12 +130,6 @@ export const actionCreators = {
 	updateProtocolOptions,
 	markProtocolSaved,
 	clearActiveProtocol,
-};
-
-// Additional selectors
-export const selectHasActiveProtocol = (state: RootState): boolean => {
-	const protocol = selectActiveProtocol(state.activeProtocol);
-	return protocol !== null && Object.keys(protocol).length > 0;
 };
 
 // Export the reducer as default

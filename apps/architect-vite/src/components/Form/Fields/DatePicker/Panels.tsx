@@ -1,9 +1,9 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
-interface PanelsProps {
+type PanelsProps = {
 	children?: ReactNode;
-}
+};
 
 const Panels = ({ children = null }: PanelsProps) => (
 	<motion.div
