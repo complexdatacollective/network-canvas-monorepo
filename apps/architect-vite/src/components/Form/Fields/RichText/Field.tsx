@@ -1,16 +1,17 @@
 import cx from "classnames";
+import type React from "react";
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
 import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import RichText from "./RichText";
 
-interface RichTextFieldProps {
+type RichTextFieldProps = {
 	input: {
 		value: string;
 		onChange: (value: string) => void;
-		onFocus?: () => void;
-		onBlur?: () => void;
+		onFocus?: React.FocusEventHandler;
+		onBlur?: React.FocusEventHandler;
 	};
 	meta?: {
 		error?: string;
@@ -24,7 +25,7 @@ interface RichTextFieldProps {
 	inline?: boolean;
 	disallowedTypes?: string[];
 	className?: string | null;
-}
+};
 
 const RichTextField = ({
 	input,

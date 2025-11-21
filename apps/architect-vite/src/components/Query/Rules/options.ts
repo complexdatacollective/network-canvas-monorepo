@@ -9,8 +9,8 @@ export const validTypes = new Set(Object.keys(omit(VARIABLE_TYPES, disallowedVar
 
 // Todo: commented out options below to be reinstated when we switch to schema 8
 
-// List of operators
-export const operators = {
+// List of operators (internal use only)
+const operators = {
 	EXACTLY: "EXACTLY",
 	EXISTS: "EXISTS",
 	INCLUDES: "INCLUDES",

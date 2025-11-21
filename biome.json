@@ -26,7 +26,14 @@
 				"noUnusedTemplateLiteral": "error",
 				"useNumberNamespace": "error",
 				"noInferrableTypes": "error",
-				"noUselessElse": "error"
+				"noUselessElse": "error",
+				"useConsistentTypeDefinitions": {
+					"level": "error",
+					"fix": "safe",
+					"options": {
+						"style": "type"
+					}
+				}
 			}
 		}
 	},
@@ -51,7 +58,11 @@
 		"ignoreUnknown": true,
 		"includes": ["**", "!**/public/**/*.*", "!!**/*.css"]
 	},
-	"javascript": { "formatter": { "quoteStyle": "double" } },
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
 	"css": {
 		"parser": {
 			"cssModules": true,

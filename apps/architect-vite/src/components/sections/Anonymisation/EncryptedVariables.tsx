@@ -1,33 +1,36 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
-import type { Dispatch } from "react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { CheckboxGroup } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
+import type { AppDispatch } from "~/ducks/store";
 import { getNodeTypes } from "~/selectors/codebook";
-import { actionCreators as codebookActions } from "../../../ducks/modules/protocol/codebook";
+import { updateVariableByUUID } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import Tip from "../../Tip";
 
-interface Variable {
+type Variable = {
 	name: string;
 	encrypted?: boolean;
 	[key: string]: unknown;
-}
+};
 
-interface NodeType {
+type NodeType = {
 	name: string;
 	variables?: Record<string, Variable>;
 	[key: string]: unknown;
-}
+};
 
-const EncryptedVariables = () => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+const EncryptedVariables = (_props: StageEditorSectionProps) => {
+	const dispatch = useDispatch<AppDispatch>();
 	const openDialog = useCallback(
-		(dialog: Parameters<typeof dialogActions.openDialog>[0]) => dispatch(dialogActions.openDialog(dialog)),
+		async (dialog: Parameters<typeof dialogActions.openDialog>[0]) => {
+			const result = await dispatch(dialogActions.openDialog(dialog));
+			return result.payload as boolean;
+		},
 		[dispatch],
 	);
 	const nodeTypes = useSelector((state: RootState) => getNodeTypes(state) as Record<string, NodeType>);
@@ -36,7 +39,7 @@ const EncryptedVariables = () => {
 		(variableId: string, encrypted: boolean, variable: Variable) => {
 			const properties = encrypted ? { ...variable, encrypted: true } : omit(variable, "encrypted");
 
-			dispatch(codebookActions.updateVariableByUUID(variableId, properties, false));
+			void dispatch(updateVariableByUUID(variableId, properties, false));
 		},
 		[dispatch],
 	);
@@ -67,6 +70,34 @@ const EncryptedVariables = () => {
 		},
 		[openDialog, handleEncryptionToggle],
 	);
+
+	const nodeTypeVariableData = useMemo(
+		() =>
+			Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
+				const variables = nodeType.variables || {};
+				const hasEncryptedVariable = Object.values(variables).some((variable) => variable?.encrypted);
+
+				const variableOptions = Object.entries(variables).map(([variableId, variable]) => ({
+					value: variableId,
+					label: variable.name,
+				}));
+
+				const encryptedVariableIds = Object.entries(variables)
+					.filter(([, variable]) => variable?.encrypted)
+					.map(([variableId]) => variableId);
+
+				return {
+					nodeTypeId,
+					nodeType,
+					variables,
+					hasEncryptedVariable,
+					variableOptions,
+					encryptedVariableIds,
+				};
+			}),
+		[nodeTypes],
+	);
+
 	return (
 		<Section
 			title="Encrypted Variables"
@@ -81,29 +112,8 @@ const EncryptedVariables = () => {
 				</>
 			}
 		>
-			{Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
-				const hasEncryptedVariable = Object.values(nodeType.variables || {}).some((variable) => variable?.encrypted);
-
-				// Memoize these calculations to avoid recreating arrays on every render
-				const variables = nodeType.variables || {};
-				const variableOptions = useMemo(
-					() =>
-						Object.entries(variables).map(([variableId, variable]) => ({
-							value: variableId,
-							label: variable.name,
-						})),
-					[variables],
-				);
-
-				const encryptedVariableIds = useMemo(
-					() =>
-						Object.entries(variables)
-							.filter(([, variable]) => variable?.encrypted)
-							.map(([variableId]) => variableId),
-					[variables],
-				);
-
-				return (
+			{nodeTypeVariableData.map(
+				({ nodeTypeId, nodeType, variables, hasEncryptedVariable, variableOptions, encryptedVariableIds }) => (
 					<Section
 						toggleable
 						title={nodeType.name}
@@ -120,12 +130,12 @@ const EncryptedVariables = () => {
 							}}
 						>
 							<DetachedField
-								component={Fields.CheckboxGroup}
+								component={CheckboxGroup}
 								options={variableOptions}
 								value={encryptedVariableIds}
-								onChange={(selectedValues: string[]) => {
+								onChange={(_event: unknown, nextValue: string[]) => {
 									Object.entries(variables).forEach(([variableId, variable]) => {
-										const shouldEncrypt = selectedValues.includes(variableId);
+										const shouldEncrypt = nextValue.includes(variableId);
 										if (variable?.encrypted !== shouldEncrypt) {
 											handleEncryptionToggle(variableId, shouldEncrypt, variable);
 										}
@@ -134,8 +144,8 @@ const EncryptedVariables = () => {
 							/>
 						</div>
 					</Section>
-				);
-			})}
+				),
+			)}
 		</Section>
 	);
 };

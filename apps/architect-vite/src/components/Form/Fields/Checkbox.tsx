@@ -5,7 +5,7 @@ import { memo, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import MarkdownLabel from "./MarkdownLabel";
 
-interface CheckboxProps {
+export type CheckboxProps = {
 	label?: React.ReactNode;
 	fieldLabel?: string;
 	className?: string;
@@ -17,7 +17,7 @@ interface CheckboxProps {
 		[key: string]: unknown;
 	};
 	[key: string]: unknown;
-}
+};
 
 const Checkbox = ({ label, className = "", input, disabled = false, fieldLabel, ...rest }: CheckboxProps) => {
 	const id = useRef(uuid());

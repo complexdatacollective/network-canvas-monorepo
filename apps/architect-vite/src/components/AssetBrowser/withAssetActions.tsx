@@ -1,21 +1,21 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
-import { actionCreators as assetActions } from "../../ducks/modules/protocol/assetManifest";
+import { deleteAsset, importAssetAsync } from "../../ducks/modules/protocol/assetManifest";
 
 type ConnectedActions = {
-	deleteAsset: typeof assetActions.deleteAsset;
-	importAsset: typeof assetActions.importAsset;
+	deleteAsset: typeof deleteAsset;
+	importAsset: typeof importAssetAsync;
 	openDialog: typeof dialogActions.openDialog;
 };
 
 const connectActions = connect(null, {
-	deleteAsset: assetActions.deleteAsset,
-	importAsset: assetActions.importAsset,
+	deleteAsset,
+	importAsset: importAssetAsync,
 	openDialog: dialogActions.openDialog,
 });
 
-const assetHandlers = withHandlers<ConnectedActions, {}>({
+const assetHandlers = withHandlers<ConnectedActions, object>({
 	onDelete:
 		({ deleteAsset, openDialog }: ConnectedActions) =>
 		(assetId: string, isUsed = false) => {

@@ -1,17 +1,41 @@
 import { connect } from "react-redux";
 import { compose, withHandlers, withState } from "recompose";
 import { change, formValueSelector } from "redux-form";
+import type { RootState } from "~/ducks/modules/root";
 
-const withBackgroundChangeHandlerState = connect(
+type OwnProps = {
+	form: string;
+};
+
+type StateProps = {
+	useImage: boolean;
+};
+
+type DispatchProps = {
+	changeForm: typeof change;
+};
+
+type WithStateProps = StateProps &
+	DispatchProps &
+	OwnProps & {
+		setUseImage: (useImage: boolean) => void;
+	};
+
+const withBackgroundChangeHandlerState = connect<StateProps, DispatchProps, OwnProps, RootState>(
 	(state, { form }) => ({
 		useImage: !!formValueSelector(form)(state, "background.image"),
 	}),
 	{ changeForm: change },
 );
 
-const withBackgroundChangeHandlerEnabled = withState("useImage", "setUseImage", ({ useImage }) => !!useImage);
+const withBackgroundChangeHandlerEnabled = withState<
+	StateProps & DispatchProps & OwnProps,
+	boolean,
+	"useImage",
+	"setUseImage"
+>("useImage", "setUseImage", ({ useImage }) => !!useImage);
 
-const withBackgroundChangeHandlers = withHandlers({
+const withBackgroundChangeHandlers = withHandlers<WithStateProps, { handleChooseBackgroundType: () => void }>({
 	handleChooseBackgroundType:
 		({ setUseImage, useImage, form, changeForm }) =>
 		() => {

@@ -1,13 +1,14 @@
 import { isEmpty, omit } from "lodash";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
 import PresetFields from "./PresetFields";
 import PresetPreview from "./PresetPreview";
 
-const normalizePreset = (values) => {
+const normalizePreset = (values: Record<string, unknown>) => {
 	if (isEmpty(values.groupVariable)) {
 		return omit(values, ["groupVariable"]);
 	}
@@ -42,7 +43,7 @@ const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProp
 		title="Narrative Presets"
 	>
 		<EditableList
-			previewComponent={PresetPreview}
+			previewComponent={PresetPreview as React.ComponentType<Record<string, unknown>>}
 			editComponent={PresetFields}
 			title="Edit Preset"
 			fieldName="presets"
@@ -54,6 +55,7 @@ const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProp
 	</Section>
 );
 
-export { NarrativePresets };
-
-export default compose(withSubject, withDisabledSubjectRequired)(NarrativePresets as React.ComponentType<unknown>);
+export default compose(
+	withSubject,
+	withDisabledSubjectRequired,
+)(NarrativePresets) as unknown as React.ComponentType<StageEditorSectionProps>;

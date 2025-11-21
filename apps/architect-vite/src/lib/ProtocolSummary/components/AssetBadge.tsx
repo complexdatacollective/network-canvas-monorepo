@@ -9,12 +9,16 @@ type AssetBadgeProps = {
 	link?: boolean;
 };
 
-const AssetBadge = ({ id, link = false }: AssetBadgeProps) => {
-	const {
-		protocol: { assetManifest },
-	} = useContext(SummaryContext);
+type AssetData = {
+	name?: string;
+	type?: string;
+	[key: string]: unknown;
+};
 
-	const data = get(assetManifest, id);
+const AssetBadge = ({ id, link = false }: AssetBadgeProps) => {
+	const { protocol } = useContext(SummaryContext);
+
+	const data = get(protocol.assetManifest, id) as AssetData | undefined;
 
 	if (!data) {
 		return `Asset ${id} not found`;

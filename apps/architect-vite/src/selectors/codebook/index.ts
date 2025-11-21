@@ -7,26 +7,26 @@ import { asOptions } from "../utils";
 import { type GetIsUsedOptions, makeOptionsWithIsUsedSelector } from "./isUsed";
 
 // Types
-interface Subject {
+type Subject = {
 	entity: "node" | "edge" | "ego";
 	type?: string;
-}
+};
 
-interface VariableWithEntity {
+type VariableWithEntity = {
 	uuid: string;
 	name: string;
 	entity: "node" | "edge" | "ego";
 	entityType: string | null;
 	type: string;
-}
+};
 
-interface VariableOption {
+type VariableOption = {
 	label: string;
 	value: string;
 	type?: string;
 	color?: string;
 	isUsed?: boolean;
-}
+};
 
 type NodeTypes = Record<string, NodeDefinition>;
 type EdgeTypes = Record<string, EdgeDefinition>;
@@ -42,10 +42,8 @@ export const getEdgeTypes = createSelector(
 	(codebook): EdgeTypes => get(codebook, "edge", {}) as EdgeTypes,
 );
 
-export const getEgoDefinition = createSelector([getCodebook], (codebook): EgoDefinition | undefined => codebook?.ego);
-
 // Memoized selector for getting a specific type
-export const getTypeSelector = createSelector(
+const getTypeSelector = createSelector(
 	[getCodebook, (_state: RootState, subject: Subject) => subject],
 	(codebook, subject): NodeDefinition | EdgeDefinition | EgoDefinition | null => {
 		if (!subject || !codebook) {
@@ -71,16 +69,8 @@ export const getVariablesForSubjectSelector = createSelector(
 export const getVariablesForSubject = (state: RootState, subject: Subject): Variables =>
 	getVariablesForSubjectSelector(state, subject);
 
-// Factory function for creating a memoized selector for variables
-export const makeGetVariablesForSubject = () =>
-	createSelector([getCodebook, (_state: RootState, subject: Subject) => subject], (codebook, subject): Variables => {
-		if (!subject || !codebook) return {};
-		const path = subject.type ? [subject.entity, subject.type, "variables"] : [subject.entity, "variables"];
-		return get(codebook, path, {}) as Variables;
-	});
-
 // Memoized selector for getting all variables flattened by UUID
-export const getAllVariablesByUUIDSelector = createSelector([getCodebook], (codebook): Variables => {
+const _getAllVariablesByUUIDSelector = createSelector([getCodebook], (codebook): Variables => {
 	if (!codebook) {
 		return {};
 	}
@@ -154,7 +144,7 @@ export const getAllVariablesByUUID = (codebook: Codebook): Variables => {
 };
 
 // Memoized selector for getting all variables with entity information
-export const getAllVariablesByEntitySelector = createSelector([getCodebook], (codebook): VariableWithEntity[] => {
+const getAllVariablesByEntitySelector = createSelector([getCodebook], (codebook): VariableWithEntity[] => {
 	if (!codebook) return [];
 
 	const variables: VariableWithEntity[] = [];
@@ -263,10 +253,6 @@ export const getAllVariableUUIDsByEntity = (codebook: Codebook): VariableWithEnt
 export const makeGetVariableWithEntity = (uuid: string) =>
 	createSelector([getAllVariablesByEntitySelector], (variables) => find(variables, { uuid }));
 
-// Memoized selector for getting a variable by UUID
-export const makeGetVariableSelector = (uuid: string) =>
-	createSelector([getAllVariablesByUUIDSelector], (variables) => get(variables, uuid, null));
-
 // Legacy function for backward compatibility
 export const makeGetVariable = (uuid: string) => (state: RootState) => {
 	const codebook = getCodebook(state);
@@ -324,26 +310,8 @@ export const getVariableOptionsForSubject = (
 	isUsedOptions: GetIsUsedOptions = {},
 ): VariableOption[] => getVariableOptionsForSubjectSelector(state, subject, isUsedOptions);
 
-// Factory for creating a memoized selector for variable options
-export const makeGetVariableOptionsForSubject = () => {
-	const optionsSelector = getVariableOptionsSelector();
-
-	return createSelector(
-		[
-			(state: RootState) => state,
-			(_state: RootState, subject: Subject) => subject,
-			(_state: RootState, _subject: Subject, isUsedOptions: GetIsUsedOptions = {}) => isUsedOptions,
-		],
-		(state, subject, isUsedOptions): VariableOption[] => {
-			const variables = getVariablesForSubject(state, subject);
-			const selector = optionsSelector(isUsedOptions);
-			return selector(state, variables);
-		},
-	);
-};
-
-// Memoized selector for getting options for a specific variable
-export const getOptionsForVariableSelector = createSelector(
+// Internal memoized selector for getting options for a specific variable (used by getOptionsForVariable below)
+const getOptionsForVariableSelector = createSelector(
 	[getVariablesForSubjectSelector, (_state: RootState, _subject: Subject, variable: string) => variable],
 	(variables, variable): unknown[] => {
 		return get(variables, [variable, "options"], []);

@@ -17,13 +17,6 @@ const variants = {
 const CodeView = ({ toggleCodeView, show = false, form }: CodeViewProps) => {
 	const code = useSelector(getFormValues(form));
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			toggleCodeView();
-		}
-	};
-
 	return createPortal(
 		<motion.div className="code-view" variants={variants} initial="hide" animate={show ? "show" : "hide"}>
 			<div className="code-view__content">
@@ -31,15 +24,9 @@ const CodeView = ({ toggleCodeView, show = false, form }: CodeViewProps) => {
 					<code>{show && JSON.stringify(code, null, 2)}</code>
 				</pre>
 			</div>
-			<div
-				className="code-view__controls"
-				onClick={toggleCodeView}
-				onKeyDown={handleKeyDown}
-				role="button"
-				tabIndex={0}
-			>
+			<button type="button" className="code-view__controls" onClick={toggleCodeView}>
 				Close code view
-			</div>
+			</button>
 		</motion.div>,
 		document.body,
 	);

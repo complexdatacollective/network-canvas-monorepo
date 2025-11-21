@@ -12,6 +12,12 @@ type OwnProps = {
 	id: string;
 };
 
+type WithMetaProps = {
+	meta: {
+		name: string;
+	};
+};
+
 const mapStateToProps = (state: RootState, { id }: OwnProps) => {
 	const assetManifest = getAssetManifest(state);
 	const meta = get(assetManifest, id, existingMeta);
@@ -21,6 +27,6 @@ const mapStateToProps = (state: RootState, { id }: OwnProps) => {
 	};
 };
 
-const withAssetMeta = compose(connect(mapStateToProps));
+const withAssetMeta = compose<WithMetaProps & OwnProps, OwnProps>(connect(mapStateToProps));
 
 export default withAssetMeta;

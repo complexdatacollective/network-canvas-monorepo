@@ -1,9 +1,9 @@
 import cx from "classnames";
 import Icon from "../Icon";
 
-interface ProtocolCardProps {
+type ProtocolCardProps = {
 	schemaVersion: number;
-	lastModified: string; // Expects ISO 8601 datetime string
+	lastModified: string | null; // Expects ISO 8601 datetime string
 	name: string;
 	installationDate?: string | null; // Expects ISO 8601 datetime string
 	description?: string | null;
@@ -13,7 +13,7 @@ interface ProtocolCardProps {
 	isObsolete?: boolean;
 	condensed?: boolean;
 	selected?: boolean;
-}
+};
 
 const formatDate = (timeString: string | null) => timeString && new Date(timeString).toLocaleString(undefined);
 
@@ -42,29 +42,33 @@ const ProtocolCard = ({
 	const renderStatusIcon = () => {
 		if (isOutdated) {
 			return (
-				<div
+				<button
+					type="button"
 					className="status-icon status-icon--outdated"
 					onClick={(e) => {
 						e.stopPropagation();
 						onStatusClickHandler();
 					}}
+					aria-label="Protocol is outdated - click for details"
 				>
 					<Icon name="warning" />
-				</div>
+				</button>
 			);
 		}
 
 		if (isObsolete) {
 			return (
-				<div
+				<button
+					type="button"
 					className="status-icon status-icon--obsolete"
 					onClick={(e) => {
 						e.stopPropagation();
 						onStatusClickHandler();
 					}}
+					aria-label="Protocol is obsolete - click for details"
 				>
 					<Icon name="error" />
-				</div>
+				</button>
 			);
 		}
 
@@ -83,8 +87,8 @@ const ProtocolCard = ({
 		return <div className="protocol-description">{description}</div>;
 	};
 
-	return (
-		<div className={modifierClasses} onClick={onClickHandler}>
+	const cardContent = (
+		<>
 			<div className="protocol-card__icon-section">
 				{renderStatusIcon()}
 				{!condensed && (
@@ -110,8 +114,18 @@ const ProtocolCard = ({
 				<h2 className="protocol-name">{name}</h2>
 				{description && renderDescription()}
 			</div>
-		</div>
+		</>
 	);
+
+	if (onClickHandler) {
+		return (
+			<button type="button" className={modifierClasses} onClick={onClickHandler}>
+				{cardContent}
+			</button>
+		);
+	}
+
+	return <div className={modifierClasses}>{cardContent}</div>;
 };
 
 export default ProtocolCard;

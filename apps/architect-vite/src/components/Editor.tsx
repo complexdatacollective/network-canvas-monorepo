@@ -8,7 +8,10 @@ type EditorOwnProps = Partial<ConfigProps<Record<string, unknown>, EditorOwnProp
 	children?: React.ReactNode;
 };
 
-type EditorProps = EditorOwnProps & InjectedFormProps<Record<string, unknown>, EditorOwnProps>;
+type EditorProps = EditorOwnProps &
+	InjectedFormProps<Record<string, unknown>, EditorOwnProps> & {
+		values?: Record<string, unknown>;
+	};
 
 // Form context type
 type FormContextType = {
@@ -75,7 +78,7 @@ const Editor = (props: EditorProps) => {
 		pristine,
 		valid,
 		initialValues,
-		values: merge(values, initialValues),
+		values: merge(values || {}, initialValues || {}),
 		error,
 		warning,
 	};

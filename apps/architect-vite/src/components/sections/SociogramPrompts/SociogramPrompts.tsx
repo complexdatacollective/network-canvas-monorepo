@@ -2,6 +2,7 @@
 
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -38,6 +39,8 @@ const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: S
 	</Section>
 );
 
-export default compose(withSubject, withFormUsedVariableIndex, withDisabledSubjectRequired)(
-	SociogramPrompts as React.ComponentType<unknown>,
-);
+export default compose(
+	withSubject,
+	withFormUsedVariableIndex,
+	withDisabledSubjectRequired,
+)(SociogramPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;

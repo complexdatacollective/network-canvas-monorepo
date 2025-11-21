@@ -2,7 +2,7 @@ import cx from "classnames";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FocusEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import useScrollTo from "~/lib/legacy-ui/hooks/useScrollTo";
-import Date from "./DatePicker/Date";
+import DateComponent from "./DatePicker/DateComponent";
 import DatePicker from "./DatePicker/DatePicker";
 import Days from "./DatePicker/Days";
 import Months from "./DatePicker/Months";
@@ -13,13 +13,13 @@ import Panel from "./Panel";
 import Panels from "./Panels";
 import RangePicker from "./RangePicker";
 
-interface DatePickerInputProps {
+type DatePickerInputProps = {
 	onChange?: (value: string) => void;
 	value?: string | null;
 	parameters?: Record<string, unknown>;
-	parentRef: RefObject<HTMLElement>;
+	parentRef: RefObject<HTMLElement | null>;
 	placeholder?: string | null;
-}
+};
 
 const DatePickerInput = ({
 	onChange: onChangeInput = () => {},
@@ -87,7 +87,7 @@ const DatePickerInput = ({
 			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...parameters}
 		>
-			<Date>
+			<DateComponent>
 				{({ date, range: dateRange, isComplete, type, onChange }) => {
 					const canSetMonth = ["full", "month"].includes(type || "");
 					const canSetDay = ["full"].includes(type || "");
@@ -134,7 +134,7 @@ const DatePickerInput = ({
 																today={todayYear}
 																range={years}
 																value={date.year}
-																offset={dateRange ? dateRange.start.year % 5 : 0}
+																offset={dateRange?.start ? dateRange.start.year % 5 : 0}
 																onSelect={(y) => onChange({ year: y, month: null, day: null })}
 															/>
 														)}
@@ -179,7 +179,7 @@ const DatePickerInput = ({
 						</LayoutGroup>
 					);
 				}}
-			</Date>
+			</DateComponent>
 		</DatePicker>
 	);
 };

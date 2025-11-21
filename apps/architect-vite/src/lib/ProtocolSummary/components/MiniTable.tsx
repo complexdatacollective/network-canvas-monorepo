@@ -18,10 +18,10 @@ const MiniTable = ({ rows = [], wide = false, lite = false, rotated = false }: M
 
 	return (
 		<table className={classes}>
-			{!rotated && (
+			{!rotated && rows.length > 0 && (
 				<thead>
 					<tr key="0">
-						{rows[0].map((column, m) => (
+						{rows[0]?.map((column, m) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: Static table headers with no unique identifiers
 							<th key={`header-col-${m}`}>{column}</th>
 						))}

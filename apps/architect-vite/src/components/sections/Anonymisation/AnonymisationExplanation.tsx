@@ -1,9 +1,10 @@
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { RichText, Text } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { ValidatedField } from "../../Form";
 import IssueAnchor from "../../IssueAnchor";
 
-const AnonymisationExplanation = () => (
+const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
 	<Section
 		title="Task Explanation"
 		summary={<p>Use this section to explain the anonymisation process to your participants.</p>}
@@ -13,7 +14,7 @@ const AnonymisationExplanation = () => (
 			<ValidatedField
 				label="Title"
 				name="explanationText.title"
-				component={Fields.Text}
+				component={Text}
 				placeholder="This interview uses enhanced privacy protection"
 				validation={{ required: true }}
 				maxLength="50"
@@ -24,7 +25,7 @@ const AnonymisationExplanation = () => (
 			<ValidatedField
 				label="Body"
 				name="explanationText.body"
-				component={Fields.RichText}
+				component={RichText}
 				placeholder="Enter your passphrase below, and click the 'continue' button."
 				validation={{ required: true }}
 			/>

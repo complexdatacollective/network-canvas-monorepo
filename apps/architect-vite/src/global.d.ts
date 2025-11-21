@@ -11,3 +11,9 @@ declare const __filename: undefined;
 declare const require: undefined;
 declare const module: undefined;
 declare const exports: undefined;
+
+// Type declaration for scrollparent module
+declare module "scrollparent" {
+	function scrollparent(element: HTMLElement): HTMLElement | Document;
+	export default scrollparent;
+}

@@ -13,6 +13,7 @@ export type OrderedListProps = {
 	item: React.ComponentType<Record<string, unknown>>;
 	onClickItem?: (index: number) => void;
 	sortable?: boolean;
+	editIndex?: number | null;
 };
 
 const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {

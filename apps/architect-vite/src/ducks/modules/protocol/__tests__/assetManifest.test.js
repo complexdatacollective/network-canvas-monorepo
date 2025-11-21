@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getThunkMocks, toHaveDispatched } from "~/__tests__/helpers";
 import testState from "~/__tests__/testState.json";
 import { importAsset } from "~/utils/protocols";
-import reducer, { actionCreators, test } from "../assetManifest";
+import reducer, { deleteAsset, importAssetAsync, test } from "../assetManifest";
 
 expect.extend({
 	toHaveDispatched,
@@ -55,7 +55,7 @@ describe("protocol/assetManifest", () => {
 		it("importAsset() dispatches correct actions", async () => {
 			const [dispatch, getState] = getThunkMocks(testState);
 
-			await actionCreators.importAsset(file.name)(dispatch, getState);
+			await importAssetAsync(file.name)(dispatch, getState);
 
 			expect(dispatch).toHaveDispatched([
 				{ type: "PROTOCOL/IMPORT_ASSET", filename: "bazz.jpg" },
@@ -76,7 +76,7 @@ describe("protocol/assetManifest", () => {
 					}),
 			);
 
-			await actionCreators.importAsset(file.name)(dispatch, getState);
+			await importAssetAsync(file.name)(dispatch, getState);
 
 			expect(dispatch).toHaveDispatched([
 				{ type: "PROTOCOL/IMPORT_ASSET", filename: "bazz.jpg" },
@@ -90,7 +90,7 @@ describe("protocol/assetManifest", () => {
 		it("deleteAsset() dispatches correct actions", async () => {
 			const [dispatch, getState] = getThunkMocks(testState);
 
-			await actionCreators.deleteAsset(uuid())(dispatch, getState);
+			await deleteAsset(uuid())(dispatch, getState);
 
 			expect(dispatch).toHaveDispatched([
 				{ type: "PROTOCOL/DELETE_ASSET", id: uuid() },

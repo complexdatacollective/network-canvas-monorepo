@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 export default function SVG(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 139.8 167.5" {...props}>
+		<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 139.8 167.5" {...props}>
 			<path
 				className="cls-2"
 				d="M69.9,0C46.1,0,26.8,21.4,26.8,47.8c-0.1,11.6,3.8,22.9,11.1,32l64-64C94,6.1,82.6,0,69.9,0z"

@@ -71,9 +71,11 @@ const Timeline = () => {
 		(newOrder: typeof stages) => {
 			// Find which stage moved
 			for (let i = 0; i < newOrder.length; i++) {
-				if (newOrder[i].id !== stages[i]?.id) {
+				if (newOrder[i]?.id !== stages[i]?.id) {
 					// Move to new index
-					const stageId = newOrder[i].id;
+					const stageId = newOrder[i]?.id;
+					if (!stageId) continue;
+
 					const oldIndex = stages.findIndex((s) => s.id === stageId);
 					const newIndex = i;
 
@@ -109,7 +111,7 @@ const Timeline = () => {
 				}}
 			>
 				{stages.flatMap((stage, index) => [
-					<InsertButton key={`insert_${index}`} onClick={() => handleInsertStage(index)} />,
+					<InsertButton key={`insert_${stage.id}_${index}`} onClick={() => handleInsertStage(index)} />,
 					<Reorder.Item
 						tabIndex={0}
 						key={stage.id}

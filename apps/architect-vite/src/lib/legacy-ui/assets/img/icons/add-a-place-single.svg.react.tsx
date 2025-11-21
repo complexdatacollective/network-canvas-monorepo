@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 export default function SVG(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 111.2 126" {...props}>
+		<svg aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 111.2 126" {...props}>
 			<polygon className="cls-4" points="16.6,68 0,126 26.5,126 84.6,68 " />
 			<polygon className="cls-5" points="94.6,68 84.6,68 26.6,126 111.2,126 " />
 			<path

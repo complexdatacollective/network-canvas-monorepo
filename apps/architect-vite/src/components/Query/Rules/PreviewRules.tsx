@@ -5,7 +5,7 @@ type Rule = Record<string, unknown> & {
 };
 
 type PreviewRulesProps = {
-	join?: string;
+	join?: string | null;
 	rules: Rule[];
 	codebook: Record<string, unknown>;
 	onClickRule: (id: string) => void;
@@ -13,7 +13,8 @@ type PreviewRulesProps = {
 };
 
 const PreviewRules = ({ join = null, rules, codebook, onClickRule, onDeleteRule }: PreviewRulesProps) => {
-	const getJoin = (index: number) => (rules.length !== 1 && index < rules.length - 1 ? join : null);
+	const getJoin = (index: number): string | null =>
+		rules.length !== 1 && index < rules.length - 1 ? join || null : null;
 
 	return (
 		<div className="rules-preview-rules">

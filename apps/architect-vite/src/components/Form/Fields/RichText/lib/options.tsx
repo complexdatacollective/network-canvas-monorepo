@@ -1,10 +1,11 @@
-export const BLOCKS = ["headings", "lists", "thematic_break"];
+const BLOCKS = ["headings", "lists", "thematic_break"];
 
-export const MARKS = ["bold", "italic"];
+const MARKS = ["bold", "italic"];
 
-export const HISTORY = ["history"];
+const HISTORY = ["history"];
 
-export const MODES = {
+// Internal use only - not exported
+const _MODES = {
 	full: "full",
 	inline: "inline",
 } as const;
@@ -15,8 +16,8 @@ export const TOOLBAR_ITEMS = [...BLOCKS, ...MARKS, ...HISTORY];
 
 export const INLINE_DISALLOWED_ITEMS = [...BLOCKS];
 
-export const LIST_TYPES = ["ol_list", "ul_list"];
+const LIST_TYPES = ["ol_list", "ul_list"];
 
-export const HEADING_TYPES = ["heading_one", "heading_two", "heading_three", "heading_four", "heading_five"];
+const HEADING_TYPES = ["heading_one", "heading_two", "heading_three", "heading_four", "heading_five"];
 
 export const BLOCK_TYPES = [...LIST_TYPES, ...HEADING_TYPES, "code_block"];

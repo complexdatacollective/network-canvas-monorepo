@@ -3,34 +3,34 @@ import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
-import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
 import { Text } from "~/components/Form/Fields";
+import { useAppDispatch } from "~/ducks/hooks";
 import { Button } from "~/lib/legacy-ui/components";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import { getValidator } from "~/utils/validations";
 
-interface Option {
+type Option = {
 	label: string;
 	value: string;
 	disabled?: boolean;
-}
+};
 
-interface InputProps {
+type InputProps = {
 	onChange: (value: string | null) => void;
 	onBlur?: () => void;
 	value?: string | null;
 	name: string;
-}
+};
 
-interface MetaProps {
+type MetaProps = {
 	invalid?: boolean;
 	error?: string | null;
 	touched?: boolean;
 	form: string;
-}
+};
 
-interface NativeSelectProps {
+type NativeSelectProps = {
 	className?: string;
 	label?: string | null;
 	options?: Option[];
@@ -48,7 +48,7 @@ interface NativeSelectProps {
 	input: InputProps;
 	meta?: MetaProps;
 	entity?: string;
-}
+};
 
 const NativeSelect: React.FC<NativeSelectProps> = ({
 	label = null,
@@ -78,7 +78,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	const [showCreateOptionForm, setShowCreateOptionForm] = useState(false);
 	const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
 	const [newOptionError, setNewOptionError] = useState<string | false>(false);
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 
 	const { onBlur, ...inputProps } = input;
 	const { invalid = false, error = null, touched = false, form } = meta;
@@ -179,24 +179,24 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	 *   - error: parent select error message. Will usually be "Required"
 	 */
 
-	const calculateMeta = useMemo(
-		() => ({
+	const calculateMeta = useMemo(() => {
+		const localInvalid = !isValidCreateOption(newOptionValue);
+		return {
 			touched: touched || (newOptionValue !== null && !isValidCreateOption(newOptionValue)),
 			invalid: !isValidCreateOption(newOptionValue) || valueButNotSubmitted || (newOptionValue === null && invalid),
-			localInvalid: !isValidCreateOption(newOptionValue),
+			localInvalid,
 			error: newOptionError || notSubmittedError || error,
-		}),
-		[
-			touched,
-			invalid,
-			error,
-			newOptionValue,
-			newOptionError,
-			valueButNotSubmitted,
-			notSubmittedError,
-			isValidCreateOption,
-		],
-	);
+		};
+	}, [
+		touched,
+		invalid,
+		error,
+		newOptionValue,
+		newOptionError,
+		valueButNotSubmitted,
+		notSubmittedError,
+		isValidCreateOption,
+	]);
 
 	const sortedOptions = useMemo(
 		() => (sortOptionsByLabel ? sortBy(options, "label") : options),
@@ -238,7 +238,11 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								},
 							}}
 							placeholder={createInputPlaceholder}
-							meta={calculateMeta}
+							meta={{
+								touched: calculateMeta.touched,
+								invalid: calculateMeta.invalid,
+								error: calculateMeta.error ?? undefined,
+							}}
 						/>
 						<div className="button-footer">
 							<Button color="platinum" onClick={() => setShowCreateOptionForm(false)}>

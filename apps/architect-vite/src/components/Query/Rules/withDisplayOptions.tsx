@@ -25,22 +25,31 @@ type InputProps = {
 // convert options to labels
 const withDisplayOptions = withProps<{ options: unknown }, InputProps>(({ type, options, codebook }: InputProps) => {
 	const entityType = type === "alter" ? "node" : "edge";
-	const entityRoot = type === "ego" ? (["ego"] as const) : ([entityType, options.type] as const);
-	const typeLabel = get(codebook, [entityType, options.type, "name"] as const, options.type); // noop for ego
-	const typeColor = get(codebook, [entityType, options.type, "color"] as const, "#000"); // noop for ego
-	const variableLabel = get(
-		codebook,
-		[...entityRoot, "variables", options.attribute, "name"] as unknown[],
-		options.attribute,
-	);
+	const typeLabel = options.type ? get(codebook, [entityType, options.type, "name"], options.type) : options.type; // noop for ego
+	const typeColor = options.type ? get(codebook, [entityType, options.type, "color"], "#000") : "#000"; // noop for ego
+	const variablePath =
+		options.attribute && type === "ego"
+			? (["ego", "variables", options.attribute, "name"] as const)
+			: options.attribute && options.type
+				? ([entityType, options.type, "variables", options.attribute, "name"] as const)
+				: null;
+	const variableLabel = variablePath ? get(codebook, variablePath, options.attribute) : options.attribute;
 
-	const variableType = get(
-		codebook,
-		[...entityRoot, "variables", options.attribute, "type"] as unknown[],
-		"string",
-	) as string;
+	const variableTypePath =
+		options.attribute && type === "ego"
+			? (["ego", "variables", options.attribute, "type"] as const)
+			: options.attribute && options.type
+				? ([entityType, options.type, "variables", options.attribute, "type"] as const)
+				: null;
+	const variableType = (variableTypePath ? get(codebook, variableTypePath, "string") : "string") as string;
 
-	const variableOptions = get(codebook, [...entityRoot, "variables", options.attribute, "options"] as unknown[]) as
+	const variableOptionsPath =
+		options.attribute && type === "ego"
+			? (["ego", "variables", options.attribute, "options"] as const)
+			: options.attribute && options.type
+				? ([entityType, options.type, "variables", options.attribute, "options"] as const)
+				: null;
+	const variableOptions = (variableOptionsPath ? get(codebook, variableOptionsPath) : undefined) as
 		| OptionItem[]
 		| undefined;
 

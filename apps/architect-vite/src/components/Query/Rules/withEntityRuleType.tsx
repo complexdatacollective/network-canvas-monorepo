@@ -18,15 +18,23 @@ const entityRuleTypeOptions = (entityType: string) => [
 	},
 ];
 
+type WithEntityRuleTypeProps = {
+	rule: {
+		options?: {
+			attribute?: string;
+			type?: string;
+		};
+	};
+};
+
 const withEntityRuleType = compose(
-	withState(
+	withState<WithEntityRuleTypeProps, string | null, "entityRuleType", "setEntityRuleType">(
 		"entityRuleType",
 		"setEntityRuleType",
 		// If an existing rule, we need to determine the type
-		({ rule }) => {
-			const {
-				options: { attribute, type },
-			} = rule;
+		({ rule }: WithEntityRuleTypeProps) => {
+			const options = rule?.options || {};
+			const { attribute, type } = options;
 
 			if (!type) {
 				return null;
@@ -39,15 +47,27 @@ const withEntityRuleType = compose(
 	),
 	withHandlers({
 		handleChangeEntityRuleType:
-			({ setEntityRuleType, onChange, rule }: { setEntityRuleType: (type: string) => void; onChange: (rule: Record<string, unknown>) => void; rule: Record<string, unknown> }) =>
+			({
+				setEntityRuleType,
+				onChange,
+				rule,
+			}: {
+				setEntityRuleType: (type: string) => void;
+				onChange: (rule: Record<string, unknown>) => void;
+				rule: Record<string, unknown>;
+			}) =>
 			(entityRuleType: string) => {
 				setEntityRuleType(entityRuleType);
 
 				const ruleTemplate = entityRuleType === TYPE_RULE ? templates.entityTypeRule : templates.entityVariableRule;
 
 				// 'reset' rule options, but keep type
-				const options = makeGetOptionsWithDefaults(ruleTemplate)({
-					type: (rule.options as Record<string, unknown>).type,
+				const ruleOptions = (rule.options || {}) as Record<string, unknown>;
+				const options = makeGetOptionsWithDefaults(
+					undefined,
+					ruleTemplate,
+				)({
+					type: ruleOptions.type,
 				});
 
 				onChange({
@@ -59,5 +79,3 @@ const withEntityRuleType = compose(
 );
 
 export { withEntityRuleType, entityRuleTypes, entityRuleTypeOptions };
-
-export default withEntityRuleType;

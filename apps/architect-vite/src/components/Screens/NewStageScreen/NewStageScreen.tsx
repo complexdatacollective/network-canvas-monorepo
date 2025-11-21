@@ -6,10 +6,16 @@ import { useLocation } from "wouter";
 import Search from "~/components/Form/Fields/Search";
 import Dialog from "~/components/NewComponents/Dialog";
 import Tag from "~/components/Tag";
+import type { RootState } from "~/ducks/modules/root";
 import { Button } from "~/lib/legacy-ui/components";
 import { getExperiments, getTimelineLocus } from "~/selectors/protocol";
 import InterfaceList from "./InterfaceList";
-import { INTERFACE_TYPES, TAG_COLORS, TAGS } from "./interfaceOptions";
+import { INTERFACE_TYPES, type InterfaceType, TAG_COLORS, TAGS } from "./interfaceOptions";
+
+type FuseResultWithScore<T> = {
+	item: T;
+	score?: number;
+};
 
 const fuseOptions = {
 	threshold: 0.25,
@@ -31,11 +37,11 @@ const interfaceHasAllSelectedTags = (selectedTags: string[], interfaceTags: stri
 	return selectedTags.every((tag: string) => interfaceTags.includes(tag));
 };
 
-const search = (query: string) => {
+const search = (query: string): InterfaceType[] => {
 	if (query.length === 0) {
 		return INTERFACE_TYPES;
 	}
-	const result = fuse.search(query);
+	const result: FuseResultWithScore<InterfaceType>[] = fuse.search(query) as FuseResultWithScore<InterfaceType>[];
 	return result.sort((a, b) => (a.score ?? 0) - (b.score ?? 0)).map((item) => item.item);
 };
 
@@ -272,7 +278,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 	);
 };
 
-const mapStateToProps = (state: unknown) => ({
+const mapStateToProps = (state: RootState) => ({
 	experiments: getExperiments(state),
 });
 

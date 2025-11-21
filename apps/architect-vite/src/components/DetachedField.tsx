@@ -27,11 +27,7 @@ type DetachedFieldProps = {
 	value?: unknown;
 	name?: string | null;
 	validation: Record<string, unknown>;
-	component: React.ComponentType<{
-		input: { value: unknown; name: string | null; onChange: (eventOrValue: unknown) => void };
-		meta: Record<string, unknown>;
-		[key: string]: unknown;
-	}>;
+	component: React.ComponentType<Record<string, unknown>>;
 	meta?: Record<string, unknown>;
 	[key: string]: unknown; // Allow additional props to be passed through
 };
@@ -123,4 +119,6 @@ class DetachedField extends Component<DetachedFieldProps, DetachedFieldState> {
 	}
 }
 
-export default compose(defaultProps({ validation: {} }))(DetachedField as React.ComponentType<unknown>);
+export default compose<DetachedFieldProps, Partial<DetachedFieldProps>>(defaultProps({ validation: {} }))(
+	DetachedField,
+);

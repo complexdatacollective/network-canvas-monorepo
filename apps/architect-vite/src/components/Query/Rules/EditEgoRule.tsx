@@ -19,7 +19,7 @@ const defaultOptions = {
 	value: "",
 };
 
-export type OptionItem = {
+type OptionItem = {
 	value: string | number;
 	label: string;
 };
@@ -32,7 +32,9 @@ type EditEgoRuleProps = {
 	variablesAsOptions: OptionItem[];
 	variableOptions?: OptionItem[];
 	operatorOptions: OptionItem[];
-	handleRuleChange: (value: Record<string, unknown>) => void;
+	handleRuleChange: (event: unknown, value: unknown, oldValue: unknown, name: string | null) => void;
+	codebook?: Record<string, unknown>;
+	onChange?: (value: Record<string, unknown>) => void;
 };
 
 const EditEgoRule = ({
@@ -45,9 +47,13 @@ const EditEgoRule = ({
 }: EditEgoRuleProps) => {
 	const options = rule?.options;
 	const optionsWithDefaults = { ...defaultOptions, ...options };
-	const operatorNeedsValue = operatorsWithValue.has(optionsWithDefaults.operator);
+	const operatorNeedsValue =
+		typeof optionsWithDefaults.operator === "string" ? operatorsWithValue.has(optionsWithDefaults.operator) : false;
 	// const operatorNeedsRegExp = operatorsWithRegExp.has(optionsWithDefaults.operator);
-	const operatorNeedsOptionCount = operatorsWithOptionCount.has(optionsWithDefaults.operator);
+	const operatorNeedsOptionCount =
+		typeof optionsWithDefaults.operator === "string"
+			? operatorsWithOptionCount.has(optionsWithDefaults.operator)
+			: false;
 	const countFriendlyValue = !isNil(optionsWithDefaults.value) ? optionsWithDefaults.value : "";
 	const optionsWithCounts = {
 		...optionsWithDefaults,
@@ -57,7 +63,7 @@ const EditEgoRule = ({
 		<>
 			<Section title="Ego Variable" layout="vertical">
 				<DetachedField
-					component={NativeSelect}
+					component={NativeSelect as React.ComponentType<Record<string, unknown>>}
 					name="attribute"
 					options={variablesAsOptions}
 					onChange={handleRuleChange}
@@ -68,7 +74,7 @@ const EditEgoRule = ({
 			{optionsWithDefaults.attribute && (
 				<Section title="Operator" layout="vertical">
 					<DetachedField
-						component={NativeSelect}
+						component={NativeSelect as React.ComponentType<Record<string, unknown>>}
 						name="operator"
 						options={operatorOptions}
 						onChange={handleRuleChange}
@@ -119,6 +125,14 @@ const EditEgoRule = ({
 	);
 };
 
-export default compose<EditEgoRuleProps, Partial<EditEgoRuleProps>>(withOptions, withRuleChangeHandler)(
-	EditEgoRule as React.ComponentType<unknown>,
-);
+export default compose<
+	EditEgoRuleProps,
+	{
+		rule?: { options?: Record<string, unknown> };
+		codebook?: Record<string, unknown>;
+		onChange?: (value: Record<string, unknown>) => void;
+	}
+>(
+	withOptions,
+	withRuleChangeHandler,
+)(EditEgoRule);

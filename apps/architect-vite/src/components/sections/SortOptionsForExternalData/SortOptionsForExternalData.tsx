@@ -1,11 +1,16 @@
-import { useDispatch, useSelector } from "react-redux";
+import type { VariableOption } from "@codaco/protocol-validation";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
+import type { FormAction } from "redux-form";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
+import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
@@ -21,14 +26,16 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 	const maxVariableOptions = variableOptions.length;
 	const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
 
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector("edit-stage");
-	const hasSortOrder = useSelector((state) => getFormValue(state, "sortOptions.sortOrder"));
-	const hasSortableProperties = useSelector((state) => getFormValue(state, "sortOptions.sortableProperties"));
+	const hasSortOrder = useSelector((state: RootState) => getFormValue(state, "sortOptions.sortOrder"));
+	const hasSortableProperties = useSelector((state: RootState) =>
+		getFormValue(state, "sortOptions.sortableProperties"),
+	);
 
-	const handleToggleSortOptions = (nextState) => {
+	const handleToggleSortOptions = (nextState: boolean) => {
 		if (nextState === false) {
-			dispatch(change("edit-stage", "sortOptions", null));
+			dispatch(change("edit-stage", "sortOptions", null) as unknown as FormAction);
 		}
 
 		return true;
@@ -79,15 +86,18 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 							placeholder: "Label",
 						},
 					]}
-					options={variableOptionsGetter}
+					options={(
+						_property: unknown,
+						_rowValues: unknown,
+						allValues: Array<Record<string, unknown>>,
+					): VariableOption[] => variableOptionsGetter(_property, _rowValues, allValues)}
 				/>
 			</Row>
 		</Section>
 	);
 };
 
-export { SortOptions };
-
-export default compose(withMapFormToProps("dataSource"), withDisabledAssetRequired)(
-	SortOptions as React.ComponentType<unknown>,
-);
+export default compose(
+	withMapFormToProps("dataSource"),
+	withDisabledAssetRequired,
+)(SortOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

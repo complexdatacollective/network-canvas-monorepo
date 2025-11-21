@@ -1,18 +1,19 @@
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
-import type { SectionProps } from "..";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-const NameGeneratorPrompts = ({
-	disabled,
-	entity,
-	type,
-	...rest
-}: SectionProps & { entity?: string; type?: string; disabled?: boolean }) => (
+type NameGeneratorPromptsProps = StageEditorSectionProps & {
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+};
+
+const NameGeneratorPrompts = ({ disabled, entity, type, ...rest }: NameGeneratorPromptsProps) => (
 	<Section
 		disabled={disabled}
 		summary={
@@ -34,6 +35,7 @@ const NameGeneratorPrompts = ({
 	</Section>
 );
 
-export { NameGeneratorPrompts };
-
-export default compose(withSubject, withDisabledSubjectRequired)(NameGeneratorPrompts as React.ComponentType<unknown>);
+export default compose(
+	withSubject,
+	withDisabledSubjectRequired,
+)(NameGeneratorPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;

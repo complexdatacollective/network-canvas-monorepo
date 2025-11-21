@@ -7,14 +7,14 @@ import GridItem from "./GridItem";
 import { convertSize, type GridItem as GridItemData, getLayout, trimSize } from "./helpers";
 import withItems from "./withItems";
 
-interface FieldArrayApi {
+type FieldArrayApi = {
 	name: string;
 	swap: (indexA: number, indexB: number) => void;
 	splice: (index: number, removeNum: number, value?: unknown) => void;
 	remove: (index: number) => void;
-}
+};
 
-interface GridProps {
+type GridProps = {
 	fields: FieldArrayApi;
 	items: GridItemData[];
 	capacity: number;
@@ -28,11 +28,11 @@ interface GridProps {
 	editField?: string;
 	form: string;
 	fieldName?: string;
-}
+};
 
-interface GridState {
+type GridState = {
 	width: number;
-}
+};
 
 class Grid extends Component<GridProps, GridState> {
 	private ref = React.createRef<HTMLDivElement>();

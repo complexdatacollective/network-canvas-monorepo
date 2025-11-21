@@ -8,7 +8,6 @@ export { default as CategoricalBinPrompts } from "./CategoricalBinPrompts";
 export { default as ContentGrid } from "./ContentGrid";
 export { default as DyadCensusPrompts } from "./DyadCensusPrompts";
 export { default as ExternalDataSource } from "./ExternalDataSource";
-export { default as Filter } from "./Filter";
 export { default as FilteredEdgeType } from "./FilteredEdgeType";
 export { default as Form } from "./Form";
 export { default as GeospatialPrompts } from "./GeospatialPrompts/GeospatialPrompts";
@@ -32,10 +31,3 @@ export { default as SociogramPrompts } from "./SociogramPrompts";
 export { default as SortOptionsForExternalData } from "./SortOptionsForExternalData";
 export { default as TieStrengthCensusPrompts } from "./TieStrengthCensusPrompts";
 export { default as Title } from "./Title";
-
-export type SectionProps = {
-	form: string;
-	stagePath: string;
-	hasSubmitFailed: boolean;
-	interfaceType: string;
-};

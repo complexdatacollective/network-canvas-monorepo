@@ -1,10 +1,11 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import { useDispatch, useSelector } from "react-redux";
+import type { UnknownAction } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import CheckboxGroup from "~/components/Form/Fields/CheckboxGroup";
 import Text from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import Row from "../../EditorLayout/Row";
 import Section from "../../EditorLayout/Section";
@@ -43,7 +44,7 @@ const PresetFields = ({
 }: PresetFieldsProps) => {
 	const getFormValue = formValueSelector(form);
 
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const hasGroupVariable = !!groupVariable;
 	const displayEdges = useSelector(
 		(state: RootState) => getFormValue(state, "edges.display") as Record<string, unknown>[],

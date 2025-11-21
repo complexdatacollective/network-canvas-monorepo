@@ -7,28 +7,28 @@ import type {
 	Variables,
 } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
-import { compact, get, map, reduce, uniq } from "es-toolkit/compat";
+import { compact, get, reduce, uniq } from "es-toolkit/compat";
 import type { RootState } from "~/ducks/store";
 import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
 import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
 import { getVariableIndex, utils } from "~/selectors/indexes";
 import { getCodebook, getProtocol } from "~/selectors/protocol";
 
-interface StageMeta {
+type StageMeta = {
 	label: string;
 	id: string;
-}
+};
 
 /**
  * Extract basic stage meta by index from the app state
  * @param {Object} state Application state
  * @returns {Object[]} Stage meta sorted by index in state
  */
-export const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] =>
+const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] =>
 	protocol.stages.map(({ label, id }: Stage) => ({ label, id })),
 );
 
-export const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
+const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
 	const variables = getAllVariablesByUUID(codebook);
 	return variables;
 });
@@ -46,7 +46,7 @@ const getStageIndexFromPath = (path: string): string | null => {
 const codebookVariableReferenceRegex =
 	/codebook\.(ego|node\[([^\]]+)\]|edge\[([^\]]+)\])\.variables\[(.*?)\].validation\.(sameAs|differentFrom)/;
 
-export const getCodebookVariableIndexFromValidationPath = (path: string): string | null => {
+const getCodebookVariableIndexFromValidationPath = (path: string): string | null => {
 	const match = path.match(codebookVariableReferenceRegex);
 
 	return get(match, 4, null);
@@ -72,10 +72,10 @@ export const getUsage = (index: Record<string, string>, value: string): string[]
 		[],
 	);
 
-interface UsageMeta {
+type UsageMeta = {
 	label: string;
 	id?: string;
-}
+};
 
 /**
  * Get stage meta (wtf is stage meta, Steve? 🤦) that matches "usage array"
@@ -154,10 +154,10 @@ export const makeGetEntityWithUsage = (index: Record<string, string>, mergeProps
 		};
 	});
 
-interface EntityPropertiesParams {
+type EntityPropertiesParams = {
 	entity: "node" | "edge" | "ego";
 	type?: string;
-}
+};
 
 type VariableWithUsage = Variable & {
 	id: string;
@@ -166,11 +166,11 @@ type VariableWithUsage = Variable & {
 	usageString?: string;
 };
 
-interface EntityProperties {
+type EntityProperties = {
 	name: string;
 	color?: string;
 	variables: Record<string, VariableWithUsage>;
-}
+};
 
 /**
  * Returns entity meta data for use in the codebook.

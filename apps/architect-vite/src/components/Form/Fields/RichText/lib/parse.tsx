@@ -23,7 +23,7 @@ export const defaultValue: Descendant[] = [
  * rather than a single regex, because Safari does not support
  * lookbehind.
  */
-export const escapeAngleBracket = (value = ""): string => value.replace(/>/g, "&gt;").replace(/<br&gt;/g, "<br>");
+const escapeAngleBracket = (value = ""): string => value.replace(/>/g, "&gt;").replace(/<br&gt;/g, "<br>");
 
 // TODO: Can we make this synchronous? JM - yes, use `processSync` below
 const parse = (value: string): Promise<Descendant[]> => {

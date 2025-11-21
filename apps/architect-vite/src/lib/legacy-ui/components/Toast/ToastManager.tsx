@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Toast from "./Toast";
 
-interface ToastData {
+type ToastData = {
 	id: string | number;
 	title: string;
 	content: ReactNode | (() => ReactNode);
@@ -12,12 +12,12 @@ interface ToastData {
 	dismissHandler?: () => void;
 	classNames?: string;
 	CustomIcon?: ReactNode;
-}
+};
 
-interface ToastManagerProps {
+type ToastManagerProps = {
 	toasts: ToastData[];
 	removeToast: (id: string | number) => void;
-}
+};
 
 const ToastManager = ({ toasts, removeToast }: ToastManagerProps) =>
 	createPortal(

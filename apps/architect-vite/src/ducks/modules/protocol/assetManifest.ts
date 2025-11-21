@@ -134,18 +134,11 @@ const assetManifestSlice = createSlice({
 	},
 });
 
-// Export actions
-export const { importAsset, importAssetComplete, importAssetFailed, deleteAsset, addApiKeyAsset } =
-	assetManifestSlice.actions;
-
-// Export action creators
-export const actionCreators = {
-	importAsset: importAssetAsync,
-	deleteAsset: (id: string) => assetManifestSlice.actions.deleteAsset(id),
-	addApiKeyAsset: (name: string, value: string) => {
-		const id = uuid();
-		return assetManifestSlice.actions.addApiKeyAsset({ id, name, value });
-	},
+// Export convenience wrappers with cleaner API
+export const deleteAsset = (id: string) => assetManifestSlice.actions.deleteAsset(id);
+export const addApiKeyAsset = (name: string, value: string) => {
+	const id = uuid();
+	return assetManifestSlice.actions.addApiKeyAsset({ id, name, value });
 };
 
 // Export for backwards compatibility and testing
@@ -162,7 +155,7 @@ export const test = {
 };
 
 // Export types
-export type { Asset, AssetManifestState, AssetType };
+export type { Asset };
 
 // Export the reducer as default
 export default assetManifestSlice.reducer;

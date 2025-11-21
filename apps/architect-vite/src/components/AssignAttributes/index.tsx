@@ -3,12 +3,12 @@ import type { WrappedFieldArrayProps } from "redux-form";
 import { FieldArray } from "redux-form";
 import AssignAttributes from "./AssignAttributes";
 
-interface AssignAttributesContainerProps {
+type AssignAttributesContainerProps = {
 	form: string;
 	entity: "node" | "edge" | "ego";
 	type?: string;
 	name: string;
-}
+};
 
 const AssignAttributesContainer = (props: AssignAttributesContainerProps) => (
 	<FieldArray

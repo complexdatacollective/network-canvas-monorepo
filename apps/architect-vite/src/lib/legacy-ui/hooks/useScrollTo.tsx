@@ -44,20 +44,22 @@ const scrollFocus = (destination: HTMLElement, delay = 0): NodeJS.Timeout | null
  * Automatically scroll to ref after conditions are met
  */
 const useScrollTo = (
-	ref: RefObject<HTMLElement>,
+	ref: RefObject<HTMLElement | null>,
 	condition: (...args: unknown[]) => boolean,
 	watch: unknown[],
 	delay = 0,
 ): void => {
-	const timer = useRef<NodeJS.Timeout>();
+	const timer = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	useEffect(() => {
 		if (ref?.current && condition(...watch)) {
 			clearTimeout(timer.current);
 			timer.current = scrollFocus(ref.current, delay) ?? undefined;
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, watch);
+		return () => {
+			clearTimeout(timer.current);
+		};
+	}, [ref, condition, delay, watch, ...watch]);
 };
 
 export default useScrollTo;

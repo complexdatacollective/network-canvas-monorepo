@@ -13,14 +13,8 @@ type UseEditHandlersOptions = {
 
 // Default functions defined outside component to prevent recreating on every render
 const defaultNormalize = (value: unknown) => value;
-const defaultTemplate = () => ({});
 
-export const useEditHandlers = ({
-	fieldName,
-	onChange,
-	normalize = defaultNormalize,
-	template = defaultTemplate,
-}: UseEditHandlersOptions) => {
+export const useEditHandlers = ({ fieldName, onChange, normalize = defaultNormalize }: UseEditHandlersOptions) => {
 	const { form } = useFormContext();
 	const dispatch = useAppDispatch();
 	const store = useStore();
@@ -31,8 +25,8 @@ export const useEditHandlers = ({
 	// Get items only when needed for operations, not for rendering
 	const getItems = useCallback(() => {
 		// This creates a selector that gets current state without subscribing to changes
-		const state = store.getState();
-		return formValueSelector(form)(state, fieldName) || [];
+		const state = store.getState() as Record<string, unknown>;
+		return (formValueSelector(form)(state, fieldName) as Record<string, unknown>[]) || [];
 	}, [form, fieldName, store]);
 
 	// // Get current item being edited

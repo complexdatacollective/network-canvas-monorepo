@@ -1,12 +1,21 @@
-import type { CurrentProtocol } from "@codaco/protocol-validation";
-import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
-import { UnsavedChanges } from "~/components/Dialogs";
-import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
-import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import type { ActiveProtocolState } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 
-const propStageId = (_: RootState, props: { stageId: string }) => props.stageId;
+// Selector that properly handles the TimelineState wrapping in RootState
+export const selectActiveProtocol = (state: RootState): ActiveProtocolState => {
+	// The activeProtocol in RootState is wrapped by the timeline middleware
+	// We need to extract the present value
+	const timelineState = state.activeProtocol;
+
+	if (timelineState && typeof timelineState === "object" && "present" in timelineState) {
+		return (timelineState as unknown as { present: ActiveProtocolState }).present ?? null;
+	}
+
+	// Fallback for raw state (shouldn't happen in normal operation)
+	return (timelineState as unknown as ActiveProtocolState) ?? null;
+};
 
 // During transition, check both old and new stores
 export const getProtocol = (state: RootState) => {
@@ -30,7 +39,7 @@ export const getCodebook = (state: RootState) => {
 	return protocol?.codebook || null;
 };
 
-export const getStageList = createSelector([getProtocol], (protocol: CurrentProtocol) => {
+export const getStageList = createSelector([getProtocol], (protocol) => {
 	const stages = protocol ? protocol.stages : [];
 
 	return stages.map((stage) => ({
@@ -57,12 +66,6 @@ export const getStageIndex = (state: RootState, id: string) => {
 	const stageIndex = findIndex(protocol.stages, ["id", id]);
 	return stageIndex;
 };
-
-// TODO: replace this with getStage
-export const makeGetStage = () =>
-	createSelector(getProtocol, propStageId, (protocol, stageId) =>
-		protocol ? find(protocol.stages, ["id", stageId]) : null,
-	);
 
 const networkTypes = new Set(["network", "async:network"]);
 
@@ -106,21 +109,6 @@ export const getHasUnsavedChanges = (state: RootState): boolean => {
 	return currentTimeline !== lastSavedTimeline;
 };
 
-export const checkUnsavedChanges = createAsyncThunk("protocol/check-unsaved-changes", (_, thunkAPI) => {
-	const state = thunkAPI.getState() as RootState;
-	const hasUnsavedChanges = getHasUnsavedChanges(state);
-
-	if (!hasUnsavedChanges) {
-		return Promise.resolve(true);
-	}
-
-	const unsavedChangesDialog = UnsavedChanges({
-		confirmLabel: "Discard changes and continue",
-	});
-
-	return thunkAPI.dispatch(dialogsActions.openDialog(unsavedChangesDialog)).unwrap();
-});
-
 export const getIsProtocolValid = (_state: RootState): boolean => {
 	// Return validation result from Redux state
 	return true;
@@ -144,7 +132,17 @@ export const getTimelineLocus = (state: RootState) => {
 	return null;
 };
 
-// New selectors for the activeProtocol store
-export const hasActiveProtocol = (state: RootState): boolean => {
-	return Boolean(selectActiveProtocol(state));
+// Undo/redo selectors
+export const getCanUndo = (state: RootState): boolean => {
+	const past = state.activeProtocol?.past || [];
+	if (past.length === 0) return false;
+
+	// Don't allow undo if it would take us back to a null state
+	const wouldBePresent = past[past.length - 1];
+	return wouldBePresent !== null && wouldBePresent !== undefined;
+};
+
+export const getCanRedo = (state: RootState): boolean => {
+	const future = state.activeProtocol?.future || [];
+	return future.length > 0;
 };

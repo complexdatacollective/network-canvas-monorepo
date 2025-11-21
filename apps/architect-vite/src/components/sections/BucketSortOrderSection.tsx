@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import MultiSelect from "~/components/Form/MultiSelect";
 import Tip from "~/components/Tip";
+import { useAppDispatch } from "~/ducks/hooks";
 
 type BucketSortOrderSectionProps = {
 	form: string;
@@ -28,7 +29,7 @@ const BucketSortOrderSection = ({
 	optionGetter,
 	summary = getDefaultSummary(),
 }: BucketSortOrderSectionProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const hasBucketSortOrder = useSelector((state) => formSelector(state, "bucketSortOrder"));
 

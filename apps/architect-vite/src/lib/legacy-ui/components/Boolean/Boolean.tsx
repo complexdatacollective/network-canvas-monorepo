@@ -3,20 +3,20 @@ import BooleanOption from "./BooleanOption";
 
 type BooleanValue = boolean | string | number | null;
 
-interface BooleanOptionType {
+type BooleanOptionType = {
 	label: string | (() => ReactNode);
 	value?: BooleanValue;
 	classes?: string;
 	icon?: () => ReactNode;
 	negative?: boolean;
-}
+};
 
-interface BooleanProps {
+type BooleanProps = {
 	noReset: boolean;
 	options?: BooleanOptionType[];
 	value?: BooleanValue;
 	onChange?: (value: BooleanValue) => void;
-}
+};
 
 const BooleanField = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
 	<div className="form-field boolean">
@@ -35,7 +35,9 @@ const BooleanField = ({ noReset, options = [], value = null, onChange = () => {}
 		</div>
 		{!noReset && (
 			<div className="boolean__reset">
-				<div onClick={() => onChange(null)}>Reset answer</div>
+				<button type="button" onClick={() => onChange(null)}>
+					Reset answer
+				</button>
 			</div>
 		)}
 	</div>

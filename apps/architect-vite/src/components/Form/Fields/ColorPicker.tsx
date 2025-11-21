@@ -46,31 +46,22 @@ const ColorPicker = ({
 		input.onChange(value);
 	};
 
-	const handleKeyDown = (colorValue: string) => (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			handleClick(colorValue);
-		}
-	};
-
 	const renderColor = (color: ColorOption) => {
 		const colorClasses = cx("form-fields-color-picker__color", {
 			"form-fields-color-picker__color--selected": input.value === color.value,
 		});
 
 		return (
-			<div
+			<button
+				type="button"
 				className={colorClasses}
 				onClick={() => handleClick(color.value)}
-				onKeyDown={handleKeyDown(color.value)}
-				role="button"
-				tabIndex={0}
 				aria-label={`Select color ${color.label}`}
 				style={{ "--color": `hsl(var(--${color.value}))` } as React.CSSProperties}
 				key={color.value}
 			>
 				<div className="form-fields-color-picker__color-label">{color.label}</div>
-			</div>
+			</button>
 		);
 	};
 

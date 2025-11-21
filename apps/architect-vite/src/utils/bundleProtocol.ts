@@ -37,11 +37,18 @@ async function getAllProtocolAssets(protocol: CurrentProtocol) {
 	return assets;
 }
 
-export async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
+type ProtocolWithAppState = CurrentProtocol & {
+	name?: string;
+	isValid?: boolean;
+	lastSavedAt?: string;
+	lastSavedTimeline?: string;
+};
+
+async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 	const zip = new JSZip();
 
 	// Remove app state props
-	const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as any;
+	const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as ProtocolWithAppState;
 	const protocolJson = JSON.stringify(cleanProtocol, null, 2);
 	zip.file("protocol.json", protocolJson);
 

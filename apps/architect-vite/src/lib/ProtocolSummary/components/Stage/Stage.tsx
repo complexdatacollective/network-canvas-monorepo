@@ -15,9 +15,15 @@ import Items from "./Items";
 import PageHeading from "./PageHeading";
 import Panels from "./Panels";
 import Presets from "./Presets";
-import Prompts from "./Prompts";
+import Prompts, { type PromptType } from "./Prompts";
 import QuickAdd from "./QuickAdd";
 import SkipLogic from "./SkipLogic";
+
+export type FormFieldType = {
+	prompt: string;
+	variable: string;
+	[key: string]: unknown;
+};
 
 const getInterfaceImage = (type: string) => get(interfaceImage, type);
 
@@ -50,8 +56,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	const dataSource = configuration.dataSource as string | undefined;
 	const quickAdd = configuration.quickAdd as string | undefined;
 	const panels = configuration.panels as { id: string; title: string; dataSource: string }[] | undefined;
-	const prompts = configuration.prompts as unknown[] | undefined;
-	const form = configuration.form as { title?: string; fields?: unknown[] } | undefined;
+	const prompts = configuration.prompts as PromptType[] | undefined;
+	const form = configuration.form as { title?: string; fields?: FormFieldType[] } | undefined;
 	const behaviours = configuration.behaviours as Record<string, unknown> | undefined;
 	const presets = configuration.presets as
 		| {
@@ -115,7 +121,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 					<div className="protocol-summary-stage__heading-section">
 						<div className="protocol-summary-stage__heading-section-content">
 							<h2 className="section-heading">Network Filtering</h2>
-							<MiniTable rotated wide rows={[["Rules", <Filter filter={filter} />]]} />
+							<MiniTable rotated wide rows={[["Rules", <Filter key="filter" filter={filter} />]]} />
 						</div>
 					</div>
 				)}

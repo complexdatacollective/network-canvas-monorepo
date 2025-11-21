@@ -1,5 +1,6 @@
+import type { StageType } from "@codaco/protocol-validation";
 import { get } from "es-toolkit/compat";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import timelineImages from "~/images/timeline";
 import { useFormContext } from "../Editor";
 import ValidatedField from "../Form/ValidatedField";
@@ -8,7 +9,7 @@ import { getInterface } from "./Interfaces";
 
 const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
 
-const StageHeading = ({ id }: { id: string }) => {
+const StageHeading = ({ _id }: { _id?: string }) => {
 	const { values } = useFormContext();
 
 	const type = get(values, "type") as string;
@@ -17,7 +18,7 @@ const StageHeading = ({ id }: { id: string }) => {
 		return null;
 	}
 
-	const documentationLinkForType = get(getInterface(type), "documentation", null);
+	const documentationLinkForType = get(getInterface(type as StageType), "documentation", null);
 
 	return (
 		<div className="w-full grid gap-8 grid-cols-[20rem_auto] max-w-7xl my-10">
@@ -42,7 +43,7 @@ const StageHeading = ({ id }: { id: string }) => {
 				<h2>Stage Name</h2>
 				<ValidatedField
 					name="label"
-					component={Fields.Text}
+					component={Text}
 					placeholder="Enter your stage name here"
 					className="stage-editor-section-title"
 					maxLength="50"

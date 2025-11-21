@@ -1,10 +1,12 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { get, isNull, isUndefined } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import { Number } from "~/components/Form/Fields";
+import { Number as NumberField } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 import { ValidatedField } from "../Form";
@@ -31,7 +33,7 @@ const minValidation = (value: number | null | undefined, allValues: Record<strin
 	return value <= maxValue ? undefined : "Minimum number of alters must be less than or equal to the maximum number";
 };
 
-const MinMaxAlterLimits = () => {
+const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 	const formSelector = useMemo(() => formValueSelector("edit-stage"), []);
 	const currentMinValue = useSelector(
 		(state: RootState) => formSelector(state, "behaviours.minNodes") as number | undefined,
@@ -44,7 +46,7 @@ const MinMaxAlterLimits = () => {
 		return !!prompts && prompts.length > 1;
 	});
 
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
@@ -58,7 +60,7 @@ const MinMaxAlterLimits = () => {
 					title: "This will clear your values",
 					message: "This will clear the minimum and maximum alter values. Do you want to continue?",
 					confirmLabel: "Clear values",
-				}),
+				}) as UnknownAction,
 			);
 
 			if (confirm) {
@@ -103,11 +105,7 @@ const MinMaxAlterLimits = () => {
 				<IssueAnchor fieldName="behaviours.minNodes" description="Minimum alters" />
 				<ValidatedField
 					name="minNodes"
-					label="Minimum Number of Alters. (0 = no minimum)"
-					component={Number}
-					componentProps={{
-						placeholder: "0",
-					}}
+					component={NumberField}
 					validation={{
 						lessThanMax: minValidation,
 						positiveNumber: (value: number | null | undefined) => {
@@ -115,21 +113,25 @@ const MinMaxAlterLimits = () => {
 							return value >= 0 ? undefined : "Must be a positive number";
 						},
 					}}
+					componentProps={{
+						label: "Minimum Number of Alters. (0 = no minimum)",
+						placeholder: "0",
+					}}
 				/>
 				<IssueAnchor fieldName="behaviours.maxNodes" description="Maximum alters" />
 				<ValidatedField
 					name="maxNodes"
-					label="Maximum Number of Alters. _(Leave empty for no maximum)_"
-					component={Number}
-					componentProps={{
-						placeholder: "Infinity",
-					}}
+					component={NumberField}
 					validation={{
 						greaterThanMin: maxValidation,
 						minValue: (value: number | null | undefined) => {
 							if (!value) return undefined;
 							return value >= 1 ? undefined : "Must be at least 1";
 						},
+					}}
+					componentProps={{
+						label: "Maximum Number of Alters. _(Leave empty for no maximum)_",
+						placeholder: "Infinity",
 					}}
 				/>
 			</FormSection>

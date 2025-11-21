@@ -1,11 +1,13 @@
+import type { VariableType } from "@codaco/protocol-validation";
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import Search from "~/components/Form/Fields/Search";
+import type { RootState } from "~/ducks/store";
 import { Icon, Modal, Scroller } from "~/lib/legacy-ui/components";
-import { allowedVariableName, uniqueByList } from "~/utils/validations";
+import { validations } from "~/utils/validations";
 import { getVariablesForSubject } from "../../../../selectors/codebook";
 import { sortByLabel } from "../../../Codebook/helpers";
 import ExternalLink from "../../../ExternalLink";
@@ -23,15 +25,15 @@ type ListItemProps = {
 const ListItem = ({
 	disabled = false,
 	selected = false,
-	onSelect = null,
+	onSelect,
 	children = null,
 	setSelected = () => {},
 	removeSelected = () => {},
 }: ListItemProps) => {
-	const ref = useRef(null);
+	const ref = useRef<HTMLLIElement>(null);
 
 	useEffect(() => {
-		if (selected) {
+		if (selected && ref.current) {
 			// Move element into view when it is selected
 			ref.current.scrollIntoView({ block: "nearest" });
 		}
@@ -44,12 +46,41 @@ const ListItem = ({
 		{ "spotlight-list-item--disabled": disabled },
 	);
 
+	const handleClick = () => {
+		if (onSelect && !disabled) {
+			onSelect();
+		}
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (onSelect && !disabled && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			onSelect();
+		}
+	};
+
+	if (onSelect) {
+		return (
+			<li ref={ref}>
+				<button
+					type="button"
+					className={classes}
+					onClick={handleClick}
+					onKeyDown={handleKeyDown}
+					onMouseEnter={setSelected}
+					onMouseLeave={removeSelected}
+					disabled={disabled}
+				>
+					{children}
+					{selected && <kbd>Enter&nbsp;&#8629;</kbd>}
+				</button>
+			</li>
+		);
+	}
+
 	return (
-		<li onMouseEnter={setSelected} onMouseLeave={removeSelected} ref={ref}>
-			<div className={classes} onClick={onSelect}>
-				{children}
-				{selected && <kbd>Enter&nbsp;&#8629;</kbd>}
-			</div>
+		<li ref={ref}>
+			<div className={classes}>{children}</div>
 		</li>
 	);
 };
@@ -71,7 +102,7 @@ type VariableSpotlightProps = {
 	onOpenChange: (open: boolean) => void;
 	disallowCreation?: boolean;
 	onSelect: (value: string) => void;
-	entity: string;
+	entity?: string;
 	type?: string;
 	onCancel: () => void;
 	onCreateOption: (value: string) => void;
@@ -86,7 +117,7 @@ const VariableSpotlight = ({
 	open,
 	onOpenChange,
 	entity,
-	type = null,
+	type,
 	onSelect,
 	onCancel,
 	onCreateOption,
@@ -116,7 +147,12 @@ const VariableSpotlight = ({
 		return options.filter((item) => item.label.toLowerCase().includes(filterTerm.toLowerCase()));
 	}, [filterTerm, options]);
 
-	const existingVariables = useSelector((state) => getVariablesForSubject(state, { entity, type }));
+	const existingVariables = useSelector((state: RootState) =>
+		getVariablesForSubject(state, {
+			entity: ((entity || "") as "node" | "edge" | "ego") || "node",
+			type: type || undefined,
+		}),
+	);
 
 	const hasOptions = useMemo(() => options.length > 0, [options]);
 	const hasFilterTerm = useMemo(() => filterTerm.length > 0, [filterTerm]);
@@ -127,8 +163,8 @@ const VariableSpotlight = ({
 	);
 
 	const invalidVariableName = useMemo(() => {
-		const unique = uniqueByList(existingVariableNames)(filterTerm);
-		const allowed = allowedVariableName()(filterTerm);
+		const unique = validations.uniqueByList(existingVariableNames)(filterTerm);
+		const allowed = validations.allowedVariableName()(filterTerm);
 
 		return unique || allowed || undefined;
 	}, [filterTerm, existingVariableNames]);
@@ -202,7 +238,9 @@ const VariableSpotlight = ({
 						}}
 						removeSelected={() => setCursor(-1)}
 					>
-						<SimpleVariablePill label={label} type={optionType} />
+						<SimpleVariablePill label={label} type={(optionType as VariableType) || "text"}>
+							<span />
+						</SimpleVariablePill>
 					</ListItem>
 				))}
 			</ol>
@@ -224,10 +262,8 @@ const VariableSpotlight = ({
 		}
 	}, [sortedAndFilteredItems, cursor, hasFilterResults]);
 
-	const handleFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
-		// throw new Error();
-		const value = get(e, "target.value", "");
-		setFilterTerm(value);
+	const handleFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setFilterTerm(event.target.value);
 	};
 
 	// Navigate within the list of results using the keyboard
@@ -270,7 +306,7 @@ const VariableSpotlight = ({
 			}
 		} else if (e.key === "Enter") {
 			// If the cursor is within the list of results, select the value
-			if (cursor > -1) {
+			if (cursor > -1 && sortedAndFilteredItems[cursor]) {
 				onSelect(sortedAndFilteredItems[cursor].value);
 				return;
 			}

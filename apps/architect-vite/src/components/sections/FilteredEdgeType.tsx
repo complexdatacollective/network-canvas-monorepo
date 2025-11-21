@@ -1,9 +1,11 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { difference, get, keys } from "es-toolkit/compat";
 import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 // Screen message listeners removed as part of screen system refactor
 import { ValidatedField } from "../Form";
@@ -12,20 +14,20 @@ import Filter from "./Filter";
 import EntitySelectField from "./fields/EntitySelectField/EntitySelectField";
 import { SUBJECT_INDEPENDENT_FIELDS } from "./NodeType";
 
-type FilteredEdgeTypeProps = {
-	form: string;
-} & Record<string, unknown>;
+type FilteredEdgeTypeProps = StageEditorSectionProps;
 
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 	const { form } = props;
 
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const formValues = useSelector((state: RootState) => getFormValues(form)(state));
 	const fields = keys(formValues);
 
 	const handleResetStage = useCallback(() => {
 		const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
-		fieldsToReset.forEach((field) => dispatch(change(form, field, null) as UnknownAction));
+		fieldsToReset.forEach((field) => {
+			dispatch(change(form, field, null) as UnknownAction);
+		});
 	}, [dispatch, fields, form]);
 
 	const _currentSubject = get(formValues, "subject");

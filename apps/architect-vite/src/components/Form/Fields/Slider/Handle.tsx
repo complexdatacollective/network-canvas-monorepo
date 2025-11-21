@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import MarkdownLabel from "../MarkdownLabel";
 
-interface HandleProps {
+type HandleProps = {
 	domain: [number, number];
 	handle: {
 		id: string;
@@ -14,7 +14,7 @@ interface HandleProps {
 	showTooltips?: boolean;
 	getHandleProps: (id: string, props?: Record<string, unknown>) => Record<string, unknown>;
 	getLabelForValue: (value: number) => string | null;
-}
+};
 
 const Handle = ({
 	domain: [min, max],
@@ -62,6 +62,7 @@ const Handle = ({
 				aria-valuenow={value}
 				className={markerClasses}
 				style={{ left: `${percent}%` }}
+				tabIndex={0}
 			/>
 		</>
 	);

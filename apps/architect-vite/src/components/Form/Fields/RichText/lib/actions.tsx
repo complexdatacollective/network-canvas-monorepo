@@ -7,11 +7,11 @@ const LIST_TYPES = ["ul_list", "ol_list"];
 
 const [, , { Transforms: EditListTransforms }] = EditListPlugin();
 
-interface GetNewTypeParams {
+type GetNewTypeParams = {
 	isActive: boolean;
 	isList: boolean;
 	format: string;
-}
+};
 
 const getNewType = ({ isActive, isList, format }: GetNewTypeParams): string => {
 	if (isList) {

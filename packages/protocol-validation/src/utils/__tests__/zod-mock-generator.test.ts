@@ -49,27 +49,31 @@ describe("Zod Mock Generator", () => {
 					.generateMock(() => "password123"),
 			});
 
+			const itemSchema = z.object({
+				productId: z.uuid().generateMock(() => crypto.randomUUID()),
+				quantity: z
+					.number()
+					.min(1)
+					.default(1)
+					.generateMock(() => 1),
+			});
+
+			type CartInput = {
+				id: string;
+				user: z.infer<typeof userSchema>;
+				items: Array<z.infer<typeof itemSchema>>;
+			};
+
 			const cartSchema = z
 				.object({
 					id: z.uuid().generateMock(() => crypto.randomUUID()),
 					user: userSchema,
-					items: z
-						.array(
-							z.object({
-								productId: z.uuid().generateMock(() => crypto.randomUUID()),
-								quantity: z
-									.number()
-									.min(1)
-									.default(1)
-									.generateMock(() => 1),
-							}),
-						)
-						.min(1),
+					items: z.array(itemSchema).min(1),
 				})
-				.generateMock(({ id, user, items }: any) => ({
+				.generateMock(({ id, user, items }: CartInput) => ({
 					id,
 					user,
-					items: items.map((item: any) => ({
+					items: items.map((item) => ({
 						productId: `${user.id}_${item.productId}`,
 						quantity: item.quantity,
 					})),

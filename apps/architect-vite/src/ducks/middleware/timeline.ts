@@ -71,7 +71,8 @@ const createTimelineReducer = <T>(
 
 					const newPresent = past[past.length - 1];
 					const newFuture = [current(present), ...current(future || [])];
-					const newFutureTimeline = [timeline[timeline.length - 1], ...(futureTimeline || [])];
+					const lastTimelineItem = timeline[timeline.length - 1];
+					const newFutureTimeline = lastTimelineItem ? [lastTimelineItem, ...(futureTimeline || [])] : futureTimeline;
 
 					const newPast = past.slice(0, -1);
 					const newTimeline = timeline.slice(0, -1);
@@ -127,7 +128,7 @@ const createTimelineReducer = <T>(
 
 					// Move current present to past
 					const newPast = present ? [...past, current(present)] : past;
-					const newTimeline = [...timeline, newLocus];
+					const newTimeline = newLocus ? [...timeline, newLocus] : timeline;
 
 					state.past = newPast;
 					state.present = newPresent as Draft<T>;
@@ -140,7 +141,7 @@ const createTimelineReducer = <T>(
 					const newPresent = reducer(state.present as T, { type: "@@RESET" });
 
 					state.past = [];
-					state.present = newPresent as Draft<T> | undefined;
+					state.present = (newPresent ?? null) as Draft<T> | null;
 					state.timeline = [locus];
 					state.future = [];
 					state.futureTimeline = [];
@@ -180,7 +181,7 @@ const createTimelineReducer = <T>(
 					if (timeline.length === 0) {
 						const locus = uuid();
 						state.past = [];
-						state.present = newPresent as Draft<T> | undefined;
+						state.present = (newPresent ?? null) as Draft<T> | null;
 						state.timeline = [locus];
 						state.future = [];
 						state.futureTimeline = [];
@@ -196,7 +197,7 @@ const createTimelineReducer = <T>(
 					if (action.type === "activeProtocol/setActiveProtocol") {
 						const locus = uuid();
 						state.past = [];
-						state.present = newPresent as Draft<T> | undefined;
+						state.present = (newPresent ?? null) as Draft<T> | null;
 						state.timeline = [locus];
 						state.future = [];
 						state.futureTimeline = [];
@@ -206,7 +207,7 @@ const createTimelineReducer = <T>(
 					// If excluded, we don't treat this as a new point in the timeline, but we do update the state
 					if (options.exclude(action)) {
 						state.past = past;
-						state.present = newPresent as Draft<T> | undefined;
+						state.present = (newPresent ?? null) as Draft<T> | null;
 						state.timeline = timeline;
 						return;
 					}
@@ -224,7 +225,7 @@ const createTimelineReducer = <T>(
 					}
 
 					state.past = validPast.slice(-options.limit);
-					state.present = newPresent as Draft<T> | undefined;
+					state.present = (newPresent ?? null) as Draft<T> | null;
 					state.timeline = newTimeline;
 				});
 		},
@@ -233,11 +234,4 @@ const createTimelineReducer = <T>(
 	return timelineSlice.reducer;
 };
 
-// export action creators for the timeline actions
-export const timelineActionCreators = {
-	jump: (locus: string) => timelineActions.jump(locus),
-	reset: () => timelineActions.reset(),
-};
-
 export default createTimelineReducer;
-export type { TimelineOptions, TimelineState };

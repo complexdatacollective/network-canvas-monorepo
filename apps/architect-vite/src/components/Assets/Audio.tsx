@@ -18,6 +18,4 @@ const Audio = ({ url, description = "", ...props }: AudioProps) => (
 	</audio>
 );
 
-export { Audio };
-
 export default withAssetUrl(Audio);

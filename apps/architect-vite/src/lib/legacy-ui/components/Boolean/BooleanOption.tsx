@@ -4,14 +4,14 @@ import { memo } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import RoundCheckbox from "./RoundCheckbox";
 
-interface BooleanOptionProps {
+type BooleanOptionProps = {
 	classes?: string | null;
 	selected?: boolean;
 	label: string | (() => ReactNode);
 	onClick?: () => void;
 	customIcon?: (() => ReactNode) | null;
 	negative?: boolean;
-}
+};
 
 const BooleanOption = ({
 	classes = null,
@@ -40,27 +40,18 @@ const BooleanOption = ({
 		return <Markdown label={label} className="form-field-inline-label" />;
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			onClick();
-		}
-	};
-
 	return (
-		<div
+		<button
+			type="button"
 			className={classNames}
 			onClick={onClick}
-			onKeyDown={handleKeyDown}
-			role="button"
-			tabIndex={0}
 			aria-pressed={selected}
 			style={{ position: "relative" }}
 		>
 			{/* {resizeListener} */}
 			{customIcon || <RoundCheckbox checked={selected} negative={negative} />}
 			{renderLabel()}
-		</div>
+		</button>
 	);
 };
 

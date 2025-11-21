@@ -1,11 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
+import type { ComponentProps } from "react";
 import Slider from "./Slider";
 
-interface LikertScaleProps {
-	options: unknown[];
-	[key: string]: unknown;
-}
+type LikertScaleProps = ComponentProps<typeof Slider>;
 
 const LikertScale = (props: LikertScaleProps) => <Slider {...props} />;
 

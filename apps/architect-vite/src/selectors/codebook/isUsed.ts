@@ -9,22 +9,22 @@ import { getCodebook, getProtocol } from "../protocol";
 import { getIdsFromCodebook } from "./helpers";
 
 // Types
-export interface GetIsUsedOptions {
+export type GetIsUsedOptions = {
 	formNames?: string[];
 	excludePaths?: string[];
-}
+};
 
-interface IsUsedMap {
+type IsUsedMap = {
 	[variableId: string]: boolean;
-}
+};
 
-interface VariableOption {
+type VariableOption = {
 	label: string;
 	value: string;
 	type?: string;
 	color?: string;
 	isUsed?: boolean;
-}
+};
 
 // Helper selectors
 const getFormsSelector = (formNames: string[]) =>

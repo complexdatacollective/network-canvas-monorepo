@@ -1,0 +1,24 @@
+{
+	"name": "@codaco/development-protocol",
+	"version": "1.0.0",
+	"description": "Development protocol for testing Network Canvas applications",
+	"type": "module",
+	"main": "./protocol.json",
+	"exports": {
+		".": "./protocol.json"
+	},
+	"files": [
+		"protocol.json",
+		"assets"
+	],
+	"keywords": [
+		"network-canvas",
+		"protocol",
+		"development"
+	],
+	"author": "Complex Data Collective <hello@complexdatacollective.org>",
+	"license": "GPL-3.0-or-later",
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

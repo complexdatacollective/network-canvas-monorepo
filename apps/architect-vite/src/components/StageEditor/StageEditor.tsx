@@ -1,4 +1,4 @@
-import type { Stage } from "@codaco/protocol-validation";
+import type { Stage, StageType } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -13,6 +13,7 @@ import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
 import { uploadProtocolForPreview } from "~/utils/uploadPreview";
 import { formName } from "./configuration";
+import type { SectionComponent } from "./Interfaces";
 import { getInterface } from "./Interfaces";
 import StageHeading from "./StageHeading";
 
@@ -33,7 +34,7 @@ const StageEditor = (props: StageEditorProps) => {
 	const stageIndex = useSelector((state: RootState) => getStageIndex(state, id || ""));
 	const protocol = useSelector(getProtocol);
 	const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
-	const interfaceType = stage?.type || type || "Information";
+	const interfaceType = (stage?.type || type || "Information") as StageType;
 	const template = getInterface(interfaceType).template || {};
 	const initialValues = stage || { ...template, type: interfaceType };
 
@@ -116,8 +117,8 @@ const StageEditor = (props: StageEditorProps) => {
 	}, [protocol, stageIndex, dispatch]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
-	const renderSections = (sectionsList: unknown[]) =>
-		sectionsList.map((SectionComponent: React.ComponentType<unknown>, sectionIndex: number) => {
+	const renderSections = (sectionsList: readonly SectionComponent[]) =>
+		sectionsList.map((SectionComponent: SectionComponent, sectionIndex: number) => {
 			const sectionKey = `${interfaceType}-${sectionIndex}`;
 			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
 		});

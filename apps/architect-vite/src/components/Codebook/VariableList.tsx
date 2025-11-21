@@ -1,12 +1,14 @@
 import { compose } from "recompose";
 import { Heading, rowClassName, type SortDirection, withSort } from "./Variables";
 
+type SortDirectionType = typeof SortDirection.ASC | typeof SortDirection.DESC;
+
 type VariableListProps = {
 	variables?: string[];
 	onDelete?: () => void;
 	sortBy: string;
-	sortDirection: typeof SortDirection.ASC | typeof SortDirection.DESC;
-	sort: (key: string) => void;
+	sortDirection: SortDirectionType;
+	sort: (options: { sortBy: string; sortDirection: SortDirectionType }) => void;
 };
 
 const Variables = ({
@@ -47,7 +49,5 @@ const Variables = ({
 		</div>
 	);
 };
-
-export { Variables };
 
 export default compose(withSort)(Variables as React.ComponentType<unknown>);

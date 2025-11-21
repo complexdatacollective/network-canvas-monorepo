@@ -16,16 +16,9 @@ type EditStageButtonProps = {
 
 const EditStageButton = React.forwardRef<HTMLDivElement, EditStageButtonProps>(
 	({ hasFilter = false, hasSkipLogic = false, label = null, onEditStage, type }, ref) => {
-		const handleKeyDown = (e: React.KeyboardEvent) => {
-			if (e.key === "Enter" || e.key === " ") {
-				e.preventDefault();
-				onEditStage();
-			}
-		};
-
 		return (
-			<div className="timeline-stage__edit-stage" onClick={onEditStage} onKeyDown={handleKeyDown}>
-				<div className="timeline-stage__screen" role="button" tabIndex={0} ref={ref}>
+			<button type="button" className="timeline-stage__edit-stage" onClick={onEditStage}>
+				<div className="timeline-stage__screen" ref={ref}>
 					<div className="timeline-stage__screen-preview">
 						{getTimelineImage(type) && (
 							<img src={getTimelineImage(type)} alt={`${type} interface`} title={`${type} interface`} />
@@ -48,7 +41,7 @@ const EditStageButton = React.forwardRef<HTMLDivElement, EditStageButtonProps>(
 						)}
 					</div>
 				</div>
-			</div>
+			</button>
 		);
 	},
 );

@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "../ViewManager/views/App";
 
 // Mock the components that App renders
@@ -23,13 +23,7 @@ const mockStore = configureStore({
 	},
 });
 
-const { process } = global;
-
 describe("<App />", () => {
-	afterAll(() => {
-		global.process = process;
-	});
-
 	it("renders main app components", () => {
 		const { getByTestId } = render(
 			<Provider store={mockStore}>

@@ -7,10 +7,9 @@ import { timelineActions } from "../middleware/timeline";
 import assetManifest from "./protocol/assetManifest";
 import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
-import type { RootState } from "./root";
 
 // Types
-type ActiveProtocolState =
+export type ActiveProtocolState =
 	| (CurrentProtocol & {
 			name: string;
 			isValid: boolean;
@@ -33,19 +32,21 @@ const activeProtocolSlice = createSlice({
 				isValid: true, // Assume new protocol is valid initially
 				lastSavedAt: null,
 				lastSavedTimeline: null,
-			};
+			} as ActiveProtocolState;
 		},
 		updateProtocol: (state, action: PayloadAction<Partial<ActiveProtocolState>>) => {
+			if (!state) return state;
 			return {
 				...state,
 				...action.payload,
-			};
+			} as ActiveProtocolState;
 		},
 		updateProtocolOptions: (state, action: PayloadAction<{ name?: string; description?: string }>) => {
+			if (!state) return state;
 			return {
 				...state,
 				...pick(action.payload, ["name", "description"]),
-			};
+			} as ActiveProtocolState;
 		},
 		markProtocolSaved: (state, action: PayloadAction<{ timestamp: number; timelineLocus: string }>) => {
 			if (state) {
@@ -74,23 +75,26 @@ const activeProtocolSlice = createSlice({
 
 				// If the sub-reducer returns a different reference, it made a change
 				if (newStages !== currentStages) {
-					state.stages = newStages;
+					// Cast the stages to the correct type
+					state.stages = newStages as typeof state.stages;
 					hasChange = true;
 				}
 			}
 			if (state.assetManifest) {
 				const currentAssetManifest = current(state.assetManifest);
-				const newAssetManifest = assetManifest(currentAssetManifest, action);
+				const newAssetManifest = assetManifest(currentAssetManifest as Record<string, unknown>, action);
 				if (newAssetManifest !== currentAssetManifest) {
-					state.assetManifest = newAssetManifest;
+					// Cast the assetManifest to the correct type
+					state.assetManifest = newAssetManifest as typeof state.assetManifest;
 					hasChange = true;
 				}
 			}
 			if (state.codebook) {
 				const currentCodebook = current(state.codebook);
-				const newCodebook = codebook(currentCodebook, action);
+				const newCodebook = codebook(currentCodebook as Record<string, unknown>, action);
 				if (newCodebook !== currentCodebook) {
-					state.codebook = newCodebook;
+					// Cast the codebook to the correct type
+					state.codebook = newCodebook as typeof state.codebook;
 					hasChange = true;
 				}
 			}
@@ -99,64 +103,29 @@ const activeProtocolSlice = createSlice({
 			// This is critical for the timeline middleware to detect changes
 			if (hasChange) {
 				// Force a new object reference by spreading
-				return { ...state };
+				return { ...state } as ActiveProtocolState;
 			}
 		});
-	},
-	selectors: {
-		selectActiveProtocol: (state) => {
-			if (state && typeof state === "object" && "present" in state) {
-				return (state as { present: ActiveProtocolState }).present ?? null;
-			}
-			return state;
-		},
 	},
 });
 
 // Extract actions and selectors
-const actions = activeProtocolSlice.actions;
-export const setActiveProtocol = actions.setActiveProtocol!;
-export const updateProtocol = actions.updateProtocol!;
-export const updateProtocolOptions = actions.updateProtocolOptions!;
-export const markProtocolSaved = actions.markProtocolSaved!;
-export const clearActiveProtocol = actions.clearActiveProtocol!;
+export const setActiveProtocol = activeProtocolSlice.actions.setActiveProtocol;
+export const updateProtocol = activeProtocolSlice.actions.updateProtocol;
+export const updateProtocolOptions = activeProtocolSlice.actions.updateProtocolOptions;
+export const markProtocolSaved = activeProtocolSlice.actions.markProtocolSaved;
+export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;
 
-export const { selectActiveProtocol } = activeProtocolSlice.selectors;
-
-// Export action creators object for backwards compatibility with tests
 export const actionCreators = {
-	setActiveProtocol,
-	updateProtocol,
-	updateProtocolOptions,
-	markProtocolSaved,
-	clearActiveProtocol,
-};
-
-// Additional selectors
-export const selectHasActiveProtocol = (state: RootState): boolean => {
-	const protocol = selectActiveProtocol(state.activeProtocol);
-	return protocol !== null && Object.keys(protocol).length > 0;
+	setActiveProtocol: activeProtocolSlice.actions.setActiveProtocol,
+	updateProtocol: activeProtocolSlice.actions.updateProtocol,
+	updateProtocolOptions: activeProtocolSlice.actions.updateProtocolOptions,
+	markProtocolSaved: activeProtocolSlice.actions.markProtocolSaved,
+	clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
 };
 
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
-
-// Export types for use in other parts of the application
-export type { ActiveProtocolState };
-
-export const getCanUndo = (state: RootState): boolean => {
-	const past = state.activeProtocol?.past || [];
-	if (past.length === 0) return false;
-
-	// Don't allow undo if it would take us back to a null state
-	const wouldBePresent = past[past.length - 1];
-	return wouldBePresent !== null && wouldBePresent !== undefined;
-};
-
-export const getCanRedo = (state: RootState): boolean => {
-	const future = state.activeProtocol?.future || [];
-	return future.length > 0;
-};
 
 export const undo = () => (dispatch: AppDispatch) => {
 	dispatch(timelineActions.undo());

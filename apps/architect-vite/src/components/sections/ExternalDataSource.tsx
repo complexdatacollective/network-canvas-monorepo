@@ -2,6 +2,7 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withDisabledSubjectRequired from "../enhancers/withDisabledSubjectRequired";
 import withSubject from "../enhancers/withSubject";
 import DataSource from "../Form/Fields/DataSource";
@@ -41,8 +42,8 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
 	);
 };
 
-export { ExternalDataSource };
-
-export default compose(withChangeDataSourceHandler, withSubject, withDisabledSubjectRequired)(
-	ExternalDataSource as React.ComponentType<unknown>,
-);
+export default compose(
+	withChangeDataSourceHandler,
+	withSubject,
+	withDisabledSubjectRequired,
+)(ExternalDataSource) as unknown as React.ComponentType<StageEditorSectionProps>;

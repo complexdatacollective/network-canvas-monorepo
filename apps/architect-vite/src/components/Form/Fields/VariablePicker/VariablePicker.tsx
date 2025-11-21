@@ -1,3 +1,4 @@
+import type { VariableType } from "@codaco/protocol-validation";
 import { get, has } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -21,7 +22,7 @@ type VariablePickerProps = {
 		touched?: boolean;
 	};
 	input?: {
-		value?: string;
+		value?: string | undefined;
 		onChange?: (value: string) => void;
 	};
 	onCreateOption?: (value: string) => void;
@@ -61,7 +62,7 @@ const VariablePicker = ({
 			({ label: variableLabel, value: variableValue }) => value === variableValue || value === variableLabel,
 		);
 
-		if (has(found, "type")) {
+		if (has(found, "type") && found?.type) {
 			return <EditableVariablePill uuid={found?.value ?? ""} />;
 		}
 
@@ -69,8 +70,13 @@ const VariablePicker = ({
 		const selectedValue = get(found, "value", null) as string | null;
 
 		const finalLabel = selectedLabel || selectedValue || "";
+		const variableType = (get(found, "type", "text") as VariableType) || "text";
 
-		return <SimpleVariablePill label={finalLabel} />;
+		return (
+			<SimpleVariablePill label={finalLabel} type={variableType}>
+				<span />
+			</SimpleVariablePill>
+		);
 	};
 
 	return (

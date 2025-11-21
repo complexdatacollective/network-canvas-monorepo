@@ -7,7 +7,10 @@ const behaviorLabel = (behaviourValue: unknown, behaviourKey: string) => {
 		case "allowRepositioning":
 			return { label: "Repositioning enabled", value: behaviourValue };
 		case "automaticLayout":
-			return { label: "Automatic layout enabled", value: behaviourValue.enabled };
+			return {
+				label: "Automatic layout enabled",
+				value: (behaviourValue as { enabled?: boolean })?.enabled,
+			};
 		case "minNodes":
 			return { label: "Minimum nodes on stage", value: behaviourValue };
 		case "maxNodes":

@@ -8,27 +8,25 @@ const stubState = (assetManifest: Record<string, unknown>, workingPath: string) 
 	protocol: { present: { assetManifest } },
 });
 
+type AssetData = {
+	type?: string;
+	name?: string;
+	source?: string;
+	[key: string]: unknown;
+};
+
 const useAssetData = (id: string) => {
-	const {
-		protocol: { assetManifest },
-		workingPath,
-	} = useContext(SummaryContext);
+	const { protocol, workingPath } = useContext(SummaryContext);
 
-	const data = get(assetManifest, id);
-
-	if (!data) {
-		return {};
-	}
-
+	const data = get(protocol.assetManifest, id) as AssetData | undefined;
 	const [variables, setVariables] = useState<string | null>(null);
 
-	const stubbedState = stubState(assetManifest, workingPath);
-
+	const stubbedState = stubState(protocol.assetManifest ?? {}, workingPath);
 	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
 	const assetPath = getAssetPath(stubbedState, id);
 
 	useEffect(() => {
-		if (data.type !== "network") {
+		if (!data || data.type !== "network") {
 			return;
 		}
 
@@ -38,7 +36,11 @@ const useAssetData = (id: string) => {
 			}
 			setVariables(v.join(", "));
 		});
-	}, [data.type, getNetworkAssetVariables, id]);
+	}, [data, data?.type, getNetworkAssetVariables, id]);
+
+	if (!data) {
+		return {};
+	}
 
 	// TODO: When assets are stored remotely, this will be:
 	// const url = `https://assets.example.com/${encodeURIComponent(assetPath)}`;

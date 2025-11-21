@@ -1,15 +1,18 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import SkipLogicFields from "~/components/sections/fields/SkipLogicFields";
+import { useAppDispatch } from "~/ducks/hooks";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 
 type OpenDialogFunction = typeof openDialog;
 
-export const handleDeactivateSkipLogic = async (
+// Internal helper for confirming skip logic deactivation
+const handleDeactivateSkipLogic = async (
 	openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>,
 ) => {
 	const result = await openDialogFn({
@@ -22,8 +25,8 @@ export const handleDeactivateSkipLogic = async (
 	return result;
 };
 
-const SkipLogicSection = () => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+const SkipLogicSection = (_props: StageEditorSectionProps) => {
+	const dispatch = useAppDispatch();
 
 	const getFormValue = formValueSelector("edit-stage");
 	const hasSkipLogic = useSelector((state: RootState) => getFormValue(state, "skipLogic"));
@@ -60,7 +63,5 @@ const SkipLogicSection = () => {
 		</Section>
 	);
 };
-
-export { SkipLogicSection };
 
 export default SkipLogicSection;

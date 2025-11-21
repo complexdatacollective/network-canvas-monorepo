@@ -1,9 +1,8 @@
 import { EditListPlugin } from "@productboard/slate-edit-list";
-import { compose } from "@reduxjs/toolkit";
 import { isEmpty } from "es-toolkit/compat";
 import isHotkey from "is-hotkey";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createEditor, type Descendant, Editor, Transforms as SlateTransforms } from "slate";
+import { createEditor, type Descendant, type Editor, Transforms as SlateTransforms } from "slate";
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";
 import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
@@ -25,14 +24,14 @@ type CustomEditor = Editor &
 		disallowedTypes?: string[];
 	};
 
-interface RichTextProps {
+type RichTextProps = {
 	value?: string;
 	placeholder?: string;
 	onChange?: (value: string) => void;
 	inline?: boolean;
 	disallowedTypes?: string[];
 	autoFocus?: boolean;
-}
+};
 
 const HOTKEYS: Record<string, string> = {
 	"mod+b": "bold",
@@ -48,7 +47,9 @@ const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) =
 		if (isHotkey(hotkey, event)) {
 			event.preventDefault();
 			const mark = HOTKEYS[hotkey];
-			toggleMark(editor, mark);
+			if (mark) {
+				toggleMark(editor, mark);
+			}
 		}
 	});
 };
@@ -109,70 +110,77 @@ const RichText = ({
 	const [lastChange, setLastChange] = useState(initialValue);
 
 	// Use the inline prop to optionally merge additional disallowed items
-	const disallowedTypesWithDefaults = [
-		...disallowedTypes,
-		...[...(inline ? INLINE_DISALLOWED_ITEMS : [])],
-		...ALWAYS_DISALLOWED,
-	];
-
-	const withOptions = (e: CustomEditor) =>
-		Object.assign(e, {
-			inline,
-			disallowedTypes: disallowedTypesWithDefaults,
-		});
-
-	const editor = useMemo(
-		() =>
-			compose(
-				withVoids,
-				withNormalize,
-				withOptions,
-				withEditList,
-				withHistory,
-				withReact,
-			)(createEditor() as CustomEditor),
-		[disallowedTypesWithDefaults.join()],
+	const disallowedTypesWithDefaults = useMemo(
+		() => [...disallowedTypes, ...[...(inline ? INLINE_DISALLOWED_ITEMS : [])], ...ALWAYS_DISALLOWED],
+		[disallowedTypes, inline],
 	);
 
+	const withOptions = useCallback(
+		(e: Editor) => {
+			const customE = e as CustomEditor;
+			customE.inline = inline;
+			customE.disallowedTypes = disallowedTypesWithDefaults;
+			return customE;
+		},
+		[inline, disallowedTypesWithDefaults],
+	);
+
+	const editor = useMemo(() => {
+		const baseEditor = createEditor();
+		const withReactEditor = withReact(baseEditor);
+		const withHistoryEditor = withHistory(withReactEditor);
+		const withListEditor = withEditList(withHistoryEditor);
+		const withNormalizeEditor = withNormalize(withListEditor);
+		const withVoidsEditor = withVoids(withNormalizeEditor);
+		const withOptionsEditor = withOptions(withVoidsEditor);
+		return withOptionsEditor as CustomEditor;
+	}, [withOptions]);
+
 	// Test if there is no text content in the tree
-	const childrenAreEmpty = (children: Descendant[]): boolean =>
-		children.every((child) => {
-			// Thematic break has no text, but still counts as content.
-			if ("type" in child && child.type === "thematic_break") {
-				return false;
-			}
+	const childrenAreEmpty = useCallback((children: Descendant[]): boolean => {
+		const checkEmpty = (nodes: Descendant[]): boolean =>
+			nodes.every((child) => {
+				// Thematic break has no text, but still counts as content.
+				if ("type" in child && child.type === "thematic_break") {
+					return false;
+				}
 
-			if ("children" in child && child.children) {
-				return childrenAreEmpty(child.children);
-			}
+				if ("children" in child && child.children) {
+					return checkEmpty(child.children);
+				}
 
-			// The regexp here means that content only containing spaces or
-			// tabs will be considered empty!
-			if ("text" in child) {
-				return isEmpty(child.text) || !/\S/.test(child.text);
-			}
+				// The regexp here means that content only containing spaces or
+				// tabs will be considered empty!
+				if ("text" in child) {
+					return isEmpty(child.text) || !/\S/.test(child.text);
+				}
 
-			return true;
-		});
+				return true;
+			});
+		return checkEmpty(children);
+	}, []);
 
-	const getSerializedValue = () => {
+	const getSerializedValue = useCallback(() => {
 		if (childrenAreEmpty(editor.children)) {
 			return "";
 		}
 		return serialize(value);
-	};
+	}, [childrenAreEmpty, editor.children, value]);
 
-	const setInitialValue = () =>
-		parse(initialValue).then((parsedValue) => {
-			// we need to reset the cursor state because the value length may have changed
-			SlateTransforms.deselect(editor);
-			setValue(parsedValue);
-		});
+	const setInitialValue = useCallback(
+		() =>
+			parse(initialValue).then((parsedValue) => {
+				// we need to reset the cursor state because the value length may have changed
+				SlateTransforms.deselect(editor);
+				setValue(parsedValue);
+			}),
+		[editor, initialValue],
+	);
 
 	// Set starting state from prop value on start up
 	useEffect(() => {
 		setInitialValue().then(() => setIsInitialized(true));
-	}, []);
+	}, [setInitialValue]);
 
 	// Set value again when initial value changes
 	useEffect(() => {
@@ -181,7 +189,7 @@ const RichText = ({
 			return;
 		}
 		setInitialValue();
-	}, [initialValue, setInitialValue]);
+	}, [initialValue, setInitialValue, lastChange]);
 
 	// Update upstream on change
 	useEffect(() => {
@@ -202,8 +210,8 @@ const RichText = ({
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
-			hotkeyOnKeyDown(editor)(event);
-			listOnKeyDown(editor)(event);
+			hotkeyOnKeyDown(editor as CustomEditor)(event);
+			listOnKeyDown(editor as Editor)(event);
 		},
 		[editor],
 	);

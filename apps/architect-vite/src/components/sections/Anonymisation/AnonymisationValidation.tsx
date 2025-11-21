@@ -1,16 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Validations from "~/components/Validations";
+import { useAppDispatch } from "~/ducks/hooks";
 
-interface AnonymisationValidationProps {
-	form: string;
-}
-
-const AnonymisationValidation = ({ form }: AnonymisationValidationProps) => {
-	const dispatch = useDispatch();
+const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
+	const dispatch = useAppDispatch();
 
 	// Create memoized selector for hasValidation
 	const hasValidationSelector = useMemo(() => {

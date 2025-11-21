@@ -22,7 +22,12 @@ const CompleteIcon = () => {
 	};
 
 	return (
-		<motion.svg className="progress-icon" viewBox="0 0 50 50" style={{ height: "100%", width: "100%" }}>
+		<motion.svg
+			aria-hidden="true"
+			className="progress-icon"
+			viewBox="0 0 50 50"
+			style={{ height: "100%", width: "100%" }}
+		>
 			<motion.path
 				strokeWidth="4"
 				fill="none"

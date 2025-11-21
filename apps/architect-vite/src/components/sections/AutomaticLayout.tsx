@@ -1,21 +1,19 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { BooleanField } from "~/components/Form/Fields";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../DetachedField";
 import IssueAnchor from "../IssueAnchor";
 
 const FORM_PROPERTY = "behaviours.automaticLayout.enabled";
 
-type AutomaticLayoutProps = {
-	form: string;
-};
-
-const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
+	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 
@@ -56,7 +54,7 @@ const AutomaticLayout = ({ form }: AutomaticLayoutProps) => {
 			</Row>
 			<Row>
 				<DetachedField
-					component={Fields.Boolean}
+					component={BooleanField}
 					onChange={handleChooseLayoutMode}
 					value={useAutomaticLayout}
 					validation={{ required: true }}

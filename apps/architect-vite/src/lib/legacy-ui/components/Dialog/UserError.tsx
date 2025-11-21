@@ -1,26 +1,36 @@
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-const getErrorMessage = (error) => !!error && (error.friendlyMessage ? error.friendlyMessage : error.toString());
+const getErrorMessage = (error: Error | string | { friendlyMessage?: string } | null) =>
+	!!error &&
+	(typeof error === "object" && "friendlyMessage" in error && error.friendlyMessage
+		? error.friendlyMessage
+		: error?.toString());
 
-const getMessage = ({ error, message }) => (error ? getErrorMessage(error) : message);
+const getMessage = ({
+	error,
+	message,
+}: {
+	error?: Error | string | { friendlyMessage?: string } | null;
+	message?: string;
+}) => (error ? getErrorMessage(error) : message);
 
-interface ErrorDialogProps {
+type ErrorDialogProps = {
 	error?: Error | string | { friendlyMessage?: string };
 	message?: string;
 	onConfirm: () => void;
 	show?: boolean;
 	confirmLabel?: string;
 	title?: string;
-}
+};
 
 /*
  * Designed to present errors to the user. Unlike some other Dialog types user must
  * explicitly click Acknowledge to close.
  */
 const ErrorDialog = ({
-	error = null,
-	message = null,
+	error,
+	message,
 	onConfirm,
 	show = false,
 	confirmLabel = "OK",
@@ -35,7 +45,5 @@ const ErrorDialog = ({
 		options={[<Button key="confirm" onClick={onConfirm} color="neon-coral" content={confirmLabel} />]}
 	/>
 );
-
-export { ErrorDialog };
 
 export default ErrorDialog;

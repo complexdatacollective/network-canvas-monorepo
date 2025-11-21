@@ -135,14 +135,17 @@ export const collectMappedPath = (paths, obj, mapFunc) => {
 	);
 };
 
-export const collectPaths = (objPaths, object) =>
-	objPaths.reduce((acc, objPath) => {
+export const collectPaths = (objPaths, object) => {
+	return objPaths.reduce((acc, objPath) => {
 		const next = Array.isArray(objPath)
 			? collectMappedPath(objPath[0], object, objPath[1])
 			: collectPath(objPath, object);
 
-		Object.assign(acc, next);
+		for (const key in next) {
+			acc[key] = next[key];
+		}
 		return acc;
 	}, {});
+};
 
 export default collectPath;

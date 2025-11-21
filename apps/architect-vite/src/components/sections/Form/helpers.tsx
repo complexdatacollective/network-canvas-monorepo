@@ -3,7 +3,8 @@ import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
 import { getVariablesForSubject } from "~/selectors/codebook";
 
-export const CODEBOOK_PROPERTIES = ["options", "parameters", "component", "validation"];
+// Internal config - not exported
+const CODEBOOK_PROPERTIES = ["options", "parameters", "component", "validation"];
 
 export const getCodebookProperties = (properties: Record<string, unknown>): Record<string, unknown> =>
 	reduce(
@@ -25,11 +26,11 @@ export const normalizeField = (field: Record<string, unknown>) => omit(field, ["
 
 // Merge item with variable info from codebook
 export const itemSelector =
-	(entity: string, type: string) =>
+	(entity: string | null, type: string | null) =>
 	(state: RootState, { form, editField }: { form: string; editField: string }) => {
 		const item = formValueSelector(form)(state, editField) as Record<string, unknown> | undefined;
 
-		if (!item) {
+		if (!item || !entity) {
 			return null;
 		}
 

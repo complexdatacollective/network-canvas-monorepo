@@ -2,16 +2,16 @@ import { isEmpty } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change } from "redux-form";
-import { actionCreators as codebookActions } from "../../ducks/modules/protocol/codebook";
+import { createVariableAsync, deleteVariableAsync } from "../../ducks/modules/protocol/codebook";
 import safeName from "../../utils/safeName";
 
 const mapDispatchToProps = {
-	createVariable: codebookActions.createVariable,
-	deleteVariable: codebookActions.deleteVariable,
+	createVariable: createVariableAsync,
+	deleteVariable: deleteVariableAsync,
 	changeField: change,
 };
 
-export const normalizeKeyDown = (event: React.KeyboardEvent) => {
+const normalizeKeyDown = (event: React.KeyboardEvent) => {
 	const check = safeName(event.key);
 
 	if (isEmpty(check)) {
@@ -20,8 +20,8 @@ export const normalizeKeyDown = (event: React.KeyboardEvent) => {
 };
 
 type ConnectedProps = {
-	createVariable: typeof codebookActions.createVariable;
-	deleteVariable: typeof codebookActions.deleteVariable;
+	createVariable: typeof createVariableAsync;
+	deleteVariable: typeof deleteVariableAsync;
 	changeField: typeof change;
 };
 
@@ -30,6 +30,8 @@ type OwnProps = {
 	entity: string;
 	form: string;
 };
+
+type Entity = "node" | "edge" | "ego";
 
 type HandlerProps = ConnectedProps & OwnProps;
 
@@ -44,8 +46,12 @@ const createVariableHandler = {
 				...withType,
 			};
 
-			const result = await createVariable({ entity, type, configuration });
-			const { variable } = result.payload as { variable: string };
+			const result = (await createVariable({
+				entity: entity as Entity,
+				type,
+				configuration,
+			})) as unknown as { payload: { entity: Entity; type?: string; variable: string } };
+			const variable = result.payload.variable;
 
 			// If we supplied a field, update it with the result of the variable creation
 			if (field) {
@@ -57,7 +63,7 @@ const createVariableHandler = {
 	handleDeleteVariable:
 		({ deleteVariable, type, entity }: HandlerProps) =>
 		(variableId: string) =>
-			deleteVariable({ entity, type, variable: variableId }),
+			deleteVariable({ entity: entity as Entity, type, variable: variableId }),
 	normalizeKeyDown: () => normalizeKeyDown,
 };
 
@@ -71,7 +77,7 @@ const createVariableHandler = {
  */
 const withCreateVariableHandler = compose(
 	connect(null, mapDispatchToProps),
-	withHandlers<HandlerProps, {}>(createVariableHandler),
+	withHandlers<HandlerProps, object>(createVariableHandler),
 );
 
 export default withCreateVariableHandler;

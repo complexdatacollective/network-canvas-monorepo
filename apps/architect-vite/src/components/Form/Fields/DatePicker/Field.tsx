@@ -4,21 +4,21 @@ import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import DatePicker from "./DatePicker";
 
-interface FieldInput {
+type FieldInput = {
 	name: string;
 	value?: unknown;
 	onBlur?: (value: unknown) => void;
 	onChange?: (value: unknown) => void;
 	onFocus?: (event: React.FocusEvent) => void;
-}
+};
 
-interface FieldMeta {
+type FieldMeta = {
 	error?: string;
 	invalid?: boolean;
 	touched?: boolean;
-}
+};
 
-interface DatePickerFieldProps {
+type DatePickerFieldProps = {
 	parameters?: Record<string, unknown>;
 	input: FieldInput;
 	meta?: FieldMeta;
@@ -27,10 +27,10 @@ interface DatePickerFieldProps {
 	fieldLabel?: string | null;
 	className?: string | null;
 	hidden?: boolean | null;
-}
+};
 
 class DatePickerField extends Component<DatePickerFieldProps> {
-	ref: RefObject<HTMLDivElement>;
+	ref: RefObject<HTMLDivElement | null>;
 
 	constructor(props: DatePickerFieldProps) {
 		super(props);
@@ -63,8 +63,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 				<div className={formFieldClasses} data-name={input.name}>
 					<DatePicker
 						parameters={parameters}
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...input}
+						value={typeof input.value === "string" ? input.value : null}
 						onChange={input.onBlur}
 						parentRef={this.ref}
 						placeholder={placeholder}

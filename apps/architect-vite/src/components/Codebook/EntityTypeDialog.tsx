@@ -1,13 +1,13 @@
 import { get } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { isDirty, isInvalid } from "redux-form";
 import InlineEditScreen from "~/components/InlineEditScreen/InlineEditScreen";
 import { format, parse } from "~/components/TypeEditor/convert";
 import getNewTypeTemplate from "~/components/TypeEditor/getNewTypeTemplate";
 import TypeEditor from "~/components/TypeEditor/TypeEditor";
+import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { createTypeAsync, updateTypeAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getProtocol } from "~/selectors/protocol";
 
@@ -21,10 +21,10 @@ type EntityTypeDialogProps = {
 };
 
 const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps) => {
-	const dispatch = useDispatch();
-	const protocol = useSelector((state: RootState) => getProtocol(state));
-	const hasUnsavedChanges = useSelector((state: RootState) => isDirty(formName)(state));
-	const invalid = useSelector((state: RootState) => isInvalid(formName)(state));
+	const dispatch = useAppDispatch();
+	const protocol = useAppSelector((state: RootState) => getProtocol(state));
+	const hasUnsavedChanges = useAppSelector((state: RootState) => isDirty(formName)(state));
+	const invalid = useAppSelector((state: RootState) => isInvalid(formName)(state));
 
 	const isNew = !type;
 
@@ -32,7 +32,9 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 		if (!entity) {
 			return {};
 		}
-		return format(get(protocol, ["codebook", entity, type], getNewTypeTemplate({ protocol, entity }), {}));
+		const defaultValue = getNewTypeTemplate({ protocol, entity });
+		const value = type ? get(protocol, ["codebook", entity, type]) || defaultValue : defaultValue;
+		return format(value);
 	}, [protocol, entity, type]);
 
 	const title = useMemo(() => {
@@ -44,17 +46,19 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 	}, [entity, isNew]);
 
 	const updateType = useCallback(
-		(entityType: string, typeKey: string, form: Record<string, unknown>) => {
-			// @ts-expect-error - thunk action returns promise
-			return dispatch(codebookActions.updateType({ entity: entityType, type: typeKey, configuration: parse(form) }));
+		async (entityType: string, typeKey: string, form: Record<string, unknown>) => {
+			await dispatch(
+				updateTypeAsync({ entity: entityType as "node" | "edge" | "ego", type: typeKey, configuration: parse(form) }),
+			).unwrap();
 		},
 		[dispatch],
 	);
 
 	const createType = useCallback(
-		(entityType: string, form: Record<string, unknown>) => {
-			// @ts-expect-error - thunk action returns promise
-			return dispatch(codebookActions.createType({ entity: entityType, configuration: parse(form) }));
+		async (entityType: string, form: Record<string, unknown>) => {
+			await dispatch(
+				createTypeAsync({ entity: entityType as "node" | "edge" | "ego", configuration: parse(form) }),
+			).unwrap();
 		},
 		[dispatch],
 	);
@@ -71,10 +75,8 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 
 			try {
 				if (isNew) {
-					// @ts-expect-error - thunk action returns promise
 					await createType(entity, values);
 				} else if (type) {
-					// @ts-expect-error - thunk action returns promise
 					await updateType(entity, type, values);
 				}
 				onClose();
@@ -90,7 +92,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 		}
 
 		// Show confirmation dialog for unsaved changes
-		dispatch(
+		void dispatch(
 			dialogActions.openDialog({
 				type: "Warning",
 				title: "Unsaved Changes",
@@ -99,8 +101,8 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 				onConfirm: () => {
 					onClose();
 				},
-			}) as unknown,
-		);
+			}),
+		).unwrap();
 	}, [hasUnsavedChanges, onClose, dispatch]);
 
 	if (!entity) {
@@ -112,7 +114,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 			show={show}
 			form={formName}
 			title={title}
-			onSubmit={handleSubmit}
+			onSubmit={handleSubmit as (values: unknown) => void}
 			onCancel={handleCancel}
 			initialValues={initialValues}
 		>
@@ -121,5 +123,4 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 	);
 };
 
-export { formName };
 export default EntityTypeDialog;

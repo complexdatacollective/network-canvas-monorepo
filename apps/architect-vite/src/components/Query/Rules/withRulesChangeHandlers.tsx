@@ -32,7 +32,7 @@ type SecondHandlerProps = FirstHandlerProps & {
 };
 
 const withRulesChangeHandlers = compose(
-	withHandlers<OwnProps, {}>({
+	withHandlers<OwnProps, object>({
 		updateJoin: (props: OwnProps) => (join: string) =>
 			props.onChange({
 				join,
@@ -78,7 +78,7 @@ const withRulesChangeHandlers = compose(
 				});
 			},
 	}),
-	withHandlers<SecondHandlerProps, {}>({
+	withHandlers<SecondHandlerProps, object>({
 		handleChangeJoin:
 			({ updateJoin }: SecondHandlerProps) =>
 			(join: string) =>

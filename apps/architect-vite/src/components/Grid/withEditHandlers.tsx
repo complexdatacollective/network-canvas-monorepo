@@ -66,7 +66,7 @@ const mapDispatchToProps = (dispatch: Dispatch<UnknownAction>, { form }: OwnProp
 	upsert: (fieldId: string, value: GridItem) => dispatch(change(form, fieldId, value) as UnknownAction),
 });
 
-const handlers = withHandlers<HandlerProps, {}>({
+const handlers = withHandlers<HandlerProps, object>({
 	handleEditField:
 		({ setEditField }: HandlerProps) =>
 		(fieldId: string) =>

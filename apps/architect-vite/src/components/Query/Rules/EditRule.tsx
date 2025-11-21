@@ -17,16 +17,11 @@ type EditRuleProps = {
 
 class EditRule extends Component<EditRuleProps> {
 	static defaultProps = {
-		rule: {
-			type: null,
-			options: null,
-		},
+		rule: undefined,
 	};
 	get TypeComponent() {
-		const {
-			rule: { type },
-		} = this.props;
-		if (type === "ego") {
+		const { rule } = this.props;
+		if (rule?.type === "ego") {
 			return EditEgoRule;
 		}
 
@@ -63,7 +58,7 @@ class EditRule extends Component<EditRuleProps> {
 						</ExternalLink>
 						.
 					</p>
-					{rule?.options && <this.TypeComponent rule={rule} codebook={codebook} onChange={onChange} />}
+					{rule?.type && <this.TypeComponent rule={rule} codebook={codebook} onChange={onChange} />}
 				</div>
 			</Dialog>
 		);

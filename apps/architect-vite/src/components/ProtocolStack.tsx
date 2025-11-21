@@ -14,20 +14,11 @@ const ProtocolStack = ({ protocol }: ProtocolStackProps) => {
 		navigate(`/protocol/${protocol.id}`);
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			navigate(`/protocol/${protocol.id}`);
-		}
-	};
-
 	return (
-		<div
+		<button
+			type="button"
 			className="protocol-stack"
 			onClick={handleClick}
-			onKeyDown={handleKeyDown}
-			role="button"
-			tabIndex={0}
 			aria-label={`Open protocol ${protocol.name}`}
 		>
 			<div className="protocol-stack__preview">
@@ -43,7 +34,7 @@ const ProtocolStack = ({ protocol }: ProtocolStackProps) => {
 			<p className="protocol-stack__filepath" alt={protocol.description || "No description"}>
 				{protocol.description || "No description"}
 			</p>
-		</div>
+		</button>
 	);
 };
 

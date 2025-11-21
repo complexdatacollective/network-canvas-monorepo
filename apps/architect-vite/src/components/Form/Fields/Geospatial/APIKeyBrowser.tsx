@@ -1,15 +1,14 @@
 import { useCallback } from "react";
-import { useDispatch } from "react-redux";
 
 import Assets from "~/components/AssetBrowser/Assets";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
 import ControlBar from "~/components/ControlBar";
 import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
+import { useAppDispatch } from "~/ducks/hooks";
 import Button from "~/lib/legacy-ui/components/Button";
-
 import { addApiKeyAsset } from "../../../../ducks/modules/protocol/assetManifest";
 import BasicForm from "../../../BasicForm";
 
@@ -24,7 +23,7 @@ type APIKeyBrowserProps = {
 
 const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = null }: APIKeyBrowserProps) => {
 	const formName = "create-api-key";
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const [preview, handleShowPreview] = useExternalDataPreview();
 
 	const handleSelectAsset = useCallback(
@@ -71,21 +70,25 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 					<Section title="Create New API Key">
 						<div data-name="API Key Name" />
 						<ValidatedField
-							component={Fields.Text}
-							label="API Key Name"
-							type="text"
-							placeholder="Name this key"
+							component={Text}
 							name="keyName"
 							validation={{ required: true }}
+							componentProps={{
+								label: "API Key Name",
+								type: "text",
+								placeholder: "Name this key",
+							}}
 						/>
 						<div data-name="API Key Value" />
 						<ValidatedField
-							component={Fields.Text}
-							label="API Key"
-							type="text"
-							placeholder="Enter an API Key..."
+							component={Text}
 							name="keyValue"
 							validation={{ required: true }}
+							componentProps={{
+								label: "API Key",
+								type: "text",
+								placeholder: "Enter an API Key...",
+							}}
 						/>
 						<Button key="save" type="submit" iconPosition="right" icon="arrow-right">
 							Create Key

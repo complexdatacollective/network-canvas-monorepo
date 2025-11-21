@@ -1,15 +1,14 @@
-import type { Dispatch } from "@reduxjs/toolkit";
-import type React from "react";
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
 import { DatePicker } from "~/components/Form/Fields";
 import { DATE_FORMATS } from "~/components/Form/Fields/DatePicker";
-import Number from "~/components/Form/Fields/Number";
+import NumberField from "~/components/Form/Fields/Number";
 import Toggle from "~/components/Form/Fields/Toggle";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { RootState } from "~/ducks/modules/root";
 
 type RelativeDatePickerParametersProps = {
 	name: string;
@@ -30,14 +29,13 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 			</p>
 			<Toggle
 				input={{
-					checked: !!useInterviewDate,
+					name: `${name}.useInterviewDate`,
 					value: useInterviewDate,
-					onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-						// Use event rather than state here because we are also changing state in this function.
-						if (event.target.checked) {
+					onChange: (checked: boolean) => {
+						if (checked) {
 							resetField();
 						}
-						setUseInterviewDate(!!event.target.checked);
+						setUseInterviewDate(checked);
 					},
 				}}
 				label="Use interview date"
@@ -49,10 +47,11 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 					component={DatePicker}
 					name={`${name}.anchor`}
 					validation={{ required: !useInterviewDate, ISODate: dateFormat }}
-					dateFormat={dateFormat}
-					parameters={{
-						min: "1000-01-01",
-						max: "3000-01-01",
+					componentProps={{
+						parameters: {
+							min: "1000-01-01",
+							max: "3000-01-01",
+						},
 					}}
 				/>
 			)}
@@ -61,25 +60,30 @@ const RelativeDatePickerParameters = ({ name, anchorValue = null, resetField }: 
 				Days before is the number of days prior to the anchor date that can be selected from. Defaults to 180 days if
 				left blank.
 			</p>
-			<Field label="" component={Number} name={`${name}.before`} placeholder="180" />
+			<Field label="" component={NumberField} name={`${name}.before`} placeholder="180" />
 			<h4>Days After</h4>
 			<p>
 				Days after is the number of days after the anchor date that can be selected from. Defaults to 0 days if left
 				blank.
 			</p>
-			<Field label="" component={Number} name={`${name}.after`} placeholder="0" />
+			<Field label="" component={NumberField} name={`${name}.after`} placeholder="0" />
 		</>
 	);
 };
 
-const mapStateToProps = (state: RootState, { name, form }: { name: string; form: string }) => ({
+type ConnectProps = {
+	name: string;
+	form: string;
+};
+
+const mapStateToProps = (state: RootState, { name, form }: ConnectProps) => ({
 	anchorValue: formValueSelector(form)(state, `${name}.anchor`),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; form: string }) => ({
-	resetField: () => dispatch(change(form, `${name}.anchor`, null)),
+const mapDispatchToProps = (dispatch: Dispatch, { name, form }: ConnectProps) => ({
+	resetField: () => dispatch(change(form, `${name}.anchor`, null) as UnknownAction),
 });
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(
-	RelativeDatePickerParameters as React.ComponentType<unknown>,
+export default compose<RelativeDatePickerParametersProps, ConnectProps>(connect(mapStateToProps, mapDispatchToProps))(
+	RelativeDatePickerParameters,
 );

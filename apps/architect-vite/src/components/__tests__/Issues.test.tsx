@@ -1,7 +1,8 @@
+import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import Issues from "../Issues";
 
 vi.mock("redux-form");
@@ -31,7 +32,11 @@ const mockProps = {
 	hideIssues: () => {},
 };
 
-const mockStore = createStore(() => ({}));
+const mockStore = configureStore({
+	reducer: {
+		form: () => ({}),
+	},
+});
 
 describe("<Issues />", () => {
 	it("will render", () => {
@@ -45,7 +50,7 @@ describe("<Issues />", () => {
 	});
 
 	it("renders issues from object", () => {
-		getFormSyncErrors.mockImplementationOnce(() => () => mockIssues);
+		(getFormSyncErrors as Mock).mockReturnValueOnce(() => mockIssues);
 
 		const { container } = render(
 			<Provider store={mockStore}>

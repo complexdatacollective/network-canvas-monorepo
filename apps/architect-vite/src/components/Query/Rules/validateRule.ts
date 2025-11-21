@@ -45,7 +45,10 @@ const validateRule = (rule: Rule | null): boolean => {
 	switch (rule.type) {
 		case "alter": {
 			if (Object.hasOwn(options, "attribute")) {
-				if (operatorsWithValue.has(options.operator) || operatorsWithOptionCount.has(options.operator)) {
+				if (
+					(options.operator && operatorsWithValue.has(options.operator)) ||
+					(options.operator && operatorsWithOptionCount.has(options.operator))
+				) {
 					return validateFields(["type", "attribute", "operator", "value"], options);
 				}
 				return validateFields(["type", "attribute", "operator"], options);
@@ -53,14 +56,20 @@ const validateRule = (rule: Rule | null): boolean => {
 			return validateFields(["type", "operator"], options);
 		}
 		case "ego": {
-			if (operatorsWithValue.has(options.operator) || operatorsWithOptionCount.has(options.operator)) {
+			if (
+				(options.operator && operatorsWithValue.has(options.operator)) ||
+				(options.operator && operatorsWithOptionCount.has(options.operator))
+			) {
 				return validateFields(["attribute", "operator", "value"], options);
 			}
 			return validateFields(["attribute", "operator"], options);
 		}
 		case "edge":
 			if (Object.hasOwn(options, "attribute")) {
-				if (operatorsWithValue.has(options.operator) || operatorsWithOptionCount.has(options.operator)) {
+				if (
+					(options.operator && operatorsWithValue.has(options.operator)) ||
+					(options.operator && operatorsWithOptionCount.has(options.operator))
+				) {
 					return validateFields(["type", "attribute", "operator", "value"], options);
 				}
 				return validateFields(["type", "attribute", "operator"], options);

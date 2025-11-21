@@ -2,14 +2,15 @@ import { PureComponent } from "react";
 import { compose } from "recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";
 import IssueAnchor from "~/components/IssueAnchor";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";
 import ValidatedField from "../../Form/ValidatedField";
 import withBackgroundChangeHandler from "./withBackgroundChangeHandler";
 
-type BackgroundProps = {
+type BackgroundProps = StageEditorSectionProps & {
 	handleChooseBackgroundType: (value: boolean) => void;
 	useImage: boolean;
 };
@@ -30,7 +31,7 @@ class Background extends PureComponent<BackgroundProps> {
 			>
 				<Row>
 					<DetachedField
-						component={Fields.Boolean}
+						component={BooleanField as React.ComponentType<Record<string, unknown>>}
 						value={useImage}
 						options={[
 							{
@@ -52,7 +53,9 @@ class Background extends PureComponent<BackgroundProps> {
 								),
 							},
 						]}
-						onChange={handleChooseBackgroundType}
+						onChange={(_event: unknown, nextValue: unknown, _currentValue: unknown, _name: string | null) =>
+							handleChooseBackgroundType(nextValue as boolean)
+						}
 						label="Choose a background type"
 						noReset
 					/>
@@ -63,17 +66,19 @@ class Background extends PureComponent<BackgroundProps> {
 							<IssueAnchor fieldName="background.concentricCircles" description="Background > Concentric Circles" />
 							<ValidatedField
 								name="background.concentricCircles"
-								component={Fields.Number}
-								label="Number of concentric circles to use:"
-								type="number"
+								component={NumberField}
 								normalize={(value) => Number.parseInt(value, 10) || value}
 								validation={{ required: true, positiveNumber: true }}
+								componentProps={{
+									label: "Number of concentric circles to use:",
+									type: "number",
+								}}
 							/>
 						</Row>
 						<Row>
 							<Field
 								name="background.skewedTowardCenter"
-								component={Fields.Toggle}
+								component={Toggle}
 								label="Skew the size of the circles so that the middle is proportionally larger."
 							/>
 						</Row>
@@ -84,9 +89,11 @@ class Background extends PureComponent<BackgroundProps> {
 						<IssueAnchor fieldName="background.image" description="Background > Image" />
 						<ValidatedField
 							name="background.image"
-							component={Image}
-							label="Background image"
+							component={Image as React.ComponentType<Record<string, unknown>>}
 							validation={{ required: true }}
+							componentProps={{
+								label: "Background image",
+							}}
 						/>
 					</Row>
 				)}
@@ -95,6 +102,6 @@ class Background extends PureComponent<BackgroundProps> {
 	}
 }
 
-export { Background };
-
-export default compose(withBackgroundChangeHandler)(Background as React.ComponentType<unknown>);
+export default compose(withBackgroundChangeHandler)(
+	Background as unknown as React.ComponentType<unknown>,
+) as unknown as React.ComponentType<StageEditorSectionProps>;

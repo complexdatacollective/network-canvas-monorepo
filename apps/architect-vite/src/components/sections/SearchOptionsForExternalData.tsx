@@ -1,13 +1,15 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
-import { useDispatch, useSelector } from "react-redux";
+import type { UnknownAction } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import * as Fields from "~/components/Form/Fields";
+import { CheckboxGroup, LikertScale } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Tip from "~/components/Tip";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 
@@ -18,7 +20,7 @@ type SearchOptionsProps = {
 
 const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector("edit-stage");
 	const hasSearchOptions = useSelector((state: RootState) => getFormValue(state, "searchOptions"));
 
@@ -58,11 +60,13 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 					</p>
 				</Tip>
 				<ValidatedField
-					label="Which attributes should be searchable?"
 					name="searchOptions.matchProperties"
-					component={Fields.CheckboxGroup}
-					options={variableOptions}
+					component={CheckboxGroup as React.ComponentType<Record<string, unknown>>}
 					validation={{ minSelected: 1 }}
+					componentProps={{
+						label: "Which attributes should be searchable?",
+						options: variableOptions,
+					}}
 				/>
 			</Section>
 			<Section
@@ -83,23 +87,24 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 				</Tip>
 				<ValidatedField
 					name="searchOptions.fuzziness"
-					component={Fields.LikertScale}
-					type="ordinal"
-					options={[
-						{ value: 0.75, label: "Low accuracy" },
-						{ value: 0.5, label: "Medium accuracy" },
-						{ value: 0.25, label: "High accuracy" },
-						{ value: 0, label: "Exact" },
-					]}
+					component={LikertScale as React.ComponentType<Record<string, unknown>>}
 					validation={{ requiredAcceptsZero: true }}
+					componentProps={{
+						type: "ordinal",
+						options: [
+							{ value: 0.75, label: "Low accuracy" },
+							{ value: 0.5, label: "Medium accuracy" },
+							{ value: 0.25, label: "High accuracy" },
+							{ value: 0, label: "Exact" },
+						],
+					}}
 				/>
 			</Section>
 		</Section>
 	);
 };
 
-export { SearchOptions };
-
-export default compose(withMapFormToProps(["dataSource"]), withDisabledAssetRequired)(
-	SearchOptions as React.ComponentType<unknown>,
-);
+export default compose(
+	withMapFormToProps(["dataSource"]),
+	withDisabledAssetRequired,
+)(SearchOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

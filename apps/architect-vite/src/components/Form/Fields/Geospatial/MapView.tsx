@@ -1,5 +1,6 @@
 import { get } from "es-toolkit/compat";
-import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
+import type { Map as MapboxMap } from "mapbox-gl";
+import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -40,12 +41,12 @@ const MapView = ({
 }: MapViewProps) => {
 	const { tokenAssetId, style } = mapOptions;
 	const assetManifest = useSelector(getAssetManifest);
-	const mapboxAPIKey = get(assetManifest, [tokenAssetId, "value"], "");
+	const mapboxAPIKey = tokenAssetId ? get(assetManifest, [tokenAssetId, "value"], "") : "";
 
-	const mapRef = useRef(null);
-	const mapContainerRef = useRef(null);
+	const mapRef = useRef<MapboxMap | null>(null);
+	const mapContainerRef = useRef<HTMLDivElement>(null);
 
-	const [center, setCenter] = useState(mapOptions.center || [0, 0]);
+	const [center, setCenter] = useState<[number, number]>((mapOptions.center as [number, number]) || [0, 0]);
 	const [zoom, setZoom] = useState(mapOptions.initialZoom || 0);
 
 	const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
@@ -64,7 +65,7 @@ const MapView = ({
 
 	const saveButton = (
 		<Button
-			color="primary"
+			color="sea-green"
 			onClick={() => {
 				saveMapSelection(center, zoom);
 				close();
@@ -97,15 +98,16 @@ const MapView = ({
 					zoom,
 				});
 
-				mapRef.current.addControl(
+				const map = mapRef.current as Map;
+				map.addControl(
 					new mapboxgl.NavigationControl({
 						showCompass: false,
 					}),
 				);
 
-				mapRef.current.on("move", () => {
-					const mapCenter = mapRef.current.getCenter();
-					const mapZoom = mapRef.current.getZoom();
+				map.on("move", () => {
+					const mapCenter = map.getCenter();
+					const mapZoom = map.getZoom();
 
 					setCenter([mapCenter.lng, mapCenter.lat]);
 					setZoom(mapZoom);

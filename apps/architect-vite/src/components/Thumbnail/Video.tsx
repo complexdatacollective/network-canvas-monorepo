@@ -18,6 +18,4 @@ const VideoThumbnail = ({ id, meta = { name: "" } }: VideoThumbnailProps) => (
 	</div>
 );
 
-export { VideoThumbnail };
-
 export default withAssetMeta(VideoThumbnail);

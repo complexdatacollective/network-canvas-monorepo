@@ -64,10 +64,13 @@ const VALIDATIONS_WITHOUT_VALUES = ["required", "unique"];
 
 const isValidationWithoutValue = (validation: string): boolean => VALIDATIONS_WITHOUT_VALUES.includes(validation);
 
-const isValidationWithNumberValue = (validation: string): boolean => VALIDATIONS_WITH_NUMBER_VALUES.includes(validation);
+const isValidationWithNumberValue = (validation: string): boolean =>
+	VALIDATIONS_WITH_NUMBER_VALUES.includes(validation);
 const isValidationWithListValue = (validation: string): boolean => VALIDATIONS_WITH_LIST_VALUES.includes(validation);
 
-const getValidationsForVariableType = (variableType: string): string[] => get(VALIDATIONS, variableType, []) as string[];
+// Internal helper - not exported
+const getValidationsForVariableType = (variableType: string): string[] =>
+	get(VALIDATIONS, variableType, []) as string[];
 
 const getValidationsForEntity = (validations: string[], entity: string): string[] =>
 	entity === "ego" ? without(validations, "unique") : validations;
@@ -79,12 +82,8 @@ const getValidationOptionsForVariableType = (variableType: string, entity: strin
 	}));
 
 export {
-	getValidationsForVariableType,
 	getValidationOptionsForVariableType,
 	isValidationWithNumberValue,
 	isValidationWithListValue,
 	isValidationWithoutValue,
-	VALIDATIONS,
 };
-
-export default VALIDATIONS;

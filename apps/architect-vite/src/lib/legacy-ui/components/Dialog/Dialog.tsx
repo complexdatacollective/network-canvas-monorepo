@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Icon from "../Icon";
 import Modal from "../Modal";
 
-interface DialogProps {
+type DialogProps = {
 	children?: ReactNode;
 	type?: string;
 	icon?: string;
@@ -14,7 +14,7 @@ interface DialogProps {
 	message?: ReactNode;
 	onBlur?: () => void;
 	classNames?: string;
-}
+};
 
 /*
  * Top level Dialog component, not intended to be used directly, if you need
@@ -76,7 +76,5 @@ const Dialog = ({
 		</motion.div>
 	</Modal>
 );
-
-export { Dialog };
 
 export default Dialog;

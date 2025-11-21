@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, current, type PayloadAction } from "@reduxjs/toolkit";
 import { find, get, has, isEmpty, omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import type { RootState } from "~/ducks/modules/root";
@@ -120,7 +120,8 @@ export const createEdgeAsync = createAsyncThunk(
 		const entity: Entity = "edge";
 		const state = getState() as RootState;
 		const protocol = state.activeProtocol?.present || state.activeProtocol;
-		const color = configuration.color ?? getNextCategoryColor(protocol, entity);
+		const colorFromHelper = getNextCategoryColor(protocol, entity);
+		const color = configuration.color ?? (colorFromHelper || undefined);
 		const type = uuid();
 
 		const payload: CreateTypePayload = {
@@ -241,9 +242,15 @@ export const deleteVariableAsync = createAsyncThunk(
 const getDeleteAction = ({ type, ...owner }: { type: string; id?: string; stageId?: string; promptId?: string }) => {
 	switch (type) {
 		case "stage":
-			return stageActions.deleteStage(owner.id!);
+			if (owner.id === undefined) {
+				throw new Error("Stage ID is required for deleting a stage");
+			}
+			return stageActions.deleteStage(owner.id);
 		case "prompt":
-			return stageActions.deletePrompt(owner.stageId!, owner.promptId!, true);
+			if (owner.stageId === undefined || owner.promptId === undefined) {
+				throw new Error("Stage ID and Prompt ID are required for deleting a prompt");
+			}
+			return stageActions.deletePrompt(owner.stageId, owner.promptId, true);
 		default:
 			// noop
 			return { type: "NO_OP" };
@@ -300,7 +307,7 @@ const getStateWithUpdatedType = (
 			? configuration
 			: {
 					...state[entity],
-					[type!]: configuration,
+					[type as string]: configuration,
 				};
 
 	return {
@@ -321,21 +328,27 @@ const getStateWithUpdatedVariable = (
 		throw Error("Type must be specified for non ego nodes");
 	}
 
-	const entityPath = entity === "ego" ? [entity] : [entity, type];
+	const entityPath = entity === "ego" ? [entity] : [entity, type as string];
 
-	const variableConfiguration = merge
-		? {
-				...((get(state, [...entityPath, "variables", variable]) as Partial<Variable> | undefined) ?? {}),
+	const existingVariable = get(state, [...entityPath, "variables", variable]);
+	const variableConfiguration: Variable = merge
+		? ({
+				...(existingVariable && typeof existingVariable === "object" ? (existingVariable as Partial<Variable>) : {}),
 				...configuration,
-			}
-		: configuration;
+			} as Variable)
+		: (configuration as Variable);
 
-	const newVariables = {
-		...((get(state, [...entityPath, "variables"]) as Record<string, Variable> | undefined) ?? {}),
+	const existingVariables = get(state, [...entityPath, "variables"]);
+	const newVariables: Record<string, Variable> = {
+		...(existingVariables && typeof existingVariables === "object"
+			? (existingVariables as Record<string, Variable>)
+			: {}),
 		[variable]: variableConfiguration,
 	};
 
-	const typeConfiguration = (get(state, entityPath) as Partial<EntityType> | undefined) ?? {};
+	const existingTypeConfig = get(state, entityPath);
+	const typeConfiguration =
+		existingTypeConfig && typeof existingTypeConfig === "object" ? (existingTypeConfig as Partial<EntityType>) : {};
 
 	return getStateWithUpdatedType(state, entity, type, {
 		...typeConfiguration,
@@ -375,7 +388,9 @@ const codebookSlice = createSlice({
 		updateVariable: (state, action: PayloadAction<UpdateVariablePayload>) => {
 			const { variable, configuration, merge = false } = action.payload;
 
-			const variables = getAllVariableUUIDsByEntity(state as unknown as CodebookState);
+			// Use current() to get a non-draft version of state for the selector
+			const currentState = current(state);
+			const variables = getAllVariableUUIDsByEntity(currentState);
 			const variableInfo = find(variables, ["uuid", variable]);
 
 			if (!variableInfo) {
@@ -399,22 +414,9 @@ const codebookSlice = createSlice({
 	},
 });
 
-// Export actions
-export const { createType, updateType, deleteType, createVariable, updateVariable, deleteVariable } =
-	codebookSlice.actions;
-
-// Export action creators
-export const actionCreators = {
-	updateType: updateTypeAsync,
-	createType: createTypeAsync,
-	createEdge: createEdgeAsync,
-	deleteType: deleteTypeAsync,
-	createVariable: createVariableAsync,
-	deleteVariable: deleteVariableAsync,
-	updateVariable: updateVariableAsync,
-	updateVariableByUUID: (variable: string, properties: Partial<Variable>, merge = false) =>
-		updateVariableAsync({ variable, configuration: properties, merge }),
-};
+// Export convenience wrapper for updateVariableAsync with cleaner API
+export const updateVariableByUUID = (variable: string, properties: Partial<Variable>, merge = false) =>
+	updateVariableAsync({ variable, configuration: properties, merge });
 
 // Export for backwards compatibility and testing
 export const test = {
@@ -431,8 +433,7 @@ export const test = {
 		codebookSlice.actions.deleteVariable({ entity, type, variable }),
 };
 
-// Export types
-export type { Entity, Variable, EntityType, CodebookState };
+// Note: Types Entity, Variable, EntityType, and CodebookState are only used internally
 
 // Export the reducer as default
 export default codebookSlice.reducer;

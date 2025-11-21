@@ -1,5 +1,6 @@
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withCreateVariableHandler from "../../enhancers/withCreateVariableHandler";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -45,17 +46,17 @@ const QuickAdd = ({
 			<ValidatedField
 				name="quickAdd"
 				component={VariablePicker}
-				options={options}
-				onCreateOption={(value) => handleCreateVariable(value, "text", "quickAdd")}
 				validation={{ required: true }}
-				type={type}
-				entity={entity}
-				variable={quickAdd}
+				componentProps={{
+					options,
+					onCreateOption: (value: string) => handleCreateVariable(value, "text", "quickAdd"),
+					type,
+					entity,
+					variable: quickAdd,
+				}}
 			/>
 		</Section>
 	);
-
-export { QuickAdd };
 
 export default compose(
 	withSubject,
@@ -63,4 +64,4 @@ export default compose(
 	withQuickAddVariable,
 	withOptions,
 	withCreateVariableHandler,
-)(QuickAdd as React.ComponentType<unknown>);
+)(QuickAdd) as unknown as React.ComponentType<StageEditorSectionProps>;

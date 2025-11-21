@@ -44,7 +44,7 @@ const Assets = ({
 	onDownload,
 	onPreview,
 	disableDelete = false,
-	selected = null,
+	selected: _selected = null,
 }: AssetsProps) => {
 	const handleDelete = disableDelete ? null : onDelete;
 

@@ -1,6 +1,11 @@
 import MiniTable from "../MiniTable";
 import Rules from "../Rules";
 
+type FilterType = {
+	join?: string;
+	rules: Array<{ type: string; options: Record<string, unknown> }>;
+};
+
 type SkipLogicProps = {
 	skipLogic: Record<string, unknown>;
 };
@@ -10,7 +15,7 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
 		return null;
 	}
 
-	const { filter, action } = skipLogic;
+	const { filter, action } = skipLogic as { filter?: FilterType; action?: string };
 
 	return (
 		<div className="protocol-summary-stage__skip-logic">
@@ -19,7 +24,7 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
 				wide
 				rows={[
 					["Action", action],
-					["Rules", <Rules filter={filter} />],
+					["Rules", filter ? <Rules key="rules" filter={filter} /> : null],
 				]}
 			/>
 		</div>

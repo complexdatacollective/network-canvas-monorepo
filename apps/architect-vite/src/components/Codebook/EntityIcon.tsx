@@ -1,9 +1,9 @@
 import { Icon, Node } from "~/lib/legacy-ui/components";
 
-interface EntityIconProps {
+type EntityIconProps = {
 	entity: string;
 	color?: string;
-}
+};
 
 const EntityIcon = ({ entity, color }: EntityIconProps) => {
 	switch (entity) {

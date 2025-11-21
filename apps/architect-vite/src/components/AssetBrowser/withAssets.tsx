@@ -12,8 +12,7 @@ type AssetWithUsage = AssetWithId & { isUsed: boolean };
 const filterByAssetType = (assetType: string | null, assets: AssetWithId[]): AssetWithId[] =>
 	assetType ? filter(assets, ({ type }) => type === assetType) : assets;
 
-const withKeysAsIds = (assets: Record<string, Asset>): AssetWithId[] =>
-	map(assets, (asset, id) => ({ ...asset, id }));
+const withKeysAsIds = (assets: Record<string, Asset>): AssetWithId[] => map(assets, (asset, id) => ({ ...asset, id }));
 
 const filterAssets = (assetType: string | null, assets: Record<string, Asset>): AssetWithId[] =>
 	filterByAssetType(assetType, withKeysAsIds(assets));
@@ -22,7 +21,7 @@ type FilterHandlerProps = {
 	setAssetType: (assetType: string | null) => void;
 };
 
-const filterHandlers = withHandlers<FilterHandlerProps, {}>({
+const filterHandlers = withHandlers<FilterHandlerProps, object>({
 	onUpdateAssetFilter:
 		({ setAssetType }: FilterHandlerProps) =>
 		(assetType: string | null) =>

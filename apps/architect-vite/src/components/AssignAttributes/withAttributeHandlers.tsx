@@ -30,7 +30,7 @@ const store = connect((state: RootState, { entity, type, form, field }: OwnProps
 	};
 });
 
-const handlers = withHandlers<HandlerProps, {}>({
+const handlers = withHandlers<HandlerProps, object>({
 	handleDelete:
 		({ onDelete, index }: HandlerProps) =>
 		() =>

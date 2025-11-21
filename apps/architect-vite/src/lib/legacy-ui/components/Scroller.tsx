@@ -3,23 +3,23 @@ import { clamp } from "lodash";
 import type { ReactNode } from "react";
 import React, { useCallback, useImperativeHandle, useRef } from "react";
 
-interface ScrollerProps {
+type ScrollerProps = {
 	className?: string;
 	children: ReactNode;
 	useSmoothScrolling?: boolean;
 	onScroll?: (scrollTop: number, clampedScrollAmount: number, scrollAmount: number) => void;
-}
+};
 
-interface ScrollerRef {
+type ScrollerRef = {
 	scrollTo: (...args: Parameters<Element["scrollTo"]>) => void;
-}
+};
 
 const Scroller = React.forwardRef<ScrollerRef, ScrollerProps>(
 	({ className = "", children, useSmoothScrolling = true, onScroll = () => {} }, ref) => {
-		const scrollableRef = useRef();
+		const scrollableRef = useRef<HTMLDivElement>(null);
 
 		useImperativeHandle(ref, () => ({
-			scrollTo: (...args) => scrollableRef.current.scrollTo(...args),
+			scrollTo: (...args) => scrollableRef.current?.scrollTo(...args),
 		}));
 
 		const handleScroll = useCallback(() => {

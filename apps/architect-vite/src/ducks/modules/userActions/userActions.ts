@@ -161,7 +161,7 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 });
 
 // Save protocol (validate and mark as saved)
-export const saveProtocol = createAsyncThunk("webUserActions/saveProtocol", async (_, { getState, dispatch }) => {
+const _saveProtocol = createAsyncThunk("webUserActions/saveProtocol", async (_, { getState, dispatch }) => {
 	const state = getState() as RootState;
 	const protocol = state.activeProtocol?.present;
 
@@ -265,7 +265,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 	},
 );
 
-export const openRemoteFrescoNetcanvas = createAsyncThunk(
+const _openRemoteFrescoNetcanvas = createAsyncThunk(
 	"webUserActions/openRemoteFrescoNetcanvas",
-	async (_url: string, { dispatch }) => {},
+	async (_url: string, { dispatch: _dispatch }) => {},
 );

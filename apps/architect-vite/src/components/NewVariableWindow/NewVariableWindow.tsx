@@ -1,7 +1,7 @@
 import { Component } from "react";
 import { Field } from "redux-form";
 import { Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import Select from "~/components/Form/Fields/Select";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
@@ -9,12 +9,12 @@ import Options from "~/components/Options";
 import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
 import { getFieldId } from "~/utils/issues";
 import safeName from "~/utils/safeName";
-import { allowedVariableName, required, uniqueByList } from "~/utils/validations";
+import { validations } from "~/utils/validations";
 import withNewVariableHandler, { form } from "./withNewVariableHandler";
 
-const isRequired = required();
+const isRequired = validations.required();
 
-const isAllowedVariableName = allowedVariableName();
+const isAllowedVariableName = validations.allowedVariableName();
 
 type NewVariableWindowProps = {
 	show?: boolean;
@@ -27,10 +27,19 @@ type NewVariableWindowProps = {
 	existingVariableNames: string[];
 };
 
-class NewVariableWindow extends Component<NewVariableWindowProps> {
+type State = Record<string, never>;
+
+class NewVariableWindow extends Component<NewVariableWindowProps, State> {
+	static defaultProps: Partial<NewVariableWindowProps> = {
+		show: false,
+		variableType: null,
+		allowVariableTypes: null,
+		initialValues: null,
+	};
+
 	validateName = (value: string) => {
 		const { existingVariableNames } = this.props;
-		return uniqueByList(existingVariableNames)(value);
+		return validations.uniqueByList(existingVariableNames)(value);
 	};
 
 	filteredVariableOptions() {
@@ -48,9 +57,9 @@ class NewVariableWindow extends Component<NewVariableWindowProps> {
 			<InlineEditScreen
 				show={show}
 				form={form}
-				onSubmit={handleCreateNewVariable}
+				onSubmit={(values: unknown) => handleCreateNewVariable(values as Record<string, unknown>)}
 				onCancel={onCancel}
-				initialValues={initialValues}
+				initialValues={initialValues ?? undefined}
 				title="Create New Variable"
 			>
 				<Section
@@ -65,7 +74,7 @@ class NewVariableWindow extends Component<NewVariableWindowProps> {
 					<div id={getFieldId("name")} />
 					<Field
 						name="name"
-						component={Fields.Text}
+						component={Text}
 						placeholder="e.g. Nickname"
 						validate={[isRequired, this.validateName, isAllowedVariableName]}
 						normalize={safeName}
@@ -76,16 +85,18 @@ class NewVariableWindow extends Component<NewVariableWindowProps> {
 					<ValidatedField
 						name="type"
 						component={Select}
-						placeholder="Select variable type"
-						options={this.filteredVariableOptions()}
-						isDisabled={!!initialValues.type}
 						validation={{ required: true }}
+						componentProps={{
+							placeholder: "Select variable type",
+							options: this.filteredVariableOptions(),
+							isDisabled: !!initialValues?.type,
+						}}
 					/>
 				</Section>
 				{isOrdinalOrCategoricalType(variableType) && (
 					<Section title="Options" summary={<p>Create some options for this input control</p>}>
 						<div id={getFieldId("options")} />
-						<Options name="options" label="Options" form={form} />
+						<Options name="options" label="Options" />
 					</Section>
 				)}
 			</InlineEditScreen>
@@ -93,13 +104,11 @@ class NewVariableWindow extends Component<NewVariableWindowProps> {
 	}
 }
 
-NewVariableWindow.defaultProps = {
-	show: false,
-	variableType: null,
-	allowVariableTypes: null,
-	initialValues: null,
-};
-
-export { NewVariableWindow };
-
-export default withNewVariableHandler(NewVariableWindow);
+export default withNewVariableHandler(NewVariableWindow) as unknown as React.ComponentType<{
+	show?: boolean;
+	variableType?: string | null;
+	allowVariableTypes?: string[] | null;
+	onComplete: () => void;
+	onCancel: () => void;
+	initialValues?: Record<string, unknown> | null;
+}>;

@@ -25,7 +25,7 @@ const Items = ({ items = null }: ItemsProps) => {
 						case "asset":
 							return (
 								<div className="protocol-summary-stage__items-item" key={id}>
-									<Asset id={content} size={size} />
+									<Asset id={content ?? ""} size={size ?? ""} />
 								</div>
 							);
 						default:
@@ -37,7 +37,7 @@ const Items = ({ items = null }: ItemsProps) => {
 											["Block Size", size],
 											["Type", "Text"],
 											// eslint-disable-next-line jsx-a11y/media-has-caption
-											["Content", <Markdown label={content} />],
+											["Content", <Markdown key="content" label={content ?? ""} />],
 										]}
 									/>
 								</div>

@@ -1,21 +1,11 @@
 import { ArrowDown as ArrowDropDownIcon, ArrowUp as ArrowDropUpIcon } from "lucide-react";
-import { type Column, type HeaderGroup, useSortBy, useTable } from "react-table";
+import { type Column, type TableHeaderProps, useSortBy, useTable } from "react-table";
 
 // Type for column with sort properties added by useSortBy
 type ColumnWithSort = Column<Record<string, unknown>> & {
 	isSorted?: boolean;
 	isSortedDesc?: boolean;
-};
-
-// Type for header group with sort properties
-type HeaderGroupWithSort = HeaderGroup<Record<string, unknown>> & {
-	headers: Array<
-		Column<Record<string, unknown>> & {
-			getSortByToggleProps: () => object;
-			isSorted?: boolean;
-			isSortedDesc?: boolean;
-		}
-	>;
+	getSortByToggleProps?: () => TableHeaderProps;
 };
 
 const getSortIcon = (column: ColumnWithSort) => {
@@ -36,14 +26,22 @@ const Table = ({ data, columns }: TableProps) => {
 	return (
 		<table {...getTableProps()} className="network">
 			<thead>
-				{(headerGroups as HeaderGroupWithSort[]).map((headerGroup) => (
+				{headerGroups.map((headerGroup) => (
 					<tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
-						{headerGroup.headers.map((column) => (
-							<th {...column.getHeaderProps(column.getSortByToggleProps())} key={column.id}>
-								{column.render("Header")}
-								{getSortIcon(column)}
-							</th>
-						))}
+						{headerGroup.headers.map((column) => {
+							const sortableColumn = column as ColumnWithSort;
+							return (
+								<th
+									{...column.getHeaderProps(
+										sortableColumn.getSortByToggleProps ? sortableColumn.getSortByToggleProps() : undefined,
+									)}
+									key={column.id}
+								>
+									{column.render("Header")}
+									{getSortIcon(sortableColumn)}
+								</th>
+							);
+						})}
 					</tr>
 				))}
 			</thead>

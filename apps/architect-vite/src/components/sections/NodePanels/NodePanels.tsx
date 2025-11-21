@@ -1,15 +1,26 @@
+import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { has } from "es-toolkit/compat";
 import { useCallback } from "react";
-import { connect, useDispatch } from "react-redux";
+import { connect } from "react-redux";
+import type { FormAction } from "redux-form";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import { Section } from "~/components/EditorLayout";
 import OrderedList from "~/components/OrderedList/OrderedList";
+import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import type { RootState } from "~/ducks/modules/root";
 import { Button } from "~/lib/legacy-ui/components";
 import IssueAnchor from "../../IssueAnchor";
 import NodePanel from "./NodePanel";
+
+type DialogConfig = {
+	type: string;
+	title: string;
+	message: string;
+	confirmLabel: string;
+};
 
 type NodePanelsProps = {
 	form: string;
@@ -19,11 +30,14 @@ type NodePanelsProps = {
 };
 
 const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...rest }: NodePanelsProps) => {
-	const dispatch = useDispatch();
-	const openDialog = useCallback((dialog) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
+	const dispatch = useAppDispatch();
+	const openDialog = useCallback(
+		(dialog: DialogConfig) => dispatch(dialogActions.openDialog(dialog) as UnknownAction),
+		[dispatch],
+	);
 
 	const handleToggleChange = useCallback(
-		async (newState) => {
+		async (newState: boolean) => {
 			if (!panels || panels.length === 0 || newState === true) {
 				return true;
 			}
@@ -37,7 +51,7 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 			});
 
 			if (confirm) {
-				dispatch(change(form, "panels", null));
+				dispatch(change(form, "panels", null) as unknown as FormAction);
 				return true;
 			}
 
@@ -74,10 +88,10 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 	);
 };
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: RootState, props: { form: string }) => {
 	const getFormValues = formValueSelector(props.form);
-	const panels = getFormValues(state, "panels");
-	const disabled = !has(getFormValues(state, "subject"), "type");
+	const panels = getFormValues(state, "panels") as Array<Record<string, unknown>> | null | undefined;
+	const disabled = !has(getFormValues(state, "subject") as Record<string, unknown>, "type");
 
 	return {
 		disabled,
@@ -85,7 +99,7 @@ const mapStateToProps = (state, props) => {
 	};
 };
 
-const mapDispatchToProps = (dispatch, { form }) => ({
+const mapDispatchToProps = (dispatch: Dispatch, { form }: { form: string }) => ({
 	createNewPanel: bindActionCreators(
 		() =>
 			arrayPush(form, "panels", {
@@ -93,7 +107,7 @@ const mapDispatchToProps = (dispatch, { form }) => ({
 				title: null,
 				dataSource: "existing",
 				filter: null,
-			}),
+			}) as FormAction,
 		dispatch,
 	),
 });

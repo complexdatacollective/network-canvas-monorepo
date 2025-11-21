@@ -1,9 +1,10 @@
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { BooleanField } from "~/components/Form/Fields";
+import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import DetachedField from "../../DetachedField";
 
@@ -14,7 +15,7 @@ type RemoveAfterConsiderationProps = {
 const FORM_PROPERTY = "behaviours.removeAfterConsideration";
 
 const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
-	const dispatch = useDispatch<Dispatch<UnknownAction>>();
+	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formValue = useSelector((state: RootState) => !!formSelector(state, FORM_PROPERTY));
 
@@ -43,7 +44,7 @@ const RemoveAfterConsideration = ({ form }: RemoveAfterConsiderationProps) => {
 		>
 			<Row>
 				<DetachedField
-					component={Fields.Boolean}
+					component={BooleanField}
 					onChange={handleChooseRemoveAfterConsideration}
 					value={removeAfterConsideration}
 					validation={{ required: true }}

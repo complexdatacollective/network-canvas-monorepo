@@ -1,13 +1,12 @@
-/* eslint-disable import/prefer-default-export */
 import { Editor, type Node, type NodeEntry, Range, Transforms } from "slate";
 
-export const getContainerBlockAtCursor = (editor: Editor): NodeEntry<Node> | undefined =>
+const getContainerBlockAtCursor = (editor: Editor): NodeEntry<Node> | undefined =>
 	Editor.above(editor, {
 		match: (n) => Editor.isBlock(editor, n),
 		mode: "highest",
 	});
 
-export const getContainerBlocksAtSelection = (editor: Editor): NodeEntry<Node>[] => {
+const getContainerBlocksAtSelection = (editor: Editor): NodeEntry<Node>[] => {
 	const nodes = Editor.nodes(editor);
 
 	const blocks: NodeEntry<Node>[] = [];

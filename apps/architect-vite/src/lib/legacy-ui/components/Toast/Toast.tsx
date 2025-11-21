@@ -7,7 +7,7 @@ import Icon from "../Icon";
 
 type ToastType = "info" | "warning" | "error" | "success";
 
-interface ToastProps {
+type ToastProps = {
 	id: string | number;
 	title: string;
 	content: ReactNode | (() => ReactNode);
@@ -17,7 +17,7 @@ interface ToastProps {
 	dismissDuration?: number;
 	CustomIcon?: ReactNode | null;
 	className?: string;
-}
+};
 
 const Toast = ({
 	id,
@@ -30,9 +30,10 @@ const Toast = ({
 	CustomIcon = null,
 	className = "",
 }: ToastProps) => {
-	if (autoDismiss && dismissHandler) {
-		useTimeout(dismissHandler, dismissDuration);
-	}
+	useTimeout(
+		autoDismiss && dismissHandler ? dismissHandler : () => {},
+		autoDismiss && dismissHandler ? dismissDuration : null,
+	);
 
 	const getIcon = () => {
 		if (CustomIcon) {
@@ -71,7 +72,6 @@ const Toast = ({
 			transition={{
 				delay: 0.2,
 				type: "spring",
-				layoutY: { delay: 0, type: "spring" },
 			}}
 			exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
 			className={`toast toast--${type} ${className}`}
@@ -81,7 +81,7 @@ const Toast = ({
 				<h4 className="toast-content__title">{title}</h4>
 				{getContent()}
 			</div>
-			<CloseButton onClick={dismissHandler} />
+			<CloseButton onClick={dismissHandler || (() => {})} />
 		</motion.li>
 	);
 };

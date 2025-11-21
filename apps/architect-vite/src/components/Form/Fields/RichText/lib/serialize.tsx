@@ -1,15 +1,15 @@
 import { serialize } from "remark-slate";
 import type { Descendant } from "slate";
 
-interface TextNode {
+type TextNode = {
 	text: string;
 	[key: string]: unknown;
-}
+};
 
-interface ElementNode {
+type ElementNode = {
 	children: (TextNode | ElementNode)[];
 	[key: string]: unknown;
-}
+};
 
 type SlateNode = TextNode | ElementNode;
 
@@ -27,14 +27,14 @@ const escapeMarkdownChars = (string: string): string =>
 		.replace(/\]/g, "\\]");
 
 const escapeNode = (node: SlateNode): SlateNode => {
-	if ("children" in node && node.children) {
+	if ("children" in node && node.children && Array.isArray(node.children)) {
 		return {
 			...node,
-			children: node.children.map((child: SlateNode) => escapeNode(child)),
+			children: (node.children as SlateNode[]).map((child: SlateNode) => escapeNode(child)),
 		};
 	}
 
-	if ("text" in node && node.text) {
+	if ("text" in node && node.text && typeof node.text === "string") {
 		return {
 			...node,
 			text: escapeMarkdownChars(node.text),
@@ -44,6 +44,7 @@ const escapeNode = (node: SlateNode): SlateNode => {
 	return node;
 };
 
-const serializeNodes = (nodes: Descendant[]): string => nodes.map((n) => serialize(escapeNode(n))).join("\n");
+const serializeNodes = (nodes: Descendant[]): string =>
+	nodes.map((n) => serialize(escapeNode(n as SlateNode) as never)).join("\n");
 
 export default serializeNodes;

@@ -1,6 +1,5 @@
 import { Component } from "react";
 import { Flipped } from "react-flip-toolkit";
-import { connect } from "react-redux";
 import { type StoredProtocol, selectRecentProtocols } from "~/ducks/modules/protocols";
 import type { RootState } from "~/ducks/modules/root";
 import ProtocolStack from "./ProtocolStack";
@@ -64,12 +63,10 @@ class RecentProtocols extends Component<RecentProtocolsProps> {
 	}
 }
 
-const mapStateToProps = (state: RootState) => ({
+const _mapStateToProps = (state: RootState) => ({
 	recentProtocols: getRecentProtocols(state),
 });
 
 // Default props handled via TypeScript default parameter values
 
 export { RecentProtocols as UnconnectedRecentProtocols };
-
-export default connect(mapStateToProps)(RecentProtocols);

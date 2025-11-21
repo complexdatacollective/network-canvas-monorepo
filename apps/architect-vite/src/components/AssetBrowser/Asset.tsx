@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { DeleteIcon, DownloadIcon, Eye as PreviewIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import * as Thumbnails from "~/components/Thumbnail";
+import { APIKey, Audio, GeoJSON, Image, Network, Video } from "~/components/Thumbnail";
 
 type AssetProps = {
 	id: string;
@@ -19,12 +19,12 @@ type AssetType = "image" | "video" | "audio" | "network" | "apikey" | "geojson";
 
 // Use a more lenient type since these are HOC-wrapped components
 const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<Record<string, unknown>>> = {
-	image: Thumbnails.Image as React.ComponentType<Record<string, unknown>>,
-	video: Thumbnails.Video as React.ComponentType<Record<string, unknown>>,
-	audio: Thumbnails.Audio as React.ComponentType<Record<string, unknown>>,
-	network: Thumbnails.Network as React.ComponentType<Record<string, unknown>>,
-	apikey: Thumbnails.APIKey as React.ComponentType<Record<string, unknown>>,
-	geojson: Thumbnails.GeoJSON as React.ComponentType<Record<string, unknown>>,
+	image: Image as unknown as React.ComponentType<Record<string, unknown>>,
+	video: Video as unknown as React.ComponentType<Record<string, unknown>>,
+	audio: Audio as unknown as React.ComponentType<Record<string, unknown>>,
+	network: Network as unknown as React.ComponentType<Record<string, unknown>>,
+	apikey: APIKey as unknown as React.ComponentType<Record<string, unknown>>,
+	geojson: GeoJSON as unknown as React.ComponentType<Record<string, unknown>>,
 };
 
 const Asset = ({
@@ -93,91 +93,48 @@ const Asset = ({
 		[onClick, id],
 	);
 
-	const handlePreviewKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
-			if (e.key === "Enter" || e.key === " ") {
-				e.preventDefault();
-				e.stopPropagation();
-				if (onPreview) {
-					onPreview(id);
-				}
-			}
-		},
-		[onPreview, id],
-	);
-
-	const handleDownloadKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
-			if (e.key === "Enter" || e.key === " ") {
-				e.preventDefault();
-				e.stopPropagation();
-				if (onDownload) {
-					onDownload(id);
-				}
-			}
-		},
-		[onDownload, id],
-	);
-
-	const handleDeleteKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
-			if (e.key === "Enter" || e.key === " ") {
-				e.preventDefault();
-				e.stopPropagation();
-				onDelete?.(id, isUsed);
-			}
-		},
-		[onDelete, isUsed, id],
-	);
-
 	return (
-		<div onClick={handleClick} onKeyDown={handleKeyDown} role="button" tabIndex={0} className={assetClasses}>
+		<button type="button" onClick={handleClick} onKeyDown={handleKeyDown} className={assetClasses}>
 			<div className="asset-browser-asset__preview">
 				<PreviewComponent id={id} />
 			</div>
 
 			<div className="asset-browser-asset__controls">
 				{onPreview && (
-					<div
+					<button
+						type="button"
 						className="asset-browser-asset__control"
 						onClick={handlePreview}
-						onKeyDown={handlePreviewKeyDown}
-						role="button"
-						tabIndex={0}
 						aria-label="Preview asset"
 					>
 						<PreviewIcon />
-					</div>
+					</button>
 				)}
 
 				{onDownload && (
-					<div
+					<button
+						type="button"
 						className="asset-browser-asset__control"
 						onClick={handleDownload}
-						onKeyDown={handleDownloadKeyDown}
-						role="button"
-						tabIndex={0}
 						aria-label="Download asset"
 					>
 						<DownloadIcon />
-					</div>
+					</button>
 				)}
 
 				{onDelete && (
-					<div
+					<button
+						type="button"
 						className="asset-browser-asset__control asset-browser-asset__control--delete"
 						onClick={handleDelete}
-						onKeyDown={handleDeleteKeyDown}
-						role="button"
-						tabIndex={0}
 						title={isUsed ? "This asset is in use by the protocol and cannot be deleted" : ""}
 						aria-label={isUsed ? "Cannot delete - asset in use" : "Delete asset"}
 					>
 						<DeleteIcon />
-					</div>
+					</button>
 				)}
 			</div>
-		</div>
+		</button>
 	);
 };
 

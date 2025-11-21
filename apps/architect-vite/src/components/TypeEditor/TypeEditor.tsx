@@ -1,11 +1,10 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { capitalize, toPairs } from "es-toolkit/compat";
 import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Layout, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
-import * as Fields from "~/components/Form/Fields";
+import { RadioGroup, Text } from "~/components/Form/Fields";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/store";
 import { getCodebook } from "~/selectors/protocol";
@@ -23,7 +22,7 @@ type TypeEditorProps = {
 	existingTypes: string[];
 };
 
-const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProps) => {
+const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formIcon = useAppSelector((state: RootState) => formSelector(state, "iconVariant"));
@@ -31,7 +30,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 	// Provide a default icon
 	useEffect(() => {
 		if (entity === "node" && !formIcon) {
-			dispatch(change(form, "iconVariant", ICON_OPTIONS[0]) as UnknownAction);
+			dispatch(change(form, "iconVariant", ICON_OPTIONS[0]));
 		}
 	}, [entity, form, formIcon, dispatch]);
 
@@ -47,7 +46,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 					{entity === "edge" && ' Some examples might be "Friends" or "Works With".'}
 				</p>
 				<ValidatedField
-					component={Fields.Text}
+					component={Text}
 					name="name"
 					validation={{ required: true, allowedNMToken: true, uniqueByList: existingTypes }}
 					componentProps={{ placeholder: `Enter a name for this ${entity} type...` }}
@@ -74,7 +73,7 @@ const TypeEditor = ({ form, entity, type = null, existingTypes }: TypeEditorProp
 					layout="vertical"
 				>
 					<ValidatedField
-						component={Fields.RadioGroup}
+						component={RadioGroup}
 						name="iconVariant"
 						validation={{ required: true }}
 						componentProps={{ options: ICON_OPTIONS, optionComponent: IconOption }}
@@ -89,9 +88,10 @@ const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | nu
 	const codebook = getCodebook(state);
 
 	const getNames = (
-		codebookTypeDefinitions: Record<string, { name: string }>,
+		codebookTypeDefinitions: Record<string, { name: string }> | undefined,
 		excludeType?: string | false | null,
 	): string[] => {
+		if (!codebookTypeDefinitions) return [];
 		const names: string[] = [];
 		toPairs(codebookTypeDefinitions).forEach(([id, definition]) => {
 			if (excludeType && id === excludeType) {
@@ -102,8 +102,8 @@ const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | nu
 		return names;
 	};
 
-	const nodes = getNames(codebook.node, !isNew && type);
-	const edges = getNames(codebook.edge, !isNew && type);
+	const nodes = codebook ? getNames(codebook.node, !isNew && type) : [];
+	const edges = codebook ? getNames(codebook.edge, !isNew && type) : [];
 
 	const existingTypes = nodes.concat(edges);
 
@@ -111,7 +111,5 @@ const mapStateToProps = (state: RootState, { type, isNew }: { type?: string | nu
 		existingTypes,
 	};
 };
-
-export { TypeEditor as UnconnectedTypeEditor };
 
 export default connect(mapStateToProps)(TypeEditor);

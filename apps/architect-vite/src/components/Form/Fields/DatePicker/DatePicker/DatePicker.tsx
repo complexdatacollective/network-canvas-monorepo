@@ -4,14 +4,14 @@ import { DATE_FORMATS, type DateType, DEFAULT_MIN_DATE, DEFAULT_TYPE } from "./c
 import DatePickerContext from "./DatePickerContext";
 import { type DateObject, isComplete, isEmpty, now } from "./helpers";
 
-interface DatePickerProps {
+type DatePickerProps = {
 	children?: ReactNode;
 	date?: string | null;
 	min?: string | null;
 	max?: string | null;
 	onChange?: (date: string) => void;
 	type?: DateType | null;
-}
+};
 
 /**
  * Get date object from an ISO string
@@ -71,7 +71,13 @@ const DatePicker = ({
 		}
 
 		if (isComplete(type)(newDate)) {
-			const dateString = DateTime.fromObject(newDate).toFormat(format);
+			// Filter out null values for DateTime.fromObject
+			const dateObj: { year?: number; month?: number; day?: number } = {};
+			if (newDate.year !== null) dateObj.year = newDate.year;
+			if (newDate.month !== null) dateObj.month = newDate.month;
+			if (newDate.day !== null) dateObj.day = newDate.day;
+
+			const dateString = DateTime.fromObject(dateObj).toFormat(format);
 			onChange(dateString);
 		}
 	};

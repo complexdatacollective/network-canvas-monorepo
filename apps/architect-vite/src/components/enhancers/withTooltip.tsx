@@ -15,7 +15,7 @@ const withTooltip = <P extends object>(WrappedComponent: ComponentType<P>) => {
 				<span ref={ref}>
 					<WrappedComponent {...(props as P)} />
 				</span>
-				{tooltip && <Tippy content={tooltip} reference={ref} {...tippyProps} />}
+				{tooltip && ref.current && <Tippy content={tooltip} reference={ref.current} {...tippyProps} />}
 			</>
 		);
 	};

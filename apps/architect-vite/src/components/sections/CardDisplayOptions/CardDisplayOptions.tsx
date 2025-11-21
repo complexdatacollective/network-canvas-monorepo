@@ -1,32 +1,38 @@
-import { useDispatch, useSelector } from "react-redux";
+import type { UnknownAction } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import * as Fields from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import { useAppDispatch } from "~/ducks/hooks";
+import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import Tip from "../../Tip";
 import getVariableOptionsGetter from "../SortOptionsForExternalData/getVariableOptionsGetter";
 
-interface CardDisplayOptionsProps {
+type CardDisplayOptionsProps = {
 	dataSource: string;
 	disabled: boolean;
-}
+};
 
 const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) => {
 	const { variables: variableOptions } = useVariablesFromExternalData(dataSource, true);
 	const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
 	const maxVariableOptions = variableOptions.length;
 
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const getFormValue = formValueSelector("edit-stage");
-	const hasCardDisplayOptions = useSelector((state) => getFormValue(state, "cardOptions.additionalProperties"));
+	const hasCardDisplayOptions = useSelector((state: RootState) =>
+		getFormValue(state, "cardOptions.additionalProperties"),
+	);
 
 	const handleToggleCardDisplayOptions = (nextState: boolean) => {
 		if (nextState === false) {
-			dispatch(change("edit-stage", "cardOptions.additionalProperties", null));
+			dispatch(change("edit-stage", "cardOptions.additionalProperties", null) as unknown as UnknownAction);
 		}
 
 		return true;
@@ -71,7 +77,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 							},
 							{
 								fieldName: "label",
-								component: Fields.Text,
+								component: Text,
 								placeholder: "Label",
 							},
 						]}
@@ -83,8 +89,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 	);
 };
 
-export { CardDisplayOptions };
-
-export default compose(withMapFormToProps("dataSource"), withDisabledAssetRequired)(
-	CardDisplayOptions as React.ComponentType<unknown>,
-);
+export default compose(
+	withMapFormToProps("dataSource"),
+	withDisabledAssetRequired,
+)(CardDisplayOptions) as unknown as React.ComponentType<StageEditorSectionProps>;

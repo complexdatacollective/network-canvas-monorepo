@@ -1,5 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import { getVariableNamesFromNetwork, type Network as NetworkType } from "@codaco/protocol-validation";
+import type { VariableValue } from "@codaco/shared-consts";
 import { compose } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +14,7 @@ const initialContent = {
 };
 
 type NetworkNode = {
-	attributes: Record<string, unknown>;
+	attributes: Record<string, VariableValue>;
 };
 
 type NetworkData = {
@@ -21,7 +22,7 @@ type NetworkData = {
 	nodes?: NetworkNode[];
 };
 
-const getRows = (data: NetworkData): Record<string, unknown>[] =>
+const getRows = (data: NetworkData): Record<string, VariableValue>[] =>
 	get(data, ["nodes"], []).map(({ attributes }: NetworkNode) => attributes);
 
 const getColumns = (data: NetworkData) =>

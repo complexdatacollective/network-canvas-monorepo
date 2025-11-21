@@ -7,7 +7,8 @@ const getNCIcon = (name: string): IconComponent | null => {
 	if (!Object.hasOwn(icons, name)) {
 		return null;
 	}
-	return icons[name];
+	const icon = icons[name];
+	return (icon as IconComponent) ?? null;
 };
 
 // Done this way so that, in theory, performance will be the same for using our

@@ -3,9 +3,9 @@ import { compose } from "recompose";
 import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
 
-interface OwnProps {
+type OwnProps = {
 	form: string;
-}
+};
 
 const mapStateToProps = (state: RootState, { form }: OwnProps) => {
 	const quickAdd = formValueSelector(form)(state, "quickAdd");

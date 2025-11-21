@@ -1,30 +1,28 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change, getFormValues } from "redux-form";
+import { createVariableAsync, deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/modules/root";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
 
-interface OwnProps {
+type OwnProps = {
 	form: string;
 	entity: "node" | "edge" | "ego";
 	type: string;
-}
+};
 
 const mapStateToProps = (state: RootState, props: OwnProps) => ({
 	formValues: getFormValues(props.form)(state),
 });
 
 const mapDispatchToProps = {
-	deleteVariable: codebookActions.deleteVariable,
-	createVariable: codebookActions.createVariable,
+	deleteVariable: deleteVariableAsync,
+	createVariable: createVariableAsync,
 	changeForm: change,
 };
 
 const deleteVariableState = connect(mapStateToProps, mapDispatchToProps);
 
-type HandlerProps = ReturnType<typeof mapStateToProps> &
-	typeof mapDispatchToProps &
-	OwnProps;
+type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
 
 const variableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	onCreateOtherVariable:

@@ -4,28 +4,44 @@ import type { RootState } from "~/ducks/store";
 import { getEntityProperties } from "./helpers";
 import Variables from "./Variables";
 
+type UsageItem = {
+	label: string;
+	id?: string;
+};
+
 type Variable = {
 	id: string;
 	name: string;
 	component: string;
 	inUse: boolean;
-	usage: unknown;
+	usage: UsageItem[];
+	usageString?: string;
+};
+
+type VariablesComponentProps = {
+	variables: Variable[];
+	entity: string;
 };
 
 type EgoTypeProps = {
-	variables?: Variable[];
+	variables?: Record<string, Variable>;
 };
 
-const EgoType = ({ variables = [] }: EgoTypeProps) => (
-	<div className="codebook__entity">
-		{variables.length > 0 && (
-			<div className="codebook__entity-variables codebook__entity-variables--no-border">
-				<h3>Variables:</h3>
-				<Variables variables={variables} entity="ego" />
-			</div>
-		)}
-	</div>
-);
+const EgoType = ({ variables = {} }: EgoTypeProps) => {
+	const variableArray = Object.values(variables);
+	const VariablesTyped = Variables as React.ComponentType<VariablesComponentProps>;
+
+	return (
+		<div className="codebook__entity">
+			{variableArray.length > 0 && (
+				<div className="codebook__entity-variables codebook__entity-variables--no-border">
+					<h3>Variables:</h3>
+					<VariablesTyped variables={variableArray} entity="ego" />
+				</div>
+			)}
+		</div>
+	);
+};
 
 const mapStateToProps = (state: RootState) => {
 	const entityProperties = getEntityProperties(state, { entity: "ego" });

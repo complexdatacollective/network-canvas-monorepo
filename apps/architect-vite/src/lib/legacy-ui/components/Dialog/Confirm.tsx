@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
-interface ConfirmProps {
+type ConfirmProps = {
 	title: string;
 	message?: ReactNode;
 	canCancel?: boolean;
@@ -11,17 +11,17 @@ interface ConfirmProps {
 	confirmLabel?: string;
 	cancelLabel?: string;
 	show?: boolean;
-}
+};
 
 /*
  * Designed to present yes/no choices to the user.
  */
 const Confirm = ({
 	title,
-	message = null,
+	message,
 	canCancel = true,
 	onConfirm,
-	onCancel = null,
+	onCancel,
 	confirmLabel = "OK",
 	cancelLabel = "Cancel",
 	show = false,
@@ -34,12 +34,12 @@ const Confirm = ({
 		message={message}
 		onBlur={onCancel}
 		options={[
-			canCancel ? <Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} /> : null,
+			...(canCancel && onCancel
+				? [<Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} />]
+				: []),
 			<Button key="confirm" onClick={onConfirm} color="sea-green" content={confirmLabel} />,
 		]}
 	/>
 );
-
-export { Confirm };
 
 export default Confirm;

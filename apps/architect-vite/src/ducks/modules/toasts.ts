@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import { v4 as uuid } from "uuid";
 
 // Define toast types
-interface Toast {
+type Toast = {
 	id: string;
 	type?: "success" | "error" | "info" | "warning";
 	title?: string;
@@ -10,14 +10,14 @@ interface Toast {
 	duration?: number;
 	autoDismiss?: boolean;
 	[key: string]: unknown; // Allow additional properties for flexibility
-}
+};
 
 type ToastsState = Toast[];
 
 const initialState: ToastsState = [];
 
-// Async thunk for adding toasts that returns the generated ID
-export const addToast = createAsyncThunk<string, Partial<Toast> & { id?: string }>(
+// Async thunk for adding toasts that returns the generated ID (currently unused)
+const _addToast = createAsyncThunk<string, Partial<Toast> & { id?: string }>(
 	"toasts/addToast",
 	async (toastConfig, { dispatch }) => {
 		const id = toastConfig.id || uuid();
@@ -52,24 +52,11 @@ const toastsSlice = createSlice({
 	},
 });
 
-// Export the action creators
-export const { addToastSync, updateToast, removeToast } = toastsSlice.actions;
+// Internal action creators (not exported directly)
+const { addToastSync, updateToast: _updateToastAction, removeToast: removeToastAction } = toastsSlice.actions;
+
+// Export convenience wrapper with cleaner API (currently only removeToast is used)
+export const removeToast = (id: string) => removeToastAction(id);
 
 // Export the reducer as default
 export default toastsSlice.reducer;
-
-// Maintain compatibility with existing code
-export const actionCreators = {
-	addToast,
-	updateToast: (id: string, toast: Partial<Toast>) => updateToast({ id, toast }),
-	removeToast: (id: string) => removeToast(id),
-};
-
-export const actionTypes = {
-	ADD_TOAST: "toasts/addToastSync",
-	REMOVE_TOAST: "toasts/removeToast",
-	UPDATE_TOAST: "toasts/updateToast",
-};
-
-// Export types for use in other parts of the application
-export type { Toast, ToastsState };

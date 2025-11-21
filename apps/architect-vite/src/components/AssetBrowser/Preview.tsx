@@ -2,7 +2,12 @@ import { compose } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { CopyIcon as ContentCopyIcon, DownloadIcon } from "lucide-react";
 import { useCallback } from "react";
-import * as Assets from "~/components/Assets";
+import APIKey from "~/components/Assets/APIKey";
+import Audio from "~/components/Assets/Audio";
+import BackgroundImage from "~/components/Assets/BackgroundImage";
+import GeoJSON from "~/components/Assets/GeoJSON";
+import Network from "~/components/Assets/Network";
+import Video from "~/components/Assets/Video";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import withAssetPath from "~/components/Assets/withAssetPath";
 import Dialog from "~/components/Dialog/Dialog";
@@ -17,19 +22,17 @@ type AssetMeta = Record<string, unknown> & {
 const getRenderer = (meta: AssetMeta) => {
 	switch (meta.type) {
 		case "image":
-			return Assets.BackgroundImage;
+			return BackgroundImage;
 		case "audio":
-			// eslint-disable-next-line
-			return ({ id }: { id: string }) => <Assets.Audio id={id} controls />;
+			return ({ id }: { id: string }) => <Audio id={id} controls />;
 		case "video":
-			// eslint-disable-next-line
-			return ({ id }: { id: string }) => <Assets.Video id={id} controls />;
+			return ({ id }: { id: string }) => <Video id={id} controls />;
 		case "network":
-			return Assets.Network;
+			return Network;
 		case "geojson":
-			return Assets.GeoJSON;
+			return GeoJSON;
 		case "apikey":
-			return Assets.APIKey;
+			return APIKey;
 		default:
 			return () => <p>No preview available.</p>;
 	}
@@ -106,4 +109,7 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	);
 };
 
-export default compose(withAssetMeta, withAssetPath)(Preview as React.ComponentType<unknown>) as React.ComponentType<PreviewOwnProps>;
+export default compose(
+	withAssetMeta,
+	withAssetPath,
+)(Preview as React.ComponentType<unknown>) as React.ComponentType<PreviewOwnProps>;

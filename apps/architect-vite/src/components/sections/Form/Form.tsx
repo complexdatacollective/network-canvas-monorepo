@@ -6,14 +6,14 @@ import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubj
 import withSubject from "~/components/enhancers/withSubject";
 import TextField from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";
 import { itemSelector, normalizeField } from "./helpers";
 import withFormHandlers from "./withFormHandlers";
 
-type FormProps = {
+type FormProps = StageEditorSectionProps & {
 	handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
-	form: string;
 	disabled?: boolean;
 	disableFormTitle?: boolean;
 	type?: string | null;
@@ -42,11 +42,13 @@ const Form = ({
 		{!disableFormTitle && (
 			<ValidatedField
 				name="form.title"
-				label="Form heading text (e.g 'Add a person')"
 				component={TextField}
-				placeholder="Enter your title here"
-				className="stage-editor-section-title"
 				validation={{ required: true }}
+				componentProps={{
+					label: "Form heading text (e.g 'Add a person')",
+					placeholder: "Enter your title here",
+					className: "stage-editor-section-title",
+				}}
 			/>
 		)}
 		<EditableList
@@ -56,19 +58,25 @@ const Form = ({
 				type,
 				entity,
 			}}
-			previewComponent={FieldPreview}
+			previewComponent={FieldPreview as React.ComponentType<Record<string, unknown>>}
 			fieldName="form.fields"
 			title="Edit Field"
-			onChange={handleChangeFields}
-			normalize={normalizeField}
-			itemSelector={itemSelector(entity, type)}
+			onChange={(value: unknown) => handleChangeFields(value as Array<Record<string, unknown>>)}
+			normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
+			itemSelector={
+				itemSelector(entity, type) as (
+					state: Record<string, unknown>,
+					params: { form: string; editField: string },
+				) => unknown
+			}
 			form={form}
 		/>
 	</Section>
 );
 
-export { Form };
-
-export default compose(withSubject, withFormHandlers, withDisabledFormTitle, withDisabledSubjectRequired)(
-	Form as React.ComponentType<unknown>,
-);
+export default compose(
+	withSubject,
+	withFormHandlers,
+	withDisabledFormTitle,
+	withDisabledSubjectRequired,
+)(Form) as unknown as React.ComponentType<StageEditorSectionProps>;

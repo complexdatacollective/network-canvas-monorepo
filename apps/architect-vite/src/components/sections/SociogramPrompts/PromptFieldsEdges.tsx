@@ -1,13 +1,24 @@
 /* eslint-disable react/jsx-props-no-spreading */
+import type { FilterRule } from "@codaco/protocol-validation";
 import { union } from "es-toolkit/compat";
 import { useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import type { FormAction } from "redux-form";
 import { change, Field, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
-import * as Fields from "~/components/Form/Fields";
+import { CheckboxGroup } from "~/components/Form/Fields";
+import { useAppDispatch } from "~/ducks/hooks";
+import type { RootState } from "~/ducks/modules/root";
 import Tip from "../../Tip";
 import { getEdgeFilters, getEdgesForSubject } from "./selectors";
 import getEdgeFilteringWarning from "./utils";
+
+type Option = {
+	value: string;
+	label: string;
+	type?: string;
+	color?: string;
+};
 
 type DisplayEdgesProps = {
 	form: string;
@@ -15,16 +26,19 @@ type DisplayEdgesProps = {
 	type: string;
 };
 
-const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
-	const dispatch = useDispatch();
+const DisplayEdges = ({ form }: DisplayEdgesProps) => {
+	const dispatch = useAppDispatch();
 
 	// Fix 1: Use the already memoized selector directly
 	const edgesForSubject = useSelector(getEdgesForSubject);
 
 	// Fix 2: Memoize form selectors
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
-	const createEdge = useSelector((state) => formSelector(state, "edges.create"));
-	const displayEdges = useSelector((state) => formSelector(state, "edges.display"));
+	const createEdge = useSelector((state: RootState) => formSelector(state, "edges.create")) as string | undefined;
+	const displayEdges = useSelector((state: RootState) => formSelector(state, "edges.display")) as
+		| string[]
+		| null
+		| undefined;
 
 	// Fix 3: Memoize the mapped array
 	const displayEdgesOptions = useMemo(
@@ -41,15 +55,17 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 		[edgesForSubject, createEdge],
 	);
 
-	const hasDisabledEdgeOption = displayEdgesOptions.some((option) => option.disabled);
+	const hasDisabledEdgeOption = displayEdgesOptions.some(
+		(option) => (option as Option & { disabled?: boolean }).disabled,
+	);
 
 	useEffect(() => {
-		const displayEdgesWithCreatedEdge = union(displayEdges, [createEdge]);
-		dispatch(change(form, "edges.display", displayEdgesWithCreatedEdge));
+		const displayEdgesWithCreatedEdge = union(displayEdges ?? [], [createEdge]);
+		dispatch(change(form, "edges.display", displayEdgesWithCreatedEdge) as unknown as FormAction);
 	}, [createEdge, dispatch, displayEdges, form]);
 
-	const edgeFilters = useSelector((state) => getEdgeFilters(state));
-	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, displayEdges || []);
+	const edgeFilters = useSelector((state: RootState) => getEdgeFilters(state)) as FilterRule[];
+	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters as FilterRule[], displayEdges || []);
 
 	return (
 		<Section
@@ -74,7 +90,7 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 				}
 
 				// Reset edge creation
-				dispatch(change(form, "edges.display", null));
+				dispatch(change(form, "edges.display", null) as unknown as FormAction);
 				return true;
 			}}
 			layout="vertical"
@@ -100,7 +116,7 @@ const DisplayEdges = ({ form, entity, type }: DisplayEdgesProps) => {
 				)}
 				<Field
 					name="edges.display"
-					component={Fields.CheckboxGroup}
+					component={CheckboxGroup}
 					options={displayEdgesOptions}
 					label="Display edges of the following type(s)"
 				/>

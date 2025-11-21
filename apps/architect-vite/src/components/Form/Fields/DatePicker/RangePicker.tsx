@@ -3,18 +3,22 @@ import { find, times } from "lodash";
 import React, { useEffect } from "react";
 import type { RangeItem } from "./DatePicker/helpers";
 
-interface RangePickerProps {
+type RangePickerProps = {
 	type?: string | null;
 	today?: number | null;
 	range: RangeItem[];
 	value?: number | null;
 	onSelect?: (value: number) => void;
 	offset?: number;
-}
+};
 
 // If today's date isn't in range, what's the closest value?
 const getScrollToValue = (range: RangeItem[], today: number | null | undefined) => {
 	if (today !== 0 && !today) {
+		return null;
+	}
+
+	if (range.length === 0) {
 		return null;
 	}
 
@@ -23,8 +27,12 @@ const getScrollToValue = (range: RangeItem[], today: number | null | undefined) 
 		return findToday.value;
 	}
 
-	const first = range[0].value;
-	const last = range[range.length - 1].value;
+	const first = range[0]?.value;
+	const last = range[range.length - 1]?.value;
+
+	if (first === undefined || last === undefined) {
+		return null;
+	}
 
 	if (Math.abs(today - first) < Math.abs(today - last)) {
 		return first;
@@ -41,8 +49,8 @@ const RangePicker = ({
 	onSelect = () => {},
 	offset = 0,
 }: RangePickerProps) => {
-	const datePickerRef = React.createRef<HTMLDivElement>();
-	const scrollRef = React.createRef<HTMLDivElement>();
+	const datePickerRef = React.createRef<HTMLDivElement | null>();
+	const scrollRef = React.createRef<HTMLButtonElement | null>();
 
 	const _datePickerKey = !!datePickerRef.current;
 	const _scrollRefKey = scrollRef.current?.getAttribute("data-value");
@@ -69,13 +77,6 @@ const RangePicker = ({
 
 	const padding = times(offset, (index) => <div key={`padding${index}`} className="date-picker__range-item" />);
 
-	const handleKeyDown = (itemValue: number) => (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			onSelect(itemValue);
-		}
-	};
-
 	const scrollToValue = getScrollToValue(range, today);
 	return (
 		<div className={classes} ref={datePickerRef}>
@@ -91,20 +92,18 @@ const RangePicker = ({
 					const ref = scrollToValue === d.value ? scrollRef : null;
 
 					return (
-						<div
+						<button
+							type="button"
 							className={itemStyle}
 							onClick={() => onSelect(d.value)}
-							onKeyDown={handleKeyDown(d.value)}
-							role="button"
-							tabIndex={d.isOutOfRange ? -1 : 0}
 							aria-label={`Select ${d.label}`}
-							aria-disabled={d.isOutOfRange}
+							disabled={d.isOutOfRange}
 							ref={ref}
 							data-value={d.value}
 							key={`item${d.value}`}
 						>
 							<div className="date-picker__highlight">{d.label}</div>
-						</div>
+						</button>
 					);
 				})}
 			</div>

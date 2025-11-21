@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
-import { selectActiveProtocol } from "~/ducks/modules/activeProtocol";
+import { selectActiveProtocol } from "~/selectors/protocol";
 
 /**
  * Hook to handle loading protocols based on route parameters
  * Reads protocolId from URL params and sets the active protocol
  */
-export const useProtocolLoader = () => {
+const useProtocolLoader = () => {
 	const [, _navigate] = useLocation();
 
 	// Get the stored protocol

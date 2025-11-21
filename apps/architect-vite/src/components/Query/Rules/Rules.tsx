@@ -11,35 +11,41 @@ import PreviewRules from "./PreviewRules";
 import withDraftRule from "./withDraftRule";
 import withRulesChangeHandlers from "./withRulesChangeHandlers";
 
-type Rule = Record<string, unknown>;
+type Rule = Record<string, unknown> & {
+	id?: string;
+	type?: string;
+	options?: Record<string, unknown>;
+};
 
 type RulesProps = {
 	type?: "filter" | "query";
 	rules?: Rule[];
-	join?: string;
-	error?: string;
+	join?: string | null;
+	error?: string | null;
 	meta?: Record<string, unknown>;
 	codebook: Record<string, unknown>;
-	draftRule?: Record<string, unknown>;
+	draftRule?: Rule | null;
 	handleChangeJoin: (value: string) => void;
-	handleChangeDraft: (value: Record<string, unknown>) => void;
+	handleChangeDraft: (value: Rule) => void;
 	handleCancelDraft: () => void;
 	handleSaveDraft: () => void;
-	handleClickRule: (rule: Rule) => void;
-	handleDeleteRule: (index: number) => void;
+	handleClickRule: (id: string) => void;
+	handleDeleteRule: (id: string) => void;
 	handleCreateAlterRule: () => void;
 	handleCreateEdgeRule: () => void;
 	handleCreateEgoRule: () => void;
+	onChange?: (value: unknown) => void;
+	openDialog?: (dialog: unknown) => void;
 };
 
 const Rules = ({
 	type = "filter",
 	rules = [],
-	join = null as string | null,
-	error = null as string | null,
+	join = null,
+	error = null,
 	meta = {},
 	codebook,
-	draftRule = {},
+	draftRule = null,
 	handleChangeJoin,
 	handleChangeDraft,
 	handleCancelDraft,
@@ -50,9 +56,9 @@ const Rules = ({
 	handleCreateEdgeRule,
 	handleCreateEgoRule,
 }: RulesProps) => {
-	const isActive = get(meta, "active", false);
+	const isActive = get(meta, "active", false) as boolean;
 	// Default to true as may not be defined if used without redux-form
-	const isTouched = get(meta, "touched", true);
+	const isTouched = get(meta, "touched", true) as boolean;
 	const hasError = isTouched && !!error;
 
 	const classes = cx("rules-rules", {
@@ -64,7 +70,7 @@ const Rules = ({
 		<div className={classes}>
 			<EditRule
 				codebook={codebook}
-				rule={draftRule}
+				rule={draftRule || undefined}
 				onChange={handleChangeDraft}
 				onCancel={handleCancelDraft}
 				onSave={handleSaveDraft}
@@ -73,13 +79,13 @@ const Rules = ({
 			<div className={cn("rules-rules__preview", "text-foreground")}>
 				<h4>Rules</h4>
 				<PreviewRules
-					rules={rules}
+					rules={rules as Array<Record<string, unknown> & { id: string }>}
 					join={join}
 					onClickRule={handleClickRule}
 					onDeleteRule={handleDeleteRule}
 					codebook={codebook}
 				/>
-				<FieldError show={hasError} error={error} />
+				<FieldError show={hasError} error={error || ""} />
 			</div>
 
 			<div className="rules-rules__add-new">
@@ -100,13 +106,13 @@ const Rules = ({
 				<div className="rules-rules__join">
 					<h4>Must match</h4>
 					<DetachedField
-						component={RadioGroup}
+						component={RadioGroup as React.ComponentType<Record<string, unknown>>}
 						options={[
 							{ label: "All rules", value: "AND" },
 							{ label: "Any rule", value: "OR" },
 						]}
 						value={join}
-						onChange={handleChangeJoin}
+						onChange={(_event, value) => handleChangeJoin(value as string)}
 					/>
 				</div>
 			)}
@@ -114,6 +120,19 @@ const Rules = ({
 	);
 };
 
-export { Rules };
-
-export default compose(withDraftRule, withRulesChangeHandlers)(Rules as React.ComponentType<unknown>);
+export default compose<
+	RulesProps,
+	{
+		rules?: Rule[];
+		join?: string;
+		onChange?: (value: unknown) => void;
+		openDialog?: (dialog: unknown) => void;
+		codebook?: Record<string, unknown>;
+		type?: "filter" | "query";
+		error?: string | null;
+		meta?: Record<string, unknown>;
+	}
+>(
+	withDraftRule,
+	withRulesChangeHandlers,
+)(Rules);

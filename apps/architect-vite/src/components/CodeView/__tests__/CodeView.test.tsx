@@ -1,3 +1,4 @@
+import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { getFormValues } from "redux-form";
@@ -11,11 +12,15 @@ const mockProps = {
 	form: "test",
 };
 
-const mockStore = createStore(() => ({}));
+const mockStore = configureStore({
+	reducer: {
+		form: () => ({}),
+	},
+});
 
 describe("<CodeView />", () => {
 	beforeAll(() => {
-		getFormValues.mockImplementation(() => () => ({ name: "example name" }));
+		vi.mocked(getFormValues).mockImplementation(() => () => ({ name: "example name" }));
 	});
 
 	it("can render", () => {

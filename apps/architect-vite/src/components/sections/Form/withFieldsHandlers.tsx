@@ -1,6 +1,6 @@
 import { find, get, has } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import {
 	formattedInputOptions,
@@ -9,9 +9,12 @@ import {
 	INPUT_OPTIONS,
 	VARIABLE_TYPES_WITH_COMPONENTS,
 } from "~/config/variables";
-import { actionCreators as codebookActions } from "~/ducks/modules/protocol/codebook";
+import { useAppDispatch } from "~/ducks/hooks";
+import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubjectSelector, getVariablesForSubjectSelector } from "~/selectors/codebook";
+
+type Entity = "node" | "edge" | "ego";
 
 type UseFieldHandlerProps = {
 	form: string;
@@ -20,13 +23,13 @@ type UseFieldHandlerProps = {
 };
 
 export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) => {
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const changeField = useCallback(
-		(field: string, value: unknown) => dispatch(change(form, field, value)),
+		(field: string, value: unknown) => dispatch(change(form, field, value) as never),
 		[dispatch, form],
 	);
 	const deleteVariable = useCallback(
-		(variable: string) => dispatch(codebookActions.deleteVariable({ entity, type, variable })),
+		(variable: string) => dispatch(deleteVariableAsync({ entity: entity as Entity, type, variable }) as never),
 		[dispatch, entity, type],
 	);
 
@@ -62,7 +65,7 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 	const variableOptions = useMemo(() => {
 		const filtered = baseVariableOptions
 			// If not a variable with corresponding component, we can't use it here.
-			.filter(({ type: variableType }: { type: string }) => VARIABLE_TYPES_WITH_COMPONENTS.includes(variableType));
+			.filter((option) => VARIABLE_TYPES_WITH_COMPONENTS.includes(option.type as string));
 
 		// with New variable
 		return isNewVariable ? filtered.concat([{ label: createNewVariable, value: createNewVariable }]) : filtered;

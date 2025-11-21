@@ -9,7 +9,9 @@ import type { RootState } from "~/ducks/modules/root";
 import Section from "../../EditorLayout/Section";
 import { handleFilterDeactivate } from "../Filter";
 
-const FilterField = withFieldConnector(withStoreConnector(FilterQuery));
+const FilterField = withFieldConnector(withStoreConnector(FilterQuery) as unknown) as React.ComponentType<
+	Record<string, unknown>
+>;
 
 type NetworkFilterProps = {
 	form: string;
@@ -22,13 +24,13 @@ type NetworkFilterProps = {
 
 const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name, variant }: NetworkFilterProps) => {
 	const handleToggleChange = useCallback(
-		async (newStatus) => {
+		async (newStatus: boolean) => {
 			if (newStatus === true) {
 				return Promise.resolve(true);
 			}
 
 			if (hasFilter) {
-				const result = await handleFilterDeactivate(openDialog);
+				const result = await handleFilterDeactivate(() => openDialog({} as Record<string, unknown>));
 
 				if (!result) {
 					return Promise.resolve(false);
@@ -69,6 +71,7 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export default compose(defaultProps({ name: "filter" }), connect(mapStateToProps, mapDispatchToProps))(
-	NetworkFilter as React.ComponentType<unknown>,
-);
+export default compose(
+	defaultProps({ name: "filter" }),
+	connect(mapStateToProps, mapDispatchToProps),
+)(NetworkFilter as React.ComponentType<unknown>);

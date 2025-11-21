@@ -1,10 +1,10 @@
 import cx from "classnames";
 import Icon from "../Icon";
 
-interface RoundCheckboxProps {
+type RoundCheckboxProps = {
 	checked?: boolean;
 	negative?: boolean;
-}
+};
 
 const RoundCheckbox = ({ checked = false, negative = false }: RoundCheckboxProps) => {
 	const classes = cx(

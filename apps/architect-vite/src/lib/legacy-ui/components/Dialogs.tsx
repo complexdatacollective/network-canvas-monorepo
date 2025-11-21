@@ -1,6 +1,10 @@
-import { omit } from "lodash";
 import { useCallback } from "react";
-import * as DialogVariants from "./Dialog/index";
+import Confirm from "./Dialog/Confirm";
+import ErrorDialog from "./Dialog/Error";
+import Notice from "./Dialog/Notice";
+import Simple from "./Dialog/Simple";
+import UserErrorDialog from "./Dialog/UserError";
+import Warning from "./Dialog/Warning";
 
 /*
  * Displays a stack of Dialogs.
@@ -45,18 +49,18 @@ import * as DialogVariants from "./Dialog/index";
  *   },
  * ]
  */
-interface Dialog {
+type Dialog = {
 	id: string;
-	type: keyof typeof DialogVariants;
+	type: "Confirm" | "Error" | "Notice" | "Simple" | "UserError" | "Warning";
 	onConfirm?: (dialog: Dialog) => void;
 	onCancel?: (dialog: Dialog) => void;
 	[key: string]: unknown;
-}
+};
 
-interface DialogsProps {
+type DialogsProps = {
 	dialogs?: Dialog[];
 	closeDialog: (id: string) => void;
-}
+};
 
 const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 	const handleConfirm = useCallback(
@@ -81,21 +85,30 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 
 	const renderDialog = useCallback(
 		(dialog: Dialog) => {
-			const Dialog = DialogVariants[dialog.type];
-
 			const onConfirm = () => handleConfirm(dialog);
 			const onCancel = () => handleCancel(dialog);
+			const { onConfirm: dialogOnConfirm, onCancel: dialogOnCancel, id, type, title } = dialog;
+			const resolvedTitle = typeof title === "string" ? title : "";
+			const confirmCallback = dialogOnConfirm ? () => dialogOnConfirm(dialog) : onConfirm;
+			const cancelCallback = dialogOnCancel ? () => dialogOnCancel(dialog) : onCancel;
 
-			return (
-				<Dialog
-					show
-					key={dialog.id}
-					onConfirm={onConfirm}
-					onCancel={onCancel}
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...omit(dialog, ["onConfirm", "onCancel"])}
-				/>
-			);
+			switch (type) {
+				case "Confirm":
+					return <Confirm key={id} show title={resolvedTitle} onConfirm={confirmCallback} onCancel={cancelCallback} />;
+				case "Error":
+					return <ErrorDialog key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
+				case "Notice":
+					return <Notice key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
+				case "Simple":
+					return <Simple key={id} show title={resolvedTitle} onBlur={cancelCallback} />;
+				case "UserError":
+					return <UserErrorDialog key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
+				case "Warning":
+					return <Warning key={id} show title={resolvedTitle} onConfirm={confirmCallback} onCancel={cancelCallback} />;
+				default:
+					// TypeScript ensures this is exhaustive
+					return null;
+			}
 		},
 		[handleConfirm, handleCancel],
 	);
