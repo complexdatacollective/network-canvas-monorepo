@@ -1,0 +1,194 @@
+---
+title: Input Controls
+---
+
+<Definition>
+Input controls determine how participants enter data for variables in Network Canvas interviews. Each input control provides a different user interface optimized for specific types of data collection.
+</Definition>
+
+## Overview
+
+When creating [forms](/en/desktop/key-concepts/forms) in Architect, you must select an input control for each field. The input control you choose determines both the user interface that participants will see and the type of data that will be collected.
+
+Input controls are designed to make data entry intuitive and reduce participant burden while ensuring data quality. Choosing the appropriate input control for your variable is an important part of protocol design.
+
+## How Input Controls Work
+
+Each input control is associated with a specific variable type. When you create a new variable and select an input control for it, the variable type is set automatically based on the control you choose.
+
+<TipBox danger>
+
+Once a variable type has been set by choosing its input control, it cannot be changed later. You may still adjust the specific input control on different forms, as long as the new input control is compatible with the variable type.
+
+</TipBox>
+
+For example, if you create a variable using a Text Input control (creating a text/string variable), you can later use a Text Area control for the same variable, since both work with text data. However, you cannot change it to a Number Input, as that would require a different variable type.
+
+## Available Input Controls
+
+### Text-Based Controls
+
+Text-based controls collect string (text) data from participants.
+
+#### Text Input
+
+Text Input creates text (string) variables and is best for collecting short, single-line text responses such as names, labels, or brief answers. You can configure a character limit (maximum length), placeholder text, and required validation. Use this control for collecting alter names, short identifiers or codes, and single-word responses. It appears as a single-line text entry field with optional placeholder text.
+
+#### Text Area
+
+Text Area creates text (string) variables and is best for collecting longer, multi-line text responses such as descriptions, narratives, or detailed answers. You can configure a character limit (maximum length), number of visible rows, placeholder text, and required validation. Use this control for questions like "Describe your relationship with this person" or "What was the purpose of your visit?" and for collecting detailed narratives or explanations. It appears as a multi-line text box that expands to accommodate longer responses.
+
+### Numerical Controls
+
+#### Number Input
+
+Number Input creates number variables and is best for collecting numerical data that participants will type, such as ages, quantities, or scores. You can configure a minimum value, maximum value, and required validation. Use this control for age of alters, number of interactions, frequency counts, and numerical ratings. It appears as a number entry field with increment/decrement controls.
+
+### Categorical Controls
+
+Categorical controls allow participants to select from predefined options.
+
+#### Radio Button Group
+
+Radio Button Group creates categorical (ordinal or nominal) variables and is best for selecting a single option from a list of mutually exclusive choices, typically 2-7 options. You can configure a list of options (labels and values), required validation, and option order. Use this control for gender selection, yes/no questions, satisfaction ratings (Very Satisfied, Satisfied, Neutral, Dissatisfied, Very Dissatisfied), and relationship type. It appears as a vertical list of radio buttons with labels, where only one can be selected at a time.
+
+This control works best for 2-7 options; consider other controls for longer lists. Options are always visible, making comparisons easy and making the control clear for mutually exclusive choices.
+
+#### Checkbox Group
+
+Checkbox Group creates boolean or categorical variables and is best for selecting multiple options from a list, where participants can choose zero, one, or many options. You can configure a list of options, minimum selections (validation), and maximum selections (validation). Use this control for questions like "Which languages do you speak?" (multiple selections allowed), "Select all risk behaviors that apply," or "Which of these services have you used?" It appears as a vertical list of checkboxes with labels, where multiple can be selected simultaneously.
+
+Use this control when multiple selections are valid. Clear labeling helps participants understand they can select multiple items. Consider validation to ensure at least one option is selected if needed.
+
+#### Toggle
+
+Toggle creates boolean (true/false) variables and is best for binary yes/no choices or enabling/disabling a single feature. You can configure label text, default state (on/off), and required validation. Use this control for questions like "Have you met this person in the past month?" (Yes/No), consent checkboxes, and presence/absence of attributes. It appears as a visual switch or toggle button that can be in an on or off state.
+
+This control is very clear for binary choices, provides visual feedback that makes the state obvious, and works well on touch interfaces.
+
+#### Toggle Button Group
+
+Toggle Button Group creates categorical (ordinal or nominal) variables and is best for selecting a single option from a small set of choices, typically 2-5 options, with visual emphasis. You can configure a list of options (labels and values), required validation, and button style and layout. Use this control for relationship strength (Close / Somewhat Close / Not Close), frequency categories (Daily / Weekly / Monthly / Rarely), and agreement scales. It appears as a row or grid of buttons where selecting one deselects others, with visual highlighting of the selected option.
+
+This control is more visually prominent than radio buttons and works well on touch interfaces. Use it for 2-5 options to avoid cluttering the interface, and take advantage of its clear visual feedback on selection.
+
+### Date and Time Controls
+
+#### Date Picker
+
+Date Picker creates date variables and is best for collecting specific dates, such as birth dates, event dates, or time ranges. You can configure a start date range (earliest selectable date), end date range (latest selectable date), default date, and required validation. Use this control for date of birth, questions like "When did you last see this person?" or "When did this event occur?" and visit dates. It appears as an interactive calendar interface that allows participants to select a specific date.
+
+Set appropriate date ranges to prevent unrealistic entries. Consider whether you need precision (exact date) or approximation (month/year). The calendar interface is intuitive for most users.
+
+### Scale Controls
+
+Scale controls are specialized interfaces for collecting ratings or measurements.
+
+#### Likert Scale
+
+Likert Scale creates ordinal variables and is best for collecting agreement, satisfaction, or frequency ratings using a standard Likert-type scale. You can configure the number of points (typically 3, 5, or 7), labels for each point, and required validation. Use this control for questions like "How satisfied are you with this service?" (Very Satisfied → Very Dissatisfied), "How often do you see this person?" (Always → Never), and agreement scales (Strongly Agree → Strongly Disagree). It appears as a horizontal scale with labeled points that participants can select.
+
+This is a standard format that most participants recognize. Five-point scales are most common. Clear labeling of endpoints and midpoint improves data quality. Consider whether to include a neutral midpoint.
+
+#### Visual Analog Scale (VAS)
+
+Visual Analog Scale creates number variables and is best for collecting subjective ratings or measurements along a continuous scale, often for intensity or magnitude. You can configure a minimum value, maximum value, minimum label (left endpoint), maximum label (right endpoint), and required validation. Use this control for pain intensity ("No Pain" → "Unbearable Pain"), emotional closeness ("Not Close At All" → "Extremely Close"), and strength of feeling or preference. It appears as a continuous slider with labeled endpoints that participants can drag to any position.
+
+This control provides more granular data than Likert scales and is good for measuring subjective experiences. Ensure endpoint labels are clearly contrasting. Note that the continuous nature can be more cognitively demanding for some participants.
+
+## Choosing the Right Input Control
+
+Selecting the appropriate input control is crucial for data quality and participant experience.
+
+Consider what type of data you need to collect. Use Text Input or Text Area for text, Number Input for numbers, Date Picker for dates, Radio Button Group, Toggle, Checkbox Group, or Toggle Button Group for categories, and Likert Scale or Visual Analog Scale for scales.
+
+Think about how many options participants can select. Use Radio Button Group, Toggle, or Toggle Button Group for single selection. Use Checkbox Group for multiple selections. Use Text Input, Text Area, or Number Input for free entry. Use Visual Analog Scale for continuous scales and Likert Scale for discrete scales.
+
+Consider how many choices you are presenting. For 2 options, use Toggle, Toggle Button Group, or Radio Button Group. For 3-7 options, use Radio Button Group or Toggle Button Group. For 8 or more options, consider whether this should be multiple questions. If you have many options, you may need to reconsider your approach.
+
+Think about what will be easiest for participants to understand and use. Use Toggle for simple yes/no questions, Likert Scale for familiar rating scales, Visual Analog Scale for subjective intensity, Radio Button Group or Toggle Button Group for clear categories, and Checkbox Group when multiple selections are needed.
+
+Consider what devices participants will use. Toggle Button Group and Visual Analog Scale work well on touch devices. All controls work well on desktop. On small screens, avoid controls that require lots of space.
+
+## Input Control Compatibility
+
+Some input controls can be used interchangeably for the same variable, while others cannot:
+
+### Compatible Controls (Same Variable Type)
+
+**Text variables:**
+- Text Input ↔ Text Area
+
+**Categorical variables:**
+- Radio Button Group ↔ Toggle Button Group
+
+**Boolean variables:**
+- Toggle ↔ Checkbox (single)
+
+### Incompatible Controls (Different Variable Types)
+
+- Text Input ✗ Number Input
+- Radio Button Group ✗ Number Input
+- Likert Scale ✗ Visual Analog Scale (different data structures)
+
+## Best Practices
+
+Keep it simple by using the simplest control that meets your needs. Don't use a Visual Analog Scale when a simple Toggle would suffice, and ensure participants can immediately understand how to interact with each control.
+
+Be consistent by using similar controls for similar types of questions throughout your protocol. If you use Likert Scales for satisfaction, continue using them rather than switching to Visual Analog Scales. Consistency reduces cognitive load.
+
+Provide clear labels by always labeling options clearly and unambiguously. For scales, label both endpoints and consider labeling the midpoint. Use language appropriate to your participant population.
+
+Consider response burden. Longer forms with many complex controls increase burden. Balance the detail you need with participant fatigue, and consider using simpler controls on later stages when participants may be tired.
+
+Think about data analysis. Consider how you'll analyze the data when choosing controls. Continuous data (Visual Analog Scale) versus categorical data (Likert Scale) require different analyses, and multiple selection checkboxes create complex data structures.
+
+Validate appropriately by using validation to ensure data quality, but don't over-validate—too many required fields can frustrate participants. See [Field Validation](/en/desktop/key-concepts/field-validation) for details.
+
+Test your choices by using [Preview Mode](/en/desktop/tutorials/building-a-protocol#preview-mode) in Architect to test how controls appear and function. Get feedback from colleagues or pilot participants, and iterate based on user experience.
+
+## Common Patterns and Examples
+
+### Basic Demographics
+
+```
+Name: Text Input (required)
+Age: Number Input (required, range: 18-120)
+Gender: Radio Button Group or Toggle Button Group
+```
+
+### Relationship Quality
+
+```
+Closeness: Likert Scale (5-point: Not Close → Very Close)
+or
+Closeness: Visual Analog Scale (0-100: Not Close → Very Close)
+```
+
+### Behavioral Frequency
+
+```
+Contact Frequency: Radio Button Group
+Options: Daily, Weekly, Monthly, Rarely, Never
+```
+
+### Multiple Characteristics
+
+```
+Languages Spoken: Checkbox Group
+Options: English, Spanish, Mandarin, French, [others]
+```
+
+## Related Concepts
+
+- [Forms](/en/desktop/key-concepts/forms) - Learn how to build forms using input controls
+- [Field Validation](/en/desktop/key-concepts/field-validation) - Add validation rules to ensure data quality
+- [Variables](/en/desktop/key-concepts/variables) - Understand variable types and how they relate to input controls
+
+## Next Steps
+
+Now that you understand input controls, you can:
+
+1. Practice creating forms with different input controls in Architect
+2. Learn about [field validation](/en/desktop/key-concepts/field-validation) to ensure data quality
+3. Review the [building a protocol tutorial](/en/desktop/tutorials/building-a-protocol) to see input controls in context

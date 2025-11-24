@@ -21,11 +21,11 @@ In order to follow along with this tutorial you should: (1) Have an understandin
 
 ## Introduction
 
-This tutorial provides an example of an import and analysis workflow for [Network Canvas](https://networkcanvas.com/) data in the R statistical environment using the [ideanet](https://cran.r-project.org/web/packages/ideanet/index.html) and [ego-R](https://cran.r-project.org/web/packages/egor/index.html) packages. This example uses simulated data from the following [Network Canvas protocol file](https://github.com/complexdatacollective/working-with-data/raw/main/IJE_RADAR_Protocol.netcanvas) which can be opened in the Network Canvas Interviewer or Architect apps. If you are following this example with your own protocol, you will first want to export data collected using your protocol. We do not cover the export process here, but we encouage you to consult [this article](https://documentation.networkcanvas.com/en/desktop/tutorials/protocol-and-data-workflows) should you need to review it. Note that you will want to export your data using the CSV option and not the GraphML option for this workflow.
+This tutorial provides an example of an import and analysis workflow for [Network Canvas](https://networkcanvas.com/) data in the R statistical environment using the [ideanet](https://cran.r-project.org/web/packages/ideanet/index.html) and [egoR](https://cran.r-project.org/web/packages/egor/index.html) packages. This example uses simulated data from the following [Network Canvas protocol file](https://github.com/complexdatacollective/working-with-data/raw/main/IJE_RADAR_Protocol.netcanvas) which can be opened in the Interviewer or Architect applications. If you are following this example with your own protocol, you will first want to export data collected using your protocol. We do not cover the export process here, but we encourage you to consult the [Data Export guide](/en/desktop/key-concepts/data-export) and [Protocol and Data Workflows](/en/desktop/tutorials/protocol-and-data-workflows) for details. Note that you will want to export your data using the CSV option and not the GraphML option for this workflow.
 
-If you are not using your own protocol, you can download the CSV files used in this tutorial  [here](https://github.com/complexdatacollective/working-with-data/raw/main/networkCanvasExport.zip). Downloading the protocol file linked above is optional, but it is highly encouraged that you do so as well. The workflow in this tutorial uses tools that can read in Network Canvas protocol files and use information stored in these files to process data more effectively.
+If you are not using your own protocol, you can download the CSV files used in this tutorial [here](https://github.com/complexdatacollective/working-with-data/raw/main/networkCanvasExport.zip). Downloading the protocol file linked above is optional, but we highly encourage you to do so as well. The workflow in this tutorial uses tools that can read Network Canvas protocol files and use information stored in these files to process data more effectively.
 
-Should you require more resources, or if you are just generally curious, a complete GitHub repository for this tutorial can be found [here](https://github.com/complexdatacollective/working-with-data).
+If you require more resources or are curious, a complete GitHub repository for this tutorial can be found [here](https://github.com/complexdatacollective/working-with-data).
 
 ## Locating your data
 
@@ -56,11 +56,11 @@ path_to_protocol <- paste0(getwd(),'/IJE_RADAR_Protocol.netcanvas')
 ```
 
 
-## Reading in data using ideanet 
+## Reading data using ideanet
 
-Once we have these paths defined, we turn to the [`ideanet`](https://cran.r-project.org/web/packages/ideanet/index.html) package to load our data into R. The `ideanet` package offers a function specifically for reading data collected using Network Canvas, entitled `nc_read`. `nc_read` takes one main argument, `path`, a character value indicating the folder containing the Network Canvas CSV files we want to process. If you also have the Network Canvas protocol file used to collect your data, you can specify its location to `nc_read` using the `protocol` argument. While optional, this argument allows `nc_read` to access information contained in your protocol file that ensures better coding of categorical variables in your data. It is generally best practice to use your protocol file with `nc_read` if its is available to you.
+Once you have these paths defined, turn to the [`ideanet`](https://cran.r-project.org/web/packages/ideanet/index.html) package to load your data into R. The `ideanet` package offers a function specifically for reading data collected using Network Canvas, entitled `nc_read`. `nc_read` takes one main argument, `path`, a character value indicating the folder containing the Network Canvas CSV files you want to process. If you also have the Network Canvas protocol file used to collect your data, you can specify its location to `nc_read` using the `protocol` argument. While optional, this argument allows `nc_read` to access information contained in your protocol file that ensures better coding of categorical variables in your data. It is generally best practice to use your protocol file with `nc_read` if it is available to you.
 
-Note that we have already specified the locations of our data (`path_to_data`) and our protocol file (`path_to_protocol`), making it easy to proceed with `nc_read`:
+Note that you have already specified the locations of the data (`path_to_data`) and the protocol file (`path_to_protocol`), making it easy to proceed with `nc_read`:
 
 
 ``` r
@@ -72,11 +72,11 @@ nc_data <- nc_read(path = path_to_data,
                    protocol = path_to_protocol)
 ```
 
-Our data are now loaded into R and stored in the `nc_data` object. `nc_data` is a list object containing three items frequently used to store egocentric network data. 
+Your data are now loaded into R and stored in the `nc_data` object. `nc_data` is a list object containing three items frequently used to store egocentric network data.
 
 ### Ego list
 
-The first of these items is a data frame entitled `egos`. This data frame is an *ego list* containing data pertaining to each participant, or ego, who completed our Network Canvas protocol. Each row in the ego list corresponds to a specific ego, who is given a unique identification number. These identification numbers are separate from the unique case and session ID numbers given by the Network Canvas software; however, they perfectly correspond to one another and can be used interchangeably depending on your preference. 
+The first of these items is a data frame entitled `egos`. This data frame is an *ego list* containing data pertaining to each participant, or ego, who completed the Network Canvas protocol. Each row in the ego list corresponds to a specific ego, who is given a unique identification number. These identification numbers are separate from the unique case and session ID numbers given by the Network Canvas software; however, they perfectly correspond to one another and can be used interchangeably depending on your preference. 
 
 
 ``` r
@@ -257,9 +257,9 @@ The first column in each of these data frames represents the ego whose network a
 
 ## Analyzing data using egor
 
-Using the `nc_read` package in `ideanet`, we have successfully imported our Network Canvas data into R. This leaves us free to analyze and visualize our data however we wish. 
+Using the `nc_read` package in `ideanet`, you have successfully imported the Network Canvas data into R. You are now free to analyze and visualize the data however you wish.
 
-There are many tools and methods available for analyzing egocentric network data in R, including other tools contained within the `ideanet` package. However, we devote the remainder of this tutorial to analyzing our data using the `egor` package, which our team has the most experience using with Network Canvas data. Additionally, data in `nc_read` are formatted to be easily compatible with `egor`. Our examples here are adapted from a [vignette](https://cran.r-project.org/web/packages/egor/vignettes/using_egor.html) in the `egor` package itself. 
+Many tools and methods are available for analyzing egocentric network data in R, including other tools contained within the `ideanet` package. However, the remainder of this tutorial focuses on analyzing the data using the `egor` package, which our team has the most experience using with Network Canvas data. Additionally, data from `nc_read` are formatted to be easily compatible with `egor`. The examples here are adapted from a [vignette](https://cran.r-project.org/web/packages/egor/vignettes/using_egor.html) in the `egor` package itself. 
 
 To get started with these examples, you'll need to install and/or load the `egor`, `sna`, and `ggplot2` packages to your R session:
 

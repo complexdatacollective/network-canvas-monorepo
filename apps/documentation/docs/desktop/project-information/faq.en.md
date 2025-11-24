@@ -80,3 +80,32 @@ We do not transmit, collect or retain any data from or about your study. The dat
 If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/desktop/tutorials/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](../tutorials/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of the security model we implement can be [found here](./security-model).
 
 If you have specific security requirements, please contact us to discuss how we can make our software suite compliant with your needs.
+
+## Is Interviewer GDPR compliant?
+
+Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
+
+**For Interviewer (Desktop/Tablet App):**
+- All participant data is stored only on your local device
+- No participant data is transmitted externally unless you manually export it
+- The app does not collect analytics or crash logs
+- Device-level protections (disk encryption, access controls) are your responsibility
+
+**For Fresco (Self-Hosted Web Application):**
+- You deploy and host Fresco on your own infrastructure
+- All participant data remains under your control at all times
+- Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
+- Study assets are stored in S3 via UploadThing (server-side encryption enforced)
+- GDPR-compliant hosting is possible when selecting an EU region (available on paid UploadThing plans)
+- Optional anonymous usage/error analytics can be disabled
+
+**Your Responsibilities:**
+As the Data Controller, you are responsible for:
+- Establishing a lawful basis for processing participant data
+- Selecting GDPR-compliant hosting regions
+- Implementing appropriate data security measures
+- Maintaining data retention and deletion policies
+- Enabling participant rights (access, rectification, erasure)
+
+**Learn More:**
+For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/desktop/project-information/gdpr-compliance).

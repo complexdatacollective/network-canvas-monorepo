@@ -1,0 +1,326 @@
+---
+title: Variables
+---
+
+<Definition>
+Variables are data fields that you define in your protocol to collect information about ego, alters, and edges during the interview.
+</Definition>
+
+## Overview
+
+Variables are the fundamental data elements in Network Canvas protocols. Every piece of information you collect—from an alter's name to the strength of a relationship—is stored in a variable. Understanding variables is essential for designing effective protocols and working with your exported data.
+
+When you create a protocol in Architect, you define variables by:
+1. Choosing which entity type they belong to (ego, node, or edge)
+2. Selecting a variable type (text, number, boolean, categorical, etc.)
+3. Assigning an [input control](/en/desktop/key-concepts/input-controls) that determines how participants provide data
+4. Optionally configuring [validation rules](/en/desktop/key-concepts/field-validation)
+
+## Variable types
+
+Network Canvas supports several variable types, each designed for different kinds of data:
+
+### Text (String)
+
+Text variables collect text-based responses like names, descriptions, or open-ended answers. Available input controls include Text Input (single line) and Text Area (multiple lines). Examples include alter name ("John Smith"), relationship description ("We met at work and became close friends"), and notes about an alter. In exported data, text variables appear as text strings in CSV and as text elements in GraphML.
+
+### Number
+
+Number variables collect numerical data like ages, counts, ratings, or measurements. The available input control is Number Input. Examples include age (34), number of interactions per week (5), and years known (12). In exported data, number variables appear as numeric values suitable for statistical analysis.
+
+### Boolean
+
+Boolean variables collect binary true/false or yes/no data. Available input controls include Toggle and Checkbox (single). Examples include lives nearby (true/false), provides emotional support (yes/no), and family member (true/false). In exported data, boolean variables appear as TRUE/FALSE in CSV and as boolean values in GraphML.
+
+### Categorical (Nominal)
+
+Categorical variables collect data where options have no inherent order—responses are distinct categories. Available input controls include Radio Button Group (single selection), Toggle Button Group (single selection), and Checkbox Group (multiple selection). Examples include gender (Male, Female, Non-binary, Other), relationship type (Friend, Family, Colleague, Neighbor), and communication methods (Phone, Email, In-person, Text, with multiple possible). In exported data, single-select categorical variables appear as one column with the category value, while multi-select categorical variables appear as multiple columns (one per option) with TRUE/FALSE values.
+
+### Ordinal
+
+Ordinal variables collect data where options have a meaningful order or ranking. Available input controls include Likert Scale, Radio Button Group, and Toggle Button Group. Examples include closeness (Not close, Somewhat close, Very close, Extremely close), contact frequency (Never, Rarely, Monthly, Weekly, Daily), and agreement (Strongly disagree, Disagree, Neutral, Agree, Strongly agree). In exported data, ordinal variables can be treated as ordered categories for ordinal analysis.
+
+### Scalar (Continuous)
+
+Scalar variables collect continuous numerical data along a scale. The available input control is Visual Analog Scale (VAS). Examples include emotional closeness (0-100 scale), trust level (0-100 scale), and relationship strength (0-100 scale). In exported data, scalar variables appear as numeric values suitable for continuous statistical analysis.
+
+### Date
+
+Date variables collect specific dates. The available input control is Date Picker. Examples include date of birth, last contact date, and when a relationship began. In exported data, date variables appear as date values in standard format (YYYY-MM-DD).
+
+### Layout (Coordinates)
+
+Layout variables store the x/y position of nodes on Sociogram interfaces. There are no input controls for layout variables, as they are automatically captured from Sociogram interactions. Examples include node position on Sociogram and spatial layout coordinates. In exported data, layout variables appear as X and Y coordinate values (normalized 0-1 or pixel coordinates based on export options).
+
+## How variables work
+
+### Variable creation
+
+You create variables when configuring [Interfaces](/en/desktop/key-concepts/interfaces) in Architect:
+
+1. **Name Generators:** Create variables for alter attributes (name, demographics, characteristics)
+2. **Forms:** Create variables for any entity type (ego, alter, or edge attributes)
+3. **Categorical/Ordinal Bins:** Create categorical or ordinal variables
+4. **Sociogram:** Automatically creates layout variables for node positions
+
+### Variable scope
+
+Variables are scoped to entity types.
+
+Ego variables collect data about the participant, such as age, gender, and demographics, as well as network-level measures and session metadata. There is one value per interview for each ego variable.
+
+Node variables collect data about alters, including alter attributes (name, age, relationship type) and characteristics and demographics. There are multiple values per interview (one per alter) for each node variable.
+
+Edge variables collect data about relationships between alters, including relationship attributes (strength, frequency, type) and tie characteristics. There are multiple values per interview (one per edge) for each edge variable.
+
+### Variable reuse
+
+Once you create a variable, you can use it across multiple stages in your protocol. This provides consistency (same variable definition everywhere), efficiency (define once, use many times), and data quality (consistent data structure). Note that changes to a variable (type, input control, validation) apply to all uses of that variable throughout the protocol.
+
+### Variable persistence
+
+Variables persist throughout the interview:
+- Values set on early stages are available on later stages
+- You can use [skip logic](/en/desktop/key-concepts/skip-logic) to conditionally show stages based on variable values
+- You can use [network filtering](/en/desktop/key-concepts/network-filtering) to show only entities with specific variable values
+
+## Creating variables
+
+### In forms
+
+When creating a field on a [form](/en/desktop/key-concepts/forms):
+
+1. Click **Create new** or select an existing variable
+2. Choose or enter a variable name (use descriptive names: `close_friend`, `contact_frequency`)
+3. Select an [input control](/en/desktop/key-concepts/input-controls)—this sets the variable type
+4. Configure any control-specific options
+5. Set [validation rules](/en/desktop/key-concepts/field-validation) if needed
+
+### In categorical/ordinal bins
+
+When configuring bins:
+
+1. Name the variable (e.g., `relationship_strength`)
+2. Define the categories or order levels
+3. The variable type is automatically set to categorical or ordinal
+
+### Automatic variables
+
+Some variables are created automatically:
+
+**Layout variables:** Created when you add a Sociogram interface
+- Store x/y coordinates of node positions
+- Named by the Sociogram stage
+
+**System variables:** Network Canvas creates these automatically
+- `networkCanvasUUID` - Unique identifier for each entity
+- `networkCanvasEgoUUID` - Unique identifier for ego
+- Timestamps and session metadata
+
+## Variable naming best practices
+
+### Use descriptive names
+
+**Good examples:**
+- `close_friend` (clear meaning)
+- `contact_frequency` (describes what's measured)
+- `provides_emotional_support` (unambiguous)
+
+**Poor examples:**
+- `var1` (meaningless)
+- `q3` (not self-documenting)
+- `test` (unclear purpose)
+
+### Use consistent conventions
+
+Choose a naming style and stick to it:
+- **snake_case** (recommended): `contact_frequency`, `close_friend`
+- **camelCase**: `contactFrequency`, `closeFriend`
+- **PascalCase**: `ContactFrequency`, `CloseFriend`
+
+**Avoid:**
+- Spaces: "contact frequency" (problematic in data analysis)
+- Special characters: `contact-frequency` (hyphens can be interpreted as minus signs)
+- Starting with numbers: `1contact` (invalid in many systems)
+
+### Keep names concise
+
+**Good:** `age`, `gender`, `rel_type`, `freq`
+**Too long:** `participants_relationship_type_classification_scheme`
+
+### Plan for data analysis
+
+Consider how variables will appear in exported data:
+- R and Python prefer snake_case
+- Statistical packages prefer short names
+- Avoid abbreviations that are unclear months later
+
+## Working with variables
+
+### Viewing all variables
+
+Use the [Codebook](/en/desktop/key-concepts/codebook) in Architect:
+1. Click **Manage codebook** in your protocol
+2. View all variables organized by entity type
+3. See where each variable is used
+4. Delete unused variables
+
+### Modifying variables
+
+You can change the input control (if compatible with variable type), validation rules, and options for categorical variables. You cannot change the variable type (which is set when first created with an input control) or the variable name (which would break references).
+
+To change immutable properties, create a new variable with the desired settings, replace the old variable with the new one on all stages, and delete the old variable from the codebook.
+
+### Deleting variables
+
+You can only delete unused variables:
+1. Open the Codebook
+2. Find variables marked "not in use"
+3. Delete unused variables
+
+**Note:** Variables in use cannot be deleted—remove them from all stages first.
+
+## Variables in exported data
+
+### CSV export structure
+
+Variables appear as columns in CSV files:
+
+**Ego file:** Ego variables as columns
+```csv
+ego_id,networkCanvasEgoUUID,age,gender
+1,abc123,34,Male
+```
+
+**Alter files:** Alter variables as columns
+```csv
+ego_id,alter_id,networkCanvasUUID,name,age,close_friend
+1,1,xyz789,John,32,true
+1,2,uvw456,Sarah,29,false
+```
+
+**Edge files:** Edge variables as columns
+```csv
+ego_id,edge_id,from,to,relationship_strength,frequency
+1,1,1,2,strong,weekly
+```
+
+### Variable types in analysis
+
+Different variable types require different analytical approaches:
+
+**Categorical/Ordinal:**
+- Use frequency tables, cross-tabs
+- Chi-square tests, logistic regression
+
+**Boolean:**
+- Treat as categorical with two levels
+- Can convert to 0/1 for regression
+
+**Numerical:**
+- Descriptive statistics (mean, median, SD)
+- Correlation, regression, t-tests
+
+**Text:**
+- Qualitative analysis
+- Content analysis, coding
+
+### Variable naming in exports
+
+Variable names in your protocol become column names in exported data:
+- `close_friend` variable → `close_friend` column
+- Categorical variables → Multiple columns (for checkboxes) or single column (for radio buttons)
+- Layout variables → `x` and `y` columns
+
+## Common patterns
+
+### Demographic variables (ego)
+
+```
+age: Number (Number Input)
+gender: Categorical (Radio Button Group)
+education: Ordinal (Radio Button Group)
+zip_code: Text (Text Input)
+```
+
+### Alter identification
+
+```
+name: Text (Text Input, required)
+relationship_type: Categorical (Radio Button Group)
+age: Number (Number Input)
+lives_nearby: Boolean (Toggle)
+```
+
+### Relationship characteristics
+
+```
+closeness: Ordinal (Likert Scale)
+contact_frequency: Ordinal (Radio Button Group)
+support_type: Categorical (Checkbox Group, multiple)
+relationship_duration: Number (Number Input)
+```
+
+### Support networks
+
+```
+provides_emotional_support: Boolean (Toggle)
+provides_practical_support: Boolean (Toggle)
+provides_financial_support: Boolean (Toggle)
+support_frequency: Ordinal (Radio Button Group)
+```
+
+## Troubleshooting
+
+### Variable not appearing in codebook
+
+**Cause:** Variable created but not saved
+**Solution:** Ensure you saved the stage configuration
+
+### Can't change variable type
+
+**Cause:** Variable type is set when first created
+**Solution:** Create new variable with desired type, replace old one
+
+### Variable shows "not in use" but can't delete
+
+**Cause:** Variable is used somewhere in protocol
+**Solution:** Check all stages, remove all uses before deleting
+
+### Variable values not in export
+
+**Cause:**
+- Variable not assigned on any stage
+- Forms not completed during interview
+- Validation prevented completion
+
+**Solution:**
+- Verify variables are used on stages
+- Check that stages were shown (not skipped)
+- Review validation rules
+
+### Categorical variable showing weird codes in export
+
+**Cause:** Using underlying values instead of labels
+**Solution:** Check your analysis software's import settings, ensure proper factor/categorical encoding
+
+## Related concepts
+
+- [Input Controls](/en/desktop/key-concepts/input-controls) - Choose input controls that set variable types
+- [Field Validation](/en/desktop/key-concepts/field-validation) - Add validation rules to variables
+- [Forms](/en/desktop/key-concepts/forms) - Create forms that collect variable data
+- [Codebook](/en/desktop/key-concepts/codebook) - View and manage all variables in your protocol
+- [Data Export](/en/desktop/key-concepts/data-export) - Understand how variables appear in exported data
+- [Interfaces](/en/desktop/key-concepts/interfaces) - Different Interfaces for collecting different types of variables
+- [Skip Logic](/en/desktop/key-concepts/skip-logic) - Use variable values to control stage flow
+- [Network Filtering](/en/desktop/key-concepts/network-filtering) - Filter entities based on variable values
+
+## Next steps
+
+Now that you understand variables, you can:
+
+1. Plan your variable structure before building your protocol
+2. Choose appropriate variable types and input controls for your research questions
+3. Review the [Codebook guide](/en/desktop/key-concepts/codebook) to manage variables effectively
+4. Learn about [Input Controls](/en/desktop/key-concepts/input-controls) to choose the right controls
+5. Understand [Data Export](/en/desktop/key-concepts/data-export) to prepare for analysis
