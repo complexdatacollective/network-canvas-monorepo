@@ -1,7 +1,7 @@
-import type { Dispatch } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
+import type { AppDispatch } from "~/ducks/store";
 import { getValidationOptionsForVariableType } from "./options";
 
 const mapStateToProps = (
@@ -15,7 +15,7 @@ const mapStateToProps = (
 	};
 };
 
-const mapDispatchToProps = (dispatch: Dispatch, { form, name }: { form: string; name: string }) => ({
+const mapDispatchToProps = (dispatch: AppDispatch, { form, name }: { form: string; name: string }) => ({
 	update: (value: unknown) => dispatch(change(form, name, value)),
 });
 

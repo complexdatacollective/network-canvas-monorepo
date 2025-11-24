@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { memo } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import RoundCheckbox from "./RoundCheckbox";
@@ -7,9 +7,9 @@ import RoundCheckbox from "./RoundCheckbox";
 type BooleanOptionProps = {
 	classes?: string | null;
 	selected?: boolean;
-	label: string | (() => ReactNode);
+	label: string | ReactElement;
 	onClick?: () => void;
-	customIcon?: (() => ReactNode) | null;
+	customIcon?: ReactElement | null;
 	negative?: boolean;
 };
 
@@ -21,23 +21,20 @@ const BooleanOption = ({
 	customIcon = null,
 	negative = false,
 }: BooleanOptionProps) => {
-	// const [resizeListener, sizes] = useResizeAware();
-	const sizes = { width: null, height: null }; // Placeholder for resize-aware functionality
-
 	const classNames = cx(
 		"boolean-option",
 		{ "boolean-option--selected": selected },
 		{ "boolean-option--negative": negative },
-		{ "boolean-option--collapsed": sizes && sizes.width < 235 },
+		// { "boolean-option--collapsed": sizes && sizes.width < 235 },
 		classes,
 	);
 
 	const renderLabel = () => {
 		if (typeof label === "function") {
-			return label();
+			return label;
 		}
 
-		return <Markdown label={label} className="form-field-inline-label" />;
+		return <Markdown label={label as string} className="form-field-inline-label" />;
 	};
 
 	return (
@@ -48,7 +45,6 @@ const BooleanOption = ({
 			aria-pressed={selected}
 			style={{ position: "relative" }}
 		>
-			{/* {resizeListener} */}
 			{customIcon || <RoundCheckbox checked={selected} negative={negative} />}
 			{renderLabel()}
 		</button>

@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import { useAppDispatch } from "~/ducks/hooks";
-import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
+import { type DialogConfig, actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import timelineImages from "~/images/timeline";
 import { Button } from "~/lib/legacy-ui/components";
@@ -27,7 +27,7 @@ const Timeline = () => {
 	);
 
 	const openDialog = useCallback(
-		(config: Record<string, unknown>) => {
+		(config: DialogConfig) => {
 			dispatch(dialogsActions.openDialog(config));
 		},
 		[dispatch],
@@ -40,11 +40,6 @@ const Timeline = () => {
 	const handleInsertStage = useCallback((index: number) => {
 		setInsertAtIndex(index);
 		setShowNewStageDialog(true);
-	}, []);
-
-	const _handleNewStageCancel = useCallback(() => {
-		setShowNewStageDialog(false);
-		setInsertAtIndex(undefined);
 	}, []);
 
 	const handleDeleteStage = useCallback(

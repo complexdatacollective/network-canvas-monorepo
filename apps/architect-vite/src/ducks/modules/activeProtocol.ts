@@ -82,19 +82,19 @@ const activeProtocolSlice = createSlice({
 			}
 			if (state.assetManifest) {
 				const currentAssetManifest = current(state.assetManifest);
-				const newAssetManifest = assetManifest(currentAssetManifest as Record<string, unknown>, action);
+				const newAssetManifest = assetManifest(currentAssetManifest, action);
 				if (newAssetManifest !== currentAssetManifest) {
 					// Cast the assetManifest to the correct type
-					state.assetManifest = newAssetManifest as typeof state.assetManifest;
+					state.assetManifest = newAssetManifest;
 					hasChange = true;
 				}
 			}
 			if (state.codebook) {
 				const currentCodebook = current(state.codebook);
-				const newCodebook = codebook(currentCodebook as Record<string, unknown>, action);
+				const newCodebook = codebook(currentCodebook, action);
 				if (newCodebook !== currentCodebook) {
 					// Cast the codebook to the correct type
-					state.codebook = newCodebook as typeof state.codebook;
+					state.codebook = newCodebook;
 					hasChange = true;
 				}
 			}

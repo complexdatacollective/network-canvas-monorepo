@@ -1,3 +1,11 @@
+import type {
+	Codebook,
+	CurrentProtocol,
+	EdgeColor,
+	EdgeDefinition,
+	EntityDefinition,
+	Variable,
+} from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, current, type PayloadAction } from "@reduxjs/toolkit";
 import { find, get, has, isEmpty, omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
@@ -10,42 +18,18 @@ import safeName from "~/utils/safeName";
 import { actionCreators as stageActions } from "./stages";
 import { getNextCategoryColor } from "./utils/helpers";
 
-// Types
 type Entity = "node" | "edge" | "ego";
 
-type Variable = {
-	name: string;
-	type: string;
-	[key: string]: unknown;
-};
-
-type EntityType = {
-	name: string;
-	color: string;
-	iconVariant?: string;
-	variables: Record<string, Variable>;
-	[key: string]: unknown;
-};
-
-type CodebookState = {
-	node: Record<string, EntityType>;
-	edge: Record<string, EntityType>;
-	ego?: {
-		variables: Record<string, Variable>;
-		[key: string]: unknown;
-	};
-};
-
-type CreateTypePayload = {
+type CreateTypePayload<T extends EntityDefinition = EntityDefinition> = {
 	entity: Entity;
 	type: string;
-	configuration: Partial<EntityType>;
+	configuration: Partial<T>;
 };
 
 type UpdateTypePayload = {
 	entity: Entity;
 	type: string;
-	configuration: Partial<EntityType>;
+	configuration: Partial<EntityDefinition>;
 };
 
 type DeleteTypePayload = {
@@ -73,20 +57,19 @@ type DeleteVariablePayload = {
 };
 
 // Initial state
-const initialState: CodebookState = {
+const initialState: Codebook = {
 	edge: {},
 	node: {},
 };
 
-const defaultTypeTemplate: Partial<EntityType> = {
-	color: "",
+const defaultTypeTemplate: Partial<EntityDefinition> = {
 	variables: {},
 };
 
 // Async thunks
 export const createTypeAsync = createAsyncThunk(
 	"codebook/createTypeAsync",
-	async ({ entity, configuration }: { entity: Entity; configuration: Partial<EntityType> }, { dispatch }) => {
+	async ({ entity, configuration }: { entity: Entity; configuration: Partial<EntityDefinition> }, { dispatch }) => {
 		const type = uuid();
 		const payload: CreateTypePayload = {
 			entity,
@@ -105,7 +88,7 @@ export const createTypeAsync = createAsyncThunk(
 export const updateTypeAsync = createAsyncThunk(
 	"codebook/updateTypeAsync",
 	async (
-		{ entity, type, configuration }: { entity: Entity; type: string; configuration: Partial<EntityType> },
+		{ entity, type, configuration }: { entity: Entity; type: string; configuration: Partial<EntityDefinition> },
 		{ dispatch },
 	) => {
 		const payload: UpdateTypePayload = { entity, type, configuration };
@@ -116,19 +99,23 @@ export const updateTypeAsync = createAsyncThunk(
 
 export const createEdgeAsync = createAsyncThunk(
 	"codebook/createEdgeAsync",
-	async (configuration: Partial<EntityType>, { dispatch, getState }) => {
+	async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
 		const entity: Entity = "edge";
 		const state = getState() as RootState;
-		const protocol = state.activeProtocol?.present || state.activeProtocol;
+		const protocol = (state.activeProtocol?.present || state.activeProtocol) as CurrentProtocol;
 		const colorFromHelper = getNextCategoryColor(protocol, entity);
-		const color = configuration.color ?? (colorFromHelper || undefined);
+		const color = configuration.color ?? colorFromHelper;
 		const type = uuid();
 
-		const payload: CreateTypePayload = {
+		const payload: CreateTypePayload<EdgeDefinition> = {
 			entity,
 			type,
-			configuration: { ...configuration, color },
+			configuration: { ...configuration },
 		};
+
+		if (color) {
+			payload.configuration.color = color as EdgeColor;
+		}
 
 		dispatch(codebookSlice.actions.createType(payload));
 		return { type, entity };
@@ -293,11 +280,11 @@ export const deleteTypeAsync = createAsyncThunk(
 
 // Reducer helpers
 const getStateWithUpdatedType = (
-	state: CodebookState,
+	state: Codebook,
 	entity: Entity,
 	type: string | undefined,
-	configuration: Partial<EntityType>,
-): CodebookState => {
+	configuration: Partial<EntityDefinition>,
+): Codebook => {
 	if (entity !== "ego" && !type) {
 		throw Error("Type must be specified for non ego nodes");
 	}
@@ -317,13 +304,13 @@ const getStateWithUpdatedType = (
 };
 
 const getStateWithUpdatedVariable = (
-	state: CodebookState,
+	state: Codebook,
 	entity: Entity,
 	type: string | undefined,
 	variable: string,
 	configuration: Partial<Variable>,
 	merge = false,
-): CodebookState => {
+): Codebook => {
 	if (entity !== "ego" && !type) {
 		throw Error("Type must be specified for non ego nodes");
 	}
@@ -348,7 +335,9 @@ const getStateWithUpdatedVariable = (
 
 	const existingTypeConfig = get(state, entityPath);
 	const typeConfiguration =
-		existingTypeConfig && typeof existingTypeConfig === "object" ? (existingTypeConfig as Partial<EntityType>) : {};
+		existingTypeConfig && typeof existingTypeConfig === "object"
+			? (existingTypeConfig as Partial<EntityDefinition>)
+			: {};
 
 	return getStateWithUpdatedType(state, entity, type, {
 		...typeConfiguration,
@@ -379,7 +368,7 @@ const codebookSlice = createSlice({
 				[entity]: {
 					...omit(state[entity], type),
 				},
-			} as CodebookState;
+			};
 		},
 		createVariable: (state, action: PayloadAction<CreateVariablePayload>) => {
 			const { entity, type, variable, configuration } = action.payload;
@@ -409,7 +398,7 @@ const codebookSlice = createSlice({
 				[entity]: {
 					...omit(state[entity], variablePath),
 				},
-			} as CodebookState;
+			};
 		},
 	},
 });
@@ -418,22 +407,8 @@ const codebookSlice = createSlice({
 export const updateVariableByUUID = (variable: string, properties: Partial<Variable>, merge = false) =>
 	updateVariableAsync({ variable, configuration: properties, merge });
 
-// Export for backwards compatibility and testing
-export const test = {
-	createType: (entity: Entity, type: string, configuration: Partial<EntityType>) =>
-		codebookSlice.actions.createType({ entity, type, configuration: { ...defaultTypeTemplate, ...configuration } }),
-	updateType: (entity: Entity, type: string, configuration: Partial<EntityType>) =>
-		codebookSlice.actions.updateType({ entity, type, configuration }),
-	deleteType: (entity: Entity, type: string) => codebookSlice.actions.deleteType({ entity, type }),
-	createVariable: (entity: Entity, type: string | undefined, variable: string, configuration: Variable) =>
-		codebookSlice.actions.createVariable({ entity, type, variable, configuration: prune(configuration) }),
-	updateVariable: (variable: string, configuration: Partial<Variable>, merge = false) =>
-		codebookSlice.actions.updateVariable({ variable, configuration: prune(configuration), merge }),
-	deleteVariable: (entity: Entity, type: string | undefined, variable: string) =>
-		codebookSlice.actions.deleteVariable({ entity, type, variable }),
-};
-
-// Note: Types Entity, Variable, EntityType, and CodebookState are only used internally
+export const { createType, updateType, deleteType, createVariable, updateVariable, deleteVariable } =
+	codebookSlice.actions;
 
 // Export the reducer as default
 export default codebookSlice.reducer;

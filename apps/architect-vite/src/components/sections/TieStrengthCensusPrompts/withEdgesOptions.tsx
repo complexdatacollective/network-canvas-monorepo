@@ -1,13 +1,14 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { change } from "redux-form";
+import type { RootState } from "~/ducks/store";
 import { getEdgesForSubject } from "../SociogramPrompts/selectors";
 
 const mapDispatchToProps = {
 	changeForm: change,
 };
 
-const mapStateToProps = (state: unknown) => {
+const mapStateToProps = (state: RootState) => {
 	const edgesForSubject = getEdgesForSubject(state);
 
 	return {

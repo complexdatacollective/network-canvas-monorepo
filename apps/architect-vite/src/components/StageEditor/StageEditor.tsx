@@ -127,7 +127,7 @@ const StageEditor = (props: StageEditorProps) => {
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
 			<div className="relative flex flex-col h-dvh">
 				<div className="overflow-auto flex flex-col items-center basis-auto">
-					<StageHeading id={stage?.id} />
+					<StageHeading />
 					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
 				</div>
 				<div className="p-4 bg-surface-accent z-panel shrink-0 grow-0">

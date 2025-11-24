@@ -1,6 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 
-import { combineReducers } from "@reduxjs/toolkit";
+import { combineReducers, type UnknownAction } from "@reduxjs/toolkit";
 import { reducer as formReducer } from "redux-form";
 import createTimeline from "../middleware/timeline";
 import activeProtocol from "./activeProtocol";
@@ -8,12 +8,11 @@ import app from "./app";
 import dialogs from "./dialogs";
 import protocols from "./protocols";
 import protocolValidation from "./protocolValidation";
-import toasts from "./toasts";
 
 const protocolPattern = /^(activeProtocol|stages|codebook|assetManifest)\//;
 
 const timelineOptions = {
-	exclude: ({ type }) => !protocolPattern.test(type.toString()),
+	exclude: ({ type }: UnknownAction) => !protocolPattern.test(type.toString()),
 };
 
 export const rootReducer = combineReducers({
@@ -23,7 +22,6 @@ export const rootReducer = combineReducers({
 	activeProtocol: createTimeline(activeProtocol, timelineOptions),
 	protocols,
 	protocolValidation,
-	toasts,
 });
 
 // Export the root state type

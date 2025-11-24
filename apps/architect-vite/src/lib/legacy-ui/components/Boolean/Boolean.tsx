@@ -1,21 +1,19 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import BooleanOption from "./BooleanOption";
 
-type BooleanValue = boolean | string | number | null;
-
 type BooleanOptionType = {
-	label: string | (() => ReactNode);
-	value?: BooleanValue;
+	label: string | ReactElement;
+	value: boolean;
 	classes?: string;
-	icon?: () => ReactNode;
+	icon?: ReactElement;
 	negative?: boolean;
 };
 
 type BooleanProps = {
 	noReset: boolean;
 	options?: BooleanOptionType[];
-	value?: BooleanValue;
-	onChange?: (value: BooleanValue) => void;
+	value: boolean | null;
+	onChange: (value: boolean | null) => void;
 };
 
 const BooleanField = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
@@ -24,11 +22,11 @@ const BooleanField = ({ noReset, options = [], value = null, onChange = () => {}
 			{options.map(({ label, value: optionValue, classes, icon, negative }) => (
 				<BooleanOption
 					classes={classes}
-					key={optionValue}
+					key={`${optionValue}`}
 					label={label}
 					selected={value === optionValue}
 					onClick={() => onChange(optionValue)}
-					icon={icon}
+					customIcon={icon}
 					negative={negative}
 				/>
 			))}
