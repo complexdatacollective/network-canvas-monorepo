@@ -277,8 +277,3 @@
   from = "/en/desktop/tutorials/working-with-data"
   to = "/en/project/tutorials/working-with-data"
   status = 301
-
-[[redirects]]
-  from = "/*"
-  to = "/en/desktop/:splat"
-  status = 301
