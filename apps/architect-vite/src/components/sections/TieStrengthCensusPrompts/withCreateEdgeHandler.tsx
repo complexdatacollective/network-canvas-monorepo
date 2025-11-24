@@ -11,8 +11,8 @@ const mapDispatchToProps = {
 
 const createEdgeHandler = {
 	handleCreateEdge:
-		({ createEdge }) =>
-		(name) => {
+		({ createEdge }: { createEdge: typeof createEdgeAsync }) =>
+		(name: string) => {
 			const { type } = createEdge({ name });
 
 			return type;

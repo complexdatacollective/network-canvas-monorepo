@@ -1,9 +1,9 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
-import { type ValidationResult, validateProtocol } from "@codaco/protocol-validation";
+import { validateProtocol } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 type ProtocolValidationState = {
-	validationResult: ValidationResult | null;
+	validationResult: Awaited<ReturnType<typeof validateProtocol>> | null;
 	isValidating: boolean;
 	validationError: string | null;
 	lastValidatedProtocol: CurrentProtocol | null;
@@ -60,6 +60,3 @@ const protocolValidationSlice = createSlice({
 });
 
 export default protocolValidationSlice.reducer;
-
-// Note: ValidationResult is re-exported from @codaco/protocol-validation at the top of this file
-// ProtocolValidationState is only used internally

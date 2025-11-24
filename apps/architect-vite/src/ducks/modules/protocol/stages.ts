@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { invariant } from "es-toolkit";
 import { compact, omit } from "es-toolkit/compat";
 import { v1 as uuid } from "uuid";
 import type { RootState } from "~/ducks/modules/root";
@@ -123,6 +124,8 @@ const stagesSlice = createSlice({
 			const currentStage = state[stageIndex];
 			const previousStage = !overwrite ? currentStage : {};
 
+			invariant(currentStage, `Stage with ID ${stageId} not found`);
+
 			const newStage = {
 				...previousStage,
 				...stageUpdate,
@@ -141,7 +144,7 @@ const stagesSlice = createSlice({
 			// Remove the item from oldIndex
 			const [movedStage] = state.splice(oldIndex, 1);
 			// Insert it at newIndex
-			state.splice(newIndex, 0, movedStage);
+			state.splice(newIndex, 0, movedStage as Stage);
 		},
 		deleteStage: (state, action: PayloadAction<string>) => {
 			const stageId = action.payload;

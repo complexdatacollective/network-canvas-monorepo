@@ -36,7 +36,7 @@ const getOptionsWithUsedDisabled = (options: ValidationOption[], used: string[])
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
 	<Button
-		color="primary"
+		color="sea-green"
 		icon="add"
 		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
@@ -57,7 +57,7 @@ type ExistingVariable = {
 
 type ValidationsFieldProps = {
 	input: {
-		value: Array<[string, unknown]>;
+		value: Array<[string, string | number | boolean | null]>;
 	};
 	options?: ValidationOption[];
 	existingVariables: Record<string, ExistingVariable>;

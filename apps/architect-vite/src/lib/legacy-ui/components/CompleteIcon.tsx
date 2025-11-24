@@ -1,7 +1,7 @@
-import { motion } from "motion/react";
+import { motion, type Variants } from "motion/react";
 
 const CompleteIcon = () => {
-	const icon = {
+	const icon: Variants = {
 		hidden: {
 			pathLength: 0,
 			scale: 0,

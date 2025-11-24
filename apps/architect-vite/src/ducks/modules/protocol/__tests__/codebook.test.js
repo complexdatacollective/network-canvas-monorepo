@@ -4,7 +4,16 @@ import { v4 as uuid } from "uuid";
 import { describe, expect, it, vi } from "vitest";
 import { getThunkMocks } from "~/__tests__/helpers";
 import testState from "../../../../__tests__/testState.json";
-import reducer, { actionCreators, actionTypes, test } from "../codebook";
+import reducer, {
+	actionCreators,
+	actionTypes,
+	createType,
+	createVariable,
+	deleteType,
+	deleteVariable,
+	updateType,
+	updateVariable,
+} from "../codebook";
 import { test as stageActions } from "../stages";
 
 vi.mock("uuid");
@@ -23,7 +32,7 @@ describe("protocol.codebook", () => {
 		});
 
 		it("CREATE_TYPE", () => {
-			const result = reducer(undefined, test.createType("node", "foo", { bar: "bazz" }));
+			const result = reducer(undefined, createType("node", "foo", { bar: "bazz" }));
 
 			expect(result).toEqual({
 				node: { foo: { bar: "bazz", color: "", variables: {} } },
@@ -37,7 +46,7 @@ describe("protocol.codebook", () => {
 					node: { foo: { bar: "bazz" } },
 					edge: {},
 				},
-				test.updateType("node", "foo", { fizz: "pop" }),
+				updateType("node", "foo", { fizz: "pop" }),
 			);
 
 			expect(result).toEqual({
@@ -52,7 +61,7 @@ describe("protocol.codebook", () => {
 					node: { foo: { bar: "bazz" } },
 					edge: {},
 				},
-				test.deleteType("node", "foo"),
+				deleteType("node", "foo"),
 			);
 
 			expect(result).toEqual({
@@ -68,7 +77,7 @@ describe("protocol.codebook", () => {
 						node: { foo: { variables: {} } },
 						edge: {},
 					},
-					test.createVariable("node", "foo", "bar", { baz: "buzz" }),
+					createVariable("node", "foo", "bar", { baz: "buzz" }),
 				);
 
 				expect(result).toEqual({
@@ -90,7 +99,7 @@ describe("protocol.codebook", () => {
 					{
 						ego: { variables: {} },
 					},
-					test.createVariable("ego", undefined, "bar", { baz: "buzz" }),
+					createVariable("ego", undefined, "bar", { baz: "buzz" }),
 				);
 
 				expect(result).toEqual({
@@ -113,7 +122,7 @@ describe("protocol.codebook", () => {
 						edge: {},
 						ego: {},
 					},
-					test.updateVariable("bar", { fizz: "pop" }, false),
+					updateVariable("bar", { fizz: "pop" }, false),
 				);
 
 				expect(result).toEqual({
@@ -136,7 +145,7 @@ describe("protocol.codebook", () => {
 					{
 						ego: { variables: { bar: { name: "a", type: "string", baz: "buzz" } } },
 					},
-					test.updateVariable("bar", { fizz: "pop" }),
+					updateVariable("bar", { fizz: "pop" }),
 				);
 
 				expect(result).toEqual({
@@ -159,7 +168,7 @@ describe("protocol.codebook", () => {
 					node: { foo: { variables: { bar: { baz: "buzz" } } } },
 					edge: {},
 				},
-				test.deleteVariable("node", "foo", "bar"),
+				deleteVariable("node", "foo", "bar"),
 			);
 
 			expect(result).toEqual({
@@ -174,7 +183,7 @@ describe("protocol.codebook", () => {
 					ego: { variables: { bar: { baz: "buzz" } } },
 					edge: {},
 				},
-				test.deleteVariable("ego", undefined, "bar"),
+				deleteVariable("ego", undefined, "bar"),
 			);
 
 			expect(result).toEqual({
@@ -401,7 +410,7 @@ describe("protocol.codebook", () => {
 
 				await actionCreators.deleteType("node", "foo", true)(dispatch, getState);
 
-				expect(dispatch).toHaveBeenCalledWith(test.deleteType("node", "foo"));
+				expect(dispatch).toHaveBeenCalledWith(deleteType("node", "foo"));
 				expect(dispatch).toHaveBeenNthCalledWith(4, stageActions.deleteStage("bazz"));
 				expect(dispatch).toHaveBeenNthCalledWith(7, stageActions.deletePrompt("buzz", "fizz", true));
 

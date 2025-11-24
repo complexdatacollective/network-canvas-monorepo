@@ -42,7 +42,7 @@ const initialState: DialogsState = {
 };
 
 // Type for dialog config when opening dialogs
-type DialogConfig =
+export type DialogConfig =
 	| (Omit<ConfirmDialog, "id" | "onConfirm" | "onCancel"> & {
 			onConfirm?: () => void;
 			onCancel?: () => void;
