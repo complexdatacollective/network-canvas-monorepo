@@ -1,0 +1,51 @@
+---
+title: Anonymisation
+---
+
+<InterfaceSummary>
+
+![Anonymisation Interface](/assets/img/interface-documentation/anonymisation/anonymisation.png)
+
+<InterfaceMeta type="Utility" creates="A passkey that can be used to anonymise user data" usesprompts="false" />
+</InterfaceSummary>
+
+This interface is used to enable an advanced feature whereby participant data can be encrypted on-device, in such a way as to prevent anyone other than the participant, including the researcher, from accessing it. 
+
+Adding this interface to your protocol will enable you to select which node or edge attributes are encrypted. When viewing this stage, your participants will be required to create a passphrase that will be used to encrypt their data.
+
+### Technical Implementation of Encryption
+The anonymisation interface uses the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) to encrypt data. The encryption is performed using the AES-GCM algorithm, which is a symmetric key encryption algorithm. The passphrase provided by the user is used to derive a key for encryption and decryption. Each attribute has a unique key derived from the passphrase, ensuring that only the user who knows the passphrase can decrypt their data.
+
+The passphrase is not stored in the database, but is instead stored in the user's browser in memory. This means that refreshing the page, closing the tab, or visiting the interview from another browser will require the user to re-enter their passphrase. The encrypted data is stored in the database, and can only be decrypted by the user who knows the passphrase.
+
+When exporting this data, the encrypted attributes will not be included in the export file, and will be replaced with the string 'encrypted'.
+
+
+### Best Practices
+
+<GoodPractice>
+
+Ensure that the passphrase is strong and unique to prevent unauthorized access to the encrypted data, but balance this against the need for participants to remember it easily.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Use this feature to encourage disclosure of sensitive information, such as names, in a way that makes participants feel secure about their privacy. This can lead to more honest and complete responses in interviews.
+
+</GoodPractice>
+
+<GoodPractice>
+
+When using the anonymisation interface, clearly communicate to participants how their data will be used and the importance of the passphrase for accessing their encrypted data. This transparency builds trust and encourages participation.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Do not use the anonymisation interface for data that is not sensitive or does not require encryption. This interface is intended for use with sensitive data where privacy and security are paramount.
+
+</BadPractice>
+
