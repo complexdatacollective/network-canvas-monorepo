@@ -101,6 +101,12 @@ export function Hero() {
 			</div>
 			<div className="flex flex-col gap-6 md:flex-row">
 				<ProjectCard
+					href="en/project"
+					title={t("ProjectSwitcher.project.label")}
+					description={t("ProjectSwitcher.project.description")}
+					icon="images/desktop.png"
+				/>
+				<ProjectCard
 					href="en/desktop"
 					title={t("ProjectSwitcher.desktop.label")}
 					description={t("ProjectSwitcher.desktop.description")}

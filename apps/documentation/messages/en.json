@@ -1,5 +1,9 @@
 {
 	"ProjectSwitcher": {
+		"project": {
+			"label": "Project",
+			"description": "Documentation shared across all Network Canvas applications, including key concepts, interfaces, and tutorials."
+		},
 		"fresco": {
 			"label": "Fresco",
 			"description": "A new project that brings Network Canvas interviews to the web browser."
