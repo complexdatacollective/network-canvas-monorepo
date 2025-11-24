@@ -1,0 +1,10 @@
+{
+	"type": "project",
+	"slug": "project",
+	"localeLabels": {
+		"en": "Project"
+	},
+	"localeIndexFiles": {
+		"en": "index.en.mdx"
+	}
+}

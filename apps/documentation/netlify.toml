@@ -74,6 +74,211 @@
   status = 301
 
 [[redirects]]
+  from = "/en/desktop/key-concepts/additional-variables"
+  to = "/en/project/key-concepts/additional-variables"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/codebook"
+  to = "/en/project/key-concepts/codebook"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/data-export"
+  to = "/en/project/key-concepts/data-export"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/field-validation"
+  to = "/en/project/key-concepts/field-validation"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/forms"
+  to = "/en/project/key-concepts/forms"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/input-controls"
+  to = "/en/project/key-concepts/input-controls"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/interfaces"
+  to = "/en/project/key-concepts/interfaces"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/network-filtering"
+  to = "/en/project/key-concepts/network-filtering"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/preview-mode"
+  to = "/en/project/key-concepts/preview-mode"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/prompts"
+  to = "/en/project/key-concepts/prompts"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/resources"
+  to = "/en/project/key-concepts/resources"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/skip-logic"
+  to = "/en/project/key-concepts/skip-logic"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/the-protocol-file"
+  to = "/en/project/key-concepts/the-protocol-file"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/key-concepts/variables"
+  to = "/en/project/key-concepts/variables"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/project-information/citing-the-software"
+  to = "/en/project/project-information/citing-the-software"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/project-information/contributing-code"
+  to = "/en/project/project-information/contributing-code"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/project-information/gdpr-compliance"
+  to = "/en/project/project-information/gdpr-compliance"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/project-information/irb-best-practices"
+  to = "/en/project/project-information/irb-best-practices"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/project-information/project-overview"
+  to = "/en/project/project-information/project-overview"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/project-information/requests-for-collaboration"
+  to = "/en/project/project-information/requests-for-collaboration"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/categorical-bin"
+  to = "/en/project/interface-documentation/categorical-bin"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/dyad-census"
+  to = "/en/project/interface-documentation/dyad-census"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/ego-form"
+  to = "/en/project/interface-documentation/ego-form"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/information"
+  to = "/en/project/interface-documentation/information"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/large-roster-name-generator"
+  to = "/en/project/interface-documentation/large-roster-name-generator"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/name-generator-roster"
+  to = "/en/project/interface-documentation/name-generator-roster"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/name-generator-using-forms"
+  to = "/en/project/interface-documentation/name-generator-using-forms"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/name-generator-using-quick-add"
+  to = "/en/project/interface-documentation/name-generator-using-quick-add"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/narrative"
+  to = "/en/project/interface-documentation/narrative"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/ordinal-bin"
+  to = "/en/project/interface-documentation/ordinal-bin"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/per-alter-edge-form"
+  to = "/en/project/interface-documentation/per-alter-edge-form"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/per-alter-form"
+  to = "/en/project/interface-documentation/per-alter-form"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/shared"
+  to = "/en/project/interface-documentation/shared"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/small-roster-name-generator"
+  to = "/en/project/interface-documentation/small-roster-name-generator"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/sociogram"
+  to = "/en/project/interface-documentation/sociogram"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/interface-documentation/tie-strength-census"
+  to = "/en/project/interface-documentation/tie-strength-census"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/advanced-topics/network-canvas-graphml"
+  to = "/en/project/advanced-topics/network-canvas-graphml"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/advanced-topics/protocol-file-format"
+  to = "/en/project/advanced-topics/protocol-file-format"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/advanced-topics/protocol-schema-information"
+  to = "/en/project/advanced-topics/protocol-schema-information"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/tutorials/building-a-protocol"
+  to = "/en/project/tutorials/building-a-protocol"
+  status = 301
+
+[[redirects]]
+  from = "/en/desktop/tutorials/working-with-data"
+  to = "/en/project/tutorials/working-with-data"
+  status = 301
+
+[[redirects]]
   from = "/*"
   to = "/en/desktop/:splat"
   status = 301
