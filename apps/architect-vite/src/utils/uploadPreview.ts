@@ -1,5 +1,5 @@
-import type { CurrentProtocol } from "@codaco/protocol-validation";
-import { bundleProtocol } from "./bundleProtocol";
+import type { Asset, CurrentProtocol } from "@codaco/protocol-validation";
+import { assetDb } from "./assetDB";
 
 export type PreviewResult = {
 	previewUrl: string;
@@ -7,18 +7,21 @@ export type PreviewResult = {
 };
 
 export type UploadProgress = {
-	phase: "bundling" | "requesting-url" | "uploading" | "processing";
+	phase: "preparing" | "uploading-assets" | "processing";
+	current?: number;
+	total?: number;
 };
 
 export function getProgressText(progress: UploadProgress | null): string {
 	if (!progress) return "Preview";
 
 	switch (progress.phase) {
-		case "bundling":
-			return "Bundling...";
-		case "requesting-url":
+		case "preparing":
 			return "Preparing...";
-		case "uploading":
+		case "uploading-assets":
+			if (progress.current !== undefined && progress.total !== undefined) {
+				return `Uploading ${progress.current}/${progress.total}...`;
+			}
 			return "Uploading...";
 		case "processing":
 			return "Processing...";
@@ -29,13 +32,50 @@ export function getProgressText(progress: UploadProgress | null): string {
 
 export type UploadProgressCallback = (progress: UploadProgress) => void;
 
-type UploadUrlResponse = {
-	success: boolean;
+// Asset info sent to the prepare endpoint
+type AssetPrepareInfo = {
+	assetId: string;
+	name: string;
+	size: number;
+	type: string;
+};
+
+// Upload info returned from the prepare endpoint for new assets
+type AssetUploadInfo = {
+	assetId: string;
 	uploadUrl: string;
 	fileKey: string;
+	fileUrl: string;
 	expiresAt: number;
+};
+
+// Info about assets that already exist on the server
+type ExistingAssetInfo = {
+	assetId: string;
+	key: string;
+	url: string;
+	name: string;
+	type: string;
+	size: number;
+};
+
+type PrepareResponse = {
+	success: boolean;
+	uploads: AssetUploadInfo[];
+	existing: ExistingAssetInfo[];
 	error?: string;
 	details?: string;
+};
+
+// Asset info sent to the process endpoint
+type ProcessAssetInfo = {
+	assetId: string;
+	key: string;
+	name: string;
+	type: string;
+	url: string;
+	size: number;
+	value?: string; // For apikey type assets
 };
 
 type ProcessResponse = {
@@ -102,47 +142,40 @@ async function handleFetchError(response: Response): Promise<never> {
 }
 
 /**
- * Step 1: Request a presigned upload URL from Fresco
+ * Step 1: Request presigned upload URLs for assets from Fresco
+ * Fresco returns which assets need uploading and which already exist
  */
-async function requestPresignedUploadUrl(
+async function prepareAssets(
 	frescoUrl: string,
-	fileName: string,
-	fileSize: number,
+	assets: AssetPrepareInfo[],
 	apiToken?: string,
-): Promise<{ uploadUrl: string; fileKey: string }> {
-	const response = await fetch(`${frescoUrl}/api/preview/upload-url`, {
+): Promise<PrepareResponse> {
+	const response = await fetch(`${frescoUrl}/api/preview/prepare`, {
 		method: "POST",
 		headers: getAuthHeaders(apiToken),
-		body: JSON.stringify({
-			fileName,
-			fileSize,
-			fileType: "application/octet-stream",
-		}),
+		body: JSON.stringify({ assets }),
 	});
 
 	if (!response.ok) {
 		await handleFetchError(response);
 	}
 
-	const data = (await response.json()) as UploadUrlResponse;
+	const data = (await response.json()) as PrepareResponse;
 
-	if (!data.success || !data.uploadUrl || !data.fileKey) {
-		throw new Error(data.error || "Failed to get upload URL: Invalid response");
+	if (!data.success) {
+		throw new Error(data.error || "Failed to prepare assets: Invalid response");
 	}
 
-	return {
-		uploadUrl: data.uploadUrl,
-		fileKey: data.fileKey,
-	};
+	return data;
 }
 
 /**
- * Step 2: Upload file directly to UploadThing using the presigned URL
+ * Step 2: Upload an asset directly to UploadThing using the presigned URL
  *
  * Uses XHR because UploadThing doesn't always send a response for presigned URLs,
  * so we resolve when the upload completes rather than waiting for a response.
  */
-async function uploadFileToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileName: string): Promise<void> {
+async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileName: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 
@@ -152,11 +185,11 @@ async function uploadFileToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileN
 		});
 
 		xhr.addEventListener("error", () => {
-			reject(new Error("File upload failed: Network error"));
+			reject(new Error(`Asset upload failed for ${fileName}: Network error`));
 		});
 
 		xhr.addEventListener("abort", () => {
-			reject(new Error("File upload was aborted"));
+			reject(new Error(`Asset upload was aborted for ${fileName}`));
 		});
 
 		const formData = new FormData();
@@ -168,20 +201,30 @@ async function uploadFileToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileN
 }
 
 /**
- * Step 3: Tell Fresco to process the uploaded protocol
+ * Step 3: Tell Fresco to create the protocol with uploaded assets
  */
-async function processUploadedProtocol(
+async function processProtocol(
 	frescoUrl: string,
-	fileKey: string,
-	fileName: string,
+	protocol: CurrentProtocol,
+	protocolName: string,
+	assets: ProcessAssetInfo[],
 	apiToken?: string,
 ): Promise<{ protocolId: string; redirectUrl: string }> {
+	// Remove app state props from protocol before sending
+	const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as CurrentProtocol & {
+		name?: string;
+		isValid?: boolean;
+		lastSavedAt?: string;
+		lastSavedTimeline?: string;
+	};
+
 	const response = await fetch(`${frescoUrl}/api/preview/process`, {
 		method: "POST",
 		headers: getAuthHeaders(apiToken),
 		body: JSON.stringify({
-			fileKey,
-			fileName,
+			protocol: cleanProtocol,
+			protocolName,
+			assets,
 		}),
 	});
 
@@ -202,11 +245,63 @@ async function processUploadedProtocol(
 }
 
 /**
- * Uploads a protocol to Fresco for preview mode using presigned URLs.
+ * Get asset data and metadata from the local asset database
+ */
+async function getLocalAssets(
+	protocol: CurrentProtocol,
+): Promise<Array<{ assetId: string; name: string; type: string; data: Blob; size: number; value?: string }>> {
+	const assets: Array<{ assetId: string; name: string; type: string; data: Blob; size: number; value?: string }> = [];
+
+	if (!protocol.assetManifest) {
+		return assets;
+	}
+
+	for (const [assetId, assetDefinition] of Object.entries(protocol.assetManifest)) {
+		// Handle apikey type assets specially - they have a value, not a file
+		if (assetDefinition.type === "apikey") {
+			assets.push({
+				assetId,
+				name: assetId,
+				type: "apikey",
+				data: new Blob([]), // No actual file data
+				size: 0,
+				value: assetDefinition.value,
+			});
+			continue;
+		}
+
+		try {
+			const assetData = await assetDb.assets.get(assetId);
+
+			if (!assetData || typeof assetData.data === "string") {
+				continue;
+			}
+
+			const blob = assetData.data instanceof Blob ? assetData.data : new Blob([assetData.data]);
+
+			assets.push({
+				assetId,
+				name: (assetDefinition as Asset & { source: string }).source,
+				type: assetDefinition.type,
+				data: blob,
+				size: blob.size,
+			});
+		} catch {
+			// Skip assets that can't be loaded
+		}
+	}
+
+	return assets;
+}
+
+/**
+ * Uploads a protocol to Fresco for preview mode using direct asset upload.
  *
- * 1. Request a presigned upload URL from Fresco
- * 2. Upload the file directly to UploadThing storage
- * 3. Tell Fresco to process the uploaded file
+ * Flow:
+ * 1. Extract assets from local database
+ * 2. Request presigned URLs for assets (Fresco returns which need uploading)
+ * 3. Upload new assets directly to UploadThing
+ * 4. Send protocol.json + asset references to Fresco
  *
  * @param protocol - The current protocol to upload
  * @param stageIndex - The stage index to start the preview at (defaults to 0)
@@ -219,25 +314,102 @@ export async function uploadProtocolForPreview(
 	onProgress?: UploadProgressCallback,
 ): Promise<PreviewResult> {
 	const { frescoUrl, apiToken } = getFrescoConfig();
+	const protocolName = "name" in protocol && typeof protocol.name === "string" ? protocol.name : "protocol";
 
 	try {
-		// Phase 1: Bundle the protocol
-		onProgress?.({ phase: "bundling" });
-		const originalBlob = await bundleProtocol(protocol);
-		const blob = new Blob([originalBlob], { type: "application/octet-stream" });
-		const fileName = `${"name" in protocol && typeof protocol.name === "string" ? protocol.name : "protocol"}.netcanvas`;
+		// Phase 1: Get local assets and prepare asset metadata
+		onProgress?.({ phase: "preparing" });
+		const localAssets = await getLocalAssets(protocol);
 
-		// Phase 2: Request presigned upload URL
-		onProgress?.({ phase: "requesting-url" });
-		const { uploadUrl, fileKey } = await requestPresignedUploadUrl(frescoUrl, fileName, blob.size, apiToken);
+		// Filter out apikey assets for the prepare request (they don't get uploaded)
+		const fileAssets = localAssets.filter((a) => a.type !== "apikey");
+		const apikeyAssets = localAssets.filter((a) => a.type === "apikey");
 
-		// Phase 3: Upload file directly to UploadThing
-		onProgress?.({ phase: "uploading" });
-		await uploadFileToPresignedUrl(uploadUrl, blob, fileName);
+		// Prepare asset info for the prepare endpoint
+		const assetPrepareInfo: AssetPrepareInfo[] = fileAssets.map((a) => ({
+			assetId: a.assetId,
+			name: a.name,
+			size: a.size,
+			type: a.type,
+		}));
 
-		// Phase 4: Process the uploaded protocol
+		// Request presigned URLs for assets (if there are any file assets)
+		let prepareResult: PrepareResponse = { success: true, uploads: [], existing: [] };
+		if (assetPrepareInfo.length > 0) {
+			prepareResult = await prepareAssets(frescoUrl, assetPrepareInfo, apiToken);
+		}
+
+		// Phase 2: Upload new assets that need uploading
+		const assetsToUpload = prepareResult.uploads;
+		if (assetsToUpload.length > 0) {
+			for (let i = 0; i < assetsToUpload.length; i++) {
+				const uploadInfo = assetsToUpload[i];
+				if (!uploadInfo) continue;
+
+				onProgress?.({ phase: "uploading-assets", current: i + 1, total: assetsToUpload.length });
+
+				const localAsset = fileAssets.find((a) => a.assetId === uploadInfo.assetId);
+				if (!localAsset) {
+					throw new Error(`Asset ${uploadInfo.assetId} not found in local assets`);
+				}
+
+				await uploadAssetToPresignedUrl(uploadInfo.uploadUrl, localAsset.data, localAsset.name);
+			}
+		}
+
+		// Phase 3: Build the combined asset list for the process endpoint
 		onProgress?.({ phase: "processing" });
-		const { protocolId, redirectUrl } = await processUploadedProtocol(frescoUrl, fileKey, fileName, apiToken);
+
+		const processAssets: ProcessAssetInfo[] = [];
+
+		// Add newly uploaded assets
+		for (const uploadInfo of assetsToUpload) {
+			const localAsset = fileAssets.find((a) => a.assetId === uploadInfo.assetId);
+			if (!localAsset) continue;
+
+			processAssets.push({
+				assetId: uploadInfo.assetId,
+				key: uploadInfo.fileKey,
+				name: localAsset.name,
+				type: localAsset.type,
+				url: uploadInfo.fileUrl,
+				size: localAsset.size,
+			});
+		}
+
+		// Add existing assets (already on server)
+		for (const existing of prepareResult.existing) {
+			processAssets.push({
+				assetId: existing.assetId,
+				key: existing.key,
+				name: existing.name,
+				type: existing.type,
+				url: existing.url,
+				size: existing.size,
+			});
+		}
+
+		// Add apikey assets (they get stored as values, not files)
+		for (const apikeyAsset of apikeyAssets) {
+			processAssets.push({
+				assetId: apikeyAsset.assetId,
+				key: apikeyAsset.assetId, // Use assetId as key for apikey assets
+				name: apikeyAsset.name,
+				type: "apikey",
+				url: "", // No URL for apikey assets
+				size: 0,
+				value: apikeyAsset.value,
+			});
+		}
+
+		// Send protocol + assets to Fresco
+		const { protocolId, redirectUrl } = await processProtocol(
+			frescoUrl,
+			protocol,
+			protocolName,
+			processAssets,
+			apiToken,
+		);
 
 		// Append stage index to preview URL if needed
 		let previewUrl = redirectUrl;
