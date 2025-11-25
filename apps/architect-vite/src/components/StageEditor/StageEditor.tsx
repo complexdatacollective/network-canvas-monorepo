@@ -11,7 +11,7 @@ import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages"
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
-import { uploadProtocolForPreview } from "~/utils/uploadPreview";
+import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/uploadPreview";
 import { formName } from "./configuration";
 import type { SectionComponent } from "./Interfaces";
 import { getInterface } from "./Interfaces";
@@ -43,6 +43,7 @@ const StageEditor = (props: StageEditorProps) => {
 
 	// Preview state
 	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
+	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
 	// Handle form submission
 	const onSubmit = useCallback(
@@ -95,11 +96,12 @@ const StageEditor = (props: StageEditorProps) => {
 		}
 
 		setIsUploadingPreview(true);
+		setUploadProgress(null);
 
 		try {
 			// Pass the current stage index so preview starts at this stage
 			const startStage = stageIndex !== -1 ? stageIndex : 0;
-			const { previewUrl } = await uploadProtocolForPreview(protocol, startStage);
+			const { previewUrl } = await uploadProtocolForPreview(protocol, startStage, setUploadProgress);
 
 			// Open preview in new window
 			window.open(previewUrl, "_blank", "noopener,noreferrer");
@@ -113,6 +115,7 @@ const StageEditor = (props: StageEditorProps) => {
 			);
 		} finally {
 			setIsUploadingPreview(false);
+			setUploadProgress(null);
 		}
 	}, [protocol, stageIndex, dispatch]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
@@ -137,7 +140,7 @@ const StageEditor = (props: StageEditorProps) => {
 						</Button>
 						<div className="flex gap-2">
 							<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview}>
-								{isUploadingPreview ? "Uploading..." : "Preview"}
+								{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
 							</Button>
 							{hasUnsavedChanges && (
 								<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
