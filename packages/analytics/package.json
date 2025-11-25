@@ -40,7 +40,7 @@
 		"vitest": "catalog:"
 	},
 	"dependencies": {
-		"posthog-js": "^1.214.4",
+		"posthog-js": "^1.298.0",
 		"zod": "catalog:"
 	}
 }
