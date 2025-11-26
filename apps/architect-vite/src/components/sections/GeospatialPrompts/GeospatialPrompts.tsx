@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -37,9 +37,7 @@ const GeospatialPrompts = ({ form, entity, type, disabled }: GeospatialPromptsPr
 	</Section>
 );
 
-export default compose(
+export default compose<ComponentProps<typeof GeospatialPrompts>, typeof GeospatialPrompts>(
 	withSubject,
 	withDisabledSubjectRequired,
-)(
-	GeospatialPrompts as unknown as React.ComponentType<unknown>,
-) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(GeospatialPrompts);

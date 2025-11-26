@@ -1,4 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
+import type { ComponentProps } from "react";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -7,7 +8,6 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
@@ -89,7 +89,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 	);
 };
 
-export default compose(
+export default compose<ComponentProps<typeof CardDisplayOptions>, typeof CardDisplayOptions>(
 	withMapFormToProps("dataSource"),
 	withDisabledAssetRequired,
-)(CardDisplayOptions) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(CardDisplayOptions);

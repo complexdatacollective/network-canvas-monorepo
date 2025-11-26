@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import EditableList from "~/components/EditableList";
 import { Section } from "~/components/EditorLayout";
@@ -6,7 +7,6 @@ import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubj
 import withSubject from "~/components/enhancers/withSubject";
 import TextField from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";
 import { itemSelector, normalizeField } from "./helpers";
@@ -74,9 +74,9 @@ const Form = ({
 	</Section>
 );
 
-export default compose(
+export default compose<ComponentProps<typeof Form>, typeof Form>(
 	withSubject,
 	withFormHandlers,
 	withDisabledFormTitle,
 	withDisabledSubjectRequired,
-)(Form) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(Form);

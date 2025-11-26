@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { compose } from "recompose";
 import useExternalDataDownload from "~/components/AssetBrowser/useExternalDataDownload";
@@ -69,7 +70,4 @@ const AssetBrowser = ({
 	);
 };
 
-// Type assertion for the HOC-wrapped component
-export default compose(withAssetActions)(
-	AssetBrowser as React.ComponentType<unknown>,
-) as React.ComponentType<AssetBrowserOwnProps>;
+export default compose<ComponentProps<typeof AssetBrowser>, typeof AssetBrowser>(withAssetActions)(AssetBrowser);

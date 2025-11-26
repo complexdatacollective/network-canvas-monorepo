@@ -1,10 +1,10 @@
+import type { ComponentProps } from "react";
 import { PureComponent } from "react";
 import { compose } from "recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";
 import IssueAnchor from "~/components/IssueAnchor";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import DetachedField from "../../DetachedField";
 import Image from "../../Form/Fields/Image";
 import ValidatedField from "../../Form/ValidatedField";
@@ -102,6 +102,4 @@ class Background extends PureComponent<BackgroundProps> {
 	}
 }
 
-export default compose(withBackgroundChangeHandler)(
-	Background as unknown as React.ComponentType<unknown>,
-) as unknown as React.ComponentType<StageEditorSectionProps>;
+export default compose<ComponentProps<typeof Background>, typeof Background>(withBackgroundChangeHandler)(Background);

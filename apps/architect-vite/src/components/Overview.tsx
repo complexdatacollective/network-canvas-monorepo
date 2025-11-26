@@ -1,4 +1,5 @@
 import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
+import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
@@ -116,4 +117,6 @@ const mapStateToProps = (state: RootState) => {
 	};
 };
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(Overview as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof Overview>, typeof Overview>(connect(mapStateToProps, mapDispatchToProps))(
+	Overview,
+);

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
@@ -60,4 +61,7 @@ const PromptFields = ({ variableOptions, entity = "", type = "", changeForm = ()
 	);
 };
 
-export default compose(withVariableOptions, withVariableHandlers)(PromptFields as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof PromptFields>, typeof PromptFields>(
+	withVariableOptions,
+	withVariableHandlers,
+)(PromptFields);

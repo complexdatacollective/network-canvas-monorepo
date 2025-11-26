@@ -1,4 +1,4 @@
-import type React from "react";
+import type { ComponentProps } from "react";
 import { compose, withState } from "recompose";
 import Radio from "~/components/Form/Fields/Radio";
 import NetworkThumbnail from "~/components/Thumbnail/Network";
@@ -97,4 +97,4 @@ const DataSource = (props: DataSourcePropsWithState) => {
 	);
 };
 
-export default compose(withSelectNetworkAsset)(DataSource as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof DataSource>, typeof DataSource>(withSelectNetworkAsset)(DataSource);

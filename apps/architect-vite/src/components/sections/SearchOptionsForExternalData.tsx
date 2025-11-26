@@ -1,4 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
+import type { ComponentProps } from "react";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
@@ -7,7 +8,6 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { CheckboxGroup, LikertScale } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import Tip from "~/components/Tip";
 import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
@@ -104,7 +104,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 	);
 };
 
-export default compose(
+export default compose<ComponentProps<typeof SearchOptions>, typeof SearchOptions>(
 	withMapFormToProps(["dataSource"]),
 	withDisabledAssetRequired,
-)(SearchOptions) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(SearchOptions);

@@ -1,4 +1,5 @@
 import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
@@ -103,7 +104,7 @@ const mapDispatchToProps = (dispatch: Dispatch, { name, form }: { name: string; 
 	},
 });
 
-export default compose(
+export default compose<ComponentProps<typeof DateTimeParameters>, typeof DateTimeParameters>(
 	connect(null, mapDispatchToProps),
 	formValues({ type: "parameters.type" }),
-)(DateTimeParameters as React.ComponentType<unknown>);
+)(DateTimeParameters);

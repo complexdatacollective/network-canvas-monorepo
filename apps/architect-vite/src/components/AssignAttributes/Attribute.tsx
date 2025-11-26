@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { BooleanField } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
@@ -80,4 +81,7 @@ const Attribute = ({
 	);
 };
 
-export default compose(withAttributeHandlers, withCreateVariableHandler)(Attribute as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof Attribute>, typeof Attribute>(
+	withAttributeHandlers,
+	withCreateVariableHandler,
+)(Attribute);

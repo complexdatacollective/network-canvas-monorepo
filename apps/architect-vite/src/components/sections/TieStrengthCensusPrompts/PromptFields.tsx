@@ -209,8 +209,4 @@ const PromptFields = ({
 	);
 };
 
-export default compose(
-	withCreateEdgeHandlers,
-	withEdgesOptions,
-	withVariableOptions,
-)(PromptFields as React.ComponentType<unknown>);
+export default compose(withCreateEdgeHandlers, withEdgesOptions, withVariableOptions)(PromptFields);

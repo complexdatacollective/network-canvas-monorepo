@@ -1,4 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
+
 import { getVariableNamesFromNetwork, type Network as NetworkType } from "@codaco/protocol-validation";
 import type { VariableValue } from "@codaco/shared-consts";
 import { compose } from "@reduxjs/toolkit";
@@ -55,4 +56,4 @@ const Network = ({ assetPath: _assetPath, assetId, assetName }: NetworkProps) =>
 	return <Table data={data} columns={columns} />;
 };
 
-export default compose(withAssetPath)(Network as React.ComponentType<unknown>);
+export default compose(withAssetPath)(Network);

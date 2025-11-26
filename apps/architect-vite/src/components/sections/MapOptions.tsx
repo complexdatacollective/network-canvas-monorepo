@@ -1,9 +1,8 @@
-import type React from "react";
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
 import { Row, Section } from "../EditorLayout";
 import ExternalLink from "../ExternalLink";
@@ -153,7 +152,7 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 	);
 };
 
-export default compose(
+export default compose<ComponentProps<typeof MapOptions>, typeof MapOptions>(
 	withMapFormToProps(["mapOptions"]),
 	withDisabledAPIKeyRequired,
-)(MapOptions) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(MapOptions);

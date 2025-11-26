@@ -1,4 +1,5 @@
 import { get } from "es-toolkit/compat";
+import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose, defaultProps } from "recompose";
@@ -71,7 +72,7 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export default compose(
+export default compose<ComponentProps<typeof NetworkFilter>, typeof NetworkFilter>(
 	defaultProps({ name: "filter" }),
 	connect(mapStateToProps, mapDispatchToProps),
-)(NetworkFilter as React.ComponentType<unknown>);
+)(NetworkFilter);

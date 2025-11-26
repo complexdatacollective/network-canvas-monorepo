@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import PromptText from "~/components/sections/PromptText";
 import DisplayEdgesSection from "./PromptFieldsEdges";
@@ -15,4 +16,4 @@ const PromptFields = (props: Record<string, unknown>) => (
 	</div>
 );
 
-export default compose(withCanCreateEdgesState)(PromptFields as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof PromptFields>, typeof PromptFields>(withCanCreateEdgesState)(PromptFields);

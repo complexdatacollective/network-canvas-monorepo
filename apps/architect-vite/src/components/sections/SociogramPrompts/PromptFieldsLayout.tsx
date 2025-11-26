@@ -1,4 +1,5 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
+import type { ComponentProps } from "react";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import type { FormAction } from "redux-form";
@@ -121,8 +122,8 @@ const PromptFields = ({
 	);
 };
 
-export default compose(
+export default compose<ComponentProps<typeof PromptFields>, typeof PromptFields>(
 	withLayoutOptions,
 	withCanCreateEdgesState,
 	withCreateVariableHandlers,
-)(PromptFields as React.ComponentType<unknown>);
+)(PromptFields);

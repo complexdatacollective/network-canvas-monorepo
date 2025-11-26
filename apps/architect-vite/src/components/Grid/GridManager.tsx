@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { compose, withState } from "recompose";
 import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";
@@ -126,4 +127,7 @@ const GridManager = ({
 
 const withEditingState = withState("editField", "setEditField", null);
 
-export default compose(withEditingState, withEditHandlers)(GridManager as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof GridManager>, typeof GridManager>(
+	withEditingState,
+	withEditHandlers,
+)(GridManager);

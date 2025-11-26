@@ -1,6 +1,6 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -49,8 +49,8 @@ const TieStrengthCensusPrompts = ({
 	</Section>
 );
 
-export default compose(
+export default compose<ComponentProps<typeof TieStrengthCensusPrompts>, typeof TieStrengthCensusPrompts>(
 	withSubject,
 	withDisabledSubjectRequired,
 	withPromptChangeHandler,
-)(TieStrengthCensusPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(TieStrengthCensusPrompts);

@@ -1,9 +1,9 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import EditableList from "~/components/EditableList";
 import { Section } from "~/components/EditorLayout";
 import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubjectRequired";
 import withSubject from "~/components/enhancers/withSubject";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { itemSelector } from "~/components/sections/CategoricalBinPrompts/helpers";
 import withPromptChangeHandler from "~/components/sections/CategoricalBinPrompts/withPromptChangeHandler";
 import { PromptPreview } from "~/components/sections/NameGeneratorPrompts";
@@ -54,8 +54,8 @@ const OrdinalBinPrompts = ({
 	</Section>
 );
 
-export default compose(
+export default compose<ComponentProps<typeof OrdinalBinPrompts>, typeof OrdinalBinPrompts>(
 	withSubject,
 	withDisabledSubjectRequired,
 	withPromptChangeHandler,
-)(OrdinalBinPrompts) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(OrdinalBinPrompts);

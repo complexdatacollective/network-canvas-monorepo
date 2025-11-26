@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { Link } from "wouter";
@@ -43,15 +44,6 @@ type EntityTypeProps = {
 	handleDelete?: () => void;
 	handleEdit?: () => void;
 	variables?: Record<string, Variable>;
-};
-
-// Props expected by the exported wrapped component
-type EntityTypeOwnProps = {
-	entity: Entity;
-	type: string;
-	inUse?: boolean;
-	usage: UsageItem[];
-	onEditEntity?: (entity: string, type?: string) => void;
 };
 
 const EntityType = ({
@@ -184,7 +176,7 @@ const withEntityHandlers = compose(
 	}),
 );
 
-export default compose(
+export default compose<ComponentProps<typeof EntityType>, typeof EntityType>(
 	connect(mapStateToProps),
 	withEntityHandlers,
-)(EntityType as React.ComponentType<unknown>) as React.ComponentType<EntityTypeOwnProps>;
+)(EntityType);

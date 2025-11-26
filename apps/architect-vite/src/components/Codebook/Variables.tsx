@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { get, isString } from "es-toolkit/compat";
+import type { ComponentProps } from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps, withStateHandlers } from "recompose";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
@@ -236,4 +237,4 @@ const withSort = compose(
 
 export { Heading, rowClassName, SortDirection, withSort };
 
-export default compose(withVariableHandlers, withSort)(Variables as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof Variables>, typeof Variables>(withVariableHandlers, withSort)(Variables);

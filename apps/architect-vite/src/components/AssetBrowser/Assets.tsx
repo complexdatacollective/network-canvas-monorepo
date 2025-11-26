@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { RadioGroup } from "~/components/Form/Fields";
 import Asset from "./Asset";
@@ -89,7 +90,4 @@ const Assets = ({
 	);
 };
 
-// Type assertion for the HOC-wrapped component
-export default compose(withAssets)(Assets as React.ComponentType<unknown>) as React.ComponentType<
-	Omit<AssetsProps, "assets" | "assetType" | "onUpdateAssetFilter">
->;
+export default compose<ComponentProps<typeof Assets>, typeof Assets>(withAssets)(Assets);

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import type { RootState } from "~/ducks/store";
@@ -48,4 +49,4 @@ const mapStateToProps = (state: RootState) => {
 	return entityProperties;
 };
 
-export default compose(connect(mapStateToProps))(EgoType as React.ComponentType<unknown>);
+export default compose<ComponentProps<typeof EgoType>, typeof EgoType>(connect(mapStateToProps))(EgoType);

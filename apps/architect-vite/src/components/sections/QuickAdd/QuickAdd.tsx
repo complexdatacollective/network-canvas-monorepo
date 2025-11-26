@@ -1,6 +1,6 @@
+import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withCreateVariableHandler from "../../enhancers/withCreateVariableHandler";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -58,10 +58,10 @@ const QuickAdd = ({
 		</Section>
 	);
 
-export default compose(
+export default compose<ComponentProps<typeof QuickAdd>, typeof QuickAdd>(
 	withSubject,
 	withDisabledSubjectRequired,
 	withQuickAddVariable,
 	withOptions,
 	withCreateVariableHandler,
-)(QuickAdd) as unknown as React.ComponentType<StageEditorSectionProps>;
+)(QuickAdd);
