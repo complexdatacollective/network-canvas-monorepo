@@ -44,7 +44,7 @@ type ProtocolWithAppState = CurrentProtocol & {
 	lastSavedTimeline?: string;
 };
 
-async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
+export async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 	const zip = new JSZip();
 
 	// Remove app state props

@@ -1,10 +1,64 @@
+import type { CSSProperties, ReactNode } from "react";
 import { useCallback } from "react";
 import Confirm from "./Dialog/Confirm";
-import ErrorDialog from "./Dialog/Error";
+import ErrorDialogComponent from "./Dialog/Error";
 import Notice from "./Dialog/Notice";
 import Simple from "./Dialog/Simple";
-import UserErrorDialog from "./Dialog/UserError";
+import UserErrorDialogComponent from "./Dialog/UserError";
 import Warning from "./Dialog/Warning";
+
+export type BaseDialog = {
+	id: string;
+	title?: string;
+	message?: ReactNode;
+	onConfirm?: () => void;
+	onCancel?: () => void;
+};
+
+export type ConfirmDialog = BaseDialog & {
+	type: "Confirm";
+	title: string;
+	canCancel?: boolean;
+	confirmLabel?: string;
+	cancelLabel?: string;
+};
+
+export type NoticeDialog = BaseDialog & {
+	type: "Notice";
+	title: string;
+	confirmLabel?: string;
+};
+
+export type WarningDialog = BaseDialog & {
+	type: "Warning";
+	title: string;
+	canCancel?: boolean;
+	confirmLabel?: string;
+	cancelLabel?: string;
+};
+
+export type ErrorDialog = BaseDialog & {
+	type: "Error";
+	error?: Error | string | { friendlyMessage?: string };
+	confirmLabel?: string;
+};
+
+export type UserErrorDialog = BaseDialog & {
+	type: "UserError";
+	message?: string;
+	error?: Error | string | { friendlyMessage?: string };
+	confirmLabel?: string;
+};
+
+export type SimpleDialog = BaseDialog & {
+	type: "Simple";
+	title: string;
+	children?: ReactNode;
+	className?: string;
+	style?: CSSProperties;
+};
+
+export type Dialog = ConfirmDialog | NoticeDialog | WarningDialog | ErrorDialog | UserErrorDialog | SimpleDialog;
 
 /*
  * Displays a stack of Dialogs.
@@ -49,13 +103,6 @@ import Warning from "./Dialog/Warning";
  *   },
  * ]
  */
-type Dialog = {
-	id: string;
-	type: "Confirm" | "Error" | "Notice" | "Simple" | "UserError" | "Warning";
-	onConfirm?: (dialog: Dialog) => void;
-	onCancel?: (dialog: Dialog) => void;
-	[key: string]: unknown;
-};
 
 type DialogsProps = {
 	dialogs?: Dialog[];
@@ -66,7 +113,7 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 	const handleConfirm = useCallback(
 		(dialog: Dialog) => {
 			if (dialog.onConfirm) {
-				dialog.onConfirm(dialog);
+				dialog.onConfirm();
 			}
 			closeDialog(dialog.id);
 		},
@@ -76,7 +123,7 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 	const handleCancel = useCallback(
 		(dialog: Dialog) => {
 			if (dialog.onCancel) {
-				dialog.onCancel(dialog);
+				dialog.onCancel();
 			}
 			closeDialog(dialog.id);
 		},
@@ -87,27 +134,87 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 		(dialog: Dialog) => {
 			const onConfirm = () => handleConfirm(dialog);
 			const onCancel = () => handleCancel(dialog);
-			const { onConfirm: dialogOnConfirm, onCancel: dialogOnCancel, id, type, title } = dialog;
-			const resolvedTitle = typeof title === "string" ? title : "";
-			const confirmCallback = dialogOnConfirm ? () => dialogOnConfirm(dialog) : onConfirm;
-			const cancelCallback = dialogOnCancel ? () => dialogOnCancel(dialog) : onCancel;
 
-			switch (type) {
+			switch (dialog.type) {
 				case "Confirm":
-					return <Confirm key={id} show title={resolvedTitle} onConfirm={confirmCallback} onCancel={cancelCallback} />;
-				case "Error":
-					return <ErrorDialog key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
-				case "Notice":
-					return <Notice key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
-				case "Simple":
-					return <Simple key={id} show title={resolvedTitle} onBlur={cancelCallback} />;
-				case "UserError":
-					return <UserErrorDialog key={id} show title={resolvedTitle} onConfirm={confirmCallback} />;
+					return (
+						<Confirm
+							key={dialog.id}
+							show
+							title={dialog.title}
+							message={dialog.message}
+							canCancel={(dialog as ConfirmDialog).canCancel}
+							confirmLabel={dialog.confirmLabel}
+							cancelLabel={(dialog as ConfirmDialog).cancelLabel}
+							onConfirm={onConfirm}
+							onCancel={onCancel}
+						/>
+					);
 				case "Warning":
-					return <Warning key={id} show title={resolvedTitle} onConfirm={confirmCallback} onCancel={cancelCallback} />;
-				default:
+					return (
+						<Warning
+							key={dialog.id}
+							show
+							title={dialog.title}
+							message={dialog.message}
+							canCancel={(dialog as WarningDialog).canCancel}
+							confirmLabel={dialog.confirmLabel}
+							cancelLabel={(dialog as WarningDialog).cancelLabel}
+							onConfirm={onConfirm}
+							onCancel={onCancel}
+						/>
+					);
+				case "Notice":
+					return (
+						<Notice
+							key={dialog.id}
+							show
+							title={(dialog as NoticeDialog).title}
+							message={dialog.message}
+							confirmLabel={dialog.confirmLabel}
+							onConfirm={onConfirm}
+						/>
+					);
+				case "Error":
+					return (
+						<ErrorDialogComponent
+							key={dialog.id}
+							show
+							title={dialog.title}
+							message={dialog.message}
+							error={(dialog as ErrorDialog).error}
+							confirmLabel={dialog.confirmLabel}
+							onConfirm={onConfirm}
+						/>
+					);
+				case "UserError":
+					return (
+						<UserErrorDialogComponent
+							key={dialog.id}
+							show
+							title={dialog.title}
+							message={dialog.message}
+							error={(dialog as UserErrorDialog).error}
+							confirmLabel={dialog.confirmLabel}
+							onConfirm={onConfirm}
+						/>
+					);
+				case "Simple":
+					return (
+						<Simple
+							key={dialog.id}
+							show
+							title={(dialog as SimpleDialog).title}
+							message={dialog.message}
+							className={(dialog as SimpleDialog).className}
+							style={(dialog as SimpleDialog).style}
+							onBlur={onCancel}
+						/>
+					);
+				default: {
 					// TypeScript ensures this is exhaustive
 					return null;
+				}
 			}
 		},
 		[handleConfirm, handleCancel],

@@ -1,37 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { ReactNode } from "react";
 import { v4 as uuid } from "uuid";
-
-// Define dialog types
-type BaseDialog = {
-	id: string;
-	title: string;
-	message?: ReactNode;
-	onConfirm?: () => void;
-	onCancel?: () => void;
-};
-
-interface ConfirmDialog extends BaseDialog {
-	type: "Confirm";
-	confirmLabel?: string;
-}
-
-interface NoticeDialog extends BaseDialog {
-	type: "Notice";
-	confirmLabel?: string;
-}
-
-interface WarningDialog extends BaseDialog {
-	type: "Warning";
-	confirmLabel?: string;
-}
-
-interface ErrorDialog extends Omit<BaseDialog, "title" | "message"> {
-	type: "Error";
-	error: Error;
-}
-
-type Dialog = ConfirmDialog | NoticeDialog | WarningDialog | ErrorDialog;
+import type { Dialog } from "~/lib/legacy-ui/components/Dialogs";
 
 type DialogsState = {
 	dialogs: Dialog[];
@@ -41,24 +10,11 @@ const initialState: DialogsState = {
 	dialogs: [],
 };
 
-// Type for dialog config when opening dialogs
-export type DialogConfig =
-	| (Omit<ConfirmDialog, "id" | "onConfirm" | "onCancel"> & {
-			onConfirm?: () => void;
-			onCancel?: () => void;
-	  })
-	| (Omit<NoticeDialog, "id" | "onConfirm" | "onCancel"> & {
-			onConfirm?: () => void;
-			onCancel?: () => void;
-	  })
-	| (Omit<WarningDialog, "id" | "onConfirm" | "onCancel"> & {
-			onConfirm?: () => void;
-			onCancel?: () => void;
-	  })
-	| (Omit<ErrorDialog, "id" | "onConfirm" | "onCancel"> & {
-			onConfirm?: () => void;
-			onCancel?: () => void;
-	  });
+// Type for dialog config when opening dialogs (without id, callbacks added by thunk)
+export type DialogConfig = Omit<Dialog, "id" | "onConfirm" | "onCancel"> & {
+	onConfirm?: () => void;
+	onCancel?: () => void;
+};
 
 // Async thunk for opening dialogs with promise support
 export const openDialog = createAsyncThunk<boolean, DialogConfig>(
