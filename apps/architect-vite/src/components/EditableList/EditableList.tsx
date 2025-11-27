@@ -108,9 +108,10 @@ const EditableList = <T extends Record<string, unknown> = Record<string, unknown
 				open={isOpen}
 				onOpenChange={handleCancelEdit}
 				layoutId={`${fieldName}-edit-field-${editIndex}`}
-				initial={undefined}
-				animate={undefined}
-				exit={undefined}
+				/* This hack is needed to make sure Base-UI's dialog works with framer-motion's layoutId animations */
+				initial={{ opacity: 0.9999 }}
+				animate={{ opacity: 1 }}
+				exit={{ opacity: 0.9999 }}
 				header={<h2 className="m-0">{title}</h2>}
 				footer={
 					<>
