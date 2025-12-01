@@ -125,6 +125,7 @@ const RichText = ({
 		[inline, disallowedTypesWithDefaults],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fix runtime error
 	const editor = useMemo(() => {
 		const baseEditor = createEditor();
 		const withReactEditor = withReact(baseEditor);
@@ -134,7 +135,7 @@ const RichText = ({
 		const withVoidsEditor = withVoids(withNormalizeEditor);
 		const withOptionsEditor = withOptions(withVoidsEditor);
 		return withOptionsEditor as CustomEditor;
-	}, [withOptions]);
+	}, [disallowedTypesWithDefaults.join()]);
 
 	// Test if there is no text content in the tree
 	const childrenAreEmpty = useCallback((children: Descendant[]): boolean => {
@@ -178,18 +179,20 @@ const RichText = ({
 	);
 
 	// Set starting state from prop value on start up
+	// biome-ignore lint/correctness/useExhaustiveDependencies: infinite runtime error
 	useEffect(() => {
 		setInitialValue().then(() => setIsInitialized(true));
-	}, [setInitialValue]);
+	}, []);
 
 	// Set value again when initial value changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fix runtime error
 	useEffect(() => {
 		// If value matches the last reported change do not set value;
 		if (initialValue === lastChange) {
 			return;
 		}
 		setInitialValue();
-	}, [initialValue, setInitialValue, lastChange]);
+	}, [initialValue, setInitialValue]);
 
 	// Update upstream on change
 	useEffect(() => {
