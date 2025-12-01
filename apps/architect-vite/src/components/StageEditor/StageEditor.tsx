@@ -2,7 +2,7 @@ import type { Stage, StageType } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { isDirty as isFormDirty } from "redux-form";
+import { getFormValues, isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
@@ -40,6 +40,7 @@ const StageEditor = (props: StageEditorProps) => {
 
 	// Get form state
 	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
+	const formValues = useSelector((state: RootState) => getFormValues(formName)(state)) as Stage | undefined;
 
 	// Preview state
 	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
@@ -84,7 +85,7 @@ const StageEditor = (props: StageEditorProps) => {
 	}, [hasUnsavedChanges, setLocation, dispatch]);
 
 	const handlePreview = useCallback(async () => {
-		if (!protocol) {
+		if (!protocol || !formValues) {
 			dispatch(
 				dialogActions.openDialog({
 					type: "Error",
@@ -95,15 +96,25 @@ const StageEditor = (props: StageEditorProps) => {
 			return;
 		}
 
+		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
+
 		setIsUploadingPreview(true);
 		setUploadProgress(null);
 
 		try {
-			// Pass the current stage index so preview starts at this stage
-			const startStage = stageIndex !== -1 ? stageIndex : 0;
-			const { previewUrl } = await uploadProtocolForPreview(protocol, startStage, setUploadProgress);
+			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
+			const previewProtocol = {
+				...protocol,
+				stages: id
+					? protocol.stages.map((s) => (s.id === id ? normalizedStage : s))
+					: [
+							...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
+							normalizedStage,
+							...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
+						],
+			};
 
-			// Open preview in new window
+			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
 			window.open(previewUrl, "_blank", "noopener,noreferrer");
 		} catch (error) {
 			dispatch(
@@ -117,7 +128,7 @@ const StageEditor = (props: StageEditorProps) => {
 			setIsUploadingPreview(false);
 			setUploadProgress(null);
 		}
-	}, [protocol, stageIndex, dispatch]);
+	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
 	const renderSections = (sectionsList: readonly SectionComponent[]) =>
