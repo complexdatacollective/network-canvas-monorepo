@@ -26,7 +26,7 @@ export const getProtocol = (state: RootState) => {
 	}
 
 	// Fall back to old protocol store during transition
-	return state.activeProtocol?.present || null;
+	return state.protocol?.present || null;
 };
 
 export const getAssetManifest = (state: RootState) => {
