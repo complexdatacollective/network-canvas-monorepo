@@ -136,7 +136,7 @@ const EditableList = <T extends Record<string, unknown> = Record<string, unknown
 					initialValues={initialValuesForEdit}
 				>
 					<Layout>
-						<EditComponent {...(initialValuesForEdit as T)} {...editProps} />
+						<EditComponent {...(initialValuesForEdit as T)} {...editProps} form="editable-list-form" />
 					</Layout>
 				</Form>
 			</Dialog>
