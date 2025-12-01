@@ -7,7 +7,7 @@ import RoundCheckbox from "./RoundCheckbox";
 type BooleanOptionProps = {
 	classes?: string | null;
 	selected?: boolean;
-	label: string | ReactElement;
+	label: string | ReactElement | (() => ReactElement);
 	onClick?: () => void;
 	customIcon?: ReactElement | null;
 	negative?: boolean;
@@ -31,7 +31,7 @@ const BooleanOption = ({
 
 	const renderLabel = () => {
 		if (typeof label === "function") {
-			return label;
+			return label();
 		}
 
 		return <Markdown label={label as string} className="form-field-inline-label" />;
