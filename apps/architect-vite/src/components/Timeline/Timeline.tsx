@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import { motion, Reorder } from "motion/react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import { useAppDispatch } from "~/ducks/hooks";
@@ -18,6 +18,7 @@ const getTimelineImage = (type: string) => get(timelineImages, type, timelineIma
 const Timeline = () => {
 	const stages = useSelector(getStageList);
 	const dispatch = useAppDispatch();
+	const pointerStart = useRef({ x: 0, y: 0 });
 
 	const deleteStage = useCallback(
 		(stageId: string) => {
@@ -113,7 +114,16 @@ const Timeline = () => {
 						value={stage}
 						layoutId={`timeline-stage-${stage.id}`}
 						className={itemClasses}
-						onClick={() => handleEditStage(stage.id)}
+						onPointerDown={(e) => {
+							pointerStart.current = { x: e.clientX, y: e.clientY };
+						}}
+						onClick={(e) => {
+							const dx = e.clientX - pointerStart.current.x;
+							const dy = e.clientY - pointerStart.current.y;
+							if (dx * dx + dy * dy < 25) {
+								handleEditStage(stage.id);
+							}
+						}}
 					>
 						<img
 							className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
