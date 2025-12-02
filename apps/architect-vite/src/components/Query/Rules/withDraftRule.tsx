@@ -47,7 +47,7 @@ const withDraftRule = compose<OwnProps, OwnProps>(
 		handleCreateAlterRule:
 			({ createDraft }: SecondHandlerProps) =>
 			() =>
-				createDraft("alter", getDefaultOptions(templates.entityTypeRule)),
+				createDraft("node", getDefaultOptions(templates.entityTypeRule)),
 		handleCreateEdgeRule:
 			({ createDraft }: SecondHandlerProps) =>
 			() =>

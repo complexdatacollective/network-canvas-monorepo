@@ -86,7 +86,7 @@ const EditEntityRule = ({
 				<IssueAnchor fieldName="type" description={`${entityType} Type`} />
 				<DetachedField
 					component={EntitySelectField as React.ComponentType<Record<string, unknown>>}
-					entityType={entityType === "alter" ? "node" : "edge"}
+					entityType={entityType === "node" ? "node" : "edge"}
 					name="type"
 					options={typeOptions}
 					onChange={handleRuleChange}

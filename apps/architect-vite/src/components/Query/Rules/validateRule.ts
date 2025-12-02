@@ -43,7 +43,7 @@ const validateRule = (rule: Rule | null): boolean => {
 	const options = rule.options || {};
 
 	switch (rule.type) {
-		case "alter": {
+		case "node": {
 			if (Object.hasOwn(options, "attribute")) {
 				if (
 					(options.operator && operatorsWithValue.has(options.operator)) ||

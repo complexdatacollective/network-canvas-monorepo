@@ -24,7 +24,7 @@ type InputProps = {
 
 // convert options to labels
 const withDisplayOptions = withProps<{ options: unknown }, InputProps>(({ type, options, codebook }: InputProps) => {
-	const entityType = type === "alter" ? "node" : "edge";
+	const entityType = type === "node" ? "node" : "edge";
 	const typeLabel = options.type ? get(codebook, [entityType, options.type, "name"], options.type) : options.type; // noop for ego
 	const typeColor = options.type ? get(codebook, [entityType, options.type, "color"], "#000") : "#000"; // noop for ego
 	const variablePath =

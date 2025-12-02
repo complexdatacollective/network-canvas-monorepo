@@ -76,7 +76,7 @@ const withOptions = withProps<OutputProps, InputProps>((props: InputProps) => {
 			return ["ego", "variables"];
 		}
 
-		if (entityType === "alter") {
+		if (entityType === "node") {
 			return ["node", entityId, "variables"];
 		}
 
