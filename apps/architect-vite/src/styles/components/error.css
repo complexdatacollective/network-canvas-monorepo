@@ -22,6 +22,7 @@
 	display: block;
 	overflow: scroll;
 	margin-top: var(--space-md);
+	margin-bottom: var(--space-md);
 	padding: var(--space-md);
 	max-height: 9rem;
 	border-radius: var(--radius);

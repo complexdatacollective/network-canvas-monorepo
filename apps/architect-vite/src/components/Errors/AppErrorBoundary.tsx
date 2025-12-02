@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { Button } from "~/lib/legacy-ui/components";
 
 type AppErrorBoundaryProps = {
 	children?: ReactNode;
@@ -17,6 +18,10 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 	componentDidCatch(error: Error) {
 		this.setState({ error });
 	}
+
+	resetError = () => {
+		this.setState({ error: null });
+	};
 
 	render() {
 		const { error } = this.state;
@@ -37,6 +42,9 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 						<pre className="error__stack">
 							<code>{error.stack}</code>
 						</pre>
+						<Button size="small" color="platinum" onClick={this.resetError}>
+							OK
+						</Button>
 					</div>
 				</div>
 			);
