@@ -32,16 +32,14 @@ export function getProgressText(progress: UploadProgress | null): string {
 
 export type UploadProgressCallback = (progress: UploadProgress) => void;
 
-// Asset info sent to the preview endpoint
-type AssetRequestInfo = {
+// Asset info sent to the prepare endpoint
+type PrepareAssetInfo = {
 	assetId: string;
 	name: string;
 	size: number;
-	type: string;
-	value?: string; // For apikey type assets
 };
 
-// Upload info returned from the preview endpoint for new assets
+// Upload info returned from the prepare endpoint
 type AssetUploadInfo = {
 	assetId: string;
 	uploadUrl: string;
@@ -50,11 +48,36 @@ type AssetUploadInfo = {
 	expiresAt: number;
 };
 
-type PreviewResponse = {
+// Existing asset info returned from prepare (already in DB, no upload needed)
+type ExistingAssetInfo = {
+	assetId: string;
+	fileKey: string;
+	fileUrl: string;
+};
+
+type PrepareResponse = {
+	success: boolean;
+	existing: ExistingAssetInfo[];
+	uploads: AssetUploadInfo[];
+	error?: string;
+	details?: string;
+};
+
+// Asset info sent to the confirm endpoint (includes file info from uploads)
+type ConfirmAssetInfo = {
+	assetId: string;
+	name: string;
+	size: number;
+	type: string;
+	fileKey: string;
+	fileUrl: string;
+	value?: string; // For apikey type assets
+};
+
+type ConfirmResponse = {
 	success: boolean;
 	protocolId: string;
 	redirectUrl: string;
-	uploads: AssetUploadInfo[];
 	error?: string;
 	details?: string;
 	validationErrors?: string[];
@@ -201,9 +224,10 @@ async function getLocalAssets(
  *
  * Flow:
  * 1. Extract assets from local database
- * 2. Call POST /api/preview with protocol + asset metadata
+ * 2. Call POST /api/preview/prepare to get presigned URLs
  * 3. Upload assets directly to UploadThing using presigned URLs
- * 4. Redirect to preview
+ * 4. Call POST /api/preview/confirm to create DB records
+ * 5. Redirect to preview
  *
  * @param protocol - The current protocol to upload
  * @param stageIndex - The stage index to start the preview at (defaults to 0)
@@ -223,55 +247,49 @@ export async function uploadProtocolForPreview(
 		onProgress?.({ phase: "preparing" });
 		const localAssets = await getLocalAssets(protocol);
 
-		// Build asset list for the API request
-		const assetRequestInfo: AssetRequestInfo[] = localAssets.map((a) => ({
+		// Separate file assets from apikey assets
+		const fileAssets = localAssets.filter((a) => a.type !== "apikey");
+		const apikeyAssets = localAssets.filter((a) => a.type === "apikey");
+
+		// Build asset list for the prepare endpoint (only file assets need presigned URLs)
+		const prepareAssets: PrepareAssetInfo[] = fileAssets.map((a) => ({
 			assetId: a.assetId,
 			name: a.name,
 			size: a.size,
-			type: a.type,
-			...(a.type === "apikey" && a.value ? { value: a.value } : {}),
 		}));
 
-		// Remove app state props from protocol before sending
-		const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as CurrentProtocol & {
-			name?: string;
-			isValid?: boolean;
-			lastSavedAt?: string;
-			lastSavedTimeline?: string;
-		};
+		// Step 1: Call prepare endpoint to get presigned URLs and existing assets
+		let uploads: AssetUploadInfo[] = [];
+		let existing: ExistingAssetInfo[] = [];
 
-		// Call the single preview endpoint
-		const response = await fetch(`${frescoUrl}/api/preview`, {
-			method: "POST",
-			headers: getAuthHeaders(apiToken),
-			body: JSON.stringify({
-				protocol: cleanProtocol,
-				protocolName,
-				assets: assetRequestInfo,
-			}),
-		});
+		if (prepareAssets.length > 0) {
+			const prepareResponse = await fetch(`${frescoUrl}/api/preview/prepare`, {
+				method: "POST",
+				headers: getAuthHeaders(apiToken),
+				body: JSON.stringify({ assets: prepareAssets }),
+			});
 
-		if (!response.ok) {
-			await handleFetchError(response);
+			if (!prepareResponse.ok) {
+				await handleFetchError(prepareResponse);
+			}
+
+			const prepareData = (await prepareResponse.json()) as PrepareResponse;
+
+			if (!prepareData.success) {
+				throw new Error(prepareData.error || "Failed to prepare upload");
+			}
+
+			uploads = prepareData.uploads || [];
+			existing = prepareData.existing || [];
 		}
 
-		const data = (await response.json()) as PreviewResponse;
-
-		if (!data.success || !data.redirectUrl || !data.protocolId) {
-			throw new Error(data.error || "Failed to create preview: Invalid response");
-		}
-
-		// Upload assets that need uploading
-		const assetsToUpload = data.uploads || [];
-		if (assetsToUpload.length > 0) {
-			// Filter to only file assets (not apikey)
-			const fileAssets = localAssets.filter((a) => a.type !== "apikey");
-
-			for (let i = 0; i < assetsToUpload.length; i++) {
-				const uploadInfo = assetsToUpload[i];
+		// Step 2: Upload only new assets to UploadThing (skip existing ones)
+		if (uploads.length > 0) {
+			for (let i = 0; i < uploads.length; i++) {
+				const uploadInfo = uploads[i];
 				if (!uploadInfo) continue;
 
-				onProgress?.({ phase: "uploading-assets", current: i + 1, total: assetsToUpload.length });
+				onProgress?.({ phase: "uploading-assets", current: i + 1, total: uploads.length });
 
 				const localAsset = fileAssets.find((a) => a.assetId === uploadInfo.assetId);
 				if (!localAsset) {
@@ -282,17 +300,87 @@ export async function uploadProtocolForPreview(
 			}
 		}
 
-		// Append stage index to preview URL if needed
+		// Step 3: Build confirm assets list (merge existing + uploaded + apikey assets)
+		const confirmAssets: ConfirmAssetInfo[] = [
+			// Existing assets (already in DB)
+			...existing.map((asset) => {
+				const localAsset = fileAssets.find((a) => a.assetId === asset.assetId);
+				return {
+					assetId: asset.assetId,
+					name: localAsset?.name ?? asset.assetId,
+					size: localAsset?.size ?? 0,
+					type: localAsset?.type ?? "unknown",
+					fileKey: asset.fileKey,
+					fileUrl: asset.fileUrl,
+				};
+			}),
+			// Newly uploaded assets
+			...uploads.map((uploadInfo) => {
+				const localAsset = fileAssets.find((a) => a.assetId === uploadInfo.assetId);
+				if (!localAsset) {
+					throw new Error(`Local asset not found for ${uploadInfo.assetId}`);
+				}
+				return {
+					assetId: uploadInfo.assetId,
+					name: localAsset.name,
+					size: localAsset.size,
+					type: localAsset.type,
+					fileKey: uploadInfo.fileKey,
+					fileUrl: uploadInfo.fileUrl,
+				};
+			}),
+			// Apikey assets (no file upload needed)
+			...apikeyAssets.map((asset) => ({
+				assetId: asset.assetId,
+				name: asset.name,
+				size: 0,
+				type: "apikey",
+				fileKey: asset.assetId,
+				fileUrl: "",
+				value: asset.value,
+			})),
+		];
+
+		// Remove app state props from protocol before sending
+		const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as CurrentProtocol & {
+			name?: string;
+			isValid?: boolean;
+			lastSavedAt?: string;
+			lastSavedTimeline?: string;
+		};
+
+		// Step 4: Call confirm endpoint to create DB records
 		onProgress?.({ phase: "processing" });
 
-		let previewUrl = data.redirectUrl;
+		const confirmResponse = await fetch(`${frescoUrl}/api/preview/confirm`, {
+			method: "POST",
+			headers: getAuthHeaders(apiToken),
+			body: JSON.stringify({
+				protocol: cleanProtocol,
+				protocolName,
+				assets: confirmAssets,
+			}),
+		});
+
+		if (!confirmResponse.ok) {
+			await handleFetchError(confirmResponse);
+		}
+
+		const confirmData = (await confirmResponse.json()) as ConfirmResponse;
+
+		if (!confirmData.success || !confirmData.redirectUrl || !confirmData.protocolId) {
+			throw new Error(confirmData.error || "Failed to confirm preview: Invalid response");
+		}
+
+		// Append stage index to preview URL if needed
+		let previewUrl = confirmData.redirectUrl;
 		if (stageIndex > 0) {
 			const url = new URL(previewUrl);
 			url.searchParams.set("step", stageIndex.toString());
 			previewUrl = url.toString();
 		}
 
-		return { previewUrl, protocolId: data.protocolId };
+		return { previewUrl, protocolId: confirmData.protocolId };
 	} catch (error) {
 		// Handle fetch errors (network issues)
 		if (error instanceof TypeError && error.message.includes("fetch")) {
