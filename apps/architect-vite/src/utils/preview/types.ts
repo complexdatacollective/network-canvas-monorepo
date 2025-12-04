@@ -37,8 +37,8 @@ export type PreviewRequest = InitializePreviewRequest | CompletePreviewRequest |
 
 type JobCreatedResponse = {
 	status: "job-created";
-	protocolId: string; // protocol id in db
-	presignedUrls: string[]; // I think we only need the URLs.. double check
+	protocolId: string;
+	presignedUrls: string[];
 };
 
 // No assets to upload
