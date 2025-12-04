@@ -11,7 +11,7 @@ import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages"
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
-import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/uploadPreview";
+import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
 import { formName } from "./configuration";
 import type { SectionComponent } from "./Interfaces";
 import { getInterface } from "./Interfaces";
