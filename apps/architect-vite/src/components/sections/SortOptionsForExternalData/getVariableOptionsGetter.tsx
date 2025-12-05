@@ -1,6 +1,6 @@
 import { map } from "lodash";
 
-export type VariableOption = {
+type VariableOption = {
 	value: string;
 	[key: string]: unknown;
 };

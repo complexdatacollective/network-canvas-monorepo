@@ -16,7 +16,7 @@ import { getFieldId } from "~/utils/issues";
 import safeName from "~/utils/safeName";
 import { validations } from "~/utils/validations";
 
-export const form = "create-new-variable";
+const form = "create-new-variable";
 
 const isRequired = validations.required();
 const isAllowedVariableName = validations.allowedVariableName();
