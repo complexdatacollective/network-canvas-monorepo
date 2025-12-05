@@ -107,12 +107,13 @@ const PromptFields = ({
 							name="sortOrder"
 							properties={[{ fieldName: "property" }, { fieldName: "direction" }]}
 							maxItems={5}
-							options={(property: string, rowValues: unknown, allValues: unknown): VariableOption[] =>
-								getSortOrderOptionGetter(variableOptions as VariableOption[])(
-									property,
-									rowValues,
-									allValues as Record<string, unknown>[],
-								)
+							options={(property: string, rowValues: unknown, allValues: unknown) =>
+								getSortOrderOptionGetter(
+									variableOptions.map((option) => ({
+										...option,
+										value: String(option.value),
+									})),
+								)(property, rowValues, allValues as Record<string, unknown>[])
 							}
 						/>
 					</Row>

@@ -8,7 +8,7 @@ type AssetBrowserWindowProps = {
 	type?: string | null;
 	selected?: string | null;
 	onCancel?: () => void;
-	onSelect?: () => void;
+	onSelect?: (assetId: string) => void;
 };
 
 const AssetBrowserWindow = ({
@@ -16,7 +16,7 @@ const AssetBrowserWindow = ({
 	type = null,
 	selected = null,
 	onCancel = () => {},
-	onSelect = () => {},
+	onSelect = (_assetId: string) => {},
 }: AssetBrowserWindowProps) => {
 	return (
 		<Dialog

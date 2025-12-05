@@ -21,7 +21,7 @@ export const form = "create-new-variable";
 const isRequired = validations.required();
 const isAllowedVariableName = validations.allowedVariableName();
 
-type Entity = "node" | "edge" | "ego";
+export type Entity = "node" | "edge" | "ego";
 
 type NewVariableWindowProps = {
 	show?: boolean;

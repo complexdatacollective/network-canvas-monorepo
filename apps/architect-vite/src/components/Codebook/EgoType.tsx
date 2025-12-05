@@ -30,7 +30,7 @@ type EgoTypeProps = {
 
 const EgoType = ({ variables = {} }: EgoTypeProps) => {
 	const variableArray = Object.values(variables);
-	const VariablesTyped = Variables as React.ComponentType<VariablesComponentProps>;
+	const VariablesTyped = Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
 	return (
 		<div className="codebook__entity">

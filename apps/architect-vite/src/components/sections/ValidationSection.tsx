@@ -50,7 +50,7 @@ const ValidationSection = ({
 		return true;
 	};
 
-	const existingVariablesForType = pickBy(existingVariables, (variable) => get(variable, "type") === variableType);
+	const _existingVariablesForType = pickBy(existingVariables, (variable) => get(variable, "type") === variableType);
 	return (
 		<Section
 			disabled={disabled}
@@ -63,13 +63,7 @@ const ValidationSection = ({
 			layout="vertical"
 		>
 			<Row>
-				<Validations
-					form={form}
-					name="validation"
-					variableType={variableType}
-					entity={entity}
-					existingVariables={existingVariablesForType}
-				/>
+				<Validations form={form} name="validation" variableType={variableType} entity={entity} />
 			</Row>
 		</Section>
 	);

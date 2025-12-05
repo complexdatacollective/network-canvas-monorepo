@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { RootState } from "~/ducks/modules/root";
 import { getEdgesForSubject, getNarrativeVariables } from "../selectors";
 
 const subject = {
-	entity: "node",
+	entity: "node" as const,
 	type: "1234-1234-1234",
 };
 
@@ -34,12 +35,12 @@ const mockCodebook = {
 };
 
 const mockState = {
-	protocol: {
+	activeProtocol: {
 		present: {
 			codebook: mockCodebook,
 		},
 	},
-};
+} as unknown as RootState;
 
 describe("NarrativePresets", () => {
 	describe("selectors", () => {

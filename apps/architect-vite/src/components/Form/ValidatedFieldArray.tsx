@@ -7,7 +7,8 @@ type ValidatedFieldArrayProps = {
 	// biome-ignore lint/suspicious/noExplicitAny: redux-form FieldArray accepts any component with WrappedFieldArrayProps
 	component: ComponentType<WrappedFieldArrayProps<unknown>> | ComponentType<any>;
 	validation: Record<string, unknown>;
-} & Omit<BaseFieldArrayProps<unknown>, "validate">;
+} & Omit<BaseFieldArrayProps<unknown>, "validate"> &
+	Record<string, unknown>; // Allow any additional props to be passed through
 
 const ValidatedFieldArray = ({ validation, name, component, ...rest }: ValidatedFieldArrayProps) => {
 	const validate = useValidate(validation);

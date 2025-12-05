@@ -200,6 +200,6 @@ const PresetFields = ({
 	);
 };
 
-export default compose<PresetFieldsProps, PresetFieldsProps>(withPresetProps)(
-	PresetFields as React.ComponentType<unknown>,
-);
+export default compose<PresetFieldsProps, { entity: string; type: string; form: string }>(withPresetProps)(
+	PresetFields,
+) as unknown as React.ComponentType<{ entity: string; type: string; form: string }>;

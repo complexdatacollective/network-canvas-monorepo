@@ -1,4 +1,5 @@
 import { get } from "es-toolkit/compat";
+import type { ComponentProps } from "react";
 import { Row, Section } from "~/components/EditorLayout";
 import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
@@ -36,7 +37,9 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 					componentProps={{
 						options: typeOptions,
 					}}
-					onChange={(_event, value) => handleChangeType(value as string)}
+					onChange={
+						((_, value) => handleChangeType(value as string)) as ComponentProps<typeof ValidatedField>["onChange"]
+					}
 				/>
 			</Row>
 		</Section>
@@ -51,4 +54,6 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 	</>
 );
 
-export default withItemHandlers(ItemEditor);
+export default withItemHandlers(
+	ItemEditor as unknown as React.ComponentType<unknown>,
+) as unknown as React.ComponentType<{ form: string }>;

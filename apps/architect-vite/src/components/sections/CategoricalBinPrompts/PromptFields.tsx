@@ -3,7 +3,7 @@ import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import { Field as RichTextField } from "~/components/Form/Fields/RichText";
-import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
+import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import PromptText from "~/components/sections/PromptText";
 import Tip from "~/components/Tip";
@@ -45,9 +45,9 @@ const PromptFields = ({
 	variableOptions = [],
 }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
-		entity,
+		entity: entity as Entity,
 		type,
-		initialValues: { name: null, type: null },
+		initialValues: { name: "", type: "" },
 	};
 
 	const handleCreatedNewVariable = (...args: unknown[]) => {

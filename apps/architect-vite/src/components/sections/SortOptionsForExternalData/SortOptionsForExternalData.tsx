@@ -12,7 +12,7 @@ import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
-import getVariableOptionsGetter, { type VariableOption } from "./getVariableOptionsGetter";
+import getVariableOptionsGetter from "./getVariableOptionsGetter";
 
 type SortOptionsProps = StageEditorSectionProps & {
 	dataSource: string;
@@ -85,11 +85,11 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 							placeholder: "Label",
 						},
 					]}
-					options={(
-						_property: unknown,
-						_rowValues: unknown,
-						allValues: Array<Record<string, unknown>>,
-					): VariableOption[] => variableOptionsGetter(_property, _rowValues, allValues)}
+					options={(_property: unknown, _rowValues: unknown, allValues: unknown) =>
+						variableOptionsGetter(_property, _rowValues, allValues as Array<Record<string, unknown>>) as Array<
+							Record<string, unknown>
+						>
+					}
 				/>
 			</Row>
 		</Section>

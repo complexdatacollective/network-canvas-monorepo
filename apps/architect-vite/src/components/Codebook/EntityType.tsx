@@ -57,7 +57,7 @@ const EntityType = ({
 	handleDelete = () => {},
 }: EntityTypeProps) => {
 	const variableArray = Object.values(variables);
-	const VariablesTyped = Variables as React.ComponentType<VariablesComponentProps>;
+	const VariablesTyped = Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
 	const stages = usage.map(({ id, label }) =>
 		id ? (

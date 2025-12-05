@@ -1,19 +1,13 @@
+import type { FilterRule } from "@codaco/protocol-validation";
 import { describe, expect, it } from "vitest";
 import getEdgeFilteringWarning from "../utils";
-
-type FilterRule = {
-	options: {
-		operator: string;
-		type: string;
-	};
-};
 
 describe("getEdgeFilteringWarning", () => {
 	// Case 1: Selected edge is in EXISTS filters - no warning
 	it("returns false when selected edges match EXISTS filters", () => {
 		const filters: FilterRule[] = [
-			{ options: { operator: "EXISTS", type: "1" } },
-			{ options: { operator: "EXISTS", type: "2" } },
+			{ type: "edge", id: "1", options: { operator: "EXISTS", type: "1" } },
+			{ type: "edge", id: "2", options: { operator: "EXISTS", type: "2" } },
 		];
 		const edges: string[] = ["1", "2"];
 
@@ -23,7 +17,7 @@ describe("getEdgeFilteringWarning", () => {
 
 	// Case 2: Selected edge is not in EXISTS filters - show warning
 	it("returns true when selected edges do not match EXISTS filters", () => {
-		const filters: FilterRule[] = [{ options: { operator: "EXISTS", type: "1" } }];
+		const filters: FilterRule[] = [{ type: "edge", id: "1", options: { operator: "EXISTS", type: "1" } }];
 		const edges: string[] = ["2", "3"];
 
 		const result = getEdgeFilteringWarning(filters, edges);
@@ -32,7 +26,7 @@ describe("getEdgeFilteringWarning", () => {
 
 	// Case 3: Selected edge is in DOES_NOT_EXIST filters - show warning
 	it("returns true when selected edges match DOES_NOT_EXIST filters", () => {
-		const filters: FilterRule[] = [{ options: { operator: "NOT_EXISTS", type: "1" } }];
+		const filters: FilterRule[] = [{ type: "edge", id: "1", options: { operator: "NOT_EXISTS", type: "1" } }];
 		const edges: string[] = ["1"];
 
 		const result = getEdgeFilteringWarning(filters, edges);
@@ -41,7 +35,7 @@ describe("getEdgeFilteringWarning", () => {
 
 	// Case 4: Selected edge is not in DOES_NOT_EXIST filters - no warning
 	it("returns false when selected edges do not match DOES_NOT_EXIST filters", () => {
-		const filters: FilterRule[] = [{ options: { operator: "NOT_EXISTS", type: "1" } }];
+		const filters: FilterRule[] = [{ type: "edge", id: "1", options: { operator: "NOT_EXISTS", type: "1" } }];
 		const edges: string[] = ["2", "3"];
 
 		const result = getEdgeFilteringWarning(filters, edges);
@@ -51,8 +45,8 @@ describe("getEdgeFilteringWarning", () => {
 	// Mixed filters
 	it("handles mixed filter scenarios correctly", () => {
 		const filters: FilterRule[] = [
-			{ options: { operator: "EXISTS", type: "1" } },
-			{ options: { operator: "NOT_EXISTS", type: "2" } },
+			{ type: "edge", id: "1", options: { operator: "EXISTS", type: "1" } },
+			{ type: "edge", id: "2", options: { operator: "NOT_EXISTS", type: "2" } },
 		];
 		const edges: string[] = ["3", "2"];
 

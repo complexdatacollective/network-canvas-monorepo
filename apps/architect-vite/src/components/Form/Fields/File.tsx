@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { withState } from "recompose";
+import { compose, withState } from "recompose";
 import Button from "~/lib/legacy-ui/components/Button";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
@@ -16,12 +16,18 @@ type MetaProps = {
 	touched?: boolean;
 };
 
-export type FileInputProps = {
+// Props injected by withState HOC
+type InjectedStateProps = {
+	showBrowser: boolean;
 	setShowBrowser: (show: boolean) => void;
-	onCloseBrowser?: () => void;
+};
+
+// Props that the user passes to the component
+export type FileInputPropsWithoutHOC = {
 	input: InputProps;
 	meta: MetaProps;
-	showBrowser: boolean;
+	showBrowser?: boolean;
+	onCloseBrowser?: () => void;
 	label?: string;
 	type?: string;
 	selected?: string;
@@ -29,9 +35,8 @@ export type FileInputProps = {
 	children?: (id: string) => React.ReactNode;
 };
 
-export type FileInputPropsWithoutHOC = Omit<FileInputProps, "showBrowser" | "setShowBrowser"> & {
-	showBrowser?: boolean;
-};
+// Full props that the internal component receives (original + injected)
+export type FileInputProps = FileInputPropsWithoutHOC & InjectedStateProps;
 
 const withShowBrowser = withState<FileInputPropsWithoutHOC, boolean, "showBrowser", "setShowBrowser">(
 	"showBrowser",
@@ -41,10 +46,10 @@ const withShowBrowser = withState<FileInputPropsWithoutHOC, boolean, "showBrowse
 
 const FileInput = ({
 	setShowBrowser,
-	onCloseBrowser = () => {},
 	input: { value, onChange },
 	meta: { error, invalid, touched },
 	showBrowser,
+	onCloseBrowser,
 	label,
 	type,
 	selected,
@@ -53,7 +58,7 @@ const FileInput = ({
 }: FileInputProps) => {
 	const closeBrowser = () => {
 		setShowBrowser(false);
-		onCloseBrowser();
+		onCloseBrowser?.();
 	};
 
 	const openBrowser = () => {
@@ -105,4 +110,4 @@ const FileInput = ({
 	);
 };
 
-export default withShowBrowser(FileInput) as React.ComponentType<FileInputPropsWithoutHOC>;
+export default compose<FileInputProps, FileInputPropsWithoutHOC>(withShowBrowser)(FileInput);

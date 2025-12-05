@@ -47,10 +47,12 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 					label: "",
 					options: dateTypes,
 				}}
-				onChange={(_, value) => {
-					setUseDateFormat(value as string);
-					resetRangeFields();
-				}}
+				onChange={
+					((_, value) => {
+						setUseDateFormat(value as string);
+						resetRangeFields();
+					}) as ComponentProps<typeof ValidatedField>["onChange"]
+				}
 			/>
 			<br />
 			<h4>Start Range</h4>

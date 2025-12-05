@@ -30,7 +30,6 @@ const DyadCensusPrompts = ({ form, entity, type, disabled }: DyadCensusPromptsPr
 			title="Edit Prompt"
 			fieldName="prompts"
 			form={form}
-			disabled={disabled}
 			editProps={{ entity, type }}
 		/>
 	</Section>

@@ -47,7 +47,7 @@ const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProp
 			title="Edit Preset"
 			fieldName="presets"
 			template={template}
-			normalize={normalizePreset}
+			normalize={normalizePreset as (value: unknown) => unknown}
 			form={form}
 			editProps={{ entity, type }}
 		/>

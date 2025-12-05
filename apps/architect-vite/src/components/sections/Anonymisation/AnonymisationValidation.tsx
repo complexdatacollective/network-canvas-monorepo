@@ -38,7 +38,7 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
 			handleToggleChange={handleToggleValidation}
 		>
 			<Row>
-				<Validations form={form} name="validation" variableType="passphrase" />
+				<Validations form={form} name="validation" variableType="passphrase" entity="ego" />
 			</Row>
 		</Section>
 	);

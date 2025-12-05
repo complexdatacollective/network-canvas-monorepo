@@ -3,6 +3,7 @@ import { compose, withHandlers } from "recompose";
 import { change, getFormValues } from "redux-form";
 import { createVariableAsync, deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/modules/root";
+import type { AppDispatch } from "~/ducks/store";
 
 type OwnProps = {
 	form: string;
@@ -22,18 +23,24 @@ const mapDispatchToProps = {
 
 const deleteVariableState = connect(mapStateToProps, mapDispatchToProps);
 
-type HandlerProps = ReturnType<typeof mapStateToProps> & typeof mapDispatchToProps & OwnProps;
+type HandlerProps = ReturnType<typeof mapStateToProps> &
+	typeof mapDispatchToProps &
+	OwnProps & {
+		dispatch: AppDispatch;
+	};
 
 const variableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	onCreateOtherVariable:
-		({ createVariable, entity, type, form, changeForm }) =>
+		({ createVariable, dispatch, entity, type, form, changeForm }) =>
 		async (name: string, field?: string) => {
-			const result = await createVariable({
-				entity,
-				type,
-				configuration: { type: "text", name },
-			});
-			const { variable } = result.payload as { variable: string };
+			const result = await dispatch(
+				createVariable({
+					entity,
+					type,
+					configuration: { type: "text", name },
+				}),
+			).unwrap();
+			const { variable } = result;
 
 			// If we supplied a field, update it with the result of the variable creation
 			if (field) {

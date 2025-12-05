@@ -4,7 +4,7 @@ import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import ColorPicker from "~/components/Form/Fields/ColorPicker";
 import IssueAnchor from "~/components/IssueAnchor";
-import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
+import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import { getSortOrderOptionGetter } from "~/components/sections/CategoricalBinPrompts/optionGetters";
 import withVariableHandlers from "~/components/sections/CategoricalBinPrompts/withVariableHandlers";
@@ -43,9 +43,9 @@ const PromptFields = ({
 	optionsForVariableDraft = [],
 }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
-		entity,
+		entity: entity as Entity,
 		type,
-		initialValues: { name: null, type: null },
+		initialValues: { name: "", type: "" },
 	};
 
 	const handleCreatedNewVariable = (...args: unknown[]) => {

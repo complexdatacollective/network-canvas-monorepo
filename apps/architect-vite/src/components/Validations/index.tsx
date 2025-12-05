@@ -6,7 +6,14 @@ import withUpdateHandlers from "./withUpdateHandlers";
 
 const withAddNew = withState("addNew", "setAddNew", false);
 
-export default compose<ComponentProps<typeof Validations>, typeof Validations>(
+type OuterProps = {
+	form: string;
+	name: string;
+	variableType: string;
+	entity: string;
+};
+
+export default compose<ComponentProps<typeof Validations>, OuterProps>(
 	withStoreState,
 	withAddNew,
 	withUpdateHandlers,

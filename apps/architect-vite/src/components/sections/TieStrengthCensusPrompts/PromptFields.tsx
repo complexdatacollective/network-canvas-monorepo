@@ -1,11 +1,10 @@
-import type { VariableType } from "@codaco/protocol-validation";
 import { compose } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import RichText from "~/components/Form/Fields/RichText/Field";
 import ValidatedField from "~/components/Form/ValidatedField";
-import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
+import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/components/NewVariableWindow";
 import Options from "~/components/Options";
 import Tip from "~/components/Tip";
 import { getFieldId } from "~/utils/issues";
@@ -45,13 +44,13 @@ const PromptFields = ({
 	optionsForVariableDraft = [],
 }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps: {
-		entity: "edge" | "node" | "ego";
+		entity: Entity;
 		type: string;
-		initialValues: { name: string | null; type: VariableType | null };
+		initialValues: { name: string; type: string };
 	} = {
 		entity: "edge",
 		type: createEdge,
-		initialValues: { name: null, type: null },
+		initialValues: { name: "", type: "" },
 	};
 
 	const handleCreatedNewVariable = (...args: unknown[]) => {

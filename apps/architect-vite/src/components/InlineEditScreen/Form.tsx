@@ -1,9 +1,9 @@
 import type React from "react";
-import { reduxForm } from "redux-form";
+import { reduxForm, type SubmitHandler } from "redux-form";
 import stopPropagationFromHandler from "~/utils/stopPropagationFromHandler";
 
 type FormProps = {
-	handleSubmit: (event?: React.FormEvent) => void;
+	handleSubmit: SubmitHandler;
 	children?: React.ReactNode;
 	id?: string;
 };
@@ -32,4 +32,4 @@ export default reduxForm({
 	touchOnBlur: false,
 	touchOnChange: true,
 	enableReinitialize: false,
-})(Form) as React.ComponentType<WrappedFormProps>;
+})(Form) as unknown as React.ComponentType<WrappedFormProps>;

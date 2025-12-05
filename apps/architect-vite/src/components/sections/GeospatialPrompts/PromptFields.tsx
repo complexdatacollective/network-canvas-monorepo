@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
-import NewVariableWindow, { useNewVariableWindowState } from "~/components/NewVariableWindow";
+import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/components/NewVariableWindow";
 import withVariableHandlers from "~/components/sections/CategoricalBinPrompts/withVariableHandlers"; // TODO: should these be moved somewhere more general?
 import withVariableOptions from "~/components/sections/CategoricalBinPrompts/withVariableOptions";
 import PromptText from "~/components/sections/PromptText";
@@ -21,12 +21,15 @@ type PromptFieldsProps = {
 
 const PromptFields = ({ variableOptions, entity = "", type = "", changeForm = () => {}, form }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
-		entity,
+		entity: entity as Entity,
 		type,
-		initialValues: { name: null, type: VARIABLE_TYPE },
+		initialValues: { name: "", type: VARIABLE_TYPE },
 	};
 
-	const handleCreatedNewVariable = (id: string, params: { field: string }) => changeForm(form, params.field, id);
+	const handleCreatedNewVariable = (...args: unknown[]) => {
+		const [id, params] = args as [string, { field: string }];
+		changeForm(form, params.field, id);
+	};
 
 	const [newVariableWindowProps, openNewVariableWindow] = useNewVariableWindowState(
 		newVariableWindowInitialProps,

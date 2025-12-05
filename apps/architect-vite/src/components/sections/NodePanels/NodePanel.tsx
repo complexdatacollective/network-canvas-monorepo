@@ -41,7 +41,7 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 			className="bg-slate-blue-dark mt-8"
 		>
 			<ValidatedField
-				component={DataSource as React.ComponentType<Record<string, unknown>>}
+				component={DataSource as unknown as React.ComponentType<Record<string, unknown>>}
 				name={`${fieldId}.dataSource`}
 				validation={{ required: true }}
 				componentProps={{

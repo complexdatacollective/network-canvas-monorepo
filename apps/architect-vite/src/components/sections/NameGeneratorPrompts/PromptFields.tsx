@@ -23,13 +23,14 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				layout="vertical"
 			>
 				<Row>
-					<AssignAttributes
-						form={form}
-						name="additionalAttributes"
-						id="additionalAttributes"
-						type={type ?? undefined}
-						entity={entity as "node" | "edge" | "ego"}
-					/>
+					{entity && type && (
+						<AssignAttributes
+							form={form}
+							name="additionalAttributes"
+							type={type}
+							entity={entity as "node" | "edge" | "ego"}
+						/>
+					)}
 				</Row>
 			</Section>
 		</>

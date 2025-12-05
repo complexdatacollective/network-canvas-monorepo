@@ -81,7 +81,11 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 								placeholder: "Label",
 							},
 						]}
-						options={variableOptionsGetter}
+						options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
+							variableOptionsGetter(fieldName, rowValues, allValues as Array<Record<string, unknown>>) as Array<
+								Record<string, unknown>
+							>
+						}
 					/>
 				)}
 			</Row>

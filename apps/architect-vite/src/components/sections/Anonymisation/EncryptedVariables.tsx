@@ -1,4 +1,5 @@
 import { omit } from "es-toolkit/compat";
+import type { ComponentType } from "react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Section } from "~/components/EditorLayout";
@@ -130,12 +131,13 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 							}}
 						>
 							<DetachedField
-								component={CheckboxGroup}
+								component={CheckboxGroup as ComponentType<Record<string, unknown>>}
 								options={variableOptions}
 								value={encryptedVariableIds}
-								onChange={(_event: unknown, nextValue: string[]) => {
+								onChange={(_event: unknown, nextValue: unknown) => {
+									const nextValueArray = nextValue as string[];
 									Object.entries(variables).forEach(([variableId, variable]) => {
-										const shouldEncrypt = nextValue.includes(variableId);
+										const shouldEncrypt = nextValueArray.includes(variableId);
 										if (variable?.encrypted !== shouldEncrypt) {
 											handleEncryptionToggle(variableId, shouldEncrypt, variable);
 										}

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type React from "react";
 import { PureComponent } from "react";
-import ReactSelect from "react-select";
+import ReactSelect, { type ActionMeta, type OptionProps, type ValueType } from "react-select";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
 const getValue = (options: SelectOption[], value: unknown) => {
@@ -22,10 +22,7 @@ type SelectOption = {
 type SelectProps = {
 	className?: string;
 	options?: SelectOption[];
-	selectOptionComponent?: React.ComponentType<{
-		data: SelectOption;
-		[key: string]: unknown;
-	}>;
+	selectOptionComponent?: React.ComponentType<OptionProps<SelectOption, false>>;
 	onDeleteOption?: (() => void) | null;
 	createNewOption?: boolean;
 	onCreateNew?: (() => void) | null;
@@ -62,8 +59,10 @@ class Select extends PureComponent<SelectProps> {
 		return getValue(options, input.value);
 	}
 
-	handleChange = (option: SelectOption | null) => {
+	handleChange = (value: ValueType<SelectOption, false>, _actionMeta: ActionMeta<SelectOption>) => {
 		const { onCreateNew, input } = this.props;
+
+		const option = value as SelectOption | null;
 
 		if (!option || !input) return;
 
@@ -102,7 +101,9 @@ class Select extends PureComponent<SelectProps> {
 		const { onBlur, ...inputRest } = input;
 		const { invalid, error, touched } = meta;
 
-		const optionsWithNew = createNewOption ? [...options, { __createNewOption__: createNewOption }] : options;
+		const optionsWithNew = createNewOption
+			? ([...options, { __createNewOption__: createNewOption }] as SelectOption[])
+			: options;
 
 		const componentClasses = cx(className, "form-fields-select", {
 			"form-fields-select--has-error": invalid && touched && error,

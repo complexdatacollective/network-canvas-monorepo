@@ -41,10 +41,10 @@ const denormalizeType = (state: RootState, { form, editField }: { form: string; 
 
 const ContentGrid = ({ form, ...restProps }: StageEditorSectionProps) => (
 	<Grid
-		previewComponent={ItemPreview}
-		editComponent={ItemEditor}
-		normalize={normalizeType}
-		itemSelector={denormalizeType}
+		previewComponent={ItemPreview as unknown as React.ComponentType<Record<string, unknown>>}
+		editComponent={ItemEditor as unknown as React.ComponentType<Record<string, unknown>>}
+		normalize={normalizeType as unknown as (item: Record<string, unknown>) => Record<string, unknown>}
+		itemSelector={denormalizeType as (state: unknown, props: unknown) => unknown}
 		title="Edit Items"
 		capacity={capacity}
 		form={form}

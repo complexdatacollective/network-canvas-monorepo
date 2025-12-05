@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
+import type { FormAction } from "redux-form";
 import { change } from "redux-form";
 import { updateVariableAsync } from "../../../ducks/modules/protocol/codebook";
 
@@ -8,9 +9,17 @@ const store = connect(null, {
 	changeForm: change,
 });
 
+type HandlerProps = {
+	updateVariable: typeof updateVariableAsync;
+	changeForm: (form: string, field: string, value: unknown) => FormAction;
+	form: string;
+	entity: string;
+	type: string;
+};
+
 const handlers = withHandlers({
 	handleChangePrompt:
-		({ updateVariable, changeForm, form, entity, type }) =>
+		(props: HandlerProps) =>
 		async ({
 			variable,
 			variableOptions,
@@ -20,9 +29,15 @@ const handlers = withHandlers({
 			variableOptions: unknown;
 			[key: string]: unknown;
 		}) => {
-			changeForm(form, "_modified", Date.now()); // TODO: can we avoid this?
+			props.changeForm(props.form, "_modified", Date.now()); // TODO: can we avoid this?
 
-			await updateVariable(entity, type, variable, { options: variableOptions }, true);
+			await props.updateVariable({
+				entity: props.entity as "node" | "edge" | "ego",
+				type: props.type,
+				variable,
+				configuration: { options: variableOptions } as Record<string, unknown>,
+				merge: true,
+			});
 
 			return { variable, ...rest };
 		},

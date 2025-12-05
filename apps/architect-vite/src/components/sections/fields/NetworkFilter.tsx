@@ -10,9 +10,11 @@ import type { RootState } from "~/ducks/modules/root";
 import Section from "../../EditorLayout/Section";
 import { handleFilterDeactivate } from "../Filter";
 
-const FilterField = withFieldConnector(withStoreConnector(FilterQuery) as unknown) as React.ComponentType<
-	Record<string, unknown>
->;
+const FilterField = (
+	withFieldConnector as unknown as (c: React.ComponentType) => React.ComponentType<Record<string, unknown>>
+)(
+	withStoreConnector(FilterQuery as unknown as React.ComponentType) as unknown as React.ComponentType,
+) as React.ComponentType<Record<string, unknown>>;
 
 type NetworkFilterProps = {
 	form: string;
@@ -75,7 +77,13 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
-export default compose<ComponentProps<typeof NetworkFilter>, typeof NetworkFilter>(
+type OuterProps = {
+	form: string;
+	name?: string;
+	variant?: "contrast";
+};
+
+export default compose<ComponentProps<typeof NetworkFilter>, OuterProps>(
 	defaultProps({ name: "filter" }),
 	connect(mapStateToProps, mapDispatchToProps),
 )(NetworkFilter);

@@ -36,7 +36,7 @@ const AssignAttributes = ({
 		{fields.length > 0 && (
 			<div className="assign-attributes__attributes">
 				{fields.map((field, index) => {
-					const AttributeComponent = Attribute as React.ComponentType<{
+					const AttributeComponent = Attribute as unknown as React.ComponentType<{
 						index: number;
 						entity: string;
 						type: string;

@@ -7,9 +7,9 @@ import Scalar from "./Scalar";
 type ComponentType = React.ComponentType<Record<string, unknown>>;
 
 const definitions: Array<[ComponentType, { type: string; component?: string }]> = [
-	[Scalar, { type: "scalar" }],
-	[DatePicker, { type: "datetime", component: "DatePicker" }],
-	[RelativeDatePicker, { type: "datetime", component: "RelativeDatePicker" }],
+	[Scalar as unknown as ComponentType, { type: "scalar" }],
+	[DatePicker as unknown as ComponentType, { type: "datetime", component: "DatePicker" }],
+	[RelativeDatePicker as unknown as ComponentType, { type: "datetime", component: "RelativeDatePicker" }],
 ];
 
 const getComponent = (options: { type: string; component?: string }): ComponentType | undefined => {

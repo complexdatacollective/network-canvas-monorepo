@@ -1,4 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
+import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
@@ -54,7 +55,7 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
 			</Row>
 			<Row>
 				<DetachedField
-					component={BooleanField}
+					component={BooleanField as ComponentType<Record<string, unknown>>}
 					onChange={handleChooseLayoutMode}
 					value={useAutomaticLayout}
 					validation={{ required: true }}

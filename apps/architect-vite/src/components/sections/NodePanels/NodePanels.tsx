@@ -9,18 +9,11 @@ import { v4 as uuid } from "uuid";
 import { Section } from "~/components/EditorLayout";
 import OrderedList from "~/components/OrderedList/OrderedList";
 import { useAppDispatch } from "~/ducks/hooks";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { type DialogConfig, actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
 import { Button } from "~/lib/legacy-ui/components";
 import IssueAnchor from "../../IssueAnchor";
 import NodePanel from "./NodePanel";
-
-type DialogConfig = {
-	type: string;
-	title: string;
-	message: string;
-	confirmLabel: string;
-};
 
 type NodePanelsProps = {
 	form: string;
@@ -32,7 +25,7 @@ type NodePanelsProps = {
 const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...rest }: NodePanelsProps) => {
 	const dispatch = useAppDispatch();
 	const openDialog = useCallback(
-		(dialog: DialogConfig) => dispatch(dialogActions.openDialog(dialog) as UnknownAction),
+		(dialog: DialogConfig) => dispatch(dialogActions.openDialog(dialog) as unknown as UnknownAction),
 		[dispatch],
 	);
 

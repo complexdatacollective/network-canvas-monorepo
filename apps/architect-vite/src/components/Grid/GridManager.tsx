@@ -1,5 +1,5 @@
-import type { ComponentProps } from "react";
 import { compose, withState } from "recompose";
+import type { WrappedFieldArrayProps } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";
 import ValidatedFieldArray from "../Form/ValidatedFieldArray";
@@ -17,8 +17,10 @@ type GridManagerProps = {
 	contentId?: string | null;
 	title?: string | null;
 	children?: React.ReactNode;
-	previewComponent: React.ComponentType<Record<string, unknown>>;
-	editComponent: React.ComponentType<Record<string, unknown>>;
+	// biome-ignore lint/suspicious/noExplicitAny: too hard to type right now
+	previewComponent: React.ComponentType<any>;
+	// biome-ignore lint/suspicious/noExplicitAny: too hard to type right now
+	editComponent: React.ComponentType<any>;
 	validation?: Record<string, unknown>;
 	editField?: string | null;
 	handleEditField: (field: string) => void;
@@ -82,7 +84,7 @@ const GridManager = ({
 			<div className="grid-manager__items">
 				<ValidatedFieldArray
 					name={fieldName}
-					component={Grid}
+					component={Grid as unknown as React.ComponentType<WrappedFieldArrayProps<unknown>>}
 					previewComponent={previewComponent}
 					validation={validation}
 					onEditItem={handleEditField}
@@ -104,9 +106,9 @@ const GridManager = ({
 			show={!!editField}
 			form={formName}
 			title={title}
-			onSubmit={handleUpdate}
+			onSubmit={handleUpdate as (values: unknown) => void}
 			onCancel={handleResetEditField}
-			initialValues={initialValues}
+			initialValues={initialValues ?? undefined}
 		>
 			<EditComponent
 				// eslint-disable-next-line react/jsx-props-no-spreading
@@ -121,7 +123,27 @@ const GridManager = ({
 
 const withEditingState = withState("editField", "setEditField", null);
 
-export default compose<ComponentProps<typeof GridManager>, typeof GridManager>(
-	withEditingState,
-	withEditHandlers,
-)(GridManager);
+// Export the composed component with proper typing
+// The outer props are what consumers of GridManager pass in (excluding HOC-provided props)
+// The inner props are the full GridManagerProps that the component receives
+type OuterProps = Omit<
+	GridManagerProps,
+	| "editField"
+	| "setEditField"
+	| "handleEditField"
+	| "handleAddNew"
+	| "handleUpdate"
+	| "handleResetEditField"
+	| "hasSpace"
+	| "initialValues"
+	| "itemCount"
+	| "items"
+	| "upsert"
+> & {
+	form: string;
+	itemSelector?: (state: unknown, props: unknown) => unknown;
+	normalize?: (item: Record<string, unknown>) => Record<string, unknown>;
+	template?: Record<string, unknown>;
+};
+
+export default compose<GridManagerProps, OuterProps>(withEditingState, withEditHandlers)(GridManager);

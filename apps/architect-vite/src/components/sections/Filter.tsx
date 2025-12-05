@@ -1,4 +1,6 @@
+import type { FilterRule } from "@codaco/protocol-validation";
 import type { UnknownAction } from "@reduxjs/toolkit";
+import type React from "react";
 import { useCallback, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
@@ -11,7 +13,11 @@ import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConn
 import Tip from "../Tip";
 import getEdgeFilteringWarning from "./SociogramPrompts/utils";
 
-const FilterField = withFieldConnector(withStoreConnector(FilterQuery));
+const FilterField = (
+	withFieldConnector as unknown as (c: React.ComponentType) => React.ComponentType<Record<string, unknown>>
+)(
+	withStoreConnector(FilterQuery as unknown as React.ComponentType) as unknown as React.ComponentType,
+) as React.ComponentType<Record<string, unknown>>;
 
 export const handleFilterDeactivate = async (openDialogFn: () => Promise<boolean>) => {
 	const result = await openDialogFn();
@@ -46,12 +52,10 @@ const Filter = () => {
 	}, [prompts]);
 	const shouldShowWarning = useMemo(() => {
 		if (edgeCreationValues.length > 0 || edgeDisplayValues.length > 0) {
-			return getEdgeFilteringWarning(
-				(currentValue?.rules || []) as Array<{
-					options: { operator: string; type: string };
-				}>,
-				[...edgeCreationValues, ...edgeDisplayValues],
-			);
+			return getEdgeFilteringWarning((currentValue?.rules || []) as FilterRule[], [
+				...edgeCreationValues,
+				...edgeDisplayValues,
+			]);
 		}
 		return false;
 	}, [currentValue, edgeCreationValues, edgeDisplayValues]);

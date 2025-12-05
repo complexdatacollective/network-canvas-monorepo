@@ -21,7 +21,7 @@ const useAssetData = (id: string) => {
 	const data = get(protocol.assetManifest, id) as AssetData | undefined;
 	const [variables, setVariables] = useState<string | null>(null);
 
-	const stubbedState = stubState(protocol.assetManifest ?? {}, workingPath);
+	const stubbedState = stubState(protocol.assetManifest ?? {}, workingPath ?? "");
 	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
 	const assetPath = getAssetPath(stubbedState, id);
 
