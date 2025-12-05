@@ -32,8 +32,13 @@ function generateSidebarData() {
 	const sortedFiles = sortDirectoryListing(files);
 
 	for (const file of sortedFiles) {
+		// Use parentPath (Node 20.1+) which is more reliable than path
+		// In Node.js v24.11.1, the path property may be undefined when using recursive readdir,
+		// but parentPath is correctly populated. Use fallback for safety.
+		const parentPath = file.parentPath || relativePathToDocs;
+
 		if (file.isDirectory()) {
-			const metadata = getMetaDataForDirectory(join(file.path, file.name));
+			const metadata = getMetaDataForDirectory(join(parentPath, file.name));
 			const currentLocales = Object.keys(sidebarData);
 
 			if (metadata.type === "project") {
@@ -42,7 +47,7 @@ function generateSidebarData() {
 
 					sidebarData[locale] = {
 						...sidebarData[locale],
-						[file.name]: createProjectEntry(file, locale, metadata),
+						[file.name]: createProjectEntry(file, locale, metadata, parentPath),
 					};
 				}
 
@@ -51,12 +56,12 @@ function generateSidebarData() {
 
 			// If this is a folder, create a folder entry
 			if (metadata.type === "folder") {
-				const nestedPath = getNestedPath(file.path);
+				const nestedPath = getNestedPath(parentPath);
 
 				// Insert folder entry for each locale in the nested path
 				for (const l of currentLocales) {
 					const locale = l as Locale;
-					set(sidebarData[locale], [...nestedPath, file.name], createFolderEntry(file, locale, metadata));
+					set(sidebarData[locale], [...nestedPath, file.name], createFolderEntry(file, locale, metadata, parentPath));
 				}
 
 				continue;
@@ -84,12 +89,12 @@ function generateSidebarData() {
 		// biome-ignore lint/style/noNonNullAssertion: structure is known
 		const key = file.name.split(".")[0]!;
 
-		const nestedPath = getNestedPath(file.path);
+		const nestedPath = getNestedPath(parentPath);
 
-		const markdownFile = readFileSync(join(file.path, file.name), "utf-8");
+		const markdownFile = readFileSync(join(parentPath, file.name), "utf-8");
 		const matterResult = matter(markdownFile);
 
-		set(sidebarData[locale], [...nestedPath, key], createPageEntry(file, matterResult));
+		set(sidebarData[locale], [...nestedPath, key], createPageEntry(file, matterResult, parentPath));
 	}
 
 	return sidebarData;
