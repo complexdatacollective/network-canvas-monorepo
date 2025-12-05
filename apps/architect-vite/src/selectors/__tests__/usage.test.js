@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getSociogramTypeUsageIndex, getTypeUsageIndex, makeGetDeleteImpact, makeGetUsageForType } from "../usage";
 
 const mockStateWithProtocol = {
-	protocol: {
+	activeProtocol: {
 		present: {
 			codebook: {
 				node: {

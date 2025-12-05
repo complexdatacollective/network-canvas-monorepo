@@ -143,19 +143,19 @@ export const addApiKeyAsset = (name: string, value: string) => {
 
 // Export for backwards compatibility and testing
 export const test = {
-	importAssetComplete: (filename: string, name: string, assetType: AssetType) => {
-		const id = uuid();
+	importAssetComplete: (filename: string, name: string, assetType: AssetType, id?: string) => {
+		const assetId = id || uuid();
 		return assetManifestSlice.actions.importAssetComplete({
-			id,
+			id: assetId,
 			filename,
 			name,
 			assetType,
 		});
 	},
 	deleteAsset: (id: string) => assetManifestSlice.actions.deleteAsset(id),
-	addApiKeyAsset: (name: string, value: string) => {
-		const id = uuid();
-		return assetManifestSlice.actions.addApiKeyAsset({ id, name, value });
+	addApiKeyAsset: (name: string, value: string, id?: string) => {
+		const assetId = id || uuid();
+		return assetManifestSlice.actions.addApiKeyAsset({ id: assetId, name, value });
 	},
 };
 

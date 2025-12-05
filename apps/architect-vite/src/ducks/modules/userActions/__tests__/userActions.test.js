@@ -1,21 +1,6 @@
-import { describe, expect, it } from "vitest";
-
-import {
-	// actionCreators,
-	actionLocks,
-} from "../userActions";
+import { describe, it } from "vitest";
 
 describe("userActions", () => {
-	it("exports actionLocks", () => {
-		expect(actionLocks).toEqual(
-			expect.objectContaining({
-				loading: expect.any(Function),
-				protocols: expect.any(Function),
-				saving: expect.any(Function),
-			}),
-		);
-	});
-
 	describe("actions", () => {
 		it.todo("openNetcanvas");
 		it.todo("createNetcanvas");

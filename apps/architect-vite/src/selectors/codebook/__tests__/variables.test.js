@@ -56,7 +56,7 @@ const mockReduxFormsWithoutUse = {
 };
 
 const mockStateWithoutUse = {
-	protocol: mockProtocolWithoutUse,
+	activeProtocol: mockProtocolWithoutUse,
 	form: mockReduxFormsWithoutUse,
 };
 
@@ -79,7 +79,7 @@ describe("makeGetIsUsed", () => {
 	it("returns true when a variable is present in the protocol", () => {
 		const stateWithProtocolUse = {
 			...mockStateWithoutUse,
-			protocol: {
+			activeProtocol: {
 				...mockProtocolWithoutUse,
 				present: {
 					...mockProtocolWithoutUse.present,
@@ -177,7 +177,7 @@ describe("makeGetIsUsed", () => {
 	it("checks codebook for variable validation use", () => {
 		const stateWithCodebookUse = {
 			...mockStateWithoutUse,
-			protocol: {
+			activeProtocol: {
 				...mockProtocolWithoutUse,
 				present: {
 					codebook: {
@@ -218,7 +218,7 @@ describe("makeGetIsUsed", () => {
 	describe("makeOptionsWithIsUsedSelector", () => {
 		it("appends used state to options", () => {
 			const state = {
-				protocol: {
+				activeProtocol: {
 					present: {
 						codebook: mockCodebookWithoutUse,
 						stages: [],

@@ -26,7 +26,7 @@
 			}
 		}
 	},
-	"protocol": {
+	"activeProtocol": {
 		"present": {
 			"schemaVersion": 4,
 			"name": "fooProtocol",

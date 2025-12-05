@@ -17,20 +17,20 @@ type RouteProps = {
 } & Record<string, unknown>;
 
 vi.mock("wouter", () => ({
-	useLocation: () => ["/", mockNavigate],
-	Route: ({ path, component: Component, ...props }: RouteProps) => {
+	useLocation: () => [mockLocation(), mockNavigate],
+	Route: ({ path, component: Component }: RouteProps) => {
 		const currentPath = mockLocation();
 		// Simple path matching for testing
 		if (path === currentPath || (path === "/protocol" && currentPath.startsWith("/protocol/"))) {
-			return <Component {...props} />;
+			return <Component />;
 		}
 		return null;
 	},
-	Switch: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	Switch: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 // Mock components to avoid complex rendering
-vi.mock("~/components/Home", () => ({
+vi.mock("~/components/Home/Home", () => ({
 	default: () => <div data-testid="home">Home Component</div>,
 }));
 

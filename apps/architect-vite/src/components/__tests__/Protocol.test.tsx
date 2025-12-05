@@ -20,8 +20,10 @@ vi.mock("~/components/Timeline", () => ({
 	default: () => <div data-testid="timeline">Timeline Component</div>,
 }));
 
-// Mock the protocol loader hook
-const mockUseProtocolLoader = vi.fn();
+// Mock the protocol loader hook - use vi.hoisted to avoid hoisting issues
+const { mockUseProtocolLoader } = vi.hoisted(() => ({
+	mockUseProtocolLoader: vi.fn(),
+}));
 
 vi.mock("~/hooks/useProtocolLoader", () => ({
 	default: mockUseProtocolLoader,

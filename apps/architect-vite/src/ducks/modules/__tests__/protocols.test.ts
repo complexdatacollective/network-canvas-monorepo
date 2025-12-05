@@ -146,7 +146,7 @@ describe("protocols", () => {
 		const protocol1Id = "protocol-1";
 		const protocol2Id = "protocol-2";
 
-		beforeEach(() => {
+		beforeEach(async () => {
 			store = configureStore({
 				reducer: { protocols: protocolsReducer },
 				middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
@@ -163,16 +163,15 @@ describe("protocols", () => {
 			);
 
 			// Wait a bit to ensure different timestamps
-			setTimeout(() => {
-				store.dispatch(
-					addProtocol({
-						id: protocol2Id,
-						protocol: mockProtocol2,
-						name: "Protocol 2",
-						description: "Second protocol",
-					}),
-				);
-			}, 1);
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			store.dispatch(
+				addProtocol({
+					id: protocol2Id,
+					protocol: mockProtocol2,
+					name: "Protocol 2",
+					description: "Second protocol",
+				}),
+			);
 		});
 
 		it("should select all protocols", () => {

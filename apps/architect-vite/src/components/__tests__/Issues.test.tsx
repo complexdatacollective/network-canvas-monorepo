@@ -7,15 +7,6 @@ import Issues from "../Issues";
 
 vi.mock("redux-form");
 
-// Mock the useSelector hook to avoid selector issues
-vi.mock("react-redux", async () => {
-	const actual = await vi.importActual("react-redux");
-	return {
-		...actual,
-		useSelector: vi.fn(() => ({})),
-	};
-});
-
 const mockIssues = {
 	foo: "bar",
 	baz: [
@@ -27,7 +18,6 @@ const mockIssues = {
 };
 
 const mockProps = {
-	form: "test",
 	show: true,
 	hideIssues: () => {},
 };
@@ -40,6 +30,8 @@ const mockStore = configureStore({
 
 describe("<Issues />", () => {
 	it("will render", () => {
+		(getFormSyncErrors as Mock).mockReturnValue(() => ({}));
+
 		const { container } = render(
 			<Provider store={mockStore}>
 				<Issues {...mockProps} />
@@ -50,7 +42,7 @@ describe("<Issues />", () => {
 	});
 
 	it("renders issues from object", () => {
-		(getFormSyncErrors as Mock).mockReturnValueOnce(() => mockIssues);
+		(getFormSyncErrors as Mock).mockReturnValue(() => mockIssues);
 
 		const { container } = render(
 			<Provider store={mockStore}>
