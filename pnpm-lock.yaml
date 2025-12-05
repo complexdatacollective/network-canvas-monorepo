@@ -461,8 +461,8 @@ importers:
         specifier: ^1.3.6
         version: 1.3.6
       '@types/react-select':
-        specifier: ^5.0.1
-        version: 5.0.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: 3.1.2
+        version: 3.1.2
       '@types/react-table':
         specifier: ^7.7.20
         version: 7.7.20
@@ -3646,12 +3646,16 @@ packages:
   '@types/react-grid-layout@1.3.6':
     resolution: {integrity: sha512-Cw7+sb3yyjtmxwwJiXtEXcu5h4cgs+sCGkHwHXsFmPyV30bf14LeD/fa2LwQovuD2HWxCcjIdNhDlcYGj95qGA==}
 
-  '@types/react-select@5.0.1':
-    resolution: {integrity: sha512-h5Im0AP0dr4AVeHtrcvQrLV+gmPa7SA0AGdxl2jOhtwiE6KgXBFSogWw8az32/nusE6AQHlCOHQWjP1S/+oMWA==}
-    deprecated: This is a stub types definition. react-select provides its own type definitions, so you do not need this installed.
+  '@types/react-select@3.1.2':
+    resolution: {integrity: sha512-ygvR/2FL87R2OLObEWFootYzkvm67LRA+URYEAcBuvKk7IXmdsnIwSGm60cVXGaqkJQHozb2Cy1t94tCYb6rJA==}
 
   '@types/react-table@7.7.20':
     resolution: {integrity: sha512-ahMp4pmjVlnExxNwxyaDrFgmKxSbPwU23sGQw2gJK4EhCvnvmib2s/O/+y1dfV57dXOwpr2plfyBol+vEHbi2w==}
+
+  '@types/react-transition-group@4.4.12':
+    resolution: {integrity: sha512-8TV6R3h2j7a91c+1DXdJi3Syo69zzIZbz7Lg5tORM5LEJG7X/E6a1V3drRyBRZq7/utz7A+c4OgYLiLcYGHG6w==}
+    peerDependencies:
+      '@types/react': '*'
 
   '@types/react@19.2.7':
     resolution: {integrity: sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg==}
@@ -9394,15 +9398,17 @@ snapshots:
     dependencies:
       '@types/react': 19.2.7
 
-  '@types/react-select@5.0.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@types/react-select@3.1.2':
     dependencies:
-      react-select: 3.2.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-    transitivePeerDependencies:
-      - react
-      - react-dom
-      - supports-color
+      '@types/react': 19.2.7
+      '@types/react-dom': 19.2.3(@types/react@19.2.7)
+      '@types/react-transition-group': 4.4.12(@types/react@19.2.7)
 
   '@types/react-table@7.7.20':
+    dependencies:
+      '@types/react': 19.2.7
+
+  '@types/react-transition-group@4.4.12(@types/react@19.2.7)':
     dependencies:
       '@types/react': 19.2.7
 

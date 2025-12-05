@@ -1,4 +1,3 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
@@ -8,22 +7,6 @@ import SkipLogicFields from "~/components/sections/fields/SkipLogicFields";
 import { useAppDispatch } from "~/ducks/hooks";
 import { openDialog } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/modules/root";
-
-type OpenDialogFunction = typeof openDialog;
-
-// Internal helper for confirming skip logic deactivation
-const handleDeactivateSkipLogic = async (
-	openDialogFn: (dialog: Parameters<OpenDialogFunction>[0]) => Promise<boolean>,
-) => {
-	const result = await openDialogFn({
-		type: "Warning",
-		title: "This will clear your skip logic",
-		message: "This will clear your skip logic, and delete any rules you have created. Do you want to continue?",
-		confirmLabel: "Clear skip logic",
-	});
-
-	return result;
-};
 
 const SkipLogicSection = (_props: StageEditorSectionProps) => {
 	const dispatch = useAppDispatch();
@@ -39,10 +22,17 @@ const SkipLogicSection = (_props: StageEditorSectionProps) => {
 			}
 
 			// When turning skip logic off, confirm that the user wants to clear the skip logic
-			const confirm = await handleDeactivateSkipLogic((dialog) => dispatch(openDialog(dialog)));
+			const confirm = await dispatch(
+				openDialog({
+					type: "Warning",
+					title: "This will clear your skip logic",
+					message: "This will clear your skip logic, and delete any rules you have created. Do you want to continue?",
+					confirmLabel: "Clear skip logic",
+				}),
+			).unwrap();
 
 			if (confirm) {
-				dispatch(change("edit-stage", "skipLogic", null) as UnknownAction);
+				dispatch(change("edit-stage", "skipLogic", null));
 				return true;
 			}
 

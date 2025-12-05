@@ -31,7 +31,7 @@ const ProtocolStack = ({ protocol }: ProtocolStackProps) => {
 				</Flipped>
 			</div>
 			<h4 className="protocol-stack__label">{protocol.name}</h4>
-			<p className="protocol-stack__filepath" alt={protocol.description || "No description"}>
+			<p className="protocol-stack__filepath" title={protocol.description || "No description"}>
 				{protocol.description || "No description"}
 			</p>
 		</button>

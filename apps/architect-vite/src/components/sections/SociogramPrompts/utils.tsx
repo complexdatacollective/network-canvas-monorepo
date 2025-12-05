@@ -1,3 +1,5 @@
+import type { FilterRule } from "@codaco/protocol-validation";
+
 /**
  * Compare selected edges to edge filters to determine if a warning should be shown
  * @param filters - edge filters
@@ -8,14 +10,6 @@
  * 3. Selected edge is in the filters with rule DOES_NOT_EXIST -- show a warning
  * 4. Selected edge is not in the filters with rule DOES_NOT_EXIST -- no warning
  */
-
-type FilterRule = {
-	options: {
-		operator: string;
-		type: string;
-	};
-};
-
 const getEdgeFilteringWarning = (filters: FilterRule[], edges: string[]): boolean => {
 	const existFilters = filters.filter((rule) => rule.options.operator === "EXISTS");
 	const doesNotExistFilters = filters.filter((rule) => rule.options.operator === "NOT_EXISTS");

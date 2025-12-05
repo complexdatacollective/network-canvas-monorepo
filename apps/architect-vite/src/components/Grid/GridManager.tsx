@@ -74,8 +74,7 @@ const GridManager = ({
 				right corner.
 			</p>
 		}
-		disabled={disabled}
-		contentId={contentId}
+		id={contentId}
 	>
 		<IssueAnchor fieldName={`${fieldName}._error`} description={fieldName} />
 		{children}

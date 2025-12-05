@@ -1,3 +1,4 @@
+import type { VariableType } from "@codaco/protocol-validation";
 import { compose } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import { Row, Section } from "~/components/EditorLayout";
@@ -26,7 +27,7 @@ type PromptFieldsProps = {
 	edgesForSubject?: string[];
 	handleCreateEdge: (option: string) => string;
 	handleChangeCreateEdge: (value: string) => void;
-	createEdge?: string | null;
+	createEdge: string;
 	edgeVariable?: string | null;
 	variableOptions?: SelectOption[];
 	optionsForVariableDraft?: SelectOption[];
@@ -38,12 +39,16 @@ const PromptFields = ({
 	edgesForSubject = [],
 	handleCreateEdge,
 	handleChangeCreateEdge,
-	createEdge = null,
+	createEdge,
 	edgeVariable = null,
 	variableOptions = [],
 	optionsForVariableDraft = [],
 }: PromptFieldsProps) => {
-	const newVariableWindowInitialProps = {
+	const newVariableWindowInitialProps: {
+		entity: "edge" | "node" | "ego";
+		type: string;
+		initialValues: { name: string | null; type: VariableType | null };
+	} = {
 		entity: "edge",
 		type: createEdge,
 		initialValues: { name: null, type: null },
@@ -190,7 +195,7 @@ const PromptFields = ({
 				>
 					<ValidatedField
 						name="negativeLabel"
-						component={RichText as ComponentType<Record<string, unknown>>}
+						component={RichText}
 						validation={{ required: true, maxLength: 220 }}
 						componentProps={{
 							inline: true,
@@ -201,12 +206,9 @@ const PromptFields = ({
 					/>
 				</Section>
 			</Section>
-			<NewVariableWindow
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...newVariableWindowProps}
-			/>
+			<NewVariableWindow {...newVariableWindowProps} />
 		</>
 	);
 };
 
-export default compose(withCreateEdgeHandlers, withEdgesOptions, withVariableOptions)(PromptFields);
+export default compose<PromptFieldsProps>(withCreateEdgeHandlers, withEdgesOptions, withVariableOptions)(PromptFields);

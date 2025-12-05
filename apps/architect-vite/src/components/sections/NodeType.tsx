@@ -58,10 +58,7 @@ const NodeType = (props: NodeTypeProps) => {
 			</Row>
 			{withFilter && (
 				<Row>
-					<Filter
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...props}
-					/>
+					<Filter />
 				</Row>
 			)}
 		</Section>

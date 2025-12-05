@@ -102,7 +102,7 @@ const LaunchPad = () => {
 					</div>
 				</div>
 
-				{process.env.NODE_ENV === "development" && (
+				{import.meta.env.DEV && (
 					<div className="flex flex-col gap-4">
 						<div className="flex items-center gap-4">
 							<div className="bg-accent/10 text-primary rounded-md px-3 py-1 flex gap-2 items-center">

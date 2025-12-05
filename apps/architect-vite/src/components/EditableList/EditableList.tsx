@@ -19,7 +19,7 @@ import { useEditHandlers } from "./useEditHandlers";
 const notEmpty = (value: unknown) =>
 	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item.";
 
-type EditableListProps<T = Record<string, unknown>> = {
+type EditableListProps = {
 	label?: string;
 	form: string;
 	sortMode?: "manual";
@@ -29,7 +29,8 @@ type EditableListProps<T = Record<string, unknown>> = {
 	children?: React.ReactNode;
 	// biome-ignore lint/suspicious/noExplicitAny: too complex to type for now
 	previewComponent: ComponentType<any>;
-	editComponent: React.ComponentType<T>;
+	// biome-ignore lint/suspicious/noExplicitAny: too complex to type for now
+	editComponent: ComponentType<any>;
 	editProps?: Record<string, unknown>;
 	validation?: Record<string, Validator> | Partial<Validation>;
 	// Optional props for customizing hook behavior
@@ -39,7 +40,7 @@ type EditableListProps<T = Record<string, unknown>> = {
 	itemSelector?: (state: Record<string, unknown>, params: { form: string; editField: string }) => unknown;
 };
 
-const EditableList = <T extends Record<string, unknown> = Record<string, unknown>>({
+const EditableList = ({
 	label,
 	fieldName = "prompts",
 	children = null,
@@ -53,7 +54,7 @@ const EditableList = <T extends Record<string, unknown> = Record<string, unknown
 	template = () => ({ id: v4() }), // Function to provide a template for new items
 	sortable = true,
 	itemSelector,
-}: EditableListProps<T>) => {
+}: EditableListProps) => {
 	const { form } = useFormContext();
 	const { editIndex, handleTriggerEdit, handleCancelEdit, handleSaveEdit, handleAddNew } = useEditHandlers({
 		fieldName,
@@ -137,7 +138,11 @@ const EditableList = <T extends Record<string, unknown> = Record<string, unknown
 					initialValues={initialValuesForEdit}
 				>
 					<Layout>
-						<EditComponent {...(initialValuesForEdit as T)} {...editProps} form="editable-list-form" />
+						<EditComponent
+							{...(initialValuesForEdit as Record<string, unknown>)}
+							{...editProps}
+							form="editable-list-form"
+						/>
 					</Layout>
 				</Form>
 			</Dialog>

@@ -13,7 +13,7 @@ export type IndexEntry = {
 type SummaryContextType = {
 	protocol: ProtocolWithMetadata;
 	index: IndexEntry[];
-	workingPath: string;
+	workingPath?: string;
 };
 
 const SummaryContext = createContext<SummaryContextType>({

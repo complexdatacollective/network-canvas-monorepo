@@ -49,7 +49,7 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 	 */
 	const updateFieldNames = () => {
 		// for each issue get friendly title from dom
-		flatIssues.forEach(({ field }) => {
+		flatIssues.forEach(({ field }: { field: string; issue: string }) => {
 			const fieldId = getFieldId(field);
 
 			const targetField = document.querySelector(`#${fieldId}`);

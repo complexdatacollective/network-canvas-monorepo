@@ -1,5 +1,7 @@
-import type { Entity } from "@codaco/protocol-validation";
 import { connect } from "react-redux";
+
+type Entity = "node" | "edge" | "ego";
+
 import { compose, withHandlers } from "recompose";
 import type { FormAction } from "redux-form";
 import { change, SubmissionError } from "redux-form";

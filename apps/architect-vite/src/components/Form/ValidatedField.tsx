@@ -10,6 +10,11 @@ type ValidatedFieldProps<T = Record<string, never>> = Omit<BaseFieldProps, "vali
 	// biome-ignore lint/suspicious/noExplicitAny: redux-form Field component accepts any component with WrappedFieldProps
 	component: ComponentType<WrappedFieldProps & T> | ComponentType<any>;
 	componentProps?: T;
+	label?: string;
+	fieldLabel?: string;
+	inline?: boolean;
+	entityType?: string;
+	promptBeforeChange?: string;
 } & InputHTMLAttributes<HTMLInputElement>;
 
 /**

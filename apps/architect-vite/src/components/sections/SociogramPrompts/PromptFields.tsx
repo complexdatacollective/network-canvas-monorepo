@@ -6,8 +6,10 @@ import FieldsLayout from "./PromptFieldsLayout";
 import TapBehaviourSection from "./PromptFieldsTapBehaviour";
 import withCanCreateEdgesState from "./withCanCreateEdgesState";
 
+type PromptFieldsProps = ComponentProps<typeof FieldsLayout> & ComponentProps<typeof TapBehaviourSection>;
+
 // TODO no prop spreading
-const PromptFields = (props: Record<string, unknown>) => (
+const PromptFields = (props: PromptFieldsProps) => (
 	<div>
 		<PromptText />
 		<FieldsLayout {...props} />

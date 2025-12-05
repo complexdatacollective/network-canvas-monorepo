@@ -50,10 +50,7 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 					validation={{ required: true }}
 				/>
 			</Row>
-			<Filter
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...props}
-			/>
+			<Filter />
 		</Section>
 	);
 };

@@ -38,7 +38,7 @@ const AssetsPage = () => {
 								for more information.
 							</p>
 						</div>
-						<AssetBrowser />
+						<AssetBrowser sectionLayout="vertical" />
 					</div>
 				</Layout>
 			</div>

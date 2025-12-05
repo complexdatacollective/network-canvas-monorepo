@@ -15,17 +15,19 @@ type ExistingVariable = {
 };
 
 type ValidationProps = {
-	onDelete: (itemKey: string) => void;
-	onUpdate: (key: string, value: boolean | number | string | null, itemKey: string) => void;
+	onDelete?: (itemKey: string) => void;
+	onUpdate?: (key: string, value: boolean | number | string | null, itemKey: string) => void;
 	options?: ValidationOption[];
 	itemKey?: string;
 	itemValue?: boolean | number | string | null;
 	existingVariables: Record<string, ExistingVariable>;
 };
 
+const noop = () => {};
+
 const Validation = ({
-	onDelete,
-	onUpdate,
+	onDelete = noop,
+	onUpdate = noop,
 	options = [],
 	itemKey = "",
 	itemValue = null,

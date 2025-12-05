@@ -1,6 +1,7 @@
 import { get } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { Markdown } from "~/components/Form/Fields";
+import type { RootState } from "~/ducks/modules/root";
 import { getAssetManifest } from "~/selectors/protocol";
 import AudioWithUrl from "../../Assets/Audio";
 import BackgroundImageWithUrl from "../../Assets/BackgroundImage";
@@ -10,8 +11,6 @@ type ItemPreviewProps = {
 	content?: string | null;
 	assetType?: string | null;
 };
-
-type RootState = Record<string, unknown>;
 
 const mapStateToProps = (state: RootState, { content }: { content: string }) => {
 	const assetManifest = getAssetManifest(state);

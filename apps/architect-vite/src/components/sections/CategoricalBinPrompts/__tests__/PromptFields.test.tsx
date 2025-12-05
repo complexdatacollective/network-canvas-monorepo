@@ -161,7 +161,11 @@ export const testPromptFields = (PromptFieldsComponent: React.ComponentType<Prom
 						configuration: {
 							name: "fizz",
 							type: "categorical",
-							options: [1, 2, 3],
+							options: [
+								{ label: "Option 1", value: 1 },
+								{ label: "Option 2", value: 2 },
+								{ label: "Option 3", value: 3 },
+							],
 						},
 					}),
 				);

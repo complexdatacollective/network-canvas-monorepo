@@ -15,7 +15,9 @@ type FieldPreviewProps = {
 };
 
 const FieldPreview = ({ variable, prompt, entity, type = null }: FieldPreviewProps) => {
-	const subjectVariables = useSelector((state: RootState) => getVariablesForSubject(state, { entity, type }));
+	const subjectVariables = useSelector((state: RootState) =>
+		getVariablesForSubject(state, { entity: entity as "node" | "edge" | "ego", type: type ?? undefined }),
+	);
 	const codebookVariable = get(subjectVariables, variable, {}) as {
 		type?: string;
 		component?: string;

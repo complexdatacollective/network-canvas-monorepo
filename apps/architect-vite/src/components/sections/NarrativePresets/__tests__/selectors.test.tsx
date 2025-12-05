@@ -78,7 +78,7 @@ describe("NarrativePresets", () => {
 		});
 
 		it("get edges for node type", () => {
-			const result = getEdgesForSubject(mockState, subject);
+			const result = getEdgesForSubject(mockState);
 
 			expect(result).toEqual([
 				{

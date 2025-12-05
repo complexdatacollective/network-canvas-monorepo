@@ -32,7 +32,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 		if (!entity || !protocol) {
 			return {};
 		}
-		const defaultValue = getNewTypeTemplate({ protocol, entity });
+		const defaultValue = getNewTypeTemplate({ protocol, entity: entity as "node" | "edge" });
 		const value = type ? get(protocol, ["codebook", entity, type]) || defaultValue : defaultValue;
 		return format(value);
 	}, [protocol, entity, type]);

@@ -27,8 +27,8 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 						form={form}
 						name="additionalAttributes"
 						id="additionalAttributes"
-						type={type}
-						entity={entity}
+						type={type ?? undefined}
+						entity={entity as "node" | "edge" | "ego"}
 					/>
 				</Row>
 			</Section>

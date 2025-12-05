@@ -10,10 +10,7 @@ const mapStateToProps = (state: RootState, { entity, type, form }: { entity: str
 		entity: entity as "node" | "edge" | "ego",
 		type,
 	});
-	const edgesForSubject = getEdgesForSubject(state, {
-		entity: entity as "node" | "edge" | "ego",
-		type,
-	});
+	const edgesForSubject = getEdgesForSubject(state);
 	const formSelector = formValueSelector(form);
 	const layoutVariable = formSelector(state, "layoutVariable") as string | undefined;
 	const groupVariable = formSelector(state, "groupVariable") as string | undefined;

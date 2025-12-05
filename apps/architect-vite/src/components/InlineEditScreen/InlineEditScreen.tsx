@@ -58,7 +58,6 @@ const InlineEditScreen = ({
 			className="bg-surface-2"
 		>
 			<Layout>
-				{/* @ts-expect-error - reduxForm enhanced component typing issue */}
 				<Form form={form} onSubmit={onSubmit} initialValues={initialValues}>
 					{children}
 				</Form>

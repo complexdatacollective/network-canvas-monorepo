@@ -53,7 +53,7 @@ const EntitySelectField = ({
 	const hasError = !!touched && !!error;
 
 	const handleClickItem = useCallback(
-		(clickedItem) => {
+		(clickedItem: string) => {
 			if (!value || !promptBeforeChange) {
 				onChange(clickedItem);
 				return;
@@ -97,7 +97,7 @@ const EntitySelectField = ({
 				<PreviewComponent
 					key={optionValue}
 					label={optionLabel}
-					color={color}
+					color={color ?? "node-color-seq-1"}
 					onClick={() => handleClickItem(optionValue)}
 					selected={value === optionValue}
 				/>

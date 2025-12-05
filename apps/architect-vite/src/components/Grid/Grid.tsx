@@ -128,7 +128,6 @@ class Grid extends Component<GridProps, GridState> {
 					cols={1}
 					rowHeight={100}
 					autoSize={false}
-					height={500}
 					width={width}
 					onDragStop={this.handleDragStop}
 					onResizeStop={this.handleResizeStop}

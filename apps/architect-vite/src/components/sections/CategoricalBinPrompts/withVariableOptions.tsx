@@ -6,13 +6,18 @@ import { change, formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubject, getVariablesForSubject } from "~/selectors/codebook";
 
-const mapStateToProps = (state: RootState, { form, type, entity }: { form: string; type?: string; entity: string }) => {
-	const variableOptions = getVariableOptionsForSubject(state, { type, entity });
+type Entity = "node" | "edge" | "ego";
+
+const mapStateToProps = (
+	state: RootState,
+	{ form, type, entity }: { form: string; type?: string; entity: Entity | string },
+) => {
+	const variableOptions = getVariableOptionsForSubject(state, { type, entity: entity as Entity });
 
 	const formSelector = formValueSelector(form);
 	const variable = formSelector(state, "variable");
 	const otherVariable = formSelector(state, "otherVariable");
-	const variables = getVariablesForSubject(state, { type, entity });
+	const variables = getVariablesForSubject(state, { type, entity: entity as Entity });
 	const optionsForVariable = get(variables, [variable, "options"], []);
 	const optionsForVariableDraft = formSelector(state, "variableOptions");
 

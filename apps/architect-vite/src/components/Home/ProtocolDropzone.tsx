@@ -17,8 +17,9 @@ export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzonePro
 	};
 
 	const onDrop = (acceptedFiles: File[]) => {
-		if (acceptedFiles.length > 0) {
-			onLoadProtocol(async () => await dispatch(openLocalNetcanvas(acceptedFiles[0])));
+		const file = acceptedFiles[0];
+		if (file) {
+			onLoadProtocol(async () => await dispatch(openLocalNetcanvas(file)));
 		}
 	};
 

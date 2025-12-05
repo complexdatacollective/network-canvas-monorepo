@@ -1,4 +1,4 @@
-import type { FilterRule, VariableType } from "@codaco/protocol-validation";
+import type { VariableType } from "@codaco/protocol-validation";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import React from "react";
 import { useSelector } from "react-redux";
@@ -22,7 +22,7 @@ import getEdgeFilteringWarning from "./utils";
 // updated to use this function.
 // Internal helper - not exported
 const createVariableHandler =
-	(dispatch: AppDispatch, entity: string, type: VariableType, form: string) =>
+	(dispatch: AppDispatch, entity: "node" | "edge" | "ego", type: VariableType, form: string) =>
 	async (variableName: string, variableType: VariableType, field: string) => {
 		const withType = variableType ? { type: variableType } : {};
 
@@ -33,7 +33,7 @@ const createVariableHandler =
 
 		const result = await dispatch(
 			createVariableAsync({
-				entity: entity as "node" | "edge" | "ego",
+				entity: entity,
 				type,
 				configuration,
 			}),
@@ -43,7 +43,7 @@ const createVariableHandler =
 
 		// If we supplied a field, update it with the result of the variable creation
 		if (field) {
-			dispatch(change(form, field, variable) as UnknownAction);
+			dispatch(change(form, field, variable));
 		}
 
 		return variable;
@@ -56,8 +56,8 @@ const TAP_BEHAVIOURS = {
 
 type TapBehaviourProps = {
 	form: string;
-	entity: string;
-	type: string;
+	entity: "node" | "edge" | "ego";
+	type: VariableType;
 };
 
 const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
@@ -116,16 +116,16 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 		}
 
 		// Reset edge creation
-		dispatch(change(form, "edges.create", null) as UnknownAction);
-		dispatch(change(form, "highlight.allowHighlighting", false) as UnknownAction);
-		dispatch(change(form, "highlight.variable", null) as UnknownAction);
+		dispatch(change(form, "edges.create", null));
+		dispatch(change(form, "highlight.allowHighlighting", false));
+		dispatch(change(form, "highlight.variable", null));
 
 		return true;
 	};
 
 	const selectedValue = useSelector((state: RootState) => getFormValue(state, "edges.create")) as string;
 
-	const edgeFilters = useSelector(getEdgeFilters) as FilterRule[];
+	const edgeFilters = useSelector(getEdgeFilters);
 	const showNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, [selectedValue]);
 
 	return (

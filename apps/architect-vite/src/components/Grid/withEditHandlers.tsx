@@ -5,13 +5,7 @@ import type { UnknownAction } from "redux";
 import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";
 import type { RootState } from "~/ducks/modules/root";
-import { getRemainingSpace } from "./helpers";
-
-type GridItem = {
-	id: string;
-	size?: string;
-	[key: string]: unknown;
-};
+import { type GridItem, getRemainingSpace } from "./helpers";
 
 type OwnProps = {
 	capacity?: number;
@@ -106,7 +100,7 @@ const withEditHandlers = compose(
 		normalize: (value: GridItem) => value,
 		template: () => ({ size: "SMALL" }),
 		itemSelector: (state: RootState, { form, editField }: { form: string; editField?: string }) =>
-			formValueSelector(form)(state, editField) as GridItem | undefined,
+			editField ? (formValueSelector(form)(state, editField) as GridItem | undefined) : undefined,
 	}),
 	connect(mapStateToProps, mapDispatchToProps),
 	handlers,

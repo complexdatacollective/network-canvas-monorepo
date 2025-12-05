@@ -36,7 +36,10 @@ export const itemSelector =
 
 		const variable = item?.variable as string | undefined;
 
-		const codebookVariables = getVariablesForSubject(state, { entity, type });
+		const codebookVariables = getVariablesForSubject(state, {
+			entity: entity as "node" | "edge" | "ego",
+			type: type ?? undefined,
+		});
 		const codebookVariable = get(codebookVariables, variable ?? "", {}) as Record<string, unknown>;
 		const codebookProperties = getCodebookProperties(codebookVariable);
 

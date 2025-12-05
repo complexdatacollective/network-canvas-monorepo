@@ -1,5 +1,7 @@
-import { Component } from "react";
-import { Field } from "redux-form";
+import type { Variable } from "@codaco/protocol-validation";
+import { values } from "lodash";
+import { useCallback, useMemo } from "react";
+import { Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Text } from "~/components/Form/Fields";
 import Select from "~/components/Form/Fields/Select";
@@ -7,108 +9,123 @@ import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import Options from "~/components/Options";
 import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
+import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
+import { createVariableAsync } from "~/ducks/modules/protocol/codebook";
+import { getVariablesForSubject } from "~/selectors/codebook";
 import { getFieldId } from "~/utils/issues";
 import safeName from "~/utils/safeName";
 import { validations } from "~/utils/validations";
-import withNewVariableHandler, { form } from "./withNewVariableHandler";
+
+export const form = "create-new-variable";
 
 const isRequired = validations.required();
-
 const isAllowedVariableName = validations.allowedVariableName();
+
+type Entity = "node" | "edge" | "ego";
 
 type NewVariableWindowProps = {
 	show?: boolean;
-	variableType?: string | null;
+	entity: Entity;
+	type: string;
 	allowVariableTypes?: string[] | null;
-	onComplete: () => void;
-	handleCreateNewVariable: (values: Record<string, unknown>) => void;
+	onComplete: (variable: string) => void;
 	onCancel: () => void;
 	initialValues?: Record<string, unknown> | null;
-	existingVariableNames: string[];
 };
 
-type State = Record<string, never>;
+export default function NewVariableWindow({
+	show = false,
+	entity,
+	type,
+	allowVariableTypes = null,
+	onComplete,
+	onCancel,
+	initialValues = null,
+}: NewVariableWindowProps) {
+	const dispatch = useAppDispatch();
 
-class NewVariableWindow extends Component<NewVariableWindowProps, State> {
-	static defaultProps: Partial<NewVariableWindowProps> = {
-		show: false,
-		variableType: null,
-		allowVariableTypes: null,
-		initialValues: null,
-	};
+	const variableType = useAppSelector((state) => formValueSelector(form)(state, "type") as string | undefined);
 
-	validateName = (value: string) => {
-		const { existingVariableNames } = this.props;
-		return validations.uniqueByList(existingVariableNames)(value);
-	};
+	const existingVariables = useAppSelector((state) => getVariablesForSubject(state, { entity, type }));
 
-	filteredVariableOptions() {
-		const { allowVariableTypes } = this.props;
+	const existingVariableNames = useMemo(
+		() => values(existingVariables).map(({ name }: Variable) => name),
+		[existingVariables],
+	);
 
-		return allowVariableTypes
-			? VARIABLE_OPTIONS.filter(({ value: optionVariableType }) => allowVariableTypes.includes(optionVariableType))
-			: VARIABLE_OPTIONS;
-	}
+	const validateName = useCallback(
+		(value: string) => validations.uniqueByList(existingVariableNames)(value),
+		[existingVariableNames],
+	);
 
-	render() {
-		const { show, variableType, handleCreateNewVariable, onCancel, initialValues } = this.props;
+	const filteredVariableOptions = useMemo(
+		() =>
+			allowVariableTypes
+				? VARIABLE_OPTIONS.filter(({ value: optionVariableType }) => allowVariableTypes.includes(optionVariableType))
+				: VARIABLE_OPTIONS,
+		[allowVariableTypes],
+	);
 
-		return (
-			<InlineEditScreen
-				show={show}
-				form={form}
-				onSubmit={(values: unknown) => handleCreateNewVariable(values as Record<string, unknown>)}
-				onCancel={onCancel}
-				initialValues={initialValues ?? undefined}
-				title="Create New Variable"
+	const handleCreateNewVariable = useCallback(
+		async (configuration: Record<string, unknown>) => {
+			const result = await dispatch(
+				createVariableAsync({
+					entity,
+					type,
+					configuration: configuration as Partial<Variable>,
+				}),
+			).unwrap();
+			onComplete(result.variable);
+		},
+		[dispatch, entity, type, onComplete],
+	);
+
+	return (
+		<InlineEditScreen
+			show={show}
+			form={form}
+			onSubmit={(values: unknown) => handleCreateNewVariable(values as Record<string, unknown>)}
+			onCancel={onCancel}
+			initialValues={initialValues ?? undefined}
+			title="Create New Variable"
+		>
+			<Section
+				title="Variable Name"
+				summary={
+					<p>
+						Enter a name for this variable. The variable name is how you will reference the variable elsewhere,
+						including in exported data.
+					</p>
+				}
 			>
-				<Section
-					title="Variable Name"
-					summary={
-						<p>
-							Enter a name for this variable. The variable name is how you will reference the variable elsewhere,
-							including in exported data.
-						</p>
-					}
-				>
-					<div id={getFieldId("name")} />
-					<Field
-						name="name"
-						component={Text}
-						placeholder="e.g. Nickname"
-						validate={[isRequired, this.validateName, isAllowedVariableName]}
-						normalize={safeName}
-					/>
+				<div id={getFieldId("name")} />
+				<Field
+					name="name"
+					component={Text}
+					placeholder="e.g. Nickname"
+					validate={[isRequired, validateName, isAllowedVariableName]}
+					normalize={safeName}
+				/>
+			</Section>
+			<Section title="Variable Type" summary={<p>Choose a variable type</p>}>
+				<div id={getFieldId("type")} />
+				<ValidatedField
+					name="type"
+					component={Select}
+					validation={{ required: true }}
+					componentProps={{
+						placeholder: "Select variable type",
+						options: filteredVariableOptions,
+						isDisabled: !!initialValues?.type,
+					}}
+				/>
+			</Section>
+			{isOrdinalOrCategoricalType(variableType) && (
+				<Section title="Options" summary={<p>Create some options for this input control</p>}>
+					<div id={getFieldId("options")} />
+					<Options name="options" label="Options" />
 				</Section>
-				<Section title="Variable Type" summary={<p>Choose a variable type</p>}>
-					<div id={getFieldId("type")} />
-					<ValidatedField
-						name="type"
-						component={Select}
-						validation={{ required: true }}
-						componentProps={{
-							placeholder: "Select variable type",
-							options: this.filteredVariableOptions(),
-							isDisabled: !!initialValues?.type,
-						}}
-					/>
-				</Section>
-				{isOrdinalOrCategoricalType(variableType) && (
-					<Section title="Options" summary={<p>Create some options for this input control</p>}>
-						<div id={getFieldId("options")} />
-						<Options name="options" label="Options" />
-					</Section>
-				)}
-			</InlineEditScreen>
-		);
-	}
+			)}
+		</InlineEditScreen>
+	);
 }
-
-export default withNewVariableHandler(NewVariableWindow) as unknown as React.ComponentType<{
-	show?: boolean;
-	variableType?: string | null;
-	allowVariableTypes?: string[] | null;
-	onComplete: () => void;
-	onCancel: () => void;
-	initialValues?: Record<string, unknown> | null;
-}>;

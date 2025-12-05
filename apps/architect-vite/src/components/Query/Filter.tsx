@@ -11,7 +11,7 @@ type FilterProps = {
 	error?: string;
 };
 
-const Filter = ({ rules = [], join = null, codebook, onChange, openDialog, error = null }: FilterProps) => (
+const Filter = ({ rules = [], join = undefined, codebook, onChange, openDialog, error = undefined }: FilterProps) => (
 	<Rules rules={rules} join={join} onChange={onChange} openDialog={openDialog} codebook={codebook} error={error} />
 );
 

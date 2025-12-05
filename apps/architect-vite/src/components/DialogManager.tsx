@@ -27,7 +27,9 @@ const DialogManager = () => {
 		...(dialog.type === "Error" && "error" in dialog ? { error: dialog.error } : {}),
 	})) as LegacyDialog[];
 
-	return <Dialogs dialogs={legacyDialogs} closeDialog={handleCloseDialog} />;
+	return (
+		<Dialogs dialogs={legacyDialogs as Parameters<typeof Dialogs>[0]["dialogs"]} closeDialog={handleCloseDialog} />
+	);
 };
 
 export default DialogManager;

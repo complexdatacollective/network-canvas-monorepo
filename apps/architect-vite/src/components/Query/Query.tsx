@@ -12,7 +12,15 @@ type QueryProps = {
 	meta?: Record<string, unknown>;
 };
 
-const Query = ({ rules = [], join = null, codebook, onChange, openDialog, error = null, meta = {} }: QueryProps) => (
+const Query = ({
+	rules = [],
+	join = undefined,
+	codebook,
+	onChange,
+	openDialog,
+	error = undefined,
+	meta = {},
+}: QueryProps) => (
 	<Rules
 		meta={meta}
 		rules={rules}

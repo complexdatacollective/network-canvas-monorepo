@@ -66,7 +66,7 @@ export const importAssetAsync = createAsyncThunk(
 			await saveAssetToDb(asset);
 
 			// Get asset type for manifest
-			const assetType = getSupportedAssetType(file.name);
+			const assetType = getSupportedAssetType(file.name) as AssetType | false;
 
 			if (!assetType) {
 				throw new Error(`Unsupported asset type for file: ${file.name}`);

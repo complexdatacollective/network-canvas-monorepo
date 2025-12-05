@@ -79,7 +79,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 
 	const filteredInterfaceTags = useMemo(
 		() =>
-			filteredInterfaces.reduce((acc, { tags }) => {
+			filteredInterfaces.reduce<string[]>((acc, { tags }) => {
 				acc.push(...tags);
 				return acc;
 			}, []),
@@ -153,7 +153,10 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 			}
 
 			if (e.key === "Enter") {
-				handleSelectInterface(filteredInterfaces[cursor].type);
+				const selectedInterface = filteredInterfaces[cursor];
+				if (selectedInterface) {
+					handleSelectInterface(selectedInterface.type);
+				}
 				return;
 			}
 

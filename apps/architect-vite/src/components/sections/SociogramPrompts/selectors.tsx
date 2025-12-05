@@ -1,3 +1,4 @@
+import type { FilterRule } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/store";
@@ -32,13 +33,9 @@ export const getHighlightVariablesForSubject = (
 };
 
 export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {
+	if (!codebook) return [];
 	return asOptions(codebook.edge ?? {});
 });
-
-type FilterRule = {
-	type: string;
-	[key: string]: unknown;
-};
 
 type CurrentFilters = {
 	rules?: FilterRule[];

@@ -98,7 +98,7 @@ const MapView = ({
 					zoom,
 				});
 
-				const map = mapRef.current as Map;
+				const map = mapRef.current as MapboxMap;
 				map.addControl(
 					new mapboxgl.NavigationControl({
 						showCompass: false,

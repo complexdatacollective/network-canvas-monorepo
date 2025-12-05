@@ -1,4 +1,3 @@
-import type { VariableOption } from "@codaco/protocol-validation";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import type { FormAction } from "redux-form";
@@ -13,7 +12,7 @@ import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
-import getVariableOptionsGetter from "./getVariableOptionsGetter";
+import getVariableOptionsGetter, { type VariableOption } from "./getVariableOptionsGetter";
 
 type SortOptionsProps = StageEditorSectionProps & {
 	dataSource: string;

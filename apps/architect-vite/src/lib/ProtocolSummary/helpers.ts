@@ -35,10 +35,12 @@ const buildVariableEntry =
 			[],
 		);
 
-		const stages = usage.map((path: string) => {
-			const [stagePath] = path.split(".");
-			return get(protocol, `${stagePath}.id`);
-		});
+		const stages = usage
+			.map((path: string) => {
+				const [stagePath] = path.split(".");
+				return get(protocol, `${stagePath}.id`) as string | undefined;
+			})
+			.filter((id): id is string => id !== undefined);
 
 		const field = fields.find((f) => f.variable === variableId);
 
@@ -69,9 +71,9 @@ type Protocol = {
 	};
 };
 
-export const getCodebookIndex = (protocol: Protocol) => {
+export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
 	if (!protocol || !protocol.stages || !protocol.codebook) {
-		return {};
+		return [];
 	}
 
 	const variablePaths = utils.collectPaths(paths.variables, protocol);

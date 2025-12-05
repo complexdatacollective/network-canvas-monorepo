@@ -40,10 +40,19 @@ export const trimSize = (from: number, to: number, items: GridItem[], capacity: 
 	return 2;
 };
 
-export const getLayout = (items: GridItem[] = [], capacity = 4) => {
+type LayoutItem = {
+	i: string;
+	y: number;
+	w: number;
+	h: number;
+	x: number;
+	maxH?: number;
+};
+
+export const getLayout = (items: GridItem[] = [], capacity = 4): LayoutItem[] => {
 	const remainingSpace = getRemainingSpace(items, capacity);
 
-	const layout = items.reduce(
+	const layout = items.reduce<LayoutItem[]>(
 		(memo, { id, size }) => {
 			const y = memo.reduce((acc, { h }) => acc + h, 0);
 			const h = parseSize(size);

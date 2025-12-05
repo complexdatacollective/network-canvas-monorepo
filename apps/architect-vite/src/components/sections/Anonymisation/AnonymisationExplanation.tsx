@@ -17,7 +17,7 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
 				component={Text}
 				placeholder="This interview uses enhanced privacy protection"
 				validation={{ required: true }}
-				maxLength="50"
+				maxLength={50}
 			/>
 		</Row>
 		<Row>

@@ -65,7 +65,12 @@ const BooleanField = ({
 		<div className={componentClasses}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
 			<div className="form-field-boolean__control">
-				<BooleanToggle options={options} value={input.value} onChange={input.onChange} noReset={noReset} />
+				<BooleanToggle
+					options={options as Parameters<typeof BooleanToggle>[0]["options"]}
+					value={input.value as boolean | null}
+					onChange={input.onChange as (value: boolean | null) => void}
+					noReset={noReset}
+				/>
 				{invalid && touched && (
 					<div className="form-field-boolean__error">
 						<Icon name="warning" />

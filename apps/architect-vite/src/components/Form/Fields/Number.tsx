@@ -23,6 +23,7 @@ const toInt = (value: string): number | null => {
 const NumberInput = ({ input = {}, placeholder, ...props }: NumberInputProps) => {
 	const enhancedInput = {
 		...input,
+		value: input.value?.toString() ?? "",
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 			input.onChange?.(toInt(e.target.value));
 		},
@@ -35,7 +36,7 @@ const NumberInput = ({ input = {}, placeholder, ...props }: NumberInputProps) =>
 		<TextInput
 			type="number"
 			placeholder={placeholder || "Enter a number..."}
-			input={enhancedInput}
+			input={enhancedInput as Parameters<typeof TextInput>[0]["input"]}
 			{...(props as Record<string, unknown>)}
 		/>
 	);

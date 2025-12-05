@@ -43,7 +43,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 		[dispatch, form, name],
 	);
 
-	const handleReorder = (newOrder: T[]) => {
+	const handleReorder = (newOrder: unknown[]) => {
 		onChange(newOrder);
 	};
 

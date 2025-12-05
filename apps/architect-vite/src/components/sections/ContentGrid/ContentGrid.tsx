@@ -39,7 +39,7 @@ const denormalizeType = (state: RootState, { form, editField }: { form: string; 
 	};
 };
 
-const ContentGrid = (props: StageEditorSectionProps) => (
+const ContentGrid = ({ form, ...restProps }: StageEditorSectionProps) => (
 	<Grid
 		previewComponent={ItemPreview}
 		editComponent={ItemEditor}
@@ -47,9 +47,9 @@ const ContentGrid = (props: StageEditorSectionProps) => (
 		itemSelector={denormalizeType}
 		title="Edit Items"
 		capacity={capacity}
-		form={props.form}
+		form={form}
 		disabled={false}
-		{...props}
+		{...restProps}
 	/>
 );
 
