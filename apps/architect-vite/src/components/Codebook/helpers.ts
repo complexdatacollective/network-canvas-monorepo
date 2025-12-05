@@ -190,18 +190,23 @@ export const getEntityProperties = (
 		return null;
 	}
 
-	// Type guard to check if entityType has name and color
+	// Type guard to check if entityType has name and color (nodes and edges do, ego does not)
 	const hasNameAndColor = (
 		def: NodeDefinition | EdgeDefinition | EgoDefinition,
 	): def is NodeDefinition | EdgeDefinition => {
 		return "name" in def && "color" in def;
 	};
 
-	if (!hasNameAndColor(entityType)) {
+	const isEgo = entity === "ego";
+	const variables = entityType.variables;
+
+	// For non-ego entities, we need name and color
+	if (!isEgo && !hasNameAndColor(entityType)) {
 		return null;
 	}
 
-	const { name, color, variables } = entityType;
+	const name = hasNameAndColor(entityType) ? entityType.name : "Ego";
+	const color = hasNameAndColor(entityType) ? entityType.color : undefined;
 
 	const variableIndex = getVariableIndex(state) as Record<string, string>;
 	const variableMeta = getVariableMetaByIndex(state);
