@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 8.0.1
+
+### Patch Changes
+
+- 84d09e3: Implement validation of variable ID uniqueness across entities. Replaces broken implementation.
+
 ## 8.0.0
 
 ### Major Changes
