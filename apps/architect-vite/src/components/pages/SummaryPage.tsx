@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import { Layout } from "~/components/EditorLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
-import { Button } from "~/lib/legacy-ui";
+import { Button } from "~/lib/legacy-ui/components";
 import AssetManifest from "~/lib/ProtocolSummary/components/AssetManifest";
 import Codebook from "~/lib/ProtocolSummary/components/Codebook";
 import Contents from "~/lib/ProtocolSummary/components/Contents";

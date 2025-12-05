@@ -1,32 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
-import type { ActiveProtocolState } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 
-// Selector that properly handles the TimelineState wrapping in RootState
-export const selectActiveProtocol = (state: RootState): ActiveProtocolState => {
+// During transition, check both old and new stores
+export const getProtocol = (state: RootState) => {
 	// The activeProtocol in RootState is wrapped by the timeline middleware
 	// We need to extract the present value
 	const timelineState = state.activeProtocol;
 
-	if (timelineState && typeof timelineState === "object" && "present" in timelineState) {
-		return (timelineState as unknown as { present: ActiveProtocolState }).present ?? null;
-	}
-
-	// Fallback for raw state (shouldn't happen in normal operation)
-	return (timelineState as unknown as ActiveProtocolState) ?? null;
-};
-
-// During transition, check both old and new stores
-export const getProtocol = (state: RootState) => {
-	// First check new activeProtocol store (with timeline)
-	const activeProtocol = selectActiveProtocol(state);
-	if (activeProtocol) {
-		return activeProtocol;
-	}
-
-	// Fall back to old protocol store during transition
-	return state.protocol?.present || null;
+	return timelineState.present;
 };
 
 export const getAssetManifest = (state: RootState) => {
@@ -117,14 +99,14 @@ export const getIsProtocolValid = (_state: RootState): boolean => {
 // Timeline selector
 export const getTimelineLocus = (state: RootState) => {
 	// Check new activeProtocol store first
-	const activeProtocolTimeline = (state as RootState & { activeProtocol?: { timeline?: unknown[] } }).activeProtocol
-		?.timeline;
+	const activeProtocolTimeline = state.activeProtocol?.timeline;
 	if (activeProtocolTimeline?.length > 0) {
 		return activeProtocolTimeline[activeProtocolTimeline.length - 1];
 	}
 
 	// Fall back to old protocol store
-	const protocolTimeline = (state as RootState & { protocol?: { timeline?: unknown[] } }).protocol?.timeline;
+	const protocolTimeline = state.activeProtocol.timeline;
+
 	if (protocolTimeline && protocolTimeline.length > 0) {
 		return protocolTimeline[protocolTimeline.length - 1];
 	}

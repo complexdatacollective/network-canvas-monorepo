@@ -4,7 +4,7 @@ import Codebook from "~/components/Codebook/Codebook";
 import EntityTypeDialog from "~/components/Codebook/EntityTypeDialog";
 import { Layout } from "~/components/EditorLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
-import { Button } from "~/lib/legacy-ui";
+import { Button } from "~/lib/legacy-ui/components";
 
 type DialogState = {
 	entity?: string;

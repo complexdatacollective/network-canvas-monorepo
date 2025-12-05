@@ -192,7 +192,7 @@ describe("activeProtocol", () => {
 
 		it("should select null when no active protocol", () => {
 			const state = store.getState();
-			// selectActiveProtocol is bound to the slice, so pass the slice state directly
+			// getProtocol is bound to the slice, so pass the slice state directly
 			const protocol = state.activeProtocol;
 
 			expect(protocol).toBeNull();

@@ -3,7 +3,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
 import reducer, { actionCreators, createStageAsync, deleteStageAsync, test } from "../stages";
 
-const mockStages: Partial<Stage>[] = [
+const mockStages = [
 	{ id: "3", type: "Information", label: "Foo" },
 	{
 		id: "9",
@@ -16,7 +16,7 @@ const mockStages: Partial<Stage>[] = [
 		],
 	},
 	{ id: "5", type: "OrdinalBin", label: "Baz" },
-];
+] as Stage[];
 
 // Create a test store for async actions
 const createTestStore = (initialStages: Stage[] = []) => {
@@ -38,7 +38,7 @@ describe("protocol.stages", () => {
 	describe("reducer", () => {
 		describe("createStage", () => {
 			it("Creates a stage", () => {
-				const newStage: Stage = { id: "new", type: "Foo", label: "" };
+				const newStage = { id: "new", type: "Information", label: "" } as Stage;
 
 				const appendStageToState = reducer(mockStages, test.createStage(newStage));
 				expect(appendStageToState[3]).toMatchObject({ ...newStage });
@@ -61,7 +61,7 @@ describe("protocol.stages", () => {
 			});
 
 			it("Replaces stage object if overwrite is true", () => {
-				const updatedStage = { something: "different" };
+				const updatedStage = { something: "different" } as unknown as Stage;
 
 				const updatedStages = reducer(mockStages, test.updateStage("9", updatedStage, true));
 
@@ -102,7 +102,7 @@ describe("protocol.stages", () => {
 		it("createStageAsync", async () => {
 			const store = createTestStore();
 
-			const resultAction = await store.dispatch(createStageAsync({ options: { type: "Foo" } }));
+			const resultAction = await store.dispatch(createStageAsync({ options: { type: "EgoForm" } }));
 
 			expect(createStageAsync.fulfilled.match(resultAction)).toBe(true);
 			if (createStageAsync.fulfilled.match(resultAction)) {

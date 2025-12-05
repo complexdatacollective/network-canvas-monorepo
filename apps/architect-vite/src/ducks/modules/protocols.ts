@@ -84,21 +84,13 @@ const protocolsSlice = createSlice({
 export const { addProtocol, updateProtocol, updateProtocolMetadata, removeProtocol } = protocolsSlice.actions;
 
 // Selectors
-export const selectAllProtocols = (state: RootState): StoredProtocol[] => {
+const selectAllProtocols = (state: RootState): StoredProtocol[] => {
 	const protocols = state.protocols || {};
 	return Object.values(protocols).sort((a, b) => b.lastModified - a.lastModified);
 };
 
-export const selectProtocolById = (id: string) => (state: RootState) => {
-	return state.protocols?.[id];
-};
-
 export const selectRecentProtocols = (limit: number) => (state: RootState) => {
 	return selectAllProtocols(state).slice(0, limit);
-};
-
-export const selectProtocolExists = (id: string) => (state: RootState) => {
-	return !!state.protocols?.[id];
 };
 
 export default protocolsSlice.reducer;

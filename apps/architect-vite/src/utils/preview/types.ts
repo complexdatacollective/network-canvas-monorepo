@@ -47,12 +47,12 @@ export type ReadyResponse = {
 	previewUrl: string;
 };
 
-export type RejectedResponse = {
+type RejectedResponse = {
 	status: "rejected";
 	message: "Invalid protocol";
 };
 
-export type ErrorResponse = {
+type ErrorResponse = {
 	status: "error";
 	message: string;
 };

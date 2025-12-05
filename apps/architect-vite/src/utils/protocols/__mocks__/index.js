@@ -13,4 +13,3 @@ export const createProtocol = vi.fn(() =>
 	}),
 );
 export const unbundleProtocol = vi.fn(() => Promise.resolve("/dev/null/fake/working/path"));
-export const bundleProtocol = vi.fn(() => Promise.resolve("/dev/null/fake/working/path"));

@@ -34,7 +34,7 @@ export function getProgressText(progress: UploadProgress | null): string {
 	}
 }
 
-export type UploadProgressCallback = (progress: UploadProgress) => void;
+type UploadProgressCallback = (progress: UploadProgress) => void;
 
 function getFrescoConfig(): { frescoUrl: string; apiToken?: string } {
 	const frescoUrl = import.meta.env.VITE_FRESCO_PREVIEW_URL;

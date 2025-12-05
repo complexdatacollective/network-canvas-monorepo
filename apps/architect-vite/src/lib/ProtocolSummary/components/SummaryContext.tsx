@@ -10,7 +10,7 @@ export type IndexEntry = {
 	[key: string]: unknown;
 };
 
-export type SummaryContextType = {
+type SummaryContextType = {
 	protocol: ProtocolWithMetadata;
 	index: IndexEntry[];
 	workingPath: string;

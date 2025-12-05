@@ -9,7 +9,7 @@ import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
 
 // Types
-export type ActiveProtocolState =
+type ActiveProtocolState =
 	| (CurrentProtocol & {
 			name: string;
 			isValid: boolean;
@@ -111,7 +111,6 @@ const activeProtocolSlice = createSlice({
 
 // Extract actions and selectors
 export const setActiveProtocol = activeProtocolSlice.actions.setActiveProtocol;
-export const updateProtocol = activeProtocolSlice.actions.updateProtocol;
 export const updateProtocolOptions = activeProtocolSlice.actions.updateProtocolOptions;
 export const markProtocolSaved = activeProtocolSlice.actions.markProtocolSaved;
 export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;

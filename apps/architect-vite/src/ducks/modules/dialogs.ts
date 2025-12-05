@@ -10,14 +10,8 @@ const initialState: DialogsState = {
 	dialogs: [],
 };
 
-// Type for dialog config when opening dialogs (without id, callbacks added by thunk)
-export type DialogConfig = Omit<Dialog, "id" | "onConfirm" | "onCancel"> & {
-	onConfirm?: () => void;
-	onCancel?: () => void;
-};
-
 // Async thunk for opening dialogs with promise support
-export const openDialog = createAsyncThunk<boolean, DialogConfig>(
+export const openDialog = createAsyncThunk<boolean, Omit<Dialog, "id">>(
 	"dialogs/openDialog",
 	async (dialogConfig, { dispatch }) => {
 		return new Promise<boolean>((resolve) => {

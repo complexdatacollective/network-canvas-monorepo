@@ -7,7 +7,7 @@ import Simple from "./Dialog/Simple";
 import UserErrorDialogComponent from "./Dialog/UserError";
 import Warning from "./Dialog/Warning";
 
-export type BaseDialog = {
+type BaseDialog = {
 	id: string;
 	title?: string;
 	message?: ReactNode;
@@ -15,7 +15,7 @@ export type BaseDialog = {
 	onCancel?: () => void;
 };
 
-export type ConfirmDialog = BaseDialog & {
+type ConfirmDialog = BaseDialog & {
 	type: "Confirm";
 	title: string;
 	canCancel?: boolean;
@@ -23,13 +23,13 @@ export type ConfirmDialog = BaseDialog & {
 	cancelLabel?: string;
 };
 
-export type NoticeDialog = BaseDialog & {
+type NoticeDialog = BaseDialog & {
 	type: "Notice";
 	title: string;
 	confirmLabel?: string;
 };
 
-export type WarningDialog = BaseDialog & {
+type WarningDialog = BaseDialog & {
 	type: "Warning";
 	title: string;
 	canCancel?: boolean;
@@ -37,20 +37,20 @@ export type WarningDialog = BaseDialog & {
 	cancelLabel?: string;
 };
 
-export type ErrorDialog = BaseDialog & {
+type ErrorDialog = BaseDialog & {
 	type: "Error";
 	error?: Error | string | { friendlyMessage?: string };
 	confirmLabel?: string;
 };
 
-export type UserErrorDialog = BaseDialog & {
+type UserErrorDialog = BaseDialog & {
 	type: "UserError";
 	message?: string;
 	error?: Error | string | { friendlyMessage?: string };
 	confirmLabel?: string;
 };
 
-export type SimpleDialog = BaseDialog & {
+type SimpleDialog = BaseDialog & {
 	type: "Simple";
 	title: string;
 	children?: ReactNode;

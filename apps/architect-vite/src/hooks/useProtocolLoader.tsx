@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
-import { selectActiveProtocol } from "~/selectors/protocol";
+import { getProtocol } from "~/selectors/protocol";
 
 /**
  * Hook to handle loading protocols based on route parameters
@@ -11,7 +11,7 @@ const useProtocolLoader = () => {
 	const [, _navigate] = useLocation();
 
 	// Get the stored protocol
-	const activeProtocol = useSelector(selectActiveProtocol);
+	const activeProtocol = useSelector(getProtocol);
 
 	useEffect(() => {
 		if (!activeProtocol) {

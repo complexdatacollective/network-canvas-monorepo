@@ -19,7 +19,7 @@ import Prompts, { type PromptType } from "./Prompts";
 import QuickAdd from "./QuickAdd";
 import SkipLogic from "./SkipLogic";
 
-export type FormFieldType = {
+type FormFieldType = {
 	prompt: string;
 	variable: string;
 	[key: string]: unknown;

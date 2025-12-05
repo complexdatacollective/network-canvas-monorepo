@@ -1,5 +1,5 @@
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
-import { selectActiveProtocol } from "~/selectors/protocol";
+import { getProtocol } from "~/selectors/protocol";
 import { validateProtocolAsync } from "../modules/protocolValidation";
 import type { RootState } from "../modules/root";
 import type { AppDispatch } from "../store";
@@ -15,8 +15,8 @@ const startAppListening = protocolValidationListenerMiddleware.startListening as
 startAppListening({
 	predicate: (_action, currentState, previousState) => {
 		// Get the current and previous active protocols
-		const currentProtocol = selectActiveProtocol(currentState);
-		const previousProtocol = selectActiveProtocol(previousState);
+		const currentProtocol = getProtocol(currentState);
+		const previousProtocol = getProtocol(previousState);
 
 		// Only validate if:
 		// 1. We have a current protocol
@@ -28,7 +28,7 @@ startAppListening({
 	},
 	effect: async (_action, listenerApi) => {
 		const state = listenerApi.getState();
-		const protocol = selectActiveProtocol(state);
+		const protocol = getProtocol(state);
 
 		if (protocol) {
 			// Dispatch the validation async thunk

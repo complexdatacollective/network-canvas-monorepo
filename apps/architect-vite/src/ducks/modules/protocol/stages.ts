@@ -157,6 +157,8 @@ const stagesSlice = createSlice({
 						return stage;
 					}
 
+					invariant("prompts" in stage, `Stage with ID ${stageId} has no prompts to delete`);
+
 					const prompts = stage.prompts?.filter(({ id }) => id !== promptId) || [];
 
 					// If prompt is empty, we can delete the stage too
