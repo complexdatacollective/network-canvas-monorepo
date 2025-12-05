@@ -1,3 +1,4 @@
+import type { Stage } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
 import { compact, omit } from "es-toolkit/compat";
@@ -6,15 +7,6 @@ import type { RootState } from "~/ducks/modules/root";
 import { getNodeTypes } from "~/selectors/codebook";
 import { getStage } from "~/selectors/protocol";
 import prune from "~/utils/prune";
-
-// Types
-type Stage = {
-	id: string;
-	type: string;
-	label: string;
-	prompts?: Array<{ id: string | number }>;
-	[key: string]: unknown;
-};
 
 type StagesState = Stage[];
 

@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import {
 	type CurrentProtocol,
 	type EdgeColor,

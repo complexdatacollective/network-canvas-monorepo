@@ -26,16 +26,14 @@ const AssetBrowserWindow = ({
 			cancelText="Cancel"
 			header={<h2 className="m-0">Resource Browser</h2>}
 			footer={
-				<>
-					<Button
-						onClick={() => {
-							onCancel();
-						}}
-						color="platinum"
-					>
-						Cancel
-					</Button>
-				</>
+				<Button
+					onClick={() => {
+						onCancel();
+					}}
+					color="platinum"
+				>
+					Cancel
+				</Button>
 			}
 		>
 			<Layout>

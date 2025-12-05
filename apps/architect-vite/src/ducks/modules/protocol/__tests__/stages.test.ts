@@ -1,15 +1,19 @@
+import type { Stage } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
-import type { Stage } from "../stages";
 import reducer, { actionCreators, createStageAsync, deleteStageAsync, test } from "../stages";
 
-const mockStages: Stage[] = [
+const mockStages: Partial<Stage>[] = [
 	{ id: "3", type: "Information", label: "Foo" },
 	{
 		id: "9",
 		type: "NameGenerator",
 		label: "Bar",
-		prompts: [{ id: "7" }, { id: "3" }, { id: "5" }],
+		prompts: [
+			{ id: "7", text: "prompt" },
+			{ id: "3", text: "prompt2" },
+			{ id: "5", text: "prompt3" },
+		],
 	},
 	{ id: "5", type: "OrdinalBin", label: "Baz" },
 ];
