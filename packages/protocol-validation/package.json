@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/protocol-validation",
-	"version": "7.2.0",
+	"version": "8.0.0",
 	"main": "./dist/index.js",
 	"license": "GPL-3.0-or-later",
 	"repository": {

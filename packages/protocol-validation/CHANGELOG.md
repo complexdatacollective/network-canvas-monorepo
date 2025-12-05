@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 8.0.0
+
+### Major Changes
+
+- edc9dcb: added relationship to ego variables to edges for family tree census #315
+
 ## 7.2.0
 
 ### Minor Changes
