@@ -76,6 +76,211 @@
 			"permanent": true
 		},
 		{
+			"source": "/en/desktop/key-concepts/additional-variables",
+			"destination": "/en/project/key-concepts/additional-variables",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/codebook",
+			"destination": "/en/project/key-concepts/codebook",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/data-export",
+			"destination": "/en/project/key-concepts/data-export",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/field-validation",
+			"destination": "/en/project/key-concepts/field-validation",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/forms",
+			"destination": "/en/project/key-concepts/forms",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/input-controls",
+			"destination": "/en/project/key-concepts/input-controls",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/interfaces",
+			"destination": "/en/project/key-concepts/interfaces",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/network-filtering",
+			"destination": "/en/project/key-concepts/network-filtering",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/preview-mode",
+			"destination": "/en/project/key-concepts/preview-mode",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/prompts",
+			"destination": "/en/project/key-concepts/prompts",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/resources",
+			"destination": "/en/project/key-concepts/resources",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/skip-logic",
+			"destination": "/en/project/key-concepts/skip-logic",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/the-protocol-file",
+			"destination": "/en/project/key-concepts/the-protocol-file",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/key-concepts/variables",
+			"destination": "/en/project/key-concepts/variables",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/project-information/citing-the-software",
+			"destination": "/en/project/project-information/citing-the-software",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/project-information/contributing-code",
+			"destination": "/en/project/project-information/contributing-code",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/project-information/gdpr-compliance",
+			"destination": "/en/project/project-information/gdpr-compliance",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/project-information/irb-best-practices",
+			"destination": "/en/project/project-information/irb-best-practices",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/project-information/project-overview",
+			"destination": "/en/project/project-information/project-overview",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/project-information/requests-for-collaboration",
+			"destination": "/en/project/project-information/requests-for-collaboration",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/categorical-bin",
+			"destination": "/en/project/interface-documentation/categorical-bin",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/dyad-census",
+			"destination": "/en/project/interface-documentation/dyad-census",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/ego-form",
+			"destination": "/en/project/interface-documentation/ego-form",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/information",
+			"destination": "/en/project/interface-documentation/information",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/large-roster-name-generator",
+			"destination": "/en/project/interface-documentation/large-roster-name-generator",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/name-generator-roster",
+			"destination": "/en/project/interface-documentation/name-generator-roster",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/name-generator-using-forms",
+			"destination": "/en/project/interface-documentation/name-generator-using-forms",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/name-generator-using-quick-add",
+			"destination": "/en/project/interface-documentation/name-generator-using-quick-add",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/narrative",
+			"destination": "/en/project/interface-documentation/narrative",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/ordinal-bin",
+			"destination": "/en/project/interface-documentation/ordinal-bin",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/per-alter-edge-form",
+			"destination": "/en/project/interface-documentation/per-alter-edge-form",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/per-alter-form",
+			"destination": "/en/project/interface-documentation/per-alter-form",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/shared",
+			"destination": "/en/project/interface-documentation/shared",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/small-roster-name-generator",
+			"destination": "/en/project/interface-documentation/small-roster-name-generator",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/sociogram",
+			"destination": "/en/project/interface-documentation/sociogram",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/interface-documentation/tie-strength-census",
+			"destination": "/en/project/interface-documentation/tie-strength-census",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/advanced-topics/network-canvas-graphml",
+			"destination": "/en/project/advanced-topics/network-canvas-graphml",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/advanced-topics/protocol-file-format",
+			"destination": "/en/project/advanced-topics/protocol-file-format",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/advanced-topics/protocol-schema-information",
+			"destination": "/en/project/advanced-topics/protocol-schema-information",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/tutorials/building-a-protocol",
+			"destination": "/en/project/tutorials/building-a-protocol",
+			"permanent": true
+		},
+		{
+			"source": "/en/desktop/tutorials/working-with-data",
+			"destination": "/en/project/tutorials/working-with-data",
+			"permanent": true
+		},
+		{
 			"source": "/:path((?!en|_next/static|_next/image|assets|protocols|favicons|images|.*\\.\\w+.*).*)",
 			"destination": "/en/desktop/:path*",
 			"permanent": true

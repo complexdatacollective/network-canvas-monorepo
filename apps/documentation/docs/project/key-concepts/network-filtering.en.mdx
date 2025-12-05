@@ -10,11 +10,11 @@ Network filtering allows you to show only a subset of nodes or edges on a given 
 
 Network filtering is a configuration feature you will find in several areas of Architect. It allows you to define one or more rules that determine which nodes or edges should be shown on a given stage (or in a side panel - [see below](#network-filtering-in-a-side-panel)). You can use it to show only a subset of the network.
 
-This is particularly useful in cases where the content of the stage does not apply to all network entities. Consider the example of an interview protocol with two stages - a [Name Generator](/en/desktop/interface-documentation/name-generator-using-forms) and an [Ordinal Bin](/en/desktop/interface-documentation/ordinal-bin). On the first stage, for each alter named the participant is asked if they play sports with the individual. The second stage asks "how often do you play sports with each of these people?". Filtering the network for this second stage to show only those alters with the **plays sports with** attribute will reduce participant burden and make the interview protocol more efficient.
+This is particularly useful in cases where the content of the stage does not apply to all network entities. Consider the example of an interview protocol with two stages - a [Name Generator](/en/project/interface-documentation/name-generator-using-forms) and an [Ordinal Bin](/en/project/interface-documentation/ordinal-bin). On the first stage, for each alter named the participant is asked if they play sports with the individual. The second stage asks "how often do you play sports with each of these people?". Filtering the network for this second stage to show only those alters with the **plays sports with** attribute will reduce participant burden and make the interview protocol more efficient.
 
 <TipBox>
 
-Network filtering is different from [skip logic](/en/desktop/key-concepts/skip-logic)! Although the two sound similar in principle, they achieve very different design goals. Whereas network filtering determines which nodes to show _within_ a stage, skip logic determines if a stage should be shown at all. Consult the article on [skip logic](/en/desktop/key-concepts/skip-logic) to learn more.
+Network filtering is different from [skip logic](/en/project/key-concepts/skip-logic)! Although the two sound similar in principle, they achieve very different design goals. Whereas network filtering determines which nodes to show _within_ a stage, skip logic determines if a stage should be shown at all. Consult the article on [skip logic](/en/project/key-concepts/skip-logic) to learn more.
 
 </TipBox>
 
@@ -32,7 +32,7 @@ Network filtering is only available on _name interpreter_ interfaces - interface
 
 ### Filtering rules
 
-Similar to [skip logic](/en/desktop/key-concepts/skip-logic) rules, filtering rules have two types that can be targeted at either nodes or edges:
+Similar to [skip logic](/en/project/key-concepts/skip-logic) rules, filtering rules have two types that can be targeted at either nodes or edges:
 
 - **"Presence" Rules**: These rules allow you to query if a given entity of a specified type exists in the network, using either the `exists` or `not exists` operator. This rule type is not generally useful for most typical filtering operations, but can be used when roster data contains nodes or edges of multiple types.
 - **"Attribute" Rules**: These rules allow you to query the value of a variable on a given entity type. For example, you may query the value of a variable called `age` on an alter type called 'Person'. You can evaluate the result using one of several logical operators, that vary depending on the variable type. For example, number variables will let you query using operators such as 'greater than' and 'less than'.
@@ -61,7 +61,7 @@ This means that the choice of join operator can have an extremely significant im
 
 Since network filtering can be confusing to new users, here is an extended example to illustrate the feature that includes both node and edge rules.
 
-Consider an interview where you use the [Sociogram](/en/desktop/interface-documentation/sociogram) to generate sex ties between alters and to collect boolean attribute data on HIV status of alters. Let's imagine that you then want to use a [Per Alter Form](/en/desktop/interface-documentation/per-alter-form) or another name interpreter to capture data on drug use behavior of alters, but only those who are HIV positive _and_ who have a sex relationship with another alter in the network.
+Consider an interview where you use the [Sociogram](/en/project/interface-documentation/sociogram) to generate sex ties between alters and to collect boolean attribute data on HIV status of alters. Let's imagine that you then want to use a [Per Alter Form](/en/project/interface-documentation/per-alter-form) or another name interpreter to capture data on drug use behavior of alters, but only those who are HIV positive _and_ who have a sex relationship with another alter in the network.
 
 To achieve this using network filtering, you can implement the following edge and node rules on the Per Alter Form:
 
@@ -81,7 +81,7 @@ network.
 
 ## Network filtering in a side panel
 
-You can also filter the content of Name Generator [side panels](/en/desktop/interface-documentation/name-generator-using-forms#side-panels) (where they are used). This feature works exactly the same way as stage level network filtering, except that the results are only applied to the specific side panel you are configuring. Any filtering you set will apply across all [prompts](/en/desktop/key-concepts/prompts) for that stage.
+You can also filter the content of Name Generator [side panels](/en/project/interface-documentation/name-generator-using-forms#side-panels) (where they are used). This feature works exactly the same way as stage level network filtering, except that the results are only applied to the specific side panel you are configuring. Any filtering you set will apply across all [prompts](/en/project/key-concepts/prompts) for that stage.
 
 This feature can be particularly useful if you wish to filter elements of a roster. For example, your roster may contain an attribute that represents graduation year that you could use to filter the side panel content for a question about classmates known from a certain year group.
 
@@ -89,8 +89,8 @@ This feature can be particularly useful if you wish to filter elements of a rost
 
 ## Related concepts
 
-- [Skip Logic](/en/desktop/key-concepts/skip-logic) - Conditionally skip or show entire stages
-- [Variables](/en/desktop/key-concepts/variables) - Create variables to use in filtering rules
-- [Interfaces](/en/desktop/key-concepts/interfaces) - Understanding which Interfaces support network filtering
-- [Prompts](/en/desktop/key-concepts/prompts) - Configure questions that work with filtered networks
-- [Resources](/en/desktop/key-concepts/resources) - Import roster data for filtering
+- [Skip Logic](/en/project/key-concepts/skip-logic) - Conditionally skip or show entire stages
+- [Variables](/en/project/key-concepts/variables) - Create variables to use in filtering rules
+- [Interfaces](/en/project/key-concepts/interfaces) - Understanding which Interfaces support network filtering
+- [Prompts](/en/project/key-concepts/prompts) - Configure questions that work with filtered networks
+- [Resources](/en/project/key-concepts/resources) - Import roster data for filtering
