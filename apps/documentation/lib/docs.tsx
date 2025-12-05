@@ -174,7 +174,12 @@ const markdownComponents = {
 	),
 	pre: Pre,
 	button: (props: ComponentProps<typeof Button>) => <Button variant="default" {...props} />,
-	link: (props: ComponentProps<typeof Link> & { className?: string; children: ReactNode }) => {
+	link: (
+		props: ComponentProps<typeof Link> & {
+			className?: string;
+			children: ReactNode;
+		},
+	) => {
 		return <Link {...props} />;
 	},
 	tipbox: (props: TipBoxProps) => {
@@ -249,7 +254,12 @@ export async function getDocumentForPath({
 		.use(headingTree)
 		.use(processPreTags)
 		.use(rehypeHighlight, { detect: true })
-		.use(rehypeReact, { Fragment, jsx, jsxs, components: markdownComponents } as Options)
+		.use(rehypeReact, {
+			Fragment,
+			jsx,
+			jsxs,
+			components: markdownComponents,
+		} as Options)
 		.process(markdownFile);
 
 	const validatedFrontmatter = FrontmatterSchema.parse(result.data.matter);

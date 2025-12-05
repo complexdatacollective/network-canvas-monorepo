@@ -1,0 +1,8 @@
+.disable {
+	&.disable--disabled {
+		.disable__capture {
+			pointer-events: none;
+			touch-action: none;
+		}
+	}
+}

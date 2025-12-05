@@ -514,7 +514,10 @@ describe("traverseAndTransform", () => {
 					fn: <V>(filter: V) => {
 						callCount++;
 						if (typeof filter === "object" && filter !== null) {
-							return { ...(filter as Record<string, unknown>), modified: true } as V;
+							return {
+								...(filter as Record<string, unknown>),
+								modified: true,
+							} as V;
 						}
 						return filter;
 					},
@@ -539,9 +542,15 @@ describe("traverseAndTransform", () => {
 				throw new Error("Panels should be defined");
 			}
 
-			const panel1 = panels0.panel1 as { filter: { modified: boolean; type: string } };
-			const panel2 = panels0.panel2 as { filter: { modified: boolean; type: string } };
-			const panel3 = panels1.panel3 as { filter: { modified: boolean; type: string } };
+			const panel1 = panels0.panel1 as {
+				filter: { modified: boolean; type: string };
+			};
+			const panel2 = panels0.panel2 as {
+				filter: { modified: boolean; type: string };
+			};
+			const panel3 = panels1.panel3 as {
+				filter: { modified: boolean; type: string };
+			};
 
 			expect(panel1.filter).toHaveProperty("modified", true);
 			expect(panel2.filter).toHaveProperty("modified", true);

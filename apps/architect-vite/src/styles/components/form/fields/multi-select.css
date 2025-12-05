@@ -1,0 +1,191 @@
+.form-fields-multi-select {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-md);
+}
+
+.form-fields-multi-select .form-fields-select-native__component {
+	margin-bottom: 0;
+}
+
+.form-fields-multi-select__label {
+	font-size: var(--text-xl);
+	font-weight: var(--font-weight-semibold);
+	line-height: var(--leading-normal);
+	display: block;
+	margin: 0 0 var(--space-xs);
+}
+
+.form-fields-multi-select button {
+	margin: 0;
+}
+
+.form-fields-multi-select__rule {
+	display: flex;
+	background-color: var(--color-sortable-background);
+	color: var(--color-sortable-foreground);
+	border-radius: var(--space-xs);
+	z-index: var(--z-fx);
+	transition: background-color var(--animation-easing)
+		var(--animation-duration-standard);
+	padding: var(--space-md) 0;
+	align-items: center;
+}
+
+.form-fields-multi-select__rule:not(:last-of-type) {
+	margin-bottom: var(--space-md);
+}
+
+.form-fields-multi-select__rule-control {
+	flex-grow: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 var(--space-md);
+}
+
+.form-fields-multi-select__rule-options {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	padding: 0 var(--space-md);
+}
+
+.form-fields-multi-select__rule-option {
+	display: flex;
+	align-items: start;
+	margin-left: var(--space-md);
+	flex: 1 1 100%;
+}
+
+.form-fields-multi-select__rule-option:first-child {
+	margin-left: 0;
+}
+
+.form-fields-multi-select__rule-option-label {
+	margin-right: var(--space-xs);
+	transition: color var(--animation-easing) var(--animation-duration-standard);
+}
+
+.form-fields-multi-select__rule-option .form-field-container,
+.form-fields-multi-select__rule-option .form-fields-select-native__wrapper {
+	margin: 0;
+	width: 100%;
+	position: relative;
+}
+
+.form-fields-multi-select__rule-option .form-field-container h4 {
+	margin: 0;
+}
+
+.form-fields-multi-select__rule-option .form-field-container .form-field,
+.form-fields-multi-select__rule-option
+	.form-fields-select-native__wrapper
+	.form-field {
+	margin: 0;
+}
+
+.form-fields-multi-select__rule-option .form-field-container input,
+.form-fields-multi-select__rule-option .form-field-container textarea {
+	border-radius: var(--radius);
+	border: 0;
+	padding-bottom: var(--space-sm);
+}
+
+.form-fields-multi-select__rule-option
+	.form-fields-select-native__wrapper
+	select {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border: 0;
+}
+
+.form-fields-multi-select__rule-option
+	.form-field-container
+	.form-field-text__error,
+.form-fields-multi-select__rule-option
+	.form-field-container
+	.form-fields-select__error,
+.form-fields-multi-select__rule-option
+	.form-fields-select-native__wrapper
+	.form-field-text__error,
+.form-fields-multi-select__rule-option
+	.form-fields-select-native__wrapper
+	.form-fields-select__error {
+	z-index: 1;
+	opacity: 1;
+	width: 100%;
+}
+
+.form-fields-multi-select__rule-option
+	.form-field-container
+	.form-field-text--has-focus
+	.form-field-text__error,
+.form-fields-multi-select__rule-option
+	.form-fields-select-native__wrapper
+	.form-field-text--has-focus
+	.form-field-text__error {
+	display: flex;
+	opacity: 1;
+}
+
+.form-fields-multi-select__add,
+.form-fields-multi-select__handle {
+	cursor: pointer;
+	background-color: transparent;
+	width: 1.8rem;
+	height: 1.8rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-sortable-foreground);
+}
+
+.form-fields-multi-select__add .icon,
+.form-fields-multi-select__handle .icon {
+	width: 1.2rem;
+	height: 1.2rem;
+}
+
+.form-fields-multi-select__add .icon .cls-1,
+.form-fields-multi-select__add .icon .cls-2,
+.form-fields-multi-select__handle .icon .cls-1,
+.form-fields-multi-select__handle .icon .cls-2 {
+	fill: var(--color-sortable-foreground);
+}
+
+.form-fields-multi-select__handle {
+	cursor: grab;
+}
+
+.form-fields-multi-select__add {
+	display: inline-flex;
+	width: auto;
+	height: var(--space-2xl);
+	border-radius: 1.2rem;
+	padding: 0 var(--space-lg);
+}
+
+.form-fields-multi-select__add .icon {
+	width: 1.2rem;
+	height: 1.2rem;
+	margin-right: var(--space-xs);
+}
+
+.form-fields-multi-select__field--has-error .form-field-error {
+	margin: var(--space-xs) 0;
+	border-radius: var(--space-xs);
+}
+
+.form-fields-multi-select__field--has-error .form-fields-multi-select__rule {
+	background-color: var(--color-error);
+}
+
+.form-fields-multi-select__field--has-error
+	.form-fields-multi-select__rule-option-label {
+	color: var(--color-error-foreground);
+}
+
+.form-fields-multi-select__field--has-error .form-fields-multi-select__handle {
+	background-color: transparent;
+	filter: brightness(100);
+}

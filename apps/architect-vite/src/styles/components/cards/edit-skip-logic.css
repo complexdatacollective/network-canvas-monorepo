@@ -1,0 +1,26 @@
+.edit-skip-logic__section {
+	position: relative;
+	padding-top: 20px;
+}
+
+.edit-skip-logic__section::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 30px;
+	display: block;
+	width: 0;
+	height: 20px;
+	border-left: 8px solid var(--color-rule-control);
+}
+
+.edit-skip-logic__section--first::before {
+	display: none;
+}
+
+.edit-skip-logic__action {
+	display: inline-flex;
+	background: var(--color-rule-operator);
+	border-radius: 10px;
+	padding: 20px;
+}

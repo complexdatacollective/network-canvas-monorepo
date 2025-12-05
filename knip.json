@@ -10,6 +10,14 @@
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},
 		"packages/protocol-validation": {},
+		"apps/architect-vite": {
+			"entry": ["index.html!", "src/main.tsx"],
+			"project": ["src/**/*.{ts,tsx,js,jsx}"],
+			"paths": {
+				"~/*": ["./src/*"]
+			},
+			"ignore": ["src/**/*.d.ts", "src/test/**"]
+		},
 		"workers/development-protocol": {},
 		"workers/posthog-proxy": {}
 	}

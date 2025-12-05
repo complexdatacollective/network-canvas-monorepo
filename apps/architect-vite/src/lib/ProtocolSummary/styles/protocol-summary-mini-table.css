@@ -1,0 +1,115 @@
+/* stylelint-disable no-descending-specificity */
+.protocol-summary-mini-table {
+	--table-color: rgb(58 106 117 / 5%);
+	--alternate-row-color: var(--table-color);
+
+	border-radius: var(--radius);
+	background: var(--table-color);
+	overflow: hidden;
+	margin: 1rem 0;
+	page-break-inside: avoid;
+}
+
+.protocol-summary-mini-table > thead > tr > th {
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: 0.15em;
+	word-break: keep-all;
+}
+
+.protocol-summary-mini-table > tbody tr > td > ul,
+.protocol-summary-mini-table > tbody tr > td > ol,
+.protocol-summary-mini-table > tbody tr > th > ul,
+.protocol-summary-mini-table > tbody tr > th > ol,
+.protocol-summary-mini-table > thead tr > td > ul,
+.protocol-summary-mini-table > thead tr > td > ol,
+.protocol-summary-mini-table > thead tr > th > ul,
+.protocol-summary-mini-table > thead tr > th > ol {
+	padding: inherit;
+}
+
+.protocol-summary-mini-table > tbody tr > td:not(:last-child),
+.protocol-summary-mini-table > tbody tr > th:not(:last-child),
+.protocol-summary-mini-table > thead tr > td:not(:last-child),
+.protocol-summary-mini-table > thead tr > th:not(:last-child) {
+	border-right: 3px solid var(--color-white);
+}
+
+.protocol-summary-mini-table > tbody tr > td,
+.protocol-summary-mini-table > tbody tr > th,
+.protocol-summary-mini-table > thead tr > td,
+.protocol-summary-mini-table > thead tr > th {
+	padding: 0.6rem 1.2rem;
+}
+
+.protocol-summary-mini-table > tbody tr > td p:first-child,
+.protocol-summary-mini-table > tbody tr > th p:first-child,
+.protocol-summary-mini-table > thead tr > td p:first-child,
+.protocol-summary-mini-table > thead tr > th p:first-child {
+	margin-top: 0;
+}
+
+.protocol-summary-mini-table > tbody tr > td p:last-child,
+.protocol-summary-mini-table > tbody tr > th p:last-child,
+.protocol-summary-mini-table > thead tr > td p:last-child,
+.protocol-summary-mini-table > thead tr > th p:last-child {
+	margin-bottom: 0;
+}
+
+.protocol-summary-mini-table > tbody > tr:nth-child(2n + 1) > td {
+	background-color: var(--alternate-row-color);
+}
+
+.protocol-summary-mini-table--wide {
+	width: 100%;
+}
+
+.protocol-summary-mini-table--rotated > tbody > tr:not(:last-child),
+.protocol-summary-mini-table--rotated > thead > tr:not(:last-child) {
+	border-bottom: 3px solid var(--color-white);
+}
+
+.protocol-summary-mini-table--rotated > tbody > tr:nth-child(2n + 1) > td,
+.protocol-summary-mini-table--rotated > thead > tr:nth-child(2n + 1) > td {
+	background-color: transparent;
+}
+
+.protocol-summary-mini-table--rotated > tbody > tr > td:nth-child(2n),
+.protocol-summary-mini-table--rotated > thead > tr > td:nth-child(2n) {
+	background-color: var(--alternate-row-color);
+}
+
+.protocol-summary-mini-table--rotated > tbody > tr > td,
+.protocol-summary-mini-table--rotated > thead > tr > td {
+	border-right: 0;
+	background-color: transparent;
+}
+
+.protocol-summary-mini-table--rotated > tbody > tr > td:first-child,
+.protocol-summary-mini-table--rotated > thead > tr > td:first-child {
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: 0.15em;
+	text-align: right;
+	border-right: 0;
+	white-space: nowrap;
+	word-break: break-word;
+}
+
+.protocol-summary-mini-table--lite > tbody > tr > td {
+	border-bottom: 1px solid var(--alternate-row-color);
+	background-color: transparent;
+}
+
+.protocol-summary-mini-table--lite > tbody > tr :first-child {
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: 0.15em;
+}
+
+.protocol-summary-mini-table--lite > tbody > tr:nth-child(2n) > td {
+	background-color: transparent;
+}

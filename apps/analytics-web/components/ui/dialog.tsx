@@ -12,8 +12,6 @@ const DialogTrigger = Trigger;
 
 const DialogPortal = Portal;
 
-const _DialogClose = Close;
-
 const DialogOverlay = forwardRef<ElementRef<typeof Overlay>, ComponentPropsWithoutRef<typeof Overlay>>(
 	({ className, ...props }, ref) => (
 		<Overlay

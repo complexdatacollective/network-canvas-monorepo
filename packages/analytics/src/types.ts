@@ -55,7 +55,7 @@ export type ErrorProperties = z.infer<typeof ErrorPropertiesSchema>;
  * reverse proxy at ph-relay.networkcanvas.com. All authentication is handled
  * by the worker, so the API key is optional.
  */
-export interface AnalyticsConfig {
+export type AnalyticsConfig = {
 	/**
 	 * PostHog API host - should point to the Cloudflare Worker reverse proxy
 	 * Defaults to "https://ph-relay.networkcanvas.com"
@@ -129,12 +129,12 @@ export interface AnalyticsConfig {
 		 */
 		[key: string]: unknown;
 	};
-}
+};
 
 /**
  * Analytics instance interface
  */
-export interface Analytics {
+export type Analytics = {
 	/**
 	 * Track a custom event
 	 */
@@ -180,4 +180,4 @@ export interface Analytics {
 	 * Get the installation ID
 	 */
 	getInstallationId: () => string;
-}
+};

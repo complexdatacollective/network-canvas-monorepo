@@ -1,0 +1,41 @@
+.form-field-checkbox-group {
+	display: block;
+
+	.form-field {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.form-field-checkbox-group__option {
+		&:last-child {
+			margin: 0;
+		}
+	}
+
+	.form-field-checkbox-group__error {
+		opacity: 0;
+		background: var(--color-error);
+		color: var(--color-foreground);
+		transition:
+			opacity var(--animation-easing) var(--animation-duration-standard),
+			max-height var(--animation-easing) var(--animation-duration-standard);
+		padding: 0.5rem 0.25rem;
+		display: flex;
+		align-items: center;
+
+		svg {
+			max-height: 1.2rem;
+		}
+	}
+
+	&.form-field-checkbox-group--has-error {
+		.form-field-checkbox-group__error {
+			opacity: 1;
+		}
+
+		.form-field {
+			margin-bottom: 0;
+			border: 0.125rem solid var(--color-error);
+		}
+	}
+}

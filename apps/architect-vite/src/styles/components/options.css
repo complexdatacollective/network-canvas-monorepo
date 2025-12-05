@@ -1,0 +1,101 @@
+.options {
+	display: block;
+}
+
+.options .options__options {
+	margin-bottom: var(--space-md);
+}
+
+.options .options__option {
+	display: flex;
+	background-color: var(--color-form-control);
+	color: var(--color-sortable-foreground);
+	z-index: var(--z-fx);
+	transition: background-color var(--animation-easing)
+		var(--animation-duration-standard);
+	border-radius: var(--space-md);
+}
+
+.options .options__option:not(:last-of-type) {
+	margin-bottom: var(--space-md);
+}
+
+.options .options__option-controls {
+	flex-grow: 0;
+	display: flex;
+	padding: var(--space-md);
+}
+
+.options .options__option-controls.options__option-controls--center {
+	align-items: center;
+}
+
+.options .options__option-values {
+	flex: 1;
+	display: flex;
+}
+
+.options .options__option-value {
+	margin: var(--space-md) 0;
+	flex: 1;
+}
+
+.options .options__option-value:last-of-type {
+	margin-left: var(--space-md);
+}
+
+.options .options__option-label {
+	margin: 0 0 var(--space-md);
+	transition: color var(--animation-easing) var(--animation-duration-standard);
+}
+
+.options .options__option-delete,
+.options .options__option-handle {
+	cursor: pointer;
+	background-color: transparent;
+	width: 3rem;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: var(--color-sortable-foreground);
+}
+
+.options .options__option-delete .icon,
+.options .options__option-handle .icon {
+	width: 1rem;
+	height: 1rem;
+}
+
+.options .options__option-delete .icon .cls-1,
+.options .options__option-delete .icon .cls-2,
+.options .options__option-handle .icon .cls-1,
+.options .options__option-handle .icon .cls-2 {
+	fill: var(--color-sortable-foreground);
+}
+
+.options .options__option-handle {
+	cursor: grab;
+}
+
+.options .options__option .form-field-container {
+	margin: 0;
+}
+
+.options.options--has-error .form-field-error {
+	margin: var(--space-md) 0;
+	border-radius: var(--space-md);
+}
+
+.options.options--has-error .options__option {
+	background-color: var(--color-error);
+}
+
+.options.options--has-error .options__option-label {
+	color: var(--color-primary-foreground);
+}
+
+.options.options--has-error .options__delete,
+.options.options--has-error .options__handle {
+	background-color: transparent;
+	filter: brightness(100);
+}

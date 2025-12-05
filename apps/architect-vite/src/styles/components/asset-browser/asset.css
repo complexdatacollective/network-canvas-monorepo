@@ -1,0 +1,94 @@
+.asset-browser-asset {
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+
+.asset-browser-asset__preview {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.asset-browser-asset__preview .thumbnail {
+	width: 100%;
+	display: flex;
+}
+
+.asset-browser-asset__name {
+	font-size: var(--text-2xl);
+	font-weight: var(--font-weight-semibold);
+	line-height: var(--leading-normal);
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-shadow:
+		1px 1px 2px hsl(var(--rich-black)),
+		0 0 10px hsl(var(--white));
+}
+
+.asset-browser-asset__controls {
+	transition: opacity var(--animation-easing) var(--animation-duration-standard);
+	position: absolute;
+	opacity: 0;
+	top: var(--space-sm);
+	right: var(--space-sm);
+	padding: 0.5rem 0.75rem 0.25rem;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	border-radius: 1rem;
+	background: hsl(var(--rich-black));
+}
+
+.asset-browser-asset__control {
+	color: hsl(var(--white));
+	margin-left: 0.75rem;
+	cursor: pointer;
+}
+
+.asset-browser-asset__control:first-child {
+	margin-left: 0;
+}
+
+.asset-browser-asset::after {
+	display: inline;
+	border-radius: 0.75rem;
+	padding: 0.5rem;
+	font-size: 0.7rem;
+	color: var(--color-error-foreground);
+	content: "Unused";
+	position: absolute;
+	margin: 0;
+	bottom: 0.45rem;
+	left: 0.45rem;
+	background: var(--color-error);
+}
+
+.asset-browser-asset--clickable .asset-browser-asset__preview .thumbnail {
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+}
+
+.asset-browser-asset--clickable .asset-browser-asset__preview .thumbnail:hover {
+	opacity: 0.8;
+}
+
+.asset-browser-asset--is-used .asset-browser-asset__control--delete {
+	cursor: not-allowed;
+}
+
+.asset-browser-asset--is-used::after {
+	display: none;
+}
+
+.asset-browser-asset:hover .asset-browser-asset__controls {
+	opacity: 1;
+}

@@ -476,13 +476,23 @@ describe("Migration V7 to V8", () => {
 						filter: {
 							rules: [
 								{ type: "alter", id: "rule1", options: { operator: "EXISTS" } },
-								{ type: "alter", id: "rule2", options: { operator: "NOT_EXISTS" } },
+								{
+									type: "alter",
+									id: "rule2",
+									options: { operator: "NOT_EXISTS" },
+								},
 							],
 						},
 						skipLogic: {
 							action: "SKIP",
 							filter: {
-								rules: [{ type: "alter", id: "rule3", options: { operator: "EXISTS" } }],
+								rules: [
+									{
+										type: "alter",
+										id: "rule3",
+										options: { operator: "EXISTS" },
+									},
+								],
 							},
 						},
 						panels: [
@@ -491,7 +501,13 @@ describe("Migration V7 to V8", () => {
 								dataSource: "existing",
 								title: "Panel 1",
 								filter: {
-									rules: [{ type: "alter", id: "rule4", options: { operator: "EXISTS" } }],
+									rules: [
+										{
+											type: "alter",
+											id: "rule4",
+											options: { operator: "EXISTS" },
+										},
+									],
 								},
 							},
 						],

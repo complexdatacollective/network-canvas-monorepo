@@ -1,0 +1,58 @@
+.form-fields-markdown {
+	/* @include form-field; - Replace with utility classes when needed */
+	width: 100%;
+	margin-bottom: var(--space-xl);
+
+	.form-fields-markdown__edit {
+		display: flex;
+		cursor: text;
+		background: var(--color-background);
+		color: var(--color-foreground);
+		border-radius: var(--space-sm);
+	}
+
+	.form-fields-markdown__input {
+		font-size: var(--text-base);
+		line-height: var(--leading-normal);
+		background-color: hsl(var(--color-input));
+		border: 0;
+		width: 100%;
+		min-height: var(--space-3xl);
+		vertical-align: top;
+		resize: none;
+		overflow: hidden;
+
+		&-container {
+			background-color: hsl(var(--color-input));
+			padding: var(--space-sm);
+			flex: 1 0 50%;
+			border-radius: 0 var(--space-sm) var(--space-sm) 0;
+		}
+	}
+
+	.form-fields-markdown__preview {
+		font-size: var(--text-base);
+		line-height: var(--leading-normal);
+		flex: 1 0 50%;
+		padding: var(--space-sm);
+		transition: width 200ms;
+		vertical-align: top;
+	}
+
+	.form-fields-markdown__error {
+		opacity: 0;
+		max-height: 0;
+		color: var(--color-error);
+		margin: var(--space-sm) 0 0;
+		transition:
+			opacity var(--animation-easing) var(--animation-duration-standard),
+			max-height var(--animation-easing) var(--animation-duration-standard);
+	}
+
+	&.form-fields-markdown--has-error {
+		.form-fields-markdown__error {
+			opacity: 1;
+			max-height: var(--space-3xl);
+		}
+	}
+}

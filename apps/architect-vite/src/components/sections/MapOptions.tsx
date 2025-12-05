@@ -1,0 +1,173 @@
+import { compose } from "recompose";
+import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
+import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
+import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
+import { Row, Section } from "../EditorLayout";
+import ExternalLink from "../ExternalLink";
+import ColorPicker from "../Form/Fields/ColorPicker";
+import GeoAPIKey from "../Form/Fields/Geospatial/GeoAPIKey";
+import GeoDataSource from "../Form/Fields/Geospatial/GeoDataSource";
+import MapSelection from "../Form/Fields/Geospatial/MapSelection";
+import ValidatedField from "../Form/ValidatedField";
+
+const mapboxStyleOptions = [
+	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },
+	{
+		label: "Standard Satellite",
+		value: "mapbox://styles/mapbox/standard-satellite",
+	},
+	{ label: "Streets", value: "mapbox://styles/mapbox/streets-v12" },
+	{ label: "Outdoors", value: "mapbox://styles/mapbox/outdoors-v12" },
+	{ label: "Light", value: "mapbox://styles/mapbox/light-v11" },
+	{ label: "Dark", value: "mapbox://styles/mapbox/dark-v11" },
+	{ label: "Satellite", value: "mapbox://styles/mapbox/satellite-v9" },
+	{
+		label: "Satellite Streets",
+		value: "mapbox://styles/mapbox/satellite-streets-v12",
+	},
+	{
+		label: "Navigation Day",
+		value: "mapbox://styles/mapbox/navigation-day-v1",
+	},
+	{
+		label: "Navigation Night",
+		value: "mapbox://styles/mapbox/navigation-night-v1",
+	},
+];
+
+type MapOptionsProps = StageEditorSectionProps & {
+	mapOptions?: {
+		center?: number[];
+		tokenAssetId?: string;
+		initialZoom?: number;
+		dataSourceAssetId?: string;
+		color?: string;
+		targetFeatureProperty?: string;
+		style?: string;
+	};
+	disabled: boolean;
+};
+
+const defaultMapOptions = {
+	center: [0, 0],
+	tokenAssetId: "",
+	initialZoom: 0,
+	dataSourceAssetId: "",
+	color: "",
+	targetFeatureProperty: "",
+	style: "",
+};
+
+const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProps) => {
+	const { variables: variableOptions } = useVariablesFromExternalData(mapOptions?.dataSourceAssetId, true, "geojson");
+
+	const { paletteName, paletteSize } = {
+		paletteName: ["ord-color-seq"],
+		paletteSize: 8,
+	};
+
+	return (
+		<>
+			<Section
+				title="API Key"
+				summary={
+					<p>
+						This interface requires an API key from Mapbox. For more information about Mapbox and retreiving an API Key,
+						read our{" "}
+						<ExternalLink href="https://documentation.networkcanvas.com/interface-documentation/geospatial/">
+							documentation
+						</ExternalLink>{" "}
+						on the interface.
+					</p>
+				}
+			>
+				<div data-name="Map Options Mapbox Key" />
+				<ValidatedField
+					name="mapOptions.tokenAssetId"
+					component={GeoAPIKey as React.ComponentType}
+					validation={{ required: true }}
+					componentProps={{
+						label: "Mapbox API Key",
+					}}
+				/>
+			</Section>
+			<Section
+				title="Data source for map layers"
+				summary={
+					<p>
+						This interface requires a GeoJSON source for map layers. These provide selectable areas for prompts. Select
+						a GeoJSON file to use.
+					</p>
+				}
+			>
+				<Row>
+					<div data-name="Layer data-source" />
+					<ValidatedField
+						component={GeoDataSource as React.ComponentType}
+						name="mapOptions.dataSourceAssetId"
+						validation={{ required: true }}
+					/>
+				</Row>
+				{variableOptions && variableOptions.length > 0 && (
+					<Row>
+						<ValidatedField
+							name="mapOptions.targetFeatureProperty"
+							component={NativeSelect as React.ComponentType}
+							validation={{ required: true }}
+							componentProps={{
+								label: "Which property should be used for map selection?",
+								options: variableOptions,
+							}}
+						/>
+					</Row>
+				)}
+			</Section>
+			<Section title="Map Style">
+				<Row>
+					<ValidatedField
+						component={ColorPicker as React.ComponentType}
+						name="mapOptions.color"
+						validation={{ required: true }}
+						componentProps={{
+							palette: paletteName,
+							paletteRange: paletteSize,
+							label: "Which color would you like to use for this stage's map outlines and selections?",
+						}}
+					/>
+				</Row>
+				<Row>
+					<ValidatedField
+						component={NativeSelect as React.ComponentType}
+						name="mapOptions.style"
+						validation={{ required: true }}
+						componentProps={{
+							options: mapboxStyleOptions,
+							label: "Which mapbox style would you like to use for the map itself?",
+						}}
+					/>
+				</Row>
+			</Section>
+			<Section
+				title="Initial Map View"
+				summary={<p>Configure the initial map view to adjust where it will be centered and zoomed to.</p>}
+				disabled={disabled}
+			>
+				<ValidatedField
+					name="mapOptions"
+					component={MapSelection as React.ComponentType}
+					validation={{ required: true }}
+					componentProps={{
+						label: "Initial Map View",
+					}}
+				/>
+			</Section>
+		</>
+	);
+};
+
+export default compose<MapOptionsProps, StageEditorSectionProps>(
+	withMapFormToProps(["mapOptions"]),
+	withDisabledAPIKeyRequired,
+)(MapOptions);

@@ -12,7 +12,7 @@
 		"generate": "npx drizzle-kit generate:pg",
 		"migrate": "npx tsx scripts/migrate.ts",
 		"seed": "pnpm run generate && pnpm run migrate && npx tsx scripts/seed.ts",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
 		"@clerk/nextjs": "^6.35.6",

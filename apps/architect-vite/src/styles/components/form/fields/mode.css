@@ -1,0 +1,50 @@
+@reference '../../../tailwind.css';
+
+.form-fields-mode {
+	@apply form-field;
+
+	display: block;
+	position: relative;
+
+	.form-fields-mode__options {
+		display: inline-flex;
+		border-radius: var(--space-sm);
+		overflow: hidden;
+		border: 2px solid var(--color-border);
+		background-color: var(--color-surface-1);
+	}
+
+	.form-fields-mode__option {
+		font-size: var(--text-sm);
+		line-height: var(--leading-normal);
+
+		display: inline-flex;
+		min-width: 6rem;
+		padding: var(--space-sm);
+		margin: 3px;
+		border-radius: var(--space-xs);
+		justify-content: center;
+		align-items: center;
+		color: var(--text-dark);
+		transition: background-color var(--animation-easing) var(--animation-duration-standard), color
+			var(--animation-easing) var(--animation-duration-standard);
+		cursor: pointer;
+
+		&.form-fields-mode__option--selected {
+			background-color: var(--color-selected);
+			color: var(--color-accent-foreground);
+		}
+
+		&.form-fields-mode__option--disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+	}
+
+	&.form-fields-mode--has-error {
+		& .form-fields-mode__error {
+			opacity: 1;
+			max-height: 50px;
+		}
+	}
+}

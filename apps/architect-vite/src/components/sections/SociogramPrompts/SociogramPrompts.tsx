@@ -1,0 +1,45 @@
+/* eslint-disable react/jsx-props-no-spreading */
+
+import { compose } from "recompose";
+import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import EditableList from "../../EditableList";
+import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
+import withSubject from "../../enhancers/withSubject";
+import PromptFields from "./PromptFields";
+import PromptPreview from "./PromptPreview";
+import withFormUsedVariableIndex from "./withFormUsedVariableIndex";
+
+type SociogramPromptsProps = StageEditorSectionProps & {
+	entity?: string;
+	type?: string;
+	disabled?: boolean;
+	usedVariableIndex?: Record<string, unknown>;
+};
+
+const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: SociogramPromptsProps) => (
+	<Section
+		disabled={disabled}
+		summary={
+			<p>
+				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
+				handles on the left hand side.
+			</p>
+		}
+		title="Prompts"
+	>
+		<EditableList
+			title="Edit Prompt"
+			previewComponent={PromptPreview}
+			editComponent={PromptFields}
+			form={form}
+			editProps={{ entity, type, usedVariableIndex }}
+		/>
+	</Section>
+);
+
+export default compose<SociogramPromptsProps, StageEditorSectionProps>(
+	withSubject,
+	withFormUsedVariableIndex,
+	withDisabledSubjectRequired,
+)(SociogramPrompts);

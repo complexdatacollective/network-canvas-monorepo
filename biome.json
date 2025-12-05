@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.3.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
 	"linter": {
 		"enabled": true,
 		"domains": {
@@ -27,7 +27,14 @@
 				"noUnusedTemplateLiteral": "error",
 				"useNumberNamespace": "error",
 				"noInferrableTypes": "error",
-				"noUselessElse": "error"
+				"noUselessElse": "error",
+				"useConsistentTypeDefinitions": {
+					"level": "error",
+					"fix": "safe",
+					"options": {
+						"style": "type"
+					}
+				}
 			}
 		}
 	},
@@ -50,7 +57,19 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!**/public/**/*.*", "!!**/*.css"]
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/build",
+			"!**/.next",
+			"!**/out",
+			"!**/coverage",
+			"!**/.turbo",
+			"!**/public/**/*.*",
+			"!!**/*.css",
+			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.js"
+		]
 	},
 	"javascript": {
 		"formatter": {

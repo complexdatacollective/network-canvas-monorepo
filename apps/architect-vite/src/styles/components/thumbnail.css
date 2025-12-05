@@ -1,0 +1,38 @@
+.thumbnail {
+	background-color: hsl(var(--cyber-grape));
+	color: var(--color-primary-foreground);
+	border-radius: var(--radius);
+	display: inline-flex;
+	align-items: center;
+	padding: var(--space-md);
+	transition-property: background-color;
+	transition-duration: var(--animation-duration-standard);
+	transition-timing-function: var(--animation-easing);
+	width: 25rem;
+
+	.thumbnail__icon {
+		flex: 0 0 25px;
+		margin: 0 var(--space-md) 0 0;
+	}
+
+	.thumbnail__label {
+		overflow: hidden;
+		overflow-wrap: break-word;
+	}
+
+	&.thumbnail--existing {
+		background-color: var(--color-info);
+		font-style: italic;
+	}
+
+	&.thumbnail--image {
+		background-repeat: no-repeat;
+		background-size: contain;
+		background-position: center;
+		height: var(--space-6xl);
+
+		&.thumbnail--contain {
+			background-size: contain;
+		}
+	}
+}

@@ -12,7 +12,7 @@ const getProtocolJsonAsObject = async (zip: Zip): Promise<VersionedProtocol> => 
 	return JSON.parse(protocolString);
 };
 
-type ExtractedAsset = {
+export type ExtractedAsset = {
 	id: string; // The asset ID from protocol manifest (key)
 	name: string; // Original filename from manifest
 	data: Blob | string; // The actual file data
@@ -23,7 +23,11 @@ const extractProtocolAssets = async (protocol: VersionedProtocol, zip: Zip) => {
 		if (typeof assetDefinition === "object" && assetDefinition !== null && "type" in assetDefinition) {
 			if (assetDefinition.type === "apikey") {
 				// Value is a string, not a file
-				return { id: assetId, name: assetDefinition.name, data: assetDefinition.value };
+				return {
+					id: assetId,
+					name: assetDefinition.name,
+					data: assetDefinition.value,
+				};
 			}
 
 			const fileData = await zip.file(`assets/${assetDefinition.source}`)?.async("blob");

@@ -5,19 +5,19 @@
  * Verifies that redirects work correctly on the actual site
  */
 
-interface RedirectTest {
+type RedirectTest = {
 	from: string;
 	expectedDestination: string;
 	description: string;
-}
+};
 
-interface TestResult {
+type TestResult = {
 	test: RedirectTest;
 	success: boolean;
 	actualStatus?: number;
 	actualLocation?: string;
 	error?: string;
-}
+};
 
 // Define redirect tests based on netlify.toml
 const redirectTests: RedirectTest[] = [

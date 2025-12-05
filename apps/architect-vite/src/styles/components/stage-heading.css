@@ -1,0 +1,113 @@
+.stage-heading {
+	display: flex;
+	flex-direction: column;
+}
+
+.stage-heading a {
+	color: var(--color-foreground);
+	font-weight: var(--font-weight-bold);
+	border-bottom: 2px solid var(--color-primary);
+}
+
+.stage-heading .stage-meta {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	max-width: 75rem;
+	padding: 0 var(--space-xl);
+	margin: auto;
+	width: 100%;
+}
+
+.stage-heading .stage-meta .stage-name-container {
+	flex: 1;
+	margin-left: var(--space-3xl);
+}
+
+.stage-heading .stage-meta .timeline-preview {
+	position: relative;
+}
+
+.stage-heading .stage-meta .timeline-preview .timeline-stage__notch {
+	left: 16rem;
+}
+
+.stage-heading .stage-meta .timeline-preview::before {
+	mask-image: linear-gradient(
+		180deg,
+		transparent,
+		rgb(0 0 0 / 100%) 40%,
+		rgb(0 0 0 / 100%) 40%,
+		transparent 100%
+	);
+	content: "";
+	border-left: var(--space-xs) solid var(--color-timeline);
+	position: absolute;
+	left: 15.8rem;
+	height: 11rem;
+	top: -1rem;
+}
+
+.stage-heading .stage-meta img {
+	display: block;
+	background: hsl(var(--navy-taupe));
+	padding: var(--space-xs);
+	width: 12rem;
+	text-align: center;
+	border-radius: var(--space-xs);
+}
+
+.stage-heading--shadow {
+	box-shadow: 0 var(--space-sm) var(--space-xs) 0 var(--color-border);
+}
+
+.stage-heading.stage-heading--collapsed {
+	flex-direction: row;
+	padding: var(--space-sm) var(--space-xl);
+}
+
+.stage-heading.stage-heading--collapsed .stage-meta {
+	width: initial;
+	padding: 0;
+	margin-right: var(--space-xl);
+}
+
+.stage-heading.stage-heading--collapsed .stage-meta img {
+	width: 6rem;
+}
+
+.stage-heading.stage-heading--collapsed .stage-name-container {
+	flex: 1;
+	display: flex;
+	align-items: center;
+}
+
+.stage-heading.stage-heading--collapsed .documentation-link {
+	display: flex;
+	align-items: center;
+}
+
+.stage-heading.stage-editor-section > :last-child {
+	margin-bottom: 0;
+}
+
+.stage-heading .form-field-toggle__label,
+.stage-heading .form-fields-edge-select {
+	--color-input-foreground: var(--color-white);
+	color: var(--color-input-foreground);
+}
+
+.stage-heading .stage-header-sections {
+	display: flex;
+	flex: 1 auto;
+	flex-direction: column;
+	padding: var(--space-md) var(--space-xl);
+	background: hsl(var(--slate-blue));
+	color: var(--color-white);
+}
+
+.stage-heading .stage-header-sections .stage-editor-section {
+	background: transparent;
+	margin: 0;
+	padding: 0;
+}

@@ -1,0 +1,9 @@
+.items__error {
+	margin: var(--space-md) 0;
+	color: var(--color-error);
+}
+
+.items__item {
+	margin: var(--space-md) 0 0;
+	z-index: var(--z-fx);
+}

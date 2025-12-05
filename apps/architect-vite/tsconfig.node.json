@@ -1,0 +1,4 @@
+{
+	"extends": "@codaco/tsconfig/base.json",
+	"include": ["vite.config.ts"]
+}

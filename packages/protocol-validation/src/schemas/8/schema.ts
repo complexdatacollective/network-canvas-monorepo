@@ -68,7 +68,10 @@ const ProtocolSchema = z
 					if (stage.type === "EgoForm") {
 						subject = { entity: "ego" as const };
 					} else if ("subject" in stage && stage.subject) {
-						subject = stage.subject as { entity: "node" | "edge"; type: string };
+						subject = stage.subject as {
+							entity: "node" | "edge";
+							type: string;
+						};
 					}
 
 					if (subject && !variableExists(protocol.codebook, subject, field.variable)) {
@@ -121,7 +124,10 @@ const ProtocolSchema = z
 
 					// 3d.iv. edgeVariable validation for TieStrengthCensus
 					if ("edgeVariable" in prompt && prompt.edgeVariable && "createEdge" in prompt && prompt.createEdge) {
-						const edgeSubject = { entity: "edge" as const, type: prompt.createEdge };
+						const edgeSubject = {
+							entity: "edge" as const,
+							type: prompt.createEdge,
+						};
 						if (!variableExists(protocol.codebook, edgeSubject, prompt.edgeVariable)) {
 							ctx.addIssue({
 								code: "custom" as const,

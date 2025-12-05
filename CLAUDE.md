@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Key Commands
+## Essential Commands
 
 ### Development
 
@@ -13,6 +13,14 @@ pnpm install
 # Start all applications in development mode
 pnpm dev
 
+# Start specific applications
+pnpm --filter architect-vite dev
+pnpm --filter analytics-web dev  # Next.js with turbopack
+```
+
+### Building & Testing
+
+```bash
 # Build all packages and applications
 pnpm build
 
@@ -22,8 +30,8 @@ pnpm test
 # Run tests in watch mode
 pnpm test:watch
 
-# Type check all packages
-pnpm typecheck
+# Type check all packages (always run before committing)
+pnpm typecheck-all
 ```
 
 ### Package-specific Commands
@@ -37,11 +45,20 @@ pnpm --filter @codaco/shared-consts test
 # Work with multiple packages by pattern
 pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
+
+# Package-specific commands from directories
+npm run build    # Build individual package
+npm run dev      # Build package in watch mode
+npm run test     # Run package tests
+npm run typecheck # Type check package
 ```
 
-### Code Quality
+### Code Quality (Always Run Before Committing)
 
 ```bash
+# Auto-fix all formatting and linting issues with Biome
+pnpm format-and-lint:fix
+
 # Check formatting and linting
 pnpm run lint
 
@@ -55,10 +72,13 @@ pnpm run knip
 pnpm run typecheck
 ```
 
+- Biome config: tabs for indentation, 120 char line width, double quotes
+- Pre-commit hooks automatically format staged files
+
 ### Version Management
 
 ```bash
-# Add a changeset for your changes
+# Add a changeset for your changes (automatically formats after)
 pnpm changeset
 
 # Version packages (after changesets are added)
@@ -72,14 +92,36 @@ pnpm run publish-packages
 
 ### Monorepo Structure
 
-This is a pnpm workspace monorepo with these categories:
+This is a **pnpm workspace** monorepo with catalog dependencies for version consistency:
 
-- **Apps**: End-user applications (`analytics-web/`, `documentation/`, `architect-vite`)
-- **Packages**: Shared libraries and utilities (`protocol-validation/`, `shared-consts/`, `ui/`, etc.)
-- **Tooling**: Build configuration (`tailwind/`, `typescript/`)
-- **Workers**: Cloudflare Workers for specific backend tasks (`development-protocol/`, `posthog-proxy/`)
+- **Apps**: End-user applications
+  - `architect-vite` - Protocol designer (Vite + Redux)
+  - `analytics-web` - Next.js dashboard with turbopack
+  - `documentation` - Documentation site
+- **Packages**: Shared libraries and utilities
+  - `protocol-validation` - Zod schemas for protocol validation
+  - `ui` - React components (built on shadcn/ui and Tailwind CSS)
+  - `analytics` - Analytics utilities and tracking
+  - `shared-consts` - Shared constants and type definitions
+- **Tooling**: Build configuration
+  - `tailwind` - Shared Tailwind CSS configurations
+  - `typescript` - Shared TypeScript configurations
+- **Workers**: Cloudflare Workers for specific backend tasks
+  - `development-protocol` - Development protocol worker
+  - `posthog-proxy` - PostHog proxy worker
 
-### Key Packages
+### Key Technologies
+- **Build**: Vite for apps, custom build scripts for packages
+- **Validation**: Zod with complex cross-reference validation patterns
+- **Frontend**: React with various stacks (Vite + Redux for architect, Next.js for analytics)
+- **Styling**: Tailwind CSS with shared configurations
+- **Testing**: Vitest across all packages
+
+### Critical Validation Patterns
+- `validateProtocol()` function in `protocol-validation` package - async function returning ValidationResult
+- Used extensively in architect app save operations
+- Validates both schema structure and business logic with descriptive error messages
+- Use `superRefine` for complex cross-reference validation
 
 #### @codaco/protocol-validation
 
@@ -130,6 +172,11 @@ Network Canvas uses a protocol-based system where:
 - Pre-commit hooks automatically format code
 - ALL code style tasks to pass successfully before committing
 
+### Code Standards
+- **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
+- **No barrel files** - avoid index.js/ts except in exceptional circumstances
+- **Workspace dependencies**: Use `workspace:*` for internal package references
+
 ### TypeScript
 
 - NEVER use the `any` type
@@ -148,3 +195,14 @@ Network Canvas uses a protocol-based system where:
 - Package versions managed through Changesets
 - Catalog system for dependency management (check `pnpm-workspace.yaml`)
 - Each package has its own `package.json` with proper dependencies
+
+### Dependencies
+- React ecosystem with Radix UI components via catalog
+- Node.js >= 20.0.0, pnpm >= 10.0.0 required
+- Heavy use of catalog dependencies in pnpm-workspace.yaml for consistency
+
+### Development Workflow
+1. Always run `pnpm format-and-lint:fix` before committing
+2. Run `pnpm typecheck-all` to verify TypeScript compliance
+3. Use changesets for version management - never manually bump versions
+4. Test individual packages with `pnpm --filter <package-name> test`

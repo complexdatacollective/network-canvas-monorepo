@@ -62,8 +62,12 @@ export function getMigrationInfo(from: SchemaVersion, to: SchemaVersion = CURREN
 		canMigrate: protocolMigrations.canMigrate(from, to),
 		path,
 		stepsRequired: path.length - 1,
+		notes: protocolMigrations.getMigrationNotes(from, to),
 	};
 }
+
+export type MigrationInfo = ReturnType<typeof getMigrationInfo>;
+export type MigrationNote = MigrationInfo["notes"][number];
 
 export class ProtocolMigrator {
 	private cache = new Map<string, CurrentProtocol>();

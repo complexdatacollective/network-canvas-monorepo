@@ -153,7 +153,10 @@ describe("Protocol Migrations", () => {
 				from: 7 as const,
 				to: 8 as const,
 				migrate: (doc: ProtocolDocument<7>) =>
-					({ ...doc, schemaVersion: 8 as const }) as unknown as ProtocolDocument<8>,
+					({
+						...doc,
+						schemaVersion: 8 as const,
+					}) as unknown as ProtocolDocument<8>,
 			};
 
 			chain.register(migration);

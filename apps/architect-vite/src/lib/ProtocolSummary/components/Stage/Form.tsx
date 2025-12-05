@@ -1,0 +1,49 @@
+import { useContext } from "react";
+import Markdown from "~/components/Form/Fields/Markdown";
+import { getVariableMeta } from "../helpers";
+import MiniTable from "../MiniTable";
+import SummaryContext from "../SummaryContext";
+import Variable from "../Variable";
+
+type FormFieldType = {
+	prompt: string;
+	variable: string;
+};
+
+type FormProps = {
+	form?: {
+		title?: string;
+		fields?: FormFieldType[];
+	} | null;
+};
+
+const Form = ({ form = null }: FormProps) => {
+	const { index } = useContext(SummaryContext);
+
+	if (!form) {
+		return null;
+	}
+
+	const fieldRows =
+		form.fields?.map(({ prompt, variable }) => {
+			const meta = getVariableMeta(index, variable);
+
+			return [
+				<Variable key={`var-${variable}`} id={variable} />,
+				<span key={`comp-${variable}`}>{meta.component ?? ""}</span>,
+				<Markdown key={`prompt-${variable}`} label={prompt} />,
+			];
+		}) ?? [];
+
+	return (
+		<div className="protocol-summary-stage__form">
+			<div className="protocol-summary-stage__form-content">
+				<h2 className="section-heading">Form</h2>
+				{form.title && <h4>Title: {form.title}</h4>}
+				<MiniTable wide rows={[["Variable", "Component", "Prompt"], ...fieldRows]} />
+			</div>
+		</div>
+	);
+};
+
+export default Form;
