@@ -1,4 +1,3 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
@@ -6,7 +5,7 @@ import { Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { useAppDispatch } from "~/ducks/hooks";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { type DialogConfig, actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import type { RootState } from "~/ducks/store";
 import { getFieldId } from "~/utils/issues";
 
@@ -14,11 +13,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
 	const getFormValue = formValueSelector("edit-stage");
 	const currentValue = useSelector((state: RootState) => getFormValue(state, "interviewScript"));
 	const dispatch = useAppDispatch();
-	const openDialog = useCallback(
-		(dialog: { type: string; title: string; message: string; confirmLabel?: string }) =>
-			dispatch(dialogActions.openDialog(dialog)),
-		[dispatch],
-	);
+	const openDialog = useCallback((dialog: DialogConfig) => dispatch(dialogActions.openDialog(dialog)), [dispatch]);
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
@@ -35,7 +30,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
 			});
 
 			if (confirm) {
-				dispatch(change("edit-stage", "interviewScript", null) as UnknownAction);
+				dispatch(change("edit-stage", "interviewScript", null));
 				return true;
 			}
 

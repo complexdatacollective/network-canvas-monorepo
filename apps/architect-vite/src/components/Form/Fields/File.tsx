@@ -105,6 +105,4 @@ const FileInput = ({
 	);
 };
 
-export type { FileInputProps };
-
-export default withShowBrowser(FileInput);
+export default withShowBrowser(FileInput) as React.ComponentType<FileInputPropsWithoutHOC>;

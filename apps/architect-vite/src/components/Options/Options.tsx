@@ -20,7 +20,7 @@ const minTwoOptions = (value: unknown) =>
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
 	<Button
-		color="primary"
+		color="sea-green"
 		icon="add"
 		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}

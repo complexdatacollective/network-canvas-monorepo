@@ -18,7 +18,7 @@ type ValidationProps = {
 	onDelete: (itemKey: string) => void;
 	onUpdate: (key: string, value: boolean | number | string | null, itemKey: string) => void;
 	options?: ValidationOption[];
-	itemKey: string;
+	itemKey?: string;
 	itemValue?: boolean | number | string | null;
 	existingVariables: Record<string, ExistingVariable>;
 };
@@ -27,7 +27,7 @@ const Validation = ({
 	onDelete,
 	onUpdate,
 	options = [],
-	itemKey,
+	itemKey = "",
 	itemValue = null,
 	existingVariables,
 }: ValidationProps) => {

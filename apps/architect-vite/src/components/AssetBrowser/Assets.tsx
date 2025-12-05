@@ -1,4 +1,3 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { RadioGroup } from "~/components/Form/Fields";
 import Asset from "./Asset";
@@ -90,4 +89,15 @@ const Assets = ({
 	);
 };
 
-export default compose<ComponentProps<typeof Assets>, typeof Assets>(withAssets)(Assets);
+// OwnProps - props that must be passed from outside
+type OwnProps = {
+	type?: string | null;
+	selected?: string | null;
+	onSelect?: (id: string) => void;
+	onDelete?: ((id: string, isUsed: boolean) => void) | null;
+	onDownload?: (id: string) => void;
+	onPreview?: (id: string) => void;
+	disableDelete?: boolean;
+};
+
+export default compose<AssetsProps, OwnProps>(withAssets)(Assets);

@@ -1,3 +1,4 @@
+import type { Asset as ProtocolAsset } from "@codaco/protocol-validation";
 import { filter, map } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers, withState } from "recompose";
@@ -6,15 +7,15 @@ import type { RootState } from "~/ducks/modules/root";
 import { getAssetIndex, utils as indexUtils } from "~/selectors/indexes";
 import { getAssetManifest } from "~/selectors/protocol";
 
-type AssetWithId = Asset;
-type AssetWithUsage = AssetWithId & { isUsed: boolean };
+type AssetWithUsage = Asset & { isUsed: boolean };
 
-const filterByAssetType = (assetType: string | null, assets: AssetWithId[]): AssetWithId[] =>
+const filterByAssetType = (assetType: string | null, assets: Asset[]): Asset[] =>
 	assetType ? filter(assets, ({ type }) => type === assetType) : assets;
 
-const withKeysAsIds = (assets: Record<string, Asset>): AssetWithId[] => map(assets, (asset, id) => ({ ...asset, id }));
+const withKeysAsIds = (assets: Record<string, ProtocolAsset>): Asset[] =>
+	map(assets, (asset, id) => ({ ...asset, id }) as Asset);
 
-const filterAssets = (assetType: string | null, assets: Record<string, Asset>): AssetWithId[] =>
+const filterAssets = (assetType: string | null, assets: Record<string, ProtocolAsset>): Asset[] =>
 	filterByAssetType(assetType, withKeysAsIds(assets));
 
 type FilterHandlerProps = {

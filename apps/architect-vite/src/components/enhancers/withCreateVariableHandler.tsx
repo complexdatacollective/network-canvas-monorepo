@@ -1,3 +1,4 @@
+import type { VariableType } from "@codaco/protocol-validation";
 import { isEmpty } from "lodash";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
@@ -38,7 +39,7 @@ type HandlerProps = ConnectedProps & OwnProps;
 const createVariableHandler = {
 	handleCreateVariable:
 		({ changeField, createVariable, type, entity, form }: HandlerProps) =>
-		async (variableName: string, variableType?: string, field?: string) => {
+		async (variableName: string, variableType?: VariableType, field?: string) => {
 			const withType = variableType ? { type: variableType } : {};
 
 			const configuration = {

@@ -21,7 +21,7 @@ const GeoAPIKey = ({ input: { value, onChange } }: GeoAPIKeyProps) => {
 			<div className={fieldClasses}>
 				<div className="form-fields-file__preview">{value && <APIKeyThumbnail id={value} />}</div>
 				<div className="form-fields-file__browse">
-					<Button onClick={() => setShowAPIKeyBrowser(true)} color="primary">
+					<Button onClick={() => setShowAPIKeyBrowser(true)} color="sea-green">
 						{!value ? "Select API Key" : "Update API Key"}
 					</Button>
 				</div>

@@ -26,7 +26,7 @@ const MapSelection = ({ input: { value, onChange } }: MapSelectionProps) => {
 
 	return (
 		<>
-			<Button onClick={() => setShowMap(true)} color="primary">
+			<Button onClick={() => setShowMap(true)} color="sea-green">
 				{value.center ? "Edit Map View" : "Set Map View"}
 			</Button>
 

@@ -13,10 +13,10 @@ const useExternalDataDownload = () => {
 
 	const getAssetInfo = useCallback(
 		(id: string) => {
-			const source = get(assetManifest, [id, "source"], "");
-			const meta = get(assetManifest, id, defaultMeta);
+			const source = get(assetManifest, [id, "source"], "") as string;
+			const meta = get(assetManifest, id, defaultMeta) as { name: string };
 			const assetPath = `assets/${source}`;
-			return [assetPath, meta];
+			return [assetPath, meta] as const;
 		},
 		[assetManifest],
 	);
@@ -41,7 +41,7 @@ const useExternalDataDownload = () => {
 				const url = URL.createObjectURL(blob);
 				const link = document.createElement("a");
 				link.href = url;
-				link.download = meta.name || asset.name || "download";
+				link.download = meta?.name || asset.name || "download";
 
 				// Trigger download
 				document.body.appendChild(link);

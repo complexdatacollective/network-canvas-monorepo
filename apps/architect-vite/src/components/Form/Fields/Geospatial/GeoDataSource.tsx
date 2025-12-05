@@ -1,15 +1,9 @@
-import { withState } from "recompose";
 import GeoJSONThumbnail from "~/components/Thumbnail/GeoJSON";
-import File from "../File";
+import File, { type FileInputPropsWithoutHOC } from "../File";
 
-const withSelectGeoAsset = withState("selectGeoAsset", "setSelectGeoAsset", false);
-
-type GeoDataSourceProps = {
-	input: {
-		value: string;
-	};
+type GeoDataSourceProps = Omit<FileInputPropsWithoutHOC, "type" | "selected" | "children"> & {
 	canUseExisting?: boolean;
-} & Record<string, unknown>;
+};
 
 const GeoDataSource = (props: GeoDataSourceProps) => {
 	const { input } = props;
@@ -25,4 +19,4 @@ const GeoDataSource = (props: GeoDataSourceProps) => {
 	);
 };
 
-export default withSelectGeoAsset(GeoDataSource);
+export default GeoDataSource;

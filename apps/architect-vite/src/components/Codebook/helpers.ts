@@ -24,11 +24,13 @@ type StageMeta = {
  * @param {Object} state Application state
  * @returns {Object[]} Stage meta sorted by index in state
  */
-const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] =>
-	protocol.stages.map(({ label, id }: Stage) => ({ label, id })),
-);
+const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] => {
+	if (!protocol) return [];
+	return protocol.stages.map(({ label, id }: Stage) => ({ label, id }));
+});
 
 const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
+	if (!codebook) return {};
 	const variables = getAllVariablesByUUID(codebook);
 	return variables;
 });

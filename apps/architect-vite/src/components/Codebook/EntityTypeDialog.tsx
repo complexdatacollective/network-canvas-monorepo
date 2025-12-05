@@ -29,7 +29,7 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 	const isNew = !type;
 
 	const initialValues = useMemo(() => {
-		if (!entity) {
+		if (!entity || !protocol) {
 			return {};
 		}
 		const defaultValue = getNewTypeTemplate({ protocol, entity });

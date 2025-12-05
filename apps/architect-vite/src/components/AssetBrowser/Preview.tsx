@@ -109,4 +109,4 @@ const Preview = ({ id, meta, assetPath, show = true, onDownload = () => {}, onCl
 	);
 };
 
-export default compose(withAssetMeta, withAssetPath)(Preview);
+export default compose(withAssetMeta, withAssetPath)(Preview) as React.ComponentType<PreviewOwnProps>;

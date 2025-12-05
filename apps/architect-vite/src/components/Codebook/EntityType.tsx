@@ -1,4 +1,3 @@
-import type { ComponentProps } from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { Link } from "wouter";
@@ -176,7 +175,11 @@ const withEntityHandlers = compose(
 	}),
 );
 
-export default compose<ComponentProps<typeof EntityType>, typeof EntityType>(
-	connect(mapStateToProps),
-	withEntityHandlers,
-)(EntityType);
+// OwnProps - props that must be passed from outside
+type OwnProps = StateProps & {
+	inUse?: boolean;
+	usage: UsageItem[];
+	onEditEntity?: (entity: string, type?: string) => void;
+};
+
+export default compose<EntityTypeProps, OwnProps>(connect(mapStateToProps), withEntityHandlers)(EntityType);

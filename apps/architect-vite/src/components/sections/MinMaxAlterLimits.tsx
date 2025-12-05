@@ -1,4 +1,3 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { get, isNull, isUndefined } from "es-toolkit/compat";
 import { useCallback, useMemo } from "react";
 import { useSelector } from "react-redux";
@@ -60,12 +59,12 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 					title: "This will clear your values",
 					message: "This will clear the minimum and maximum alter values. Do you want to continue?",
 					confirmLabel: "Clear values",
-				}) as UnknownAction,
+				}),
 			);
 
 			if (confirm) {
-				dispatch(change("edit-stage", "behaviours.minNodes", null) as UnknownAction);
-				dispatch(change("edit-stage", "behaviours.maxNodes", null) as UnknownAction);
+				dispatch(change("edit-stage", "behaviours.minNodes", null));
+				dispatch(change("edit-stage", "behaviours.maxNodes", null));
 				return true;
 			}
 

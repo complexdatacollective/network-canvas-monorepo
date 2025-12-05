@@ -19,4 +19,9 @@ const mapDispatchToProps = (dispatch: AppDispatch, { form, name }: { form: strin
 	update: (value: unknown) => dispatch(change(form, name, value)),
 });
 
-export default connect(mapStateToProps, mapDispatchToProps);
+export default connect<
+	ReturnType<typeof mapStateToProps>,
+	typeof mapDispatchToProps,
+	{ form: string; name: string; variableType: string; entity: string },
+	RootState
+>(mapStateToProps, mapDispatchToProps);

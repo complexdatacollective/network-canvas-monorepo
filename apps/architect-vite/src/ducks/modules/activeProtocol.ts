@@ -82,10 +82,11 @@ const activeProtocolSlice = createSlice({
 			}
 			if (state.assetManifest) {
 				const currentAssetManifest = current(state.assetManifest);
-				const newAssetManifest = assetManifest(currentAssetManifest, action);
+				// Cast to internal Asset type (has required id) for reducer
+				const newAssetManifest = assetManifest(currentAssetManifest as Parameters<typeof assetManifest>[0], action);
 				if (newAssetManifest !== currentAssetManifest) {
-					// Cast the assetManifest to the correct type
-					state.assetManifest = newAssetManifest;
+					// Cast back to protocol Asset type (has optional id)
+					state.assetManifest = newAssetManifest as typeof state.assetManifest;
 					hasChange = true;
 				}
 			}

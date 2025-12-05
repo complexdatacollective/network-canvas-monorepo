@@ -35,8 +35,9 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 	);
 
 	const handleSubmit = useCallback(
-		(formValues: { keyName: string; keyValue: string }) => {
-			dispatch(addApiKeyAsset(formValues.keyName, formValues.keyValue));
+		(formValues: Record<string, unknown>) => {
+			const { keyName, keyValue } = formValues as { keyName: string; keyValue: string };
+			dispatch(addApiKeyAsset(keyName, keyValue));
 		},
 		[dispatch],
 	);

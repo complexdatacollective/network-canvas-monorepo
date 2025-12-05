@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import { createEdgeAsync } from "~/ducks/modules/protocol/codebook";
+import type { AppDispatch } from "~/ducks/store";
 
 const mapDispatchToProps = {
 	createEdge: createEdgeAsync,
@@ -11,9 +12,9 @@ const mapDispatchToProps = {
 
 const createEdgeHandler = {
 	handleCreateEdge:
-		({ createEdge }: { createEdge: typeof createEdgeAsync }) =>
-		(name: string) => {
-			const { type } = createEdge({ name });
+		({ createEdge, dispatch }: { createEdge: typeof createEdgeAsync; dispatch: AppDispatch }) =>
+		async (name: string) => {
+			const { type } = await dispatch(createEdge({ name }));
 
 			return type;
 		},
