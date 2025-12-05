@@ -11,6 +11,7 @@ type ConfirmProps = {
 	confirmLabel?: string;
 	cancelLabel?: string;
 	show?: boolean;
+	className?: string;
 };
 
 /*
@@ -25,6 +26,7 @@ const Confirm = ({
 	confirmLabel = "OK",
 	cancelLabel = "Cancel",
 	show = false,
+	className,
 }: ConfirmProps) => (
 	<Dialog
 		type="confirm"
@@ -33,6 +35,7 @@ const Confirm = ({
 		title={title}
 		message={message}
 		onBlur={onCancel}
+		classNames={className}
 		options={[
 			...(canCancel && onCancel
 				? [<Button key="cancel" onClick={onCancel} color="navy-taupe" content={cancelLabel} />]
