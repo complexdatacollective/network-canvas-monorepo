@@ -8,30 +8,30 @@ This guide will walk you through the basic workflow for using Fresco to conduct 
 
 Fresco is designed to be used in conjunction with Architect for designing interview protocols. If you haven't already, you should [design your protocol in Architect](/en/desktop/tutorials/building-a-protocol) before proceeding.
 
-## Basic Workflow
+## Basic workflow
 
-Using Fresco will be familiar to anyone who has used the desktop applications, with the significant advantage that now all management of protocols, participants, and data can be conducted through a web-based dashboard.
+Using Fresco will be familiar to anyone who has used the desktop applications, with the significant advantage that you can now conduct all protocol, participant, and data management through a web-based dashboard.
 
 The basic workflow for using Fresco is as follows:
 
 1. **Deploy Fresco**: Deploy your own instance of Fresco (more on this in the [deployment guide](/en/fresco/deployment/guide)).
-2. **Upload Protocols**: Upload one or more Network Canvas protocols created in Architect to Fresco.
-3. **Add Participants**: Add participants to your study, either individually or in bulk. Alternatively, use the anonymous recruitment feature to allow participants to self-enroll in the study.
-4. **Conduct Interviews**: Share either the unique participant URL or the anonymous recruitment URL with participants to allow them to complete the interview on their own device.
-5. **Monitor Progress**: Monitor the progress of your study using the dashboard.
-6. **Export Data**: Export data from the interviews page, once your data collection is complete.
+2. **Upload protocols**: Upload one or more Network Canvas protocols created in Architect to Fresco.
+3. **Add participants**: Add participants to your study, either individually or in bulk. Alternatively, use the anonymous recruitment feature to allow participants to self-enroll in the study.
+4. **Conduct interviews**: Share either the unique participant URL or the anonymous recruitment URL with participants to allow them to complete the interview on their own device.
+5. **Monitor progress**: Monitor the progress of your study using the dashboard.
+6. **Export data**: Export data from the interviews page once your data collection is complete.
 
 We will now walk through each of these steps in more detail.
 
 ## Deployment
 
-Fresco is designed to be deployed on your own server(s) and infrastructure. This is to ensure that you have full control over the data collected in your study, and to ensure that you can comply with any relevant data protection regulations or IRB requirements that you may have.
+Fresco is designed to be deployed on your own server(s) and infrastructure. This ensures you have full control over the data collected in your study and can comply with any relevant data protection regulations or Institutional Review Board (IRB) requirements.
 
 For many researchers, using our [basic deployment guide](/en/fresco/deployment/guide) to deploy to the free Netlify plan will be sufficient. However, if you have specific requirements around data security, privacy, or compliance, you may need to deploy Fresco to your own server, or to specialist services.
 
 If you are unable to deploy Fresco yourself, your university may be able to host a compliant version of Fresco for you. Please contact your IT department or research support office for more information, and refer them to our [advanced deployment guide](/en/fresco/deployment/advanced) for more information on the requirements for hosting Fresco.
 
-## Uploading Protocols
+## Uploading protocols
 
 Once you have deployed Fresco and have access to your dashboard, we can begin by uploading one or more protocols for your study.
 
@@ -48,13 +48,13 @@ However, we recommend **not** hosting different studies on the same instance of 
 ### To upload a protocol
 
 1. Navigate to the protocols page in the dashboard.
-2. Click the "upload protocol" button.
+2. Click the **Upload protocol** button.
 3. Select the `.netcanvas` file that you exported from Architect.
-4. Click "upload".
+4. Click **Upload**.
 
 ![The protocols page in the dashboard.](/assets/img/fresco-images/protocols-page.png)
 
-Your protocol will then be validated and uploaded to Fresco. If it contains any assets (images, audio, video, or network files) these will be uploaded to the UploadThing service and linked to your protocol.
+Fresco will then validate and upload your protocol. If it contains any assets (images, audio, video, or network files), Fresco will upload these to the UploadThing service and link them to your protocol.
 
 Once the process is finished, you will see your protocol listed on the protocols page. You can click on the protocol to view its details, and to see the unique URL that you will share with participants to conduct interviews.
 
@@ -69,17 +69,17 @@ These approaches are not mutually exclusive, and can be used in combination. For
 
 Which approach you choose will depend on the specifics of your study, and the resources you have available for recruitment.
 
-Regardless of the approach, all participants in Fresco are defined by their 'participant identifier' and an optional label. In the case of known participants, the participant identifier can be provided by the researcher (which is useful for linking responses to external data sources), or can be generated by Fresco at random. If anonymous recruitment is enabled, participants will be assigned a random identifier when they begin an interview.
+Regardless of the approach, Fresco defines all participants by their participant identifier and an optional label. For known participants, you can provide the participant identifier (which is useful for linking responses to external data sources), or Fresco can generate one at random. If you enable anonymous recruitment, Fresco assigns participants a random identifier when they begin an interview.
 
-Participant _labels_ are an optional attribute that can be used to provide a human-readable label for the participant. This field is not exposed to participants, and can be used to store a name or an internal project label for the participant.
+Participant _labels_ are an optional attribute you can use to provide a human-readable label for the participant. This field is not exposed to participants and can store a name or an internal project label for the participant.
 
-<Tipbox danger>
+<TipBox danger>
 
-Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this process via the participation URL, and so must not contain any sensitive information, and must not be easy to guess (e.g. sequential numbers, or easily guessable strings).
+Fresco uses participant identifiers to onboard participants. **Participant identifiers appear in participant URLs and are visible to participants.** For this reason, never use sensitive information or predictable patterns (such as sequential numbers like 001, 002, 003, or easily guessable strings) as identifiers.
 
 Participant identifiers must be unique within the study. If you attempt to add a participant with an identifier that is already in use, you will receive an error message.
 
-</Tipbox>
+</TipBox>
 
 ### Adding participants manually
 
@@ -89,19 +89,19 @@ To add a participant manually:
 
 1. Navigate to the participants page in the dashboard.
    ![The participants page in the dashboard.](/assets/img/fresco-images/participants-page.png)
-2. Click the "Add Single Participant" button.
+2. Click the **Add Single Participant** button.
    ![Adding a single participant](/assets/img/fresco-images/participants-add-single.png)
-3. Enter a participant identifier, or click the 'generate' button to have one generated for you at random.
+3. Enter a participant identifier, or click the **Generate** button to have one generated for you at random.
 4. Optionally, enter a participant label.
-5. Click "Submit".
+5. Click **Submit**.
 
 Your participant will immediately appear in the participants list.
 
 ### Adding participants in bulk via CSV import
 
-Adding participants in bulk is useful when you have a large number of participants to add to the study. This can be done by uploading a CSV file containing the participant data.
+Adding participants in bulk is useful when you have a large number of participants to add to the study. You can do this by uploading a CSV file containing the participant data.
 
-<Tipbox>
+<TipBox>
 
 Your CSV file can contain the following columns:
 
@@ -114,79 +114,79 @@ The identifier and label column headers must be lowercase.
 
 You can download a template CSV file to help you format your data correctly from [here](/assets/participants-template.csv).
 
-</Tipbox>
+</TipBox>
 
 Once you have created your CSV file, you can upload it to Fresco as follows:
 
 1. Navigate to the participants page in the dashboard.
-2. Click the "import participants" button.
-   ![the CSV import dialog](/assets/img/fresco-images/csv-import.png)
+2. Click the **Import participants** button.
+   ![The CSV import dialog](/assets/img/fresco-images/csv-import.png)
 3. Upload your CSV file.
-4. Click "Submit".
+4. Click **Submit**.
 
 Your participants will immediately appear in the participants list.
 
-### Anonymous Recruitment
+### Anonymous recruitment
 
-Anonymous recruitment mode allows participants to self-enroll in the study using a unique URL. This URL can be generated for each protocol, and shared with participants. When the participant visits the URL, they will be assigned a random participant identifier and will be able to complete an interview. This method is useful when you do not have a list of known participants, or when you want to allow participants to share the study with others.
+Anonymous recruitment mode allows participants to self-enroll in the study using a unique URL. You can generate this URL for each protocol and share it with participants. When participants visit the URL, Fresco assigns them a random participant identifier and allows them to complete an interview. This method is useful when you do not have a list of known participants or when you want to allow participants to share the study with others.
 
-#### Enabling Anonymous Recruitment
+#### Enabling anonymous recruitment
 
 1. Navigate to the settings page in the dashboard.
-2. Toggle the "Anonymous Recruitment" switch.
+2. Toggle the **Anonymous Recruitment** switch.
 
 ![The settings page in the dashboard.](/assets/img/fresco-images/settings-page.png)
 
 Once enabled, a warning message will be visible on the main dashboard page to remind you that anonymous recruitment is active.
 
-## Conducting Interviews
+## Conducting interviews
 
 Once you have uploaded your protocol and optionally added participants to the study, you can begin conducting interviews.
 
 In Fresco, interviews are conducted by participants on their own devices. Participants can begin an interview by following a URL that you provide them.
 
-<KeyConcept title="Participation URLs">
+<KeyConcept title="Participant URLs">
 
-In Fresco, there are two kinds of URLs that can be shared with participants: **Unique Participant URLs** and **Anonymous Participation URLs**.
+In Fresco, you can share two kinds of URLs with participants: **Unique Participant URLs** and **Anonymous Participant URLs**.
 
-- **Unique Participant URLs** are unique for each participant and protocol combination (so "James" and "Study A" would have a different URL from "James" and "Study B"), and can be shared with the participant to allow them to complete an interview. These URLs will create a new interview with specified protocol each time they are visited, and will redirect the participant into that interview immediately. This interview and all response data will be linked to their participant identifier.
+- **Unique Participant URLs** are unique for each participant and protocol combination (so "James" and "Study A" would have a different URL from "James" and "Study B"). You can share these URLs with participants to allow them to complete an interview. These URLs create a new interview with the specified protocol each time they are visited and redirect the participant into that interview immediately. Fresco links this interview and all response data to their participant identifier.
 
-- **Anonymous Participation URLs** are not unique to the participant, but _are_ still linked to the protocol. The same URL can be shared with multiple participants to allow them to complete an interview without needing to be added to the study manually. When the link is visited, an anonymous participant will be created using a randomly generated identifier, and the interview will be started as normal.
+- **Anonymous Participant URLs** are not unique to the participant, but _are_ still linked to the protocol. You can share the same URL with multiple participants to allow them to complete an interview without needing to be added to the study manually. When participants visit the link, Fresco creates an anonymous participant using a randomly generated identifier and starts the interview as normal.
 
 </KeyConcept>
 
-### Unique Participant URLs
+### Unique participant URLs
 
-Participant URLs are unique URLs that can be generated for each participant per protocol, and shared with the participant to allow them to complete an interview. These URLs will take the participant directly to the interview for the specified protocol, and will link their responses to their participant identifier.
+Unique participant URLs are unique URLs you can generate for each participant per protocol and share with the participant to allow them to complete an interview. These URLs take the participant directly to the interview for the specified protocol and link their responses to their participant identifier.
 
-To share unique participant URLs with participants, you can either copy each URL individually, or export a CSV file containing all the URLs for a given protocol.
+To share unique participant URLs with participants, you can either copy each URL individually or export a CSV file containing all the URLs for a given protocol.
 
-#### Manually Copying a Unique Participant URL
+#### Manually copying a unique participant URL
 
 1. Navigate to the participants page in the dashboard.
-2. Click the "Copy Unique URL" button for the participant you wish to generate a URL for.
+2. Click the **Copy Unique URL** button for the participant you wish to generate a URL for.
 3. Select the protocol you wish to conduct the interview for from the dropdown.
 4. The URL will be copied to your clipboard. You can now share this URL with the participant.
 
-#### Exporting a CSV of Unique Participant URLs
+#### Exporting a CSV of unique participant URLs
 
 1. Navigate to the participants page in the dashboard.
-2. Click the "Export Participation URLs" button.
+2. Click the **Export Participant URLs** button.
 3. Select the protocol you wish to generate URLs for from the dropdown.
 4. Optionally, select the participants you wish to generate URLs for. This option defaults to all participants.
-5. Click the "Export Participation URLs" button.
+5. Click the **Export Participant URLs** button.
 
 The CSV file will contain a row for each participant, with columns for the participant identifier, participant label, and the unique URL for the specified protocol. You can use this file to distribute the URLs to participants via email, SMS, or other methods.
 
-### Anonymous Recruitment URLs
+### Anonymous participant URLs
 
-If Anonymous Recruitment is enabled, participants can self-enroll in the study using an Anonymous Recruitment URL. This URL is not unique to the participant. The same URL can be shared with _multiple_ participants to allow them to complete an interview without needing to be added to the study manually.
+If you enable anonymous recruitment, participants can self-enroll in the study using an anonymous participant URL. This URL is not unique to the participant. You can share the same URL with _multiple_ participants to allow them to complete an interview without needing to be added to the study manually.
 
-#### To generate an anonymous recruitment URL:
+#### To generate an anonymous participant URL:
 
 1. Navigate to the protocols page in the dashboard.
-2. Click on the "Anonymous Participation URL" for the protocol you wish to recruit participants for.
-3. The URL will be copied to your clipboard, and will be in the following format:
+2. Click on the **Anonymous Participant URL** button for the protocol you wish to recruit participants for.
+3. The URL will be copied to your clipboard and will be in the following format:
 
 ```bash
 https://yourstudy.com/onboard/{protocolUniqueID}
@@ -194,75 +194,75 @@ https://yourstudy.com/onboard/{protocolUniqueID}
 
 You can now share this URL with participants to allow them to self-enroll in the study.
 
-### Limit Interviews
+### Limit interviews
 
-It may be desirable to limit the number of interviews that a participant can complete for a given protocol. For this reason, Fresco includes this as an option that can be enabled on the settings page.
+You may want to limit the number of interviews that a participant can complete for a given protocol. For this reason, Fresco includes this as an option you can enable on the settings page.
 
-If this option is enabled, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once an interview has been completed, attempting to start a new interview or to resume any other in-progress interview, will be prevented. This applies to both unique participant URLs and anonymous recruitment URLs.
+If you enable this option, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once a participant has completed an interview, attempting to start a new interview or to resume any other in-progress interview will be prevented. This applies to both unique participant URLs and anonymous participant URLs.
 
 To enable this feature:
 
 1. Navigate to the settings page in the dashboard.
-2. Toggle the "Limit Interviews" switch to on.
+2. Toggle the **Limit Interviews** switch to on.
 
 <TipBox danger>
 
-We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when an interview has been submitted by a given participant.
+We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview.
 
-This means that if anonymous recruitment is enabled and a participant clears their cookies, they will be able to submit another interview.
+This means that if you enable anonymous recruitment and a participant clears their cookies, they will be able to submit another interview.
 
-If you require more robust tracking, you should consider using unique participant URLs instead of anonymous recruitment URLs.
+If you require more robust tracking, you should consider using unique participant URLs instead of anonymous participant URLs.
 
 </TipBox>
 
-## Monitoring Progress
+## Monitoring progress
 
-Once you have sent out URLs to participants and they begin to complete interviews, you can monitor the progress of those interviews using the interviews page in the dashboard, as well as the main dashboard activity feed.
+Once you have sent out URLs to participants and they begin to complete interviews, you can monitor the progress of those interviews using the interviews page in the dashboard and the main dashboard activity feed.
 
 The **interviews page** provides an overview of all interviews in the study, including the participant identifier, protocol name, start date, last updated date, and interview progress. From this page you can also export data from the interviews.
 
-The **dashboard activity feed** also provides a way to monitor the progress of your study, and summarizes the most recent activity within Fresco. This includes installed protocols, added participants, started and completed interviews, and exported data.
+The **dashboard activity feed** also provides a way to monitor the progress of your study and summarizes the most recent activity within Fresco. This includes installed protocols, added participants, started and completed interviews, and exported data.
 
-### Generate a CSV of Incomplete URLs
+### Generate a CSV of incomplete URLs
 
 You can generate a CSV file of incomplete interview URLs in bulk for multiple participants by protocol. This can be useful for sending reminders to participants who have not yet completed their interview.
 
 1. Navigate to the interviews page in the dashboard.
-2. Click on the "Export Incomplete URLs" button.
+2. Click on the **Export Incomplete URLs** button.
 3. Select the protocol you wish to generate URLs for from the dropdown.
-4. Click the "Export Incomplete URLs" button.
+4. Click the **Export Incomplete URLs** button.
 
-## Exporting Data
+## Exporting data
 
-Once interviews have been completed, you can export the data from the interviews page for analysis in your preferred external software. You can also view the export status of each interview from this page.
+Once participants have completed interviews, you can export the data from the interviews page for analysis in your preferred external software. You can also view the export status of each interview from this page.
 
 ### To export selected interviews:
 
 1. Navigate to the interviews page in the dashboard.
 2. Select the checkboxes next to the interviews you wish to export.
-3. Click the "export selected" button at the bottom of the table.
+3. Click the **Export selected** button at the bottom of the table.
 4. Confirm the [file types and export options](/en/fresco/using-fresco#file-types) that you wish to use.
-5. Click "Start export process".
+5. Click **Start export process**.
 
 ### To export all interviews:
 
-1. Navigate to the "interviews" page in the dashboard.
-2. Click the "Export Interview Data" button.
-3. Select "Export all interviews" from the dropdown.
+1. Navigate to the interviews page in the dashboard.
+2. Click the **Export Interview Data** button.
+3. Select **Export all interviews** from the dropdown.
 4. Confirm the [file types and export options](/en/fresco/using-fresco#file-types) that you wish to use.
-5. Click "Start export process".
+5. Click **Start export process**.
 
 ### To export all _unexported_ interviews:
 
-1. Navigate to the "interviews" page in the dashboard.
-2. Click the "Export Interview Data" button.
-3. Select "Export all unexported interviews" from the dropdown.
+1. Navigate to the interviews page in the dashboard.
+2. Click the **Export Interview Data** button.
+3. Select **Export all unexported interviews** from the dropdown.
 4. Confirm the [file types and export options](/en/fresco/using-fresco#file-types) that you wish to use.
-5. Click "Start export process".
+5. Click **Start export process**.
 
 ## File types
 
-You will be prompted to choose file types for the export. The file types are identical to those found in Interviewer. The two options are:
+Fresco will prompt you to choose file types for the export. The file types are identical to those found in Interviewer. The two options are:
 
 - **CSV**. A common format for representing network data. This format is readable as a table (or series of tables) in Excel, LibreOffice, Keynote, and other tabular programs. The CSV version also complies with the `egor` package standard. Selecting this option will output multiple files, including node and edge lists for each type, and an ego attribute list that also includes session metadata:
   - **Ego attribute list**: This file will have one row per ego, with ego-level variables session metadata. The filename will be in the format `caseID_sessionUUID_ego.csv`.
@@ -270,11 +270,17 @@ You will be prompted to choose file types for the export. The file types are ide
   - **Edge attribute list**: This will have one row per relationship, with columns representing edge attributes. Each row will have a key to link to ego (`networkCanvasEgoUUID`), as well as source and target columns that reference both the UUID and the automatically incrementing export ID. The filename will be in the format `caseID_sessionUUID_edgeType.csv`.
 - **GraphML**. An XML based open standard for representing graph data, that is compatible with many social network analysis programs including UCINET, Gephi, NodeXL, Pajek, Visone, and ORA. The filename will be in the format `caseID_sessionUUID.graphml`.
 
-Which file type you should choose depends largely on the needs of your analysis tools. We recommend exporting data in both formats, and experimenting with the data you receive to ensure that it needs your needs.
+Which file type you should choose depends largely on the needs of your analysis tools. We recommend exporting data in both formats and experimenting with the data you receive to ensure that it meets your needs.
 
-## Export Options
+<TipBox>
 
-You may configure a variety of specialized export options that will impact the data you receive in a variety of ways. These options can be left at their default values unless you know that you need to change them.
+For comprehensive information about data export, file types, and using exported data in analysis tools, see the [Data Export guide](/en/desktop/key-concepts/data-export).
+
+</TipBox>
+
+## Export options
+
+You can configure a variety of specialized export options that will impact the data you receive in various ways. You can leave these options at their default values unless you know that you need to change them.
 
 #### Use screen layout coordinates
 

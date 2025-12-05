@@ -7,10 +7,9 @@ export const baseStageSchema = z.object({
 	label: z.string(),
 	skipLogic: SkipLogicSchema.optional(),
 	introductionPanel: z
-		.object({
+		.strictObject({
 			title: z.string(),
 			text: z.string(),
 		})
-		.strict()
 		.optional(),
 });

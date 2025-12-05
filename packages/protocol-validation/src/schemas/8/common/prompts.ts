@@ -4,12 +4,10 @@ import { getEdgeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
 import { SortOrderSchema } from "../filters";
 
-export const promptSchema = z
-	.object({
-		id: z.string(),
-		text: z.string(),
-	})
-	.strict();
+export const promptSchema = z.strictObject({
+	id: z.string(),
+	text: z.string(),
+});
 
 export type BasePrompt = z.infer<typeof promptSchema>;
 
@@ -85,8 +83,6 @@ export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
 	binSortOrder: SortOrderSchema.optional(),
 });
 
-export const geospatialPromptSchema = promptSchema
-	.extend({
-		variable: z.string().generateMock(() => getNodeVariableId()),
-	})
-	.strict();
+export const geospatialPromptSchema = promptSchema.extend({
+	variable: z.string().generateMock(() => getNodeVariableId()),
+});

@@ -113,20 +113,19 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
 	subject: NodeStageSubjectSchema,
 	dataSource: z.string().generateMock(() => getAssetId()),
 	cardOptions: z
-		.object({
+		.strictObject({
 			displayLabel: z.string().optional(),
-			additionalProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
+			additionalProperties: z.array(z.strictObject({ label: z.string(), variable: z.string() })).optional(),
 		})
-		.strict()
 		.optional(),
 	sortOptions: z
 		.object({
 			sortOrder: SortOrderSchema.optional(),
-			sortableProperties: z.array(z.object({ label: z.string(), variable: z.string() }).strict()).optional(),
+			sortableProperties: z.array(z.strictObject({ label: z.string(), variable: z.string() })).optional(),
 		})
 		.optional(),
 	searchOptions: z
-		.object({
+		.strictObject({
 			fuzziness: z.number().generateMock(() => faker.number.float({ multipleOf: 0.25, min: 0, max: 1 })),
 			matchProperties: z.array(z.string()).generateMock(() => [
 				...faker.helpers.arrayElement([
@@ -136,7 +135,6 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
 				]),
 			]),
 		})
-		.strict()
 		.optional(),
 	prompts: z
 		.array(nameGeneratorPromptSchema)

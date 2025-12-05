@@ -95,10 +95,15 @@ export const getMetaDataForDirectory = (directoryPath: string) => {
  * @param metadata {MetadataFile}
  * @returns {SidebarProject}
  */
-export const createProjectEntry = (file: fs.Dirent, locale: Locale, metadata: MetadataFile): SidebarProject => {
+export const createProjectEntry = (
+	file: fs.Dirent,
+	locale: Locale,
+	metadata: MetadataFile,
+	parentPath: string,
+): SidebarProject => {
 	const localeIndexFile = metadata.localeIndexFiles?.[locale];
 	const sourceFile = localeIndexFile
-		? join(file.path, file.name, localeIndexFile).replace(process.cwd(), "")
+		? join(parentPath, file.name, localeIndexFile).replace(process.cwd(), "")
 		: undefined;
 
 	return {
@@ -117,10 +122,15 @@ export const createProjectEntry = (file: fs.Dirent, locale: Locale, metadata: Me
  * @param metadata {MetadataFile}
  * @returns {SidebarFolder}
  */
-export const createFolderEntry = (file: fs.Dirent, locale: Locale, metadata: MetadataFile): SidebarFolder => {
+export const createFolderEntry = (
+	file: fs.Dirent,
+	locale: Locale,
+	metadata: MetadataFile,
+	parentPath: string,
+): SidebarFolder => {
 	const localeIndexFile = metadata.localeIndexFiles?.[locale];
 	const sourceFile = localeIndexFile
-		? join(file.path, file.name, localeIndexFile).replace(process.cwd(), "")
+		? join(parentPath, file.name, localeIndexFile).replace(process.cwd(), "")
 		: undefined;
 
 	return {
@@ -140,11 +150,15 @@ export const createFolderEntry = (file: fs.Dirent, locale: Locale, metadata: Met
  * @param matterResult {matter.GrayMatterFile<string>}
  * @returns {SidebarPage}
  */
-export const createPageEntry = (file: fs.Dirent, matterResult: matter.GrayMatterFile<string>): SidebarPage => {
+export const createPageEntry = (
+	file: fs.Dirent,
+	matterResult: matter.GrayMatterFile<string>,
+	parentPath: string,
+): SidebarPage => {
 	const title = matterResult.data?.title as string | undefined;
 	const navOrder = matterResult.data?.navOrder as number | undefined;
 	const hidden = matterResult.data?.hidden as boolean | undefined;
-	const sourceFile = join(file.path, file.name).replace(process.cwd(), "");
+	const sourceFile = join(parentPath, file.name).replace(process.cwd(), "");
 
 	return {
 		type: "page",

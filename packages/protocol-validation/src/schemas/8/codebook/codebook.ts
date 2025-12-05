@@ -5,12 +5,11 @@ import { z } from "~/utils/zod-mock-extension";
 import { EdgeDefinitionSchema, EgoDefinitionSchema, NodeDefinitionSchema } from "./definitions";
 
 export const CodebookSchema = z
-	.object({
+	.strictObject({
 		node: z.record(VariableNameSchema, NodeDefinitionSchema).optional(),
 		edge: z.record(VariableNameSchema, EdgeDefinitionSchema).optional(),
 		ego: EgoDefinitionSchema.optional(),
 	})
-	.strict()
 	.superRefine((codebook, ctx) => {
 		// Check for duplicate entity names across all entity types
 		const entityNames = getAllEntityNames(codebook);

@@ -2,9 +2,12 @@ import { createDecipheriv } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
+import type { Endpoints } from "@octokit/types";
 import dotenv from "dotenv";
 import gunzip from "gunzip-maybe";
 import tarStream from "tar-stream";
+
+type GitHubRelease = Endpoints["GET /repos/{owner}/{repo}/releases/latest"]["response"]["data"];
 
 dotenv.config();
 
@@ -57,10 +60,14 @@ export async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>
 		},
 	});
 
-	const release = await res.json();
+	const release = (await res.json()) as GitHubRelease;
 
 	// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
-	const asset = release.assets.find((asset: { name: string }) => asset.name === "protocols.tar.gz.enc");
+	const asset = release.assets.find((asset) => asset.name === "protocols.tar.gz.enc");
+
+	if (!asset) {
+		throw new Error("protocols.tar.gz.enc asset not found in latest release");
+	}
 
 	const assetSize = asset.size;
 
@@ -92,7 +99,6 @@ export async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>
 		fs.writeFileSync(decryptedFilePath, decryptedData);
 
 		updateCache(assetSize);
-	} else {
 	}
 
 	const decryptedFilePath = path.join(downloadFolder, "protocols.tar.gz");

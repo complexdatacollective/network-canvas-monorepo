@@ -1,6 +1,6 @@
-import type { analyticsEvent } from "@codaco/analytics/src";
 import { testApiHandler } from "next-test-api-route-handler";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AnalyticsEvent } from "~/lib/analytics-types";
 import { POST } from "./route";
 
 vi.mock("~/app/_actions/actions", () => {
@@ -17,12 +17,12 @@ describe("/api/event", () => {
 	});
 
 	it("should insert a valid event to the database", async () => {
-		const eventData: analyticsEvent = {
+		const eventData: AnalyticsEvent = {
 			type: "AppSetup",
 			metadata: { details: "testing details", path: "testing path" },
 			countryISOCode: "US",
 			installationId: "21321546453213123",
-			timestamp: new Date().toString(),
+			timestamp: new Date().toISOString(),
 		};
 
 		await testApiHandler({
@@ -36,7 +36,7 @@ describe("/api/event", () => {
 	});
 
 	it("should insert a valid error into the database", async () => {
-		const eventData: analyticsEvent = {
+		const eventData: AnalyticsEvent = {
 			type: "Error",
 			name: "TestError",
 			message: "Test message",
@@ -44,7 +44,7 @@ describe("/api/event", () => {
 			metadata: { details: "testing details", path: "testing path" },
 			countryISOCode: "US",
 			installationId: "21321546453213123",
-			timestamp: new Date().toString(),
+			timestamp: new Date().toISOString(),
 		};
 
 		await testApiHandler({

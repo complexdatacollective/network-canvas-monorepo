@@ -1,0 +1,271 @@
+---
+title: Field Validation
+---
+
+<Definition>
+Field validation ensures participants provide complete and valid data by enforcing rules on form fields. Validation improves data quality and reduces the need for data cleaning during analysis.
+</Definition>
+
+## Overview
+
+When designing [forms](/en/desktop/key-concepts/forms) in Architect, you can add validation rules to ensure that participants enter valid data before they can proceed. Validation rules are applied to individual fields and are checked when the participant attempts to submit the form or move to the next section of the interview.
+
+Validation serves two important purposes:
+1. **Data quality** - Ensures you collect complete, accurate data in the expected format
+2. **User guidance** - Provides immediate feedback to participants, helping them understand what input is expected
+
+## How Validation Works
+
+When a participant attempts to submit a form with validation errors:
+
+1. The form will not submit
+2. Error messages appear next to fields that failed validation
+3. The participant must correct the errors before proceeding
+4. Once all validation rules pass, the form can be submitted
+
+<TipBox>
+
+Use validation thoughtfully. Over-validating forms can frustrate participants and increase response burden. Strike a balance between ensuring data quality and maintaining a smooth interview experience.
+
+</TipBox>
+
+## Types of Validation
+
+The validation options available depend on the [input control](/en/desktop/key-concepts/input-controls) type used for the field. Different variable types support different validation rules.
+
+### Required Field Validation
+
+Required field validation is available for all input control types and ensures the participant provides a response before proceeding. The field cannot be left empty or blank. To configure this, toggle the "Required" option in the validation section.
+
+Use required validation for essential data points that are critical to your research, variables needed for later stages (such as name variables used as labels), and consent fields. Do not use required validation for optional information that may not apply to all participants, sensitive questions where participants should have the right to skip, or fields where "no response" is a valid data point.
+
+Common uses include consent acknowledgment, alter names in name generators, and demographic information that's central to your study. The error message displayed is "This field is required."
+
+### Text Field Validation
+
+Text field validation is available for Text Input and Text Area controls.
+
+Minimum length validation ensures the text response contains at least a specified number of characters. Configure this by setting a minimum character count. Use this when you need substantive responses (such as descriptions or narratives) or to prevent single-character or trivial responses. For example, you might require "Please describe your relationship (minimum 10 characters)". The error message displayed is "Response must be at least [X] characters."
+
+Maximum length validation limits the text response to a specified number of characters. Configure this by setting a maximum character count. Use this for database field size limitations, maintaining consistent response lengths, or encouraging concise responses. For example, you might limit name fields to 50 characters. The error message displayed is "Response must be no more than [X] characters." Set reasonable limits that don't feel arbitrary, ensure the visible field size reflects the character limit, and consider that some names or descriptions may be legitimately long.
+
+### Number Field Validation
+
+Number field validation is available for Number Input controls.
+
+Minimum value validation ensures the number entered is greater than or equal to a specified minimum value. Configure this by setting a minimum acceptable value. Use this for age restrictions (such as minimum age 18), ensuring positive values where negative numbers don't make sense, or range constraints based on your research design. For example, you might require that age must be at least 18. The error message displayed is "Value must be at least [X]."
+
+Maximum value validation ensures the number entered is less than or equal to a specified maximum value. Configure this by setting a maximum acceptable value. Use this for realistic upper bounds (such as age less than 120), constraining ranges to valid values, or preventing data entry errors. For example, you might require that age must be less than 120. The error message displayed is "Value must be no more than [X]." Set realistic ranges that cover legitimate responses, consider edge cases (such as whether 0 is a valid response), and combine minimum and maximum to create valid ranges.
+
+### Date Field Validation
+
+Date field validation is available for Date Picker controls.
+
+Start date range validation sets the earliest date that can be selected. Configure this by specifying the earliest valid date. Use this for preventing impossible past dates (such as birth dates in the future), limiting responses to a study period, or ensuring dates fall within a relevant timeframe. For example, you might specify that "Visit date must be after January 1, 2020."
+
+End date range validation sets the latest date that can be selected. Configure this by specifying the latest valid date. Use this for preventing future dates where inappropriate, limiting responses to a study period, or ensuring dates are realistic. For example, you might specify that "Birth date must be before today." Use "today" as the end date for events that can't be in the future. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
+
+### Categorical Field Validation
+
+Categorical field validation is available for Radio Button Group, Toggle Button Group, and Checkbox Group controls.
+
+Minimum selections validation, for Checkbox Groups, requires participants to select at least a specified number of options. Configure this by setting a minimum number of selections. Use this for ensuring participants engage with the question or when at least one option must apply. For example, you might require "Select at least one language you speak." The error message displayed is "Please select at least [X] option(s)."
+
+Maximum selections validation, for Checkbox Groups, limits participants to selecting no more than a specified number of options. Configure this by setting a maximum number of selections. Use this for forcing prioritization, limiting to top choices, or addressing database or analysis constraints. For example, you might require "Select your top 3 preferred contact methods." The error message displayed is "Please select no more than [X] option(s)."
+
+Required selection validation, for Radio Button Groups and Toggle Button Groups, ensures an option is selected. Configure this by toggling "Required" validation. Use this when a choice must be made or for mutually exclusive options where one must apply. For example, you might require "Please indicate your gender."
+
+## Validation Strategies
+
+### Progressive Validation
+
+Start with minimal validation early in the interview and increase validation requirements for critical data points later. Early stages should use optional fields and broader ranges, while later stages can have more required fields and stricter ranges. This approach builds rapport before introducing constraints, and participants are more invested later in the interview.
+
+### Context-Appropriate Validation
+
+Match validation strictness to the sensitivity and importance of the data. High stakes data should have stricter validation and required fields. Exploratory data can use looser validation and optional fields. For sensitive data, consider making fields optional even if the data would be valuable.
+
+### Validation and Skip Logic
+
+Combine validation with [skip logic](/en/desktop/key-concepts/skip-logic) to create adaptive forms.
+
+**Example:**
+- First question: "Have you used this service?" (Yes/No, required)
+- If Yes → Show follow-up questions with validation
+- If No → Skip to next section
+
+This approach reduces burden by only validating fields that are relevant to each participant.
+
+## Validation Error Messages
+
+### Built-in Error Messages
+
+Network Canvas provides standard error messages for each validation type:
+
+- **Required:** "This field is required"
+- **Minimum length:** "Response must be at least [X] characters"
+- **Maximum length:** "Response must be no more than [X] characters"
+- **Minimum value:** "Value must be at least [X]"
+- **Maximum value:** "Value must be no more than [X]"
+- **Date range:** "Please select a date within the specified range"
+
+### User Experience Considerations
+
+Error messages appear next to the specific field that failed validation, in red text to draw attention, and immediately when the participant attempts to proceed. Test your validation rules with pilot participants, ensure error messages are clear and actionable, and don't show error messages before the participant attempts to submit.
+
+## Common Validation Patterns
+
+### Demographic Information
+
+```
+Age:
+- Type: Number Input
+- Validation: Required, Minimum: 18, Maximum: 100
+- Rationale: Study limited to adults; realistic upper bound
+
+Date of Birth:
+- Type: Date Picker
+- Validation: Required, End Date: Today
+- Rationale: Birth date cannot be in the future
+```
+
+### Name Generators
+
+```
+Alter Name:
+- Type: Text Input
+- Validation: Required
+- Rationale: Name is essential for identifying and displaying nodes throughout interview
+
+Relationship Description:
+- Type: Text Area
+- Validation: Optional
+- Rationale: Participants may not want to elaborate
+```
+
+### Contact Frequency
+
+```
+Last Contact:
+- Type: Date Picker
+- Validation: Required, Start Date: [Study Start], End Date: Today
+- Rationale: Must fall within study period; cannot be future date
+
+Frequency:
+- Type: Radio Button Group
+- Validation: Required
+- Rationale: Essential data point for network analysis
+```
+
+### Satisfaction Scales
+
+```
+Service Satisfaction:
+- Type: Likert Scale
+- Validation: Required
+- Rationale: Core outcome measure
+
+Additional Comments:
+- Type: Text Area
+- Validation: Optional, Maximum Length: 500
+- Rationale: Qualitative data welcome but not required; character limit for database
+```
+
+## Validation Best Practices
+
+Validate purposefully by using validation to ensure data quality for analysis, requiring only truly essential fields, and setting realistic ranges and limits. Don't over-validate because you can, don't require fields out of habit, and don't set arbitrary restrictions.
+
+Consider participant experience by testing validation with pilot participants, allowing participants to skip sensitive questions, and providing clear, helpful error messages. Don't create frustrating validation hurdles, don't validate fields that reduce engagement, and don't use validation as a substitute for clear instructions.
+
+Balance quality and burden by prioritizing validation for critical variables, making optional fields truly optional, and considering the cumulative burden of multiple validated fields. Don't require everything "just in case," don't apply the same strict validation across all fields, and don't ignore participant fatigue in long forms.
+
+Plan for edge cases by considering legitimate outliers (such as very young or old participants), thinking about cultural variations (such as name lengths or date formats), and accounting for "prefer not to answer" scenarios. Don't set ranges so tight they exclude valid responses, don't assume all participants fit typical patterns, and don't force responses where none may apply.
+
+Test thoroughly by testing all validation rules in [Preview Mode](/en/desktop/tutorials/building-a-protocol#preview-mode), trying to break your validation with edge cases, and getting feedback from colleagues and pilot participants. Don't assume validation works without testing, don't wait until data collection to discover validation issues, and don't ignore participant feedback about validation frustrations.
+
+## When NOT to Use Validation
+
+Validation isn't always appropriate. Avoid validation when:
+
+### 1. Sensitive Questions
+
+Questions about sensitive topics (health, finances, relationships) may warrant optional responses.
+
+**Example:** Instead of requiring "annual income," make it optional with a prefer-not-to-answer option.
+
+### 2. Exploratory Data
+
+When exploring novel questions or populations, strict validation may exclude important edge cases.
+
+**Example:** Open-ended responses about emerging phenomena
+
+### 3. Qualitative Data
+
+Rich, qualitative responses benefit from flexibility rather than constraints.
+
+**Example:** Narrative descriptions of relationships
+
+### 4. Optional Follow-Up
+
+Additional detail that's nice-to-have but not essential to analysis.
+
+**Example:** "Is there anything else you'd like to share?"
+
+## Validation and Data Analysis
+
+Consider how validation choices impact your data:
+
+### Required Fields
+- **Benefit:** Complete data for all participants
+- **Cost:** May force arbitrary responses; potential participant dropout
+
+### Optional Fields
+- **Benefit:** Higher quality responses from those who choose to answer
+- **Cost:** Missing data requires appropriate statistical handling
+
+### Range Restrictions
+- **Benefit:** Clean data within expected bounds
+- **Cost:** May exclude legitimate outliers; data cleaning still needed
+
+Plan your analysis strategy alongside your validation strategy:
+- How will you handle missing data?
+- What ranges are defensible for your population?
+- Which variables are essential vs. supplementary?
+
+## Troubleshooting Validation Issues
+
+### Participants Can't Submit Form
+
+**Check:**
+- Are all required fields actually answerable?
+- Are ranges realistic for your population?
+- Is the error message clear about what's wrong?
+
+### High Drop-Out Rates
+
+**Check:**
+- Are you requiring too many fields?
+- Are validation rules too strict?
+- Is the cognitive burden too high?
+
+### Invalid Data Despite Validation
+
+**Remember:**
+- Validation prevents format errors, not thoughtless responses
+- Some participants may enter nonsense to satisfy validation
+- Validation is part of data quality, not the whole solution
+
+## Related Concepts
+
+- [Forms](/en/desktop/key-concepts/forms) - Learn how to build forms with validated fields
+- [Input Controls](/en/desktop/key-concepts/input-controls) - Understand which validation options are available for each input type
+- [Skip Logic](/en/desktop/key-concepts/skip-logic) - Combine validation with conditional logic to create adaptive interviews
+
+## Next Steps
+
+Now that you understand field validation, you can:
+
+1. Practice adding validation rules in Architect
+2. Test your validation in [Preview Mode](/en/desktop/tutorials/building-a-protocol#preview-mode)
+3. Review the [building a protocol tutorial](/en/desktop/tutorials/building-a-protocol) to see validation in context
+4. Consider how validation fits into your overall data quality strategy
