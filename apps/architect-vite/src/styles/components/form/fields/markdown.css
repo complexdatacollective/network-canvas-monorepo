@@ -44,8 +44,9 @@
 		max-height: 0;
 		color: var(--color-error);
 		margin: var(--space-sm) 0 0;
-		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-			var(--animation-duration-standard);
+		transition:
+			opacity var(--animation-easing) var(--animation-duration-standard),
+			max-height var(--animation-easing) var(--animation-duration-standard);
 	}
 
 	&.form-fields-markdown--has-error {

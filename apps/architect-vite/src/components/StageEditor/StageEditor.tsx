@@ -54,7 +54,12 @@ const StageEditor = (props: StageEditorProps) => {
 			if (id) {
 				dispatch(stageActions.updateStage(id, normalizedStage));
 			} else {
-				dispatch(stageActions.createStage({ options: normalizedStage, index: insertAtIndex }));
+				dispatch(
+					stageActions.createStage({
+						options: normalizedStage,
+						index: insertAtIndex,
+					}),
+				);
 			}
 
 			setLocation("/protocol");

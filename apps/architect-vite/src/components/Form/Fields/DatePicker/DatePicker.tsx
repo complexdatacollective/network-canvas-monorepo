@@ -72,7 +72,9 @@ const DatePickerInput = ({
 	const handleClickPreview = (open = true) => setPanelsOpen(open);
 	const today = now().toObject();
 
-	const datePickerClasses = cx("date-picker", { "date-picker--is-active": panelsOpen });
+	const datePickerClasses = cx("date-picker", {
+		"date-picker--is-active": panelsOpen,
+	});
 
 	const handleFocus = () => {
 		if (isEmpty(value)) {

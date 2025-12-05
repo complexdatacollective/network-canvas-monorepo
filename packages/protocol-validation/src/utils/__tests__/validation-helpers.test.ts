@@ -40,7 +40,10 @@ describe("Validation Helpers", () => {
 		});
 
 		it("returns false for non-existing node type", () => {
-			const result = entityExists(codebook, { entity: "node", type: "nonexistent" });
+			const result = entityExists(codebook, {
+				entity: "node",
+				type: "nonexistent",
+			});
 			expect(result).toBe(false);
 		});
 
@@ -50,19 +53,28 @@ describe("Validation Helpers", () => {
 		});
 
 		it("returns false for non-existing edge type", () => {
-			const result = entityExists(codebook, { entity: "edge", type: "nonexistent" });
+			const result = entityExists(codebook, {
+				entity: "edge",
+				type: "nonexistent",
+			});
 			expect(result).toBe(false);
 		});
 
 		it("returns false for node entity when no nodes exist", () => {
 			const codebookWithoutNodes = { ...codebook, node: undefined };
-			const result = entityExists(codebookWithoutNodes, { entity: "node", type: "person" });
+			const result = entityExists(codebookWithoutNodes, {
+				entity: "node",
+				type: "person",
+			});
 			expect(result).toBe(false);
 		});
 
 		it("returns false for edge entity when no edges exist", () => {
 			const codebookWithoutEdges = { ...codebook, edge: undefined };
-			const result = entityExists(codebookWithoutEdges, { entity: "edge", type: "knows" });
+			const result = entityExists(codebookWithoutEdges, {
+				entity: "edge",
+				type: "knows",
+			});
 			expect(result).toBe(false);
 		});
 	});
@@ -77,37 +89,54 @@ describe("Validation Helpers", () => {
 
 		it("returns empty object for ego subject when ego doesn't exist", () => {
 			const codebookWithoutEgo = { ...codebook, ego: undefined };
-			const result = getVariablesForSubject(codebookWithoutEgo, { entity: "ego" });
+			const result = getVariablesForSubject(codebookWithoutEgo, {
+				entity: "ego",
+			});
 			expect(result).toEqual({});
 		});
 
 		it("returns node variables for node subject", () => {
-			const result = getVariablesForSubject(codebook, { entity: "node", type: "person" });
+			const result = getVariablesForSubject(codebook, {
+				entity: "node",
+				type: "person",
+			});
 			expect(result).toEqual(codebook.node.person.variables);
 			expect(Object.keys(result)).toContain("name");
 			expect(Object.keys(result)).toContain("age");
 		});
 
 		it("returns empty object for non-existing node type", () => {
-			const result = getVariablesForSubject(codebook, { entity: "node", type: "nonexistent" });
+			const result = getVariablesForSubject(codebook, {
+				entity: "node",
+				type: "nonexistent",
+			});
 			expect(result).toEqual({});
 		});
 
 		it("returns edge variables for edge subject", () => {
-			const result = getVariablesForSubject(codebook, { entity: "edge", type: "knows" });
+			const result = getVariablesForSubject(codebook, {
+				entity: "edge",
+				type: "knows",
+			});
 			expect(result).toEqual(codebook.edge.knows.variables);
 			expect(Object.keys(result)).toContain("closeness");
 			expect(Object.keys(result)).toContain("duration");
 		});
 
 		it("returns empty object for non-existing edge type", () => {
-			const result = getVariablesForSubject(codebook, { entity: "edge", type: "nonexistent" });
+			const result = getVariablesForSubject(codebook, {
+				entity: "edge",
+				type: "nonexistent",
+			});
 			expect(result).toEqual({});
 		});
 
 		it("returns empty object when node collection doesn't exist", () => {
 			const codebookWithoutNodes = { ...codebook, node: undefined };
-			const result = getVariablesForSubject(codebookWithoutNodes, { entity: "node", type: "person" });
+			const result = getVariablesForSubject(codebookWithoutNodes, {
+				entity: "node",
+				type: "person",
+			});
 			expect(result).toEqual({});
 		});
 	});
@@ -313,25 +342,41 @@ describe("Validation Helpers", () => {
 		});
 
 		it("returns true for node rule with existing node type", () => {
-			const rule = { id: "rule1", type: "node" as const, options: { type: "person" } };
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: { type: "person" },
+			};
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(true);
 		});
 
 		it("returns false for node rule with non-existing node type", () => {
-			const rule = { id: "rule1", type: "node" as const, options: { type: "nonexistent" } };
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: { type: "nonexistent" },
+			};
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(false);
 		});
 
 		it("returns true for edge rule with existing edge type", () => {
-			const rule = { id: "rule1", type: "edge" as const, options: { type: "knows" } };
+			const rule = {
+				id: "rule1",
+				type: "edge" as const,
+				options: { type: "knows" },
+			};
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(true);
 		});
 
 		it("returns false for edge rule with non-existing edge type", () => {
-			const rule = { id: "rule1", type: "edge" as const, options: { type: "nonexistent" } };
+			const rule = {
+				id: "rule1",
+				type: "edge" as const,
+				options: { type: "nonexistent" },
+			};
 			const result = filterRuleEntityExists(rule, codebook);
 			expect(result).toBe(false);
 		});
@@ -345,7 +390,11 @@ describe("Validation Helpers", () => {
 
 	describe("filterRuleAttributeExists", () => {
 		it("returns true when no attribute is specified", () => {
-			const rule = { id: "rule1", type: "node" as const, options: { type: "person" } };
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: { type: "person" },
+			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(true);
 		});
@@ -374,7 +423,11 @@ describe("Validation Helpers", () => {
 			const rule = {
 				id: "rule1",
 				type: "node" as const,
-				options: { type: "person", attribute: "name", operator: "EXISTS" as const },
+				options: {
+					type: "person",
+					attribute: "name",
+					operator: "EXISTS" as const,
+				},
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(true);
@@ -384,7 +437,11 @@ describe("Validation Helpers", () => {
 			const rule = {
 				id: "rule1",
 				type: "node" as const,
-				options: { type: "person", attribute: "nonexistent", operator: "EXISTS" as const },
+				options: {
+					type: "person",
+					attribute: "nonexistent",
+					operator: "EXISTS" as const,
+				},
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(false);
@@ -394,7 +451,11 @@ describe("Validation Helpers", () => {
 			const rule = {
 				id: "rule1",
 				type: "edge" as const,
-				options: { type: "knows", attribute: "closeness", operator: "EXISTS" as const },
+				options: {
+					type: "knows",
+					attribute: "closeness",
+					operator: "EXISTS" as const,
+				},
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(true);
@@ -404,7 +465,11 @@ describe("Validation Helpers", () => {
 			const rule = {
 				id: "rule1",
 				type: "edge" as const,
-				options: { type: "knows", attribute: "nonexistent", operator: "EXISTS" as const },
+				options: {
+					type: "knows",
+					attribute: "nonexistent",
+					operator: "EXISTS" as const,
+				},
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(false);
@@ -414,7 +479,11 @@ describe("Validation Helpers", () => {
 			const rule = {
 				id: "rule1",
 				type: "node" as const,
-				options: { type: "nonexistent", attribute: "name", operator: "EXISTS" as const },
+				options: {
+					type: "nonexistent",
+					attribute: "name",
+					operator: "EXISTS" as const,
+				},
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(false);
@@ -428,27 +497,37 @@ describe("Validation Helpers", () => {
 		});
 
 		it("appends ego entity context", () => {
-			const result = createValidationMessage("Base error", { subject: { entity: "ego" } });
+			const result = createValidationMessage("Base error", {
+				subject: { entity: "ego" },
+			});
 			expect(result).toBe("Base error (ego entity)");
 		});
 
 		it("appends node entity context", () => {
-			const result = createValidationMessage("Base error", { subject: { entity: "node", type: "person" } });
+			const result = createValidationMessage("Base error", {
+				subject: { entity: "node", type: "person" },
+			});
 			expect(result).toBe("Base error (node[person])");
 		});
 
 		it("appends edge entity context", () => {
-			const result = createValidationMessage("Base error", { subject: { entity: "edge", type: "knows" } });
+			const result = createValidationMessage("Base error", {
+				subject: { entity: "edge", type: "knows" },
+			});
 			expect(result).toBe("Base error (edge[knows])");
 		});
 
 		it("appends variable context", () => {
-			const result = createValidationMessage("Base error", { variable: "testVar" });
+			const result = createValidationMessage("Base error", {
+				variable: "testVar",
+			});
 			expect(result).toBe('Base error - variable: "testVar"');
 		});
 
 		it("appends entity context", () => {
-			const result = createValidationMessage("Base error", { entity: "testEntity" });
+			const result = createValidationMessage("Base error", {
+				entity: "testEntity",
+			});
 			expect(result).toBe('Base error - entity: "testEntity"');
 		});
 
@@ -473,7 +552,10 @@ describe("Validation Helpers", () => {
 			const result1 = entityExists(codebookWithNulls, { entity: "ego" });
 			expect(result1).toBe(false);
 
-			const result2 = getVariablesForSubject(codebookWithNulls, { entity: "node", type: "person" });
+			const result2 = getVariablesForSubject(codebookWithNulls, {
+				entity: "node",
+				type: "person",
+			});
 			expect(result2).toEqual({});
 		});
 
@@ -510,7 +592,10 @@ describe("Validation Helpers", () => {
 			};
 
 			// Should handle gracefully without throwing
-			const result = getVariablesForSubject(malformedCodebook, { entity: "node", type: "person" });
+			const result = getVariablesForSubject(malformedCodebook, {
+				entity: "node",
+				type: "person",
+			});
 			expect(result.normal).toBeDefined();
 			expect(result.malformed).toBe("not an object");
 		});

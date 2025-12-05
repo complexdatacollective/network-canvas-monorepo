@@ -20,7 +20,8 @@
 	padding: var(--space-md);
 	border-radius: var(--radius);
 	border-bottom: 0.5rem solid tomato;
-	box-shadow: 0 var(--space-xs) var(--space-md) var(--space-xs) rgba(0, 0, 0, 0.4);
+	box-shadow: 0 var(--space-xs) var(--space-md) var(--space-xs)
+		rgba(0, 0, 0, 0.4);
 	flex: 0 0 auto;
 	position: relative;
 	display: flex;

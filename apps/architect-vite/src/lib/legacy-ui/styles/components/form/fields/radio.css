@@ -39,16 +39,28 @@
 	border-color: var(--color-border);
 	border-width: var(--global-input-border-size);
 	border-style: solid;
-	transition: border-color var(--animation-easing) var(--animation-duration-standard);
+	transition: border-color var(--animation-easing)
+		var(--animation-duration-standard);
 }
 
 .form-field-radio__radio::after {
 	position: absolute;
 	top: calc(var(--global-input-border-size) + var(--global-input-border-space));
-	left: calc(var(--global-input-border-size) + var(--global-input-border-space));
+	left: calc(
+		var(--global-input-border-size) +
+		var(--global-input-border-space)
+	);
 	content: "";
-	width: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
-	height: calc(100% - (var(--global-input-border-size) + var(--global-input-border-space)) * 2);
+	width: calc(
+		100% -
+		(var(--global-input-border-size) + var(--global-input-border-space)) *
+		2
+	);
+	height: calc(
+		100% -
+		(var(--global-input-border-size) + var(--global-input-border-space)) *
+		2
+	);
 	border-radius: 100%;
 	background-color: var(--color-input-active);
 	opacity: 0;
@@ -80,10 +92,12 @@
 	opacity: 0;
 }
 
-.form-field-radio.form-field-radio--disabled:hover .form-field-radio__radio::before {
+.form-field-radio.form-field-radio--disabled:hover
+	.form-field-radio__radio::before {
 	border-color: var(--color-surface-2);
 }
 
-.form-field-radio.form-field-radio--disabled:hover .form-field-radio__radio::after {
+.form-field-radio.form-field-radio--disabled:hover
+	.form-field-radio__radio::after {
 	opacity: 0;
 }

@@ -8,7 +8,9 @@ type ImageThumbnailProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 const ImageThumbnail = ({ url, contain = false, ...props }: ImageThumbnailProps) => {
-	const className = cx("thumbnail", "thumbnail--image", { "thumbnail--contain": contain });
+	const className = cx("thumbnail", "thumbnail--image", {
+		"thumbnail--contain": contain,
+	});
 
 	return <div className={className} style={{ backgroundImage: url ? `url(${url})` : undefined }} {...props} />;
 };

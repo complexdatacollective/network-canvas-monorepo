@@ -43,12 +43,16 @@ type HandlerProps = StateProps & DispatchProps & OwnProps;
 
 const newVariableHandlers = withHandlers<
 	HandlerProps,
-	{ handleCreateNewVariable: (configuration: Partial<Variable>) => Promise<void> }
+	{
+		handleCreateNewVariable: (configuration: Partial<Variable>) => Promise<void>;
+	}
 >({
 	handleCreateNewVariable:
 		({ entity, type, createVariable, onComplete }) =>
 		async (configuration: Partial<Variable>) => {
-			type CreateVariableResult = UnknownAction & { payload?: { entity: Entity; type?: string; variable: string } };
+			type CreateVariableResult = UnknownAction & {
+				payload?: { entity: Entity; type?: string; variable: string };
+			};
 			const thunk = createVariable as unknown as (params: {
 				entity: Entity;
 				type?: string;

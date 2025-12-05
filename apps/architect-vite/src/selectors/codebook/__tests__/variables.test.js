@@ -241,7 +241,9 @@ describe("makeGetIsUsed", () => {
 			];
 
 			// Create the selector with form name configuration
-			const selector = makeOptionsWithIsUsedSelector({ formNames: ["formName"] });
+			const selector = makeOptionsWithIsUsedSelector({
+				formNames: ["formName"],
+			});
 			const result = selector(state, mockOptions);
 
 			expect(result).toEqual([

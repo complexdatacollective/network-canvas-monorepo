@@ -11,7 +11,11 @@ type NetworkThumbnailProps = {
 };
 
 const NetworkThumbnail = ({ id, meta = { name: "" } }: NetworkThumbnailProps) => (
-	<div className={cx("thumbnail thumbnail--network", { "thumbnail--existing": id === "existing" })}>
+	<div
+		className={cx("thumbnail thumbnail--network", {
+			"thumbnail--existing": id === "existing",
+		})}
+	>
 		<div className="thumbnail__icon">
 			<Icon name="menu-sociogram" />
 		</div>
@@ -19,4 +23,6 @@ const NetworkThumbnail = ({ id, meta = { name: "" } }: NetworkThumbnailProps) =>
 	</div>
 );
 
-export default withAssetMeta(NetworkThumbnail) as React.ComponentType<{ id: string }>;
+export default withAssetMeta(NetworkThumbnail) as React.ComponentType<{
+	id: string;
+}>;

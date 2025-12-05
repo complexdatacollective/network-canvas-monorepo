@@ -98,7 +98,10 @@ describe("useProtocolLoader", () => {
 		);
 
 		// Set as active protocol first
-		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: { ...mockProtocol, name: "Test Protocol" } });
+		store.dispatch({
+			type: "activeProtocol/setActiveProtocol",
+			payload: { ...mockProtocol, name: "Test Protocol" },
+		});
 
 		mockUseParams.mockReturnValue({});
 		const { rerender } = renderHook(() => useProtocolLoader(), {
@@ -139,7 +142,10 @@ describe("useProtocolLoader", () => {
 		);
 
 		// Set same content protocol as active (but different object reference)
-		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: { ...sameProtocol, name: "Test Protocol" } });
+		store.dispatch({
+			type: "activeProtocol/setActiveProtocol",
+			payload: { ...sameProtocol, name: "Test Protocol" },
+		});
 
 		mockUseParams.mockReturnValue({});
 

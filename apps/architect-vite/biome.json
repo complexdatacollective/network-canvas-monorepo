@@ -24,5 +24,16 @@
 			"react": "recommended",
 			"test": "recommended"
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["src/utils/getAbsoluteBoundingRect.js"],
+			"linter": {
+				"enabled": false
+			},
+			"formatter": {
+				"enabled": false
+			}
+		}
+	]
 }

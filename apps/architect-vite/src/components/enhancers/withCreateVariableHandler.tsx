@@ -50,7 +50,9 @@ const createVariableHandler = {
 				entity: entity as Entity,
 				type,
 				configuration,
-			})) as unknown as { payload: { entity: Entity; type?: string; variable: string } };
+			})) as unknown as {
+				payload: { entity: Entity; type?: string; variable: string };
+			};
 			const variable = result.payload.variable;
 
 			// If we supplied a field, update it with the result of the variable creation

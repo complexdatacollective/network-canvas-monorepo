@@ -145,7 +145,12 @@ export const addApiKeyAsset = (name: string, value: string) => {
 export const test = {
 	importAssetComplete: (filename: string, name: string, assetType: AssetType) => {
 		const id = uuid();
-		return assetManifestSlice.actions.importAssetComplete({ id, filename, name, assetType });
+		return assetManifestSlice.actions.importAssetComplete({
+			id,
+			filename,
+			name,
+			assetType,
+		});
 	},
 	deleteAsset: (id: string) => assetManifestSlice.actions.deleteAsset(id),
 	addApiKeyAsset: (name: string, value: string) => {

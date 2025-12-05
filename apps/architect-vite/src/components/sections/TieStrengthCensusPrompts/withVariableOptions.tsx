@@ -10,12 +10,16 @@ const mapStateToProps = (state: RootState, { form }: { form: string }) => {
 	const formSelector = formValueSelector(form);
 	const createEdge = formSelector(state, "createEdge");
 
-	const variableOptions = getVariableOptionsForSubject(state, { type: createEdge, entity: "edge" }).filter(
-		({ type }) => type === "ordinal",
-	);
+	const variableOptions = getVariableOptionsForSubject(state, {
+		type: createEdge,
+		entity: "edge",
+	}).filter(({ type }) => type === "ordinal");
 
 	const edgeVariable = formSelector(state, "edgeVariable");
-	const variables = getVariablesForSubject(state, { type: createEdge, entity: "edge" });
+	const variables = getVariablesForSubject(state, {
+		type: createEdge,
+		entity: "edge",
+	});
 	const optionsForVariable = get(variables, [edgeVariable, "options"], []);
 	const optionsForVariableDraft = formSelector(state, "variableOptions");
 

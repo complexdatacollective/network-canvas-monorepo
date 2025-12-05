@@ -18,7 +18,9 @@ export const ToolbarButton = ({ isActive = false, icon, tooltip, action }: Toolb
 			action();
 		}}
 		type="button"
-		className={cx("rich-text__button", { "rich-text__button--is-active": isActive })}
+		className={cx("rich-text__button", {
+			"rich-text__button--is-active": isActive,
+		})}
 	>
 		<Icon name={icon} />
 	</button>

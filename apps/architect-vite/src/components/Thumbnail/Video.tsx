@@ -10,7 +10,11 @@ type VideoThumbnailProps = {
 };
 
 const VideoThumbnail = ({ id, meta = { name: "" } }: VideoThumbnailProps) => (
-	<div className={cx("thumbnail thumbnail--video", { "thumbnail--existing": id === "existing" })}>
+	<div
+		className={cx("thumbnail thumbnail--video", {
+			"thumbnail--existing": id === "existing",
+		})}
+	>
 		<div className="thumbnail__icon">
 			<Icon name="menu-custom-interface" />
 		</div>

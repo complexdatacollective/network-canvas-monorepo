@@ -13,8 +13,9 @@ img.form-fields-select {
 .form-fields-select__error {
 	opacity: 0;
 	color: var(--color-error-foreground);
-	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-		var(--animation-duration-standard);
+	transition:
+		opacity var(--animation-easing) var(--animation-duration-standard),
+		max-height var(--animation-easing) var(--animation-duration-standard);
 }
 
 .form-fields-select__control {
@@ -98,7 +99,7 @@ img.form-fields-select {
 .form-fields-select__item-add .icon {
 	height: 1.2rem;
 	line-height: 1.2rem;
-	padding: .3rem;
+	padding: 0.3rem;
 	margin-right: var(--space-xs);
 	background: hsl(var(--sea-green));
 	border-radius: 1.2rem;
@@ -151,7 +152,7 @@ img.form-fields-select {
 }
 
 .form-fields-select--has-error .form-fields-select__control {
-	border: .1rem solid var(--color-error);
+	border: 0.1rem solid var(--color-error);
 }
 
 .form-fields-select--light-background .form-fields-select__control {

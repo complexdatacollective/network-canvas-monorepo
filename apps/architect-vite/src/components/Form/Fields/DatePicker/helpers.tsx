@@ -6,7 +6,9 @@ export const now = () => DateTime.now();
 export const isEmpty = (value: unknown) => value === null || value === "";
 
 export const getFirstDayOfMonth = (dateObj: { year?: number | null; month?: number | null; day?: number | null }) => {
-	const dateTimeObj: { year?: number; month?: number; day: number } = { day: 1 };
+	const dateTimeObj: { year?: number; month?: number; day: number } = {
+		day: 1,
+	};
 	if (dateObj.year !== null && dateObj.year !== undefined) {
 		dateTimeObj.year = dateObj.year;
 	}

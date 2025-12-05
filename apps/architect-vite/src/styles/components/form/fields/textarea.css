@@ -10,8 +10,9 @@
 .form-fields-textarea__error {
 	opacity: 0;
 	color: var(--color-error-foreground);
-	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-		var(--animation-duration-standard);
+	transition:
+		opacity var(--animation-easing) var(--animation-duration-standard),
+		max-height var(--animation-easing) var(--animation-duration-standard);
 }
 
 .form-fields-textarea__label {

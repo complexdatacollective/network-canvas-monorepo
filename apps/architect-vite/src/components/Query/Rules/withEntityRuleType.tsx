@@ -11,7 +11,10 @@ const entityRuleTypes = {
 };
 
 const entityRuleTypeOptions = (entityType: string) => [
-	{ label: `Attribute - rule based on the value of this ${entityType} type's attributes.`, value: VARIABLE_RULE },
+	{
+		label: `Attribute - rule based on the value of this ${entityType} type's attributes.`,
+		value: VARIABLE_RULE,
+	},
 	{
 		label: `Presence - based on the presence or absence of this ${entityType} type in the interview network.`,
 		value: TYPE_RULE,

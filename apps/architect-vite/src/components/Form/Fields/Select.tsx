@@ -22,7 +22,10 @@ type SelectOption = {
 type SelectProps = {
 	className?: string;
 	options?: SelectOption[];
-	selectOptionComponent?: React.ComponentType<{ data: SelectOption; [key: string]: unknown }>;
+	selectOptionComponent?: React.ComponentType<{
+		data: SelectOption;
+		[key: string]: unknown;
+	}>;
 	onDeleteOption?: (() => void) | null;
 	createNewOption?: boolean;
 	onCreateNew?: (() => void) | null;

@@ -106,7 +106,10 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		() => (state: RootState) => {
 			const validEntity = (entity || "") as "node" | "edge" | "ego";
 			const validType = (entityType || "node") as "node" | "edge" | "ego";
-			return getVariablesForSubject(state, { entity: validEntity, type: validType });
+			return getVariablesForSubject(state, {
+				entity: validEntity,
+				type: validType,
+			});
 		},
 		[entity, entityType],
 	);
@@ -180,7 +183,9 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 												tabIndex={0} // Needed to allow focus
 												id={EDIT_COMPLETE_BUTTON_ID}
 												onClick={onEditComplete}
-												className={cx("edit-buttons__button", { "edit-buttons__button--disabled": !canSubmit })}
+												className={cx("edit-buttons__button", {
+													"edit-buttons__button--disabled": !canSubmit,
+												})}
 											>
 												<Icon name="tick" color="sea-green" />
 											</motion.div>

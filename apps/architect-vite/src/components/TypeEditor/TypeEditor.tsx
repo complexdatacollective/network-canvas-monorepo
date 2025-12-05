@@ -48,8 +48,14 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 				<ValidatedField
 					component={Text}
 					name="name"
-					validation={{ required: true, allowedNMToken: true, uniqueByList: existingTypes }}
-					componentProps={{ placeholder: `Enter a name for this ${entity} type...` }}
+					validation={{
+						required: true,
+						allowedNMToken: true,
+						uniqueByList: existingTypes,
+					}}
+					componentProps={{
+						placeholder: `Enter a name for this ${entity} type...`,
+					}}
 				/>
 			</Section>
 			<Section
@@ -76,7 +82,10 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 						component={RadioGroup}
 						name="iconVariant"
 						validation={{ required: true }}
-						componentProps={{ options: ICON_OPTIONS, optionComponent: IconOption }}
+						componentProps={{
+							options: ICON_OPTIONS,
+							optionComponent: IconOption,
+						}}
 					/>
 				</Section>
 			)}

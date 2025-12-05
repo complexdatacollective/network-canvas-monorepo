@@ -10,7 +10,11 @@ type AudioThumbnailProps = {
 };
 
 const AudioThumbnail = ({ id, meta = { name: "" } }: AudioThumbnailProps) => (
-	<div className={cx("thumbnail thumbnail--audio", { "thumbnail--existing": id === "existing" })}>
+	<div
+		className={cx("thumbnail thumbnail--audio", {
+			"thumbnail--existing": id === "existing",
+		})}
+	>
 		<div className="thumbnail__icon">
 			<Icon name="menu-custom-interface" />
 		</div>

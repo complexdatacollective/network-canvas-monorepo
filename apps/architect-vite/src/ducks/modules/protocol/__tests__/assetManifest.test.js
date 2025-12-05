@@ -59,7 +59,11 @@ describe("protocol/assetManifest", () => {
 
 			expect(dispatch).toHaveDispatched([
 				{ type: "PROTOCOL/IMPORT_ASSET", filename: "bazz.jpg" },
-				{ type: "PROTOCOL/IMPORT_ASSET_COMPLETE", name: "bazz.jpg", id: uuid() },
+				{
+					type: "PROTOCOL/IMPORT_ASSET_COMPLETE",
+					name: "bazz.jpg",
+					id: uuid(),
+				},
 				{ type: "SESSION/PROTOCOL_CHANGED" },
 			]);
 

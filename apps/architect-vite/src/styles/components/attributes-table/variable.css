@@ -12,15 +12,20 @@
 	.attributes-table-variable__preview {
 		max-height: 50px;
 		overflow: hidden;
-		transition: opacity var(--animation-duration-standard) var(--animation-duration-standard), max-height
-			var(--animation-duration-standard) var(--animation-duration-standard);
+		transition:
+			opacity var(--animation-duration-standard)
+			var(--animation-duration-standard),
+			max-height var(--animation-duration-standard)
+			var(--animation-duration-standard);
 	}
 
 	.attributes-table-variable__edit {
 		opacity: 0;
 		max-height: 0;
 		overflow: hidden;
-		transition: opacity var(--animation-duration-standard), max-height var(--animation-duration-standard);
+		transition:
+			opacity var(--animation-duration-standard),
+			max-height var(--animation-duration-standard);
 		color: var(--color-foreground);
 		padding: 0 var(--space-lg);
 	}
@@ -31,14 +36,19 @@
 		.attributes-table-variable__edit {
 			max-height: fit-content;
 			opacity: 1;
-			transition: opacity var(--animation-duration-standard) var(--animation-duration-standard), max-height
-				var(--animation-duration-standard) var(--animation-duration-standard);
+			transition:
+				opacity var(--animation-duration-standard)
+				var(--animation-duration-standard),
+				max-height var(--animation-duration-standard)
+				var(--animation-duration-standard);
 		}
 
 		.attributes-table-variable__preview {
 			max-height: 0;
 			opacity: 0;
-			transition: opacity var(--animation-duration-standard), max-height var(--animation-duration-standard);
+			transition:
+				opacity var(--animation-duration-standard),
+				max-height var(--animation-duration-standard);
 		}
 	}
 }

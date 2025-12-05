@@ -42,7 +42,9 @@ const Handle = ({
 		{ "form-field-slider__marker--is-disabled": isDisabled },
 	);
 
-	const tooltipClasses = cx("form-field-slider__tooltip", { "form-field-slider__tooltip--is-active": showTooltip });
+	const tooltipClasses = cx("form-field-slider__tooltip", {
+		"form-field-slider__tooltip--is-active": showTooltip,
+	});
 
 	const label = getLabelForValue(value);
 

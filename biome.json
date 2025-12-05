@@ -57,7 +57,19 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!**/public/**/*.*", "!!**/*.css"]
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/build",
+			"!**/.next",
+			"!**/out",
+			"!**/coverage",
+			"!**/.turbo",
+			"!**/public/**/*.*",
+			"!!**/*.css",
+			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.js"
+		]
 	},
 	"javascript": {
 		"formatter": {

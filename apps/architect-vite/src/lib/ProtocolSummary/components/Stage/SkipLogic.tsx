@@ -15,7 +15,10 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
 		return null;
 	}
 
-	const { filter, action } = skipLogic as { filter?: FilterType; action?: string };
+	const { filter, action } = skipLogic as {
+		filter?: FilterType;
+		action?: string;
+	};
 
 	return (
 		<div className="protocol-summary-stage__skip-logic">

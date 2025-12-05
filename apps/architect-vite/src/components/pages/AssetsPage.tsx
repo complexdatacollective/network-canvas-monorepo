@@ -21,7 +21,10 @@ const AssetsPage = () => {
 				<Layout>
 					<div
 						className="flex flex-col gap-6"
-						style={{ margin: "var(--space-xl) var(--space-5xl)", maxWidth: "80rem" }}
+						style={{
+							margin: "var(--space-xl) var(--space-5xl)",
+							maxWidth: "80rem",
+						}}
 					>
 						<div className="stage-heading">
 							<h1 className="screen-heading">Resource Library</h1>

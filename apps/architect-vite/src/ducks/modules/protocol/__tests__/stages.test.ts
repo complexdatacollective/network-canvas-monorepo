@@ -54,7 +54,10 @@ describe("protocol.stages", () => {
 
 				const updatedStages = reducer(mockStages, test.updateStage("9", updatedStage));
 
-				expect(updatedStages[1]).toMatchObject({ label: "Hello world", type: "NameGenerator" });
+				expect(updatedStages[1]).toMatchObject({
+					label: "Hello world",
+					type: "NameGenerator",
+				});
 			});
 
 			it("Replaces stage object if overwrite is true", () => {
@@ -115,9 +118,18 @@ describe("protocol.stages", () => {
 		it("deleteStageAsync", async () => {
 			const store = createTestStore(mockStages);
 			// Initialize store state
-			store.dispatch({ type: "stages/createStage", payload: { stage: mockStages[0] } });
-			store.dispatch({ type: "stages/createStage", payload: { stage: mockStages[1] } });
-			store.dispatch({ type: "stages/createStage", payload: { stage: mockStages[2] } });
+			store.dispatch({
+				type: "stages/createStage",
+				payload: { stage: mockStages[0] },
+			});
+			store.dispatch({
+				type: "stages/createStage",
+				payload: { stage: mockStages[1] },
+			});
+			store.dispatch({
+				type: "stages/createStage",
+				payload: { stage: mockStages[2] },
+			});
 
 			const resultAction = await store.dispatch(deleteStageAsync("9"));
 

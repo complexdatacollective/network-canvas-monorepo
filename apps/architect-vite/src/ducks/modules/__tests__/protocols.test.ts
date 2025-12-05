@@ -80,7 +80,10 @@ describe("protocols", () => {
 			);
 
 			// Update protocol
-			const updatedProtocol = { ...mockProtocol, description: "updated description" };
+			const updatedProtocol = {
+				...mockProtocol,
+				description: "updated description",
+			};
 			store.dispatch(
 				updateProtocol({
 					protocol: updatedProtocol,

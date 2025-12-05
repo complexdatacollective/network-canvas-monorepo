@@ -20,7 +20,9 @@ const mockStore = configureStore({
 
 describe("<CodeView />", () => {
 	beforeAll(() => {
-		vi.mocked(getFormValues).mockImplementation(() => () => ({ name: "example name" }));
+		vi.mocked(getFormValues).mockImplementation(() => () => ({
+			name: "example name",
+		}));
 	});
 
 	it("can render", () => {

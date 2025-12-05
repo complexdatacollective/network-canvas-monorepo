@@ -48,7 +48,9 @@ const EditValue = ({
 	onChange = () => {},
 	options = [],
 	...rest
-}: EditValueProps & { fieldComponent: React.ComponentType<Record<string, unknown>> }) => (
+}: EditValueProps & {
+	fieldComponent: React.ComponentType<Record<string, unknown>>;
+}) => (
 	<DetachedField
 		component={FieldComponent}
 		label={getLabel(variableType, value)}

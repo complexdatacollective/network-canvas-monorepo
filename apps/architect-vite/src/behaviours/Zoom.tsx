@@ -17,7 +17,9 @@ type ZoomableProps = {
 	constraints?: number[];
 };
 
-const withConstraintContext = getContext<ConstraintsContextType>({ constraints: () => null });
+const withConstraintContext = getContext<ConstraintsContextType>({
+	constraints: () => null,
+});
 
 const Zoom = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
 	class Zoomable extends PureComponent<P & ZoomableProps> {

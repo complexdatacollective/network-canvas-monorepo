@@ -31,7 +31,9 @@ const store = connect(null, {
 
 const handlers = withHandlers<
 	HandlerProps,
-	{ handleChangePrompt: (data: PromptData) => Promise<Omit<PromptData, "variableOptions">> }
+	{
+		handleChangePrompt: (data: PromptData) => Promise<Omit<PromptData, "variableOptions">>;
+	}
 >({
 	handleChangePrompt:
 		({ updateVariable, changeForm, form }) =>

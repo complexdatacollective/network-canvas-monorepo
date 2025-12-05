@@ -16,7 +16,10 @@ type FieldPreviewProps = {
 
 const FieldPreview = ({ variable, prompt, entity, type = null }: FieldPreviewProps) => {
 	const subjectVariables = useSelector((state: RootState) => getVariablesForSubject(state, { entity, type }));
-	const codebookVariable = get(subjectVariables, variable, {}) as { type?: string; component?: string };
+	const codebookVariable = get(subjectVariables, variable, {}) as {
+		type?: string;
+		component?: string;
+	};
 
 	return (
 		<div className="field-preview m-4 flex gap-2 flex-col">

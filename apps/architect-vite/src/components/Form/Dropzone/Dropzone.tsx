@@ -39,7 +39,11 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 
 	useTimer(
 		() => {
-			setState((previousState) => ({ ...previousState, isHover: false, isError: false }));
+			setState((previousState) => ({
+				...previousState,
+				isHover: false,
+				isError: false,
+			}));
 		},
 		1000,
 		[state.isHover, state.isError],

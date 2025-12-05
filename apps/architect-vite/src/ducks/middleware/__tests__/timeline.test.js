@@ -175,7 +175,9 @@ describe("timeline middleware", () => {
 
 			expect(undoState.future).toHaveLength(1);
 
-			const newChangeState = rewindableReducer(undoState, { type: "NEW_ACTION" });
+			const newChangeState = rewindableReducer(undoState, {
+				type: "NEW_ACTION",
+			});
 
 			expect(newChangeState.future).toHaveLength(0);
 			expect(newChangeState.futureTimeline).toHaveLength(0);

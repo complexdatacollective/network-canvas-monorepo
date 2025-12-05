@@ -72,7 +72,9 @@ const SliderField = ({
 }: SliderFieldProps) => {
 	const { error, invalid, touched } = meta;
 
-	const formFieldClasses = cx(className, "form-field-slider", { "form-field-slider--has-error": invalid && touched });
+	const formFieldClasses = cx(className, "form-field-slider", {
+		"form-field-slider--has-error": invalid && touched,
+	});
 
 	const anyLabel = fieldLabel || label;
 	const sliderType = getSliderType(type);

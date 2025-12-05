@@ -25,7 +25,11 @@ const InterfaceThumbnail = ({
 	const ref = useRef<HTMLDivElement>(null);
 	const meta = useMemo(() => find(INTERFACE_TYPES, ["type", interfaceType]), [interfaceType]);
 	const image = getTimelineImage(interfaceType);
-	const { title, tags, description } = meta ?? { title: "", tags: [], description: "" };
+	const { title, tags, description } = meta ?? {
+		title: "",
+		tags: [],
+		description: "",
+	};
 
 	if (!meta) {
 		throw Error(`${interfaceType} definition not found`);

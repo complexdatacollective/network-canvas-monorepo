@@ -93,14 +93,21 @@ const Option = ({ field, handleDelete, value }: OptionProps) => {
 				</div>
 				<div className="options__option-value">
 					<h4 className="options__option-label">Value</h4>
-					<ValidatedField<{ parse?: (value: string) => string | number; placeholder?: string }>
+					<ValidatedField<{
+						parse?: (value: string) => string | number;
+						placeholder?: string;
+					}>
 						component={TextField as React.ComponentType<Record<string, unknown>>}
 						componentProps={{
 							parse: (value: string) => (isNumberLike(value) ? toNumber(value) : value),
 							placeholder: "Enter a value...",
 						}}
 						name={`${field}.value`}
-						validation={{ required: true, uniqueArrayAttribute: true, allowedVariableName: "option value" }}
+						validation={{
+							required: true,
+							uniqueArrayAttribute: true,
+							allowedVariableName: "option value",
+						}}
 					/>
 				</div>
 			</div>
@@ -115,7 +122,9 @@ const mapDispatchToItemProps = {
 	openDialog: dialogsActions.openDialog,
 };
 
-type ConnectedProps = OptionBaseProps & { openDialog: typeof dialogsActions.openDialog };
+type ConnectedProps = OptionBaseProps & {
+	openDialog: typeof dialogsActions.openDialog;
+};
 
 export default compose<OptionProps, OptionBaseProps>(
 	connect(null, mapDispatchToItemProps),

@@ -11,7 +11,15 @@ const BackgroundImage = ({ url, className, ...props }: BackgroundImageProps) => 
 	}
 
 	return (
-		<div className={className} {...props} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+		<div
+			className={className}
+			{...props}
+			style={{
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+			}}
+		>
 			<img src={url} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
 		</div>
 	);

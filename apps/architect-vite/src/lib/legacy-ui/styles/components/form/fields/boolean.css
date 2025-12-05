@@ -8,8 +8,9 @@
 	opacity: 0;
 	background: var(--color-error);
 	color: var(--color-foreground);
-	transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-		var(--animation-duration-standard);
+	transition:
+		opacity var(--animation-easing) var(--animation-duration-standard),
+		max-height var(--animation-easing) var(--animation-duration-standard);
 	padding: 0.5rem 0.25rem;
 	display: flex;
 	align-items: center;
@@ -17,7 +18,6 @@
 
 .form-field-boolean .form-field-boolean__error svg {
 	max-height: 1.2rem;
-
 }
 
 .form-field-boolean.form-field-boolean--has-error .form-field-boolean__error {
@@ -51,8 +51,9 @@
 	--adjusted-blur: calc(var(--base-blur) * var(--depth));
 
 	box-shadow: 0 var(--adjusted-shadow-size) rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-fast) var(--animation-easing);
+	transition:
+		transform var(--animation-duration-fast) var(--animation-easing),
+		box-shadow var(--animation-duration-fast) var(--animation-easing);
 	cursor: pointer;
 	flex: 1 1 100%;
 	width: 100%; /* for when used outside of flex container */
@@ -73,7 +74,8 @@
 	text-decoration: none;
 	cursor: pointer;
 	transform: translateY(calc(-1 * var(--adjusted-shadow-size)));
-	box-shadow: 0 calc(var(--adjusted-shadow-size) * 2) var(--adjusted-blur) 0 rgba(0, 0, 0, 0.35);
+	box-shadow: 0 calc(var(--adjusted-shadow-size) * 2) var(--adjusted-blur) 0
+		rgba(0, 0, 0, 0.35);
 }
 
 .boolean-option:not(:disabled):active {
@@ -123,7 +125,6 @@
 	transition-duration: var(--animation-duration-standard);
 	transition-timing-function: var(--animation-easing);
 	margin-right: calc(0.6rem * 2);
-
 }
 
 .round-checkbox svg {

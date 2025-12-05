@@ -148,11 +148,15 @@
 	content: "dir";
 }
 
-.codebook .codebook__variables-heading .sort-direction.sort-direction--asc::after {
+.codebook
+	.codebook__variables-heading
+	.sort-direction.sort-direction--asc::after {
 	content: "\25BE";
 }
 
-.codebook .codebook__variables-heading .sort-direction.sort-direction--desc::after {
+.codebook
+	.codebook__variables-heading
+	.sort-direction.sort-direction--desc::after {
 	content: "\25B4";
 }
 

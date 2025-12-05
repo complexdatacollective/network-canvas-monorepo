@@ -39,7 +39,9 @@
 
 		h2,
 		h3 {
-			text-shadow: 1px 1px 0rem #000000, 0 0rem 0.5rem #000000b8;
+			text-shadow:
+				1px 1px 0rem #000000,
+				0 0rem 0.5rem #000000b8;
 		}
 	}
 }

@@ -62,8 +62,14 @@ export const deleteStageAsync = createAsyncThunk(
 			const nodeTypes = getNodeTypes(state);
 			const encryptedVariables = Object.values(nodeTypes).reduce(
 				(
-					acc: Array<{ id: string; encrypted?: boolean; [key: string]: unknown }>,
-					nodeType: { variables?: Record<string, { encrypted?: boolean; [key: string]: unknown }> },
+					acc: Array<{
+						id: string;
+						encrypted?: boolean;
+						[key: string]: unknown;
+					}>,
+					nodeType: {
+						variables?: Record<string, { encrypted?: boolean; [key: string]: unknown }>;
+					},
 				) => {
 					const nodeTypeVariables = Object.entries(nodeType.variables || {})
 						.filter(([, variable]) => variable.encrypted)

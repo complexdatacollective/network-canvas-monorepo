@@ -73,7 +73,9 @@ const RangePicker = ({
 		datePickerRef.current.scrollTop = offsetTop - offsetHeight * 0.5;
 	}, [value, type, datePickerRef.current, scrollRef.current]);
 
-	const classes = cx("date-picker__range-picker", { [`date-picker__range-picker--${type}`]: !!type });
+	const classes = cx("date-picker__range-picker", {
+		[`date-picker__range-picker--${type}`]: !!type,
+	});
 
 	const padding = times(offset, (index) => <div key={`padding${index}`} className="date-picker__range-item" />);
 

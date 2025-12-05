@@ -10,7 +10,11 @@ type GeoJSONThumbnailProps = {
 };
 
 const GeoJSONThumbnail = ({ id, meta = { name: "" } }: GeoJSONThumbnailProps) => (
-	<div className={cx("thumbnail thumbnail--audio", { "thumbnail--existing": id === "existing" })}>
+	<div
+		className={cx("thumbnail thumbnail--audio", {
+			"thumbnail--existing": id === "existing",
+		})}
+	>
 		<div className="thumbnail__icon">
 			<Icon name="Map" />
 		</div>

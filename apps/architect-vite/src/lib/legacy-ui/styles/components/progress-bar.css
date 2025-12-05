@@ -27,7 +27,8 @@
 
 	&.progress-bar--indeterminate {
 		.progress-bar__filler {
-			animation: progress-bar-animation var(--progress-indeterminate-animation-duration) linear infinite;
+			animation: progress-bar-animation
+				var(--progress-indeterminate-animation-duration) linear infinite;
 			background-image: linear-gradient(
 				0.25turn,
 				var(--progress-indeterminate-background-color),
@@ -43,7 +44,8 @@
 
 		.progress-bar__filler {
 			width: 100%;
-			transition: height calc(var(--animation-duration-standard) * 3) var(--animation-easing);
+			transition: height calc(var(--animation-duration-standard) * 3)
+				var(--animation-easing);
 		}
 	}
 
@@ -52,7 +54,8 @@
 
 		.progress-bar__filler {
 			height: 100%;
-			transition: width calc(var(--animation-duration-standard)) var(--animation-easing);
+			transition: width calc(var(--animation-duration-standard))
+				var(--animation-easing);
 		}
 	}
 

@@ -121,10 +121,24 @@ async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, file
 /**
  * Get asset data and metadata from the local asset database
  */
-async function getLocalAssets(
-	protocol: CurrentProtocol,
-): Promise<Array<{ assetId: string; name: string; type: string; data: Blob; size: number; value?: string }>> {
-	const assets: Array<{ assetId: string; name: string; type: string; data: Blob; size: number; value?: string }> = [];
+async function getLocalAssets(protocol: CurrentProtocol): Promise<
+	Array<{
+		assetId: string;
+		name: string;
+		type: string;
+		data: Blob;
+		size: number;
+		value?: string;
+	}>
+> {
+	const assets: Array<{
+		assetId: string;
+		name: string;
+		type: string;
+		data: Blob;
+		size: number;
+		value?: string;
+	}> = [];
 
 	if (!protocol.assetManifest) {
 		return assets;
@@ -277,7 +291,11 @@ export async function uploadProtocolForPreview(
 				throw new Error(`Missing upload URL or asset at index ${i}`);
 			}
 
-			onProgress?.({ phase: "uploading-assets", current: i + 1, total: presignedUrls.length });
+			onProgress?.({
+				phase: "uploading-assets",
+				current: i + 1,
+				total: presignedUrls.length,
+			});
 
 			try {
 				await uploadAssetToPresignedUrl(uploadUrl, localAsset.data, localAsset.name);

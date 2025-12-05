@@ -55,7 +55,9 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 				}
 			};
 
-			const previewClass = cx("date-picker__preview", { "date-picker__preview--is-empty": isEmpty });
+			const previewClass = cx("date-picker__preview", {
+				"date-picker__preview--is-empty": isEmpty,
+			});
 
 			if (!isActive && isEmpty && placeholder) {
 				return (
@@ -87,7 +89,9 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 				>
 					<button
 						type="button"
-						className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.year })}
+						className={cx("date-picker__preview-part", {
+							"date-picker__preview-part--is-set": date.year,
+						})}
 						onClick={handleClickYear}
 						aria-label="Clear year"
 					>
@@ -97,7 +101,9 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 					{["full", "month"].includes(type || "") && (
 						<button
 							type="button"
-							className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.month })}
+							className={cx("date-picker__preview-part", {
+								"date-picker__preview-part--is-set": date.month,
+							})}
 							onClick={handleClickMonth}
 							aria-label="Clear month"
 						>
@@ -108,7 +114,9 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 					{["full"].includes(type || "") && (
 						<button
 							type="button"
-							className={cx("date-picker__preview-part", { "date-picker__preview-part--is-set": date.day })}
+							className={cx("date-picker__preview-part", {
+								"date-picker__preview-part--is-set": date.day,
+							})}
 							onClick={handleClickDay}
 							aria-label="Clear day"
 						>

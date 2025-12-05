@@ -19,7 +19,10 @@ type StateProps = {
 
 const withLayoutOptions = (state: RootState, { entity, type, form }: OwnProps): StateProps => {
 	const variableOptions = getVariableOptionsForSubject(state, { entity, type });
-	const layoutVariablesForSubject = getLayoutVariablesForSubject(state, { entity, type });
+	const layoutVariablesForSubject = getLayoutVariablesForSubject(state, {
+		entity,
+		type,
+	});
 	const allowPositioning = formValueSelector(form)(state, "layout.allowPositioning");
 	const layoutVariable = formValueSelector(form)(state, "layout.layoutVariable");
 

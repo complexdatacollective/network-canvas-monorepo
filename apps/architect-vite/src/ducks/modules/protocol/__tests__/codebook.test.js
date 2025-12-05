@@ -118,7 +118,11 @@ describe("protocol.codebook", () => {
 			it("UPDATE_VARIABLE for node entity", () => {
 				const result = reducer(
 					{
-						node: { foo: { variables: { bar: { name: "a", type: "string", baz: "buzz" } } } },
+						node: {
+							foo: {
+								variables: { bar: { name: "a", type: "string", baz: "buzz" } },
+							},
+						},
 						edge: {},
 						ego: {},
 					},
@@ -143,7 +147,9 @@ describe("protocol.codebook", () => {
 			it("UPDATE_VARIABLE for ego entity", () => {
 				const result = reducer(
 					{
-						ego: { variables: { bar: { name: "a", type: "string", baz: "buzz" } } },
+						ego: {
+							variables: { bar: { name: "a", type: "string", baz: "buzz" } },
+						},
 					},
 					updateVariable("bar", { fizz: "pop" }),
 				);
@@ -248,7 +254,9 @@ describe("protocol.codebook", () => {
 
 		describe("createVariable()", () => {
 			it("It will not create a variable with no name", () => {
-				const createAction = actionCreators.createVariable("node", "bar", { foo: "bar" });
+				const createAction = actionCreators.createVariable("node", "bar", {
+					foo: "bar",
+				});
 				const store = mockStore(testState);
 
 				expect(() => {
@@ -257,7 +265,10 @@ describe("protocol.codebook", () => {
 			});
 
 			it("It will not create a variable with no type", () => {
-				const createAction = actionCreators.createVariable("node", "bar", { foo: "bar", name: "bazz" });
+				const createAction = actionCreators.createVariable("node", "bar", {
+					foo: "bar",
+					name: "bazz",
+				});
 				const store = mockStore(testState);
 
 				expect(() => {
@@ -268,10 +279,11 @@ describe("protocol.codebook", () => {
 			it("dispatches the CREATE_VARIABLE action with a variable id for node", async () => {
 				const [dispatch, getState] = getThunkMocks(testState);
 
-				await actionCreators.createVariable("node", "foo", { fizz: "buzz", name: "bar", type: "text" })(
-					dispatch,
-					getState,
-				);
+				await actionCreators.createVariable("node", "foo", {
+					fizz: "buzz",
+					name: "bar",
+					type: "text",
+				})(dispatch, getState);
 
 				expect(dispatch).toHaveBeenNthCalledWith(2, {
 					type: actionTypes.CREATE_VARIABLE,
@@ -297,10 +309,11 @@ describe("protocol.codebook", () => {
 			it("dispatches the CREATE_VARIABLE action with a variable id for ego", async () => {
 				const [dispatch, getState] = getThunkMocks(testState);
 
-				await actionCreators.createVariable("ego", null, { fizz: "buzz", name: "bar", type: "text" })(
-					dispatch,
-					getState,
-				);
+				await actionCreators.createVariable("ego", null, {
+					fizz: "buzz",
+					name: "bar",
+					type: "text",
+				})(dispatch, getState);
 
 				expect(dispatch).toHaveBeenNthCalledWith(2, {
 					type: actionTypes.CREATE_VARIABLE,
@@ -323,7 +336,10 @@ describe("protocol.codebook", () => {
 			});
 
 			it("throws an error if a variable with the same name already exists", () => {
-				const createAction = actionCreators.createVariable("node", "bar", { name: "ALPHA", type: "text" });
+				const createAction = actionCreators.createVariable("node", "bar", {
+					name: "ALPHA",
+					type: "text",
+				});
 				const store = mockStore(testState);
 
 				expect(() => {
@@ -336,7 +352,9 @@ describe("protocol.codebook", () => {
 			it("dispatches the UPDATE_VARIABLE action", async () => {
 				const [dispatch, getState] = getThunkMocks(testState);
 
-				await actionCreators.updateVariable("node", "bar", "alpha", { fizz: "buzz" })(dispatch, getState);
+				await actionCreators.updateVariable("node", "bar", "alpha", {
+					fizz: "buzz",
+				})(dispatch, getState);
 
 				expect(dispatch).toHaveBeenCalledWith({
 					type: actionTypes.UPDATE_VARIABLE,

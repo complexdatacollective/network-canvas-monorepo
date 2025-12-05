@@ -23,7 +23,9 @@ const Search = ({ input = { onChange: noop }, color, autoFocus, placeholder, ...
 	const onChange = get({ input, ...props }, ["input", "onChange"], noop);
 
 	const handleClear = () => {
-		const fakeEvent = { target: { value: "" } } as React.ChangeEvent<HTMLInputElement>;
+		const fakeEvent = {
+			target: { value: "" },
+		} as React.ChangeEvent<HTMLInputElement>;
 		onChange(fakeEvent);
 	};
 

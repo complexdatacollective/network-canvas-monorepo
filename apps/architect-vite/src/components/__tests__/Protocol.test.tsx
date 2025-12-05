@@ -93,7 +93,10 @@ describe("Protocol Component", () => {
 		);
 
 		// Set as active protocol with name
-		store.dispatch({ type: "activeProtocol/setActiveProtocol", payload: protocolWithName });
+		store.dispatch({
+			type: "activeProtocol/setActiveProtocol",
+			payload: protocolWithName,
+		});
 
 		mockUseProtocolLoader.mockReturnValue({
 			isLoading: false,

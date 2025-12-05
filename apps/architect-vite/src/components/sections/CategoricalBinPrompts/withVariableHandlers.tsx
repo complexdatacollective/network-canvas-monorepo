@@ -28,7 +28,11 @@ const variableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
 	onCreateOtherVariable:
 		({ createVariable, entity, type, form, changeForm }) =>
 		async (name: string, field?: string) => {
-			const result = await createVariable({ entity, type, configuration: { type: "text", name } });
+			const result = await createVariable({
+				entity,
+				type,
+				configuration: { type: "text", name },
+			});
 			const { variable } = result.payload as { variable: string };
 
 			// If we supplied a field, update it with the result of the variable creation

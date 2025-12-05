@@ -74,7 +74,9 @@ const OptionsFieldComponent = ({
 	fieldsName,
 	updateField,
 }: OptionsFieldProps) => {
-	const classes = cx("options", { "options--has-error": submitFailed && error });
+	const classes = cx("options", {
+		"options--has-error": submitFailed && error,
+	});
 
 	// Get all options as an array
 	const options = fields.getAll() || [];

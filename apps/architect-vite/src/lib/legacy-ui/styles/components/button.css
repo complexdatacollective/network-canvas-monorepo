@@ -21,8 +21,9 @@
 
 	/* Clickable effects */
 	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-fast) var(--animation-easing);
+	transition:
+		transform var(--animation-duration-fast) var(--animation-easing),
+		box-shadow var(--animation-duration-fast) var(--animation-easing);
 
 	/* Typography */
 	font-weight: 700;
@@ -316,8 +317,9 @@
 
 	/* Clickable effects */
 	box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
-	transition: transform var(--animation-duration-fast) var(--animation-easing), box-shadow
-		var(--animation-duration-fast) var(--animation-easing);
+	transition:
+		transform var(--animation-duration-fast) var(--animation-easing),
+		box-shadow var(--animation-duration-fast) var(--animation-easing);
 
 	/* Typography */
 	font-weight: 700;

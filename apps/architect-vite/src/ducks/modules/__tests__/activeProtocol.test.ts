@@ -58,7 +58,11 @@ const mockProtocol2: CurrentProtocol & { name: string } = {
 
 describe("activeProtocol", () => {
 	describe("reducer", () => {
-		type TestStore = ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		type TestStore = ReturnType<
+			typeof configureStore<{
+				activeProtocol: ReturnType<typeof activeProtocolReducer>;
+			}>
+		>;
 		let store: TestStore;
 
 		beforeEach(() => {
@@ -105,7 +109,10 @@ describe("activeProtocol", () => {
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
 			// Update options
-			const options = { name: "Updated Name", description: "Updated Description" };
+			const options = {
+				name: "Updated Name",
+				description: "Updated Description",
+			};
 			store.dispatch(actionCreators.updateProtocolOptions(options));
 
 			const state = store.getState().activeProtocol;
@@ -167,7 +174,11 @@ describe("activeProtocol", () => {
 	});
 
 	describe("selectors", () => {
-		type TestStore = ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		type TestStore = ReturnType<
+			typeof configureStore<{
+				activeProtocol: ReturnType<typeof activeProtocolReducer>;
+			}>
+		>;
 		let store: TestStore;
 
 		beforeEach(() => {
@@ -257,7 +268,11 @@ describe("activeProtocol", () => {
 	});
 
 	describe("sub-reducers integration", () => {
-		type TestStore = ReturnType<typeof configureStore<{ activeProtocol: ReturnType<typeof activeProtocolReducer> }>>;
+		type TestStore = ReturnType<
+			typeof configureStore<{
+				activeProtocol: ReturnType<typeof activeProtocolReducer>;
+			}>
+		>;
 		let store: TestStore;
 
 		beforeEach(() => {

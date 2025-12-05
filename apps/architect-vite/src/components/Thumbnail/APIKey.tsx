@@ -10,7 +10,11 @@ type APIKeyThumbnailProps = {
 };
 
 const APIKeyThumbnail = ({ id, meta = { name: "" } }: APIKeyThumbnailProps) => (
-	<div className={cx("thumbnail thumbnail--audio", { "thumbnail--existing": id === "existing" })}>
+	<div
+		className={cx("thumbnail thumbnail--audio", {
+			"thumbnail--existing": id === "existing",
+		})}
+	>
 		<div className="thumbnail__icon">
 			<Icon name="VpnKey" />
 		</div>

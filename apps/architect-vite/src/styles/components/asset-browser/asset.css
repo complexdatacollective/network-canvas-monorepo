@@ -29,7 +29,9 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	text-shadow: 1px 1px 2px hsl(var(--rich-black)), 0 0 10px hsl(var(--white));
+	text-shadow:
+		1px 1px 2px hsl(var(--rich-black)),
+		0 0 10px hsl(var(--white));
 }
 
 .asset-browser-asset__controls {

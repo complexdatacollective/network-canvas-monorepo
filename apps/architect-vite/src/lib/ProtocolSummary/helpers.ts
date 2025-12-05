@@ -101,7 +101,11 @@ export const getCodebookIndex = (protocol: Protocol) => {
 
 		return flatMap(entityConfigurations, (entityConfiguration, entityType) =>
 			flatMap(
-				(entityConfiguration as { variables?: Record<string, VariableConfiguration> }).variables,
+				(
+					entityConfiguration as {
+						variables?: Record<string, VariableConfiguration>;
+					}
+				).variables,
 				buildVariableEntry(protocol, variablePaths, fields, entity, String(entityType)),
 			),
 		);

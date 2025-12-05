@@ -163,7 +163,9 @@
 	border-radius: 100%;
 	background-color: var(--active-color);
 	transition-property: transform, opacity, filter;
-	transition-duration: var(--animation-duration-fast), var(--animation-duration-fast), var(--animation-duration-fast);
+	transition-duration:
+		var(--animation-duration-fast), var(--animation-duration-fast),
+		var(--animation-duration-fast);
 }
 
 .form-field-slider__marker.form-field-slider__marker--is-disabled {
@@ -183,8 +185,10 @@
 	margin-bottom: var(--space-xl);
 }
 
-.form-field-slider__slider.form-field-slider__slider--vas .form-field-slider__track-line,
-.form-field-slider__slider.form-field-slider__slider--likert .form-field-slider__track-line {
+.form-field-slider__slider.form-field-slider__slider--vas
+	.form-field-slider__track-line,
+.form-field-slider__slider.form-field-slider__slider--likert
+	.form-field-slider__track-line {
 	border-radius: 0;
 }
 
@@ -197,7 +201,8 @@
 	background-color: var(--slider-color);
 }
 
-.form-field-slider__slider.form-field-slider__slider--not-set .form-field-slider__marker {
+.form-field-slider__slider.form-field-slider__slider--not-set
+	.form-field-slider__marker {
 	opacity: 0.8;
 	filter: saturate(0);
 }

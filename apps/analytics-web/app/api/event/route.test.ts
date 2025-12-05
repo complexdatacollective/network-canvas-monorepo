@@ -28,7 +28,10 @@ describe("/api/event", () => {
 		await testApiHandler({
 			appHandler,
 			test: async ({ fetch }) => {
-				const response = await fetch({ method: "POST", body: JSON.stringify(eventData) });
+				const response = await fetch({
+					method: "POST",
+					body: JSON.stringify(eventData),
+				});
 				expect(response.status).toBe(200);
 				expect(await response.json()).toEqual({ event: eventData });
 			},
@@ -50,7 +53,10 @@ describe("/api/event", () => {
 		await testApiHandler({
 			appHandler,
 			test: async ({ fetch }) => {
-				const response = await fetch({ method: "POST", body: JSON.stringify(eventData) });
+				const response = await fetch({
+					method: "POST",
+					body: JSON.stringify(eventData),
+				});
 				expect(response.status).toBe(200);
 			},
 		});
@@ -62,7 +68,10 @@ describe("/api/event", () => {
 		await testApiHandler({
 			appHandler,
 			test: async ({ fetch }) => {
-				const response = await fetch({ method: "POST", body: JSON.stringify(eventData) });
+				const response = await fetch({
+					method: "POST",
+					body: JSON.stringify(eventData),
+				});
 				expect(response.status).toBe(400);
 			},
 		});

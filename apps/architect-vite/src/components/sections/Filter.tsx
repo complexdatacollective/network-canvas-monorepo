@@ -39,12 +39,17 @@ const Filter = () => {
 			if (prompt?.edges?.create) creationValues.push(prompt.edges.create);
 			if (prompt?.edges?.display) displayValues.push(...prompt.edges.display);
 		});
-		return { edgeCreationValues: creationValues, edgeDisplayValues: displayValues };
+		return {
+			edgeCreationValues: creationValues,
+			edgeDisplayValues: displayValues,
+		};
 	}, [prompts]);
 	const shouldShowWarning = useMemo(() => {
 		if (edgeCreationValues.length > 0 || edgeDisplayValues.length > 0) {
 			return getEdgeFilteringWarning(
-				(currentValue?.rules || []) as Array<{ options: { operator: string; type: string } }>,
+				(currentValue?.rules || []) as Array<{
+					options: { operator: string; type: string };
+				}>,
 				[...edgeCreationValues, ...edgeDisplayValues],
 			);
 		}

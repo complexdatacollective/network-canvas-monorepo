@@ -46,7 +46,10 @@ const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name, variant
 
 	const contrastProps =
 		variant === "contrast"
-			? { className: "bg-slate-blue-dark p-4 rounded-md", layout: "vertical" as "vertical" | "horizontal" }
+			? {
+					className: "bg-slate-blue-dark p-4 rounded-md",
+					layout: "vertical" as "vertical" | "horizontal",
+				}
 			: {};
 
 	return (

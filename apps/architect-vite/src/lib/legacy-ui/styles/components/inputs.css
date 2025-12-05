@@ -171,7 +171,9 @@
 	position: absolute;
 	top: 0;
 	left: 0;
-	transition: scale 250ms ease-in-out, translate 250ms ease-in-out;
+	transition:
+		scale 250ms ease-in-out,
+		translate 250ms ease-in-out;
 	transform: scale(1) translate(0, 0);
 	transform-origin: left top 0;
 	pointer-events: none;

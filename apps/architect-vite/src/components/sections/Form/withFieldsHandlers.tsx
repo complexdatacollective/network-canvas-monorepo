@@ -29,7 +29,14 @@ export const useFieldHandlers = ({ form, entity, type }: UseFieldHandlerProps) =
 		[dispatch, form],
 	);
 	const deleteVariable = useCallback(
-		(variable: string) => dispatch(deleteVariableAsync({ entity: entity as Entity, type, variable }) as never),
+		(variable: string) =>
+			dispatch(
+				deleteVariableAsync({
+					entity: entity as Entity,
+					type,
+					variable,
+				}) as never,
+			),
 		[dispatch, entity, type],
 	);
 

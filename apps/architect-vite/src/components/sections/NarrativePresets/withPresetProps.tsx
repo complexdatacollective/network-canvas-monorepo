@@ -57,7 +57,11 @@ const variableHandlers = withHandlers({
 	handleDeleteVariable:
 		({ entity, type, deleteVariable }: HandlerProps) =>
 		(variable: string) =>
-			deleteVariable({ entity: entity as "node" | "edge" | "ego", type, variable }),
+			deleteVariable({
+				entity: entity as "node" | "edge" | "ego",
+				type,
+				variable,
+			}),
 });
 
 const withPresetProps = compose(connect(mapStateToProps, mapDispatchToProps), variableHandlers);

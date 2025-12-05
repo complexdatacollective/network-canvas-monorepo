@@ -67,7 +67,9 @@ const ColorPicker = ({
 
 	const showError = invalid && touched && error;
 
-	const pickerStyles = cx("form-fields-color-picker", { "form-fields-color-picker--has-error": showError });
+	const pickerStyles = cx("form-fields-color-picker", {
+		"form-fields-color-picker--has-error": showError,
+	});
 
 	return (
 		<div className="form-field-container">

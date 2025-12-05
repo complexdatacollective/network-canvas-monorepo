@@ -7,7 +7,10 @@ import { getProtocol } from "./protocol";
  * @returns {array} in format: [{ subject: { entity, type }, owner: { id, type } }, ...]
  */
 const getFormTypeUsageIndex = createSelector(getProtocol, (protocol) =>
-	map(protocol.forms, ({ entity, type }, id) => ({ subject: { entity, type }, owner: { id, type: "form" } })),
+	map(protocol.forms, ({ entity, type }, id) => ({
+		subject: { entity, type },
+		owner: { id, type: "form" },
+	})),
 );
 
 /**

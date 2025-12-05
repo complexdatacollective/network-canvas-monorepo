@@ -88,7 +88,15 @@ export const createTypeAsync = createAsyncThunk(
 export const updateTypeAsync = createAsyncThunk(
 	"codebook/updateTypeAsync",
 	async (
-		{ entity, type, configuration }: { entity: Entity; type: string; configuration: Partial<EntityDefinition> },
+		{
+			entity,
+			type,
+			configuration,
+		}: {
+			entity: Entity;
+			type: string;
+			configuration: Partial<EntityDefinition>;
+		},
 		{ dispatch },
 	) => {
 		const payload: UpdateTypePayload = { entity, type, configuration };
@@ -271,8 +279,17 @@ export const deleteTypeAsync = createAsyncThunk(
 		const usageForType = getUsageForType(entity, type);
 
 		await Promise.all(
-			usageForType.map(({ owner }: { owner: { type: string; id?: string; stageId?: string; promptId?: string } }) =>
-				dispatch(getDeleteAction(owner)),
+			usageForType.map(
+				({
+					owner,
+				}: {
+					owner: {
+						type: string;
+						id?: string;
+						stageId?: string;
+						promptId?: string;
+					};
+				}) => dispatch(getDeleteAction(owner)),
 			),
 		);
 	},
