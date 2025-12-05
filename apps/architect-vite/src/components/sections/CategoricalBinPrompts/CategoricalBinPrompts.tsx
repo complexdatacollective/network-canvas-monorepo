@@ -1,6 +1,6 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -9,7 +9,7 @@ import { itemSelector, normalizeField } from "./helpers";
 import PromptFields from "./PromptFields";
 import withPromptChangeHandler from "./withPromptChangeHandler";
 
-type CategoricalBinPromptsProps = {
+type CategoricalBinPromptsProps = StageEditorSectionProps & {
 	handleChangePrompt: (value: Record<string, unknown>) => void;
 	entity?: string | null;
 	type?: string | null;
@@ -52,7 +52,7 @@ const CategoricalBinPrompts = ({
 	</Section>
 );
 
-export default compose<ComponentProps<typeof CategoricalBinPrompts>, typeof CategoricalBinPrompts>(
+export default compose<CategoricalBinPromptsProps, StageEditorSectionProps>(
 	withSubject,
 	withDisabledSubjectRequired,
 	withPromptChangeHandler,

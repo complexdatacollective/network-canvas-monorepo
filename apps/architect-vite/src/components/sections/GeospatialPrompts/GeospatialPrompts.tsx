@@ -1,16 +1,15 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
 import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 
-type GeospatialPromptsProps = {
-	form: string;
+type GeospatialPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
@@ -37,7 +36,7 @@ const GeospatialPrompts = ({ form, entity, type, disabled }: GeospatialPromptsPr
 	</Section>
 );
 
-export default compose<ComponentProps<typeof GeospatialPrompts>, typeof GeospatialPrompts>(
+export default compose<GeospatialPromptsProps, StageEditorSectionProps>(
 	withSubject,
 	withDisabledSubjectRequired,
 )(GeospatialPrompts);

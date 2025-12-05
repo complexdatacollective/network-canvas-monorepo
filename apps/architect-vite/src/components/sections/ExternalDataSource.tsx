@@ -1,8 +1,8 @@
-import type { ComponentProps } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withDisabledSubjectRequired from "../enhancers/withDisabledSubjectRequired";
 import withSubject from "../enhancers/withSubject";
 import DataSource from "../Form/Fields/DataSource";
@@ -11,9 +11,9 @@ import IssueAnchor from "../IssueAnchor";
 
 const withChangeDataSourceHandler = connect(null, { changeForm: change });
 
-type ExternalDataSourceProps = {
+type ExternalDataSourceProps = StageEditorSectionProps & {
 	changeForm: (form: string, field: string, value: unknown) => void;
-} & Record<string, unknown>;
+};
 
 const ExternalDataSource = (props: ExternalDataSourceProps) => {
 	const handleChangeDataSource = () => {
@@ -42,7 +42,7 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
 	);
 };
 
-export default compose<ComponentProps<typeof ExternalDataSource>, typeof ExternalDataSource>(
+export default compose<ExternalDataSourceProps, StageEditorSectionProps>(
 	withChangeDataSourceHandler,
 	withSubject,
 	withDisabledSubjectRequired,

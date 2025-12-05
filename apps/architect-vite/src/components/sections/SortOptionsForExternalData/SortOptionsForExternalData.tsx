@@ -1,5 +1,4 @@
 import type { VariableOption } from "@codaco/protocol-validation";
-import type { ComponentProps } from "react";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import type { FormAction } from "redux-form";
@@ -9,13 +8,14 @@ import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetR
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import { Text } from "~/components/Form/Fields";
 import MultiSelect from "~/components/Form/MultiSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import useVariablesFromExternalData from "~/hooks/useVariablesFromExternalData";
 import getSortOrderOptionGetter from "./getSortOrderOptionGetter";
 import getVariableOptionsGetter from "./getVariableOptionsGetter";
 
-type SortOptionsProps = {
+type SortOptionsProps = StageEditorSectionProps & {
 	dataSource: string;
 	disabled: boolean;
 };
@@ -97,7 +97,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 	);
 };
 
-export default compose<ComponentProps<typeof SortOptions>, typeof SortOptions>(
+export default compose<SortOptionsProps, StageEditorSectionProps>(
 	withMapFormToProps("dataSource"),
 	withDisabledAssetRequired,
 )(SortOptions);

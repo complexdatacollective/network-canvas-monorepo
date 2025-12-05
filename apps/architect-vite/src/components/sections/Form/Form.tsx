@@ -1,4 +1,3 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import EditableList from "~/components/EditableList";
 import { Section } from "~/components/EditorLayout";
@@ -75,7 +74,7 @@ const Form = ({
 	</Section>
 );
 
-export default compose<ComponentProps<typeof Form>, typeof Form>(
+export default compose<FormProps, StageEditorSectionProps>(
 	withSubject,
 	withFormHandlers,
 	withDisabledFormTitle,

@@ -1,6 +1,6 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -9,9 +9,8 @@ import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 import withPromptChangeHandler from "./withPromptChangeHandler";
 
-type TieStrengthCensusPromptsProps = {
+type TieStrengthCensusPromptsProps = StageEditorSectionProps & {
 	handleChangePrompt: (prompts: unknown[]) => void;
-	form: string;
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
@@ -49,7 +48,7 @@ const TieStrengthCensusPrompts = ({
 	</Section>
 );
 
-export default compose<ComponentProps<typeof TieStrengthCensusPrompts>, typeof TieStrengthCensusPrompts>(
+export default compose<TieStrengthCensusPromptsProps, StageEditorSectionProps>(
 	withSubject,
 	withDisabledSubjectRequired,
 	withPromptChangeHandler,

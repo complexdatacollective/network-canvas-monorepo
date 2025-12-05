@@ -1,5 +1,5 @@
-import type { FilterRule } from "@codaco/protocol-validation";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
+import type { FilterRule, VariableType } from "@codaco/protocol-validation";
+import type { UnknownAction } from "@reduxjs/toolkit";
 import React from "react";
 import { useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
@@ -8,7 +8,7 @@ import BooleanField from "~/components/Form/Fields/BooleanField";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Tip from "~/components/Tip";
 import { useAppDispatch } from "~/ducks/hooks";
-import type { RootState } from "~/ducks/store";
+import type { AppDispatch, RootState } from "~/ducks/store";
 import { createVariableAsync } from "../../../ducks/modules/protocol/codebook";
 import DetachedField from "../../DetachedField";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
@@ -22,8 +22,8 @@ import getEdgeFilteringWarning from "./utils";
 // updated to use this function.
 // Internal helper - not exported
 const createVariableHandler =
-	(dispatch: Dispatch<UnknownAction>, entity: string, type: string, form: string) =>
-	async (variableName: string, variableType: string, field: string) => {
+	(dispatch: AppDispatch, entity: string, type: VariableType, form: string) =>
+	async (variableName: string, variableType: VariableType, field: string) => {
 		const withType = variableType ? { type: variableType } : {};
 
 		const configuration = {
@@ -36,9 +36,10 @@ const createVariableHandler =
 				entity: entity as "node" | "edge" | "ego",
 				type,
 				configuration,
-			}) as unknown as UnknownAction,
-		);
-		const { variable } = (result as unknown as { payload: { variable: string } }).payload;
+			}),
+		).unwrap();
+
+		const { variable } = result;
 
 		// If we supplied a field, update it with the result of the variable creation
 		if (field) {

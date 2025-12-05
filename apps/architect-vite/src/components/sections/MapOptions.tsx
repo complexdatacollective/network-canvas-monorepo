@@ -1,8 +1,8 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
 import { Row, Section } from "../EditorLayout";
 import ExternalLink from "../ExternalLink";
@@ -37,7 +37,7 @@ const mapboxStyleOptions = [
 	},
 ];
 
-type MapOptionsProps = {
+type MapOptionsProps = StageEditorSectionProps & {
 	mapOptions?: {
 		center?: number[];
 		tokenAssetId?: string;
@@ -167,7 +167,7 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 	);
 };
 
-export default compose<ComponentProps<typeof MapOptions>, typeof MapOptions>(
+export default compose<MapOptionsProps, StageEditorSectionProps>(
 	withMapFormToProps(["mapOptions"]),
 	withDisabledAPIKeyRequired,
 )(MapOptions);

@@ -5,6 +5,7 @@ import type {
 	EdgeDefinition,
 	EntityDefinition,
 	Variable,
+	VariableType,
 } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, current, type PayloadAction } from "@reduxjs/toolkit";
 import { find, get, has, isEmpty, omit } from "es-toolkit/compat";
@@ -133,7 +134,7 @@ export const createEdgeAsync = createAsyncThunk(
 export const createVariableAsync = createAsyncThunk(
 	"codebook/createVariableAsync",
 	async (
-		{ entity, type, configuration }: { entity: Entity; type?: string; configuration: Partial<Variable> },
+		{ entity, type, configuration }: { entity: Entity; type?: VariableType; configuration: Partial<Variable> },
 		{ dispatch, getState },
 	) => {
 		if (!configuration.name) {

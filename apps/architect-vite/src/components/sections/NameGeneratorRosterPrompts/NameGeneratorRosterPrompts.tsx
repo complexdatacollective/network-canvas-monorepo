@@ -1,6 +1,6 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledAssetRequired from "../../enhancers/withDisabledAssetRequired";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
@@ -37,7 +37,7 @@ const NameGeneratorRosterPrompts = ({ form, entity, type, disabled, dataSource }
 	</Section>
 );
 
-export default compose<ComponentProps<typeof NameGeneratorRosterPrompts>, typeof NameGeneratorRosterPrompts>(
+export default compose<NameGeneratorRosterPromptsProps, StageEditorSectionProps>(
 	withSubject,
 	withMapFormToProps("dataSource"),
 	withDisabledSubjectRequired,

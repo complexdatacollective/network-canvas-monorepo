@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -10,8 +10,7 @@ import PromptFields from "./PromptFields";
 import PromptPreview from "./PromptPreview";
 import withFormUsedVariableIndex from "./withFormUsedVariableIndex";
 
-type SociogramPromptsProps = {
-	form: string;
+type SociogramPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
@@ -39,7 +38,7 @@ const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: S
 	</Section>
 );
 
-export default compose<ComponentProps<typeof SociogramPrompts>, typeof SociogramPrompts>(
+export default compose<SociogramPromptsProps, StageEditorSectionProps>(
 	withSubject,
 	withFormUsedVariableIndex,
 	withDisabledSubjectRequired,

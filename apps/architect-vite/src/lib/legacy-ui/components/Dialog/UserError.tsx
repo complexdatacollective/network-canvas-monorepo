@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Button from "../Button";
 import Dialog from "./Dialog";
 
@@ -12,12 +13,12 @@ const getMessage = ({
 	message,
 }: {
 	error?: Error | string | { friendlyMessage?: string } | null;
-	message?: string;
+	message?: ReactNode;
 }) => (error ? getErrorMessage(error) : message);
 
 type ErrorDialogProps = {
 	error?: Error | string | { friendlyMessage?: string };
-	message?: string;
+	message?: ReactNode;
 	onConfirm: () => void;
 	show?: boolean;
 	confirmLabel?: string;

@@ -1,6 +1,6 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Section } from "~/components/EditorLayout";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withCreateVariableHandler from "../../enhancers/withCreateVariableHandler";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -10,9 +10,7 @@ import Tip from "../../Tip";
 import withOptions from "./withOptions";
 import withQuickAddVariable from "./withQuickAddVariable";
 
-/* select from text, or creat text, default to display */
-
-type QuickAddProps = {
+type QuickAddProps = StageEditorSectionProps & {
 	disabled?: boolean;
 	entity: string;
 	handleCreateVariable: (value: string, variableType: string, fieldName: string) => void;
@@ -58,7 +56,7 @@ const QuickAdd = ({
 		</Section>
 	);
 
-export default compose<ComponentProps<typeof QuickAdd>, typeof QuickAdd>(
+export default compose<QuickAddProps, StageEditorSectionProps>(
 	withSubject,
 	withDisabledSubjectRequired,
 	withQuickAddVariable,
