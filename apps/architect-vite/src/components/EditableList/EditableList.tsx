@@ -27,7 +27,8 @@ type EditableListProps<T = Record<string, unknown>> = {
 	fieldName?: string;
 	sortable?: boolean;
 	children?: React.ReactNode;
-	previewComponent: ComponentType<Record<string, unknown>>;
+	// biome-ignore lint/suspicious/noExplicitAny: too complex to type for now
+	previewComponent: ComponentType<any>;
 	editComponent: React.ComponentType<T>;
 	editProps?: Record<string, unknown>;
 	validation?: Record<string, Validator> | Partial<Validation>;

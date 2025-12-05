@@ -11,6 +11,8 @@ export * from "./migration/errors";
 export {
 	detectSchemaVersion,
 	getMigrationInfo,
+	type MigrationInfo,
+	type MigrationNote,
 	migrateProtocol,
 	ProtocolMigrator,
 	protocolMigrator,

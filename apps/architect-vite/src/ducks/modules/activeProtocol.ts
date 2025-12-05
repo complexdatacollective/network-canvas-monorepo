@@ -112,7 +112,6 @@ const activeProtocolSlice = createSlice({
 // Extract actions and selectors
 export const setActiveProtocol = activeProtocolSlice.actions.setActiveProtocol;
 export const updateProtocolOptions = activeProtocolSlice.actions.updateProtocolOptions;
-export const markProtocolSaved = activeProtocolSlice.actions.markProtocolSaved;
 export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;
 
 export const actionCreators = {

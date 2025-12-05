@@ -7,6 +7,7 @@ import withDisabledSubjectRequired from "~/components/enhancers/withDisabledSubj
 import withSubject from "~/components/enhancers/withSubject";
 import TextField from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
+import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";
 import { itemSelector, normalizeField } from "./helpers";
@@ -58,7 +59,7 @@ const Form = ({
 				type,
 				entity,
 			}}
-			previewComponent={FieldPreview as React.ComponentType<Record<string, unknown>>}
+			previewComponent={FieldPreview}
 			fieldName="form.fields"
 			title="Edit Field"
 			onChange={(value: unknown) => handleChangeFields(value as Array<Record<string, unknown>>)}

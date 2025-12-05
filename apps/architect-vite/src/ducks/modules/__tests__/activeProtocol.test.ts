@@ -1,4 +1,4 @@
-import type { CurrentProtocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol, Stage } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
 import activeProtocolReducer, { actionCreators } from "../activeProtocol";
@@ -310,7 +310,7 @@ describe("activeProtocol", () => {
 						type: "person",
 					},
 					prompts: [],
-				}),
+				} as unknown as Stage),
 			);
 
 			const state = store.getState().activeProtocol;

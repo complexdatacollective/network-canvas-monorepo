@@ -69,43 +69,6 @@ export const getVariablesForSubjectSelector = createSelector(
 export const getVariablesForSubject = (state: RootState, subject: Subject): Variables =>
 	getVariablesForSubjectSelector(state, subject);
 
-// Memoized selector for getting all variables flattened by UUID
-const _getAllVariablesByUUIDSelector = createSelector([getCodebook], (codebook): Variables => {
-	if (!codebook) {
-		return {};
-	}
-
-	const { node: nodeTypes = {}, edge: edgeTypes = {}, ego } = codebook;
-	const flattenedVariables: Variables = {};
-
-	const addVariables = (variables: Variables | null | undefined) => {
-		if (!variables || !isObject(variables)) {
-			return;
-		}
-
-		for (const [uuid, variable] of Object.entries(variables)) {
-			flattenedVariables[uuid] = variable;
-		}
-	};
-
-	// Process node types
-	for (const nodeType of Object.values(nodeTypes) as NodeDefinition[]) {
-		addVariables(nodeType.variables);
-	}
-
-	// Process edge types
-	for (const edgeType of Object.values(edgeTypes) as EdgeDefinition[]) {
-		addVariables(edgeType.variables);
-	}
-
-	// Process ego variables
-	if (ego?.variables) {
-		addVariables(ego.variables);
-	}
-
-	return flattenedVariables;
-});
-
 // Legacy function for backward compatibility
 export const getAllVariablesByUUID = (codebook: Codebook): Variables => {
 	if (!codebook) {

@@ -2,7 +2,6 @@ import type { ComponentProps } from "react";
 import { compose, withState } from "recompose";
 import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";
-import { scrollToFirstIssue } from "../../utils/issues";
 import ValidatedFieldArray from "../Form/ValidatedFieldArray";
 import InlineEditScreen from "../InlineEditScreen/InlineEditScreen";
 import IssueAnchor from "../IssueAnchor";
@@ -40,10 +39,6 @@ type GridManagerProps = {
 
 const notEmpty = (value: unknown) =>
 	value && Array.isArray(value) && value.length > 0 ? undefined : "You must create at least one item";
-
-const _handleSubmitFail = (issues: Record<string, unknown>) => {
-	scrollToFirstIssue(issues);
-};
 
 const GridManager = ({
 	editField = null,

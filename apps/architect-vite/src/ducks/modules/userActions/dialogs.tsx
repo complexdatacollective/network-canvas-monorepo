@@ -1,66 +1,12 @@
-import React from "react";
+import type { MigrationNote } from "@codaco/protocol-validation";
+import type { ComponentType, ReactNode } from "react";
 import ExternalLink from "~/components/ExternalLink";
 import { Markdown } from "~/components/Form/Fields";
-import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { openDialog } from "~/ducks/modules/dialogs";
+import type { ConfirmDialog, UserErrorDialog } from "~/lib/legacy-ui/components/Dialogs";
 
-const getFriendlyMessage = (_e, _meta = {}) => {
-	return <p>Error!</p>;
-};
-
-const _netcanvasFileErrorHandler = (e, meta = {}) => {
-	const friendlyMessage = getFriendlyMessage(e, meta);
-
-	if (friendlyMessage) {
-		e.friendlyMessage = friendlyMessage;
-	}
-
-	return dialogActions.openDialog({
-		type: "Error",
-		error: e,
-	});
-};
-
-const _importErrorDialog = (e) => {
-	e.friendlyMessage = (
-		<p>
-			There was an error downloading or importing the sample protocol. Please consult the error message below for
-			details. If you believe you have encountered a bug in the software, please help us to troubleshoot this issue by
-			creating a topic on our&nbsp;
-			<ExternalLink href="https://community.networkcanvas.com/">community website</ExternalLink>
-			&nbsp; with further details.
-		</p>
-	);
-
-	return dialogActions.openDialog({
-		type: "Error",
-		error: e,
-	});
-};
-
-const _validationErrorDialog = (e) => {
-	e.friendlyMessage = (
-		<>
-			<p>
-				The protocol format seems to be invalid. Please help us to troubleshoot this issue by by creating a topic on
-				our&nbsp;
-				<ExternalLink href="https://community.networkcanvas.com/">community website</ExternalLink>
-				&nbsp; with further details.
-			</p>
-			<p>
-				You may still save and edit the protocol but it{" "}
-				<strong>will not be compatible with Interviewer or Server</strong>.
-			</p>
-		</>
-	);
-
-	return dialogActions.openDialog({
-		type: "Error",
-		error: e,
-	});
-};
-
-const appUpgradeRequiredDialog = (protocolSchemaVersion) => {
-	const message = (
+export const appUpgradeRequiredDialog = (protocolSchemaVersion: number) => {
+	const message: ReactNode = (
 		<>
 			<p>This protocol is not compatible with the current version of Architect.</p>
 
@@ -78,15 +24,21 @@ const appUpgradeRequiredDialog = (protocolSchemaVersion) => {
 		</>
 	);
 
-	return dialogActions.openDialog({
+	const dialog: Omit<UserErrorDialog, "id"> = {
 		type: "UserError",
 		title: "Protocol not compatible with current version",
 		message,
-	});
+	};
+
+	return openDialog(dialog);
 };
 
-const mayUpgradeProtocolDialog = (protocolSchemaVersion, targetSchemaVersion, migrationNotes = []) => {
-	const message = (
+export const mayUpgradeProtocolDialog = (
+	protocolSchemaVersion: number,
+	targetSchemaVersion: number,
+	migrationNotes: MigrationNote[] = [],
+) => {
+	const message: ReactNode = (
 		<>
 			<p>
 				This protocol uses schema version {protocolSchemaVersion}
@@ -105,10 +57,10 @@ const mayUpgradeProtocolDialog = (protocolSchemaVersion, targetSchemaVersion, mi
 					</p>
 					<div className="migration-panel">
 						{migrationNotes.map(({ version, notes }) => (
-							<React.Fragment key={version}>
+							<div key={version}>
 								<h4>Migrating to schema Version {version} will:</h4>
-								<Markdown label={notes} markdownRenderers={{ a: ExternalLink }} />
-							</React.Fragment>
+								<Markdown label={notes} markdownRenderers={{ a: ExternalLink as ComponentType<unknown> }} />
+							</div>
 						))}
 					</div>
 				</>
@@ -125,12 +77,12 @@ const mayUpgradeProtocolDialog = (protocolSchemaVersion, targetSchemaVersion, mi
 		</>
 	);
 
-	return dialogActions.openDialog({
+	const dialog: Omit<ConfirmDialog, "id"> = {
 		type: "Confirm",
 		title: "Upgrade to continue",
 		confirmLabel: "Create upgraded copy",
 		message,
-	});
-};
+	};
 
-export { appUpgradeRequiredDialog, mayUpgradeProtocolDialog };
+	return openDialog(dialog);
+};

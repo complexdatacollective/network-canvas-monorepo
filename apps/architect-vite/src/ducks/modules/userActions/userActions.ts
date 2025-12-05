@@ -11,10 +11,10 @@ import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION } from "~/config";
 import { appUpgradeRequiredDialog, mayUpgradeProtocolDialog } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
-import { getHasUnsavedChanges, getTimelineLocus } from "~/selectors/protocol";
+import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
-import { markProtocolSaved, setActiveProtocol } from "../activeProtocol";
+import { setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
 
 export const checkUnsavedChanges = createAsyncThunk(
@@ -107,8 +107,8 @@ const handleProtocolMigration = createAsyncThunk(
 				return protocol;
 			}
 			case schemaVersionStates.UPGRADE_PROTOCOL: {
-				const migrationNotes = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
-				const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, [migrationNotes]);
+				const migrationInfo = getMigrationInfo(protocol.schemaVersion, APP_SCHEMA_VERSION);
+				const upgradeDialog = mayUpgradeProtocolDialog(protocol.schemaVersion, APP_SCHEMA_VERSION, migrationInfo.notes);
 
 				const confirm = await dispatch(upgradeDialog).unwrap();
 				if (!confirm) {
@@ -158,44 +158,6 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 
 	// Navigate to the protocol
 	navigate("/protocol");
-});
-
-// Save protocol (validate and mark as saved)
-const _saveProtocol = createAsyncThunk("webUserActions/saveProtocol", async (_, { getState, dispatch }) => {
-	const state = getState() as RootState;
-	const protocol = state.activeProtocol?.present;
-
-	if (!protocol) {
-		throw new Error("No active protocol to save");
-	}
-
-	// Validate the protocol
-	const validationResult = await validateProtocol(protocol as CurrentProtocol);
-
-	if (!validationResult.success) {
-		// Show validation error dialog
-		await dispatch(
-			openDialog({
-				type: "Error",
-				message: `Cannot Save Protocol\n\nProtocol has validation errors:\n\n${validationResult.error}`,
-				confirmLabel: "OK",
-			}),
-		).unwrap();
-		throw new Error(`Protocol validation failed: ${validationResult.error}`);
-	}
-
-	// Get current timeline locus
-	const timelineLocus = getTimelineLocus(state);
-
-	if (!timelineLocus) {
-		throw new Error("No timeline locus available");
-	}
-
-	// Mark protocol as saved
-	const timestamp = Date.now();
-	dispatch(markProtocolSaved({ timestamp, timelineLocus }));
-
-	return { timestamp, timelineLocus };
 });
 
 // Export protocol as .netcanvas file
@@ -263,9 +225,4 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			controller.abort();
 		}
 	},
-);
-
-const _openRemoteFrescoNetcanvas = createAsyncThunk(
-	"webUserActions/openRemoteFrescoNetcanvas",
-	async (_url: string, { dispatch: _dispatch }) => {},
 );

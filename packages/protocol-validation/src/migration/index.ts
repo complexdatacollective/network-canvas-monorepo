@@ -113,6 +113,24 @@ export class MigrationChain {
 
 		return current === to ? path : [];
 	}
+
+	getMigrationNotes(from: SchemaVersion, to: SchemaVersion): { version: SchemaVersion; notes: string }[] {
+		if (from >= to) return [];
+
+		const notes: { version: SchemaVersion; notes: string }[] = [];
+		let current = from;
+
+		while (current < to) {
+			const migration = this.migrations.get(current);
+			if (!migration) break;
+			if (migration.notes) {
+				notes.push({ version: migration.to, notes: migration.notes });
+			}
+			current = migration.to;
+		}
+
+		return notes;
+	}
 }
 
 export const protocolMigrations = new MigrationChain();

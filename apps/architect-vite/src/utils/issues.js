@@ -1,5 +1,4 @@
 import { compact, flatMap, isPlainObject } from "lodash";
-import scrollTo from "./scrollTo";
 
 /**
  * Converts a nested object into a flattened version with paths.
@@ -57,44 +56,4 @@ const getFieldId = (field) => {
 	return `field_${safeFieldName}`;
 };
 
-const getTopOffsetById = (fieldId) => {
-	const target = document.getElementById(fieldId);
-
-	if (!target) {
-		return null;
-	}
-
-	const { top } = target.getBoundingClientRect();
-
-	return top;
-};
-
-const asOffsetIdPair = ({ field }) => {
-	const fieldId = getFieldId(field);
-	const top = getTopOffsetById(fieldId);
-	return [top, fieldId];
-};
-
-const scrollToFirstIssue = (issues) => {
-	const issueOffsets = flattenIssues(issues).map(asOffsetIdPair);
-
-	const [, firstIssueField] = issueOffsets.reduce((memo, issue) => {
-		if (issue[0] === null) return memo;
-		if (issue[0] > memo[0]) return memo;
-		return issue;
-	}, []);
-
-	if (!firstIssueField) {
-		return;
-	}
-
-	const target = document.getElementById(firstIssueField);
-
-	if (!target) {
-		return;
-	}
-
-	scrollTo(target);
-};
-
-export { getFieldId, flattenIssues, scrollToFirstIssue };
+export { flattenIssues, getFieldId };

@@ -2,6 +2,11 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import { v4 as uuid } from "uuid";
 import type { Dialog } from "~/lib/legacy-ui/components/Dialogs";
 
+// Distributive Omit preserves discriminated union behavior
+type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
+
+export type DialogConfig = DistributiveOmit<Dialog, "id">;
+
 type DialogsState = {
 	dialogs: Dialog[];
 };
@@ -11,7 +16,7 @@ const initialState: DialogsState = {
 };
 
 // Async thunk for opening dialogs with promise support
-export const openDialog = createAsyncThunk<boolean, Omit<Dialog, "id">>(
+export const openDialog = createAsyncThunk<boolean, DialogConfig>(
 	"dialogs/openDialog",
 	async (dialogConfig, { dispatch }) => {
 		return new Promise<boolean>((resolve) => {
