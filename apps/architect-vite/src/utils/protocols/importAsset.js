@@ -1,5 +1,4 @@
 import { findKey, toLower } from "es-toolkit/compat";
-import { v1 as uuid } from "uuid";
 import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
 
 /**
@@ -20,21 +19,3 @@ export const getSupportedAssetType = (filename) => {
 
 	return typeFromMap || false;
 };
-
-/**
- * Makes a copy of a file buffer to `protocolPath`
- * @param {string} protocolPath - The destination directory.
- * @param {string} filePath - The file buffer to copy.
- */
-const importAsset = (protocolPath, filePath) =>
-	new Promise((resolve) => {
-		const destinationName = `${uuid()}${path.extname(filePath)}`;
-		const destinationPath = path.join(protocolPath, "assets", destinationName);
-		const assetType = getSupportedAssetType(filePath);
-
-		copy(filePath, destinationPath)
-			.then(() => ({ filePath: destinationName, assetType }))
-			.then(resolve);
-	});
-
-export default importAsset;

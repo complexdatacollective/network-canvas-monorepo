@@ -40,7 +40,7 @@ const initialStage = {
 };
 
 // Async thunks
-export const createStageAsync = createAsyncThunk(
+const createStageAsync = createAsyncThunk(
 	"stages/createStageAsync",
 	async ({ options, index }: { options: Partial<Stage>; index?: number }, { dispatch }) => {
 		const stageId = uuid();
@@ -51,7 +51,7 @@ export const createStageAsync = createAsyncThunk(
 	},
 );
 
-export const deleteStageAsync = createAsyncThunk(
+const deleteStageAsync = createAsyncThunk(
 	"stages/deleteStageAsync",
 	async (stageId: string, { dispatch, getState }) => {
 		const state = getState() as RootState;

@@ -424,8 +424,5 @@ const codebookSlice = createSlice({
 export const updateVariableByUUID = (variable: string, properties: Partial<Variable>, merge = false) =>
 	updateVariableAsync({ variable, configuration: properties, merge });
 
-export const { createType, updateType, deleteType, createVariable, updateVariable, deleteVariable } =
-	codebookSlice.actions;
-
 // Export the reducer as default
 export default codebookSlice.reducer;
