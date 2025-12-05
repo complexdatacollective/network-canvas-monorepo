@@ -1,7 +1,7 @@
 import { v4 as uuid } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getThunkMocks, toHaveDispatched } from "~/__tests__/helpers";
-import testState from "~/__tests__/testState.json";
+import testState from "~/__tests__/testState.json" with { type: "json" };
 import { importAsset } from "~/utils/protocols";
 import reducer, { deleteAsset, importAssetAsync, test } from "../assetManifest";
 

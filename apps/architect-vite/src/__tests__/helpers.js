@@ -3,7 +3,7 @@
 
 import developmentProtocol from "@codaco/development-protocol";
 import { isMatch } from "lodash";
-import testState from "./testState.json";
+import testState from "./testState.json" with { type: "json" };
 
 export const getMockState = (mergeProps) => ({
 	...testState,

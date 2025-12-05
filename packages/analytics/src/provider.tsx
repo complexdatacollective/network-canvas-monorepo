@@ -13,10 +13,10 @@ export const AnalyticsContext = createContext<Analytics | null>(null);
 /**
  * Props for the AnalyticsProvider
  */
-export interface AnalyticsProviderProps {
+export type AnalyticsProviderProps = {
 	children: ReactNode;
 	config: AnalyticsConfig;
-}
+};
 
 /**
  * Provider component that initializes PostHog and provides analytics context

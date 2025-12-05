@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import testState from "../../../__tests__/testState.json";
+import testState from "../../../__tests__/testState.json" with { type: "json" };
 import { getAllVariablesByUUID, getVariableOptionsForSubject, makeGetVariable } from "..";
 
 describe("codebook selectors", () => {

@@ -19,9 +19,9 @@
 const POSTHOG_HOST = "us.i.posthog.com";
 const POSTHOG_ASSETS_HOST = "us-assets.i.posthog.com";
 
-interface Env {
+type Env = {
 	POSTHOG_API_KEY?: string;
-}
+};
 
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {

@@ -1,6 +1,6 @@
 import configureMockStore from "redux-mock-store";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import testState from "../../../__tests__/testState.json";
+import testState from "../../../__tests__/testState.json" with { type: "json" };
 import { actionCreators } from "../preview";
 
 vi.mock("../../../utils/previewDriver");

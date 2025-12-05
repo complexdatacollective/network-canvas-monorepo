@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RootState } from "~/ducks/modules/root";
 
-import mockState from "../../../../__tests__/testState.json";
+import mockState from "../../../../__tests__/testState.json" with { type: "json" };
 import { getEdgesForSubject, getHighlightVariablesForSubject, getLayoutVariablesForSubject } from "../selectors";
 
 vi.mock("redux-form", () => ({
