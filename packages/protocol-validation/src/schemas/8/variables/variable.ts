@@ -9,12 +9,10 @@ import { validations } from "./validation";
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 
 // Variable Schema
-const baseVariableSchema = z
-	.object({
-		name: VariableNameSchema,
-		encrypted: z.boolean().optional(),
-	})
-	.strict();
+const baseVariableSchema = z.strictObject({
+	name: VariableNameSchema,
+	encrypted: z.boolean().optional(),
+});
 
 const numberVariableSchema = baseVariableSchema
 	.extend({
@@ -201,12 +199,10 @@ const booleanToggleVariableSchema = baseVariableSchema
 
 // Options Schema for categorical and ordinal variables
 const categoricalOptionsSchema = z.array(
-	z
-		.object({
-			label: z.string(),
-			value: z.union([z.number().int(), z.string(), z.boolean()]),
-		})
-		.strict(),
+	z.strictObject({
+		label: z.string(),
+		value: z.union([z.number().int(), z.string(), z.boolean()]),
+	}),
 );
 
 const ordinalVariableSchema = baseVariableSchema

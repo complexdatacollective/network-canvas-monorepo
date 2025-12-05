@@ -4,27 +4,25 @@ import { z } from "~/utils/zod-mock-extension";
 import { baseStageSchema } from "./base";
 
 // TODO: Should be narrowed based on type
-const ItemSchema = z
-	.object({
-		id: z.string(),
-		type: z.enum(["text", "asset"]),
-		content: z
-			.string()
-			.generateMock(() =>
-				faker.helpers.arrayElement([
-					"Welcome to our research study.",
-					"On the next screen, you will be asked to provide some information.",
-					"Please read through this information.",
-				]),
-			),
-		description: z.string().optional(),
-		size: z
-			.string()
-			.optional()
-			.generateMock(() => faker.helpers.arrayElement(["SMALL", "MEDIUM", "LARGE"])),
-		loop: z.boolean().optional(),
-	})
-	.strict();
+const ItemSchema = z.strictObject({
+	id: z.string(),
+	type: z.enum(["text", "asset"]),
+	content: z
+		.string()
+		.generateMock(() =>
+			faker.helpers.arrayElement([
+				"Welcome to our research study.",
+				"On the next screen, you will be asked to provide some information.",
+				"Please read through this information.",
+			]),
+		),
+	description: z.string().optional(),
+	size: z
+		.string()
+		.optional()
+		.generateMock(() => faker.helpers.arrayElement(["SMALL", "MEDIUM", "LARGE"])),
+	loop: z.boolean().optional(),
+});
 
 export type Item = z.infer<typeof ItemSchema>;
 
@@ -57,22 +55,20 @@ export const informationStage = baseStageSchema.extend({
 
 export const anonymisationStage = baseStageSchema.extend({
 	type: z.literal("Anonymisation"),
-	explanationText: z
-		.object({
-			title: z
-				.string()
-				.generateMock(() => faker.helpers.arrayElement(["Create an Anonymous ID", "Anonymous Identifier"])),
-			body: z
-				.string()
-				.generateMock(() =>
-					faker.helpers.arrayElement([
-						"Please create a unique identifier that will be used to anonymize your data.",
-						"To protect your privacy, please enter a unique code that only you will know.",
-						"Create a personal identifier to keep your responses anonymous while allowing us to link your data.",
-					]),
-				),
-		})
-		.strict(),
+	explanationText: z.strictObject({
+		title: z
+			.string()
+			.generateMock(() => faker.helpers.arrayElement(["Create an Anonymous ID", "Anonymous Identifier"])),
+		body: z
+			.string()
+			.generateMock(() =>
+				faker.helpers.arrayElement([
+					"Please create a unique identifier that will be used to anonymize your data.",
+					"To protect your privacy, please enter a unique code that only you will know.",
+					"Create a personal identifier to keep your responses anonymous while allowing us to link your data.",
+				]),
+			),
+	}),
 	validation: z
 		.object({
 			minLength: z

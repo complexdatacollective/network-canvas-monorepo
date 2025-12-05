@@ -15,20 +15,18 @@ export const NodeColorSequence = [
 
 export type NodeColor = (typeof NodeColorSequence)[number];
 
-const NodeDefinitionSchema = z
-	.object({
-		name: z.string(),
-		iconVariant: z
-			.string()
-			.optional()
-			.generateMock(() => "add-a-person"),
-		// Always generate variables in mocks
-		variables: VariablesSchema.optional().generateMock(() => VariablesSchema.generateMock()),
-		color: z
-			.union(NodeColorSequence.map((color) => z.literal(color)))
-			.generateMock(() => faker.helpers.arrayElement(NodeColorSequence)),
-	})
-	.strict();
+const NodeDefinitionSchema = z.strictObject({
+	name: z.string(),
+	iconVariant: z
+		.string()
+		.optional()
+		.generateMock(() => "add-a-person"),
+	// Always generate variables in mocks
+	variables: VariablesSchema.optional().generateMock(() => VariablesSchema.generateMock()),
+	color: z
+		.union(NodeColorSequence.map((color) => z.literal(color)))
+		.generateMock(() => faker.helpers.arrayElement(NodeColorSequence)),
+});
 
 export { NodeDefinitionSchema };
 export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
@@ -46,16 +44,14 @@ export const EdgeColorSequence = [
 
 export type EdgeColor = (typeof EdgeColorSequence)[number];
 
-const EdgeDefinitionSchema = z
-	.object({
-		name: z.string(),
-		color: z
-			.union(EdgeColorSequence.map((color) => z.literal(color)))
-			.optional()
-			.generateMock(() => faker.helpers.arrayElement(EdgeColorSequence)),
-		variables: EdgeVariablesSchema.optional(),
-	})
-	.strict();
+const EdgeDefinitionSchema = z.strictObject({
+	name: z.string(),
+	color: z
+		.union(EdgeColorSequence.map((color) => z.literal(color)))
+		.optional()
+		.generateMock(() => faker.helpers.arrayElement(EdgeColorSequence)),
+	variables: EdgeVariablesSchema.optional(),
+});
 
 export { EdgeDefinitionSchema };
 export type EdgeDefinition = z.infer<typeof EdgeDefinitionSchema>;

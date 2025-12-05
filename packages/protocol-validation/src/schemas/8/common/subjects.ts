@@ -1,25 +1,19 @@
 import { getEdgeTypeId, getNodeTypeId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
 
-export const NodeStageSubjectSchema = z
-	.object({
-		entity: z.literal("node"),
-		type: z.string().generateMock(() => getNodeTypeId()),
-	})
-	.strict();
+export const NodeStageSubjectSchema = z.strictObject({
+	entity: z.literal("node"),
+	type: z.string().generateMock(() => getNodeTypeId()),
+});
 
-export const EdgeStageSubjectSchema = z
-	.object({
-		entity: z.literal("edge"),
-		type: z.string().generateMock(() => getEdgeTypeId()),
-	})
-	.strict();
+export const EdgeStageSubjectSchema = z.strictObject({
+	entity: z.literal("edge"),
+	type: z.string().generateMock(() => getEdgeTypeId()),
+});
 
-export const EgoStageSubjectSchema = z
-	.object({
-		entity: z.literal("ego"),
-	})
-	.strict();
+export const EgoStageSubjectSchema = z.strictObject({
+	entity: z.literal("ego"),
+});
 
 export const StageSubjectSchema = z
 	.union([EgoStageSubjectSchema, NodeStageSubjectSchema, EdgeStageSubjectSchema])

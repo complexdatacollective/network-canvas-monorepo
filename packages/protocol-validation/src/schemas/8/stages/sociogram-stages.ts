@@ -12,7 +12,7 @@ export const sociogramStage = baseStageSchema
 		subject: NodeStageSubjectSchema,
 		filter: FilterSchema.optional(),
 		background: z
-			.object({
+			.strictObject({
 				image: z
 					.string()
 					.optional()
@@ -24,11 +24,10 @@ export const sociogramStage = baseStageSchema
 					.generateMock(() => faker.number.int({ min: 1, max: 5 })),
 				skewedTowardCenter: z.boolean().optional(),
 			})
-			.strict()
 			.optional(),
 		behaviours: z
 			.object({
-				automaticLayout: z.object({ enabled: z.boolean() }).strict().optional(),
+				automaticLayout: z.strictObject({ enabled: z.boolean() }).optional(),
 			})
 			.catchall(z.any())
 			.optional(),
@@ -74,39 +73,36 @@ export const narrativeStage = baseStageSchema.extend({
 	subject: NodeStageSubjectSchema,
 	presets: z
 		.array(
-			z
-				.object({
-					id: z.string(),
-					label: z
-						.string()
-						.generateMock(() =>
-							faker.helpers.arrayElement([
-								"Sample Preset",
-								"Network Overview",
-								"Group Visualization",
-								"Relationship Display",
-							]),
-						),
-					layoutVariable: z.string().generateMock(() => getNodeVariableId(0)),
-					groupVariable: z
-						.string()
-						.optional()
-						.generateMock(() => getNodeVariableId(1)),
-					edges: z
-						.object({
-							display: z
-								.array(z.string())
-								.optional()
-								.generateMock(() => [getEdgeTypeId(0), getEdgeTypeId(1)]),
-						})
-						.strict()
-						.optional(),
-					highlight: z
-						.array(z.string())
-						.optional()
-						.generateMock(() => [getNodeVariableId(0), getNodeVariableId(1)]),
-				})
-				.strict(),
+			z.strictObject({
+				id: z.string(),
+				label: z
+					.string()
+					.generateMock(() =>
+						faker.helpers.arrayElement([
+							"Sample Preset",
+							"Network Overview",
+							"Group Visualization",
+							"Relationship Display",
+						]),
+					),
+				layoutVariable: z.string().generateMock(() => getNodeVariableId(0)),
+				groupVariable: z
+					.string()
+					.optional()
+					.generateMock(() => getNodeVariableId(1)),
+				edges: z
+					.strictObject({
+						display: z
+							.array(z.string())
+							.optional()
+							.generateMock(() => [getEdgeTypeId(0), getEdgeTypeId(1)]),
+					})
+					.optional(),
+				highlight: z
+					.array(z.string())
+					.optional()
+					.generateMock(() => [getNodeVariableId(0), getNodeVariableId(1)]),
+			}),
 		)
 		.min(1)
 		.superRefine((prompts, ctx) => {
@@ -121,7 +117,7 @@ export const narrativeStage = baseStageSchema.extend({
 			}
 		}),
 	background: z
-		.object({
+		.strictObject({
 			concentricCircles: z
 				.number()
 				.int()
@@ -129,13 +125,11 @@ export const narrativeStage = baseStageSchema.extend({
 				.generateMock(() => faker.number.int({ min: 1, max: 5 })),
 			skewedTowardCenter: z.boolean().optional(),
 		})
-		.strict()
 		.optional(),
 	behaviours: z
-		.object({
+		.strictObject({
 			freeDraw: z.boolean().optional(),
 			allowRepositioning: z.boolean().optional(),
 		})
-		.strict()
 		.optional(),
 });
