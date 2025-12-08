@@ -43,7 +43,7 @@
 		"react-dom": "catalog:",
 		"react-dropzone": "^14.3.8",
 		"react-flip-toolkit": "^6.5.4",
-		"react-grid-layout": "^1.5.2",
+		"react-grid-layout": "^1.5.3",
 		"react-markdown": "^10.1.0",
 		"react-redux": "^9.2.0",
 		"react-select": "^3.1.0",
