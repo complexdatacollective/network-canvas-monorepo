@@ -45,17 +45,14 @@ export const mayUpgradeProtocolDialog = (
 				{", "}
 				which is not compatible with this version of Architect.
 			</p>
-			<p>
-				It can be automatically upgraded to schema version {targetSchemaVersion} using our migration feature, OR you can
-				downgrade your version of Architect to continue editing this protocol without changing its schema version.
-			</p>
+			<p>It can be automatically upgraded to schema version {targetSchemaVersion} using our migration feature.</p>
 			{migrationNotes.length > 0 && (
 				<>
 					<p>
 						If you choose to migrate, the following actions will be automatically performed on your protocol. Read these
 						notes carefully, as these actions may affect your data.
 					</p>
-					<div className="migration-panel">
+					<div className="max-h-72 overflow-y-auto rounded-xl bg-surface-2 px-4 py-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2 [&_li]:leading-relaxed">
 						{migrationNotes.map(({ version, notes }) => (
 							<div key={version}>
 								<h4>Migrating to schema Version {version} will:</h4>
@@ -69,7 +66,7 @@ export const mayUpgradeProtocolDialog = (
 				If you choose to continue, an upgraded copy of your protocol will be created and then opened. Your original
 				protocol will not be changed, and can still be opened and modified using an older version of Architect. Please
 				see our{" "}
-				<ExternalLink href="https://documentation.networkcanvas.com/reference/protocol-schema-information/">
+				<ExternalLink href="https://documentation.networkcanvas.com/advanced-topics/protocol-schema-information/">
 					documentation on protocol schemas
 				</ExternalLink>{" "}
 				for more information on this topic.
@@ -81,6 +78,7 @@ export const mayUpgradeProtocolDialog = (
 		type: "Confirm",
 		title: "Upgrade to continue",
 		confirmLabel: "Create upgraded copy",
+		className: "!w-4xl",
 		message,
 	};
 

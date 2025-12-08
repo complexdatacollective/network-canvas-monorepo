@@ -21,6 +21,7 @@ type ConfirmDialog = BaseDialog & {
 	canCancel?: boolean;
 	confirmLabel?: string;
 	cancelLabel?: string;
+	className?: string;
 };
 
 type NoticeDialog = BaseDialog & {
@@ -147,6 +148,7 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 							canCancel={(dialog as ConfirmDialog).canCancel}
 							confirmLabel={dialog.confirmLabel}
 							cancelLabel={(dialog as ConfirmDialog).cancelLabel}
+							className={(dialog as ConfirmDialog).className}
 							onConfirm={onConfirm}
 							onCancel={onCancel}
 						/>
