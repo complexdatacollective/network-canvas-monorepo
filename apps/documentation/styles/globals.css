@@ -5,95 +5,95 @@
 @layer base {
 	:root {
 		/* Semantic slots */
-		--background: hsl(var(--platinum));
+		--background: var(--platinum);
 		--foreground: var(--cyber-grape);
 
 		--primary: var(--cyber-grape);
-		--primary-foreground: hsl(var(--white));
+		--primary-foreground: var(--white);
 
 		--secondary: var(--neon-coral);
-		--secondary-foreground: hsl(var(--white));
+		--secondary-foreground: var(--white);
 
-		--muted: hsl(var(--platinum));
+		--muted: var(--platinum);
 		--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
 			calc(var(--cyber-grape-lightness) - 10%);
 
-		--accent: hsl(var(--slate-blue));
-		--accent-foreground: hsl(var(--white));
+		--accent: var(--slate-blue);
+		--accent-foreground: var(--white);
 
 		--destructive: var(--tomato);
-		--destructive-foreground: hsl(var(--white));
+		--destructive-foreground: var(--white);
 
 		--warning: var(--neon-carrot);
-		--warning-foreground: hsl(var(--white));
+		--warning-foreground: var(--white);
 
 		--info: var(--cerulean-blue);
-		--info-foreground: hsl(var(--white));
+		--info-foreground: var(--white);
 
-		--success: hsl(var(--sea-green));
-		--success-foreground: hsl(var(--white));
+		--success: var(--sea-green);
+		--success-foreground: var(--white);
 
-		--border: hsl(var(--platinum-dark));
+		--border: var(--platinum-dark);
 
 		--link: var(--neon-coral);
 
-		--card: hsl(var(--white));
+		--card: var(--white);
 
-		--panel: hsl(var(--platinum));
+		--panel: var(--platinum);
 
 		/* Focus ring */
 		--ring: var(--mustard);
 
-		--input: hsl(var(--white));
+		--input: var(--white);
 		--input-foreground: var(--cyber-grape);
 
-		--popover: hsl(var(--white));
+		--popover: var(--white);
 		--popover-foreground: var(--foreground);
 	}
 
 	html.dark {
 		/* Semantic slots */
 		--background: var(--navy-taupe);
-		--foreground: hsl(var(--platinum));
+		--foreground: var(--platinum);
 
 		--primary: var(--neon-coral);
-		--primary-foreground: hsl(var(--white));
+		--primary-foreground: var(--white);
 
 		--secondary: var(--neon-coral);
-		--secondary-foreground: hsl(var(--white));
+		--secondary-foreground: var(--white);
 
-		--muted: hsl(var(--platinum));
+		--muted: var(--platinum);
 		--muted-foreground: var(--cyber-grape-hue) calc(var(--cyber-grape-saturation) - 10%)
 			calc(var(--cyber-grape-lightness) - 10%);
 
-		--accent: hsl(var(--slate-blue));
-		--accent-foreground: hsl(var(--white));
+		--accent: var(--slate-blue);
+		--accent-foreground: var(--white);
 
 		--destructive: var(--tomato);
-		--destructive-foreground: hsl(var(--white));
+		--destructive-foreground: var(--white);
 
 		--warning: var(--neon-carrot);
-		--warning-foreground: hsl(var(--white));
+		--warning-foreground: var(--white);
 
 		--info: var(--cerulean-blue);
-		--info-foreground: hsl(var(--white));
+		--info-foreground: var(--white);
 
-		--success: hsl(var(--sea-green));
-		--success-foreground: hsl(var(--white));
+		--success: var(--sea-green);
+		--success-foreground: var(--white);
 
-		--border: hsl(var(--slate-blue));
+		--border: var(--slate-blue);
 
 		--link: var(--neon-coral);
 
 		--card: var(--cyber-grape);
 
-		--panel: hsl(var(--platinum));
+		--panel: var(--platinum);
 
 		/* Focus ring */
 		--ring: var(--mustard);
 
 		--input: var(--cyber-grape);
-		--input-foreground: hsl(var(--white));
+		--input-foreground: var(--white);
 
 		--popover: var(--cyber-grape);
 		--popover-foreground: var(--foreground);
