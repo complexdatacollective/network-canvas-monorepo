@@ -2,13 +2,12 @@ import type { Dispatch } from "@reduxjs/toolkit";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { GripVertical, Trash2 } from "lucide-react";
 import { motion, Reorder, useDragControls } from "motion/react";
-import { hash } from "ohash";
+import { useCallback, useMemo, useRef } from "react";
 import { connect } from "react-redux";
 import { withHandlers } from "recompose";
 import type { UnknownAction } from "redux";
 import type { WrappedFieldArrayProps } from "redux-form";
 import { change, FieldArray, formValueSelector } from "redux-form";
-import { v4 as uuid } from "uuid";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import type { RootState } from "~/ducks/modules/root";
 import { Button } from "~/lib/legacy-ui/components";
@@ -21,8 +20,12 @@ type PropertyField = {
 };
 
 type ItemValue = {
-	_id?: string;
 	[key: string]: unknown;
+};
+
+type InternalItem<T> = {
+	_internalId: string;
+	data: T;
 };
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
@@ -74,7 +77,7 @@ type ItemHandlers = {
 };
 
 type ItemComponentProps = ItemHandlerProps & {
-	value: ItemValue;
+	internalItem: InternalItem<ItemValue>;
 } & ItemHandlers;
 
 const ItemComponent: React.FC<ItemComponentProps> = ({
@@ -85,14 +88,14 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 	allValues,
 	handleDelete,
 	handleChange,
-	value,
+	internalItem,
 }) => {
 	const controls = useDragControls();
 
 	return (
 		<Reorder.Item
 			className="group form-fields-multi-select__rule"
-			value={value}
+			value={internalItem}
 			dragListener={false}
 			dragControls={controls}
 		>
@@ -169,7 +172,7 @@ type ItemExportProps = ItemOwnProps & {
 		rowValues: ItemValue | undefined,
 		allValues: ItemValue[] | undefined,
 	) => Array<Record<string, unknown>>;
-	value: ItemValue;
+	internalItem: InternalItem<ItemValue>;
 };
 
 const Item = connect(
@@ -182,56 +185,56 @@ type ItemsOwnProps = {
 	fields: WrappedFieldArrayProps<ItemValue>["fields"];
 };
 
-const mapStateToItemsProps = (_state: RootState, { meta: { form }, fields: { name: fieldsName } }: ItemsOwnProps) => ({
-	form,
-	fieldsName,
-});
-
-const mapDispatchToItemsProps = (dispatch: Dispatch<UnknownAction>) => ({
-	updateField: (form: string, fieldName: string, value: string) =>
-		dispatch(change(form, fieldName, value) as UnknownAction),
-});
-
-type ItemsProps = ItemsOwnProps &
-	ReturnType<typeof mapStateToItemsProps> &
-	ReturnType<typeof mapDispatchToItemsProps> & {
-		maxItems?: number | null;
-		properties: PropertyField[];
-		options: (
-			fieldName: string,
-			rowValues: ItemValue | undefined,
-			allValues: ItemValue[] | undefined,
-		) => Array<Record<string, unknown>>;
-	};
+type ItemsProps = ItemsOwnProps & {
+	maxItems?: number | null;
+	properties: PropertyField[];
+	options: (
+		fieldName: string,
+		rowValues: ItemValue | undefined,
+		allValues: ItemValue[] | undefined,
+	) => Array<Record<string, unknown>>;
+};
 
 type ItemsComponentProps = WrappedFieldArrayProps<ItemValue> & ItemsProps;
 
-const ItemsComponent: React.FC<ItemsComponentProps> = ({
-	fields,
-	maxItems = null,
-	form,
-	fieldsName,
-	updateField,
-	...rest
-}) => {
+const ItemsComponent: React.FC<ItemsComponentProps> = ({ fields, maxItems = null, ...rest }) => {
 	const hasSpace = maxItems === null || fields.length < (maxItems ?? 0);
 	const showAdd = hasSpace;
 
+	// Track internal IDs for items without their own id
+	const idMapRef = useRef<WeakMap<object, string>>(new WeakMap());
+
 	const items = (fields.getAll() as ItemValue[]) || [];
 
-	// Ensure all items have stable IDs
-	items.forEach((item, index) => {
-		if (!item._id) {
-			updateField(form, `${fieldsName}[${index}]._id`, uuid());
+	// Get or generate an internal ID for an item
+	const getInternalId = useCallback((item: ItemValue): string => {
+		// If item has its own id, use it
+		if ("id" in item && item.id !== undefined) {
+			return String(item.id);
 		}
-	});
+		// Otherwise, get or generate an internal id
+		let internalId = idMapRef.current.get(item);
+		if (!internalId) {
+			internalId = crypto.randomUUID();
+			idMapRef.current.set(item, internalId);
+		}
+		return internalId;
+	}, []);
 
-	const handleReorder = (newOrder: ItemValue[]) => {
+	// Convert value array to internal items with guaranteed IDs
+	const internalItems = useMemo((): InternalItem<ItemValue>[] => {
+		return items.map((item) => ({
+			_internalId: getInternalId(item),
+			data: item,
+		}));
+	}, [items, getInternalId]);
+
+	const handleReorder = (newOrder: InternalItem<ItemValue>[]) => {
 		for (let i = 0; i < newOrder.length; i++) {
-			const newHash = hash(newOrder[i]);
-			const oldHash = hash(items[i]);
-			if (newHash !== oldHash) {
-				const oldIndex = items.findIndex((item) => hash(item) === newHash);
+			const newItem = newOrder[i];
+			const currentItem = internalItems[i];
+			if (newItem && currentItem && newItem._internalId !== currentItem._internalId) {
+				const oldIndex = internalItems.findIndex((item) => item._internalId === newItem._internalId);
 				if (oldIndex !== -1 && oldIndex !== i) {
 					fields.move(oldIndex, i);
 					break;
@@ -243,17 +246,22 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
 	return (
 		<>
 			<div className="form-fields-multi-select w-full">
-				<Reorder.Group className="form-fields-multi-select__rules" onReorder={handleReorder} values={items} axis="y">
-					{fields.map((field: string, index: number) => {
-						const item = fields.get(index);
+				<Reorder.Group
+					className="form-fields-multi-select__rules"
+					onReorder={handleReorder}
+					values={internalItems}
+					axis="y"
+				>
+					{internalItems.map((internalItem, index) => {
+						const field = `${fields.name}[${index}]`;
 
 						return (
 							<Item
 								index={index}
-								key={item._id}
+								key={internalItem._internalId}
 								field={field}
 								fields={fields}
-								value={item}
+								internalItem={internalItem}
 								// eslint-disable-next-line react/jsx-props-no-spreading
 								{...rest}
 							/>
@@ -262,7 +270,7 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
 				</Reorder.Group>
 			</div>
 
-			{showAdd && <AddItem onClick={() => fields.push({ _id: uuid() })} />}
+			{showAdd && <AddItem onClick={() => fields.push({})} />}
 
 			{!showAdd && fields.length === 0 && (
 				<p>
@@ -273,10 +281,7 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
 	);
 };
 
-const ItemsConnected = connect(mapStateToItemsProps, mapDispatchToItemsProps);
-const Items = ItemsConnected(
-	ItemsComponent as React.ComponentType<ItemsComponentProps>,
-) as unknown as React.ComponentType<WrappedFieldArrayProps<ItemValue> & ItemsProps>;
+const Items = ItemsComponent as unknown as React.ComponentType<WrappedFieldArrayProps<ItemValue> & ItemsProps>;
 
 type MultiSelectProps = {
 	name: string;
