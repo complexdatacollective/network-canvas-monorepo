@@ -16,11 +16,11 @@ import {
 	validationErrorDialog,
 } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
-import { getHasUnsavedChanges, getTimelineLocus } from "~/selectors/protocol";
+import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { ensureError } from "~/utils/ensureError";
-import { actionCreators, setActiveProtocol } from "../activeProtocol";
+import { setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
 
 export const checkUnsavedChanges = createAsyncThunk(
