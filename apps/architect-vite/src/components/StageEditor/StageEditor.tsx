@@ -1,4 +1,4 @@
-import { type CurrentProtocol, type Stage, type StageType, validateProtocol } from "@codaco/protocol-validation";
+import type { CurrentProtocol, Stage, StageType } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -8,7 +8,7 @@ import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import { cannotSaveValidationErrorDialog } from "~/ducks/modules/userActions/dialogs";
+import { invalidProtocolDialog } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
@@ -85,40 +85,24 @@ const StageEditor = (props: StageEditorProps) => {
 		async (stageData: Record<string, unknown>) => {
 			const normalizedStage = omit(stageData, "_modified") as Stage;
 
-			if (!protocol) {
-				return;
-			}
+			// Save and validate protocol
+			const validationResult = await dispatch(
+				stageActions.saveAndValidateStage({
+					stage: normalizedStage,
+					stageId: id,
+					insertAtIndex,
+				}),
+			).unwrap();
 
-			const previewProtocol = buildCleanProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
-
-			// Validate the protocol before saving
-			const validationResult = await validateProtocol(previewProtocol);
-
+			// Show dialog if validation failed
 			if (!validationResult.success) {
 				const errorMessage = ensureError(validationResult.error).message;
-				dispatch(
-					cannotSaveValidationErrorDialog(errorMessage, () => {
-						// todo: revert to last valid state
-						setLocation("/protocol");
-					}),
-				);
-				return;
-			}
-
-			if (id) {
-				dispatch(stageActions.updateStage(id, normalizedStage));
-			} else {
-				dispatch(
-					stageActions.createStage({
-						options: normalizedStage,
-						index: insertAtIndex,
-					}),
-				);
+				dispatch(invalidProtocolDialog(errorMessage));
 			}
 
 			setLocation("/protocol");
 		},
-		[id, insertAtIndex, setLocation, dispatch, protocol],
+		[id, insertAtIndex, setLocation, dispatch],
 	);
 
 	// Cancel handler with unsaved changes confirmation
@@ -158,19 +142,8 @@ const StageEditor = (props: StageEditorProps) => {
 		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
 		const previewProtocol = buildCleanProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
 
-		// Validate the protocol before previewing
-		const validationResult = await validateProtocol(previewProtocol);
-
-		if (!validationResult.success) {
-			const errorMessage = ensureError(validationResult.error).message;
-			dispatch(
-				cannotSaveValidationErrorDialog(errorMessage, () => {
-					// todo: revert to last valid state
-					setLocation("/protocol");
-				}),
-			);
-			return;
-		}
+		// todo: validate protocol before previewing
+		// need to figure out a way to do this without saving the stage first
 
 		setIsUploadingPreview(true);
 		setUploadProgress(null);
@@ -191,7 +164,7 @@ const StageEditor = (props: StageEditorProps) => {
 			setIsUploadingPreview(false);
 			setUploadProgress(null);
 		}
-	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex, setLocation]);
+	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
 	const renderSections = (sectionsList: readonly SectionComponent[]) =>
