@@ -108,7 +108,7 @@ type SaveAndValidateStagePayload = {
 	insertAtIndex?: number;
 };
 
-export type SaveAndValidateStageResult = Awaited<ReturnType<typeof validateProtocol>> | { success: true };
+type SaveAndValidateStageResult = Awaited<ReturnType<typeof validateProtocol>> | { success: true };
 
 const saveAndValidateStageAsync = createAsyncThunk<SaveAndValidateStageResult, SaveAndValidateStagePayload>(
 	"stages/saveAndValidateStage",

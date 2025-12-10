@@ -59,7 +59,7 @@ type SimpleDialog = BaseDialog & {
 
 export type Dialog = ConfirmDialog | NoticeDialog | WarningDialog | ErrorDialog | UserErrorDialog | SimpleDialog;
 
-export type { ConfirmDialog, UserErrorDialog, WarningDialog };
+export type { ConfirmDialog, UserErrorDialog };
 
 /*
  * Displays a stack of Dialogs.
