@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import ExternalLink from "~/components/ExternalLink";
 import { Markdown } from "~/components/Form/Fields";
 import { openDialog } from "~/ducks/modules/dialogs";
-import type { ConfirmDialog, UserErrorDialog } from "~/lib/legacy-ui/components/Dialogs";
+import type { ConfirmDialog, UserErrorDialog, WarningDialog } from "~/lib/legacy-ui/components/Dialogs";
 
 export const generalErrorDialog = (title: string, errorMessage: string) => {
 	const message: ReactNode = (
@@ -47,7 +47,7 @@ export const validationErrorDialog = (errorMessage: string) => {
 	return openDialog(dialog);
 };
 
-export const invalidProtocolDialog = (errorMessage: string) => {
+export const invalidProtocolDialog = (errorMessage: string, onConfirm?: () => void) => {
 	const message: ReactNode = (
 		<>
 			<p>The protocol contains validation errors:</p>
@@ -60,11 +60,13 @@ export const invalidProtocolDialog = (errorMessage: string) => {
 		</>
 	);
 
-	const dialog: Omit<UserErrorDialog, "id"> = {
-		type: "UserError",
+	const dialog: Omit<WarningDialog, "id"> = {
+		type: "Warning",
 		title: "Misconfigured Protocol",
 		message,
 		confirmLabel: "Revert to Last Valid State",
+		onConfirm,
+		cancelLabel: "Ignore",
 	};
 
 	return openDialog(dialog);

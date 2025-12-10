@@ -1,12 +1,14 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
-import { createSlice, current, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
+import { validateProtocol } from "@codaco/protocol-validation";
+import { createAsyncThunk, createSlice, current, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
 import { pick } from "es-toolkit/compat";
-import type { AppDispatch } from "~/ducks/store";
+import type { AppDispatch, RootState } from "~/ducks/store";
 import { assetDb } from "~/utils/assetDB";
 import { timelineActions } from "../middleware/timeline";
 import assetManifest from "./protocol/assetManifest";
 import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
+import { buildCleanProtocol } from "./protocol/utils/buildCleanProtocol";
 
 // Types
 type ActiveProtocolState =
@@ -133,3 +135,41 @@ export const undo = () => (dispatch: AppDispatch) => {
 export const redo = () => (dispatch: AppDispatch) => {
 	dispatch(timelineActions.redo());
 };
+
+/**
+ * Iterates backward through past protocol states, validates each one,
+ * and jumps to the first valid state found.
+ */
+export const revertToLastValidState = createAsyncThunk<
+	{ success: boolean; message: string },
+	void,
+	{ state: RootState; dispatch: AppDispatch }
+>("activeProtocol/revertToLastValidState", async (_, { getState, dispatch }) => {
+	const state = getState();
+	const { past, timeline } = state.activeProtocol;
+
+	if (past.length === 0) {
+		return { success: false, message: "No previous states to revert to" };
+	}
+
+	// Iterate backward through the states
+	for (let i = past.length - 1; i >= 0; i--) {
+		const pastState = past[i];
+		if (!pastState) continue;
+
+		const cleanProtocol = buildCleanProtocol(pastState as CurrentProtocol);
+		const validationResult = await validateProtocol(cleanProtocol);
+
+		if (validationResult.success) {
+			// Found a valid state - jump to it
+			// Timeline array includes present, so timeline[i] corresponds to past[i]
+			const locus = timeline[i];
+			if (locus) {
+				dispatch(timelineActions.jump(locus));
+				return { success: true, message: "Reverted to previous valid state" };
+			}
+		}
+	}
+
+	return { success: false, message: "Could not find a valid previous state" };
+});

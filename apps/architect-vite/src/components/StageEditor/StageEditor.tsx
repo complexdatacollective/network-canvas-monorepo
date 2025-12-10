@@ -6,6 +6,7 @@ import { getFormValues, isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
+import { revertToLastValidState } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import { invalidProtocolDialog } from "~/ducks/modules/userActions/dialogs";
@@ -97,7 +98,11 @@ const StageEditor = (props: StageEditorProps) => {
 			// Show dialog if validation failed
 			if (!validationResult.success) {
 				const errorMessage = ensureError(validationResult.error).message;
-				dispatch(invalidProtocolDialog(errorMessage));
+				dispatch(
+					invalidProtocolDialog(errorMessage, () => {
+						dispatch(revertToLastValidState());
+					}),
+				);
 			}
 
 			setLocation("/protocol");
