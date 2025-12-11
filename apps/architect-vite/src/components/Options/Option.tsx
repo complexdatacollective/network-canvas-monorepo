@@ -13,6 +13,11 @@ import type { OptionValue } from "./Options";
 
 const isNumberLike = (value: string) => Number.parseInt(value, 10).toString() === value; // eslint-disable-line
 
+type InternalItem<T> = {
+	_internalId: string;
+	data: T;
+};
+
 const deleteOption =
 	({
 		fields,
@@ -54,7 +59,7 @@ const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
 // Props passed from parent
 type OptionBaseProps = {
 	field: string;
-	value: OptionValue;
+	internalItem: InternalItem<OptionValue>;
 	index: number;
 	fields: {
 		remove: (index: number) => void;
@@ -68,11 +73,11 @@ type OptionInjectedProps = {
 
 type OptionProps = OptionBaseProps & OptionInjectedProps;
 
-const Option = ({ field, handleDelete, value }: OptionProps) => {
+const Option = ({ field, handleDelete, internalItem }: OptionProps) => {
 	const controls = useDragControls();
 
 	return (
-		<Reorder.Item className="options__option" value={value} dragListener={false} dragControls={controls}>
+		<Reorder.Item className="options__option" value={internalItem} dragListener={false} dragControls={controls}>
 			<div className="options__option-controls options__option-controls--center">
 				<div className="options__option-handle" onPointerDown={(e) => controls.start(e)}>
 					<GripVertical className="cursor-grab" />

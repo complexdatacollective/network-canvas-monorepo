@@ -9,11 +9,17 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { navigate } from "wouter/use-browser-location";
 import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION } from "~/config";
-import { appUpgradeRequiredDialog, mayUpgradeProtocolDialog } from "~/ducks/modules/userActions/dialogs";
+import {
+	appUpgradeRequiredDialog,
+	generalErrorDialog,
+	mayUpgradeProtocolDialog,
+	validationErrorDialog,
+} from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
 import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
+import { ensureError } from "~/utils/ensureError";
 import { setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
 
@@ -59,7 +65,9 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		const validationResult = await validateProtocol(migratedProtocol as CurrentProtocol);
 
 		if (!validationResult.success) {
-			throw new Error(`Protocol validation failed: ${validationResult.error}`);
+			const errorMessage = ensureError(validationResult.error).message;
+			dispatch(validationErrorDialog(errorMessage));
+			return false;
 		}
 
 		// Add protocol assets to IndexedDB
@@ -73,7 +81,9 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		);
 
 		navigate("/protocol");
-	} catch (_error) {
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		dispatch(generalErrorDialog("Failed to Open Protocol", errorMessage));
 		return false;
 	}
 });
@@ -203,7 +213,9 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			const validationResult = await validateProtocol(migratedProtocol as CurrentProtocol);
 
 			if (!validationResult.success) {
-				throw new Error(`Protocol validation failed: ${validationResult.error}`);
+				const errorMessage = ensureError(validationResult.error).message;
+				dispatch(validationErrorDialog(errorMessage));
+				return;
 			}
 
 			// Add protocol assets to IndexedDB
@@ -220,7 +232,9 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			);
 
 			navigate("/protocol");
-		} catch (_error) {
+		} catch (error) {
+			const errorMessage = ensureError(error).message;
+			dispatch(generalErrorDialog("Protocol Import Error", errorMessage));
 		} finally {
 			controller.abort();
 		}

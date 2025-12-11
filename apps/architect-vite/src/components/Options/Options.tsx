@@ -1,17 +1,19 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
-import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { Reorder } from "motion/react";
-import { hash } from "ohash";
 import type React from "react";
-import { connect } from "react-redux";
-import { change, FieldArray } from "redux-form";
-import { v4 as uuid } from "uuid";
+import { useCallback, useMemo, useRef } from "react";
+import { FieldArray } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
 import Option from "./Option";
 
-export type OptionValue = VariableOptions[number] & { _id?: string };
+export type OptionValue = VariableOptions[number];
+
+type InternalItem<T> = {
+	_internalId: string;
+	data: T;
+};
 
 const minTwoOptions = (value: unknown) =>
 	!value || (Array.isArray(value) && value.length < 2)
@@ -44,56 +46,49 @@ type OptionsFieldProps = {
 		submitFailed: boolean;
 		form: string;
 	};
-	form?: string;
-	fieldsName?: string;
-	updateField?: (form: string, fieldName: string, value: string) => void;
 };
 
-type FieldArrayState = {
-	meta: { form: string };
-	fields: { name: string };
-};
-
-const mapStateToOptionsFieldProps = (
-	_state: unknown,
-	{ meta: { form }, fields: { name: fieldsName } }: FieldArrayState,
-) => ({
-	form,
-	fieldsName,
-});
-
-const mapDispatchToOptionsFieldProps = (dispatch: Dispatch) => ({
-	updateField: (form: string, fieldName: string, value: string) =>
-		dispatch(change(form, fieldName, value) as UnknownAction),
-});
-
-const OptionsFieldComponent = ({
-	fields,
-	meta: { error, submitFailed },
-	form,
-	fieldsName,
-	updateField,
-}: OptionsFieldProps) => {
+const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: OptionsFieldProps) => {
 	const classes = cx("options", {
 		"options--has-error": submitFailed && error,
 	});
 
+	// Track internal IDs for items without their own id
+	const idMapRef = useRef<WeakMap<object, string>>(new WeakMap());
+
 	// Get all options as an array
 	const options = fields.getAll() || [];
 
-	// Ensure all options have stable IDs
-	options.forEach((option, index) => {
-		if (!option._id && updateField && form && fieldsName) {
-			updateField(form, `${fieldsName}[${index}]._id`, uuid());
+	// Get or generate an internal ID for an item
+	const getInternalId = useCallback((item: OptionValue): string => {
+		// If item has its own id, use it
+		if ("id" in item && item.id !== undefined) {
+			return String(item.id);
 		}
-	});
+		// Otherwise, get or generate an internal id
+		let internalId = idMapRef.current.get(item);
+		if (!internalId) {
+			internalId = crypto.randomUUID();
+			idMapRef.current.set(item, internalId);
+		}
+		return internalId;
+	}, []);
 
-	const handleReorder = (newOrder: OptionValue[]) => {
+	// Convert value array to internal items with guaranteed IDs
+	const internalItems = useMemo((): InternalItem<OptionValue>[] => {
+		return options.map((item) => ({
+			_internalId: getInternalId(item),
+			data: item,
+		}));
+	}, [options, getInternalId]);
+
+	const handleReorder = (newOrder: InternalItem<OptionValue>[]) => {
+		// Find the first item that moved and update the fields accordingly
 		for (let i = 0; i < newOrder.length; i++) {
-			const newHash = hash(newOrder[i]);
-			const oldHash = hash(options[i]);
-			if (newHash !== oldHash) {
-				const oldIndex = options.findIndex((opt) => hash(opt) === newHash);
+			const newItem = newOrder[i];
+			const currentItem = internalItems[i];
+			if (newItem && currentItem && newItem._internalId !== currentItem._internalId) {
+				const oldIndex = internalItems.findIndex((item) => item._internalId === newItem._internalId);
 				if (oldIndex !== -1 && oldIndex !== i) {
 					fields.move(oldIndex, i);
 					break;
@@ -105,22 +100,27 @@ const OptionsFieldComponent = ({
 	return (
 		<div className="form-field-container">
 			<div className={classes}>
-				<Reorder.Group className="options__options" onReorder={handleReorder} values={options} axis="y">
-					{fields.map((field: string, index: number) => {
-						const option = fields.get(index);
-
-						return <Option key={option._id} value={option} index={index} field={field} fields={fields} />;
+				<Reorder.Group className="options__options" onReorder={handleReorder} values={internalItems} axis="y">
+					{internalItems.map((internalItem, index) => {
+						const field = `${fields.name}[${index}]`;
+						return (
+							<Option
+								key={internalItem._internalId}
+								internalItem={internalItem}
+								index={index}
+								field={field}
+								fields={fields}
+							/>
+						);
 					})}
 				</Reorder.Group>
 
 				<FieldError show={submitFailed && !!error} error={error} />
 			</div>
-			<AddItem onClick={() => fields.push({ _id: uuid() })} />
+			<AddItem onClick={() => fields.push({})} />
 		</div>
 	);
 };
-
-const OptionsField = connect(mapStateToOptionsFieldProps, mapDispatchToOptionsFieldProps)(OptionsFieldComponent);
 
 type OptionsProps = {
 	name: string;
@@ -128,7 +128,7 @@ type OptionsProps = {
 };
 
 const Options = ({ name, label = "", ...rest }: OptionsProps) => (
-	<FieldArray name={name} component={OptionsField} validate={minTwoOptions} {...rest} />
+	<FieldArray name={name} component={OptionsFieldComponent} validate={minTwoOptions} {...rest} />
 );
 
 export default Options;

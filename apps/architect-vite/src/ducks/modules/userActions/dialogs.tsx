@@ -3,7 +3,74 @@ import type { ComponentType, ReactNode } from "react";
 import ExternalLink from "~/components/ExternalLink";
 import { Markdown } from "~/components/Form/Fields";
 import { openDialog } from "~/ducks/modules/dialogs";
-import type { ConfirmDialog, UserErrorDialog } from "~/lib/legacy-ui/components/Dialogs";
+import type { ConfirmDialog, UserErrorDialog, WarningDialog } from "~/lib/legacy-ui/components/Dialogs";
+
+export const generalErrorDialog = (title: string, errorMessage: string) => {
+	const message: ReactNode = (
+		<>
+			<p>{errorMessage}</p>
+			<p className="text-sm mt-4">
+				If the problem persists, reach out on our&nbsp;
+				<ExternalLink href="https://community.networkcanvas.com/">community website.</ExternalLink>
+			</p>
+		</>
+	);
+
+	const dialog: Omit<UserErrorDialog, "id"> = {
+		type: "UserError",
+		title,
+		message,
+	};
+
+	return openDialog(dialog);
+};
+
+export const validationErrorDialog = (errorMessage: string) => {
+	const message: ReactNode = (
+		<>
+			<p>The protocol file could not be opened due to validation errors:</p>
+			<pre className="bg-surface-1 p-4 rounded-md text-sm overflow-auto max-h-64">{errorMessage}</pre>
+
+			<p className="text-sm">
+				If the problem persists, reach out on our&nbsp;
+				<ExternalLink href="https://community.networkcanvas.com/">community website.</ExternalLink>
+			</p>
+		</>
+	);
+
+	const dialog: Omit<UserErrorDialog, "id"> = {
+		type: "UserError",
+		title: "Protocol Validation Failed",
+		message,
+	};
+
+	return openDialog(dialog);
+};
+
+export const invalidProtocolDialog = (errorMessage: string, onConfirm?: () => void) => {
+	const message: ReactNode = (
+		<>
+			<p>The protocol contains validation errors:</p>
+			<pre className="bg-surface-1 p-4 rounded-md text-sm overflow-auto max-h-64">{errorMessage}</pre>
+
+			<p className="text-sm">
+				You can revert to the last valid state to fix this issue. If the problem persists, please reach out on our&nbsp;
+				<ExternalLink href="https://community.networkcanvas.com/">community website.</ExternalLink>
+			</p>
+		</>
+	);
+
+	const dialog: Omit<WarningDialog, "id"> = {
+		type: "Warning",
+		title: "Misconfigured Protocol",
+		message,
+		confirmLabel: "Revert to Last Valid State",
+		onConfirm,
+		cancelLabel: "Ignore",
+	};
+
+	return openDialog(dialog);
+};
 
 export const appUpgradeRequiredDialog = (protocolSchemaVersion: number) => {
 	const message: ReactNode = (

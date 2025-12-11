@@ -1,4 +1,4 @@
-import type { Asset, CurrentProtocol, VersionedProtocol } from "@codaco/protocol-validation";
+import type { Asset, CurrentProtocol } from "@codaco/protocol-validation";
 import { appVersion } from "../appVersion";
 import { assetDb } from "../assetDB";
 import type {
@@ -241,18 +241,10 @@ export async function uploadProtocolForPreview(
 			size: a.size,
 		}));
 
-		// Remove app state props from protocol before sending
-		const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as CurrentProtocol & {
-			name?: string;
-			isValid?: boolean;
-			lastSavedAt?: string;
-			lastSavedTimeline?: string;
-		};
-
 		// Step 1: Initialize preview - validates protocol and returns presigned URLs or ready status
 		const initRequest: PreviewRequest = {
 			type: "initialize-preview",
-			protocol: cleanProtocol as VersionedProtocol,
+			protocol: protocol,
 			assetMeta,
 			architectVersion: appVersion,
 		};

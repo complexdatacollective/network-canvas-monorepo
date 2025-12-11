@@ -1,4 +1,4 @@
-import type { Stage, StageType } from "@codaco/protocol-validation";
+import type { CurrentProtocol, Stage, StageType } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -6,11 +6,14 @@ import { getFormValues, isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
+import { revertToLastValidState } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
+import { invalidProtocolDialog } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
+import { ensureError } from "~/utils/ensureError";
 import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
 import { formName } from "./configuration";
 import type { SectionComponent } from "./Interfaces";
@@ -22,6 +25,38 @@ type StageEditorProps = {
 	insertAtIndex?: number;
 	type?: string;
 };
+
+/**
+ * Builds a clean protocol with the current wip stage inserted or updated.
+ * Removes app state props (name, isValid, lastSavedAt, lastSavedTimeline)
+ * Allows for previewing or validating the protocol with the current stage changes.
+ */
+function buildCleanProtocolWithStage(
+	protocol: CurrentProtocol,
+	stage: Stage,
+	stageId: string | null,
+	insertAtIndex?: number,
+): CurrentProtocol {
+	// Remove app state props that aren't part of the protocol schema
+	const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as CurrentProtocol & {
+		name?: string;
+		isValid?: boolean;
+		lastSavedAt?: string;
+		lastSavedTimeline?: string;
+	};
+
+	// Update or insert the stage
+	return {
+		...cleanProtocol,
+		stages: stageId
+			? protocol.stages.map((s) => (s.id === stageId ? stage : s))
+			: [
+					...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
+					stage,
+					...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
+				],
+	};
+}
 
 const StageEditor = (props: StageEditorProps) => {
 	const { id = null, type, insertAtIndex } = props;
@@ -48,16 +83,24 @@ const StageEditor = (props: StageEditorProps) => {
 
 	// Handle form submission
 	const onSubmit = useCallback(
-		(stageData: Record<string, unknown>) => {
+		async (stageData: Record<string, unknown>) => {
 			const normalizedStage = omit(stageData, "_modified") as Stage;
 
-			if (id) {
-				dispatch(stageActions.updateStage(id, normalizedStage));
-			} else {
+			// Save and validate protocol
+			const validationResult = await dispatch(
+				stageActions.saveAndValidateStage({
+					stage: normalizedStage,
+					stageId: id,
+					insertAtIndex,
+				}),
+			).unwrap();
+
+			// Show dialog if validation failed
+			if (!validationResult.success) {
+				const errorMessage = ensureError(validationResult.error).message;
 				dispatch(
-					stageActions.createStage({
-						options: normalizedStage,
-						index: insertAtIndex,
+					invalidProtocolDialog(errorMessage, () => {
+						dispatch(revertToLastValidState());
 					}),
 				);
 			}
@@ -102,23 +145,16 @@ const StageEditor = (props: StageEditorProps) => {
 		}
 
 		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
+		const previewProtocol = buildCleanProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
+
+		// todo: validate protocol before previewing
+		// need to figure out a way to do this without saving the stage first
 
 		setIsUploadingPreview(true);
 		setUploadProgress(null);
 
 		try {
 			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
-			const previewProtocol = {
-				...protocol,
-				stages: id
-					? protocol.stages.map((s) => (s.id === id ? normalizedStage : s))
-					: [
-							...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
-							normalizedStage,
-							...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
-						],
-			};
-
 			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
 			window.open(previewUrl, "_blank", "noopener,noreferrer");
 		} catch (error) {
