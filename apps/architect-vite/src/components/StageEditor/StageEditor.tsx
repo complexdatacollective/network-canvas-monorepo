@@ -6,14 +6,11 @@ import { getFormValues, isDirty as isFormDirty } from "redux-form";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
-import { revertToLastValidState } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import { invalidProtocolDialog } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
-import { ensureError } from "~/utils/ensureError";
 import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
 import { formName } from "./configuration";
 import type { SectionComponent } from "./Interfaces";
@@ -83,26 +80,13 @@ const StageEditor = (props: StageEditorProps) => {
 
 	// Handle form submission
 	const onSubmit = useCallback(
-		async (stageData: Record<string, unknown>) => {
+		(stageData: Record<string, unknown>) => {
 			const normalizedStage = omit(stageData, "_modified") as Stage;
 
-			// Save and validate protocol
-			const validationResult = await dispatch(
-				stageActions.saveAndValidateStage({
-					stage: normalizedStage,
-					stageId: id,
-					insertAtIndex,
-				}),
-			).unwrap();
-
-			// Show dialog if validation failed
-			if (!validationResult.success) {
-				const errorMessage = ensureError(validationResult.error).message;
-				dispatch(
-					invalidProtocolDialog(errorMessage, () => {
-						dispatch(revertToLastValidState());
-					}),
-				);
+			if (id) {
+				dispatch(stageActions.updateStage(id, normalizedStage));
+			} else {
+				dispatch(stageActions.createStage({ options: normalizedStage, index: insertAtIndex }));
 			}
 
 			setLocation("/protocol");

@@ -1,13 +1,12 @@
-import { type Stage, validateProtocol } from "@codaco/protocol-validation";
+import type { Stage } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
 import { compact, omit } from "es-toolkit/compat";
 import { v1 as uuid } from "uuid";
 import type { RootState } from "~/ducks/modules/root";
 import { getNodeTypes } from "~/selectors/codebook";
-import { getProtocol, getStage } from "~/selectors/protocol";
+import { getStage } from "~/selectors/protocol";
 import prune from "~/utils/prune";
-import { buildCleanProtocol } from "./utils/buildCleanProtocol";
 
 type StagesState = Stage[];
 
@@ -102,41 +101,6 @@ const deleteStageAsync = createAsyncThunk(
 	},
 );
 
-type SaveAndValidateStagePayload = {
-	stage: Partial<Stage>;
-	stageId: string | null;
-	insertAtIndex?: number;
-};
-
-type SaveAndValidateStageResult = Awaited<ReturnType<typeof validateProtocol>> | { success: true };
-
-const saveAndValidateStageAsync = createAsyncThunk<SaveAndValidateStageResult, SaveAndValidateStagePayload>(
-	"stages/saveAndValidateStage",
-	async ({ stage, stageId, insertAtIndex }, { dispatch, getState }) => {
-		// Save the stage
-		if (stageId) {
-			dispatch(stagesSlice.actions.updateStage({ stageId, stage, overwrite: false }));
-		} else {
-			const newStageId = uuid();
-			const newStage = { ...initialStage, ...stage, id: newStageId } as Stage;
-			dispatch(stagesSlice.actions.createStage({ stage: newStage, index: insertAtIndex }));
-		}
-
-		// Get protocol and validate
-		const state = getState() as RootState;
-		const protocol = getProtocol(state);
-
-		if (!protocol) {
-			return { success: true };
-		}
-
-		const cleanProtocol = buildCleanProtocol(protocol);
-		const validationResult = await validateProtocol(cleanProtocol);
-
-		return validationResult;
-	},
-);
-
 // Stages slice
 const stagesSlice = createSlice({
 	name: "stages",
@@ -221,7 +185,6 @@ export const actionCreators = {
 	moveStage: (oldIndex: number, newIndex: number) => stagesSlice.actions.moveStage({ oldIndex, newIndex }),
 	deletePrompt: (stageId: string, promptId: string | number, deleteEmptyStage = false) =>
 		stagesSlice.actions.deletePrompt({ stageId, promptId, deleteEmptyStage }),
-	saveAndValidateStage: saveAndValidateStageAsync,
 };
 
 // Export for backwards compatibility and testing

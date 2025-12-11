@@ -144,10 +144,10 @@ export const createVariableAsync = createAsyncThunk(
 			throw new Error("Cannot create a new variable without a type");
 		}
 
-		const safeConfiguration = {
+		const safeConfiguration = prune({
 			...configuration,
 			name: safeName(configuration.name),
-		} as Variable;
+		}) as Variable;
 
 		if (isEmpty(safeConfiguration.name)) {
 			throw new Error("Variable name contains no valid characters");
