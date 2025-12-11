@@ -45,7 +45,7 @@ function buildCleanProtocolWithStage(
 	return {
 		...cleanProtocol,
 		stages: stageId
-			? cleanProtocol.stages.map((s) => (s.id === stageId ? stage : s))
+			? cleanProtocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
 			: [
 					...cleanProtocol.stages.slice(0, insertAtIndex ?? cleanProtocol.stages.length),
 					stageWithId,
