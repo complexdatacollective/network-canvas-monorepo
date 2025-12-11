@@ -8,16 +8,9 @@ This is a Cloudflare Worker that serves as a proxy for the latest Development.ne
 
 ## Development Commands
 
-### Core Commands
 - `pnpm dev` - Start local development server (runs on http://localhost:8787/)
-- `pnpm test` - Run tests using Vitest
 - `pnpm deploy` - Deploy worker to Cloudflare
-- `pnpm run cf-typegen` - Generate TypeScript types for Cloudflare Worker environment
-
-### Testing
-- Tests are in the `test/` directory using Vitest with @cloudflare/vitest-pool-workers
-- Supports both unit tests (mocked) and integration tests (using SELF.fetch)
-- Test configuration in `vitest.config.mts`
+- `pnpm cf-typegen` - Generate TypeScript types for Cloudflare Worker environment
 
 ## Architecture
 
@@ -31,9 +24,9 @@ The worker implements a single fetch handler that:
 
 ## Code Style
 
-- **Prettier configuration**: 140 char width, single quotes, tabs, semicolons required
-- **TypeScript**: ES2021 target, strict mode, isolated modules
-- **Interface definitions** for external APIs (GitHubRelease, GitHubAsset)
+- **Biome configuration**: Inherits from root (tabs for indentation, 120 char line width, double quotes)
+- **TypeScript**: Strict mode with isolated modules
+- **Type definitions** for external APIs (GitHubRelease, GitHubAsset)
 - **Async/await pattern** for HTTP requests with proper error handling
 - **CORS headers** on all responses with 5-minute caching
 

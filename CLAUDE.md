@@ -31,7 +31,7 @@ pnpm test
 pnpm test:watch
 
 # Type check all packages (always run before committing)
-pnpm typecheck-all
+pnpm typecheck
 ```
 
 ### Package-specific Commands
@@ -56,36 +56,45 @@ npm run typecheck # Type check package
 ### Code Quality (Always Run Before Committing)
 
 ```bash
-# Auto-fix all formatting and linting issues with Biome
-pnpm format-and-lint:fix
-
 # Check formatting and linting
-pnpm run lint
+pnpm lint
 
 # Auto-fix formatting and linting issues
-pnpm run lint:fix
+pnpm lint:fix
 
 # Check for dependency issues
-pnpm run knip
+pnpm knip
 
-# Run type checking
-pnpm run typecheck
+# Run type checking across all packages
+pnpm typecheck
 ```
 
 - Biome config: tabs for indentation, 120 char line width, double quotes
 - Pre-commit hooks automatically format staged files
 
+### Cloudflare Workers
+
+```bash
+# Develop workers locally
+pnpm --filter development-protocol-worker dev
+pnpm --filter posthog-proxy-worker dev
+
+# Deploy workers to Cloudflare
+pnpm --filter development-protocol-worker deploy
+pnpm --filter posthog-proxy-worker deploy
+```
+
 ### Version Management
 
 ```bash
-# Add a changeset for your changes (automatically formats after)
+# Add a changeset for your changes
 pnpm changeset
 
 # Version packages (after changesets are added)
-pnpm run version-packages
+pnpm version-packages
 
 # Publish packages
-pnpm run publish-packages
+pnpm publish-packages
 ```
 
 ## Architecture Overview
@@ -99,10 +108,12 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
   - `analytics-web` - Next.js dashboard with turbopack
   - `documentation` - Documentation site
 - **Packages**: Shared libraries and utilities
-  - `protocol-validation` - Zod schemas for protocol validation
+  - `protocol-validation` - Zod schemas for protocol validation and migration
+  - `shared-consts` - Shared constants and TypeScript definitions
+  - `analytics` - PostHog analytics wrapper with installation ID tracking
   - `ui` - React components (built on shadcn/ui and Tailwind CSS)
-  - `analytics` - Analytics utilities and tracking
-  - `shared-consts` - Shared constants and type definitions
+  - `art` - Visual design components using blobs and d3-interpolate-path
+  - `development-protocol` - Development protocol assets for testing
 - **Tooling**: Build configuration
   - `tailwind` - Shared Tailwind CSS configurations
   - `typescript` - Shared TypeScript configurations
@@ -145,6 +156,18 @@ Shared constants and type definitions used across the ecosystem.
 #### @codaco/ui
 
 Reusable React UI components built on shadcn/ui and Tailwind CSS.
+
+#### @codaco/analytics
+
+PostHog analytics wrapper for Network Canvas applications with installation ID tracking and error reporting. Provides both client-side and server-side exports.
+
+#### @codaco/art
+
+Visual design components using blobs and d3-interpolate-path for animated blob graphics used throughout the Network Canvas UI.
+
+#### @codaco/development-protocol
+
+Development protocol assets (protocol.json and assets/) for testing Network Canvas applications during development.
 
 ### Protocol System
 
@@ -202,7 +225,7 @@ Network Canvas uses a protocol-based system where:
 - Heavy use of catalog dependencies in pnpm-workspace.yaml for consistency
 
 ### Development Workflow
-1. Always run `pnpm format-and-lint:fix` before committing
-2. Run `pnpm typecheck-all` to verify TypeScript compliance
+1. Always run `pnpm lint:fix` before committing
+2. Run `pnpm typecheck` to verify TypeScript compliance
 3. Use changesets for version management - never manually bump versions
 4. Test individual packages with `pnpm --filter <package-name> test`
