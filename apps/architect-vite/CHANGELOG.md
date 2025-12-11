@@ -1,5 +1,12 @@
 # architect-vite
 
+## 7.0.2
+
+### Patch Changes
+
+- Updated dependencies [9958b67]
+  - @codaco/protocol-validation@8.0.2
+
 ## 7.0.1
 
 ### Patch Changes
