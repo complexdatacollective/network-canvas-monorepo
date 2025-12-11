@@ -1,5 +1,6 @@
 export * from "./experiments";
 export * from "./forms";
+export * from "./introductionPanel";
 export * from "./panels";
 export * from "./prompts";
 export * from "./skipLogic";

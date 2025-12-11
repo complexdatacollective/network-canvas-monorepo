@@ -1,8 +1,8 @@
 import { faker } from "@faker-js/faker";
-import { getAssetId } from "~/utils/mock-seeds";
+import { getAssetId, getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
 import { z } from "~/utils/zod-mock-extension";
-import { geospatialPromptSchema, NodeStageSubjectSchema } from "../common";
+import { geospatialPromptSchema, IntroductionPanelSchema, NodeStageSubjectSchema } from "../common";
 import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
 
@@ -36,7 +36,12 @@ const styleOptions = z.enum(mapboxStyleOptions.map((option) => option.value) as 
 const mapOptions = z.object({
 	tokenAssetId: z.string().generateMock(() => getAssetId(0)),
 	style: styleOptions.generateMock(() => faker.helpers.arrayElement(mapboxStyleOptions).value),
-	center: z.tuple([z.number(), z.number()]),
+	center: z
+		.tuple([z.number(), z.number()])
+		.generateMock(() => [
+			faker.location.longitude({ min: -180, max: 180, precision: 0.0001 }),
+			faker.location.latitude({ min: -90, max: 90, precision: 0.0001 }),
+		]),
 	initialZoom: z
 		.number()
 		.min(0, { message: "Zoom must be at least 0" })
@@ -61,23 +66,39 @@ const mapOptions = z.object({
 
 export type MapOptions = z.infer<typeof mapOptions>;
 
-export const geospatialStage = baseStageSchema.extend({
-	type: z.literal("Geospatial"),
-	subject: NodeStageSubjectSchema,
-	filter: FilterSchema.optional(),
-	mapOptions: mapOptions,
-	prompts: z
-		.array(geospatialPromptSchema)
-		.min(1)
-		.superRefine((prompts, ctx) => {
-			// Check for duplicate prompt IDs
-			const duplicatePromptId = findDuplicateId(prompts);
-			if (duplicatePromptId) {
-				ctx.addIssue({
-					code: "custom" as const,
-					message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-					path: [],
-				});
-			}
-		}),
-});
+export const geospatialStage = baseStageSchema
+	.extend({
+		type: z.literal("Geospatial"),
+		subject: NodeStageSubjectSchema,
+		filter: FilterSchema.optional(),
+		mapOptions: mapOptions,
+		prompts: z
+			.array(geospatialPromptSchema)
+			.min(1)
+			.superRefine((prompts, ctx) => {
+				// Check for duplicate prompt IDs
+				const duplicatePromptId = findDuplicateId(prompts);
+				if (duplicatePromptId) {
+					ctx.addIssue({
+						code: "custom" as const,
+						message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+						path: [],
+					});
+				}
+			}),
+		introductionPanel: IntroductionPanelSchema,
+	})
+	.generateMock((base) => ({
+		...base,
+		prompts: [
+			{
+				id: crypto.randomUUID(),
+				text: faker.helpers.arrayElement([
+					"Select the location that best represents your home.",
+					"Choose the point on the map where you usually hang out with friends.",
+					"Indicate your favorite place in the city by selecting it on the map.",
+				]),
+				variable: getNodeVariableId(0),
+			},
+		],
+	}));
