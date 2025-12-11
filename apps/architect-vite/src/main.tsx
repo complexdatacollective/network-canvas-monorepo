@@ -13,6 +13,7 @@ posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
 	capture_pageleave: true,
 	disable_session_recording: false,
 	capture_exceptions: true,
+	debug: import.meta.env.DEV,
 });
 
 const root = document.getElementById("root") as Element;
