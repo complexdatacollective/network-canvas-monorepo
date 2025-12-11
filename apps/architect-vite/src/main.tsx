@@ -6,32 +6,24 @@ import { AppErrorBoundary } from "./components/Errors";
 import AppView from "./components/ViewManager/views/App";
 import { store } from "./ducks/store";
 
-const isProd = import.meta.env.PROD;
-
-// Initialize PostHog only in production
-if (isProd) {
-	posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
-		api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-		defaults: "2025-05-24",
-	});
-}
+posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
+	api_host: "https://ph-relay.networkcanvas.com",
+	ui_host: "https://us.posthog.com",
+	capture_pageview: true,
+	capture_pageleave: true,
+	disable_session_recording: false,
+	capture_exceptions: true,
+	debug: import.meta.env.DEV,
+});
 
 const root = document.getElementById("root") as Element;
 
 createRoot(root).render(
-	isProd ? (
-		<PostHogProvider client={posthog}>
-			<AppErrorBoundary>
-				<Provider store={store}>
-					<AppView />
-				</Provider>
-			</AppErrorBoundary>
-		</PostHogProvider>
-	) : (
+	<PostHogProvider client={posthog}>
 		<AppErrorBoundary>
 			<Provider store={store}>
 				<AppView />
 			</Provider>
 		</AppErrorBoundary>
-	),
+	</PostHogProvider>,
 );

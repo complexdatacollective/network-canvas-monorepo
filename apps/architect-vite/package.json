@@ -16,7 +16,7 @@
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
-		"@posthog/react": "^1.4.0",
+		"@posthog/react": "^1.5.2",
 		"@productboard/slate-edit-list": "^0.21.5",
 		"@reduxjs/toolkit": "^2.8.2",
 		"@tailwindcss/vite": "^4.1.7",
@@ -37,7 +37,7 @@
 		"mapbox-gl": "^3.9.3",
 		"motion": "^12.14.0",
 		"ohash": "^2.0.11",
-		"posthog-js": "^1.292.0",
+		"posthog-js": "^1.304.0",
 		"react": "catalog:",
 		"react-compound-slider": "^3.4.0",
 		"react-dom": "catalog:",
@@ -67,7 +67,8 @@
 		"unified": "^11.0.5",
 		"uuid": "^11.1.0",
 		"vite-tsconfig-paths": "^5.1.4",
-		"wouter": "^3.7.1"
+		"wouter": "^3.7.1",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/development-protocol": "workspace:*",

@@ -1,4 +1,5 @@
 import type { Asset, CurrentProtocol } from "@codaco/protocol-validation";
+import posthog from "posthog-js";
 import { appVersion } from "../appVersion";
 import { assetDb } from "../assetDB";
 import type {
@@ -225,6 +226,12 @@ export async function uploadProtocolForPreview(
 	onProgress?: UploadProgressCallback,
 ): Promise<ReadyResponse> {
 	const { frescoUrl, apiToken } = getFrescoConfig();
+
+	posthog.capture("protocol_previewed", {
+		stage_count: protocol.stages?.length ?? 0,
+		start_stage_index: stageIndex,
+		asset_count: Object.keys(protocol.assetManifest ?? {}).length,
+	});
 
 	try {
 		// Get local assets and prepare request

@@ -212,6 +212,9 @@ const stagesSlice = createSlice({
 	},
 });
 
+// Export slice actions for middleware listeners
+export const createStage = stagesSlice.actions.createStage;
+
 // Export action creators (thunks)
 export const actionCreators = {
 	createStage: createStageAsync,

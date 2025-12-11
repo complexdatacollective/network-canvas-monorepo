@@ -1,3 +1,4 @@
+import posthog from "posthog-js";
 import { Component, type ReactNode } from "react";
 import { Button } from "~/lib/legacy-ui/components";
 
@@ -16,6 +17,7 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 	}
 
 	componentDidCatch(error: Error) {
+		posthog.captureException(error);
 		this.setState({ error });
 	}
 
