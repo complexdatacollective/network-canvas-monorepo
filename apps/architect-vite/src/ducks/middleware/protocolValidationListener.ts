@@ -1,4 +1,5 @@
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
+import { navigate } from "wouter/use-browser-location";
 import { getProtocol } from "~/selectors/protocol";
 import { ensureError } from "~/utils/ensureError";
 import { undo } from "../modules/activeProtocol";
@@ -48,6 +49,7 @@ startAppListening({
 			listenerApi.dispatch(
 				invalidProtocolDialog(errorMessage, () => {
 					listenerApi.dispatch(undo());
+					navigate("/protocol");
 				}),
 			);
 		}
