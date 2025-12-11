@@ -29,6 +29,7 @@ type StageEditorProps = {
 /**
  * Builds a clean protocol with the current wip stage inserted or updated.
  * Allows for validating and previewing the protocol with the current stage changes.
+ * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
  */
 function buildCleanProtocolWithStage(
 	protocol: CurrentProtocol,
