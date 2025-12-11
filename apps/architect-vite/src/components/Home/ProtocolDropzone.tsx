@@ -6,20 +6,20 @@ import Button from "~/lib/legacy-ui/components/Button";
 import { cn } from "~/utils/cn";
 
 type ProtocolDropzoneProps = {
-	onLoadProtocol: (action: () => Promise<unknown>) => Promise<void>;
+	onLoadProtocol: (action: () => Promise<unknown>, source: string) => Promise<void>;
 };
 
 export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzoneProps) {
 	const dispatch = useAppDispatch();
 
 	const handleCreateNewProtocol = () => {
-		onLoadProtocol(async () => await dispatch(createNetcanvas()));
+		onLoadProtocol(async () => await dispatch(createNetcanvas()), "create_new");
 	};
 
 	const onDrop = (acceptedFiles: File[]) => {
 		const file = acceptedFiles[0];
 		if (file) {
-			onLoadProtocol(async () => await dispatch(openLocalNetcanvas(file)));
+			onLoadProtocol(async () => await dispatch(openLocalNetcanvas(file)), "file_drop");
 		}
 	};
 

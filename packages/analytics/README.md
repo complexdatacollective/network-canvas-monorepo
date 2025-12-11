@@ -116,16 +116,15 @@ export async function POST(request: Request) {
 
 ### Event Types
 
-The package supports the following standard event types:
+The `trackEvent` method accepts any string as an event name. Use descriptive `snake_case` names for consistency:
 
-- `app_setup` - Initial application setup
-- `protocol_installed` - Protocol installation
-- `interview_started` - Interview start
-- `interview_completed` - Interview completion
-- `data_exported` - Data export
-- `error` - Error events (use `trackError()` instead)
+```ts
+trackEvent('protocol_opened', { metadata: { source: 'file_drop' } });
+trackEvent('preview_triggered', { metadata: { stageType: 'NameGenerator' } });
+trackEvent('data_exported', { metadata: { format: 'csv' } });
+```
 
-You can also send custom events with any string name.
+For error tracking, use the dedicated `trackError()` method instead.
 
 ### Client-Side API
 
@@ -444,10 +443,9 @@ This package uses a reverse proxy architecture for security and reliability:
    });
    ```
 
-2. **Use typed event names**: Import event types for autocomplete
+2. **Use consistent event names**: Use `snake_case` for all event names
    ```ts
-   import type { EventType } from '@codaco/analytics';
-   const event: EventType = 'app_setup';
+   trackEvent('protocol_opened', { metadata: { source: 'sample_protocol' } });
    ```
 
 3. **Don't block on analytics**: All calls are non-blocking by design

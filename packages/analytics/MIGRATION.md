@@ -147,17 +147,6 @@ All event names must be converted from PascalCase to snake_case:
 'Error'               → 'error' (but use trackError() instead)
 ```
 
-**Migration Helper:**
-
-The package exports a `legacyEventTypeMap` for reference:
-
-```typescript
-import { legacyEventTypeMap } from '@codaco/analytics';
-
-// Maps old names to new names
-console.log(legacyEventTypeMap.AppSetup); // 'app_setup'
-```
-
 ### 6. Migrate Error Tracking
 
 #### Before:

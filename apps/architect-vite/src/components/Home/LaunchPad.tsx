@@ -1,3 +1,4 @@
+import { getAnalyticsClient } from "@codaco/analytics";
 import { BookOpen, CodeXml, Download, Trash, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from "~/config";
@@ -49,24 +50,37 @@ const LaunchPad = () => {
 	const dispatch = useAppDispatch();
 	const [isLoading, setIsLoading] = useState(false);
 
-	const handleOpenProtocol = async (action: () => Promise<unknown>) => {
+	// Protocol open events are tracked via Redux middleware (analyticsMiddleware)
+	const handleOpenProtocol = async (action: () => Promise<unknown>, source: string) => {
 		setIsLoading(true);
 		try {
 			await action();
+		} catch (error) {
+			// Track errors that occur during protocol loading
+			const analytics = getAnalyticsClient();
+			analytics?.trackError(error instanceof Error ? error : new Error(String(error)), {
+				metadata: {
+					source: "protocol_open",
+					openSource: source,
+				},
+			});
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
 	const downloadSampleProtocol = () =>
-		handleOpenProtocol(async () => await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL)));
+		handleOpenProtocol(async () => await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL)), "sample_protocol");
 
 	const handleClearStorage = () => {
 		clearAllStorage();
 	};
 
 	const installDevelopmentProtocol = () =>
-		handleOpenProtocol(async () => await dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL)));
+		handleOpenProtocol(
+			async () => await dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL)),
+			"development_protocol",
+		);
 
 	return (
 		<>

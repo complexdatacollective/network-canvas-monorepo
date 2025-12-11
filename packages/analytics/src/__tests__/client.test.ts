@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAnalytics } from "../client";
-import type { AnalyticsConfig } from "../types";
+import type { MergedAnalyticsConfig } from "../config";
 
 // Mock posthog-js
 vi.mock("posthog-js", () => ({
@@ -25,12 +25,14 @@ describe("createAnalytics", () => {
 		vi.clearAllMocks();
 	});
 
-	const mockConfig: Required<AnalyticsConfig> = {
+	const mockConfig: MergedAnalyticsConfig = {
+		product: "architect",
 		apiHost: "https://ph-relay.networkcanvas.com",
 		apiKey: "phc_test",
 		installationId: "test-install-123",
 		disabled: false,
 		debug: false,
+		logging: false,
 		posthogOptions: {},
 	};
 
@@ -54,7 +56,7 @@ describe("createAnalytics", () => {
 			expect(analytics.isEnabled()).toBe(false);
 		});
 
-		it("should register installation ID as super property", () => {
+		it("should register product and installation ID as super properties", () => {
 			const mockPosthogInstance = {
 				register: vi.fn(),
 				debug: vi.fn(),
@@ -68,7 +70,31 @@ describe("createAnalytics", () => {
 			createAnalytics(mockConfig);
 
 			expect(mockPosthogInstance.register).toHaveBeenCalledWith({
+				product: "architect",
 				installation_id: "test-install-123",
+			});
+		});
+
+		it("should register only product when installationId is not provided", () => {
+			const mockPosthogInstance = {
+				register: vi.fn(),
+				debug: vi.fn(),
+			};
+
+			vi.mocked(posthog.init).mockImplementation((_token, options) => {
+				options?.loaded?.(mockPosthogInstance as never);
+				return mockPosthogInstance as never;
+			});
+
+			const configWithoutInstallationId: MergedAnalyticsConfig = {
+				...mockConfig,
+				installationId: undefined,
+			};
+
+			createAnalytics(configWithoutInstallationId);
+
+			expect(mockPosthogInstance.register).toHaveBeenCalledWith({
+				product: "architect",
 			});
 		});
 
@@ -268,9 +294,23 @@ describe("createAnalytics", () => {
 			expect(disabledAnalytics.isEnabled()).toBe(false);
 		});
 
-		it("should return installation ID", () => {
+		it("should return installation ID when provided", () => {
 			const analytics = createAnalytics(mockConfig);
 			expect(analytics.getInstallationId()).toBe("test-install-123");
+		});
+
+		it("should return undefined installation ID when not provided", () => {
+			const configWithoutInstallationId: MergedAnalyticsConfig = {
+				...mockConfig,
+				installationId: undefined,
+			};
+			const analytics = createAnalytics(configWithoutInstallationId);
+			expect(analytics.getInstallationId()).toBeUndefined();
+		});
+
+		it("should return product", () => {
+			const analytics = createAnalytics(mockConfig);
+			expect(analytics.getProduct()).toBe("architect");
 		});
 	});
 });

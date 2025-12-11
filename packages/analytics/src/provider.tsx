@@ -1,8 +1,7 @@
 "use client";
 
-import { createContext, type ReactNode, useEffect, useRef } from "react";
-import { createAnalytics } from "./client";
-import { mergeConfig } from "./config";
+import { createContext, type ReactNode, useEffect, useState } from "react";
+import { getAnalyticsClient, getAnalyticsReady, initAnalyticsClient } from "./singleton";
 import type { Analytics, AnalyticsConfig } from "./types";
 
 /**
@@ -15,11 +14,17 @@ export const AnalyticsContext = createContext<Analytics | null>(null);
  */
 export type AnalyticsProviderProps = {
 	children: ReactNode;
+	/**
+	 * Analytics configuration. Used to initialize the client if not already initialized.
+	 */
 	config: AnalyticsConfig;
 };
 
 /**
- * Provider component that initializes PostHog and provides analytics context
+ * Provider component that initializes PostHog and provides analytics context.
+ *
+ * Uses the singleton analytics client, which can also be accessed outside React
+ * via `getAnalyticsClient()` for use in Redux middleware or async thunks.
  *
  * @example
  * ```tsx
@@ -29,9 +34,7 @@ export type AnalyticsProviderProps = {
  *   return (
  *     <AnalyticsProvider
  *       config={{
- *         installationId: 'your-installation-id',
- *         apiKey: 'phc_your_api_key', // optional if set via env
- *         apiHost: 'https://ph-relay.networkcanvas.com', // optional
+ *         product: 'architect',
  *       }}
  *     >
  *       {children}
@@ -41,20 +44,31 @@ export type AnalyticsProviderProps = {
  * ```
  */
 export function AnalyticsProvider({ children, config }: AnalyticsProviderProps) {
-	const analyticsRef = useRef<Analytics | null>(null);
+	const [analytics, setAnalytics] = useState<Analytics | null>(() => getAnalyticsClient());
 
-	// Initialize analytics only once
 	useEffect(() => {
-		if (!analyticsRef.current) {
-			const mergedConfig = mergeConfig(config);
-			analyticsRef.current = createAnalytics(mergedConfig);
+		// Check if already initialized
+		const existingClient = getAnalyticsClient();
+		if (existingClient) {
+			setAnalytics(existingClient);
+			return;
 		}
+
+		// Check if initialization is in progress
+		const readyPromise = getAnalyticsReady();
+		if (readyPromise) {
+			readyPromise.then(setAnalytics);
+			return;
+		}
+
+		// Initialize the client
+		initAnalyticsClient(config).then(setAnalytics);
 	}, []); // Empty deps - only initialize once
 
 	// Don't render children until analytics is initialized
-	if (!analyticsRef.current) {
+	if (!analytics) {
 		return null;
 	}
 
-	return <AnalyticsContext.Provider value={analyticsRef.current}>{children}</AnalyticsContext.Provider>;
+	return <AnalyticsContext.Provider value={analytics}>{children}</AnalyticsContext.Provider>;
 }

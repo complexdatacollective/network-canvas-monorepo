@@ -1,31 +1,12 @@
 import { z } from "zod";
 
 /**
- * Event types supported by the analytics system.
- * These are converted to snake_case for PostHog.
+ * Products that use the Network Canvas analytics system.
+ * Each product is tracked as a super property on all events.
  */
-export const eventTypes = [
-	"app_setup",
-	"protocol_installed",
-	"interview_started",
-	"interview_completed",
-	"data_exported",
-	"error",
-] as const;
+export const products = ["fresco", "documentation", "architect"] as const;
 
-export type EventType = (typeof eventTypes)[number];
-
-/**
- * Legacy event type mapping for backward compatibility
- */
-export const legacyEventTypeMap: Record<string, EventType> = {
-	AppSetup: "app_setup",
-	ProtocolInstalled: "protocol_installed",
-	InterviewStarted: "interview_started",
-	InterviewCompleted: "interview_completed",
-	DataExported: "data_exported",
-	Error: "error",
-};
+export type Product = (typeof products)[number];
 
 /**
  * Standard event properties that can be sent with any event
@@ -57,27 +38,23 @@ export type ErrorProperties = z.infer<typeof ErrorPropertiesSchema>;
  */
 export type AnalyticsConfig = {
 	/**
+	 * The product sending analytics events.
+	 * This is included with every event as a super property for filtering.
+	 */
+	product: Product;
+
+	/**
 	 * PostHog API host - should point to the Cloudflare Worker reverse proxy
 	 * Defaults to "https://ph-relay.networkcanvas.com"
 	 */
 	apiHost?: string;
 
 	/**
-	 * PostHog project API key (optional)
-	 *
-	 * When using the reverse proxy (default), authentication is handled by the
-	 * Cloudflare Worker. A placeholder key will be used for client-side PostHog
-	 * initialization if not provided.
-	 *
-	 * Only set this if you need to override the default behavior.
+	 * Unique identifier for this installation/deployment (optional)
+	 * This is included with every event as a super property.
+	 * Required for Fresco, optional for other products.
 	 */
-	apiKey?: string;
-
-	/**
-	 * Unique identifier for this installation/deployment
-	 * This is included with every event as a super property
-	 */
-	installationId: string;
+	installationId?: string;
 
 	/**
 	 * Disable all analytics tracking
@@ -89,6 +66,12 @@ export type AnalyticsConfig = {
 	 * Enable debug mode for PostHog
 	 */
 	debug?: boolean;
+
+	/**
+	 * Enable logging of analytics events to the console.
+	 * Useful for development and debugging.
+	 */
+	logging?: boolean;
 
 	/**
 	 * Additional options to pass to PostHog initialization
@@ -125,6 +108,11 @@ export type AnalyticsConfig = {
 		advanced_disable_feature_flags?: boolean;
 
 		/**
+		 * Disable compression for requests (required for proxy mode)
+		 */
+		disable_compression?: boolean;
+
+		/**
 		 * Other PostHog options
 		 */
 		[key: string]: unknown;
@@ -138,7 +126,7 @@ export type Analytics = {
 	/**
 	 * Track a custom event
 	 */
-	trackEvent: (eventType: EventType | string, properties?: EventProperties) => void;
+	trackEvent: (eventType: string, properties?: EventProperties) => void;
 
 	/**
 	 * Track an error with full stack trace
@@ -177,7 +165,12 @@ export type Analytics = {
 	isEnabled: () => boolean;
 
 	/**
-	 * Get the installation ID
+	 * Get the installation ID (if configured)
 	 */
-	getInstallationId: () => string;
+	getInstallationId: () => string | undefined;
+
+	/**
+	 * Get the product name
+	 */
+	getProduct: () => Product;
 };

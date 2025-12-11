@@ -6,17 +6,17 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "pnpm prepare && vite build",
-		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" build",
+		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" --filter \"@codaco/analytics\" build",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
 		"@base-ui-components/react": "1.0.0-beta.6",
+		"@codaco/analytics": "workspace:*",
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
-		"@posthog/react": "^1.4.0",
 		"@productboard/slate-edit-list": "^0.21.5",
 		"@reduxjs/toolkit": "^2.8.2",
 		"@tailwindcss/vite": "^4.1.7",
@@ -37,7 +37,6 @@
 		"mapbox-gl": "^3.9.3",
 		"motion": "^12.14.0",
 		"ohash": "^2.0.11",
-		"posthog-js": "^1.292.0",
 		"react": "catalog:",
 		"react-compound-slider": "^3.4.0",
 		"react-dom": "catalog:",

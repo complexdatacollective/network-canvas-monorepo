@@ -64,7 +64,19 @@ export const defaultConfig: Partial<AnalyticsConfig> = {
 
 		// Enable persistence for feature flags
 		persistence: "localStorage+cookie",
+
+		// Disable compression so the proxy can inject the API key
+		disable_compression: true,
 	},
+};
+
+/**
+ * Merged config type where all fields have defaults applied
+ */
+export type MergedAnalyticsConfig = Omit<Required<AnalyticsConfig>, "installationId"> & {
+	installationId: string | undefined;
+	apiKey: string;
+	logging: boolean;
 };
 
 /**
@@ -72,18 +84,20 @@ export const defaultConfig: Partial<AnalyticsConfig> = {
  *
  * Note: This package is designed to work exclusively with the Cloudflare Worker
  * reverse proxy (ph-relay.networkcanvas.com). Authentication is handled by the
- * worker, so the API key is optional and defaults to a placeholder value.
+ * worker, so the API key is automatically set to a placeholder value.
  *
  * The only environment variable checked is DISABLE_ANALYTICS / NEXT_PUBLIC_DISABLE_ANALYTICS
  * for disabling tracking. All other configuration is hardcoded or passed explicitly.
  */
-export function mergeConfig(userConfig: AnalyticsConfig): Required<AnalyticsConfig> {
+export function mergeConfig(userConfig: AnalyticsConfig): MergedAnalyticsConfig {
 	return {
+		product: userConfig.product,
 		apiHost: userConfig.apiHost ?? defaultConfig.apiHost ?? POSTHOG_PROXY_HOST,
-		apiKey: userConfig.apiKey ?? PROXY_MODE_DUMMY_KEY,
+		apiKey: PROXY_MODE_DUMMY_KEY,
 		installationId: userConfig.installationId,
 		disabled: userConfig.disabled ?? isDisabledByEnv() ?? defaultConfig.disabled ?? false,
 		debug: userConfig.debug ?? defaultConfig.debug ?? false,
+		logging: userConfig.logging ?? false,
 		posthogOptions: {
 			...defaultConfig.posthogOptions,
 			...userConfig.posthogOptions,

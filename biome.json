@@ -92,6 +92,16 @@
 			"formatter": {
 				"enabled": false
 			}
+		},
+		{
+			"includes": ["**/analytics/src/logger.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
 		}
 	]
 }

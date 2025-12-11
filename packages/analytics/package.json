@@ -20,7 +20,7 @@
 		"tag": "alpha"
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/server.ts --format esm --dts --clean --sourcemap",
+		"build": "tsup",
 		"publish": "pnpm build && npm publish --access public",
 		"dev": "npm run build -- --watch",
 		"test": "vitest run",
@@ -31,6 +31,11 @@
 		"next": "catalog:",
 		"react": "catalog:"
 	},
+	"peerDependenciesMeta": {
+		"next": {
+			"optional": true
+		}
+	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
@@ -40,7 +45,7 @@
 		"vitest": "catalog:"
 	},
 	"dependencies": {
-		"posthog-js": "^1.298.1",
+		"posthog-js": "^1.304.0",
 		"zod": "catalog:"
 	}
 }

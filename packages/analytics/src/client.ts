@@ -1,38 +1,59 @@
 import posthog from "posthog-js";
-import type { Analytics, AnalyticsConfig, ErrorProperties, EventProperties, EventType } from "./types";
+import type { MergedAnalyticsConfig } from "./config";
+import { logDisabled, logError, logEvent, logInit } from "./logger";
+import type { Analytics, ErrorProperties, EventProperties, Product } from "./types";
 import { ensureError } from "./utils";
 
 /**
  * Create a client-side analytics instance
  * This wraps PostHog with Network Canvas-specific functionality
  */
-export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
-	const { apiHost, apiKey, installationId, disabled, debug, posthogOptions } = config;
+export function createAnalytics(config: MergedAnalyticsConfig): Analytics {
+	const { apiHost, apiKey, product, installationId, disabled, debug, logging, posthogOptions } = config;
 
 	// If analytics is disabled, return a no-op implementation
 	if (disabled) {
-		return createNoOpAnalytics(installationId);
+		if (logging) {
+			logDisabled("config");
+		}
+		return createNoOpAnalytics(product, installationId, logging);
 	}
 
 	// Initialize PostHog
 	posthog.init(apiKey, {
 		api_host: apiHost,
 		loaded: (posthogInstance) => {
-			// Set installation ID as a super property (included with every event)
-			posthogInstance.register({
-				installation_id: installationId,
-			});
+			// Build super properties object
+			const superProperties: Record<string, string> = {
+				product,
+			};
+
+			// Only include installation_id if provided
+			if (installationId) {
+				superProperties.installation_id = installationId;
+			}
+
+			// Register super properties (included with every event)
+			posthogInstance.register(superProperties);
 
 			if (debug) {
 				posthogInstance.debug();
+			}
+
+			if (logging) {
+				logInit(product, installationId);
 			}
 		},
 		...posthogOptions,
 	});
 
 	return {
-		trackEvent: (eventType: EventType | string, properties?: EventProperties) => {
+		trackEvent: (eventType: string, properties?: EventProperties) => {
 			if (disabled) return;
+
+			if (logging) {
+				logEvent(eventType, properties);
+			}
 
 			try {
 				posthog.capture(eventType, {
@@ -41,8 +62,7 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 					...(properties?.metadata ?? {}),
 				});
 			} catch (_e) {
-				if (debug) {
-				}
+				// Silently fail - analytics errors shouldn't break the app
 			}
 		},
 
@@ -59,14 +79,17 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 					...additionalProperties,
 				};
 
+				if (logging) {
+					logError(errorProperties);
+				}
+
 				posthog.capture("error", {
 					...errorProperties,
 					// Flatten metadata
 					...(additionalProperties?.metadata ?? {}),
 				});
 			} catch (_e) {
-				if (debug) {
-				}
+				// Silently fail - analytics errors shouldn't break the app
 			}
 		},
 
@@ -76,8 +99,6 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 			try {
 				return posthog.isFeatureEnabled(flagKey);
 			} catch (_e) {
-				if (debug) {
-				}
 				return undefined;
 			}
 		},
@@ -88,8 +109,6 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 			try {
 				return posthog.getFeatureFlag(flagKey);
 			} catch (_e) {
-				if (debug) {
-				}
 				return undefined;
 			}
 		},
@@ -100,8 +119,7 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 			try {
 				posthog.reloadFeatureFlags();
 			} catch (_e) {
-				if (debug) {
-				}
+				// Silently fail
 			}
 		},
 
@@ -111,8 +129,7 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 			try {
 				posthog.identify(distinctId, properties);
 			} catch (_e) {
-				if (debug) {
-				}
+				// Silently fail
 			}
 		},
 
@@ -122,24 +139,40 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 			try {
 				posthog.reset();
 			} catch (_e) {
-				if (debug) {
-				}
+				// Silently fail
 			}
 		},
 
 		isEnabled: () => !disabled,
 
 		getInstallationId: () => installationId,
+
+		getProduct: () => product,
 	};
 }
 
 /**
  * Create a no-op analytics instance when analytics is disabled
  */
-function createNoOpAnalytics(installationId: string): Analytics {
+function createNoOpAnalytics(product: Product, installationId: string | undefined, logging: boolean): Analytics {
 	return {
-		trackEvent: () => {},
-		trackError: () => {},
+		trackEvent: (eventType: string, properties?: EventProperties) => {
+			if (logging) {
+				logEvent(eventType, properties);
+			}
+		},
+		trackError: (error: Error, additionalProperties?: EventProperties) => {
+			if (logging) {
+				const errorObj = ensureError(error);
+				logError({
+					message: errorObj.message,
+					name: errorObj.name,
+					stack: errorObj.stack,
+					cause: errorObj.cause ? String(errorObj.cause) : undefined,
+					...additionalProperties,
+				});
+			}
+		},
 		isFeatureEnabled: () => false,
 		getFeatureFlag: () => undefined,
 		reloadFeatureFlags: () => {},
@@ -147,5 +180,6 @@ function createNoOpAnalytics(installationId: string): Analytics {
 		reset: () => {},
 		isEnabled: () => false,
 		getInstallationId: () => installationId,
+		getProduct: () => product,
 	};
 }

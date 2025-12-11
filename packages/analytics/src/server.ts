@@ -1,5 +1,5 @@
-import { mergeConfig } from "./config";
-import type { Analytics, AnalyticsConfig, ErrorProperties, EventProperties, EventType } from "./types";
+import { type MergedAnalyticsConfig, mergeConfig } from "./config";
+import type { Analytics, AnalyticsConfig, ErrorProperties, EventProperties, Product } from "./types";
 import { ensureError } from "./utils";
 
 /**
@@ -7,7 +7,7 @@ import { ensureError } from "./utils";
  * This uses PostHog's API directly for server-side tracking
  */
 class ServerAnalytics implements Analytics {
-	private config: Required<AnalyticsConfig>;
+	private config: MergedAnalyticsConfig;
 	private disabled: boolean;
 
 	constructor(config: AnalyticsConfig) {
@@ -18,7 +18,7 @@ class ServerAnalytics implements Analytics {
 	/**
 	 * Track an event on the server-side
 	 */
-	trackEvent(eventType: EventType | string, properties?: EventProperties): void {
+	trackEvent(eventType: string, properties?: EventProperties): void {
 		if (this.disabled) return;
 
 		// Send event to PostHog using fetch
@@ -99,8 +99,12 @@ class ServerAnalytics implements Analytics {
 		return !this.disabled;
 	}
 
-	getInstallationId(): string {
+	getInstallationId(): string | undefined {
 		return this.config.installationId;
+	}
+
+	getProduct(): Product {
+		return this.config.product;
 	}
 
 	/**
@@ -111,12 +115,19 @@ class ServerAnalytics implements Analytics {
 	private async sendToPostHog(event: string, properties: Record<string, unknown>): Promise<void> {
 		if (this.disabled) return;
 
+		// Build properties with product (always) and installation_id (if provided)
+		const eventProperties: Record<string, unknown> = {
+			...properties,
+			product: this.config.product,
+		};
+
+		if (this.config.installationId) {
+			eventProperties.installation_id = this.config.installationId;
+		}
+
 		const payload = {
 			event,
-			properties: {
-				...properties,
-				installation_id: this.config.installationId,
-			},
+			properties: eventProperties,
 			timestamp: new Date().toISOString(),
 		};
 
@@ -157,7 +168,8 @@ let serverAnalyticsInstance: ServerAnalytics | null = null;
  * import { initServerAnalytics } from '@codaco/analytics/server';
  *
  * initServerAnalytics({
- *   installationId: 'your-unique-installation-id',
+ *   product: 'fresco',
+ *   installationId: 'your-unique-installation-id', // Optional for non-Fresco products
  * });
  * ```
  */
@@ -203,7 +215,7 @@ export const serverAnalytics = new Proxy({} as Analytics, {
 	get(_target, prop) {
 		if (!serverAnalyticsInstance) {
 			throw new Error(
-				"Server analytics not initialized. Call initServerAnalytics({ installationId: '...' }) first " +
+				"Server analytics not initialized. Call initServerAnalytics({ product: '...' }) first " +
 					"(e.g., in your root layout or middleware).",
 			);
 		}

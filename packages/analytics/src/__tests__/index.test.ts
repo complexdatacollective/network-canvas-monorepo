@@ -1,26 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig, isDisabledByEnv, mergeConfig } from "../config";
-import { ErrorPropertiesSchema, EventPropertiesSchema, type EventType, eventTypes, legacyEventTypeMap } from "../types";
+import { ErrorPropertiesSchema, EventPropertiesSchema, type Product, products } from "../types";
 
-describe("Event Types", () => {
-	it("should export all event types", () => {
-		expect(eventTypes).toEqual([
-			"app_setup",
-			"protocol_installed",
-			"interview_started",
-			"interview_completed",
-			"data_exported",
-			"error",
-		]);
+describe("Products", () => {
+	it("should export all products", () => {
+		expect(products).toEqual(["fresco", "documentation", "architect"]);
 	});
 
-	it("should map legacy event types to new snake_case types", () => {
-		expect(legacyEventTypeMap.AppSetup).toBe("app_setup");
-		expect(legacyEventTypeMap.ProtocolInstalled).toBe("protocol_installed");
-		expect(legacyEventTypeMap.InterviewStarted).toBe("interview_started");
-		expect(legacyEventTypeMap.InterviewCompleted).toBe("interview_completed");
-		expect(legacyEventTypeMap.DataExported).toBe("data_exported");
-		expect(legacyEventTypeMap.Error).toBe("error");
+	it("should have correct Product type", () => {
+		const validProducts: Product[] = ["fresco", "documentation", "architect"];
+		expect(validProducts).toEqual(products);
 	});
 });
 
@@ -120,22 +109,23 @@ describe("Configuration", () => {
 	describe("mergeConfig", () => {
 		it("should merge user config with defaults", () => {
 			const userConfig = {
+				product: "architect" as const,
 				installationId: "test-123",
-				apiKey: "phc_test",
 			};
 
 			const merged = mergeConfig(userConfig);
 
+			expect(merged.product).toBe("architect");
 			expect(merged.installationId).toBe("test-123");
-			expect(merged.apiKey).toBe("phc_test");
+			expect(merged.apiKey).toBe("phc_proxy_mode_placeholder");
 			expect(merged.apiHost).toBe("https://ph-relay.networkcanvas.com");
 			expect(merged.disabled).toBe(false);
 		});
 
 		it("should allow overriding default values", () => {
 			const userConfig = {
+				product: "fresco" as const,
 				installationId: "test-123",
-				apiKey: "phc_test",
 				apiHost: "https://custom.posthog.com",
 				disabled: true,
 				debug: true,
@@ -143,27 +133,38 @@ describe("Configuration", () => {
 
 			const merged = mergeConfig(userConfig);
 
+			expect(merged.product).toBe("fresco");
 			expect(merged.apiHost).toBe("https://custom.posthog.com");
 			expect(merged.disabled).toBe(true);
 			expect(merged.debug).toBe(true);
 		});
 
-		it("should use placeholder API key when none provided (proxy mode)", () => {
+		it("should always use placeholder API key (proxy mode)", () => {
 			const userConfig = {
-				installationId: "test-123",
+				product: "documentation" as const,
 			};
 
 			const merged = mergeConfig(userConfig);
 
-			// When using proxy mode, a placeholder key is automatically provided
 			expect(merged.apiKey).toBe("phc_proxy_mode_placeholder");
-			expect(merged.installationId).toBe("test-123");
+			expect(merged.installationId).toBeUndefined();
+		});
+
+		it("should allow installationId to be optional", () => {
+			const userConfig = {
+				product: "architect" as const,
+			};
+
+			const merged = mergeConfig(userConfig);
+
+			expect(merged.product).toBe("architect");
+			expect(merged.installationId).toBeUndefined();
 		});
 
 		it("should merge PostHog options", () => {
 			const userConfig = {
+				product: "architect" as const,
 				installationId: "test-123",
-				apiKey: "phc_test",
 				posthogOptions: {
 					autocapture: true,
 					capture_pageview: true,
@@ -188,20 +189,5 @@ describe("Environment Variables", () => {
 			const result = isDisabledByEnv();
 			expect(typeof result).toBe("boolean");
 		});
-	});
-});
-
-describe("Type Exports", () => {
-	it("should export EventType correctly", () => {
-		const validTypes: EventType[] = [
-			"app_setup",
-			"protocol_installed",
-			"interview_started",
-			"interview_completed",
-			"data_exported",
-			"error",
-		];
-
-		expect(validTypes).toEqual(eventTypes);
 	});
 });

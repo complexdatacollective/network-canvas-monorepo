@@ -2,7 +2,7 @@
  * @codaco/analytics
  *
  * PostHog analytics wrapper for Network Canvas applications
- * with installation ID tracking, error reporting, and feature flags.
+ * with product tracking, optional installation ID, error reporting, and feature flags.
  *
  * @example Client-side usage (React):
  * ```tsx
@@ -13,7 +13,8 @@
  *   return (
  *     <AnalyticsProvider
  *       config={{
- *         installationId: 'your-unique-installation-id',
+ *         product: 'architect',
+ *         // installationId is optional for most products (required for Fresco)
  *       }}
  *     >
  *       {children}
@@ -37,7 +38,10 @@
  *
  * @example Server-side usage (API routes, server actions):
  * ```ts
- * import { serverAnalytics } from '@codaco/analytics/server';
+ * import { initServerAnalytics, serverAnalytics } from '@codaco/analytics/server';
+ *
+ * // Initialize once in your app
+ * initServerAnalytics({ product: 'fresco', installationId: '...' });
  *
  * export async function POST(request: Request) {
  *   serverAnalytics.trackEvent('data_exported', {
@@ -54,16 +58,14 @@ export { defaultConfig, isDisabledByEnv, mergeConfig } from "./config";
 export { useAnalytics, useFeatureFlag, useFeatureFlagValue } from "./hooks";
 
 // Re-export provider and hooks for client-side usage
-export { AnalyticsProvider, type AnalyticsProviderProps } from "./provider";
+export { AnalyticsContext, AnalyticsProvider, type AnalyticsProviderProps } from "./provider";
+
+// Re-export singleton for use outside React (Redux middleware, async thunks, etc.)
+export { getAnalyticsClient, getAnalyticsReady, initAnalyticsClient, resetAnalyticsClient } from "./singleton";
+
 // Re-export types
-export type {
-	Analytics,
-	AnalyticsConfig,
-	ErrorProperties,
-	EventProperties,
-	EventType,
-} from "./types";
-export { eventTypes, legacyEventTypeMap } from "./types";
+export type { Analytics, AnalyticsConfig, ErrorProperties, EventProperties, Product } from "./types";
+export { products } from "./types";
 
 // Re-export utilities
 export { ensureError } from "./utils";

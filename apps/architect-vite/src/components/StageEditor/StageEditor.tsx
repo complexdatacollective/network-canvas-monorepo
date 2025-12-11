@@ -1,3 +1,4 @@
+import { useAnalytics } from "@codaco/analytics";
 import type { CurrentProtocol, Stage, StageType } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
@@ -63,6 +64,7 @@ const StageEditor = (props: StageEditorProps) => {
 
 	const dispatch = useAppDispatch();
 	const [, setLocation] = useLocation();
+	const { trackEvent, trackError } = useAnalytics();
 
 	// Get stage metadata from Redux state
 	const stage = useSelector((state: RootState) => getStage(state, id || ""));
@@ -156,8 +158,27 @@ const StageEditor = (props: StageEditorProps) => {
 		try {
 			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
 			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
+
+			// Track successful preview
+			trackEvent("preview_triggered", {
+				metadata: {
+					stageType: interfaceType,
+					totalStages: previewProtocol.stages.length,
+					startStageIndex: startStage,
+					hasAssets: Object.keys(previewProtocol.assetManifest ?? {}).length > 0,
+				},
+			});
+
 			window.open(previewUrl, "_blank", "noopener,noreferrer");
 		} catch (error) {
+			// Track preview error
+			trackError(error instanceof Error ? error : new Error(String(error)), {
+				metadata: {
+					source: "preview_upload",
+					stageType: interfaceType,
+				},
+			});
+
 			dispatch(
 				dialogActions.openDialog({
 					type: "Error",
@@ -169,7 +190,7 @@ const StageEditor = (props: StageEditorProps) => {
 			setIsUploadingPreview(false);
 			setUploadProgress(null);
 		}
-	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex]);
+	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex, interfaceType, trackEvent, trackError]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
 	const renderSections = (sectionsList: readonly SectionComponent[]) =>

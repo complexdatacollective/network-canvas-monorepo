@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { rememberEnhancer, rememberReducer } from "redux-remember";
+import { analyticsMiddleware } from "./middleware/analytics";
 import logger from "./middleware/logger";
 import { protocolValidationListenerMiddleware } from "./middleware/protocolValidationListener";
 import type { RootState } from "./modules/root";
@@ -22,6 +23,7 @@ const store = configureStore({
 			// thunk is included by default in RTK
 		})
 			.concat(logger)
+			.concat(analyticsMiddleware)
 			.prepend(protocolValidationListenerMiddleware.middleware),
 	enhancers: (getDefaultEnhancers) =>
 		getDefaultEnhancers().concat(
