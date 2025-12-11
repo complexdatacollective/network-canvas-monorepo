@@ -12,22 +12,23 @@ This monorepo is organized into four main categories:
 
 ### Apps
 
-- **`analytics-web/`** - Next.js based analytics dashboard with Clerk authentication and Postgres database
+- **`architect-vite/`** - Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols
+- **`analytics-web/`** - Next.js analytics dashboard with Clerk authentication and Postgres database
 - **`documentation/`** - Next.js documentation website with MDX support and search functionality
 
 ### Packages
 
-- **`analytics/`** - PostHog analytics wrapper for Network Canvas applications with installation ID tracking
-- **`art/`** - UI components and design system elements using blobs and d3-interpolate-path
-- **`development-protocol/`** - Development protocol assets for testing and local development
-- **`protocol-validation/`** - Protocol schema validation and migration tools with Zod schemas
-- **`shared-consts/`** - Shared constants and type definitions
+- **`analytics/`** - PostHog analytics wrapper for Network Canvas applications with installation ID tracking and error reporting
+- **`art/`** - Visual design components using blobs and d3-interpolate-path for animated graphics
+- **`development-protocol/`** - Development protocol assets for testing Network Canvas applications
+- **`protocol-validation/`** - Utilities for validating and migrating Network Canvas protocol files with Zod schemas
+- **`shared-consts/`** - Shared constants and TypeScript definitions for the Network Canvas project
 - **`ui/`** - Reusable React UI components built on shadcn/ui and Tailwind CSS
 
 ### Workers
 
-- **`development-protocol/`** - Cloudflare Worker for serving development protocol files
-- **`posthog-proxy/`** - Cloudflare Worker for proxying PostHog analytics requests
+- **`development-protocol-worker/`** - Cloudflare Worker for serving development protocol files from GitHub
+- **`posthog-proxy-worker/`** - Cloudflare Worker for proxying PostHog analytics requests
 
 ### Tooling
 
@@ -73,6 +74,8 @@ pnpm test:watch
 ```bash
 # Work with a specific package
 pnpm --filter @codaco/shared-consts build
+pnpm --filter @codaco/protocol-validation build
+pnpm --filter architect-vite dev
 pnpm --filter analytics-web dev
 
 # Run commands in multiple packages
@@ -83,12 +86,13 @@ pnpm --filter "./apps/*" dev
 ### Working with Cloudflare Workers
 
 ```bash
-# Develop a worker locally
+# Develop workers locally
 pnpm --filter development-protocol-worker dev
 pnpm --filter posthog-proxy-worker dev
 
-# Deploy a worker to Cloudflare
+# Deploy workers to Cloudflare
 pnpm --filter development-protocol-worker deploy
+pnpm --filter posthog-proxy-worker deploy
 ```
 
 ## 🛠️ Development Tools
@@ -129,9 +133,7 @@ pnpm changeset
 
 Add a changeset to your PR. Once it is merged, a PR will be created that summarizes the changes and bumps the version of the packages. You can then review and merge this PR to publish the updated packages.
 
-```bash
-
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
