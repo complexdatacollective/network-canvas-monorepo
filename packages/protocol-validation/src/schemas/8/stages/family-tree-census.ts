@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { getEdgeTypeId, getEgoVariableId, getNodeVariableId } from "~/utils/mock-seeds";
+import { getEdgeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
 import { EdgeStageSubjectSchema, FormSchema, NodeStageSubjectSchema, promptSchema } from "../common";
 import { baseStageSchema } from "./base";
@@ -13,11 +13,11 @@ export const familyTreeCensusStage = baseStageSchema.extend({
 	// Variable on edgeType used to store the type of family relationship between two alters
 	relationshipTypeVariable: z.string().generateMock(() => getEdgeTypeId(0)), // partner, parent, ex-partner.
 	// Variable on node type used to collect the relationship to the ego.
-	relationshipToEgoVariable: z.string().generateMock(() => getEgoVariableId(0)),
+	relationshipToEgoVariable: z.string().generateMock(() => getNodeVariableId(0)),
 	// Biological sex variable present on node type. Optional, as this may not be collected.
-	sexVariable: z.string().generateMock(() => getNodeVariableId(0)),
+	sexVariable: z.string().generateMock(() => getNodeVariableId(1)),
 	// Variable on node type used to differentiate the ego node from other network nodes. Must be a boolean.
-	nodeIsEgoVariable: z.string().generateMock(() => getNodeVariableId(1)),
+	nodeIsEgoVariable: z.string().generateMock(() => getNodeVariableId(2)),
 	scaffoldingStep: z.object({
 		text: z.string().generateMock(() => "create a family tree"),
 		showQuickStartModal: z.boolean().generateMock(() => true),
@@ -40,7 +40,7 @@ export const familyTreeCensusStage = baseStageSchema.extend({
 					text: `disease nomination prompt ${index + 1}`,
 					variable: getNodeVariableId(index),
 				})),
-				{ min: 1, max: 2 },
+				{ min: 1, max: 3 },
 			),
 		),
 });
