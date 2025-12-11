@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "../zod-mock-extension";
 
-// Note: These tests will fail until the generateMock extension is implemented
 describe("Zod Mock Generator", () => {
 	describe("simple string schema", () => {
 		it("should generate mock data for string with custom generator", () => {

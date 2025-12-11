@@ -55,6 +55,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 						form: {
 							fields: [],
 						},
+						introductionPanel: {
+							title: "Edge Form Intro",
+							text: "Introduction text for edge form.",
+						},
 					},
 				],
 			};
@@ -86,6 +90,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								},
 							],
 						},
+						introductionPanel: {
+							title: "Ego Form Intro",
+							text: "Introduction text for ego form.",
+						},
 					},
 				],
 			};
@@ -113,6 +121,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 									prompt: "Enter your name",
 								},
 							],
+						},
+						introductionPanel: {
+							title: "Ego Form Intro",
+							text: "Introduction text for ego form.",
 						},
 					},
 				],
@@ -204,6 +216,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								},
 							],
 						},
+						introductionPanel: {
+							title: "Ego Form Intro",
+							text: "Introduction text for ego form.",
+						},
 					},
 				],
 			};
@@ -227,6 +243,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 									prompt: "Enter something",
 								},
 							],
+						},
+						introductionPanel: {
+							title: "Ego Form Intro",
+							text: "Introduction text for ego form.",
 						},
 					},
 				],
@@ -266,6 +286,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 									prompt: "How long have you known them?",
 								},
 							],
+						},
+						introductionPanel: {
+							title: "Edge Form Intro",
+							text: "Introduction text for edge form.",
 						},
 					},
 				],
@@ -501,6 +525,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								createEdge: "knows",
 							},
 						],
+						introductionPanel: {
+							title: "Dyad Census",
+							text: "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
+						},
 					},
 				],
 			};
@@ -528,6 +556,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								createEdge: "nonexistentEdge",
 							},
 						],
+						introductionPanel: {
+							title: "Dyad Census",
+							text: "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
+						},
 					},
 				],
 			};
@@ -564,6 +596,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								negativeLabel: "Not connected",
 							},
 						],
+						introductionPanel: {
+							title: "Tie Strength Census",
+							text: "In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.",
+						},
 					},
 				],
 			};
@@ -593,6 +629,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								negativeLabel: "Not connected",
 							},
 						],
+						introductionPanel: {
+							title: "Tie Strength Census",
+							text: "In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.",
+						},
 					},
 				],
 			};
@@ -629,6 +669,10 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								negativeLabel: "Not connected",
 							},
 						],
+						introductionPanel: {
+							title: "Tie Strength Census",
+							text: "In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.",
+						},
 					},
 				],
 			};

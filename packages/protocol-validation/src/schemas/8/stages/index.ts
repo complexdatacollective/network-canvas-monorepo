@@ -5,27 +5,42 @@ export * from "./base";
 
 // Import all stage types
 import { faker } from "@faker-js/faker";
-import { categoricalBinStage, ordinalBinStage } from "./bin-stages";
-import {
-	dyadCensusStage,
-	familyTreeCensusStage,
-	oneToManyDyadCensusStage,
-	tieStrengthCensusStage,
-} from "./census-stages";
-import { alterEdgeFormStage, alterFormStage, egoFormStage } from "./form-stages";
-import { geospatialStage } from "./geospatial-stages";
-import { anonymisationStage, informationStage } from "./information-stages";
-import { nameGeneratorQuickAddStage, nameGeneratorRosterStage, nameGeneratorStage } from "./name-generator-stages";
-import { narrativeStage, sociogramStage } from "./sociogram-stages";
+import { alterEdgeFormStage } from "./alter-edge-form";
+import { alterFormStage } from "./alter-form";
+import { anonymisationStage } from "./anonymisation";
+import { categoricalBinStage } from "./categorical-bin";
+import { dyadCensusStage } from "./dyad-census";
+import { egoFormStage } from "./ego-form";
+import { familyTreeCensusStage } from "./family-tree-census";
+import { geospatialStage } from "./geospatial";
+import { informationStage } from "./information";
+import { nameGeneratorStage } from "./name-generator";
+import { nameGeneratorQuickAddStage } from "./name-generator-quick-add";
+import { nameGeneratorRosterStage } from "./name-generator-roster";
+import { narrativeStage } from "./narrative";
+import { oneToManyDyadCensusStage } from "./one-to-many-dyad-census";
+import { ordinalBinStage } from "./ordinal-bin";
+import { sociogramStage } from "./sociogram";
+import { tieStrengthCensusStage } from "./tie-strength-census";
 
 // Re-export individual stages
-export * from "./bin-stages";
-export * from "./census-stages";
-export * from "./form-stages";
-export * from "./geospatial-stages";
-export * from "./information-stages";
-export * from "./name-generator-stages";
-export * from "./sociogram-stages";
+export * from "./alter-edge-form";
+export * from "./alter-form";
+export * from "./anonymisation";
+export * from "./categorical-bin";
+export * from "./dyad-census";
+export * from "./ego-form";
+export * from "./family-tree-census";
+export * from "./geospatial";
+export * from "./information";
+export * from "./name-generator";
+export * from "./name-generator-quick-add";
+export * from "./name-generator-roster";
+export * from "./narrative";
+export * from "./one-to-many-dyad-census";
+export * from "./ordinal-bin";
+export * from "./sociogram";
+export * from "./tie-strength-census";
 
 // Combine all stage types
 const stageSchemas = [
