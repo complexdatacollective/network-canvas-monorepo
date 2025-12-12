@@ -84,8 +84,13 @@ export const getHasUnsavedChanges = (state: RootState): boolean => {
 	const protocol = getProtocol(state);
 	const meta = getProtocolMeta(state);
 
-	if (!protocol || !meta) return false;
+	if (!protocol) return false;
 
+	// If meta is null, treat as unsaved if timeline has moved from initial state
+	if (!meta) {
+		const timeline = state.activeProtocol?.timeline || [];
+		return timeline.length > 1;
+	}
 	const currentTimeline = getTimelineLocus(state);
 	const lastSavedTimeline = meta.lastSavedTimeline;
 
