@@ -29,10 +29,7 @@ const activeProtocolSlice = createSlice({
 		},
 		updateProtocolDescription: (state, action: PayloadAction<{ description?: string }>) => {
 			if (!state) return state;
-			if (action.payload.description !== undefined) {
-				return { ...state, description: action.payload.description };
-			}
-			return state;
+			return { ...state, description: action.payload.description };
 		},
 		clearActiveProtocol: (_state) => {
 			assetDb.assets.clear(); // Clear asset database
