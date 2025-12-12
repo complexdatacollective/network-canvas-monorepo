@@ -1,7 +1,12 @@
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
+import { navigate } from "wouter/use-browser-location";
 import { getProtocol } from "~/selectors/protocol";
+import { ensureError } from "~/utils/ensureError";
+import { undo } from "../modules/activeProtocol";
+import { buildCleanProtocol } from "../modules/protocol/utils/buildCleanProtocol";
 import { validateProtocolAsync } from "../modules/protocolValidation";
 import type { RootState } from "../modules/root";
+import { invalidProtocolDialog } from "../modules/userActions/dialogs";
 import type { AppDispatch } from "../store";
 
 // Create the listener middleware
@@ -30,9 +35,23 @@ startAppListening({
 		const state = listenerApi.getState();
 		const protocol = getProtocol(state);
 
-		if (protocol) {
-			// Dispatch the validation async thunk
-			await listenerApi.dispatch(validateProtocolAsync(protocol));
+		if (!protocol) {
+			return;
+		}
+
+		// Clean the protocol before validation (removes app state props)
+		const cleanProtocol = buildCleanProtocol(protocol);
+		const result = await listenerApi.dispatch(validateProtocolAsync(cleanProtocol)).unwrap();
+
+		// Show dialog if validation failed
+		if (!result.result.success) {
+			const errorMessage = ensureError(result.result.error).message;
+			listenerApi.dispatch(
+				invalidProtocolDialog(errorMessage, () => {
+					listenerApi.dispatch(undo());
+					navigate("/protocol");
+				}),
+			);
 		}
 	},
 });
