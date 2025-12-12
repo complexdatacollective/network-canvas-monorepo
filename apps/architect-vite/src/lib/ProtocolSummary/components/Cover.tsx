@@ -7,9 +7,7 @@ import SummaryContext from "./SummaryContext";
 const Cover = () => {
 	const { protocol, protocolName } = useContext(SummaryContext);
 
-	const lastModified = protocol.lastModified
-		? DateTime.fromISO(protocol.lastModified).toHTTP()
-		: DateTime.now().toHTTP();
+	const lastModified = DateTime.now().toHTTP();
 	const date = new Date();
 	const now = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 
