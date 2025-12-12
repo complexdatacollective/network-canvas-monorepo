@@ -1,0 +1,9 @@
+{
+	"type": "folder",
+	"localeLabels": {
+		"en": "Tutorials"
+	},
+	"isExpanded": true,
+	"navOrder": 5,
+	"slug": "tutorials"
+}
