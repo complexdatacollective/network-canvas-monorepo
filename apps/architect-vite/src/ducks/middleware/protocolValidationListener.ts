@@ -3,7 +3,6 @@ import { navigate } from "wouter/use-browser-location";
 import { getProtocol } from "~/selectors/protocol";
 import { ensureError } from "~/utils/ensureError";
 import { undo } from "../modules/activeProtocol";
-import { buildCleanProtocol } from "../modules/protocol/utils/buildCleanProtocol";
 import { validateProtocolAsync } from "../modules/protocolValidation";
 import type { RootState } from "../modules/root";
 import { invalidProtocolDialog } from "../modules/userActions/dialogs";
@@ -39,9 +38,7 @@ startAppListening({
 			return;
 		}
 
-		// Clean the protocol before validation (removes app state props)
-		const cleanProtocol = buildCleanProtocol(protocol);
-		const result = await listenerApi.dispatch(validateProtocolAsync(cleanProtocol)).unwrap();
+		const result = await listenerApi.dispatch(validateProtocolAsync(protocol)).unwrap();
 
 		// Show dialog if validation failed
 		if (!result.result.success) {

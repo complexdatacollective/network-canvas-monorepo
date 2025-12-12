@@ -5,10 +5,10 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
-import { updateProtocolOptions } from "~/ducks/modules/activeProtocol";
+import { updateProtocolDescription } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
-import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
+import { getHasUnsavedChanges, getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
 import withTooltip from "./enhancers/withTooltip";
 
 const PrintableSummaryButton = withTooltip(Button);
@@ -100,16 +100,17 @@ const Overview = ({
 };
 
 const mapDispatchToProps = {
-	updateOptions: updateProtocolOptions,
+	updateOptions: updateProtocolDescription,
 };
 
 const mapStateToProps = (state: RootState) => {
 	const protocol = getProtocol(state);
+	const name = getProtocolName(state);
 	const protocolIsValid = getIsProtocolValid(state);
 	const hasUnsavedChanges = getHasUnsavedChanges(state);
 
 	return {
-		name: protocol?.name || "Untitled Protocol",
+		name,
 		description: protocol?.description || "",
 		codebook: protocol?.codebook,
 		protocolIsValid,

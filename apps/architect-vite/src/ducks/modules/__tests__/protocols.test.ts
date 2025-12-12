@@ -1,10 +1,9 @@
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ProtocolWithMetadata } from "~/types";
 import protocolsReducer, { addProtocol, removeProtocol, updateProtocol, updateProtocolMetadata } from "../protocols";
 
-const mockProtocol = {
-	name: "Test Protocol" as const,
+const mockProtocol: CurrentProtocol = {
 	description: "test description",
 	schemaVersion: 8,
 	stages: [],
@@ -14,10 +13,9 @@ const mockProtocol = {
 		ego: {},
 	},
 	assetManifest: {},
-} satisfies ProtocolWithMetadata;
+};
 
-const mockProtocol2 = {
-	name: "Another Protocol" as const,
+const mockProtocol2: CurrentProtocol = {
 	description: "another description",
 	schemaVersion: 8,
 	stages: [],
@@ -27,7 +25,7 @@ const mockProtocol2 = {
 		ego: {},
 	},
 	assetManifest: {},
-} satisfies ProtocolWithMetadata;
+};
 
 describe("protocols", () => {
 	describe("reducer", () => {
@@ -50,7 +48,7 @@ describe("protocols", () => {
 			store.dispatch(
 				addProtocol({
 					protocol: mockProtocol,
-					name: mockProtocol.name,
+					name: "Test Protocol",
 					description: mockProtocol.description,
 				}),
 			);
@@ -74,7 +72,7 @@ describe("protocols", () => {
 			store.dispatch(
 				addProtocol({
 					protocol: mockProtocol,
-					name: mockProtocol.name,
+					name: "Test Protocol",
 					description: mockProtocol.description,
 				}),
 			);
@@ -101,7 +99,7 @@ describe("protocols", () => {
 			store.dispatch(
 				addProtocol({
 					protocol: mockProtocol,
-					name: mockProtocol.name,
+					name: "Test Protocol",
 					description: mockProtocol.description,
 				}),
 			);
@@ -126,7 +124,7 @@ describe("protocols", () => {
 			store.dispatch(
 				addProtocol({
 					protocol: mockProtocol,
-					name: mockProtocol.name,
+					name: "Test Protocol",
 					description: mockProtocol.description,
 				}),
 			);

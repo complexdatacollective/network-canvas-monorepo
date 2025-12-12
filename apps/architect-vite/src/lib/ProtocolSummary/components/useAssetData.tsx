@@ -3,9 +3,8 @@ import { useContext, useEffect, useState } from "react";
 import { getAssetPath, makeGetNetworkAssetVariables } from "~/selectors/assets";
 import SummaryContext from "./SummaryContext";
 
-const stubState = (assetManifest: Record<string, unknown>, workingPath: string) => ({
-	session: { workingPath },
-	protocol: { present: { assetManifest } },
+const stubState = (assetManifest: Record<string, unknown>) => ({
+	activeProtocol: { present: { assetManifest } },
 });
 
 type AssetData = {
@@ -16,12 +15,12 @@ type AssetData = {
 };
 
 const useAssetData = (id: string) => {
-	const { protocol, workingPath } = useContext(SummaryContext);
+	const { protocol } = useContext(SummaryContext);
 
 	const data = get(protocol.assetManifest, id) as AssetData | undefined;
 	const [variables, setVariables] = useState<string | null>(null);
 
-	const stubbedState = stubState(protocol.assetManifest ?? {}, workingPath ?? "");
+	const stubbedState = stubState(protocol.assetManifest ?? {});
 	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
 	const assetPath = getAssetPath(stubbedState, id);
 
