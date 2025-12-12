@@ -6,8 +6,7 @@ import { protocolValidationListenerMiddleware } from "./middleware/protocolValid
 import type { RootState } from "./modules/root";
 import { rootReducer } from "./modules/root";
 
-// Phase 1 Complete: Only remember new stores
-const rememberedKeys = ["app", "activeProtocol"];
+const rememberedKeys = ["app", "activeProtocol", "protocolMeta"];
 
 const reducer = rememberReducer(rootReducer);
 

@@ -9,7 +9,6 @@ import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import { buildCleanProtocol } from "~/ducks/modules/protocol/utils/buildCleanProtocol";
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
@@ -27,29 +26,27 @@ type StageEditorProps = {
 };
 
 /**
- * Builds a clean protocol with the current wip stage inserted or updated.
+ * Builds a protocol with the current wip stage inserted or updated.
  * Allows for validating and previewing the protocol with the current stage changes.
  * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
  */
-function buildCleanProtocolWithStage(
+function buildProtocolWithStage(
 	protocol: CurrentProtocol,
 	stage: Stage,
 	stageId: string | null,
 	insertAtIndex?: number,
 ): CurrentProtocol {
-	const cleanProtocol = buildCleanProtocol(protocol);
-
 	// For new stages, generate a temp ID for validation/preview
 	const stageWithId = stageId ? stage : { ...stage, id: uuid() };
 
 	return {
-		...cleanProtocol,
+		...protocol,
 		stages: stageId
-			? cleanProtocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
+			? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
 			: [
-					...cleanProtocol.stages.slice(0, insertAtIndex ?? cleanProtocol.stages.length),
+					...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
 					stageWithId,
-					...cleanProtocol.stages.slice(insertAtIndex ?? cleanProtocol.stages.length),
+					...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
 				],
 	};
 }
@@ -128,7 +125,7 @@ const StageEditor = (props: StageEditorProps) => {
 		}
 
 		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
-		const previewProtocol = buildCleanProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
+		const previewProtocol = buildProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
 
 		// Validate the protocol before previewing
 		const validationResult = await validateProtocol(previewProtocol);

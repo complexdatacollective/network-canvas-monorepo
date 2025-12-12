@@ -11,7 +11,7 @@ import Cover from "~/lib/ProtocolSummary/components/Cover";
 import Stages from "~/lib/ProtocolSummary/components/Stages";
 import SummaryContext from "~/lib/ProtocolSummary/components/SummaryContext";
 import { getCodebookIndex } from "~/lib/ProtocolSummary/helpers";
-import { getProtocol } from "~/selectors/protocol";
+import { getProtocol, getProtocolName } from "~/selectors/protocol";
 
 // Create a formatted date string that can be used in a filename (no illegal chars)
 const dateWithSafeChars = (date: string, replaceWith = "-") =>
@@ -32,8 +32,9 @@ const SummaryPage = () => {
 		};
 	}, []);
 
-	// Get the active protocol from Redux store
+	// Get the active protocol and name from Redux store
 	const protocol = useSelector(getProtocol);
+	const protocolName = useSelector(getProtocolName);
 
 	const handleGoBack = () => {
 		setLocation("/protocol");
@@ -47,8 +48,8 @@ const SummaryPage = () => {
 
 		// Extract filename without extension (web-compatible approach)
 		const baseFileName =
-			protocol?.name
-				?.replace(/\.netcanvas$/, "")
+			protocolName
+				.replace(/\.netcanvas$/, "")
 				.split("/")
 				.pop() || "protocol";
 		const fileName = `${baseFileName} Protocol Summary (Created ${dateString}).pdf`;
@@ -70,6 +71,7 @@ const SummaryPage = () => {
 		<SummaryContext.Provider
 			value={{
 				protocol,
+				protocolName,
 				index,
 			}}
 		>

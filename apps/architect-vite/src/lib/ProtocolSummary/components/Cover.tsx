@@ -5,7 +5,7 @@ import ProtocolCard from "~/lib/legacy-ui/components/Cards/ProtocolCard";
 import SummaryContext from "./SummaryContext";
 
 const Cover = () => {
-	const { protocol } = useContext(SummaryContext);
+	const { protocol, protocolName } = useContext(SummaryContext);
 
 	const lastModified = protocol.lastModified
 		? DateTime.fromISO(protocol.lastModified).toHTTP()
@@ -23,7 +23,7 @@ const Cover = () => {
 				</div>
 			</div>
 			<ProtocolCard
-				name={protocol.name ?? "Protocol"}
+				name={protocolName}
 				description={protocol.description ?? ""}
 				lastModified={lastModified ?? null}
 				schemaVersion={protocol.schemaVersion ?? 8}

@@ -20,8 +20,9 @@ import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { ensureError } from "~/utils/ensureError";
-import { setActiveProtocol } from "../activeProtocol";
+import { clearActiveProtocol, setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
+import { clearProtocolMeta, setProtocolMeta } from "../protocolMeta";
 
 export const checkUnsavedChanges = createAsyncThunk(
 	"webUserActions/checkUnsavedChanges",
@@ -73,12 +74,8 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		// Add protocol assets to IndexedDB
 		await saveProtocolAssets(assets);
 
-		dispatch(
-			setActiveProtocol({
-				...(migratedProtocol as CurrentProtocol),
-				name: file.name.replace(/\.netcanvas$/, ""),
-			}),
-		);
+		dispatch(setActiveProtocol(migratedProtocol as CurrentProtocol));
+		dispatch(setProtocolMeta({ name: file.name.replace(/\.netcanvas$/, "") }));
 
 		navigate("/protocol");
 	} catch (error) {
@@ -158,13 +155,9 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 		assetManifest: {},
 	} as CurrentProtocol;
 
-	// Add to protocols store
-	dispatch(
-		setActiveProtocol({
-			...(newProtocol as CurrentProtocol),
-			name: "New Protocol",
-		}),
-	);
+	// Set active protocol and metadata
+	dispatch(setActiveProtocol(newProtocol as CurrentProtocol));
+	dispatch(setProtocolMeta({ name: "New Protocol" }));
 
 	// Navigate to the protocol
 	navigate("/protocol");
@@ -174,11 +167,12 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 export const exportNetcanvas = createAsyncThunk("webUserActions/exportNetcanvas", async (_, { getState }) => {
 	const state = getState() as RootState;
 	const protocol = state.activeProtocol?.present;
+	const protocolName = state.protocolMeta?.name;
 
 	if (!protocol) {
 		throw new Error("No active protocol to export");
 	}
-	await downloadProtocolAsNetcanvas(protocol as CurrentProtocol);
+	await downloadProtocolAsNetcanvas(protocol as CurrentProtocol, protocolName);
 	return true;
 });
 
@@ -224,12 +218,8 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			// Get filename from URL
 			const fileName = url.split("/").pop() || "remote_protocol.netcanvas";
 
-			dispatch(
-				setActiveProtocol({
-					...(migratedProtocol as CurrentProtocol),
-					name: fileName.replace(/\.netcanvas$/, ""),
-				}),
-			);
+			dispatch(setActiveProtocol(migratedProtocol as CurrentProtocol));
+			dispatch(setProtocolMeta({ name: fileName.replace(/\.netcanvas$/, "") }));
 
 			navigate("/protocol");
 		} catch (error) {
