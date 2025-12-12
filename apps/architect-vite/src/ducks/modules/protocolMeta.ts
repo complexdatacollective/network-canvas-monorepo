@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 // Types
-export type ProtocolMetaState = {
+type ProtocolMetaState = {
 	name: string;
 	lastSavedAt: number | null;
 	lastSavedTimeline: string | null;
@@ -20,10 +20,7 @@ const protocolMetaSlice = createSlice({
 				lastSavedTimeline: null,
 			};
 		},
-		updateProtocolMeta: (
-			state,
-			action: PayloadAction<Partial<NonNullable<ProtocolMetaState>>>,
-		): ProtocolMetaState => {
+		updateProtocolMeta: (state, action: PayloadAction<Partial<NonNullable<ProtocolMetaState>>>): ProtocolMetaState => {
 			if (!state) return state;
 			return { ...state, ...action.payload };
 		},
@@ -42,6 +39,6 @@ const protocolMetaSlice = createSlice({
 	},
 });
 
-export const { setProtocolMeta, updateProtocolMeta, markProtocolSaved, clearProtocolMeta } = protocolMetaSlice.actions;
+export const { setProtocolMeta, clearProtocolMeta } = protocolMetaSlice.actions;
 
 export default protocolMetaSlice.reducer;

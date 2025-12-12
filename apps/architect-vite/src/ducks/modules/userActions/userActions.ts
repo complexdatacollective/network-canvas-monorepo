@@ -20,9 +20,9 @@ import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { ensureError } from "~/utils/ensureError";
-import { clearActiveProtocol, setActiveProtocol } from "../activeProtocol";
+import { setActiveProtocol } from "../activeProtocol";
 import { openDialog } from "../dialogs";
-import { clearProtocolMeta, setProtocolMeta } from "../protocolMeta";
+import { setProtocolMeta } from "../protocolMeta";
 
 export const checkUnsavedChanges = createAsyncThunk(
 	"webUserActions/checkUnsavedChanges",
