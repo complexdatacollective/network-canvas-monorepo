@@ -56,7 +56,10 @@ startAppListening({
 			);
 		} else {
 			// Update lastModified timestamp when validation succeeds
-			listenerApi.dispatch(updateLastModified(new Date().toISOString()));
+			listenerApi.dispatch({
+				...updateLastModified(new Date().toISOString()),
+				meta: { skipTimeline: true },
+			});
 		}
 	},
 });
