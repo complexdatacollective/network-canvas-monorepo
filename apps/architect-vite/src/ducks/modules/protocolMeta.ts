@@ -24,6 +24,6 @@ const protocolMetaSlice = createSlice({
 	},
 });
 
-export const { setProtocolMeta, clearProtocolMeta } = protocolMetaSlice.actions;
+export const { setProtocolMeta, updateProtocolMeta, clearProtocolMeta } = protocolMetaSlice.actions;
 
 export default protocolMetaSlice.reducer;

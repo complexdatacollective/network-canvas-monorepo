@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
-import protocolMetaReducer, { clearProtocolMeta, setProtocolMeta } from "../protocolMeta";
+import protocolMetaReducer, { clearProtocolMeta, setProtocolMeta, updateProtocolMeta } from "../protocolMeta";
 
 describe("protocolMeta", () => {
 	describe("reducer", () => {
@@ -76,23 +76,14 @@ describe("protocolMeta", () => {
 
 		it("should update protocol meta name", () => {
 			store.dispatch(setProtocolMeta({ name: "Test Protocol" }));
-
-			const updateAction = {
-				type: "protocolMeta/updateProtocolMeta",
-				payload: { name: "Test Protocol Updated" },
-			};
-			store.dispatch(updateAction);
+			store.dispatch(updateProtocolMeta({ name: "Test Protocol Updated" }));
 
 			const state = store.getState().protocolMeta;
 			expect(state?.name).toBe("Test Protocol Updated");
 		});
 
 		it("should not update when state is null", () => {
-			const updateAction = {
-				type: "protocolMeta/updateProtocolMeta",
-				payload: { name: "Test Protocol Updated" },
-			};
-			store.dispatch(updateAction);
+			store.dispatch(updateProtocolMeta({ name: "Test Protocol Updated" }));
 
 			const state = store.getState().protocolMeta;
 			expect(state).toBeNull();
@@ -100,12 +91,7 @@ describe("protocolMeta", () => {
 
 		it("should preserve existing fields when updating", () => {
 			store.dispatch(setProtocolMeta({ name: "Test Protocol" }));
-
-			const updateAction = {
-				type: "protocolMeta/updateProtocolMeta",
-				payload: { name: "Test Protocol Updated" },
-			};
-			store.dispatch(updateAction);
+			store.dispatch(updateProtocolMeta({ name: "Test Protocol Updated" }));
 
 			const state = store.getState().protocolMeta;
 			expect(state).not.toBeNull();
@@ -125,6 +111,13 @@ describe("protocolMeta", () => {
 			const action = clearProtocolMeta();
 
 			expect(action.type).toBe("protocolMeta/clearProtocolMeta");
+		});
+
+		it("should create updateProtocolMeta action", () => {
+			const action = updateProtocolMeta({ name: "Updated Protocol" });
+
+			expect(action.type).toBe("protocolMeta/updateProtocolMeta");
+			expect(action.payload).toEqual({ name: "Updated Protocol" });
 		});
 	});
 });
