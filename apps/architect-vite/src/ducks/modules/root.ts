@@ -12,8 +12,11 @@ import protocolValidation from "./protocolValidation";
 
 const protocolPattern = /^(activeProtocol|stages|codebook|assetManifest)\//;
 
+type ActionWithMeta = UnknownAction & { meta?: { skipTimeline?: boolean } };
+
 const timelineOptions = {
-	exclude: ({ type }: UnknownAction) => !protocolPattern.test(type.toString()),
+	exclude: (action: UnknownAction) =>
+		!protocolPattern.test(action.type.toString()) || (action as ActionWithMeta).meta?.skipTimeline === true,
 };
 
 export const rootReducer = combineReducers({
