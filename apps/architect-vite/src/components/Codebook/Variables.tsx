@@ -194,7 +194,7 @@ const sortByProp = (sortBy: string) => (a: Variable, b: Variable) => {
 	return 0;
 };
 
-const sort = (sortBy: string) => (list: Variable[]) => (list ?? []).sort(sortByProp(sortBy));
+const sort = (sortBy: string) => (list: Variable[]) => list.sort(sortByProp(sortBy));
 
 const reverse =
 	(sortDirection: SortDirectionType = SortDirection.ASC) =>
