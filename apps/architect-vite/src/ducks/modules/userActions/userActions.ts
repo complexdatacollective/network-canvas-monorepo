@@ -7,7 +7,6 @@ import {
 } from "@codaco/protocol-validation";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { navigate } from "wouter/use-browser-location";
-import { UnsavedChanges } from "~/components/Dialogs";
 import { APP_SCHEMA_VERSION } from "~/config";
 import {
 	appUpgradeRequiredDialog,
@@ -16,35 +15,13 @@ import {
 	validationErrorDialog,
 } from "~/ducks/modules/userActions/dialogs";
 import type { RootState } from "~/ducks/store";
-import { getHasUnsavedChanges } from "~/selectors/protocol";
 import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { ensureError } from "~/utils/ensureError";
 import { setActiveProtocol } from "../activeProtocol";
-import { openDialog } from "../dialogs";
 import { setProtocolMeta } from "../protocolMeta";
 
-export const checkUnsavedChanges = createAsyncThunk(
-	"webUserActions/checkUnsavedChanges",
-	async (_, { dispatch, getState }) => {
-		const state = getState() as RootState;
-		const hasUnsavedChanges = getHasUnsavedChanges(state);
-
-		if (!hasUnsavedChanges) {
-			return true;
-		}
-
-		const confirm = await dispatch(openDialog(UnsavedChanges({}))).unwrap();
-
-		return confirm;
-	},
-);
-
 export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas", async (file: File, { dispatch }) => {
-	const proceed = await dispatch(checkUnsavedChanges()).unwrap();
-	if (!proceed) {
-		return;
-	}
 	try {
 		const fileName = file.name.toLowerCase();
 
@@ -136,11 +113,6 @@ const handleProtocolMigration = createAsyncThunk(
 
 // Create a new protocol
 export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas", async (_, { dispatch }) => {
-	const proceed = await dispatch(checkUnsavedChanges()).unwrap();
-	if (!proceed) {
-		return null;
-	}
-
 	// TODO: prompt for protocol name and description
 
 	// Create a new empty protocol
@@ -173,6 +145,7 @@ export const exportNetcanvas = createAsyncThunk("webUserActions/exportNetcanvas"
 		throw new Error("No active protocol to export");
 	}
 	await downloadProtocolAsNetcanvas(protocol as CurrentProtocol, protocolName);
+
 	return true;
 });
 

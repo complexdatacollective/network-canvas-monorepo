@@ -12,8 +12,6 @@ export const getProtocol = (state: RootState) => {
 };
 
 // Protocol metadata selectors
-const getProtocolMeta = (state: RootState) => state.protocolMeta;
-
 export const getProtocolName = (state: RootState) => {
 	return state.protocolMeta?.name ?? "Untitled Protocol";
 };
@@ -78,31 +76,6 @@ export const getExperiments = (state: RootState) => {
 	const experiments = protocol ? protocol.experiments : undefined;
 
 	return experiments;
-};
-
-export const getHasUnsavedChanges = (state: RootState): boolean => {
-	const protocol = getProtocol(state);
-	const meta = getProtocolMeta(state);
-
-	if (!protocol) return false;
-
-	// If meta is null, treat as unsaved if timeline has moved from initial state
-	if (!meta) {
-		const timeline = state.activeProtocol?.timeline || [];
-		return timeline.length > 1;
-	}
-	const currentTimeline = getTimelineLocus(state);
-	const lastSavedTimeline = meta.lastSavedTimeline;
-
-	// No saved state yet
-	if (!lastSavedTimeline) {
-		// Has unsaved changes if timeline has moved from initial state
-		const timeline = state.activeProtocol?.timeline || [];
-		return timeline.length > 1;
-	}
-
-	// Compare current timeline position with last saved position
-	return currentTimeline !== lastSavedTimeline;
 };
 
 export const getIsProtocolValid = (state: RootState): boolean => {

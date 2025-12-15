@@ -2,7 +2,7 @@ import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/too
 import { navigate } from "wouter/use-browser-location";
 import { getProtocol } from "~/selectors/protocol";
 import { ensureError } from "~/utils/ensureError";
-import { undo } from "../modules/activeProtocol";
+import { undo, updateLastModified } from "../modules/activeProtocol";
 import { validateProtocolAsync } from "../modules/protocolValidation";
 import type { RootState } from "../modules/root";
 import { invalidProtocolDialog } from "../modules/userActions/dialogs";
@@ -17,7 +17,12 @@ const startAppListening = protocolValidationListenerMiddleware.startListening as
 
 // Listen for any protocol changes and trigger validation
 startAppListening({
-	predicate: (_action, currentState, previousState) => {
+	predicate: (action, currentState, previousState) => {
+		// Skip validation for lastModified updates to prevent infinite loop
+		if (updateLastModified.match(action)) {
+			return false;
+		}
+
 		// Get the current and previous active protocols
 		const currentProtocol = getProtocol(currentState);
 		const previousProtocol = getProtocol(previousState);
@@ -49,6 +54,9 @@ startAppListening({
 					navigate("/protocol");
 				}),
 			);
+		} else {
+			// Update lastModified timestamp when validation succeeds
+			listenerApi.dispatch(updateLastModified(new Date().toISOString()));
 		}
 	},
 });

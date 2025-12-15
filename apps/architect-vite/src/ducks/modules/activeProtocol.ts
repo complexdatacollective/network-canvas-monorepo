@@ -31,6 +31,10 @@ const activeProtocolSlice = createSlice({
 			if (!state) return state;
 			return { ...state, description: action.payload.description };
 		},
+		updateLastModified: (state, action: PayloadAction<string>) => {
+			if (!state) return state;
+			return { ...state, lastModified: action.payload };
+		},
 		clearActiveProtocol: (_state) => {
 			assetDb.assets.clear(); // Clear asset database
 			return initialState;
@@ -90,12 +94,14 @@ const activeProtocolSlice = createSlice({
 // Extract actions and selectors
 export const setActiveProtocol = activeProtocolSlice.actions.setActiveProtocol;
 export const updateProtocolDescription = activeProtocolSlice.actions.updateProtocolDescription;
+export const updateLastModified = activeProtocolSlice.actions.updateLastModified;
 export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;
 
 export const actionCreators = {
 	setActiveProtocol: activeProtocolSlice.actions.setActiveProtocol,
 	updateProtocol: activeProtocolSlice.actions.updateProtocol,
 	updateProtocolDescription: activeProtocolSlice.actions.updateProtocolDescription,
+	updateLastModified: activeProtocolSlice.actions.updateLastModified,
 	clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
 };
 

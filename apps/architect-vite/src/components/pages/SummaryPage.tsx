@@ -32,7 +32,7 @@ const SummaryPage = () => {
 		};
 	}, []);
 
-	// Get the active protocol and name from Redux store
+	// Get the active protocol and metadata from Redux store
 	const protocol = useSelector(getProtocol);
 	const protocolName = useSelector(getProtocolName);
 

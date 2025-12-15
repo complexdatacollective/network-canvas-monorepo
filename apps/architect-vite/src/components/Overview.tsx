@@ -8,27 +8,16 @@ import { TextArea } from "~/components/Form/Fields";
 import { updateProtocolDescription } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
-import { getHasUnsavedChanges, getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
-import withTooltip from "./enhancers/withTooltip";
-
-const PrintableSummaryButton = withTooltip(Button);
+import { getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
 
 type OverviewProps = {
 	name?: string | null;
 	description?: string;
-	updateOptions?: (options: { description: string }) => void;
-	printOverview: () => void;
+	updateDescription?: (options: { description: string }) => void;
 	protocolIsValid: boolean;
-	hasUnsavedChanges: boolean;
 };
 
-const Overview = ({
-	name = null,
-	description = "",
-	updateOptions = () => {},
-	protocolIsValid,
-	hasUnsavedChanges,
-}: OverviewProps) => {
+const Overview = ({ name = null, description = "", updateDescription = () => {}, protocolIsValid }: OverviewProps) => {
 	const [, setLocation] = useLocation();
 
 	const handleNavigateToAssets = useCallback(() => {
@@ -54,7 +43,7 @@ const Overview = ({
 						placeholder="Enter a description for your protocol..."
 						input={{
 							value: description,
-							onChange: ({ target: { value } }) => updateOptions({ description: value }),
+							onChange: ({ target: { value } }) => updateDescription({ description: value }),
 						}}
 					/>
 				</div>
@@ -65,16 +54,12 @@ const Overview = ({
 				</div>
 				<div className="action-buttons">
 					<div className="action-buttons__button" title="Printable Summary">
-						<PrintableSummaryButton
+						<Button
 							onClick={handlePrintSummary}
 							color="slate-blue"
 							icon={<PrintIcon />}
-							disabled={!protocolIsValid || hasUnsavedChanges}
-							tooltip={
-								hasUnsavedChanges ? "You must save your protocol before you can view the printable summary." : undefined
-							}
+							disabled={!protocolIsValid}
 							content="Printable Summary"
-							tippyProps={{}}
 						/>
 					</div>
 					<div className="action-buttons__button" title="Resource Library">
@@ -100,21 +85,19 @@ const Overview = ({
 };
 
 const mapDispatchToProps = {
-	updateOptions: updateProtocolDescription,
+	updateDescription: updateProtocolDescription,
 };
 
 const mapStateToProps = (state: RootState) => {
 	const protocol = getProtocol(state);
 	const name = getProtocolName(state);
 	const protocolIsValid = getIsProtocolValid(state);
-	const hasUnsavedChanges = getHasUnsavedChanges(state);
 
 	return {
 		name,
 		description: protocol?.description || "",
 		codebook: protocol?.codebook,
 		protocolIsValid,
-		hasUnsavedChanges,
 	};
 };
 
