@@ -2,6 +2,7 @@
  * Creates a base valid protocol for testing variations
  */
 export const createBaseProtocol = () => ({
+	name: "Test Protocol",
 	schemaVersion: 8 as const,
 	codebook: {
 		ego: {

@@ -46,8 +46,15 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 				continue;
 			}
 
+			// Add default name for v8 protocols that don't have one
+			// TODO: Remove this once all test protocols are updated with name field
+			const protocolWithName =
+				protocolVersion === 8 && !("name" in protocol)
+					? { ...protocol, name: filename?.replace(/\.netcanvas$/, "") ?? "Untitled Protocol" }
+					: protocol;
+
 			const startTime = Date.now();
-			const result = await validateProtocol(protocol);
+			const result = await validateProtocol(protocolWithName);
 			const duration = Date.now() - startTime;
 
 			// If there are errors, log them (using unified errors array)

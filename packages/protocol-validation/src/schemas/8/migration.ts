@@ -70,11 +70,9 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 			},
 		]);
 
-		// Add name from context if provided
+		// Add name from context, or use default if not provided
 		const result = transformed as Record<string, unknown>;
-		if (context?.filename) {
-			result.name = context.filename;
-		}
+		result.name = context?.filename ?? "Untitled Protocol";
 
 		return result as ProtocolDocument<8>;
 	},

@@ -59,6 +59,7 @@ describe("Protocol Migrations", () => {
 		};
 
 		const v8Doc = {
+			name: "Test Protocol V8",
 			schemaVersion: 8,
 			description: "Test protocol v8",
 			lastModified: "2024-01-01T00:00:00.000Z",
@@ -184,6 +185,7 @@ describe("Protocol Migrations", () => {
 
 		it("validates v8 schema", () => {
 			const v8Doc = {
+				name: "Test Protocol",
 				schemaVersion: 8,
 				description: "Test",
 				codebook: {},

@@ -1458,6 +1458,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 
 		it("handles protocol with minimal codebook", () => {
 			const minimalProtocol = {
+				name: "Minimal Protocol",
 				schemaVersion: 8,
 				codebook: {},
 				stages: [],
