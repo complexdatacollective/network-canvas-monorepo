@@ -116,30 +116,36 @@ const handleProtocolMigration = createAsyncThunk(
 	},
 );
 
+type CreateNetcanvasParams = {
+	name: string;
+	description?: string;
+};
+
 // Create a new protocol
-export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas", async (_, { dispatch }) => {
-	// TODO: prompt for protocol name and description
-	const protocolName = "New Protocol";
+export const createNetcanvas = createAsyncThunk(
+	"webUserActions/createNetcanvas",
+	async ({ name, description }: CreateNetcanvasParams, { dispatch }) => {
+		// Create a new empty protocol
+		const newProtocol: CurrentProtocol = {
+			name,
+			description,
+			schemaVersion: APP_SCHEMA_VERSION,
+			stages: [],
+			codebook: {
+				node: {},
+				edge: {},
+				ego: {},
+			},
+			assetManifest: {},
+		} as CurrentProtocol;
 
-	// Create a new empty protocol
-	const newProtocol: CurrentProtocol = {
-		name: protocolName,
-		schemaVersion: APP_SCHEMA_VERSION,
-		stages: [],
-		codebook: {
-			node: {},
-			edge: {},
-			ego: {},
-		},
-		assetManifest: {},
-	} as CurrentProtocol;
+		// Set active protocol
+		dispatch(setActiveProtocol(newProtocol as CurrentProtocol));
 
-	// Set active protocol
-	dispatch(setActiveProtocol(newProtocol as CurrentProtocol));
-
-	// Navigate to the protocol
-	navigate("/protocol");
-});
+		// Navigate to the protocol
+		navigate("/protocol");
+	},
+);
 
 // Export protocol as .netcanvas file
 export const exportNetcanvas = createAsyncThunk("webUserActions/exportNetcanvas", async (_, { getState }) => {

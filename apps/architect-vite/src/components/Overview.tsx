@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
-import { updateProtocolDescription } from "~/ducks/modules/activeProtocol";
+import { updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
 import { getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
@@ -14,10 +14,17 @@ type OverviewProps = {
 	name?: string | null;
 	description?: string;
 	updateDescription?: (options: { description: string }) => void;
+	updateName?: (options: { name: string }) => void;
 	protocolIsValid: boolean;
 };
 
-const Overview = ({ name = null, description = "", updateDescription = () => {}, protocolIsValid }: OverviewProps) => {
+const Overview = ({
+	name = null,
+	description = "",
+	updateDescription = () => {},
+	updateName = () => {},
+	protocolIsValid,
+}: OverviewProps) => {
 	const [, setLocation] = useLocation();
 
 	const handleNavigateToAssets = useCallback(() => {
@@ -36,7 +43,13 @@ const Overview = ({ name = null, description = "", updateDescription = () => {},
 		<div className="overview">
 			<div className="overview__panel">
 				<div className="protocol-name">
-					<h1 className="overview-name">{name}</h1>
+					<input
+						type="text"
+						className="overview-name"
+						value={name ?? ""}
+						onChange={(e) => updateName({ name: e.target.value })}
+						placeholder="Enter protocol name..."
+					/>
 				</div>
 				<div>
 					<TextArea
@@ -86,6 +99,7 @@ const Overview = ({ name = null, description = "", updateDescription = () => {},
 
 const mapDispatchToProps = {
 	updateDescription: updateProtocolDescription,
+	updateName: updateProtocolName,
 };
 
 const mapStateToProps = (state: RootState) => {
