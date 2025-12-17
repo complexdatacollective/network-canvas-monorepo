@@ -5,6 +5,7 @@ import activeProtocolReducer, { actionCreators } from "../activeProtocol";
 import { test as stagesTest } from "../protocol/stages";
 
 const mockProtocol: CurrentProtocol = {
+	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,
 	stages: [],
@@ -17,6 +18,7 @@ const mockProtocol: CurrentProtocol = {
 };
 
 const mockProtocol2: CurrentProtocol = {
+	name: "Test Protocol 2",
 	description: "another description",
 	schemaVersion: 8,
 	stages: [

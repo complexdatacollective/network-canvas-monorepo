@@ -42,6 +42,7 @@ const mockProtocolName = "Test Protocol";
 const mockProtocolDescription = "test description";
 
 const mockProtocol: CurrentProtocol = {
+	name: mockProtocolName,
 	description: mockProtocolDescription,
 	schemaVersion: 8,
 	stages: [],

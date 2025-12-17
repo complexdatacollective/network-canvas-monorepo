@@ -43,6 +43,8 @@ const SummaryPage = () => {
 	const index = getCodebookIndex(protocol);
 
 	const print = () => {
+		if (!protocolName) return;
+
 		const now = new Date();
 		const dateString = `${dateWithSafeChars(now.toLocaleDateString(), "-")} ${dateWithSafeChars(now.toLocaleTimeString(), ".")}`;
 
@@ -59,7 +61,7 @@ const SummaryPage = () => {
 	};
 
 	// Don't render until we have protocol data
-	if (!protocol) {
+	if (!protocol || !protocolName) {
 		return (
 			<Layout>
 				<p>Loading protocol...</p>

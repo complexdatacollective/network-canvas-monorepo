@@ -8,7 +8,7 @@ import {
 } from "../schemas";
 import migrationV7toV8 from "../schemas/8/migration";
 import { SchemaVersionDetectionError, ValidationError } from "./errors";
-import { type ProtocolDocument, protocolMigrations } from "./index";
+import { type MigrationContext, type ProtocolDocument, protocolMigrations } from "./index";
 
 protocolMigrations.register(migrationV7toV8);
 
@@ -28,6 +28,7 @@ export function detectSchemaVersion(document: unknown): SchemaVersion {
 export function migrateProtocol(
 	document: unknown,
 	targetVersion: SchemaVersion = CURRENT_SCHEMA_VERSION,
+	context?: MigrationContext,
 ): CurrentProtocol {
 	// Detect and validate source schema version
 	const detectedVersion = detectSchemaVersion(document);
@@ -42,7 +43,7 @@ export function migrateProtocol(
 	}
 
 	// Perform migration
-	const migrated = protocolMigrations.migrate(document as ProtocolDocument<SchemaVersion>, targetVersion);
+	const migrated = protocolMigrations.migrate(document as ProtocolDocument<SchemaVersion>, targetVersion, context);
 
 	// Validate migrated document against target schema
 	const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
@@ -77,16 +78,17 @@ export class ProtocolMigrator {
 		options?: {
 			cacheKey?: string;
 			targetVersion?: SchemaVersion;
+			context?: MigrationContext;
 		},
 	): Promise<CurrentProtocol> {
-		const { cacheKey, targetVersion } = options || {};
+		const { cacheKey, targetVersion, context } = options || {};
 
 		if (cacheKey && this.cache.has(cacheKey)) {
 			const cached = this.cache.get(cacheKey);
 			if (cached) return cached;
 		}
 
-		const migrated = migrateProtocol(document, targetVersion);
+		const migrated = migrateProtocol(document, targetVersion, context);
 
 		if (cacheKey) {
 			this.cache.set(cacheKey, migrated);

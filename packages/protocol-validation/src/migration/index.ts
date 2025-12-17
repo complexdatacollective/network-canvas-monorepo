@@ -18,11 +18,15 @@ export type ProtocolDocument<V extends SchemaVersion> = V extends keyof Protocol
 			[key: string]: unknown;
 		};
 
+export type MigrationContext = {
+	filename?: string;
+};
+
 export type ProtocolMigration<From extends SchemaVersion, To extends SchemaVersion> = {
 	from: From;
 	to: To;
 	notes?: string;
-	migrate: (doc: ProtocolDocument<From>) => ProtocolDocument<To>;
+	migrate: (doc: ProtocolDocument<From>, context?: MigrationContext) => ProtocolDocument<To>;
 };
 
 type AnyMigration = ProtocolMigration<SchemaVersion, SchemaVersion>;
@@ -55,9 +59,10 @@ export class MigrationChain {
 	private executeStep<From extends SchemaVersion, To extends SchemaVersion>(
 		document: ProtocolDocument<From>,
 		migration: ProtocolMigration<From, To>,
+		context?: MigrationContext,
 	): ProtocolDocument<To> {
 		try {
-			const result = migration.migrate(document);
+			const result = migration.migrate(document, context);
 			return result;
 		} catch (_error) {
 			throw new MigrationStepError(migration.from);
@@ -67,6 +72,7 @@ export class MigrationChain {
 	migrate<From extends SchemaVersion, To extends SchemaVersion>(
 		document: ProtocolDocument<From>,
 		targetVersion: To,
+		context?: MigrationContext,
 	): ProtocolDocument<To> {
 		const fromVersion = document.schemaVersion;
 
@@ -90,6 +96,7 @@ export class MigrationChain {
 			current = this.executeStep(
 				current as ProtocolDocument<SchemaVersion>,
 				migration,
+				context,
 			) as ProtocolDocument<SchemaVersion>;
 			currentVersion = migration.to;
 		}

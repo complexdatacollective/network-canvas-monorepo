@@ -4,6 +4,7 @@ import validateProtocol from "./validation/validate-protocol";
 
 export {
 	MigrationChain,
+	type MigrationContext,
 	type ProtocolMigration as Migration,
 	protocolMigrations,
 } from "./migration";

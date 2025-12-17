@@ -6,7 +6,7 @@ import { protocolValidationListenerMiddleware } from "./middleware/protocolValid
 import type { RootState } from "./modules/root";
 import { rootReducer } from "./modules/root";
 
-const rememberedKeys = ["app", "activeProtocol", "protocolMeta"];
+const rememberedKeys = ["app", "activeProtocol"];
 
 const reducer = rememberReducer(rootReducer);
 

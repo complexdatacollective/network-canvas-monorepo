@@ -12,8 +12,8 @@ export const getProtocol = (state: RootState) => {
 };
 
 // Protocol metadata selectors
-export const getProtocolName = (state: RootState) => {
-	return state.protocolMeta?.name ?? "Untitled Protocol";
+export const getProtocolName = (state: RootState): string | undefined => {
+	return getProtocol(state)?.name;
 };
 
 export const getAssetManifest = (state: RootState) => {

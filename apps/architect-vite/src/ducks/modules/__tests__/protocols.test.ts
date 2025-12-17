@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import protocolsReducer, { addProtocol, removeProtocol, updateProtocol, updateProtocolMetadata } from "../protocols";
 
 const mockProtocol: CurrentProtocol = {
+	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,
 	stages: [],
@@ -16,6 +17,7 @@ const mockProtocol: CurrentProtocol = {
 };
 
 const mockProtocol2: CurrentProtocol = {
+	name: "Test Protocol 2",
 	description: "another description",
 	schemaVersion: 8,
 	stages: [],

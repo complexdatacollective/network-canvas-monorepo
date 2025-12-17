@@ -1,8 +1,8 @@
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
 import posthog from "posthog-js";
 import { z } from "zod";
+import { setActiveProtocol } from "../modules/activeProtocol";
 import { createStage } from "../modules/protocol/stages";
-import { setProtocolMeta } from "../modules/protocolMeta";
 import { validateProtocolAsync } from "../modules/protocolValidation";
 import type { RootState } from "../modules/root";
 import { exportNetcanvas } from "../modules/userActions/userActions";
@@ -15,14 +15,13 @@ export const analyticsListenerMiddleware = createListenerMiddleware();
 type AppStartListening = TypedStartListening<RootState, AppDispatch>;
 const startAppListening = analyticsListenerMiddleware.startListening as AppStartListening;
 
-// Track protocol opened (triggered when protocol metadata is set)
+// Track protocol opened (triggered when active protocol is set)
 startAppListening({
-	actionCreator: setProtocolMeta,
-	effect: (action, listenerApi) => {
-		const state = listenerApi.getState();
-		const protocol = state.activeProtocol?.present;
+	actionCreator: setActiveProtocol,
+	effect: (action) => {
+		const protocol = action.payload;
 		posthog.capture("protocol_opened", {
-			protocol_name: action.payload.name,
+			protocol_name: protocol?.name,
 			schema_version: protocol?.schemaVersion ?? 8,
 			stage_count: protocol?.stages?.length ?? 0,
 		});
@@ -63,9 +62,8 @@ startAppListening({
 	effect: (_action, listenerApi) => {
 		const state = listenerApi.getState();
 		const protocol = state.activeProtocol?.present;
-		const protocolMeta = state.protocolMeta;
 		posthog.capture("protocol_downloaded", {
-			protocol_name: protocolMeta?.name,
+			protocol_name: protocol?.name,
 			stage_count: protocol?.stages?.length ?? 0,
 		});
 	},

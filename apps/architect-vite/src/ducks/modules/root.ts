@@ -6,7 +6,6 @@ import createTimeline from "../middleware/timeline";
 import activeProtocol from "./activeProtocol";
 import app from "./app";
 import dialogs from "./dialogs";
-import protocolMeta from "./protocolMeta";
 import protocols from "./protocols";
 import protocolValidation from "./protocolValidation";
 
@@ -24,7 +23,6 @@ export const rootReducer = combineReducers({
 	dialogs,
 	form: formReducer,
 	activeProtocol: createTimeline(activeProtocol, timelineOptions),
-	protocolMeta,
 	protocols,
 	protocolValidation,
 });

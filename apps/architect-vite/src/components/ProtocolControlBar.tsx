@@ -6,7 +6,6 @@ import ControlBar from "~/components/ControlBar";
 import { useAppDispatch } from "~/ducks/hooks";
 import { clearActiveProtocol, redo, undo } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { clearProtocolMeta } from "~/ducks/modules/protocolMeta";
 import { exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import type { RootState } from "~/ducks/store";
 import logoutIcon from "~/images/home/log-out.svg";
@@ -32,7 +31,6 @@ const ProtocolControlBar = () => {
 				confirmLabel: "Return to start screen",
 				onConfirm: () => {
 					dispatch(clearActiveProtocol());
-					dispatch(clearProtocolMeta());
 					navigate("/");
 				},
 			}),

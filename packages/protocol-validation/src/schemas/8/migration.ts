@@ -1,4 +1,4 @@
-import type { ProtocolDocument, ProtocolMigration } from "~/migration";
+import type { MigrationContext, ProtocolDocument, ProtocolMigration } from "~/migration";
 import { traverseAndTransform } from "~/utils/traverse-and-transform";
 
 const migrationV7toV8: ProtocolMigration<7, 8> = {
@@ -14,8 +14,9 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 - Removed 'options' property for boolean Toggle variables. This property was not used.
 - Changed FilterRule type to use the same entity names as elsewhere
+- Added 'name' property to protocol, populated from filename during migration
 `,
-	migrate: (doc) => {
+	migrate: (doc, context) => {
 		const transformed = traverseAndTransform(doc as Record<string, unknown>, [
 			{
 				// Remove deprecated 'displayVariable' property from node and edge entity definitions
@@ -69,7 +70,13 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 			},
 		]);
 
-		return transformed as ProtocolDocument<8>;
+		// Add name from context if provided
+		const result = transformed as Record<string, unknown>;
+		if (context?.filename) {
+			result.name = context.filename;
+		}
+
+		return result as ProtocolDocument<8>;
 	},
 };
 

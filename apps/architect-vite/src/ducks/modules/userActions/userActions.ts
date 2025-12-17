@@ -2,6 +2,7 @@ import {
 	type CurrentProtocol,
 	extractProtocol,
 	getMigrationInfo,
+	type MigrationContext,
 	migrateProtocol,
 	validateProtocol,
 } from "@codaco/protocol-validation";
@@ -19,7 +20,6 @@ import { saveProtocolAssets } from "~/utils/assetUtils";
 import { downloadProtocolAsNetcanvas } from "~/utils/bundleProtocol";
 import { ensureError } from "~/utils/ensureError";
 import { setActiveProtocol } from "../activeProtocol";
-import { setProtocolMeta } from "../protocolMeta";
 
 export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas", async (file: File, { dispatch }) => {
 	try {
@@ -31,9 +31,15 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 
 		const arrayBuffer = await file.arrayBuffer();
 		const { protocol, assets } = await extractProtocol(new Uint8Array(arrayBuffer));
+		const protocolName = file.name.replace(/\.netcanvas$/, "");
 
 		// Handle migration if needed
-		const migratedProtocol = await dispatch(handleProtocolMigration(protocol as CurrentProtocol)).unwrap();
+		const migratedProtocol = await dispatch(
+			handleProtocolMigration({
+				protocol: protocol as CurrentProtocol,
+				context: { filename: protocolName },
+			}),
+		).unwrap();
 
 		if (!migratedProtocol) {
 			throw new Error("Protocol migration failed or was canceled.");
@@ -52,7 +58,6 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		await saveProtocolAssets(assets);
 
 		dispatch(setActiveProtocol(migratedProtocol as CurrentProtocol));
-		dispatch(setProtocolMeta({ name: file.name.replace(/\.netcanvas$/, "") }));
 
 		navigate("/protocol");
 	} catch (error) {
@@ -84,7 +89,10 @@ const checkSchemaVersion = (protocol: CurrentProtocol): schemaVersionStates => {
 // helper function so we can use loadingLock
 const handleProtocolMigration = createAsyncThunk(
 	"protocol/openOrUpgrade",
-	async (protocol: CurrentProtocol, { dispatch }) => {
+	async (
+		{ protocol, context }: { protocol: CurrentProtocol; context?: MigrationContext },
+		{ dispatch },
+	) => {
 		const schemaVersionStatus = checkSchemaVersion(protocol);
 		switch (schemaVersionStatus) {
 			case schemaVersionStates.OK: {
@@ -99,7 +107,7 @@ const handleProtocolMigration = createAsyncThunk(
 					return false;
 				}
 
-				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION);
+				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, context);
 				return migratedProtocol as CurrentProtocol;
 			}
 			case schemaVersionStates.UPGRADE_APP:
@@ -114,9 +122,11 @@ const handleProtocolMigration = createAsyncThunk(
 // Create a new protocol
 export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas", async (_, { dispatch }) => {
 	// TODO: prompt for protocol name and description
+	const protocolName = "New Protocol";
 
 	// Create a new empty protocol
 	const newProtocol: CurrentProtocol = {
+		name: protocolName,
 		schemaVersion: APP_SCHEMA_VERSION,
 		stages: [],
 		codebook: {
@@ -127,9 +137,8 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 		assetManifest: {},
 	} as CurrentProtocol;
 
-	// Set active protocol and metadata
+	// Set active protocol
 	dispatch(setActiveProtocol(newProtocol as CurrentProtocol));
-	dispatch(setProtocolMeta({ name: "New Protocol" }));
 
 	// Navigate to the protocol
 	navigate("/protocol");
@@ -139,12 +148,11 @@ export const createNetcanvas = createAsyncThunk("webUserActions/createNetcanvas"
 export const exportNetcanvas = createAsyncThunk("webUserActions/exportNetcanvas", async (_, { getState }) => {
 	const state = getState() as RootState;
 	const protocol = state.activeProtocol?.present;
-	const protocolName = state.protocolMeta?.name;
 
 	if (!protocol) {
 		throw new Error("No active protocol to export");
 	}
-	await downloadProtocolAsNetcanvas(protocol as CurrentProtocol, protocolName);
+	await downloadProtocolAsNetcanvas(protocol as CurrentProtocol, protocol.name);
 
 	return true;
 });
@@ -169,8 +177,17 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			// TODO: Remove duplicated code by reusing openLocalNetcanvas logic
 			const { protocol, assets } = await extractProtocol(new Uint8Array(buffer));
 
+			// Get filename from URL
+			const fileName = url.split("/").pop() || "remote_protocol.netcanvas";
+			const protocolName = fileName.replace(/\.netcanvas$/, "");
+
 			// Handle migration if needed
-			const migratedProtocol = await dispatch(handleProtocolMigration(protocol as CurrentProtocol)).unwrap();
+			const migratedProtocol = await dispatch(
+				handleProtocolMigration({
+					protocol: protocol as CurrentProtocol,
+					context: { filename: protocolName },
+				}),
+			).unwrap();
 
 			if (!migratedProtocol) {
 				throw new Error("Protocol migration failed or was canceled.");
@@ -188,11 +205,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			// Add protocol assets to IndexedDB
 			await saveProtocolAssets(assets);
 
-			// Get filename from URL
-			const fileName = url.split("/").pop() || "remote_protocol.netcanvas";
-
 			dispatch(setActiveProtocol(migratedProtocol as CurrentProtocol));
-			dispatch(setProtocolMeta({ name: fileName.replace(/\.netcanvas$/, "") }));
 
 			navigate("/protocol");
 		} catch (error) {
