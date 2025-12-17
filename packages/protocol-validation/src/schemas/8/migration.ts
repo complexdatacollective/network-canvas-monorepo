@@ -1,4 +1,4 @@
-import type { MigrationContext, ProtocolDocument, ProtocolMigration } from "~/migration";
+import type { ProtocolDocument, ProtocolMigration } from "~/migration";
 import { traverseAndTransform } from "~/utils/traverse-and-transform";
 
 const migrationV7toV8: ProtocolMigration<7, 8> = {

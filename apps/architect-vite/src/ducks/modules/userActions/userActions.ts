@@ -89,10 +89,7 @@ const checkSchemaVersion = (protocol: CurrentProtocol): schemaVersionStates => {
 // helper function so we can use loadingLock
 const handleProtocolMigration = createAsyncThunk(
 	"protocol/openOrUpgrade",
-	async (
-		{ protocol, context }: { protocol: CurrentProtocol; context?: MigrationContext },
-		{ dispatch },
-	) => {
+	async ({ protocol, context }: { protocol: CurrentProtocol; context?: MigrationContext }, { dispatch }) => {
 		const schemaVersionStatus = checkSchemaVersion(protocol);
 		switch (schemaVersionStatus) {
 			case schemaVersionStates.OK: {
