@@ -42,6 +42,20 @@
 		@apply py-4 px-6;
 	}
 
+	.overview-name {
+		@apply text-2xl font-bold w-full mb-2;
+		background: transparent;
+		border: none;
+		outline: none;
+		padding: 0;
+		color: inherit;
+		font-family: inherit;
+
+		&:focus {
+			outline: none;
+		}
+	}
+
 	.overview__footer {
 		@apply py-4 px-6 flex gap-6;
 		background: var(--color-slate-blue-dark);
