@@ -36,7 +36,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			// displayVariable should be removed from node definition
@@ -73,7 +73,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			// displayVariable should be removed from edge definition
@@ -114,7 +114,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			// All displayVariable properties should be removed
@@ -163,7 +163,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const isActive = parsed.codebook.node?.person?.variables?.isActive;
@@ -209,7 +209,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			expect(parsed.codebook.edge?.knows?.variables?.isReciprocal).not.toHaveProperty("options");
@@ -247,7 +247,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			expect(parsed.codebook.ego?.variables?.employed).not.toHaveProperty("options");
@@ -281,7 +281,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			// Boolean (not Toggle) should keep options
@@ -314,7 +314,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const category = parsed.codebook.node?.person?.variables?.category;
@@ -365,7 +365,7 @@ describe("Migration V7 to V8", () => {
 				],
 			};
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const stage = parsed.stages[0];
@@ -408,7 +408,7 @@ describe("Migration V7 to V8", () => {
 				],
 			};
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const stage = parsed.stages[0];
@@ -448,7 +448,7 @@ describe("Migration V7 to V8", () => {
 				],
 			};
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const stage = parsed.stages[0];
@@ -515,7 +515,7 @@ describe("Migration V7 to V8", () => {
 				],
 			};
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const stage = parsed.stages[0];
@@ -555,7 +555,7 @@ describe("Migration V7 to V8", () => {
 				],
 			};
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
 			const stage = parsed.stages[0];
@@ -575,7 +575,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migrated = migrationV7toV8.migrate(v7Protocol);
+			const migrated = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 
 			expect(migrated.schemaVersion).toBe(8);
 		});
@@ -587,7 +587,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migrated = migrationV7toV8.migrate(v7Protocol);
+			const migrated = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 
 			expect(migrated).toHaveProperty("experiments");
 			expect(migrated.experiments).toEqual({});
@@ -602,7 +602,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migrated = migrationV7toV8.migrate(v7Protocol);
+			const migrated = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 
 			expect(migrated.schemaVersion).toBe(8);
 			expect(migrated.description).toBe("Test protocol");
@@ -771,7 +771,7 @@ describe("Migration V7 to V8", () => {
 				],
 			} as Protocol<7>;
 
-			const migratedRaw = migrationV7toV8.migrate(v7Protocol);
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 
 			// Validate against V8 schema
 			const result = ProtocolSchemaV8.safeParse(migratedRaw);
@@ -793,7 +793,7 @@ describe("Migration V7 to V8", () => {
 				stages: [],
 			} as Protocol<7>;
 
-			const migrated = migrationV7toV8.migrate(v7Protocol);
+			const migrated = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 
 			expect(migrated.schemaVersion).toBe(8);
 			expect(migrated.experiments).toEqual({});

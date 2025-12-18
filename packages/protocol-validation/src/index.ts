@@ -4,7 +4,6 @@ import validateProtocol from "./validation/validate-protocol";
 
 export {
 	MigrationChain,
-	type MigrationContext,
 	type ProtocolMigration as Migration,
 	protocolMigrations,
 } from "./migration";
@@ -22,8 +21,8 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from "./schemas";
 
-export { type ExtractedAsset, extractProtocol };
+export { extractProtocol, type ExtractedAsset };
 
-export { getVariableNamesFromNetwork, type Network, validateNames };
+export { getVariableNamesFromNetwork, validateNames, type Network };
 
 export { validateProtocol };

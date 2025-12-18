@@ -2,7 +2,6 @@ import {
 	type CurrentProtocol,
 	extractProtocol,
 	getMigrationInfo,
-	type MigrationContext,
 	migrateProtocol,
 	validateProtocol,
 } from "@codaco/protocol-validation";
@@ -37,7 +36,7 @@ export const openLocalNetcanvas = createAsyncThunk("protocol/openLocalNetcanvas"
 		const migratedProtocol = await dispatch(
 			handleProtocolMigration({
 				protocol: protocol as CurrentProtocol,
-				context: { filename: protocolName },
+				name: protocolName,
 			}),
 		).unwrap();
 
@@ -89,7 +88,7 @@ const checkSchemaVersion = (protocol: CurrentProtocol): schemaVersionStates => {
 // helper function so we can use loadingLock
 const handleProtocolMigration = createAsyncThunk(
 	"protocol/openOrUpgrade",
-	async ({ protocol, context }: { protocol: CurrentProtocol; context?: MigrationContext }, { dispatch }) => {
+	async ({ protocol, name }: { protocol: CurrentProtocol; name: string }, { dispatch }) => {
 		const schemaVersionStatus = checkSchemaVersion(protocol);
 		switch (schemaVersionStatus) {
 			case schemaVersionStates.OK: {
@@ -104,7 +103,7 @@ const handleProtocolMigration = createAsyncThunk(
 					return false;
 				}
 
-				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, context);
+				const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, { name });
 				return migratedProtocol as CurrentProtocol;
 			}
 			case schemaVersionStates.UPGRADE_APP:
@@ -188,7 +187,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			const migratedProtocol = await dispatch(
 				handleProtocolMigration({
 					protocol: protocol as CurrentProtocol,
-					context: { filename: protocolName },
+					name: protocolName,
 				}),
 			).unwrap();
 

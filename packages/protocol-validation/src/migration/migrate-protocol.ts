@@ -8,7 +8,7 @@ import {
 } from "../schemas";
 import migrationV7toV8 from "../schemas/8/migration";
 import { SchemaVersionDetectionError, ValidationError } from "./errors";
-import { type MigrationContext, type ProtocolDocument, protocolMigrations } from "./index";
+import { type ProtocolDocument, protocolMigrations } from "./index";
 
 protocolMigrations.register(migrationV7toV8);
 
@@ -28,7 +28,7 @@ export function detectSchemaVersion(document: unknown): SchemaVersion {
 export function migrateProtocol(
 	document: unknown,
 	targetVersion: SchemaVersion = CURRENT_SCHEMA_VERSION,
-	context?: MigrationContext,
+	dependencies: Record<string, unknown> = {},
 ): CurrentProtocol {
 	// Detect and validate source schema version
 	const detectedVersion = detectSchemaVersion(document);
@@ -43,7 +43,7 @@ export function migrateProtocol(
 	}
 
 	// Perform migration
-	const migrated = protocolMigrations.migrate(document as ProtocolDocument<SchemaVersion>, targetVersion, context);
+	const migrated = protocolMigrations.migrate(document as ProtocolDocument<SchemaVersion>, targetVersion, dependencies);
 
 	// Validate migrated document against target schema
 	const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
@@ -64,6 +64,7 @@ export function getMigrationInfo(from: SchemaVersion, to: SchemaVersion = CURREN
 		path,
 		stepsRequired: path.length - 1,
 		notes: protocolMigrations.getMigrationNotes(from, to),
+		dependencies: protocolMigrations.getDependencies(from, to),
 	};
 }
 
@@ -78,17 +79,17 @@ export class ProtocolMigrator {
 		options?: {
 			cacheKey?: string;
 			targetVersion?: SchemaVersion;
-			context?: MigrationContext;
+			dependencies?: Record<string, unknown>;
 		},
 	): Promise<CurrentProtocol> {
-		const { cacheKey, targetVersion, context } = options || {};
+		const { cacheKey, targetVersion, dependencies } = options || {};
 
 		if (cacheKey && this.cache.has(cacheKey)) {
 			const cached = this.cache.get(cacheKey);
 			if (cached) return cached;
 		}
 
-		const migrated = migrateProtocol(document, targetVersion, context);
+		const migrated = migrateProtocol(document, targetVersion, dependencies);
 
 		if (cacheKey) {
 			this.cache.set(cacheKey, migrated);

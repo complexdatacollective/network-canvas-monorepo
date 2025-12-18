@@ -49,12 +49,7 @@ const SummaryPage = () => {
 		const dateString = `${dateWithSafeChars(now.toLocaleDateString(), "-")} ${dateWithSafeChars(now.toLocaleTimeString(), ".")}`;
 
 		// Extract filename without extension (web-compatible approach)
-		const baseFileName =
-			protocolName
-				.replace(/\.netcanvas$/, "")
-				.split("/")
-				.pop() || "protocol";
-		const fileName = `${baseFileName} Protocol Summary (Created ${dateString}).pdf`;
+		const fileName = `${protocolName} Protocol Summary (Created ${dateString}).pdf`;
 
 		window.document.title = fileName;
 		window.print();
