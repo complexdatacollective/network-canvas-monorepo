@@ -25,7 +25,7 @@ import { stageSchema } from "./stages";
 
 const ProtocolSchema = z
 	.strictObject({
-		name: z.string(),
+		name: z.string().min(1),
 		description: z.string().optional(),
 		experiments: ExperimentsSchema.optional(),
 		lastModified: z

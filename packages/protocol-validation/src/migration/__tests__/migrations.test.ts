@@ -161,7 +161,7 @@ describe("Protocol Migrations", () => {
 			const migration = {
 				from: 7 as const,
 				to: 8 as const,
-				dependencies: [],
+				dependencies: {},
 				migrate: (doc: ProtocolDocument<7>) =>
 					({
 						...doc,

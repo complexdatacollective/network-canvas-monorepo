@@ -26,9 +26,28 @@ export type ProtocolMigration<
 	from: From;
 	to: To;
 	notes?: string;
-	dependencies: (keyof Deps)[];
+	dependencies: Deps;
 	migrate: (doc: ProtocolDocument<From>, deps: Deps) => ProtocolDocument<To>;
 };
+
+/**
+ * Helper to create a migration with inferred dependency types.
+ * Dependencies are defined as an object where keys are dependency names
+ *
+ */
+export function createMigration<
+	From extends SchemaVersion,
+	To extends SchemaVersion,
+	Deps extends Record<string, unknown>,
+>(config: {
+	from: From;
+	to: To;
+	notes?: string;
+	dependencies: Deps;
+	migrate: (doc: ProtocolDocument<From>, deps: Deps) => ProtocolDocument<To>;
+}): ProtocolMigration<From, To, Deps> {
+	return config;
+}
 
 type AnyMigration = ProtocolMigration<SchemaVersion, SchemaVersion, Record<string, unknown>>;
 
@@ -71,8 +90,8 @@ export class MigrationChain {
 		while (current < to) {
 			const migration = this.migrations.get(current);
 			if (!migration) break;
-			for (const dep of migration.dependencies) {
-				allDeps.add(dep as string);
+			for (const dep of Object.keys(migration.dependencies)) {
+				allDeps.add(dep);
 			}
 			current = migration.to;
 		}
