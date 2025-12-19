@@ -1,6 +1,6 @@
 import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
@@ -26,6 +26,12 @@ const Overview = ({
 	protocolIsValid,
 }: OverviewProps) => {
 	const [, setLocation] = useLocation();
+	const [localName, setLocalName] = useState(name ?? "");
+
+	// Sync from Redux when prop changes (e.g., undo/redo)
+	useEffect(() => {
+		setLocalName(name ?? "");
+	}, [name]);
 
 	const handleNavigateToAssets = useCallback(() => {
 		setLocation("/protocol/assets");
@@ -46,8 +52,12 @@ const Overview = ({
 					<input
 						type="text"
 						className="overview-name"
-						value={name ?? ""}
-						onChange={(e) => updateName({ name: e.target.value })}
+						value={localName}
+						onChange={(e) => setLocalName(e.target.value)}
+						onBlur={() => {
+							const trimmed = localName.trim();
+							trimmed ? updateName({ name: trimmed }) : setLocalName(name ?? "");
+						}}
 						placeholder="Enter protocol name..."
 					/>
 				</div>
