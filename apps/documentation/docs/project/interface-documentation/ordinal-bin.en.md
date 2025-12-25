@@ -20,7 +20,7 @@ A single node type is selectable per screen. This screen supports [filtering](..
 
 ![](/assets/img/interface-documentation/ordinal-bin/architect_1.png)
 
-An Ordinal Bin screen can include multiple [prompts](/en/desktop/key-concepts/prompts), each of which relates to a single ordinal variable.
+An Ordinal Bin screen can include multiple [prompts](/en/project/key-concepts/prompts), each of which relates to a single ordinal variable.
 
 ![](/assets/img/interface-documentation/ordinal-bin/architect_2.png)
 

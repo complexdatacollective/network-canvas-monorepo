@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const projects = ["desktop", "fresco"] as const;
+export const projects = ["project", "desktop", "fresco"] as const;
 
 export type Project = (typeof projects)[number];
 
