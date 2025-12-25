@@ -1,45 +1,134 @@
-import { faker } from "@faker-js/faker";
 import { getNodeTypeId, getNodeVariableId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
 
-export const filterRuleSchema = z.strictObject({
-	type: z.enum(["node", "ego", "edge"]).generateMock(() => "node" as const),
-	id: z.string(),
-	options: z.strictObject({
+// Operators valid when checking entity type existence (no attribute specified)
+export const TypeLevelOperators = z.enum(["EXISTS", "NOT_EXISTS"]);
+
+// All operators (attribute-level validation happens in logic validation based on variable type)
+export const AllOperators = z.enum([
+	"EXISTS",
+	"NOT_EXISTS",
+	"EXACTLY",
+	"NOT",
+	"GREATER_THAN",
+	"GREATER_THAN_OR_EQUAL",
+	"LESS_THAN",
+	"LESS_THAN_OR_EQUAL",
+	"INCLUDES",
+	"EXCLUDES",
+	"OPTIONS_GREATER_THAN",
+	"OPTIONS_LESS_THAN",
+	"OPTIONS_EQUALS",
+	"OPTIONS_NOT_EQUALS",
+	"CONTAINS",
+	"DOES_NOT_CONTAIN",
+]);
+
+export type FilterOperator = z.infer<typeof AllOperators>;
+
+// Operator sets by variable type (used in logic validation)
+export const BaseOperators = ["EXISTS", "NOT_EXISTS", "EXACTLY", "NOT"] as const;
+export const TextOperators = [...BaseOperators, "CONTAINS", "DOES_NOT_CONTAIN"] as const;
+export const NumericOperators = [
+	...BaseOperators,
+	"GREATER_THAN",
+	"GREATER_THAN_OR_EQUAL",
+	"LESS_THAN",
+	"LESS_THAN_OR_EQUAL",
+] as const;
+export const CategoricalOperators = [
+	...BaseOperators,
+	"INCLUDES",
+	"EXCLUDES",
+	"OPTIONS_GREATER_THAN",
+	"OPTIONS_LESS_THAN",
+	"OPTIONS_EQUALS",
+	"OPTIONS_NOT_EQUALS",
+] as const;
+export const OrdinalOperators = [...BaseOperators, "INCLUDES", "EXCLUDES"] as const;
+
+// Map variable types to their valid operators
+export const OperatorsByVariableType: Record<string, readonly string[]> = {
+	boolean: BaseOperators,
+	text: TextOperators,
+	number: NumericOperators,
+	scalar: NumericOperators,
+	datetime: NumericOperators,
+	ordinal: OrdinalOperators,
+	categorical: CategoricalOperators,
+	layout: BaseOperators,
+	location: BaseOperators,
+};
+
+// Value schema with custom mock generator to avoid z.any() traversal
+const filterValueSchema = z
+	.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())])
+	.optional()
+	.generateMock(() => "test-value");
+
+// Options schema for type-level rules (no attribute - checking entity existence)
+const typeLevelOptionsSchema = z
+	.strictObject({
 		type: z
 			.string()
 			.optional()
 			.generateMock(() => getNodeTypeId()),
-		attribute: z
+		operator: TypeLevelOperators,
+		value: filterValueSchema,
+	})
+	.generateMock(() => ({
+		type: getNodeTypeId(),
+		operator: "EXISTS" as const,
+	}));
+
+// Options schema for attribute-level rules (attribute specified - checking variable value)
+const attributeLevelOptionsSchema = z
+	.strictObject({
+		type: z
 			.string()
 			.optional()
-			.generateMock(() => getNodeVariableId()),
-		operator: z.union([
-			// TODO: this can be narrowed based on `type` and `attribute`
-			z.literal("EXISTS"),
-			z.literal("NOT_EXISTS"),
-			z.literal("EXACTLY"),
-			z.literal("NOT"),
-			z.literal("GREATER_THAN"),
-			z.literal("GREATER_THAN_OR_EQUAL"),
-			z.literal("LESS_THAN"),
-			z.literal("LESS_THAN_OR_EQUAL"),
-			z.literal("INCLUDES"),
-			z.literal("EXCLUDES"),
-			z.literal("OPTIONS_GREATER_THAN"),
-			z.literal("OPTIONS_LESS_THAN"),
-			z.literal("OPTIONS_EQUALS"),
-			z.literal("OPTIONS_NOT_EQUALS"),
-			z.literal("CONTAINS"),
-			z.literal("DOES_NOT_CONTAIN"),
-		]),
+			.generateMock(() => getNodeTypeId()),
+		attribute: z.string().generateMock(() => getNodeVariableId()),
+		operator: AllOperators,
+		value: filterValueSchema,
+	})
+	.generateMock(() => ({
+		type: getNodeTypeId(),
+		attribute: getNodeVariableId(),
+		operator: "EXACTLY" as const,
+		value: "test",
+	}));
 
-		value: z
-			.union([z.number().int(), z.string(), z.boolean(), z.array(z.any())])
-			.optional()
-			.generateMock(() => faker.string.alpha(5)),
-	}),
-});
+// Type-level filter rule (no attribute - EXISTS/NOT_EXISTS only)
+const typeLevelFilterRuleSchema = z
+	.strictObject({
+		type: z.enum(["node", "ego", "edge"]).generateMock(() => "node" as const),
+		id: z.string(),
+		options: typeLevelOptionsSchema,
+	})
+	.generateMock(() => ({
+		type: "node" as const,
+		id: crypto.randomUUID(),
+		options: typeLevelOptionsSchema.generateMock(),
+	}));
+
+// Attribute-level filter rule (attribute specified - all operators valid at schema level)
+const attributeLevelFilterRuleSchema = z
+	.strictObject({
+		type: z.enum(["node", "ego", "edge"]).generateMock(() => "node" as const),
+		id: z.string(),
+		options: attributeLevelOptionsSchema,
+	})
+	.generateMock(() => ({
+		type: "node" as const,
+		id: crypto.randomUUID(),
+		options: attributeLevelOptionsSchema.generateMock(),
+	}));
+
+// Combined filter rule schema using discriminated union
+export const filterRuleSchema = z
+	.union([attributeLevelFilterRuleSchema, typeLevelFilterRuleSchema])
+	.generateMock(() => attributeLevelFilterRuleSchema.generateMock());
 
 export type FilterRule = z.infer<typeof filterRuleSchema>;
 

@@ -9,6 +9,7 @@ import {
 	findDuplicateId,
 	findDuplicateName,
 	getAllEntityNames,
+	getFilterRuleVariableType,
 	getVariableNames,
 	getVariablesForSubject,
 	variableExists,
@@ -487,6 +488,84 @@ describe("Validation Helpers", () => {
 			};
 			const result = filterRuleAttributeExists(rule, codebook);
 			expect(result).toBe(false);
+		});
+	});
+
+	describe("getFilterRuleVariableType", () => {
+		it("returns variable type for node filter rule with valid attribute", () => {
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: {
+					type: "person",
+					attribute: "name",
+					operator: "EXISTS" as const,
+				},
+			};
+			const result = getFilterRuleVariableType(rule, codebook);
+			expect(result).toBe("text");
+		});
+
+		it("returns variable type for ego filter rule with valid attribute", () => {
+			const rule = {
+				id: "rule1",
+				type: "ego" as const,
+				options: { attribute: "egoAge", operator: "EXISTS" as const },
+			};
+			const result = getFilterRuleVariableType(rule, codebook);
+			expect(result).toBe("number");
+		});
+
+		it("returns variable type for edge filter rule with valid attribute", () => {
+			const rule = {
+				id: "rule1",
+				type: "edge" as const,
+				options: {
+					type: "knows",
+					attribute: "closeness",
+					operator: "EXISTS" as const,
+				},
+			};
+			const result = getFilterRuleVariableType(rule, codebook);
+			expect(result).toBe("ordinal");
+		});
+
+		it("returns undefined when attribute is not specified", () => {
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: { type: "person" },
+			};
+			const result = getFilterRuleVariableType(rule, codebook);
+			expect(result).toBeUndefined();
+		});
+
+		it("returns undefined when attribute doesn't exist in codebook", () => {
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: {
+					type: "person",
+					attribute: "nonexistent",
+					operator: "EXISTS" as const,
+				},
+			};
+			const result = getFilterRuleVariableType(rule, codebook);
+			expect(result).toBeUndefined();
+		});
+
+		it("returns undefined when entity type doesn't exist", () => {
+			const rule = {
+				id: "rule1",
+				type: "node" as const,
+				options: {
+					type: "nonexistent",
+					attribute: "name",
+					operator: "EXISTS" as const,
+				},
+			};
+			const result = getFilterRuleVariableType(rule, codebook);
+			expect(result).toBeUndefined();
 		});
 	});
 

@@ -136,7 +136,7 @@ export const filterRuleEntityExists = (rule: FilterRule, codebook: Codebook): bo
  * Check if filter rule attribute exists
  */
 export const filterRuleAttributeExists = (rule: FilterRule, codebook: Codebook): boolean => {
-	if (!rule.options.attribute) return true; // No attribute to check
+	if (!("attribute" in rule.options) || !rule.options.attribute) return true; // No attribute to check
 
 	if (rule.type === "ego") {
 		return Boolean(codebook.ego?.variables?.[rule.options.attribute]);
@@ -144,6 +144,25 @@ export const filterRuleAttributeExists = (rule: FilterRule, codebook: Codebook):
 
 	const entity = codebook[rule.type]?.[rule.options.type || ""];
 	return Boolean(entity?.variables?.[rule.options.attribute]);
+};
+
+/**
+ * Get the variable type for a filter rule's attribute
+ * Returns undefined if attribute is not specified or variable doesn't exist
+ */
+export const getFilterRuleVariableType = (rule: FilterRule, codebook: Codebook): string | undefined => {
+	if (!("attribute" in rule.options) || !rule.options.attribute) return undefined;
+
+	let variable: Variable | undefined;
+
+	if (rule.type === "ego") {
+		variable = codebook.ego?.variables?.[rule.options.attribute];
+	} else {
+		const entity = codebook[rule.type]?.[rule.options.type || ""];
+		variable = entity?.variables?.[rule.options.attribute];
+	}
+
+	return variable?.type;
 };
 
 /**

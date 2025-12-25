@@ -4,9 +4,11 @@ import {
 	filterRuleAttributeExists,
 	filterRuleEntityExists,
 	findDuplicateId,
+	getFilterRuleVariableType,
 	getVariablesForSubject,
 	variableExists,
 } from "~/utils/validation-helpers";
+import { OperatorsByVariableType } from "./filters";
 
 // Re-export all the split schemas
 export * from "./assets";
@@ -217,13 +219,81 @@ const ProtocolSchema = z
 						});
 					}
 
+					// Check if this is an attribute-level rule
+					const hasAttribute = "attribute" in rule.options && rule.options.attribute;
+
 					// Check attribute exists
-					if (rule.options.attribute && !filterRuleAttributeExists(rule, protocol.codebook)) {
+					const attributeExists = !hasAttribute || filterRuleAttributeExists(rule, protocol.codebook);
+					if (!attributeExists && hasAttribute && "attribute" in rule.options) {
 						ctx.addIssue({
 							code: "custom" as const,
 							message: `"${rule.options.attribute}" is not a valid variable ID`,
 							path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "attribute"],
 						});
+					}
+
+					// Validate operator based on variable type (only if attribute exists and is valid)
+					if (hasAttribute && attributeExists) {
+						const variableType = getFilterRuleVariableType(rule, protocol.codebook);
+						if (variableType) {
+							const validOperators = OperatorsByVariableType[variableType];
+							const shouldAddIssue = validOperators && !validOperators.includes(rule.options.operator);
+							if (shouldAddIssue) {
+								ctx.addIssue({
+									code: "custom" as const,
+									message: `Operator "${rule.options.operator}" is not valid for variable type "${variableType}". Valid operators: ${validOperators.join(", ")}`,
+									path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "operator"],
+								});
+							}
+
+							// Validate value type based on operator
+							if (rule.options.value !== undefined) {
+								const valueType = Array.isArray(rule.options.value) ? "array" : typeof rule.options.value;
+
+								// Operators that expect numeric values for comparison
+								const numericComparisonOperators = [
+									"GREATER_THAN",
+									"GREATER_THAN_OR_EQUAL",
+									"LESS_THAN",
+									"LESS_THAN_OR_EQUAL",
+								];
+								// Operators that count array length (expect numeric value)
+								const optionsCountOperators = [
+									"OPTIONS_GREATER_THAN",
+									"OPTIONS_LESS_THAN",
+									"OPTIONS_EQUALS",
+									"OPTIONS_NOT_EQUALS",
+								];
+								// Operators that expect string values for text matching
+								const stringValueOperators = ["CONTAINS", "DOES_NOT_CONTAIN"];
+								// Note: INCLUDES/EXCLUDES accept single values (string, number, boolean) or arrays
+								// - they handle conversion at runtime in predicate.js
+
+								if (numericComparisonOperators.includes(rule.options.operator) && valueType !== "number") {
+									ctx.addIssue({
+										code: "custom" as const,
+										message: `Operator "${rule.options.operator}" requires a numeric value, but got ${valueType}`,
+										path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "value"],
+									});
+								}
+
+								if (optionsCountOperators.includes(rule.options.operator) && valueType !== "number") {
+									ctx.addIssue({
+										code: "custom" as const,
+										message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
+										path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "value"],
+									});
+								}
+
+								if (stringValueOperators.includes(rule.options.operator) && valueType !== "string") {
+									ctx.addIssue({
+										code: "custom" as const,
+										message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
+										path: ["stages", stageIndex, "filter", "rules", ruleIndex, "options", "value"],
+									});
+								}
+							}
+						}
 					}
 				});
 			}
