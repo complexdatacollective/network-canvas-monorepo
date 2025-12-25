@@ -1,4 +1,5 @@
 {
+	"name": "Development Protocol",
 	"experiments": {
 		"encryptedVariables": true
 	},

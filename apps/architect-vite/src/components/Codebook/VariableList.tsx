@@ -1,4 +1,3 @@
-import type { ComponentProps } from "react";
 import { compose } from "recompose";
 import { Heading, rowClassName, type SortDirection, withSort } from "./Variables";
 
@@ -51,4 +50,4 @@ const Variables = ({
 	);
 };
 
-export default compose<ComponentProps<typeof Variables>, typeof Variables>(withSort)(Variables);
+export default compose<VariableListProps, { variables?: string[] }>(withSort)(Variables);

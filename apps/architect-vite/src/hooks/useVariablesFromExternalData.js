@@ -18,7 +18,7 @@ const useVariablesFromExternalData = (dataSource, asOptions = false, type = "net
 	// Create a minimal state object containing only what's needed
 	const partialState = useMemo(
 		() => ({
-			protocol: { present: { assetManifest } },
+			activeProtocol: { present: { assetManifest } },
 		}),
 		[assetManifest],
 	);

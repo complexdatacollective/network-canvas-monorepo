@@ -15,14 +15,15 @@ export const analyticsListenerMiddleware = createListenerMiddleware();
 type AppStartListening = TypedStartListening<RootState, AppDispatch>;
 const startAppListening = analyticsListenerMiddleware.startListening as AppStartListening;
 
-// Track protocol opened
+// Track protocol opened (triggered when active protocol is set)
 startAppListening({
 	actionCreator: setActiveProtocol,
 	effect: (action) => {
+		const protocol = action.payload;
 		posthog.capture("protocol_opened", {
-			protocol_name: action.payload.name,
-			schema_version: action.payload.schemaVersion,
-			stage_count: action.payload.stages?.length ?? 0,
+			protocol_name: protocol?.name,
+			schema_version: protocol?.schemaVersion ?? 8,
+			stage_count: protocol?.stages?.length ?? 0,
 		});
 	},
 });

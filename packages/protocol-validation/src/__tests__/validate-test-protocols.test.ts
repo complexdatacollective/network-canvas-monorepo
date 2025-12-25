@@ -46,8 +46,14 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 				continue;
 			}
 
+			// Add default name for v8 protocols that don't have one
+			// TODO: Remove this once all test protocols are updated with name field
+			const protocolName = filename?.replace(/\.netcanvas$/, "") ?? "Unknown Protocol";
+			const protocolWithName =
+				protocolVersion === 8 && !("name" in protocol) ? { ...protocol, name: protocolName } : protocol;
+
 			const startTime = Date.now();
-			const result = await validateProtocol(protocol);
+			const result = await validateProtocol(protocolWithName);
 			const duration = Date.now() - startTime;
 
 			// If there are errors, log them (using unified errors array)
@@ -61,7 +67,7 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 
 			// Migrate and validate protocols with schema version < 8
 			if (protocol.schemaVersion < 8) {
-				const migratedProtocol = migrateProtocol(protocol);
+				const migratedProtocol = migrateProtocol(protocol, undefined, { name: protocolName });
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {

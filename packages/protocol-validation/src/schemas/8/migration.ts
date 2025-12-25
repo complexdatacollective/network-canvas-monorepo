@@ -1,9 +1,10 @@
-import type { ProtocolDocument, ProtocolMigration } from "~/migration";
+import { createMigration, type ProtocolDocument } from "~/migration";
 import { traverseAndTransform } from "~/utils/traverse-and-transform";
 
-const migrationV7toV8: ProtocolMigration<7, 8> = {
+const migrationV7toV8 = createMigration({
 	from: 7,
 	to: 8,
+	dependencies: { name: "" },
 	notes: `
 - New interface: "geospatial interface". Allows the participant to select a location on a map based on a geojson shapefile.
 - New experimental interface: "anonymisation interface". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.
@@ -14,8 +15,9 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 - Removed 'options' property for boolean Toggle variables. This property was not used.
 - Changed FilterRule type to use the same entity names as elsewhere
+- Added 'name' property to protocol (required dependency for migration)
 `,
-	migrate: (doc) => {
+	migrate: (doc, deps) => {
 		const transformed = traverseAndTransform(doc as Record<string, unknown>, [
 			{
 				// Remove deprecated 'displayVariable' property from node and edge entity definitions
@@ -69,8 +71,12 @@ const migrationV7toV8: ProtocolMigration<7, 8> = {
 			},
 		]);
 
-		return transformed as ProtocolDocument<8>;
+		// Set name from required dependency
+		const result = transformed as Record<string, unknown>;
+		result.name = deps.name;
+
+		return result as ProtocolDocument<8>;
 	},
-};
+});
 
 export default migrationV7toV8;

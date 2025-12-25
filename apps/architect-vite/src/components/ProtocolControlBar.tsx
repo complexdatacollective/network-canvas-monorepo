@@ -6,7 +6,7 @@ import ControlBar from "~/components/ControlBar";
 import { useAppDispatch } from "~/ducks/hooks";
 import { clearActiveProtocol, redo, undo } from "~/ducks/modules/activeProtocol";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { checkUnsavedChanges, exportNetcanvas } from "~/ducks/modules/userActions/userActions";
+import { exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import type { RootState } from "~/ducks/store";
 import logoutIcon from "~/images/home/log-out.svg";
 import { Button } from "~/lib/legacy-ui/components";
@@ -21,14 +21,7 @@ const ProtocolControlBar = () => {
 	const canUndo = useSelector((state: RootState) => getCanUndo(state));
 	const canRedo = useSelector((state: RootState) => getCanRedo(state));
 
-	const handleReturnToStart = useCallback(async () => {
-		// todo: confirm un-downloaded changes
-
-		const canContinue = await dispatch(checkUnsavedChanges()).unwrap();
-		if (!canContinue) {
-			return;
-		}
-
+	const handleReturnToStart = useCallback(() => {
 		dispatch(
 			dialogActions.openDialog({
 				type: "Warning",

@@ -1,10 +1,10 @@
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
-import type { ProtocolWithMetadata } from "~/types";
 import Protocol from "../Protocol";
 
 // Mock components to avoid complex rendering
@@ -42,7 +42,7 @@ vi.mock("motion/react", () => ({
 const mockProtocolName = "Test Protocol";
 const mockProtocolDescription = "test description";
 
-const mockProtocol: ProtocolWithMetadata = {
+const mockProtocol: CurrentProtocol = {
 	name: mockProtocolName,
 	description: mockProtocolDescription,
 	schemaVersion: 8,

@@ -82,7 +82,7 @@ describe("Protocol Migration - Extended Tests", () => {
 				invalidField: "test",
 			};
 
-			expect(() => migrateProtocol(invalidDoc)).toThrow(ValidationError);
+			expect(() => migrateProtocol(invalidDoc, undefined, { name: "Test Protocol" })).toThrow(ValidationError);
 		});
 
 		it("should throw ValidationError with version information", () => {
@@ -91,7 +91,7 @@ describe("Protocol Migration - Extended Tests", () => {
 			};
 
 			try {
-				migrateProtocol(invalidDoc);
+				migrateProtocol(invalidDoc, undefined, { name: "Test Protocol" });
 			} catch (e) {
 				expect(e).toBeInstanceOf(ValidationError);
 				if (e instanceof ValidationError) {
@@ -113,7 +113,7 @@ describe("Protocol Migration - Extended Tests", () => {
 				stages: [],
 			};
 
-			const migrated = migrateProtocol(v7Doc);
+			const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
 
 			expect(typeof migrated.description).toBe("string");
 			expect(migrated.description).toBe("Test protocol");
@@ -135,7 +135,7 @@ describe("Protocol Migration - Extended Tests", () => {
 				stages: [],
 			};
 
-			const migrated = migrateProtocol(v7Doc);
+			const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
 
 			expect(migrated).toHaveProperty("experiments");
 			expect(migrated.experiments).toEqual({});
@@ -155,7 +155,7 @@ describe("Protocol Migration - Extended Tests", () => {
 
 			// This should either migrate successfully or throw a clear validation error
 			try {
-				const migrated = migrateProtocol(v7Doc);
+				const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
 				expect(migrated.schemaVersion).toBe(8);
 			} catch (e) {
 				expect(e).toBeInstanceOf(ValidationError);
@@ -176,8 +176,8 @@ describe("Protocol Migration - Extended Tests", () => {
 				stages: [],
 			};
 
-			const result1 = await protocolMigrator.migrate(v7Doc);
-			const result2 = await protocolMigrator.migrate(v7Doc);
+			const result1 = await protocolMigrator.migrate(v7Doc, { dependencies: { name: "Test Protocol" } });
+			const result2 = await protocolMigrator.migrate(v7Doc, { dependencies: { name: "Test Protocol" } });
 
 			// Without cache key, results should be different instances
 			expect(result1.schemaVersion).toBe(8);
@@ -198,9 +198,11 @@ describe("Protocol Migration - Extended Tests", () => {
 
 			const result1 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "key1",
+				dependencies: { name: "Test Protocol" },
 			});
 			const result2 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "key2",
+				dependencies: { name: "Test Protocol" },
 			});
 
 			expect(result1).not.toBe(result2);
@@ -226,6 +228,7 @@ describe("Protocol Migration - Extended Tests", () => {
 
 			const result = await protocolMigrator.migrate(v7Doc, {
 				targetVersion: 8,
+				dependencies: { name: "Test Protocol" },
 			});
 
 			expect(result.schemaVersion).toBe(8);
@@ -246,11 +249,13 @@ describe("Protocol Migration - Extended Tests", () => {
 			const result1 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "custom-target",
 				targetVersion: 8,
+				dependencies: { name: "Test Protocol" },
 			});
 
 			const result2 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "custom-target",
 				targetVersion: 8,
+				dependencies: { name: "Test Protocol" },
 			});
 
 			expect(result1).toBe(result2);
@@ -265,6 +270,7 @@ describe("Protocol Migration - Extended Tests", () => {
 			await expect(
 				protocolMigrator.migrate(invalidDoc, {
 					cacheKey: "error-test",
+					dependencies: { name: "Test Protocol" },
 				}),
 			).rejects.toThrow();
 
@@ -272,6 +278,7 @@ describe("Protocol Migration - Extended Tests", () => {
 			await expect(
 				protocolMigrator.migrate(invalidDoc, {
 					cacheKey: "error-test",
+					dependencies: { name: "Test Protocol" },
 				}),
 			).rejects.toThrow();
 		});
