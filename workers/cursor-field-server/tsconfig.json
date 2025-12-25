@@ -1,0 +1,13 @@
+{
+	"extends": "@codaco/tsconfig/base.json",
+	"compilerOptions": {
+		"composite": true,
+		"baseUrl": ".",
+		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+		"paths": {
+			"~/*": ["./src/*"]
+		}
+	},
+	"include": ["*.ts", "src"],
+	"exclude": ["dist", "node_modules"]
+}

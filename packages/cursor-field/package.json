@@ -1,0 +1,63 @@
+{
+	"name": "@codaco/cursor-field",
+	"version": "1.0.0",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./react": {
+			"types": "./dist/react.d.ts",
+			"import": "./dist/react.js"
+		},
+		"./vanilla": {
+			"types": "./dist/vanilla.d.ts",
+			"import": "./dist/vanilla.js"
+		},
+		"./shared": {
+			"types": "./dist/shared.d.ts",
+			"import": "./dist/shared.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc --noEmit && vite build",
+		"dev": "vite build --watch",
+		"test": "vitest --run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --build --noEmit"
+	},
+	"dependencies": {
+		"motion": "catalog:",
+		"motion-plus": "https://api.motion.dev/registry.tgz?package=motion-plus&version=2.0.2&token=ee3dc79377e9bbcf77b64b6b0ef6609f4732880cfce36ca28e1bb25064134076"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@vitejs/plugin-react": "^4.5.2",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		},
+		"react-dom": {
+			"optional": true
+		}
+	}
+}

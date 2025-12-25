@@ -21,6 +21,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_ALGOLIA_API_KEY: z.string().min(1),
 		NEXT_PUBLIC_MENDABLE_ANON_KEY: z.string().min(1),
 		NEXT_PUBLIC_GA_ID: z.string().min(1),
+		NEXT_PUBLIC_CURSOR_FIELD_HOST: z.string().optional(),
 	},
 	shared: {
 		NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -38,6 +39,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_ALGOLIA_API_KEY: process.env.NEXT_PUBLIC_ALGOLIA_API_KEY,
 		NEXT_PUBLIC_MENDABLE_ANON_KEY: process.env.NEXT_PUBLIC_MENDABLE_ANON_KEY,
 		NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+		NEXT_PUBLIC_CURSOR_FIELD_HOST: process.env.NEXT_PUBLIC_CURSOR_FIELD_HOST,
 		NODE_ENV: process.env.NODE_ENV,
 	},
 	skipValidation: true,

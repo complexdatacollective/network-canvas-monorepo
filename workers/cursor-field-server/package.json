@@ -1,0 +1,19 @@
+{
+	"name": "cursor-field-server",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "partykit dev",
+		"deploy": "partykit deploy",
+		"typecheck": "tsc --build --noEmit"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"partykit": "^0.0.115",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@codaco/cursor-field": "workspace:*",
+		"partysocket": "^1.1.3"
+	}
+}

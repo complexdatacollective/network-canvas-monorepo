@@ -8,6 +8,7 @@ import { getNow, getTimeZone, setRequestLocale } from "next-intl/server";
 import type { Messages } from "~/app/types";
 import { locales } from "~/app/types";
 import AIAssistant from "~/components/ai-assistant";
+import { CursorFieldWrapper } from "~/components/CursorFieldWrapper";
 import { LayoutComponent } from "~/components/Layout";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
 import { env } from "~/env";
@@ -73,6 +74,7 @@ export default async function MainLayout(props: MainLayoutProps) {
 					<NextIntlClientProvider timeZone={timeZone} now={now} locale={locale} messages={messages.default}>
 						<LayoutComponent>{children}</LayoutComponent>
 						<AIAssistant />
+						<CursorFieldWrapper />
 					</NextIntlClientProvider>
 				</ThemeProvider>
 			</body>
