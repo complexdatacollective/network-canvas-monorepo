@@ -47,7 +47,7 @@
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"autoprefixer": "^10.4.23",
-		"drizzle-kit": "^0.31.7",
+		"drizzle-kit": "^0.31.8",
 		"next-test-api-route-handler": "^5.0.3",
 		"tailwindcss": "catalog:",
 		"tsx": "catalog:",
