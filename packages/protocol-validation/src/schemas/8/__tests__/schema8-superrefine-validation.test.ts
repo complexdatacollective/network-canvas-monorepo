@@ -1120,6 +1120,237 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 			expect(result.success).toBe(true);
 		});
 
+		it("rejects invalid operator for variable type (CONTAINS on number variable)", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[1],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "age",
+										operator: "CONTAINS",
+										value: "25",
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const operatorError = result.error.issues.find((issue) =>
+					issue.message.includes('Operator "CONTAINS" is not valid for variable type "number"'),
+				);
+				expect(operatorError).toBeDefined();
+				expect(operatorError?.path).toEqual(["stages", 0, "filter", "rules", 0, "options", "operator"]);
+			}
+		});
+
+		it("rejects GREATER_THAN on text variable", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[1],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "name",
+										operator: "GREATER_THAN",
+										value: 100,
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const operatorError = result.error.issues.find((issue) =>
+					issue.message.includes('Operator "GREATER_THAN" is not valid for variable type "text"'),
+				);
+				expect(operatorError).toBeDefined();
+				expect(operatorError?.path).toEqual(["stages", 0, "filter", "rules", 0, "options", "operator"]);
+			}
+		});
+
+		it("accepts valid operator for variable type (GREATER_THAN on number variable)", () => {
+			const validProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[0],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "age",
+										operator: "GREATER_THAN",
+										value: 18,
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(validProtocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("accepts CONTAINS on text variable", () => {
+			const validProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[0],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "name",
+										operator: "CONTAINS",
+										value: "John",
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(validProtocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("rejects GREATER_THAN with string value (requires number)", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[1],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "age",
+										operator: "GREATER_THAN",
+										value: "25",
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const valueTypeError = result.error.issues.find((issue) =>
+					issue.message.includes('Operator "GREATER_THAN" requires a numeric value, but got string'),
+				);
+				expect(valueTypeError).toBeDefined();
+				expect(valueTypeError?.path).toEqual(["stages", 0, "filter", "rules", 0, "options", "value"]);
+			}
+		});
+
+		it("rejects CONTAINS with numeric value (requires string)", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[1],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "name",
+										operator: "CONTAINS",
+										value: 123,
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const valueTypeError = result.error.issues.find((issue) =>
+					issue.message.includes('Operator "CONTAINS" requires a string value, but got number'),
+				);
+				expect(valueTypeError).toBeDefined();
+				expect(valueTypeError?.path).toEqual(["stages", 0, "filter", "rules", 0, "options", "value"]);
+			}
+		});
+
+		it("rejects OPTIONS_GREATER_THAN with string value (requires number count)", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				stages: [
+					{
+						...baseValidProtocol.stages[1],
+						filter: {
+							rules: [
+								{
+									id: "rule1",
+									type: "node",
+									options: {
+										type: "person",
+										attribute: "category",
+										operator: "OPTIONS_GREATER_THAN",
+										value: "2",
+									},
+								},
+							],
+						},
+					},
+				],
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const valueTypeError = result.error.issues.find((issue) =>
+					issue.message.includes('Operator "OPTIONS_GREATER_THAN" requires a numeric value (count), but got string'),
+				);
+				expect(valueTypeError).toBeDefined();
+				expect(valueTypeError?.path).toEqual(["stages", 0, "filter", "rules", 0, "options", "value"]);
+			}
+		});
+
 		it("rejects nested filter rules with duplicate IDs", () => {
 			const invalidProtocol = {
 				...baseValidProtocol,
