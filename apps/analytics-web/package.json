@@ -46,7 +46,7 @@
 		"@types/papaparse": "^5.5.0",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
-		"autoprefixer": "^10.4.22",
+		"autoprefixer": "^10.4.23",
 		"drizzle-kit": "^0.31.7",
 		"next-test-api-route-handler": "^5.0.3",
 		"tailwindcss": "catalog:",
