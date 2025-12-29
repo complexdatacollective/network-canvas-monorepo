@@ -22,7 +22,7 @@
 		"@tailwindcss/vite": "^4.1.7",
 		"@tippyjs/react": "^4.2.5",
 		"@types/redux-logger": "^3.0.13",
-		"animejs": "^2.2.0",
+		"animejs": "^4.2.2",
 		"classnames": "^2.2.6",
 		"clsx": "^2.1.1",
 		"csvtojson": "^2.0.10",
