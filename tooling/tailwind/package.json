@@ -5,6 +5,7 @@
 	"type": "module",
 	"exports": {
 		"./fresco": "./fresco.ts",
+		"./base": "./base.ts",
 		"./globals.css": "./globals.css"
 	},
 	"license": "MIT",

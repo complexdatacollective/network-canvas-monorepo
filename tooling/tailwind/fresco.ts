@@ -1,8 +1,7 @@
+import base from "@codaco/tailwind-config/base";
 import type { Config } from "tailwindcss";
 import defaultTheme from "tailwindcss/defaultTheme";
 import animate from "tailwindcss-animate";
-
-import base from "./base";
 
 export default {
 	content: base.content,
