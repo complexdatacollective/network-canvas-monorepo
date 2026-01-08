@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm writeSidebarJson && pnpm next dev",
-		"build": "pnpm next build",
+		"build": "pnpm next build --webpack",
 		"postbuild": "pnpm next-sitemap",
 		"prebuild": "pnpm writeSidebarJson",
 		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
