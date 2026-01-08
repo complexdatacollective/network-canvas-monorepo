@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "next dev --turbopack",
-		"build": "next build --webpack",
+		"build": "next build",
 		"start": "next start",
 		"test": "vitest run",
 		"test:watch": "vitest watch",
@@ -16,6 +16,7 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "^6.36.6",
+		"@fontsource-variable/inter": "^5.2.8",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-dropdown-menu": "catalog:",

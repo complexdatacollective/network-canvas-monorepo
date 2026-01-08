@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm writeSidebarJson && pnpm next dev",
-		"build": "pnpm next build --webpack",
+		"build": "pnpm next build",
 		"postbuild": "pnpm next-sitemap",
 		"prebuild": "pnpm writeSidebarJson",
 		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
@@ -19,6 +19,7 @@
 		"@codaco/ui": "workspace:*",
 		"@docsearch/css": "^4.4.0",
 		"@docsearch/react": "^4.4.0",
+		"@fontsource-variable/quicksand": "^5.2.10",
 		"@mendable/search": "^0.0.206",
 		"@next/bundle-analyzer": "^16.1.1",
 		"@next/third-parties": "^16.1.1",
