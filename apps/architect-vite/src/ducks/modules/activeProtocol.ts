@@ -1,6 +1,5 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createSlice, current, type PayloadAction, type UnknownAction } from "@reduxjs/toolkit";
-import { pick } from "es-toolkit/compat";
 import type { AppDispatch } from "~/ducks/store";
 import { assetDb } from "~/utils/assetDB";
 import { timelineActions } from "../middleware/timeline";
@@ -9,50 +8,36 @@ import codebook from "./protocol/codebook";
 import stages from "./protocol/stages";
 
 // Types
-type ActiveProtocolState =
-	| (CurrentProtocol & {
-			name: string;
-			isValid: boolean;
-			lastSavedAt: number | null;
-			lastSavedTimeline: string | null;
-	  })
-	| null;
+type ActiveProtocolState = CurrentProtocol | null;
 
-const initialState: ActiveProtocolState = null as ActiveProtocolState;
+const initialState = null as ActiveProtocolState;
 
-// Enhanced active protocol slice with all necessary actions
 const activeProtocolSlice = createSlice({
 	name: "activeProtocol",
 	initialState,
 	reducers: {
-		setActiveProtocol: (_state, action: PayloadAction<CurrentProtocol & { name: string }>) => {
+		setActiveProtocol: (_state, action: PayloadAction<CurrentProtocol>) => {
 			// Replace the entire state with the new protocol
-			return {
-				...action.payload,
-				isValid: true, // Assume new protocol is valid initially
-				lastSavedAt: null,
-				lastSavedTimeline: null,
-			} as ActiveProtocolState;
+			return action.payload;
 		},
-		updateProtocol: (state, action: PayloadAction<Partial<ActiveProtocolState>>) => {
+		updateProtocol: (state, action: PayloadAction<Partial<CurrentProtocol>>) => {
 			if (!state) return state;
 			return {
 				...state,
 				...action.payload,
-			} as ActiveProtocolState;
+			};
 		},
-		updateProtocolOptions: (state, action: PayloadAction<{ name?: string; description?: string }>) => {
+		updateProtocolDescription: (state, action: PayloadAction<{ description?: string }>) => {
 			if (!state) return state;
-			return {
-				...state,
-				...pick(action.payload, ["name", "description"]),
-			} as ActiveProtocolState;
+			return { ...state, description: action.payload.description };
 		},
-		markProtocolSaved: (state, action: PayloadAction<{ timestamp: number; timelineLocus: string }>) => {
-			if (state) {
-				state.lastSavedAt = action.payload.timestamp;
-				state.lastSavedTimeline = action.payload.timelineLocus;
-			}
+		updateProtocolName: (state, action: PayloadAction<{ name: string }>) => {
+			if (!state) return state;
+			return { ...state, name: action.payload.name };
+		},
+		updateLastModified: (state, action: PayloadAction<string>) => {
+			if (!state) return state;
+			return { ...state, lastModified: action.payload };
 		},
 		clearActiveProtocol: (_state) => {
 			assetDb.assets.clear(); // Clear asset database
@@ -112,14 +97,17 @@ const activeProtocolSlice = createSlice({
 
 // Extract actions and selectors
 export const setActiveProtocol = activeProtocolSlice.actions.setActiveProtocol;
-export const updateProtocolOptions = activeProtocolSlice.actions.updateProtocolOptions;
+export const updateProtocolDescription = activeProtocolSlice.actions.updateProtocolDescription;
+export const updateProtocolName = activeProtocolSlice.actions.updateProtocolName;
+export const updateLastModified = activeProtocolSlice.actions.updateLastModified;
 export const clearActiveProtocol = activeProtocolSlice.actions.clearActiveProtocol;
 
 export const actionCreators = {
 	setActiveProtocol: activeProtocolSlice.actions.setActiveProtocol,
 	updateProtocol: activeProtocolSlice.actions.updateProtocol,
-	updateProtocolOptions: activeProtocolSlice.actions.updateProtocolOptions,
-	markProtocolSaved: activeProtocolSlice.actions.markProtocolSaved,
+	updateProtocolDescription: activeProtocolSlice.actions.updateProtocolDescription,
+	updateProtocolName: activeProtocolSlice.actions.updateProtocolName,
+	updateLastModified: activeProtocolSlice.actions.updateLastModified,
 	clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
 };
 

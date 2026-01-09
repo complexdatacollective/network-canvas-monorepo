@@ -1,5 +1,5 @@
+import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createContext } from "react";
-import type { ProtocolWithMetadata } from "~/types";
 
 export type IndexEntry = {
 	id: string;
@@ -11,15 +11,15 @@ export type IndexEntry = {
 };
 
 type SummaryContextType = {
-	protocol: ProtocolWithMetadata;
+	protocol: CurrentProtocol;
+	protocolName: string;
 	index: IndexEntry[];
-	workingPath?: string;
 };
 
 const SummaryContext = createContext<SummaryContextType>({
-	protocol: {} as ProtocolWithMetadata,
+	protocol: {} as CurrentProtocol,
+	protocolName: "Untitled Protocol",
 	index: [],
-	workingPath: "",
 });
 
 export default SummaryContext;

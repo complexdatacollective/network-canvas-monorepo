@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import activeProtocolReducer, { actionCreators } from "../activeProtocol";
 import { test as stagesTest } from "../protocol/stages";
 
-const mockProtocol: CurrentProtocol & { name: string } = {
+const mockProtocol: CurrentProtocol = {
 	name: "Test Protocol",
 	description: "test description",
 	schemaVersion: 8,
@@ -17,8 +17,8 @@ const mockProtocol: CurrentProtocol & { name: string } = {
 	assetManifest: {},
 };
 
-const mockProtocol2: CurrentProtocol & { name: string } = {
-	name: "Another Protocol",
+const mockProtocol2: CurrentProtocol = {
+	name: "Test Protocol 2",
 	description: "another description",
 	schemaVersion: 8,
 	stages: [
@@ -84,9 +84,6 @@ describe("activeProtocol", () => {
 
 			const state = store.getState().activeProtocol;
 			expect(state).toMatchObject(mockProtocol);
-			expect(state).toHaveProperty("isValid", true);
-			expect(state).toHaveProperty("lastSavedAt", null);
-			expect(state).toHaveProperty("lastSavedTimeline", null);
 		});
 
 		it("should update protocol", () => {
@@ -101,24 +98,18 @@ describe("activeProtocol", () => {
 			expect(state).not.toBeNull();
 			if (!state) return;
 			expect(state.description).toBe("updated description");
-			expect(state.name).toBe(mockProtocol.name); // Other fields preserved
+			expect(state.schemaVersion).toBe(mockProtocol.schemaVersion); // Other fields preserved
 		});
 
-		it("should update protocol options", () => {
+		it("should update protocol description", () => {
 			// Set initial protocol
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
-			// Update options
-			const options = {
-				name: "Updated Name",
-				description: "Updated Description",
-			};
-			store.dispatch(actionCreators.updateProtocolOptions(options));
+			store.dispatch(actionCreators.updateProtocolDescription({ description: "Updated Description" }));
 
 			const state = store.getState().activeProtocol;
 			expect(state).not.toBeNull();
 			if (!state) return;
-			expect(state.name).toBe("Updated Name");
 			expect(state.description).toBe("Updated Description");
 			expect(state.stages).toEqual(mockProtocol.stages); // Other fields preserved
 		});
@@ -139,17 +130,14 @@ describe("activeProtocol", () => {
 
 			const state = store.getState().activeProtocol;
 			expect(state).toMatchObject(mockProtocol);
-			expect(state).toHaveProperty("isValid", true);
 		});
 
-		it("should handle updateProtocolOptions action", () => {
+		it("should handle updateProtocolDescription action", () => {
 			// Set initial protocol
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol));
 
-			// Update options using modern action
 			store.dispatch(
-				actionCreators.updateProtocolOptions({
-					name: "Updated Name",
+				actionCreators.updateProtocolDescription({
 					description: "Updated Description",
 				}),
 			);
@@ -157,7 +145,6 @@ describe("activeProtocol", () => {
 			const state = store.getState().activeProtocol;
 			expect(state).not.toBeNull();
 			if (!state) return;
-			expect(state.name).toBe("Updated Name");
 			expect(state.description).toBe("Updated Description");
 		});
 
@@ -225,14 +212,14 @@ describe("activeProtocol", () => {
 
 		it("should return false for empty protocol object", () => {
 			// Directly set empty state
-			store.dispatch(actionCreators.setActiveProtocol({} as CurrentProtocol & { name: string }));
+			store.dispatch(actionCreators.setActiveProtocol({} as CurrentProtocol));
 
 			const state = store.getState();
 			const protocol = state.activeProtocol;
 
-			// Empty object still has the metadata fields, so it's not null
-			expect(protocol).toHaveProperty("isValid", true);
-			expect(Object.keys(protocol || {}).length).toBeGreaterThan(0);
+			// Empty object is still set (not null)
+			expect(protocol).not.toBeNull();
+			expect(Object.keys(protocol || {}).length).toBe(0);
 		});
 	});
 
@@ -252,11 +239,11 @@ describe("activeProtocol", () => {
 			expect(action.payload).toEqual(updates);
 		});
 
-		it("should create updateProtocolOptions action", () => {
-			const options = { name: "Updated", description: "Updated desc" };
-			const action = actionCreators.updateProtocolOptions(options);
+		it("should create updateProtocolDescription action", () => {
+			const options = { description: "Updated desc" };
+			const action = actionCreators.updateProtocolDescription(options);
 
-			expect(action.type).toBe(actionCreators.updateProtocolOptions.type);
+			expect(action.type).toBe(actionCreators.updateProtocolDescription.type);
 			expect(action.payload).toEqual(options);
 		});
 
@@ -293,7 +280,7 @@ describe("activeProtocol", () => {
 			// Verify the protocol was set correctly
 			expect(state).not.toBeNull();
 			if (!state) return;
-			expect(state.name).toBe("Another Protocol");
+			expect(state.description).toBe("another description");
 			expect(state.stages).toHaveLength(1);
 			expect(state.codebook.node?.person).toBeDefined();
 		});

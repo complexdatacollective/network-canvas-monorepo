@@ -1,35 +1,37 @@
 import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
-import { updateProtocolOptions } from "~/ducks/modules/activeProtocol";
+import { updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
-import { getHasUnsavedChanges, getIsProtocolValid, getProtocol } from "~/selectors/protocol";
-import withTooltip from "./enhancers/withTooltip";
-
-const PrintableSummaryButton = withTooltip(Button);
+import { getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
 
 type OverviewProps = {
 	name?: string | null;
 	description?: string;
-	updateOptions?: (options: { description: string }) => void;
-	printOverview: () => void;
+	updateDescription?: (options: { description: string }) => void;
+	updateName?: (options: { name: string }) => void;
 	protocolIsValid: boolean;
-	hasUnsavedChanges: boolean;
 };
 
 const Overview = ({
 	name = null,
 	description = "",
-	updateOptions = () => {},
+	updateDescription = () => {},
+	updateName = () => {},
 	protocolIsValid,
-	hasUnsavedChanges,
 }: OverviewProps) => {
 	const [, setLocation] = useLocation();
+	const [localName, setLocalName] = useState(name ?? "");
+
+	// Sync from Redux when prop changes (e.g., undo/redo)
+	useEffect(() => {
+		setLocalName(name ?? "");
+	}, [name]);
 
 	const handleNavigateToAssets = useCallback(() => {
 		setLocation("/protocol/assets");
@@ -47,14 +49,24 @@ const Overview = ({
 		<div className="overview">
 			<div className="overview__panel">
 				<div className="protocol-name">
-					<h1 className="overview-name">{name}</h1>
+					<input
+						type="text"
+						className="overview-name"
+						value={localName}
+						onChange={(e) => setLocalName(e.target.value)}
+						onBlur={() => {
+							const trimmed = localName.trim();
+							trimmed ? updateName({ name: trimmed }) : setLocalName(name ?? "");
+						}}
+						placeholder="Enter protocol name..."
+					/>
 				</div>
 				<div>
 					<TextArea
 						placeholder="Enter a description for your protocol..."
 						input={{
 							value: description,
-							onChange: ({ target: { value } }) => updateOptions({ description: value }),
+							onChange: ({ target: { value } }) => updateDescription({ description: value }),
 						}}
 					/>
 				</div>
@@ -65,16 +77,12 @@ const Overview = ({
 				</div>
 				<div className="action-buttons">
 					<div className="action-buttons__button" title="Printable Summary">
-						<PrintableSummaryButton
+						<Button
 							onClick={handlePrintSummary}
 							color="slate-blue"
 							icon={<PrintIcon />}
-							disabled={!protocolIsValid || hasUnsavedChanges}
-							tooltip={
-								hasUnsavedChanges ? "You must save your protocol before you can view the printable summary." : undefined
-							}
+							disabled={!protocolIsValid}
 							content="Printable Summary"
-							tippyProps={{}}
 						/>
 					</div>
 					<div className="action-buttons__button" title="Resource Library">
@@ -100,20 +108,20 @@ const Overview = ({
 };
 
 const mapDispatchToProps = {
-	updateOptions: updateProtocolOptions,
+	updateDescription: updateProtocolDescription,
+	updateName: updateProtocolName,
 };
 
 const mapStateToProps = (state: RootState) => {
 	const protocol = getProtocol(state);
+	const name = getProtocolName(state);
 	const protocolIsValid = getIsProtocolValid(state);
-	const hasUnsavedChanges = getHasUnsavedChanges(state);
 
 	return {
-		name: protocol?.name || "Untitled Protocol",
+		name,
 		description: protocol?.description || "",
 		codebook: protocol?.codebook,
 		protocolIsValid,
-		hasUnsavedChanges,
 	};
 };
 

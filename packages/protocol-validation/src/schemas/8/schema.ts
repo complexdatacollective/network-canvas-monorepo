@@ -27,6 +27,7 @@ import { stageSchema } from "./stages";
 
 const ProtocolSchema = z
 	.strictObject({
+		name: z.string().min(1),
 		description: z.string().optional(),
 		experiments: ExperimentsSchema.optional(),
 		lastModified: z
@@ -398,6 +399,7 @@ const ProtocolSchema = z
 		const stages = Array.from({ length: 5 }, () => stageSchema.generateMock());
 
 		return {
+			name: "Mock Protocol",
 			description: "Generated Mock Protocol for Testing",
 			schemaVersion: 8 as const,
 			lastModified: new Date().toISOString(),

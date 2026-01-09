@@ -59,6 +59,7 @@ describe("Protocol Migrations", () => {
 		};
 
 		const v8Doc = {
+			name: "Test Protocol V8",
 			schemaVersion: 8,
 			description: "Test protocol v8",
 			lastModified: "2024-01-01T00:00:00.000Z",
@@ -68,13 +69,13 @@ describe("Protocol Migrations", () => {
 		};
 
 		it("migrates from v7 to v8", () => {
-			const migrated = migrateProtocol(v7Doc);
+			const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
 			expect(migrated.schemaVersion).toBe(8);
 			expect(migrated).toHaveProperty("experiments");
 		});
 
 		it("preserves existing data during migration", () => {
-			const migrated = migrateProtocol(v7Doc);
+			const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
 			expect(migrated.description).toBe("Test protocol v7");
 			expect(migrated.lastModified).toBe("2024-01-01T00:00:00.000Z");
 		});
@@ -100,9 +101,11 @@ describe("Protocol Migrations", () => {
 		it("caches migration results", async () => {
 			const result1 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test1",
+				dependencies: { name: "Test Protocol" },
 			});
 			const result2 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test1",
+				dependencies: { name: "Test Protocol" },
 			});
 
 			expect(result1).toBe(result2); // Same reference means cached
@@ -111,12 +114,14 @@ describe("Protocol Migrations", () => {
 		it("can clear cache", async () => {
 			await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test2",
+				dependencies: { name: "Test Protocol" },
 			});
 
 			protocolMigrator.clearCache("test2");
 
 			const result = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test2",
+				dependencies: { name: "Test Protocol" },
 			});
 
 			expect(result.schemaVersion).toBe(8);
@@ -125,9 +130,11 @@ describe("Protocol Migrations", () => {
 		it("can clear all cache", async () => {
 			await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test3",
+				dependencies: { name: "Test Protocol" },
 			});
 			await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test4",
+				dependencies: { name: "Test Protocol" },
 			});
 
 			protocolMigrator.clearCache();
@@ -135,9 +142,11 @@ describe("Protocol Migrations", () => {
 			// Both should require new migration
 			const result3 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test3",
+				dependencies: { name: "Test Protocol" },
 			});
 			const result4 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "test4",
+				dependencies: { name: "Test Protocol" },
 			});
 
 			expect(result3.schemaVersion).toBe(8);
@@ -152,6 +161,7 @@ describe("Protocol Migrations", () => {
 			const migration = {
 				from: 7 as const,
 				to: 8 as const,
+				dependencies: {},
 				migrate: (doc: ProtocolDocument<7>) =>
 					({
 						...doc,
@@ -184,6 +194,7 @@ describe("Protocol Migrations", () => {
 
 		it("validates v8 schema", () => {
 			const v8Doc = {
+				name: "Test Protocol",
 				schemaVersion: 8,
 				description: "Test",
 				codebook: {},
@@ -212,7 +223,7 @@ describe("Protocol Migrations", () => {
 				codebook: {},
 				stages: [],
 			};
-			const migrated = migrateProtocol(minimalV7Doc);
+			const migrated = migrateProtocol(minimalV7Doc, undefined, { name: "Test Protocol" });
 			expect(migrated.schemaVersion).toBe(8);
 			expect(migrated).toHaveProperty("experiments");
 		});
@@ -222,7 +233,16 @@ describe("Protocol Migrations", () => {
 				schemaVersion: 7,
 				// Missing required fields
 			};
-			expect(() => migrateProtocol(invalidDoc)).toThrow();
+			expect(() => migrateProtocol(invalidDoc, undefined, { name: "Test Protocol" })).toThrow();
+		});
+
+		it("throws error when missing required dependencies", () => {
+			const v7Doc = {
+				schemaVersion: 7,
+				codebook: {},
+				stages: [],
+			};
+			expect(() => migrateProtocol(v7Doc)).toThrow("Missing required migration dependencies: name");
 		});
 	});
 });

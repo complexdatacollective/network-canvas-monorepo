@@ -37,19 +37,10 @@ async function getAllProtocolAssets(protocol: CurrentProtocol) {
 	return assets;
 }
 
-type ProtocolWithAppState = CurrentProtocol & {
-	name?: string;
-	isValid?: boolean;
-	lastSavedAt?: string;
-	lastSavedTimeline?: string;
-};
-
 async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 	const zip = new JSZip();
 
-	// Remove app state props
-	const { name, isValid, lastSavedAt, lastSavedTimeline, ...cleanProtocol } = protocol as ProtocolWithAppState;
-	const protocolJson = JSON.stringify(cleanProtocol, null, 2);
+	const protocolJson = JSON.stringify(protocol, null, 2);
 	zip.file("protocol.json", protocolJson);
 
 	if (protocol.assetManifest) {
@@ -71,7 +62,7 @@ async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 	return blob;
 }
 
-export async function downloadProtocolAsNetcanvas(protocol: CurrentProtocol): Promise<void> {
+export async function downloadProtocolAsNetcanvas(protocol: CurrentProtocol, protocolName?: string): Promise<void> {
 	try {
 		const blob = await bundleProtocol(protocol);
 
@@ -84,9 +75,8 @@ export async function downloadProtocolAsNetcanvas(protocol: CurrentProtocol): Pr
 		const minutes = String(now.getMinutes()).padStart(2, "0");
 		const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
 
-		// Use name from protocol, or default to "protocol" if not present
-		const protocolName = "name" in protocol && typeof protocol.name === "string" ? protocol.name : "protocol";
-		const fileName = `${protocolName.replace(/\s+/g, "_")}-${timestamp}.netcanvas`;
+		// Use provided name, or default to "protocol"
+		const fileName = `${(protocolName ?? "protocol").replace(/\s+/g, "_")}-${timestamp}.netcanvas`;
 
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");

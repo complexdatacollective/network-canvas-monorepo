@@ -2,13 +2,18 @@ import { createSelector } from "@reduxjs/toolkit";
 import { find, findIndex, reduce } from "es-toolkit/compat";
 import type { RootState } from "~/ducks/modules/root";
 
-// During transition, check both old and new stores
+// Protocol selectors
 export const getProtocol = (state: RootState) => {
 	// The activeProtocol in RootState is wrapped by the timeline middleware
 	// We need to extract the present value
 	const timelineState = state.activeProtocol;
 
 	return timelineState.present;
+};
+
+// Protocol metadata selectors
+export const getProtocolName = (state: RootState): string | undefined => {
+	return getProtocol(state)?.name;
 };
 
 export const getAssetManifest = (state: RootState) => {
@@ -73,27 +78,10 @@ export const getExperiments = (state: RootState) => {
 	return experiments;
 };
 
-export const getHasUnsavedChanges = (state: RootState): boolean => {
-	const protocol = getProtocol(state);
-	if (!protocol) return false;
-
-	const currentTimeline = getTimelineLocus(state);
-	const lastSavedTimeline = protocol.lastSavedTimeline;
-
-	// No saved state yet
-	if (!lastSavedTimeline) {
-		// Has unsaved changes if timeline has moved from initial state
-		const timeline = state.activeProtocol?.timeline || [];
-		return timeline.length > 1;
-	}
-
-	// Compare current timeline position with last saved position
-	return currentTimeline !== lastSavedTimeline;
-};
-
-export const getIsProtocolValid = (_state: RootState): boolean => {
-	// Return validation result from Redux state
-	return true;
+export const getIsProtocolValid = (state: RootState): boolean => {
+	// Return validation result from protocolValidation slice
+	const validationResult = state.protocolValidation.validationResult;
+	return validationResult?.success ?? true;
 };
 
 // Timeline selector
