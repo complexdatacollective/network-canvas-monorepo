@@ -14,6 +14,13 @@ const config: Pick<Config, "content" | "darkMode" | "presets" | "plugins" | "the
 	],
 	presets: [sharedConfig],
 	plugins: [typography, containers],
+	theme: {
+		extend: {
+			fontFamily: {
+				sans: ["Quicksand Variable", "Quicksand", "system-ui", "sans-serif"],
+			},
+		},
+	},
 };
 
 export default config;

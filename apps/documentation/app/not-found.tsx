@@ -1,18 +1,12 @@
+import "@fontsource-variable/quicksand";
 import { Divider, Heading, ListItem, Paragraph, UnorderedList } from "@codaco/ui";
-import { Quicksand } from "next/font/google";
 
 import Link from "~/components/Link";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
 
-const quicksand = Quicksand({
-	weight: ["300", "400", "500", "600", "700"],
-	subsets: ["latin", "latin-ext"],
-	display: "swap",
-});
-
 export default function NotFound() {
 	return (
-		<html lang="en" className={`${quicksand.className} antialiased`}>
+		<html lang="en" className="font-sans antialiased">
 			<ThemeProvider attribute="class" enableSystem enableColorScheme storageKey="nc-docs-site">
 				<body className="flex h-screen items-center justify-center">
 					<div className="max-w-lg p-3 sm:p-0">

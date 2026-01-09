@@ -15,7 +15,8 @@
 		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
-		"@clerk/nextjs": "^6.35.6",
+		"@clerk/nextjs": "^6.36.6",
+		"@fontsource-variable/inter": "^5.2.8",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-dropdown-menu": "catalog:",
@@ -27,7 +28,7 @@
 		"class-variance-authority": "catalog:",
 		"clsx": "catalog:",
 		"dotenv": "catalog:",
-		"drizzle-orm": "^0.44.7",
+		"drizzle-orm": "^0.45.1",
 		"i18n-iso-countries": "^7.14.0",
 		"lucide-react": "catalog:",
 		"next": "catalog:",
@@ -43,7 +44,7 @@
 		"@codaco/tsconfig": "workspace:*",
 		"@faker-js/faker": "catalog:",
 		"@types/node": "catalog:",
-		"@types/papaparse": "^5.5.0",
+		"@types/papaparse": "^5.5.2",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"autoprefixer": "^10.4.23",
@@ -52,7 +53,7 @@
 		"tailwindcss": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
-		"vite-tsconfig-paths": "^5.1.4",
+		"vite-tsconfig-paths": "^6.0.3",
 		"vitest": "catalog:"
 	}
 }

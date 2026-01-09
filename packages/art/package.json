@@ -23,7 +23,7 @@
 		"@types/d3-interpolate-path": "^2.0.3",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
-		"jsdom": "^26.0.0",
+		"jsdom": "^27.4.0",
 		"react": "catalog:",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
