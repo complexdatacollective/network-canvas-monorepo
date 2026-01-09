@@ -1,55 +1,60 @@
 # Network Canvas
 
-Network Canvas is an innovative suite of applications for conducting network research interviews and data collection. This monorepo contains all the core packages and applications that power the Network Canvas ecosystem.
+Network Canvas is a suite of applications for conducting network research interviews and data collection. This monorepo contains the core packages and applications that power the Network Canvas ecosystem.
 
-## 🌐 Overview
+## Overview
 
 Network Canvas helps researchers collect data about social, personal, and professional networks through intuitive interfaces and powerful data management tools.
 
-## 📦 Repository Structure
+## Repository Structure
 
 This monorepo is organized into four main categories:
 
 ### Apps
 
-- **`architect-vite/`** - Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols
-- **`analytics-web/`** - Next.js analytics dashboard with Clerk authentication and Postgres database
-- **`documentation/`** - Next.js documentation website with MDX support and search functionality
+| App | Description |
+|-----|-------------|
+| [`architect-vite`](./apps/architect-vite) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
+| [`analytics-web`](./apps/analytics-web) | Next.js analytics dashboard with Clerk authentication and Postgres database |
+| [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality |
 
 ### Packages
 
-- **`analytics/`** - PostHog analytics wrapper for Network Canvas applications with installation ID tracking and error reporting
-- **`art/`** - Visual design components using blobs and d3-interpolate-path for animated graphics
-- **`development-protocol/`** - Development protocol assets for testing Network Canvas applications
-- **`protocol-validation/`** - Utilities for validating and migrating Network Canvas protocol files with Zod schemas
-- **`shared-consts/`** - Shared constants and TypeScript definitions for the Network Canvas project
-- **`ui/`** - Reusable React UI components built on shadcn/ui and Tailwind CSS
+| Package | Description |
+|---------|-------------|
+| [`@codaco/protocol-validation`](./packages/protocol-validation) | Zod schemas for validating and migrating Network Canvas protocol files |
+| [`@codaco/shared-consts`](./packages/shared-consts) | Shared constants and TypeScript definitions |
+| [`@codaco/analytics`](./packages/analytics) | PostHog analytics wrapper with installation ID tracking and error reporting |
+| [`@codaco/ui`](./packages/ui) | Reusable React UI components built on shadcn/ui and Tailwind CSS |
+| [`@codaco/art`](./packages/art) | Visual design components using blobs and d3-interpolate-path for animated graphics |
+| [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications |
 
 ### Workers
 
-- **`development-protocol-worker/`** - Cloudflare Worker for serving development protocol files from GitHub
-- **`posthog-proxy-worker/`** - Cloudflare Worker for proxying PostHog analytics requests
+| Worker | Description |
+|--------|-------------|
+| [`development-protocol-worker`](./workers/development-protocol) | Cloudflare Worker for serving development protocol files from GitHub |
+| [`posthog-proxy-worker`](./workers/posthog-proxy) | Cloudflare Worker for proxying PostHog analytics requests |
 
 ### Tooling
 
-- **`tailwind/`** - Shared Tailwind CSS configuration
-- **`typescript/`** - TypeScript configurations
+| Config | Description |
+|--------|-------------|
+| [`tailwind`](./tooling/tailwind) | Shared Tailwind CSS configuration |
+| [`typescript`](./tooling/typescript) | Shared TypeScript configurations |
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- **Node.js** >= 20.0.0
-- **pnpm** >= 10.0.0
+- Node.js >= 20.0.0
+- pnpm >= 10.0.0
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/complexdatacollective/network-canvas-monorepo.git
 cd network-canvas-monorepo
-
-# Install dependencies
 pnpm install
 ```
 
@@ -64,21 +69,17 @@ pnpm build
 
 # Run tests across all packages
 pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
 ```
 
 ### Working with Individual Packages
 
 ```bash
 # Work with a specific package
-pnpm --filter @codaco/shared-consts build
 pnpm --filter @codaco/protocol-validation build
 pnpm --filter architect-vite dev
 pnpm --filter analytics-web dev
 
-# Run commands in multiple packages
+# Run commands across multiple packages
 pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
 ```
@@ -95,43 +96,29 @@ pnpm --filter development-protocol-worker deploy
 pnpm --filter posthog-proxy-worker deploy
 ```
 
-## 🛠️ Development Tools
+## Development Tools
 
-This monorepo uses modern development tools and practices:
+- **Build System**: Vite for fast builds and development
+- **Package Manager**: pnpm with workspace support
+- **Code Formatting**: Biome for consistent code style
+- **Type Checking**: TypeScript with shared configurations
+- **Edge Computing**: Cloudflare Workers for serverless functions
+- **CI/CD**: GitHub Actions with optimized workflows
+- **Change Management**: Changesets for version management
 
-- **🏗️ Build System**: Vite for fast builds and development
-- **📦 Package Manager**: pnpm with workspace support
-- **🎨 Code Formatting**: Biome for consistent code style
-- **🔧 Type Checking**: TypeScript with shared configurations
-- **☁️ Edge Computing**: Cloudflare Workers for serverless functions
-- **🚀 CI/CD**: GitHub Actions with optimized workflows
-- **📋 Change Management**: Changesets for version management
+## Code Style
 
-## 📚 Documentation
-
-Comprehensive documentation is available at the documentation app within this monorepo. Key topics include:
-
-- **Getting Started** - Installation and basic setup
-- **Interface Documentation** - Detailed guides for each interface type
-- **Key Concepts** - Understanding protocols, variables, and data structures
-- **Tutorials** - Step-by-step protocol building guides
-- **Advanced Topics** - Custom integrations and advanced configurations
-
-## 🔄 Version Management
-
-This project uses [Changesets](https://github.com/changesets/changesets) for version management and automated releases.
-
-### Creating a Changeset
+This project uses Biome for formatting and linting:
 
 ```bash
-# Add a changeset for your changes
-pnpm changeset
+# Check formatting and linting
+pnpm lint
 
+# Auto-fix formatting and linting issues
+pnpm lint:fix
 ```
 
-### Publishing
-
-Add a changeset to your PR. Once it is merged, a PR will be created that summarizes the changes and bumps the version of the packages. You can then review and merge this PR to publish the updated packages.
+Pre-commit hooks automatically format code on commit.
 
 ## Testing
 
@@ -140,7 +127,7 @@ Add a changeset to your PR. Once it is merged, a PR will be created that summari
 pnpm test
 
 # Run tests for a specific package
-pnpm --filter protocol-validation test
+pnpm --filter @codaco/protocol-validation test
 
 # Run tests in watch mode
 pnpm test:watch
@@ -149,52 +136,32 @@ pnpm test:watch
 pnpm typecheck
 ```
 
-## 🎨 Code Style
+## Version Management
 
-This project uses Biome for formatting and linting:
+This project uses [Changesets](https://github.com/changesets/changesets) for version management and automated releases.
 
 ```bash
-# Check formatting and linting
-pnpm run lint
-
-# Auto-fix formatting and linting issues
-pnpm run lint:fix
+# Add a changeset for your changes
+pnpm changeset
 ```
 
-Pre-commit hooks automatically format code on commit.
+After merging a PR with changesets, a release PR will be created that bumps package versions. Merge that PR to publish the updated packages.
 
-## 📋 Scripts
-
-Key scripts available in the root package:
-
-- **`pnpm build`** - Build all packages and applications
-- **`pnpm dev`** - Start development servers for all apps
-- **`pnpm test`** - Run test suites across all packages
-- **`pnpm changeset`** - Create a changeset for version management
-- **`pnpm run publish-packages`** - Build and publish packages to npm
-- **`pnpm run lint:fix`** - Format and lint all code
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines and:
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Run `pnpm run lint:fix`
+5. Run `pnpm lint:fix` and `pnpm typecheck`
 6. Submit a pull request
 
-## 📄 License
+## Links
 
-This project is licensed under the terms specified in individual package LICENSE files.
-
-## 🔗 Links
-
-- **Main Website**: [Network Canvas](https://networkcanvas.com)
-- **Documentation**: [Network Canvas Documentation](https://documentation.networkcanvas.com)
-- **Issues**: [GitHub Issues](https://github.com/complexdatacollective/network-canvas-monorepo/issues)
+- [Network Canvas](https://networkcanvas.com)
+- [Documentation](https://documentation.networkcanvas.com)
+- [GitHub Issues](https://github.com/complexdatacollective/network-canvas-monorepo/issues)
 
 ---
 
-Built with ❤️ by the Complex Data Collective team
+Built by the Complex Data Collective team
