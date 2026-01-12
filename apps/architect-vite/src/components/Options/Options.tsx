@@ -2,7 +2,7 @@ import type { VariableOptions } from "@codaco/protocol-validation";
 import cx from "classnames";
 import { Reorder } from "motion/react";
 import type React from "react";
-import { useCallback, useMemo, useRef } from "react";
+import { useRef } from "react";
 import { FieldArray } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
@@ -53,34 +53,44 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 		"options--has-error": submitFailed && error,
 	});
 
-	// Track internal IDs for items without their own id
-	const idMapRef = useRef<WeakMap<object, string>>(new WeakMap());
+	// Track stable wrapper objects - Reorder.Group needs stable references to track items
+	const internalItemsRef = useRef<InternalItem<OptionValue>[]>([]);
 
 	// Get all options as an array
 	const options = fields.getAll() || [];
 
-	// Get or generate an internal ID for an item
-	const getInternalId = useCallback((item: OptionValue): string => {
-		// If item has its own id, use it
-		if ("id" in item && item.id !== undefined) {
-			return String(item.id);
-		}
-		// Otherwise, get or generate an internal id
-		let internalId = idMapRef.current.get(item);
-		if (!internalId) {
-			internalId = crypto.randomUUID();
-			idMapRef.current.set(item, internalId);
-		}
-		return internalId;
-	}, []);
+	// Sync internalItemsRef with current options, maintaining stable references
+	// Handle additions - add new wrappers for new items
+	while (internalItemsRef.current.length < options.length) {
+		internalItemsRef.current.push({
+			_internalId: crypto.randomUUID(),
+			data: {} as OptionValue,
+		});
+	}
 
-	// Convert value array to internal items with guaranteed IDs
-	const internalItems = useMemo((): InternalItem<OptionValue>[] => {
-		return options.map((item) => ({
-			_internalId: getInternalId(item),
-			data: item,
-		}));
-	}, [options, getInternalId]);
+	// Handle deletions - find which specific item was removed
+	if (internalItemsRef.current.length > options.length) {
+		const currentDataSet = new Set(options);
+		const indexToRemove = internalItemsRef.current.findIndex((wrapper) => !currentDataSet.has(wrapper.data));
+		if (indexToRemove !== -1) {
+			internalItemsRef.current.splice(indexToRemove, 1);
+		} else {
+			// Fallback: truncate from end if we can't find the removed item
+			internalItemsRef.current.length = options.length;
+		}
+	}
+
+	// Update data references (stable wrapper objects, fresh data)
+	for (let i = 0; i < options.length; i++) {
+		const item = internalItemsRef.current[i];
+		const option = options[i];
+		if (item && option) {
+			item.data = option;
+		}
+	}
+
+	// Use the stable reference array
+	const internalItems = internalItemsRef.current;
 
 	const handleReorder = (newOrder: InternalItem<OptionValue>[]) => {
 		// Find the first item that moved and update the fields accordingly
@@ -90,6 +100,11 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 			if (newItem && currentItem && newItem._internalId !== currentItem._internalId) {
 				const oldIndex = internalItems.findIndex((item) => item._internalId === newItem._internalId);
 				if (oldIndex !== -1 && oldIndex !== i) {
+					// Reorder internalItemsRef to match the new visual order BEFORE calling fields.move
+					const [movedItem] = internalItemsRef.current.splice(oldIndex, 1);
+					if (movedItem) {
+						internalItemsRef.current.splice(i, 0, movedItem);
+					}
 					fields.move(oldIndex, i);
 					break;
 				}
