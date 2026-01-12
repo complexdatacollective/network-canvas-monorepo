@@ -81,6 +81,7 @@ const EditableList = ({
 
 	// Memoize template result to prevent form reinitialization
 	// Note: `id` is automatically added to all items if not provided by the template
+	// biome-ignore lint/correctness/useExhaustiveDependencies: editIndex intentionally included to create unique ids on each new item
 	const templateValues = useMemo(() => {
 		const customTemplate = template();
 		return {
