@@ -80,7 +80,14 @@ const EditableList = ({
 	});
 
 	// Memoize template result to prevent form reinitialization
-	const templateValues = useMemo(() => template(), [template]);
+	// Note: `id` is automatically added to all items if not provided by the template
+	const templateValues = useMemo(() => {
+		const customTemplate = template();
+		return {
+			...customTemplate,
+			id: customTemplate.id ?? v4(),
+		};
+	}, [template]);
 	const initialValuesForEdit = currentItemValues || templateValues;
 
 	return (
