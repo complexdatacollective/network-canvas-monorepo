@@ -87,7 +87,7 @@ const EditableList = ({
 			...customTemplate,
 			id: customTemplate.id ?? v4(),
 		};
-	}, [template]);
+	}, [template, editIndex]);
 	const initialValuesForEdit = currentItemValues || templateValues;
 
 	return (
