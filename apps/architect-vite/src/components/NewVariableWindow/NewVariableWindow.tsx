@@ -97,6 +97,7 @@ export default function NewVariableWindow({
 						including in exported data.
 					</p>
 				}
+				layout="vertical"
 			>
 				<div id={getFieldId("name")} />
 				<Field
@@ -107,7 +108,7 @@ export default function NewVariableWindow({
 					normalize={safeName}
 				/>
 			</Section>
-			<Section title="Variable Type" summary={<p>Choose a variable type</p>}>
+			<Section title="Variable Type" summary={<p>Choose a variable type</p>} layout="vertical">
 				<div id={getFieldId("type")} />
 				<ValidatedField
 					name="type"
@@ -121,7 +122,7 @@ export default function NewVariableWindow({
 				/>
 			</Section>
 			{isOrdinalOrCategoricalType(variableType) && (
-				<Section title="Options" summary={<p>Create some options for this input control</p>}>
+				<Section title="Options" summary={<p>Create some options for this input control</p>} layout="vertical">
 					<div id={getFieldId("options")} />
 					<Options name="options" label="Options" />
 				</Section>
