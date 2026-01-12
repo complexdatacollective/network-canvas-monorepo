@@ -28,7 +28,7 @@ const NameGenerationStep = ({ form, type, entity, disabled }: NameGenerationStep
 			<ValidatedField
 				name="nameGenerationStep.text"
 				component={RichText}
-				componentProps={{ label: "Instructions for adding family member details" }}
+				componentProps={{ label: "Participant instructions for adding family member details" }}
 				validation={{ required: true }}
 			/>
 		</Row>

@@ -100,13 +100,8 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 		<>
 			<Section
 				disabled={disabled}
-				title="Family Tree Data"
-				summary={
-					<p>
-						Configure which variables will be used to store family tree data. These variables must exist on the node and
-						edge types you selected above.
-					</p>
-				}
+				title="Family Tree Variables"
+				summary={<p>Configure which variables will be used to store family tree data.</p>}
 			>
 				<Section title="Edge Variables" layout="vertical">
 					<Row>
