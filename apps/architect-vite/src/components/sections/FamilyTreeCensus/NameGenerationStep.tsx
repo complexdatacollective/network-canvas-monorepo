@@ -1,5 +1,4 @@
 import { compose } from "recompose";
-import { FormSection } from "redux-form";
 import EditableList from "~/components/EditableList";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
@@ -24,43 +23,41 @@ const NameGenerationStep = ({ form, type, entity, disabled }: NameGenerationStep
 		title="Name Generation Step"
 		summary={<p>Configure the step where participants add names and details for each family member.</p>}
 	>
-		<FormSection name="nameGenerationStep">
-			<Row>
-				<IssueAnchor fieldName="nameGenerationStep.text" description="Name Generation Step Text" />
-				<ValidatedField
-					name="text"
-					component={RichText}
-					componentProps={{ label: "Instructions for adding family member details" }}
-					validation={{ required: true }}
-				/>
-			</Row>
-			<Section
-				title="Form Fields"
-				summary={
-					<p>
-						Add fields to collect information about each family member. These fields will be shown when participants add
-						or edit family members.
-					</p>
+		<Row>
+			<IssueAnchor fieldName="nameGenerationStep.text" description="Name Generation Step Text" />
+			<ValidatedField
+				name="nameGenerationStep.text"
+				component={RichText}
+				componentProps={{ label: "Instructions for adding family member details" }}
+				validation={{ required: true }}
+			/>
+		</Row>
+		<Section
+			title="Form Fields"
+			summary={
+				<p>
+					Add fields to collect information about each family member. These fields will be shown when participants add
+					or edit family members.
+				</p>
+			}
+			layout="vertical"
+		>
+			<EditableList
+				editComponent={FieldFields}
+				editProps={{ type, entity }}
+				previewComponent={FieldPreview}
+				fieldName="nameGenerationStep.form.fields"
+				title="Edit Field"
+				normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
+				itemSelector={
+					itemSelector(entity ?? null, type ?? null) as (
+						state: Record<string, unknown>,
+						params: { form: string; editField: string },
+					) => unknown
 				}
-				layout="vertical"
-			>
-				<EditableList
-					editComponent={FieldFields}
-					editProps={{ type, entity }}
-					previewComponent={FieldPreview}
-					fieldName="form.fields"
-					title="Edit Field"
-					normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
-					itemSelector={
-						itemSelector(entity ?? null, type ?? null) as (
-							state: Record<string, unknown>,
-							params: { form: string; editField: string },
-						) => unknown
-					}
-					form={form}
-				/>
-			</Section>
-		</FormSection>
+				form={form}
+			/>
+		</Section>
 	</Section>
 );
 

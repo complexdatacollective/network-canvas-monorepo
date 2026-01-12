@@ -1,9 +1,9 @@
-import { truncate } from "es-toolkit/compat";
+import { Markdown } from "~/components/Form/Fields";
 
 type DiseasePromptPreviewProps = {
-	text?: string;
+	text: string;
 };
 
-const DiseasePromptPreview = ({ text }: DiseasePromptPreviewProps) => <p>{truncate(text ?? "", { length: 100 })}</p>;
+const DiseasePromptPreview = ({ text }: DiseasePromptPreviewProps) => <Markdown label={text} />;
 
 export default DiseasePromptPreview;
