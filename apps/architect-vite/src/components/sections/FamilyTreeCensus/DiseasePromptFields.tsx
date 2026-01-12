@@ -1,11 +1,11 @@
-import type { ComponentType } from "react";
 import { useSelector } from "react-redux";
 import { Row, Section } from "~/components/EditorLayout";
-import RichText from "~/components/Form/Fields/RichText/Field";
 import ValidatedField from "~/components/Form/ValidatedField";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubject } from "~/selectors/codebook";
+import { getFieldId } from "~/utils/issues";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
+import PromptText from "../PromptText";
 
 type DiseasePromptFieldsProps = {
 	entity?: string;
@@ -17,27 +17,15 @@ const DiseasePromptFields = ({ entity, type }: DiseasePromptFieldsProps) => {
 		getVariableOptionsForSubject(state, { entity: entity as "node", type }),
 	);
 
-	// Filter for boolean variables (disease presence is typically yes/no)
+	// Filter for boolean variables
 	const booleanVariables = variableOptions.filter((v) => v.type === "boolean");
 
 	return (
 		<>
-			<Section title="Prompt Text" layout="vertical">
-				<Row>
-					<ValidatedField
-						name="text"
-						component={RichText as ComponentType<Record<string, unknown>>}
-						validation={{ required: true, maxLength: 220 }}
-						componentProps={{
-							inline: true,
-							label: "Prompt Text",
-							placeholder: "e.g., Has this person ever been diagnosed with diabetes?",
-						}}
-					/>
-				</Row>
-			</Section>
+			<PromptText />
 			<Section title="Variable" layout="vertical">
 				<Row>
+					<div id={getFieldId("variable")} />
 					<ValidatedField
 						name="variable"
 						component={VariablePicker}
@@ -45,7 +33,6 @@ const DiseasePromptFields = ({ entity, type }: DiseasePromptFieldsProps) => {
 						componentProps={{
 							entity,
 							type,
-							label: "Select a boolean variable to store the response",
 							options: booleanVariables,
 						}}
 					/>
