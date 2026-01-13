@@ -20,7 +20,7 @@
 		"@changesets/cli": "^2.29.8",
 		"@types/node": "catalog:",
 		"husky": "^9.1.7",
-		"knip": "^5.80.0",
+		"knip": "^5.80.2",
 		"lint-staged": "^16.2.7",
 		"typescript": "catalog:"
 	},
