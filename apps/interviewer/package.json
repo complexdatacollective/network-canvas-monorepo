@@ -43,6 +43,7 @@
 		"@codaco/protocol-validation": "^5.0.2",
 		"@codaco/shared-consts": "~0.0.1-alpha.3",
 		"@codaco/ui": "~5.8.6",
+		"@material-ui/icons": "^4.11.3",
 		"@electron/notarize": "~2.3.0",
 		"@faker-js/faker": "~6.0.0-alpha.5",
 		"@vitejs/plugin-react": "^5.1.2",
