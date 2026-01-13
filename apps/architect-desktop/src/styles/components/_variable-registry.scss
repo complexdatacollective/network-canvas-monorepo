@@ -1,0 +1,30 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.variable-registry {
+  .simple-list {
+    &__attribute {
+      &--icon {
+        flex-grow: 0;
+
+        .node {
+          font-size: 60px;
+        }
+      }
+
+      &--options {
+        flex-grow: 0;
+      }
+    }
+
+    &__tag {
+      @include typography('copy-small');
+
+      display: inline-block;
+      border-radius: units.unit(.5);
+      padding: units.unit(.3) units.unit(.5);
+      margin-left: units.unit(1);
+      color: var(--text-light);
+      background-color: var(--architect-warning);
+    }
+  }
+}

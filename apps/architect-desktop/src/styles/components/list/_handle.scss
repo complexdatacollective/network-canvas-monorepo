@@ -1,0 +1,16 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.list-handle {
+  width: units.unit(4);
+  height: 100%;
+  cursor: grab;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .icon {
+    width: units.unit(2);
+    height: units.unit(2);
+  }
+}

@@ -1,0 +1,40 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.thumbnail {
+  background-color: var(--color-cyber-grape);
+  color: var(--text-light);
+  border-radius: var(--border-radius);
+  display: inline-flex;
+  align-items: center;
+  padding: units.unit(2);
+  transition-property: background-color;
+  transition-duration: var(--animation-duration-standard);
+  transition-timing-function: var(--animation-easing);
+  width: 25rem;
+
+  &__icon {
+    flex: 0 0 25px;
+    margin: 0 units.unit(2) 0 0;
+  }
+
+  &__label {
+    overflow: hidden;
+    overflow-wrap: break-word;
+  }
+
+  &--existing {
+    background-color: var(--notice);
+    font-style: italic;
+  }
+
+  &--image {
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    height: 12rem;
+
+    &.thumbnail--contain {
+      background-size: contain;
+    }
+  }
+}

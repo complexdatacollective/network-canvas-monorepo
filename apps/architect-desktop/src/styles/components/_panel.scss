@@ -1,0 +1,34 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.panel {
+  background-color: var(--architect-panel-background);
+  color: var(--architect-panel-text);
+  margin: 0 auto;
+  width: 75vw;
+  min-height: 40vh;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: units.unit(1) units.unit(1) 0 0 var(--architect-panel-shadow);
+
+  &__title {
+    text-align: center;
+  }
+
+  &__groups {
+    columns: 2;
+    column-gap: units.unit(2);
+    break-inside: avoid-column;
+  }
+
+  &__group {
+    margin: 0 0 units.unit(2);
+    border: 1px solid var(--architect-panel-divider);
+    padding: units.unit(2);
+    border-radius:  units.unit(1);
+    min-height: 200px;
+  }
+
+  &__group-title {
+    text-align: center;
+  }
+}

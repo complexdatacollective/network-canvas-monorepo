@@ -1,0 +1,92 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.overview-summary {
+  position: fixed;
+  top: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: units.unit(1) units.unit(4);
+  width: 100%;
+  background-color: var(--color-slate-blue--dark);
+  box-shadow: 0 units.unit(1) .2rem 0 var(--architect-panel-shadow);
+  z-index: var(--z-panel);
+
+  &__header {
+    color: var(--text-light);
+  }
+
+  .action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-left: auto;
+
+    &__button {
+      &:not(:last-child) {
+        margin-right: units.unit(2);
+      }
+    }
+  }
+}
+
+.app--macos {
+  .overview-summary {
+    padding-top: units.unit(2.5);
+  }
+}
+
+.overview {
+  margin: 0 auto;
+  margin-top: units.unit(4);
+  width: 70rem;
+  position: relative;
+  background: var(--color-white);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: 0 units.unit(1) .2rem 0 var(--architect-panel-shadow);
+  display: flex;
+  flex-direction: column;
+
+  &__panel {
+    padding: units.unit(2) units.unit(6);
+
+    .overview-description {
+      textarea {
+        padding-bottom: 0;
+        margin-bottom: 0;
+        min-height: 5rem;
+        background: var(--color-white);
+      }
+
+      .form-field-container {
+        margin-bottom: 0;
+      }
+    }
+
+  }
+
+  &__footer {
+    background: var(--color-slate-blue--dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    padding: units.unit(2) units.unit(6);
+
+    .action-buttons {
+      display: flex;
+
+      :not(:last-child) {
+        margin-right: units.unit(2);
+      }
+    }
+
+    .icon {
+      height: 100%;
+      width: 3rem;
+    }
+
+
+  }
+}

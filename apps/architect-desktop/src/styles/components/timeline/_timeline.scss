@@ -1,0 +1,125 @@
+@use '@codaco/ui/src/styles/global/core/units';
+@use "sass:math";
+
+$stage-height: math.div(9, 16) * 15vw;
+$stage-padding: units.unit(5);
+$bottom-spacing: units.unit(12);
+
+.timeline {
+  position: relative;
+  flex: 1 0 auto;
+  overflow: hidden;
+  margin-bottom: 6rem;
+
+  &__insert {
+    cursor: pointer;
+    position: absolute;
+
+    // position: relative;
+    left: 50%;
+    padding-left: units.unit(6);
+    height: units.unit(5);
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--heading-font-family);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: .05rem;
+    line-height: 1.1;
+    color: transparent;
+    transition-property: color, opacity;
+    transition-timing-function: var(--animation-easing);
+    transition-duration: var(--animation-duration-standard);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: units.unit(5);
+      height: units.unit(5);
+      border-radius: units.unit(5);
+      background-color: var(--architect-timeline-line);
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--color-white);
+      transform-origin: center center;
+      transform: translateX(-50%) scale(.4);
+      transition-property: transform, background-color;
+      transition-timing-function: var(--animation-easing);
+      transition-duration: var(--animation-duration-fast);
+    }
+
+    &::after {
+      position: absolute;
+      top: .05rem;
+      left: 0;
+      transform: translateX(-50%) scale(.4);
+      font-weight: 500;
+      font-size: 2.5rem;
+      line-height: 2.5rem;
+      content: '+';
+      display: block;
+      color: var(--color-white);
+      height: 2.5rem;
+      opacity: 0;
+      transition-property: opacity, transform;
+      transition-timing-function: var(--animation-easing);
+      transition-duration: var(--animation-duration-standard);
+    }
+
+    &--new,
+    &:hover {
+      color: var(--architext-text);
+
+      &::before {
+        transform: translateX(-50%);
+        background-color: var(--primary);
+      }
+
+      &::after {
+        opacity: 1;
+        transform: translateX(-50%);
+      }
+    }
+
+    &--new {
+      margin-top: units.unit(3);
+      position: relative;
+    }
+  }
+
+  // Timeline line
+  &::before {
+    transition: transform var(--animation-duration-slow) var(--animation-easing);
+    transform: translateX(-50%);
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 0;
+    height: calc(100% - #{units.unit(5)});
+    border-left: units.unit(.6) solid var(--architect-timeline-line);
+  }
+
+  &__stages {
+    position: relative;
+    padding: units.unit(6) 0 0;
+
+    &--show {
+      opacity: 1;
+    }
+  }
+
+  &--sorting {
+    .timeline__stages-highlight {
+      background-color: transparent !important; // sass-lint:disable-line no-important
+    }
+
+    .timeline__insert {
+      opacity: 0;
+    }
+  }
+}

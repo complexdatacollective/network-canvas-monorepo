@@ -1,0 +1,13 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.list-group {
+  border-top: 2px solid var(--color-shadow);
+  margin: units.unit(4) 0;
+  padding: units.unit(2) 0 0;
+
+  .list-row {
+    &:last-child {
+      margin: 0;
+    }
+  }
+}

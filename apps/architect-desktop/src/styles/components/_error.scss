@@ -1,0 +1,31 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.error {
+  background-color: var(--modal-overlay);
+  color: var(--text-light);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &__layout {
+    padding: units.unit(6);
+    width: 60rem;
+    border-radius: var(--border-radius);
+    background: var(--color-cyber-grape);
+  }
+
+  &__stack {
+    display: block;
+    overflow: scroll;
+    margin-top: units.unit(2);
+    padding: units.unit(2);
+    max-height: units.unit(15);
+    border-radius: var(--border-radius);
+    background-color: var(--architect-error-code-background);
+  }
+}

@@ -1,0 +1,23 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.list-new-button {
+  width: units.unit(10);
+  height: units.unit(10);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--architect-edit-button-background);
+  border-radius: 100%;
+  transform: translateY(-1px);
+
+  .icon {
+    width: units.unit(2);
+    height: units.unit(2);
+
+    .cls-1 {
+      fill: var(--architect-edit-button-fill);
+    }
+  }
+}

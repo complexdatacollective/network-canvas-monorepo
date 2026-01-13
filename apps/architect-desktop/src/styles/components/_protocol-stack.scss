@@ -1,0 +1,45 @@
+$card-shadow: 0 0 10px var(--color-shadow);
+$component-name: protocol-stack;
+
+.protocol-stack {
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &__preview {
+    width: 12vmin;
+    height: auto;
+  }
+
+  &__stack {
+    &-cover {
+      margin-bottom: 1rem;
+    }
+  }
+
+  &__label {
+    margin: 0;
+    text-align: center;
+    color: var(--text-light);
+    max-height: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+
+  &__filepath {
+    margin: 0;
+    text-align: center;
+    color: var(--text-light);
+    max-height: 100%;
+    max-width: 100%;
+    word-break: break-all;
+    font-size: 80%;
+  }
+
+}
