@@ -67,6 +67,8 @@
 			"!**/coverage",
 			"!**/.turbo",
 			"!**/public/**/*.*",
+			"!apps/architect-desktop",
+			"!apps/interviewer",
 			"!!**/*.css",
 			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.js"
 		]
