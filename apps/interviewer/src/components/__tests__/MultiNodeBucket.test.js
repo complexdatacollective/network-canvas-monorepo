@@ -1,25 +1,26 @@
 /* eslint-disable @codaco/spellcheck/spell-checker */
-import { vi } from 'vitest';
-import React from 'react';
-import { mount } from 'enzyme';
 
-vi.mock('../../containers/Node');
+import { mount } from "enzyme";
+import React from "react";
+import { vi } from "vitest";
 
-import MultiNodeBucket from '../MultiNodeBucket';
-import { NO_SCROLL } from '../../behaviours/DragAndDrop/DragManager';
+vi.mock("../../containers/Node");
 
-describe('MultiNodeBucket', () => {
-  let bucket;
+import { NO_SCROLL } from "../../behaviours/DragAndDrop/DragManager";
+import MultiNodeBucket from "../MultiNodeBucket";
 
-  beforeEach(() => {
-    bucket = mount(<MultiNodeBucket nodes={[{}]} sortOrder={[]} />);
-  });
+describe("MultiNodeBucket", () => {
+	let bucket;
 
-  it('renders connected node items', () => {
-    expect(bucket.find('Connect(Node)')).toHaveLength(1);
-  });
+	beforeEach(() => {
+		bucket = mount(<MultiNodeBucket nodes={[{}]} sortOrder={[]} />);
+	});
 
-  it('specifies no_scroll on items for improved drag responsiveness', () => {
-    expect(bucket.find('Connect(Node)').prop('scrollDirection')).toEqual(NO_SCROLL);
-  });
+	it("renders connected node items", () => {
+		expect(bucket.find("Connect(Node)")).toHaveLength(1);
+	});
+
+	it("specifies no_scroll on items for improved drag responsiveness", () => {
+		expect(bucket.find("Connect(Node)").prop("scrollDirection")).toEqual(NO_SCROLL);
+	});
 });

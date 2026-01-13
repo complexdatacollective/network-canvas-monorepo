@@ -6,7 +6,7 @@
  * testing protocols during design.
  */
 
-import { electronAPI } from '@utils/electronBridge';
+import { electronAPI } from "@utils/electronBridge";
 
 /**
  * Opens the preview window and sends protocol data to display a specific stage.
@@ -14,36 +14,36 @@ import { electronAPI } from '@utils/electronBridge';
  * @param {number} stageIndex - The index of the stage to preview
  */
 const preview = (protocol, stageIndex) => {
-  electronAPI.ipc.send('preview:preview', protocol, stageIndex);
+	electronAPI.ipc.send("preview:preview", protocol, stageIndex);
 };
 
 /**
  * Closes/hides the preview window.
  */
 const close = () => {
-  electronAPI.ipc.send('preview:close');
+	electronAPI.ipc.send("preview:close");
 };
 
 /**
  * Clears the preview state without closing the window.
  */
 const clear = () => {
-  electronAPI.ipc.send('preview:clear');
+	electronAPI.ipc.send("preview:clear");
 };
 
 /**
  * Resets the preview window to its initial state.
  */
 const reset = () => {
-  electronAPI.ipc.send('preview:reset');
+	electronAPI.ipc.send("preview:reset");
 };
 
 const driver = {
-  preview,
-  close,
-  clear,
-  reset,
-  isDisabled: false,
+	preview,
+	close,
+	clear,
+	reset,
+	isDisabled: false,
 };
 
 export default driver;

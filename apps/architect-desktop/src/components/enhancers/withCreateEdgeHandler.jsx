@@ -1,37 +1,36 @@
-import { connect } from 'react-redux';
-import { withHandlers, compose } from 'recompose';
-import { change } from 'redux-form';
-import { actionCreators as codebookActions } from '@modules/protocol/codebook';
+import { actionCreators as codebookActions } from "@modules/protocol/codebook";
+import { connect } from "react-redux";
+import { compose, withHandlers } from "recompose";
+import { change } from "redux-form";
 
 // TODO: withCreateEdgeType
 
 const mapDispatchToProps = {
-  changeField: change,
-  createEdge: codebookActions.createEdge,
+	changeField: change,
+	createEdge: codebookActions.createEdge,
 };
 
 const createEdgeHandler = {
-  handleCreateEdge: ({ changeField, createEdge, form }) => (name) => {
-    const { type } = createEdge({ name });
+	handleCreateEdge:
+		({ changeField, createEdge, form }) =>
+		(name) => {
+			const { type } = createEdge({ name });
 
-    // Update select field to newly created edge
-    changeField(form, 'edges.create', type);
+			// Update select field to newly created edge
+			changeField(form, "edges.create", type);
 
-    return type;
-  },
+			return type;
+		},
 };
 
 /**
-  * usage:
-  * withCreateEdgeHandler(MyComponent)
-  *
-  * MyComponent = (handleCreateEdge) => (
-  *   <div handler={() => handleCreateEdge(name)} />
-  * )
-  */
-const withCreateEdgeHandler = compose(
-  connect(null, mapDispatchToProps),
-  withHandlers(createEdgeHandler),
-);
+ * usage:
+ * withCreateEdgeHandler(MyComponent)
+ *
+ * MyComponent = (handleCreateEdge) => (
+ *   <div handler={() => handleCreateEdge(name)} />
+ * )
+ */
+const withCreateEdgeHandler = compose(connect(null, mapDispatchToProps), withHandlers(createEdgeHandler));
 
 export default withCreateEdgeHandler;

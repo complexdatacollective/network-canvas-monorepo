@@ -1,11 +1,11 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 const openDialog = vi.fn();
 const closeDialog = vi.fn();
 
 const actionCreators = {
-  openDialog,
-  closeDialog,
+	openDialog,
+	closeDialog,
 };
 
 const reducer = vi.fn((state = { dialogs: [] }) => state);

@@ -1,12 +1,12 @@
-const path = require('path');
-const fse = require('fs-extra');
-const archiver = require('archiver');
+const path = require("path");
+const fse = require("fs-extra");
+const archiver = require("archiver");
 
 const zlibDefaultCompression = -1;
 
 const archiveOptions = {
-  zlib: { level: zlibDefaultCompression },
-  store: true,
+	zlib: { level: zlibDefaultCompression },
+	store: true,
 };
 
 /**
@@ -19,40 +19,40 @@ const archiveOptions = {
  * @return Returns a promise that resolves to the destination path
  */
 const archive = (sourcePaths, tempDir, filename, updateCallback, shouldContinue) => {
-  const filenameWithExtension = `${filename}.zip`;
-  const destinationPath = path.join(tempDir, filenameWithExtension);
+	const filenameWithExtension = `${filename}.zip`;
+	const destinationPath = path.join(tempDir, filenameWithExtension);
 
-  return new Promise((resolve, reject) => {
-    const output = fse.createWriteStream(destinationPath);
-    const zip = archiver('zip', archiveOptions);
+	return new Promise((resolve, reject) => {
+		const output = fse.createWriteStream(destinationPath);
+		const zip = archiver("zip", archiveOptions);
 
-    output.on('close', () => {
-      resolve(destinationPath);
-    });
+		output.on("close", () => {
+			resolve(destinationPath);
+		});
 
-    output.on('warning', reject);
-    output.on('error', reject);
+		output.on("warning", reject);
+		output.on("error", reject);
 
-    zip.pipe(output);
+		zip.pipe(output);
 
-    zip.on('warning', reject);
-    zip.on('error', reject);
-    zip.on('progress', (progress) => {
-      if (!shouldContinue()) {
-        zip.abort();
-        resolve();
-        return;
-      }
-      const percent = (progress.entries.processed / progress.entries.total) * 100;
-      updateCallback(percent);
-    });
+		zip.on("warning", reject);
+		zip.on("error", reject);
+		zip.on("progress", (progress) => {
+			if (!shouldContinue()) {
+				zip.abort();
+				resolve();
+				return;
+			}
+			const percent = (progress.entries.processed / progress.entries.total) * 100;
+			updateCallback(percent);
+		});
 
-    sourcePaths.forEach((sourcePath) => {
-      zip.file(sourcePath, { name: path.basename(sourcePath) });
-    });
+		sourcePaths.forEach((sourcePath) => {
+			zip.file(sourcePath, { name: path.basename(sourcePath) });
+		});
 
-    zip.finalize();
-  });
+		zip.finalize();
+	});
 };
 
 module.exports = archive;

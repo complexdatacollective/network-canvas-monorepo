@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
-import { isEqual } from 'lodash';
-import createSorter from '../utils/createSorter';
+import { isEqual } from "lodash";
+import { useMemo, useState } from "react";
+import createSorter from "../utils/createSorter";
 
 const defaultSortOrder = {
-  direction: 'asc',
-  property: ['data', 'attributes', 'name'],
-  type: 'string',
+	direction: "asc",
+	property: ["data", "attributes", "name"],
+	type: "string",
 };
 
 /**
@@ -31,61 +31,50 @@ const defaultSortOrder = {
  * ] = useSort(list, { property: 'name', direction: 'asc'});
  */
 const useSort = (list, initialSortOrder = defaultSortOrder) => {
-  const {
-    property: initialProperty,
-    direction: initialDirection,
-    type: initialType,
-  } = initialSortOrder;
+	const { property: initialProperty, direction: initialDirection, type: initialType } = initialSortOrder;
 
-  const [sortByProperty, setSortByProperty] = useState(initialProperty);
-  const [sortType, setSortType] = useState(initialType);
-  const [sortDirection, setSortDirection] = useState(initialDirection);
+	const [sortByProperty, setSortByProperty] = useState(initialProperty);
+	const [sortType, setSortType] = useState(initialType);
+	const [sortDirection, setSortDirection] = useState(initialDirection);
 
-  const toggleSortDirection = () => setSortDirection(
-    (d) => (d === 'desc' ? 'asc' : 'desc'),
-  );
+	const toggleSortDirection = () => setSortDirection((d) => (d === "desc" ? "asc" : "desc"));
 
-  const updateSortByProperty = (newProperty) => {
-    // If no property, reset to initial
-    if (!newProperty) {
-      setSortByProperty(initialProperty);
-      setSortDirection(initialDirection);
-      return;
-    }
+	const updateSortByProperty = (newProperty) => {
+		// If no property, reset to initial
+		if (!newProperty) {
+			setSortByProperty(initialProperty);
+			setSortDirection(initialDirection);
+			return;
+		}
 
-    // If property already selected, change direction only
-    if (isEqual(newProperty, sortByProperty)) {
-      toggleSortDirection();
-      return;
-    }
+		// If property already selected, change direction only
+		if (isEqual(newProperty, sortByProperty)) {
+			toggleSortDirection();
+			return;
+		}
 
-    // Otherwise, set property and default direction
-    setSortByProperty(newProperty);
-    setSortDirection(defaultSortOrder.direction);
-  };
+		// Otherwise, set property and default direction
+		setSortByProperty(newProperty);
+		setSortDirection(defaultSortOrder.direction);
+	};
 
-  const sortedList = useMemo(() => {
-    if (!sortByProperty) { return list; }
+	const sortedList = useMemo(() => {
+		if (!sortByProperty) {
+			return list;
+		}
 
-    const rule = {
-      property: sortByProperty,
-      direction: sortDirection,
-      type: sortType,
-    };
+		const rule = {
+			property: sortByProperty,
+			direction: sortDirection,
+			type: sortType,
+		};
 
-    const sorter = createSorter([rule]);
+		const sorter = createSorter([rule]);
 
-    return sorter(list);
-  }, [list, sortByProperty, sortDirection, sortType]);
+		return sorter(list);
+	}, [list, sortByProperty, sortDirection, sortType]);
 
-  return [
-    sortedList,
-    sortByProperty,
-    sortDirection,
-    updateSortByProperty,
-    setSortType,
-    setSortDirection,
-  ];
+	return [sortedList, sortByProperty, sortDirection, updateSortByProperty, setSortType, setSortDirection];
 };
 
 export default useSort;

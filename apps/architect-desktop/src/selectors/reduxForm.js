@@ -1,4 +1,4 @@
-import { getFormValues, getFormNames } from 'redux-form';
+import { getFormNames, getFormValues } from "redux-form";
 
 /**
  * Returns the redux form values for the given form names.
@@ -8,18 +8,19 @@ import { getFormValues, getFormNames } from 'redux-form';
  * keyed by form name
  */
 export const getForms = (formNames) => (state) => {
-  const reduce = (names) => names.reduce(
-    (memo, formName) => ({
-      ...memo,
-      [formName]: getFormValues(formName)(state),
-    }),
-    {},
-  );
+	const reduce = (names) =>
+		names.reduce(
+			(memo, formName) => ({
+				...memo,
+				[formName]: getFormValues(formName)(state),
+			}),
+			{},
+		);
 
-  if (!formNames) {
-    const allFormNames = getFormNames(state);
-    return reduce(allFormNames);
-  }
+	if (!formNames) {
+		const allFormNames = getFormNames(state);
+		return reduce(allFormNames);
+	}
 
-  return reduce(formNames);
+	return reduce(formNames);
 };

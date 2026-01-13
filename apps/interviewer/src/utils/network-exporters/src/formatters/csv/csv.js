@@ -3,7 +3,7 @@
  * @module CSV
  */
 
-const csvEOL = '\r\n'; // always this, not os-specific
+const csvEOL = "\r\n"; // always this, not os-specific
 
 /**
  * Function to determine if a given value contains characters that are
@@ -12,14 +12,14 @@ const csvEOL = '\r\n'; // always this, not os-specific
  * @return {boolean} if the string contains difficult to encode characters
  */
 const containsDifficultCharacters = (string) => {
-  const difficultCharacters = [
-    '"', // Single quote
-    ',', // Comma
-    '\r', // line ending
-    '\n', // carriage return
-  ];
+	const difficultCharacters = [
+		'"', // Single quote
+		",", // Comma
+		"\r", // line ending
+		"\n", // carriage return
+	];
 
-  return difficultCharacters.some((character) => string.includes(character));
+	return difficultCharacters.some((character) => string.includes(character));
 };
 
 /**
@@ -36,28 +36,28 @@ const quoteValue = (value) => `"${value.replace(/"/g, '""')}"`;
  * @return {string}
  */
 const sanitizedCellValue = (value) => {
-  if (value && typeof value === 'object') {
-    let serialized;
-    try {
-      serialized = JSON.stringify(value);
-    } catch (err) {
-      serialized = value.toString(); // value will never be null here
-    }
-    return quoteValue(serialized);
-  }
+	if (value && typeof value === "object") {
+		let serialized;
+		try {
+			serialized = JSON.stringify(value);
+		} catch (err) {
+			serialized = value.toString(); // value will never be null here
+		}
+		return quoteValue(serialized);
+	}
 
-  if (typeof value === 'string') {
-    let escapedValue = value;
-    if (containsDifficultCharacters(value)) {
-      escapedValue = quoteValue(value);
-    }
-    return escapedValue;
-  }
-  return value;
+	if (typeof value === "string") {
+		let escapedValue = value;
+		if (containsDifficultCharacters(value)) {
+			escapedValue = quoteValue(value);
+		}
+		return escapedValue;
+	}
+	return value;
 };
 
 module.exports = {
-  csvEOL,
-  quoteValue,
-  sanitizedCellValue,
+	csvEOL,
+	quoteValue,
+	sanitizedCellValue,
 };

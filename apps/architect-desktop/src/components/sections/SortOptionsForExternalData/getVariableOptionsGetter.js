@@ -1,4 +1,4 @@
-import { map } from 'lodash';
+import { map } from "lodash";
 
 /**
  * Creates a optionGetter function for <MultiSelect />
@@ -6,12 +6,9 @@ import { map } from 'lodash';
  * This optionGetter is for variableOptions, which defines properties for the `variable` column.
  */
 const getVariableOptionsGetter = (variableOptions) => (property, rowValues, allValues) => {
-  const used = map(allValues, 'variable');
+	const used = map(allValues, "variable");
 
-  return variableOptions
-    .map(
-      (option) => (!used.includes(option.value) ? option : { ...option, disabled: true }),
-    );
+	return variableOptions.map((option) => (!used.includes(option.value) ? option : { ...option, disabled: true }));
 };
 
 export default getVariableOptionsGetter;

@@ -1,1 +1,1 @@
-export { default } from './SlidesForm';
+export { default } from "./SlidesForm";

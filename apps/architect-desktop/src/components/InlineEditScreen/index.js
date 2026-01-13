@@ -1,1 +1,1 @@
-export { default } from './InlineEditScreen';
+export { default } from "./InlineEditScreen";

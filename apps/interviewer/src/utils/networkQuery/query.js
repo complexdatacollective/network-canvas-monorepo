@@ -1,28 +1,27 @@
-import { getSingleRule } from './rules';
+import { getSingleRule } from "./rules";
 
 const getGroup = (rule) => {
-  const { type, options } = rule;
-  if (type === 'ego') { return 'ego'; }
+	const { type, options } = rule;
+	if (type === "ego") {
+		return "ego";
+	}
 
-  if (
-    options.operator === 'NOT_EXISTS'
-    && !options.attribute
-  ) {
-    return `${type}_not_exists`;
-  }
+	if (options.operator === "NOT_EXISTS" && !options.attribute) {
+		return `${type}_not_exists`;
+	}
 
-  return type;
+	return type;
 };
 
 const groupByType = (acc, rule) => {
-  const mappedType = getGroup(rule);
+	const mappedType = getGroup(rule);
 
-  const typeRules = (acc[mappedType] || []).concat([rule]);
+	const typeRules = (acc[mappedType] || []).concat([rule]);
 
-  return {
-    ...acc,
-    [mappedType]: typeRules,
-  };
+	return {
+		...acc,
+		[mappedType]: typeRules,
+	};
 };
 
 /**
@@ -60,40 +59,31 @@ const groupByType = (acc, rule) => {
  * const result = query(network);
  */
 const getQuery = ({ rules, join }) => {
-  const ruleRunners = rules
-    .map(getSingleRule)
-    .reduce(groupByType, {});
+	const ruleRunners = rules.map(getSingleRule).reduce(groupByType, {});
 
-  // use the built-in array methods
-  const ruleIterator = join === 'AND'
-    ? Array.prototype.every
-    : Array.prototype.some;
+	// use the built-in array methods
+	const ruleIterator = join === "AND" ? Array.prototype.every : Array.prototype.some;
 
-  // Array.every(rule([type, typeRules]))
-  return network => ruleIterator.call(Object.entries(ruleRunners), ([type, typeRules]) => {
-    // 'ego' type rules run on a single node
-    if (type === 'ego') {
-      return ruleIterator.call(typeRules, rule => rule(network.ego));
-    }
+	// Array.every(rule([type, typeRules]))
+	return (network) =>
+		ruleIterator.call(Object.entries(ruleRunners), ([type, typeRules]) => {
+			// 'ego' type rules run on a single node
+			if (type === "ego") {
+				return ruleIterator.call(typeRules, (rule) => rule(network.ego));
+			}
 
-    // alter or edge not existing is a special case because the
-    // whole network must be evaluated
-    if (type === 'alter_not_exists' || type === 'edge_not_exists') {
-      return ruleIterator.call(
-        typeRules,
-        rule => network.nodes.every(nodes => rule(nodes, network.edges)),
-      );
-    }
+			// alter or edge not existing is a special case because the
+			// whole network must be evaluated
+			if (type === "alter_not_exists" || type === "edge_not_exists") {
+				return ruleIterator.call(typeRules, (rule) => network.nodes.every((nodes) => rule(nodes, network.edges)));
+			}
 
-    /*
-     * 'alter' and 'edge' type rules
-     * If any of the nodes match, this rule passes.
-     */
-    return network.nodes.some(
-      node =>
-        ruleIterator.call(typeRules, rule => rule(node, network.edges)),
-    );
-  });
+			/*
+			 * 'alter' and 'edge' type rules
+			 * If any of the nodes match, this rule passes.
+			 */
+			return network.nodes.some((node) => ruleIterator.call(typeRules, (rule) => rule(node, network.edges)));
+		});
 };
 
 export default getQuery;

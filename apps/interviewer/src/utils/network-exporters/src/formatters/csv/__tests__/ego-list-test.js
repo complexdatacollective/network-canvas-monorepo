@@ -1,263 +1,241 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
+
+import { mockCodebook, mockExportOptions } from "../../../../config/mockObjects";
+import { makeWriteableStream } from "../../../../config/setupTestEnv";
 import {
-  EgoListFormatter,
-  asEgoAndSessionVariablesList,
-  toCSVStream,
-  toCSVString,
-} from '../ego-list';
-import {
-  entityPrimaryKeyProperty,
-  entityAttributesProperty,
-  egoProperty,
-  caseProperty,
-  ncSessionProperty,
-  ncProtocolNameProperty,
-  sessionStartTimeProperty,
-  sessionFinishTimeProperty,
-  sessionExportTimeProperty,
-  protocolName,
-  ncCaseProperty,
-  sessionProperty,
-} from '../../../utils/reservedAttributes';
+	caseProperty,
+	egoProperty,
+	entityAttributesProperty,
+	entityPrimaryKeyProperty,
+	ncCaseProperty,
+	ncProtocolNameProperty,
+	ncSessionProperty,
+	protocolName,
+	sessionExportTimeProperty,
+	sessionFinishTimeProperty,
+	sessionProperty,
+	sessionStartTimeProperty,
+} from "../../../utils/reservedAttributes";
+import { asEgoAndSessionVariablesList, EgoListFormatter, toCSVStream, toCSVString } from "../ego-list";
 
 const ego = {
-  [egoProperty]: 123,
-  [caseProperty]: 'case id',
-  [sessionProperty]: 789,
-  [protocolName]: 'protocol name',
-  [sessionStartTimeProperty]: 100,
-  [sessionFinishTimeProperty]: 200,
-  [sessionExportTimeProperty]: 300,
-  [entityPrimaryKeyProperty]: 1,
-  [entityAttributesProperty]: {
-    name: 'Jane',
-  },
+	[egoProperty]: 123,
+	[caseProperty]: "case id",
+	[sessionProperty]: 789,
+	[protocolName]: "protocol name",
+	[sessionStartTimeProperty]: 100,
+	[sessionFinishTimeProperty]: 200,
+	[sessionExportTimeProperty]: 300,
+	[entityPrimaryKeyProperty]: 1,
+	[entityAttributesProperty]: {
+		name: "Jane",
+	},
 };
 
 const baseCSVAttributes = [
-  egoProperty,
-  ncCaseProperty,
-  ncSessionProperty,
-  ncProtocolNameProperty,
-  sessionStartTimeProperty,
-  sessionFinishTimeProperty,
-  sessionExportTimeProperty,
+	egoProperty,
+	ncCaseProperty,
+	ncSessionProperty,
+	ncProtocolNameProperty,
+	sessionStartTimeProperty,
+	sessionFinishTimeProperty,
+	sessionExportTimeProperty,
 ];
 
-describe('asEgoAndSessionVariablesList', () => {
-  it('transforms a network to ego', () => {
-    const network = { nodes: [], edges: [], ego: { id: 1, [entityAttributesProperty]: {} } };
-    expect(asEgoAndSessionVariablesList(
-      network,
-      mockCodebook,
-      mockExportOptions,
-    )).toEqual([network.ego]);
-  });
+describe("asEgoAndSessionVariablesList", () => {
+	it("transforms a network to ego", () => {
+		const network = { nodes: [], edges: [], ego: { id: 1, [entityAttributesProperty]: {} } };
+		expect(asEgoAndSessionVariablesList(network, mockCodebook, mockExportOptions)).toEqual([network.ego]);
+	});
 });
 
-describe('toCSVString', () => {
-  it('writes a simple CSV', () => {
-    const csv = toCSVString([ego]);
-    const result = [
-      ...baseCSVAttributes,
-      'name\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      'Jane\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+describe("toCSVString", () => {
+	it("writes a simple CSV", () => {
+		const csv = toCSVString([ego]);
+		const result = [...baseCSVAttributes, "name\r\n1", "case id", 789, "protocol name", 100, 200, 300, "Jane\r\n"].join(
+			",",
+		);
+		expect(csv).toEqual(result);
+	});
 });
 
-describe('toCSVStream', () => {
-  let writable;
-  let testEgo;
+describe("toCSVStream", () => {
+	let writable;
+	let testEgo;
 
-  beforeEach(() => {
-    writable = makeWriteableStream();
-    testEgo = ego;
-  });
+	beforeEach(() => {
+		writable = makeWriteableStream();
+		testEgo = ego;
+	});
 
-  it('writes a simple CSV', async () => {
-    toCSVStream([testEgo], writable);
+	it("writes a simple CSV", async () => {
+		toCSVStream([testEgo], writable);
 
-    const csv = await writable.asString();
+		const csv = await writable.asString();
 
-    const result = [
-      ...baseCSVAttributes,
-      'name\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      'Jane\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+		const result = [...baseCSVAttributes, "name\r\n1", "case id", 789, "protocol name", 100, 200, 300, "Jane\r\n"].join(
+			",",
+		);
+		expect(csv).toEqual(result);
+	});
 
-  it('escapes quotes', async () => {
-    toCSVStream([
-      {
-        ...testEgo,
-        [entityAttributesProperty]: {
-          name: '"Queequeg"',
-        },
-      },
-    ], writable);
-    const csv = await writable.asString();
-    const result = [
-      ...baseCSVAttributes,
-      'name\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      '"""Queequeg"""\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+	it("escapes quotes", async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						name: '"Queequeg"',
+					},
+				},
+			],
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [
+			...baseCSVAttributes,
+			"name\r\n1",
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			'"""Queequeg"""\r\n',
+		].join(",");
+		expect(csv).toEqual(result);
+	});
 
-  it('escapes quotes in attr names', async () => {
-    toCSVStream([
-      {
-        ...testEgo,
-        [entityAttributesProperty]: {
-          '"quoted"': 1,
-        },
-      },
-    ], writable);
-    const csv = await writable.asString();
-    const result = [
-      ...baseCSVAttributes,
-      '"""quoted"""\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      '1\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+	it("escapes quotes in attr names", async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						'"quoted"': 1,
+					},
+				},
+			],
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [
+			...baseCSVAttributes,
+			'"""quoted"""\r\n1',
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			"1\r\n",
+		].join(",");
+		expect(csv).toEqual(result);
+	});
 
-  it('stringifies and quotes objects', async () => {
-    toCSVStream([
-      {
-        ...testEgo,
-        [entityAttributesProperty]: {
-          location: { x: 1, y: 1 },
-        },
-      },
-    ], writable);
-    const csv = await writable.asString();
-    const result = [
-      ...baseCSVAttributes,
-      'location\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      '"{""x"":1,""y"":1}"\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+	it("stringifies and quotes objects", async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						location: { x: 1, y: 1 },
+					},
+				},
+			],
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [
+			...baseCSVAttributes,
+			"location\r\n1",
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			'"{""x"":1,""y"":1}"\r\n',
+		].join(",");
+		expect(csv).toEqual(result);
+	});
 
-  it('exports undefined values as blank', async () => {
-    toCSVStream([
-      {
-        ...testEgo,
-        [entityAttributesProperty]: {
-          prop: undefined,
-        },
-      },
-    ], writable);
-    const csv = await writable.asString();
-    const result = [
-      ...baseCSVAttributes,
-      'prop\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      '\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+	it("exports undefined values as blank", async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						prop: undefined,
+					},
+				},
+			],
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [...baseCSVAttributes, "prop\r\n1", "case id", 789, "protocol name", 100, 200, 300, "\r\n"].join(
+			",",
+		);
+		expect(csv).toEqual(result);
+	});
 
-  it('exports null values as blank', async () => {
-    toCSVStream([
-      {
-        ...testEgo,
-        [entityAttributesProperty]: {
-          prop: null,
-        },
-      },
-    ], writable);
-    const csv = await writable.asString();
-    const result = [
-      ...baseCSVAttributes,
-      'prop\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      '\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+	it("exports null values as blank", async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						prop: null,
+					},
+				},
+			],
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [...baseCSVAttributes, "prop\r\n1", "case id", 789, "protocol name", 100, 200, 300, "\r\n"].join(
+			",",
+		);
+		expect(csv).toEqual(result);
+	});
 
-  it('exports `false` values as "false"', async () => {
-    toCSVStream([
-      {
-        ...testEgo,
-        [entityAttributesProperty]: {
-          prop: false,
-        },
-      },
-    ], writable);
-    const csv = await writable.asString();
-    const result = [
-      ...baseCSVAttributes,
-      'prop\r\n1',
-      'case id',
-      789,
-      'protocol name',
-      100,
-      200,
-      300,
-      'false\r\n',
-    ].join(',');
-    expect(csv).toEqual(result);
-  });
+	it('exports `false` values as "false"', async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						prop: false,
+					},
+				},
+			],
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [
+			...baseCSVAttributes,
+			"prop\r\n1",
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			"false\r\n",
+		].join(",");
+		expect(csv).toEqual(result);
+	});
 });
 
-describe('EgoListFormatter', () => {
-  let writable;
+describe("EgoListFormatter", () => {
+	let writable;
 
-  beforeEach(() => {
-    writable = makeWriteableStream();
-  });
+	beforeEach(() => {
+		writable = makeWriteableStream();
+	});
 
-  it('writeToStream returns an abort controller', () => {
-    const formatter = new EgoListFormatter({}, mockCodebook, mockExportOptions);
-    const controller = formatter.writeToStream(writable);
-    expect(controller.abort).toBeInstanceOf(Function);
-  });
+	it("writeToStream returns an abort controller", () => {
+		const formatter = new EgoListFormatter({}, mockCodebook, mockExportOptions);
+		const controller = formatter.writeToStream(writable);
+		expect(controller.abort).toBeInstanceOf(Function);
+	});
 });

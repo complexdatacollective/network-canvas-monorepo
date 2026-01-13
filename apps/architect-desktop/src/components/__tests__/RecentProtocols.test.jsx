@@ -1,17 +1,17 @@
 /* eslint-env jest */
 
-import React from 'react';
-import { shallow } from 'enzyme';
-import { UnconnectedRecentProtocols } from '../RecentProtocols';
+import { shallow } from "enzyme";
+import React from "react";
+import { UnconnectedRecentProtocols } from "../RecentProtocols";
 
 const mockProps = {
-  recentProtocols: [],
+	recentProtocols: [],
 };
 
-describe('<RecentProtocols />', () => {
-  it('can render?', () => {
-    const component = shallow(<UnconnectedRecentProtocols {...mockProps} />);
+describe("<RecentProtocols />", () => {
+	it("can render?", () => {
+		const component = shallow(<UnconnectedRecentProtocols {...mockProps} />);
 
-    expect(component).toMatchSnapshot();
-  });
+		expect(component).toMatchSnapshot();
+	});
 });

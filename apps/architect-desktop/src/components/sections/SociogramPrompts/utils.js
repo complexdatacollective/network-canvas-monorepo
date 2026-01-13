@@ -10,34 +10,34 @@
  */
 
 const getEdgeFilteringWarning = (filters, edges) => {
-  const existFilters = filters.filter((rule) => rule.options.operator === 'EXISTS');
-  const doesNotExistFilters = filters.filter((rule) => rule.options.operator === 'NOT_EXISTS');
+	const existFilters = filters.filter((rule) => rule.options.operator === "EXISTS");
+	const doesNotExistFilters = filters.filter((rule) => rule.options.operator === "NOT_EXISTS");
 
-  // if any edge should show a warning, return true
-  return edges?.some((edge) => {
-    const isEdgeInExistFilters = existFilters.some((rule) => rule.options.type === edge);
-    const isEdgeInDoesNotExistFilters = doesNotExistFilters.some(
-      (rule) => rule.options.type === edge,
-    );
+	// if any edge should show a warning, return true
+	return (
+		edges?.some((edge) => {
+			const isEdgeInExistFilters = existFilters.some((rule) => rule.options.type === edge);
+			const isEdgeInDoesNotExistFilters = doesNotExistFilters.some((rule) => rule.options.type === edge);
 
-    // case 1
-    if (isEdgeInExistFilters) {
-      return false;
-    }
+			// case 1
+			if (isEdgeInExistFilters) {
+				return false;
+			}
 
-    // case 2
-    if (!isEdgeInExistFilters && existFilters.length > 0) {
-      return true;
-    }
+			// case 2
+			if (!isEdgeInExistFilters && existFilters.length > 0) {
+				return true;
+			}
 
-    // case 3
-    if (isEdgeInDoesNotExistFilters) {
-      return true;
-    }
+			// case 3
+			if (isEdgeInDoesNotExistFilters) {
+				return true;
+			}
 
-    // No warning in other cases
-    return false;
-  }) ?? false;
+			// No warning in other cases
+			return false;
+		}) ?? false
+	);
 };
 
 export default getEdgeFilteringWarning;

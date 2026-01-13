@@ -1,30 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import { electronAPI } from '@utils/electronBridge';
-import ProtocolSummary from '@app/lib/ProtocolSummary/ProtocolSummary';
-import ProtocolSummaryErrorBoundary from '../../Errors/ProtocolSummaryErrorBoundary';
+import ProtocolSummary from "@app/lib/ProtocolSummary/ProtocolSummary";
+import { electronAPI } from "@utils/electronBridge";
+import React, { useEffect, useState } from "react";
+import ProtocolSummaryErrorBoundary from "../../Errors/ProtocolSummaryErrorBoundary";
 
 const ProtocolSummaryView = () => {
-  const [data, setData] = useState(null);
+	const [data, setData] = useState(null);
 
-  useEffect(() => {
-    document.documentElement.classList.add('print');
+	useEffect(() => {
+		document.documentElement.classList.add("print");
 
-    return () => {
-      document.documentElement.classList.remove('print');
-    };
-  });
+		return () => {
+			document.documentElement.classList.remove("print");
+		};
+	});
 
-  useEffect(() => {
-    electronAPI.ipc.once('SUMMARY_DATA', (_data) => {
-      setData(_data);
-    });
-  }, []);
+	useEffect(() => {
+		electronAPI.ipc.once("SUMMARY_DATA", (_data) => {
+			setData(_data);
+		});
+	}, []);
 
-  return (
-    <ProtocolSummaryErrorBoundary>
-      <ProtocolSummary data={data} />
-    </ProtocolSummaryErrorBoundary>
-  );
+	return (
+		<ProtocolSummaryErrorBoundary>
+			<ProtocolSummary data={data} />
+		</ProtocolSummaryErrorBoundary>
+	);
 };
 
 export default ProtocolSummaryView;

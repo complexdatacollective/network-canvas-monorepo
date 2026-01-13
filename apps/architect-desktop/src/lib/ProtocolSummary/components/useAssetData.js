@@ -1,50 +1,55 @@
-import { useContext, useState, useEffect } from 'react';
-import { get } from 'lodash';
-import { makeGetNetworkAssetVariables, getAssetPath } from '@selectors/assets';
-import SummaryContext from './SummaryContext';
+import { getAssetPath, makeGetNetworkAssetVariables } from "@selectors/assets";
+import { get } from "lodash";
+import { useContext, useEffect, useState } from "react";
+import SummaryContext from "./SummaryContext";
 
 const stubState = (assetManifest, workingPath) => ({
-  session: { workingPath },
-  protocol: { present: { assetManifest } },
+	session: { workingPath },
+	protocol: { present: { assetManifest } },
 });
 
 const useAssetData = (id) => {
-  const {
-    protocol: { assetManifest },
-    workingPath,
-  } = useContext(SummaryContext);
+	const {
+		protocol: { assetManifest },
+		workingPath,
+	} = useContext(SummaryContext);
 
-  const data = get(assetManifest, id);
+	const data = get(assetManifest, id);
 
-  if (!data) { return {}; }
+	if (!data) {
+		return {};
+	}
 
-  const [variables, setVariables] = useState(null);
+	const [variables, setVariables] = useState(null);
 
-  const stubbedState = stubState(assetManifest, workingPath);
+	const stubbedState = stubState(assetManifest, workingPath);
 
-  const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
-  const assetPath = getAssetPath(stubbedState, id);
+	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
+	const assetPath = getAssetPath(stubbedState, id);
 
-  useEffect(() => {
-    if (data.type !== 'network') { return; }
+	useEffect(() => {
+		if (data.type !== "network") {
+			return;
+		}
 
-    getNetworkAssetVariables(id)
-      .then((v) => {
-        if (!v) { return; }
-        setVariables(v.join(', '));
-      });
-  }, []);
+		getNetworkAssetVariables(id).then((v) => {
+			if (!v) {
+				return;
+			}
+			setVariables(v.join(", "));
+		});
+	}, []);
 
-  const encodedURI = encodeURIComponent(assetPath);
-  const url = `asset://${encodedURI}`;
+	const encodedURI = encodeURIComponent(assetPath);
+	const url = `asset://${encodedURI}`;
 
-  return {
-    name: data.name,
-    type: data.type,
-    variables,
-    assetPath,
-    url,
-  };
+	return {
+		name: data.name,
+		type: data.type,
+		variables,
+		assetPath,
+		url,
+	};
 };
 
 export default useAssetData;

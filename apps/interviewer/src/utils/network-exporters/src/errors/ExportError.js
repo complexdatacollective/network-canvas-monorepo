@@ -6,25 +6,25 @@
  * unexpected (server) errors.
  */
 export class ExportError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ExportError';
-  }
+	constructor(message) {
+		super(message);
+		this.name = "ExportError";
+	}
 }
 
 export const ErrorMessages = {
-  NoTmpFS: 'Couldn\'t create a temporary directory for the export.',
-  EmptyFilelist: 'Empty filelist',
-  FilelistNotSingular: 'Multiple files must be uploaded separately',
-  InvalidContainerFile: 'Invalid file',
-  InvalidContainerFileExtension: 'File must have a ".netcanvas" extension',
-  InvalidProtocolFormat: 'Invalid protocol format',
-  InvalidRequestBody: 'Could not parse request data',
-  InvalidZip: 'Invalid ZIP file',
-  InvalidExportOptions: 'Invalid export options',
-  MissingParameters: 'Missing export parameters',
-  MissingProtocolFile: 'Missing protocol file',
-  NotFound: 'Not found',
-  NothingToExport: 'No data available to export',
-  VerificationFailed: 'Request verification failed',
+	NoTmpFS: "Couldn't create a temporary directory for the export.",
+	EmptyFilelist: "Empty filelist",
+	FilelistNotSingular: "Multiple files must be uploaded separately",
+	InvalidContainerFile: "Invalid file",
+	InvalidContainerFileExtension: 'File must have a ".netcanvas" extension',
+	InvalidProtocolFormat: "Invalid protocol format",
+	InvalidRequestBody: "Could not parse request data",
+	InvalidZip: "Invalid ZIP file",
+	InvalidExportOptions: "Invalid export options",
+	MissingParameters: "Missing export parameters",
+	MissingProtocolFile: "Missing protocol file",
+	NotFound: "Not found",
+	NothingToExport: "No data available to export",
+	VerificationFailed: "Request verification failed",
 };

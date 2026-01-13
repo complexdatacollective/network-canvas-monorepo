@@ -19,39 +19,41 @@ canvas, regardless of scrolling.
 * */
 
 export default function getAbsoluteBoundingRect(el) {
-  if (!el) {
-    return 0;
-  }
+	if (!el) {
+		return 0;
+	}
 
-  let offsetX = (window.pageXOffset !== undefined)
-    ? window.pageXOffset
-    : (document.documentElement || document.body.parentNode || document.body).scrollLeft;
+	let offsetX =
+		window.pageXOffset !== undefined
+			? window.pageXOffset
+			: (document.documentElement || document.body.parentNode || document.body).scrollLeft;
 
-  let offsetY = (window.pageYOffset !== undefined)
-    ? window.pageYOffset
-    : (document.documentElement || document.body.parentNode || document.body).scrollTop;
+	let offsetY =
+		window.pageYOffset !== undefined
+			? window.pageYOffset
+			: (document.documentElement || document.body.parentNode || document.body).scrollTop;
 
-  const rect = el.getBoundingClientRect();
+	const rect = el.getBoundingClientRect();
 
-  if (el !== document.body) {
-    let parent = el.parentNode;
+	if (el !== document.body) {
+		let parent = el.parentNode;
 
-    // The element's rect will be affected by the scroll positions of
-    // *all* of its scrollable parents, not just the window, so we have
-    // to walk up the tree and collect every scroll offset. Good times.
-    while (parent && parent !== document.body) {
-      offsetX += parent.scrollLeft;
-      offsetY += parent.scrollTop;
-      parent = parent.parentNode;
-    }
-  }
+		// The element's rect will be affected by the scroll positions of
+		// *all* of its scrollable parents, not just the window, so we have
+		// to walk up the tree and collect every scroll offset. Good times.
+		while (parent && parent !== document.body) {
+			offsetX += parent.scrollLeft;
+			offsetY += parent.scrollTop;
+			parent = parent.parentNode;
+		}
+	}
 
-  return {
-    bottom: rect.bottom + offsetY,
-    height: rect.height,
-    left: rect.left + offsetX,
-    right: rect.right + offsetX,
-    top: rect.top + offsetY,
-    width: rect.width,
-  };
+	return {
+		bottom: rect.bottom + offsetY,
+		height: rect.height,
+		left: rect.left + offsetX,
+		right: rect.right + offsetX,
+		top: rect.top + offsetY,
+		width: rect.width,
+	};
 }

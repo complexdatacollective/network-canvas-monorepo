@@ -3,50 +3,47 @@
  */
 
 const initialState = {
-  settingsMenuOpen: false,
+	settingsMenuOpen: false,
 };
 
-const UPDATE = 'UI/UPDATE';
-const TOGGLE = 'UI/TOGGLE';
+const UPDATE = "UI/UPDATE";
+const TOGGLE = "UI/TOGGLE";
 
 export default function reducer(state = initialState, action = {}) {
-  switch (action.type) {
-    case UPDATE:
-      return {
-        ...state,
-        ...action.state,
-      };
-    case TOGGLE:
-      return {
-        ...state,
-        [action.item]: !state[action.item],
-      };
-    default:
-      return state;
-  }
+	switch (action.type) {
+		case UPDATE:
+			return {
+				...state,
+				...action.state,
+			};
+		case TOGGLE:
+			return {
+				...state,
+				[action.item]: !state[action.item],
+			};
+		default:
+			return state;
+	}
 }
 
 const update = (state) => ({
-  type: UPDATE,
-  state,
+	type: UPDATE,
+	state,
 });
 
 const toggle = (item) => ({
-  type: TOGGLE,
-  item,
+	type: TOGGLE,
+	item,
 });
 
 const actionCreators = {
-  update,
-  toggle,
+	update,
+	toggle,
 };
 
 const actionTypes = {
-  UPDATE,
-  TOGGLE,
+	UPDATE,
+	TOGGLE,
 };
 
-export {
-  actionCreators,
-  actionTypes,
-};
+export { actionCreators, actionTypes };

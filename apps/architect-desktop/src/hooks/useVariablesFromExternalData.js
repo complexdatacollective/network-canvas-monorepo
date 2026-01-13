@@ -1,40 +1,42 @@
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { makeGetNetworkAssetVariables, makeGetGeoJsonAssetVariables } from '@selectors/assets';
+import { makeGetGeoJsonAssetVariables, makeGetNetworkAssetVariables } from "@selectors/assets";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 
 const initialState = {
-  isVariablesLoading: false,
-  variables: [],
-  variablesError: null,
+	isVariablesLoading: false,
+	variables: [],
+	variablesError: null,
 };
 
-const useVariablesFromExternalData = (dataSource, asOptions = false, type = 'network') => {
-  const [state, setState] = useState(initialState);
+const useVariablesFromExternalData = (dataSource, asOptions = false, type = "network") => {
+	const [state, setState] = useState(initialState);
 
-  const getNetworkAssetVariables = useSelector(makeGetNetworkAssetVariables);
-  const getGeojsonAssetVariables = useSelector(makeGetGeoJsonAssetVariables);
+	const getNetworkAssetVariables = useSelector(makeGetNetworkAssetVariables);
+	const getGeojsonAssetVariables = useSelector(makeGetGeoJsonAssetVariables);
 
-  useEffect(() => {
-    if (!dataSource) { return; }
+	useEffect(() => {
+		if (!dataSource) {
+			return;
+		}
 
-    setState({ isVariablesLoading: true, variables: [], variablesError: null });
+		setState({ isVariablesLoading: true, variables: [], variablesError: null });
 
-    const getVariables = type === 'geojson' ? getGeojsonAssetVariables : getNetworkAssetVariables;
+		const getVariables = type === "geojson" ? getGeojsonAssetVariables : getNetworkAssetVariables;
 
-    getVariables(dataSource, asOptions)
-      .then((variables) => {
-        setState((s) => ({ ...s, isVariablesLoading: false, variables }));
-      })
-      .catch((e) => {
-        setState((s) => ({
-          ...s,
-          isVariablesLoading: false,
-          variablesError: e.toString(),
-        }));
-      });
-  }, [dataSource, type]);
+		getVariables(dataSource, asOptions)
+			.then((variables) => {
+				setState((s) => ({ ...s, isVariablesLoading: false, variables }));
+			})
+			.catch((e) => {
+				setState((s) => ({
+					...s,
+					isVariablesLoading: false,
+					variablesError: e.toString(),
+				}));
+			});
+	}, [dataSource, type]);
 
-  return state;
+	return state;
 };
 
 export default useVariablesFromExternalData;

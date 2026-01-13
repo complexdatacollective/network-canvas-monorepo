@@ -1,21 +1,23 @@
-import Monitor from './Monitor';
+import Monitor from "./Monitor";
 
 const defaultMonitorProps = {
-  isDragging: false,
-  meta: {},
+	isDragging: false,
+	meta: {},
 };
 
 const getMonitorProps = (state) => {
-  const { source } = state;
+	const { source } = state;
 
-  if (!source) { return { ...defaultMonitorProps }; }
+	if (!source) {
+		return { ...defaultMonitorProps };
+	}
 
-  const monitorProps = {
-    isDragging: true,
-    meta: { ...source.meta },
-  };
+	const monitorProps = {
+		isDragging: true,
+		meta: { ...source.meta },
+	};
 
-  return monitorProps;
+	return monitorProps;
 };
 
 const MonitorDragSource = (types) => Monitor(getMonitorProps, types);

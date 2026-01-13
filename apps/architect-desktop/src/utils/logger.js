@@ -8,12 +8,12 @@
 
 /* eslint-disable no-console */
 const logger = {
-  info: (...args) => console.log('[INFO]', ...args),
-  warn: (...args) => console.warn('[WARN]', ...args),
-  error: (...args) => console.error('[ERROR]', ...args),
-  debug: (...args) => console.debug('[DEBUG]', ...args),
-  verbose: (...args) => console.log('[VERBOSE]', ...args),
-  silly: (...args) => console.log('[SILLY]', ...args),
+	info: (...args) => console.log("[INFO]", ...args),
+	warn: (...args) => console.warn("[WARN]", ...args),
+	error: (...args) => console.error("[ERROR]", ...args),
+	debug: (...args) => console.debug("[DEBUG]", ...args),
+	verbose: (...args) => console.log("[VERBOSE]", ...args),
+	silly: (...args) => console.log("[SILLY]", ...args),
 };
 
 export default logger;

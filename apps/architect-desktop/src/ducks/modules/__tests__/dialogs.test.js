@@ -1,96 +1,86 @@
 /* eslint-env jest */
 
-import { createStore, applyMiddleware } from 'redux';
-import thunks from 'redux-thunk';
-import reducer, { actionCreators } from '../dialogs';
+import { applyMiddleware, createStore } from "redux";
+import thunks from "redux-thunk";
+import reducer, { actionCreators } from "../dialogs";
 
-describe('dialogs', () => {
-  it('initialState', () => {
-    expect(
-      reducer(),
-    ).toEqual({
-      dialogs: [],
-    });
-  });
+describe("dialogs", () => {
+	it("initialState", () => {
+		expect(reducer()).toEqual({
+			dialogs: [],
+		});
+	});
 
-  describe('async actions', () => {
-    let store;
+	describe("async actions", () => {
+		let store;
 
-    beforeEach(() => {
-      store = createStore(reducer, undefined, applyMiddleware(thunks));
-    });
+		beforeEach(() => {
+			store = createStore(reducer, undefined, applyMiddleware(thunks));
+		});
 
-    it('OPEN and CLOSE_DIALOG', () => {
-      const dialog = { foo: 'bar' };
+		it("OPEN and CLOSE_DIALOG", () => {
+			const dialog = { foo: "bar" };
 
-      store.dispatch(actionCreators.openDialog(dialog));
+			store.dispatch(actionCreators.openDialog(dialog));
 
-      const state = store.getState();
+			const state = store.getState();
 
-      expect(
-        store.getState(),
-      ).toMatchObject({
-        dialogs: [
-          { ...dialog },
-        ],
-      });
+			expect(store.getState()).toMatchObject({
+				dialogs: [{ ...dialog }],
+			});
 
-      store.dispatch(actionCreators.closeDialog(state.dialogs[0].id));
+			store.dispatch(actionCreators.closeDialog(state.dialogs[0].id));
 
-      expect(
-        store.getState(),
-      ).toMatchObject({
-        dialogs: [],
-      });
-    });
-  });
+			expect(store.getState()).toMatchObject({
+				dialogs: [],
+			});
+		});
+	});
 
-  describe('openDialog', () => {
-    let store;
-    const getDialog = () => ({
-      foo: 'bar',
-      onCancel: jest.fn(),
-      onConfirm: jest.fn(),
-    });
+	describe("openDialog", () => {
+		let store;
+		const getDialog = () => ({
+			foo: "bar",
+			onCancel: jest.fn(),
+			onConfirm: jest.fn(),
+		});
 
-    beforeEach(() => {
-      store = createStore(reducer, undefined, applyMiddleware(thunks));
-    });
+		beforeEach(() => {
+			store = createStore(reducer, undefined, applyMiddleware(thunks));
+		});
 
-    it('Returns a promise', () => {
-      const dialog = getDialog();
+		it("Returns a promise", () => {
+			const dialog = getDialog();
 
-      expect.assertions(1);
+			expect.assertions(1);
 
-      expect(store.dispatch(actionCreators.openDialog(dialog))).toBeInstanceOf(Promise);
-    });
+			expect(store.dispatch(actionCreators.openDialog(dialog))).toBeInstanceOf(Promise);
+		});
 
-    it('Promise resolves to `false` when onCancel is called', () => {
-      const dialog = getDialog();
+		it("Promise resolves to `false` when onCancel is called", () => {
+			const dialog = getDialog();
 
-      expect.assertions(1);
+			expect.assertions(1);
 
-      const subject = expect(store.dispatch(actionCreators.openDialog(dialog)))
-        .resolves.toBe(false);
+			const subject = expect(store.dispatch(actionCreators.openDialog(dialog))).resolves.toBe(false);
 
-      const state = store.getState();
-      state.dialogs[0].onCancel();
+			const state = store.getState();
+			state.dialogs[0].onCancel();
 
-      return subject;
-    });
+			return subject;
+		});
 
-    it('Promise resolves to `true` when onConfirm is called', () => {
-      const dialog = getDialog();
+		it("Promise resolves to `true` when onConfirm is called", () => {
+			const dialog = getDialog();
 
-      expect.assertions(1);
+			expect.assertions(1);
 
-      const subject = expect(store.dispatch(actionCreators.openDialog(dialog)))
-        .resolves.toBe(true);
+			const subject = expect(store.dispatch(actionCreators.openDialog(dialog))).resolves.toBe(true);
 
-      const state = store.getState();
-      state.dialogs[0].onConfirm();
+			const state = store.getState();
+			state.dialogs[0].onConfirm();
 
-      return subject;
-    });
-  });
+			return subject;
+		});
+	});
 });

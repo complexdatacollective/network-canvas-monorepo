@@ -1,1 +1,1 @@
-export { default, formName } from './StageEditor';
+export { default, formName } from "./StageEditor";

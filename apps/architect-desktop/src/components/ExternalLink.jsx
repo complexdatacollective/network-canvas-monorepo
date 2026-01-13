@@ -1,27 +1,27 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { electronAPI } from '@utils/electronBridge';
+import { electronAPI } from "@utils/electronBridge";
+import PropTypes from "prop-types";
+import React from "react";
 
 export const openExternalLink = (href) => {
-  electronAPI.shell.openExternal(href);
+	electronAPI.shell.openExternal(href);
 };
 
 const ExternalLink = ({ children, href }) => {
-  const handleClick = (event) => {
-    event.preventDefault();
-    openExternalLink(href);
-  };
+	const handleClick = (event) => {
+		event.preventDefault();
+		openExternalLink(href);
+	};
 
-  return (
-    <a href="{href}" onClick={handleClick}>
-      {children}
-    </a>
-  );
+	return (
+		<a href="{href}" onClick={handleClick}>
+			{children}
+		</a>
+	);
 };
 
 ExternalLink.propTypes = {
-  children: PropTypes.node.isRequired,
-  href: PropTypes.string.isRequired,
+	children: PropTypes.node.isRequired,
+	href: PropTypes.string.isRequired,
 };
 
 export default ExternalLink;

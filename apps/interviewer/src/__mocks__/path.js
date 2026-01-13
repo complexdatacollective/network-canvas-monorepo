@@ -1,5 +1,5 @@
 const path = {
-  join: (...args) => args.join('/'),
+	join: (...args) => args.join("/"),
 };
 
 module.exports = path;

@@ -1,24 +1,22 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import Markdown from '@codaco/ui/lib/components/Fields/Markdown';
+import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
+import PropTypes from "prop-types";
+import React from "react";
 
 const InterviewScript = ({ interviewScript }) => (
-  <div className="protocol-summary-stage__interview-script">
-    <div className="protocol-summary-stage__interview-script-content">
-      <h2 className="section-heading">Interviewer Script</h2>
-      {interviewScript && (
-        <Markdown label={interviewScript} />
-      )}
-    </div>
-  </div>
+	<div className="protocol-summary-stage__interview-script">
+		<div className="protocol-summary-stage__interview-script-content">
+			<h2 className="section-heading">Interviewer Script</h2>
+			{interviewScript && <Markdown label={interviewScript} />}
+		</div>
+	</div>
 );
 
 InterviewScript.propTypes = {
-  interviewScript: PropTypes.string,
+	interviewScript: PropTypes.string,
 };
 
 InterviewScript.defaultProps = {
-  interviewScript: null,
+	interviewScript: null,
 };
 
 export default InterviewScript;

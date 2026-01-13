@@ -1,1 +1,1 @@
-export { default } from './NewStageScreen';
+export { default } from "./NewStageScreen";

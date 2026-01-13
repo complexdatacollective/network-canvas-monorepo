@@ -1,7 +1,7 @@
-import uuid from 'uuid/v1';
-import { findKey, toLower } from 'lodash';
-import { electronAPI } from '@utils/electronBridge';
-import { SUPPORTED_EXTENSION_TYPE_MAP } from '@app/config';
+import { SUPPORTED_EXTENSION_TYPE_MAP } from "@app/config";
+import { electronAPI } from "@utils/electronBridge";
+import { findKey, toLower } from "lodash";
+import uuid from "uuid/v1";
 
 /**
  * Function that determines the type of an asset file when importing. Types are defined
@@ -14,11 +14,11 @@ import { SUPPORTED_EXTENSION_TYPE_MAP } from '@app/config';
  * type is unsupported
  */
 export const getSupportedAssetType = async (filePath) => {
-  const extension = toLower(await electronAPI.path.extname(filePath));
+	const extension = toLower(await electronAPI.path.extname(filePath));
 
-  const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) => type.includes(extension));
+	const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) => type.includes(extension));
 
-  return typeFromMap || false;
+	return typeFromMap || false;
 };
 
 /**
@@ -27,14 +27,14 @@ export const getSupportedAssetType = async (filePath) => {
  * @param {string} filePath - The file buffer to copy.
  */
 const importAsset = async (protocolPath, filePath) => {
-  const extname = await electronAPI.path.extname(filePath);
-  const destinationName = `${uuid()}${extname}`;
-  const destinationPath = await electronAPI.path.join(protocolPath, 'assets', destinationName);
-  const assetType = await getSupportedAssetType(filePath);
+	const extname = await electronAPI.path.extname(filePath);
+	const destinationName = `${uuid()}${extname}`;
+	const destinationPath = await electronAPI.path.join(protocolPath, "assets", destinationName);
+	const assetType = await getSupportedAssetType(filePath);
 
-  await electronAPI.fs.copy(filePath, destinationPath);
+	await electronAPI.fs.copy(filePath, destinationPath);
 
-  return { filePath: destinationName, assetType };
+	return { filePath: destinationName, assetType };
 };
 
 export default importAsset;

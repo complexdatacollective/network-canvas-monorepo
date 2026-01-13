@@ -1,42 +1,40 @@
-import { isNil } from 'lodash';
-import {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-} from 'react';
+import { isNil } from "lodash";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Hook that provides state that returns to a rest value after a delay
 // Optionally has an initial value which can be different from the rest value
 const useFlipflop = (restValue, delay, initialState) => {
-  const timer = useRef(null);
-  const [state, _setState] = useState(!isNil(initialState) ? initialState : restValue);
+	const timer = useRef(null);
+	const [state, _setState] = useState(!isNil(initialState) ? initialState : restValue);
 
-  const setState = useCallback((value) => {
-    clearTimeout(timer.current);
+	const setState = useCallback(
+		(value) => {
+			clearTimeout(timer.current);
 
-    _setState(value);
+			_setState(value);
 
-    timer.current = setTimeout(() => {
-      _setState(restValue);
-    }, delay);
-  }, [delay, restValue]);
+			timer.current = setTimeout(() => {
+				_setState(restValue);
+			}, delay);
+		},
+		[delay, restValue],
+	);
 
-  useEffect(() => {
-    clearTimeout(timer.current);
+	useEffect(() => {
+		clearTimeout(timer.current);
 
-    if (!isNil(initialState) && initialState !== restValue) {
-      timer.current = setTimeout(() => {
-        _setState(restValue);
-      }, delay);
-    }
+		if (!isNil(initialState) && initialState !== restValue) {
+			timer.current = setTimeout(() => {
+				_setState(restValue);
+			}, delay);
+		}
 
-    return () => {
-      clearTimeout(timer.current);
-    };
-  }, [delay, restValue, initialState]);
+		return () => {
+			clearTimeout(timer.current);
+		};
+	}, [delay, restValue, initialState]);
 
-  return [state, setState];
+	return [state, setState];
 };
 
 export default useFlipflop;

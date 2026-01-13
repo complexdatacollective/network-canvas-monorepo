@@ -1,2 +1,2 @@
-export { default } from './NameGeneratorPrompts';
-export { default as PromptPreview } from './PromptPreview';
+export { default } from "./NameGeneratorPrompts";
+export { default as PromptPreview } from "./PromptPreview";

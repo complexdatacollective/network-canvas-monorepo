@@ -1,4 +1,4 @@
-import { electronAPI } from '@utils/electronBridge';
+import { electronAPI } from "@utils/electronBridge";
 
 /**
  * Given a folder containing a `protocol.json`,
@@ -7,9 +7,9 @@ import { electronAPI } from '@utils/electronBridge';
  * @returns {object} The protocol as an object
  */
 const loadProtocolConfiguration = async (protocolPath) => {
-  const protocolFile = await electronAPI.path.join(protocolPath, 'protocol.json');
+	const protocolFile = await electronAPI.path.join(protocolPath, "protocol.json");
 
-  return electronAPI.fs.readJson(protocolFile);
+	return electronAPI.fs.readJson(protocolFile);
 };
 
 export default loadProtocolConfiguration;

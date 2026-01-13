@@ -2,9 +2,9 @@
 // Cert verification is disabled during tests for now to work around
 // https://github.com/nodejs/node/issues/14736; fixed with Node 8.10.0.
 
-const enzyme = require('enzyme');
-const Adapter = require('enzyme-adapter-react-16');
-const { Writable } = require('stream');
+const enzyme = require("enzyme");
+const Adapter = require("enzyme-adapter-react-16");
+const { Writable } = require("stream");
 
 enzyme.configure({ adapter: new Adapter() });
 
@@ -12,26 +12,30 @@ enzyme.configure({ adapter: new Adapter() });
  * @return {Stream.Writable} a writable stream, with an `asString()` method added for convenience
  */
 const makeWriteableStream = () => {
-  const chunks = [];
+	const chunks = [];
 
-  const writable = new Writable({
-    write(chunk, encoding, next) {
-      chunks.push(chunk.toString());
-      next(null);
-    },
-  });
+	const writable = new Writable({
+		write(chunk, encoding, next) {
+			chunks.push(chunk.toString());
+			next(null);
+		},
+	});
 
-  writable.asString = async () => new Promise((resolve, reject) => {
-    writable.on('finish', () => { resolve(chunks.join('')); });
-    writable.on('error', (err) => { reject(err); });
-  });
+	writable.asString = async () =>
+		new Promise((resolve, reject) => {
+			writable.on("finish", () => {
+				resolve(chunks.join(""));
+			});
+			writable.on("error", (err) => {
+				reject(err);
+			});
+		});
 
-  return writable;
+	return writable;
 };
 
 const Helpers = {
-  makeWriteableStream,
-
+	makeWriteableStream,
 };
 
 module.exports = Helpers;

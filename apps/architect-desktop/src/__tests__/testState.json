@@ -1,224 +1,214 @@
 {
-  "session": {
-    "filePath": "/dev/null/home/documents/1234-active-protocol",
-    "workingPath": "/dev/null/1234-active-protocol"
-  },
-  "ui": {
-    "status": {
-      "busy": []
-    }
-  },
-  "form": {
-    "draft-by-id": {
-      "values": {
-        "id": "pip",
-        "foo": "bar"
-      }
-    },
-    "draft-insert-at-index": {
-      "values": {
-        "bazz": "buzz"
-      }
-    },
-    "draft-insert-at-end": {
-      "values": {
-        "fizz": "pop"
-      }
-    }
-  },
-  "protocol": {
-    "present": {
-      "schemaVersion": 4,
-      "name": "fooProtocol",
-      "assetManifest": {
-        "1234-asset-1": {
-          "source": "1234-4567-asset-1"
-        },
-        "1234-asset-2": {
-          "source": "1234-4567-asset-2"
-        },
-        "1234-asset-3": {
-          "source": "1234-4567-asset-3"
-        },
-        "1234-asset-4": {
-          "source": "1234-4567-asset-4"
-        },
-        "1234-asset-5": {
-          "source": "1234-4567-asset-5"
-        },
-        "1234-asset-6": {
-          "source": "1234-4567-asset-6.json"
-        }
-      },
-      "codebook": {
-        "node": {
-          "foo": { "name": "foo", "color": "black", "variables": {} },
-          "pop": { "name": "pop", "color": "black", "variables": {} },
-          "bar": {
-            "name": "bar",
-            "color": "blue",
-            "variables": {
-              "alpha": { "name": "ALPHA", "component": "Text", "type": "text" },
-              "bravo": { "name": "BRAVO", "type": "text" },
-              "charlie": { "name": "CHARLIE", "type": "location" },
-              "1234-1234-4": { "name": "1234-1234-4", "type": "text" },
-              "1234-1234-5": { "name": "1234-1234-5", "type": "text" }
-            }
-          },
-          "1234-1234-1234": {
-            "name": "1234-1234-1234",
-            "color": "red",
-            "variables": {
-              "1234-1234-1": {
-                "name": "my_layout",
-                "type": "layout"
-              },
-              "1234-1234-2": {
-                "name": "my_category",
-                "type": "categorical"
-              },
-              "1234-1234-3": {
-                "name": "my_boolean",
-                "type": "boolean"
-              },
-              "1234-1234-4": {
-                "name": "other_boolean_2",
-                "type": "boolean"
-              },
-              "1234-1234-5": {
-                "name": "other_boolean_4",
-                "type": "boolean"
-              }
-            }
-          }
-        },
-        "ego": {
-          "variables": {
-            "sierra": { "name": "SIERRA", "type": "text" },
-            "tango": { "name": "TANGO", "type": "text" }
-          }
-        },
-        "edge": {
-          "1234-5": {
-            "name": "an edge",
-            "color": "blue"
-          }
-        }
-      },
-      "stages": [
-        {
-          "id": "bazz",
-          "label": "bazz",
-          "subject": { "entity": "node", "type": "bar" },
-          "type": "NameGenerator",
-          "prompts": [
-            {
-              "id": "promptId",
-              "text": "not a prompt"
-            }
-          ],
-          "form": {
-            "fields": [
-              { "variable": "alpha", "prompt": "message" },
-              { "variable": "1234-1234-4", "prompt": "message" }
-            ]
-          }
-        },
-        {
-          "id": "pip",
-          "label": "pip",
-          "type": "NameGenerator",
-          "subject": { "entity": "node", "type": "bar" },
-          "prompts": [
-            {
-              "id": "promptId",
-              "text": "not a prompt"
-            }
-          ],
-          "form": {
-            "fields": [
-              { "variable": "bravo", "prompt": "message" },
-              { "variable": "1234-1234-5", "prompt": "message" }
-            ]
-          }
-        },
-        {
-          "id": "buzz",
-          "label": "buzz",
-          "type": "NameGenerator",
-          "prompts": [
-            {
-              "id": "fizz",
-              "text": "not a prompt"
-            }
-          ],
-          "subject": { "entity": "node", "type": "foo" }
-        },
-        {
-          "id": "foxtrot",
-          "label": "foxtrot",
-          "type": "NameGenerator",
-          "prompts": [
-            {
-              "id": "golf",
-              "text": "not a prompt"
-            },
-            {
-              "id": "hotel",
-              "text": "not a prompt"
-            }
-          ],
-          "subject": { "entity": "node", "type": "pop" }
-        },
-        {
-          "id": "alpha",
-          "label": "alpha",
-          "type": "Sociogram",
-          "subject": { "entity": "edge", "type": "1234-5" },
-          "prompts": [
-            {
-              "id": "bravo",
-              "text": "not a prompt",
-              "edges": {
-                "create": "1234-5",
-                "display": ["1234-5", "delta", "echo"]
-              }
-            }
-          ]
-        },
-        {
-          "id": "mike",
-          "label": "mike",
-          "type": "Sociogram",
-          "prompts": [
-            {
-              "id": "oscar",
-              "text": "not a prompt"
-            }
-          ]
-        },
-        {
-          "id": "assets",
-          "type": "Information",
-          "label": "assets",
-          "panels": [
-            { "id": "panelId", "title": "", "dataSource": "1234-asset-2" }
-          ],
-          "prompts": [
-            {
-              "id": "promptId",
-              "text": "not a prompt"
-            }
-          ],
-          "items": [
-            { "id": "itemId", "type": "asset", "content": "1234-asset-4" }
-          ],
-          "background": {
-            "image": "1234-asset-5"
-          },
-          "dataSource" : "1234-asset-3"
-        }
-      ]
-    }
-  }
+	"session": {
+		"filePath": "/dev/null/home/documents/1234-active-protocol",
+		"workingPath": "/dev/null/1234-active-protocol"
+	},
+	"ui": {
+		"status": {
+			"busy": []
+		}
+	},
+	"form": {
+		"draft-by-id": {
+			"values": {
+				"id": "pip",
+				"foo": "bar"
+			}
+		},
+		"draft-insert-at-index": {
+			"values": {
+				"bazz": "buzz"
+			}
+		},
+		"draft-insert-at-end": {
+			"values": {
+				"fizz": "pop"
+			}
+		}
+	},
+	"protocol": {
+		"present": {
+			"schemaVersion": 4,
+			"name": "fooProtocol",
+			"assetManifest": {
+				"1234-asset-1": {
+					"source": "1234-4567-asset-1"
+				},
+				"1234-asset-2": {
+					"source": "1234-4567-asset-2"
+				},
+				"1234-asset-3": {
+					"source": "1234-4567-asset-3"
+				},
+				"1234-asset-4": {
+					"source": "1234-4567-asset-4"
+				},
+				"1234-asset-5": {
+					"source": "1234-4567-asset-5"
+				},
+				"1234-asset-6": {
+					"source": "1234-4567-asset-6.json"
+				}
+			},
+			"codebook": {
+				"node": {
+					"foo": { "name": "foo", "color": "black", "variables": {} },
+					"pop": { "name": "pop", "color": "black", "variables": {} },
+					"bar": {
+						"name": "bar",
+						"color": "blue",
+						"variables": {
+							"alpha": { "name": "ALPHA", "component": "Text", "type": "text" },
+							"bravo": { "name": "BRAVO", "type": "text" },
+							"charlie": { "name": "CHARLIE", "type": "location" },
+							"1234-1234-4": { "name": "1234-1234-4", "type": "text" },
+							"1234-1234-5": { "name": "1234-1234-5", "type": "text" }
+						}
+					},
+					"1234-1234-1234": {
+						"name": "1234-1234-1234",
+						"color": "red",
+						"variables": {
+							"1234-1234-1": {
+								"name": "my_layout",
+								"type": "layout"
+							},
+							"1234-1234-2": {
+								"name": "my_category",
+								"type": "categorical"
+							},
+							"1234-1234-3": {
+								"name": "my_boolean",
+								"type": "boolean"
+							},
+							"1234-1234-4": {
+								"name": "other_boolean_2",
+								"type": "boolean"
+							},
+							"1234-1234-5": {
+								"name": "other_boolean_4",
+								"type": "boolean"
+							}
+						}
+					}
+				},
+				"ego": {
+					"variables": {
+						"sierra": { "name": "SIERRA", "type": "text" },
+						"tango": { "name": "TANGO", "type": "text" }
+					}
+				},
+				"edge": {
+					"1234-5": {
+						"name": "an edge",
+						"color": "blue"
+					}
+				}
+			},
+			"stages": [
+				{
+					"id": "bazz",
+					"label": "bazz",
+					"subject": { "entity": "node", "type": "bar" },
+					"type": "NameGenerator",
+					"prompts": [
+						{
+							"id": "promptId",
+							"text": "not a prompt"
+						}
+					],
+					"form": {
+						"fields": [{ "variable": "alpha", "prompt": "message" }, { "variable": "1234-1234-4", "prompt": "message" }]
+					}
+				},
+				{
+					"id": "pip",
+					"label": "pip",
+					"type": "NameGenerator",
+					"subject": { "entity": "node", "type": "bar" },
+					"prompts": [
+						{
+							"id": "promptId",
+							"text": "not a prompt"
+						}
+					],
+					"form": {
+						"fields": [{ "variable": "bravo", "prompt": "message" }, { "variable": "1234-1234-5", "prompt": "message" }]
+					}
+				},
+				{
+					"id": "buzz",
+					"label": "buzz",
+					"type": "NameGenerator",
+					"prompts": [
+						{
+							"id": "fizz",
+							"text": "not a prompt"
+						}
+					],
+					"subject": { "entity": "node", "type": "foo" }
+				},
+				{
+					"id": "foxtrot",
+					"label": "foxtrot",
+					"type": "NameGenerator",
+					"prompts": [
+						{
+							"id": "golf",
+							"text": "not a prompt"
+						},
+						{
+							"id": "hotel",
+							"text": "not a prompt"
+						}
+					],
+					"subject": { "entity": "node", "type": "pop" }
+				},
+				{
+					"id": "alpha",
+					"label": "alpha",
+					"type": "Sociogram",
+					"subject": { "entity": "edge", "type": "1234-5" },
+					"prompts": [
+						{
+							"id": "bravo",
+							"text": "not a prompt",
+							"edges": {
+								"create": "1234-5",
+								"display": ["1234-5", "delta", "echo"]
+							}
+						}
+					]
+				},
+				{
+					"id": "mike",
+					"label": "mike",
+					"type": "Sociogram",
+					"prompts": [
+						{
+							"id": "oscar",
+							"text": "not a prompt"
+						}
+					]
+				},
+				{
+					"id": "assets",
+					"type": "Information",
+					"label": "assets",
+					"panels": [{ "id": "panelId", "title": "", "dataSource": "1234-asset-2" }],
+					"prompts": [
+						{
+							"id": "promptId",
+							"text": "not a prompt"
+						}
+					],
+					"items": [{ "id": "itemId", "type": "asset", "content": "1234-asset-4" }],
+					"background": {
+						"image": "1234-asset-5"
+					},
+					"dataSource": "1234-asset-3"
+				}
+			]
+		}
+	}
 }
