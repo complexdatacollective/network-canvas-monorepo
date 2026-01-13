@@ -139,6 +139,7 @@
 		"@babel/runtime": "7.10.1",
 		"@xmldom/xmldom": "~0.8.10",
 		"archiver": "^4.0.1",
+		"builder-util-runtime": "^8.7.1",
 		"d3-force": "~3.0.0",
 		"decompress": "^4.2.1",
 		"dmg-builder": "~23.6.0",
