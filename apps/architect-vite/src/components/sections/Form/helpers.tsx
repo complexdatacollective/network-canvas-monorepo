@@ -22,7 +22,8 @@ export const getCodebookProperties = (properties: Record<string, unknown>): Reco
 		{},
 	);
 
-export const normalizeField = (field: Record<string, unknown>) => omit(field, ["id", ...CODEBOOK_PROPERTIES]);
+export const normalizeField = (field: Record<string, unknown>) =>
+	omit(field, ["id", "_createNewVariable", ...CODEBOOK_PROPERTIES]);
 
 // Merge item with variable info from codebook
 export const itemSelector =

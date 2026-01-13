@@ -1,3 +1,4 @@
+import type { VariableOptions } from "@codaco/protocol-validation";
 import { get } from "es-toolkit/compat";
 import { connect, useSelector } from "react-redux";
 import { compose } from "recompose";
@@ -12,6 +13,19 @@ import withSubject from "../../enhancers/withSubject";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import ValidatedField from "../../Form/ValidatedField";
 import IssueAnchor from "../../IssueAnchor";
+
+// Locked options for interface-controlled categorical variables
+// If these are changed in Fresco, they must also be updated here to match
+const SEX_VARIABLE_OPTIONS: VariableOptions = [
+	{ value: "male", label: "Male" },
+	{ value: "female", label: "Female" },
+];
+
+const RELATIONSHIP_TYPE_OPTIONS: VariableOptions = [
+	{ value: "parent", label: "Parent" },
+	{ value: "partner", label: "Partner" },
+	{ value: "ex-partner", label: "Ex-partner" },
+];
 
 type FamilyTreeVariablesProps = StageEditorSectionProps & {
 	type?: string;
@@ -31,14 +45,17 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 	const edgeType = useSelector((state: RootState) => {
 		const edgeTypeValue = formSelector(state, "edgeType");
 		return get(edgeTypeValue, "type");
-	});
+	}) as string | undefined;
 
-	// Get variable options for node type
+	// Require both node type and edge type to be selected before enabling this section
+	const isDisabled = disabled || !edgeType;
+
+	// Get variable options for node type (only when type is defined)
 	const nodeVariableOptions = useSelector((state: RootState) =>
-		getVariableOptionsForSubject(state, { entity: "node", type }),
+		type ? getVariableOptionsForSubject(state, { entity: "node", type }) : [],
 	);
 
-	// Get variable options for edge type
+	// Get variable options for edge type (only when edgeType is defined)
 	const edgeVariableOptions = useSelector((state: RootState) =>
 		edgeType ? getVariableOptionsForSubject(state, { entity: "edge", type: edgeType }) : [],
 	);
@@ -64,6 +81,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 			entity: "node" as Entity,
 			type: type ?? "",
 			initialValues: { name: "", type: "" },
+			lockedOptions: null as VariableOptions | null,
 		},
 		handleCreatedNodeVariable,
 	);
@@ -79,31 +97,65 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 			entity: "edge" as Entity,
 			type: edgeType ?? "",
 			initialValues: { name: "", type: "" },
+			lockedOptions: null as VariableOptions | null,
 		},
 		handleCreatedEdgeVariable,
 	);
 
+	// Early return if prerequisites aren't met
+	if (isDisabled) {
+		return (
+			<Section
+				disabled
+				title="Family Tree Variables"
+				summary={<p>Configure which variables will be used to store family tree data.</p>}
+			>
+				<p>Please select both a node type and an edge type above before configuring variables.</p>
+			</Section>
+		);
+	}
+
 	// Handlers for creating new variables
 	const handleNewRelationshipTypeVariable = (name: string) =>
-		openEdgeVariableWindow({ initialValues: { name, type: "categorical" } }, { field: "relationshipTypeVariable" });
+		openEdgeVariableWindow(
+			{ initialValues: { name, type: "categorical" }, lockedOptions: RELATIONSHIP_TYPE_OPTIONS },
+			{ field: "relationshipTypeVariable" },
+		);
 
 	const handleNewRelationshipToEgoVariable = (name: string) =>
-		openNodeVariableWindow({ initialValues: { name, type: "text" } }, { field: "relationshipToEgoVariable" });
+		openNodeVariableWindow(
+			{ initialValues: { name, type: "text" }, lockedOptions: null },
+			{ field: "relationshipToEgoVariable" },
+		);
 
 	const handleNewSexVariable = (name: string) =>
-		openNodeVariableWindow({ initialValues: { name, type: "categorical" } }, { field: "sexVariable" });
+		openNodeVariableWindow(
+			{ initialValues: { name, type: "categorical" }, lockedOptions: SEX_VARIABLE_OPTIONS },
+			{ field: "sexVariable" },
+		);
 
 	const handleNewNodeIsEgoVariable = (name: string) =>
-		openNodeVariableWindow({ initialValues: { name, type: "boolean" } }, { field: "nodeIsEgoVariable" });
+		openNodeVariableWindow(
+			{ initialValues: { name, type: "boolean" }, lockedOptions: null },
+			{ field: "nodeIsEgoVariable" },
+		);
 
 	return (
 		<>
 			<Section
-				disabled={disabled}
 				title="Family Tree Variables"
 				summary={<p>Configure which variables will be used to store family tree data.</p>}
 			>
-				<Section title="Edge Variables" layout="vertical">
+				<Section
+					title="Relationship Type"
+					summary={
+						<p>
+							Select a variable to store the type of relationship between family members (parent, partner, or
+							ex-partner). This variable is stored on the edge connecting two people.
+						</p>
+					}
+					layout="vertical"
+				>
 					<Row>
 						<IssueAnchor fieldName="relationshipTypeVariable" description="Relationship Type Variable" />
 						<ValidatedField
@@ -113,7 +165,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 							componentProps={{
 								entity: "edge",
 								type: edgeType,
-								label: "Variable to store relationship type (e.g., partner, parent, ex-partner)",
+								label: "Select or create a variable",
 								options: categoricalEdgeVariables,
 								onCreateOption: handleNewRelationshipTypeVariable,
 							}}
@@ -121,23 +173,16 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 					</Row>
 				</Section>
 
-				<Section title="Node Variables" layout="vertical">
-					<Row>
-						<IssueAnchor fieldName="relationshipToEgoVariable" description="Relationship to Ego Variable" />
-						<ValidatedField
-							name="relationshipToEgoVariable"
-							component={VariablePicker}
-							validation={{ required: true }}
-							componentProps={{
-								entity: "node",
-								type,
-								label: "Variable to store each person's relationship to the participant",
-								options: textNodeVariables,
-								onCreateOption: handleNewRelationshipToEgoVariable,
-							}}
-						/>
-					</Row>
-
+				<Section
+					title="Biological Sex"
+					summary={
+						<p>
+							Select a variable to store each person&apos;s biological sex. This is used to correctly position people in
+							the family tree visualization.
+						</p>
+					}
+					layout="vertical"
+				>
 					<Row>
 						<IssueAnchor fieldName="sexVariable" description="Sex Variable" />
 						<ValidatedField
@@ -147,13 +192,48 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 							componentProps={{
 								entity: "node",
 								type,
-								label: "Variable for biological sex (used for family tree visualization)",
+								label: "Select or create a variable",
 								options: categoricalNodeVariables,
 								onCreateOption: handleNewSexVariable,
 							}}
 						/>
 					</Row>
+				</Section>
 
+				<Section
+					title="Relationship to Participant"
+					summary={
+						<p>
+							Select a variable to store each person&apos;s relationship to the participant (e.g., mother, uncle,
+							daughter). This value is automatically calculated by the interface.
+						</p>
+					}
+					layout="vertical"
+				>
+					<Row>
+						<IssueAnchor fieldName="relationshipToEgoVariable" description="Relationship to Ego Variable" />
+						<ValidatedField
+							name="relationshipToEgoVariable"
+							component={VariablePicker}
+							validation={{ required: true }}
+							componentProps={{
+								entity: "node",
+								type,
+								label: "Select or create a variable",
+								options: textNodeVariables,
+								onCreateOption: handleNewRelationshipToEgoVariable,
+							}}
+						/>
+					</Row>
+				</Section>
+
+				<Section
+					title="Ego Identifier"
+					summary={
+						<p>Select a boolean variable to identify which node represents the participant (ego) in the family tree.</p>
+					}
+					layout="vertical"
+				>
 					<Row>
 						<IssueAnchor fieldName="nodeIsEgoVariable" description="Node Is Ego Variable" />
 						<ValidatedField
@@ -163,7 +243,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 							componentProps={{
 								entity: "node",
 								type,
-								label: "Boolean variable to identify the ego node",
+								label: "Select or create a variable",
 								options: booleanNodeVariables,
 								onCreateOption: handleNewNodeIsEgoVariable,
 							}}
