@@ -102,11 +102,10 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 		handleCreatedEdgeVariable,
 	);
 
-	// Early return if prerequisites aren't met
+	// Early return if no node type or edge type is selected
 	if (isDisabled) {
 		return (
 			<Section
-				disabled
 				title="Family Tree Variables"
 				summary={<p>Configure which variables will be used to store family tree data.</p>}
 			>

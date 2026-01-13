@@ -8,7 +8,6 @@ import Select from "~/components/Form/Fields/Select";
 import ValidatedField from "~/components/Form/ValidatedField";
 import InlineEditScreen from "~/components/InlineEditScreen";
 import Options from "~/components/Options";
-import Tip from "~/components/Tip";
 import { isOrdinalOrCategoricalType, VARIABLE_OPTIONS } from "~/config/variables";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { createVariableAsync } from "~/ducks/modules/protocol/codebook";
@@ -141,7 +140,7 @@ export default function NewVariableWindow({
 					title="Options"
 					summary={
 						lockedOptions ? (
-							<p>The following options are required by this interface and cannot be modified.</p>
+							<p>These options are automatically configured by the interface and cannot be modified.</p>
 						) : (
 							<p>Create some options for this input control</p>
 						)
@@ -150,23 +149,22 @@ export default function NewVariableWindow({
 				>
 					<div id={getFieldId("options")} />
 					{lockedOptions ? (
-						<>
-							<Tip>
-								These options are automatically configured by the interface. Only the variable name can be customized.
-							</Tip>
-							<ul className="mt-4 space-y-2">
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="text-left text-copy-lighter">
+									<th className="pb-2 font-medium">Label</th>
+									<th className="pb-2 font-medium">Value</th>
+								</tr>
+							</thead>
+							<tbody>
 								{lockedOptions.map((option) => (
-									<li
-										key={String(option.value)}
-										className="flex items-center gap-2 rounded bg-panel-bg-muted px-3 py-2"
-									>
-										<span className="font-mono text-sm text-copy-standard">{option.value}</span>
-										<span className="text-copy-lighter">—</span>
-										<span className="text-copy-lighter">{option.label}</span>
-									</li>
+									<tr key={String(option.value)}>
+										<td className="py-1">{option.label}</td>
+										<td className="py-1 font-mono text-copy-lighter">{String(option.value)}</td>
+									</tr>
 								))}
-							</ul>
-						</>
+							</tbody>
+						</table>
 					) : (
 						<Options name="options" label="Options" />
 					)}
