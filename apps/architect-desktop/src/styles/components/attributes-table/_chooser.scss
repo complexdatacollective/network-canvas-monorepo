@@ -1,0 +1,40 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+$duration: var(--animation-duration-standard);
+
+.attributes-table-chooser {
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: transform $duration, opacity $duration, max-height $duration;
+  transform: translateX(-100%);
+
+  &-variable {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    flex: 0 0 calc(25% - #{units.unit(2)});
+    height: units.unit(12);
+    padding: units.unit(2);
+    margin: units.unit(1);
+    border-radius: units.unit(2);
+    border: 3px solid var(--architect-table-chooser);
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color $duration;
+
+    &:hover {
+      background-color: var(--architect-table-chooser);
+    }
+  }
+
+  &--show {
+    max-height: 100%;
+    opacity: 1;
+    transform: translateX(0);
+    transition: transform $duration $duration, opacity $duration $duration, max-height $duration $duration;
+  }
+}

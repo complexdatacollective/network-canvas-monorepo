@@ -1,0 +1,98 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.asset-browser-asset {
+  width: 100%;
+  height: 100%;
+  position: relative;
+
+  &__preview {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+
+    .thumbnail {
+      width: 100%;
+      display: flex;
+    }
+  }
+
+  &__name {
+    @include typography('title-2');
+
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 1px 1px 2px var(--color-rich-black)
+    0 0 10px var(--color-white);
+  }
+
+  &__controls {
+    transition: opacity var(--animation-easing) var(--animation-duration-standard);
+    position: absolute;
+    opacity: 0;
+    top: units.unit(1);
+    right: units.unit(1);
+    padding: .5rem .75rem .25rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 1rem;
+    background: var(--color-rich-black);
+  }
+
+  &__control {
+    color: var(--color-white);
+    margin-left: .75rem;
+    cursor: pointer;
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+
+  &::after {
+    display: inline;
+    border-radius: .75rem;
+    padding: .5rem;
+    font-size: .7rem;
+    color: var(--text-light);
+    content: 'Unused';
+    position: absolute;
+    margin: 0;
+    bottom: units.unit(.75);
+    left: units.unit(.75);
+    background: var(--error);
+  }
+
+  &--clickable {
+    .asset-browser-asset__preview {
+      .thumbnail {
+        @include clickable;
+      }
+    }
+  }
+
+  &--is-used {
+    .asset-browser-asset__control--delete {
+      cursor: not-allowed;
+    }
+
+    &::after {
+      display: none;
+    }
+  }
+
+  &:hover {
+    .asset-browser-asset__controls {
+      opacity: 1;
+    }
+  }
+}
