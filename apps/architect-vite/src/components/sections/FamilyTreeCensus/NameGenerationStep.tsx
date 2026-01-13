@@ -2,6 +2,7 @@ import { compose } from "recompose";
 import EditableList from "~/components/EditableList";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
+import TextField from "~/components/Form/Fields/Text";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
@@ -10,14 +11,16 @@ import IssueAnchor from "../../IssueAnchor";
 import FieldFields from "../Form/FieldFields";
 import FieldPreview from "../Form/FieldPreview";
 import { itemSelector, normalizeField } from "../Form/helpers";
+import withFormHandlers from "../Form/withFormHandlers";
 
 type NameGenerationStepProps = StageEditorSectionProps & {
 	type?: string | null;
 	entity?: string | null;
 	disabled?: boolean;
+	handleChangeFields: (fields: Record<string, unknown>) => Promise<Record<string, unknown>>;
 };
 
-const NameGenerationStep = ({ form, type, entity, disabled }: NameGenerationStepProps) => (
+const NameGenerationStep = ({ form, type, entity, disabled, handleChangeFields }: NameGenerationStepProps) => (
 	<Section
 		disabled={disabled}
 		title="Name Generation Step"
@@ -30,6 +33,18 @@ const NameGenerationStep = ({ form, type, entity, disabled }: NameGenerationStep
 				component={RichText}
 				componentProps={{ label: "Participant instructions for adding family member details" }}
 				validation={{ required: true }}
+			/>
+		</Row>
+		<Row>
+			<IssueAnchor fieldName="nameGenerationStep.form.title" description="Form Title" />
+			<ValidatedField
+				name="nameGenerationStep.form.title"
+				component={TextField}
+				validation={{ required: true }}
+				componentProps={{
+					label: "Form heading text (e.g. 'Add personal information')",
+					placeholder: "Enter your form title here",
+				}}
 			/>
 		</Row>
 		<Section
@@ -48,6 +63,7 @@ const NameGenerationStep = ({ form, type, entity, disabled }: NameGenerationStep
 				previewComponent={FieldPreview}
 				fieldName="nameGenerationStep.form.fields"
 				title="Edit Field"
+				onChange={(value: unknown) => handleChangeFields(value as Record<string, unknown>)}
 				normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
 				itemSelector={
 					itemSelector(entity ?? null, type ?? null) as (
@@ -63,5 +79,6 @@ const NameGenerationStep = ({ form, type, entity, disabled }: NameGenerationStep
 
 export default compose<NameGenerationStepProps, StageEditorSectionProps>(
 	withSubject,
+	withFormHandlers,
 	withDisabledSubjectRequired,
 )(NameGenerationStep);
