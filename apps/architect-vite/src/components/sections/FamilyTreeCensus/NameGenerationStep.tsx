@@ -4,6 +4,7 @@ import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
 import TextField from "~/components/Form/Fields/Text";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
+import Tip from "~/components/Tip";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
 import { ValidatedField } from "../../Form";
@@ -57,6 +58,10 @@ const NameGenerationStep = ({ form, type, entity, disabled, handleChangeFields }
 			}
 			layout="vertical"
 		>
+			<Tip>
+				Add a variable called &quot;name&quot; here, unless you have a good reason not to. Interviewer will then
+				automatically use this variable as the label for the node in the interview.
+			</Tip>
 			<EditableList
 				editComponent={FieldFields}
 				editProps={{ type, entity }}
