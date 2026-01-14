@@ -1,5 +1,6 @@
 import type { Variable, VariableOptions } from "@codaco/protocol-validation";
 import { values } from "lodash";
+import { Lock } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
@@ -149,22 +150,25 @@ export default function NewVariableWindow({
 				>
 					<div id={getFieldId("options")} />
 					{lockedOptions ? (
-						<table className="w-full text-sm">
-							<thead>
-								<tr className="text-left text-copy-lighter">
-									<th className="pb-2 font-medium">Label</th>
-									<th className="pb-2 font-medium">Value</th>
-								</tr>
-							</thead>
-							<tbody>
-								{lockedOptions.map((option) => (
-									<tr key={String(option.value)}>
-										<td className="py-1">{option.label}</td>
-										<td className="py-1 font-mono text-copy-lighter">{String(option.value)}</td>
+						<div className="relative bg-platinum opacity-50 rounded p-4">
+							<Lock className="absolute top-4 right-4 h-4 w-4 text-charcoal" />
+							<table className="w-full text-sm">
+								<thead>
+									<tr className="text-left">
+										<th className="pb-2 font-bold">Label</th>
+										<th className="pb-2 font-bold">Value</th>
 									</tr>
-								))}
-							</tbody>
-						</table>
+								</thead>
+								<tbody>
+									{lockedOptions.map((option) => (
+										<tr key={String(option.value)}>
+											<td className="py-1">{option.label}</td>
+											<td className="py-1 font-mono">{String(option.value)}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
 					) : (
 						<Options name="options" label="Options" />
 					)}
