@@ -15,52 +15,49 @@ import getAssetUrl from "./protocol/getAssetUrl";
  * and then initializes the conversion worker, before sending it the file contents
  * to decode.
  */
-const convertCSVToJsonWithWorker = (data) =>
-	new Promise((resolve, reject) => {
-		const worker = new CSVWorker();
-		worker.postMessage(data);
-		worker.onerror = (event) => {
-			reject(event);
-		};
-		worker.onmessage = (event) => {
-			resolve(event.data);
-		};
-	});
+const convertCSVToJsonWithWorker = (data) => new Promise((resolve, reject) => {
+  const worker = new CSVWorker();
+  worker.postMessage(data);
+  worker.onerror = (event) => {
+    reject(event);
+  };
+  worker.onmessage = (event) => {
+    resolve(event.data);
+  };
+});
 
 const fetchNetwork = inEnvironment((environment) => {
-	if (environment === environments.ELECTRON || environment === environments.WEB) {
-		return (url, fileType) =>
-			fetch(url)
-				.then((response) => {
-					if (fileType === "csv") {
-						return response.text().then(convertCSVToJsonWithWorker);
-					}
+  if (environment === environments.ELECTRON || environment === environments.WEB) {
+    return (url, fileType) => fetch(url)
+      .then((response) => {
+        if (fileType === "csv") {
+          return response.text().then(convertCSVToJsonWithWorker);
+        }
 
-					return response.json();
-				})
-				.then((json) => {
-					const nodes = get(json, "nodes", []);
-					return { nodes };
-				});
-	}
+        return response.json();
+      })
+      .then((json) => {
+        const nodes = get(json, "nodes", []);
+        return { nodes };
+      });
+  }
 
-	if (environment === environments.CORDOVA) {
-		return (url, fileType) =>
-			readFile(url)
-				.then((response) => {
-					if (fileType === "csv") {
-						return convertCSVToJsonWithWorker(response.toString("utf8"));
-					}
-					return JSON.parse(response);
-				})
-				.then((json) => {
-					const nodes = get(json, "nodes", []);
-					return { nodes };
-				});
-	}
+  if (environment === environments.CORDOVA) {
+    return (url, fileType) => readFile(url)
+      .then((response) => {
+        if (fileType === "csv") {
+          return convertCSVToJsonWithWorker(response.toString("utf8"));
+        }
+        return JSON.parse(response);
+      })
+      .then((json) => {
+        const nodes = get(json, "nodes", []);
+        return { nodes };
+      });
+  }
 
-	// TODO: This should reject an error
-	return Promise.reject("Environment not supported"); // eslint-disable-line prefer-promise-reject-errors
+  // TODO: This should reject an error
+  return Promise.reject("Environment not supported"); // eslint-disable-line prefer-promise-reject-errors
 });
 
 const fileExtension = (fileName) => fileName.split(".").pop();
@@ -73,18 +70,17 @@ const fileExtension = (fileName) => fileName.split(".").pop();
  * @returns {object} Network object in format { nodes, edges }
  *
  */
-const loadExternalData = (protocolUID, fileName, type) =>
-	new Promise((resolve, reject) => {
-		const fileType = fileExtension(fileName) === "csv" ? "csv" : "json";
+const loadExternalData = (protocolUID, fileName, type) => new Promise((resolve, reject) => {
+  const fileType = fileExtension(fileName) === "csv" ? "csv" : "json";
 
-		switch (type) {
-			case "network":
-				return getAssetUrl(protocolUID, fileName)
-					.then((url) => fetchNetwork(url, fileType))
-					.then(resolve);
-			default:
-				return reject(new Error("You must specify an external data type."));
-		}
-	});
+  switch (type) {
+    case "network":
+      return getAssetUrl(protocolUID, fileName)
+        .then((url) => fetchNetwork(url, fileType))
+        .then(resolve);
+    default:
+      return reject(new Error("You must specify an external data type."));
+  }
+});
 
 export default loadExternalData;

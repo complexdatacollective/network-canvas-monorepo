@@ -1,16 +1,19 @@
-const { BrowserWindow, Menu, shell } = require('electron');
-const path = require('path');
-const mainMenu = require('./mainMenu');
-const appUrl = require('./appURL');
+import { BrowserWindow, Menu, shell } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import mainMenu from './mainMenu.js';
+import appUrl from './appURL.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const isMacOS = () => process.platform === 'darwin';
 const isTest = () => !!process.env.TEST;
 
 // Get path to the preload script
-// electron-vite builds preload to dist/preload/ in both dev and prod
+// electron-vite builds preload to out/preload/ in both dev and prod
 function getPreloadPath() {
-  // __dirname is dist/main/components/ since main process runs from dist/
-  return path.join(__dirname, '../../preload/index.js');
+  // __dirname is out/main/ since main process is bundled there
+  return path.join(__dirname, '../preload/index.js');
 }
 
 const titlebarParameters = isMacOS() ? { titleBarStyle: 'hidden', frame: false } : {};
@@ -95,4 +98,4 @@ const windowManager = {
   },
 };
 
-module.exports = windowManager;
+export default windowManager;

@@ -3,7 +3,7 @@
  */
 
 import { ProgressBar, Spinner } from "@codaco/ui";
-import { CancellationError } from "builder-util-runtime";
+import { CancellationError } from "../CancellationError";
 import React from "react";
 import uuid from "uuid";
 import { PROTOCOL_EXTENSION } from "../../config";

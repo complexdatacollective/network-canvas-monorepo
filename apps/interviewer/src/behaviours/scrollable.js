@@ -1,19 +1,19 @@
-import { Scroller } from "@codaco/ui";
-import React from "react";
-import { compose } from "redux";
+import { Scroller } from '@codaco/ui';
+import React from 'react';
+import { compose } from 'redux';
 
 export const scrollable = (WrappedComponent) => {
-	const Scrollable = (props) => {
-		const { onScroll } = props;
+  const Scrollable = (props) => {
+    const { onScroll } = props;
 
-		return (
-			<Scroller onScroll={onScroll}>
-				<WrappedComponent {...props} />
-			</Scroller>
-		);
-	};
+    return (
+      <Scroller onScroll={onScroll}>
+        <WrappedComponent {...props} />
+      </Scroller>
+    );
+  };
 
-	return Scrollable;
+  return Scrollable;
 };
 
 const composedScrollable = compose(scrollable);

@@ -5,17 +5,19 @@
  * These handlers replace direct Node.js access in the renderer process,
  * providing a controlled API for file system, dialogs, and other operations.
  */
-const { ipcMain, dialog, app, shell, BrowserWindow } = require('electron');
-const fse = require('fs-extra');
-const path = require('path');
-const archiver = require('archiver');
-const decompress = require('decompress');
-const log = require('./log');
+import {
+  ipcMain, dialog, app, shell, BrowserWindow,
+} from 'electron';
+import fse from 'fs-extra';
+import path from 'path';
+import archiver from 'archiver';
+import decompress from 'decompress';
+import log from './log.js';
 
 /**
  * Register all IPC handlers
  */
-const registerIpcHandlers = () => {
+export const registerIpcHandlers = () => {
   log.info('Registering IPC handlers...');
 
   // ===================
@@ -326,7 +328,7 @@ const registerIpcHandlers = () => {
 /**
  * Remove all IPC handlers (for cleanup)
  */
-const removeIpcHandlers = () => {
+export const removeIpcHandlers = () => {
   const handlers = [
     'dialog:showOpen',
     'dialog:showSave',
@@ -376,9 +378,4 @@ const removeIpcHandlers = () => {
   handlers.forEach((channel) => {
     ipcMain.removeHandler(channel);
   });
-};
-
-module.exports = {
-  registerIpcHandlers,
-  removeIpcHandlers,
 };

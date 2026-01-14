@@ -1,6 +1,9 @@
-const url = require('url');
-const path = require('path');
-const log = require('./log');
+import url, { fileURLToPath } from 'url';
+import path from 'path';
+
+import log from './log.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const appUrl = (function getAppUrl() {
   // In development, electron-vite provides the dev server URL
@@ -16,7 +19,8 @@ const appUrl = (function getAppUrl() {
   }
 
   // In production, load from the built renderer
-  const rendererPath = path.join(__dirname, '../../renderer/index.html');
+  // __dirname is out/main/ since main process is bundled there
+  const rendererPath = path.join(__dirname, '../renderer/index.html');
   log.info(`Loading production renderer from: ${rendererPath}`);
   return url.format({
     pathname: rendererPath,
@@ -24,4 +28,4 @@ const appUrl = (function getAppUrl() {
   });
 }());
 
-module.exports = appUrl;
+export default appUrl;

@@ -1,5 +1,5 @@
-const { ipcMain, BrowserWindow } = require('electron');
-const log = require('./log');
+import { ipcMain, BrowserWindow } from 'electron';
+import log from './log.js';
 
 let FileExportManager;
 let currentExport = null;
@@ -7,16 +7,28 @@ let currentExport = null;
 /**
  * Register export-related IPC handlers
  */
-const registerExportHandlers = () => {
+export const registerExportHandlers = () => {
   log.info('Registering export handlers...');
 
   // Lazy load FileExportManager to avoid circular dependencies during startup
-  // Path is relative to dist/main/components/ after build
   if (!FileExportManager) {
-    FileExportManager = require('../network-exporters/src/FileExportManager');
+    // Dynamic import for the network-exporters module
+    import('../utils/network-exporters/src/FileExportManager.js')
+      .then((module) => {
+        FileExportManager = module.default;
+      })
+      .catch((err) => {
+        log.error('Failed to load FileExportManager:', err);
+      });
   }
 
   ipcMain.handle('export:start', async (event, { sessions, protocols, exportOptions }) => {
+    // Ensure FileExportManager is loaded
+    if (!FileExportManager) {
+      const module = await import('../utils/network-exporters/src/FileExportManager.js');
+      FileExportManager = module.default;
+    }
+
     const window = BrowserWindow.fromWebContents(event.sender);
     const fileExportManager = new FileExportManager(exportOptions);
 
@@ -66,7 +78,7 @@ const registerExportHandlers = () => {
 /**
  * Remove export IPC handlers (for cleanup)
  */
-const removeExportHandlers = () => {
+export const removeExportHandlers = () => {
   const handlers = [
     'export:start',
     'export:abort',
@@ -76,9 +88,4 @@ const removeExportHandlers = () => {
   handlers.forEach((channel) => {
     ipcMain.removeHandler(channel);
   });
-};
-
-module.exports = {
-  registerExportHandlers,
-  removeExportHandlers,
 };

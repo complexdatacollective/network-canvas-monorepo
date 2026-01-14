@@ -1,7 +1,5 @@
-/* eslint-disable global-require */
 /* global FileTransfer */
 
-import path from "path";
 import uuid from "uuid/v4";
 import friendlyErrorMessage from "../../utils/friendlyErrorMessage";
 import inEnvironment from "../Environment";
@@ -37,18 +35,21 @@ const fileError = friendlyErrorMessage(
  */
 const downloadProtocol = inEnvironment((environment) => {
 	if (environment === environments.ELECTRON) {
-		const request = require("request-promise-native");
-		const destination = path.join(tempDataPath(), getProtocolName());
-		return (uri) => {
-			const promisedResponse = getURL(uri)
-				.catch(urlError)
-				.then((url) => request({ method: "GET", encoding: null, uri: url.href }));
+		return async (uri) => {
+			const destination = `${tempDataPath()}/${getProtocolName()}`;
 
-			return promisedResponse
-				.catch(networkError)
-				.then((data) => writeFile(destination, data))
-				.catch(fileError)
-				.then(() => destination);
+			const url = await getURL(uri).catch(urlError);
+
+			const response = await fetch(url.href).catch(networkError);
+			if (!response.ok) {
+				throw networkError(new Error(`HTTP ${response.status}`));
+			}
+
+			const arrayBuffer = await response.arrayBuffer();
+			const data = new Uint8Array(arrayBuffer);
+			await writeFile(destination, data).catch(fileError);
+
+			return destination;
 		};
 	}
 

@@ -1,7 +1,7 @@
-import PropTypes from "prop-types";
-import React from "react";
+import PropTypes from 'prop-types';
+import React from 'react';
 
-import { DropTarget } from "../behaviours/DragAndDrop";
+import { DropTarget } from '../behaviours/DragAndDrop';
 
 /**
  * Renders a container onto which a `draggable` can be dropped.
@@ -9,11 +9,11 @@ import { DropTarget } from "../behaviours/DragAndDrop";
 const DropZone = ({ children }) => <div className="drop-zone">{children}</div>;
 
 DropZone.propTypes = {
-	children: PropTypes.any,
+  children: PropTypes.any,
 };
 
 DropZone.defaultProps = {
-	children: null,
+  children: null,
 };
 
 export default DropTarget(DropZone);

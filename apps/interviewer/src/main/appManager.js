@@ -1,8 +1,8 @@
-const { ipcMain, app } = require('electron');
-const path = require('path');
-const windowManager = require('./windowManager');
-const registerAssetProtocol = require('./assetProtocol').registerProtocol;
-const { openDialog } = require('./dialogs');
+import { ipcMain, app } from 'electron';
+import path from 'path';
+import windowManager from './windowManager.js';
+import { registerProtocol as registerAssetProtocol } from './assetProtocol.js';
+import { openDialog } from './dialogs.js';
 
 function getFileFromArgs(argv) {
   if (argv.length >= 2) {
@@ -17,7 +17,8 @@ function getFileFromArgs(argv) {
 
 const appManager = {
   openFileWhenReady: null,
-  init: () => {
+  init() {
+    const self = this;
     ipcMain.on('GET_ARGF', (event) => {
       if (process.platform === 'win32') {
         const filePath = getFileFromArgs(process.argv);
@@ -26,9 +27,9 @@ const appManager = {
         }
       }
 
-      if (this.openFileWhenReady) {
-        event.sender.send('OPEN_FILE', this.openFileWhenReady);
-        this.openFileWhenReady = null;
+      if (self.openFileWhenReady) {
+        event.sender.send('OPEN_FILE', self.openFileWhenReady);
+        self.openFileWhenReady = null;
       }
     });
 
@@ -83,4 +84,4 @@ const appManager = {
   },
 };
 
-module.exports = appManager;
+export default appManager;

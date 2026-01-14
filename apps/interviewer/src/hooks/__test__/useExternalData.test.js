@@ -1,133 +1,135 @@
 /* eslint-disable @codaco/spellcheck/spell-checker */
 
-import { entityAttributesProperty } from "@codaco/shared-consts";
-import { mount } from "enzyme";
-import React, { useEffect } from "react";
-import { Provider } from "react-redux";
-import { createStore } from "redux";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import loadExternalData from "../../utils/loadExternalData";
-import useExternalData from "../useExternalData";
+import { entityAttributesProperty } from '@codaco/shared-consts';
+import { mount } from 'enzyme';
+import React, { useEffect } from 'react';
+import { Provider } from 'react-redux';
+import { createStore } from 'redux';
+import {
+  beforeEach, describe, expect, it, vi,
+} from 'vitest';
+import loadExternalData from '../../utils/loadExternalData';
+import useExternalData from '../useExternalData';
 
-vi.mock("../../utils/loadExternalData");
+vi.mock('../../utils/loadExternalData');
 
 const mockReducer = () => ({
-	installedProtocols: {
-		mockProtocol: {
-			codebook: {
-				node: {},
-				edge: {},
-			},
-			assetManifest: {
-				bar: {
-					name: "bar",
-					source: "file.json",
-					type: "network",
-				},
-			},
-		},
-	},
-	activeSessionId: "foo",
-	sessions: {
-		foo: {
-			protocolUID: "mockProtocol",
-		},
-	},
+  installedProtocols: {
+    mockProtocol: {
+      codebook: {
+        node: {},
+        edge: {},
+      },
+      assetManifest: {
+        bar: {
+          name: 'bar',
+          source: 'file.json',
+          type: 'network',
+        },
+      },
+    },
+  },
+  activeSessionId: 'foo',
+  sessions: {
+    foo: {
+      protocolUID: 'mockProtocol',
+    },
+  },
 });
 
 const mockResult = {
-	nodes: [
-		{
-			type: "person",
-			[entityAttributesProperty]: {
-				fun: true,
-			},
-		},
-	],
+  nodes: [
+    {
+      type: 'person',
+      [entityAttributesProperty]: {
+        fun: true,
+      },
+    },
+  ],
 };
 
-const mockSource = "bar";
+const mockSource = 'bar';
 
 const MockComponent = ({ onStatusChange, source, subject }) => {
-	const [data, status] = useExternalData(source, subject);
-	useEffect(() => {
-		onStatusChange(data, status);
-	}, [status, data, onStatusChange]);
-	return null;
+  const [data, status] = useExternalData(source, subject);
+  useEffect(() => {
+    onStatusChange(data, status);
+  }, [status, data, onStatusChange]);
+  return null;
 };
 
-describe("useExternalData", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
+describe('useExternalData', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-	it("It fetches the external data based on the source prop", async () => {
-		loadExternalData.mockImplementation(() => Promise.resolve(mockResult));
+  it('It fetches the external data based on the source prop', async () => {
+    loadExternalData.mockImplementation(() => Promise.resolve(mockResult));
 
-		let finalData = null;
-		let finalStatus = null;
+    let finalData = null;
+    let finalStatus = null;
 
-		await new Promise((resolve) => {
-			const onStatusChange = (data, status) => {
-				finalData = data;
-				finalStatus = status;
-				// Resolve when we have data and loading is complete
-				if (data !== null && status.isLoading === false) {
-					resolve();
-				}
-			};
+    await new Promise((resolve) => {
+      const onStatusChange = (data, status) => {
+        finalData = data;
+        finalStatus = status;
+        // Resolve when we have data and loading is complete
+        if (data !== null && status.isLoading === false) {
+          resolve();
+        }
+      };
 
-			mount(
-				<Provider store={createStore(mockReducer)}>
-					<MockComponent
-						onStatusChange={onStatusChange}
-						source={mockSource}
-						subject={{ entity: "node", type: "person" }}
-					/>
-				</Provider>,
-			);
-		});
+      mount(
+        <Provider store={createStore(mockReducer)}>
+          <MockComponent
+            onStatusChange={onStatusChange}
+            source={mockSource}
+            subject={{ entity: 'node', type: 'person' }}
+          />
+        </Provider>,
+      );
+    });
 
-		// The final result should have data loaded
-		expect(finalStatus).toEqual({
-			isLoading: false,
-			error: null,
-		});
-		// Check that data was transformed - should have type and attributes
-		expect(finalData).toHaveLength(1);
-		expect(finalData[0].type).toBe("person");
-		expect(finalData[0].attributes).toEqual({ fun: true });
-	});
+    // The final result should have data loaded
+    expect(finalStatus).toEqual({
+      isLoading: false,
+      error: null,
+    });
+    // Check that data was transformed - should have type and attributes
+    expect(finalData).toHaveLength(1);
+    expect(finalData[0].type).toBe('person');
+    expect(finalData[0].attributes).toEqual({ fun: true });
+  });
 
-	it("It catches errors", async () => {
-		const error = new Error("broken");
-		loadExternalData.mockImplementation(() => Promise.reject(error));
+  it('It catches errors', async () => {
+    const error = new Error('broken');
+    loadExternalData.mockImplementation(() => Promise.reject(error));
 
-		let finalStatus = null;
+    let finalStatus = null;
 
-		await new Promise((resolve) => {
-			const onStatusChange = (data, status) => {
-				finalStatus = status;
-				// Resolve when we have an error
-				if (status.error !== null) {
-					resolve();
-				}
-			};
+    await new Promise((resolve) => {
+      const onStatusChange = (data, status) => {
+        finalStatus = status;
+        // Resolve when we have an error
+        if (status.error !== null) {
+          resolve();
+        }
+      };
 
-			mount(
-				<Provider store={createStore(mockReducer)}>
-					<MockComponent
-						onStatusChange={onStatusChange}
-						source={mockSource}
-						subject={{ entity: "node", type: "person" }}
-					/>
-				</Provider>,
-			);
-		});
+      mount(
+        <Provider store={createStore(mockReducer)}>
+          <MockComponent
+            onStatusChange={onStatusChange}
+            source={mockSource}
+            subject={{ entity: 'node', type: 'person' }}
+          />
+        </Provider>,
+      );
+    });
 
-		expect(finalStatus).toEqual({
-			isLoading: false,
-			error,
-		});
-	});
+    expect(finalStatus).toEqual({
+      isLoading: false,
+      error,
+    });
+  });
 });

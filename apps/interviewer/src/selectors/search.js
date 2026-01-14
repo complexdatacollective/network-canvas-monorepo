@@ -1,10 +1,10 @@
 /* eslint-disable import/prefer-default-export */
-import FuseLegacy from "fuse.js-legacy";
-import { createSelector } from "reselect";
-import { get } from "../utils/lodash-replacements";
+import FuseLegacy from 'fuse.js-legacy';
+import { createSelector } from 'reselect';
+import { get } from '../utils/lodash-replacements';
 
 const getSearchOpts = (_, props) => props.options;
-const getSearchData = (_, props) => get(props.externalData, "nodes", []);
+const getSearchData = (_, props) => get(props.externalData, 'nodes', []);
 
 /**
  * The new NameGeneratorRoster interface upgrades the fuse.js version
@@ -13,15 +13,14 @@ const getSearchData = (_, props) => get(props.externalData, "nodes", []);
  * uses the fuse.js-legacy npm alias.
  */
 // eslint-disable-next-line camelcase
-export const LEGACY_makeGetFuse = (fuseOpts) =>
-	createSelector(getSearchData, getSearchOpts, (searchData = [], searchOpts = {}) => {
-		let threshold = searchOpts.fuzziness;
-		if (typeof threshold !== "number") {
-			threshold = fuseOpts.threshold;
-		}
-		return new FuseLegacy(searchData, {
-			...fuseOpts,
-			keys: searchOpts.matchProperties,
-			threshold,
-		});
-	});
+export const LEGACY_makeGetFuse = (fuseOpts) => createSelector(getSearchData, getSearchOpts, (searchData = [], searchOpts = {}) => {
+  let threshold = searchOpts.fuzziness;
+  if (typeof threshold !== 'number') {
+    threshold = fuseOpts.threshold;
+  }
+  return new FuseLegacy(searchData, {
+    ...fuseOpts,
+    keys: searchOpts.matchProperties,
+    threshold,
+  });
+});

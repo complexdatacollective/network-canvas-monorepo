@@ -1,1 +1,1 @@
-export { default } from "./TieStrengthCensus";
+export { default } from './TieStrengthCensus';

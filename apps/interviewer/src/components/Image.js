@@ -1,16 +1,16 @@
-import PropTypes from "prop-types";
-import React from "react";
-import injectAssetUrl from "../behaviours/injectAssetUrl";
+import PropTypes from 'prop-types';
+import React from 'react';
+import injectAssetUrl from '../behaviours/injectAssetUrl';
 
 const Image = ({ url, alt, ...props }) => <img src={url} alt={alt} {...props} />;
 
 Image.propTypes = {
-	alt: PropTypes.string,
-	url: PropTypes.string.isRequired,
+  alt: PropTypes.string,
+  url: PropTypes.string.isRequired,
 };
 
 Image.defaultProps = {
-	alt: "",
+  alt: '',
 };
 
 export { Image };

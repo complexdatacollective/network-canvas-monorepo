@@ -1,49 +1,51 @@
-import { find, get, isEqual, pick } from "lodash";
-import { useEffect, useRef, useState } from "react";
+import {
+  find, get, isEqual, pick,
+} from 'lodash';
+import { useEffect, useRef, useState } from 'react';
 
-import store from "./store";
+import store from './store';
 
-const defaultProps = ["isOver", "willAccept"];
+const defaultProps = ['isOver', 'willAccept'];
 
 const getMonitorProps = (state, id, props) => {
-	const target = find(state.targets, ["id", id]);
+  const target = find(state.targets, ['id', id]);
 
-	if (!target) {
-		return null;
-	}
+  if (!target) {
+    return null;
+  }
 
-	const monitorProps = {
-		isOver: get(target, "isOver", false),
-		willAccept: get(target, "willAccept", false),
-	};
+  const monitorProps = {
+    isOver: get(target, 'isOver', false),
+    willAccept: get(target, 'willAccept', false),
+  };
 
-	return pick(monitorProps, props);
+  return pick(monitorProps, props);
 };
 
 const useDropMonitor = (id, props = defaultProps) => {
-	const internalState = useRef();
-	const [state, setState] = useState();
+  const internalState = useRef();
+  const [state, setState] = useState();
 
-	const updateState = (newState) => {
-		if (isEqual(internalState.current, newState)) {
-			return;
-		}
-		internalState.current = newState;
-		setState(newState);
-	};
+  const updateState = (newState) => {
+    if (isEqual(internalState.current, newState)) {
+      return;
+    }
+    internalState.current = newState;
+    setState(newState);
+  };
 
-	const updateMonitorProps = () => {
-		const status = getMonitorProps(store.getState(), id, props);
-		updateState(status);
-	};
+  const updateMonitorProps = () => {
+    const status = getMonitorProps(store.getState(), id, props);
+    updateState(status);
+  };
 
-	useEffect(() => {
-		const unsubscribe = store.subscribe(updateMonitorProps);
+  useEffect(() => {
+    const unsubscribe = store.subscribe(updateMonitorProps);
 
-		return unsubscribe;
-	}, []);
+    return unsubscribe;
+  }, []);
 
-	return state;
+  return state;
 };
 
 export default useDropMonitor;

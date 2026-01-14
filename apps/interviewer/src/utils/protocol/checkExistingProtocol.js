@@ -1,4 +1,4 @@
-import { CancellationError } from "builder-util-runtime";
+import { CancellationError } from "../CancellationError";
 import { findKey } from "lodash";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
 import { store } from "../../ducks/store";

@@ -19,6 +19,16 @@
 		"sourceType": "module"
 	},
 	"plugins": ["react", "@codaco/spellcheck"],
+	"overrides": [
+		{
+			"files": ["src/main/**/*.js"],
+			"rules": {
+				"import/extensions": ["error", "always", { "ignorePackages": true }],
+				"no-underscore-dangle": ["error", { "allow": ["__dirname"] }],
+				"import/prefer-default-export": "off"
+			}
+		}
+	],
 	"rules": {
 		"react/prop-types": [0],
 		"react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
@@ -116,7 +126,19 @@
 					"dyad",
 					"Dyad",
 					"hostname",
-					"searchable"
+					"searchable",
+					"renderer",
+					"utils",
+					"src",
+					"unlink",
+					"mkdirp",
+					"readdir",
+					"rmdir",
+					"basename",
+					"dirname",
+					"extname",
+					"mailto",
+					"preload"
 				],
 				"skipIfMatch": [
 					"http(s)?://[^s]*",

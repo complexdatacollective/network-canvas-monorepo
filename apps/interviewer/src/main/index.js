@@ -1,9 +1,9 @@
-const { app, ipcMain, protocol } = require('electron');
-const log = require('./components/log');
-const loadDevTools = require('./components/loadDevTools');
-const appManager = require('./components/appManager');
-const { registerIpcHandlers } = require('./components/ipcHandlers');
-const { registerExportHandlers } = require('./components/exportHandler');
+import { app, protocol } from 'electron';
+import log from './log.js';
+import loadDevTools from './loadDevTools.js';
+import appManager from './appManager.js';
+import { registerIpcHandlers } from './ipcHandlers.js';
+import { registerExportHandlers } from './exportHandler.js';
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'asset',
@@ -54,5 +54,4 @@ if (!gotTheLock) {
   app.on('open-file', (event, filePath) => {
     appManager.openFile(filePath);
   });
-
 }

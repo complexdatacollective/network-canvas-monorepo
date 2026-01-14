@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi } from 'vitest';
 
 class DragManager {
 	static options = {};
@@ -6,19 +6,19 @@ class DragManager {
 	static unmount = vi.fn();
 
 	static setOptions(options) {
-		DragManager.options = options;
+	  DragManager.options = options;
 	}
 
 	static getOptions() {
-		return DragManager.options;
+	  return DragManager.options;
 	}
 
 	constructor(options) {
-		DragManager.setOptions(options);
+	  DragManager.setOptions(options);
 	}
 
 	unmount = () => {
-		DragManager.unmount();
+	  DragManager.unmount();
 	};
 }
 

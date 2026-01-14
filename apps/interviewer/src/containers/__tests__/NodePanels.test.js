@@ -1,25 +1,25 @@
 /* eslint-disable @codaco/spellcheck/spell-checker */
-import { vi } from "vitest";
+import { vi } from 'vitest';
 
 /* eslint-disable @codaco/spellcheck/spell-checker */
 
-import { shallow } from "enzyme";
-import React from "react";
-import { NodePanels } from "../NodePanels";
+import { shallow } from 'enzyme';
+import React from 'react';
+import { NodePanels } from '../NodePanels';
 
-vi.mock("@codaco/ui/lib/utils/CSSVariables");
+vi.mock('@codaco/ui/lib/utils/CSSVariables');
 
 const mockProps = {
-	removeNode: () => {},
-	activePromptAttributes: {},
-	newNodeAttributes: {},
-	getLabel: () => "some label",
+  removeNode: () => {},
+  activePromptAttributes: {},
+  newNodeAttributes: {},
+  getLabel: () => 'some label',
 };
 
-describe("<NodePanels />", () => {
-	it("renders ok", () => {
-		const component = shallow(<NodePanels {...mockProps} />);
+describe('<NodePanels />', () => {
+  it('renders ok', () => {
+    const component = shallow(<NodePanels {...mockProps} />);
 
-		expect(component).toMatchSnapshot();
-	});
+    expect(component).toMatchSnapshot();
+  });
 });

@@ -1,123 +1,118 @@
 /* eslint-disable react/sort-comp */
 
-import { connect } from "react-redux";
-import { compose, defaultProps, withHandlers, withStateHandlers } from "recompose";
-import Search from "../../components/Search/Search";
-import { getEntityAttributes } from "../../ducks/modules/network";
-import { actionCreators as searchActions } from "../../ducks/modules/search";
-import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
-import withExternalData from "../withExternalData";
-import withSearch from "./withSearch";
+import { connect } from 'react-redux';
+import {
+  compose, defaultProps, withHandlers, withStateHandlers,
+} from 'recompose';
+import Search from '../../components/Search/Search';
+import { getEntityAttributes } from '../../ducks/modules/network';
+import { actionCreators as searchActions } from '../../ducks/modules/search';
+import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
+import withExternalData from '../withExternalData';
+import withSearch from './withSearch';
 
 // eslint-disable-next-line
 const mapStateToProps = ({ search }, { externalData__isLoading }) => ({
-	isOpen: !search.collapsed,
-	isLoading: externalData__isLoading,
+  isOpen: !search.collapsed,
+  isLoading: externalData__isLoading,
 });
 
 const mapDispatchToProps = {
-	toggleSearch: searchActions.toggleSearch,
-	closeSearch: searchActions.closeSearch,
+  toggleSearch: searchActions.toggleSearch,
+  closeSearch: searchActions.closeSearch,
 };
 
 const withReduxState = connect(mapStateToProps, mapDispatchToProps);
 
 const initialState = {
-	hasSearchTerm: false,
-	searchResults: [],
-	searchTerm: "",
-	selectedResults: [],
-	awaitingResults: false,
+  hasSearchTerm: false,
+  searchResults: [],
+  searchTerm: '',
+  selectedResults: [],
+  awaitingResults: false,
 };
 
 const withSearchState = withStateHandlers(() => ({ ...initialState }), {
-	resetState: () => () => ({ ...initialState }),
-	setQuery: () => (query) => ({
-		searchTerm: query,
-		hasSearchTerm: query.length !== 0,
-		searchResults: [],
-		awaitingResults: true,
-	}),
-	setResults: () => (results) => ({
-		searchResults: results,
-		awaitingResults: false,
-	}),
-	setSelected: (previousState) => (result) => {
-		let newResults;
-		const existingIndex = previousState.selectedResults.indexOf(result);
-		if (existingIndex > -1) {
-			newResults = previousState.selectedResults.slice();
-			newResults.splice(existingIndex, 1);
-		} else {
-			newResults = [...previousState.selectedResults, result];
-		}
-		return {
-			selectedResults: newResults,
-		};
-	},
+  resetState: () => () => ({ ...initialState }),
+  setQuery: () => (query) => ({
+    searchTerm: query,
+    hasSearchTerm: query.length !== 0,
+    searchResults: [],
+    awaitingResults: true,
+  }),
+  setResults: () => (results) => ({
+    searchResults: results,
+    awaitingResults: false,
+  }),
+  setSelected: (previousState) => (result) => {
+    let newResults;
+    const existingIndex = previousState.selectedResults.indexOf(result);
+    if (existingIndex > -1) {
+      newResults = previousState.selectedResults.slice();
+      newResults.splice(existingIndex, 1);
+    } else {
+      newResults = [...previousState.selectedResults, result];
+    }
+    return {
+      selectedResults: newResults,
+    };
+  },
 });
 
 const withSearchHandlers = withHandlers({
-	onToggleSearch:
-		({ toggleSearch }) =>
-		() =>
-			toggleSearch(),
+  onToggleSearch:
+		({ toggleSearch }) => () => toggleSearch(),
 
-	onClose:
-		({ clearResultsOnClose, closeSearch, resetState }) =>
-		() => {
-			if (clearResultsOnClose) {
-				resetState();
-			}
+  onClose:
+		({ clearResultsOnClose, closeSearch, resetState }) => () => {
+		    if (clearResultsOnClose) {
+		      resetState();
+		    }
 
-			closeSearch();
-		},
+		    closeSearch();
+		  },
 
-	onCommit:
-		({ onComplete, selectedResults, closeSearch, resetState }) =>
-		() => {
-			onComplete(selectedResults);
-			closeSearch();
-			resetState();
-		},
+  onCommit:
+		({
+		  onComplete, selectedResults, closeSearch, resetState,
+		}) => () => {
+		    onComplete(selectedResults);
+		    closeSearch();
+		    resetState();
+		  },
 
-	onQueryChange:
-		({ setQuery, search }) =>
-		(e) => {
-			const query = e.target.value;
+  onQueryChange:
+		({ setQuery, search }) => (e) => {
+		    const query = e.target.value;
 
-			setQuery(query);
+		    setQuery(query);
 
-			search(query);
-		},
+		    search(query);
+		  },
 
-	onSelectResult:
-		({ setSelected }) =>
-		(result) =>
-			setSelected(result),
+  onSelectResult:
+		({ setSelected }) => (result) => setSelected(result),
 
-	getIsSelected:
-		({ selectedResults }) =>
-		(node) =>
-			selectedResults.indexOf(node) > -1,
+  getIsSelected:
+		({ selectedResults }) => (node) => selectedResults.indexOf(node) > -1,
 
-	getDetails: ({ details, nodeTypeDefinition }) => {
-		const toDetail = (node, field) => {
-			const nodeTypeVariables = nodeTypeDefinition.variables;
-			const labelKey = getParentKeyByNameValue(nodeTypeVariables, field.variable);
-			return { [field.label]: getEntityAttributes(node)[labelKey] };
-		};
+  getDetails: ({ details, nodeTypeDefinition }) => {
+    const toDetail = (node, field) => {
+      const nodeTypeVariables = nodeTypeDefinition.variables;
+      const labelKey = getParentKeyByNameValue(nodeTypeVariables, field.variable);
+      return { [field.label]: getEntityAttributes(node)[labelKey] };
+    };
 
-		return (node) => details.map((attr) => toDetail(node, attr));
-	},
+    return (node) => details.map((attr) => toDetail(node, attr));
+  },
 });
 
 const withDefaultProps = defaultProps({
-	details: [],
-	className: "",
-	clearResultsOnClose: true,
-	nodeColor: "",
-	options: {},
+  details: [],
+  className: '',
+  clearResultsOnClose: true,
+  nodeColor: '',
+  options: {},
 });
 
 /**
@@ -149,10 +144,10 @@ const withDefaultProps = defaultProps({
  *
  */
 export default compose(
-	withDefaultProps,
-	withExternalData("dataSourceKey", "externalData"),
-	withReduxState,
-	withSearchState,
-	withSearch,
-	withSearchHandlers,
+  withDefaultProps,
+  withExternalData('dataSourceKey', 'externalData'),
+  withReduxState,
+  withSearchState,
+  withSearch,
+  withSearchHandlers,
 )(Search);

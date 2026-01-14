@@ -1,5 +1,5 @@
-import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
-import { useEffect, useRef } from "react";
+import { getCSSVariableAsNumber } from '@codaco/ui/lib/utils/CSSVariables';
+import { useEffect, useRef } from 'react';
 
 /**
  * Automatically advance stage when an option is selected.
@@ -11,33 +11,33 @@ import { useEffect, useRef } from "react";
  * @param {boolean} isChanged - Whether or not the option has changed value
  */
 const useAutoAdvance = (_next, isTouched, isChanged) => {
-	const timer = useRef();
-	const next = useRef();
-	const delay = getCSSVariableAsNumber("--animation-duration-standard-ms");
+  const timer = useRef();
+  const next = useRef();
+  const delay = getCSSVariableAsNumber('--animation-duration-standard-ms');
 
-	next.current = _next;
+  next.current = _next;
 
-	// Auto advance
-	useEffect(() => {
-		if (isTouched) {
-			if (timer.current) {
-				clearTimeout(timer.current);
-			}
+  // Auto advance
+  useEffect(() => {
+    if (isTouched) {
+      if (timer.current) {
+        clearTimeout(timer.current);
+      }
 
-			if (isChanged) {
-				timer.current = setTimeout(next.current, delay);
-			} else {
-				next.current();
-			}
-		}
+      if (isChanged) {
+        timer.current = setTimeout(next.current, delay);
+      } else {
+        next.current();
+      }
+    }
 
-		return () => {
-			if (!timer.current) {
-				return () => {};
-			}
-			return clearTimeout(timer.current);
-		};
-	}, [isTouched]);
+    return () => {
+      if (!timer.current) {
+        return () => {};
+      }
+      return clearTimeout(timer.current);
+    };
+  }, [isTouched]);
 };
 
 export default useAutoAdvance;

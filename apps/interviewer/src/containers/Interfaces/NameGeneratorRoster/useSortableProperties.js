@@ -1,51 +1,51 @@
-import { compact } from "lodash";
-import { useMemo } from "react";
-import { mapNCType } from "../../../utils/createSorter";
-import { get } from "../../../utils/lodash-replacements";
-import { convertNamesToUUIDs } from "./helpers";
+import { compact } from 'lodash';
+import { useMemo } from 'react';
+import { mapNCType } from '../../../utils/createSorter';
+import { get } from '../../../utils/lodash-replacements';
+import { convertNamesToUUIDs } from './helpers';
 
 /**
  * Convert protocol config options into a format
  * usable by useSort. Essentially specific to SearchableList.
  */
-const useSortableProperties = (variableDefinitions, sortOptions, path = ["data", "attributes"]) => {
-	const sortableProperties = get(sortOptions, "sortableProperties");
-	const initialSortOrder = get(sortOptions, ["sortOrder", 0]);
-	const initialSortProperty = get(initialSortOrder, "property");
+const useSortableProperties = (variableDefinitions, sortOptions, path = ['data', 'attributes']) => {
+  const sortableProperties = get(sortOptions, 'sortableProperties');
+  const initialSortOrder = get(sortOptions, ['sortOrder', 0]);
+  const initialSortProperty = get(initialSortOrder, 'property');
 
-	if (!sortOptions) {
-		return { sortableProperties: [], initialSortOrder: undefined };
-	}
+  if (!sortOptions) {
+    return { sortableProperties: [], initialSortOrder: undefined };
+  }
 
-	const enhancedInitialSortOrder = useMemo(() => {
-		const property = convertNamesToUUIDs(variableDefinitions, initialSortProperty);
-		const type = get(variableDefinitions, [property, "type"]);
-		return {
-			...initialSortOrder,
-			property: compact([...path, property]),
-			type: mapNCType(type),
-		};
-	}, [initialSortOrder]);
+  const enhancedInitialSortOrder = useMemo(() => {
+    const property = convertNamesToUUIDs(variableDefinitions, initialSortProperty);
+    const type = get(variableDefinitions, [property, 'type']);
+    return {
+      ...initialSortOrder,
+      property: compact([...path, property]),
+      type: mapNCType(type),
+    };
+  }, [initialSortOrder]);
 
-	const enhancedSortableProperties = useMemo(() => {
-		if (!sortableProperties) {
-			return [];
-		}
-		return sortableProperties.map(({ variable, label }) => {
-			const uuid = convertNamesToUUIDs(variableDefinitions, variable);
-			const type = get(variableDefinitions, [uuid, "type"]);
-			return {
-				property: compact([...path, uuid]),
-				label,
-				type: mapNCType(type),
-			};
-		});
-	}, [sortableProperties]);
+  const enhancedSortableProperties = useMemo(() => {
+    if (!sortableProperties) {
+      return [];
+    }
+    return sortableProperties.map(({ variable, label }) => {
+      const uuid = convertNamesToUUIDs(variableDefinitions, variable);
+      const type = get(variableDefinitions, [uuid, 'type']);
+      return {
+        property: compact([...path, uuid]),
+        label,
+        type: mapNCType(type),
+      };
+    });
+  }, [sortableProperties]);
 
-	return {
-		sortableProperties: enhancedSortableProperties,
-		initialSortOrder: enhancedInitialSortOrder,
-	};
+  return {
+    sortableProperties: enhancedSortableProperties,
+    initialSortOrder: enhancedInitialSortOrder,
+  };
 };
 
 export default useSortableProperties;

@@ -1,5 +1,5 @@
-const { dialog } = require('electron');
-const { openDialog } = require('./dialogs');
+import { dialog } from 'electron';
+import { openDialog } from './dialogs.js';
 
 const openFile = (window) => () => openDialog()
   .then((filePath) => window.webContents.send('OPEN_FILE', filePath))
@@ -96,4 +96,4 @@ const MenuTemplate = (window) => {
   return menu;
 };
 
-module.exports = MenuTemplate;
+export default MenuTemplate;
