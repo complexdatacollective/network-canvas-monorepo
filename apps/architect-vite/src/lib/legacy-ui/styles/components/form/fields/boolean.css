@@ -74,8 +74,7 @@
 	text-decoration: none;
 	cursor: pointer;
 	transform: translateY(calc(-1 * var(--adjusted-shadow-size)));
-	box-shadow: 0 calc(var(--adjusted-shadow-size) * 2) var(--adjusted-blur) 0
-		rgba(0, 0, 0, 0.35);
+	box-shadow: 0 calc(var(--adjusted-shadow-size) * 2) var(--adjusted-blur) 0 rgba(0, 0, 0, 0.35);
 }
 
 .boolean-option:not(:disabled):active {

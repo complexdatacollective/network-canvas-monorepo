@@ -2,10 +2,7 @@
 /* =================================== */
 
 .pips {
-	--local-pip-size: var(
-		--pip-size,
-		calc(var(--space-md) * 1.2)
-	); /* unit(1.2) */
+	--local-pip-size: var(--pip-size, calc(var(--space-md) * 1.2)); /* unit(1.2) */
 	--local-pip-size-flex: calc(var(--local-pip-size) + var(--space-sm));
 	--local-pip-border-color: var(--pip-border-color, hsla(0, 0%, 100%, 0.15));
 

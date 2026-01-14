@@ -1,8 +1,11 @@
 /* eslint-disable no-bitwise,max-classes-per-file */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
-const { Readable } = require("stream");
-const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require("../../utils/reservedAttributes");
-const { csvEOL } = require("./csv");
+
+import { Readable } from "node:stream";
+import type { Codebook } from "@codaco/protocol-validation";
+import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from "@codaco/shared-consts";
+import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
+import { csvEOL } from "./csv";
 
 /**
  * An opaque reprensentation of an adjacency matrix with binary values (edge is present/absent).
@@ -50,7 +53,14 @@ const { csvEOL } = require("./csv");
 // TODO: if ego modeled separately, need to include in nodes
 // TODO: Take a guess at heap use based on network size and throw if exceeded?
 class AdjacencyMatrix {
-	constructor(network) {
+	uniqueNodeIds: string[];
+	dimension: number;
+	buffer: ArrayBuffer;
+	arrayView: Uint8Array;
+	network: SessionWithResequencedIDs;
+	indexMap: Record<string, number> = {};
+
+	constructor(network: SessionWithResequencedIDs) {
 		// TODO: Store a quote-escaped version?
 		// Track only unique IDs (duplicates are discarded). The ordering here provides the ordering for
 		// both header and data output.
@@ -82,15 +92,14 @@ class AdjacencyMatrix {
 	 * @param {string} to   a UID
 	 * @throws {ReferenceError} if this is called before calculateEdges()
 	 */
-	setAdjacent(from, to) {
-		const fromIndex = this.indexMap[from];
-		const toIndex = this.indexMap[to];
+	setAdjacent(from: string, to: string) {
+		const fromIndex = this.indexMap[from]!;
+		const toIndex = this.indexMap[to]!;
 		const elementIndex = this.dimension * fromIndex + toIndex;
 		const byteIndex = ~~(elementIndex / 8);
 		const bitIndex = elementIndex % 8;
 		const adjacencyBitmask = 1 << (7 - bitIndex); // cells are ordered left->right
-		// eslint-disable-next-line operator-assignment
-		this.arrayView[byteIndex] = this.arrayView[byteIndex] | adjacencyBitmask;
+		this.arrayView[byteIndex] = this.arrayView[byteIndex]! | adjacencyBitmask;
 	}
 
 	/**
@@ -98,24 +107,27 @@ class AdjacencyMatrix {
 	 */
 	calculateEdges(directed = false) {
 		// Allow fast lookup of index for each node
-		this.indexMap = this.uniqueNodeIds.reduce((acc, uid, index) => {
-			acc[uid] = index;
-			return acc;
-		}, {});
+		this.indexMap = this.uniqueNodeIds.reduce(
+			(acc, uid, index) => {
+				acc[uid] = index;
+				return acc;
+			},
+			{} as Record<string, number>,
+		);
 
-		(this.network.edges || []).forEach((edge) => {
+		for (const edge of this.network.edges || []) {
 			this.setAdjacent(edge[ncSourceUUID], edge[ncTargetUUID]);
 			if (directed === false) {
 				this.setAdjacent(edge[ncTargetUUID], edge[ncSourceUUID]);
 			}
-		});
+		}
 	}
 
 	/**
 	 * @param {Stream.Writable} outStream A writable stream for CSV output
 	 * @return {Object} an abort controller; call the attached abort() method as needed.
 	 */
-	toCSVStream(outStream) {
+	toCSVStream(outStream: NodeJS.WritableStream) {
 		const { uniqueNodeIds } = this;
 		const dataColumnCount = uniqueNodeIds.length;
 		const matrixCellCount = dataColumnCount * dataColumnCount;
@@ -128,7 +140,7 @@ class AdjacencyMatrix {
 		const headerRowContent = `,${decimals.join(",")}${csvEOL}`;
 
 		// TODO: escape headerLabels (if not already) & quote
-		const dataRowContent = (headerLabel, matrix) => {
+		const dataRowContent = (headerLabel: string, matrix: Uint8Array) => {
 			const rowBuffer = new ArrayBuffer(dataColumnCount);
 			const cols = new Uint8Array(rowBuffer);
 
@@ -138,15 +150,15 @@ class AdjacencyMatrix {
 			const initialBitIndex = matrixIndex % 8;
 			let byteIndex = initialByteIndex;
 			let bitIndex = initialBitIndex;
-			let byte = matrix[byteIndex];
-			let bitmask;
+			let byte = matrix[byteIndex]!;
+			let bitmask: number;
 
 			for (let i = 0; i < dataColumnCount; i += 1) {
 				bitmask = 1 << (7 - bitIndex); // cells are ordered left->right
 				// zero-compare is slower if it has to convert Number, the 0|0 literal is a hint for int32.
 				// Storing 0|0 in variable or surrounding in parens loses this hint in node 8.x
 				// (though not 10.x; TODO: revisit after version bump.)
-				cols[i] = ((byte & bitmask) !== 0) | 0;
+				cols[i] = ((byte & bitmask) !== 0 ? 1 : 0) | 0;
 
 				matrixIndex += 1;
 
@@ -155,9 +167,9 @@ class AdjacencyMatrix {
 				}
 
 				bitIndex = (bitIndex + 1) % 8;
-				if ((bitIndex === 0) | 0) {
+				if (bitIndex === 0) {
 					byteIndex += 1;
-					byte = matrix[byteIndex];
+					byte = matrix[byteIndex]!;
 				}
 			}
 
@@ -172,7 +184,7 @@ class AdjacencyMatrix {
 		// When we see that happen, we'll truncate the view into the buffer to keep the index small.
 		const v8MaxInt = (2 ** 31 - 1) | 0;
 		let truncatingView = this.arrayView.subarray();
-		let row;
+		let row: string;
 
 		let headerWritten = false;
 		let rowNum = 0;
@@ -183,7 +195,7 @@ class AdjacencyMatrix {
 					this.push(headerRowContent);
 					headerWritten = true;
 				} else if (rowNum < dataColumnCount) {
-					row = dataRowContent(uniqueNodeIds[rowNum], truncatingView);
+					row = dataRowContent(uniqueNodeIds[rowNum]!, truncatingView);
 					this.push(row);
 					rowNum += 1;
 
@@ -214,7 +226,6 @@ class AdjacencyMatrix {
 	toArray(matrixView = this.arrayView) {
 		if (this.dimension > 100) {
 			// This is only useful for debugging/testing
-			// eslint-disable-next-line no-console
 			console.warn("toArray() not supported on large matrices");
 			return [];
 		}
@@ -225,35 +236,36 @@ class AdjacencyMatrix {
 	toString(matrixView = this.arrayView) {
 		if (this.dimension > 100) {
 			// This is only useful for debugging/testing
-			// eslint-disable-next-line no-console
 			console.warn("toString() not supported on large matrices");
 			return "";
 		}
 		const str = Array.from(matrixView).reduce((acc, val) => {
-			acc = `${acc}${val.toString(2).padStart(8, "0")}`; // eslint-disable-line no-param-reassign
-			return acc;
+			return `${acc}${val.toString(2).padStart(8, "0")}`;
 		}, "");
 		return str.substr(0, this.dimension * this.dimension);
 	}
 }
 
-const asAdjacencyMatrix = (network, directed = false) => {
+const asAdjacencyMatrix = (network: SessionWithResequencedIDs, directed = false) => {
 	const adjacencyMatrix = new AdjacencyMatrix(network);
 	adjacencyMatrix.calculateEdges(directed);
 	return adjacencyMatrix;
 };
 
 class AdjacencyMatrixFormatter {
-	constructor(data, codebook, { globalOptions: { useDirectedEdges } }) {
+	matrix: AdjacencyMatrix;
+
+	constructor(
+		data: SessionWithResequencedIDs,
+		_codebook: Codebook,
+		{ globalOptions: { useDirectedEdges } }: ExportOptions,
+	) {
 		this.matrix = asAdjacencyMatrix(data, useDirectedEdges);
 	}
 
-	writeToStream(outStream) {
+	writeToStream(outStream: NodeJS.WritableStream) {
 		return this.matrix.toCSVStream(outStream);
 	}
 }
 
-module.exports = {
-	AdjacencyMatrixFormatter,
-	asAdjacencyMatrix,
-};
+export { AdjacencyMatrixFormatter, asAdjacencyMatrix };

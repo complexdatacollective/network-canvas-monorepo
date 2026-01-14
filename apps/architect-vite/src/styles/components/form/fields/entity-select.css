@@ -8,8 +8,9 @@
 		opacity: 0;
 		background: var(--color-error);
 		color: var(--color-error);
-		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
-			var(--animation-duration-standard);
+		transition:
+			opacity var(--animation-easing) var(--animation-duration-standard),
+			max-height var(--animation-easing) var(--animation-duration-standard);
 		padding: var(--space-xs) var(--space-xs);
 		display: flex;
 		align-items: center;

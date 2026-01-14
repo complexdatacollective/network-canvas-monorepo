@@ -127,11 +127,10 @@ h2.section-heading {
 
 @media print {
 	.protocol-summary {
-		-webkit-print-color-adjust: exact !important;
+		-webkit-print-color-adjust: exact;
 		color: #000;
 		font-family:
-			-apple-system, "Segoe UI", Helvetica, Arial, sans-serif,
-			"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+			-apple-system, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 	}
 }
 

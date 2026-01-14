@@ -1,15 +1,17 @@
-const { Readable } = require("stream");
-const {
-	entityAttributesProperty,
-	egoProperty,
-	entityPrimaryKeyProperty,
+import { Readable } from "node:stream";
+import type { Codebook } from "@codaco/protocol-validation";
+import {
 	edgeExportIDProperty,
+	egoProperty,
+	entityAttributesProperty,
+	entityPrimaryKeyProperty,
 	ncSourceUUID,
 	ncTargetUUID,
 	ncUUIDProperty,
-} = require("../../utils/reservedAttributes");
-const { processEntityVariables } = require("../network");
-const { sanitizedCellValue, csvEOL } = require("./csv");
+} from "@codaco/shared-consts";
+import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
+import { csvEOL, sanitizedCellValue } from "./csv";
+import processEntityVariables from "./processEntityVariables";
 
 /**
  * Builds an edge list for a network, based only on its edges (it need
@@ -31,7 +33,7 @@ const { sanitizedCellValue, csvEOL } = require("./csv");
  *                            default: false
  * @return {Array} the edges list
  */
-const asEdgeList = (network, codebook, exportOptions) => {
+const asEdgeList = (network: SessionWithResequencedIDs, codebook: Codebook, exportOptions: ExportOptions) => {
 	const directed = exportOptions.globalOptions.useDirectedEdges;
 	const processedEdges = (network.edges || []).map((edge) =>
 		processEntityVariables(edge, "edge", codebook, exportOptions),
@@ -56,8 +58,8 @@ const asEdgeList = (network, codebook, exportOptions) => {
  * The output of this formatter will contain the primary key (_uid)
  * and all model data (inside the `attributes` property)
  */
-const attributeHeaders = (edges) => {
-	const initialHeaderSet = new Set([]);
+const attributeHeaders = (edges: ReturnType<typeof asEdgeList>) => {
+	const initialHeaderSet = new Set<string>([]);
 	initialHeaderSet.add(edgeExportIDProperty);
 	initialHeaderSet.add("from");
 	initialHeaderSet.add("to");
@@ -67,15 +69,15 @@ const attributeHeaders = (edges) => {
 	initialHeaderSet.add(ncTargetUUID);
 
 	const headerSet = edges.reduce((headers, edge) => {
-		Object.keys(edge[entityAttributesProperty] || []).forEach((key) => {
+		for (const key of Object.keys(edge[entityAttributesProperty] || [])) {
 			headers.add(key);
-		});
+		}
 		return headers;
 	}, initialHeaderSet);
 	return [...headerSet];
 };
 
-const getPrintableAttribute = (attribute) => {
+const getPrintableAttribute = (attribute: string) => {
 	switch (attribute) {
 		case egoProperty:
 			return egoProperty;
@@ -99,13 +101,13 @@ const getPrintableAttribute = (attribute) => {
  *
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (edges, outStream) => {
+const toCSVStream = (edges: ReturnType<typeof asEdgeList>, outStream: NodeJS.WritableStream) => {
 	const totalChunks = edges.length;
-	let chunkContent;
+	let chunkContent: string;
 	let chunkIndex = 0;
 	const attrNames = attributeHeaders(edges);
 	let headerWritten = false;
-	let edge;
+	let edge: (typeof edges)[number];
 
 	const inStream = new Readable({
 		read(/* size */) {
@@ -113,10 +115,10 @@ const toCSVStream = (edges, outStream) => {
 				this.push(`${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`);
 				headerWritten = true;
 			} else if (chunkIndex < totalChunks) {
-				edge = edges[chunkIndex];
+				edge = edges[chunkIndex]!;
 				const values = attrNames.map((attrName) => {
 					// primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
-					let value;
+					let value: unknown;
 					if (
 						attrName === entityPrimaryKeyProperty ||
 						attrName === edgeExportIDProperty ||
@@ -126,9 +128,9 @@ const toCSVStream = (edges, outStream) => {
 						attrName === ncSourceUUID ||
 						attrName === ncTargetUUID
 					) {
-						value = edge[attrName];
+						value = (edge as Record<string, unknown>)[attrName];
 					} else {
-						value = edge[entityAttributesProperty][attrName];
+						value = (edge[entityAttributesProperty] as Record<string, unknown>)[attrName];
 					}
 					return sanitizedCellValue(value);
 				});
@@ -150,50 +152,16 @@ const toCSVStream = (edges, outStream) => {
 		},
 	};
 };
-
-const toCSVString = (edges) => {
-	const attrNames = attributeHeaders(edges);
-	const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`;
-	const rows = edges.map((edge) => {
-		const values = attrNames.map((attrName) => {
-			// primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
-			let value;
-			if (
-				attrName === entityPrimaryKeyProperty ||
-				attrName === edgeExportIDProperty ||
-				attrName === egoProperty ||
-				attrName === "to" ||
-				attrName === "from" ||
-				attrName === ncSourceUUID ||
-				attrName === ncTargetUUID
-			) {
-				value = edge[attrName];
-			} else {
-				value = edge[entityAttributesProperty][attrName];
-			}
-			return sanitizedCellValue(value);
-		});
-		return `${values.join(",")}${csvEOL}`;
-	});
-	return headerValue + rows.join("");
-};
 class EdgeListFormatter {
-	constructor(data, codebook, exportOptions) {
+	list: ReturnType<typeof asEdgeList>;
+
+	constructor(data: SessionWithResequencedIDs, codebook: Codebook, exportOptions: ExportOptions) {
 		this.list = asEdgeList(data, codebook, exportOptions);
 	}
 
-	writeToStream(outStream) {
+	writeToStream(outStream: NodeJS.WritableStream) {
 		return toCSVStream(this.list, outStream);
-	}
-
-	writeToString() {
-		return toCSVString(this.list);
 	}
 }
 
-module.exports = {
-	EdgeListFormatter,
-	asEdgeList,
-	toCSVStream,
-	toCSVString,
-};
+export { asEdgeList, EdgeListFormatter, toCSVStream };

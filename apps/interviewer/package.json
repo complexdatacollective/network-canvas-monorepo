@@ -132,6 +132,7 @@
 		"xss": "^0.3.4"
 	},
 	"dependencies": {
+		"@codaco/network-exporters": "workspace:*",
 		"@codaco/network-query": "workspace:*",
 		"@xmldom/xmldom": "~0.8.10",
 		"archiver": "^4.0.1",

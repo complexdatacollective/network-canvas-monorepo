@@ -1,14 +1,13 @@
-/* eslint-env jest */
-
-import { mockCodebook, mockExportOptions } from "../../../../config/mockObjects";
-import { makeWriteableStream } from "../../../../config/setupTestEnv";
 import {
 	egoProperty,
 	entityAttributesProperty,
 	entityPrimaryKeyProperty,
 	ncUUIDProperty,
 	nodeExportIDProperty,
-} from "../../../utils/reservedAttributes";
+} from "@codaco/shared-consts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
+import { mockCodebook, mockExportOptions } from "../../../__tests__/mockObjects";
 import { AttributeListFormatter, asAttributeList, toCSVStream } from "../attribute-list";
 
 const node = {
@@ -24,22 +23,13 @@ const baseCSVAttributes = [nodeExportIDProperty, egoProperty, ncUUIDProperty];
 describe("asAttributeList", () => {
 	it("transforms a network to nodes", () => {
 		const network = { nodes: [{ id: 1 }], edges: [] };
-		expect(asAttributeList(network)).toEqual(network.nodes);
-	});
-});
-
-describe("writeToString", () => {
-	it("writes a simple CSV", () => {
-		const formatter = new AttributeListFormatter({ nodes: [node] }, mockCodebook, mockExportOptions);
-		const csv = formatter.writeToString();
-		const result = [...baseCSVAttributes, "name\r\n", 123, 1, "Jane\r\n"].join(",");
-		expect(csv).toEqual(result);
+		expect(asAttributeList(network as never, mockCodebook, mockExportOptions)).toEqual(network.nodes);
 	});
 });
 
 describe("toCSVStream", () => {
-	let writable;
-	let testNode;
+	let writable: ReturnType<typeof makeWriteableStream>;
+	let testNode: typeof node;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
@@ -47,7 +37,7 @@ describe("toCSVStream", () => {
 	});
 
 	it("writes a simple CSV", async () => {
-		toCSVStream([testNode], writable);
+		toCSVStream([testNode] as never, writable);
 
 		const csv = await writable.asString();
 
@@ -64,7 +54,7 @@ describe("toCSVStream", () => {
 						name: '"Nicky"',
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 
@@ -83,7 +73,7 @@ describe("toCSVStream", () => {
 						'"quoted"': 1,
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 
@@ -102,7 +92,7 @@ describe("toCSVStream", () => {
 						location: { x: 1, y: 1 },
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 		const csv = await writable.asString();
@@ -119,7 +109,7 @@ describe("toCSVStream", () => {
 						prop: undefined,
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 
@@ -138,7 +128,7 @@ describe("toCSVStream", () => {
 						prop: null,
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 
@@ -157,7 +147,7 @@ describe("toCSVStream", () => {
 						prop: false,
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 
@@ -169,14 +159,14 @@ describe("toCSVStream", () => {
 });
 
 describe("AttributeListFormatter", () => {
-	let writable;
+	let writable: ReturnType<typeof makeWriteableStream>;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
 	});
 
 	it("writeToStream returns an abort controller", () => {
-		const formatter = new AttributeListFormatter({}, mockCodebook, mockExportOptions);
+		const formatter = new AttributeListFormatter({} as never, mockCodebook, mockExportOptions);
 		const controller = formatter.writeToStream(writable);
 		expect(controller.abort).toBeInstanceOf(Function);
 	});

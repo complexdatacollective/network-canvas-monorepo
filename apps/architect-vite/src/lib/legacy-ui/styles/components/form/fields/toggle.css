@@ -22,8 +22,7 @@
 	.form-field-toggle__button {
 		position: absolute;
 		background-color: var(--color-primary);
-		transition: background var(--animation-duration-fast)
-			var(--animation-easing);
+		transition: background var(--animation-duration-fast) var(--animation-easing);
 		border-radius: var(--global-input-element-size);
 		top: 0;
 		left: 0;
@@ -37,8 +36,7 @@
 			height: var(--global-input-element-size);
 			width: var(--global-input-element-size);
 			background-color: var(--color-border);
-			transition: transform var(--animation-duration-fast)
-				var(--animation-easing);
+			transition: transform var(--animation-duration-fast) var(--animation-easing);
 		}
 	}
 

@@ -1,123 +1,114 @@
-import { type FilterRule } from '@codaco/protocol-validation';
+import type { FilterRule } from "@codaco/protocol-validation";
 import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcEdge,
-  type NcEgo,
-  type NcNetwork,
-  type NcNode,
-} from '@codaco/shared-consts';
-import predicate, { operators } from './predicate';
+	entityAttributesProperty,
+	entityPrimaryKeyProperty,
+	type NcEdge,
+	type NcEgo,
+	type NcNetwork,
+	type NcNode,
+} from "@codaco/shared-consts";
+import { invariant } from "es-toolkit";
+import predicate, { operators } from "./predicate";
 
-const singleEdgeRule =
-  (options: FilterRule['options']) =>
-  (node: NcNode, edges: NcEdge[]) => {
-    const { type, operator, value: other } = options;
-    const attribute = 'attribute' in options ? options.attribute : undefined;
+const singleEdgeRule = (options: FilterRule["options"]) => (node: NcNode, edges: NcEdge[]) => {
+	const { type, operator, value: other } = options;
+	const attribute = "attribute" in options ? options.attribute : undefined;
 
-    const nodeEdges = edges.filter(
-      (edge) =>
-        edge.from === node[entityPrimaryKeyProperty] ||
-        edge.to === node[entityPrimaryKeyProperty],
-    );
+	const nodeEdges = edges.filter(
+		(edge) => edge.from === node[entityPrimaryKeyProperty] || edge.to === node[entityPrimaryKeyProperty],
+	);
 
-    const nodeHasEdgeOfType = nodeEdges.some((edge) => edge.type === type);
+	const nodeHasEdgeOfType = nodeEdges.some((edge) => edge.type === type);
 
-    if (!attribute) {
-      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-      switch (operator) {
-        case 'EXISTS':
-          return nodeHasEdgeOfType;
-        default:
-          return !nodeHasEdgeOfType;
-      }
-    }
+	if (!attribute) {
+		// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+		switch (operator) {
+			case "EXISTS":
+				return nodeHasEdgeOfType;
+			default:
+				return !nodeHasEdgeOfType;
+		}
+	}
 
-    const nodeHasEdgeWithAttribute =
-      nodeHasEdgeOfType &&
-      nodeEdges.some(
-        (edge) =>
-          edge.type === type &&
-          predicate(operator)({
-            value: edge[entityAttributesProperty][attribute],
-            other,
-          }),
-      );
+	const nodeHasEdgeWithAttribute =
+		nodeHasEdgeOfType &&
+		nodeEdges.some(
+			(edge) =>
+				edge.type === type &&
+				predicate(operator)({
+					value: edge[entityAttributesProperty][attribute],
+					other,
+				}),
+		);
 
-    return nodeHasEdgeWithAttribute;
-  };
+	return nodeHasEdgeWithAttribute;
+};
 
 export type SingleEdgeRule = typeof singleEdgeRule;
 
-const singleNodeRule =
-  (options: FilterRule['options']) =>
-  (node: NcNode) => {
-    const { type, operator, value: other } = options;
-    const attribute = 'attribute' in options ? options.attribute : undefined;
+const singleNodeRule = (options: FilterRule["options"]) => (node: NcNode) => {
+	const { type, operator, value: other } = options;
+	const attribute = "attribute" in options ? options.attribute : undefined;
 
-    if (!attribute) {
-      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-      switch (operator) {
-        case operators.EXISTS:
-          return node.type === type;
-        default:
-          return node.type !== type;
-      }
-    }
+	if (!attribute) {
+		// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+		switch (operator) {
+			case operators.EXISTS:
+				return node.type === type;
+			default:
+				return node.type !== type;
+		}
+	}
 
-    return (
-      node.type === type &&
-      predicate(operator)({
-        value: node[entityAttributesProperty][attribute],
-        other,
-      })
-    );
-  };
+	return (
+		node.type === type &&
+		predicate(operator)({
+			value: node[entityAttributesProperty][attribute],
+			other,
+		})
+	);
+};
 
 type SingleNodeRule = typeof singleNodeRule;
 
 // Reduce edges to any that match the rule
 // Filter nodes by the resulting edges
-const edgeRule =
-  (options: FilterRule['options']) =>
-  (nodes: NcNetwork['nodes'], edges: NcNetwork['edges']) => {
-    const { operator, type, value: other } = options;
-    const attribute = 'attribute' in options ? options.attribute : undefined;
+const edgeRule = (options: FilterRule["options"]) => (nodes: NcNetwork["nodes"], edges: NcNetwork["edges"]) => {
+	const { operator, type, value: other } = options;
+	const attribute = "attribute" in options ? options.attribute : undefined;
 
-    let filteredEdges;
-    // If there is no attribute, we just care about filtering by type
-    if (!attribute) {
-      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-      switch (operator) {
-        case operators.EXISTS:
-          filteredEdges = edges.filter((edge) => edge.type === type);
-          break;
-        default:
-          filteredEdges = edges.filter((edge) => edge.type !== type);
-      }
-    } else {
-      // If there is an attribute we check that, too.
-      filteredEdges = edges.filter(
-        (edge) =>
-          edge.type === type &&
-          predicate(operator)({
-            value: edge[entityAttributesProperty][attribute],
-            other,
-          }),
-      );
-    }
+	let filteredEdges: NcEdge[] = [];
+	// If there is no attribute, we just care about filtering by type
+	if (!attribute) {
+		// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+		switch (operator) {
+			case operators.EXISTS:
+				filteredEdges = edges.filter((edge) => edge.type === type);
+				break;
+			default:
+				filteredEdges = edges.filter((edge) => edge.type !== type);
+		}
+	} else {
+		// If there is an attribute we check that, too.
+		filteredEdges = edges.filter(
+			(edge) =>
+				edge.type === type &&
+				predicate(operator)({
+					value: edge[entityAttributesProperty][attribute],
+					other,
+				}),
+		);
+	}
 
-    const edgeMap = filteredEdges.flatMap((edge) => [edge.from, edge.to]);
+	const edgeMap = filteredEdges.flatMap((edge) => [edge.from, edge.to]);
 
-    const filteredNodes = nodes.filter((node) =>
-      edgeMap.includes(node[entityPrimaryKeyProperty]),
-    );
+	const filteredNodes = nodes.filter((node) => edgeMap.includes(node[entityPrimaryKeyProperty]));
 
-    return {
-      nodes: filteredNodes,
-      edges: filteredEdges,
-    };
-  };
+	return {
+		nodes: filteredNodes,
+		edges: filteredEdges,
+	};
+};
 
 type EdgeRule = typeof edgeRule;
 
@@ -149,45 +140,42 @@ type EdgeRule = typeof edgeRule;
  * ```
  */
 const nodeRule =
-  (options: FilterRule['options']) =>
-  (nodes: NcNetwork['nodes'] = [], edges: NcNetwork['edges'] = []) => {
-    const { operator, type, value: other } = options;
-    const attribute = 'attribute' in options ? options.attribute : undefined;
+	(options: FilterRule["options"]) =>
+	(nodes: NcNetwork["nodes"] = [], edges: NcNetwork["edges"] = []) => {
+		const { operator, type, value: other } = options;
+		const attribute = "attribute" in options ? options.attribute : undefined;
 
-    let filteredNodes: NcNode[] = [];
-    // If there is no attribute, we just care about filtering by type
-    if (!attribute) {
-      // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-      switch (operator) {
-        case operators.EXISTS:
-          filteredNodes = nodes.filter((node) => node.type === type!);
-          break;
-        default:
-          filteredNodes = nodes.filter((node) => node.type !== type);
-      }
-    } else {
-      // If there is an attribute we check that, too.
-      filteredNodes = nodes.filter(
-        (node) =>
-          node.type === type &&
-          predicate(operator)({
-            value: node[entityAttributesProperty][attribute],
-            other,
-          }),
-      );
-    }
+		let filteredNodes: NcNode[] = [];
+		// If there is no attribute, we just care about filtering by type
+		if (!attribute) {
+			switch (operator) {
+				case operators.EXISTS:
+					filteredNodes = nodes.filter((node) => node.type === type);
+					break;
+				default:
+					filteredNodes = nodes.filter((node) => node.type !== type);
+			}
+		} else {
+			// If there is an attribute we check that, too.
+			filteredNodes = nodes.filter(
+				(node) =>
+					node.type === type &&
+					predicate(operator)({
+						value: node[entityAttributesProperty][attribute],
+						other,
+					}),
+			);
+		}
 
-    const nodeIds = filteredNodes.map((node) => node[entityPrimaryKeyProperty]);
+		const nodeIds = filteredNodes.map((node) => node[entityPrimaryKeyProperty]);
 
-    const filteredEdges = edges.filter(
-      (edge) => nodeIds.includes(edge.from) && nodeIds.includes(edge.to),
-    );
+		const filteredEdges = edges.filter((edge) => nodeIds.includes(edge.from) && nodeIds.includes(edge.to));
 
-    return {
-      nodes: filteredNodes,
-      edges: filteredEdges,
-    };
-  };
+		return {
+			nodes: filteredNodes,
+			edges: filteredEdges,
+		};
+	};
 
 type NodeRule = typeof nodeRule;
 
@@ -199,43 +187,34 @@ type NodeRule = typeof nodeRule;
  * @param {string} options.operator What predicate to apply to the attribute
  * @param {string} options.value Value to compare the ego attribute with
  */
-const egoRule =
-  (options: FilterRule['options']) =>
-  (ego: NcEgo) => {
-    const { operator, value: other } = options;
-    const attribute = 'attribute' in options ? options.attribute : undefined;
+const egoRule = (options: FilterRule["options"]) => (ego: NcEgo) => {
+	const { operator, value: other } = options;
+	const attribute = "attribute" in options ? options.attribute : undefined;
 
-    return predicate(operator)({
-      value: ego[entityAttributesProperty][attribute!],
-      other,
-    });
-  };
+	invariant(attribute, "Ego rules require an attribute to be specified in the rule options.");
+
+	return predicate(operator)({
+		value: ego[entityAttributesProperty][attribute],
+		other,
+	});
+};
 
 export type EgoRule = typeof egoRule;
 
 type RuleWithMetadata = {
-  type: FilterRule['type'];
-  options: FilterRule['options'];
+	type: FilterRule["type"];
+	options: FilterRule["options"];
 };
 
-type RuleFunction =
-  | EgoRule
-  | NodeRule
-  | EdgeRule
-  | SingleNodeRule
-  | SingleEdgeRule;
+type RuleFunction = EgoRule | NodeRule | EdgeRule | SingleNodeRule | SingleEdgeRule;
 
 export type RuleFunctionWithMetadata = RuleFunction & RuleWithMetadata;
 
-const createRule = (
-  type: FilterRule['type'],
-  options: FilterRule['options'],
-  f: RuleFunction,
-) => {
-  const rule = f(options) as unknown as RuleFunctionWithMetadata;
-  rule.type = type;
-  rule.options = options;
-  return rule;
+const createRule = (type: FilterRule["type"], options: FilterRule["options"], f: RuleFunction) => {
+	const rule = f(options) as unknown as RuleFunctionWithMetadata;
+	rule.type = type;
+	rule.options = options;
+	return rule;
 };
 
 /**
@@ -252,30 +231,30 @@ const createRule = (
  * ```
  */
 export const getRuleFunction = ({ type: rawType, options }: FilterRule) => {
-  // Normalize 'alter' to 'node' for backwards compatibility
-  const type = rawType === ('alter' as unknown) ? 'node' : rawType;
+	// Normalize 'alter' to 'node' for backwards compatibility
+	const type = rawType === ("alter" as unknown) ? "node" : rawType;
 
-  switch (type) {
-    case 'node':
-      return createRule('node', options, nodeRule);
-    case 'edge':
-      return createRule('edge', options, edgeRule);
-    case 'ego':
-      return createRule('ego', options, egoRule);
-  }
+	switch (type) {
+		case "node":
+			return createRule("node", options, nodeRule);
+		case "edge":
+			return createRule("edge", options, edgeRule);
+		case "ego":
+			return createRule("ego", options, egoRule);
+	}
 };
 
 // As above, but for rules matching single array or edge
 export const getSingleRuleFunction = ({ type: rawType, options }: FilterRule) => {
-  // Normalize 'alter' to 'node' for backwards compatibility
-  const type = rawType === ('alter' as unknown) ? 'node' : rawType;
+	// Normalize 'alter' to 'node' for backwards compatibility
+	const type = rawType === ("alter" as unknown) ? "node" : rawType;
 
-  switch (type) {
-    case 'node':
-      return createRule('node', options, singleNodeRule);
-    case 'edge':
-      return createRule('edge', options, singleEdgeRule);
-    case 'ego':
-      return createRule('ego', options, egoRule);
-  }
+	switch (type) {
+		case "node":
+			return createRule("node", options, singleNodeRule);
+		case "edge":
+			return createRule("edge", options, singleEdgeRule);
+		case "ego":
+			return createRule("ego", options, egoRule);
+	}
 };

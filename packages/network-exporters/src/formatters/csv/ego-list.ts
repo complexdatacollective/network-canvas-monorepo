@@ -1,35 +1,49 @@
-const { Readable } = require("stream");
-const {
-	entityAttributesProperty,
-	entityPrimaryKeyProperty,
+import { Readable } from "node:stream";
+import type { Codebook } from "@codaco/protocol-validation";
+import {
 	caseProperty,
 	egoProperty,
-	sessionProperty,
-	protocolName,
-	sessionStartTimeProperty,
-	sessionFinishTimeProperty,
-	sessionExportTimeProperty,
+	entityAttributesProperty,
+	entityPrimaryKeyProperty,
 	ncCaseProperty,
-	ncSessionProperty,
 	ncProtocolNameProperty,
-} = require("../../utils/reservedAttributes");
-const { processEntityVariables } = require("../network");
-const { sanitizedCellValue, csvEOL } = require("./csv");
+	ncSessionProperty,
+	protocolName,
+	sessionExportTimeProperty,
+	sessionFinishTimeProperty,
+	sessionProperty,
+	sessionStartTimeProperty,
+} from "@codaco/shared-consts";
+import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
+import { csvEOL, sanitizedCellValue } from "./csv";
+import processEntityVariables from "./processEntityVariables";
 
-const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
+type NetworkWithUnifiedEgo = SessionWithResequencedIDs & {
+	ego: Record<string, SessionWithResequencedIDs["ego"]>;
+	sessionVariables: Record<string, SessionWithResequencedIDs["sessionVariables"]>;
+};
+
+const asEgoAndSessionVariablesList = (
+	network: SessionWithResequencedIDs | NetworkWithUnifiedEgo,
+	codebook: Codebook,
+	exportOptions: ExportOptions,
+) => {
 	if (exportOptions.globalOptions.unifyNetworks) {
+		const unifiedNetwork = network as NetworkWithUnifiedEgo;
 		// If unified networks is enabled, network.ego is an object keyed by sessionID.
-		return Object.keys(network.ego).map((sessionID) =>
-			processEntityVariables(
+		return Object.keys(unifiedNetwork.ego).map((sessionID) => {
+			const ego = unifiedNetwork.ego[sessionID]!;
+			const sessionVars = unifiedNetwork.sessionVariables[sessionID]!;
+			return processEntityVariables(
 				{
-					...network.ego[sessionID],
-					...network.sessionVariables[sessionID],
-				},
+					...ego,
+					...sessionVars,
+				} as Parameters<typeof processEntityVariables>[0],
 				"ego",
 				codebook,
 				exportOptions,
-			),
-		);
+			);
+		});
 	}
 
 	return [
@@ -49,8 +63,8 @@ const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
  * The output of this formatter will contain the primary key (_uid)
  * and all model data (inside the `attributes` property)
  */
-const attributeHeaders = (egos) => {
-	const initialHeaderSet = new Set([]);
+const attributeHeaders = (egos: ReturnType<typeof asEgoAndSessionVariablesList>) => {
+	const initialHeaderSet = new Set<string>([]);
 
 	// Create initial headers for non-attribute (model) variables such as sessionID
 	initialHeaderSet.add(entityPrimaryKeyProperty);
@@ -60,19 +74,21 @@ const attributeHeaders = (egos) => {
 	initialHeaderSet.add(sessionStartTimeProperty);
 	initialHeaderSet.add(sessionFinishTimeProperty);
 	initialHeaderSet.add(sessionExportTimeProperty);
+	initialHeaderSet.add("APP_VERSION");
+	initialHeaderSet.add("COMMIT_HASH");
 
 	const headerSet = egos.reduce((headers, ego) => {
 		// Add headers for attributes
-		Object.keys((ego && ego[entityAttributesProperty]) || {}).forEach((key) => {
+		for (const key of Object.keys((ego && ego[entityAttributesProperty]) || {})) {
 			headers.add(key);
-		});
+		}
 
 		return headers;
 	}, initialHeaderSet);
 	return [...headerSet];
 };
 
-const getPrintableAttribute = (attribute) => {
+const getPrintableAttribute = (attribute: string) => {
 	switch (attribute) {
 		case caseProperty:
 			return ncCaseProperty;
@@ -90,13 +106,13 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (egos, outStream) => {
+const toCSVStream = (egos: ReturnType<typeof asEgoAndSessionVariablesList>, outStream: NodeJS.WritableStream) => {
 	const totalRows = egos.length;
 	const attrNames = attributeHeaders(egos);
 	let headerWritten = false;
 	let rowIndex = 0;
-	let rowContent;
-	let ego;
+	let rowContent: string;
+	let ego: (typeof egos)[number];
 
 	const inStream = new Readable({
 		read(/* size */) {
@@ -104,10 +120,10 @@ const toCSVStream = (egos, outStream) => {
 				this.push(`${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`);
 				headerWritten = true;
 			} else if (rowIndex < totalRows) {
-				ego = egos[rowIndex] || {};
+				ego = egos[rowIndex] || ({} as (typeof egos)[number]);
 				const values = attrNames.map((attrName) => {
 					// Session variables exist at the top level - all others inside `attributes`
-					let value;
+					let value: unknown;
 					if (
 						attrName === entityPrimaryKeyProperty ||
 						attrName === caseProperty ||
@@ -115,11 +131,13 @@ const toCSVStream = (egos, outStream) => {
 						attrName === protocolName ||
 						attrName === sessionStartTimeProperty ||
 						attrName === sessionFinishTimeProperty ||
-						attrName === sessionExportTimeProperty
+						attrName === sessionExportTimeProperty ||
+						attrName === "APP_VERSION" ||
+						attrName === "COMMIT_HASH"
 					) {
-						value = ego[attrName];
+						value = (ego as Record<string, unknown>)[attrName];
 					} else {
-						value = ego[entityAttributesProperty][attrName];
+						value = (ego[entityAttributesProperty] as Record<string, unknown>)?.[attrName];
 					}
 					return sanitizedCellValue(value);
 				});
@@ -142,52 +160,20 @@ const toCSVStream = (egos, outStream) => {
 	};
 };
 
-const toCSVString = (egos) => {
-	const attrNames = attributeHeaders(egos);
-	const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`;
-
-	const rows = egos.map((ego) => {
-		const values = attrNames.map((attrName) => {
-			// Session variables exist at the top level - all others inside `attributes`
-			let value;
-			if (
-				attrName === entityPrimaryKeyProperty ||
-				attrName === caseProperty ||
-				attrName === sessionProperty ||
-				attrName === protocolName ||
-				attrName === sessionStartTimeProperty ||
-				attrName === sessionFinishTimeProperty ||
-				attrName === sessionExportTimeProperty
-			) {
-				value = ego[attrName];
-			} else {
-				value = ego[entityAttributesProperty][attrName];
-			}
-			return sanitizedCellValue(value);
-		});
-		return `${values.join(",")}${csvEOL}`;
-	});
-
-	return headerValue + rows.join("");
-};
-
 class EgoListFormatter {
-	constructor(network, codebook, exportOptions) {
+	list: ReturnType<typeof asEgoAndSessionVariablesList>;
+
+	constructor(
+		network: SessionWithResequencedIDs | NetworkWithUnifiedEgo,
+		codebook: Codebook,
+		exportOptions: ExportOptions,
+	) {
 		this.list = asEgoAndSessionVariablesList(network, codebook, exportOptions) || [];
 	}
 
-	writeToStream(outStream) {
+	writeToStream(outStream: NodeJS.WritableStream) {
 		return toCSVStream(this.list, outStream);
-	}
-
-	writeToString() {
-		return toCSVString(this.list);
 	}
 }
 
-module.exports = {
-	EgoListFormatter,
-	asEgoAndSessionVariablesList,
-	toCSVStream,
-	toCSVString,
-};
+export { asEgoAndSessionVariablesList, EgoListFormatter, toCSVStream };

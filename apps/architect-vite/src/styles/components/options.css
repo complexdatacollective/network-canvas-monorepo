@@ -11,8 +11,7 @@
 	background-color: var(--color-form-control);
 	color: var(--color-sortable-foreground);
 	z-index: var(--z-fx);
-	transition: background-color var(--animation-easing)
-		var(--animation-duration-standard);
+	transition: background-color var(--animation-easing) var(--animation-duration-standard);
 	border-radius: var(--space-md);
 }
 

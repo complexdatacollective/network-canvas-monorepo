@@ -1,7 +1,6 @@
 const path = require("path");
 const { createWriteStream } = require("./utils/filesystem");
-const { getFileExtension, makeFilename } = require("./utils/general");
-const getFormatterClass = require("./utils/getFormatterClass");
+const { getFileExtension, makeFilename, getFormatterClass } = require("@codaco/network-exporters");
 const { ExportError } = require("./errors/ExportError");
 const UserCancelledExport = require("./errors/UserCancelledExport");
 

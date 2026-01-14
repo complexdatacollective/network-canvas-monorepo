@@ -528,9 +528,8 @@
 	line-height: var(--leading-normal);
 
 	:focus {
-		@apply outline-none ring-1;
+		@apply outline-none ring-1 ring-primary;
 		border-color: var(--color-primary);
-		ring-color: var(--color-primary);
 	}
 
 	::placeholder {

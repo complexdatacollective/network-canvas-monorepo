@@ -1,7 +1,3 @@
-/* eslint-env jest */
-
-import { mockCodebook, mockExportOptions } from "../../../../config/mockObjects";
-import { makeWriteableStream } from "../../../../config/setupTestEnv";
 import {
 	edgeExportIDProperty,
 	edgeSourceProperty,
@@ -12,13 +8,16 @@ import {
 	ncSourceUUID,
 	ncTargetUUID,
 	ncUUIDProperty,
-} from "../../../utils/reservedAttributes";
-import { asEdgeList, EdgeListFormatter, toCSVStream, toCSVString } from "../edge-list";
+} from "@codaco/shared-consts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
+import { mockCodebook, mockExportOptions } from "../../../__tests__/mockObjects";
+import { EdgeListFormatter, asEdgeList, toCSVStream } from "../edge-list";
 
 const nodes = [{ [entityPrimaryKeyProperty]: 1 }, { [entityPrimaryKeyProperty]: 2 }, { [entityPrimaryKeyProperty]: 3 }];
 
-const listFromEdges = (edges, directed = false) =>
-	asEdgeList({ edges, nodes }, mockCodebook, {
+const listFromEdges = (edges: Record<string, unknown>[], directed = false) =>
+	asEdgeList({ edges, nodes } as never, mockCodebook, {
 		...mockExportOptions,
 		globalOptions: {
 			...mockExportOptions.globalOptions,
@@ -41,7 +40,7 @@ describe("asEdgeList", () => {
 			],
 			ego: { [entityPrimaryKeyProperty]: 123 },
 		};
-		expect(asEdgeList(network, mockCodebook, mockExportOptions)[0]).toEqual({
+		expect(asEdgeList(network as never, mockCodebook, mockExportOptions)[0]).toEqual({
 			[entityPrimaryKeyProperty]: 456,
 			[edgeTargetProperty]: "nodeB",
 			[edgeSourceProperty]: "nodeA",
@@ -56,13 +55,21 @@ describe("asEdgeList", () => {
 
 	it("represents a single undirected edge", () => {
 		expect(listFromEdges([{ [edgeSourceProperty]: 1, [edgeTargetProperty]: 2 }])).toEqual([
-			{ [edgeSourceProperty]: 1, [edgeTargetProperty]: 2, [entityAttributesProperty]: {} },
+			{
+				[edgeSourceProperty]: 1,
+				[edgeTargetProperty]: 2,
+				[entityAttributesProperty]: {},
+			},
 		]);
 	});
 
 	it("represents a single directed edge", () => {
 		expect(listFromEdges([{ [edgeSourceProperty]: 1, [edgeTargetProperty]: 2 }], true)).toEqual([
-			{ [edgeSourceProperty]: 1, [edgeTargetProperty]: 2, [entityAttributesProperty]: {} },
+			{
+				[edgeSourceProperty]: 1,
+				[edgeTargetProperty]: 2,
+				[entityAttributesProperty]: {},
+			},
 		]);
 	});
 
@@ -89,46 +96,8 @@ describe("asEdgeList", () => {
 	});
 });
 
-describe("toCSVString", () => {
-	it("Writes a csv with attributes", () => {
-		const list = listFromEdges([
-			{
-				[entityPrimaryKeyProperty]: 123,
-				[egoProperty]: 456,
-				[edgeExportIDProperty]: 1,
-				[ncSourceUUID]: 1,
-				[ncTargetUUID]: 2,
-				[edgeSourceProperty]: 1,
-				[edgeTargetProperty]: 2,
-				[entityAttributesProperty]: {
-					a: 1,
-				},
-			},
-		]);
-		const csv = toCSVString(list);
-		const result = [
-			edgeExportIDProperty,
-			edgeSourceProperty,
-			edgeTargetProperty,
-			egoProperty,
-			ncUUIDProperty,
-			ncSourceUUID,
-			ncTargetUUID,
-			"a\r\n1",
-			1,
-			2,
-			456,
-			123,
-			1,
-			2,
-			"1\r\n",
-		].join(",");
-		expect(csv).toEqual(result);
-	});
-});
-
 describe("toCSVStream", () => {
-	let writable;
+	let writable: ReturnType<typeof makeWriteableStream>;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
@@ -173,14 +142,14 @@ describe("toCSVStream", () => {
 });
 
 describe("EdgeListFormatter", () => {
-	let writable;
+	let writable: ReturnType<typeof makeWriteableStream>;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
 	});
 
 	it("writeToStream returns an abort controller", () => {
-		const formatter = new EdgeListFormatter({}, mockCodebook, mockExportOptions);
+		const formatter = new EdgeListFormatter({} as never, mockCodebook, mockExportOptions);
 		const controller = formatter.writeToStream(writable);
 		expect(controller.abort).toBeInstanceOf(Function);
 	});

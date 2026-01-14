@@ -1,30 +1,41 @@
-/* eslint-env jest */
-import { makeWriteableStream } from "../../../../config/setupTestEnv";
-import { ncSourceUUID, ncTargetUUID } from "../../../utils/reservedAttributes";
+import { ncSourceUUID, ncTargetUUID } from "@codaco/shared-consts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
 import { AdjacencyMatrixFormatter, asAdjacencyMatrix } from "../matrix";
 
-const mockNetwork = (edges) => ({
+type Edge = {
+	[ncSourceUUID]: string | number;
+	[ncTargetUUID]: string | number;
+};
+
+const mockNetwork = (edges: Edge[]) => ({
 	edges,
 	nodes: Object.values(
-		edges.reduce((acc, val) => {
-			acc[val[ncSourceUUID]] = { _uid: val[ncSourceUUID] };
-			acc[val[ncTargetUUID]] = { _uid: val[ncTargetUUID] };
-			return acc;
-		}, {}),
+		edges.reduce(
+			(acc, val) => {
+				acc[val[ncSourceUUID]] = { _uid: val[ncSourceUUID] };
+				acc[val[ncTargetUUID]] = { _uid: val[ncTargetUUID] };
+				return acc;
+			},
+			{} as Record<string | number, { _uid: string | number }>,
+		),
 	),
 });
 
-const mockMatrix = (edges, directed) => asAdjacencyMatrix(mockNetwork(edges), directed);
+const mockMatrix = (edges: Edge[], directed?: boolean) => asAdjacencyMatrix(mockNetwork(edges) as never, directed);
 
 describe("asAdjacencyMatrix", () => {
 	it("represents an edgeless network", () => {
 		const network = { nodes: [{ _uid: 1 }, { _uid: 2 }], edges: [] };
-		expect(asAdjacencyMatrix(network).toArray()).toEqual([0, 0, 0, 0]);
+		expect(asAdjacencyMatrix(network as never).toArray()).toEqual([0, 0, 0, 0]);
 	});
 
 	it("is resilient to duplicate UIDs", () => {
-		const network = { nodes: [{ _uid: 1 }, { _uid: 2 }, { _uid: 1 }], edges: [] };
-		expect(asAdjacencyMatrix(network).toArray()).toEqual([0, 0, 0, 0]);
+		const network = {
+			nodes: [{ _uid: 1 }, { _uid: 2 }, { _uid: 1 }],
+			edges: [],
+		};
+		expect(asAdjacencyMatrix(network as never).toArray()).toEqual([0, 0, 0, 0]);
 	});
 
 	it("represents a single undirected edge", () => {
@@ -49,7 +60,7 @@ describe("asAdjacencyMatrix", () => {
 			nodes: [{ _uid: 1 }, { _uid: 2 }, { _uid: 3 }, { _uid: 4 }],
 			edges: [{ [ncSourceUUID]: 2, [ncTargetUUID]: 4 }],
 		};
-		expect(asAdjacencyMatrix(network).toArray()).toEqual([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]);
+		expect(asAdjacencyMatrix(network as never).toArray()).toEqual([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]);
 	});
 
 	it("represents a sparse directed matrix", () => {
@@ -57,12 +68,14 @@ describe("asAdjacencyMatrix", () => {
 			nodes: [{ _uid: 1 }, { _uid: 2 }, { _uid: 3 }, { _uid: 4 }],
 			edges: [{ [ncSourceUUID]: 2, [ncTargetUUID]: 4 }],
 		};
-		expect(asAdjacencyMatrix(network, true).toArray()).toEqual([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
+		expect(asAdjacencyMatrix(network as never, true).toArray()).toEqual([
+			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+		]);
 	});
 });
 
 describe("toCSVStream", () => {
-	let writable;
+	let writable: ReturnType<typeof makeWriteableStream>;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
@@ -113,14 +126,14 @@ describe("toCSVStream", () => {
 });
 
 describe("AdjacencyMatrixFormatter", () => {
-	let writable;
+	let writable: ReturnType<typeof makeWriteableStream>;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
 	});
 
 	it("writeToStream returns an abort controller", () => {
-		const formatter = new AdjacencyMatrixFormatter({}, {}, { globalOptions: {} });
+		const formatter = new AdjacencyMatrixFormatter({} as never, {} as never, { globalOptions: {} } as never);
 		const controller = formatter.writeToStream(writable);
 		expect(controller.abort).toBeInstanceOf(Function);
 	});

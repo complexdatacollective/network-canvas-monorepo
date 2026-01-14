@@ -13,11 +13,8 @@
 		opacity: 1;
 		transform: translateX(0);
 		transition:
-			transform var(--animation-duration-standard)
-			var(--animation-duration-standard),
-			opacity var(--animation-duration-standard)
-			var(--animation-duration-standard),
-			max-height var(--animation-duration-standard)
-			var(--animation-duration-standard);
+			transform var(--animation-duration-standard) var(--animation-duration-standard),
+			opacity var(--animation-duration-standard) var(--animation-duration-standard),
+			max-height var(--animation-duration-standard) var(--animation-duration-standard);
 	}
 }

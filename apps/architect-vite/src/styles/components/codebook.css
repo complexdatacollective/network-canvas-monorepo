@@ -53,7 +53,7 @@
 
 .codebook .codebook-column.codebook-column--control button .button__content {
 	padding: 0;
-	margin-left: 0 !important;
+	margin-left: 0;
 }
 
 .codebook .codebook__entity {
@@ -148,15 +148,11 @@
 	content: "dir";
 }
 
-.codebook
-	.codebook__variables-heading
-	.sort-direction.sort-direction--asc::after {
+.codebook .codebook__variables-heading .sort-direction.sort-direction--asc::after {
 	content: "\25BE";
 }
 
-.codebook
-	.codebook__variables-heading
-	.sort-direction.sort-direction--desc::after {
+.codebook .codebook__variables-heading .sort-direction.sort-direction--desc::after {
 	content: "\25B4";
 }
 

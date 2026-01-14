@@ -10,8 +10,7 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	transition: background-color var(--animation-easing)
-		var(--animation-duration-standard);
+	transition: background-color var(--animation-easing) var(--animation-duration-standard);
 }
 
 .form-round-button .icon {

@@ -3,18 +3,18 @@ const sanitizeFilename = require("sanitize-filename");
 const { EventEmitter } = require("eventemitter3");
 const queue = require("async/queue");
 const path = require("path");
-const { protocolProperty } = require("./utils/reservedAttributes");
+const { protocolProperty } = require("@codaco/shared-consts");
 const { tempDataPath, createDirectory } = require("./utils/filesystem");
 const exportFile = require("./exportFile");
 const {
 	insertEgoIntoSessionNetworks,
 	resequenceIds,
-	partitionNetworkByType,
-	unionOfNetworks,
-} = require("./formatters/network");
+	partitionByType,
+	getFilePrefix,
+} = require("@codaco/network-exporters");
+const { unionOfNetworks } = require("./formatters/network");
 const {
 	verifySessionVariables,
-	getFilePrefix,
 	sleep,
 	handlePlatformSaveDialog,
 	ObservableValue,
@@ -233,7 +233,7 @@ class FileExportManager {
 									exportFormats.forEach((format) => {
 										// Partitioning the network based on node and edge type so we can create
 										// an individual export file for each type
-										const partitionedNetworks = partitionNetworkByType(protocol.codebook, session, format);
+										const partitionedNetworks = partitionByType(protocol.codebook, session, format);
 
 										partitionedNetworks.forEach((partitionedNetwork) => {
 											const partitionedEntity = partitionedNetwork.partitionEntity;

@@ -1,7 +1,3 @@
-/* eslint-env jest */
-
-import { mockCodebook, mockExportOptions } from "../../../../config/mockObjects";
-import { makeWriteableStream } from "../../../../config/setupTestEnv";
 import {
 	caseProperty,
 	egoProperty,
@@ -15,8 +11,11 @@ import {
 	sessionFinishTimeProperty,
 	sessionProperty,
 	sessionStartTimeProperty,
-} from "../../../utils/reservedAttributes";
-import { asEgoAndSessionVariablesList, EgoListFormatter, toCSVStream, toCSVString } from "../ego-list";
+} from "@codaco/shared-consts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
+import { mockCodebook, mockExportOptions } from "../../../__tests__/mockObjects";
+import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from "../ego-list";
 
 const ego = {
 	[egoProperty]: 123,
@@ -30,6 +29,8 @@ const ego = {
 	[entityAttributesProperty]: {
 		name: "Jane",
 	},
+	APP_VERSION: "mock-app-version",
+	COMMIT_HASH: "mock-commit-hash",
 };
 
 const baseCSVAttributes = [
@@ -40,28 +41,24 @@ const baseCSVAttributes = [
 	sessionStartTimeProperty,
 	sessionFinishTimeProperty,
 	sessionExportTimeProperty,
+	"APP_VERSION",
+	"COMMIT_HASH",
 ];
 
 describe("asEgoAndSessionVariablesList", () => {
 	it("transforms a network to ego", () => {
-		const network = { nodes: [], edges: [], ego: { id: 1, [entityAttributesProperty]: {} } };
-		expect(asEgoAndSessionVariablesList(network, mockCodebook, mockExportOptions)).toEqual([network.ego]);
-	});
-});
-
-describe("toCSVString", () => {
-	it("writes a simple CSV", () => {
-		const csv = toCSVString([ego]);
-		const result = [...baseCSVAttributes, "name\r\n1", "case id", 789, "protocol name", 100, 200, 300, "Jane\r\n"].join(
-			",",
-		);
-		expect(csv).toEqual(result);
+		const network = {
+			nodes: [],
+			edges: [],
+			ego: { id: 1, [entityAttributesProperty]: {} },
+		};
+		expect(asEgoAndSessionVariablesList(network as never, mockCodebook, mockExportOptions)).toEqual([network.ego]);
 	});
 });
 
 describe("toCSVStream", () => {
-	let writable;
-	let testEgo;
+	let writable: ReturnType<typeof makeWriteableStream>;
+	let testEgo: typeof ego;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
@@ -69,13 +66,23 @@ describe("toCSVStream", () => {
 	});
 
 	it("writes a simple CSV", async () => {
-		toCSVStream([testEgo], writable);
+		toCSVStream([testEgo] as never, writable);
 
 		const csv = await writable.asString();
 
-		const result = [...baseCSVAttributes, "name\r\n1", "case id", 789, "protocol name", 100, 200, 300, "Jane\r\n"].join(
-			",",
-		);
+		const result = [
+			...baseCSVAttributes,
+			"name\r\n1",
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			"mock-app-version",
+			"mock-commit-hash",
+			"Jane\r\n",
+		].join(",");
 		expect(csv).toEqual(result);
 	});
 
@@ -88,7 +95,7 @@ describe("toCSVStream", () => {
 						name: '"Queequeg"',
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 		const csv = await writable.asString();
@@ -101,6 +108,8 @@ describe("toCSVStream", () => {
 			100,
 			200,
 			300,
+			"mock-app-version",
+			"mock-commit-hash",
 			'"""Queequeg"""\r\n',
 		].join(",");
 		expect(csv).toEqual(result);
@@ -115,7 +124,7 @@ describe("toCSVStream", () => {
 						'"quoted"': 1,
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 		const csv = await writable.asString();
@@ -128,6 +137,8 @@ describe("toCSVStream", () => {
 			100,
 			200,
 			300,
+			"mock-app-version",
+			"mock-commit-hash",
 			"1\r\n",
 		].join(",");
 		expect(csv).toEqual(result);
@@ -142,7 +153,7 @@ describe("toCSVStream", () => {
 						location: { x: 1, y: 1 },
 					},
 				},
-			],
+			] as never,
 			writable,
 		);
 		const csv = await writable.asString();
@@ -155,6 +166,8 @@ describe("toCSVStream", () => {
 			100,
 			200,
 			300,
+			"mock-app-version",
+			"mock-commit-hash",
 			'"{""x"":1,""y"":1}"\r\n',
 		].join(",");
 		expect(csv).toEqual(result);
@@ -169,45 +182,7 @@ describe("toCSVStream", () => {
 						prop: undefined,
 					},
 				},
-			],
-			writable,
-		);
-		const csv = await writable.asString();
-		const result = [...baseCSVAttributes, "prop\r\n1", "case id", 789, "protocol name", 100, 200, 300, "\r\n"].join(
-			",",
-		);
-		expect(csv).toEqual(result);
-	});
-
-	it("exports null values as blank", async () => {
-		toCSVStream(
-			[
-				{
-					...testEgo,
-					[entityAttributesProperty]: {
-						prop: null,
-					},
-				},
-			],
-			writable,
-		);
-		const csv = await writable.asString();
-		const result = [...baseCSVAttributes, "prop\r\n1", "case id", 789, "protocol name", 100, 200, 300, "\r\n"].join(
-			",",
-		);
-		expect(csv).toEqual(result);
-	});
-
-	it('exports `false` values as "false"', async () => {
-		toCSVStream(
-			[
-				{
-					...testEgo,
-					[entityAttributesProperty]: {
-						prop: false,
-					},
-				},
-			],
+			] as never,
 			writable,
 		);
 		const csv = await writable.asString();
@@ -220,6 +195,66 @@ describe("toCSVStream", () => {
 			100,
 			200,
 			300,
+			"mock-app-version",
+			"mock-commit-hash",
+			"\r\n",
+		].join(",");
+		expect(csv).toEqual(result);
+	});
+
+	it("exports null values as blank", async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						prop: null,
+					},
+				},
+			] as never,
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [
+			...baseCSVAttributes,
+			"prop\r\n1",
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			"mock-app-version",
+			"mock-commit-hash",
+			"\r\n",
+		].join(",");
+		expect(csv).toEqual(result);
+	});
+
+	it('exports `false` values as "false"', async () => {
+		toCSVStream(
+			[
+				{
+					...testEgo,
+					[entityAttributesProperty]: {
+						prop: false,
+					},
+				},
+			] as never,
+			writable,
+		);
+		const csv = await writable.asString();
+		const result = [
+			...baseCSVAttributes,
+			"prop\r\n1",
+			"case id",
+			789,
+			"protocol name",
+			100,
+			200,
+			300,
+			"mock-app-version",
+			"mock-commit-hash",
 			"false\r\n",
 		].join(",");
 		expect(csv).toEqual(result);
@@ -227,14 +262,14 @@ describe("toCSVStream", () => {
 });
 
 describe("EgoListFormatter", () => {
-	let writable;
+	let writable: ReturnType<typeof makeWriteableStream>;
 
 	beforeEach(() => {
 		writable = makeWriteableStream();
 	});
 
 	it("writeToStream returns an abort controller", () => {
-		const formatter = new EgoListFormatter({}, mockCodebook, mockExportOptions);
+		const formatter = new EgoListFormatter({} as never, mockCodebook, mockExportOptions);
 		const controller = formatter.writeToStream(writable);
 		expect(controller.abort).toBeInstanceOf(Function);
 	});

@@ -32,7 +32,7 @@
 		}
 
 		h3 {
-			text-transform: none !important;
+			text-transform: none;
 			font-size: var(--text-base);
 			margin: 0.5rem 0 0;
 		}

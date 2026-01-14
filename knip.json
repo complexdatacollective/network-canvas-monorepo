@@ -25,19 +25,9 @@
 		"workers/development-protocol": {},
 		"workers/posthog-proxy": {},
 		"apps/interviewer": {
-			"entry": [
-				"src/main/index.js",
-				"src/preload/index.js",
-				"src/index.jsx"
-			],
+			"entry": ["src/main/index.js", "src/preload/index.js", "src/index.jsx"],
 			"project": ["src/**/*.{js,jsx}"],
-			"ignore": [
-				"integration-tests/**",
-				"scripts/**",
-				"config/**",
-				"src/shims/**",
-				"build-resources/**"
-			],
+			"ignore": ["integration-tests/**", "scripts/**", "config/**", "src/shims/**", "build-resources/**"],
 			"ignoreDependencies": [
 				"@babel/*",
 				"electron",

@@ -26,8 +26,7 @@
 	border-top-right-radius: 1rem;
 }
 
-.form-field-date-picker.form-field-date-picker--has-error
-	.form-field-date-picker__error {
+.form-field-date-picker.form-field-date-picker--has-error .form-field-date-picker__error {
 	opacity: 1;
 }
 
@@ -55,8 +54,7 @@
 	display: flex;
 	align-items: center;
 	border-bottom: 2px solid transparent;
-	transition: border-bottom-color var(--animation-easing)
-		var(--animation-duration-fast);
+	transition: border-bottom-color var(--animation-easing) var(--animation-duration-fast);
 }
 
 .date-picker .date-picker__preview-divider {
@@ -89,8 +87,7 @@
 	opacity: 0;
 }
 
-.date-picker
-	.date-picker__preview-clear.date-picker__preview-clear--is-visible {
+.date-picker .date-picker__preview-clear.date-picker__preview-clear--is-visible {
 	opacity: 1;
 	cursor: pointer;
 }
@@ -154,15 +151,11 @@
 	cursor: pointer;
 }
 
-.date-picker
-	.date-picker__range-item.date-picker__range-item--is-active
-	.date-picker__highlight {
+.date-picker .date-picker__range-item.date-picker__range-item--is-active .date-picker__highlight {
 	background-color: var(--active-color);
 }
 
-.date-picker
-	.date-picker__range-item.date-picker__range-item--is-today
-	.date-picker__highlight {
+.date-picker .date-picker__range-item.date-picker__range-item--is-today .date-picker__highlight {
 	font-weight: bold;
 }
 
@@ -181,7 +174,7 @@
 }
 
 .date-picker .date-picker__range-picker {
-	padding-top: 0 !important;
+	padding-top: 0;
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -196,86 +189,48 @@
 	-webkit-overflow-scrolling: touch;
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-picker-items {
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-picker-items {
 	grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 	grid-template-rows: minmax(auto, 5rem);
 	padding: calc(0.6rem * 2) 0;
 	height: calc(100% - 3rem); /* double padding */
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-item {
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-item {
 	padding: 1rem 0;
 	max-height: 5rem;
 	box-sizing: border-box;
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-item:nth-child(10n - 9),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-item:nth-child(10n - 8),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-item:nth-child(10n - 7),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-item:nth-child(10n - 6),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--year
-	.date-picker__range-item:nth-child(10n - 5) {
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-item:nth-child(10n - 9),
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-item:nth-child(10n - 8),
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-item:nth-child(10n - 7),
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-item:nth-child(10n - 6),
+.date-picker .date-picker__range-picker.date-picker__range-picker--year .date-picker__range-item:nth-child(10n - 5) {
 	background-color: var(--lighten);
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--month
-	.date-picker__range-picker-items {
+.date-picker .date-picker__range-picker.date-picker__range-picker--month .date-picker__range-picker-items {
 	grid-template-columns: 1fr 1fr 1fr;
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--month
-	.date-picker__range-item:nth-child(6n - 5),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--month
-	.date-picker__range-item:nth-child(6n - 4),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--month
-	.date-picker__range-item:nth-child(6n - 3) {
+.date-picker .date-picker__range-picker.date-picker__range-picker--month .date-picker__range-item:nth-child(6n - 5),
+.date-picker .date-picker__range-picker.date-picker__range-picker--month .date-picker__range-item:nth-child(6n - 4),
+.date-picker .date-picker__range-picker.date-picker__range-picker--month .date-picker__range-item:nth-child(6n - 3) {
 	background-color: var(--lighten);
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-picker-items {
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-picker-items {
 	grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
 }
 
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 13),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 12),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 11),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 10),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 9),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 8),
-.date-picker
-	.date-picker__range-picker.date-picker__range-picker--day
-	.date-picker__range-item:nth-child(14n - 7) {
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 13),
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 12),
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 11),
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 10),
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 9),
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 8),
+.date-picker .date-picker__range-picker.date-picker__range-picker--day .date-picker__range-item:nth-child(14n - 7) {
 	background-color: var(--lighten);
 }
 

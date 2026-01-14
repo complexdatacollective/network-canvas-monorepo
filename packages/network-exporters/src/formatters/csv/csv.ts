@@ -11,7 +11,7 @@ const csvEOL = "\r\n"; // always this, not os-specific
  * @param  {string} value a string to be considered
  * @return {boolean} if the string contains difficult to encode characters
  */
-const containsDifficultCharacters = (string) => {
+const containsDifficultCharacters = (string: string) => {
 	const difficultCharacters = [
 		'"', // Single quote
 		",", // Comma
@@ -26,7 +26,7 @@ const containsDifficultCharacters = (string) => {
  * @param  {string} value a string potentially containing quotes
  * @return {string} a quote-delimited string, with internal quotation marks escaped (as '""')
  */
-const quoteValue = (value) => `"${value.replace(/"/g, '""')}"`;
+const quoteValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
 /**
  * Returned strings are already quote-escaped as needed.
@@ -35,13 +35,13 @@ const quoteValue = (value) => `"${value.replace(/"/g, '""')}"`;
  *              this will attempt to JSON.stringify, and fall back to
  * @return {string}
  */
-const sanitizedCellValue = (value) => {
+const sanitizedCellValue = (value: unknown) => {
 	if (value && typeof value === "object") {
 		let serialized;
 		try {
 			serialized = JSON.stringify(value);
-		} catch (err) {
-			serialized = value.toString(); // value will never be null here
+		} catch (_err) {
+			serialized = (value as object).toString(); // value will never be null here
 		}
 		return quoteValue(serialized);
 	}
@@ -56,8 +56,4 @@ const sanitizedCellValue = (value) => {
 	return value;
 };
 
-module.exports = {
-	csvEOL,
-	quoteValue,
-	sanitizedCellValue,
-};
+export { csvEOL, sanitizedCellValue };

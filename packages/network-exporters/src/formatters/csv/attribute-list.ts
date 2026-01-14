@@ -1,17 +1,19 @@
-const { Readable } = require("stream");
-const {
-	entityAttributesProperty,
+import { Readable } from "node:stream";
+import type { Codebook } from "@codaco/protocol-validation";
+import {
 	egoProperty,
+	entityAttributesProperty,
 	entityPrimaryKeyProperty,
-	nodeExportIDProperty,
 	ncUUIDProperty,
-} = require("../../utils/reservedAttributes");
-const { processEntityVariables } = require("../network");
-const { sanitizedCellValue, csvEOL } = require("./csv");
+	nodeExportIDProperty,
+} from "@codaco/shared-consts";
+import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
+import { csvEOL, sanitizedCellValue } from "./csv";
+import processEntityVariables from "./processEntityVariables";
 
-const asAttributeList = (network, codebook, exportOptions) => {
+const asAttributeList = (network: SessionWithResequencedIDs, codebook: Codebook, exportOptions: ExportOptions) => {
 	const processedNodes = (network.nodes || []).map((node) => {
-		if (codebook && codebook.node[node.type]) {
+		if (codebook?.node?.[node.type]) {
 			return processEntityVariables(node, "node", codebook, exportOptions);
 		}
 		return node;
@@ -23,22 +25,23 @@ const asAttributeList = (network, codebook, exportOptions) => {
  * The output of this formatter will contain the primary key (_uid)
  * and all model data (inside the `attributes` property)
  */
-const attributeHeaders = (nodes) => {
-	const initialHeaderSet = new Set([]);
+const attributeHeaders = (nodes: ReturnType<typeof asAttributeList>) => {
+	const initialHeaderSet = new Set<string>([]);
 	initialHeaderSet.add(nodeExportIDProperty);
 	initialHeaderSet.add(egoProperty);
 	initialHeaderSet.add(entityPrimaryKeyProperty);
 
 	const headerSet = nodes.reduce((headers, node) => {
-		Object.keys(node[entityAttributesProperty]).forEach((key) => {
+		for (const key of Object.keys(node[entityAttributesProperty])) {
 			headers.add(key);
-		});
+		}
 		return headers;
 	}, initialHeaderSet);
+
 	return [...headerSet];
 };
 
-const getPrintableAttribute = (attribute) => {
+const getPrintableAttribute = (attribute: string) => {
 	switch (attribute) {
 		case entityPrimaryKeyProperty:
 			return ncUUIDProperty;
@@ -50,29 +53,31 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (nodes, outStream) => {
+const toCSVStream = (nodes: ReturnType<typeof asAttributeList>, outStream: NodeJS.WritableStream) => {
 	const totalRows = nodes.length;
 	const attrNames = attributeHeaders(nodes);
 	let headerWritten = false;
 	let rowIndex = 0;
-	let rowContent;
-	let node;
+	let rowContent: string;
+	let node: (typeof nodes)[number];
 
 	const inStream = new Readable({
 		read(/* size */) {
 			if (!headerWritten) {
-				const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`;
+				const headerValue = `${attrNames
+					.map((attr) => sanitizedCellValue(getPrintableAttribute(attr)))
+					.join(",")}${csvEOL}`;
 				this.push(headerValue);
 				headerWritten = true;
 			} else if (rowIndex < totalRows) {
-				node = nodes[rowIndex];
+				node = nodes[rowIndex]!;
 				const values = attrNames.map((attrName) => {
 					// The primary key and ego id exist at the top-level; all others inside `.attributes`
-					let value;
+					let value: unknown;
 					if (attrName === entityPrimaryKeyProperty || attrName === egoProperty || attrName === nodeExportIDProperty) {
-						value = node[attrName];
+						value = (node as Record<string, unknown>)[attrName];
 					} else {
-						value = node[entityAttributesProperty][attrName];
+						value = (node[entityAttributesProperty] as Record<string, unknown>)[attrName];
 					}
 					return sanitizedCellValue(value);
 				});
@@ -95,41 +100,16 @@ const toCSVStream = (nodes, outStream) => {
 	};
 };
 
-const toCSVString = (nodes) => {
-	const attrNames = attributeHeaders(nodes);
-	const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`;
-	const rows = nodes.map((node) => {
-		const values = attrNames.map((attrName) => {
-			// The primary key and ego id exist at the top-level; all others inside `.attributes`
-			let value;
-			if (attrName === entityPrimaryKeyProperty || attrName === egoProperty || attrName === nodeExportIDProperty) {
-				value = node[attrName];
-			} else {
-				value = node[entityAttributesProperty][attrName];
-			}
-			return sanitizedCellValue(value);
-		});
-		return `${values.join(",")}${csvEOL}`;
-	});
-	return headerValue + rows.join("");
-};
-
 class AttributeListFormatter {
-	constructor(data, codebook, exportOptions) {
+	list: ReturnType<typeof asAttributeList>;
+
+	constructor(data: SessionWithResequencedIDs, codebook: Codebook, exportOptions: ExportOptions) {
 		this.list = asAttributeList(data, codebook, exportOptions);
 	}
 
-	writeToStream(outStream) {
+	writeToStream(outStream: NodeJS.WritableStream) {
 		return toCSVStream(this.list, outStream);
-	}
-
-	writeToString() {
-		return toCSVString(this.list);
 	}
 }
 
-module.exports = {
-	AttributeListFormatter,
-	asAttributeList,
-	toCSVStream,
-};
+export { asAttributeList, AttributeListFormatter, toCSVStream };
