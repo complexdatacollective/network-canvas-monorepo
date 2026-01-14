@@ -19,6 +19,8 @@ type FormHandlerProps = {
 	changeForm: (form: string, field: string, value: unknown) => FormAction;
 	form: string;
 	getVariable: (uuid: string) => ReturnType<ReturnType<typeof makeGetVariable>>;
+	/** Optional mapping of variable names to semantic keys. When a variable is created with a name in this map, the semantic key will be used instead of a UUID. */
+	semanticKeyMap?: Record<string, string>;
 };
 
 const formHandlers = withHandlers({
@@ -74,6 +76,9 @@ const formHandlers = withHandlers({
 		}
 
 		try {
+			// Check if this variable name has a semantic key mapping
+			const semanticKey = props.semanticKeyMap?.[_createNewVariable];
+
 			const result = await props.createVariable({
 				entity: props.entity as Entity,
 				type: props.type,
@@ -81,6 +86,7 @@ const formHandlers = withHandlers({
 					...configuration,
 					name: _createNewVariable,
 				} as Record<string, unknown>,
+				semanticKey,
 			});
 			const payload = result as unknown as { payload: { variable: string } };
 			return {

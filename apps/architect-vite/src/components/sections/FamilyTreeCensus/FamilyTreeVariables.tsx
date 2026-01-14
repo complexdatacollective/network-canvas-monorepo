@@ -88,6 +88,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 			type: type ?? "",
 			initialValues: { name: "", type: "" },
 			lockedOptions: null as VariableOptions | null,
+			semanticKey: null as string | null,
 		},
 		handleCreatedNodeVariable,
 	);
@@ -104,6 +105,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 			type: edgeType ?? "",
 			initialValues: { name: "", type: "" },
 			lockedOptions: null as VariableOptions | null,
+			semanticKey: null as string | null,
 		},
 		handleCreatedEdgeVariable,
 	);
@@ -120,28 +122,44 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 		);
 	}
 
-	// Handlers for creating new variables
+	// Handlers for creating new variables with semantic keys for Fresco compatibility
 	const handleNewRelationshipTypeVariable = (name: string) =>
 		openEdgeVariableWindow(
-			{ initialValues: { name, type: "categorical" }, lockedOptions: RELATIONSHIP_TYPE_OPTIONS },
+			{
+				initialValues: { name, type: "categorical" },
+				lockedOptions: RELATIONSHIP_TYPE_OPTIONS,
+				semanticKey: "relationshipType",
+			},
 			{ field: "relationshipTypeVariable" },
 		);
 
 	const handleNewRelationshipToEgoVariable = (name: string) =>
 		openNodeVariableWindow(
-			{ initialValues: { name, type: "text" }, lockedOptions: null },
+			{
+				initialValues: { name, type: "text" },
+				lockedOptions: null,
+				semanticKey: "relationshipToEgo",
+			},
 			{ field: "relationshipToEgoVariable" },
 		);
 
 	const handleNewSexVariable = (name: string) =>
 		openNodeVariableWindow(
-			{ initialValues: { name, type: "categorical" }, lockedOptions: SEX_VARIABLE_OPTIONS },
+			{
+				initialValues: { name, type: "categorical" },
+				lockedOptions: SEX_VARIABLE_OPTIONS,
+				semanticKey: "sex",
+			},
 			{ field: "sexVariable" },
 		);
 
 	const handleNewNodeIsEgoVariable = (name: string) =>
 		openNodeVariableWindow(
-			{ initialValues: { name, type: "boolean" }, lockedOptions: null },
+			{
+				initialValues: { name, type: "boolean" },
+				lockedOptions: null,
+				semanticKey: "nodeIsEgo",
+			},
 			{ field: "nodeIsEgoVariable" },
 		);
 

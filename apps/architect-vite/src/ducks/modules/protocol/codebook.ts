@@ -133,7 +133,12 @@ export const createEdgeAsync = createAsyncThunk(
 export const createVariableAsync = createAsyncThunk(
 	"codebook/createVariableAsync",
 	async (
-		{ entity, type, configuration }: { entity: Entity; type?: string; configuration: Partial<Variable> },
+		{
+			entity,
+			type,
+			configuration,
+			semanticKey,
+		}: { entity: Entity; type?: string; configuration: Partial<Variable>; semanticKey?: string },
 		{ dispatch, getState },
 	) => {
 		if (!configuration.name) {
@@ -162,7 +167,13 @@ export const createVariableAsync = createAsyncThunk(
 			throw new Error(`Variable with name "${safeConfiguration.name}" already exists`);
 		}
 
-		const variable = uuid();
+		// If a semantic key is provided, check that it doesn't already exist as a key
+		if (semanticKey && semanticKey in variables) {
+			throw new Error(`Variable with key "${semanticKey}" already exists`);
+		}
+
+		// Use semantic key if provided, otherwise generate a UUID
+		const variable = semanticKey ?? uuid();
 		const payload: CreateVariablePayload = {
 			entity,
 			type,
