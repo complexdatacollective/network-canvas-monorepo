@@ -284,5 +284,3 @@ export {
   getPlatform,
   isElectron,
 };
-
-export default electronAPI;

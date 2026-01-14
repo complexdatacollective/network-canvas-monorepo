@@ -5,7 +5,6 @@ import {
   clamp, mapValues, omit, orderBy, values,
 } from 'lodash';
 import { createSelector } from 'reselect';
-import { initialState } from '../ducks/modules/session';
 import { get } from '../utils/lodash-replacements';
 import { currentStageIndex } from '../utils/matchSessionPath';
 import { getAdditionalAttributes, getSubject } from '../utils/protocol/accessors';
@@ -104,8 +103,6 @@ export const getSessionProgress = (state) => {
     exportedAt,
   };
 };
-
-export const anySessionIsActive = (state) => state.activeSessionId && state.activeSessionId !== initialState;
 
 export const getStageForCurrentSession = createSelector(
   (state, props) => getProtocolStages(state, props),

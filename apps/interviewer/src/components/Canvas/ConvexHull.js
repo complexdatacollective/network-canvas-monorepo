@@ -4,7 +4,7 @@ import { isEqual, map } from 'lodash';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 
-export class ConvexHull extends Component {
+class ConvexHull extends Component {
   shouldComponentUpdate(nextProps) {
     const { layoutVariable, nodePoints, windowDimensions } = this.props;
     if (

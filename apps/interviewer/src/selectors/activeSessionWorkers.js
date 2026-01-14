@@ -8,5 +8,3 @@ export const getNodeLabelWorkerUrl = createSelector(
   // null if URLs haven't yet loaded; false if worker does not exist
   (activeSessionWorkers) => activeSessionWorkers && (activeSessionWorkers[NodeLabelWorkerName] || false),
 );
-
-export default getNodeLabelWorkerUrl;

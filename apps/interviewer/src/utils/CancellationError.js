@@ -9,5 +9,3 @@ export class CancellationError extends Error {
     this.name = 'CancellationError';
   }
 }
-
-export default CancellationError;
