@@ -9,7 +9,7 @@ import {
 } from '../selectors/interface';
 import { getNetworkEdges, getNetworkEgo } from '../selectors/network';
 import { get } from '../utils/lodash-replacements';
-import customFilter from '../utils/networkQuery/filter';
+import { filter as customFilter } from '@codaco/network-query';
 import withExternalData from './withExternalData';
 
 class NodePanel extends PureComponent {

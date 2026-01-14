@@ -1,6 +1,6 @@
 import { createSelector } from 'reselect';
 import { SkipLogicAction } from '../protocol-consts';
-import getQuery from '../utils/networkQuery/query';
+import { getQuery } from '@codaco/network-query';
 import { getNetwork } from './network';
 import { getProtocolStages } from './protocol';
 

@@ -1,7 +1,7 @@
 import { find, findKey, get } from 'lodash';
 import { getEntityAttributes } from '../ducks/modules/network';
 import { asWorkerAgentNetwork } from '../utils/networkFormat';
-import customFilter from '../utils/networkQuery/filter';
+import { filter as customFilter } from '@codaco/network-query';
 import { getProtocolCodebook } from './protocol';
 import { getActiveSession, getStageSubjectType } from './session';
 import { createDeepEqualSelector } from './utils';
