@@ -8,6 +8,7 @@ import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/com
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubject } from "~/selectors/codebook";
+import { optionsMatch } from "~/utils/variables";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
 import withSubject from "../../enhancers/withSubject";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
@@ -63,9 +64,14 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 	// Filter for boolean variables (for nodeIsEgoVariable)
 	const booleanNodeVariables = nodeVariableOptions.filter((v) => v.type === "boolean");
 
-	// Filter for categorical variables (for relationshipTypeVariable, sexVariable)
-	const categoricalNodeVariables = nodeVariableOptions.filter((v) => v.type === "categorical");
-	const categoricalEdgeVariables = edgeVariableOptions.filter((v) => v.type === "categorical");
+	// Filter for categorical variables with matching locked options
+	// Only show variables whose options exactly match the required locked options
+	const sexCompatibleVariables = nodeVariableOptions.filter(
+		(v) => v.type === "categorical" && optionsMatch(v.options, SEX_VARIABLE_OPTIONS),
+	);
+	const relationshipTypeCompatibleVariables = edgeVariableOptions.filter(
+		(v) => v.type === "categorical" && optionsMatch(v.options, RELATIONSHIP_TYPE_OPTIONS),
+	);
 
 	// Filter for text variables (for relationshipToEgoVariable)
 	const textNodeVariables = nodeVariableOptions.filter((v) => v.type === "text");
@@ -165,7 +171,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 								entity: "edge",
 								type: edgeType,
 								label: "Select or create a variable",
-								options: categoricalEdgeVariables,
+								options: relationshipTypeCompatibleVariables,
 								onCreateOption: handleNewRelationshipTypeVariable,
 							}}
 						/>
@@ -192,7 +198,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 								entity: "node",
 								type,
 								label: "Select or create a variable",
-								options: categoricalNodeVariables,
+								options: sexCompatibleVariables,
 								onCreateOption: handleNewSexVariable,
 							}}
 						/>
