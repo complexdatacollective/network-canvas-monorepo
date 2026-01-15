@@ -6,8 +6,8 @@ import {
 	nodeExportIDProperty,
 } from "@codaco/shared-consts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
 import { mockCodebook, mockExportOptions } from "../../../__tests__/mockObjects";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
 import { AttributeListFormatter, asAttributeList, toCSVStream } from "../attribute-list";
 
 const node = {

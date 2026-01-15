@@ -115,7 +115,7 @@ const toCSVStream = (edges: ReturnType<typeof asEdgeList>, outStream: NodeJS.Wri
 				this.push(`${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(",")}${csvEOL}`);
 				headerWritten = true;
 			} else if (chunkIndex < totalChunks) {
-				edge = edges[chunkIndex]!;
+				edge = edges[chunkIndex] as (typeof edges)[number];
 				const values = attrNames.map((attrName) => {
 					// primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
 					let value: unknown;

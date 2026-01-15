@@ -1,6 +1,6 @@
 import type { Codebook } from "@codaco/protocol-validation";
 import { type NcEgo, ncSourceUUID, ncTargetUUID, ncTypeProperty, ncUUIDProperty } from "@codaco/shared-consts";
-import { type DocumentFragment, DOMImplementation } from "@xmldom/xmldom";
+import { DOMImplementation, type DocumentFragment } from "@xmldom/xmldom";
 import { get } from "es-toolkit/compat";
 import type { EdgeWithResequencedID, ExportOptions, NodeWithResequencedID } from "../../types";
 import { getEntityAttributes } from "../../utils/general";
@@ -29,11 +29,11 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 
 		const entityType = deriveEntityType(incomingEntities);
 
-		let entities;
+		let entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[];
 		if (entityType === "ego") {
 			entities = [incomingEntities as NcEgo];
 		} else {
-			entities = incomingEntities;
+			entities = incomingEntities as NodeWithResequencedID[] | EdgeWithResequencedID[];
 		}
 
 		if (entityType === "node" && !done.has("type")) {
@@ -204,7 +204,7 @@ function generateKeysForEntities(
 						}
 
 						for (let index = 0; index < options.length; index++) {
-							const option = options[index]!;
+							const option = options[index] as (typeof options)[number];
 							// Hash the value to ensure that it is NKTOKEN compliant
 							const hashedOptionValue = sha1(String(option.value));
 

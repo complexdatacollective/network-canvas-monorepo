@@ -34,7 +34,7 @@ export const partitionByType = (
 			const partitionedNodeMap = session.nodes.reduce(
 				(nodeMap, node) => {
 					nodeMap[node.type] = nodeMap[node.type] ?? [];
-					nodeMap[node.type]!.push(node);
+					(nodeMap[node.type] as NodeWithResequencedID[]).push(node);
 					return nodeMap;
 				},
 				{} as Record<string, NodeWithResequencedID[]>,
@@ -43,7 +43,7 @@ export const partitionByType = (
 			return Object.entries(partitionedNodeMap).map(([nodeType, nodes]) => ({
 				...session,
 				nodes,
-				partitionEntity: getEntityName(nodeType, "node")!,
+				partitionEntity: getEntityName(nodeType, "node") ?? nodeType,
 			}));
 		}
 
@@ -56,7 +56,7 @@ export const partitionByType = (
 			const partitionedEdgeMap = session?.edges?.reduce(
 				(edgeMap, edge) => {
 					edgeMap[edge.type] = edgeMap[edge.type] ?? [];
-					edgeMap[edge.type]!.push(edge);
+					(edgeMap[edge.type] as EdgeWithResequencedID[]).push(edge);
 					return edgeMap;
 				},
 				{} as Record<string, EdgeWithResequencedID[]>,
@@ -65,7 +65,7 @@ export const partitionByType = (
 			return Object.entries(partitionedEdgeMap).map(([edgeType, edges]) => ({
 				...session,
 				edges,
-				partitionEntity: getEntityName(edgeType, "edge")!,
+				partitionEntity: getEntityName(edgeType, "edge") ?? edgeType,
 			}));
 		}
 	}

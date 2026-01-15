@@ -13,9 +13,9 @@ import {
 	sessionStartTimeProperty,
 } from "@codaco/shared-consts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
 import { mockCodebook, mockExportOptions } from "../../../__tests__/mockObjects";
-import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from "../ego-list";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
+import { asEgoAndSessionVariablesList, EgoListFormatter, toCSVStream } from "../ego-list";
 
 const ego = {
 	[egoProperty]: 123,

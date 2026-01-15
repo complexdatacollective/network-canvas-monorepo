@@ -46,8 +46,8 @@ const resequenceEntities = (target: SessionWithNetworkEgo[]): SessionWithReseque
 					[ncSourceUUID]: edge[edgeSourceProperty],
 					[ncTargetUUID]: edge[edgeTargetProperty],
 					[edgeExportIDProperty]: resequencedEdgeId,
-					from: IDLookupMap[edge[edgeSourceProperty]]!,
-					to: IDLookupMap[edge[edgeTargetProperty]]!,
+					from: IDLookupMap[edge[edgeSourceProperty]] as string,
+					to: IDLookupMap[edge[edgeTargetProperty]] as string,
 				};
 
 				return newEdge;

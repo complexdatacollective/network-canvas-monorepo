@@ -70,7 +70,7 @@ const toCSVStream = (nodes: ReturnType<typeof asAttributeList>, outStream: NodeJ
 				this.push(headerValue);
 				headerWritten = true;
 			} else if (rowIndex < totalRows) {
-				node = nodes[rowIndex]!;
+				node = nodes[rowIndex] as (typeof nodes)[number];
 				const values = attrNames.map((attrName) => {
 					// The primary key and ego id exist at the top-level; all others inside `.attributes`
 					let value: unknown;

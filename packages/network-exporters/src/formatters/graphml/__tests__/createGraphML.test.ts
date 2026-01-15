@@ -1,8 +1,7 @@
 import type { Codebook } from "@codaco/protocol-validation";
 import { ncUUIDProperty } from "@codaco/shared-consts";
-import { type Document, DOMParser, type Element, type LiveNodeList, MIME_TYPE } from "@xmldom/xmldom";
+import { DOMParser, type Document, type Element, type LiveNodeList, MIME_TYPE } from "@xmldom/xmldom";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ExportOptions } from "../../../types";
 import {
 	mockCodebook,
 	mockExportOptions,
@@ -10,6 +9,7 @@ import {
 	mockNetwork2,
 	processMockNetworks,
 } from "../../../__tests__/mockObjects";
+import type { ExportOptions } from "../../../types";
 import graphMLGenerator from "../createGraphML";
 
 function getDataElementByKey(elements: Element[], key: string) {
@@ -45,7 +45,9 @@ describe("buildGraphML", () => {
 		};
 
 		const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2]);
-		const protocolNetwork = processedNetworks["protocol-uid-1"]![0]!;
+		const protocolNetwork = (
+			processedNetworks["protocol-uid-1"] as NonNullable<(typeof processedNetworks)["protocol-uid-1"]>
+		)[0];
 		xml = buildXML(protocolNetwork, codebook, exportOptions);
 	});
 
@@ -58,7 +60,7 @@ describe("buildGraphML", () => {
 	});
 
 	it("defaults to undirected edges", () => {
-		const graphElement = xml.getElementsByTagName("graph")[0]!;
+		const graphElement = xml.getElementsByTagName("graph")[0] as Element;
 
 		expect(graphElement.getAttribute("edgedefault")).toEqual("undirected");
 	});
@@ -72,8 +74,8 @@ describe("buildGraphML", () => {
 	});
 
 	it("adds node and edge type data key", () => {
-		const node = xml.getElementsByTagName("node")[0]!;
-		const edge = xml.getElementsByTagName("edge")[0]!;
+		const node = xml.getElementsByTagName("node")[0] as Element;
+		const edge = xml.getElementsByTagName("edge")[0] as Element;
 
 		const nodeTypeDataElement = getDataElementByKey(Array.from(node.getElementsByTagName("data")), "networkCanvasType");
 		const edgeTypeDataElement = getDataElementByKey(Array.from(edge.getElementsByTagName("data")), "networkCanvasType");
@@ -84,16 +86,11 @@ describe("buildGraphML", () => {
 
 	describe("ego", () => {
 		it("adds ego data", () => {
-			const graphData = getChildElements(
-				xml.getElementsByTagName("graph")[0]!,
-				xml.getElementsByTagName("data"),
-			).reduce(
-				(acc, node) => ({
-					...acc,
-					[node.getAttribute("key")!]: node.textContent,
-				}),
-				{},
-			);
+			const graphElement = xml.getElementsByTagName("graph")[0] as Element;
+			const graphData: Record<string, string | null> = {};
+			for (const node of getChildElements(graphElement, xml.getElementsByTagName("data"))) {
+				graphData[node.getAttribute("key") as string] = node.textContent;
+			}
 
 			expect(graphData).toMatchObject({
 				[ncUUIDProperty]: "ego-id-1",
@@ -121,7 +118,7 @@ describe("buildGraphML", () => {
 	});
 
 	it("includes 0 and false values", () => {
-		const carl = getNodeById(Array.from(xml.getElementsByTagName("node")), "2")!;
+		const carl = getNodeById(Array.from(xml.getElementsByTagName("node")), "2") as Element;
 
 		const zeroValue = getDataElementByKey(Array.from(carl.getElementsByTagName("data")), "mock-uuid-2");
 
@@ -153,21 +150,21 @@ describe("buildGraphML", () => {
 
 	it("excludes null values", () => {
 		const nodes = Array.from(xml.getElementsByTagName("node"));
-		const dee = getNodeById(nodes, "1")!;
+		const dee = getNodeById(nodes, "1") as Element;
 		const deeData = Array.from(dee.getElementsByTagName("data"));
 
 		expect(deeData.length).toEqual(10);
 		expect(getDataElementByKey(deeData, "mock-uuid-5")?.textContent).toEqual(undefined);
 
-		const carl = getNodeById(nodes, "2")!;
+		const carl = getNodeById(nodes, "2") as Element;
 		const carlData = Array.from(carl.getElementsByTagName("data"));
 		expect(carlData.length).toEqual(10);
 		expect(getDataElementByKey(carlData, "mock-uuid-5")?.textContent).toEqual(undefined);
 
-		const jumbo = getNodeById(nodes, "3")!;
+		const jumbo = getNodeById(nodes, "3") as Element;
 		expect(jumbo.getElementsByTagName("data").length).toEqual(6);
 
-		const francis = getNodeById(nodes, "4")!;
+		const francis = getNodeById(nodes, "4") as Element;
 		const francisData = Array.from(francis.getElementsByTagName("data"));
 		expect(francis.getElementsByTagName("data").length).toEqual(9);
 		expect(getDataElementByKey(francisData, "mock-uuid-5")?.textContent).toEqual(undefined);
@@ -175,15 +172,10 @@ describe("buildGraphML", () => {
 	});
 
 	it("includes keys for all used variables", () => {
-		const graphData = Array.from(xml.getElementsByTagName("key"))
-			.filter((node) => node.getAttribute("for") === "node")
-			.reduce(
-				(acc, node) => ({
-					...acc,
-					[node.getAttribute("id")!]: node.getAttribute("for"),
-				}),
-				{},
-			);
+		const graphData: Record<string, string | null> = {};
+		for (const node of Array.from(xml.getElementsByTagName("key")).filter((n) => n.getAttribute("for") === "node")) {
+			graphData[node.getAttribute("id") as string] = node.getAttribute("for");
+		}
 
 		expect(graphData).toMatchObject({
 			"mock-uuid-1": "node",
@@ -197,7 +189,7 @@ describe("buildGraphML", () => {
 		});
 	});
 	it("places <key> elements before any <graph> element", () => {
-		const graphmlElement = xml.getElementsByTagName("graphml")[0]!;
+		const graphmlElement = xml.getElementsByTagName("graphml")[0] as Element;
 		const childElements = Array.from(graphmlElement.childNodes).filter((node) => node.nodeType === 1) as Element[];
 
 		const graphIndex = childElements.findIndex((el) => el.tagName === "graph");
@@ -221,7 +213,7 @@ describe("buildGraphML", () => {
 
 		// For each boolean key, check all data elements that use it
 		for (const key of booleanKeys) {
-			const keyId = key.getAttribute("id")!;
+			const keyId = key.getAttribute("id") as string;
 			const dataElements = Array.from(xml.getElementsByTagName("data")).filter(
 				(data) => data.getAttribute("key") === keyId,
 			);

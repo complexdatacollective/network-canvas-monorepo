@@ -37,7 +37,7 @@ const quoteValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
  */
 const sanitizedCellValue = (value: unknown) => {
 	if (value && typeof value === "object") {
-		let serialized;
+		let serialized: string;
 		try {
 			serialized = JSON.stringify(value);
 		} catch (_err) {

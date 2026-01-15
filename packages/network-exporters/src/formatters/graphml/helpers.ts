@@ -48,7 +48,7 @@ export function deriveEntityType(
 		return "node";
 	}
 
-	return Object.hasOwn(entities[0]!, edgeSourceProperty) ? "edge" : "node";
+	return Object.hasOwn(entities[0] as object, edgeSourceProperty) ? "edge" : "node";
 }
 
 export function createDocumentFragment() {
@@ -62,7 +62,7 @@ export const setUpXml = (sessionVariables: SessionVariables) => {
 	const doc = new DOMImplementation().createDocument(null, "graphml", null);
 
 	// Set the necessary namespaces and attributes
-	const root = doc.documentElement!;
+	const root = doc.documentElement as Element;
 	root.setAttribute("xmlns", "http://graphml.graphdrawing.org/xmlns");
 	root.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
 	root.setAttribute(

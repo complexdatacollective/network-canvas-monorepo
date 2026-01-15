@@ -14,7 +14,7 @@ import {
 	ncUUIDProperty,
 	nodeExportIDProperty,
 } from "@codaco/shared-consts";
-import { type DocumentFragment, DOMImplementation } from "@xmldom/xmldom";
+import { DOMImplementation, type DocumentFragment } from "@xmldom/xmldom";
 import type { EdgeWithResequencedID, ExportOptions, NodeWithResequencedID } from "../../types";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import { createDataElement, createDocumentFragment, deriveEntityType } from "./helpers";

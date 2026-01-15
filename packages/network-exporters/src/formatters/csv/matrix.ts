@@ -93,13 +93,13 @@ class AdjacencyMatrix {
 	 * @throws {ReferenceError} if this is called before calculateEdges()
 	 */
 	setAdjacent(from: string, to: string) {
-		const fromIndex = this.indexMap[from]!;
-		const toIndex = this.indexMap[to]!;
+		const fromIndex = this.indexMap[from] as number;
+		const toIndex = this.indexMap[to] as number;
 		const elementIndex = this.dimension * fromIndex + toIndex;
 		const byteIndex = ~~(elementIndex / 8);
 		const bitIndex = elementIndex % 8;
 		const adjacencyBitmask = 1 << (7 - bitIndex); // cells are ordered left->right
-		this.arrayView[byteIndex] = this.arrayView[byteIndex]! | adjacencyBitmask;
+		this.arrayView[byteIndex] = (this.arrayView[byteIndex] as number) | adjacencyBitmask;
 	}
 
 	/**
@@ -150,7 +150,7 @@ class AdjacencyMatrix {
 			const initialBitIndex = matrixIndex % 8;
 			let byteIndex = initialByteIndex;
 			let bitIndex = initialBitIndex;
-			let byte = matrix[byteIndex]!;
+			let byte = matrix[byteIndex] as number;
 			let bitmask: number;
 
 			for (let i = 0; i < dataColumnCount; i += 1) {
@@ -169,7 +169,7 @@ class AdjacencyMatrix {
 				bitIndex = (bitIndex + 1) % 8;
 				if (bitIndex === 0) {
 					byteIndex += 1;
-					byte = matrix[byteIndex]!;
+					byte = matrix[byteIndex] as number;
 				}
 			}
 
@@ -195,7 +195,7 @@ class AdjacencyMatrix {
 					this.push(headerRowContent);
 					headerWritten = true;
 				} else if (rowNum < dataColumnCount) {
-					row = dataRowContent(uniqueNodeIds[rowNum]!, truncatingView);
+					row = dataRowContent(uniqueNodeIds[rowNum] as string, truncatingView);
 					this.push(row);
 					rowNum += 1;
 
@@ -225,7 +225,7 @@ class AdjacencyMatrix {
 
 	toArray(matrixView = this.arrayView) {
 		if (this.dimension > 100) {
-			// This is only useful for debugging/testing
+			// biome-ignore lint/suspicious/noConsole: Intentional warning for debugging/testing
 			console.warn("toArray() not supported on large matrices");
 			return [];
 		}
@@ -235,7 +235,7 @@ class AdjacencyMatrix {
 
 	toString(matrixView = this.arrayView) {
 		if (this.dimension > 100) {
-			// This is only useful for debugging/testing
+			// biome-ignore lint/suspicious/noConsole: Intentional warning for debugging/testing
 			console.warn("toString() not supported on large matrices");
 			return "";
 		}

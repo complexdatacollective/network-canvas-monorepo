@@ -32,8 +32,8 @@ const asEgoAndSessionVariablesList = (
 		const unifiedNetwork = network as NetworkWithUnifiedEgo;
 		// If unified networks is enabled, network.ego is an object keyed by sessionID.
 		return Object.keys(unifiedNetwork.ego).map((sessionID) => {
-			const ego = unifiedNetwork.ego[sessionID]!;
-			const sessionVars = unifiedNetwork.sessionVariables[sessionID]!;
+			const ego = unifiedNetwork.ego[sessionID] as SessionWithResequencedIDs["ego"];
+			const sessionVars = unifiedNetwork.sessionVariables[sessionID] as SessionWithResequencedIDs["sessionVariables"];
 			return processEntityVariables(
 				{
 					...ego,
@@ -79,7 +79,7 @@ const attributeHeaders = (egos: ReturnType<typeof asEgoAndSessionVariablesList>)
 
 	const headerSet = egos.reduce((headers, ego) => {
 		// Add headers for attributes
-		for (const key of Object.keys((ego && ego[entityAttributesProperty]) || {})) {
+		for (const key of Object.keys(ego?.[entityAttributesProperty] || {})) {
 			headers.add(key);
 		}
 

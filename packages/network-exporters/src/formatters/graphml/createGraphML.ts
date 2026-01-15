@@ -18,10 +18,10 @@ function graphMLGenerator(network: SessionWithResequencedIDs, codebook: Codebook
 	const generateDataElements = getDataElementGenerator(codebook, exportOptions);
 
 	// <graphml /> is where <key /> elements are attached
-	const graphMLElement = xmlDoc.getElementsByTagName("graphml")[0]!;
+	const graphMLElement = xmlDoc.getElementsByTagName("graphml")[0] as Element;
 
 	// <graph /> is where <data />, <node />, and <edge /> elements are attached
-	const graphElement = xmlDoc.getElementsByTagName("graph")[0]!;
+	const graphElement = xmlDoc.getElementsByTagName("graph")[0] as Element;
 
 	if (network.ego) {
 		graphMLElement.insertBefore(generateKeyElements(network.ego), graphElement);

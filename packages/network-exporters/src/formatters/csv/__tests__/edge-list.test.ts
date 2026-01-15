@@ -10,9 +10,9 @@ import {
 	ncUUIDProperty,
 } from "@codaco/shared-consts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
 import { mockCodebook, mockExportOptions } from "../../../__tests__/mockObjects";
-import { EdgeListFormatter, asEdgeList, toCSVStream } from "../edge-list";
+import { makeWriteableStream } from "../../../__tests__/setupTestEnv";
+import { asEdgeList, EdgeListFormatter, toCSVStream } from "../edge-list";
 
 const nodes = [{ [entityPrimaryKeyProperty]: 1 }, { [entityPrimaryKeyProperty]: 2 }, { [entityPrimaryKeyProperty]: 3 }];
 

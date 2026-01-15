@@ -95,8 +95,8 @@ const processEntityVariables = (
 			const screenSpaceAttributes =
 				attributeData && useScreenLayoutCoordinates
 					? {
-							[`${attributeName}_screenSpaceX`]: (xCoord! * screenLayoutWidth).toFixed(2),
-							[`${attributeName}_screenSpaceY`]: ((1.0 - yCoord!) * screenLayoutHeight).toFixed(2),
+							[`${attributeName}_screenSpaceX`]: ((xCoord as number) * screenLayoutWidth).toFixed(2),
+							[`${attributeName}_screenSpaceY`]: ((1.0 - (yCoord as number)) * screenLayoutHeight).toFixed(2),
 						}
 					: {};
 
