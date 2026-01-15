@@ -21,7 +21,7 @@ catalog:
   '@tailwindcss/typography': ^0.5.19
   '@tanstack/react-table': ^8.21.3
   '@types/node': ^24.10.1
-  '@types/react': ^19.2.7
+  '@types/react': ^19.2.8
   '@types/react-dom': ^19.2.3
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
