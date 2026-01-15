@@ -1,35 +1,32 @@
-/* eslint-env jest */
+import { shallow } from "enzyme";
+import Panel from "../Panel";
 
-import { shallow } from 'enzyme';
-import React from 'react';
-import Panel from '../Panel';
+describe("Panel component", () => {
+	it("renders ok", () => {
+		const component = shallow(
+			<Panel title="foo">
+				<span>bar</span>
+			</Panel>,
+		);
 
-describe('Panel component', () => {
-  it('renders ok', () => {
-    const component = shallow(
-      <Panel title="foo">
-        <span>bar</span>
-      </Panel>,
-    );
+		expect(component).toMatchSnapshot();
+	});
 
-    expect(component).toMatchSnapshot();
-  });
+	it("updates class when title clicked", () => {
+		const component = shallow(
+			<Panel title="foo">
+				<span>bar</span>
+			</Panel>,
+		);
 
-  it('updates class when title clicked', () => {
-    const component = shallow(
-      <Panel title="foo">
-        <span>bar</span>
-      </Panel>,
-    );
+		expect(component.hasClass("panel--collapsed")).toBe(false);
 
-    expect(component.hasClass('panel--collapsed')).toBe(false);
+		// clicking once collapses panel
+		component.find(".panel__heading").simulate("click");
+		expect(component.hasClass("panel--collapsed")).toBe(true);
 
-    // clicking once collapses panel
-    component.find('.panel__heading').simulate('click');
-    expect(component.hasClass('panel--collapsed')).toBe(true);
-
-    // clicking again expands panel
-    component.find('.panel__heading').simulate('click');
-    expect(component.hasClass('panel--collapsed')).toBe(false);
-  });
+		// clicking again expands panel
+		component.find(".panel__heading").simulate("click");
+		expect(component.hasClass("panel--collapsed")).toBe(false);
+	});
 });

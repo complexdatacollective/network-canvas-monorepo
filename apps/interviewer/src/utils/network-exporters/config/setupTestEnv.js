@@ -4,7 +4,7 @@
 
 const enzyme = require("enzyme");
 const Adapter = require("enzyme-adapter-react-16");
-const { Writable } = require("stream");
+const { Writable } = require("node:stream");
 
 enzyme.configure({ adapter: new Adapter() });
 
@@ -15,7 +15,7 @@ const makeWriteableStream = () => {
 	const chunks = [];
 
 	const writable = new Writable({
-		write(chunk, encoding, next) {
+		write(chunk, _encoding, next) {
 			chunks.push(chunk.toString());
 			next(null);
 		},

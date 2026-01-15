@@ -1,7 +1,7 @@
-import { CancellationError } from "../CancellationError";
 import { findKey } from "lodash";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
 import { store } from "../../ducks/store";
+import { CancellationError } from "../CancellationError";
 import { removeDirectory, rename } from "../filesystem";
 import protocolPath from "./protocolPath";
 

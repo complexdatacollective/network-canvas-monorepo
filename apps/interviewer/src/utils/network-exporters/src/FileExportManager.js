@@ -2,7 +2,7 @@ const { merge, isEmpty, groupBy } = require("lodash");
 const sanitizeFilename = require("sanitize-filename");
 const { EventEmitter } = require("eventemitter3");
 const queue = require("async/queue");
-const path = require("path");
+const path = require("node:path");
 const { protocolProperty } = require("@codaco/shared-consts");
 const { tempDataPath, createDirectory } = require("./utils/filesystem");
 const exportFile = require("./exportFile");
@@ -13,12 +13,7 @@ const {
 	getFilePrefix,
 } = require("@codaco/network-exporters");
 const { unionOfNetworks } = require("./formatters/network");
-const {
-	verifySessionVariables,
-	sleep,
-	handlePlatformSaveDialog,
-	ObservableValue,
-} = require("./utils/general");
+const { verifySessionVariables, sleep, handlePlatformSaveDialog, ObservableValue } = require("./utils/general");
 const archive = require("./utils/archive");
 const { ExportError, ErrorMessages } = require("./errors/ExportError");
 const ProgressMessages = require("./ProgressMessages");
@@ -57,10 +52,7 @@ const getTempDir = () => {
 
 	try {
 		createDirectory(dirPath);
-	} catch (e) {
-		// eslint-disable-next-line no-console
-		console.error("Error creating temp directory:", e);
-	}
+	} catch (_e) {}
 
 	return dirPath;
 };
@@ -86,8 +78,6 @@ class FileExportManager {
 
 	emit(event, payload) {
 		if (!event) {
-			// eslint-disable-next-line no-console
-			console.warn("Malformed emit.");
 			return;
 		}
 
@@ -397,11 +387,7 @@ class FileExportManager {
 				}); // End run()
 
 			const abort = () => {
-				// eslint-disable-next-line no-console
-				console.info("Aborting file export.");
 				if (!shouldContinue()) {
-					// eslint-disable-next-line no-console
-					console.warn("This export already aborted. Cancelling abort!");
 					return;
 				}
 				cancelled = true;

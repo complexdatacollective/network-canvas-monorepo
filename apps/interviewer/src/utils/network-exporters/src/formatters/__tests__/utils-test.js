@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 import { mockCodebook } from "../../../config/mockObjects";
 import { extensions, getFileExtension } from "../../utils/general";
 import getFormatterClass from "../../utils/getFormatterClass";

@@ -1,15 +1,9 @@
-/* eslint-disable no-console */
-
-const on = (channel, cb) => {
-  console.log(channel, cb);
-};
-const send = (message) => {
-  console.log(message);
-};
+const on = (_channel, _cb) => {};
+const send = (_message) => {};
 
 module.exports = {
-  ipcRenderer: {
-    send,
-    on,
-  },
+	ipcRenderer: {
+		send,
+		on,
+	},
 };

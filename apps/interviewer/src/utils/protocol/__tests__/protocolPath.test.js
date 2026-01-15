@@ -1,6 +1,4 @@
-/* eslint-disable @codaco/spellcheck/spell-checker */
-
-import path from "path";
+import path from "node:path";
 import { vi } from "vitest";
 import { getEnvironment } from "../../Environment";
 import environments from "../../environments";

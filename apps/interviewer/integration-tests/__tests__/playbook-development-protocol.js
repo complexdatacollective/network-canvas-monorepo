@@ -13,7 +13,6 @@ import { goToStage, loadProtocolFromFile } from "./playbook";
  */
 export const loadDevelopmentProtocol = async (app) => {
 	await getData(developmentProtocol).then(([, filename]) => {
-		console.info(`loading protocol at "${filename}".`);
 		return loadProtocolFromFile(app, filename);
 	});
 };

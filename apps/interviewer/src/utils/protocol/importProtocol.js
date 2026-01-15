@@ -3,7 +3,6 @@
  */
 
 import { ProgressBar, Spinner } from "@codaco/ui";
-import { CancellationError } from "../CancellationError";
 import React from "react";
 import uuid from "uuid";
 import { PROTOCOL_EXTENSION } from "../../config";
@@ -17,6 +16,7 @@ import downloadProtocol from "../../utils/protocol/downloadProtocol";
 import extractProtocol from "../../utils/protocol/extractProtocol";
 import parseProtocol from "../../utils/protocol/parseProtocol";
 import protocolPath from "../../utils/protocol/protocolPath";
+import { CancellationError } from "../CancellationError";
 
 const cleanUpProtocol = async (uid) => {
 	if (uid) {
@@ -40,7 +40,7 @@ const protocolNameFromFilename = (filename) => filename.slice(0, -PROTOCOL_EXTEN
 const catchError = (error) => Promise.reject(error);
 
 const dispatch = store.dispatch;
-const getState = store.getState;
+const _getState = store.getState;
 
 const showCancellationToast = () => {
 	dispatch(
@@ -189,7 +189,7 @@ export const beginLocalProtocolImport = () => {
 
 	if (isCordova()) {
 		window.chooser.getFile().then((file) => {
-			if (file && file.uri) {
+			if (file?.uri) {
 				importProtocolFromFile(file.uri, file.name);
 			}
 		});

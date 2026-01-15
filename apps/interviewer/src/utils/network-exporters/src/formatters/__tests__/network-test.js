@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 import { getEntityAttributes } from "../../utils/general";
 import {
 	egoProperty,

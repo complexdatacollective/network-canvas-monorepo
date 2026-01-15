@@ -27,7 +27,6 @@ const compileWorker = (src, funcName) => {
 	if (supportedWorkers.indexOf(funcName) < 0) {
 		throw new Error("Unsupported worker function name", funcName);
 	}
-	/* eslint-disable indent, no-undef, no-console */
 	return `
     ${src}
     ;
@@ -56,7 +55,6 @@ const compileWorker = (src, funcName) => {
 			}
 		}})(${funcName});
     `;
-	/* eslint-enable */
 };
 
 /**

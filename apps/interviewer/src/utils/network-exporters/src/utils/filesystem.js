@@ -1,7 +1,7 @@
 const fse = require("fs-extra");
-const fs = require("fs");
+const fs = require("node:fs");
 const { app } = require("electron");
-const path = require("path");
+const _path = require("node:path");
 const { trimChars } = require("lodash/fp");
 
 const trimPath = trimChars("/ ");

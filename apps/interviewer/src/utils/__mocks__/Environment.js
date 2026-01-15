@@ -1,5 +1,5 @@
-import { vi } from 'vitest';
-import environments from '../environments';
+import { vi } from "vitest";
+import environments from "../environments";
 
 export const isElectron = vi.fn(() => false);
 export const isDevMode = vi.fn(() => false);
@@ -15,7 +15,9 @@ export const isWeb = vi.fn(() => true);
 export const getEnvironment = vi.fn(() => environments.WEB);
 
 const inEnvironment = vi.fn(
-  (tree) => (...args) => tree(getEnvironment())(...args),
+	(tree) =>
+		(...args) =>
+			tree(getEnvironment())(...args),
 );
 
 export default inEnvironment;

@@ -1,55 +1,52 @@
-import { SessionCard as UISessionCard } from '@codaco/ui/lib/components/Cards';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { actionCreators as sessionActions } from '../../ducks/modules/session';
-import formatDatestamp from '../../utils/formatDatestamp';
+import { SessionCard as UISessionCard } from "@codaco/ui/lib/components/Cards";
+import PropTypes from "prop-types";
+import { useDispatch, useSelector } from "react-redux";
+import { actionCreators as sessionActions } from "../../ducks/modules/session";
+import formatDatestamp from "../../utils/formatDatestamp";
 
 const oneBasedIndex = (i) => Number.parseInt(i || 0, 10) + 1;
 
 const SessionCard = ({ sessionUUID }) => {
-  const sessions = useSelector((state) => state.sessions);
-  const session = sessions[sessionUUID];
-  const installedProtocols = useSelector((state) => state.installedProtocols);
+	const sessions = useSelector((state) => state.sessions);
+	const session = sessions[sessionUUID];
+	const installedProtocols = useSelector((state) => state.installedProtocols);
+	const dispatch = useDispatch();
 
-  if (!session) {
-    return null;
-  }
+	if (!session) {
+		return null;
+	}
 
-  const dispatch = useDispatch();
-  const setSession = (sessionUID) => dispatch(sessionActions.setSession(sessionUID));
+	const setSession = (sessionUID) => dispatch(sessionActions.setSession(sessionUID));
 
-  const {
-    caseId, startedAt, updatedAt, exportedAt, finishedAt, protocolUID, stageIndex,
-  } = session;
+	const { caseId, startedAt, updatedAt, exportedAt, finishedAt, protocolUID, stageIndex } = session;
 
-  const protocol = installedProtocols[protocolUID];
+	const protocol = installedProtocols[protocolUID];
 
-  const { name, stages } = protocol;
+	const { name, stages } = protocol;
 
-  const progress = Math.round((oneBasedIndex(stageIndex) / oneBasedIndex(stages.length)) * 100);
+	const progress = Math.round((oneBasedIndex(stageIndex) / oneBasedIndex(stages.length)) * 100);
 
-  const onClickLoadSession = (event) => {
-    event.preventDefault();
-    setSession(sessionUUID);
-  };
+	const onClickLoadSession = (event) => {
+		event.preventDefault();
+		setSession(sessionUUID);
+	};
 
-  return (
-    <UISessionCard
-      caseId={caseId}
-      startedAt={formatDatestamp(startedAt)}
-      updatedAt={formatDatestamp(updatedAt)}
-      exportedAt={formatDatestamp(exportedAt)}
-      finishedAt={formatDatestamp(finishedAt)}
-      protocolName={name}
-      progress={progress}
-      onClickHandler={onClickLoadSession}
-    />
-  );
+	return (
+		<UISessionCard
+			caseId={caseId}
+			startedAt={formatDatestamp(startedAt)}
+			updatedAt={formatDatestamp(updatedAt)}
+			exportedAt={formatDatestamp(exportedAt)}
+			finishedAt={formatDatestamp(finishedAt)}
+			protocolName={name}
+			progress={progress}
+			onClickHandler={onClickLoadSession}
+		/>
+	);
 };
 
 SessionCard.propTypes = {
-  sessionUUID: PropTypes.string.isRequired,
+	sessionUUID: PropTypes.string.isRequired,
 };
 
 SessionCard.defaultProps = {};

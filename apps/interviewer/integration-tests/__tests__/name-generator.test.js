@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { forceClick, makeTestingApp, matchImageSnapshot, startApps, stopApps } from "./helpers";
+import { forceClick, makeTestingApp, matchImageSnapshot } from "./helpers";
 import { goToStage, startInterview } from "./playbook";
 import { loadDevelopmentProtocol } from "./playbook-development-protocol";
 

@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import path from "path";
+import path from "node:path";
 import dialogAddon from "spectron-dialog-addon";
 import { mockProtocol, paths, timing } from "../config";
 import getData from "../getData";
@@ -37,14 +37,12 @@ export const loadProtocolFromFile = async (app, filename, repeat = false) => {
  */
 export const loadMockProtocolAsFile = async (app) => {
 	await getData(mockProtocol).then(([, filename]) => {
-		console.info(`loading protocol at "${filename}".`);
 		return loadProtocolFromFile(app, filename);
 	});
 };
 
 export const loadMockProtocolAsFileAgain = async (app) => {
 	await getData(mockProtocol).then(([, filename]) => {
-		console.info(`loading protocol at "${filename}" (again).`);
 		return loadProtocolFromFile(app, filename, true);
 	});
 };
@@ -58,7 +56,6 @@ export const startInterview = async (app, caseId = "test") => {
 };
 
 export const goToStage = async (app, stageId) => {
-	console.log("Going to stage ", stageId);
 	if (!stageId) {
 		throw Error("goToStage() requires a stageId");
 	}

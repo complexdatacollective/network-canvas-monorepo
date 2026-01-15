@@ -1,4 +1,3 @@
-/* eslint-disable @codaco/spellcheck/spell-checker */
 import { vi } from "vitest";
 import { getEnvironment } from "../../Environment";
 import environments from "../../environments";

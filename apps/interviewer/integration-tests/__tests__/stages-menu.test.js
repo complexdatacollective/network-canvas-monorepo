@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { timing } from "../config";
-import { makeTestingApp, matchImageSnapshot, startApps, stopApps } from "./helpers";
+import { makeTestingApp, matchImageSnapshot } from "./helpers";
 import { goToStage, startInterview } from "./playbook";
 import { loadDevelopmentProtocol } from "./playbook-development-protocol";
 

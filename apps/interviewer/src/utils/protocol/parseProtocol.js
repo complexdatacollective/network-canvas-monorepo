@@ -1,8 +1,6 @@
 import { errToString, validateLogic, validateSchema } from "@codaco/protocol-validation";
 import { APP_SUPPORTED_SCHEMA_VERSIONS } from "../../config";
 import friendlyErrorMessage from "../../utils/friendlyErrorMessage";
-import inEnvironment from "../Environment";
-import environments from "../environments";
 import { readFile } from "../filesystem";
 import protocolPath from "./protocolPath";
 

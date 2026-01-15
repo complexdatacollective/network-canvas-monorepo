@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import { useCallback, useMemo } from "react";
+import { useSelector } from "react-redux";
 
 /**
  * Converts legacy react-redux selectors that take a props argument
@@ -17,19 +17,19 @@ import { useSelector } from 'react-redux';
  *
  * const results = usePropSelector(makeOldSelector, props, true);
  */
-const usePropSelector = (selector, props, isFactory = false, equalityFn) => {
-  const memoizedSelector = useMemo(() => {
-    if (isFactory) {
-      return selector();
-    }
-    return selector;
-  }, []);
+const usePropSelector = (selector, props, isFactory, equalityFn) => {
+	const memoizedSelector = useMemo(() => {
+		if (isFactory) {
+			return selector();
+		}
+		return selector;
+	}, [isFactory, selector]);
 
-  const selectorWithProps = useCallback((state) => memoizedSelector(state, props), [props]);
+	const selectorWithProps = useCallback((state) => memoizedSelector(state, props), [props, memoizedSelector]);
 
-  const state = useSelector(selectorWithProps, equalityFn);
+	const state = useSelector(selectorWithProps, equalityFn);
 
-  return state;
+	return state;
 };
 
 export default usePropSelector;

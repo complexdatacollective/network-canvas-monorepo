@@ -1,35 +1,35 @@
-import { find, get } from 'lodash';
-import { PropTypes } from 'prop-types';
-import Monitor from './Monitor';
+import { find, get } from "lodash";
+import { PropTypes } from "prop-types";
+import Monitor from "./Monitor";
 
 const defaultMonitorProps = {
-  isOver: false,
-  willAccept: false,
+	isOver: false,
+	willAccept: false,
 };
 
 const getMonitorProps = (state, props) => {
-  const target = find(state.targets, ['id', props.id]);
+	const target = find(state.targets, ["id", props.id]);
 
-  if (!target) {
-    return { ...defaultMonitorProps };
-  }
+	if (!target) {
+		return { ...defaultMonitorProps };
+	}
 
-  const monitorProps = {
-    isOver: get(target, 'isOver', false),
-    willAccept: get(target, 'willAccept', false),
-  };
+	const monitorProps = {
+		isOver: get(target, "isOver", false),
+		willAccept: get(target, "willAccept", false),
+	};
 
-  return monitorProps;
+	return monitorProps;
 };
 
 const monitorDropTarget = (types) => {
-  const MonitorDropTarget = Monitor(getMonitorProps, types);
+	const MonitorDropTarget = Monitor(getMonitorProps, types);
 
-  MonitorDropTarget.propTypes = {
-    id: PropTypes.string.isRequired,
-  };
+	MonitorDropTarget.propTypes = {
+		id: PropTypes.string.isRequired,
+	};
 
-  return MonitorDropTarget;
+	return MonitorDropTarget;
 };
 
 export default monitorDropTarget;

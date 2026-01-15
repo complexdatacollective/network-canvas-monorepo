@@ -1,5 +1,3 @@
-/* eslint-disable global-require */
-
 import { removeDirectory } from "../filesystem";
 import getProtocolPath from "./protocolPath";
 

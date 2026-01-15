@@ -1,6 +1,3 @@
-/* eslint-env jest */
-/* eslint-disable @codaco/spellcheck/spell-checker */
-
 import { filenameFromURI } from "../importProtocol";
 
 describe("importProtocol", () => {

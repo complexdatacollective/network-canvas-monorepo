@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
+import path from "node:path";
 import { get, kebabCase } from "lodash";
-import path from "path";
 import { Application } from "spectron";
 import dialogAddon from "spectron-dialog-addon";
 import { defaultImageSnaphotConfig, getAppConfiguration, testSizes, timing } from "../config";
@@ -19,7 +19,6 @@ export const resizeApp = async (app, size = "wide") => {
 	if (!dimensions) {
 		return;
 	}
-	console.info(`resize to: ${dimensions[0]}x${dimensions[1]}`);
 	appSize = `${dimensions[0]}x${dimensions[1]}`;
 	await app.browserWindow.setSize(dimensions[0], dimensions[1]);
 	await resetApp(app);
@@ -41,7 +40,7 @@ export const makeTestingApp = async () => {
 };
 
 export const stopApp = async () => {
-	if (_app && _app.isRunning()) {
+	if (_app?.isRunning()) {
 		return _app.stop().catch(() => {});
 	}
 	return Promise.resolve();

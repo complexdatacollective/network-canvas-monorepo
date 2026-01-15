@@ -1,19 +1,19 @@
-import * as Fields from '@codaco/ui/lib/components/Fields';
-import { map, toPairs } from 'lodash';
-import PropTypes from 'prop-types';
-import React, { useMemo } from 'react';
-import { useStore } from 'react-redux';
-import { Field as ReduxFormField } from 'redux-form';
-import { FormComponent } from '../protocol-consts';
-import { get } from '../utils/lodash-replacements';
-import validations from '../utils/Validations';
+import * as Fields from "@codaco/ui/lib/components/Fields";
+import { map, toPairs } from "lodash";
+import PropTypes from "prop-types";
+import { useMemo } from "react";
+import { useStore } from "react-redux";
+import { Field as ReduxFormField } from "redux-form";
+import { FormComponent } from "../protocol-consts";
+import { get } from "../utils/lodash-replacements";
+import validations from "../utils/Validations";
 
 const ComponentTypeNotFound = (componentType) => () => (
-  <div>
-    Input component &quot;
-    {componentType}
-    &quot; not found.
-  </div>
+	<div>
+		Input component &quot;
+		{componentType}
+		&quot; not found.
+	</div>
 );
 
 /*
@@ -21,9 +21,9 @@ const ComponentTypeNotFound = (componentType) => () => (
   or else it just returns a text input
   * @param {object} field The properties handed down from the protocol form
   */
-export const getInputComponent = (componentType = 'Text') => {
-  const def = get(FormComponent, componentType);
-  return get(Fields, def, ComponentTypeNotFound(componentType));
+export const getInputComponent = (componentType = "Text") => {
+	const def = get(FormComponent, componentType);
+	return get(Fields, def, ComponentTypeNotFound(componentType));
 };
 
 /**
@@ -31,7 +31,10 @@ export const getInputComponent = (componentType = 'Text') => {
  * which will always fail.
  * @param {string} validation The name of the validation function to return.
  */
-const getValidation = (validation, store) => map(toPairs(validation), ([type, options]) => (Object.hasOwn(validations, type) ? validations[type](options, store) : () => `Validation "${type}" not found`));
+const getValidation = (validation, store) =>
+	map(toPairs(validation), ([type, options]) =>
+		Object.hasOwn(validations, type) ? validations[type](options, store) : () => `Validation "${type}" not found`,
+	);
 
 /**
  * Renders a redux-form field in the style of our app.
@@ -41,28 +44,26 @@ const getValidation = (validation, store) => map(toPairs(validation), ([type, op
  * @param {string} placeholder Presentational placeholder text
  * @param {object} validation Validation methods
  */
-const Field = ({
-  label, name, validation, ...rest
-}) => {
-  const store = useStore();
-  const component = useMemo(() => getInputComponent(rest.component), [rest.component]);
-  const validate = useMemo(() => rest.validate || getValidation(validation, store), []);
+const Field = ({ label, name, validation, ...rest }) => {
+	const store = useStore();
+	const component = useMemo(() => getInputComponent(rest.component), [rest.component]);
+	const validate = useMemo(() => rest.validate || getValidation(validation, store), [rest.validate, store, validation]);
 
-  return <ReduxFormField {...rest} name={name} label={label} component={component} validate={validate} />;
+	return <ReduxFormField {...rest} name={name} label={label} component={component} validate={validate} />;
 };
 
 Field.propTypes = {
-  label: PropTypes.string,
-  name: PropTypes.string.isRequired,
-  component: PropTypes.oneOfType([PropTypes.string, PropTypes.func]).isRequired,
-  validation: PropTypes.object,
-  validate: PropTypes.array,
+	label: PropTypes.string,
+	name: PropTypes.string.isRequired,
+	component: PropTypes.oneOfType([PropTypes.string, PropTypes.func]).isRequired,
+	validation: PropTypes.object,
+	validate: PropTypes.array,
 };
 
 Field.defaultProps = {
-  label: '',
-  validation: {},
-  validate: null,
+	label: "",
+	validation: {},
+	validate: null,
 };
 
 export default Field;

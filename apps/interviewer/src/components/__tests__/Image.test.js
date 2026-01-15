@@ -1,20 +1,16 @@
-/* eslint-env jest */
-/* eslint-disable @codaco/spellcheck/spell-checker */
-
-import { shallow } from 'enzyme';
-import React from 'react';
-import { Image } from '../Image';
+import { shallow } from "enzyme";
+import { Image } from "../Image";
 
 const mockProps = {
-  url: 'foo',
-  alt: 'baz',
-  miscellaneousAdditionalProperty: 'baz',
+	url: "foo",
+	alt: "baz",
+	miscellaneousAdditionalProperty: "baz",
 };
 
-describe('<Image />', () => {
-  it('renders ok', () => {
-    const component = shallow(<Image {...mockProps} />);
+describe("<Image />", () => {
+	it("renders ok", () => {
+		const component = shallow(<Image {...mockProps} />);
 
-    expect(component).toMatchSnapshot();
-  });
+		expect(component).toMatchSnapshot();
+	});
 });

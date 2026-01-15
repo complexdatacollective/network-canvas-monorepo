@@ -94,8 +94,7 @@ const importZip = inEnvironment((environment) => {
 		return (protocolFile, protocolName, destination) =>
 			loadZip(protocolFile)
 				.then((zip) => extractZip(zip, destination))
-				.catch((error) => {
-					console.log(error);
+				.catch((_error) => {
 					return openError;
 				})
 				.then(() => protocolName);

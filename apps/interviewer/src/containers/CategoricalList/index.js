@@ -1,1 +1,1 @@
-export { default } from './CategoricalList';
+export { default } from "./CategoricalList";

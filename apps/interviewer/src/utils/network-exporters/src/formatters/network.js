@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 const { sessionProperty } = require("@codaco/shared-consts");
 
 // Result is a SINGLE session, with MULTIPLE ego and sessionVariables

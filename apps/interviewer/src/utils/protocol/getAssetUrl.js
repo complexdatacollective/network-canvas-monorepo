@@ -31,7 +31,6 @@ const assetUrl = (environment) => {
 				const isDevelopment = isElectron() ? window.electronAPI?.env?.isDevelopment : false;
 
 				if (isDevelopment) {
-					console.info("assetUrl: replacing host with localhost");
 					const parsedUrl = new URL(toURL);
 					parsedUrl.host = "localhost";
 					parsedUrl.port = "";

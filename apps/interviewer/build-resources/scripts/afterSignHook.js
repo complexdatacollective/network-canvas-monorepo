@@ -1,7 +1,7 @@
 // See: https://medium.com/@TwitterArchiveEraser/notarize-electron-apps-7a5f988406db
 
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const electronNotarize = require("@electron/notarize");
 
 async function note(params) {
@@ -15,8 +15,6 @@ async function note(params) {
 		throw new Error(`Cannot find application at: ${appPath}`);
 	}
 
-	console.log(`Notarizing app found at ${appPath}`);
-
 	try {
 		await electronNotarize.notarize({
 			tool: "notarytool",
@@ -26,11 +24,7 @@ async function note(params) {
 			appleApiKeyId: "A78M67RCH9", // Taken from https://appstoreconnect.apple.com/access/integrations/api
 			appleApiIssuer: "69a6de92-60bf-47e3-e053-5b8c7c11a4d1", // As above
 		});
-
-		console.log("Done notarizing");
-	} catch (error) {
-		console.error(error);
-	}
+	} catch (_error) {}
 }
 
 module.exports = note;

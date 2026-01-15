@@ -1,45 +1,42 @@
-/* eslint-env jest */
+import { shallow } from "enzyme";
+import { LayoutNode } from "../LayoutNode";
 
-import { shallow } from 'enzyme';
-import React from 'react';
-import { LayoutNode } from '../LayoutNode';
-
-const layout = 'foo';
+const layout = "foo";
 
 const mockProps = {
-  onDropped: () => {},
-  updateNode: () => {},
-  onSelected: () => {},
-  layoutVariable: layout,
-  node: {
-    attributes: {
-      [layout]: {
-        x: 0.77,
-        y: 0.2,
-      },
-      label: 'some content',
-    },
-  },
-  areaWidth: 100,
-  areaHeight: 40,
-  draggableType: 'bar',
-  getLabel: (node) => node.label,
+	onDropped: () => {},
+	updateNode: () => {},
+	onSelected: () => {},
+	layoutVariable: layout,
+	node: {
+		attributes: {
+			[layout]: {
+				x: 0.77,
+				y: 0.2,
+			},
+			label: "some content",
+		},
+	},
+	areaWidth: 100,
+	areaHeight: 40,
+	draggableType: "bar",
+	getLabel: (node) => node.label,
 };
 
-describe('<LayoutNode />', () => {
-  it('renders ok', () => {
-    const component = shallow(<LayoutNode {...mockProps} />);
+describe("<LayoutNode />", () => {
+	it("renders ok", () => {
+		const component = shallow(<LayoutNode {...mockProps} />);
 
-    expect(component).toMatchSnapshot();
-  });
+		expect(component).toMatchSnapshot();
+	});
 
-  it('positions using translate/top/left', () => {
-    const component = shallow(<LayoutNode {...mockProps} />);
+	it("positions using translate/top/left", () => {
+		const component = shallow(<LayoutNode {...mockProps} />);
 
-    expect(component.prop('style')).toEqual({
-      left: '77%',
-      top: '20%',
-      transform: 'translate(-50%, -50%)',
-    });
-  });
+		expect(component.prop("style")).toEqual({
+			left: "77%",
+			top: "20%",
+			transform: "translate(-50%, -50%)",
+		});
+	});
 });

@@ -1,54 +1,51 @@
-/* eslint-disable @codaco/spellcheck/spell-checker */
-import {
-  beforeAll, describe, expect, it, vi,
-} from 'vitest';
-import { getEnvironment } from '../Environment';
-import environments from '../environments';
-import { writeStream } from '../filesystem';
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { getEnvironment } from "../Environment";
+import environments from "../environments";
+import { writeStream } from "../filesystem";
 
-vi.mock('../Environment');
+vi.mock("../Environment");
 
-describe('filesystem', () => {
-  describe('Cordova', () => {
-    beforeAll(() => {
-      getEnvironment.mockReturnValue(environments.CORDOVA);
-    });
+describe("filesystem", () => {
+	describe("Cordova", () => {
+		beforeAll(() => {
+			getEnvironment.mockReturnValue(environments.CORDOVA);
+		});
 
-    describe('with mocked fs', () => {
-      const mockFileWriter = {
-        readyState: 0,
-        abort: vi.fn(),
-        write: vi.fn(),
-      };
+		describe("with mocked fs", () => {
+			const mockFileWriter = {
+				readyState: 0,
+				abort: vi.fn(),
+				write: vi.fn(),
+			};
 
-      const mockFileEntry = {
-        createWriter: vi.fn().mockImplementation((resolve) => resolve(mockFileWriter)),
-      };
+			const mockFileEntry = {
+				createWriter: vi.fn().mockImplementation((resolve) => resolve(mockFileWriter)),
+			};
 
-      const mockDirectoryEntry = {
-        getFile: vi.fn().mockImplementation((filename, opts, resolve) => resolve(mockFileEntry)),
-      };
+			const mockDirectoryEntry = {
+				getFile: vi.fn().mockImplementation((_filename, _opts, resolve) => resolve(mockFileEntry)),
+			};
 
-      const mockZipStream = {
-        on: vi.fn().mockImplementation((evt, cb) => {
-          if (evt === 'end') {
-            cb();
-          }
-          return mockZipStream;
-        }),
-        resume: vi.fn(),
-      };
+			const mockZipStream = {
+				on: vi.fn().mockImplementation((evt, cb) => {
+					if (evt === "end") {
+						cb();
+					}
+					return mockZipStream;
+				}),
+				resume: vi.fn(),
+			};
 
-      beforeAll(() => {
-        global.resolveLocalFileSystemURL = vi.fn().mockImplementation((path, resolve) => {
-          resolve(mockDirectoryEntry);
-        });
-      });
+			beforeAll(() => {
+				global.resolveLocalFileSystemURL = vi.fn().mockImplementation((_path, resolve) => {
+					resolve(mockDirectoryEntry);
+				});
+			});
 
-      it('implements stream writing', async () => {
-        await writeStream('cdvfile://localhost/foo.mp4', mockZipStream);
-        expect(mockZipStream.on).toHaveBeenCalledWith('data', expect.any(Function));
-      });
-    });
-  });
+			it("implements stream writing", async () => {
+				await writeStream("cdvfile://localhost/foo.mp4", mockZipStream);
+				expect(mockZipStream.on).toHaveBeenCalledWith("data", expect.any(Function));
+			});
+		});
+	});
 });

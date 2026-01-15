@@ -262,10 +262,10 @@ importers:
         version: 5.9.3
       vite-tsconfig-paths:
         specifier: ^6.0.3
-        version: 6.0.3(typescript@5.9.3)(vite@7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 6.0.3(typescript@5.9.3)(vite@7.2.2(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       vitest:
         specifier: 'catalog:'
-        version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@1.21.7)(jsdom@27.4.0(bufferutil@4.0.9))(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+        version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.4.0(bufferutil@4.0.9))(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   apps/architect-desktop:
     dependencies:
@@ -1005,9 +1005,6 @@ importers:
       '@babel/core':
         specifier: 7.11.1
         version: 7.11.1
-      '@babel/eslint-parser':
-        specifier: ~7.13.10
-        version: 7.13.14(@babel/core@7.11.1)(eslint@7.32.0)
       '@babel/plugin-proposal-class-properties':
         specifier: 7.7.4
         version: 7.7.4(@babel/core@7.11.1)
@@ -1029,9 +1026,6 @@ importers:
       '@babel/preset-react':
         specifier: 7.10.1
         version: 7.10.1(@babel/core@7.11.1)
-      '@codaco/eslint-plugin-spellcheck':
-        specifier: 0.0.14
-        version: 0.0.14(eslint@7.32.0)
       '@codaco/protocol-validation':
         specifier: ^5.0.2
         version: 5.0.2
@@ -1131,27 +1125,6 @@ importers:
       enzyme-to-json:
         specifier: ^3.4.3
         version: 3.6.2(enzyme@3.11.0)
-      eslint:
-        specifier: ^7.0.0
-        version: 7.32.0
-      eslint-config-airbnb:
-        specifier: ^18.2.1
-        version: 18.2.1(eslint-plugin-import@2.22.1(@typescript-eslint/parser@4.33.0(eslint@7.32.0)(typescript@5.9.3))(eslint@7.32.0))(eslint-plugin-jsx-a11y@6.4.1(eslint@7.32.0))(eslint-plugin-react-hooks@4.6.2(eslint@7.32.0))(eslint-plugin-react@7.37.5(eslint@7.32.0))(eslint@7.32.0)
-      eslint-config-react-app:
-        specifier: ^6.0.0
-        version: 6.0.0(@typescript-eslint/eslint-plugin@4.33.0(@typescript-eslint/parser@4.33.0(eslint@7.32.0)(typescript@5.9.3))(eslint@7.32.0)(typescript@5.9.3))(@typescript-eslint/parser@4.33.0(eslint@7.32.0)(typescript@5.9.3))(babel-eslint@10.1.0(eslint@7.32.0))(eslint-plugin-flowtype@5.10.0(eslint@7.32.0))(eslint-plugin-import@2.22.1(@typescript-eslint/parser@4.33.0(eslint@7.32.0)(typescript@5.9.3))(eslint@7.32.0))(eslint-plugin-jsx-a11y@6.4.1(eslint@7.32.0))(eslint-plugin-react-hooks@4.6.2(eslint@7.32.0))(eslint-plugin-react@7.37.5(eslint@7.32.0))(eslint@7.32.0)(typescript@5.9.3)
-      eslint-plugin-flowtype:
-        specifier: ^5.2.0
-        version: 5.10.0(eslint@7.32.0)
-      eslint-plugin-import:
-        specifier: 2.22.1
-        version: 2.22.1(@typescript-eslint/parser@4.33.0(eslint@7.32.0)(typescript@5.9.3))(eslint@7.32.0)
-      eslint-plugin-jsx-a11y:
-        specifier: 6.4.1
-        version: 6.4.1(eslint@7.32.0)
-      eslint-plugin-react:
-        specifier: ^7.11.1
-        version: 7.37.5(eslint@7.32.0)
       eventemitter3:
         specifier: ^3.1.0
         version: 3.1.2
@@ -1272,15 +1245,6 @@ importers:
       stream-browserify:
         specifier: ~3.0.0
         version: 3.0.0
-      stylelint:
-        specifier: ~15.10.3
-        version: 15.10.3(typescript@5.9.3)
-      stylelint-config-standard:
-        specifier: ~34.0.0
-        version: 34.0.0(stylelint@15.10.3(typescript@5.9.3))
-      stylelint-config-standard-scss:
-        specifier: ~10.0.0
-        version: 10.0.0(postcss@8.4.31)(stylelint@15.10.3(typescript@5.9.3))
       svg2png:
         specifier: ^4.1.1
         version: 4.1.1
@@ -2736,11 +2700,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@codaco/eslint-plugin-spellcheck@0.0.14':
-    resolution: {integrity: sha512-xg+v0xaVrjIQ0p8yrb3LUTDi3Vy7uVOrFJ4Z5o3RuwGXau+gFnssYo0pbw3Dhq0M8PJ3wPAB8xpnEYSsS6TLMQ==}
-    peerDependencies:
-      eslint: '>=0.8.0'
 
   '@codaco/protocol-validation@5.0.2':
     resolution: {integrity: sha512-HH68/XTI4dPy1WDTpNzhn5PM44+0fj4ZNFkWMqRsPpRgRvhbnnVR+bynDsk/BGKxPF9gdvqx2wvBX0AUbdGOMw==}
@@ -8359,10 +8318,6 @@ packages:
   global@4.4.0:
     resolution: {integrity: sha512-wv/LAoHdRE3BeTGz53FAamhGlPLhlssK45usmGFThIi4XqnBmjKQ16u+RNbP7WvigRZDxUsM0J3gcQ5yicaL0w==}
 
-  globals@12.4.0:
-    resolution: {integrity: sha512-BWICuzzDvDoH54NHKCseDanAhE3CeDorgDL5MT6LMXXj2WCnd9UC2szdk4AWLfjdgNBCXLUanXYcpBBKOSWGwg==}
-    engines: {node: '>=8'}
-
   globals@13.24.0:
     resolution: {integrity: sha512-AhO5QUcj8llrbG09iWhPU2B204J1xnPeL8kQmVorSsy+Sjj1sk8gIyh6cUocGmH4L0UuhAJy+hJMRA4mgA4mFQ==}
     engines: {node: '>=8'}
@@ -8642,10 +8597,6 @@ packages:
 
   humanize-ms@1.2.1:
     resolution: {integrity: sha512-Fl70vYtsAFb/C06PTS9dZBo7ihau+Tu/DNCk/OyHhea07S+aeMWpFFkUaXRa8fI+ScZbEI8dfSxwY7gxZ9SAVQ==}
-
-  hunspell-spellchecker@1.0.2:
-    resolution: {integrity: sha512-4DwmFAvlz+ChsqLDsZT2cwBsYNXh+oWboemxXtafwKIyItq52xfR4e4kr017sLAoPaSYVofSOvPUfmOAhXyYvw==}
-    hasBin: true
 
   husky@9.1.7:
     resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
@@ -12541,10 +12492,6 @@ packages:
     resolution: {integrity: sha512-Ne+eE4r0/iWnpAxD852z3A+N0Bt5RN//NjJwRd2VFHEmrywxf5vsZlh4R6lixl6B+wz/8d+maTSAkN1FIkI3LQ==}
     engines: {node: '>=10'}
 
-  type-fest@0.8.1:
-    resolution: {integrity: sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA==}
-    engines: {node: '>=8'}
-
   type-fest@1.4.0:
     resolution: {integrity: sha512-yGSza74xk0UG8k+pLh5oeoYirvIiWo5t0/o3zHHAO2tRDiZcxWP7fywNlXhqb6/r6sWvwi+RsyQMWhVLe4BVuA==}
     engines: {node: '>=10'}
@@ -13444,14 +13391,6 @@ snapshots:
       semver: 6.3.1
     transitivePeerDependencies:
       - supports-color
-
-  '@babel/eslint-parser@7.13.14(@babel/core@7.11.1)(eslint@7.32.0)':
-    dependencies:
-      '@babel/core': 7.11.1
-      eslint: 7.32.0
-      eslint-scope: 5.1.1
-      eslint-visitor-keys: 1.3.0
-      semver: 6.3.1
 
   '@babel/eslint-parser@7.13.14(@babel/core@7.28.6)(eslint@7.32.0)':
     dependencies:
@@ -15045,13 +14984,6 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20260103.0':
     optional: true
-
-  '@codaco/eslint-plugin-spellcheck@0.0.14(eslint@7.32.0)':
-    dependencies:
-      eslint: 7.32.0
-      globals: 12.4.0
-      hunspell-spellchecker: 1.0.2
-      lodash: 4.17.21
 
   '@codaco/protocol-validation@5.0.2':
     dependencies:
@@ -17912,14 +17844,6 @@ snapshots:
       '@vitest/utils': 4.0.16
       chai: 6.2.1
       tinyrainbow: 3.0.3
-
-  '@vitest/mocker@4.0.16(vite@7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
-    dependencies:
-      '@vitest/spy': 4.0.16
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/mocker@4.0.16(vite@7.2.2(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -21102,10 +21026,6 @@ snapshots:
       min-document: 2.19.2
       process: 0.11.10
 
-  globals@12.4.0:
-    dependencies:
-      type-fest: 0.8.1
-
   globals@13.24.0:
     dependencies:
       type-fest: 0.20.2
@@ -21525,8 +21445,6 @@ snapshots:
   humanize-ms@1.2.1:
     dependencies:
       ms: 2.1.3
-
-  hunspell-spellchecker@1.0.2: {}
 
   husky@9.1.7: {}
 
@@ -26299,8 +26217,6 @@ snapshots:
 
   type-fest@0.20.2: {}
 
-  type-fest@0.8.1: {}
-
   type-fest@1.4.0: {}
 
   typed-array-buffer@1.0.3:
@@ -26628,13 +26544,13 @@ snapshots:
       - rollup
       - supports-color
 
-  vite-tsconfig-paths@6.0.3(typescript@5.9.3)(vite@7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)):
+  vite-tsconfig-paths@6.0.3(typescript@5.9.3)(vite@7.2.2(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.9.3)
     optionalDependencies:
-      vite: 7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+      vite: 7.2.2(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -26649,24 +26565,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
-
-  vite@7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2):
-    dependencies:
-      esbuild: 0.25.10
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
-      postcss: 8.5.6
-      rollup: 4.52.4
-      tinyglobby: 0.2.15
-    optionalDependencies:
-      '@types/node': 24.10.1
-      fsevents: 2.3.3
-      jiti: 1.21.7
-      lightningcss: 1.30.2
-      sass: 1.97.2
-      terser: 5.44.1
-      tsx: 4.21.0
-      yaml: 2.8.2
 
   vite@7.2.2(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
@@ -26721,45 +26619,6 @@ snapshots:
       terser: 5.44.1
       tsx: 4.21.0
       yaml: 2.8.2
-
-  vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@1.21.7)(jsdom@27.4.0(bufferutil@4.0.9))(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2):
-    dependencies:
-      '@vitest/expect': 4.0.16
-      '@vitest/mocker': 4.0.16(vite@7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
-      '@vitest/pretty-format': 4.0.16
-      '@vitest/runner': 4.0.16
-      '@vitest/snapshot': 4.0.16
-      '@vitest/spy': 4.0.16
-      '@vitest/utils': 4.0.16
-      es-module-lexer: 1.7.0
-      expect-type: 1.2.2
-      magic-string: 0.30.21
-      obug: 2.1.1
-      pathe: 2.0.3
-      picomatch: 4.0.3
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 1.0.2
-      tinyglobby: 0.2.15
-      tinyrainbow: 3.0.3
-      vite: 7.2.2(@types/node@24.10.1)(jiti@1.21.7)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.0
-      '@types/node': 24.10.1
-      jsdom: 27.4.0(bufferutil@4.0.9)
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.4.0(bufferutil@4.0.9))(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:

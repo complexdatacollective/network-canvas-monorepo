@@ -1,0 +1,81 @@
+{
+	"root": false,
+	"$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+	"extends": "//",
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!node_modules",
+			"!dist",
+			"!build",
+			"!out",
+			"!public/protocols/**/*Worker.js",
+			"!src/utils/network-exporters",
+			"!src/utils/networkQuery",
+			"!src/utils/protocol",
+			"!integration-tests",
+			"!scripts"
+		]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"a11y": {
+				"noStaticElementInteractions": "off",
+				"useKeyWithClickEvents": "off",
+				"noNoninteractiveElementInteractions": "off",
+				"noSvgWithoutTitle": "off",
+				"useValidAnchor": "warn",
+				"useSemanticElements": "warn"
+			},
+			"correctness": {
+				"noUnusedVariables": {
+					"level": "error",
+					"options": {
+						"ignoreRestSiblings": true
+					}
+				},
+				"useExhaustiveDependencies": "off"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "off",
+				"noShadowRestrictedNames": "warn",
+				"noConsole": "warn",
+				"useIterableCallbackReturn": "off"
+			},
+			"style": {
+				"noParameterAssign": "off"
+			},
+			"performance": {
+				"noAccumulatingSpread": "warn"
+			},
+			"complexity": {
+				"noStaticOnlyClass": "warn"
+			}
+		},
+		"domains": {
+			"react": "recommended",
+			"test": "recommended"
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["src/utils/protocol/runCustom.js"],
+			"linter": {
+				"enabled": false
+			}
+		},
+		{
+			"includes": ["**/*.worker.js"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noGlobalAssign": "off"
+					}
+				}
+			}
+		}
+	]
+}

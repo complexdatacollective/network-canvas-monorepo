@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 /* unused proof of concept for loading custom code */
 
 import createReactClass from "create-react-class";
