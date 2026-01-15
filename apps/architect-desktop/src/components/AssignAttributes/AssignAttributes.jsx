@@ -1,6 +1,5 @@
 import Button from "@codaco/ui/lib/components/Button";
 import PropTypes from "prop-types";
-import React from "react";
 import { fieldArrayFieldsPropTypes } from "redux-form";
 import Attribute from "./Attribute";
 import withAssignAttributesHandlers from "./withAssignAttributesHandlers";

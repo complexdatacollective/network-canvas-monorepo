@@ -20,9 +20,7 @@ const persistConfig = {
 
 const getReducer = () => persistReducer(persistConfig, rootReducer);
 
-/* eslint-disable no-underscore-dangle */
 const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
-/* eslint-enable */
 
 const getMiddleware = () => {
 	// In test environment (set by Vitest), skip IPC middleware

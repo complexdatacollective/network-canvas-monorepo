@@ -181,12 +181,12 @@ export default function reducer(state = initialState, action = {}) {
 			return {
 				...state,
 				filePath: action.payload.savePath,
-				lastSaved: new Date().getTime(),
+				lastSaved: Date.now(),
 			};
 		case PROTOCOL_CHANGED:
 			return {
 				...state,
-				lastChanged: new Date().getTime(),
+				lastChanged: Date.now(),
 				protocolIsValid: action.protocolIsValid,
 			};
 		case RESET_SESSION:

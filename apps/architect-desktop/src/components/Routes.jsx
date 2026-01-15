@@ -4,7 +4,6 @@ import Protocol from "@components/Protocol";
 import Screens from "@components/Screens";
 import { getActiveProtocol } from "@selectors/session";
 import { getScreensStack } from "@selectors/ui";
-import React from "react";
 import { useSelector } from "react-redux";
 
 const getRoute = ({ activeProtocol }) => {

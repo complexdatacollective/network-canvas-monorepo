@@ -1,8 +1,6 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { fieldPropTypes } from "redux-form";
 import uuid from "uuid";
 

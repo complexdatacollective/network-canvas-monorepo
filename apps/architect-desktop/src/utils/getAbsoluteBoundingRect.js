@@ -1,4 +1,3 @@
-/*eslint-disable*/
 /**
 https://gist.github.com/rgrove/5463265
 

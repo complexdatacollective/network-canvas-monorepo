@@ -1,6 +1,5 @@
 import { Icon } from "@codaco/ui/lib/components";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose, withHandlers } from "recompose";
 import RuleText, { Join } from "./PreviewText";
 import withDisplayOptions from "./withDisplayOptions";
@@ -29,7 +28,6 @@ const PreviewRule = ({ type, options, join, onClick, handleDelete }) => (
 
 PreviewRule.propTypes = {
 	type: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.object.isRequired,
 	join: PropTypes.string,
 	onClick: PropTypes.func.isRequired,

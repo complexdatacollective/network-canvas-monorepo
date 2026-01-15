@@ -1,7 +1,6 @@
 import { Node } from "@codaco/ui";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const PreviewNode = ({ label, color, onClick, selected }) => (
 	<div

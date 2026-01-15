@@ -1,6 +1,6 @@
 import ProtocolSummary from "@app/lib/ProtocolSummary/ProtocolSummary";
 import { electronAPI } from "@utils/electronBridge";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ProtocolSummaryErrorBoundary from "../../Errors/ProtocolSummaryErrorBoundary";
 
 const ProtocolSummaryView = () => {

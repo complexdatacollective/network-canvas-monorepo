@@ -1,5 +1,4 @@
 import { Icon, Node } from "@codaco/ui/lib/components";
-import React from "react";
 
 const EntityIcon = ({ entity, color }) => {
 	switch (entity) {

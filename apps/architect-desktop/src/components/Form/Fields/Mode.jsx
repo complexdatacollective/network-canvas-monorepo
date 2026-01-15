@@ -1,7 +1,7 @@
 import { asOptionObject, getValue } from "@codaco/ui/lib/components/Fields/utils/options";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { PureComponent } from "react";
+import { PureComponent } from "react";
 
 class Mode extends PureComponent {
 	handleClickMode = (index) => {
@@ -33,7 +33,6 @@ class Mode extends PureComponent {
 				className={optionClasses}
 				onClick={disabled ? null : () => this.handleClickMode(index)}
 				key={optionValue}
-				// eslint-disable-next-line react/jsx-props-no-spreading
 				{...optionRest}
 			>
 				{optionLabel}
@@ -64,13 +63,10 @@ class Mode extends PureComponent {
 }
 
 Mode.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
 	label: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object,
 	className: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	input: PropTypes.object.isRequired,
 };
 

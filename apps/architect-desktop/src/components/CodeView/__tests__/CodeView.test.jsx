@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { mount } from "enzyme";
-import React from "react";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,7 +48,7 @@ describe("<CodeView />", () => {
 
 	afterEach(() => {
 		// Clean up portal root
-		if (portalRoot && portalRoot.parentNode) {
+		if (portalRoot?.parentNode) {
 			portalRoot.parentNode.removeChild(portalRoot);
 		}
 	});

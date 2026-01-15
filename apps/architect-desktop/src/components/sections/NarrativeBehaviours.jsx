@@ -1,6 +1,5 @@
 import * as Fields from "@codaco/ui/lib/components/Fields";
 import { Section } from "@components/EditorLayout";
-import React from "react";
 import { Field, FormSection } from "redux-form";
 import IssueAnchor from "../IssueAnchor";
 

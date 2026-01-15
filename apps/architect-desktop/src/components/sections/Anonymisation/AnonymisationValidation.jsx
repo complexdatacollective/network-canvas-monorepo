@@ -1,7 +1,6 @@
 import { Row, Section } from "@components/EditorLayout";
 import Validations from "@components/Validations";
 import PropTypes from "prop-types";
-import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 

@@ -117,7 +117,6 @@ import {
 import {
 	checkSchemaVersion,
 	createNetcanvas,
-	importNetcanvas,
 	migrateNetcanvas,
 	saveNetcanvas,
 	schemaVersionStates,
@@ -142,7 +141,7 @@ describe("netcanvasFile/netcanvasFile", () => {
 			count += 1;
 			return Promise.resolve(`/dev/null/working/path/${count}`);
 		});
-		deployNetcanvas.mockImplementation((sourcePath, savePath) =>
+		deployNetcanvas.mockImplementation((_sourcePath, savePath) =>
 			Promise.resolve({
 				savePath,
 				backupPath: `${savePath}.backup`,
@@ -329,7 +328,7 @@ describe("netcanvasFile/netcanvasFile", () => {
 
 		describe("when path does not already exist", () => {
 			beforeEach(() => {
-				deployNetcanvas.mockImplementation((sourcePath, savePath) =>
+				deployNetcanvas.mockImplementation((_sourcePath, savePath) =>
 					Promise.resolve({
 						savePath,
 						backupPath: null,

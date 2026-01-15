@@ -1,6 +1,5 @@
 import { Section } from "@components/EditorLayout";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import withCreateVariableHandler from "../../enhancers/withCreateVariableHandler";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
@@ -44,7 +43,6 @@ QuickAdd.propTypes = {
 	entity: PropTypes.string.isRequired,
 	quickAdd: PropTypes.string,
 	handleCreateVariable: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
 	type: PropTypes.string,
 };

@@ -1,7 +1,7 @@
 import { getValidations } from "@app/utils/validations";
 import { isEqual } from "lodash";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 import { compose, defaultProps } from "recompose";
 import IssueAnchor from "./IssueAnchor";
 
@@ -96,7 +96,6 @@ class DetachedField extends Component {
 		return (
 			<IssueAnchor fieldName={name} description={issueDescription || `Field: ${label}` || `Field: ${name}`}>
 				<FieldComponent
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...props}
 					input={input}
 					meta={{
@@ -113,14 +112,10 @@ DetachedField.propTypes = {
 	issueDescription: PropTypes.string,
 	label: PropTypes.string,
 	onChange: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	value: PropTypes.any,
 	name: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	validation: PropTypes.object.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	component: PropTypes.any.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object,
 };
 

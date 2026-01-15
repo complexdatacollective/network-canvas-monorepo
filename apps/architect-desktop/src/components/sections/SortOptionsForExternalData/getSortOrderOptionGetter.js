@@ -8,7 +8,7 @@ const NON_SORTABLE_TYPES = ["layout"];
  * This optionGetter is for sortOrder, which defines properties for `property` and `direction`
  * columns.
  */
-const getSortOrderOptionGetter = (externalDataPropertyOptions) => (property, rowValues, allValues) => {
+const getSortOrderOptionGetter = (externalDataPropertyOptions) => (property, _rowValues, allValues) => {
 	switch (property) {
 		case "property": {
 			const used = map(allValues, "property");

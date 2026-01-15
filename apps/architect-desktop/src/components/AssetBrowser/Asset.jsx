@@ -4,7 +4,7 @@ import DownloadIcon from "@material-ui/icons/GetApp";
 import PreviewIcon from "@material-ui/icons/Visibility";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const FallBackAssetComponent = () => <div>No preview component available for this asset type.</div>;
 

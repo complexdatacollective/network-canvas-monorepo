@@ -4,7 +4,7 @@ import OrderedList from "@components/OrderedList";
 import { actionCreators as dialogActions } from "@modules/dialogs";
 import { has } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect, useDispatch } from "react-redux";
 import { bindActionCreators } from "redux";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
@@ -44,7 +44,6 @@ const NodePanels = ({ form, createNewPanel, panels, ...rest }) => {
 
 	return (
 		<Section
-			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...rest}
 			title="Side Panels"
 			toggleable
@@ -72,7 +71,6 @@ const NodePanels = ({ form, createNewPanel, panels, ...rest }) => {
 NodePanels.propTypes = {
 	createNewPanel: PropTypes.func.isRequired,
 	disabled: PropTypes.bool,
-	// eslint-disable-next-line react/forbid-prop-types
 	panels: PropTypes.array,
 	form: PropTypes.string.isRequired,
 };

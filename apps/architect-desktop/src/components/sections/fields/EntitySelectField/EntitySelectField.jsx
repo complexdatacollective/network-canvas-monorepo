@@ -4,7 +4,7 @@ import { actionCreators as dialogActions } from "@modules/dialogs";
 import { actionCreators as screenActions } from "@modules/ui/screens";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getEdgeTypes, getNodeTypes } from "../../../../selectors/codebook";
 import { asOptions } from "../../../../selectors/utils";

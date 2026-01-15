@@ -4,7 +4,6 @@ import { Button } from "@codaco/ui";
 import Version from "@components/Version";
 import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
-import React from "react";
 import { useDispatch } from "react-redux";
 import { actionCreators as userActions } from "../../ducks/modules/userActions/userActions";
 import { openExternalLink } from "../ExternalLink";

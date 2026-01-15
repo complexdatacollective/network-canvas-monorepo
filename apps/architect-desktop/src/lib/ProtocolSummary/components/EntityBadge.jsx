@@ -2,7 +2,7 @@ import EntityIcon from "@components/Codebook/EntityIcon";
 import cx from "classnames";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import DualLink from "./DualLink";
 import SummaryContext from "./SummaryContext";
 

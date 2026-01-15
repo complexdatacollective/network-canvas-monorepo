@@ -1,7 +1,6 @@
 import Node from "@codaco/ui/lib/components/Node";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { getNodeTypes } from "../selectors/codebook";
 
@@ -17,7 +16,6 @@ const PreviewNode = ({ nodeTypes, type }) => {
 };
 
 PreviewNode.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	nodeTypes: PropTypes.object.isRequired,
 	type: PropTypes.string,
 };

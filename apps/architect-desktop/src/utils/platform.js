@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { electronAPI } from "@utils/electronBridge";
 
 export const isMacOS = () => electronAPI.platform === "darwin";

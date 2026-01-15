@@ -1,8 +1,5 @@
-/* eslint-disable react/prop-types */
-/* eslint-disable react/jsx-props-no-spreading */
-
 import Tippy from "@tippyjs/react";
-import React, { useRef } from "react";
+import { useRef } from "react";
 
 const withTooltip =
 	(WrappedComponent) =>

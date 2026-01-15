@@ -4,16 +4,12 @@ import { getActiveProtocol } from "@selectors/session";
 import { electronAPI } from "@utils/electronBridge";
 
 const initFileOpener = () => {
-	electronAPI.ipc.on("OPEN_FILE", (event, protocolPath) => {
-		// eslint-disable-next-line no-console
-		console.log(`Open file "${protocolPath}"`);
+	electronAPI.ipc.on("OPEN_FILE", (_event, protocolPath) => {
 		const state = store.getState();
 		const filePath = getActiveProtocol(state);
 
 		// If the protocol is already open, no op
 		if (filePath === protocolPath) {
-			// eslint-disable-next-line no-console
-			console.log("Already open, do nothing.");
 			return;
 		}
 

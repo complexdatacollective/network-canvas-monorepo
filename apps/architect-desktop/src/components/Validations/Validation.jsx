@@ -2,7 +2,6 @@ import { Icon } from "@codaco/ui";
 import Number from "@codaco/ui/lib/components/Fields/Number";
 import { map } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import NativeSelect from "../Form/Fields/NativeSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 
@@ -64,7 +63,6 @@ const Validation = ({ onDelete, onUpdate, options, itemKey, itemValue, existingV
 Validation.propTypes = {
 	onDelete: PropTypes.func.isRequired,
 	onUpdate: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
 	itemKey: PropTypes.string,
 	itemValue: PropTypes.oneOfType([PropTypes.bool, PropTypes.number, PropTypes.string]),

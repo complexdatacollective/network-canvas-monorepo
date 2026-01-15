@@ -1,6 +1,5 @@
 import stopPropagationFromHandler from "@app/utils/stopPropagationFromHandler";
 import PropTypes from "prop-types";
-import React from "react";
 import { reduxForm } from "redux-form";
 
 const formOptions = {

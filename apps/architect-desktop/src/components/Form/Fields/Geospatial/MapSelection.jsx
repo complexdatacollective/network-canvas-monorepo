@@ -1,6 +1,6 @@
 import Button from "@codaco/ui/lib/components/Button";
 import PropTypes from "prop-types";
-import React, { useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 
 import MapView from "./MapView";

@@ -1,5 +1,3 @@
-/* eslint-disable react/jsx-props-no-spreading */
-import React from "react";
 import { compose } from "recompose";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";

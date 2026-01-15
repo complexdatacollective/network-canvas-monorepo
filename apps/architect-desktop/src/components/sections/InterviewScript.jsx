@@ -1,7 +1,7 @@
 import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
 import { Section } from "@components/EditorLayout";
 import { actionCreators as dialogActions } from "@modules/dialogs";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import IssueAnchor from "../IssueAnchor";

@@ -1,7 +1,6 @@
 import Radio from "@codaco/ui/lib/components/Fields/Radio";
 import NetworkThumbnail from "@components/Thumbnail/Network";
 import PropTypes from "prop-types";
-import React from "react";
 import { withState } from "recompose";
 import { fieldPropTypes } from "redux-form";
 import File from "./File";
@@ -56,7 +55,6 @@ const DataSource = (props) => {
 							showBrowser={selectNetworkAsset}
 							onCloseBrowser={handleCloseBrowser}
 							selected={input.value}
-							// eslint-disable-next-line react/jsx-props-no-spreading
 							{...props}
 						>
 							{(id) => <NetworkThumbnail id={id} />}
@@ -66,12 +64,7 @@ const DataSource = (props) => {
 			</div>
 		</div>
 	) : (
-		<File
-			type="network"
-			selected={input.value}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-		>
+		<File type="network" selected={input.value} {...props}>
 			{(id) => <NetworkThumbnail id={id} />}
 		</File>
 	);

@@ -2,7 +2,6 @@ import protocolCover from "@app/images/NC-File.svg";
 import { actionCreators as userActions } from "@modules/userActions";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";
 
@@ -27,7 +26,6 @@ const ProtocolStack = ({ openNetcanvas, protocol: { filePath } }) => (
 );
 
 ProtocolStack.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	protocol: PropTypes.object.isRequired,
 	openNetcanvas: PropTypes.func.isRequired,
 };

@@ -1,6 +1,5 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const Row = ({ disabled, children }) => {
 	const rowClasses = cx("stage-editor-row", { "stage-editor-row--disabled": disabled });

@@ -4,7 +4,7 @@ import { ValidatedField } from "@components/Form";
 import { getCodebook } from "@selectors/protocol";
 import { capitalize, toPairs } from "lodash";
 import PropTypes from "prop-types";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { connect, useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import ColorPicker from "../Form/Fields/ColorPicker";
@@ -80,7 +80,6 @@ TypeEditor.propTypes = {
 	type: PropTypes.string,
 	entity: PropTypes.string.isRequired,
 	form: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	existingTypes: PropTypes.array.isRequired,
 };
 

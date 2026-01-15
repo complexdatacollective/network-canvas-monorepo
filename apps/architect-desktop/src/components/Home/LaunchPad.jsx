@@ -5,7 +5,6 @@ import { ProtocolCard } from "@codaco/ui/lib/components/Cards";
 import { actionCreators as userActions } from "@modules/userActions";
 import { first, get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import Group from "./Group";
 import Section from "./Section";
@@ -79,9 +78,7 @@ const LaunchPad = ({ openNetcanvas, createNetcanvas, lastEditedProtocol, otherRe
 LaunchPad.propTypes = {
 	openNetcanvas: PropTypes.func.isRequired,
 	createNetcanvas: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	lastEditedProtocol: PropTypes.object,
-	// eslint-disable-next-line react/forbid-prop-types
 	otherRecentProtocols: PropTypes.array,
 };
 

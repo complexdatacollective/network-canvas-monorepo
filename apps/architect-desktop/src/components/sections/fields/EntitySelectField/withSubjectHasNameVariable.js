@@ -5,8 +5,8 @@ import { formValueSelector } from "redux-form";
 
 const withSubjectNameVariablesState = connect((state) => {
 	const subject = formValueSelector("edit-stage")(state, "subject");
-	const entity = subject && subject.entity;
-	const type = subject && subject.type;
+	const entity = subject?.entity;
+	const type = subject?.type;
 	const variablesCalledName = toPairs(getVariablesForSubject(state, { entity, type })).some(
 		([, { name }]) => name === "name",
 	);

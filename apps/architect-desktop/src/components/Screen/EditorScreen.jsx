@@ -3,7 +3,7 @@ import { Button } from "@codaco/ui";
 import { actionCreators as dialogActions } from "@modules/dialogs";
 import { hasChanges as timelineHasChanges } from "@selectors/timeline";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
 import { isDirty, isSubmitting, startSubmit, submit } from "redux-form";
@@ -69,10 +69,7 @@ class EditorScreen extends Component {
 				layoutId={layoutId}
 				beforeCloseHandler={this.handleCancel}
 			>
-				<EditorComponent
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...rest}
-				/>
+				<EditorComponent {...rest} />
 			</Screen>
 		);
 	}
@@ -80,14 +77,14 @@ class EditorScreen extends Component {
 
 EditorScreen.propTypes = {
 	header: PropTypes.node,
-	editor: PropTypes.any.isRequired, // eslint-disable-line react/forbid-prop-types
+	editor: PropTypes.any.isRequired,
 	hasUnsavedChanges: PropTypes.bool.isRequired,
 	jump: PropTypes.func.isRequired,
 	layoutId: PropTypes.string,
-	locus: PropTypes.any.isRequired, // eslint-disable-line react/forbid-prop-types
+	locus: PropTypes.any.isRequired,
 	onComplete: PropTypes.func.isRequired,
 	openDialog: PropTypes.func.isRequired,
-	secondaryButtons: PropTypes.array, // eslint-disable-line react/forbid-prop-types
+	secondaryButtons: PropTypes.array,
 	submitForm: PropTypes.func.isRequired,
 	submitting: PropTypes.bool.isRequired,
 };

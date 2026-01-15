@@ -1,7 +1,7 @@
 import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import anime from "animejs";
 import PropTypes from "prop-types";
-import React, { PureComponent } from "react";
+import { PureComponent } from "react";
 import ReactDOM from "react-dom";
 import { compose, getContext } from "recompose";
 
@@ -16,7 +16,7 @@ const Zoom = (WrappedComponent) => {
 		componentDidMount() {
 			const [root] = document.getElementsByTagName("body");
 			this.root = root;
-			this.node = ReactDOM.findDOMNode(this); // eslint-disable-line react/no-find-dom-node
+			this.node = ReactDOM.findDOMNode(this);
 			this.node.addEventListener("click", this.onClick);
 		}
 
@@ -88,7 +88,6 @@ const Zoom = (WrappedComponent) => {
 		};
 
 		render() {
-			// eslint-disable-next-line react/jsx-props-no-spreading
 			return <WrappedComponent {...this.props} />;
 		}
 	}

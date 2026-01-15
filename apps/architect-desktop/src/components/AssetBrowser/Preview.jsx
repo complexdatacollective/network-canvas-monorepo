@@ -7,7 +7,7 @@ import ContentCopyIcon from "@material-ui/icons/FileCopy";
 import DownloadIcon from "@material-ui/icons/GetApp";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { compose } from "redux";
 
 const getRenderer = (meta) => {
@@ -15,10 +15,8 @@ const getRenderer = (meta) => {
 		case "image":
 			return Assets.BackgroundImage;
 		case "audio":
-			// eslint-disable-next-line
 			return ({ id }) => <Assets.Audio id={id} controls />;
 		case "video":
-			// eslint-disable-next-line
 			return ({ id }) => <Assets.Video id={id} controls />;
 		case "network":
 			return Assets.Network;
@@ -81,7 +79,7 @@ const Preview = ({ id, meta, assetPath, onDownload, onClose }) => {
 
 Preview.propTypes = {
 	id: PropTypes.string.isRequired,
-	meta: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+	meta: PropTypes.object.isRequired,
 	assetPath: PropTypes.string.isRequired,
 	onDownload: PropTypes.func,
 	onClose: PropTypes.func,

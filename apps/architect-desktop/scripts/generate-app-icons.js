@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const icongen = require("icon-gen");
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const svg2png = require("svg2png");
 
 const jobList = [

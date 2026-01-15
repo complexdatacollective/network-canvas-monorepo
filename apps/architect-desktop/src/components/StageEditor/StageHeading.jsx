@@ -3,7 +3,6 @@ import * as Fields from "@codaco/ui/lib/components/Fields";
 import { getStageIndex } from "@selectors/protocol";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect, useSelector } from "react-redux";
 import { getFormValues } from "redux-form";
 import ExternalLink from "../ExternalLink";

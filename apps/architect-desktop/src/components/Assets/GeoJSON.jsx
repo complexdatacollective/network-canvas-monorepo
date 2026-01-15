@@ -1,7 +1,7 @@
 import { electronAPI } from "@utils/electronBridge";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Table from "./Table";
 import withAssetPath from "./withAssetPath";
 

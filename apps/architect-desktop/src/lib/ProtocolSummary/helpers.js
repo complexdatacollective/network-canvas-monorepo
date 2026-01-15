@@ -1,4 +1,3 @@
-/* eslint-disable import/prefer-default-export */
 import { flatMap, get, reduce } from "lodash";
 import { paths, utils } from "../../selectors/indexes";
 
@@ -27,7 +26,7 @@ const buildVariableEntry =
 			name: variableConfiguration.name,
 			type: variableConfiguration.type,
 			component: variableConfiguration.component,
-			prompt: field && field.prompt,
+			prompt: field?.prompt,
 			subject: { entity, type: entityType !== "ego" && entityType },
 			stages,
 			usage,

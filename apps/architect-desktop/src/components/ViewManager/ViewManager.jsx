@@ -1,4 +1,3 @@
-import React from "react";
 import { Route, HashRouter as Router, Switch } from "react-router-dom";
 import App from "./views/App";
 import ProtocolSummary from "./views/ProtocolSummary";

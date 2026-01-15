@@ -9,7 +9,7 @@ const withRuleChangeHandlers = withHandlers({
 	handleRuleChange: ({ onChange, rule, variableType }) => {
 		const getOptionsWithDefaults = makeGetOptionsWithDefaults(keys(rule.options), variableType);
 
-		return (event, value, oldValue, name) => {
+		return (_event, value, _oldValue, name) => {
 			const resetFromIndex = RULE_ORDER.indexOf(name) + 1;
 			const keep = RULE_ORDER.slice(0, resetFromIndex);
 

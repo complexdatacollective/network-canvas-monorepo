@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { mount, shallow } from "enzyme";
-import React from "react";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";

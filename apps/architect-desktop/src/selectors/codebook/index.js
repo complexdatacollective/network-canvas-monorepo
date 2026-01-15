@@ -58,7 +58,7 @@ const getAllVariablesByUUID = (codebook) => {
 		});
 	}
 
-	if (ego && ego.variables) {
+	if (ego?.variables) {
 		addVariables(ego.variables);
 	}
 	return flattenedVariables;

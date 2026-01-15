@@ -7,7 +7,7 @@ import { actionCreators as sessionActions } from "@modules/session";
 import { selectors as statusSelectors } from "@modules/ui/status";
 import { actionLocks as protocolsLocks, actionCreators as userActions } from "@modules/userActions";
 import { getHasUnsavedChanges, getIsProtocolValid } from "@selectors/session";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 const unsavedChangesDialog = UnsavedChanges({

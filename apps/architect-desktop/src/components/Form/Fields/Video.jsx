@@ -1,14 +1,9 @@
-import React from "react";
 import { fieldPropTypes } from "redux-form";
 import { Video } from "../../Assets";
 import File from "./File";
 
 const VideoInput = (props) => (
-	<File
-		type="video"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
+	<File type="video" {...props}>
 		{(id) => (
 			<div className="form-fields-video">
 				<Video className="form-fields-video__still" id={id} controls />

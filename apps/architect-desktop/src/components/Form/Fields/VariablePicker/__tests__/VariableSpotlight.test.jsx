@@ -2,7 +2,6 @@
 
 import { mount } from "enzyme";
 import { noop } from "lodash";
-import React from "react";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
 import VariableSpotlight from "../VariableSpotlight";

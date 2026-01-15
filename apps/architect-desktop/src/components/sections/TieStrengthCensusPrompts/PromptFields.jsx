@@ -6,7 +6,6 @@ import NewVariableWindow, { useNewVariableWindowState } from "@components/NewVar
 import Options from "@components/Options";
 import Tip from "@components/Tip";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "redux";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import withCreateEdgeHandlers from "./withCreateEdgeHandler";
@@ -40,7 +39,7 @@ const PromptFields = ({
 	const handleNewVariable = (name) =>
 		openNewVariableWindow({ initialValues: { name, type: "ordinal" } }, { field: "edgeVariable" });
 
-	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length;
+	const totalOptionsLength = optionsForVariableDraft?.length;
 	const showVariableOptionsTip = totalOptionsLength > 5;
 
 	return (
@@ -170,10 +169,7 @@ const PromptFields = ({
 					/>
 				</Section>
 			</Section>
-			<NewVariableWindow
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...newVariableWindowProps}
-			/>
+			<NewVariableWindow {...newVariableWindowProps} />
 		</>
 	);
 };

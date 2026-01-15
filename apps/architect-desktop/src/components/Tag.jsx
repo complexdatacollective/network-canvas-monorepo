@@ -1,6 +1,5 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const Tag = ({ id, children, color, onClick, selected, light, disabled }) => {
 	const componentClasses = cx("tag", {

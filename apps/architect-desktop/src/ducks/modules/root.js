@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { combineReducers } from "redux";
 import { reducer as formReducer } from "redux-form";
 import createTimeline from "../middleware/timeline";

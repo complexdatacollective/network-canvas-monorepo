@@ -3,7 +3,6 @@ import { getEdgeIndex, getNodeIndex, utils } from "@selectors/indexes";
 import { getNetworkAssets } from "@selectors/protocol";
 import { isEmpty, map, reduce } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import CodebookCategory from "./CodebookCategory";
 import EgoType from "./EgoType";
@@ -28,11 +27,7 @@ const Codebook = ({ edges, hasEdges, hasEgoVariables, hasNetworkAssets, hasNodes
 		{hasNodes && (
 			<CodebookCategory title="Node Types">
 				{nodes.map((node) => (
-					<EntityType
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...node}
-						key={node.type}
-					/>
+					<EntityType {...node} key={node.type} />
 				))}
 			</CodebookCategory>
 		)}
@@ -40,11 +35,7 @@ const Codebook = ({ edges, hasEdges, hasEgoVariables, hasNetworkAssets, hasNodes
 		{hasEdges && (
 			<CodebookCategory title="Edge Types">
 				{edges.map((edge) => (
-					<EntityType
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...edge}
-						key={edge.type}
-					/>
+					<EntityType {...edge} key={edge.type} />
 				))}
 			</CodebookCategory>
 		)}
@@ -60,15 +51,12 @@ const Codebook = ({ edges, hasEdges, hasEgoVariables, hasNetworkAssets, hasNodes
 );
 
 Codebook.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	edges: PropTypes.array.isRequired,
 	hasEdges: PropTypes.bool.isRequired,
 	hasEgoVariables: PropTypes.bool.isRequired,
 	hasNetworkAssets: PropTypes.bool.isRequired,
 	hasNodes: PropTypes.bool.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	networkAssets: PropTypes.array.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	nodes: PropTypes.array.isRequired,
 };
 

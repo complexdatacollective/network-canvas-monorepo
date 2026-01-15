@@ -3,7 +3,6 @@ import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
 import { Row, Section } from "@components/EditorLayout";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import Audio from "../../Form/Fields/Audio";
 import Image from "../../Form/Fields/Image";
 import Video from "../../Form/Fields/Video";

@@ -39,7 +39,7 @@ describe("getAssetData", () => {
 
 		const results = await Promise.all([getAssetData(source, type), getAssetData(source, type)]);
 
-		const isSameObject = results.every((result, index, all) => result === all[0]);
+		const isSameObject = results.every((result, _index, all) => result === all[0]);
 
 		expect(isSameObject).toBe(true);
 	});

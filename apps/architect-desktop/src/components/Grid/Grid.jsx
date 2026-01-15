@@ -41,7 +41,7 @@ class Grid extends Component {
 		fields.swap(oldIndex, newIndex);
 	};
 
-	handleResizeStop = (layout, from, to) => {
+	handleResizeStop = (_layout, from, to) => {
 		const { fields, items, capacity } = this.props;
 		const index = items.findIndex(({ id }) => id === from.i);
 		const size = convertSize(trimSize(from.h, to.h, items, capacity));
@@ -110,7 +110,6 @@ class Grid extends Component {
 								previewComponent={previewComponent}
 								onEditItem={onEditItem}
 								editField={editField}
-								// eslint-disable-next-line react/jsx-props-no-spreading
 								{...item}
 							/>
 						</div>
@@ -128,15 +127,11 @@ class Grid extends Component {
 }
 
 Grid.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	fields: PropTypes.object.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	items: PropTypes.array.isRequired,
 	capacity: PropTypes.number.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	previewComponent: PropTypes.any.isRequired,
 	onEditItem: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object.isRequired,
 	editField: PropTypes.string,
 };

@@ -1,16 +1,11 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const Layout = ({ children, className, ...rest }) => {
 	const containerClasses = cx(className, "stage-editor");
 
 	return (
-		<div
-			className={containerClasses}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		>
+		<div className={containerClasses} {...rest}>
 			{children}
 		</div>
 	);

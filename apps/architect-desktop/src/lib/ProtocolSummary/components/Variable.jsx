@@ -1,14 +1,15 @@
 import { SimpleVariablePill } from "@components/Form/Fields/VariablePicker/VariablePill";
 import PropTypes from "prop-types";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import DualLink from "./DualLink";
 import { getVariableMeta, getVariableName } from "./helpers";
 import SummaryContext from "./SummaryContext";
 
 const Variable = ({ id }) => {
+	const { index } = useContext(SummaryContext);
+
 	if (!id) return null;
 
-	const { index } = useContext(SummaryContext);
 	const meta = getVariableMeta(index, id);
 
 	return (

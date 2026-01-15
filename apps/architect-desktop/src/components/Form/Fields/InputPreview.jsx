@@ -1,6 +1,5 @@
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 
 import inputImages from "../../../images/inputs";
 

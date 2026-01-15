@@ -1,5 +1,5 @@
 import { groupBy, isEmpty, map, toPairs } from "lodash";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import Asset from "./Asset";
 import SummaryContext from "./SummaryContext";
 

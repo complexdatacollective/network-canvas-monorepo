@@ -1,4 +1,3 @@
-import React from "react";
 import { compose } from "recompose";
 import EditableList from "../../EditableList";
 import withDisabledAssetRequired from "../../enhancers/withDisabledAssetRequired";
@@ -20,7 +19,6 @@ const NameGeneratorRosterPrompts = (props) => (
 				handles on the left hand side.
 			</p>
 		}
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	/>
 );

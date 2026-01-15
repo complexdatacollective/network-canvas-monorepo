@@ -2,7 +2,6 @@ import Button from "@codaco/ui/lib/components/Button";
 import Icon from "@codaco/ui/lib/components/Icon";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 import { withState } from "recompose";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
 
@@ -84,9 +83,7 @@ FileInput.propTypes = {
 	label: PropTypes.string,
 	className: PropTypes.string,
 	selected: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	input: PropTypes.object.isRequired,
 	value: PropTypes.string,
 };

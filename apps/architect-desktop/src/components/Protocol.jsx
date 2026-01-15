@@ -8,7 +8,7 @@ import { getHasUnsavedChanges } from "@selectors/session";
 import cx from "classnames";
 import { motion, useElementScroll } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { connect } from "react-redux";
 
 const Protocol = ({ isLoading, hasProtocol }) => {

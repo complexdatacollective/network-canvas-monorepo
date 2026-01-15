@@ -67,8 +67,7 @@
 			"!**/out",
 			"!**/coverage",
 			"!**/.turbo",
-			"!**/public/**/*.*",
-			"!apps/architect-desktop"
+			"!**/public/**/*.*"
 		]
 	},
 	"javascript": {

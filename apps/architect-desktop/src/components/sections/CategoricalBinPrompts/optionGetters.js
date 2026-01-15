@@ -12,7 +12,7 @@ const getOptionProperties = (option) => ({
  * This optionGetter is for sortOrder, which defines properties for `property` and `direction`
  * columns.
  */
-const getSortOrderOptionGetter = (variableOptions) => (property, rowValues, allValues) => {
+const getSortOrderOptionGetter = (variableOptions) => (property, _rowValues, allValues) => {
 	switch (property) {
 		case "property": {
 			const used = map(allValues, "property");

@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { map, pickBy } from "lodash";
 
 const extraProperties = new Set(["type", "color"]);

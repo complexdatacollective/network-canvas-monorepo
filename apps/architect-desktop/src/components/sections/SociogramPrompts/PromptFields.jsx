@@ -1,7 +1,4 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import PromptText from "@components/sections/PromptText";
-import React from "react";
 import { compose } from "recompose";
 import DisplayEdgesSection from "./PromptFieldsEdges";
 import FieldsLayout from "./PromptFieldsLayout";

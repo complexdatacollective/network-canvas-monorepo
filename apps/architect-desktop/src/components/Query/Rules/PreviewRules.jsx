@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import PreviewRule from "./PreviewRule";
 
 const PreviewRules = ({ join, rules, codebook, onClickRule, onDeleteRule }) => {
@@ -13,7 +12,6 @@ const PreviewRules = ({ join, rules, codebook, onClickRule, onDeleteRule }) => {
 					{rules.map((rule, index) => (
 						<div className="rules-preview-rules__rule" key={rule.id}>
 							<PreviewRule
-								// eslint-disable-next-line react/jsx-props-no-spreading
 								{...rule}
 								join={getJoin(index)}
 								codebook={codebook}
@@ -30,9 +28,7 @@ const PreviewRules = ({ join, rules, codebook, onClickRule, onDeleteRule }) => {
 
 PreviewRules.propTypes = {
 	join: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	rules: PropTypes.array.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	codebook: PropTypes.object.isRequired,
 	onClickRule: PropTypes.func.isRequired,
 	onDeleteRule: PropTypes.func.isRequired,

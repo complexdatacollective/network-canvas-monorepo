@@ -1,4 +1,3 @@
-/* eslint-disable import/prefer-default-export */
 import { omit } from "lodash";
 import { VARIABLE_TYPES } from "../../../config/variables";
 

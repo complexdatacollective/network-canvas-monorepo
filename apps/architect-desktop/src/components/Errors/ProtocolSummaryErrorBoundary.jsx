@@ -1,7 +1,7 @@
 import Button from "@codaco/ui/lib/components/Button";
 import { electronAPI } from "@utils/electronBridge";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 
 const closeWindow = () => electronAPI.window.hide();
 
@@ -13,7 +13,6 @@ class ProtocolSummaryErrorBoundary extends Component {
 
 	componentDidCatch(error) {
 		this.setState({ error });
-		console.log(error); // eslint-disable-line no-console
 	}
 
 	render() {

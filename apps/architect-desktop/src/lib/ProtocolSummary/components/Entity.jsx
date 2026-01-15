@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import EntityBadge from "./EntityBadge";
 import Variables from "./Variables";
 
@@ -28,7 +27,6 @@ const Entity = ({ type, entity, variables }) => (
 Entity.propTypes = {
 	type: PropTypes.string,
 	entity: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	variables: PropTypes.object,
 };
 

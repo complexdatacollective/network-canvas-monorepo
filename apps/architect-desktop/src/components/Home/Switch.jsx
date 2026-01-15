@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useRef } from "react";
+import { useRef } from "react";
 import uuid from "uuid";
 
 const Switch = ({ label, on, disabled, className, onChange }) => {

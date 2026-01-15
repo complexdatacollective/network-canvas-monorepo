@@ -3,7 +3,6 @@ import Codebook from "@components/Codebook/Codebook";
 import { Layout } from "@components/EditorLayout";
 import Screen from "@components/Screen/Screen";
 import PropTypes from "prop-types";
-import React from "react";
 import ControlBar from "../ControlBar";
 import CollapsableHeader from "../Screen/CollapsableHeader";
 

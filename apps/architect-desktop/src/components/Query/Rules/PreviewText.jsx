@@ -1,6 +1,5 @@
 import { get, isArray, isNil, join } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { SimpleVariablePill } from "../../Form/Fields/VariablePicker/VariablePill";
 import PreviewEdge from "../../sections/fields/EntitySelectField/PreviewEdge";
 import PreviewNode from "../../sections/fields/EntitySelectField/PreviewNode";

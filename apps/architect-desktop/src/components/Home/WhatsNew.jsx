@@ -1,7 +1,6 @@
 import { appVersion } from "@app/utils/appVersion";
 import { Button } from "@codaco/ui";
 import { AnimatePresence, motion } from "framer-motion";
-import React from "react";
 import ExternalLink, { openExternalLink } from "../ExternalLink";
 import ButtonStack from "./ButtonStack";
 import Group from "./Group";

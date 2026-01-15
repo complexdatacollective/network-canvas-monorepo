@@ -1,4 +1,3 @@
-import React from "react";
 import { compose } from "recompose";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
@@ -21,7 +20,6 @@ const NameGeneratorPrompts = (props) => (
 		editComponent={PromptFields}
 		title="Edit Prompt"
 		fieldName="prompts"
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	/>
 );

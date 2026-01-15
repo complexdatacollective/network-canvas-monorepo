@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 
 const springy = {
 	show: {

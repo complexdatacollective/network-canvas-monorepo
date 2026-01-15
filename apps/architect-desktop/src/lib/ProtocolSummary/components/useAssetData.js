@@ -15,20 +15,14 @@ const useAssetData = (id) => {
 	} = useContext(SummaryContext);
 
 	const data = get(assetManifest, id);
-
-	if (!data) {
-		return {};
-	}
-
 	const [variables, setVariables] = useState(null);
 
 	const stubbedState = stubState(assetManifest, workingPath);
-
 	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
-	const assetPath = getAssetPath(stubbedState, id);
+	const assetPath = data ? getAssetPath(stubbedState, id) : null;
 
 	useEffect(() => {
-		if (data.type !== "network") {
+		if (!data || data.type !== "network") {
 			return;
 		}
 
@@ -38,7 +32,11 @@ const useAssetData = (id) => {
 			}
 			setVariables(v.join(", "));
 		});
-	}, []);
+	}, [data, getNetworkAssetVariables, id]);
+
+	if (!data) {
+		return {};
+	}
 
 	const encodedURI = encodeURIComponent(assetPath);
 	const url = `asset://${encodedURI}`;

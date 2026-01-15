@@ -1,6 +1,5 @@
 import { map } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";
 

@@ -32,7 +32,7 @@ export const itemSelector =
 			return null;
 		}
 
-		const variable = item && item.variable;
+		const variable = item?.variable;
 
 		const codebookVariables = getVariablesForSubject(state, { entity, type });
 		const codebookVariable = get(codebookVariables, variable, {});

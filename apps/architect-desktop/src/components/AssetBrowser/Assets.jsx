@@ -1,6 +1,5 @@
 import { RadioGroup } from "@codaco/ui/lib/components/Fields";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import Asset from "./Asset";
 import withAssets from "./withAssets";

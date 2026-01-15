@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { find, findIndex, get, reduce } from "lodash";
 import { createSelector } from "reselect";
 

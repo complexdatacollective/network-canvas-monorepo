@@ -5,12 +5,11 @@ import ValidatedField from "@components/Form/ValidatedField";
 import { actionCreators as dialogsActions } from "@modules/dialogs";
 import { toNumber } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { SortableElement, SortableHandle } from "react-sortable-hoc";
 import { compose, withHandlers } from "recompose";
 
-const isNumberLike = (value) => Number.parseInt(value, 10) == value; // eslint-disable-line
+const isNumberLike = (value) => Number.parseInt(value, 10) === value;
 
 const deleteOption =
 	({ fields, openDialog, index }) =>
@@ -33,11 +32,7 @@ const OptionHandle = compose(SortableHandle)(() => (
 ));
 
 const DeleteOption = (props) => (
-	<div
-		className="options__option-delete"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
+	<div className="options__option-delete" {...props}>
 		<Icon name="delete" />
 	</div>
 );

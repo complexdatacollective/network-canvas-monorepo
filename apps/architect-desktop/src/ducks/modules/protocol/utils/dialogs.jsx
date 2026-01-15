@@ -2,7 +2,6 @@ import { Button } from "@codaco/ui";
 import ExternalLink from "@components/ExternalLink";
 import { actionCreators as dialogActions } from "@modules/dialogs";
 import { pathSync } from "@utils/electronBridge";
-import React from "react";
 
 const genericAssetMessage = (
 	<>

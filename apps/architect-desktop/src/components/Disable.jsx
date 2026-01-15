@@ -1,13 +1,8 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const Disable = ({ disabled, className, children, ...rest }) => (
-	<div
-		className={cx("disable", { "disable--disabled": disabled }, className)}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...rest}
-	>
+	<div className={cx("disable", { "disable--disabled": disabled }, className)} {...rest}>
 		<div className="disable__capture">{children}</div>
 	</div>
 );

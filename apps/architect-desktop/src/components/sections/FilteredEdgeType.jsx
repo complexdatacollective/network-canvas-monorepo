@@ -1,7 +1,7 @@
 import { Row, Section } from "@components/EditorLayout";
 import { difference, get, keys } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import { makeScreenMessageListener } from "../../selectors/ui";
@@ -56,10 +56,7 @@ const FilteredEdgeType = (props) => {
 					validation={{ required: true }}
 				/>
 			</Row>
-			<Filter
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...props}
-			/>
+			<Filter {...props} />
 		</Section>
 	);
 };

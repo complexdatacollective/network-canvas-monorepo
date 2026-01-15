@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { APP_SCHEMA_VERSION, SAMPLE_PROTOCOL_URL } from "@app/config";
 import { createDialogOptions, openDialog, saveCopyDialog, saveDialog } from "@app/utils/dialogs";
 import * as netcanvasFile from "@app/utils/netcanvasFile";
@@ -89,7 +87,7 @@ const upgradeProtocol = (filePath, protocolSchemaVersion) => (dispatch) => {
 const openNetcanvas = protocolsLock((netcanvasFilePath) => {
 	// helper function so we can use loadingLock
 	const openOrUpgrade = loadingLock(({ canceled, filePaths }) => (dispatch) => {
-		const filePath = filePaths && filePaths[0];
+		const filePath = filePaths?.[0];
 		if (canceled || !filePath) {
 			return Promise.resolve(null);
 		}
@@ -210,10 +208,7 @@ const importSampleProtocol = () => async (dispatch) => {
 		if (tempFilePath) {
 			try {
 				await electronAPI.fs.unlink(tempFilePath);
-			} catch (e) {
-				// eslint-disable-next-line no-console
-				console.error("Error removing temp file path: ", e);
-			}
+			} catch (_e) {}
 		}
 	};
 
@@ -278,8 +273,6 @@ const importSampleProtocol = () => async (dispatch) => {
 		await handleCleanup();
 
 		if (error instanceof CancellationError) {
-			// eslint-disable-next-line no-console
-			console.info("User cancelled the protocol import");
 			return;
 		}
 

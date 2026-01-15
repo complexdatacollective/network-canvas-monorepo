@@ -1,6 +1,5 @@
 import TextField from "@codaco/ui/lib/components/Fields/Text";
 import PropTypes from "prop-types";
-import React from "react";
 import { ValidatedField } from "../Form";
 
 const ScalarParameters = ({ name }) => (

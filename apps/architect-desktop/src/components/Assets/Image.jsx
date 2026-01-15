@@ -1,15 +1,7 @@
 import PropTypes from "prop-types";
-import React from "react";
 import withAssetUrl from "./withAssetUrl";
 
-const Image = ({ url, alt, ...props }) => (
-	<img
-		src={url}
-		alt={alt}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	/>
-);
+const Image = ({ url, alt, ...props }) => <img src={url} alt={alt} {...props} />;
 
 Image.propTypes = {
 	alt: PropTypes.string,

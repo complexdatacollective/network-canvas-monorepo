@@ -2,7 +2,6 @@ import * as Fields from "@codaco/ui/lib/components/Fields";
 import Icon from "@codaco/ui/lib/components/Icon";
 import ValidatedField from "@components/Form/ValidatedField";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import withCreateVariableHandler from "../enhancers/withCreateVariableHandler";
 import VariablePicker from "../Form/Fields/VariablePicker/VariablePicker";
@@ -48,7 +47,6 @@ const Attribute = ({ field, variable, variableOptions, handleCreateVariable, han
 Attribute.propTypes = {
 	field: PropTypes.string.isRequired,
 	variable: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	variableOptions: PropTypes.array.isRequired,
 	handleCreateVariable: PropTypes.func.isRequired,
 	handleDelete: PropTypes.func.isRequired,

@@ -5,7 +5,6 @@ import withSubject from "@components/enhancers/withSubject";
 import { getVariablesForSubject } from "@selectors/codebook";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { useSelector } from "react-redux";
 
 const FieldPreview = ({ variable, prompt, entity, type }) => {

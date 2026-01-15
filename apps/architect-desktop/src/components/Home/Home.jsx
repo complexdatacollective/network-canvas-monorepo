@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import React from "react";
 import LaunchPad from "./LaunchPad";
 import WelcomeHeader from "./WelcomeHeader";
 

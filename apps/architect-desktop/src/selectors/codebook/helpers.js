@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { flatMap } from "lodash";
 
 const getIdsFromEntity = (entity) => (entity.variables ? Object.keys(entity.variables) : []);

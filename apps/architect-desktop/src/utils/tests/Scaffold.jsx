@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import PropTypes from "prop-types";
-import React from "react";
 import { Provider } from "react-redux";
 import { compose } from "recompose";
 import { createStore } from "redux";

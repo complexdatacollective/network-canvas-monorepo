@@ -1,5 +1,4 @@
 import { Button } from "@codaco/ui";
-import React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps } from "recompose";
 import { bindActionCreators } from "redux";

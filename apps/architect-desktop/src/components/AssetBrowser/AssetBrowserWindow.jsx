@@ -2,7 +2,6 @@ import Button from "@codaco/ui/lib/components/Button";
 import { Layout } from "@components/EditorLayout";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 import { createPortal } from "react-dom";
 import ControlBar from "../ControlBar";
 import Screen from "../Screen/Screen";

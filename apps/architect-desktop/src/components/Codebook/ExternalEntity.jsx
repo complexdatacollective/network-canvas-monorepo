@@ -3,7 +3,6 @@ import useExternalDataDownload from "@components/AssetBrowser/useExternalDataDow
 import useExternalDataPreview from "@components/AssetBrowser/useExternalDataPreview";
 import useVariablesFromExternalData from "@hooks/useVariablesFromExternalData";
 import PropTypes from "prop-types";
-import React from "react";
 import EntityIcon from "./EntityIcon";
 import VariableList from "./VariableList";
 

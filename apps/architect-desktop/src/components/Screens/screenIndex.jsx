@@ -1,5 +1,4 @@
 import { get } from "lodash";
-import React from "react";
 import AssetsScreen from "./AssetsScreen";
 import Codebook from "./CodebookScreen";
 import NewStageScreen from "./NewStageScreen";

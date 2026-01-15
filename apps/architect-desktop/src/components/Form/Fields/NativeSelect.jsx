@@ -6,7 +6,7 @@ import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
 import { sortBy } from "lodash";
 import PropTypes from "prop-types";
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { untouch } from "redux-form";
 
@@ -197,13 +197,11 @@ const NativeSelect = ({
 						{label && <h4>{label}</h4>}
 						<select
 							className="form-fields-select-native__component"
-							// eslint-disable-next-line react/jsx-props-no-spreading
 							{...input}
 							value={input.value || "_placeholder"}
 							onChange={handleChange}
 							validation={validation}
 							disabled={!!disabled}
-							// eslint-disable-next-line react/jsx-props-no-spreading
 							{...rest}
 						>
 							<option disabled={!allowPlaceholderSelect} value="_placeholder">
@@ -237,19 +235,14 @@ NativeSelect.propTypes = {
 	createInputPlaceholder: PropTypes.string,
 	allowPlaceholderSelect: PropTypes.bool,
 	sortOptionsByLabel: PropTypes.bool,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	input: PropTypes.object,
 	label: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object,
 	disabled: PropTypes.bool,
 	onCreateOption: PropTypes.func,
 	onCreateNew: PropTypes.func,
-	// eslint-disable-next-line react/forbid-prop-types
 	reserved: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	validation: PropTypes.any,
 };
 

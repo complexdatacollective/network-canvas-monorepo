@@ -2,7 +2,7 @@ import Button from "@codaco/ui/lib/components/Button";
 import { Layout } from "@components/EditorLayout";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { forwardRef, useCallback } from "react";
+import { forwardRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
 import { submit } from "redux-form";
@@ -53,12 +53,7 @@ const InlineEditScreen = forwardRef(({ show, form, title, layoutId, onSubmit, on
 						</motion.div>
 						<motion.div variants={item} className="inline-edit-screen__content">
 							<Layout>
-								<Form
-									form={form}
-									onSubmit={onSubmit}
-									// eslint-disable-next-line react/jsx-props-no-spreading
-									{...rest}
-								>
+								<Form form={form} onSubmit={onSubmit} {...rest}>
 									{children}
 								</Form>
 							</Layout>

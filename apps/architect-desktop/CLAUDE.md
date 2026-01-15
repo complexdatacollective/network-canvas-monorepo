@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Network Canvas Architect is an Electron + React application for designing Network Canvas interview protocols. It includes a git submodule (`network-canvas/`) which was previously used for interview preview functionality (currently disabled pending modernization).
+Network Canvas Architect is an Electron + React application for designing Network Canvas interview protocols. It includes a `network-canvas/` directory containing built interviewer assets for interview preview functionality.
 
 ## Development Commands
 
@@ -26,9 +26,8 @@ pnpm test:coverage                  # Run with coverage
 pnpm test:update-snapshots          # Update snapshots
 
 # Linting
-pnpm run lint                       # Run both JS and SCSS linting
-pnpm run lint:js                    # ESLint only
-pnpm run sass-lint                  # Stylelint only
+pnpm run lint                       # Run Biome linting
+pnpm run lint:fix                   # Auto-fix linting and formatting issues
 
 # Distribution
 pnpm run dist:mac                   # macOS build (x64 + arm64)
@@ -115,9 +114,7 @@ pnpm test:update-snapshots
 
 ## Code Style
 
-- ESLint with Airbnb config
-- Stylelint for SCSS
-- Prettier for formatting (via VSCode)
+- Biome for linting and formatting (tabs, double quotes, 120 char width)
 - React 16 with class components and hooks
 - Redux-form for form state
 

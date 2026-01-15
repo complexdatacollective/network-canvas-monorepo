@@ -1,9 +1,6 @@
-/* eslint-disable react/jsx-props-no-spreading, react/forbid-prop-types */
-
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import { get, isNull } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import EntityBadge from "../EntityBadge";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";

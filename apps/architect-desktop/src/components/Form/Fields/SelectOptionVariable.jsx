@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { components as ReactSelectComponents } from "react-select";
 
 const { Option } = ReactSelectComponents;
@@ -10,12 +9,7 @@ const SelectOptionVariable = (props) => {
 	} = props;
 
 	return (
-		<Option
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-			className="form-fields-select__item"
-			classNamePrefix="form-fields-select__item"
-		>
+		<Option {...props} className="form-fields-select__item" classNamePrefix="form-fields-select__item">
 			<h4>
 				{label}{" "}
 				<span className="select-item__variable--variable-name">
@@ -30,7 +24,6 @@ const SelectOptionVariable = (props) => {
 };
 
 SelectOptionVariable.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	data: PropTypes.object.isRequired,
 };
 

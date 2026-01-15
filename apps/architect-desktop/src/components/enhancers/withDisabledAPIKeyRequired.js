@@ -1,7 +1,7 @@
 import { withProps } from "recompose";
 
 const withDisabledAPIKeyRequired = withProps(({ mapOptions }) => {
-	const tokenAssetId = mapOptions && mapOptions.tokenAssetId;
+	const tokenAssetId = mapOptions?.tokenAssetId;
 	return { disabled: !tokenAssetId };
 });
 

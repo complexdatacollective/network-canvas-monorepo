@@ -2,7 +2,6 @@ import Icon from "@codaco/ui/lib/components/Icon";
 import withAssetMeta from "@components/Assets/withAssetMeta";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const NetworkThumbnail = ({ id, meta }) => (
 	<div className={cx("thumbnail thumbnail--network", { "thumbnail--existing": id === "existing" })}>
@@ -15,7 +14,6 @@ const NetworkThumbnail = ({ id, meta }) => (
 
 NetworkThumbnail.propTypes = {
 	id: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object,
 };
 

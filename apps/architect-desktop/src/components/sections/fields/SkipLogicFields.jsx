@@ -2,7 +2,6 @@ import RadioGroup from "@codaco/ui/lib/components/Fields/RadioGroup";
 import { Row } from "@components/EditorLayout";
 import ValidatedField from "@components/Form/ValidatedField";
 import { Query, ruleValidator, withFieldConnector, withStoreConnector } from "@components/Query";
-import React from "react";
 
 const ConnectedQuery = withFieldConnector(withStoreConnector(Query));
 const SkipLogicFields = () => (

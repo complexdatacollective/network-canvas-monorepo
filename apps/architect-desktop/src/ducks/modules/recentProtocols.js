@@ -29,7 +29,7 @@ export default function reducer(state = initialState, action = {}) {
 
 			return addProtocol(state, {
 				filePath,
-				lastModified: new Date().getTime(),
+				lastModified: Date.now(),
 				name: pathSync.basename(filePath, ".netcanvas"),
 				description: protocol.description,
 				schemaVersion: protocol.schemaVersion,

@@ -6,7 +6,7 @@ import { getStageList } from "@selectors/protocol";
 import cx from "classnames";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, withStateHandlers } from "recompose";
@@ -128,7 +128,6 @@ const mapDispatchToProps = (dispatch, props) => ({
 });
 
 Timeline.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	stages: PropTypes.array,
 	sorting: PropTypes.bool,
 	deleteStage: PropTypes.func.isRequired,

@@ -1,7 +1,7 @@
 import { actionCreators as uiActions } from "@modules/ui";
 import { getScreensStack } from "@selectors/ui";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getScreenComponent } from "./screenIndex";
@@ -58,12 +58,7 @@ const Screens = () => {
 						exit="hidden"
 						className="screens-container"
 					>
-						<ScreenComponent
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...params}
-							layoutId={params.id}
-							onComplete={onComplete}
-						/>
+						<ScreenComponent {...params} layoutId={params.id} onComplete={onComplete} />
 					</motion.div>
 				);
 			}),

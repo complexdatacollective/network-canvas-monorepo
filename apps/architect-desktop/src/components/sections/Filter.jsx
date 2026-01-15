@@ -1,6 +1,6 @@
 import { Section } from "@components/EditorLayout";
 import { actionCreators as dialogActions } from "@modules/dialogs";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
 import IssueAnchor from "../IssueAnchor";
@@ -42,10 +42,7 @@ const Filter = () => {
 	}, [prompts]);
 	const shouldShowWarning = useMemo(() => {
 		if (edgeCreationValues.length > 0 || edgeDisplayValues.length > 0) {
-			return getEdgeFilteringWarning((currentValue && currentValue.rules) || [], [
-				...edgeCreationValues,
-				...edgeDisplayValues,
-			]);
+			return getEdgeFilteringWarning(currentValue?.rules || [], [...edgeCreationValues, ...edgeDisplayValues]);
 		}
 		return false;
 	}, [currentValue, edgeCreationValues, edgeDisplayValues]);

@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { compose, withStateHandlers } from "recompose";
 import { Form, reduxForm } from "redux-form";
 import Issues from "./Issues";
@@ -66,14 +65,7 @@ const Editor = ({
 					...rest,
 				})}
 			{children && typeof children !== "function" && children}
-			{!children && (
-				<Component
-					form={form}
-					submitFailed={submitFailed}
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...rest}
-				/>
-			)}
+			{!children && <Component form={form} submitFailed={submitFailed} {...rest} />}
 		</Form>
 		<Issues form={form} show={isIssuesVisible} hideIssues={hideIssues} />
 	</>

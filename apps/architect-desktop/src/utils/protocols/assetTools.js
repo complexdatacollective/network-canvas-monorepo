@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { getSupportedAssetType } from "@app/utils/protocols/importAsset";
 import { getVariableNamesFromNetwork, validateNames } from "@codaco/protocol-validation";
 import { electronAPI } from "@utils/electronBridge";

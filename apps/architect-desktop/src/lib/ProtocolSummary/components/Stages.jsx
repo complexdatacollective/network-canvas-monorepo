@@ -1,5 +1,5 @@
 import { map } from "lodash";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import Stage from "./Stage";
 import SummaryContext from "./SummaryContext";
 

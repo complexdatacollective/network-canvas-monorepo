@@ -1,6 +1,5 @@
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import EntityBadge from "../EntityBadge";
 import MiniTable from "../MiniTable";
 import Variable from "../Variable";
@@ -57,7 +56,6 @@ const Presets = ({ presets }) => {
 };
 
 Presets.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	presets: PropTypes.array,
 };
 

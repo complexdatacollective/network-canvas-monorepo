@@ -1,6 +1,5 @@
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import PropTypes from "prop-types";
-import React from "react";
 import Asset from "../Asset";
 import MiniTable from "../MiniTable";
 
@@ -29,7 +28,6 @@ const Items = ({ items }) => {
 										rows={[
 											["Block Size", size],
 											["Type", "Text"],
-											// eslint-disable-next-line jsx-a11y/media-has-caption
 											["Content", <Markdown label={content} />],
 										]}
 									/>

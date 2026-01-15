@@ -11,7 +11,7 @@ import { getActiveProtocol, getHasUnsavedChanges, getIsProtocolValid } from "@se
 import { pathSync } from "@utils/electronBridge";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import withTooltip from "./enhancers/withTooltip";
@@ -170,8 +170,8 @@ const mapStateToProps = (state) => {
 
 	return {
 		name: fileName,
-		description: protocol && protocol.description,
-		codebook: protocol && protocol.codebook,
+		description: protocol?.description,
+		codebook: protocol?.codebook,
 		protocolIsValid,
 		hasUnsavedChanges,
 	};

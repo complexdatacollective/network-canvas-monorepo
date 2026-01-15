@@ -1,19 +1,11 @@
 import withAssetUrl from "@components/Assets/withAssetUrl";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const ImageThumbnail = ({ url, contain, ...props }) => {
 	const className = cx("thumbnail", "thumbnail--image", { "thumbnail--contain": contain });
 
-	return (
-		<div
-			className={className}
-			style={{ backgroundImage: `url(${url})` }}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-		/>
-	);
+	return <div className={className} style={{ backgroundImage: `url(${url})` }} {...props} />;
 };
 
 ImageThumbnail.propTypes = {

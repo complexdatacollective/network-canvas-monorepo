@@ -1,6 +1,5 @@
 import { electronAPI } from "@utils/electronBridge";
 import PropTypes from "prop-types";
-import React from "react";
 
 export const openExternalLink = (href) => {
 	electronAPI.shell.openExternal(href);

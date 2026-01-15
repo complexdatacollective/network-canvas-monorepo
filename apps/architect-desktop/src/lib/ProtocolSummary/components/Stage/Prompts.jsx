@@ -1,7 +1,4 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import PropTypes from "prop-types";
-import React from "react";
 import Prompt from "./Prompt";
 
 const Prompts = ({ prompts }) => {

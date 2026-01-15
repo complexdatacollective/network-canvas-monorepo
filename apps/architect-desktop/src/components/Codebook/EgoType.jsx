@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { getEntityProperties } from "./helpers";
@@ -17,7 +16,6 @@ const EgoType = ({ variables }) => (
 );
 
 EgoType.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	variables: PropTypes.array,
 };
 

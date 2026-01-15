@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import withAssetMeta from "./withAssetMeta";
 
 const APIKey = ({ meta }) => <h1 style={{ wordWrap: "break-word" }}>{meta.value}</h1>;

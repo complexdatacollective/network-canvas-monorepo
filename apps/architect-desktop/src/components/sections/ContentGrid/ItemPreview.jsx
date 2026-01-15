@@ -1,7 +1,6 @@
 import { Markdown } from "@codaco/ui/lib/components/Fields";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { getAssetManifest } from "../../../selectors/protocol";
 import AudioWithUrl from "../../Assets/Audio";

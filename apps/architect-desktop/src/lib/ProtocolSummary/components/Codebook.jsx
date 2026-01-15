@@ -1,5 +1,5 @@
 import { toPairs } from "lodash";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import Entity from "./Entity";
 import SummaryContext from "./SummaryContext";
 

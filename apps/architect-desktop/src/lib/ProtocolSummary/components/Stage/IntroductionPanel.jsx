@@ -1,6 +1,5 @@
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import PropTypes from "prop-types";
-import React from "react";
 
 const IntroductionPanel = ({ introductionPanel }) => {
 	if (!introductionPanel) {

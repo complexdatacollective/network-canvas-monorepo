@@ -4,7 +4,7 @@ import cx from "classnames";
 import { motion } from "framer-motion";
 import { find, get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { INTERFACE_TYPES, TAG_COLORS } from "./interfaceOptions";
 
 const getTimelineImage = (type) => get(timelineImages, type);

@@ -1,6 +1,5 @@
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import PropTypes from "prop-types";
-import React from "react";
 
 const InterviewScript = ({ interviewScript }) => (
 	<div className="protocol-summary-stage__interview-script">

@@ -1,6 +1,6 @@
 import { Button } from "@codaco/ui";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 
 class CardErrorBoundary extends Component {
 	constructor(props) {
@@ -10,7 +10,6 @@ class CardErrorBoundary extends Component {
 
 	componentDidCatch(error) {
 		this.setState({ error });
-		console.log(error); // eslint-disable-line no-console
 	}
 
 	canAcknowledge = () => {

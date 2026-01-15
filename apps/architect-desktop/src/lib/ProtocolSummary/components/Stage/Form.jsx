@@ -1,6 +1,6 @@
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import PropTypes from "prop-types";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { getVariableMeta } from "../helpers";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
@@ -13,13 +13,11 @@ const Form = ({ form }) => {
 		return null;
 	}
 
-	const fieldRows =
-		form.fields &&
-		form.fields.map(({ prompt, variable }) => {
-			const meta = getVariableMeta(index, variable);
+	const fieldRows = form.fields?.map(({ prompt, variable }) => {
+		const meta = getVariableMeta(index, variable);
 
-			return [<Variable id={variable} />, meta.component, <Markdown label={prompt} />];
-		});
+		return [<Variable id={variable} />, meta.component, <Markdown label={prompt} />];
+	});
 
 	return (
 		<div className="protocol-summary-stage__form">

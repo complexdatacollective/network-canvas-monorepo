@@ -3,7 +3,6 @@ import DetachedField from "@components/DetachedField";
 import NativeSelect from "@components/Form/Fields/NativeSelect";
 import { isArray, isNil } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import Section from "../../EditorLayout/Section";
 import EntitySelectField from "../../sections/fields/EntitySelectField/EntitySelectField";
@@ -26,7 +25,7 @@ const EditEntityRule = ({
 	handleRuleChange,
 }) => {
 	const { type: entityType } = rule;
-	const options = rule && rule.options;
+	const options = rule?.options;
 	const getOptionsWithDefaults = makeGetOptionsWithDefaults(variableType, ["type", "operator", "attributes", "value"]);
 	const optionsWithDefaults = getOptionsWithDefaults(options);
 	const operatorNeedsValue = operatorsWithValue.has(optionsWithDefaults.operator);
@@ -148,17 +147,12 @@ const EditEntityRule = ({
 
 EditEntityRule.propTypes = {
 	rule: PropTypes.shape({
-		// eslint-disable-next-line react/forbid-prop-types
 		options: PropTypes.object,
 		type: PropTypes.string,
 	}).isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	typeOptions: PropTypes.array.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	variablesAsOptions: PropTypes.array.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	variableOptions: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	operatorOptions: PropTypes.array.isRequired,
 	handleRuleChange: PropTypes.func.isRequired,
 	entityRuleType: PropTypes.string,

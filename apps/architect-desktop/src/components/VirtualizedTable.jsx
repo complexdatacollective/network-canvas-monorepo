@@ -1,7 +1,5 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useBlockLayout, useTable } from "react-table";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
@@ -25,14 +23,12 @@ const VirtualizedTable = ({ columns, data }) => {
 
 			return (
 				<div
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...row.getRowProps({
 						style,
 					})}
 					className="tr"
 				>
 					{row.cells.map((cell) => (
-						// eslint-disable-next-line react/jsx-props-no-spreading
 						<div {...cell.getCellProps()} className="td">
 							{cell.render("Cell")}
 						</div>
@@ -47,14 +43,11 @@ const VirtualizedTable = ({ columns, data }) => {
 	return (
 		<AutoSizer>
 			{({ height }) => (
-				// eslint-disable-next-line react/jsx-props-no-spreading
 				<div {...getTableProps()} className="table">
 					<div>
 						{headerGroups.map((headerGroup) => (
-							// eslint-disable-next-line react/jsx-props-no-spreading
 							<div {...headerGroup.getHeaderGroupProps()} className="tr">
 								{headerGroup.headers.map((column) => (
-									// eslint-disable-next-line react/jsx-props-no-spreading
 									<div {...column.getHeaderProps()} className="th">
 										{column.render("Header")}
 									</div>

@@ -2,7 +2,7 @@ import Editor from "@components/Editor";
 import { Layout } from "@components/EditorLayout";
 import { electronAPI } from "@utils/electronBridge";
 import PropTypes from "prop-types";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { compose, defaultProps } from "recompose";
 import CodeView from "../CodeView";
 import CollapsableHeader from "../Screen/CollapsableHeader";
@@ -57,11 +57,7 @@ const StageEditor = (props) => {
 		});
 
 	return (
-		<Editor
-			formName={formName}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		>
+		<Editor formName={formName} {...rest}>
 			{({ submitFailed }) => (
 				<>
 					<CodeView form={formName} show={showCodeView} toggleCodeView={toggleCodeView} />
@@ -79,7 +75,6 @@ StageEditor.propTypes = {
 	interfaceType: PropTypes.string.isRequired,
 	id: PropTypes.string,
 	previewStage: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	stagePath: PropTypes.any,
 	hasSkipLogic: PropTypes.bool,
 };

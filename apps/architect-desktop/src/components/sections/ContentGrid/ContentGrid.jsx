@@ -1,5 +1,4 @@
 import { get } from "lodash";
-import React from "react";
 import { formValueSelector } from "redux-form";
 import { getAssetManifest } from "../../../selectors/protocol";
 import Grid from "../../Grid";
@@ -40,7 +39,6 @@ const ContentGrid = (props) => (
 		itemSelector={denormalizeType}
 		title="Edit Items"
 		capacity={capacity}
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	/>
 );

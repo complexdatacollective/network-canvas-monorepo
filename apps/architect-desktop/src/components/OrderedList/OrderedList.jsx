@@ -1,7 +1,7 @@
 import { actionCreators as dialogActions } from "@modules/dialogs";
 import { isArray, isPlainObject } from "lodash";
 import PropTypes from "prop-types";
-import React, { memo } from "react";
+import { memo } from "react";
 import { connect } from "react-redux";
 import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, renameProp } from "recompose";
@@ -23,31 +23,26 @@ const OrderedList = memo((props) => {
 		<div className="list">
 			{(dirty || submitFailed) && error && !isArray(error) && <p className="list__error">{error}</p>}
 			{values &&
-				values.map((value, index) => {
-					const previewValue = isPlainObject(value) ? value : { value };
-					const fieldId = `${name}[${index}]`;
-					const onClick = onClickItem && (() => onClickItem(fieldId));
+			values.map((value, index) => {
+				const previewValue = isPlainObject(value) ? value : { value };
+				const fieldId = `${name}[${index}]`;
+				const onClick = onClickItem && (() => onClickItem(fieldId));
 
-					const onDelete = () => removeItem(index);
+				const onDelete = () => removeItem(index);
 
-					return (
-						<ListItem
-							index={index}
-							sortable={sortable}
-							key={fieldId}
-							layoutId={onClickItem && fieldId}
-							onClick={onClick}
-							onDelete={onDelete}
-						>
-							<Item
-								{...previewValue} // eslint-disable-line react/jsx-props-no-spreading
-								fieldId={fieldId}
-								form={form}
-								key={fieldId}
-							/>
-						</ListItem>
-					);
-				})}
+				return (
+					<ListItem
+						index={index}
+						sortable={sortable}
+						key={fieldId}
+						layoutId={onClickItem && fieldId}
+						onClick={onClick}
+						onDelete={onDelete}
+					>
+						<Item {...previewValue} fieldId={fieldId} form={form} key={fieldId} />
+					</ListItem>
+				);
+			})}
 		</div>
 	);
 });

@@ -1,5 +1,3 @@
-import React from "react";
-
 // Mock components for @codaco/ui
 // This is needed because @codaco/ui has ESM resolution issues with relative imports
 

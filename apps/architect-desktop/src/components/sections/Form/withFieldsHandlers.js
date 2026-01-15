@@ -57,7 +57,7 @@ const fieldsState = connect(mapStateToProps, mapDispatchToProps);
 const fieldsHandlers = withHandlers({
 	handleChangeComponent:
 		({ changeField, form, variableType }) =>
-		(e, value) => {
+		(_e, value) => {
 			// Only reset if type not defined yet (new variable)
 			const typeForComponent = getTypeForComponent(value);
 

@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 
 const Link = ({ children, onClick }) => (
 	<div className="link" onClick={onClick}>

@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 window.saveAs ||
 	(window.saveAs =
 		(window.navigator.msSaveBlob ? (b, n) => window.navigator.msSaveBlob(b, n) : false) ||

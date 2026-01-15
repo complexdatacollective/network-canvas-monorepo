@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import AssetBadge from "../AssetBadge";
 import MiniTable from "../MiniTable";
 
@@ -42,7 +41,6 @@ const Panels = ({ panels }) => {
 };
 
 Panels.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	panels: PropTypes.array,
 };
 

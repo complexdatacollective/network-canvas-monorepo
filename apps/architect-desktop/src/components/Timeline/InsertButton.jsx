@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 
 const InsertButton = ({ onClick }) => (
 	<motion.div

@@ -1,6 +1,5 @@
 import useValidate from "@app/hooks/useValidate";
 import PropTypes from "prop-types";
-import React from "react";
 import { Field } from "redux-form";
 import IssueAnchor from "../IssueAnchor";
 
@@ -9,13 +8,7 @@ const ValidatedField = ({ name, label, issueDescription, validation, ...rest }) 
 
 	return (
 		<IssueAnchor fieldName={name} description={issueDescription || `Field: ${label}` || `Field: ${name}`}>
-			<Field
-				name={name}
-				label={label}
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...rest}
-				validate={validations}
-			/>
+			<Field name={name} label={label} {...rest} validate={validations} />
 		</IssueAnchor>
 	);
 };
@@ -26,7 +19,6 @@ ValidatedField.defaultProps = {
 };
 
 ValidatedField.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	validation: PropTypes.object.isRequired,
 	name: PropTypes.string.isRequired,
 	issueDescription: PropTypes.string,

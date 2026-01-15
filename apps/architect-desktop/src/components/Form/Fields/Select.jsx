@@ -1,7 +1,7 @@
 import Icon from "@codaco/ui/lib/components/Icon";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { PureComponent } from "react";
+import { PureComponent } from "react";
 import ReactSelect from "react-select";
 import DefaultSelectOption from "./DefaultSelectOption";
 
@@ -23,12 +23,10 @@ class Select extends PureComponent {
 	handleChange = (option) => {
 		const { onCreateNew, input } = this.props;
 
-		/* eslint-disable no-underscore-dangle */
 		if (option.__createNewOption__) {
 			onCreateNew();
 			return;
 		}
-		/* eslint-enable */
 		input.onChange(option.value);
 	};
 
@@ -64,7 +62,6 @@ class Select extends PureComponent {
 				<ReactSelect
 					className="form-fields-select"
 					classNamePrefix="form-fields-select"
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...input}
 					options={optionsWithNew}
 					value={this.value}
@@ -78,7 +75,6 @@ class Select extends PureComponent {
 					// a round about way, and still allow us to use the `touched` property.
 					onBlur={this.handleBlur}
 					blurInputOnSelect={false}
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...rest}
 				>
 					{children}
@@ -96,18 +92,14 @@ class Select extends PureComponent {
 
 Select.propTypes = {
 	className: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	selectOptionComponent: PropTypes.any,
 	onDeleteOption: PropTypes.func,
 	createNewOption: PropTypes.bool,
 	onCreateNew: PropTypes.func,
-	// eslint-disable-next-line react/forbid-prop-types
 	input: PropTypes.object,
 	label: PropTypes.string,
 	children: PropTypes.node,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object,
 };
 

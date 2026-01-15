@@ -4,7 +4,6 @@ import { actionCreators as dialogActionCreators } from "@modules/dialogs";
 import { actionCreators as codebookActionCreators } from "@modules/protocol/codebook";
 import { actionCreators as screenActionsCreators } from "@modules/ui/screens";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers } from "recompose";
 import EntityIcon from "./EntityIcon";
@@ -60,12 +59,10 @@ EntityType.propTypes = {
 	type: PropTypes.string.isRequired,
 	name: PropTypes.string.isRequired,
 	color: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	usage: PropTypes.array.isRequired,
 	inUse: PropTypes.bool,
 	handleDelete: PropTypes.func,
 	handleEdit: PropTypes.func,
-	// eslint-disable-next-line react/forbid-prop-types
 	variables: PropTypes.array,
 };
 

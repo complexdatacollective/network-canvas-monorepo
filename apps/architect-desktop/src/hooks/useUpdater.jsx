@@ -1,12 +1,10 @@
-/* eslint-disable no-nested-ternary */
-
 import { isLinux, isMacOS, isWindows } from "@app/utils/platform";
 import { Button } from "@codaco/ui";
 import { Markdown } from "@codaco/ui/lib/components/Fields";
 import { electronAPI } from "@utils/electronBridge";
 import compareVersions from "compare-versions";
 import { find } from "lodash";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import ExternalLink, { openExternalLink } from "../components/ExternalLink";
 import useAppState from "../components/Home/useAppState";
@@ -15,7 +13,6 @@ import { actionCreators as toastActions } from "../ducks/modules/toasts";
 
 // Custom renderer for links so that they open correctly in an external browser
 const markdownComponents = {
-	// eslint-disable-next-line react/prop-types
 	a: ({ children, href }) => <ExternalLink href={href}>{children}</ExternalLink>,
 };
 
@@ -67,13 +64,9 @@ export const checkEndpoint = (updateEndpoint, currentVersion) =>
 					releaseButtonContent: getPlatformSpecificContent(assets),
 				};
 			}
-			// eslint-disable-next-line no-console
-			console.info(`No update available (current: ${currentVersion}, latest: ${name}).`);
 			return false;
 		})
-		.catch((error) => {
-			// eslint-disable-next-line no-console
-			console.warn("Error checking for updates:", error);
+		.catch((_error) => {
 			// Don't reject, as we don't want to handle this error - just fail silently.
 			return Promise.resolve(false);
 		});
@@ -123,7 +116,7 @@ const useUpdater = (updateEndpoint, timeout = 0) => {
 		const { newVersion, releaseNotes, releaseButtonContent } = updateAvailable;
 
 		// Don't notify the user if they have dismissed this version.
-		if (dismissedVersion && dismissedVersion.includes(newVersion)) {
+		if (dismissedVersion?.includes(newVersion)) {
 			return;
 		}
 

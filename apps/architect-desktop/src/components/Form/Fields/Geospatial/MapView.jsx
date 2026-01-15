@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { get } from "lodash";
 import mapboxgl from "mapbox-gl/dist/mapbox-gl-unminified";
 import PropTypes from "prop-types";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -90,7 +90,6 @@ const MapView = ({ mapOptions, onChange, close }) => {
 
 		initializeMap();
 
-		// eslint-disable-next-line consistent-return
 		return () => {
 			mapRef.current?.remove();
 		};

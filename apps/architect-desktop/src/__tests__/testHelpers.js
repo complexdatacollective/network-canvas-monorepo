@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { isMatch } from "lodash";
 import { vi } from "vitest";
 import developmentProtocol from "../../development-protocol/protocol.json" with { type: "json" };

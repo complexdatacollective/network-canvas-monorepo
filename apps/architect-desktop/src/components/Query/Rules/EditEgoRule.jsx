@@ -2,7 +2,6 @@ import DetachedField from "@components/DetachedField";
 import NativeSelect from "@components/Form/Fields/NativeSelect";
 import { isArray, isNil } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import Section from "../../EditorLayout/Section";
 import EditValue from "./EditValue";
@@ -25,7 +24,7 @@ const EditEgoRule = ({
 	operatorOptions,
 	handleRuleChange,
 }) => {
-	const options = rule && rule.options;
+	const options = rule?.options;
 	const optionsWithDefaults = { ...defaultOptions, ...options };
 	const operatorNeedsValue = operatorsWithValue.has(optionsWithDefaults.operator);
 	const operatorNeedsRegExp = operatorsWithRegExp.has(optionsWithDefaults.operator);
@@ -100,14 +99,10 @@ const EditEgoRule = ({
 
 EditEgoRule.propTypes = {
 	rule: PropTypes.shape({
-		// eslint-disable-next-line react/forbid-prop-types
 		options: PropTypes.object,
 	}).isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	variablesAsOptions: PropTypes.array.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	variableOptions: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	operatorOptions: PropTypes.array.isRequired,
 	handleRuleChange: PropTypes.func.isRequired,
 	variableType: PropTypes.string,

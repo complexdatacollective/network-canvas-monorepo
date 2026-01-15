@@ -1,6 +1,5 @@
 import { Button, Icon } from "@codaco/ui";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { SortableContainer, SortableElement, SortableHandle } from "react-sortable-hoc";
 import { compose, defaultProps, withHandlers, withProps } from "recompose";
@@ -17,23 +16,13 @@ const ItemHandle = compose(SortableHandle)(() => (
 ));
 
 const ItemDelete = (props) => (
-	<div
-		className="form-fields-multi-select__delete"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
+	<div className="form-fields-multi-select__delete" {...props}>
 		<Icon name="delete" />
 	</div>
 );
 
 const AddItem = (props) => (
-	<Button
-		color="primary"
-		icon="add"
-		size="small"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
+	<Button color="primary" icon="add" size="small" {...props}>
 		Add new
 	</Button>
 );
@@ -90,7 +79,6 @@ const Item = compose(
 						options={options(fieldName, rowValues, allValues)}
 						validation={{ required: true }}
 						onChange={() => handleChange(index)}
-						// eslint-disable-next-line react/jsx-props-no-spreading
 						{...rest}
 					/>
 				</div>
@@ -121,14 +109,7 @@ const Items = compose(
 			<div className="form-fields-multi-select">
 				<div className="form-fields-multi-select__rules">
 					{fields.map((field, index) => (
-						<Item
-							index={index}
-							key={field}
-							field={field}
-							fields={fields}
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...rest}
-						/>
+						<Item index={index} key={field} field={field} fields={fields} {...rest} />
 					))}
 				</div>
 			</div>
@@ -147,20 +128,12 @@ const Items = compose(
 const MultiSelect = ({ name, properties, options, label, ...rest }) => (
 	<div className="form-fields-multi-select">
 		{label && <div className="form-fields-multi-select__label">{label}</div>}
-		<FieldArray
-			name={name}
-			component={Items}
-			properties={properties}
-			options={options}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		/>
+		<FieldArray name={name} component={Items} properties={properties} options={options} {...rest} />
 	</div>
 );
 
 MultiSelect.propTypes = {
 	name: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	properties: PropTypes.array.isRequired,
 	options: PropTypes.func.isRequired,
 	label: PropTypes.string,

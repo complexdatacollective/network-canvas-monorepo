@@ -1,13 +1,11 @@
 import { Icon } from "@codaco/ui";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const RoundButton = ({ icon, content, size, className, type, ...props }) => (
 	<button
 		className={cx("form-round-button", className, { [`form-round-button--${size}`]: !!size })}
-		type={type} // eslint-disable-line react/button-has-type
-		// eslint-disable-next-line react/jsx-props-no-spreading
+		type={type}
 		{...props}
 	>
 		{(icon && <Icon name={icon} />) || content}

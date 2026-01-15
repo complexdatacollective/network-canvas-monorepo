@@ -3,7 +3,6 @@ import { Row, Section } from "@components/EditorLayout";
 import PromptText from "@components/sections/PromptText";
 import Tip from "@components/Tip";
 import PropTypes from "prop-types";
-import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 

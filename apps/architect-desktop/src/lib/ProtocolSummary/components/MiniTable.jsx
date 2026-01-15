@@ -1,8 +1,5 @@
-/* eslint-disable react/no-array-index-key, react/forbid-prop-types */
-
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const MiniTable = ({ rows, wide, lite, rotated }) => {
 	const classes = cx(

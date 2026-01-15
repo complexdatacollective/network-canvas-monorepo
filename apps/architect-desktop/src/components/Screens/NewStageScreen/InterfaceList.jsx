@@ -1,7 +1,6 @@
 import { Button } from "@codaco/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 import Interface from "./Interface";
 import { PropTypes as InterfacePropTypes } from "./interfaceOptions";
 

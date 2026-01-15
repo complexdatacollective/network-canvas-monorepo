@@ -2,7 +2,7 @@ import { saveDialog } from "@app/utils/dialogs";
 import Button from "@codaco/ui/lib/components/Button";
 import { electronAPI } from "@utils/electronBridge";
 import PropTypes from "prop-types";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import AssetManifest from "./components/AssetManifest";
 import Codebook from "./components/Codebook";
 import Contents from "./components/Contents";
@@ -58,10 +58,7 @@ const ProtocolSummary = ({ data }) => {
 
 			const pdf = await electronAPI.webContents.printToPDF(options);
 			await electronAPI.fs.writeFile(userFilePath, pdf);
-		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.log("Error saving file: ", error);
-		}
+		} catch (_error) {}
 	};
 
 	const print = () => {
@@ -117,7 +114,6 @@ const ProtocolSummary = ({ data }) => {
 };
 
 ProtocolSummary.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	data: PropTypes.object,
 };
 

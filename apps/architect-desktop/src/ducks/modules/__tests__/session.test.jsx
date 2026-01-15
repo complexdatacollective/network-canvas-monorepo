@@ -90,7 +90,7 @@ describe("session module", () => {
 				filePath: "/dev/null/mock.netcanvas",
 			});
 
-			const aSecondAgo = new Date().getTime() - 1000;
+			const aSecondAgo = Date.now() - 1000;
 			expect(resultState.lastSaved).toBeGreaterThan(aSecondAgo);
 		});
 	});
@@ -151,7 +151,7 @@ describe("session module", () => {
 			const store = getStore();
 
 			beforeEach(() => {
-				mockSaveNetcanvas.mockImplementation((workingPath, protocol, savePath) => Promise.resolve(savePath));
+				mockSaveNetcanvas.mockImplementation((_workingPath, _protocol, savePath) => Promise.resolve(savePath));
 
 				store.clearActions();
 			});

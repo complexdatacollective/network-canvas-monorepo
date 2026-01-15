@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 
 const Sprite = ({ src, animate, ...styles }) => {
 	const style = {
@@ -13,7 +12,6 @@ const Sprite = ({ src, animate, ...styles }) => {
 
 Sprite.propTypes = {
 	src: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	animate: PropTypes.object,
 };
 

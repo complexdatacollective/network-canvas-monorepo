@@ -1,9 +1,7 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { compose } from "redux";
 import { networkReader } from "../../utils/protocols/assetTools";
 import Table from "./Table";

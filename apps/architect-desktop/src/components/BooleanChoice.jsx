@@ -2,7 +2,7 @@ import RichText from "@codaco/ui/lib/components/Fields/RichText";
 import Toggle from "@codaco/ui/lib/components/Fields/Toggle";
 import { isEmpty, isNull } from "lodash";
 import PropTypes from "prop-types";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { connect } from "react-redux";
 import { compose } from "redux";
 import { change, Field, formValueSelector } from "redux-form";

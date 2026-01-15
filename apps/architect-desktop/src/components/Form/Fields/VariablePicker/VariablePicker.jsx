@@ -2,7 +2,7 @@ import { Button } from "@codaco/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import { get, has } from "lodash";
 import PropTypes from "prop-types";
-import React, { useState } from "react";
+import { useState } from "react";
 import SpotlightModal from "./SpotlightModal";
 import EditableVariablePill, { SimpleVariablePill } from "./VariablePill";
 import VariableSpotlight from "./VariableSpotlight";

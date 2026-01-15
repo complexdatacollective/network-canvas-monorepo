@@ -3,7 +3,6 @@ import { Row, Section } from "@components/EditorLayout";
 import ValidatedField from "@components/Form/ValidatedField";
 import Tip from "@components/Tip";
 import PropTypes from "prop-types";
-import React from "react";
 import { useSelector } from "react-redux";
 import { compose } from "recompose";
 import { formValueSelector } from "redux-form";

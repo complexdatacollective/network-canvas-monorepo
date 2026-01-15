@@ -2,7 +2,7 @@ import { Icon } from "@codaco/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import { isEmpty, map } from "lodash";
 import PropTypes from "prop-types";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors } from "redux-form";
 import { flattenIssues, getFieldId } from "../utils/issues";

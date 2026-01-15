@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { times } from "lodash";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import createTimeline, { actionCreators } from "../timeline";

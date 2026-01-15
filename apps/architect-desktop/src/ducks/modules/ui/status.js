@@ -10,7 +10,7 @@ const BUSY = "STATUS/BUSY";
 const READY = "STATUS/READY";
 const NOOP = "STATUS/NOOP";
 
-const busy = (type = "", meta) => ({
+const busy = (type, meta) => ({
 	type: BUSY,
 	payload: type,
 	...(meta || {}),

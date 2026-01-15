@@ -3,8 +3,8 @@
  * The preview window expects files at network-canvas/dist/ but interviewer
  * is now a sibling app.
  */
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const src = path.resolve(__dirname, "../../interviewer/dist");
 const dest = path.resolve(__dirname, "../network-canvas/dist");

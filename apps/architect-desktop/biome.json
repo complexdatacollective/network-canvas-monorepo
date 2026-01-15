@@ -1,0 +1,97 @@
+{
+	"root": false,
+	"$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+	"extends": "//",
+	"files": {
+		"ignoreUnknown": true,
+		"includes": ["**", "!node_modules", "!dist", "!build", "!out"]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"a11y": {
+				"noStaticElementInteractions": "off",
+				"useKeyWithClickEvents": "off",
+				"noNoninteractiveElementInteractions": "off",
+				"noSvgWithoutTitle": "off",
+				"useValidAnchor": "warn",
+				"useSemanticElements": "warn"
+			},
+			"correctness": {
+				"noUnusedVariables": {
+					"level": "error",
+					"options": {
+						"ignoreRestSiblings": true
+					}
+				},
+				"useExhaustiveDependencies": "off",
+				"noUndeclaredDependencies": "off",
+				"noUnusedFunctionParameters": "off",
+				"useJsxKeyInIterable": "warn"
+			},
+			"performance": {
+				"noAccumulatingSpread": "warn"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "off",
+				"noConsole": "warn",
+				"noShadowRestrictedNames": "off",
+				"useIterableCallbackReturn": "off"
+			},
+			"style": {
+				"noParameterAssign": "off"
+			}
+		},
+		"domains": {
+			"react": "recommended",
+			"test": "recommended"
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["src/utils/getAbsoluteBoundingRect.js", "src/utils/webShims/**/*.js"],
+			"linter": { "enabled": false }
+		},
+		{
+			"includes": ["electron-builder.config.js"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noTemplateCurlyInString": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["build-resources/**/*.js", "scripts/**/*.js"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["development-protocol/*.js"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/lib/ProtocolSummary/**/*.jsx"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"useMediaCaption": "off"
+					}
+				}
+			}
+		}
+	]
+}

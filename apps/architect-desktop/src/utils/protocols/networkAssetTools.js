@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
 import { electronAPI } from "@utils/electronBridge";
 import csvParse from "csv-parse";

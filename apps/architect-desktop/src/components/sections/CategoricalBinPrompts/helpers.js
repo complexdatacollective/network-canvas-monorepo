@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 import { formValueSelector } from "redux-form";
 import { getOptionsForVariable } from "../../../selectors/codebook";
 

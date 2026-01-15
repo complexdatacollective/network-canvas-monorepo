@@ -1,10 +1,6 @@
-/* eslint-disable react/forbid-prop-types */
-/* eslint-disable react/jsx-props-no-spreading */
-
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown";
 import ArrowDropUpIcon from "@material-ui/icons/ArrowDropUp";
 import PropTypes from "prop-types";
-import React from "react";
 import { useSortBy, useTable } from "react-table";
 
 const getSortIcon = (column) => {

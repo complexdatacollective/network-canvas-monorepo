@@ -2,7 +2,6 @@ import withDisabledAPIKeyRequired from "@components/enhancers/withDisabledAPIKey
 import withMapFormToProps from "@components/enhancers/withMapFormToProps";
 import NativeSelect from "@components/Form/Fields/NativeSelect";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
 import { Row, Section } from "../EditorLayout";

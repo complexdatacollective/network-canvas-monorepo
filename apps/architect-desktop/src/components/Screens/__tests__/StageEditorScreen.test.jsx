@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { shallow } from "enzyme";
-import React from "react";
 import { createStore } from "redux";
 import StageEditorScreen from "../StageEditorScreen";
 

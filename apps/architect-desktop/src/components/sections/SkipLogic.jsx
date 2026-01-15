@@ -1,7 +1,7 @@
 import { Section } from "@components/EditorLayout";
 import SkipLogicFields from "@components/sections/fields/SkipLogicFields";
 import { actionCreators as dialogActions } from "@modules/dialogs";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 

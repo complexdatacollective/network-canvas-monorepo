@@ -1,6 +1,6 @@
 import { difference, get, keys } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";
 import { makeScreenMessageListener } from "../../selectors/ui";
@@ -63,10 +63,7 @@ const NodeType = (props) => {
 			</Row>
 			{withFilter && (
 				<Row>
-					<Filter
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...props}
-					/>
+					<Filter {...props} />
 				</Row>
 			)}
 		</Section>
@@ -82,7 +79,6 @@ NodeType.defaultProps = {
 	withFilter: false,
 };
 
-// eslint-disable-next-line react/jsx-props-no-spreading
 export const FilteredNodeType = (props) => <NodeType withFilter {...props} />;
 
 export default NodeType;

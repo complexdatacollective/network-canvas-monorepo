@@ -1,7 +1,7 @@
 import InternalLink from "@components/Link";
 import { actionCreators as screenActions } from "@modules/ui/screens";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 
 const ScreenLink = ({ children, screen, openScreen, closeExisting, closeScreen, onClick, ...options }) => {

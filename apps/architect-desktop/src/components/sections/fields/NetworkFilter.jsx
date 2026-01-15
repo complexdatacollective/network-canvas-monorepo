@@ -2,7 +2,7 @@ import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConn
 import { actionCreators as dialogActions } from "@modules/dialogs";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose, defaultProps } from "recompose";
 import { change, Field, getFormValues } from "redux-form";

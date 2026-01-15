@@ -13,7 +13,7 @@ const withDisplayOptions = withProps(({ type, options, codebook }) => {
 
 	const variableOptions = get(codebook, [...entityRoot, "variables", options.attribute, "options"]);
 
-	const valueOption = variableOptions && variableOptions.find(({ value }) => value === options.value);
+	const valueOption = variableOptions?.find(({ value }) => value === options.value);
 
 	const valueWithFormatting = () => {
 		const getOptionLabel = (item) => {

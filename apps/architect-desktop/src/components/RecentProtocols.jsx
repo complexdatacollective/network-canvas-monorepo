@@ -1,6 +1,6 @@
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 import { Flipped } from "react-flip-toolkit";
 import { connect } from "react-redux";
 import ProtocolStack from "./ProtocolStack";
@@ -56,7 +56,6 @@ const mapStateToProps = (state) => ({
 });
 
 RecentProtocols.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	recentProtocols: PropTypes.array.isRequired,
 	show: PropTypes.bool,
 };

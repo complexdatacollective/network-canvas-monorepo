@@ -9,7 +9,7 @@ import Screen from "@components/Screen/Screen";
 import { screenVariants } from "@components/Screens/Screens";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 
 import { useDispatch } from "react-redux";

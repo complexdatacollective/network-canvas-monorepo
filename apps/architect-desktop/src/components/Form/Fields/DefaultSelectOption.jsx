@@ -1,12 +1,10 @@
 import Icon from "@codaco/ui/lib/components/Icon";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 import { components as ReactSelectComponents } from "react-select";
 
 const DefaultSelectOption = (props) => {
 	const { data, onDeleteOption } = props;
-	/* eslint-disable no-underscore-dangle */
 	const isWarning = !!data.__isWarning__;
 	const showNew = !!data.__createNewOption__ || !!data.__isNew__;
 	const showDelete = !isWarning && !data.__isNew__ && !!onDeleteOption && !data.isUsed;
@@ -15,17 +13,11 @@ const DefaultSelectOption = (props) => {
 		e.stopPropagation();
 		props.onDeleteOption(data.value);
 	};
-	/* eslint-enable */
 
 	const classes = cx("form-fields-select__item", { "form-fields-select__item--warning": isWarning });
 
 	return (
-		<ReactSelectComponents.Option
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-			className={classes}
-			classNamePrefix="form-fields-select__item"
-		>
+		<ReactSelectComponents.Option {...props} className={classes} classNamePrefix="form-fields-select__item">
 			{isWarning && (
 				<div className="form-fields-select__item-warning">
 					<Icon name="warning" />
@@ -49,7 +41,6 @@ const DefaultSelectOption = (props) => {
 };
 
 DefaultSelectOption.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	data: PropTypes.object.isRequired,
 	onDeleteOption: PropTypes.func,
 };

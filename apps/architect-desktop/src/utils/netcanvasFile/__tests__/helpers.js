@@ -1,5 +1,5 @@
+import path from "node:path";
 import { APP_SCHEMA_VERSION } from "@app/config";
-import path from "path";
 import { vi } from "vitest";
 
 const mockProtocolPath = path.join(

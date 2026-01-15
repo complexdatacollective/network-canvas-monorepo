@@ -2,7 +2,6 @@ import { Button } from "@codaco/ui";
 import FieldError from "@components/Form/FieldError";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 import { SortableContainer } from "react-sortable-hoc";
 import { compose, defaultProps, withHandlers } from "recompose";
 import { FieldArray } from "redux-form";
@@ -14,13 +13,7 @@ const minTwoOptions = (value) =>
 		: undefined;
 
 const AddItem = (props) => (
-	<Button
-		color="primary"
-		icon="add"
-		size="small"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
+	<Button color="primary" icon="add" size="small" {...props}>
 		Add new
 	</Button>
 );
@@ -44,14 +37,7 @@ export const OptionsField = compose(
 			<div className={classes}>
 				<div className="options__options">
 					{fields.map((field, index) => (
-						<Option
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...rest}
-							key={field}
-							index={index}
-							field={field}
-							fields={fields}
-						/>
+						<Option {...rest} key={field} index={index} field={field} fields={fields} />
 					))}
 				</div>
 
@@ -69,13 +55,7 @@ OptionsField.propTypes = {
 };
 
 const Options = ({ name, ...rest }) => (
-	<FieldArray
-		name={name}
-		component={OptionsField}
-		validate={minTwoOptions}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...rest}
-	/>
+	<FieldArray name={name} component={OptionsField} validate={minTwoOptions} {...rest} />
 );
 
 Options.propTypes = {

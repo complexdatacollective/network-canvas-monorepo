@@ -3,7 +3,6 @@ import DataSource from "@components/Form/Fields/DataSource";
 import ValidatedField from "@components/Form/ValidatedField";
 import NetworkFilter from "@components/sections/fields/NetworkFilter";
 import PropTypes from "prop-types";
-import React from "react";
 import Section from "../../EditorLayout/Section";
 
 const NodePanel = ({ fieldId, form }) => (

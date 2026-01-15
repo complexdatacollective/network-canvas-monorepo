@@ -69,7 +69,7 @@ const writeProtocol = async (workingPath, protocol) => {
 const deployNetcanvas = async (netcanvasExportPath, destinationUserPath) => {
 	const createBackup = true;
 	const f = await electronAPI.path.parse(destinationUserPath);
-	const backupPath = await electronAPI.path.join(f.dir, `${f.name}.backup-${new Date().getTime()}${f.ext}`);
+	const backupPath = await electronAPI.path.join(f.dir, `${f.name}.backup-${Date.now()}${f.ext}`);
 
 	const exists = await electronAPI.fs.pathExists(destinationUserPath);
 

@@ -2,7 +2,6 @@ import { Field as RichText } from "@codaco/ui/lib/components/Fields/RichText";
 import TextField from "@codaco/ui/lib/components/Fields/Text";
 import { Row, Section } from "@components/EditorLayout";
 import PropTypes from "prop-types";
-import React from "react";
 import { ValidatedField } from "../Form";
 
 const Name = ({ interfaceType }) => {

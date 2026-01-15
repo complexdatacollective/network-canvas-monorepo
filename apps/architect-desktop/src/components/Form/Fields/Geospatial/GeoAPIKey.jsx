@@ -1,7 +1,7 @@
 import Button from "@codaco/ui/lib/components/Button";
 import APIKeyThumbnail from "@components/Thumbnail/APIKey";
 import cx from "classnames";
-import React, { useState } from "react";
+import { useState } from "react";
 import { fieldPropTypes } from "redux-form";
 import APIKeyBrowser from "./APIKeyBrowser";
 

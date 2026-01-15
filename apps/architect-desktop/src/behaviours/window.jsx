@@ -1,6 +1,5 @@
 import windowRootConsumer from "@codaco/ui/lib/components/windowRootConsumer";
 import PropTypes from "prop-types";
-import React from "react";
 import ReactDOM from "react-dom";
 
 const getDisplayName = (WrappedComponent) => WrappedComponent.displayName || WrappedComponent.name || "Component";
@@ -15,17 +14,13 @@ const window = (forceRoot) => (WrappedComponent) => {
 		const portal = forceRoot || windowRoot;
 		// const portal = windowRoot;
 
-		return ReactDOM.createPortal(
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			<WrappedComponent {...props} />,
-			portal,
-		);
+		return ReactDOM.createPortal(<WrappedComponent {...props} />, portal);
 	};
 
 	Window.displayName = () => `Window(${getDisplayName(WrappedComponent)})`;
 
 	Window.propTypes = {
-		windowRoot: PropTypes.any, // eslint-disable-line react/forbid-prop-types
+		windowRoot: PropTypes.any,
 	};
 
 	Window.defaultProps = {

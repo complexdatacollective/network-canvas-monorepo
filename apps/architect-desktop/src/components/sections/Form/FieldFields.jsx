@@ -7,7 +7,6 @@ import Options from "@components/Options";
 import Parameters from "@components/Parameters";
 import { omit } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import BooleanChoice from "../../BooleanChoice";
 import ExternalLink from "../../ExternalLink";
@@ -121,10 +120,7 @@ const PromptFields = ({
 			{variableType && (
 				<Row>
 					<h4>Preview</h4>
-					<InputPreview
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...metaForType}
-					/>
+					<InputPreview {...metaForType} />
 				</Row>
 			)}
 		</Section>
@@ -179,11 +175,8 @@ PromptFields.propTypes = {
 	component: PropTypes.string,
 	variableType: PropTypes.string,
 	handleChangeComponent: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	metaForType: PropTypes.object,
-	// eslint-disable-next-line react/forbid-prop-types
 	variableOptions: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	componentOptions: PropTypes.array,
 	isNewVariable: PropTypes.bool.isRequired,
 	handleNewVariable: PropTypes.func.isRequired,

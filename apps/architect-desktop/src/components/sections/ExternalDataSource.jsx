@@ -1,6 +1,5 @@
 import { Row, Section } from "@components/EditorLayout";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change } from "redux-form";
@@ -21,7 +20,6 @@ const ExternalDataSource = (props) => {
 		<Section
 			title="Data source for Roster"
 			summary={<p>This stage needs a source of nodes to populate the roster. Select a network data file to use.</p>}
-			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...props}
 		>
 			<Row>

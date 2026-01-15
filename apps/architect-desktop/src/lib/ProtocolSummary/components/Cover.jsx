@@ -2,7 +2,7 @@ import networkCanvasLogo from "@app/images/NC-Mark.svg";
 import ProtocolCard from "@codaco/ui/lib/components/Cards/ProtocolCard";
 import { pathSync } from "@utils/electronBridge";
 import { DateTime } from "luxon";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import SummaryContext from "./SummaryContext";
 
 const Cover = () => {

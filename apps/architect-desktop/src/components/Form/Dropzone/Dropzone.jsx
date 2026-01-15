@@ -3,7 +3,7 @@ import { Icon, Spinner } from "@codaco/ui";
 import cx from "classnames";
 import { times } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { acceptsPaths, getAcceptsExtensions, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";
 
@@ -107,7 +107,7 @@ const Dropzone = ({ onDrop, className, accepts, disabled }) => {
 
 			// If the user drags a file attachment from a browser, we get a url instead of a file
 			if (!files || filePaths.length < 1) {
-				const urlName = e.dataTransfer.getData && e.dataTransfer.getData("URL");
+				const urlName = e.dataTransfer.getData?.("URL");
 
 				if (urlName) {
 					const errorMessage =
@@ -179,7 +179,6 @@ Dropzone.defaultProps = {
 Dropzone.propTypes = {
 	onDrop: PropTypes.func.isRequired,
 	className: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	accepts: PropTypes.array,
 	disabled: PropTypes.bool,
 };

@@ -3,7 +3,6 @@ import FieldError from "@components/Form/FieldError";
 import cx from "classnames";
 import { keys as getKeys, isNull, toPairs } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { Field } from "redux-form";
 import Validation from "./Validation";
 
@@ -35,13 +34,7 @@ const getOptionsWithUsedDisabled = (options, used) =>
 	});
 
 const AddItem = (props) => (
-	<Button
-		color="primary"
-		icon="add"
-		size="small"
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-	>
+	<Button color="primary" icon="add" size="small" {...props}>
 		Add new
 	</Button>
 );
@@ -61,7 +54,6 @@ const ValidationsField = ({ input, options, existingVariables, meta: { submitFai
 						itemValue={value}
 						options={options}
 						existingVariables={existingVariables}
-						// eslint-disable-next-line react/jsx-props-no-spreading
 						{...rest}
 					/>
 				))}
@@ -73,11 +65,8 @@ const ValidationsField = ({ input, options, existingVariables, meta: { submitFai
 };
 
 ValidationsField.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	input: PropTypes.object.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
 	existingVariables: PropTypes.objectOf(
 		PropTypes.shape({
@@ -136,9 +125,7 @@ const Validations = ({
 
 Validations.propTypes = {
 	name: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	validationOptions: PropTypes.array,
-	// eslint-disable-next-line react/forbid-prop-types
 	value: PropTypes.object,
 	addNew: PropTypes.bool.isRequired,
 	setAddNew: PropTypes.func.isRequired,

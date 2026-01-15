@@ -8,7 +8,7 @@ import ValidatedField from "@components/Form/ValidatedField";
 import InlineEditScreen from "@components/InlineEditScreen";
 import Options from "@components/Options";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 import { Field } from "redux-form";
 import withNewVariableHandler, { form } from "./withNewVariableHandler";
 
@@ -83,15 +83,11 @@ class NewVariableWindow extends Component {
 NewVariableWindow.propTypes = {
 	show: PropTypes.bool,
 	variableType: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	allowVariableTypes: PropTypes.array,
-	// eslint-disable-next-line
 	onComplete: PropTypes.func.isRequired, // This prop is required by withNewVariableHandler
 	handleCreateNewVariable: PropTypes.func.isRequired,
 	onCancel: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	initialValues: PropTypes.object,
-	// eslint-disable-next-line react/forbid-prop-types
 	existingVariableNames: PropTypes.array.isRequired,
 };
 

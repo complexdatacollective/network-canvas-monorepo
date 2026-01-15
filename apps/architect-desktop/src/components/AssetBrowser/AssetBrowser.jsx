@@ -2,7 +2,7 @@ import useExternalDataDownload from "@components/AssetBrowser/useExternalDataDow
 import useExternalDataPreview from "@components/AssetBrowser/useExternalDataPreview";
 import { Section } from "@components/EditorLayout";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { compose } from "recompose";
 import Assets from "./Assets";
 import NewAsset from "./NewAsset";

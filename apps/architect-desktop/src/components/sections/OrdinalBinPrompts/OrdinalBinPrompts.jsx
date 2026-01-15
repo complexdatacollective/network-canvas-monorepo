@@ -5,7 +5,6 @@ import { itemSelector } from "@components/sections/CategoricalBinPrompts/helpers
 import withPromptChangeHandler from "@components/sections/CategoricalBinPrompts/withPromptChangeHandler";
 import { PromptPreview } from "@components/sections/NameGeneratorPrompts";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import PromptFields from "./PromptFields";
 
@@ -28,7 +27,6 @@ const OrdinalBinPrompts = ({ handleChangePrompt, entity, type, ...props }) => (
 		itemSelector={itemSelector(entity, type)}
 		entity={entity}
 		type={type}
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	/>
 );

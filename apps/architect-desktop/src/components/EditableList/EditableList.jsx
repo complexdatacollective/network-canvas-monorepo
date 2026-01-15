@@ -6,7 +6,7 @@ import InlineEditScreen from "@components/InlineEditScreen";
 import OrderedList from "@components/OrderedList";
 import { AnimateSharedLayout } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { compose, defaultProps } from "recompose";
 import withEditHandlers from "./withEditHandlers";
 
@@ -69,7 +69,6 @@ const EditableList = ({
 							onClickItem={handleEditField}
 							editField={editField}
 							form={formName}
-							// eslint-disable-next-line react/jsx-props-no-spreading
 							{...rest}
 						/>
 					</div>
@@ -87,18 +86,9 @@ const EditableList = ({
 					onCancel={handleCancelEditField}
 					layoutId={editField}
 					form={formName}
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...editProps}
 				>
-					<EditComponent
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...rest}
-						// eslint-disable-next-line react/jsx-props-no-spreading
-						{...editProps}
-						form={formName}
-						initialValues={initialValues}
-						fieldId={editField}
-					/>
+					<EditComponent {...rest} {...editProps} form={formName} initialValues={initialValues} fieldId={editField} />
 				</InlineEditScreen>
 			</AnimateSharedLayout>
 		</Section>
@@ -115,11 +105,8 @@ EditableList.propTypes = {
 	contentId: PropTypes.string,
 	title: PropTypes.string,
 	children: PropTypes.node,
-	// eslint-disable-next-line react/forbid-prop-types
 	previewComponent: PropTypes.any.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	editComponent: PropTypes.any.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	validation: PropTypes.object,
 	editField: PropTypes.string,
 	handleEditField: PropTypes.func.isRequired,
@@ -128,12 +115,9 @@ EditableList.propTypes = {
 	handleUpdate: PropTypes.func.isRequired,
 	handleAddNew: PropTypes.func.isRequired,
 	upsert: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	itemCount: PropTypes.any.isRequired,
 	setEditField: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	initialValues: PropTypes.any,
-	// eslint-disable-next-line react/forbid-prop-types
 	editProps: PropTypes.any,
 };
 

@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 
 const CodebookCategory = ({ title, children }) => (
 	<div className="codebook-category">

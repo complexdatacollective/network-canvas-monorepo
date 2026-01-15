@@ -67,7 +67,7 @@ describe("netcanvasFile/errors", () => {
 			const mockError = new Error();
 			try {
 				errorHandler(mockError);
-			} catch (e) {
+			} catch (_e) {
 				expect(log.error.mock.calls).toEqual([[mockError]]);
 			}
 		});

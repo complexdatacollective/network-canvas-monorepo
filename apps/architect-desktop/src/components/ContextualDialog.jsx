@@ -3,7 +3,7 @@ import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import Stackable from "@components/Stackable";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { compose } from "redux";
 
 export const Controls = ({ children }) => <div className="contextual-dialog__controls">{children}</div>;
@@ -27,10 +27,6 @@ Title.defaultProps = {
 };
 
 const Dialog = ({ show, children, className, onBlur }) => {
-	if (!show) {
-		return null;
-	}
-
 	const dialogZIndex = getCSSVariableAsNumber("--z-dialog");
 
 	const handleBlur = useCallback(
@@ -40,6 +36,10 @@ const Dialog = ({ show, children, className, onBlur }) => {
 		},
 		[onBlur],
 	);
+
+	if (!show) {
+		return null;
+	}
 
 	return (
 		<Stackable stackKey>

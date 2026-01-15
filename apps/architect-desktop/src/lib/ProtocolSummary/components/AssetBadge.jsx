@@ -1,6 +1,6 @@
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import DualLink from "./DualLink";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";

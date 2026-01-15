@@ -2,7 +2,6 @@ import { Icon } from "@codaco/ui";
 import cx from "classnames";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 
 const baseVariant = {
 	initial: { opacity: 0 },
@@ -27,12 +26,7 @@ const Group = ({ children, color, icon, tada, className, center, ...rest }) => {
 		: baseVariant;
 
 	return (
-		<motion.div
-			className={classes}
-			style={styles}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		>
+		<motion.div className={classes} style={styles} {...rest}>
 			{icon && (
 				<motion.div className="home-group__icon" variants={iconVariant}>
 					<Icon name={icon} />

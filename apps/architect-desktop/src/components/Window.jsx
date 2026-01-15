@@ -3,7 +3,6 @@ import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import Stackable from "@components/Stackable";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "redux";
 
 const Window = ({ show, title, children, leftControls, rightControls, className }) => {

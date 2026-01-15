@@ -3,7 +3,7 @@ import { DATE_FORMATS, DATE_TYPES } from "@codaco/ui/lib/components/Fields/DateP
 import NativeSelect from "@components/Form/Fields/NativeSelect";
 import ValidatedField from "@components/Form/ValidatedField";
 import PropTypes from "prop-types";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, formValues } from "redux-form";

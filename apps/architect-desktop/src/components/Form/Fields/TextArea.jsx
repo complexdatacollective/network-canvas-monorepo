@@ -1,5 +1,5 @@
 import cx from "classnames";
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { fieldPropTypes } from "redux-form";
 import uuid from "uuid/v4";
 
@@ -17,12 +17,7 @@ const TextArea = ({ meta, label, input }) => {
 		<label htmlFor={id.current} className={textareaClasses}>
 			{label && <div className="form-fields-textarea__label">{label}</div>}
 			<div className="form-fields-textarea__edit">
-				<textarea
-					className={cx("form-fields-textarea__input")}
-					id={id.current}
-					// eslint-disable-next-line react/jsx-props-no-spreading
-					{...input}
-				/>
+				<textarea className={cx("form-fields-textarea__input")} id={id.current} {...input} />
 			</div>
 			{touched && invalid && <p className="form-fields-markdown__error">{error}</p>}
 		</label>

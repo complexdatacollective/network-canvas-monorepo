@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
@@ -26,7 +25,6 @@ const CategoricalBinPrompts = ({ handleChangePrompt, entity, type, ...props }) =
 				handles on the left hand side.
 			</p>
 		}
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	/>
 );

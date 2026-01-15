@@ -6,7 +6,6 @@ import Options from "@components/Options";
 import PromptText from "@components/sections/PromptText";
 import Tip from "@components/Tip";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import IssueAnchor from "../../IssueAnchor";
@@ -164,10 +163,7 @@ const PromptFields = ({
 				maxItems={sortMaxItems}
 				optionGetter={getSortOrderOptionGetter(variableOptions)}
 			/>
-			<NewVariableWindow
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...newVariableWindowProps}
-			/>
+			<NewVariableWindow {...newVariableWindowProps} />
 		</>
 	);
 };

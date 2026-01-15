@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import EditableList from "../../EditableList";
 import withDisabledSubjectRequired from "../../enhancers/withDisabledSubjectRequired";
@@ -24,7 +23,6 @@ const TieStrengthCensusPrompts = ({ handleChangePrompt, ...props }) => (
 		fieldName="prompts"
 		itemSelector={itemSelector()}
 		onChange={handleChangePrompt}
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	/>
 );

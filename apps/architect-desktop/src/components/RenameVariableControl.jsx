@@ -8,7 +8,7 @@ import { actionCreators as codebookActions } from "@modules/protocol/codebook";
 import { getType, getVariablesForSubject } from "@selectors/codebook";
 import { get, values } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { Field } from "redux-form";
 

@@ -1,7 +1,4 @@
-/* eslint-disable react/forbid-prop-types */
-
 import PropTypes from "prop-types";
-import React from "react";
 import MiniTable from "../MiniTable";
 import Rules from "../Rules";
 

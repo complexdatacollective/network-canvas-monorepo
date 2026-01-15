@@ -1,16 +1,8 @@
-/* eslint-disable jsx-a11y/media-has-caption */
-
 import PropTypes from "prop-types";
-import React from "react";
 import withAssetUrl from "./withAssetUrl";
 
 const Video = ({ url, description, ...props }) => (
-	<video
-		src={url}
-		// eslint-disable-next-line react/jsx-props-no-spreading
-		{...props}
-		playsInline
-	>
+	<video src={url} {...props} playsInline>
 		{description}
 	</video>
 );

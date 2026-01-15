@@ -8,7 +8,7 @@ import cx from "classnames";
 import Fuse from "fuse.js";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect, useDispatch, useSelector } from "react-redux";
 import ControlBar from "../../ControlBar";
 import Row from "../../EditorLayout/Row";
@@ -53,7 +53,6 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments }) => {
 
 	const filteredInterfaces = useMemo(() => {
 		let interfaces = search(query, selectedTags).filter(({ tags: interfaceTags }) =>
-			// eslint-disable-next-line implicit-arrow-linebreak
 			interfaceHasAllSelectedTags(selectedTags, interfaceTags),
 		);
 

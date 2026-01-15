@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { compose, withState } from "recompose";
 import { bindActionCreators } from "redux";
@@ -19,7 +19,6 @@ class Stackable extends Component {
 		setStackableId(id);
 	}
 
-	// eslint-disable-next-line camelcase
 	UNSAFE_componentWillReceiveProps(newProps) {
 		const { stackKey, moveToTop } = this.props;
 

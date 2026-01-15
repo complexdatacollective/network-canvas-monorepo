@@ -33,7 +33,7 @@ const getStageTypeUsageIndex = createSelector(getStagesWithSubject, (stagesWithS
  * @param {array} stages Stage array
  */
 const flattenPromptsFromStages = (stages) =>
-	compact(flatMap(stages, ({ prompts, id: stageId }) => prompts && prompts.map((prompt) => ({ ...prompt, stageId }))));
+	compact(flatMap(stages, ({ prompts, id: stageId }) => prompts?.map((prompt) => ({ ...prompt, stageId }))));
 
 /**
  * Returns array of flattened prompts (with stageId) that have a subject property

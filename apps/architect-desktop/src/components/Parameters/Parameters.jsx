@@ -1,6 +1,5 @@
 import { isMatch } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import DatePicker from "./DatePicker";
 import RelativeDatePicker from "./RelativeDatePicker";
 import Scalar from "./Scalar";
@@ -23,17 +22,11 @@ const Parameters = ({ type, component, ...rest }) => {
 		return null;
 	}
 
-	return (
-		<ParameterComponent
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		/>
-	);
+	return <ParameterComponent {...rest} />;
 };
 
 Parameters.propTypes = {
 	type: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	component: PropTypes.any.isRequired,
 };
 

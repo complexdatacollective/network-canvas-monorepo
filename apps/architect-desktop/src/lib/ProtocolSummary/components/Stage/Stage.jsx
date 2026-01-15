@@ -121,7 +121,6 @@ const Stage = ({ configuration, id, label, stageNumber, type }) => {
 
 Stage.propTypes = {
 	id: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	configuration: PropTypes.object.isRequired,
 	label: PropTypes.string.isRequired,
 	stageNumber: PropTypes.number.isRequired,

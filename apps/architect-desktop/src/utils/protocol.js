@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 export const getObjectLabel = (protocol, protocolObject) => {
 	switch (protocolObject.type) {
 		case "form":

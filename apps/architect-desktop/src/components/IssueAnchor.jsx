@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { getFieldId } from "../utils/issues";
 
 const IssueAnchor = ({ fieldName, issueFieldName, description, children }) => (

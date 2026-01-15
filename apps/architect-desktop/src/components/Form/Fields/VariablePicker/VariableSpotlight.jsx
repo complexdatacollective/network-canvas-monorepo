@@ -5,7 +5,7 @@ import cx from "classnames";
 import { motion } from "framer-motion";
 import { get } from "lodash";
 import PropTypes from "prop-types";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getVariablesForSubject } from "../../../../selectors/codebook";
 import { sortByLabel } from "../../../Codebook/helpers";

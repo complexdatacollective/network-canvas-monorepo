@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { shallow } from "enzyme";
-import React from "react";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 // Mock useUpdater before importing App

@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { compose } from "redux";
 import { reduxForm, submit } from "redux-form";

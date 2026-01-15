@@ -2,7 +2,7 @@ import { Toggle } from "@codaco/ui/lib/components/Fields";
 import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { forwardRef, useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useState } from "react";
 import IssueAnchor from "../IssueAnchor";
 
 const animations = {

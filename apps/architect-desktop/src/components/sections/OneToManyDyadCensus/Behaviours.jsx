@@ -1,6 +1,5 @@
 import * as Fields from "@codaco/ui/lib/components/Fields";
 import { Row, Section } from "@components/EditorLayout";
-import React from "react";
 import { Field } from "redux-form";
 
 const OneToManyDyadCensusBehaviours = () => (

@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { mount } from "enzyme";
-import React from "react";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
 import testState from "../../__tests__/testState.json" with { type: "json" };

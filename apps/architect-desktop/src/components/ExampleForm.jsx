@@ -1,6 +1,5 @@
 import Modal from "@codaco/ui/lib/components/Modal";
 import PropTypes from "prop-types";
-import React from "react";
 
 /*
  *  <ExampleForm

@@ -1,6 +1,5 @@
 import GeoJSONThumbnail from "@components/Thumbnail/GeoJSON";
 import PropTypes from "prop-types";
-import React from "react";
 import { withState } from "recompose";
 import { fieldPropTypes } from "redux-form";
 import File from "../File";
@@ -10,12 +9,7 @@ const withSelectGeoAsset = withState("selectGeoAsset", "setSelectGeoAsset", fals
 const GeoDataSource = (props) => {
 	const { input } = props;
 	return (
-		<File
-			type="geojson"
-			selected={input.value}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-		>
+		<File type="geojson" selected={input.value} {...props}>
 			{(id) => <GeoJSONThumbnail id={id} />}
 		</File>
 	);

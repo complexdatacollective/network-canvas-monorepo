@@ -2,7 +2,7 @@ import { Number } from "@codaco/ui/lib/components/Fields";
 import { Section } from "@components/EditorLayout";
 import { actionCreators as dialogActions } from "@modules/dialogs";
 import { get, isNull, isUndefined } from "lodash";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { change, FormSection, formValueSelector } from "redux-form";
 import { ValidatedField } from "../Form";
@@ -70,13 +70,11 @@ const MinMaxAlterLimits = () => {
 		<Section
 			title="Set minimum or maximum alter numbers"
 			summary={
-				<>
-					<p>
-						This feature allows you to specify a minimum or maximum number of alters that can be named on this stage.
-						Please note that these limits apply to the <strong>stage as a whole</strong>, regardless of the number of
-						prompts you have created.
-					</p>
-				</>
+				<p>
+					This feature allows you to specify a minimum or maximum number of alters that can be named on this stage.
+					Please note that these limits apply to the <strong>stage as a whole</strong>, regardless of the number of
+					prompts you have created.
+				</p>
 			}
 			toggleable
 			startExpanded={startExpanded}

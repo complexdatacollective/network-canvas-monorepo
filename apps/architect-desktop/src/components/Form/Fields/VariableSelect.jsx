@@ -1,6 +1,5 @@
 import { getVariableOptionsForSubject } from "@selectors/codebook";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { compose, withProps } from "recompose";
 import NativeSelect from "./NativeSelect";
@@ -18,18 +17,12 @@ const mapStateToProps = (state, { entity, type }) => {
 // TODO: For now just map existing variables, but later could also append create handlers!
 const VariableSelect = ({ reserved, entity, type, variable, ...props }) => (
 	<div className="form-fields-variable-select">
-		<NativeSelect
-			placeholder="Select or create a variable"
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...props}
-			reserved={reserved}
-		/>
+		<NativeSelect placeholder="Select or create a variable" {...props} reserved={reserved} />
 	</div>
 );
 
 VariableSelect.propTypes = {
 	entity: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	reserved: PropTypes.array,
 	type: PropTypes.string,
 	variable: PropTypes.string,

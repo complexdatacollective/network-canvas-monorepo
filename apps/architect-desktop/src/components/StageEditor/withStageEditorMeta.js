@@ -16,7 +16,7 @@ const getStagePathById = (state, id) => {
 const mapStateToProps = (state, props) => {
 	const stage = getStage(state, props.id);
 	const stagePath = getStagePathById(state, props.id);
-	const type = (stage && stage.type) || props.type;
+	const type = stage?.type || props.type;
 	const template = getInterface(type).template || {};
 	const initialValues = stage || { ...template, type };
 	const formValues = getFormValues(formName)(state);

@@ -1,5 +1,3 @@
-/* eslint-disable jsx-a11y/label-has-for */
-
 import {
 	Number,
 	// CheckboxGroup,
@@ -9,7 +7,6 @@ import {
 } from "@codaco/ui/lib/components/Fields";
 import DetachedField from "@components/DetachedField";
 import PropTypes from "prop-types";
-import React from "react";
 import { withProps } from "recompose";
 
 // Todo: reinstate CheckboxGroup support when we switch to schema 8
@@ -45,7 +42,6 @@ const EditValue = ({ fieldComponent: FieldComponent, value, variableType, onChan
 		onChange={onChange}
 		value={value}
 		options={options}
-		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...rest}
 	/>
 );
@@ -57,7 +53,6 @@ EditValue.propTypes = {
 		PropTypes.bool,
 		// PropTypes.array,
 	]).isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
 	onChange: PropTypes.func,
 	fieldComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]).isRequired,

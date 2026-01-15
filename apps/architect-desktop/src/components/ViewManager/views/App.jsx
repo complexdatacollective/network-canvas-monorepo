@@ -6,7 +6,6 @@ import ToastManager from "@components/ToastManager";
 import useUpdater from "@hooks/useUpdater";
 import cx from "classnames";
 import { motion } from "framer-motion";
-import React from "react";
 
 const appVariants = {
 	show: {

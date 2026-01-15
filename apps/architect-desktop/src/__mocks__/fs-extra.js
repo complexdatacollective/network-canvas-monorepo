@@ -27,7 +27,7 @@ export const rename = vi.fn(() => Promise.resolve());
 export const stat = vi.fn(() => ({
 	isFile: () => Promise.reject(new Error("stat.isFile")),
 }));
-export const writeFile = vi.fn((filename, content, cb) => cb());
+export const writeFile = vi.fn((_filename, _content, cb) => cb());
 export const writeJson = vi.fn(() => Promise.reject(new Error("mock writeJson")));
 export const unlink = vi.fn(() => Promise.reject(new Error("mock unlink")));
 

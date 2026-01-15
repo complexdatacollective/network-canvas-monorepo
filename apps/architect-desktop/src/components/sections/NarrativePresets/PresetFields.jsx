@@ -1,10 +1,7 @@
-/* eslint-disable react/prefer-stateless-function */
-
 import CheckboxGroup from "@codaco/ui/lib/components/Fields/CheckboxGroup";
 import Text from "@codaco/ui/lib/components/Fields/Text";
 import ValidatedField from "@components/Form/ValidatedField";
 import PropTypes from "prop-types";
-import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
@@ -169,17 +166,13 @@ const PresetFields = ({
 
 PresetFields.propTypes = {
 	form: PropTypes.string.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	edgesForSubject: PropTypes.array,
 	entity: PropTypes.string.isRequired,
 	groupVariable: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	groupVariablesForSubject: PropTypes.array,
 	handleCreateLayoutVariable: PropTypes.func.isRequired,
-	// eslint-disable-next-line react/forbid-prop-types
 	highlightVariablesForSubject: PropTypes.array,
 	layoutVariable: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	layoutVariablesForSubject: PropTypes.array,
 	type: PropTypes.string.isRequired,
 };

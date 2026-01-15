@@ -5,7 +5,6 @@ import withMapFormToProps from "@components/enhancers/withMapFormToProps";
 import MultiSelect from "@components/Form/MultiSelect";
 import useVariablesFromExternalData from "@hooks/useVariablesFromExternalData";
 import PropTypes from "prop-types";
-import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";

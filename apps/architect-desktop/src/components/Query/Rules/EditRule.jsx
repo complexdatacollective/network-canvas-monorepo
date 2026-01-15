@@ -1,7 +1,7 @@
 import Button from "@codaco/ui/lib/components/Button";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { Component } from "react";
+import { Component } from "react";
 import { createPortal } from "react-dom";
 import ControlBar from "../../ControlBar";
 import Layout from "../../EditorLayout/Layout";
@@ -83,7 +83,7 @@ class EditRule extends Component {
 									</Layout>
 								</div>
 							</CollapsableHeader>
-							{rule && rule.options && <this.TypeComponent rule={rule} codebook={codebook} onChange={onChange} />}
+							{rule?.options && <this.TypeComponent rule={rule} codebook={codebook} onChange={onChange} />}
 						</Screen>
 					</motion.div>
 				)}
@@ -96,10 +96,8 @@ class EditRule extends Component {
 EditRule.propTypes = {
 	rule: PropTypes.shape({
 		type: PropTypes.string,
-		// eslint-disable-next-line react/forbid-prop-types
 		options: PropTypes.object,
 	}),
-	// eslint-disable-next-line react/forbid-prop-types
 	codebook: PropTypes.object.isRequired,
 	onChange: PropTypes.func.isRequired,
 	onSave: PropTypes.func.isRequired,

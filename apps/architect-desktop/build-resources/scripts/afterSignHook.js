@@ -13,8 +13,8 @@
  * @see https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution
  */
 const { notarize } = require("@electron/notarize");
-const path = require("path");
-const fs = require("fs");
+const path = require("node:path");
+const fs = require("node:fs");
 
 async function afterSignHook(context) {
 	const { electronPlatformName, appOutDir } = context;

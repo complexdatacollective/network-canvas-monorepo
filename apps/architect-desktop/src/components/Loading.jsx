@@ -3,7 +3,6 @@ import { selectors as statusSelectors } from "@modules/ui/status";
 import { actionLocks as protocolsLocks } from "@modules/userActions";
 import { AnimatePresence, motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 
 const variants = {

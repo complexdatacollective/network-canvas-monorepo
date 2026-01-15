@@ -4,7 +4,7 @@ import Number from "@codaco/ui/lib/components/Fields/Number";
 import Toggle from "@codaco/ui/lib/components/Fields/Toggle";
 import ValidatedField from "@components/Form/ValidatedField";
 import PropTypes from "prop-types";
-import React, { useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";

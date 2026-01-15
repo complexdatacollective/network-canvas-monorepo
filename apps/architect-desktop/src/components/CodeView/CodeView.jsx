@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 import { createPortal } from "react-dom";
 import { useSelector } from "react-redux";
 import { getFormValues } from "redux-form";

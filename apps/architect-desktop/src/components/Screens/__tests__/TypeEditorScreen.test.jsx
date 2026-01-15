@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { shallow } from "enzyme";
-import React from "react";
 import TypeEditorScreen from "../TypeEditorScreen";
 
 const mockProps = {};

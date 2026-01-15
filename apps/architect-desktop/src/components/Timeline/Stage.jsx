@@ -1,12 +1,10 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
-
 import getAbsoluteBoundingRect from "@app/utils/getAbsoluteBoundingRect";
 import { Button } from "@codaco/ui";
 import DeleteIcon from "@material-ui/icons/DeleteRounded";
 import cx from "classnames";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { SortableElement } from "react-sortable-hoc";
 import EditStageButton from "./EditStageButton";
 

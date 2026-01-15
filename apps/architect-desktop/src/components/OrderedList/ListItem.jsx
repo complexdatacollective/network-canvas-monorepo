@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
-import React from "react";
 import { SortableElement } from "react-sortable-hoc";
 import DeleteButton from "./DeleteButton";
 import Handle from "./Handle";

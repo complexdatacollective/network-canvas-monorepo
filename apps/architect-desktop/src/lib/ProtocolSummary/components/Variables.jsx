@@ -1,5 +1,3 @@
-/* eslint-disable react/no-array-index-key */
-
 import Markdown from "@codaco/ui/lib/components/Fields/Markdown";
 import { SimpleVariablePill } from "@components/Form/Fields/VariablePicker/VariablePill";
 import { find, get, isEmpty, sortBy, toPairs } from "lodash";
@@ -50,8 +48,7 @@ const Variables = ({ variables }) => {
 
 						const indexEntry = index.find(({ id }) => id === variableId);
 
-						const optionsRows =
-							options && options.map(({ value, label }) => [renderValue(value), <Markdown label={label} />]);
+						const optionsRows = options?.map(({ value, label }) => [renderValue(value), <Markdown label={label} />]);
 
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>
@@ -82,7 +79,6 @@ const Variables = ({ variables }) => {
 };
 
 Variables.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	variables: PropTypes.object,
 };
 

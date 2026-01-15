@@ -1,7 +1,7 @@
 import { Icon } from "@codaco/ui";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import uuid from "uuid";
 
 const dashIndex = [4, 7];
@@ -79,8 +79,6 @@ const TextInput = ({
 					name={input.name}
 					className="form-field form-field-text form-field-text__input"
 					placeholder={dateFormat.toUpperCase()}
-					autoFocus={autoFocus} // eslint-disable-line
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...input}
 					onKeyDown={filterInput(input.value)}
 					onChange={handleChange}
@@ -97,9 +95,7 @@ const TextInput = ({
 };
 
 TextInput.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	input: PropTypes.object,
-	// eslint-disable-next-line react/forbid-prop-types
 	meta: PropTypes.object,
 	label: PropTypes.string,
 	autoFocus: PropTypes.bool,

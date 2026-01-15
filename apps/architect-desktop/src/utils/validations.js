@@ -16,7 +16,7 @@ const coerceArray = (value) => {
 	if (value instanceof Object) {
 		return value.reduce((acc, individual) => [...acc, individual.value], []);
 	}
-	if (value instanceof Array) {
+	if (Array.isArray(value)) {
 		return value;
 	}
 	return [];
@@ -103,21 +103,19 @@ export const uniqueArrayAttribute = (_, message) => (value, allValues, __, name)
 	return undefined;
 };
 
-export const uniqueByList =
-	(list = [], message) =>
-	(value) => {
-		if (!value) {
-			return undefined;
-		}
-
-		const existsAlready = list.some((existingValue) => isRoughlyEqual(existingValue, value));
-
-		if (existsAlready) {
-			return messageWithDefault(message, `"${value}" is already in use`);
-		}
-
+export const uniqueByList = (list, message) => (value) => {
+	if (!value) {
 		return undefined;
-	};
+	}
+
+	const existsAlready = list.some((existingValue) => isRoughlyEqual(existingValue, value));
+
+	if (existsAlready) {
+		return messageWithDefault(message, `"${value}" is already in use`);
+	}
+
+	return undefined;
+};
 
 export const ISODate = (dateFormat, message) => (value) => {
 	const dt = DateTime.fromISO(value);
@@ -147,7 +145,7 @@ export const validRegExp = (_, message) => (value) => {
 			return undefined;
 		}
 		return messageWithDefault(message, "Not a valid regular expression.");
-	} catch (e) {
+	} catch (_e) {
 		return messageWithDefault(message, "Not a valid regular expression.");
 	}
 };

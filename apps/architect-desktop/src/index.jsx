@@ -1,4 +1,3 @@
-import React, { Fragment } from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
@@ -15,13 +14,11 @@ initPreventFileDrop();
 
 const startApp = () => {
 	ReactDOM.render(
-		<>
-			<Provider store={store}>
-				<PersistGate loading={null} persistor={persistor}>
-					<ViewManager />
-				</PersistGate>
-			</Provider>
-		</>,
+		<Provider store={store}>
+			<PersistGate loading={null} persistor={persistor}>
+				<ViewManager />
+			</PersistGate>
+		</Provider>,
 		document.getElementById("root"),
 	);
 };

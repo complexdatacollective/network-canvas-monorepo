@@ -1,7 +1,6 @@
 import { Icon } from "@codaco/ui";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React from "react";
 
 const PreviewEdge = ({ label, color, onClick, selected }) => (
 	<div

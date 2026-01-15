@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 import { mount } from "enzyme";
-import React from "react";
 import { Provider } from "react-redux";
 import { change, reduxForm } from "redux-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -58,7 +57,6 @@ const getSubject = (node, store, { form }) =>
 		</Provider>,
 	);
 
-// eslint-disable-next-line import/prefer-default-export
 export const testPromptFields = (PromptFieldsComponent, name = "") => {
 	let mockStore;
 

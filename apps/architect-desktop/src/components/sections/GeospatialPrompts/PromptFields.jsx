@@ -5,7 +5,6 @@ import withVariableHandlers from "@components/sections/CategoricalBinPrompts/wit
 import withVariableOptions from "@components/sections/CategoricalBinPrompts/withVariableOptions";
 import PromptText from "@components/sections/PromptText";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 
@@ -47,10 +46,7 @@ const PromptFields = ({ variable, variableOptions, entity, type, changeForm, for
 					/>
 				</Row>
 			</Section>
-			<NewVariableWindow
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...newVariableWindowProps}
-			/>
+			<NewVariableWindow {...newVariableWindowProps} />
 		</>
 	);
 };

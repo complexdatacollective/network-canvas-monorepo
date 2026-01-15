@@ -2,7 +2,6 @@ import Icon from "@codaco/ui/lib/components/Icon";
 import cx from "classnames";
 import { range } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { fieldPropTypes } from "redux-form";
 
 const asColorOption = (name) => ({
@@ -58,7 +57,6 @@ const ColorPicker = ({ palette, paletteRange, options, input, label, meta: { err
 
 ColorPicker.propTypes = {
 	...fieldPropTypes,
-	// eslint-disable-next-line react/forbid-prop-types
 	options: PropTypes.array,
 	paletteRange: PropTypes.number,
 };

@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
 import Variable from "../Variable";

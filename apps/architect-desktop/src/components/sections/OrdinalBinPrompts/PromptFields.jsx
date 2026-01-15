@@ -9,7 +9,6 @@ import withVariableOptions from "@components/sections/CategoricalBinPrompts/with
 import PromptText from "@components/sections/PromptText";
 import Tip from "@components/Tip";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import VariablePicker from "../../Form/Fields/VariablePicker/VariablePicker";
 import BinSortOrderSection from "../BinSortOrderSection";
@@ -36,7 +35,7 @@ const PromptFields = ({ changeForm, entity, form, type, variable, variableOption
 
 	const sortMaxItems = getSortOrderOptionGetter(variableOptions)("property").length;
 
-	const totalOptionsLength = optionsForVariableDraft && optionsForVariableDraft.length;
+	const totalOptionsLength = optionsForVariableDraft?.length;
 
 	const showVariableOptionsTip = totalOptionsLength > 5;
 
@@ -109,23 +108,18 @@ const PromptFields = ({ changeForm, entity, form, type, variable, variableOption
 				maxItems={sortMaxItems}
 				optionGetter={getSortOrderOptionGetter(variableOptions)}
 			/>
-			<NewVariableWindow
-				// eslint-disable-next-line react/jsx-props-no-spreading
-				{...newVariableWindowProps}
-			/>
+			<NewVariableWindow {...newVariableWindowProps} />
 		</>
 	);
 };
 
 PromptFields.propTypes = {
-	// eslint-disable-next-line react/forbid-prop-types
 	variableOptions: PropTypes.array,
 	entity: PropTypes.string.isRequired,
 	type: PropTypes.string.isRequired,
 	changeForm: PropTypes.func.isRequired,
 	form: PropTypes.string.isRequired,
 	variable: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	optionsForVariableDraft: PropTypes.array,
 };
 

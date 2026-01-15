@@ -6,7 +6,6 @@ import withDisabledSubjectRequired from "@components/enhancers/withDisabledSubje
 import withSubject from "@components/enhancers/withSubject";
 import ValidatedField from "@components/Form/ValidatedField";
 import PropTypes from "prop-types";
-import React from "react";
 import { compose } from "recompose";
 import FieldFields from "./FieldFields";
 import FieldPreview from "./FieldPreview";
@@ -18,11 +17,7 @@ const Form = ({ handleChangeFields, form, disabled, type, entity, disableFormTit
 		disabled={disabled}
 		group
 		title="Form"
-		summary={
-			<>
-				<p>Use this section to define the fields to collect when this form is shown.</p>
-			</>
-		}
+		summary={<p>Use this section to define the fields to collect when this form is shown.</p>}
 	>
 		{!disableFormTitle && (
 			<ValidatedField
@@ -50,12 +45,10 @@ const Form = ({ handleChangeFields, form, disabled, type, entity, disableFormTit
 			form={form}
 			sectionTitle="Fields"
 			sectionSummary={
-				<>
-					<p>
-						Add one or more fields to your form to collect attributes about each node the participant creates. Use the
-						drag handle on the left of each prompt adjust its order.
-					</p>
-				</>
+				<p>
+					Add one or more fields to your form to collect attributes about each node the participant creates. Use the
+					drag handle on the left of each prompt adjust its order.
+				</p>
 			}
 		/>
 	</Section>

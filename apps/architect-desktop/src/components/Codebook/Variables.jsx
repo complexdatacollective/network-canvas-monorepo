@@ -1,11 +1,8 @@
-/* eslint-disable jsx-a11y/control-has-associated-label */
-
 import { actionCreators as dialogActionCreators } from "@modules/dialogs";
 import { actionCreators as codebookActionCreators } from "@modules/protocol/codebook";
 import cx from "classnames";
 import { get, isString } from "lodash";
 import PropTypes from "prop-types";
-import React from "react";
 import { connect } from "react-redux";
 import { compose, withHandlers, withProps, withStateHandlers } from "recompose";
 import EditableVariablePill from "../Form/Fields/VariablePicker/VariablePill";
@@ -66,25 +63,13 @@ const Variables = ({ variables, onDelete, sortBy, sortDirection, sort }) => {
 			<table className="codebook__variables">
 				<thead>
 					<tr className="codebook__variables-row codebook__variables-row--heading">
-						<Heading
-							name="name"
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...headingProps}
-						>
+						<Heading name="name" {...headingProps}>
 							Name
 						</Heading>
-						<Heading
-							name="component"
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...headingProps}
-						>
+						<Heading name="component" {...headingProps}>
 							Input control
 						</Heading>
-						<Heading
-							name="usageString"
-							// eslint-disable-next-line react/jsx-props-no-spreading
-							{...headingProps}
-						>
+						<Heading name="usageString" {...headingProps}>
 							Used In
 						</Heading>
 						<th />
@@ -119,7 +104,6 @@ Variables.propTypes = {
 	sortBy: PropTypes.string.isRequired,
 	sortDirection: PropTypes.oneOf([SortDirection.ASC, SortDirection.DESC]).isRequired,
 	type: PropTypes.string,
-	// eslint-disable-next-line react/forbid-prop-types
 	variables: PropTypes.array,
 };
 

@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 import { HashLink } from "react-router-hash-link";
 
 const DualLink = ({ to, children, className }) => (
