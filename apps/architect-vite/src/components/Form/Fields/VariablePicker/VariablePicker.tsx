@@ -74,7 +74,7 @@ const VariablePicker = ({
 		const selectedValue = get(found, "value", null) as string | null;
 
 		const finalLabel = selectedLabel || selectedValue || "";
-		const variableType = found.type as VariableType;
+		const variableType = (found.type ?? "text") as VariableType;
 
 		return (
 			<SimpleVariablePill label={finalLabel} type={variableType}>
