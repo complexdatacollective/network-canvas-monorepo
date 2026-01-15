@@ -29,7 +29,7 @@ const VirtualizedTable = ({ columns, data }) => {
 					className="tr"
 				>
 					{row.cells.map((cell) => (
-						<div {...cell.getCellProps()} className="td">
+						<div key={cell.column.id} {...cell.getCellProps()} className="td">
 							{cell.render("Cell")}
 						</div>
 					))}
@@ -46,9 +46,9 @@ const VirtualizedTable = ({ columns, data }) => {
 				<div {...getTableProps()} className="table">
 					<div>
 						{headerGroups.map((headerGroup) => (
-							<div {...headerGroup.getHeaderGroupProps()} className="tr">
+							<div key={headerGroup.id} {...headerGroup.getHeaderGroupProps()} className="tr">
 								{headerGroup.headers.map((column) => (
-									<div {...column.getHeaderProps()} className="th">
+									<div key={column.id} {...column.getHeaderProps()} className="th">
 										{column.render("Header")}
 									</div>
 								))}

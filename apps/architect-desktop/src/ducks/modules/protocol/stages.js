@@ -119,7 +119,8 @@ const deleteStageThunk = (stageId) => (dispatch, getState) => {
 				.filter(([, variable]) => variable.encrypted)
 				.map(([variableId, variable]) => ({ ...variable, id: variableId }));
 
-			return [...acc, ...nodeTypeVariables];
+			acc.push(...nodeTypeVariables);
+			return acc;
 		}, []);
 		encryptedVariables.forEach((variable) => {
 			const properties = omit(variable, "encrypted");

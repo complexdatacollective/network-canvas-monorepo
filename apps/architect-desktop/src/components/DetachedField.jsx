@@ -55,10 +55,10 @@ class DetachedField extends Component {
 
 		const errors = validate.reduce((memo, rule) => {
 			const result = rule(value);
-			if (!result) {
-				return memo;
+			if (result) {
+				memo.push(result);
 			}
-			return [...memo, result];
+			return memo;
 		}, []);
 
 		const isValid = errors.length === 0;

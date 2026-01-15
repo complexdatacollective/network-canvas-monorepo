@@ -48,7 +48,10 @@ const Variables = ({ variables }) => {
 
 						const indexEntry = index.find(({ id }) => id === variableId);
 
-						const optionsRows = options?.map(({ value, label }) => [renderValue(value), <Markdown label={label} />]);
+						const optionsRows = options?.map(({ value, label }) => [
+							renderValue(value),
+							<Markdown key={value} label={label} />,
+						]);
 
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>

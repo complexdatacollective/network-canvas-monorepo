@@ -95,7 +95,8 @@ const mapStateToProps = (state, { type, isNew }) => {
 			if (excludeType && id === excludeType) {
 				return acc;
 			}
-			return [...acc, definition.name];
+			acc.push(definition.name);
+			return acc;
 		}, []);
 
 	const nodes = getNames(codebook.node, !isNew && type);

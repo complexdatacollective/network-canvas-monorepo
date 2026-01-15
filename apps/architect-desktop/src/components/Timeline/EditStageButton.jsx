@@ -9,14 +9,14 @@ const getTimelineImage = (type) => get(timelineImages, type, timelineImages.Defa
 
 const EditStageButton = React.forwardRef(({ hasFilter, hasSkipLogic, label, onEditStage, type }, ref) => (
 	<div className="timeline-stage__edit-stage" onClick={onEditStage}>
-		<div className="timeline-stage__screen" role="button" tabIndex="0" ref={ref}>
+		<button type="button" className="timeline-stage__screen" ref={ref}>
 			<div className="timeline-stage__screen-preview">
 				{getTimelineImage(type) && (
 					<img src={getTimelineImage(type)} alt={`${type} interface`} title={`${type} interface`} />
 				)}
 				{!getTimelineImage(type) && `${type} Interface`}
 			</div>
-		</div>
+		</button>
 		<div className="timeline-stage__meta">
 			<h2 className="timeline-stage__title">{label || "\u00A0"}</h2>
 			<div className="timeline-stage__icons">

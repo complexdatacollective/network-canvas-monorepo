@@ -16,7 +16,11 @@ const Form = ({ form }) => {
 	const fieldRows = form.fields?.map(({ prompt, variable }) => {
 		const meta = getVariableMeta(index, variable);
 
-		return [<Variable id={variable} />, meta.component, <Markdown label={prompt} />];
+		return [
+			<Variable key={`var-${variable}`} id={variable} />,
+			meta.component,
+			<Markdown key={`prompt-${variable}`} label={prompt} />,
+		];
 	});
 
 	return (

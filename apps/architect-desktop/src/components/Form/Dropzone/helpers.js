@@ -19,14 +19,13 @@ export const acceptsPaths = (accepts, paths) => {
 
 export const getRejectedExtensions = (accepts, paths) =>
 	paths.reduce((memo, path) => {
-		if (acceptsPath(accepts)(path)) {
-			return memo;
+		if (!acceptsPath(accepts)(path)) {
+			const extension = getExtension(path);
+			if (!memo.includes(extension)) {
+				memo.push(extension);
+			}
 		}
-		const extension = getExtension(path);
-		if (memo.includes(extension)) {
-			return memo;
-		}
-		return [...memo, extension];
+		return memo;
 	}, []);
 
 export const getAcceptsExtensions = (accepts) => accepts.map((accept) => accept.substr(1));

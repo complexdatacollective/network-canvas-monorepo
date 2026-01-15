@@ -30,10 +30,10 @@ export const toHaveDispatched = (received, actions) => {
 		throw new Error("Must be called with vi.fn() or jest.fn()");
 	}
 	const dispatched = received.mock.calls.reduce((acc, [call]) => {
-		if (!call.type) {
-			return acc;
+		if (call.type) {
+			acc.push(call);
 		}
-		return [...acc, call];
+		return acc;
 	}, []);
 
 	const error = actions.reduce((errorMessage, action, index) => {

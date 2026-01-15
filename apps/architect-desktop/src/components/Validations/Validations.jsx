@@ -13,7 +13,8 @@ const validate = (validations) => {
 		if (!isNull(value)) {
 			return acc;
 		}
-		return [...acc, key];
+		acc.push(key);
+		return acc;
 	}, []);
 
 	if (check.length === 0) {

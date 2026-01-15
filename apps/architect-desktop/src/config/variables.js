@@ -173,14 +173,10 @@ export const VARIABLE_TYPES_WITH_COMPONENTS = VARIABLE_TYPES_COMPONENTS.map(([ty
 
 export const INPUT_OPTIONS = Object.values(COMPONENTS);
 
-const formattedInputOptions = VARIABLE_TYPES_COMPONENTS.reduce(
-	(accumulator, currentValue) => [
-		...accumulator,
-		{ label: currentValue[2], value: null, disabled: true },
-		...currentValue[1],
-	],
-	[],
-);
+const formattedInputOptions = VARIABLE_TYPES_COMPONENTS.reduce((accumulator, currentValue) => {
+	accumulator.push({ label: currentValue[2], value: null, disabled: true }, ...currentValue[1]);
+	return accumulator;
+}, []);
 
 export const VARIABLE_OPTIONS = Object.values(VARIABLE_TYPES);
 

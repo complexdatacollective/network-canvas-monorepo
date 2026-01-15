@@ -67,13 +67,10 @@ export const makeGetIsUsed =
 
 		const flattenedData = JSON.stringify(data);
 
-		const isUsed = variableIds.reduce(
-			(memo, variableId) => ({
-				...memo,
-				[variableId]: flattenedData.includes(`"${variableId}"`),
-			}),
-			{},
-		);
+		const isUsed = variableIds.reduce((memo, variableId) => {
+			memo[variableId] = flattenedData.includes(`"${variableId}"`);
+			return memo;
+		}, {});
 
 		return isUsed;
 	};

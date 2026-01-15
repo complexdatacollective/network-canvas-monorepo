@@ -28,7 +28,7 @@ const Items = ({ items }) => {
 										rows={[
 											["Block Size", size],
 											["Type", "Text"],
-											["Content", <Markdown label={content} />],
+											["Content", <Markdown key="content" label={content} />],
 										]}
 									/>
 								</div>

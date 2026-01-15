@@ -22,27 +22,27 @@ const OrderedList = memo((props) => {
 	return (
 		<div className="list">
 			{(dirty || submitFailed) && error && !isArray(error) && <p className="list__error">{error}</p>}
-			{values &&
-			values.map((value, index) => {
-				const previewValue = isPlainObject(value) ? value : { value };
-				const fieldId = `${name}[${index}]`;
-				const onClick = onClickItem && (() => onClickItem(fieldId));
+			{Array.isArray(values) &&
+				values.map((value, index) => {
+					const previewValue = isPlainObject(value) ? value : { value };
+					const fieldId = `${name}[${index}]`;
+					const onClick = onClickItem && (() => onClickItem(fieldId));
 
-				const onDelete = () => removeItem(index);
+					const onDelete = () => removeItem(index);
 
-				return (
-					<ListItem
-						index={index}
-						sortable={sortable}
-						key={fieldId}
-						layoutId={onClickItem && fieldId}
-						onClick={onClick}
-						onDelete={onDelete}
-					>
-						<Item {...previewValue} fieldId={fieldId} form={form} key={fieldId} />
-					</ListItem>
-				);
-			})}
+					return (
+						<ListItem
+							index={index}
+							sortable={sortable}
+							key={fieldId}
+							layoutId={onClickItem && fieldId}
+							onClick={onClick}
+							onDelete={onDelete}
+						>
+							<Item {...previewValue} fieldId={fieldId} form={form} key={fieldId} />
+						</ListItem>
+					);
+				})}
 		</div>
 	);
 });

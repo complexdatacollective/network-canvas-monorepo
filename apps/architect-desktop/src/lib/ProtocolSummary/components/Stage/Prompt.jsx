@@ -53,7 +53,7 @@ const Prompt = ({ text, additionalAttributes, ...prompt }) => {
 	const attributeRows = attributes.reduce(reduceAttribute(prompt), []);
 
 	const additionalAttributeRows = additionalAttributes.map(({ variable: variableId, value }) => [
-		<Variable id={variableId} />,
+		<Variable key={variableId} id={variableId} />,
 		renderValue(value),
 	]);
 

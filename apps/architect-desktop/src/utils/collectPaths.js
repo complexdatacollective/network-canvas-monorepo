@@ -142,10 +142,8 @@ export const collectPaths = (objPaths, object) =>
 			? collectMappedPath(objPath[0], object, objPath[1])
 			: collectPath(objPath, object);
 
-		return {
-			...acc,
-			...next,
-		};
+		Object.assign(acc, next);
+		return acc;
 	}, {});
 
 export default collectPath;

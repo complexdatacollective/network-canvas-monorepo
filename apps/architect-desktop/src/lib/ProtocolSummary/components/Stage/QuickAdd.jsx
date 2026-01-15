@@ -20,7 +20,7 @@ const QuickAdd = ({ quickAdd }) => {
 				<MiniTable
 					rotated
 					rows={[
-						["Variable", <Variable id={quickAdd} />],
+						["Variable", <Variable key={quickAdd} id={quickAdd} />],
 						["Type", variableMeta.type],
 					]}
 				/>

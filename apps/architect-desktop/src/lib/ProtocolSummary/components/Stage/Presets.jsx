@@ -21,10 +21,10 @@ const Presets = ({ presets }) => {
 								<MiniTable
 									rotated
 									rows={[
-										["Layout variable", <Variable id={preset.layoutVariable} link />],
+										["Layout variable", <Variable key="layout" id={preset.layoutVariable} link />],
 										[
 											"Show edges",
-											<ul>
+											<ul key="edges">
 												{get(preset, "edges.display", []).map((edge) => (
 													<li key={edge}>
 														<EntityBadge entity="edge" type={edge} tiny link />
@@ -32,10 +32,10 @@ const Presets = ({ presets }) => {
 												))}
 											</ul>,
 										],
-										["Group variable", <Variable id={preset.groupVariable} link />],
+										["Group variable", <Variable key="group" id={preset.groupVariable} link />],
 										[
 											"Highlight attributes",
-											<ul>
+											<ul key="highlight">
 												{get(preset, "highlight", []).map((id) => (
 													<li key={id}>
 														<Variable id={id} link />

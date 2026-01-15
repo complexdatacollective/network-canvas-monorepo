@@ -23,11 +23,11 @@ const Panels = ({ panels }) => {
 									[
 										"Data Source",
 										panel.dataSource === "existing" ? (
-											<p>
+											<p key="existing">
 												<em>Existing network</em>
 											</p>
 										) : (
-											<AssetBadge id={panel.dataSource} link />
+											<AssetBadge key={panel.dataSource} id={panel.dataSource} link />
 										),
 									],
 								]}

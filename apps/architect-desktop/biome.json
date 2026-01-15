@@ -40,7 +40,8 @@
 				"useIterableCallbackReturn": "off"
 			},
 			"style": {
-				"noParameterAssign": "off"
+				"noParameterAssign": "off",
+				"useDefaultParameterLast": "off"
 			}
 		},
 		"domains": {

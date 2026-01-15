@@ -64,7 +64,11 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments }) => {
 	}, [query, selectedTags, experiments]);
 
 	const filteredInterfaceTags = useMemo(
-		() => filteredInterfaces.reduce((acc, { tags }) => [...acc, ...tags], []),
+		() =>
+			filteredInterfaces.reduce((acc, { tags }) => {
+				acc.push(...tags);
+				return acc;
+			}, []),
 		[filteredInterfaces],
 	);
 

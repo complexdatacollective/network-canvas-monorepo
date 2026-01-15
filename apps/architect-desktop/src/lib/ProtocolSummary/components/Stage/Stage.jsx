@@ -27,7 +27,8 @@ const variablesOnStage = (index) => (stageId) =>
 		if (!variable.stages.includes(stageId)) {
 			return memo;
 		}
-		return [...memo, [variable.id, variable.name]];
+		memo.push([variable.id, variable.name]);
+		return memo;
 	}, []);
 
 const Stage = ({ configuration, id, label, stageNumber, type }) => {
@@ -89,7 +90,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }) => {
 					<div className="protocol-summary-stage__heading-section">
 						<div className="protocol-summary-stage__heading-section-content">
 							<h2 className="section-heading">Network Filtering</h2>
-							<MiniTable rotated wide rows={[["Rules", <Filter filter={configuration.filter} />]]} />
+							<MiniTable rotated wide rows={[["Rules", <Filter key="filter" filter={configuration.filter} />]]} />
 						</div>
 					</div>
 				)}

@@ -47,10 +47,10 @@ class EditRule extends Component {
 							footer={
 								<ControlBar
 									buttons={[
-										<Button type="button" onClick={onCancel} color="platinum">
+										<Button key="cancel" type="button" onClick={onCancel} color="platinum">
 											Cancel
 										</Button>,
-										<Button type="button" onClick={onSave} color="primary">
+										<Button key="save" type="button" onClick={onSave} color="primary">
 											Finish and Close
 										</Button>,
 									]}

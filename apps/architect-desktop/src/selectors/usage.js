@@ -129,7 +129,8 @@ const perStagePromptCountFromUsage = (usage) => {
 			return memo;
 		}
 
-		return { ...memo, [owner.stageId]: memo[owner.stageId] ? memo[owner.stageId] + 1 : 1 };
+		memo[owner.stageId] = memo[owner.stageId] ? memo[owner.stageId] + 1 : 1;
+		return memo;
 	}, {});
 };
 
@@ -148,7 +149,8 @@ const makeGetDeleteImpact = createSelector(getProtocol, makeGetUsageForType, (pr
 				if (!prompts || prompts.length !== perStagePromptCount[id]) {
 					return memo;
 				}
-				return [...memo, id];
+				memo.push(id);
+				return memo;
 			}, []);
 
 			const deletedObjects = uniqBy(
