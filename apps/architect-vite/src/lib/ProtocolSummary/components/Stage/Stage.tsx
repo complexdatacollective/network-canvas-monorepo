@@ -80,7 +80,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	const edgeType = configuration.edgeType as { type: string; entity: string } | undefined;
 	const relationshipTypeVariable = configuration.relationshipTypeVariable as string | undefined;
 	const relationshipToEgoVariable = configuration.relationshipToEgoVariable as string | undefined;
-	const sexVariable = configuration.sexVariable as string | undefined;
+	const egoSexVariable = configuration.egoSexVariable as string | undefined;
+	const nodeSexVariable = configuration.nodeSexVariable as string | undefined;
 	const nodeIsEgoVariable = configuration.nodeIsEgoVariable as string | undefined;
 	const scaffoldingStep = configuration.scaffoldingStep as { text: string; showQuickStartModal: boolean } | undefined;
 	const nameGenerationStep = configuration.nameGenerationStep as
@@ -173,7 +174,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 					<FamilyTreeVariables
 						relationshipTypeVariable={relationshipTypeVariable}
 						relationshipToEgoVariable={relationshipToEgoVariable}
-						sexVariable={sexVariable}
+						egoSexVariable={egoSexVariable}
+						nodeSexVariable={nodeSexVariable}
 						nodeIsEgoVariable={nodeIsEgoVariable}
 					/>
 					<ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />

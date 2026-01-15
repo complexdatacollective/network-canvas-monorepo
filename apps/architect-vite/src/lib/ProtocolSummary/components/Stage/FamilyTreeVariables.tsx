@@ -4,24 +4,33 @@ import Variable from "../Variable";
 type FamilyTreeVariablesProps = {
 	relationshipTypeVariable?: string;
 	relationshipToEgoVariable?: string;
-	sexVariable?: string;
+	egoSexVariable?: string;
+	nodeSexVariable?: string;
 	nodeIsEgoVariable?: string;
 };
 
 const FamilyTreeVariables = ({
 	relationshipTypeVariable,
 	relationshipToEgoVariable,
-	sexVariable,
+	egoSexVariable,
+	nodeSexVariable,
 	nodeIsEgoVariable,
 }: FamilyTreeVariablesProps) => {
-	if (!relationshipTypeVariable && !relationshipToEgoVariable && !sexVariable && !nodeIsEgoVariable) {
+	if (
+		!relationshipTypeVariable &&
+		!relationshipToEgoVariable &&
+		!egoSexVariable &&
+		!nodeSexVariable &&
+		!nodeIsEgoVariable
+	) {
 		return null;
 	}
 
 	const rows = [
 		relationshipTypeVariable && ["Relationship Type", <Variable key="rel-type" id={relationshipTypeVariable} />],
 		relationshipToEgoVariable && ["Relationship to Ego", <Variable key="rel-ego" id={relationshipToEgoVariable} />],
-		sexVariable && ["Sex Variable", <Variable key="sex" id={sexVariable} />],
+		egoSexVariable && ["Ego Sex Variable", <Variable key="ego-sex" id={egoSexVariable} />],
+		nodeSexVariable && ["Node Sex Variable", <Variable key="node-sex" id={nodeSexVariable} />],
 		nodeIsEgoVariable && ["Node Is Ego", <Variable key="is-ego" id={nodeIsEgoVariable} />],
 	].filter(Boolean) as [string, React.ReactNode][];
 

@@ -50,7 +50,9 @@ export default function NewVariableWindow({
 
 	const variableType = useAppSelector((state) => formValueSelector(form)(state, "type") as string | undefined);
 
-	const existingVariables = useAppSelector((state) => getVariablesForSubject(state, { entity, type }));
+	// Memoize subject to avoid creating new object on every render, which breaks selector memoization
+	const subject = useMemo(() => ({ entity, type }), [entity, type]);
+	const existingVariables = useAppSelector((state) => getVariablesForSubject(state, subject));
 
 	const existingVariableNames = useMemo(
 		() => values(existingVariables).map(({ name }: Variable) => name),
