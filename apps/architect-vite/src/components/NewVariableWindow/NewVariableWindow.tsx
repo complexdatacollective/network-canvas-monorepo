@@ -34,8 +34,6 @@ type NewVariableWindowProps = {
 	initialValues?: Record<string, unknown> | null;
 	/** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
 	lockedOptions?: VariableOptions | null;
-	/** Optional semantic key to use instead of a UUID. Used for special variables like "name", "sex", etc in family tree interface. */
-	semanticKey?: string | null;
 };
 
 export default function NewVariableWindow({
@@ -47,7 +45,6 @@ export default function NewVariableWindow({
 	onCancel,
 	initialValues = null,
 	lockedOptions = null,
-	semanticKey = null,
 }: NewVariableWindowProps) {
 	const dispatch = useAppDispatch();
 
@@ -91,12 +88,11 @@ export default function NewVariableWindow({
 					entity,
 					type,
 					configuration: configuration as Partial<Variable>,
-					semanticKey: semanticKey ?? undefined,
 				}),
 			).unwrap();
 			onComplete(result.variable);
 		},
-		[dispatch, entity, type, onComplete, semanticKey],
+		[dispatch, entity, type, onComplete],
 	);
 
 	return (

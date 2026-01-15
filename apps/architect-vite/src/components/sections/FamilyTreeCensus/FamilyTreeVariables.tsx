@@ -88,7 +88,6 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 			type: type ?? "",
 			initialValues: { name: "", type: "" },
 			lockedOptions: null as VariableOptions | null,
-			semanticKey: null as string | null,
 		},
 		handleCreatedNodeVariable,
 	);
@@ -105,7 +104,6 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 			type: edgeType ?? "",
 			initialValues: { name: "", type: "" },
 			lockedOptions: null as VariableOptions | null,
-			semanticKey: null as string | null,
 		},
 		handleCreatedEdgeVariable,
 	);
@@ -122,44 +120,28 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 		);
 	}
 
-	// Handlers for creating new variables with semantic keys for Fresco compatibility
+	// Handlers for creating new variables
 	const handleNewRelationshipTypeVariable = (name: string) =>
 		openEdgeVariableWindow(
-			{
-				initialValues: { name, type: "categorical" },
-				lockedOptions: RELATIONSHIP_TYPE_OPTIONS,
-				semanticKey: "relationshipType",
-			},
+			{ initialValues: { name, type: "categorical" }, lockedOptions: RELATIONSHIP_TYPE_OPTIONS },
 			{ field: "relationshipTypeVariable" },
 		);
 
 	const handleNewRelationshipToEgoVariable = (name: string) =>
 		openNodeVariableWindow(
-			{
-				initialValues: { name, type: "text" },
-				lockedOptions: null,
-				semanticKey: "relationshipToEgo",
-			},
+			{ initialValues: { name, type: "text" }, lockedOptions: null },
 			{ field: "relationshipToEgoVariable" },
 		);
 
 	const handleNewSexVariable = (name: string) =>
 		openNodeVariableWindow(
-			{
-				initialValues: { name, type: "categorical" },
-				lockedOptions: SEX_VARIABLE_OPTIONS,
-				semanticKey: "sex",
-			},
+			{ initialValues: { name, type: "categorical" }, lockedOptions: SEX_VARIABLE_OPTIONS },
 			{ field: "sexVariable" },
 		);
 
 	const handleNewNodeIsEgoVariable = (name: string) =>
 		openNodeVariableWindow(
-			{
-				initialValues: { name, type: "boolean" },
-				lockedOptions: null,
-				semanticKey: "nodeIsEgo",
-			},
+			{ initialValues: { name, type: "boolean" }, lockedOptions: null },
 			{ field: "nodeIsEgoVariable" },
 		);
 

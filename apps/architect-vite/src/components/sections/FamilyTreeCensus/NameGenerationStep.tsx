@@ -1,4 +1,4 @@
-import { compose, withProps } from "recompose";
+import { compose } from "recompose";
 import EditableList from "~/components/EditableList";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
@@ -14,18 +14,11 @@ import FieldPreview from "../Form/FieldPreview";
 import { itemSelector, normalizeField } from "../Form/helpers";
 import withFormHandlers from "../Form/withFormHandlers";
 
-// Semantic key mapping for FamilyTreeCensus - the "name" variable should use "name" as its key
-// This ensures Fresco can find the name property on nodes
-const FAMILY_TREE_SEMANTIC_KEY_MAP: Record<string, string> = {
-	name: "name",
-};
-
 type NameGenerationStepProps = StageEditorSectionProps & {
 	type?: string | null;
 	entity?: string | null;
 	disabled?: boolean;
 	handleChangeFields: (fields: Record<string, unknown>) => Promise<Record<string, unknown>>;
-	semanticKeyMap?: Record<string, string>;
 };
 
 const NameGenerationStep = ({ form, type, entity, disabled, handleChangeFields }: NameGenerationStepProps) => (
@@ -66,7 +59,7 @@ const NameGenerationStep = ({ form, type, entity, disabled, handleChangeFields }
 			layout="vertical"
 		>
 			<Tip>
-				Add a variable called &quot;name&quot; here, unless you have a good reason not to. Fresco will then
+				Add a variable called &quot;name&quot; here, unless you have a good reason not to. Interviewer will then
 				automatically use this variable as the label for the node in the interview.
 			</Tip>
 			<EditableList
@@ -91,7 +84,6 @@ const NameGenerationStep = ({ form, type, entity, disabled, handleChangeFields }
 
 export default compose<NameGenerationStepProps, StageEditorSectionProps>(
 	withSubject,
-	withProps({ semanticKeyMap: FAMILY_TREE_SEMANTIC_KEY_MAP }),
 	withFormHandlers,
 	withDisabledSubjectRequired,
 )(NameGenerationStep);
