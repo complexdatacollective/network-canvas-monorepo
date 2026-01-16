@@ -14,10 +14,12 @@ export const familyTreeCensusStage = baseStageSchema.extend({
 	relationshipTypeVariable: z.string().generateMock(() => getEdgeTypeId(0)), // partner, parent, ex-partner.
 	// Variable on node type used to collect the relationship to the ego.
 	relationshipToEgoVariable: z.string().generateMock(() => getNodeVariableId(0)),
-	// Biological sex variable present on node type. Optional, as this may not be collected.
-	sexVariable: z.string().generateMock(() => getNodeVariableId(1)),
+	// Biological sex variable on the ego entity.
+	egoSexVariable: z.string().generateMock(() => getNodeVariableId(1)),
+	// Biological sex variable on the node type.
+	nodeSexVariable: z.string().generateMock(() => getNodeVariableId(2)),
 	// Variable on node type used to differentiate the ego node from other network nodes. Must be a boolean.
-	nodeIsEgoVariable: z.string().generateMock(() => getNodeVariableId(2)),
+	nodeIsEgoVariable: z.string().generateMock(() => getNodeVariableId(3)),
 	scaffoldingStep: z.object({
 		text: z.string().generateMock(() => "create a family tree"),
 		showQuickStartModal: z.boolean().generateMock(() => true),

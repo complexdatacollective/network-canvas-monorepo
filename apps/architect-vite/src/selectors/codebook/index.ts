@@ -1,4 +1,11 @@
-import type { Codebook, EdgeDefinition, EgoDefinition, NodeDefinition, Variables } from "@codaco/protocol-validation";
+import type {
+	Codebook,
+	EdgeDefinition,
+	EgoDefinition,
+	NodeDefinition,
+	VariableOptions,
+	Variables,
+} from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { find, get, isObject } from "es-toolkit/compat";
 import type { RootState } from "~/ducks/store";
@@ -26,6 +33,7 @@ type VariableOption = {
 	type?: string;
 	color?: string;
 	isUsed?: boolean;
+	options?: VariableOptions;
 };
 
 type NodeTypes = Record<string, NodeDefinition>;

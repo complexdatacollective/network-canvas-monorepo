@@ -5,6 +5,7 @@ import CategoricalBin from "./stage--CategoricalBin.png";
 import Default from "./stage--Default.png";
 import DyadCensus from "./stage--DyadCensus.png";
 import EgoForm from "./stage--EgoForm.png";
+import FamilyTreeCensus from "./stage--FamilyTreeCensus.png";
 import Geospatial from "./stage--Geospatial.png";
 import Information from "./stage--Information.png";
 import NameGenerator from "./stage--NameGenerator.png";
@@ -30,6 +31,7 @@ export default {
 	AlterForm,
 	AlterEdgeForm,
 	EgoForm,
+	FamilyTreeCensus,
 	Geospatial,
 	Anonymisation,
 	OneToManyDyadCensus,

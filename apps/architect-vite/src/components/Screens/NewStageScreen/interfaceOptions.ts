@@ -32,6 +32,7 @@ const INTERFACE_TYPE_NAMES = [
 	"NameGenerator",
 	"NameGeneratorQuickAdd",
 	"NameGeneratorRoster",
+	"FamilyTreeCensus",
 	"DyadCensus",
 	"OneToManyDyadCensus",
 	"TieStrengthCensus",
@@ -86,6 +87,15 @@ export const INTERFACE_TYPES: InterfaceType[] = [
 		type: "NameGeneratorRoster",
 		title: "Name Generator for Roster Data",
 		description: "A name generator specifically for roster data, allowing sorting and filtering of the roster.",
+	},
+	{
+		category: CATEGORIES.GENERATORS,
+		tags: [TAGS.CREATE_NODES, TAGS.CREATE_EDGES, TAGS.NODE_ATTRIBUTES],
+		keywords: "family tree census namegenerator name generator nodes node edges edge",
+		type: "FamilyTreeCensus",
+		title: "Family Tree Census",
+		description:
+			"An interface for collecting family network data, allowing participants to build a family tree with relationships and capture additional attributes about family members.",
 	},
 	{
 		category: CATEGORIES.GENERATORS,

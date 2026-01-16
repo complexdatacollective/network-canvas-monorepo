@@ -62,6 +62,10 @@ const VariablePicker = ({
 			({ label: variableLabel, value: variableValue }) => value === variableValue || value === variableLabel,
 		);
 
+		if (!found) {
+			return null;
+		}
+
 		if (has(found, "type") && found?.type) {
 			return <EditableVariablePill uuid={found?.value ?? ""} />;
 		}
@@ -70,7 +74,7 @@ const VariablePicker = ({
 		const selectedValue = get(found, "value", null) as string | null;
 
 		const finalLabel = selectedLabel || selectedValue || "";
-		const variableType = (get(found, "type", "text") as VariableType) || "text";
+		const variableType = (found.type ?? "text") as VariableType;
 
 		return (
 			<SimpleVariablePill label={finalLabel} type={variableType}>
