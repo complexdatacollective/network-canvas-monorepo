@@ -3,7 +3,7 @@ import { get } from "es-toolkit/compat";
 import { connect, useSelector } from "react-redux";
 import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import { Row, Section } from "~/components/EditorLayout";
+import { Section } from "~/components/EditorLayout";
 import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/components/NewVariableWindow";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import type { RootState } from "~/ducks/store";
@@ -34,6 +34,43 @@ type FamilyTreeVariablesProps = StageEditorSectionProps & {
 	disabled?: boolean;
 	changeForm: typeof change;
 };
+
+type VariableRowProps = {
+	name: string;
+	label: string;
+	description: string;
+	entity: Entity;
+	entityType: string | undefined;
+	options: { value: string; label: string; type?: string }[];
+	onCreateOption: (name: string) => void;
+};
+
+const VariableRow = ({ name, label, description, entity, entityType, options, onCreateOption }: VariableRowProps) => (
+	<div className="flex items-start gap-4">
+		<div className="flex flex-col gap-1 pt-2 shrink-0 w-72">
+			<span className="font-semibold">
+				{label}
+				<span className="text-error ms-0.5">*</span>
+			</span>
+			<span className="text-sm text-foreground/60 leading-snug">{description}</span>
+		</div>
+		<div className="relative flex-1">
+			<IssueAnchor fieldName={name} description={`${label} Variable`} />
+			<ValidatedField
+				name={name}
+				component={VariablePicker}
+				validation={{ required: true }}
+				componentProps={{
+					entity,
+					type: entityType,
+					label: "Select variable",
+					options,
+					onCreateOption,
+				}}
+			/>
+		</div>
+	</div>
+);
 
 const mapDispatchToProps = {
 	changeForm: change,
@@ -181,137 +218,73 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 				title="Family Tree Variables"
 				summary={<p>Configure which variables will be used to store family tree data.</p>}
 			>
-				<Section
-					title="Relationship Type"
-					summary={
-						<p>
-							Select a variable to store the type of relationship between family members (parent, partner, or
-							ex-partner). This variable is stored on the edge connecting two people.
-						</p>
-					}
-					layout="vertical"
-				>
-					<Row>
-						<IssueAnchor fieldName="relationshipTypeVariable" description="Relationship Type Variable" />
-						<ValidatedField
-							name="relationshipTypeVariable"
-							component={VariablePicker}
-							validation={{ required: true }}
-							componentProps={{
-								entity: "edge",
-								type: edgeType,
-								label: "Select or create a variable",
-								options: relationshipTypeCompatibleVariables,
-								onCreateOption: handleNewRelationshipTypeVariable,
-							}}
-						/>
-					</Row>
-				</Section>
+				<div className="flex flex-col gap-6">
+					{/* Ego Variables */}
+					<div className="flex flex-col gap-3">
+						<h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/50">Ego</h4>
+						<div className="flex flex-col gap-4">
+							<VariableRow
+								name="egoSexVariable"
+								label="Ego Biological Sex"
+								description="Stores the participant's biological sex. Used to determine visual representation in the family tree."
+								entity="ego"
+								entityType=""
+								options={egoSexCompatibleVariables}
+								onCreateOption={handleNewEgoSexVariable}
+							/>
+						</div>
+					</div>
 
-				<Section
-					title="Participant Biological Sex"
-					summary={
-						<p>
-							Select an ego variable to store the participant&apos;s biological sex. This is used to correctly position
-							the participant in the family tree visualization.
-						</p>
-					}
-					layout="vertical"
-				>
-					<Row>
-						<IssueAnchor fieldName="egoSexVariable" description="Ego Sex Variable" />
-						<ValidatedField
-							name="egoSexVariable"
-							component={VariablePicker}
-							validation={{ required: true }}
-							componentProps={{
-								entity: "ego",
-								type: "",
-								label: "Select or create a variable",
-								options: egoSexCompatibleVariables,
-								onCreateOption: handleNewEgoSexVariable,
-							}}
-						/>
-					</Row>
-				</Section>
+					{/* Alter Variables */}
+					<div className="flex flex-col gap-3">
+						<h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/50">Alter</h4>
+						<div className="flex flex-col gap-4">
+							<VariableRow
+								name="nodeSexVariable"
+								label="Alter Biological Sex"
+								description="Stores each alter's biological sex. Used to determine visual representation in the family tree."
+								entity="node"
+								entityType={type}
+								options={nodeSexCompatibleVariables}
+								onCreateOption={handleNewNodeSexVariable}
+							/>
+							<VariableRow
+								name="relationshipToEgoVariable"
+								label="Relationship to Participant"
+								description="Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the family tree interface."
+								entity="node"
+								entityType={type}
+								options={textNodeVariables}
+								onCreateOption={handleNewRelationshipToEgoVariable}
+							/>
+							<VariableRow
+								name="nodeIsEgoVariable"
+								label="Ego Identifier"
+								description="A boolean variable to identify which node represents the participant (ego) in the family tree."
+								entity="node"
+								entityType={type}
+								options={booleanNodeVariables}
+								onCreateOption={handleNewNodeIsEgoVariable}
+							/>
+						</div>
+					</div>
 
-				<Section
-					title="Alter Biological Sex"
-					summary={
-						<p>
-							Select a node variable to store each alter&apos;s biological sex. This is used to correctly position
-							people in the family tree visualization.
-						</p>
-					}
-					layout="vertical"
-				>
-					<Row>
-						<IssueAnchor fieldName="nodeSexVariable" description="Node Sex Variable" />
-						<ValidatedField
-							name="nodeSexVariable"
-							component={VariablePicker}
-							validation={{ required: true }}
-							componentProps={{
-								entity: "node",
-								type,
-								label: "Select or create a variable",
-								options: nodeSexCompatibleVariables,
-								onCreateOption: handleNewNodeSexVariable,
-							}}
-						/>
-					</Row>
-				</Section>
-
-				<Section
-					title="Relationship to Participant"
-					summary={
-						<p>
-							Select a variable to store each person&apos;s relationship to the participant (e.g., mother, uncle,
-							daughter). This value is automatically calculated by the interface.
-						</p>
-					}
-					layout="vertical"
-				>
-					<Row>
-						<IssueAnchor fieldName="relationshipToEgoVariable" description="Relationship to Ego Variable" />
-						<ValidatedField
-							name="relationshipToEgoVariable"
-							component={VariablePicker}
-							validation={{ required: true }}
-							componentProps={{
-								entity: "node",
-								type,
-								label: "Select or create a variable",
-								options: textNodeVariables,
-								onCreateOption: handleNewRelationshipToEgoVariable,
-							}}
-						/>
-					</Row>
-				</Section>
-
-				<Section
-					title="Ego Identifier"
-					summary={
-						<p>Select a boolean variable to identify which node represents the participant (ego) in the family tree.</p>
-					}
-					layout="vertical"
-				>
-					<Row>
-						<IssueAnchor fieldName="nodeIsEgoVariable" description="Node Is Ego Variable" />
-						<ValidatedField
-							name="nodeIsEgoVariable"
-							component={VariablePicker}
-							validation={{ required: true }}
-							componentProps={{
-								entity: "node",
-								type,
-								label: "Select or create a variable",
-								options: booleanNodeVariables,
-								onCreateOption: handleNewNodeIsEgoVariable,
-							}}
-						/>
-					</Row>
-				</Section>
+					{/* Edge Variables */}
+					<div className="flex flex-col gap-3">
+						<h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/50">Edge</h4>
+						<div className="flex flex-col gap-4">
+							<VariableRow
+								name="relationshipTypeVariable"
+								label="Relationship Type"
+								description="Stores the type of relationship between family members (parent, partner, or ex-partner)."
+								entity="edge"
+								entityType={edgeType}
+								options={relationshipTypeCompatibleVariables}
+								onCreateOption={handleNewRelationshipTypeVariable}
+							/>
+						</div>
+					</div>
+				</div>
 			</Section>
 			<NewVariableWindow {...nodeVariableWindowProps} />
 			<NewVariableWindow {...egoVariableWindowProps} />
