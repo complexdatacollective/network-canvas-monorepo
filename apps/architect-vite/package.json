@@ -33,7 +33,7 @@
 		"jszip": "^3.10.1",
 		"lodash": "^4.17.19",
 		"lucide-react": "catalog:",
-		"luxon": "^1.24.1",
+		"luxon": "^3.7.2",
 		"mapbox-gl": "^3.9.3",
 		"motion": "^12.14.0",
 		"ohash": "^2.0.11",
