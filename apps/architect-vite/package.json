@@ -37,7 +37,7 @@
 		"mapbox-gl": "^3.9.3",
 		"motion": "^12.14.0",
 		"ohash": "^2.0.11",
-		"posthog-js": "^1.315.1",
+		"posthog-js": "^1.328.0",
 		"react": "catalog:",
 		"react-compound-slider": "^3.4.0",
 		"react-dom": "catalog:",
