@@ -1,5 +1,13 @@
 # @codaco/protocol-validation
 
+## 10.0.0
+
+### Major Changes
+
+- 01448c8: Split Family Tree sexVariable into egoSexVariable and nodeSexVariable.
+
+  This is a breaking change for existing protocols that reference the old sexVariable field. Protocols with Farmily Tree interfaces require that the egoSexVariable and nodeSexVariable be defined separately.
+
 ## 9.0.0
 
 ### Major Changes
