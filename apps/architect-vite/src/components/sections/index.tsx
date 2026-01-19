@@ -8,6 +8,13 @@ export { default as CategoricalBinPrompts } from "./CategoricalBinPrompts";
 export { default as ContentGrid } from "./ContentGrid";
 export { default as DyadCensusPrompts } from "./DyadCensusPrompts";
 export { default as ExternalDataSource } from "./ExternalDataSource";
+export {
+	DiseaseNominationPrompts,
+	FamilyTreeEdgeType,
+	FamilyTreeVariables,
+	NameGenerationStep,
+	ScaffoldingStep,
+} from "./FamilyTreeCensus";
 export { default as FilteredEdgeType } from "./FilteredEdgeType";
 export { default as Form } from "./Form";
 export { default as GeospatialPrompts } from "./GeospatialPrompts/GeospatialPrompts";

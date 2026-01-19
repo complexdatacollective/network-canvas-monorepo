@@ -147,12 +147,15 @@ const VariableSpotlight = ({
 		return options.filter((item) => item.label.toLowerCase().includes(filterTerm.toLowerCase()));
 	}, [filterTerm, options]);
 
-	const existingVariables = useSelector((state: RootState) =>
-		getVariablesForSubject(state, {
+	// Memoize subject to avoid creating new object on every render, which breaks selector memoization
+	const subject = useMemo(
+		() => ({
 			entity: ((entity || "") as "node" | "edge" | "ego") || "node",
 			type: type || undefined,
 		}),
+		[entity, type],
 	);
+	const existingVariables = useSelector((state: RootState) => getVariablesForSubject(state, subject));
 
 	const hasOptions = useMemo(() => options.length > 0, [options]);
 	const hasFilterTerm = useMemo(() => filterTerm.length > 0, [filterTerm]);

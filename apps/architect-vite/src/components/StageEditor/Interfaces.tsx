@@ -8,9 +8,12 @@ import {
 	CardDisplayOptions,
 	CategoricalBinPrompts,
 	ContentGrid,
+	DiseaseNominationPrompts,
 	DyadCensusPrompts,
 	EncryptedVariables,
 	ExternalDataSource,
+	FamilyTreeEdgeType,
+	FamilyTreeVariables,
 	FilteredEdgeType,
 	Form,
 	GeospatialPrompts,
@@ -18,6 +21,7 @@ import {
 	IntroductionPanel,
 	MapOptions,
 	MinMaxAlterLimits,
+	NameGenerationStep,
 	NameGeneratorPrompts,
 	NameGeneratorRosterPrompts,
 	NarrativeBehaviours,
@@ -28,6 +32,7 @@ import {
 	OrdinalBinPrompts,
 	QuickAdd,
 	RemoveAfterConsideration,
+	ScaffoldingStep,
 	SearchOptionsForExternalData,
 	SkipLogic,
 	SociogramPrompts,
@@ -178,9 +183,17 @@ const INTERFACE_CONFIGS = {
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/anonymisation/",
 	},
 	FamilyTreeCensus: {
-		sections: [NodeType],
+		sections: [
+			NodeType,
+			FamilyTreeEdgeType,
+			FamilyTreeVariables,
+			ScaffoldingStep,
+			NameGenerationStep,
+			DiseaseNominationPrompts,
+			SkipLogic,
+			InterviewScript,
+		],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/family-tree-census/",
-		// Note: This interface is not yet fully implemented. Additional sections will be added as they are developed.
 	},
 } as const satisfies InterfaceRegistry;
 
