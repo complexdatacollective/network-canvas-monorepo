@@ -17,7 +17,7 @@ type EntityTypeDialogProps = {
 	show: boolean;
 	entity?: string;
 	type?: string;
-	onClose: () => void;
+	onClose: (newTypeId?: string) => void;
 };
 
 const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps) => {
@@ -60,12 +60,13 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 
 	const createType = useCallback(
 		async (entityType: string, form: Record<string, unknown>) => {
-			await dispatch(
+			const result = await dispatch(
 				createTypeAsync({
 					entity: entityType as "node" | "edge" | "ego",
 					configuration: parse(form),
 				}),
 			).unwrap();
+			return result;
 		},
 		[dispatch],
 	);
@@ -82,11 +83,12 @@ const EntityTypeDialog = ({ show, entity, type, onClose }: EntityTypeDialogProps
 
 			try {
 				if (isNew) {
-					await createType(entity, values);
+					const result = await createType(entity, values);
+					onClose(result.type);
 				} else if (type) {
 					await updateType(entity, type, values);
+					onClose();
 				}
-				onClose();
 			} catch (_error) {}
 		},
 		[createType, updateType, onClose, entity, type, isNew, invalid],
