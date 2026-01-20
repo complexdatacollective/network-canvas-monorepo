@@ -31,7 +31,7 @@
 	.form-fields-select-native__error {
 		opacity: 0;
 		background: var(--color-error);
-		color: var(--color-error);
+		color: var(--color-error-foreground);
 		padding: var(--space-xs) var(--space-xs);
 		display: flex;
 		align-items: center;
