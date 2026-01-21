@@ -178,6 +178,23 @@
 		--edge-color-seq-8-dark: var(--sea-green-dark);
 		--edge-color-seq-9: var(--cerulean-blue);
 		--edge-color-seq-9-dark: var(--cerulean-blue-dark);
+
+		--ord-color-seq-1: var(--sea-green);
+		--ord-color-seq-1-dark: var(--sea-green-dark);
+		--ord-color-seq-2: var(--sea-serpent);
+		--ord-color-seq-2-dark: var(--sea-serpent-dark);
+		--ord-color-seq-3: var(--tomato);
+		--ord-color-seq-3-dark: var(--tomato-dark);
+		--ord-color-seq-4: var(--neon-carrot);
+		--ord-color-seq-4-dark: var(--neon-carrot-dark);
+		--ord-color-seq-5: var(--kiwi);
+		--ord-color-seq-5-dark: var(--kiwi-dark);
+		--ord-color-seq-6: var(--cerulean-blue);
+		--ord-color-seq-6-dark: var(--cerulean-blue-dark);
+		--ord-color-seq-7: var(--paradise-pink);
+		--ord-color-seq-7-dark: var(--paradise-pink-dark);
+		--ord-color-seq-8: var(--mustard);
+		--ord-color-seq-8-dark: var(--mustard-dark);
 	}
 }
 

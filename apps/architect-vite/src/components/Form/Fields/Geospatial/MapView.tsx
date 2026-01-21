@@ -4,9 +4,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import ControlBar from "~/components/ControlBar";
-import Dialog from "~/components/Dialog/Dialog";
 import { Layout, Section } from "~/components/EditorLayout";
+import Dialog from "~/components/NewComponents/Dialog";
 import Button from "~/lib/legacy-ui/components/Button";
 import { getAssetManifest } from "~/selectors/protocol";
 
@@ -57,30 +56,7 @@ const MapView = ({
 		});
 	};
 
-	const cancelButton = (
-		<Button color="platinum" onClick={() => close()} key="cancel">
-			Cancel
-		</Button>
-	);
-
-	const saveButton = (
-		<Button
-			color="sea-green"
-			onClick={() => {
-				saveMapSelection(center, zoom);
-				close();
-			}}
-			key="save"
-			iconPosition="right"
-			icon="arrow-right"
-		>
-			Save Changes
-		</Button>
-	);
-
 	const isMapChanged = center !== mapOptions.center || zoom !== mapOptions.initialZoom;
-
-	const controlButtons = [cancelButton, ...(isMapChanged ? [saveButton] : [])];
 
 	useEffect(() => {
 		if (!mapboxAPIKey || !mapContainerRef.current) {
@@ -125,17 +101,29 @@ const MapView = ({
 
 	return (
 		<Dialog
-			show={true}
-			onClose={close}
-			className="map-view-dialog"
-			header={
-				<div className="stage-heading stage-heading--collapsed stage-heading--shadow">
-					<Layout>
-						<h2>Initial Map View</h2>
-					</Layout>
-				</div>
+			open={true}
+			onOpenChange={(open) => !open && close()}
+			header={<h2 className="m-0">Initial Map View</h2>}
+			footer={
+				<>
+					<Button color="platinum" onClick={close}>
+						Cancel
+					</Button>
+					{isMapChanged && (
+						<Button
+							color="sea-green"
+							onClick={() => {
+								saveMapSelection(center, zoom);
+								close();
+							}}
+							iconPosition="right"
+							icon="arrow-right"
+						>
+							Save Changes
+						</Button>
+					)}
+				</>
 			}
-			footer={<ControlBar buttons={controlButtons} />}
 		>
 			<Layout>
 				<Section
@@ -147,6 +135,7 @@ const MapView = ({
 							view.
 						</p>
 					}
+					layout="vertical"
 				>
 					<div ref={mapContainerRef} style={{ width: "100%", height: "50vh" }} />
 				</Section>

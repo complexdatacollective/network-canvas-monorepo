@@ -64,7 +64,7 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 	const { variables: variableOptions } = useVariablesFromExternalData(mapOptions?.dataSourceAssetId, true, "geojson");
 
 	const { paletteName, paletteSize } = {
-		paletteName: ["ord-color-seq"],
+		paletteName: "ord-color-seq",
 		paletteSize: 8,
 	};
 
