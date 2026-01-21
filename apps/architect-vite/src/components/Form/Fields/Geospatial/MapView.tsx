@@ -69,8 +69,8 @@ const MapView = ({
 		const map = new mapboxgl.Map({
 			container: mapContainerRef.current,
 			style: style || "mapbox://styles/mapbox/streets-v12",
-			center,
-			zoom,
+			center: (mapOptions.center as [number, number]) || [0, 0],
+			zoom: mapOptions.initialZoom || 0,
 		});
 
 		mapRef.current = map;
@@ -93,7 +93,7 @@ const MapView = ({
 			map.remove();
 			mapRef.current = null;
 		};
-	}, [isAnimationComplete, mapboxAPIKey, style]);
+	}, [isAnimationComplete, mapboxAPIKey, style, mapOptions.center, mapOptions.initialZoom]);
 
 	const handleAnimationComplete = () => {
 		setIsAnimationComplete(true);
