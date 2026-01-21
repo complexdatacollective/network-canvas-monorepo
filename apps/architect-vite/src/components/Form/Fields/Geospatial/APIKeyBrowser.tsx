@@ -80,9 +80,11 @@ const APIKeyBrowser = ({ show = true, close, onSelect = () => {}, selected = nul
 								placeholder: "Enter an API Key...",
 							}}
 						/>
-						<Button key="save" type="submit" iconPosition="right" icon="arrow-right">
-							Create Key
-						</Button>
+						<div className="pt-4">
+							<Button key="save" type="submit" iconPosition="right" icon="arrow-right" color="sea-green">
+								Create Key
+							</Button>
+						</div>
 					</Section>
 					<Section title="Resource Library" layout="vertical">
 						<Assets

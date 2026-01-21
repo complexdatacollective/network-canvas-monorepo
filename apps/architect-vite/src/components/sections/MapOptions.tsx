@@ -124,30 +124,26 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 					</Row>
 				)}
 			</Section>
-			<Section title="Map Style">
-				<Row>
-					<ValidatedField
-						component={ColorPicker as React.ComponentType}
-						name="mapOptions.color"
-						validation={{ required: true }}
-						componentProps={{
-							palette: paletteName,
-							paletteRange: paletteSize,
-							label: "Which color would you like to use for this stage's map outlines and selections?",
-						}}
-					/>
-				</Row>
-				<Row>
-					<ValidatedField
-						component={NativeSelect as React.ComponentType}
-						name="mapOptions.style"
-						validation={{ required: true }}
-						componentProps={{
-							options: mapboxStyleOptions,
-							label: "Which mapbox style would you like to use for the map itself?",
-						}}
-					/>
-				</Row>
+			<Section title="Map Style" summary={<p>Customize the colors and style of the map.</p>} disabled={disabled}>
+				<ValidatedField
+					component={ColorPicker as React.ComponentType}
+					name="mapOptions.color"
+					validation={{ required: true }}
+					componentProps={{
+						palette: paletteName,
+						paletteRange: paletteSize,
+						label: "Which color would you like to use for this stage's map outlines and selections?",
+					}}
+				/>
+				<ValidatedField
+					component={NativeSelect as React.ComponentType}
+					name="mapOptions.style"
+					validation={{ required: true }}
+					componentProps={{
+						options: mapboxStyleOptions,
+						label: "Which mapbox style would you like to use for the map itself?",
+					}}
+				/>
 			</Section>
 			<Section
 				title="Initial Map View"
