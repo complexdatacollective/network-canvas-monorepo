@@ -5,6 +5,7 @@ import DualLink from "../DualLink";
 import EntityBadge from "../EntityBadge";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
+import Anonymisation from "./Anonymisation";
 import Behaviours from "./Behaviours";
 import DataSource from "./DataSource";
 import DiseaseNominationPrompts from "./DiseaseNominationPrompts";
@@ -85,11 +86,17 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	const nodeIsEgoVariable = configuration.nodeIsEgoVariable as string | undefined;
 	const scaffoldingStep = configuration.scaffoldingStep as { text: string; showQuickStartModal: boolean } | undefined;
 	const nameGenerationStep = configuration.nameGenerationStep as
-		| { text: string; form: { fields?: Array<{ variable: string; prompt: string }> } }
+		| {
+				text: string;
+				form: { fields?: Array<{ variable: string; prompt: string }> };
+		  }
 		| undefined;
 	const diseaseNominationStep = configuration.diseaseNominationStep as
 		| Array<{ id: string; text: string; variable: string }>
 		| undefined;
+	// Anonymisation
+	const explanationText = configuration.explanationText as { title: string; body: string } | undefined;
+	const validation = configuration.validation as { minLength?: number; maxLength?: number } | undefined;
 
 	return (
 		<div className="protocol-summary-stage page-break-marker" id={`stage-${id}`}>
@@ -181,6 +188,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 					<ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
 					<NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
 					<DiseaseNominationPrompts diseaseNominationStep={diseaseNominationStep ?? null} />
+					<Anonymisation explanationText={explanationText ?? null} validation={validation ?? null} />
 					<InterviewScript interviewScript={interviewScript ?? null} />
 				</div>
 			</div>
