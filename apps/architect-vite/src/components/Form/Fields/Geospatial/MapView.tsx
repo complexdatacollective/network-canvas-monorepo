@@ -47,6 +47,7 @@ const MapView = ({
 
 	const [center, setCenter] = useState<[number, number]>((mapOptions.center as [number, number]) || [0, 0]);
 	const [zoom, setZoom] = useState(mapOptions.initialZoom || 0);
+	const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
 	const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
 		onChange({
@@ -59,50 +60,50 @@ const MapView = ({
 	const isMapChanged = center !== mapOptions.center || zoom !== mapOptions.initialZoom;
 
 	useEffect(() => {
-		if (!mapboxAPIKey || !mapContainerRef.current) {
+		if (!isAnimationComplete || !mapboxAPIKey || !mapContainerRef.current || mapRef.current) {
 			return;
 		}
 
 		mapboxgl.accessToken = mapboxAPIKey;
 
-		const initializeMap = () => {
-			if (mapContainerRef.current && !mapRef.current) {
-				mapRef.current = new mapboxgl.Map({
-					container: mapContainerRef.current,
-					style: style || "mapbox://styles/mapbox/streets-v12",
-					center,
-					zoom,
-				});
+		const map = new mapboxgl.Map({
+			container: mapContainerRef.current,
+			style: style || "mapbox://styles/mapbox/streets-v12",
+			center,
+			zoom,
+		});
 
-				const map = mapRef.current as MapboxMap;
-				map.addControl(
-					new mapboxgl.NavigationControl({
-						showCompass: false,
-					}),
-				);
+		mapRef.current = map;
 
-				map.on("move", () => {
-					const mapCenter = map.getCenter();
-					const mapZoom = map.getZoom();
+		map.addControl(
+			new mapboxgl.NavigationControl({
+				showCompass: false,
+			}),
+		);
 
-					setCenter([mapCenter.lng, mapCenter.lat]);
-					setZoom(mapZoom);
-				});
-			}
-		};
+		map.on("move", () => {
+			const mapCenter = map.getCenter();
+			const mapZoom = map.getZoom();
 
-		initializeMap();
+			setCenter([mapCenter.lng, mapCenter.lat]);
+			setZoom(mapZoom);
+		});
 
-		// eslint-disable-next-line consistent-return
 		return () => {
-			mapRef.current?.remove();
+			map.remove();
+			mapRef.current = null;
 		};
-	}, [mapboxAPIKey, center, style, zoom]);
+	}, [isAnimationComplete, mapboxAPIKey, style]);
+
+	const handleAnimationComplete = () => {
+		setIsAnimationComplete(true);
+	};
 
 	return (
 		<Dialog
 			open={true}
 			onOpenChange={(open) => !open && close()}
+			onAnimationComplete={handleAnimationComplete}
 			header={<h2 className="m-0">Initial Map View</h2>}
 			footer={
 				<>
