@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
+import Switch from "~/components/NewComponents/Switch";
 import { actionCreators, updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
@@ -77,19 +78,17 @@ const Overview = ({
 				{import.meta.env.DEV && (
 					<div className="mt-4 p-4 border border-dashed bg-info/5 rounded">
 						<h4 className="text-sm font-semibold mb-2">Experimental Features (Dev Only)</h4>
-						<label className="flex items-center gap-2 cursor-pointer">
-							<input
-								type="checkbox"
+						<div className="flex items-center gap-2 cursor-pointer">
+							<Switch
 								checked={experiments.encryptedVariables ?? false}
-								onChange={(e) =>
+								onCheckedChange={(checked) =>
 									updateProtocol({
-										experiments: { encryptedVariables: e.target.checked },
+										experiments: { encryptedVariables: checked },
 									})
 								}
-								className="w-4 h-4"
 							/>
-							<span className="text-sm">Enable Anonymisation Interface</span>
-						</label>
+							<span className="text-sm">Enable Encrypted Variables</span>
+						</div>
 					</div>
 				)}
 			</div>
