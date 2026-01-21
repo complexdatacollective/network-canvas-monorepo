@@ -62,8 +62,7 @@ type UsageItem = {
 type Variable = {
 	id: string;
 	name: string;
-	type?: string;
-	component?: string;
+	component: string;
 	inUse: boolean;
 	usage: UsageItem[];
 	usageString?: string;
@@ -124,12 +123,12 @@ const Variables = ({
 					</tr>
 				</thead>
 				<tbody>
-					{variables.map(({ id, component, inUse, usage, type }, index) => (
+					{variables.map(({ id, component, inUse, usage }, index) => (
 						<tr className={rowClassName(index)} key={id}>
 							<td className="codebook__variables-column">
 								<EditableVariablePill uuid={id} />
 							</td>
-							<td className="codebook__variables-column">{component || type}</td>
+							<td className="codebook__variables-column">{component}</td>
 							<td className="codebook__variables-column codebook__variables-column--usage">
 								<UsageColumn inUse={inUse} usage={usage} />
 							</td>
