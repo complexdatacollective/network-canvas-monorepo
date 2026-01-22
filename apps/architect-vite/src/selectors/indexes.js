@@ -35,6 +35,7 @@ export const paths = {
 		"stages[].presets[].edges.display[]",
 		"stages[].prompts[].createEdge",
 		["stages[].subject", mapSubject("edge")],
+		["stages[].edgeType", mapSubject("edge")], // FamilyTreeCensus edge type
 	],
 	nodes: [["stages[].subject", mapSubject("node")]],
 	variables: [
