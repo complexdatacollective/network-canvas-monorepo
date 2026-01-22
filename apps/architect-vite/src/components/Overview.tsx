@@ -5,20 +5,17 @@ import { connect } from "react-redux";
 import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
-import Switch from "~/components/NewComponents/Switch";
-import { actionCreators, updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";
+import { updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
 import { Button, Icon } from "~/lib/legacy-ui/components";
-import { getExperiments, getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
+import { getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
 
 type OverviewProps = {
 	name?: string | null;
 	description?: string;
 	updateDescription?: (options: { description: string }) => void;
 	updateName?: (options: { name: string }) => void;
-	updateProtocol?: (options: { experiments: { encryptedVariables: boolean } }) => void;
 	protocolIsValid: boolean;
-	experiments?: { encryptedVariables?: boolean };
 };
 
 const Overview = ({
@@ -26,9 +23,7 @@ const Overview = ({
 	description = "",
 	updateDescription = () => {},
 	updateName = () => {},
-	updateProtocol = () => {},
 	protocolIsValid,
-	experiments = {},
 }: OverviewProps) => {
 	const [, setLocation] = useLocation();
 	const [localName, setLocalName] = useState(name ?? "");
@@ -75,22 +70,6 @@ const Overview = ({
 						}}
 					/>
 				</div>
-				{import.meta.env.DEV && (
-					<div className="mt-4 p-4 border border-dashed bg-info/5 rounded">
-						<h4 className="text-sm font-semibold mb-2">Experimental Features (Dev Only)</h4>
-						<div className="flex items-center gap-2 cursor-pointer">
-							<Switch
-								checked={experiments.encryptedVariables ?? false}
-								onCheckedChange={(checked) =>
-									updateProtocol({
-										experiments: { encryptedVariables: checked },
-									})
-								}
-							/>
-							<span className="text-sm">Enable Encrypted Variables</span>
-						</div>
-					</div>
-				)}
 			</div>
 			<div className="overview__footer">
 				<div className="icon">
@@ -131,21 +110,18 @@ const Overview = ({
 const mapDispatchToProps = {
 	updateDescription: updateProtocolDescription,
 	updateName: updateProtocolName,
-	updateProtocol: actionCreators.updateProtocol,
 };
 
 const mapStateToProps = (state: RootState) => {
 	const protocol = getProtocol(state);
 	const name = getProtocolName(state);
 	const protocolIsValid = getIsProtocolValid(state);
-	const experiments = getExperiments(state);
 
 	return {
 		name,
 		description: protocol?.description || "",
 		codebook: protocol?.codebook,
 		protocolIsValid,
-		experiments,
 	};
 };
 
