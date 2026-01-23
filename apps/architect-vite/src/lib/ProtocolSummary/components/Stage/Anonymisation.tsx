@@ -86,48 +86,38 @@ const Anonymisation = ({ explanationText = null, validation = null }: Anonymisat
 	return (
 		<>
 			{hasExplanation && (
-				<div className="protocol-summary-stage__explanation-text">
-					<div className="protocol-summary-stage__explanation-text-content">
-						<h3>{explanationText.title}</h3>
-						<Markdown label={explanationText.body} />
-					</div>
+				<div className="protocol-summary-stage">
+					<h3>{explanationText.title}</h3>
+					<Markdown label={explanationText.body} />
 				</div>
 			)}
 
-			{hasValidation && (
-				<div className="protocol-summary-stage__passphrase-validation">
-					<div className="protocol-summary-stage__passphrase-validation-content">
-						<MiniTable rotated rows={validationRows(validation)} />
-					</div>
-				</div>
-			)}
+			{hasValidation && <MiniTable rotated rows={validationRows(validation)} />}
 
 			{hasEncryptedVariables && (
-				<div className="protocol-summary-stage__encrypted-variables">
-					<div className="protocol-summary-stage__encrypted-variables-content">
-						<p className="mb-4">The following variables will be encrypted using the participant's passphrase:</p>
-						<table className="protocol-summary-mini-table">
-							<thead>
-								<tr>
-									<th>Node Type</th>
-									<th>Variable</th>
+				<>
+					<p className="mb-4">The following variables will be encrypted using the participant's passphrase:</p>
+					<table className="protocol-summary-mini-table">
+						<thead>
+							<tr>
+								<th>Node Type</th>
+								<th>Variable</th>
+							</tr>
+						</thead>
+						<tbody>
+							{encryptedVariables.map(({ id, name, nodeType }) => (
+								<tr key={id}>
+									<td>
+										<EntityBadge small type={nodeType} entity="node" link />
+									</td>
+									<td>
+										<DualLink to={`#variable-${id}`}>{name}</DualLink>
+									</td>
 								</tr>
-							</thead>
-							<tbody>
-								{encryptedVariables.map(({ id, name, nodeType }) => (
-									<tr key={id}>
-										<td>
-											<EntityBadge small type={nodeType} entity="node" link />
-										</td>
-										<td>
-											<DualLink to={`#variable-${id}`}>{name}</DualLink>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</div>
+							))}
+						</tbody>
+					</table>
+				</>
 			)}
 		</>
 	);

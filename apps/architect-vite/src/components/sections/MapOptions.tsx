@@ -12,7 +12,7 @@ import GeoDataSource from "../Form/Fields/Geospatial/GeoDataSource";
 import MapSelection from "../Form/Fields/Geospatial/MapSelection";
 import ValidatedField from "../Form/ValidatedField";
 
-const mapboxStyleOptions = [
+export const mapboxStyleOptions = [
 	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },
 	{
 		label: "Standard Satellite",

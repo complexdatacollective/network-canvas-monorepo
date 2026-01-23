@@ -15,6 +15,7 @@ import Form from "./Form";
 import InterviewScript from "./InterviewScript";
 import IntroductionPanel from "./IntroductionPanel";
 import Items from "./Items";
+import MapOptions from "./MapOptions";
 import NameGenerationStep from "./NameGenerationStep";
 import PageHeading from "./PageHeading";
 import Panels from "./Panels";
@@ -97,6 +98,18 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	// Anonymisation
 	const explanationText = configuration.explanationText as { title: string; body: string } | undefined;
 	const validation = configuration.validation as { minLength?: number; maxLength?: number } | undefined;
+	// Geospatial
+	const mapOptions = configuration.mapOptions as
+		| {
+				tokenAssetId?: string;
+				dataSourceAssetId?: string;
+				style?: string;
+				center?: [number, number];
+				initialZoom?: number;
+				color?: string;
+				targetFeatureProperty?: string;
+		  }
+		| undefined;
 
 	return (
 		<div className="protocol-summary-stage page-break-marker" id={`stage-${id}`}>
@@ -169,6 +182,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 				)}
 				<div className="protocol-summary-stage__content">
 					<IntroductionPanel introductionPanel={introductionPanel ?? null} />
+					<MapOptions mapOptions={mapOptions ?? null} />
 					<DataSource dataSource={dataSource ?? null} />
 					<QuickAdd quickAdd={quickAdd ?? null} />
 					<Panels panels={panels ?? null} />

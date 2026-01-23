@@ -34,13 +34,7 @@ const FamilyTreeVariables = ({
 		nodeIsEgoVariable && ["Node Is Ego", <Variable key="is-ego" id={nodeIsEgoVariable} />],
 	].filter(Boolean) as [string, React.ReactNode][];
 
-	return (
-		<div className="protocol-summary-stage__family-tree-variables">
-			<div className="protocol-summary-stage__family-tree-variables-content">
-				<MiniTable rotated rows={rows} />
-			</div>
-		</div>
-	);
+	return <MiniTable rotated rows={rows} />;
 };
 
 export default FamilyTreeVariables;
