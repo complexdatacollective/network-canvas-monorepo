@@ -73,8 +73,8 @@ const SummaryPage = () => {
 				index,
 			}}
 		>
-			<div className="relative flex flex-col h-dvh">
-				<div className="flex-1 overflow-y-auto">
+			<div className="relative flex flex-col h-dvh print:h-auto print:overflow-visible">
+				<div className="flex-1 overflow-y-auto print:overflow-visible">
 					<Layout className="protocol-summary-page">
 						<div className="screen-heading">
 							<div className="flex flex-col">
