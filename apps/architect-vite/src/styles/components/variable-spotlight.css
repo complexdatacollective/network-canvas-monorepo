@@ -32,12 +32,12 @@
 	fill: var(--color-divider);
 }
 
-.variable-spotlight .divider-header {
+.divider-header {
 	border-top: 2px solid var(--color-surface-3);
 	width: 100%;
 }
 
-.variable-spotlight .divider-header > legend {
+.divider-header > legend {
 	text-align: center;
 	color: var(--transparent--md);
 	padding: var(--space-xs) var(--space-md);
@@ -73,6 +73,7 @@
 
 .spotlight-list-item {
 	display: flex;
+	width: 100%;
 	justify-content: space-between;
 	padding: var(--space-xs) var(--space-lg);
 	align-items: center;
