@@ -86,9 +86,12 @@ const Anonymisation = ({ explanationText = null, validation = null }: Anonymisat
 	return (
 		<>
 			{hasExplanation && (
-				<div className="protocol-summary-stage">
-					<h3>{explanationText.title}</h3>
-					<Markdown label={explanationText.body} />
+				<div className="protocol-summary-stage__introduction-panel">
+					<div className="protocol-summary-stage__introduction-panel-content">
+						<h2 className="section-heading">Explanation Text</h2>
+						<h1>{explanationText.title}</h1>
+						<Markdown label={explanationText.body} />
+					</div>
 				</div>
 			)}
 
