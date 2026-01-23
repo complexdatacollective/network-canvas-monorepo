@@ -1,9 +1,10 @@
 import { FlaskConical } from "lucide-react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import { Layout } from "~/components/EditorLayout";
 import Switch from "~/components/NewComponents/Switch";
+import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators } from "~/ducks/modules/activeProtocol";
 import { Button } from "~/lib/legacy-ui/components";
 import { getExperiments, getProtocol } from "~/selectors/protocol";
@@ -11,7 +12,7 @@ import { cn } from "~/utils/cn";
 
 const ExperimentsPage = () => {
 	const [, setLocation] = useLocation();
-	const dispatch = useDispatch();
+	const dispatch = useAppDispatch();
 	const protocol = useSelector(getProtocol);
 	const experiments = useSelector(getExperiments) ?? {};
 
