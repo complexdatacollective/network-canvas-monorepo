@@ -1,6 +1,6 @@
 import cx from "classnames";
+import { KeyRound } from "lucide-react";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
-import Icon from "~/lib/legacy-ui/components/Icon";
 
 type APIKeyThumbnailProps = {
 	id: string;
@@ -16,7 +16,7 @@ const APIKeyThumbnail = ({ id, meta = { name: "" } }: APIKeyThumbnailProps) => (
 		})}
 	>
 		<div className="thumbnail__icon">
-			<Icon name="VpnKey" />
+			<KeyRound className="icon" />
 		</div>
 		<div className="thumbnail__label">{meta.name}</div>
 	</div>

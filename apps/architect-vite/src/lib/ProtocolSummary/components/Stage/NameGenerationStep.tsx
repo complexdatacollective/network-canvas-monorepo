@@ -38,19 +38,16 @@ const NameGenerationStep = ({ nameGenerationStep = null }: NameGenerationStepPro
 		}) ?? [];
 
 	return (
-		<div className="protocol-summary-stage__name-generation-step">
-			<div className="protocol-summary-stage__name-generation-step-content">
-				<h2 className="section-heading">Name Generation Step</h2>
-				<h4>Name Generation Step Instructions</h4>
-				<Markdown label={nameGenerationStep.text} />
-				{fieldRows.length > 0 && (
-					<>
-						<h4>Form Fields</h4>
-						<MiniTable wide rows={[["Variable", "Component", "Prompt"], ...fieldRows]} />
-					</>
-				)}
-			</div>
-		</div>
+		<>
+			<h4>Name Generation Step Instructions</h4>
+			<Markdown label={nameGenerationStep.text} />
+			{fieldRows.length > 0 && (
+				<>
+					<h4>Form Fields</h4>
+					<MiniTable wide rows={[["Variable", "Component", "Prompt"], ...fieldRows]} />
+				</>
+			)}
+		</>
 	);
 };
 

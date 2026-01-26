@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import Codebook from "~/components/Codebook/Codebook";
 import EntityTypeDialog from "~/components/Codebook/EntityTypeDialog";
+import ControlBar from "~/components/ControlBar";
 import { Layout } from "~/components/EditorLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
@@ -47,11 +48,13 @@ const CodebookPage = () => {
 					<Codebook onEditEntity={handleOpenEntityDialog} />
 				</Layout>
 			</div>
-			<div className="flex p-6 bg-cyber-grape w-full shrink-0">
-				<Button onClick={handleGoBack} color="platinum">
-					Go Back
-				</Button>
-			</div>
+			<ControlBar
+				secondaryButtons={[
+					<Button key="go-back" onClick={handleGoBack} color="platinum">
+						Go Back
+					</Button>,
+				]}
+			/>
 			<EntityTypeDialog
 				show={dialogOpen}
 				entity={dialogState.entity}

@@ -4,7 +4,7 @@ import EntityTypeDialog from "../Codebook/EntityTypeDialog";
 type NewTypeDialogProps = {
 	show?: boolean;
 	entityType: "node" | "edge";
-	onComplete?: () => void;
+	onComplete?: (newTypeId?: string) => void;
 	onCancel?: () => void;
 };
 
@@ -23,9 +23,9 @@ const NewTypeDialog = ({
 		}
 	}, [show, showEditor]);
 
-	const handleCloseEditor = () => {
+	const handleCloseEditor = (newTypeId?: string) => {
 		setShowEditor(false);
-		onComplete();
+		onComplete(newTypeId);
 	};
 
 	return <EntityTypeDialog show={showEditor} entity={entityType} onClose={handleCloseEditor} />;

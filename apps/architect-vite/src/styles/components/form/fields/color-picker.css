@@ -64,7 +64,7 @@
 .form-fields-color-picker__error {
 	opacity: 0;
 	background: var(--color-error);
-	color: var(--color-error);
+	color: var(--color-error-foreground);
 	transition:
 		opacity var(--animation-easing) var(--animation-duration-standard),
 		max-height var(--animation-easing) var(--animation-duration-standard);

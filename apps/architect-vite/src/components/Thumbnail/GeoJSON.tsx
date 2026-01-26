@@ -16,7 +16,7 @@ const GeoJSONThumbnail = ({ id, meta = { name: "" } }: GeoJSONThumbnailProps) =>
 		})}
 	>
 		<div className="thumbnail__icon">
-			<Icon name="Map" />
+			<Icon name="menu-map" />
 		</div>
 		<div className="thumbnail__label">{meta.name}</div>
 	</div>

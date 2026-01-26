@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
+import ControlBar from "~/components/ControlBar";
 import { Layout } from "~/components/EditorLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
@@ -72,46 +73,55 @@ const SummaryPage = () => {
 				index,
 			}}
 		>
-			<Layout className="protocol-summary-page">
-				<div className="screen-heading">
-					<div className="flex flex-col">
-						<h1 className="screen-heading">Protocol Summary</h1>
-						<p>
-							Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and
-							assets.
-						</p>
-					</div>
+			<div className="relative flex flex-col h-dvh print:h-auto print:overflow-visible">
+				<div className="flex-1 overflow-y-auto print:overflow-visible">
+					<Layout className="protocol-summary-page">
+						<div className="screen-heading">
+							<div className="flex flex-col">
+								<h1 className="screen-heading">Protocol Summary</h1>
+								<p>
+									Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and
+									assets.
+								</p>
+							</div>
+						</div>
+						<div className="protocol-summary">
+							<div className="protocol-summary__cover page-break-marker">
+								<Cover />
+							</div>
+
+							<div className="protocol-summary__contents page-break-marker">
+								<Contents />
+							</div>
+
+							<div className="protocol-summary__stages">
+								<Stages />
+							</div>
+
+							<div className="protocol-summary__codebook">
+								<Codebook />
+							</div>
+
+							<div className="protocol-summary__manifest">
+								<AssetManifest />
+							</div>
+						</div>
+					</Layout>
 				</div>
-				<div className="protocol-summary">
-					<div className="protocol-summary__cover page-break-marker">
-						<Cover />
-					</div>
-
-					<div className="protocol-summary__contents page-break-marker">
-						<Contents />
-					</div>
-
-					<div className="protocol-summary__stages">
-						<Stages />
-					</div>
-
-					<div className="protocol-summary__codebook">
-						<Codebook />
-					</div>
-
-					<div className="protocol-summary__manifest">
-						<AssetManifest />
-					</div>
-				</div>
-				<div className="protocol-summary-controls">
-					<Button onClick={handleGoBack} color="platinum">
-						Go Back
-					</Button>
-					<Button onClick={print} color="sea-green">
-						Print
-					</Button>
-				</div>
-			</Layout>
+				<ControlBar
+					className="print:hidden"
+					secondaryButtons={[
+						<Button key="go-back" onClick={handleGoBack} color="platinum">
+							Go Back
+						</Button>,
+					]}
+					buttons={[
+						<Button key="print" onClick={print} color="sea-green">
+							Print
+						</Button>,
+					]}
+				/>
+			</div>
 		</SummaryContext.Provider>
 	);
 };

@@ -14,14 +14,11 @@ const ScaffoldingStep = ({ scaffoldingStep = null }: ScaffoldingStepProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__scaffolding-step">
-			<div className="protocol-summary-stage__scaffolding-step-content">
-				<h2 className="section-heading">Scaffolding Step</h2>
-				<h4>Scaffolding Step Instructions</h4>
-				<Markdown label={scaffoldingStep.text} />
-				<MiniTable rotated rows={[["Show Quick Start Modal", scaffoldingStep.showQuickStartModal ? "Yes" : "No"]]} />
-			</div>
-		</div>
+		<>
+			<h4>Scaffolding Step Instructions</h4>
+			<Markdown label={scaffoldingStep.text} />
+			<MiniTable rotated rows={[["Show Quick Start Modal", scaffoldingStep.showQuickStartModal ? "Yes" : "No"]]} />
+		</>
 	);
 };
 

@@ -1,6 +1,7 @@
 import { get } from "es-toolkit/compat";
 import { useContext, useEffect, useState } from "react";
 import { getAssetPath, makeGetNetworkAssetVariables } from "~/selectors/assets";
+import { getAssetBlobUrl, revokeBlobUrl } from "~/utils/assetUtils";
 import SummaryContext from "./SummaryContext";
 
 const stubState = (assetManifest: Record<string, unknown>) => ({
@@ -19,6 +20,7 @@ const useAssetData = (id: string) => {
 
 	const data = get(protocol.assetManifest, id) as AssetData | undefined;
 	const [variables, setVariables] = useState<string | null>(null);
+	const [url, setUrl] = useState<string | undefined>(undefined);
 
 	const stubbedState = stubState(protocol.assetManifest ?? {});
 	const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
@@ -37,19 +39,43 @@ const useAssetData = (id: string) => {
 		});
 	}, [data, data?.type, getNetworkAssetVariables, id]);
 
+	useEffect(() => {
+		let isMounted = true;
+		let currentUrl: string | null = null;
+
+		const loadAsset = async () => {
+			if (!id) return;
+
+			try {
+				const blobUrl = await getAssetBlobUrl(id);
+
+				if (!isMounted) return;
+
+				if (blobUrl) {
+					currentUrl = blobUrl;
+					setUrl(blobUrl);
+				}
+			} catch (_err) {}
+		};
+
+		void loadAsset();
+
+		return () => {
+			isMounted = false;
+			if (currentUrl) {
+				revokeBlobUrl(currentUrl);
+			}
+		};
+	}, [id]);
+
 	if (!data) {
 		return {};
 	}
 
-	// TODO: When assets are stored remotely, this will be:
-	// const url = `https://assets.example.com/${encodeURIComponent(assetPath)}`;
-
-	// For now, return a placeholder URL that won't cause errors
-	const url = data.source ? `/assets/${data.source}` : "#";
-
 	return {
 		name: data.name,
 		type: data.type,
+		value: data.value,
 		variables,
 		assetPath,
 		url,
