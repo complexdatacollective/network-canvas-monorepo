@@ -1,4 +1,4 @@
-import { mapboxStyleOptions } from "~/components/sections/MapOptions";
+import { mapboxStyleOptions } from "~/components/Form/Fields/Geospatial/mapboxConstants";
 import AssetBadge from "../AssetBadge";
 import MiniTable from "../MiniTable";
 
