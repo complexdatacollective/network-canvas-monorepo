@@ -7,6 +7,8 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { type DialogConfig, actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import timelineImages from "~/images/timeline";
+import filterIcon from "~/images/timeline/filter-icon.svg";
+import skipLogicIcon from "~/images/timeline/skip-logic-icon.svg";
 import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
 import { cn } from "~/utils/cn";
@@ -136,6 +138,14 @@ const Timeline = () => {
 						</div>
 						<div className="justify-self-start">
 							<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
+							{(stage.hasFilter || stage.hasSkipLogic) && (
+								<div className="flex items-center gap-1 mt-1">
+									{stage.hasFilter && <img src={filterIcon} alt="Has filter" title="Has filter" className="w-5 h-5" />}
+									{stage.hasSkipLogic && (
+										<img src={skipLogicIcon} alt="Has skip logic" title="Has skip logic" className="w-5 h-5" />
+									)}
+								</div>
+							)}
 						</div>
 						<div className="absolute -right-40 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
 							<Button
