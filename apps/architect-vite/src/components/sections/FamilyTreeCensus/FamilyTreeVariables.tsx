@@ -25,7 +25,6 @@ const SEX_VARIABLE_OPTIONS: VariableOptions = [
 const RELATIONSHIP_TYPE_OPTIONS: VariableOptions = [
 	{ value: "parent", label: "Parent" },
 	{ value: "partner", label: "Partner" },
-	{ value: "ex-partner", label: "Ex-partner" },
 ];
 
 type FamilyTreeVariablesProps = StageEditorSectionProps & {
@@ -276,7 +275,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 							<VariableRow
 								name="relationshipTypeVariable"
 								label="Relationship Type"
-								description="Stores the type of relationship between family members (parent, partner, or ex-partner)."
+								description="Stores the type of relationship between family members (parent or partner)."
 								entity="edge"
 								entityType={edgeType}
 								options={relationshipTypeCompatibleVariables}
