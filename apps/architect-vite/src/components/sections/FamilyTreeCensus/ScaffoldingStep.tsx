@@ -24,11 +24,11 @@ const ScaffoldingStep = (_props: StageEditorSectionProps) => (
 			<Row>
 				<IssueAnchor fieldName="scaffoldingStep.showQuickStartModal" description="Show Quick Start Modal" />
 				<h4>Quick Start Modal</h4>
-				<Field
-					name="showQuickStartModal"
-					label="Show a quick start tutorial modal when the stage loads"
-					component={Toggle}
-				/>
+				<p>
+					This modal allows participants to quickly scaffold their family tree with siblings, children, aunts, and
+					uncles.
+				</p>
+				<Field name="showQuickStartModal" label="Show a quick start modal when the stage loads." component={Toggle} />
 			</Row>
 		</FormSection>
 	</Section>

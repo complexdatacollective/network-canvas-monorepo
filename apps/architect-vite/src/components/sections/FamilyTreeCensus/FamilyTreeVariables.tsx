@@ -259,7 +259,7 @@ const FamilyTreeVariables = ({ form, type, disabled, changeForm }: FamilyTreeVar
 							<VariableRow
 								name="nodeIsEgoVariable"
 								label="Ego Identifier"
-								description="A boolean variable to identify which node represents the participant (ego) in the family tree."
+								description="A boolean variable to identify which node represents the participant (ego) in the family tree. This variable can be used in future stage filtering to remove the ego from node attribute collection."
 								entity="node"
 								entityType={type}
 								options={booleanNodeVariables}
