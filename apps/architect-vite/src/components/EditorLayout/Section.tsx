@@ -75,7 +75,7 @@ const Section = ({
 						"flex gap-4 items-center text-right",
 						layout === "vertical" && "text-xl font-semibold tracking-tight",
 						layout === "horizontal" &&
-							"small-heading px-6 py-2 rounded items-center justify-between flex-row-reverse bg-border sticky top-2  [--color-input:var(--color-navy-taupe)] [--color-input-foreground:white]",
+							"small-heading px-6 py-2 rounded items-center justify-between flex-row-reverse bg-border sticky top-2",
 					)}
 				>
 					<span>
