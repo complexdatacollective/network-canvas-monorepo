@@ -97,7 +97,7 @@ const Timeline = () => {
 	return (
 		<>
 			{/* Wrapper with timeline line */}
-			<div className="timeline relative mb-24">
+			<div className="relative mb-24">
 				{/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
 				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
 
