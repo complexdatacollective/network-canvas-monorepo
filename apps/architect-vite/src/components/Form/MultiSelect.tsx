@@ -2,7 +2,7 @@ import type { Dispatch } from "@reduxjs/toolkit";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { GripVertical, Trash2 } from "lucide-react";
 import { motion, Reorder, useDragControls } from "motion/react";
-import { useCallback, useMemo, useRef } from "react";
+import { useRef } from "react";
 import { connect } from "react-redux";
 import { withHandlers } from "recompose";
 import type { UnknownAction } from "redux";
@@ -106,16 +106,16 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 			</div>
 
 			<div className="form-fields-multi-select__rule-options">
-				{properties.map(({ fieldName }, index) => {
+				{properties.map(({ fieldName, component, ...rest }, index) => {
 					const selectOptions = options(fieldName, rowValues, allValues);
+					const FieldComponent = component ?? NativeSelect;
+					const componentProps = component ? rest : { options: selectOptions, ...rest };
 					return (
 						<div className="form-fields-multi-select__rule-option" key={fieldName}>
 							<ValidatedField
-								component={NativeSelect as React.ComponentType<Record<string, unknown>>}
+								component={FieldComponent as React.ComponentType<Record<string, unknown>>}
 								name={`${field}.${fieldName}`}
-								componentProps={{
-									options: selectOptions,
-								}}
+								componentProps={componentProps}
 								validation={{ required: true }}
 								onChange={() => handleChange(index)}
 							/>
@@ -201,33 +201,44 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({ fields, maxItems = null
 	const hasSpace = maxItems === null || fields.length < (maxItems ?? 0);
 	const showAdd = hasSpace;
 
-	// Track internal IDs for items without their own id
-	const idMapRef = useRef<WeakMap<object, string>>(new WeakMap());
-
 	const items = (fields.getAll() as ItemValue[]) || [];
 
-	// Get or generate an internal ID for an item
-	const getInternalId = useCallback((item: ItemValue): string => {
-		// If item has its own id, use it
-		if ("id" in item && item.id !== undefined) {
-			return String(item.id);
-		}
-		// Otherwise, get or generate an internal id
-		let internalId = idMapRef.current.get(item);
-		if (!internalId) {
-			internalId = crypto.randomUUID();
-			idMapRef.current.set(item, internalId);
-		}
-		return internalId;
-	}, []);
+	// Track stable wrapper objects - Reorder.Group needs stable references to track items
+	// Pattern from Options.tsx
+	const internalItemsRef = useRef<InternalItem<ItemValue>[]>([]);
 
-	// Convert value array to internal items with guaranteed IDs
-	const internalItems = useMemo((): InternalItem<ItemValue>[] => {
-		return items.map((item) => ({
-			_internalId: getInternalId(item),
-			data: item,
-		}));
-	}, [items, getInternalId]);
+	// Sync internalItemsRef with current items, maintaining stable references
+	// Handle additions - add new wrappers for new items
+	while (internalItemsRef.current.length < items.length) {
+		internalItemsRef.current.push({
+			_internalId: crypto.randomUUID(),
+			data: {} as ItemValue,
+		});
+	}
+
+	// Handle deletions - find which specific item was removed
+	if (internalItemsRef.current.length > items.length) {
+		const currentDataSet = new Set(items);
+		const indexToRemove = internalItemsRef.current.findIndex((wrapper) => !currentDataSet.has(wrapper.data));
+		if (indexToRemove !== -1) {
+			internalItemsRef.current.splice(indexToRemove, 1);
+		} else {
+			// Fallback: truncate from end if we can't find the removed item
+			internalItemsRef.current.length = items.length;
+		}
+	}
+
+	// Update data references (stable wrapper objects, fresh data)
+	for (let i = 0; i < items.length; i++) {
+		const wrapper = internalItemsRef.current[i];
+		const item = items[i];
+		if (wrapper && item) {
+			wrapper.data = item;
+		}
+	}
+
+	// Use the stable reference array
+	const internalItems = internalItemsRef.current;
 
 	const handleReorder = (newOrder: InternalItem<ItemValue>[]) => {
 		for (let i = 0; i < newOrder.length; i++) {
@@ -236,6 +247,11 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({ fields, maxItems = null
 			if (newItem && currentItem && newItem._internalId !== currentItem._internalId) {
 				const oldIndex = internalItems.findIndex((item) => item._internalId === newItem._internalId);
 				if (oldIndex !== -1 && oldIndex !== i) {
+					// Reorder internalItemsRef to match the new visual order BEFORE calling fields.move
+					const [movedItem] = internalItemsRef.current.splice(oldIndex, 1);
+					if (movedItem) {
+						internalItemsRef.current.splice(i, 0, movedItem);
+					}
 					fields.move(oldIndex, i);
 					break;
 				}

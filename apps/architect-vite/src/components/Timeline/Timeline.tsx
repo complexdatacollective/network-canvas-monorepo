@@ -7,6 +7,8 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { type DialogConfig, actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import timelineImages from "~/images/timeline";
+import filterIcon from "~/images/timeline/filter-icon.svg";
+import skipLogicIcon from "~/images/timeline/skip-logic-icon.svg";
 import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
 import { cn } from "~/utils/cn";
@@ -94,76 +96,86 @@ const Timeline = () => {
 
 	return (
 		<>
-			<Reorder.Group
-				axis="y"
-				onReorder={handleReorder}
-				className="relative overflow-hidden grid grid-cols-1 gap-6 py-16 justify-items-center [--color-background:var(--color-timeline)]"
-				values={stages}
-				style={{
-					backgroundImage: "linear-gradient(var(--color-background), var(--color-background))",
-					backgroundRepeat: "no-repeat",
-					backgroundPosition: "center top",
-					backgroundSize: "5px 97%",
-				}}
-			>
-				{stages.flatMap((stage, index) => [
-					<InsertButton key={`insert_${stage.id}_${index}`} onClick={() => handleInsertStage(index)} />,
-					<Reorder.Item
-						tabIndex={0}
-						key={stage.id}
-						value={stage}
-						layoutId={`timeline-stage-${stage.id}`}
-						className={itemClasses}
-						onPointerDown={(e) => {
-							pointerStart.current = { x: e.clientX, y: e.clientY };
-						}}
-						onClick={(e) => {
-							const dx = e.clientX - pointerStart.current.x;
-							const dy = e.clientY - pointerStart.current.y;
-							if (dx * dx + dy * dy < 25) {
-								handleEditStage(stage.id);
-							}
-						}}
-					>
-						<img
-							className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
-							src={getTimelineImage(stage.type)}
-							alt={`${stage.type} interface`}
-							title={`${stage.type} interface`}
-						/>
-						<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
-							{index + 1}
-						</div>
-						<div className="justify-self-start">
-							<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
-						</div>
-						<div className="absolute -right-40 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-							<Button
-								onClick={(e) => {
-									e.stopPropagation();
-									handleDeleteStage(stage.id);
-								}}
-								color="neon-coral"
-							>
-								Delete stage
-							</Button>
-						</div>
-					</Reorder.Item>,
-				])}
+			{/* Wrapper with timeline line */}
+			<div className="relative mb-24">
+				{/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
+				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
 
-				<motion.div
-					className="mb-40 grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
-					onClick={() => handleInsertStage(stages.length)}
+				<Reorder.Group
+					axis="y"
+					onReorder={handleReorder}
+					className="relative grid grid-cols-1 gap-6 pt-16 justify-items-center"
+					values={stages}
 				>
-					<div />
-					<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-foreground text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
-						+
-					</div>
-					<span className="justify-self-start group-hover:font-bold transition-all font-semibold text-lg">
-						Add new stage
-					</span>
-				</motion.div>
-			</Reorder.Group>
+					{stages.flatMap((stage, index) => [
+						<InsertButton key={`insert_${stage.id}_${index}`} onClick={() => handleInsertStage(index)} />,
+						<Reorder.Item
+							tabIndex={0}
+							key={stage.id}
+							value={stage}
+							layoutId={`timeline-stage-${stage.id}`}
+							className={itemClasses}
+							onPointerDown={(e) => {
+								pointerStart.current = { x: e.clientX, y: e.clientY };
+							}}
+							onClick={(e) => {
+								const dx = e.clientX - pointerStart.current.x;
+								const dy = e.clientY - pointerStart.current.y;
+								if (dx * dx + dy * dy < 25) {
+									handleEditStage(stage.id);
+								}
+							}}
+						>
+							<img
+								className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
+								src={getTimelineImage(stage.type)}
+								alt={`${stage.type} interface`}
+								title={`${stage.type} interface`}
+							/>
+							<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
+								{index + 1}
+							</div>
+							<div className="justify-self-start">
+								<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
+								{(stage.hasFilter || stage.hasSkipLogic) && (
+									<div className="flex items-center gap-1 mt-1">
+										{stage.hasFilter && (
+											<img src={filterIcon} alt="Has filter" title="Has filter" className="w-5 h-5" />
+										)}
+										{stage.hasSkipLogic && (
+											<img src={skipLogicIcon} alt="Has skip logic" title="Has skip logic" className="w-5 h-5" />
+										)}
+									</div>
+								)}
+							</div>
+							<div className="absolute -right-40 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+								<Button
+									onClick={(e) => {
+										e.stopPropagation();
+										handleDeleteStage(stage.id);
+									}}
+									color="neon-coral"
+								>
+									Delete stage
+								</Button>
+							</div>
+						</Reorder.Item>,
+					])}
+
+					<motion.div
+						className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
+						onClick={() => handleInsertStage(stages.length)}
+					>
+						<div />
+						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-foreground text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
+							+
+						</div>
+						<span className="justify-self-start group-hover:font-bold transition-all font-semibold text-lg">
+							Add new stage
+						</span>
+					</motion.div>
+				</Reorder.Group>
+			</div>
 			<NewStageScreen open={showNewStageDialog} insertAtIndex={insertAtIndex} onOpenChange={setShowNewStageDialog} />
 		</>
 	);
