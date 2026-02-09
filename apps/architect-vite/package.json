@@ -34,7 +34,7 @@
 		"lodash": "^4.17.19",
 		"lucide-react": "catalog:",
 		"luxon": "^1.24.1",
-		"mapbox-gl": "^3.9.3",
+		"mapbox-gl": "^3.18.0",
 		"motion": "^12.14.0",
 		"ohash": "^2.0.11",
 		"posthog-js": "^1.328.0",
