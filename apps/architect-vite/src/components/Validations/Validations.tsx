@@ -1,3 +1,4 @@
+import type { Variable } from "@codaco/protocol-validation";
 import cx from "classnames";
 import { keys as getKeys, isNull, toPairs } from "es-toolkit/compat";
 import type React from "react";
@@ -51,16 +52,12 @@ type ValidationOption = {
 	disabled?: boolean;
 };
 
-type ExistingVariable = {
-	name: string;
-};
-
 type ValidationsFieldProps = {
 	input: {
 		value: Array<[string, string | number | boolean | null]>;
 	};
 	options?: ValidationOption[];
-	existingVariables: Record<string, ExistingVariable>;
+	existingVariables: Record<string, Pick<Variable, "name" | "type">>;
 	meta: {
 		submitFailed: boolean;
 		error?: string;
@@ -112,7 +109,7 @@ type ValidationsProps = {
 	handleChange: (key: string, value: unknown, itemKey: string) => void;
 	handleDelete: (itemKey: string) => void;
 	handleAddNew: (key: string, value: unknown, itemKey: string) => void;
-	existingVariables?: Record<string, ExistingVariable>;
+	existingVariables?: Record<string, Pick<Variable, "name" | "type">>;
 };
 
 const Validations = ({
