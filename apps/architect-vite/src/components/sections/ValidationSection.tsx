@@ -47,7 +47,10 @@ const ValidationSection = ({
 		return true;
 	};
 
-	const _existingVariablesForType = pickBy(existingVariables, (variable) => get(variable, "type") === variableType);
+	const existingVariablesForType = useMemo(
+		() => pickBy(existingVariables, (variable) => get(variable, "type") === variableType),
+		[existingVariables, variableType],
+	);
 	return (
 		<Section
 			disabled={disabled}
@@ -65,7 +68,7 @@ const ValidationSection = ({
 					name="validation"
 					variableType={variableType}
 					entity={entity}
-					existingVariables={_existingVariablesForType}
+					existingVariables={existingVariablesForType}
 				/>
 			</Row>
 		</Section>
