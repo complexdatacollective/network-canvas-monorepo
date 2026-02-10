@@ -356,7 +356,7 @@ const VariableSpotlight = ({
 	};
 
 	return (
-		<Modal open={open} onOpenChange={handleOpenChange}>
+		<Modal open={open} onOpenChange={handleOpenChange} forceRender>
 			<motion.div
 				className="w-xl bg-surface-1 text-surface-1-foreground fixed top-10 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 rounded-lg overflow-hidden z-(--z-modal)"
 				variants={containerVariants}
