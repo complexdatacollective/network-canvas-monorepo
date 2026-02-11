@@ -128,6 +128,25 @@ const ISODate = (dateFormat, message) => (value) => {
 	return undefined;
 };
 
+const afterDate = (fieldPath, message) => (value, allValues) => {
+	if (!value) {
+		return undefined;
+	}
+	const otherValue = get(allValues, fieldPath);
+	if (!otherValue) {
+		return undefined;
+	}
+	const thisDate = DateTime.fromISO(value);
+	const otherDate = DateTime.fromISO(otherValue);
+	if (!thisDate.isValid || !otherDate.isValid) {
+		return undefined;
+	}
+	if (thisDate <= otherDate) {
+		return messageWithDefault(message, "End date must be after start date");
+	}
+	return undefined;
+};
+
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 const allowedVariableName =
@@ -152,6 +171,7 @@ const validRegExp = (_, message) => (value) => {
 };
 
 export const validations = {
+	afterDate,
 	ISODate,
 	allowedVariableName,
 	allowedNMToken: allowedVariableName,

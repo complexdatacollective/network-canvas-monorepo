@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validations } from "../validations";
 
-const { maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } = validations;
+const { afterDate, maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } = validations;
 
 describe("Validations", () => {
 	describe("required()", () => {
@@ -194,4 +194,45 @@ describe("Validations", () => {
 	it.todo("ISODate()");
 
 	it.todo("allowedVariableName()");
+
+	describe("afterDate()", () => {
+		const errorMessage = "End date must be after start date";
+		const fieldPath = "parameters.min";
+		const subject = afterDate(fieldPath, errorMessage);
+
+		it("passes when value is empty", () => {
+			expect(subject(null, { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject(undefined, { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject("", { parameters: { min: "2024-01-01" } })).toBe(undefined);
+		});
+
+		it("passes when other field is empty", () => {
+			expect(subject("2024-12-31", { parameters: { min: null } })).toBe(undefined);
+			expect(subject("2024-12-31", { parameters: { min: undefined } })).toBe(undefined);
+			expect(subject("2024-12-31", { parameters: {} })).toBe(undefined);
+		});
+
+		it("passes when end date is after start date", () => {
+			expect(subject("2024-12-31", { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject("2024-06", { parameters: { min: "2024-01" } })).toBe(undefined);
+			expect(subject("2025", { parameters: { min: "2024" } })).toBe(undefined);
+		});
+
+		it("fails when end date is before start date", () => {
+			expect(subject("2024-01-01", { parameters: { min: "2024-12-31" } })).toBe(errorMessage);
+			expect(subject("2024-01", { parameters: { min: "2024-06" } })).toBe(errorMessage);
+			expect(subject("2023", { parameters: { min: "2024" } })).toBe(errorMessage);
+		});
+
+		it("fails when end date equals start date", () => {
+			expect(subject("2024-06-15", { parameters: { min: "2024-06-15" } })).toBe(errorMessage);
+			expect(subject("2024-06", { parameters: { min: "2024-06" } })).toBe(errorMessage);
+			expect(subject("2024", { parameters: { min: "2024" } })).toBe(errorMessage);
+		});
+
+		it("passes when dates are invalid", () => {
+			expect(subject("invalid", { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject("2024-12-31", { parameters: { min: "invalid" } })).toBe(undefined);
+		});
+	});
 });

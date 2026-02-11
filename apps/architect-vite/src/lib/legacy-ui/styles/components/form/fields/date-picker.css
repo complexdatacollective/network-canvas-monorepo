@@ -9,9 +9,11 @@
 }
 
 .form-field-date-picker .form-field-date-picker__error-message {
-	color: var(--color-error);
 	background: var(--color-error);
+	color: var(--color-error-foreground);
 	padding: 0.5rem 0.25rem;
+	display: flex;
+	align-items: center;
 }
 
 .form-field-date-picker .form-field-date-picker__error-message svg {
