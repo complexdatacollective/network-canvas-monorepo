@@ -129,11 +129,11 @@ const ISODate = (dateFormat, message) => (value) => {
 };
 
 const greaterThan = (fieldPath, message) => (value, allValues) => {
-	if (!value) {
+	if (!hasValue(value)) {
 		return undefined;
 	}
 	const otherValue = get(allValues, fieldPath);
-	if (!otherValue) {
+	if (!hasValue(otherValue)) {
 		return undefined;
 	}
 	if (value <= otherValue) {

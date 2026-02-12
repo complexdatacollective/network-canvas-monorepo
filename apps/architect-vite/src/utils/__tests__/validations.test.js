@@ -232,6 +232,13 @@ describe("Validations", () => {
 			expect(subject("2024", { parameters: { min: "2024" } })).toBe(errorMessage);
 			expect(subject(50, { parameters: { min: 50 } })).toBe(errorMessage);
 		});
+
+		it("handles zero correctly", () => {
+			expect(subject(0, { parameters: { min: -1 } })).toBe(undefined);
+			expect(subject(0, { parameters: { min: 0 } })).toBe(errorMessage);
+			expect(subject(0, { parameters: { min: 1 } })).toBe(errorMessage);
+			expect(subject(1, { parameters: { min: 0 } })).toBe(undefined);
+		});
 	});
 
 	describe("getValidations()", () => {
