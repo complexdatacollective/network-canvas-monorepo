@@ -235,15 +235,29 @@ describe("Validations", () => {
 	});
 
 	describe("getValidations()", () => {
-		it("passes custom message via array syntax", () => {
+		it("passes custom message via object syntax", () => {
 			const customMessage = "Custom error message";
-			const validators = getValidations({ maxLength: [5, customMessage] });
+			const validators = getValidations({ maxLength: { value: 5, message: customMessage } });
 			expect(validators[0]("too long string")).toBe(customMessage);
 		});
 
 		it("uses default message when no custom message provided", () => {
 			const validators = getValidations({ maxLength: 5 });
 			expect(validators[0]("too long string")).toBe("Must be 5 characters or less");
+		});
+
+		it("handles uniqueByList with array as single option", () => {
+			const existingNames = ["alice", "bob"];
+			const validators = getValidations({ uniqueByList: existingNames });
+			expect(validators[0]("alice")).toBe('"alice" is already in use');
+			expect(validators[0]("charlie")).toBe(undefined);
+		});
+
+		it("handles uniqueByList with custom message", () => {
+			const existingNames = ["alice", "bob"];
+			const validators = getValidations({ uniqueByList: { value: existingNames, message: "Name taken" } });
+			expect(validators[0]("alice")).toBe("Name taken");
+			expect(validators[0]("charlie")).toBe(undefined);
 		});
 	});
 });

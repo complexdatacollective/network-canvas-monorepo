@@ -204,7 +204,10 @@ export const getValidations = (validationOptions = {}) =>
 		if (typeof options === "function") {
 			return options;
 		}
-		const args = Array.isArray(options) ? options : [options];
+		// Support custom messages via object syntax: { value: ..., message: "..." }
+		const hasCustomMessage =
+			options !== null && typeof options === "object" && !Array.isArray(options) && "message" in options;
+		const args = hasCustomMessage ? [options.value, options.message] : [options];
 		return Object.hasOwn(validations, type) ? validations[type](...args) : () => `Validation "${type}" not found`;
 	});
 
