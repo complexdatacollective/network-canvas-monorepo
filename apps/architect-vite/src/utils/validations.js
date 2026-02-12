@@ -128,7 +128,7 @@ const ISODate = (dateFormat, message) => (value) => {
 	return undefined;
 };
 
-const afterDate = (fieldPath, message) => (value, allValues) => {
+const greaterThan = (fieldPath, message) => (value, allValues) => {
 	if (!value) {
 		return undefined;
 	}
@@ -136,13 +136,8 @@ const afterDate = (fieldPath, message) => (value, allValues) => {
 	if (!otherValue) {
 		return undefined;
 	}
-	const thisDate = DateTime.fromISO(value);
-	const otherDate = DateTime.fromISO(otherValue);
-	if (!thisDate.isValid || !otherDate.isValid) {
-		return undefined;
-	}
-	if (thisDate <= otherDate) {
-		return messageWithDefault(message, "End date must be after start date");
+	if (value <= otherValue) {
+		return messageWithDefault(message, "Must be greater than the other field");
 	}
 	return undefined;
 };
@@ -171,7 +166,7 @@ const validRegExp = (_, message) => (value) => {
 };
 
 export const validations = {
-	afterDate,
+	greaterThan,
 	ISODate,
 	allowedVariableName,
 	allowedNMToken: allowedVariableName,
@@ -209,7 +204,8 @@ export const getValidations = (validationOptions = {}) =>
 		if (typeof options === "function") {
 			return options;
 		}
-		return Object.hasOwn(validations, type) ? validations[type](options) : () => `Validation "${type}" not found`;
+		const args = Array.isArray(options) ? options : [options];
+		return Object.hasOwn(validations, type) ? validations[type](...args) : () => `Validation "${type}" not found`;
 	});
 
 export const getValidator = (validation = {}) => {

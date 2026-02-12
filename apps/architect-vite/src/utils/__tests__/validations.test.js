@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { validations } from "../validations";
+import { getValidations, validations } from "../validations";
 
-const { afterDate, maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } = validations;
+const { greaterThan, maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } = validations;
 
 describe("Validations", () => {
 	describe("required()", () => {
@@ -195,10 +195,10 @@ describe("Validations", () => {
 
 	it.todo("allowedVariableName()");
 
-	describe("afterDate()", () => {
-		const errorMessage = "End date must be after start date";
+	describe("greaterThan()", () => {
+		const errorMessage = "Must be greater than the other field";
 		const fieldPath = "parameters.min";
-		const subject = afterDate(fieldPath, errorMessage);
+		const subject = greaterThan(fieldPath, errorMessage);
 
 		it("passes when value is empty", () => {
 			expect(subject(null, { parameters: { min: "2024-01-01" } })).toBe(undefined);
@@ -212,27 +212,38 @@ describe("Validations", () => {
 			expect(subject("2024-12-31", { parameters: {} })).toBe(undefined);
 		});
 
-		it("passes when end date is after start date", () => {
+		it("passes when value is greater than other field", () => {
 			expect(subject("2024-12-31", { parameters: { min: "2024-01-01" } })).toBe(undefined);
 			expect(subject("2024-06", { parameters: { min: "2024-01" } })).toBe(undefined);
 			expect(subject("2025", { parameters: { min: "2024" } })).toBe(undefined);
+			expect(subject(100, { parameters: { min: 50 } })).toBe(undefined);
 		});
 
-		it("fails when end date is before start date", () => {
+		it("fails when value is less than other field", () => {
 			expect(subject("2024-01-01", { parameters: { min: "2024-12-31" } })).toBe(errorMessage);
 			expect(subject("2024-01", { parameters: { min: "2024-06" } })).toBe(errorMessage);
 			expect(subject("2023", { parameters: { min: "2024" } })).toBe(errorMessage);
+			expect(subject(25, { parameters: { min: 50 } })).toBe(errorMessage);
 		});
 
-		it("fails when end date equals start date", () => {
+		it("fails when value equals other field", () => {
 			expect(subject("2024-06-15", { parameters: { min: "2024-06-15" } })).toBe(errorMessage);
 			expect(subject("2024-06", { parameters: { min: "2024-06" } })).toBe(errorMessage);
 			expect(subject("2024", { parameters: { min: "2024" } })).toBe(errorMessage);
+			expect(subject(50, { parameters: { min: 50 } })).toBe(errorMessage);
+		});
+	});
+
+	describe("getValidations()", () => {
+		it("passes custom message via array syntax", () => {
+			const customMessage = "Custom error message";
+			const validators = getValidations({ maxLength: [5, customMessage] });
+			expect(validators[0]("too long string")).toBe(customMessage);
 		});
 
-		it("passes when dates are invalid", () => {
-			expect(subject("invalid", { parameters: { min: "2024-01-01" } })).toBe(undefined);
-			expect(subject("2024-12-31", { parameters: { min: "invalid" } })).toBe(undefined);
+		it("uses default message when no custom message provided", () => {
+			const validators = getValidations({ maxLength: 5 });
+			expect(validators[0]("too long string")).toBe("Must be 5 characters or less");
 		});
 	});
 });
