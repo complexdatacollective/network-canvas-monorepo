@@ -1593,6 +1593,144 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 			expect(result.success).toBe(true);
 		});
 
+		it("validates greaterThanOrEqualToVariable cross-reference for node variables", () => {
+			const protocolWithCrossRef = {
+				...baseValidProtocol,
+				codebook: {
+					...baseValidProtocol.codebook,
+					node: {
+						person: {
+							...baseValidProtocol.codebook.node.person,
+							variables: {
+								...baseValidProtocol.codebook.node.person.variables,
+								minAge: {
+									name: "MinimumAge",
+									type: "number",
+									validation: {
+										greaterThanOrEqualToVariable: "age",
+									},
+								},
+							},
+						},
+					},
+				},
+			};
+
+			const result = ProtocolSchemaV8.safeParse(protocolWithCrossRef);
+			expect(result.success).toBe(true);
+		});
+
+		it("rejects greaterThanOrEqualToVariable cross-reference to non-existent variable", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				codebook: {
+					...baseValidProtocol.codebook,
+					node: {
+						person: {
+							...baseValidProtocol.codebook.node.person,
+							variables: {
+								...baseValidProtocol.codebook.node.person.variables,
+								minAge: {
+									name: "MinimumAge",
+									type: "number",
+									validation: {
+										greaterThanOrEqualToVariable: "nonexistentVariable",
+									},
+								},
+							},
+						},
+					},
+				},
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const crossRefError = result.error.issues.find((issue) =>
+					issue.message.includes('The variable "nonexistentVariable" does not exist in the codebook'),
+				);
+				expect(crossRefError).toBeDefined();
+				expect(crossRefError?.path).toEqual([
+					"codebook",
+					"node",
+					"person",
+					"variables",
+					"minAge",
+					"validation",
+					"greaterThanOrEqualToVariable",
+				]);
+			}
+		});
+
+		it("validates lessThanOrEqualToVariable cross-reference for node variables", () => {
+			const protocolWithCrossRef = {
+				...baseValidProtocol,
+				codebook: {
+					...baseValidProtocol.codebook,
+					node: {
+						person: {
+							...baseValidProtocol.codebook.node.person,
+							variables: {
+								...baseValidProtocol.codebook.node.person.variables,
+								maxAge: {
+									name: "MaximumAge",
+									type: "number",
+									validation: {
+										lessThanOrEqualToVariable: "age",
+									},
+								},
+							},
+						},
+					},
+				},
+			};
+
+			const result = ProtocolSchemaV8.safeParse(protocolWithCrossRef);
+			expect(result.success).toBe(true);
+		});
+
+		it("rejects lessThanOrEqualToVariable cross-reference to non-existent variable", () => {
+			const invalidProtocol = {
+				...baseValidProtocol,
+				codebook: {
+					...baseValidProtocol.codebook,
+					node: {
+						person: {
+							...baseValidProtocol.codebook.node.person,
+							variables: {
+								...baseValidProtocol.codebook.node.person.variables,
+								maxAge: {
+									name: "MaximumAge",
+									type: "number",
+									validation: {
+										lessThanOrEqualToVariable: "nonexistentVariable",
+									},
+								},
+							},
+						},
+					},
+				},
+			};
+
+			const result = ProtocolSchemaV8.safeParse(invalidProtocol);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				const crossRefError = result.error.issues.find((issue) =>
+					issue.message.includes('The variable "nonexistentVariable" does not exist in the codebook'),
+				);
+				expect(crossRefError).toBeDefined();
+				expect(crossRefError?.path).toEqual([
+					"codebook",
+					"node",
+					"person",
+					"variables",
+					"maxAge",
+					"validation",
+					"lessThanOrEqualToVariable",
+				]);
+			}
+		});
+
 		it("validates cross-references for ego variables", () => {
 			const protocolWithEgoCrossRef = {
 				...baseValidProtocol,

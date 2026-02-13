@@ -369,6 +369,12 @@ const ProtocolSchema = z
 					if (validation.lessThanVariable && typeof validation.lessThanVariable === "string") {
 						checkCrossRef("lessThanVariable", validation.lessThanVariable);
 					}
+					if (validation.greaterThanOrEqualToVariable && typeof validation.greaterThanOrEqualToVariable === "string") {
+						checkCrossRef("greaterThanOrEqualToVariable", validation.greaterThanOrEqualToVariable);
+					}
+					if (validation.lessThanOrEqualToVariable && typeof validation.lessThanOrEqualToVariable === "string") {
+						checkCrossRef("lessThanOrEqualToVariable", validation.lessThanOrEqualToVariable);
+					}
 				}
 			}
 		};

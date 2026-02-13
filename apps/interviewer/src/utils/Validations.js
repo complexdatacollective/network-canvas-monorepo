@@ -144,6 +144,24 @@ export const lessThanVariable = (variableId, store) => {
 			: undefined;
 };
 
+export const greaterThanOrEqualToVariable = (variableId, store) => {
+	const variableName = getVariableName(variableId, store);
+	const variableType = getVariableType(variableId, store);
+	return (value, allValues) =>
+		isNil(value) || compareVariables(value, allValues[variableId], variableType) < 0
+			? `Your answer must be greater than or equal to ${variableName}`
+			: undefined;
+};
+
+export const lessThanOrEqualToVariable = (variableId, store) => {
+	const variableName = getVariableName(variableId, store);
+	const variableType = getVariableType(variableId, store);
+	return (value, allValues) =>
+		isNil(value) || compareVariables(value, allValues[variableId], variableType) > 0
+			? `Your answer must be less than or equal to ${variableName}`
+			: undefined;
+};
+
 export default {
 	required: () => required(),
 	minLength,
@@ -157,4 +175,6 @@ export default {
 	sameAs,
 	greaterThanVariable,
 	lessThanVariable,
+	greaterThanOrEqualToVariable,
+	lessThanOrEqualToVariable,
 };
