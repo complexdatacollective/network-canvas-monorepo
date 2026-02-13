@@ -304,7 +304,6 @@ describe("traverseAndTransform", () => {
 					fn: <V>(entity: V) => {
 						callCount++;
 						if (typeof entity === "object" && entity !== null) {
-							// biome-ignore lint/correctness/noUnusedVariables: Destructuring to remove property
 							const { displayVariable, ...rest } = entity as Record<string, unknown> & {
 								displayVariable?: unknown;
 							};
@@ -621,7 +620,6 @@ describe("traverseAndTransform", () => {
 					paths: ["codebook.node.*", "codebook.edge.*"],
 					fn: <V>(entityDefinition: V) => {
 						if (typeof entityDefinition === "object" && entityDefinition !== null) {
-							// biome-ignore lint/correctness/noUnusedVariables: Destructuring to remove property
 							const { displayVariable, ...rest } = entityDefinition as Record<string, unknown> & {
 								displayVariable?: unknown;
 							};
