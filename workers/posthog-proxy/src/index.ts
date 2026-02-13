@@ -53,7 +53,11 @@ async function forwardRequest(request: Request, env: Env, url: URL): Promise<Res
 
 	const targetUrl = new URL(`https://${API_HOST}${pathname}`);
 	for (const [key, value] of url.searchParams) {
-		targetUrl.searchParams.set(key, value);
+		if ((key === "token" || key === "api_key") && value === DUMMY_API_KEY) {
+			targetUrl.searchParams.set(key, env.POSTHOG_API_KEY);
+		} else {
+			targetUrl.searchParams.set(key, value);
+		}
 	}
 
 	let body: BodyInit | null = null;
