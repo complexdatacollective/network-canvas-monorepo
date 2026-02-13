@@ -1,5 +1,11 @@
 # architect-vite
 
+## 7.2.0
+
+### Minor Changes
+
+- 23b675c: Migrate from direct PostHog usage to @codaco/analytics package for consistent analytics across all Network Canvas apps
+
 ## 7.1.0
 
 ### Minor Changes
