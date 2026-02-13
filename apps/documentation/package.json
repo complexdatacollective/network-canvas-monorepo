@@ -15,6 +15,7 @@
 		"test-redirects": "tsx ./scripts/test-redirects.ts"
 	},
 	"dependencies": {
+		"@codaco/analytics": "workspace:*",
 		"@codaco/art": "workspace:*",
 		"@codaco/ui": "workspace:*",
 		"@docsearch/css": "^4.4.0",

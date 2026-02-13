@@ -45,6 +45,12 @@ Tailor your experience with language localization support. Currently supporting 
 
 Choose between dark and light modes to suit your preferences and reduce eye strain during extended reading sessions.
 
+### 8. Analytics
+
+The documentation site uses `@codaco/analytics` (PostHog via Cloudflare Worker proxy) for pageview and pageleave tracking. Analytics are initialized in `instrumentation-client.ts`, which runs once when client-side JS loads.
+
+Analytics are **only active on production deployments**. Preview and development builds use a no-op implementation. This is controlled by a `NEXT_PUBLIC_IS_PRODUCTION` env var computed at build time in `next.config.ts` from platform-specific variables (`VERCEL_ENV` for Vercel, `CONTEXT` for Netlify). Analytics can also be manually disabled by setting `NEXT_PUBLIC_DISABLE_ANALYTICS=true`.
+
 ## Get Started
 
 Explore the Network Canvas documentation to unlock the full potential of social network data collection. Whether you're a new user or an experienced researcher, this documentation is here to support you

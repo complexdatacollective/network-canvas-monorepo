@@ -7,11 +7,19 @@ const withBundleAnalyzer = NextBundleAnalyzer({
 	enabled: process.env.ANALYZE === "true",
 });
 
+const isProduction =
+	process.env.VERCEL_ENV === "production" ||
+	process.env.CONTEXT === "production" ||
+	process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
 	reactStrictMode: true,
 	output: "export",
 	images: {
 		unoptimized: true,
+	},
+	env: {
+		NEXT_PUBLIC_IS_PRODUCTION: String(isProduction),
 	},
 	typedRoutes: true,
 	/** Enables hot reloading for local packages without a build step */

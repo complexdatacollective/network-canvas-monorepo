@@ -496,6 +496,9 @@ importers:
 
   apps/documentation:
     dependencies:
+      '@codaco/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
