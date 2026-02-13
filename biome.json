@@ -68,7 +68,11 @@
 			"!**/.turbo",
 			"!**/public/**/*.*",
 			"!!**/*.css",
-			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.js"
+			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.js",
+			"!apps/interviewer",
+			"!apps/architect-desktop",
+			"!packages/network-exporters",
+			"!packages/network-query"
 		]
 	},
 	"javascript": {
