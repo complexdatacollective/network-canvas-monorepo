@@ -115,6 +115,7 @@ class ServerAnalytics implements Analytics {
 			event,
 			properties: {
 				...properties,
+				app: this.config.app,
 				installation_id: this.config.installationId,
 			},
 			timestamp: new Date().toISOString(),
