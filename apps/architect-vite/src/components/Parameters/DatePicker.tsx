@@ -83,7 +83,10 @@ const DateTimeParameters = ({ name, type = "full", setSelectDefault, resetRangeF
 			<ValidatedField
 				component={DatePicker}
 				name={`${name}.max`}
-				validation={{ ISODate: dateFormat }}
+				validation={{
+					ISODate: dateFormat,
+					greaterThan: { value: `${name}.min`, message: "End date must be after start date" },
+				}}
 				componentProps={{
 					label: "",
 					placeholder: "Select an end range date, or leave empty to use interview date...",

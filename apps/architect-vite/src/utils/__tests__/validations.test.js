@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { validations } from "../validations";
+import { getValidations, validations } from "../validations";
 
-const { maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } = validations;
+const { greaterThan, maxLength, maxSelected, maxValue, minLength, minSelected, minValue, required } = validations;
 
 describe("Validations", () => {
 	describe("required()", () => {
@@ -194,4 +194,77 @@ describe("Validations", () => {
 	it.todo("ISODate()");
 
 	it.todo("allowedVariableName()");
+
+	describe("greaterThan()", () => {
+		const errorMessage = "Must be greater than the other field";
+		const fieldPath = "parameters.min";
+		const subject = greaterThan(fieldPath, errorMessage);
+
+		it("passes when value is empty", () => {
+			expect(subject(null, { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject(undefined, { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject("", { parameters: { min: "2024-01-01" } })).toBe(undefined);
+		});
+
+		it("passes when other field is empty", () => {
+			expect(subject("2024-12-31", { parameters: { min: null } })).toBe(undefined);
+			expect(subject("2024-12-31", { parameters: { min: undefined } })).toBe(undefined);
+			expect(subject("2024-12-31", { parameters: {} })).toBe(undefined);
+		});
+
+		it("passes when value is greater than other field", () => {
+			expect(subject("2024-12-31", { parameters: { min: "2024-01-01" } })).toBe(undefined);
+			expect(subject("2024-06", { parameters: { min: "2024-01" } })).toBe(undefined);
+			expect(subject("2025", { parameters: { min: "2024" } })).toBe(undefined);
+			expect(subject(100, { parameters: { min: 50 } })).toBe(undefined);
+		});
+
+		it("fails when value is less than other field", () => {
+			expect(subject("2024-01-01", { parameters: { min: "2024-12-31" } })).toBe(errorMessage);
+			expect(subject("2024-01", { parameters: { min: "2024-06" } })).toBe(errorMessage);
+			expect(subject("2023", { parameters: { min: "2024" } })).toBe(errorMessage);
+			expect(subject(25, { parameters: { min: 50 } })).toBe(errorMessage);
+		});
+
+		it("fails when value equals other field", () => {
+			expect(subject("2024-06-15", { parameters: { min: "2024-06-15" } })).toBe(errorMessage);
+			expect(subject("2024-06", { parameters: { min: "2024-06" } })).toBe(errorMessage);
+			expect(subject("2024", { parameters: { min: "2024" } })).toBe(errorMessage);
+			expect(subject(50, { parameters: { min: 50 } })).toBe(errorMessage);
+		});
+
+		it("handles zero correctly", () => {
+			expect(subject(0, { parameters: { min: -1 } })).toBe(undefined);
+			expect(subject(0, { parameters: { min: 0 } })).toBe(errorMessage);
+			expect(subject(0, { parameters: { min: 1 } })).toBe(errorMessage);
+			expect(subject(1, { parameters: { min: 0 } })).toBe(undefined);
+		});
+	});
+
+	describe("getValidations()", () => {
+		it("passes custom message via object syntax", () => {
+			const customMessage = "Custom error message";
+			const validators = getValidations({ maxLength: { value: 5, message: customMessage } });
+			expect(validators[0]("too long string")).toBe(customMessage);
+		});
+
+		it("uses default message when no custom message provided", () => {
+			const validators = getValidations({ maxLength: 5 });
+			expect(validators[0]("too long string")).toBe("Must be 5 characters or less");
+		});
+
+		it("handles uniqueByList with array as single option", () => {
+			const existingNames = ["alice", "bob"];
+			const validators = getValidations({ uniqueByList: existingNames });
+			expect(validators[0]("alice")).toBe('"alice" is already in use');
+			expect(validators[0]("charlie")).toBe(undefined);
+		});
+
+		it("handles uniqueByList with custom message", () => {
+			const existingNames = ["alice", "bob"];
+			const validators = getValidations({ uniqueByList: { value: existingNames, message: "Name taken" } });
+			expect(validators[0]("alice")).toBe("Name taken");
+			expect(validators[0]("charlie")).toBe(undefined);
+		});
+	});
 });

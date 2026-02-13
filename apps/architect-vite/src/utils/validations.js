@@ -128,6 +128,20 @@ const ISODate = (dateFormat, message) => (value) => {
 	return undefined;
 };
 
+const greaterThan = (fieldPath, message) => (value, allValues) => {
+	if (!hasValue(value)) {
+		return undefined;
+	}
+	const otherValue = get(allValues, fieldPath);
+	if (!hasValue(otherValue)) {
+		return undefined;
+	}
+	if (value <= otherValue) {
+		return messageWithDefault(message, "Must be greater than the other field");
+	}
+	return undefined;
+};
+
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 const allowedVariableName =
@@ -152,6 +166,7 @@ const validRegExp = (_, message) => (value) => {
 };
 
 export const validations = {
+	greaterThan,
 	ISODate,
 	allowedVariableName,
 	allowedNMToken: allowedVariableName,
@@ -189,7 +204,11 @@ export const getValidations = (validationOptions = {}) =>
 		if (typeof options === "function") {
 			return options;
 		}
-		return Object.hasOwn(validations, type) ? validations[type](options) : () => `Validation "${type}" not found`;
+		// Support custom messages via object syntax: { value: ..., message: "..." }
+		const hasCustomMessage =
+			options !== null && typeof options === "object" && !Array.isArray(options) && "message" in options;
+		const args = hasCustomMessage ? [options.value, options.message] : [options];
+		return Object.hasOwn(validations, type) ? validations[type](...args) : () => `Validation "${type}" not found`;
 	});
 
 export const getValidator = (validation = {}) => {
