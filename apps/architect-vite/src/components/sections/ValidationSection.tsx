@@ -1,3 +1,4 @@
+import type { Variable } from "@codaco/protocol-validation";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import { get, pickBy } from "es-toolkit/compat";
@@ -10,16 +11,12 @@ import { useAppDispatch } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/modules/root";
 import { getFieldId } from "../../utils/issues";
 
-type ExistingVariable = {
-	name: string;
-};
-
 type ValidationSectionProps = {
 	disabled?: boolean;
 	form: string;
 	entity: string;
 	variableType?: string;
-	existingVariables: Record<string, ExistingVariable>;
+	existingVariables: Record<string, Pick<Variable, "name" | "type">>;
 };
 
 const ValidationSection = ({
@@ -50,7 +47,10 @@ const ValidationSection = ({
 		return true;
 	};
 
-	const _existingVariablesForType = pickBy(existingVariables, (variable) => get(variable, "type") === variableType);
+	const existingVariablesForType = useMemo(
+		() => pickBy(existingVariables, (variable) => get(variable, "type") === variableType),
+		[existingVariables, variableType],
+	);
 	return (
 		<Section
 			disabled={disabled}
@@ -63,7 +63,13 @@ const ValidationSection = ({
 			layout="vertical"
 		>
 			<Row>
-				<Validations form={form} name="validation" variableType={variableType} entity={entity} />
+				<Validations
+					form={form}
+					name="validation"
+					variableType={variableType}
+					entity={entity}
+					existingVariables={existingVariablesForType}
+				/>
 			</Row>
 		</Section>
 	);

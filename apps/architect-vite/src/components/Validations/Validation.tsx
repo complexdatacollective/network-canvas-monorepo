@@ -1,3 +1,4 @@
+import type { Variable } from "@codaco/protocol-validation";
 import { map } from "lodash";
 import { Trash2 } from "lucide-react";
 import { motion } from "motion/react";
@@ -10,17 +11,13 @@ type ValidationOption = {
 	value: string;
 };
 
-type ExistingVariable = {
-	name: string;
-};
-
 type ValidationProps = {
 	onDelete?: (itemKey: string) => void;
 	onUpdate?: (key: string, value: boolean | number | string | null, itemKey: string) => void;
 	options?: ValidationOption[];
 	itemKey?: string;
 	itemValue?: boolean | number | string | null;
-	existingVariables: Record<string, ExistingVariable>;
+	existingVariables: Record<string, Pick<Variable, "name" | "type">>;
 };
 
 const noop = () => {};

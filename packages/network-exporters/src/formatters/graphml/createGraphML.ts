@@ -1,5 +1,5 @@
 import type { Codebook } from "@codaco/protocol-validation";
-import { XMLSerializer } from "@xmldom/xmldom";
+import { type Element, XMLSerializer } from "@xmldom/xmldom";
 import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
 import getDataElementGenerator from "./generateDataElements";
 import getKeyElementGenerator from "./generateKeyElements";

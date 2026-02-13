@@ -96,8 +96,8 @@
 }
 
 .icon.button__icon {
-	height: var(--space-md);
-	width: var(--space-md);
+	height: var(--space-md) !important;
+	width: var(--space-md) !important;
 }
 
 /* SVG Button utility classes */

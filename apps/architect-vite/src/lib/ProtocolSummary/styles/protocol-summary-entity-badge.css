@@ -30,7 +30,9 @@
 	margin-right: 0.5rem;
 }
 
-.protocol-summary-entity-badge--small .protocol-summary-entity-badge__icon .icon[name="links"] {
+.protocol-summary-entity-badge--small
+	.protocol-summary-entity-badge__icon
+	.icon[name="links"] {
 	font-size: 2rem;
 }
 
@@ -39,6 +41,8 @@
 	margin-right: 0.3rem;
 }
 
-.protocol-summary-entity-badge--tiny .protocol-summary-entity-badge__icon .icon[name="links"] {
+.protocol-summary-entity-badge--tiny
+	.protocol-summary-entity-badge__icon
+	.icon[name="links"] {
 	font-size: 1rem;
 }

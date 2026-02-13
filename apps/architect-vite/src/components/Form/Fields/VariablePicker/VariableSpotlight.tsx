@@ -133,6 +133,24 @@ const VariableSpotlight = ({
 	const [cursor, setCursor] = useState(-2);
 	const [showCursor, setShowCursor] = useState(false);
 
+	const resetState = () => {
+		setFilterTerm("");
+		setCursor(-2);
+		setShowCursor(false);
+	};
+
+	const handleClose = () => {
+		resetState();
+		onCancel();
+	};
+
+	const handleOpenChange = (isOpen: boolean) => {
+		if (!isOpen) {
+			resetState();
+		}
+		onOpenChange(isOpen);
+	};
+
 	const handleCreateOption = () => {
 		setFilterTerm(""); // Clear search term so the user doesn't see a flash of invalid text
 		onCreateOption(filterTerm);
@@ -147,12 +165,15 @@ const VariableSpotlight = ({
 		return options.filter((item) => item.label.toLowerCase().includes(filterTerm.toLowerCase()));
 	}, [filterTerm, options]);
 
-	const existingVariables = useSelector((state: RootState) =>
-		getVariablesForSubject(state, {
+	// Memoize subject to avoid creating new object on every render, which breaks selector memoization
+	const subject = useMemo(
+		() => ({
 			entity: ((entity || "") as "node" | "edge" | "ego") || "node",
 			type: type || undefined,
 		}),
+		[entity, type],
 	);
+	const existingVariables = useSelector((state: RootState) => getVariablesForSubject(state, subject));
 
 	const hasOptions = useMemo(() => options.length > 0, [options]);
 	const hasFilterTerm = useMemo(() => filterTerm.length > 0, [filterTerm]);
@@ -270,7 +291,7 @@ const VariableSpotlight = ({
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		// Close the picker when pressing escape
 		if (e.key === "Escape") {
-			onCancel();
+			handleClose();
 		}
 
 		if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -335,9 +356,9 @@ const VariableSpotlight = ({
 	};
 
 	return (
-		<Modal open={open} onOpenChange={onOpenChange}>
+		<Modal open={open} onOpenChange={handleOpenChange} forceRender>
 			<motion.div
-				className="w-xl bg-surface-1 text-surface-1-foreground fixed top-10 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 rounded-lg overflow-hidden z-[var(--z-modal)]"
+				className="w-xl bg-surface-1 text-surface-1-foreground fixed top-10 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 rounded-lg overflow-hidden z-(--z-modal)"
 				variants={containerVariants}
 				initial="hidden"
 				animate="visible"

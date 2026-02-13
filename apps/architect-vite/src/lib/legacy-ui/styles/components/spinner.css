@@ -79,7 +79,8 @@
 /* Circle color animations for each circle */
 .spinner .circle:nth-child(1) :nth-child(1) {
 	background: var(--spinner-dark-color-1);
-	animation: circle-color-1 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+	animation: circle-color-1 calc(var(--animation-duration) / 2)
+		var(--circle-easing) alternate infinite;
 }
 
 .spinner .circle:nth-child(1) :nth-child(2) {
@@ -88,7 +89,8 @@
 
 .spinner .circle:nth-child(2) :nth-child(1) {
 	background: var(--spinner-dark-color-2);
-	animation: circle-color-2 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+	animation: circle-color-2 calc(var(--animation-duration) / 2)
+		var(--circle-easing) alternate infinite;
 }
 
 .spinner .circle:nth-child(2) :nth-child(2) {
@@ -97,7 +99,8 @@
 
 .spinner .circle:nth-child(3) :nth-child(1) {
 	background: var(--spinner-dark-color-3);
-	animation: circle-color-3 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+	animation: circle-color-3 calc(var(--animation-duration) / 2)
+		var(--circle-easing) alternate infinite;
 }
 
 .spinner .circle:nth-child(3) :nth-child(2) {
@@ -106,7 +109,8 @@
 
 .spinner .circle:nth-child(4) :nth-child(1) {
 	background: var(--spinner-dark-color-4);
-	animation: circle-color-4 calc(var(--animation-duration) / 2) var(--circle-easing) alternate infinite;
+	animation: circle-color-4 calc(var(--animation-duration) / 2)
+		var(--circle-easing) alternate infinite;
 }
 
 .spinner .circle:nth-child(4) :nth-child(2) {

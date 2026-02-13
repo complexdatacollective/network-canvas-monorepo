@@ -13,8 +13,10 @@
 		max-height: 50px;
 		overflow: hidden;
 		transition:
-			opacity var(--animation-duration-standard) var(--animation-duration-standard),
-			max-height var(--animation-duration-standard) var(--animation-duration-standard);
+			opacity var(--animation-duration-standard)
+			var(--animation-duration-standard),
+			max-height var(--animation-duration-standard)
+			var(--animation-duration-standard);
 	}
 
 	.attributes-table-variable__edit {
@@ -35,8 +37,10 @@
 			max-height: fit-content;
 			opacity: 1;
 			transition:
-				opacity var(--animation-duration-standard) var(--animation-duration-standard),
-				max-height var(--animation-duration-standard) var(--animation-duration-standard);
+				opacity var(--animation-duration-standard)
+				var(--animation-duration-standard),
+				max-height var(--animation-duration-standard)
+				var(--animation-duration-standard);
 		}
 
 		.attributes-table-variable__preview {

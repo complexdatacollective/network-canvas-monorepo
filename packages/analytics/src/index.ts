@@ -49,21 +49,24 @@
  * ```
  */
 
+// Re-export client factory for direct initialization (e.g., instrumentation-client.ts)
+export { createAnalytics } from "./client";
 // Re-export config helpers
 export { defaultConfig, isDisabledByEnv, mergeConfig } from "./config";
 export { useAnalytics, useFeatureFlag, useFeatureFlagValue } from "./hooks";
-
 // Re-export provider and hooks for client-side usage
 export { AnalyticsProvider, type AnalyticsProviderProps } from "./provider";
+
 // Re-export types
 export type {
 	Analytics,
 	AnalyticsConfig,
+	AppName,
 	ErrorProperties,
 	EventProperties,
 	EventType,
 } from "./types";
-export { eventTypes, legacyEventTypeMap } from "./types";
+export { appNames, eventTypes, legacyEventTypeMap } from "./types";
 
 // Re-export utilities
 export { ensureError } from "./utils";

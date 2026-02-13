@@ -106,8 +106,8 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (type === "ego") {
 		return (
 			<>
-				<span style={{ "--node--label": "var(--text-dark)" } as React.CSSProperties}>
-					<PreviewNode label="Ego" color="color-platinum" />
+				<span style={{ "--node-label": "var(--color-charcoal)" } as React.CSSProperties}>
+					<PreviewNode label="Ego" color="platinum" />
 				</span>
 				<Copy>has</Copy>
 				<SimpleVariablePill

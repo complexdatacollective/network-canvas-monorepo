@@ -79,6 +79,7 @@ export const defaultConfig: Partial<AnalyticsConfig> = {
  */
 export function mergeConfig(userConfig: AnalyticsConfig): Required<AnalyticsConfig> {
 	return {
+		app: userConfig.app,
 		apiHost: userConfig.apiHost ?? defaultConfig.apiHost ?? POSTHOG_PROXY_HOST,
 		apiKey: userConfig.apiKey ?? PROXY_MODE_DUMMY_KEY,
 		installationId: userConfig.installationId,

@@ -76,9 +76,15 @@ const EntitySelectField = ({
 		setShowNewTypeDialog(true);
 	}, []);
 
-	const handleNewTypeComplete = useCallback(() => {
-		setShowNewTypeDialog(false);
-	}, []);
+	const handleNewTypeComplete = useCallback(
+		(newTypeId?: string) => {
+			setShowNewTypeDialog(false);
+			if (newTypeId) {
+				onChange(newTypeId);
+			}
+		},
+		[onChange],
+	);
 
 	const handleNewTypeCancel = useCallback(() => {
 		setShowNewTypeDialog(false);

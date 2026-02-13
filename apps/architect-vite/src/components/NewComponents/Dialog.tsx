@@ -11,7 +11,7 @@ export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
 		<BaseDialog.Backdrop
 			render={
 				<motion.div
-					className="fixed inset-0 min-h-dvh bg-rich-black/50 backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
+					className="fixed inset-0 min-h-dvh bg-rich-black/50 backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute z-[999]"
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					exit={{ opacity: 0 }}
@@ -28,9 +28,10 @@ type DialogPopupProps = ComponentProps<typeof motion.div> & {
 	header?: ReactNode;
 	children: ReactNode;
 	footer?: ReactNode;
+	onAnimationComplete?: () => void;
 };
 
-function DialogPopup({ size, header, children, footer, className, ...props }: DialogPopupProps) {
+function DialogPopup({ size, header, children, footer, className, onAnimationComplete, ...props }: DialogPopupProps) {
 	return (
 		<BaseDialog.Popup
 			className={cn(
@@ -60,6 +61,7 @@ function DialogPopup({ size, header, children, footer, className, ...props }: Di
 						stiffness: 300,
 						damping: 30,
 					}}
+					onAnimationComplete={onAnimationComplete}
 					style={{ zIndex: 1000 }}
 					{...props}
 				>
@@ -98,6 +100,7 @@ type DialogProps = {
 	cancelText?: string;
 	confirmColor?: ComponentProps<typeof Button>["color"];
 	size?: "lg";
+	onAnimationComplete?: () => void;
 } & ComponentProps<typeof motion.div>;
 
 function Dialog({
@@ -113,11 +116,12 @@ function Dialog({
 	confirmText = "Confirm",
 	cancelText = "Cancel",
 	confirmColor = "sea-green",
+	onAnimationComplete,
 	...popupProps
 }: DialogProps) {
 	return (
 		<Modal open={open} onOpenChange={onOpenChange}>
-			<DialogPopup header={header} footer={footer} {...popupProps}>
+			<DialogPopup header={header} footer={footer} onAnimationComplete={onAnimationComplete} {...popupProps}>
 				<div className="flex-1">
 					{title && !header && <DialogTitle>{title}</DialogTitle>}
 					{description && <DialogDescription>{description}</DialogDescription>}

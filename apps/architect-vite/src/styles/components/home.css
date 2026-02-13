@@ -1,4 +1,4 @@
-@reference "../tailwind.css";
+@reference '../tailwind.css';
 
 /* Utility class for scrollable behavior - apply this class to HTML elements instead of @include scrollable */
 .scrollable {
@@ -49,7 +49,7 @@
 .home-section {
 	position: relative;
 	border-radius: var(--radius);
-	box-shadow: 0 0.6rem 0.2rem 0 var(--color-border);
+	box-shadow: 0 0.6rem .2rem 0 var(--color-border);
 	margin: 2.4rem auto;
 	max-width: 70rem;
 	overflow: hidden;
@@ -82,8 +82,8 @@
 	position: absolute;
 	top: 1rem;
 	height: calc(100% - 2rem);
-	border-radius: 0.33rem;
-	width: 0.33rem;
+	border-radius: .33rem;
+	width: .33rem;
 	background-color: rgb(0 0 0 / 5%);
 }
 
@@ -227,7 +227,7 @@
 }
 
 .welcome-header--is-open {
-	box-shadow: 0 0.6rem 0.2rem 0 var(--color-border);
+	box-shadow: 0 0.6rem .2rem 0 var(--color-border);
 }
 
 .welcome-header__header {
@@ -243,7 +243,7 @@
 	display: inline-block;
 	font-family: var(--heading-font-family);
 	font-weight: var(--font-weight-black);
-	letter-spacing: 0.15em;
+	letter-spacing: .15em;
 	margin: 0;
 }
 
@@ -260,7 +260,7 @@
 }
 
 .welcome-header__header .version h4 {
-	font-size: 0.8rem;
+	font-size: .8rem;
 }
 
 .welcome-header__header-toggle {
@@ -281,7 +281,7 @@
 
 .welcome-header__title h1 {
 	font-size: var(--text-5xl); /* was type-scale(5) */
-	letter-spacing: 0.15em;
+	letter-spacing: .15em;
 	margin: 0;
 }
 
@@ -333,7 +333,7 @@
 	position: absolute;
 	top: -8px;
 	left: -5px;
-	font-size: 0.6rem;
+	font-size: .6rem;
 	font-weight: var(--font-weight-black);
 	padding: 0.3rem 0.6rem;
 	border-radius: var(--radius);
@@ -351,7 +351,7 @@
 
 .home-welcome__content .welcome-actions > .button .button__content {
 	padding: 0;
-	font-size: 0.75rem;
+	font-size: .75rem;
 }
 
 .home-tips h3 {

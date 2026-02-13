@@ -15,7 +15,7 @@ import {
 	sessionStartTimeProperty,
 	type VariableValue,
 } from "@codaco/shared-consts";
-import { DOMImplementation } from "@xmldom/xmldom";
+import { DOMImplementation, type Element } from "@xmldom/xmldom";
 import { isNil } from "es-toolkit";
 import type { EdgeWithResequencedID, NodeWithResequencedID, SessionVariables } from "../../types";
 import { getEntityAttributes } from "../../utils/general";

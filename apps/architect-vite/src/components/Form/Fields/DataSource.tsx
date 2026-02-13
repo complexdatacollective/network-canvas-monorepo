@@ -75,14 +75,10 @@ const DataSource = (props: DataSourcePropsWithState) => {
 	return canUseExisting ? (
 		<div className="form-field-data-source">
 			<div className="form-fields-data-source__option">
-				<Radio
-					input={existingInput}
-					label="Use the network from the in-progress interview"
-					className="text-foreground"
-				/>
+				<Radio input={existingInput} label="Use the network from the in-progress interview" />
 			</div>
 			<div className="form-fields-data-source__option">
-				<Radio input={networkAssetInput} label="Use a network data file" className="text-foreground" />
+				<Radio input={networkAssetInput} label="Use a network data file" />
 				{showNetworkAssetInput && (
 					<div className="form-fields-data-source__option-file">
 						<File {...fileProps} showBrowser={selectNetworkAsset} onCloseBrowser={handleCloseBrowser}>
