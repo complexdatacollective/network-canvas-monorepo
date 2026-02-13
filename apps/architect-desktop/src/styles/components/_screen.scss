@@ -1,0 +1,47 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.screen-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen {
+  position: relative;
+  z-index: var(--z-modal);
+  max-width: 100rem;
+  margin: units.unit(6);
+  max-height: calc(100% - #{units.unit(12)});
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--border-radius);
+  box-shadow: 0 units.unit(2) units.unit(4) 0 var(--modal-window-box-shadow);
+  background: var(--color-white);
+
+  &__header {
+    background: var(--color-slate-blue--dark);
+    color: var(--color-white);
+  }
+
+  &__header,
+  &__footer {
+    flex: 0 0 auto;
+    z-index: var(--z-panel);
+  }
+
+  &__footer {
+    background: var(--architect-control-bar-background);
+  }
+
+  &__content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+}

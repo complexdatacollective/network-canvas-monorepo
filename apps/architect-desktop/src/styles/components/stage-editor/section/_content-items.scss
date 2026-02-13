@@ -1,0 +1,46 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.stage-editor-section-content-items {
+  &__controls {
+    margin-top: units.unit(2);
+
+    .button {
+      &:first-child {
+        margin-left: 0;
+      }
+    }
+  }
+
+  &__control {
+    margin-right: units.unit(1);
+    color: var(--text-light);
+
+    &::before {
+      content: '+';
+      font-size: 1.75rem;
+      line-height: 100%;
+      position: relative;
+      top: units.unit(-.25);
+      margin-right: units.unit(1);
+
+    }
+
+    &--text {
+      @include button-background(var(--architect-variant--1));
+    }
+
+    &--image {
+      @include button-background(var(--architect-variant--2));
+    }
+
+    &--audio {
+      @include button-background(var(--architect-variant--3));
+    }
+
+    &--video {
+      @include button-background(var(--architect-variant--4));
+    }
+
+
+  }
+}

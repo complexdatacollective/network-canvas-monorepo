@@ -1,0 +1,13 @@
+import Icon from "@codaco/ui/lib/components/Icon";
+import PropTypes from "prop-types";
+import Radio from "../Form/Fields/Radio";
+
+const IconOption = (props) => (
+	<Radio {...props} className="type-editor-icon-option" label={<Icon name={props.label} />} />
+);
+
+IconOption.propTypes = {
+	label: PropTypes.string.isRequired,
+};
+
+export default IconOption;

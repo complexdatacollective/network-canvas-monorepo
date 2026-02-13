@@ -1,0 +1,117 @@
+import { applyMiddleware, createStore } from "redux";
+import thunk from "redux-thunk";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import reducer from "../recentProtocols";
+import { actionTypes as sessionActionTypes } from "../session";
+
+const protocol = {
+	description: "test description",
+	schemaVersion: 4,
+};
+
+describe("recentProtocols", () => {
+	describe("reducer", () => {
+		let store;
+
+		beforeEach(() => {
+			store = createStore(reducer, applyMiddleware(thunk));
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("Removes protocol on open error", () => {
+			const missingFilePath = "/dev/null/non/existent";
+
+			const initialState = [{ filePath: missingFilePath }, { filePath: "/dev/null/another/protocol" }];
+
+			const result = reducer(initialState, {
+				type: sessionActionTypes.OPEN_NETCANVAS_ERROR,
+				payload: { filePath: missingFilePath },
+			});
+
+			expect(result).toEqual([{ filePath: "/dev/null/another/protocol" }]);
+		});
+
+		it("Adds protocol to list on open", () => {
+			store.dispatch({
+				type: sessionActionTypes.OPEN_NETCANVAS_SUCCESS,
+				payload: { filePath: "/dev/null/mock/recent/path/7", protocol },
+			});
+			const state = store.getState();
+			expect(state[0]).toMatchObject({ filePath: "/dev/null/mock/recent/path/7" });
+		});
+
+		it("Updates existing protocol meta on open", () => {
+			store.dispatch({
+				type: sessionActionTypes.OPEN_NETCANVAS_SUCCESS,
+				payload: { filePath: "/dev/null/mock/recent/path/1", protocol },
+			});
+			store.dispatch({
+				type: sessionActionTypes.OPEN_NETCANVAS_SUCCESS,
+				payload: { filePath: "/dev/null/mock/recent/path/2", protocol },
+			});
+			store.dispatch({
+				type: sessionActionTypes.OPEN_NETCANVAS_SUCCESS,
+				payload: { filePath: "/dev/null/mock/recent/path/3", protocol },
+			});
+
+			const stateBefore = store.getState();
+
+			expect(stateBefore[0]).toMatchObject({ filePath: "/dev/null/mock/recent/path/3" });
+
+			vi.advanceTimersByTime(1);
+
+			store.dispatch({
+				type: sessionActionTypes.OPEN_NETCANVAS_SUCCESS,
+				payload: { filePath: "/dev/null/mock/recent/path/2", protocol },
+			});
+
+			const stateAfter = store.getState();
+
+			expect(stateAfter[0]).toMatchObject({
+				filePath: "/dev/null/mock/recent/path/2",
+				name: "2",
+				description: "test description",
+				schemaVersion: 4,
+			});
+		});
+
+		it("Updates protocol meta on save success", () => {
+			store.dispatch({
+				type: sessionActionTypes.SAVE_NETCANVAS_SUCCESS,
+				payload: { savePath: "/dev/null/mock/recent/path/1", protocol },
+			});
+			store.dispatch({
+				type: sessionActionTypes.SAVE_NETCANVAS_SUCCESS,
+				payload: { savePath: "/dev/null/mock/recent/path/2", protocol },
+			});
+			store.dispatch({
+				type: sessionActionTypes.SAVE_NETCANVAS_SUCCESS,
+				payload: { savePath: "/dev/null/mock/recent/path/3", protocol },
+			});
+
+			const stateBefore = store.getState();
+
+			expect(stateBefore[0]).toMatchObject({ filePath: "/dev/null/mock/recent/path/3" });
+
+			vi.advanceTimersByTime(1);
+
+			store.dispatch({
+				type: sessionActionTypes.SAVE_NETCANVAS_SUCCESS,
+				payload: { savePath: "/dev/null/mock/recent/path/2", protocol },
+			});
+
+			const stateAfter = store.getState();
+
+			expect(stateAfter[0]).toMatchObject({
+				filePath: "/dev/null/mock/recent/path/2",
+				name: "2",
+				description: "test description",
+				schemaVersion: 4,
+			});
+		});
+	});
+});

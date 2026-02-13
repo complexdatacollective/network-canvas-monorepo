@@ -1,0 +1,125 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.stage-heading {
+  --text: var(--color-white);
+
+  display: flex;
+  flex-direction: column;
+  padding: units.unit(2) units.unit(8);
+  margin: 0;
+  background: var(--color-slate-blue--dark);
+  color: var(--text);
+
+  a {
+    color: var(--text);
+    font-weight: 700;
+    border-bottom: 2px solid var(--primary);
+  }
+
+  .stage-meta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    max-width: 75rem;
+    padding: 0 units.unit(4);
+    margin: auto;
+    width: 100%;
+
+    .stage-name-container {
+      flex: 1;
+      margin-left: 8rem;
+    }
+
+    .timeline-preview {
+      position: relative;
+
+      .timeline-stage__notch {
+        left: 16rem;
+      }
+
+      &::before {
+        mask-image: linear-gradient(180deg, transparent,  rgb(0 0 0 / 100%) 40%,  rgb(0 0 0 / 100%) 40%, transparent 100%);
+        content: '';
+        border-left: .5rem solid var(--architect-timeline-line);
+        position: absolute;
+        left: 15.8rem;
+        height: 11rem;
+        top: -1rem;
+      }
+    }
+
+    img {
+      display: block;
+      background: var(--color-navy-taupe);
+      padding: .5rem;
+      width: 12rem;
+      text-align: center;
+      border-radius: .5rem;
+    }
+  }
+
+
+  &--inline {
+    margin-bottom: units.unit(4);
+  }
+
+  &--shadow {
+    box-shadow: 0 units.unit(1) .2rem 0 var(--architect-panel-shadow);
+  }
+
+  &.stage-heading--collapsed {
+    flex-direction: row;
+    padding: units.unit(1) units.unit(4);
+
+    .stage-meta {
+      width: initial;
+      padding: 0;
+      margin-right: units.unit(4);
+
+      img {
+        width: units.unit(10);
+
+      }
+    }
+
+    .stage-name-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .documentation-link {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  &.stage-editor-section {
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .form-field-toggle__label,
+  .form-fields-edge-select {
+    --input-text: var(--color-white);
+
+    color: var(--input-text);
+  }
+
+  .stage-header-sections {
+    display: flex;
+    flex: 1 auto;
+    flex-direction: column;
+    padding: units.unit(2) units.unit(4);
+    background: var(--color-slate-blue);
+    color: var(--color-white);
+
+    .stage-editor-section {
+      background: transparent;
+      margin: 0;
+      padding: 0;
+    }
+  }
+}
+

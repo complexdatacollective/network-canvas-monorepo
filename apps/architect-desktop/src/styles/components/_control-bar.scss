@@ -1,0 +1,44 @@
+@use '@codaco/ui/src/styles/global/core/units';
+
+.control-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: units.unit(2) units.unit(4);
+  color: var(--text-light);
+  background-color: var(--architect-control-bar-background);
+
+  .button {
+    &[data-variant='save'] {
+      position: relative;
+
+      .spinner {
+        --circle-size: .5rem;
+      }
+    }
+  }
+
+  &__primary-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1 auto;
+
+    >:not(:last-child) {
+      margin-right: units.unit(2);
+    }
+  }
+
+  &__secondary-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 1 auto;
+
+    >:not(:last-child) {
+      margin-right: units.unit(2);
+    }
+  }
+}

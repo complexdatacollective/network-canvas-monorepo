@@ -1,0 +1,29 @@
+import Node from "@codaco/ui/lib/components/Node";
+import { get } from "lodash";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
+import { getNodeTypes } from "../selectors/codebook";
+
+const mapStateToProps = (state) => ({
+	nodeTypes: getNodeTypes(state),
+});
+
+const PreviewNode = ({ nodeTypes, type }) => {
+	const color = get(nodeTypes, [type, "color"], "node-color-seq-1");
+	const label = get(nodeTypes, [type, "name"], "");
+
+	return <Node label={label} color={color} />;
+};
+
+PreviewNode.propTypes = {
+	nodeTypes: PropTypes.object.isRequired,
+	type: PropTypes.string,
+};
+
+PreviewNode.defaultProps = {
+	type: "",
+};
+
+export { PreviewNode };
+
+export default connect(mapStateToProps)(PreviewNode);

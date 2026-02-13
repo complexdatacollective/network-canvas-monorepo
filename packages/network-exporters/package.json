@@ -1,0 +1,38 @@
+{
+	"name": "@codaco/network-exporters",
+	"version": "0.1.0",
+	"description": "Network export formatters for Network Canvas (CSV, GraphML)",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.js"
+	},
+	"files": [
+		"dist"
+	],
+	"license": "GPL-3.0-or-later",
+	"scripts": {
+		"build": "tsc --noEmit && vite build",
+		"dev": "npm run build -- --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"dependencies": {
+		"@codaco/protocol-validation": "workspace:*",
+		"@codaco/shared-consts": "workspace:*",
+		"@xmldom/xmldom": "^0.9.8",
+		"es-toolkit": "catalog:",
+		"ohash": "^1.1.4",
+		"sanitize-filename": "^1.6.3",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:",
+		"vitest": "catalog:"
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"extends": "@codaco/tsconfig/base.json",
+	"compilerOptions": {
+		"composite": true,
+		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+		"allowJs": true,
+		"outDir": "dist"
+	},
+	"include": ["src"],
+	"exclude": ["node_modules", "dist", "**/__tests__/**"]
+}
