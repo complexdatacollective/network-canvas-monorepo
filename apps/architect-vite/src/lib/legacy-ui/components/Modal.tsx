@@ -7,17 +7,19 @@ export default function Modal({
 	open,
 	onOpenChange,
 	children,
+	forceRender = false,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	children: ReactNode;
+	forceRender?: boolean;
 }) {
 	return (
 		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
 			<AnimatePresence>
 				{open && (
 					<BaseDialog.Portal keepMounted container={document.body}>
-						<DialogBackdrop />
+						<DialogBackdrop forceRender={forceRender} />
 						{children}
 					</BaseDialog.Portal>
 				)}

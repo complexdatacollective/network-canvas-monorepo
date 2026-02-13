@@ -1,5 +1,6 @@
-import type { Variable } from "@codaco/protocol-validation";
+import type { Variable, VariableOptions } from "@codaco/protocol-validation";
 import { values } from "lodash";
+import { Lock } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { Field, formValueSelector } from "redux-form";
 import { Section } from "~/components/EditorLayout";
@@ -31,6 +32,8 @@ type NewVariableWindowProps = {
 	onComplete: (variable: string) => void;
 	onCancel: () => void;
 	initialValues?: Record<string, unknown> | null;
+	/** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
+	lockedOptions?: VariableOptions | null;
 };
 
 export default function NewVariableWindow({
@@ -41,12 +44,15 @@ export default function NewVariableWindow({
 	onComplete,
 	onCancel,
 	initialValues = null,
+	lockedOptions = null,
 }: NewVariableWindowProps) {
 	const dispatch = useAppDispatch();
 
 	const variableType = useAppSelector((state) => formValueSelector(form)(state, "type") as string | undefined);
 
-	const existingVariables = useAppSelector((state) => getVariablesForSubject(state, { entity, type }));
+	// Memoize subject to avoid creating new object on every render, which breaks selector memoization
+	const subject = useMemo(() => ({ entity, type }), [entity, type]);
+	const existingVariables = useAppSelector((state) => getVariablesForSubject(state, subject));
 
 	const existingVariableNames = useMemo(
 		() => values(existingVariables).map(({ name }: Variable) => name),
@@ -65,6 +71,17 @@ export default function NewVariableWindow({
 				: VARIABLE_OPTIONS,
 		[allowVariableTypes],
 	);
+
+	// Merge locked options into initial values if provided
+	const mergedInitialValues = useMemo(() => {
+		if (lockedOptions) {
+			return {
+				...initialValues,
+				options: lockedOptions,
+			};
+		}
+		return initialValues;
+	}, [initialValues, lockedOptions]);
 
 	const handleCreateNewVariable = useCallback(
 		async (configuration: Record<string, unknown>) => {
@@ -86,7 +103,7 @@ export default function NewVariableWindow({
 			form={form}
 			onSubmit={(values: unknown) => handleCreateNewVariable(values as Record<string, unknown>)}
 			onCancel={onCancel}
-			initialValues={initialValues ?? undefined}
+			initialValues={mergedInitialValues ?? undefined}
 			title="Create New Variable"
 		>
 			<Section
@@ -122,9 +139,41 @@ export default function NewVariableWindow({
 				/>
 			</Section>
 			{isOrdinalOrCategoricalType(variableType) && (
-				<Section title="Options" summary={<p>Create some options for this input control</p>} layout="vertical">
+				<Section
+					title="Options"
+					summary={
+						lockedOptions ? (
+							<p>These options are automatically configured by the interface and cannot be modified.</p>
+						) : (
+							<p>Create some options for this input control</p>
+						)
+					}
+					layout="vertical"
+				>
 					<div id={getFieldId("options")} />
-					<Options name="options" label="Options" />
+					{lockedOptions ? (
+						<div className="relative bg-platinum opacity-50 rounded p-4">
+							<Lock className="absolute top-4 right-4 h-4 w-4 text-charcoal" />
+							<table className="w-full text-sm">
+								<thead>
+									<tr className="text-left">
+										<th className="pb-2 font-bold">Label</th>
+										<th className="pb-2 font-bold">Value</th>
+									</tr>
+								</thead>
+								<tbody>
+									{lockedOptions.map((option) => (
+										<tr key={String(option.value)}>
+											<td className="py-1">{option.label}</td>
+											<td className="py-1 font-mono">{String(option.value)}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					) : (
+						<Options name="options" label="Options" />
+					)}
 				</Section>
 			)}
 		</InlineEditScreen>

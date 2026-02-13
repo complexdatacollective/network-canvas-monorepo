@@ -32,7 +32,8 @@
 		border-bottom-width: calc(0.6rem * 0.25);
 		border-bottom-style: solid;
 		border-bottom-color: transparent;
-		transition: border-bottom-color var(--animation-easing) var(--animation-duration-standard);
+		transition: border-bottom-color var(--animation-easing)
+			var(--animation-duration-standard);
 
 		/* Remove default browser outline on focus */
 		& [contenteditable],

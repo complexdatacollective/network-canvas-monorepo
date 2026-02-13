@@ -45,19 +45,17 @@ const ControlBar = ({ buttons = null, secondaryButtons = null, className }: Cont
 		<motion.div className="flex gap-4" key="secondary">
 			{secondaryButtons && Array.from(secondaryButtons).map(animatedButton)}
 		</motion.div>,
-		<motion.div className="flex gap-4" key="primary">
+		<motion.div className="flex gap-4 ml-auto" key="primary">
 			{buttons && Array.from(buttons).map(animatedButton)}
 		</motion.div>,
 	];
 
 	return (
 		<motion.div
-			className={cn("text-primary-foreground bg-primary w-full flex justify-between py-4 px-6 gap-10", className)}
+			className={cn("text-primary-foreground bg-primary w-full flex justify-between items-center py-4 px-6", className)}
 			variants={barVariants}
 		>
-			<div className="flex justify-between items-center max-w-6xl mx-auto w-full">
-				<AnimatePresence>{buttonLayout}</AnimatePresence>
-			</div>
+			<AnimatePresence>{buttonLayout}</AnimatePresence>
 		</motion.div>
 	);
 };

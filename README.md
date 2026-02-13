@@ -14,9 +14,7 @@ This monorepo is organized into four main categories:
 
 | App | Description |
 |-----|-------------|
-| [`architect-vite`](./apps/architect-vite) | Web-based protocol designer application (Vite + React + Redux) |
-| [`architect-desktop`](./apps/architect-desktop) | Electron desktop application for designing Network Canvas interview protocols |
-| [`interviewer`](./apps/interviewer) | Electron application for conducting Network Canvas interviews |
+| [`architect-vite`](./apps/architect-vite) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
 | [`analytics-web`](./apps/analytics-web) | Next.js analytics dashboard with Clerk authentication and Postgres database |
 | [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality |
 
@@ -30,8 +28,6 @@ This monorepo is organized into four main categories:
 | [`@codaco/ui`](./packages/ui) | Reusable React UI components built on shadcn/ui and Tailwind CSS |
 | [`@codaco/art`](./packages/art) | Visual design components using blobs and d3-interpolate-path for animated graphics |
 | [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications |
-| [`@codaco/network-exporters`](./packages/network-exporters) | Network export formatters (CSV, GraphML) for exporting interview data |
-| [`@codaco/network-query`](./packages/network-query) | Network filtering and querying utilities |
 
 ### Workers
 

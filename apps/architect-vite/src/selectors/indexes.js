@@ -35,6 +35,7 @@ export const paths = {
 		"stages[].presets[].edges.display[]",
 		"stages[].prompts[].createEdge",
 		["stages[].subject", mapSubject("edge")],
+		["stages[].edgeType", mapSubject("edge")], // FamilyTreeCensus edge type
 	],
 	nodes: [["stages[].subject", mapSubject("node")]],
 	variables: [
@@ -61,6 +62,14 @@ export const paths = {
 		"stages[].presets[].groupVariable",
 		"stages[].presets[].edges.display[]",
 		"stages[].presets[].highlight[]",
+		// FamilyTreeCensus variable paths
+		"stages[].egoSexVariable",
+		"stages[].nodeSexVariable",
+		"stages[].relationshipToEgoVariable",
+		"stages[].nodeIsEgoVariable",
+		"stages[].relationshipTypeVariable",
+		"stages[].diseaseNominationStep[].variable",
+		"stages[].nameGenerationStep.form.fields[].variable",
 		// `sameAs` and `differentFrom` are variable references in these locations
 		"codebook.ego.variables[].validation.sameAs",
 		"codebook.ego.variables[].validation.differentFrom",

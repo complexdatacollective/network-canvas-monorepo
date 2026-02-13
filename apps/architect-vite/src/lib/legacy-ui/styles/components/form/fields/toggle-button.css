@@ -56,7 +56,8 @@
 			border-width: var(--border);
 			border-style: solid;
 			border-radius: 50%;
-			transition: border-color var(--animation-easing) var(--animation-duration-standard);
+			transition: border-color var(--animation-easing)
+				var(--animation-duration-standard);
 		}
 
 		&::after {
@@ -69,7 +70,8 @@
 			background-color: var(--color-primary);
 			border-radius: 50%;
 			opacity: 0;
-			transition: opacity var(--animation-easing) var(--animation-duration-standard);
+			transition: opacity var(--animation-easing)
+				var(--animation-duration-standard);
 			z-index: -1;
 		}
 	}
@@ -124,149 +126,191 @@
 }
 
 /* Color sequence classes - converted from @for loop */
-.form-field-togglebutton-cat-color-seq-0 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-0
+.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-1);
 }
-.form-field-togglebutton-cat-color-seq-0 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-0
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-1);
 }
 
-.form-field-togglebutton-cat-color-seq-1 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-1
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-2);
 }
-.form-field-togglebutton-cat-color-seq-1 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-1
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-2);
 }
 
-.form-field-togglebutton-cat-color-seq-2 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-2
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-3);
 }
-.form-field-togglebutton-cat-color-seq-2 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-2
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-3);
 }
 
-.form-field-togglebutton-cat-color-seq-3 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-3
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-4);
 }
-.form-field-togglebutton-cat-color-seq-3 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-3
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-4);
 }
 
-.form-field-togglebutton-cat-color-seq-4 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-4
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-5);
 }
-.form-field-togglebutton-cat-color-seq-4 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-4
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-5);
 }
 
-.form-field-togglebutton-cat-color-seq-5 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-5
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-6);
 }
-.form-field-togglebutton-cat-color-seq-5 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-5
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-6);
 }
 
-.form-field-togglebutton-cat-color-seq-6 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-6
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-7);
 }
-.form-field-togglebutton-cat-color-seq-6 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-6
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-7);
 }
 
-.form-field-togglebutton-cat-color-seq-7 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-7
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-8);
 }
-.form-field-togglebutton-cat-color-seq-7 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-7
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-8);
 }
 
-.form-field-togglebutton-cat-color-seq-8 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-8
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-9);
 }
-.form-field-togglebutton-cat-color-seq-8 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-8
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-9);
 }
 
-.form-field-togglebutton-cat-color-seq-9 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-9
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-10);
 }
-.form-field-togglebutton-cat-color-seq-9 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-9
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-10);
 }
 
-.form-field-togglebutton-cat-color-seq-10 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-10
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-1);
 }
-.form-field-togglebutton-cat-color-seq-10 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-10
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-1);
 }
 
-.form-field-togglebutton-cat-color-seq-11 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-11
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-2);
 }
-.form-field-togglebutton-cat-color-seq-11 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-11
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-2);
 }
 
-.form-field-togglebutton-cat-color-seq-12 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-12
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-3);
 }
-.form-field-togglebutton-cat-color-seq-12 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-12
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-3);
 }
 
-.form-field-togglebutton-cat-color-seq-13 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-13
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-4);
 }
-.form-field-togglebutton-cat-color-seq-13 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-13
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-4);
 }
 
-.form-field-togglebutton-cat-color-seq-14 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-14
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-5);
 }
-.form-field-togglebutton-cat-color-seq-14 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-14
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-5);
 }
 
-.form-field-togglebutton-cat-color-seq-15 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-15
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-6);
 }
-.form-field-togglebutton-cat-color-seq-15 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-15
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-6);
 }
 
-.form-field-togglebutton-cat-color-seq-16 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-16
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-7);
 }
-.form-field-togglebutton-cat-color-seq-16 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-16
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-7);
 }
 
-.form-field-togglebutton-cat-color-seq-17 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-17
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-8);
 }
-.form-field-togglebutton-cat-color-seq-17 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-17
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-8);
 }
 
-.form-field-togglebutton-cat-color-seq-18 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-18
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-9);
 }
-.form-field-togglebutton-cat-color-seq-18 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-18
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-9);
 }
 
-.form-field-togglebutton-cat-color-seq-19 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-19
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-10);
 }
-.form-field-togglebutton-cat-color-seq-19 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-19
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-10);
 }
 
-.form-field-togglebutton-cat-color-seq-20 .form-field-togglebutton__checkbox::before {
+.form-field-togglebutton-cat-color-seq-20
+	.form-field-togglebutton__checkbox::before {
 	border-color: var(--cat-color-seq-1);
 }
-.form-field-togglebutton-cat-color-seq-20 .form-field-togglebutton__checkbox::after {
+.form-field-togglebutton-cat-color-seq-20
+	.form-field-togglebutton__checkbox::after {
 	background-color: var(--cat-color-seq-1);
 }

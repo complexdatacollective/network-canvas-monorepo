@@ -10,8 +10,7 @@
 			"correctness": {
 				"useImportExtensions": "off",
 				"noUnusedImports": "error",
-				"noUnusedVariables": "error",
-				"useHookAtTopLevel": "error"
+				"noUnusedVariables": "error"
 			},
 			"a11y": "error",
 			"suspicious": {
@@ -67,7 +66,9 @@
 			"!**/out",
 			"!**/coverage",
 			"!**/.turbo",
-			"!**/public/**/*.*"
+			"!**/public/**/*.*",
+			"!!**/*.css",
+			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.js"
 		]
 	},
 	"javascript": {
@@ -81,5 +82,16 @@
 			"allowWrongLineComments": true,
 			"tailwindDirectives": true
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.css"],
+			"linter": {
+				"enabled": false
+			},
+			"formatter": {
+				"enabled": false
+			}
+		}
+	]
 }

@@ -1,4 +1,4 @@
-@reference "../../../tailwind.css";
+@reference '../../../tailwind.css';
 
 .form-fields-mode {
 	@apply form-field;
@@ -26,9 +26,8 @@
 		justify-content: center;
 		align-items: center;
 		color: var(--text-dark);
-		transition:
-			background-color var(--animation-easing) var(--animation-duration-standard),
-			color var(--animation-easing) var(--animation-duration-standard);
+		transition: background-color var(--animation-easing) var(--animation-duration-standard), color
+			var(--animation-easing) var(--animation-duration-standard);
 		cursor: pointer;
 
 		&.form-fields-mode__option--selected {

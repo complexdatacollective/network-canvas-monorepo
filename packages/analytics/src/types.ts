@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 /**
- * Event types supported by the analytics system.
- * These are converted to snake_case for PostHog.
+ * Common event types supported by the analytics system.
+ * This list is non-exhaustive — trackEvent accepts any string.
+ * These are provided for discoverability and autocomplete.
  */
 export const eventTypes = [
 	"app_setup",
@@ -26,6 +27,23 @@ export const legacyEventTypeMap: Record<string, EventType> = {
 	DataExported: "data_exported",
 	Error: "error",
 };
+
+/**
+ * Supported application identifiers.
+ * Used to segment events within a single PostHog project.
+ */
+export const appNames = [
+	"Fresco",
+	"Studio",
+	"Architect",
+	"Interviewer",
+	"ArchitectWeb",
+	"CommunityForum",
+	"ProjectWebsite",
+	"Documentation",
+] as const;
+
+export type AppName = (typeof appNames)[number];
 
 /**
  * Standard event properties that can be sent with any event
@@ -56,6 +74,12 @@ export type ErrorProperties = z.infer<typeof ErrorPropertiesSchema>;
  * by the worker, so the API key is optional.
  */
 export type AnalyticsConfig = {
+	/**
+	 * Application identifier. Included with every event as a super property
+	 * to segment analytics within a single PostHog project.
+	 */
+	app: AppName;
+
 	/**
 	 * PostHog API host - should point to the Cloudflare Worker reverse proxy
 	 * Defaults to "https://ph-relay.networkcanvas.com"

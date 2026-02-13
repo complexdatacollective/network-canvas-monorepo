@@ -15,7 +15,7 @@
 		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
-		"@clerk/nextjs": "^6.36.6",
+		"@clerk/nextjs": "^6.36.8",
 		"@fontsource-variable/inter": "^5.2.8",
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",

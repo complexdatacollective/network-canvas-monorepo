@@ -104,14 +104,10 @@ pnpm publish-packages
 This is a **pnpm workspace** monorepo with catalog dependencies for version consistency:
 
 - **Apps**: End-user applications
-  - `architect-vite` - Web-based protocol designer (Vite + Redux)
-  - `architect-desktop` - Electron desktop protocol designer
-  - `interviewer` - Electron application for conducting interviews
+  - `architect-vite` - Protocol designer (Vite + Redux)
   - `analytics-web` - Next.js dashboard with turbopack
   - `documentation` - Documentation site
 - **Packages**: Shared libraries and utilities
-  - `network-exporters` - CSV and GraphML export formatters
-  - `network-query` - Network filtering and querying utilities
   - `protocol-validation` - Zod schemas for protocol validation and migration
   - `shared-consts` - Shared constants and TypeScript definitions
   - `analytics` - PostHog analytics wrapper with installation ID tracking
@@ -173,19 +169,6 @@ Visual design components using blobs and d3-interpolate-path for animated blob g
 
 Development protocol assets (protocol.json and assets/) for testing Network Canvas applications during development.
 
-#### @codaco/network-exporters
-
-Export formatters for Network Canvas interview data. Supports:
-- **CSV formats**: attribute-list, edge-list, ego-list, adjacency matrix
-- **GraphML**: Standard graph format with Network Canvas extensions
-- **Session processing**: insertEgoIntoSessionNetworks, resequenceIds, partitionByType, groupByProtocolProperty
-
-#### @codaco/network-query
-
-Network filtering and querying utilities for Network Canvas. Used by the interviewer app for:
-- Filtering nodes and edges based on protocol rules
-- Applying skip logic and validation rules
-
 ### Protocol System
 
 Network Canvas uses a protocol-based system where:
@@ -197,11 +180,10 @@ Network Canvas uses a protocol-based system where:
 
 ### Data Flow
 
-1. Protocols are designed in Architect (architect-vite or architect-desktop)
+1. Protocols are designed in Architect (protocol builder)
 2. Validated using @codaco/protocol-validation
-3. Executed in Interviewer application (apps/interviewer)
-4. Data exported using @codaco/network-exporters (CSV, GraphML)
-5. Data analyzed through Analytics tools
+3. Executed in Interviewer applications (not yet present in this repository)
+4. Data exported and analyzed through Analytics tools
 
 ## Development Guidelines
 

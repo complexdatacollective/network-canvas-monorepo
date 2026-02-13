@@ -104,7 +104,7 @@
 
 	&.timeline--sorting {
 		.timeline__stages-highlight {
-			background-color: transparent;
+			background-color: transparent !important;
 		}
 
 		.timeline__insert {
@@ -134,9 +134,8 @@
 		flex-direction: column;
 		align-items: flex-start;
 		justify-content: center;
-		transition:
-			opacity var(--animation-duration-fast) var(--animation-easing),
-			transform var(--animation-duration-fast) var(--animation-easing);
+		transition: opacity var(--animation-duration-fast) var(--animation-easing), transform var(--animation-duration-fast)
+			var(--animation-easing);
 		opacity: 0;
 		transform: translateZ(0) translateX(-6rem);
 	}
@@ -207,8 +206,7 @@
 		.timeline-stage__controls {
 			opacity: 1;
 			transform: translateX(0);
-			transition:
-				opacity var(--animation-duration-fast) var(--animation-duration-fast) var(--animation-easing),
+			transition: opacity var(--animation-duration-fast) var(--animation-duration-fast) var(--animation-easing),
 				transform var(--animation-duration-fast) var(--animation-duration-fast) var(--animation-easing);
 			transition-delay: 1s;
 		}

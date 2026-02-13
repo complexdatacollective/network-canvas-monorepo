@@ -76,7 +76,8 @@
 }
 
 .new-stage-screen__interface--highlighted h2,
-.new-stage-screen__interface--highlighted .new-stage-screen__interface-description {
+.new-stage-screen__interface--highlighted
+	.new-stage-screen__interface-description {
 	color: var(--color-white);
 }
 

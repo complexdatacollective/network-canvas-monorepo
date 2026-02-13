@@ -10,32 +10,8 @@ import ColorPicker from "../Form/Fields/ColorPicker";
 import GeoAPIKey from "../Form/Fields/Geospatial/GeoAPIKey";
 import GeoDataSource from "../Form/Fields/Geospatial/GeoDataSource";
 import MapSelection from "../Form/Fields/Geospatial/MapSelection";
+import { mapboxStyleOptions } from "../Form/Fields/Geospatial/mapboxConstants";
 import ValidatedField from "../Form/ValidatedField";
-
-const mapboxStyleOptions = [
-	{ label: "Standard", value: "mapbox://styles/mapbox/standard" },
-	{
-		label: "Standard Satellite",
-		value: "mapbox://styles/mapbox/standard-satellite",
-	},
-	{ label: "Streets", value: "mapbox://styles/mapbox/streets-v12" },
-	{ label: "Outdoors", value: "mapbox://styles/mapbox/outdoors-v12" },
-	{ label: "Light", value: "mapbox://styles/mapbox/light-v11" },
-	{ label: "Dark", value: "mapbox://styles/mapbox/dark-v11" },
-	{ label: "Satellite", value: "mapbox://styles/mapbox/satellite-v9" },
-	{
-		label: "Satellite Streets",
-		value: "mapbox://styles/mapbox/satellite-streets-v12",
-	},
-	{
-		label: "Navigation Day",
-		value: "mapbox://styles/mapbox/navigation-day-v1",
-	},
-	{
-		label: "Navigation Night",
-		value: "mapbox://styles/mapbox/navigation-night-v1",
-	},
-];
 
 type MapOptionsProps = StageEditorSectionProps & {
 	mapOptions?: {
@@ -64,7 +40,7 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 	const { variables: variableOptions } = useVariablesFromExternalData(mapOptions?.dataSourceAssetId, true, "geojson");
 
 	const { paletteName, paletteSize } = {
-		paletteName: ["ord-color-seq"],
+		paletteName: "ord-color-seq",
 		paletteSize: 8,
 	};
 
@@ -124,30 +100,26 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 					</Row>
 				)}
 			</Section>
-			<Section title="Map Style">
-				<Row>
-					<ValidatedField
-						component={ColorPicker as React.ComponentType}
-						name="mapOptions.color"
-						validation={{ required: true }}
-						componentProps={{
-							palette: paletteName,
-							paletteRange: paletteSize,
-							label: "Which color would you like to use for this stage's map outlines and selections?",
-						}}
-					/>
-				</Row>
-				<Row>
-					<ValidatedField
-						component={NativeSelect as React.ComponentType}
-						name="mapOptions.style"
-						validation={{ required: true }}
-						componentProps={{
-							options: mapboxStyleOptions,
-							label: "Which mapbox style would you like to use for the map itself?",
-						}}
-					/>
-				</Row>
+			<Section title="Map Style" summary={<p>Customize the colors and style of the map.</p>} disabled={disabled}>
+				<ValidatedField
+					component={ColorPicker as React.ComponentType}
+					name="mapOptions.color"
+					validation={{ required: true }}
+					componentProps={{
+						palette: paletteName,
+						paletteRange: paletteSize,
+						label: "Which color would you like to use for this stage's map outlines and selections?",
+					}}
+				/>
+				<ValidatedField
+					component={NativeSelect as React.ComponentType}
+					name="mapOptions.style"
+					validation={{ required: true }}
+					componentProps={{
+						options: mapboxStyleOptions,
+						label: "Which mapbox style would you like to use for the map itself?",
+					}}
+				/>
 			</Section>
 			<Section
 				title="Initial Map View"

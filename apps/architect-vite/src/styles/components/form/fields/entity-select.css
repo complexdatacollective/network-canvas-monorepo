@@ -7,10 +7,9 @@
 	.form-fields-entity-select__error {
 		opacity: 0;
 		background: var(--color-error);
-		color: var(--color-error);
-		transition:
-			opacity var(--animation-easing) var(--animation-duration-standard),
-			max-height var(--animation-easing) var(--animation-duration-standard);
+		color: var(--color-error-foreground);
+		transition: opacity var(--animation-easing) var(--animation-duration-standard), max-height var(--animation-easing)
+			var(--animation-duration-standard);
 		padding: var(--space-xs) var(--space-xs);
 		display: flex;
 		align-items: center;

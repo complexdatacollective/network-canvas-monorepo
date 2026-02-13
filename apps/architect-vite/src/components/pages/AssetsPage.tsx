@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import AssetBrowser from "~/components/AssetBrowser";
+import ControlBar from "~/components/ControlBar";
 import { Layout } from "~/components/EditorLayout";
 import ExternalLink from "~/components/ExternalLink";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
@@ -42,11 +43,13 @@ const AssetsPage = () => {
 					</div>
 				</Layout>
 			</div>
-			<div className="flex p-6 bg-cyber-grape w-full shrink-0">
-				<Button onClick={handleGoBack} color="platinum">
-					Go Back
-				</Button>
-			</div>
+			<ControlBar
+				secondaryButtons={[
+					<Button key="go-back" onClick={handleGoBack} color="platinum">
+						Go Back
+					</Button>,
+				]}
+			/>
 		</div>
 	);
 };

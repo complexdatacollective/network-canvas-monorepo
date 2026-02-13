@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { getFormValues, isDirty as isFormDirty } from "redux-form";
 import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
+import ControlBar from "~/components/ControlBar";
 import Editor from "~/components/Editor";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
@@ -175,23 +176,25 @@ const StageEditor = (props: StageEditorProps) => {
 					<StageHeading />
 					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
 				</div>
-				<div className="p-4 bg-surface-accent z-panel shrink-0 grow-0">
-					<div className="flex justify-between items-center max-w-6xl mx-auto">
+				<ControlBar
+					secondaryButtons={[
 						<Button key="cancel" onClick={handleCancel} color="platinum">
 							Cancel
-						</Button>
-						<div className="flex gap-2">
-							<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview}>
-								{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
-							</Button>
-							{hasUnsavedChanges && (
-								<Button type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
-									Finished Editing
-								</Button>
-							)}
-						</div>
-					</div>
-				</div>
+						</Button>,
+					]}
+					buttons={[
+						<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview}>
+							{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
+						</Button>,
+						...(hasUnsavedChanges
+							? [
+									<Button key="submit" type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
+										Finished Editing
+									</Button>,
+								]
+							: []),
+					]}
+				/>
 			</div>
 		</Editor>
 	);

@@ -1,4 +1,4 @@
-import { MenuIcon as MenuBookIcon, PictureInPicture as PermMediaIcon, PrinterIcon as PrintIcon } from "lucide-react";
+import { BookOpenText, FileImage, Printer as PrintIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
@@ -89,7 +89,7 @@ const Overview = ({
 						<Button
 							onClick={handleNavigateToAssets}
 							color="neon-coral"
-							icon={<PermMediaIcon />}
+							icon={<FileImage />}
 							content="Resource Library"
 						/>
 					</div>
@@ -97,7 +97,7 @@ const Overview = ({
 						<Button
 							onClick={handleNavigateToCodebook}
 							color="sea-serpent"
-							icon={<MenuBookIcon />}
+							icon={<BookOpenText />}
 							content="Manage Codebook"
 						/>
 					</div>

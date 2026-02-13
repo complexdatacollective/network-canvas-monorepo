@@ -7,11 +7,11 @@
 	background: var(--settings);
 	color: var(--color-primary-foreground);
 	font-weight: var(--font-weight-semibold);
-	user-select: text;
+	user-select: text !important;
 }
 
 .code-view > * {
-	user-select: text;
+	user-select: text !important;
 }
 
 .code-view pre {
@@ -19,7 +19,7 @@
 }
 
 .code-view pre > * {
-	user-select: text;
+	user-select: text !important;
 }
 
 .code-view__content {

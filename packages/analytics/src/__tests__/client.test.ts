@@ -26,6 +26,7 @@ describe("createAnalytics", () => {
 	});
 
 	const mockConfig: Required<AnalyticsConfig> = {
+		app: "Fresco",
 		apiHost: "https://ph-relay.networkcanvas.com",
 		apiKey: "phc_test",
 		installationId: "test-install-123",
@@ -54,7 +55,7 @@ describe("createAnalytics", () => {
 			expect(analytics.isEnabled()).toBe(false);
 		});
 
-		it("should register installation ID as super property", () => {
+		it("should register app and installation ID as super properties", () => {
 			const mockPosthogInstance = {
 				register: vi.fn(),
 				debug: vi.fn(),
@@ -68,6 +69,7 @@ describe("createAnalytics", () => {
 			createAnalytics(mockConfig);
 
 			expect(mockPosthogInstance.register).toHaveBeenCalledWith({
+				app: "Fresco",
 				installation_id: "test-install-123",
 			});
 		});

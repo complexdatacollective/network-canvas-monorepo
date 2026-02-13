@@ -5,18 +5,24 @@ import DualLink from "../DualLink";
 import EntityBadge from "../EntityBadge";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
+import Anonymisation from "./Anonymisation";
 import Behaviours from "./Behaviours";
 import DataSource from "./DataSource";
+import DiseaseNominationPrompts from "./DiseaseNominationPrompts";
+import FamilyTreeVariables from "./FamilyTreeVariables";
 import Filter from "./Filter";
 import Form from "./Form";
 import InterviewScript from "./InterviewScript";
 import IntroductionPanel from "./IntroductionPanel";
 import Items from "./Items";
+import MapOptions from "./MapOptions";
+import NameGenerationStep from "./NameGenerationStep";
 import PageHeading from "./PageHeading";
 import Panels from "./Panels";
 import Presets from "./Presets";
 import Prompts, { type PromptType } from "./Prompts";
 import QuickAdd from "./QuickAdd";
+import ScaffoldingStep from "./ScaffoldingStep";
 import SkipLogic from "./SkipLogic";
 
 type FormFieldType = {
@@ -72,6 +78,39 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	const items = configuration.items as { id?: string; type?: string; content?: string; size?: string }[] | undefined;
 	const interviewScript = configuration.interviewScript as string | undefined;
 
+	// FamilyTreeCensus
+	const edgeType = configuration.edgeType as { type: string; entity: string } | undefined;
+	const relationshipTypeVariable = configuration.relationshipTypeVariable as string | undefined;
+	const relationshipToEgoVariable = configuration.relationshipToEgoVariable as string | undefined;
+	const egoSexVariable = configuration.egoSexVariable as string | undefined;
+	const nodeSexVariable = configuration.nodeSexVariable as string | undefined;
+	const nodeIsEgoVariable = configuration.nodeIsEgoVariable as string | undefined;
+	const scaffoldingStep = configuration.scaffoldingStep as { text: string; showQuickStartModal: boolean } | undefined;
+	const nameGenerationStep = configuration.nameGenerationStep as
+		| {
+				text: string;
+				form: { fields?: Array<{ variable: string; prompt: string }> };
+		  }
+		| undefined;
+	const diseaseNominationStep = configuration.diseaseNominationStep as
+		| Array<{ id: string; text: string; variable: string }>
+		| undefined;
+	// Anonymisation
+	const explanationText = configuration.explanationText as { title: string; body: string } | undefined;
+	const validation = configuration.validation as { minLength?: number; maxLength?: number } | undefined;
+	// Geospatial
+	const mapOptions = configuration.mapOptions as
+		| {
+				tokenAssetId?: string;
+				dataSourceAssetId?: string;
+				style?: string;
+				center?: [number, number];
+				initialZoom?: number;
+				color?: string;
+				targetFeatureProperty?: string;
+		  }
+		| undefined;
+
 	return (
 		<div className="protocol-summary-stage page-break-marker" id={`stage-${id}`}>
 			<div className="protocol-summary-stage__heading">
@@ -80,7 +119,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 						<div className="stage-label" data-number={stageNumber}>
 							<h1>{label}</h1>
 						</div>
-						{subject && !isEmpty(stageVariables) && (
+						{(subject || edgeType || !isEmpty(stageVariables)) && (
 							<table className="protocol-summary-mini-table protocol-summary-mini-table--rotated">
 								<tbody>
 									{subject && (
@@ -88,6 +127,14 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 											<td>Subject</td>
 											<td>
 												<EntityBadge small type={subject.type} entity={subject.entity} link />
+											</td>
+										</tr>
+									)}
+									{edgeType && (
+										<tr>
+											<td>Edge Type</td>
+											<td>
+												<EntityBadge small type={edgeType.type} entity="edge" link />
 											</td>
 										</tr>
 									)}
@@ -135,6 +182,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 				)}
 				<div className="protocol-summary-stage__content">
 					<IntroductionPanel introductionPanel={introductionPanel ?? null} />
+					<MapOptions mapOptions={mapOptions ?? null} />
 					<DataSource dataSource={dataSource ?? null} />
 					<QuickAdd quickAdd={quickAdd ?? null} />
 					<Panels panels={panels ?? null} />
@@ -144,6 +192,17 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 					<Presets presets={presets ?? null} />
 					<PageHeading heading={title ?? null} />
 					<Items items={items ?? null} />
+					<FamilyTreeVariables
+						relationshipTypeVariable={relationshipTypeVariable}
+						relationshipToEgoVariable={relationshipToEgoVariable}
+						egoSexVariable={egoSexVariable}
+						nodeSexVariable={nodeSexVariable}
+						nodeIsEgoVariable={nodeIsEgoVariable}
+					/>
+					<ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
+					<NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
+					<DiseaseNominationPrompts diseaseNominationStep={diseaseNominationStep ?? null} />
+					<Anonymisation explanationText={explanationText ?? null} validation={validation ?? null} />
 					<InterviewScript interviewScript={interviewScript ?? null} />
 				</div>
 			</div>

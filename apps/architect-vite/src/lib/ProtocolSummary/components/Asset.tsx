@@ -107,6 +107,26 @@ const Asset = ({ id, size = null }: AssetProps) => {
 					]}
 				/>
 			)}
+
+			{type === "geojson" && (
+				<MiniTable
+					rotated
+					rows={[
+						["Name", name],
+						["Type", "GeoJSON"],
+					]}
+				/>
+			)}
+
+			{type === "apikey" && (
+				<MiniTable
+					rotated
+					rows={[
+						["Name", name],
+						["Type", "API Key"],
+					]}
+				/>
+			)}
 		</div>
 	);
 };

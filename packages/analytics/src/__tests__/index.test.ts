@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig, isDisabledByEnv, mergeConfig } from "../config";
-import { ErrorPropertiesSchema, EventPropertiesSchema, type EventType, eventTypes, legacyEventTypeMap } from "../types";
+import {
+	appNames,
+	ErrorPropertiesSchema,
+	EventPropertiesSchema,
+	type EventType,
+	eventTypes,
+	legacyEventTypeMap,
+} from "../types";
 
 describe("Event Types", () => {
 	it("should export all event types", () => {
@@ -120,6 +127,7 @@ describe("Configuration", () => {
 	describe("mergeConfig", () => {
 		it("should merge user config with defaults", () => {
 			const userConfig = {
+				app: "Fresco" as const,
 				installationId: "test-123",
 				apiKey: "phc_test",
 			};
@@ -134,6 +142,7 @@ describe("Configuration", () => {
 
 		it("should allow overriding default values", () => {
 			const userConfig = {
+				app: "Fresco" as const,
 				installationId: "test-123",
 				apiKey: "phc_test",
 				apiHost: "https://custom.posthog.com",
@@ -150,6 +159,7 @@ describe("Configuration", () => {
 
 		it("should use placeholder API key when none provided (proxy mode)", () => {
 			const userConfig = {
+				app: "Fresco" as const,
 				installationId: "test-123",
 			};
 
@@ -162,6 +172,7 @@ describe("Configuration", () => {
 
 		it("should merge PostHog options", () => {
 			const userConfig = {
+				app: "Fresco" as const,
 				installationId: "test-123",
 				apiKey: "phc_test",
 				posthogOptions: {
@@ -177,6 +188,16 @@ describe("Configuration", () => {
 			// Should still have default values for other options
 			expect(merged.posthogOptions.disable_session_recording).toBe(true);
 		});
+
+		it("should pass through app field", () => {
+			const userConfig = {
+				app: "Studio" as const,
+				installationId: "test-123",
+			};
+
+			const merged = mergeConfig(userConfig);
+			expect(merged.app).toBe("Studio");
+		});
 	});
 });
 
@@ -188,6 +209,21 @@ describe("Environment Variables", () => {
 			const result = isDisabledByEnv();
 			expect(typeof result).toBe("boolean");
 		});
+	});
+});
+
+describe("App Names", () => {
+	it("should export all app names", () => {
+		expect(appNames).toEqual([
+			"Fresco",
+			"Studio",
+			"Architect",
+			"Interviewer",
+			"ArchitectWeb",
+			"CommunityForum",
+			"ProjectWebsite",
+			"Documentation",
+		]);
 	});
 });
 

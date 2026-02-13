@@ -7,7 +7,7 @@ import { ensureError } from "./utils";
  * This wraps PostHog with Network Canvas-specific functionality
  */
 export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
-	const { apiHost, apiKey, installationId, disabled, debug, posthogOptions } = config;
+	const { app, apiHost, apiKey, installationId, disabled, debug, posthogOptions } = config;
 
 	// If analytics is disabled, return a no-op implementation
 	if (disabled) {
@@ -20,6 +20,7 @@ export function createAnalytics(config: Required<AnalyticsConfig>): Analytics {
 		loaded: (posthogInstance) => {
 			// Set installation ID as a super property (included with every event)
 			posthogInstance.register({
+				app,
 				installation_id: installationId,
 			});
 

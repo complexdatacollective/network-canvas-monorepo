@@ -1,9 +1,10 @@
-import { get } from "lodash";
 import { useEffect, useMemo, useState } from "react";
 import type { Column } from "react-table";
 import { getAssetById } from "~/utils/assetUtils";
 import Table from "./Table";
 import withAssetPath from "./withAssetPath";
+
+const ROW_LIMIT = 100;
 
 type GeoJSONFeature = {
 	properties: Record<string, unknown>;
@@ -23,10 +24,10 @@ const getGeoJSON = async (assetId: string): Promise<GeoJSON> => {
 };
 
 const getRows = (geojson: GeoJSON): Record<string, unknown>[] =>
-	get(geojson, ["features"], []).map(({ properties }: GeoJSONFeature) => properties);
+	(geojson.features ?? []).map(({ properties }: GeoJSONFeature) => properties);
 
 const getColumns = (geojson: GeoJSON): Column<Record<string, unknown>>[] => {
-	const properties = get(geojson, ["features"], []).map((feature: GeoJSONFeature) => feature.properties);
+	const properties = (geojson.features ?? []).map((feature: GeoJSONFeature) => feature.properties);
 
 	const columnNames = Array.from(new Set(properties.flatMap(Object.keys)));
 
@@ -53,10 +54,22 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
 		getGeoJSON(assetId).then(setContent);
 	}, [assetId]);
 
-	const data = useMemo(() => getRows(content), [content]);
+	const allRows = useMemo(() => getRows(content), [content]);
 	const columns = useMemo(() => getColumns(content), [content]);
+	const data = useMemo(() => allRows.slice(0, ROW_LIMIT), [allRows]);
+	const totalRows = allRows.length;
+	const isTruncated = totalRows > ROW_LIMIT;
 
-	return <Table data={data} columns={columns} />;
+	return (
+		<>
+			{isTruncated && (
+				<p className="text-sm text-muted-foreground mb-2">
+					Showing {ROW_LIMIT} of {totalRows.toLocaleString()} features
+				</p>
+			)}
+			<Table data={data} columns={columns} />
+		</>
+	);
 };
 
 export default withAssetPath(GeoJSONTable as React.ComponentType<unknown>);

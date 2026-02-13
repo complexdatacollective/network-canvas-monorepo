@@ -4,7 +4,8 @@
 	justify-content: center;
 	background-color: var(--color-rules-type);
 	color: var(--color-primary-foreground);
-	transition: background-color var(--animation-easing) var(--animation-duration-standard);
+	transition: background-color var(--animation-easing)
+		var(--animation-duration-standard);
 	border-radius: 10px;
 	padding: 10px;
 }

@@ -17,7 +17,7 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 			summary={<p>The panel title will be shown above the list of nodes within the panel.</p>}
 			id={getFieldId(`${fieldId}.title`)}
 			layout="vertical"
-			className="bg-slate-blue-dark mt-8"
+			className="mt-8 bg-slate-blue-dark text-white [--text-dark:white]"
 		>
 			<ValidatedField
 				name={`${fieldId}.title`}
@@ -38,7 +38,7 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
 			}
 			id={getFieldId(`${fieldId}.dataSource`)}
 			layout="vertical"
-			className="bg-slate-blue-dark mt-8"
+			className="mt-8 bg-slate-blue-dark text-white [--text-dark:white]"
 		>
 			<ValidatedField
 				component={DataSource as unknown as React.ComponentType<Record<string, unknown>>}

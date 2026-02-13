@@ -5,7 +5,6 @@ import DetachedField from "~/components/DetachedField";
 import FieldError from "~/components/Form/FieldError";
 import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import Button from "~/lib/legacy-ui/components/Button";
-import { cn } from "~/utils/cn";
 import EditRule from "./EditRule";
 import PreviewRules from "./PreviewRules";
 import withDraftRule from "./withDraftRule";
@@ -76,7 +75,7 @@ const Rules = ({
 				onSave={handleSaveDraft}
 			/>
 
-			<div className={cn("rules-rules__preview", "text-foreground")}>
+			<div className="rules-rules__preview">
 				<h4>Rules</h4>
 				<PreviewRules
 					rules={rules as Array<Record<string, unknown> & { id: string }>}
