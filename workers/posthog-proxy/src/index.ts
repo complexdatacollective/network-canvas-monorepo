@@ -1,5 +1,6 @@
 const API_HOST = "us.i.posthog.com";
 const ASSET_HOST = "us-assets.i.posthog.com";
+const DUMMY_API_KEY = "phc_proxy_mode_placeholder";
 
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 	const url = new URL(request.url);
@@ -8,7 +9,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 		return retrieveStatic(request, url.pathname + url.search, ctx);
 	}
 
-	return forwardRequest(request, env, url);
+	return forwardRequest(request, env, url, ctx);
 }
 
 async function retrieveStatic(request: Request, pathname: string, ctx: ExecutionContext): Promise<Response> {
@@ -20,13 +21,16 @@ async function retrieveStatic(request: Request, pathname: string, ctx: Execution
 	return response;
 }
 
-async function forwardRequest(request: Request, env: Env, url: URL): Promise<Response> {
+async function forwardRequest(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
 	const ip = request.headers.get("CF-Connecting-IP") || "";
 	const originHeaders = new Headers(request.headers);
 	originHeaders.delete("cookie");
 	originHeaders.set("X-Forwarded-For", ip);
 
-	const targetUrl = new URL(`https://${API_HOST}${url.pathname}`);
+	// Replace dummy API key in URL path (e.g. /array/phc_proxy_mode_placeholder/config)
+	const pathname = url.pathname.replaceAll(DUMMY_API_KEY, env.POSTHOG_API_KEY);
+
+	const targetUrl = new URL(`https://${API_HOST}${pathname}`);
 	for (const [key, value] of url.searchParams) {
 		targetUrl.searchParams.set(key, value);
 	}
@@ -37,16 +41,14 @@ async function forwardRequest(request: Request, env: Env, url: URL): Promise<Res
 		const compression = url.searchParams.get("compression");
 
 		if (compression === "gzip-js" || compression === "gzip") {
-			try {
-				const decompressed = request.body.pipeThrough(new DecompressionStream("gzip"));
-				const text = await new Response(decompressed).text();
-				body = injectApiKey(text, env.POSTHOG_API_KEY);
-				targetUrl.searchParams.delete("compression");
-				originHeaders.set("Content-Type", "application/json");
-				originHeaders.delete("Content-Encoding");
-			} catch {
-				body = request.body;
-			}
+			body = await decompressAndInject(request.body, env.POSTHOG_API_KEY);
+			targetUrl.searchParams.delete("compression");
+			originHeaders.set("Content-Type", "application/json");
+			originHeaders.delete("Content-Encoding");
+		} else if (compression === "base64") {
+			body = await decodeBase64AndInject(request, env.POSTHOG_API_KEY);
+			targetUrl.searchParams.delete("compression");
+			originHeaders.set("Content-Type", "application/json");
 		} else {
 			try {
 				const text = await request.text();
@@ -57,7 +59,7 @@ async function forwardRequest(request: Request, env: Env, url: URL): Promise<Res
 		}
 	}
 
-	return await fetch(
+	const response = await fetch(
 		new Request(targetUrl.toString(), {
 			method: request.method,
 			headers: originHeaders,
@@ -65,6 +67,27 @@ async function forwardRequest(request: Request, env: Env, url: URL): Promise<Res
 			redirect: request.redirect,
 		}),
 	);
+
+	// Cache config.js responses at the edge
+	if (pathname.endsWith("/config.js") || pathname.endsWith("/config")) {
+		const cachedResponse = new Response(response.body, response);
+		ctx.waitUntil(caches.default.put(request, cachedResponse.clone()));
+		return cachedResponse;
+	}
+
+	return response;
+}
+
+async function decompressAndInject(body: ReadableStream, apiKey: string): Promise<string> {
+	const decompressed = body.pipeThrough(new DecompressionStream("gzip"));
+	const text = await new Response(decompressed).text();
+	return injectApiKey(text, apiKey);
+}
+
+async function decodeBase64AndInject(request: Request, apiKey: string): Promise<string> {
+	const encoded = await request.text();
+	const text = atob(encoded);
+	return injectApiKey(text, apiKey);
 }
 
 function injectApiKey(text: string, apiKey: string): string {
