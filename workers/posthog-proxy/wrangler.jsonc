@@ -1,29 +1,15 @@
 {
-	// Cloudflare Worker Configuration
-	// This is a template configuration file for deploying the PostHog proxy worker
-
 	"name": "posthog-proxy",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-01-15",
 
-	// Worker will be available at: https://posthog-proxy.<your-subdomain>.workers.dev
-	// And at your custom domain: https://ph-relay.networkcanvas.com
+	// POSTHOG_API_KEY must be set as a secret via:
+	//   wrangler secret put POSTHOG_API_KEY
 
-	// No environment variables required for basic setup
-	// "vars": {
-	// 	// Uncomment and add variables if needed
-	// },
-
-	// Custom domain configuration (configure in Cloudflare dashboard)
 	"routes": [
 		{
 			"pattern": "ph-relay.networkcanvas.com/*",
 			"zone_name": "networkcanvas.com"
 		}
 	]
-
-	// Resource limits (adjust as needed)
-	// "limits": {
-	// 	"cpu_ms": 50  // Max CPU time per request (default: 50ms)
-	// }
 }
