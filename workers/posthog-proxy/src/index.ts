@@ -2,14 +2,35 @@ const API_HOST = "us.i.posthog.com";
 const ASSET_HOST = "us-assets.i.posthog.com";
 const DUMMY_API_KEY = "phc_proxy_mode_placeholder";
 
-async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-	const url = new URL(request.url);
+const CORS_HEADERS: Record<string, string> = {
+	"Access-Control-Allow-Origin": "*",
+	"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+	"Access-Control-Allow-Headers": "Content-Type",
+};
 
-	if (url.pathname.startsWith("/static/")) {
-		return retrieveStatic(request, url.pathname + url.search, ctx);
+async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+	if (request.method === "OPTIONS") {
+		return new Response(null, { status: 204, headers: CORS_HEADERS });
 	}
 
-	return forwardRequest(request, env, url, ctx);
+	const url = new URL(request.url);
+
+	let response: Response;
+	if (url.pathname.startsWith("/static/")) {
+		response = await retrieveStatic(request, url.pathname + url.search, ctx);
+	} else {
+		response = await forwardRequest(request, env, url);
+	}
+
+	return addCorsHeaders(response);
+}
+
+function addCorsHeaders(response: Response): Response {
+	const newResponse = new Response(response.body, response);
+	for (const [key, value] of Object.entries(CORS_HEADERS)) {
+		newResponse.headers.set(key, value);
+	}
+	return newResponse;
 }
 
 async function retrieveStatic(request: Request, pathname: string, ctx: ExecutionContext): Promise<Response> {
@@ -21,7 +42,7 @@ async function retrieveStatic(request: Request, pathname: string, ctx: Execution
 	return response;
 }
 
-async function forwardRequest(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
+async function forwardRequest(request: Request, env: Env, url: URL): Promise<Response> {
 	const ip = request.headers.get("CF-Connecting-IP") || "";
 	const originHeaders = new Headers(request.headers);
 	originHeaders.delete("cookie");
@@ -41,14 +62,29 @@ async function forwardRequest(request: Request, env: Env, url: URL, ctx: Executi
 		const compression = url.searchParams.get("compression");
 
 		if (compression === "gzip-js" || compression === "gzip") {
-			body = await decompressAndInject(request.body, env.POSTHOG_API_KEY);
-			targetUrl.searchParams.delete("compression");
-			originHeaders.set("Content-Type", "application/json");
-			originHeaders.delete("Content-Encoding");
+			try {
+				const decompressed = request.body.pipeThrough(new DecompressionStream("gzip"));
+				const text = await new Response(decompressed).text();
+				body = injectApiKey(text, env.POSTHOG_API_KEY);
+				targetUrl.searchParams.delete("compression");
+				originHeaders.set("Content-Type", "application/json");
+				originHeaders.delete("Content-Encoding");
+			} catch {
+				body = request.body;
+			}
 		} else if (compression === "base64") {
-			body = await decodeBase64AndInject(request, env.POSTHOG_API_KEY);
-			targetUrl.searchParams.delete("compression");
-			originHeaders.set("Content-Type", "application/json");
+			try {
+				// PostHog JS sends base64 as form-encoded: data=<url-encoded-base64>
+				const formText = await request.text();
+				const params = new URLSearchParams(formText);
+				const encoded = params.get("data") ?? formText;
+				const decoded = atob(encoded);
+				body = injectApiKey(decoded, env.POSTHOG_API_KEY);
+				targetUrl.searchParams.delete("compression");
+				originHeaders.set("Content-Type", "application/json");
+			} catch {
+				body = request.body;
+			}
 		} else {
 			try {
 				const text = await request.text();
@@ -59,7 +95,7 @@ async function forwardRequest(request: Request, env: Env, url: URL, ctx: Executi
 		}
 	}
 
-	const response = await fetch(
+	return await fetch(
 		new Request(targetUrl.toString(), {
 			method: request.method,
 			headers: originHeaders,
@@ -67,27 +103,6 @@ async function forwardRequest(request: Request, env: Env, url: URL, ctx: Executi
 			redirect: request.redirect,
 		}),
 	);
-
-	// Cache config.js responses at the edge
-	if (pathname.endsWith("/config.js") || pathname.endsWith("/config")) {
-		const cachedResponse = new Response(response.body, response);
-		ctx.waitUntil(caches.default.put(request, cachedResponse.clone()));
-		return cachedResponse;
-	}
-
-	return response;
-}
-
-async function decompressAndInject(body: ReadableStream, apiKey: string): Promise<string> {
-	const decompressed = body.pipeThrough(new DecompressionStream("gzip"));
-	const text = await new Response(decompressed).text();
-	return injectApiKey(text, apiKey);
-}
-
-async function decodeBase64AndInject(request: Request, apiKey: string): Promise<string> {
-	const encoded = await request.text();
-	const text = atob(encoded);
-	return injectApiKey(text, apiKey);
 }
 
 function injectApiKey(text: string, apiKey: string): string {
