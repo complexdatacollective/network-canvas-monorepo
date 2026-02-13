@@ -1,5 +1,11 @@
 {
 	"$schema": "https://unpkg.com/knip@latest/schema.json",
+	"ignoreWorkspaces": [
+		"apps/interviewer",
+		"apps/architect-desktop",
+		"packages/network-exporters",
+		"packages/network-query"
+	],
 	"workspaces": {
 		"packages/ui": {},
 		"apps/analytics-web": {},

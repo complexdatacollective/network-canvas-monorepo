@@ -13,7 +13,7 @@
 		"lint:fix": "biome check . --write",
 		"typecheck": "pnpm -r --no-bail --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' run typecheck",
 		"prepare": "husky",
-		"knip": "knip"
+		"knip": "knip --exclude catalog"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.11",
