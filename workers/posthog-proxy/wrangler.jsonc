@@ -3,9 +3,6 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2025-01-15",
 
-	// POSTHOG_API_KEY must be set as a secret via:
-	//   wrangler secret put POSTHOG_API_KEY
-
 	"routes": [
 		{
 			"pattern": "ph-relay.networkcanvas.com/*",

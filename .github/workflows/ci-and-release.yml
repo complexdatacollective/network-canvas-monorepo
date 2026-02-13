@@ -35,9 +35,6 @@ jobs:
       - name: Build protocol-validation
         run: pnpm --filter @codaco/protocol-validation build
 
-      - name: Build analytics
-        run: pnpm --filter @codaco/analytics build
-
       # Upload shared-consts build as artifact
       - name: Upload shared-consts build
         uses: actions/upload-artifact@v4
@@ -52,14 +49,6 @@ jobs:
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
-          retention-days: 1
-
-      # Upload analytics build as artifact
-      - name: Upload analytics build
-        uses: actions/upload-artifact@v4
-        with:
-          name: analytics-dist
-          path: packages/analytics/dist
           retention-days: 1
 
   lint:
@@ -88,12 +77,6 @@ jobs:
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
-
-      - name: Download analytics build
-        uses: actions/download-artifact@v4
-        with:
-          name: analytics-dist
-          path: packages/analytics/dist
 
       - name: Check formatting
         run: pnpm lint
@@ -141,12 +124,6 @@ jobs:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
 
-      - name: Download analytics build
-        uses: actions/download-artifact@v4
-        with:
-          name: analytics-dist
-          path: packages/analytics/dist
-
       - name: Create .env file and run tests
         run: |
           echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
@@ -189,12 +166,6 @@ jobs:
       with:
         name: protocol-validation-dist
         path: packages/protocol-validation/dist
-
-    - name: Download analytics build
-      uses: actions/download-artifact@v4
-      with:
-        name: analytics-dist
-        path: packages/analytics/dist
 
     # Build only packages with changesets
     - name: Build changed packages only

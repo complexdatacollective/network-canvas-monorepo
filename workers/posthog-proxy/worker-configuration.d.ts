@@ -5,9 +5,7 @@ declare namespace Cloudflare {
 	interface GlobalProps {
 		mainModule: typeof import("./src/index");
 	}
-	type Env = {
-		POSTHOG_API_KEY: string;
-	};
+	type Env = {};
 }
 interface Env extends Cloudflare.Env {}
 

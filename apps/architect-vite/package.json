@@ -6,14 +6,13 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "pnpm prepare && vite build",
-		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" --filter \"@codaco/analytics\" build",
+		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" build",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"typecheck": "tsc --build --noEmit"
 	},
 	"dependencies": {
 		"@base-ui-components/react": "1.0.0-rc.0",
-		"@codaco/analytics": "workspace:*",
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
@@ -67,6 +66,7 @@
 		"uuid": "^13.0.0",
 		"vite-tsconfig-paths": "^6.0.3",
 		"wouter": "^3.7.1",
+		"posthog-js": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

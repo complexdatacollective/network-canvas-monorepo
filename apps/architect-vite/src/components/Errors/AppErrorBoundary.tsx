@@ -1,6 +1,5 @@
-import { ensureError } from "@codaco/analytics";
 import { Component, type ReactNode } from "react";
-import { analytics } from "~/analytics";
+import { posthog } from "~/analytics";
 import { Button } from "~/lib/legacy-ui/components";
 
 type AppErrorBoundaryProps = {
@@ -11,6 +10,15 @@ type AppErrorBoundaryState = {
 	error: Error | null;
 };
 
+function ensureError(value: unknown): Error {
+	if (value instanceof Error) return value;
+	try {
+		return new Error(JSON.stringify(value));
+	} catch {
+		return new Error(String(value));
+	}
+}
+
 class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
 	constructor(props: AppErrorBoundaryProps) {
 		super(props);
@@ -19,7 +27,7 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 
 	componentDidCatch(error: unknown) {
 		const normalizedError = ensureError(error);
-		analytics.trackError(normalizedError);
+		posthog.captureException(normalizedError);
 		this.setState({ error: normalizedError });
 	}
 

@@ -7,7 +7,7 @@
 		"dev": "pnpm writeSidebarJson && pnpm next dev",
 		"build": "pnpm next build",
 		"postbuild": "pnpm next-sitemap",
-		"prebuild": "pnpm --filter @codaco/analytics build && pnpm writeSidebarJson",
+		"prebuild": "pnpm writeSidebarJson",
 		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
 		"start": "pnpm next start",
 		"typecheck": "tsc --noEmit",
@@ -15,7 +15,6 @@
 		"test-redirects": "tsx ./scripts/test-redirects.ts"
 	},
 	"dependencies": {
-		"@codaco/analytics": "workspace:*",
 		"@codaco/art": "workspace:*",
 		"@codaco/ui": "workspace:*",
 		"@docsearch/css": "^4.4.0",
@@ -38,6 +37,7 @@
 		"next-intl": "^4.7.0",
 		"next-themes": "^0.4.6",
 		"postcss": "catalog:",
+		"posthog-js": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:"
 	},

@@ -1,6 +1,6 @@
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
 import { z } from "zod";
-import { analytics } from "~/analytics";
+import { posthog } from "~/analytics";
 import { setActiveProtocol } from "../modules/activeProtocol";
 import { createStage } from "../modules/protocol/stages";
 import { validateProtocolAsync } from "../modules/protocolValidation";
@@ -17,12 +17,10 @@ startAppListening({
 	actionCreator: setActiveProtocol,
 	effect: (action) => {
 		const protocol = action.payload;
-		analytics.trackEvent("protocol_opened", {
-			metadata: {
-				protocol_name: protocol?.name,
-				schema_version: protocol?.schemaVersion ?? 8,
-				stage_count: protocol?.stages?.length ?? 0,
-			},
+		posthog.capture("protocol_opened", {
+			protocol_name: protocol?.name,
+			schema_version: protocol?.schemaVersion ?? 8,
+			stage_count: protocol?.stages?.length ?? 0,
 		});
 	},
 });
@@ -30,11 +28,9 @@ startAppListening({
 startAppListening({
 	actionCreator: createStage,
 	effect: (action) => {
-		analytics.trackEvent("stage_added", {
-			metadata: {
-				stage_type: action.payload.stage.type ?? "unknown",
-				stage_index: action.payload.index,
-			},
+		posthog.capture("stage_added", {
+			stage_type: action.payload.stage.type ?? "unknown",
+			stage_index: action.payload.index,
 		});
 	},
 });
@@ -45,13 +41,11 @@ startAppListening({
 		const { result } = action.payload;
 		if (!result.success) {
 			const flattenedErrors = z.flattenError(result.error);
-			analytics.trackEvent("protocol_validation_failed", {
-				metadata: {
-					error_count: result.error.issues.length,
-					error_message: z.prettifyError(result.error),
-					form_errors: flattenedErrors.formErrors,
-					field_errors: flattenedErrors.fieldErrors,
-				},
+			posthog.capture("protocol_validation_failed", {
+				error_count: result.error.issues.length,
+				error_message: z.prettifyError(result.error),
+				form_errors: flattenedErrors.formErrors,
+				field_errors: flattenedErrors.fieldErrors,
 			});
 		}
 	},
@@ -62,11 +56,9 @@ startAppListening({
 	effect: (_action, listenerApi) => {
 		const state = listenerApi.getState();
 		const protocol = state.activeProtocol?.present;
-		analytics.trackEvent("protocol_downloaded", {
-			metadata: {
-				protocol_name: protocol?.name,
-				stage_count: protocol?.stages?.length ?? 0,
-			},
+		posthog.capture("protocol_downloaded", {
+			protocol_name: protocol?.name,
+			stage_count: protocol?.stages?.length ?? 0,
 		});
 	},
 });
