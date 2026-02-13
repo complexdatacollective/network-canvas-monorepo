@@ -17,46 +17,26 @@ jobs:
   # Setup job that all other jobs depend on
   setup:
     runs-on: ubuntu-latest
-    outputs:
-      node-modules-cache-hit: ${{ steps.cache-node-modules.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-      
-      # Cache node_modules based on pnpm-lock.yaml
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-      
-      # Cache pnpm store for faster installs
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      
-      # Only install if cache miss
+          cache: 'pnpm'
       - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
-      
+
       - name: Build shared-consts
         run: pnpm --filter @codaco/shared-consts build
 
       - name: Build protocol-validation
         run: pnpm --filter @codaco/protocol-validation build
+
+      - name: Build analytics
+        run: pnpm --filter @codaco/analytics build
 
       # Upload shared-consts build as artifact
       - name: Upload shared-consts build
@@ -74,27 +54,29 @@ jobs:
           path: packages/protocol-validation/dist
           retention-days: 1
 
+      # Upload analytics build as artifact
+      - name: Upload analytics build
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-dist
+          path: packages/analytics/dist
+          retention-days: 1
+
   lint:
     needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-      
-      # Restore cached node_modules
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-      
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Download shared-consts build
         uses: actions/download-artifact@v4
         with:
@@ -106,6 +88,12 @@ jobs:
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
+
+      - name: Download analytics build
+        uses: actions/download-artifact@v4
+        with:
+          name: analytics-dist
+          path: packages/analytics/dist
 
       - name: Check formatting
         run: pnpm lint
@@ -125,28 +113,22 @@ jobs:
     permissions:
       contents: read
       packages: read
-    env: 
+    env:
       PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
       PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
       GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-      
-      # Restore cached node_modules
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-      
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Download shared-consts build
         uses: actions/download-artifact@v4
         with:
@@ -158,6 +140,12 @@ jobs:
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
+
+      - name: Download analytics build
+        uses: actions/download-artifact@v4
+        with:
+          name: analytics-dist
+          path: packages/analytics/dist
 
       - name: Create .env file and run tests
         run: |
@@ -180,22 +168,16 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v4
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-    
-    # Restore cached node_modules
-    - name: Restore node_modules cache
-      uses: actions/cache/restore@v4
-      with:
-        path: "**/node_modules"
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-node-modules-
-    
+        cache: 'pnpm'
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
     - name: Download shared-consts build
       uses: actions/download-artifact@v4
       with:
@@ -208,14 +190,20 @@ jobs:
         name: protocol-validation-dist
         path: packages/protocol-validation/dist
 
+    - name: Download analytics build
+      uses: actions/download-artifact@v4
+      with:
+        name: analytics-dist
+        path: packages/analytics/dist
+
     # Build only packages with changesets
     - name: Build changed packages only
       run: pnpm run build:changed-packages
-    
+
     - name: Create Release Pull Request
       uses: changesets/action@v1
       with:
-        # command used to version packages. Lint and fix to avoid errors caused 
+        # command used to version packages. Lint and fix to avoid errors caused
         # by versioning
         version: pnpm run version-packages
         # Runs changesets publish. versioning is done by changesets action

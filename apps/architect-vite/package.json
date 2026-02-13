@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "pnpm prepare && vite build",
-		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" build",
+		"prepare": "pnpm --filter \"@codaco/protocol-validation\" --filter \"@codaco/shared-consts\" --filter \"@codaco/analytics\" build",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"typecheck": "tsc --build --noEmit"
