@@ -1,5 +1,6 @@
-import posthog from "posthog-js";
+import { ensureError } from "@codaco/analytics";
 import { Component, type ReactNode } from "react";
+import { analytics } from "~/analytics";
 import { Button } from "~/lib/legacy-ui/components";
 
 type AppErrorBoundaryProps = {
@@ -16,9 +17,10 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 		this.state = { error: null };
 	}
 
-	componentDidCatch(error: Error) {
-		posthog.captureException(error);
-		this.setState({ error });
+	componentDidCatch(error: unknown) {
+		const normalizedError = ensureError(error);
+		analytics.trackError(normalizedError);
+		this.setState({ error: normalizedError });
 	}
 
 	resetError = () => {

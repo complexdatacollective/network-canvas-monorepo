@@ -1,5 +1,5 @@
 import type { Asset, CurrentProtocol } from "@codaco/protocol-validation";
-import posthog from "posthog-js";
+import { analytics } from "~/analytics";
 import { appVersion } from "../appVersion";
 import { assetDb } from "../assetDB";
 import type {
@@ -227,10 +227,12 @@ export async function uploadProtocolForPreview(
 ): Promise<ReadyResponse> {
 	const { frescoUrl, apiToken } = getFrescoConfig();
 
-	posthog.capture("protocol_previewed", {
-		stage_count: protocol.stages?.length ?? 0,
-		start_stage_index: stageIndex,
-		asset_count: Object.keys(protocol.assetManifest ?? {}).length,
+	analytics.trackEvent("protocol_previewed", {
+		metadata: {
+			stage_count: protocol.stages?.length ?? 0,
+			start_stage_index: stageIndex,
+			asset_count: Object.keys(protocol.assetManifest ?? {}).length,
+		},
 	});
 
 	try {

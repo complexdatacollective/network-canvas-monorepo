@@ -7,7 +7,7 @@
 		"dev": "pnpm writeSidebarJson && pnpm next dev",
 		"build": "pnpm next build",
 		"postbuild": "pnpm next-sitemap",
-		"prebuild": "pnpm writeSidebarJson",
+		"prebuild": "pnpm --filter @codaco/analytics build && pnpm writeSidebarJson",
 		"writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
 		"start": "pnpm next start",
 		"typecheck": "tsc --noEmit",

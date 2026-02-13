@@ -267,6 +267,9 @@ importers:
       '@base-ui-components/react':
         specifier: 1.0.0-rc.0
         version: 1.0.0-rc.0(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@codaco/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
@@ -276,9 +279,6 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@posthog/react':
-        specifier: ^1.5.2
-        version: 1.5.2(@types/react@19.2.8)(posthog-js@1.328.0)(react@19.2.3)
       '@productboard/slate-edit-list':
         specifier: ^0.21.5
         version: 0.21.5(slate-react@0.57.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(slate@0.57.3))(slate@0.57.3)
@@ -339,9 +339,6 @@ importers:
       ohash:
         specifier: ^2.0.11
         version: 2.0.11
-      posthog-js:
-        specifier: ^1.328.0
-        version: 1.328.0
       react:
         specifier: 'catalog:'
         version: 19.2.3
@@ -2816,16 +2813,6 @@ packages:
 
   '@posthog/core@1.10.0':
     resolution: {integrity: sha512-Xk3JQ+cdychsvftrV3G9ZrN9W329lbyFW0pGJXFGKFQf8qr4upw2SgNg9BVorjSrfhoXZRnJGt/uNF4nGFBL5A==}
-
-  '@posthog/react@1.5.2':
-    resolution: {integrity: sha512-KHdXbV1yba7Y2l8BVmwXlySWxqKVLNQ5ZiVvWOf7r3Eo7GIFxCM4CaNK/z83kKWn8KTskmKy7AGF6Hl6INWK3g==}
-    peerDependencies:
-      '@types/react': '>=16.8.0'
-      posthog-js: '>=1.257.2'
-      react: '>=16.8.0'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
 
   '@posthog/types@1.328.0':
     resolution: {integrity: sha512-T8RPYpgPxwtAMqtfj8+3VSw3Xca2hIYb3BN3ohPAZhN8eQOtkC00jEKy+bOcniy1BJCbbhpmGtxqQCpzr4/EXQ==}
@@ -8803,13 +8790,6 @@ snapshots:
   '@posthog/core@1.10.0':
     dependencies:
       cross-spawn: 7.0.6
-
-  '@posthog/react@1.5.2(@types/react@19.2.8)(posthog-js@1.328.0)(react@19.2.3)':
-    dependencies:
-      posthog-js: 1.328.0
-      react: 19.2.3
-    optionalDependencies:
-      '@types/react': 19.2.8
 
   '@posthog/types@1.328.0': {}
 
