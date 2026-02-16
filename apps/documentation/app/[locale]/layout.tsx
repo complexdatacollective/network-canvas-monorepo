@@ -9,6 +9,7 @@ import type { Messages } from "~/app/types";
 import { locales } from "~/app/types";
 import AIAssistant from "~/components/ai-assistant";
 import { LayoutComponent } from "~/components/Layout";
+import { PostHogClientProvider } from "~/components/Providers/posthog-provider";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
 import { env } from "~/env";
 import { routing } from "~/lib/i18n/routing";
@@ -63,12 +64,14 @@ export default async function MainLayout(props: MainLayoutProps) {
 	return (
 		<html lang={locale} suppressHydrationWarning className="font-sans antialiased">
 			<body className="flex min-h-[100dvh] flex-col text-base">
-				<ThemeProvider enableSystem enableColorScheme attribute="class" storageKey="nc-docs-site">
-					<NextIntlClientProvider timeZone={timeZone} now={now} locale={locale} messages={messages.default}>
-						<LayoutComponent>{children}</LayoutComponent>
-						<AIAssistant />
-					</NextIntlClientProvider>
-				</ThemeProvider>
+				<PostHogClientProvider>
+					<ThemeProvider enableSystem enableColorScheme attribute="class" storageKey="nc-docs-site">
+						<NextIntlClientProvider timeZone={timeZone} now={now} locale={locale} messages={messages.default}>
+							<LayoutComponent>{children}</LayoutComponent>
+							<AIAssistant />
+						</NextIntlClientProvider>
+					</ThemeProvider>
+				</PostHogClientProvider>
 			</body>
 			<GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
 			<Analytics />

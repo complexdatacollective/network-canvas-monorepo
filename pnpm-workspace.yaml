@@ -31,6 +31,7 @@ catalog:
   motion: ^12.24.10
   next: ^16.1.1
   postcss: ^8.5.6
+  '@posthog/react': ^1.7.1
   posthog-js: ^1.347.2
   react: ^19.2.3
   react-dom: ^19.2.3
