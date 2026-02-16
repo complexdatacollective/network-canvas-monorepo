@@ -30,7 +30,7 @@
 		"fuse.js": "^3.6.1",
 		"is-hotkey": "^0.2.0",
 		"jszip": "^3.10.1",
-		"lodash": "^4.17.19",
+		"lodash": "^4.17.23",
 		"lucide-react": "catalog:",
 		"luxon": "^1.24.1",
 		"mapbox-gl": "^3.18.0",
