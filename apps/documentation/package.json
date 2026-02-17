@@ -23,7 +23,7 @@
 		"@fontsource-variable/quicksand": "^5.2.10",
 		"@mendable/search": "^0.0.206",
 		"@next/bundle-analyzer": "^16.1.1",
-		"@next/third-parties": "^16.1.1",
+		"@next/third-parties": "^16.1.6",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-navigation-menu": "catalog:",
 		"@radix-ui/react-popover": "catalog:",
