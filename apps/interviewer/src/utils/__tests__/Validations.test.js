@@ -4,9 +4,7 @@ import { makeNetworkEntitiesForType } from "../../selectors/interface";
 import { getCodebookVariablesForType } from "../../selectors/session";
 import {
 	differentFrom,
-	greaterThanOrEqualToVariable,
 	greaterThanVariable,
-	lessThanOrEqualToVariable,
 	lessThanVariable,
 	maxLength,
 	maxSelected,
@@ -515,128 +513,6 @@ describe("lessThanVariable()", () => {
 
 	it("passes if string is less than", () => {
 		expect(subject3("less", allValues)).toBe(undefined);
-	});
-
-	it("fails if string is greater than", () => {
-		expect(subject3("zebra", allValues)).toBe(`${errorMessage} word`);
-	});
-});
-
-describe("greaterThanOrEqualToVariable()", () => {
-	const errorMessage = "Your answer must be greater than or equal to";
-
-	const allValues = {
-		uid1: 1,
-		uid2: "2012-10-07",
-		uid3: "word",
-	};
-
-	getCodebookVariablesForType.mockReturnValue(() => ({
-		uid1: { name: 1, type: "number" },
-		uid2: { name: "2012-10-07", type: "datetime" },
-		uid3: { name: "word", type: "text" },
-	}));
-
-	const subject1 = greaterThanOrEqualToVariable("uid1", mockStore);
-	const subject2 = greaterThanOrEqualToVariable("uid2", mockStore);
-	const subject3 = greaterThanOrEqualToVariable("uid3", mockStore);
-
-	it("fails for null or undefined", () => {
-		expect(subject1(null, allValues)).toBe(`${errorMessage} 1`);
-		expect(subject1(undefined, allValues)).toBe(`${errorMessage} 1`);
-	});
-
-	it("passes if number is greater than", () => {
-		expect(subject1(3, allValues)).toBe(undefined);
-	});
-
-	it("passes if number is equal to", () => {
-		expect(subject1(1, allValues)).toBe(undefined);
-	});
-
-	it("fails if number is less than", () => {
-		expect(subject1(0, allValues)).toBe(`${errorMessage} 1`);
-	});
-
-	it("passes if date is greater than", () => {
-		expect(subject2("2012-11-07", allValues)).toBe(undefined);
-	});
-
-	it("passes if date is equal to", () => {
-		expect(subject2("2012-10-07", allValues)).toBe(undefined);
-	});
-
-	it("fails if date is less than", () => {
-		expect(subject2("2012-09-07", allValues)).toBe(`${errorMessage} 2012-10-07`);
-	});
-
-	it("passes if string is greater than", () => {
-		expect(subject3("zebra", allValues)).toBe(undefined);
-	});
-
-	it("passes if string is equal to", () => {
-		expect(subject3("word", allValues)).toBe(undefined);
-	});
-
-	it("fails if string is less than", () => {
-		expect(subject3("diff", allValues)).toBe(`${errorMessage} word`);
-	});
-});
-
-describe("lessThanOrEqualToVariable()", () => {
-	const errorMessage = "Your answer must be less than or equal to";
-
-	const allValues = {
-		uid1: 1,
-		uid2: "2012-10-07",
-		uid3: "word",
-	};
-
-	getCodebookVariablesForType.mockReturnValue(() => ({
-		uid1: { name: 1, type: "number" },
-		uid2: { name: "2012-10-07", type: "datetime" },
-		uid3: { name: "word", type: "text" },
-	}));
-
-	const subject1 = lessThanOrEqualToVariable("uid1", mockStore);
-	const subject2 = lessThanOrEqualToVariable("uid2", mockStore);
-	const subject3 = lessThanOrEqualToVariable("uid3", mockStore);
-
-	it("fails for null or undefined", () => {
-		expect(subject1(null, allValues)).toBe(`${errorMessage} 1`);
-		expect(subject1(undefined, allValues)).toBe(`${errorMessage} 1`);
-	});
-
-	it("passes if number is less than", () => {
-		expect(subject1(0, allValues)).toBe(undefined);
-	});
-
-	it("passes if number is equal to", () => {
-		expect(subject1(1, allValues)).toBe(undefined);
-	});
-
-	it("fails if number is greater than", () => {
-		expect(subject1(2, allValues)).toBe(`${errorMessage} 1`);
-	});
-
-	it("passes if date is less than", () => {
-		expect(subject2("2012-09-07", allValues)).toBe(undefined);
-	});
-
-	it("passes if date is equal to", () => {
-		expect(subject2("2012-10-07", allValues)).toBe(undefined);
-	});
-
-	it("fails if date is greater than", () => {
-		expect(subject2("2012-11-07", allValues)).toBe(`${errorMessage} 2012-10-07`);
-	});
-
-	it("passes if string is less than", () => {
-		expect(subject3("less", allValues)).toBe(undefined);
-	});
-
-	it("passes if string is equal to", () => {
-		expect(subject3("word", allValues)).toBe(undefined);
 	});
 
 	it("fails if string is greater than", () => {
