@@ -59,7 +59,7 @@
 		"cross-env": "^5.2.0",
 		"crypto-browserify": "~3.12.1",
 		"csvtojson": "^2.0.8",
-		"dotenv": "4.0.0",
+		"dotenv": "17.3.1",
 		"electron": "^34.0.0",
 		"electron-builder": "^26.4.0",
 		"electron-devtools-installer": "^3.0.0",
