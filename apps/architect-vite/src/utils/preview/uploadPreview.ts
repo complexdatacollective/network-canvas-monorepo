@@ -331,11 +331,9 @@ export async function uploadProtocolForPreview(
 
 		return completeResponse;
 	} catch (error) {
-		// Handle fetch errors (network issues)
-		if (error instanceof TypeError && error.message.includes("fetch")) {
-			throw new Error(
-				`Could not connect to Fresco at ${frescoUrl}. Please check that Fresco is running and the URL is correct.`,
-			);
+		// Handle network errors (TypeError is thrown by fetch for network failures)
+		if (error instanceof TypeError) {
+			throw new Error(`Could not connect to the preview server. (${error.message})`);
 		}
 		throw error;
 	}
