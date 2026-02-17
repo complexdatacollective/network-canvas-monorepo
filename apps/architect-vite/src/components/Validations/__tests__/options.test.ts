@@ -8,28 +8,30 @@ import {
 
 describe("Validation options", () => {
 	describe("getValidationOptionsForVariableType", () => {
-		describe("lessThanVariable and greaterThanVariable availability", () => {
+		describe("comparison variable validations availability", () => {
 			const typesWithComparisonValidations = ["number", "datetime", "scalar"];
 			const typesWithoutComparisonValidations = ["text", "boolean", "ordinal", "categorical", "passphrase"];
 
-			it.each(
-				typesWithComparisonValidations,
-			)("includes lessThanVariable and greaterThanVariable for %s type", (variableType) => {
+			it.each(typesWithComparisonValidations)("includes all comparison validations for %s type", (variableType) => {
 				const options = getValidationOptionsForVariableType(variableType, "node");
 				const optionValues = options.map((o) => o.value);
 
 				expect(optionValues).toContain("lessThanVariable");
 				expect(optionValues).toContain("greaterThanVariable");
+				expect(optionValues).toContain("lessThanOrEqualToVariable");
+				expect(optionValues).toContain("greaterThanOrEqualToVariable");
 			});
 
 			it.each(
 				typesWithoutComparisonValidations,
-			)("does not include lessThanVariable and greaterThanVariable for %s type", (variableType) => {
+			)("does not include comparison validations for %s type", (variableType) => {
 				const options = getValidationOptionsForVariableType(variableType, "node");
 				const optionValues = options.map((o) => o.value);
 
 				expect(optionValues).not.toContain("lessThanVariable");
 				expect(optionValues).not.toContain("greaterThanVariable");
+				expect(optionValues).not.toContain("lessThanOrEqualToVariable");
+				expect(optionValues).not.toContain("greaterThanOrEqualToVariable");
 			});
 		});
 
@@ -51,6 +53,14 @@ describe("Validation options", () => {
 
 		it("returns true for greaterThanVariable", () => {
 			expect(isValidationWithListValue("greaterThanVariable")).toBe(true);
+		});
+
+		it("returns true for lessThanOrEqualToVariable", () => {
+			expect(isValidationWithListValue("lessThanOrEqualToVariable")).toBe(true);
+		});
+
+		it("returns true for greaterThanOrEqualToVariable", () => {
+			expect(isValidationWithListValue("greaterThanOrEqualToVariable")).toBe(true);
 		});
 
 		it("returns true for differentFrom and sameAs", () => {
@@ -78,6 +88,8 @@ describe("Validation options", () => {
 		it("returns false for list-based validations", () => {
 			expect(isValidationWithNumberValue("lessThanVariable")).toBe(false);
 			expect(isValidationWithNumberValue("greaterThanVariable")).toBe(false);
+			expect(isValidationWithNumberValue("lessThanOrEqualToVariable")).toBe(false);
+			expect(isValidationWithNumberValue("greaterThanOrEqualToVariable")).toBe(false);
 			expect(isValidationWithNumberValue("differentFrom")).toBe(false);
 			expect(isValidationWithNumberValue("sameAs")).toBe(false);
 		});

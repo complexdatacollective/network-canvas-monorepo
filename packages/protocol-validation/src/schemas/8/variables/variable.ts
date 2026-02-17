@@ -29,6 +29,8 @@ const numberVariableSchema = baseVariableSchema
 				differentFrom: true,
 				greaterThanVariable: true,
 				lessThanVariable: true,
+				greaterThanOrEqualToVariable: true,
+				lessThanOrEqualToVariable: true,
 			})
 			.optional(),
 	})
@@ -55,6 +57,8 @@ const scalarVariableSchema = baseVariableSchema
 				maxValue: true,
 				greaterThanVariable: true,
 				lessThanVariable: true,
+				greaterThanOrEqualToVariable: true,
+				lessThanOrEqualToVariable: true,
 			})
 			.optional(),
 	})
@@ -83,6 +87,8 @@ const dateTimeDatePickerSchema = baseVariableSchema
 				differentFrom: true,
 				greaterThanVariable: true,
 				lessThanVariable: true,
+				greaterThanOrEqualToVariable: true,
+				lessThanOrEqualToVariable: true,
 			})
 			.optional(),
 	})
@@ -110,6 +116,8 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema
 				differentFrom: true,
 				greaterThanVariable: true,
 				lessThanVariable: true,
+				greaterThanOrEqualToVariable: true,
+				lessThanOrEqualToVariable: true,
 			})
 			.optional(),
 	})
@@ -398,6 +406,12 @@ export function generateVariableMocks(type: "ego" | "edge" | "node"): Record<str
 		}
 		if ("lessThanVariable" in entityAwareValidation) {
 			entityAwareValidation.lessThanVariable = idGenerator(refIndex);
+		}
+		if ("greaterThanOrEqualToVariable" in entityAwareValidation) {
+			entityAwareValidation.greaterThanOrEqualToVariable = idGenerator(refIndex);
+		}
+		if ("lessThanOrEqualToVariable" in entityAwareValidation) {
+			entityAwareValidation.lessThanOrEqualToVariable = idGenerator(refIndex);
 		}
 
 		randomVariables[idGenerator(i)] = {

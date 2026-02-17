@@ -11,9 +11,29 @@ const VALIDATIONS = {
 		"sameAs",
 		"lessThanVariable",
 		"greaterThanVariable",
+		"lessThanOrEqualToVariable",
+		"greaterThanOrEqualToVariable",
 	],
-	datetime: ["required", "unique", "differentFrom", "sameAs", "lessThanVariable", "greaterThanVariable"],
-	scalar: ["required", "unique", "differentFrom", "sameAs", "lessThanVariable", "greaterThanVariable"],
+	datetime: [
+		"required",
+		"unique",
+		"differentFrom",
+		"sameAs",
+		"lessThanVariable",
+		"greaterThanVariable",
+		"lessThanOrEqualToVariable",
+		"greaterThanOrEqualToVariable",
+	],
+	scalar: [
+		"required",
+		"unique",
+		"differentFrom",
+		"sameAs",
+		"lessThanVariable",
+		"greaterThanVariable",
+		"lessThanOrEqualToVariable",
+		"greaterThanOrEqualToVariable",
+	],
 	boolean: ["required", "unique", "differentFrom", "sameAs"],
 	ordinal: ["required", "unique", "differentFrom", "sameAs"],
 	categorical: ["required", "minSelected", "maxSelected", "unique", "differentFrom", "sameAs"],
@@ -22,7 +42,14 @@ const VALIDATIONS = {
 
 const VALIDATIONS_WITH_NUMBER_VALUES = ["minLength", "maxLength", "minValue", "maxValue", "minSelected", "maxSelected"];
 
-const VALIDATIONS_WITH_LIST_VALUES = ["differentFrom", "sameAs", "lessThanVariable", "greaterThanVariable"];
+const VALIDATIONS_WITH_LIST_VALUES = [
+	"differentFrom",
+	"sameAs",
+	"lessThanVariable",
+	"greaterThanVariable",
+	"lessThanOrEqualToVariable",
+	"greaterThanOrEqualToVariable",
+];
 
 const VALIDATIONS_WITHOUT_VALUES = ["required", "unique"];
 
