@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/network-query",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Network filtering and querying for Network Canvas",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 10.1.0
+
+### Minor Changes
+
+- b713317: Add greaterThanOrEqualToVariable and lessThanOrEqualToVariable validations for number, datetime, and scalar variable types
+
 ## 10.0.0
 
 ### Major Changes
