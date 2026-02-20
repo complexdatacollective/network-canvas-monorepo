@@ -56,17 +56,17 @@ const Dialog = ({
 				"dialog",
 				{ [`dialog--${type}`]: type },
 				classNames,
-				"p-6 flex gap-6",
-				"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden",
+				"p-6 flex flex-col gap-6",
+				"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg",
 			)}
 		>
 			<div className="flex gap-6">
 				{icon && (
-					<div className="flex items-center justify-center">
+					<div className="flex items-center justify-center shrink-0">
 						<Icon name={icon} />
 					</div>
 				)}
-				<div className="">
+				<div className="min-w-0">
 					<h2>{title}</h2>
 					{message}
 					{children}
