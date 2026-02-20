@@ -2,7 +2,7 @@ import type { ExtractedAsset } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import { invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
+import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
 import { saveAssetToDb } from "~/utils/assetUtils";
 import { validateAsset } from "~/utils/protocols/assetTools";
 import { getSupportedAssetType } from "~/utils/protocols/importAsset";
@@ -88,6 +88,11 @@ export const importAssetAsync = createAsyncThunk(
 					error: error as Error,
 				}),
 			);
+			// Only show generic import error if it wasn't already handled by validation
+			// Validation errors have a `code` property (e.g., "COLUMN_MISMATCHED", "VARIABLE_NAME")
+			if (!(error as Error & { code?: string }).code) {
+				dispatch(importAssetErrorDialog(error as Error, name));
+			}
 			return rejectWithValue((error as Error).message);
 		}
 	},
