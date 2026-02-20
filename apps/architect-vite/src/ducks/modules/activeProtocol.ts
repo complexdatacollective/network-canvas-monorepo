@@ -65,15 +65,15 @@ const activeProtocolSlice = createSlice({
 					hasChange = true;
 				}
 			}
-			if (state.assetManifest) {
-				const currentAssetManifest = current(state.assetManifest);
-				// Cast to internal Asset type (has required id) for reducer
-				const newAssetManifest = assetManifest(currentAssetManifest as Parameters<typeof assetManifest>[0], action);
-				if (newAssetManifest !== currentAssetManifest) {
-					// Cast back to protocol Asset type (has optional id)
-					state.assetManifest = newAssetManifest as typeof state.assetManifest;
-					hasChange = true;
-				}
+			// Always call assetManifest reducer - it handles undefined with its initialState
+			// This matches the original Architect pattern using reduceReducers
+			const currentAssetManifest = state.assetManifest
+				? (current(state.assetManifest) as Parameters<typeof assetManifest>[0])
+				: undefined;
+			const newAssetManifest = assetManifest(currentAssetManifest, action);
+			if (newAssetManifest !== currentAssetManifest) {
+				state.assetManifest = newAssetManifest as typeof state.assetManifest;
+				hasChange = true;
 			}
 			if (state.codebook) {
 				const currentCodebook = current(state.codebook);
