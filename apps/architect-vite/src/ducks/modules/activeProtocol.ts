@@ -65,15 +65,23 @@ const activeProtocolSlice = createSlice({
 					hasChange = true;
 				}
 			}
-			// Always call assetManifest reducer - it handles undefined with its initialState
-			// This matches the original Architect pattern using reduceReducers
-			const currentAssetManifest = state.assetManifest
-				? (current(state.assetManifest) as Parameters<typeof assetManifest>[0])
-				: undefined;
-			const newAssetManifest = assetManifest(currentAssetManifest, action);
-			if (newAssetManifest !== currentAssetManifest) {
-				state.assetManifest = newAssetManifest as typeof state.assetManifest;
-				hasChange = true;
+			// Only call assetManifest reducer when the slice already exists,
+			// or when the action is explicitly targeting the assetManifest slice.
+			// This prevents spurious timeline history entries from unrelated actions
+			// initializing assetManifest to {} on older protocols.
+			const shouldHandleAssetManifest =
+				state.assetManifest !== undefined && state.assetManifest !== null
+					? true
+					: typeof action.type === "string" && action.type.startsWith("assetManifest/");
+			if (shouldHandleAssetManifest) {
+				const currentAssetManifest = state.assetManifest
+					? (current(state.assetManifest) as Parameters<typeof assetManifest>[0])
+					: undefined;
+				const newAssetManifest = assetManifest(currentAssetManifest, action);
+				if (newAssetManifest !== currentAssetManifest) {
+					state.assetManifest = newAssetManifest as typeof state.assetManifest;
+					hasChange = true;
+				}
 			}
 			if (state.codebook) {
 				const currentCodebook = current(state.codebook);
