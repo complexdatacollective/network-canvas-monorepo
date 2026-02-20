@@ -1,7 +1,9 @@
-import path from "node:path";
 import ExternalLink from "~/components/ExternalLink";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Button } from "~/lib/legacy-ui/components";
+
+// Browser-compatible basename (replaces node:path which doesn't work in browser)
+const basename = (filePath) => filePath?.split(/[\\/]/).pop() ?? filePath;
 
 const genericAssetMessage = (
 	<>
@@ -20,7 +22,7 @@ const genericAssetMessage = (
 		</p>
 		<p>
 			<ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
-				<Button>view documentation</Button>
+				<Button>View documentation</Button>
 			</ExternalLink>
 		</p>
 	</>
@@ -52,7 +54,7 @@ export const invalidAssetErrorDialog = (e, filePath) => {
 
 	return dialogActions.openDialog({
 		type: "Error",
-		title: `Error: ${path.basename(filePath)} is not formatted correctly`,
+		title: `Error: ${basename(filePath)} is not formatted correctly`,
 		error: e,
 	});
 };
@@ -60,7 +62,7 @@ export const invalidAssetErrorDialog = (e, filePath) => {
 export const importAssetErrorDialog = (e, filePath) => {
 	e.friendlyMessage = (
 		<>
-			The file <strong>{path.basename(filePath)}</strong> could not be imported.
+			The file <strong>{basename(filePath)}</strong> could not be imported.
 		</>
 	);
 	return dialogActions.openDialog({
