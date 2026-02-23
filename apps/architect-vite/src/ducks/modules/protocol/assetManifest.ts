@@ -88,7 +88,11 @@ export const importAssetAsync = createAsyncThunk(
 					error: error as Error,
 				}),
 			);
-			dispatch(importAssetErrorDialog(error as Error, name));
+			// Only show generic import error if it wasn't already handled by validation
+			// Validation errors have a `code` property (e.g., "COLUMN_MISMATCHED", "VARIABLE_NAME")
+			if (!(error as Error & { code?: string }).code) {
+				dispatch(importAssetErrorDialog(error as Error, name));
+			}
 			return rejectWithValue((error as Error).message);
 		}
 	},
