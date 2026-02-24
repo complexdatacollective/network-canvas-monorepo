@@ -76,7 +76,8 @@ describe("makeGetIsUsed", () => {
 		});
 	});
 
-	it("returns true when a variable is present in the protocol", () => {
+	it("returns true when a variable is present at known paths in the protocol", () => {
+		// Uses paths defined in indexes.js (e.g., stages[].form.fields[].variable)
 		const stateWithProtocolUse = {
 			...mockStateWithoutUse,
 			activeProtocol: {
@@ -86,19 +87,10 @@ describe("makeGetIsUsed", () => {
 					stages: [
 						{
 							id: "1",
-							[variable1]: "foo",
-							thing: {
-								variableAsKey: variable2,
-								nested: {
-									even: [
-										{
-											moreNested: {
-												with: variable3,
-											},
-										},
-									],
-								},
+							form: {
+								fields: [{ variable: variable1 }, { variable: variable2 }],
 							},
+							prompts: [{ variable: variable3 }],
 						},
 					],
 				},
