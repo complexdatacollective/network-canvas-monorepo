@@ -40,6 +40,8 @@ export const validations = {
 	sameAs: z.string().optional(),
 	greaterThanVariable: z.string().optional(),
 	lessThanVariable: z.string().optional(),
+	greaterThanOrEqualToVariable: z.string().optional(),
+	lessThanOrEqualToVariable: z.string().optional(),
 };
 
 export const ValidationsSchema = z.object(validations);

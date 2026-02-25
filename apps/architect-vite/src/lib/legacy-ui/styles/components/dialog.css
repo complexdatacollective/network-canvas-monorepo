@@ -13,99 +13,76 @@
 	border-width: 0;
 	border-left-width: 0.5rem;
 	border-radius: 0.75rem;
+}
 
-	.dialog__main {
-		flex: 1 1 100%;
-		display: flex;
-		flex-direction: row;
-		width: 100%;
-		padding: var(--space-xl) var(--space-xl) 0;
-		max-height: 70vh;
+.dialog .dialog__main {
+	flex: 1 1 100%;
+	display: flex;
+	flex-direction: row;
+	width: 100%;
+	padding: var(--space-xl) var(--space-xl) 0;
+	max-height: 70vh;
+}
 
-		&-content {
-			order: 1;
-			overflow-y: auto;
-			flex: 1 1 auto;
-			padding: 0 var(--space-xl);
-		}
+.dialog .dialog__main-content {
+	order: 1;
+	overflow-y: auto;
+	flex: 1 1 auto;
+	padding: 0 var(--space-xl);
+}
 
-		&-title {
-			text-transform: uppercase;
-			font-weight: 700;
-			margin-bottom: var(--space-md);
-		}
+.dialog .dialog__main-title {
+	text-transform: uppercase;
+	font-weight: 700;
+	margin-bottom: var(--space-md);
+}
 
-		&-icon {
-			order: 1;
-			flex: 0 0 8rem;
-			display: flex;
-			align-items: center;
-			justify-content: center;
+.dialog .dialog__main-icon {
+	order: 1;
+	flex: 0 0 8rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 
-			.icon {
-				height: 7.5rem;
-				width: 7.5rem;
-			}
-		}
-	}
+.dialog .dialog__main-icon .icon {
+	height: 7.5rem;
+	width: 7.5rem;
+}
 
-	.dialog__additional {
-		margin-bottom: 0.15rem; /* Needed so that clickable elements don't cause scrollbars */
+.dialog .dialog__additional {
+	margin-bottom: 0.15rem; /* Needed so that clickable elements don't cause scrollbars */
+}
 
-		.button {
-			margin-top: var(--space-md);
-		}
+.dialog .dialog__footer {
+	margin: 2rem 3rem;
+	text-align: right;
+	flex: 1 0 auto;
+}
 
-		&-box {
-			/* allow-text-selection mixin equivalent */
-			user-select: text;
+.dialog .dialog__footer .button:last-child {
+	margin-left: var(--space-md);
+}
 
-			& * {
-				user-select: text;
-			}
+.dialog.dialog--notice {
+	border-color: var(--color-info);
+}
 
-			margin-top: var(--space-md);
-			max-height: 25rem;
-			background: var(--color-background);
-			user-select: initial;
-			overflow-y: auto;
-			overflow-x: hidden;
-			border-radius: var(--radius);
-		}
-	}
+.dialog.dialog--confirm {
+	border-color: var(--color-info);
+}
 
-	.dialog__footer {
-		margin: 2rem 3rem;
-		text-align: right;
-		flex: 1 0 auto;
+.dialog.dialog--warning {
+	border-color: var(--color-warning);
+}
 
-		.button {
-			&:last-child {
-				margin-left: var(--space-md);
-			}
-		}
-	}
+.dialog.dialog--error {
+	border-color: var(--color-error);
+}
 
-	&.dialog--notice {
-		border-color: var(--color-info);
-	}
-
-	&.dialog--confirm {
-		border-color: var(--color-info);
-	}
-
-	&.dialog--warning {
-		border-color: var(--color-warning);
-	}
-
-	&.dialog--error {
-		border-color: var(--color-error);
-
-		.error__stack-trace {
-			padding: var(--space-md);
-			width: 100%;
-			white-space: pre-wrap;
-			word-break: break-word;
-		}
-	}
+.dialog.dialog--error .error__stack-trace {
+	padding: var(--space-md);
+	width: 100%;
+	white-space: pre-wrap;
+	word-break: break-word;
 }

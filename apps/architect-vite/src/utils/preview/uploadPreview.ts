@@ -1,6 +1,5 @@
 import type { Asset, CurrentProtocol } from "@codaco/protocol-validation";
 import { posthog } from "~/analytics";
-import { appVersion } from "../appVersion";
 import { assetDb } from "../assetDB";
 import type {
 	AbortResponse,
@@ -10,6 +9,8 @@ import type {
 	PreviewResponse,
 	ReadyResponse,
 } from "./types";
+
+const PREVIEW_API_VERSION = "v1";
 
 export type UploadProgress = {
 	phase: "preparing" | "uploading-assets" | "processing";
@@ -191,7 +192,7 @@ async function sendPreviewRequest<T extends PreviewResponse>(
 	apiToken: string | undefined,
 	request: PreviewRequest,
 ): Promise<T> {
-	const response = await fetch(`${frescoUrl}/api/preview`, {
+	const response = await fetch(`${frescoUrl}/api/preview/${PREVIEW_API_VERSION}`, {
 		method: "POST",
 		headers: getAuthHeaders(apiToken),
 		body: JSON.stringify(request),
@@ -253,7 +254,6 @@ export async function uploadProtocolForPreview(
 			type: "initialize-preview",
 			protocol: protocol,
 			assetMeta,
-			architectVersion: appVersion,
 		};
 
 		const initResponse = await sendPreviewRequest<InitializeResponse>(frescoUrl, apiToken, initRequest);
@@ -331,11 +331,9 @@ export async function uploadProtocolForPreview(
 
 		return completeResponse;
 	} catch (error) {
-		// Handle fetch errors (network issues)
-		if (error instanceof TypeError && error.message.includes("fetch")) {
-			throw new Error(
-				`Could not connect to Fresco at ${frescoUrl}. Please check that Fresco is running and the URL is correct.`,
-			);
+		// Handle network errors (TypeError is thrown by fetch for network failures)
+		if (error instanceof TypeError) {
+			throw new Error(`Could not connect to the preview server. (${error.message})`);
 		}
 		throw error;
 	}

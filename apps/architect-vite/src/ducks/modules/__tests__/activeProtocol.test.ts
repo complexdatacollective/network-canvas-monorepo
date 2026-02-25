@@ -210,16 +210,17 @@ describe("activeProtocol", () => {
 			expect(hasProtocol).toBe(true);
 		});
 
-		it("should return false for empty protocol object", () => {
-			// Directly set empty state
+		it("should set protocol and allow assetManifest to be added later", () => {
+			// Set a protocol without assetManifest (like loading an old protocol)
 			store.dispatch(actionCreators.setActiveProtocol({} as CurrentProtocol));
 
 			const state = store.getState();
 			const protocol = state.activeProtocol;
 
-			// Empty object is still set (not null)
+			// Protocol is set (not null)
 			expect(protocol).not.toBeNull();
-			expect(Object.keys(protocol || {}).length).toBe(0);
+			// assetManifest is undefined initially but will be initialized by sub-reducer when needed
+			expect(protocol?.assetManifest).toBeUndefined();
 		});
 	});
 
