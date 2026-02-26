@@ -11,6 +11,7 @@ import type {
 } from "./types";
 
 const PREVIEW_API_VERSION = "v1";
+const ASSET_UPLOAD_TIMEOUT_MS = 60_000; // 60 seconds per asset
 
 export type UploadProgress = {
 	phase: "preparing" | "uploading-assets" | "processing";
@@ -98,18 +99,43 @@ async function handleFetchError(response: Response): Promise<never> {
 async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileName: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
+		let settled = false;
 
-		// Resolve when upload completes - UploadThing may not send a response
+		const settle = (fn: () => void) => {
+			if (!settled) {
+				settled = true;
+				fn();
+			}
+		};
+
+		// Set timeout to prevent hanging forever
+		xhr.timeout = ASSET_UPLOAD_TIMEOUT_MS;
+
+		// UploadThing may not send a response, so resolve when upload completes
 		xhr.upload.addEventListener("load", () => {
-			setTimeout(() => resolve(), 500);
+			// Small delay to allow any response/error to arrive first
+			setTimeout(() => settle(resolve), 500);
+		});
+
+		// If we do get a response, check if it's an error
+		xhr.addEventListener("load", () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				settle(resolve);
+			} else {
+				settle(() => reject(new Error(`Asset upload failed for ${fileName}: Server returned ${xhr.status}`)));
+			}
 		});
 
 		xhr.addEventListener("error", () => {
-			reject(new Error(`Asset upload failed for ${fileName}: Network error`));
+			settle(() => reject(new Error(`Asset upload failed for ${fileName}: Network error`)));
 		});
 
 		xhr.addEventListener("abort", () => {
-			reject(new Error(`Asset upload was aborted for ${fileName}`));
+			settle(() => reject(new Error(`Asset upload was aborted for ${fileName}`)));
+		});
+
+		xhr.addEventListener("timeout", () => {
+			settle(() => reject(new Error(`Asset upload timed out for ${fileName}`)));
 		});
 
 		const formData = new FormData();
