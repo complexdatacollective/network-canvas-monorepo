@@ -7,6 +7,7 @@ import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import Editor from "~/components/Editor";
+import ExternalLink from "~/components/ExternalLink";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
@@ -147,7 +148,26 @@ const StageEditor = (props: StageEditorProps) => {
 		try {
 			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
 			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
-			window.open(previewUrl, "_blank", "noopener,noreferrer");
+
+			// Try to open popup - if blocked, show dialog with link
+			const popup = window.open(previewUrl, "_blank", "noopener,noreferrer");
+			if (!popup) {
+				dispatch(
+					dialogActions.openDialog({
+						type: "Notice",
+						title: "Preview Ready",
+						message: (
+							<div className="flex flex-col gap-4">
+								<p>Your browser blocked the preview popup. Click the link below to open it:</p>
+								<span className="break-all">
+									<ExternalLink href={previewUrl}>{previewUrl}</ExternalLink>
+								</span>
+							</div>
+						),
+						confirmLabel: "Close",
+					}),
+				);
+			}
 		} catch (error) {
 			dispatch(
 				dialogActions.openDialog({
