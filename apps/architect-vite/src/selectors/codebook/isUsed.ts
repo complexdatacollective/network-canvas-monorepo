@@ -11,7 +11,6 @@ import { getIdsFromCodebook } from "./helpers";
 // Types
 export type GetIsUsedOptions = {
 	formNames?: string[];
-	excludePaths?: string[];
 };
 
 type IsUsedMap = {
@@ -58,7 +57,6 @@ const getAllFormsSelector = createSelector([(state: RootState) => state], (state
  *
  * @param options - options object
  * @param options.formNames - names of forms to check for variable usage
- * @param options.excludePaths - paths to exclude from the check (e.g. 'stages') - currently unused
  * @returns selector function that returns a key value object describing which variables are in use
  */
 export const makeGetIsUsed = (options: GetIsUsedOptions = {}) => {
