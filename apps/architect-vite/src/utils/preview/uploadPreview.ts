@@ -11,7 +11,7 @@ import type {
 } from "./types";
 
 const PREVIEW_API_VERSION = "v1";
-const ASSET_UPLOAD_TIMEOUT_MS = 60_000; // 60 seconds per asset
+const ASSET_UPLOAD_TIMEOUT_MS = 180_000; // 3 minutes per asset (supports large video files on slower connections)
 
 export type UploadProgress = {
 	phase: "preparing" | "uploading-assets" | "processing";
