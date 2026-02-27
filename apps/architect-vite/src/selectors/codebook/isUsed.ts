@@ -1,11 +1,11 @@
-import type { EdgeDefinition, EgoDefinition, NodeDefinition, Validation } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
-import { cloneDeep, get, omit } from "lodash";
+import { get } from "lodash";
 import { getFormNames, getFormValues } from "redux-form";
 import { formName as EditableListFormName } from "~/components/EditableList";
 import { formName as StageEditorFormName } from "~/components/StageEditor/configuration";
 import type { RootState } from "~/ducks/store";
-import { getCodebook, getProtocol } from "../protocol";
+import { getVariableIndex } from "../indexes";
+import { getProtocol } from "../protocol";
 import { getIdsFromCodebook } from "./helpers";
 
 // Types
@@ -47,96 +47,50 @@ const getAllFormsSelector = createSelector([(state: RootState) => state], (state
 	return forms;
 });
 
-// Extract variable validations from codebook
-const getVariableValidationsSelector = createSelector([getCodebook], (codebook): Validation[] => {
-	if (!codebook) return [];
-
-	const validations: Validation[] = [];
-
-	const getEntityVariableValidations = (
-		entityDefinition: NodeDefinition | EdgeDefinition | EgoDefinition | undefined,
-	): Validation[] => {
-		if (!entityDefinition?.variables) {
-			return [];
-		}
-
-		return Object.values(entityDefinition.variables).reduce<Validation[]>((memo, variable) => {
-			if ("validation" in variable && variable.validation) {
-				memo.push(variable.validation);
-			}
-			return memo;
-		}, []);
-	};
-
-	// Process ego
-	if (codebook.ego) {
-		validations.push(...getEntityVariableValidations(codebook.ego));
-	}
-
-	// Process nodes
-	if (codebook.node) {
-		for (const entityDefinition of Object.values(codebook.node) as NodeDefinition[]) {
-			validations.push(...getEntityVariableValidations(entityDefinition));
-		}
-	}
-
-	// Process edges
-	if (codebook.edge) {
-		for (const entityDefinition of Object.values(codebook.edge) as EdgeDefinition[]) {
-			validations.push(...getEntityVariableValidations(entityDefinition));
-		}
-	}
-
-	return validations;
-});
-
 /**
  * Gets a key value object describing which variables are in use (including in redux forms).
  *
- * Naive implementation: just checks if the variable id is in the flattened
- * protocol, or any redux forms.
+ * Uses the same path-based detection as getVariableIndex (defined in indexes.js) to ensure
+ * consistency between "is used" checks and "where used" display. Both systems share the
+ * same source of truth: paths.variables.
  *
- * JRM BUGFIX: This previously did not check for `sameAs` or `differentFrom`
- * variable references that are contained within codebook variable definitions.
- * This caused a bug where these variables were able to be removed, creating
- * references to variables that no longer existed.
+ * For redux forms (unsaved changes), JSON string search is used since form paths are dynamic.
  *
  * @param options - options object
  * @param options.formNames - names of forms to check for variable usage
- * @param options.excludePaths - paths to exclude from the check (e.g. 'stages')
+ * @param options.excludePaths - paths to exclude from the check (e.g. 'stages') - currently unused
  * @returns selector function that returns a key value object describing which variables are in use
  */
 export const makeGetIsUsed = (options: GetIsUsedOptions = {}) => {
-	const { formNames = [StageEditorFormName, EditableListFormName], excludePaths = [] } = options;
+	const { formNames = [StageEditorFormName, EditableListFormName] } = options;
 
 	// Create the forms selector based on whether we have specific form names or not
 	const formsSelector = formNames.length > 0 ? getFormsSelector(formNames) : getAllFormsSelector;
 
-	return createSelector(
-		[getProtocol, formsSelector, getVariableValidationsSelector],
-		(protocol, forms, validations): IsUsedMap => {
-			if (!protocol || !protocol.codebook) {
-				return {};
-			}
+	// Uses getVariableIndex to share the same source of truth as usage display
+	return createSelector([getProtocol, formsSelector, getVariableIndex], (protocol, forms, variableIndex): IsUsedMap => {
+		if (!protocol || !protocol.codebook) {
+			return {};
+		}
 
-			const variableIds = getIdsFromCodebook(protocol.codebook);
-			const searchLocations = {
-				stages: protocol.stages,
-				forms,
-				validations,
-			};
+		const variableIds = getIdsFromCodebook(protocol.codebook);
 
-			const data = excludePaths.length > 0 ? omit(cloneDeep(searchLocations), excludePaths) : searchLocations;
-			const flattenedData = JSON.stringify(data);
+		// Variables referenced at known paths (same source as usage display)
+		const referencedVariables = new Set(Object.values(variableIndex));
 
-			const isUsed = variableIds.reduce<IsUsedMap>((memo, variableId) => {
-				memo[variableId] = flattenedData.includes(`"${variableId}"`);
-				return memo;
-			}, {});
+		// For forms (unsaved changes), use JSON search since form structure is dynamic
+		const formsData = JSON.stringify(forms);
 
-			return isUsed;
-		},
-	);
+		const isUsed = variableIds.reduce<IsUsedMap>((memo, variableId) => {
+			const inProtocol = referencedVariables.has(variableId);
+			const inForms = formsData.includes(`"${variableId}"`);
+
+			memo[variableId] = inProtocol || inForms;
+			return memo;
+		}, {});
+
+		return isUsed;
+	});
 };
 
 // Default instance of getIsUsed
