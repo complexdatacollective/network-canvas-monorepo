@@ -307,13 +307,17 @@ export async function uploadProtocolForPreview(
 		// Status is "job-created" - we have assets to upload
 		const { protocolId, presignedUrls } = initResponse;
 
-		// Step 2: Upload assets to presigned URLs
+		// Step 2: Upload assets to presigned URLs (match by assetId, not index)
 		for (let i = 0; i < presignedUrls.length; i++) {
-			const uploadUrl = presignedUrls[i];
-			const localAsset = fileAssets[i];
+			const presignedUrl = presignedUrls[i];
+			if (!presignedUrl) {
+				throw new Error(`Missing presigned URL at index ${i}`);
+			}
+			const { assetId, url } = presignedUrl;
+			const localAsset = fileAssets.find((a) => a.assetId === assetId);
 
-			if (!uploadUrl || !localAsset) {
-				throw new Error(`Missing upload URL or asset at index ${i}`);
+			if (!localAsset) {
+				throw new Error(`No local asset found for assetId: ${assetId}`);
 			}
 
 			onProgress?.({
@@ -323,7 +327,7 @@ export async function uploadProtocolForPreview(
 			});
 
 			try {
-				await uploadAssetToPresignedUrl(uploadUrl, localAsset.data, localAsset.name);
+				await uploadAssetToPresignedUrl(url, localAsset.data, localAsset.name);
 			} catch (uploadError) {
 				// If upload fails, abort the preview job
 				await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
