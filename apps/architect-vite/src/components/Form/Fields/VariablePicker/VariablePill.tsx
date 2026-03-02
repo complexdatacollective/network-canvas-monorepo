@@ -116,8 +116,11 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 	const existingVariables = useAppSelector(existingVariablesSelector);
 
 	const existingVariableNames = useMemo(
-		() => Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
-		[existingVariables],
+		() =>
+			Object.keys(existingVariables)
+				.filter((variableId) => variableId !== uuid) // Exclude current variable being edited
+				.map((variable) => get(existingVariables[variable], "name")),
+		[existingVariables, uuid],
 	);
 
 	const handleUpdateName = (event: React.ChangeEvent<HTMLInputElement>) => {
