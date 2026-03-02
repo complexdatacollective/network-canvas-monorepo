@@ -17,7 +17,7 @@ const ScaffoldingStep = (_props: StageEditorSectionProps) => (
 				<ValidatedField
 					name="text"
 					component={RichText}
-					componentProps={{ label: "Participant instructions for building the family tree structure" }}
+					componentProps={{ label: "Prompt for building the family tree structure" }}
 					validation={{ required: true }}
 				/>
 			</Row>

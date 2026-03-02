@@ -85,7 +85,7 @@
 		"@types/redux-form": "^8.3.11",
 		"@vitejs/plugin-react-swc": "^4.2.2",
 		"jsdom": "^27.4.0",
-		"tailwindcss": "^4.1.18",
+		"tailwindcss": "^4.2.0",
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vitest": "catalog:"
