@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "../../../tooling/tailwind/globals.css";
+@config "../tailwind.config.ts";
 
 @layer base {
 	:root {
@@ -33,7 +33,7 @@
 		--success: var(--sea-green);
 		--success-foreground: var(--white);
 
-		--border: var(--platinum--dark);
+		--border: var(--platinum-dark);
 
 		--link: var(--neon-coral);
 

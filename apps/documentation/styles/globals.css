@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "../../../tooling/tailwind/globals.css";
+@config "../tailwind.config.ts";
 
 @layer base {
 	:root {
@@ -118,12 +118,10 @@
 	}
 }
 
-@layer utilities {
-	.focusable {
-		@apply focus-visible:outline-4;
-		@apply focus-visible:outline-offset-4;
-		@apply focus-visible:outline-mustard;
-	}
+@utility focusable {
+	@apply focus-visible:outline-4;
+	@apply focus-visible:outline-offset-4;
+	@apply focus-visible:outline-mustard;
 }
 
 .DocSearch-Button {
@@ -165,20 +163,14 @@
 	--docsearch-footer-background: #fff;
 	--docsearch-footer-shadow: 0 -1px 0 0 rgb(224, 227, 232), 0 -3px 6px 0 rgba(69, 98, 155, 0.12);
 
-	@apply w-full !important;
-	@apply h-10 !important;
-	@apply rounded-input !important;
-	@apply bg-input !important;
-	@apply m-0 !important;
-	@apply px-2 !important;
-	@apply focusable !important;
+	@apply w-full! h-10! rounded-input! bg-input! m-0! px-2!;
+	@apply focusable;
 
 	border: 1px solid hsl(var(--border));
 	font-weight: inherit;
 	color: inherit;
 
 	.DocSearch-Button-Placeholder {
-		@apply px-3 !important;
-		@apply text-sm !important;
+		@apply px-3! text-sm!;
 	}
 }
