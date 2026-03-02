@@ -49,7 +49,7 @@ catalogs:
       specifier: ^0.1.1
       version: 0.1.1
     '@tailwindcss/postcss':
-      specifier: ^4.2.0
+      specifier: ^4.2.1
       version: 4.2.1
     '@tailwindcss/typography':
       specifier: ^0.5.19
@@ -103,8 +103,8 @@ catalogs:
       specifier: ^3.4.0
       version: 3.4.0
     tailwindcss:
-      specifier: ^4.2.0
-      version: 4.2.0
+      specifier: ^4.2.1
+      version: 4.2.1
     tailwindcss-animate:
       specifier: ^1.0.7
       version: 1.0.7
@@ -262,7 +262,7 @@ importers:
         version: 5.0.3(next@16.1.1(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.3))
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.0
+        version: 4.2.1
       tsx:
         specifier: 'catalog:'
         version: 4.21.0
@@ -562,7 +562,7 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(react-redux@9.2.0(@types/react@19.2.8)(react@19.2.3)(redux@5.0.1))(react@19.2.3)
       '@tailwindcss/vite':
-        specifier: ^4.2.0
+        specifier: ^4.2.1
         version: 4.2.1(vite@7.2.2(@types/node@25.3.0)(jiti@2.6.1)(lightningcss@1.31.1)(sass@1.94.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@tippyjs/react':
         specifier: ^4.2.5
@@ -758,8 +758,8 @@ importers:
         specifier: ^27.4.0
         version: 27.4.0(bufferutil@4.0.9)
       tailwindcss:
-        specifier: ^4.2.0
-        version: 4.2.0
+        specifier: ^4.2.1
+        version: 4.2.1
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -862,13 +862,13 @@ importers:
         version: 2.1.4
       '@tailwindcss/container-queries':
         specifier: 'catalog:'
-        version: 0.1.1(tailwindcss@4.2.0)
+        version: 0.1.1(tailwindcss@4.2.1)
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.2.1
       '@tailwindcss/typography':
         specifier: 'catalog:'
-        version: 0.5.19(tailwindcss@4.2.0)
+        version: 0.5.19(tailwindcss@4.2.1)
       '@types/hast':
         specifier: ^3.0.4
         version: 3.0.4
@@ -928,7 +928,7 @@ importers:
         version: 3.4.0
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.0
+        version: 4.2.1
       tsx:
         specifier: 'catalog:'
         version: 4.21.0
@@ -1278,7 +1278,7 @@ importers:
         version: 19.2.3
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.0
+        version: 4.2.1
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1474,7 +1474,7 @@ importers:
         version: 19.2.3
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.0
+        version: 4.2.1
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1483,10 +1483,10 @@ importers:
     dependencies:
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.0
+        version: 4.2.1
       tailwindcss-animate:
         specifier: 'catalog:'
-        version: 1.0.7(tailwindcss@4.2.0)
+        version: 1.0.7(tailwindcss@4.2.1)
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -11081,9 +11081,6 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders'
 
-  tailwindcss@4.2.0:
-    resolution: {integrity: sha512-yYzTZ4++b7fNYxFfpnberEEKu43w44aqDMNM9MHMmcKuCH7lL8jJ4yJ7LGHv7rSwiqM0nkiobF9I6cLlpS2P7Q==}
-
   tailwindcss@4.2.1:
     resolution: {integrity: sha512-/tBrSQ36vCleJkAOsy9kbNTgaxvGbyOamC30PRePTQe/o1MFwEKHQk4Cn7BNGaPtjp+PuUrByJehM1hgxfq4sw==}
 
@@ -15999,9 +15996,9 @@ snapshots:
       typescript: 5.9.3
       zod: 4.2.0
 
-  '@tailwindcss/container-queries@0.1.1(tailwindcss@4.2.0)':
+  '@tailwindcss/container-queries@0.1.1(tailwindcss@4.2.1)':
     dependencies:
-      tailwindcss: 4.2.0
+      tailwindcss: 4.2.1
 
   '@tailwindcss/node@4.2.1':
     dependencies:
@@ -16072,10 +16069,10 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.2.1
 
-  '@tailwindcss/typography@0.5.19(tailwindcss@4.2.0)':
+  '@tailwindcss/typography@0.5.19(tailwindcss@4.2.1)':
     dependencies:
       postcss-selector-parser: 6.0.10
-      tailwindcss: 4.2.0
+      tailwindcss: 4.2.1
 
   '@tailwindcss/vite@4.2.1(vite@7.2.2(@types/node@25.3.0)(jiti@2.6.1)(lightningcss@1.31.1)(sass@1.94.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -23344,11 +23341,9 @@ snapshots:
 
   tailwind-merge@3.4.0: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@4.2.0):
+  tailwindcss-animate@1.0.7(tailwindcss@4.2.1):
     dependencies:
-      tailwindcss: 4.2.0
-
-  tailwindcss@4.2.0: {}
+      tailwindcss: 4.2.1
 
   tailwindcss@4.2.1: {}
 
