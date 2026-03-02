@@ -1,6 +1,6 @@
+@config "../tailwind.config.ts";
 @import "tailwindcss";
 @import "../../../tooling/tailwind/globals.css";
-@config "../tailwind.config.ts";
 
 @layer base {
 	:root {
@@ -164,7 +164,7 @@
 	--docsearch-footer-shadow: 0 -1px 0 0 rgb(224, 227, 232), 0 -3px 6px 0 rgba(69, 98, 155, 0.12);
 
 	@apply w-full! h-10! rounded-input! bg-input! m-0! px-2!;
-	@apply focusable;
+	@apply focusable!;
 
 	border: 1px solid hsl(var(--border));
 	font-weight: inherit;
