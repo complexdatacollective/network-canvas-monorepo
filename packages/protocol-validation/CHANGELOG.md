@@ -1,5 +1,13 @@
 # @codaco/protocol-validation
 
+## 11.0.0
+
+### Major Changes
+
+- 8f91391: Remove `introductionPanel` from Geospatial interface schema.
+
+  This is a breaking change for existing protocols that include an `introductionPanel` on Geospatial stages. Protocols with Geospatial interfaces no longer support or require an introduction panel.
+
 ## 10.1.0
 
 ### Minor Changes
