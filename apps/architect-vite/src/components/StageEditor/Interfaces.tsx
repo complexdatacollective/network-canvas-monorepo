@@ -175,7 +175,7 @@ const INTERFACE_CONFIGS = {
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/tie-strength-census/",
 	},
 	Geospatial: {
-		sections: [FilteredNodeType, IntroductionPanel, MapOptions, GeospatialPrompts, SkipLogic, InterviewScript],
+		sections: [FilteredNodeType, MapOptions, GeospatialPrompts, SkipLogic, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/geospatial/",
 	},
 	Anonymisation: {

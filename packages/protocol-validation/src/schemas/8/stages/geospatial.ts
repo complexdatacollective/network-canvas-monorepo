@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker";
 import { getAssetId, getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
 import { z } from "~/utils/zod-mock-extension";
-import { geospatialPromptSchema, IntroductionPanelSchema, NodeStageSubjectSchema } from "../common";
+import { geospatialPromptSchema, NodeStageSubjectSchema } from "../common";
 import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
 
@@ -86,7 +86,6 @@ export const geospatialStage = baseStageSchema
 					});
 				}
 			}),
-		introductionPanel: IntroductionPanelSchema,
 	})
 	.generateMock((base) => ({
 		...base,
