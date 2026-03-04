@@ -5,11 +5,9 @@ import type { StageEditorSectionProps } from "~/components/StageEditor/Interface
 import { ValidatedField } from "../Form";
 import IssueAnchor from "../IssueAnchor";
 
-const IntroductionPanel = ({ interfaceType }: StageEditorSectionProps) => {
+const IntroductionPanel = (_props: StageEditorSectionProps) => {
 	const summaryText =
-		interfaceType === "Geospatial"
-			? "This panel is shown prior to the interface, and should serve as an introduction to the task."
-			: "This panel is shown prior to completion of the forms, and should serve as an introduction to the task.";
+		"This panel is shown prior to completion of the forms, and should serve as an introduction to the task.";
 
 	return (
 		<Section title="Introduction Panel" summary={<p>{summaryText}</p>}>
