@@ -1,5 +1,18 @@
 # architect-vite
 
+## 7.4.0
+
+### Minor Changes
+
+- 8f91391: Remove `introductionPanel` from Geospatial interface schema.
+
+  This is a breaking change for existing protocols that include an `introductionPanel` on Geospatial stages. Protocols with Geospatial interfaces no longer support or require an introduction panel.
+
+### Patch Changes
+
+- Updated dependencies [8f91391]
+  - @codaco/protocol-validation@11.0.0
+
 ## 7.3.0
 
 ### Minor Changes
