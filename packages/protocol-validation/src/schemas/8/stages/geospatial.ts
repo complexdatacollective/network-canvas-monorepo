@@ -62,6 +62,14 @@ const mapOptions = z.object({
 	targetFeatureProperty: z
 		.string()
 		.generateMock(() => faker.helpers.arrayElement(["name", "location_type", "category"])), // property of geojson to select
+	showTransit: z
+		.boolean()
+		.optional()
+		.generateMock(() => faker.datatype.boolean()),
+	allowSearch: z
+		.boolean()
+		.optional()
+		.generateMock(() => faker.datatype.boolean()),
 });
 
 export type MapOptions = z.infer<typeof mapOptions>;

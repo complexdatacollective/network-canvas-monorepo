@@ -11,6 +11,7 @@ import GeoAPIKey from "../Form/Fields/Geospatial/GeoAPIKey";
 import GeoDataSource from "../Form/Fields/Geospatial/GeoDataSource";
 import MapSelection from "../Form/Fields/Geospatial/MapSelection";
 import { mapboxStyleOptions } from "../Form/Fields/Geospatial/mapboxConstants";
+import Toggle from "../Form/Fields/Toggle";
 import ValidatedField from "../Form/ValidatedField";
 
 type MapOptionsProps = StageEditorSectionProps & {
@@ -22,6 +23,8 @@ type MapOptionsProps = StageEditorSectionProps & {
 		color?: string;
 		targetFeatureProperty?: string;
 		style?: string;
+		showTransit?: boolean;
+		allowSearch?: boolean;
 	};
 	disabled: boolean;
 };
@@ -34,6 +37,8 @@ const defaultMapOptions = {
 	color: "",
 	targetFeatureProperty: "",
 	style: "",
+	showTransit: false,
+	allowSearch: false,
 };
 
 const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProps) => {
@@ -100,7 +105,11 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 					</Row>
 				)}
 			</Section>
-			<Section title="Map Style" summary={<p>Customize the colors and style of the map.</p>} disabled={disabled}>
+			<Section
+				title="Map Style"
+				summary={<p>Customize the colors, style, and features of the map.</p>}
+				disabled={disabled}
+			>
 				<ValidatedField
 					component={ColorPicker as React.ComponentType}
 					name="mapOptions.color"
@@ -118,6 +127,26 @@ const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProp
 					componentProps={{
 						options: mapboxStyleOptions,
 						label: "Which mapbox style would you like to use for the map itself?",
+					}}
+				/>
+
+				<h4>Show Public Transit</h4>
+				<ValidatedField
+					name="mapOptions.showTransit"
+					component={Toggle as React.ComponentType}
+					validation={{}}
+					componentProps={{
+						label: "Show public transit routes and stations on the map.",
+					}}
+				/>
+
+				<h4>Allow Location Search</h4>
+				<ValidatedField
+					name="mapOptions.allowSearch"
+					component={Toggle as React.ComponentType}
+					validation={{}}
+					componentProps={{
+						label: "Allow participants to search the map for addresses, neighborhoods, and points of interest.",
 					}}
 				/>
 			</Section>
