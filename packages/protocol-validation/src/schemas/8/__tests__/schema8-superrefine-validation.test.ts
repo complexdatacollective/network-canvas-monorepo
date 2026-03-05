@@ -2020,4 +2020,89 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 			}
 		});
 	});
+
+	describe("Geospatial Stage MapOptions Validation", () => {
+		const createGeospatialProtocol = (mapOptionsOverrides = {}) => ({
+			...baseValidProtocol,
+			stages: [
+				{
+					id: "geospatial1",
+					type: "Geospatial",
+					label: "Geospatial Stage",
+					subject: {
+						entity: "node",
+						type: "person",
+					},
+					mapOptions: {
+						tokenAssetId: "asset-token-123",
+						style: "mapbox://styles/mapbox/streets-v12",
+						center: [-73.935242, 40.73061],
+						initialZoom: 10,
+						dataSourceAssetId: "asset-geojson-456",
+						color: "node-color-seq-1",
+						targetFeatureProperty: "name",
+						...mapOptionsOverrides,
+					},
+					prompts: [
+						{
+							id: "geoPrompt1",
+							text: "Select your location",
+							variable: "name",
+						},
+					],
+				},
+			],
+		});
+
+		it("validates Geospatial stage with showTransit and allowSearch omitted", () => {
+			const protocol = createGeospatialProtocol();
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("validates Geospatial stage with showTransit set to true", () => {
+			const protocol = createGeospatialProtocol({ showTransit: true });
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("validates Geospatial stage with showTransit set to false", () => {
+			const protocol = createGeospatialProtocol({ showTransit: false });
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("validates Geospatial stage with allowSearch set to true", () => {
+			const protocol = createGeospatialProtocol({ allowSearch: true });
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("validates Geospatial stage with allowSearch set to false", () => {
+			const protocol = createGeospatialProtocol({ allowSearch: false });
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("validates Geospatial stage with both showTransit and allowSearch set", () => {
+			const protocol = createGeospatialProtocol({
+				showTransit: true,
+				allowSearch: true,
+			});
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(true);
+		});
+
+		it("rejects Geospatial stage with invalid showTransit type", () => {
+			const protocol = createGeospatialProtocol({ showTransit: "yes" });
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(false);
+		});
+
+		it("rejects Geospatial stage with invalid allowSearch type", () => {
+			const protocol = createGeospatialProtocol({ allowSearch: 1 });
+			const result = ProtocolSchemaV8.safeParse(protocol);
+			expect(result.success).toBe(false);
+		});
+	});
 });
