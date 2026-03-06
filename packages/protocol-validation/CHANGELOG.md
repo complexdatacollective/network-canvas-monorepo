@@ -1,8 +1,8 @@
 # @codaco/protocol-validation
 
-## 11.0.1
+## 11.1.0
 
-### Patch Changes
+### Minor Changes
 
 - 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
 

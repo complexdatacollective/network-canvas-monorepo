@@ -1,8 +1,8 @@
 # architect-vite
 
-## 7.4.1
+## 7.5.0
 
-### Patch Changes
+### Minor Changes
 
 - 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
 
@@ -12,7 +12,7 @@
   Both options default to false (disabled).
 
 - Updated dependencies [273bcbe]
-  - @codaco/protocol-validation@11.0.1
+  - @codaco/protocol-validation@11.1.0
 
 ## 7.4.0
 
