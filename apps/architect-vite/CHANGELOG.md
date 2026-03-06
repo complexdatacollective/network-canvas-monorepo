@@ -1,5 +1,19 @@
 # architect-vite
 
+## 7.5.0
+
+### Minor Changes
+
+- 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
+
+  - showTransit: When enabled, Fresco displays transit layers on the map
+  - allowSearch: When enabled, participants can search the map for locations
+
+  Both options default to false (disabled).
+
+- Updated dependencies [273bcbe]
+  - @codaco/protocol-validation@11.1.0
+
 ## 7.4.0
 
 ### Minor Changes
