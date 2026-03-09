@@ -58,7 +58,7 @@
 		"@vitejs/plugin-react": "^5.1.2",
 		"@vitest/coverage-v8": "^4.0.16",
 		"animejs": "^2.2.0",
-		"archiver": "^3.1.1",
+		"archiver": "^7.0.1",
 		"autoprefixer": "^9.8.8",
 		"axios": "^1.13.6",
 		"babel-runtime": "6.26.0",
@@ -128,7 +128,7 @@
 		"vitest": "^4.0.16"
 	},
 	"dependencies": {
-		"archiver": "^3.1.1",
+		"archiver": "^7.0.1",
 		"decompress": "^4.2.1",
 		"electron-log": "^4.2.2",
 		"fs-extra": "^8.1.0"
