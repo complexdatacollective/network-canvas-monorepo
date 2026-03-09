@@ -33,7 +33,11 @@ const getSafeValue = (value: unknown, existing: string[] = []): unknown => {
 	return getNextSafeValue(safeValue, existing);
 };
 
-const getNames = (obj: NamedRecord = {}): string[] => Object.keys(obj).map((key) => obj[key]!.name);
+const getNames = (obj: NamedRecord = {}): string[] =>
+	Object.keys(obj).map((key) => {
+		const entry = obj[key];
+		return entry ? entry.name : "";
+	});
 
 const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] =>
 	options.reduce<OptionEntry[]>(
@@ -60,13 +64,14 @@ const migrateVariable = (variable: VariableRecord[string], acc: VariableRecord =
 	) as unknown as VariableRecord[string];
 
 const migrateVariables = (variables: VariableRecord = {}): VariableRecord =>
-	Object.keys(variables).reduce<VariableRecord>(
-		(acc, variableId) => ({
+	Object.keys(variables).reduce<VariableRecord>((acc, variableId) => {
+		const variable = variables[variableId];
+		if (!variable) return acc;
+		return {
 			...acc,
-			[variableId]: migrateVariable(variables[variableId]!, acc),
-		}),
-		{},
-	);
+			[variableId]: migrateVariable(variable, acc),
+		};
+	}, {});
 
 const migrateType = (type: TypeEntry, acc: TypesRecord = {}): TypeEntry =>
 	setProps(
@@ -78,13 +83,14 @@ const migrateType = (type: TypeEntry, acc: TypesRecord = {}): TypeEntry =>
 	) as unknown as TypeEntry;
 
 const migrateTypes = (types: TypesRecord = {}): TypesRecord =>
-	Object.keys(types).reduce<TypesRecord>(
-		(acc, typeId) => ({
+	Object.keys(types).reduce<TypesRecord>((acc, typeId) => {
+		const type = types[typeId];
+		if (!type) return acc;
+		return {
 			...acc,
-			[typeId]: migrateType(types[typeId]!, acc),
-		}),
-		{},
-	);
+			[typeId]: migrateType(type, acc),
+		};
+	}, {});
 
 const migratePrompt = (prompt: Prompt): Prompt => {
 	const booleanOnlyAttributes = (prompt.additionalAttributes ?? []).filter(
@@ -127,7 +133,7 @@ const migrationV3toV4 = createMigration({
 			{
 				node: migrateTypes(codebook.node as TypesRecord),
 				edge: migrateTypes(codebook.edge as TypesRecord),
-				ego: migrateType(codebook.ego as TypeEntry),
+				ego: codebook.ego ? migrateType(codebook.ego as TypeEntry) : undefined,
 			},
 			codebook,
 		);
