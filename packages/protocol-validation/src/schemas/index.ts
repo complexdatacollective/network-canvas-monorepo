@@ -2,7 +2,16 @@ import { z } from "zod";
 import ProtocolSchemaV7 from "./7/schema";
 import ProtocolSchemaV8 from "./8/schema";
 
-export const SchemaVersionSchema = z.union([z.literal(7), z.literal(8)]);
+export const SchemaVersionSchema = z.union([
+	z.literal(1),
+	z.literal(2),
+	z.literal(3),
+	z.literal(4),
+	z.literal(5),
+	z.literal(6),
+	z.literal(7),
+	z.literal(8),
+]);
 
 export type SchemaVersion = z.infer<typeof SchemaVersionSchema>;
 export const CURRENT_SCHEMA_VERSION = 8 as const;
