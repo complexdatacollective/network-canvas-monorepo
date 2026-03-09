@@ -14,7 +14,12 @@ protocolMigrations.register(migrationV7toV8);
 
 export function detectSchemaVersion(document: unknown): SchemaVersion {
 	try {
-		const partial = SchemaVersionSchema.safeParse((document as { schemaVersion?: unknown })?.schemaVersion);
+		const rawVersion = (document as { schemaVersion?: unknown })?.schemaVersion;
+
+		// Handle v1 string schemaVersion ("1" -> 1)
+		const coerced = typeof rawVersion === "string" ? Number(rawVersion) : rawVersion;
+
+		const partial = SchemaVersionSchema.safeParse(coerced);
 
 		if (partial.success) {
 			return partial.data;
@@ -30,16 +35,17 @@ export function migrateProtocol(
 	targetVersion: SchemaVersion = CURRENT_SCHEMA_VERSION,
 	dependencies: Record<string, unknown> = {},
 ): CurrentProtocol {
-	// Detect and validate source schema version
 	const detectedVersion = detectSchemaVersion(document);
 
-	// Validate document against its detected schema version
-	const preValidationResult = VersionedProtocolSchema.safeParse(document);
-	if (!preValidationResult.success) {
-		throw new ValidationError(
-			`Invalid protocol document for version ${detectedVersion}: ${preValidationResult.error.message}`,
-			detectedVersion,
-		);
+	// Only pre-validate versions that have Zod schemas (7+)
+	if (detectedVersion >= 7) {
+		const preValidationResult = VersionedProtocolSchema.safeParse(document);
+		if (!preValidationResult.success) {
+			throw new ValidationError(
+				`Invalid protocol document for version ${detectedVersion}: ${preValidationResult.error.message}`,
+				detectedVersion,
+			);
+		}
 	}
 
 	// Perform migration

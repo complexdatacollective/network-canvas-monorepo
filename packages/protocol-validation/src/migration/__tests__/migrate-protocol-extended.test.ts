@@ -13,7 +13,7 @@ describe("Protocol Migration - Extended Tests", () => {
 		});
 
 		it("should throw error for string schemaVersion", () => {
-			const doc = { schemaVersion: "8" };
+			const doc = { schemaVersion: "abc" };
 			expect(() => detectSchemaVersion(doc)).toThrow(SchemaVersionDetectionError);
 		});
 
@@ -57,7 +57,7 @@ describe("Protocol Migration - Extended Tests", () => {
 		});
 
 		it("should indicate cannot migrate for unknown source version", () => {
-			const info = getMigrationInfo(6 as never, 8);
+			const info = getMigrationInfo(0 as never, 8);
 			expect(info.canMigrate).toBe(false);
 			expect(info.path).toEqual([]);
 		});

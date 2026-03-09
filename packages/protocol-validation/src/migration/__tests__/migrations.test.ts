@@ -16,8 +16,20 @@ describe("Protocol Migrations", () => {
 			expect(detectSchemaVersion(doc)).toBe(8);
 		});
 
+		it("detects versions 1 through 6", () => {
+			for (const v of [1, 2, 3, 4, 5, 6]) {
+				const doc = { schemaVersion: v };
+				expect(detectSchemaVersion(doc)).toBe(v);
+			}
+		});
+
+		it("coerces string schemaVersion for v1", () => {
+			const doc = { schemaVersion: "1" };
+			expect(detectSchemaVersion(doc)).toBe(1);
+		});
+
 		it("throws error for unknown versions", () => {
-			const doc = { schemaVersion: 6 };
+			const doc = { schemaVersion: 0 };
 			expect(() => detectSchemaVersion(doc)).toThrow(SchemaVersionDetectionError);
 		});
 
@@ -81,7 +93,7 @@ describe("Protocol Migrations", () => {
 		});
 
 		it("throws error for unknown version", () => {
-			const invalidDoc = { schemaVersion: 6 };
+			const invalidDoc = { schemaVersion: 0 };
 			expect(() => migrateProtocol(invalidDoc)).toThrow(SchemaVersionDetectionError);
 		});
 
