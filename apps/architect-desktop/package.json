@@ -110,7 +110,7 @@
 		"react-test-renderer": "^16.13.1",
 		"react-transition-group": "^4.4.1",
 		"react-virtualized-auto-sizer": "^1.0.6",
-		"react-window": "^1.8.6",
+		"react-window": "^2.2.7",
 		"recompose": "^0.30.0",
 		"redux": "^4.0.5",
 		"redux-form": "^8.3.6",
