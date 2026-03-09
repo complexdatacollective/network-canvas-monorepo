@@ -379,8 +379,8 @@ importers:
         specifier: ^26.8.1
         version: 26.8.1
       electron-devtools-installer:
-        specifier: ^3.2.0
-        version: 3.2.1
+        specifier: ^4.0.0
+        version: 4.0.0
       electron-vite:
         specifier: ^5.0.0
         version: 5.0.0(@swc/core@1.15.2)(vite@7.2.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(sass@1.97.3)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -1084,8 +1084,8 @@ importers:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.7.0)
       electron-devtools-installer:
-        specifier: ^3.0.0
-        version: 3.2.1
+        specifier: ^4.0.0
+        version: 4.0.0
       electron-vite:
         specifier: ^5.0.0
         version: 5.0.0(@swc/core@1.15.2)(vite@7.2.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(sass@1.97.3)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -6952,8 +6952,8 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  electron-devtools-installer@3.2.1:
-    resolution: {integrity: sha512-FaCi+oDCOBTw0gJUsuw5dXW32b2Ekh5jO8lI1NRCQigo3azh2VogsIi0eelMVrP1+LkN/bewyH3Xoo1USjO0eQ==}
+  electron-devtools-installer@4.0.0:
+    resolution: {integrity: sha512-9Tntu/jtfSn0n6N/ZI6IdvRqXpDyLQiDuuIbsBI+dL+1Ef7C8J2JwByw58P3TJiNeuqyV3ZkphpNWuZK5iSY2w==}
 
   electron-log@4.4.8:
     resolution: {integrity: sha512-QQ4GvrXO+HkgqqEOYbi+DHL7hj5JM+nHi/j+qrN9zeeXVKy8ZABgbu4CnG+BBqDZ2+tbeq9tUC4DZfIWFU5AZA==}
@@ -10510,11 +10510,6 @@ packages:
 
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
-    hasBin: true
-
-  rimraf@3.0.2:
-    resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
     deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
@@ -18292,11 +18287,8 @@ snapshots:
       - electron-builder-squirrel-windows
       - supports-color
 
-  electron-devtools-installer@3.2.1:
+  electron-devtools-installer@4.0.0:
     dependencies:
-      rimraf: 3.0.2
-      semver: 7.7.3
-      tslib: 2.8.1
       unzip-crx-3: 0.2.0
 
   electron-log@4.4.8: {}
@@ -22826,10 +22818,6 @@ snapshots:
       glob: 7.2.3
 
   rimraf@2.7.1:
-    dependencies:
-      glob: 7.2.3
-
-  rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
 
