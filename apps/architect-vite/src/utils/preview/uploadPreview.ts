@@ -242,7 +242,7 @@ async function sendPreviewRequest<T extends PreviewResponse>(
 ): Promise<T> {
 	let response: Response;
 	try {
-		response = await fetch(`${frescoUrl}/api/preview/${PREVIEW_API_VERSION}`, {
+		response = await fetch(`${frescoUrl}/api/${PREVIEW_API_VERSION}/preview`, {
 			method: "POST",
 			headers: getAuthHeaders(apiToken),
 			body: JSON.stringify(request),
