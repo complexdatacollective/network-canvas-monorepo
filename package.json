@@ -7,7 +7,7 @@
 		"test": "pnpm -r --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' test",
 		"test:watch": "pnpm -r --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' test:watch",
 		"publish-packages": "pnpm exec changeset publish",
-		"version-packages": "pnpm exec changeset version && pnpm lint:fix",
+		"version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
 		"changeset": "changeset add",
 		"lint": "biome check .",
 		"lint:fix": "biome check . --write",
