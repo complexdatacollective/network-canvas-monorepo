@@ -5,7 +5,7 @@ import { EdgeStageSubjectSchema, FormSchema, NodeStageSubjectSchema, promptSchem
 import { baseStageSchema } from "./base";
 
 export const familyCensusStage = baseStageSchema.extend({
-	type: z.literal("FamilyCensus"),
+	type: z.literal("FamilyTreeCensus"),
 	// The mode of family tree census, which determines the type of relationships that are captured and how they are represented in the data model.
 	mode: z.enum(["sociological", "biological"]).generateMock(() => "sociological"),
 	// Biological sex variable on the ego entity.

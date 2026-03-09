@@ -22,6 +22,15 @@ const mockStore = configureStore({
 		app: () => ({}),
 		ui: () => ({}),
 		protocols: () => ({}),
+		activeProtocol: () => ({
+			past: [],
+			present: null,
+			future: [],
+			timeline: [],
+		}),
+		protocolValidation: () => ({
+			validationResult: null,
+		}),
 	},
 });
 
