@@ -77,7 +77,10 @@ function main() {
 	if (changedPackages.length === 0) {
 		log("No packages with changesets found. Building all packages as fallback.");
 		try {
-			execSync("pnpm run build", { stdio: "inherit" });
+			execSync(
+				"pnpm -r --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' build",
+				{ stdio: "inherit" },
+			);
 			log("✅ Built all packages");
 		} catch (error) {
 			log(`❌ Failed to build all packages: ${error.message}`);
