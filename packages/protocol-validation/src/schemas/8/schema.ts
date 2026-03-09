@@ -22,8 +22,9 @@ export * from "./variables";
 import { getAssetId } from "~/utils/mock-seeds";
 import { assetSchema } from "./assets";
 import { CodebookSchema, type EdgeDefinition, type NodeDefinition } from "./codebook";
-import { ExperimentsSchema, type StageSubject } from "./common";
-import { stageSchema } from "./stages";
+import { ExperimentsSchema, type FormField, type StageSubject } from "./common";
+import type { FilterRule } from "./filters";
+import { type Prompt, stageSchema } from "./stages";
 
 const ProtocolSchema = z
 	.strictObject({
@@ -66,7 +67,7 @@ const ProtocolSchema = z
 
 			// 2. Form field validation - check variables exist in appropriate codebook entity
 			if ("form" in stage && stage.form?.fields) {
-				stage.form.fields.forEach((field, fieldIndex) => {
+				stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
 					let subject: StageSubject | undefined;
 					if (stage.type === "EgoForm") {
 						subject = { entity: "ego" as const };
@@ -89,7 +90,7 @@ const ProtocolSchema = z
 
 			// 3c. Comprehensive prompt validation (duplicate ID validation moved to individual stage schemas)
 			if ("prompts" in stage && stage.prompts) {
-				stage.prompts.forEach((prompt, promptIndex) => {
+				stage.prompts.forEach((prompt: Prompt, promptIndex: number) => {
 					// 3d.i. Variable references in prompts (for bin stages)
 					if ("variable" in prompt && prompt.variable && "subject" in stage && stage.subject) {
 						if (!variableExists(protocol.codebook, stage.subject, prompt.variable)) {
@@ -207,7 +208,7 @@ const ProtocolSchema = z
 					});
 				}
 
-				stage.filter.rules.forEach((rule, ruleIndex) => {
+				stage.filter.rules.forEach((rule: FilterRule, ruleIndex: number) => {
 					// Check entity exists
 					if (!filterRuleEntityExists(rule, protocol.codebook)) {
 						ctx.addIssue({

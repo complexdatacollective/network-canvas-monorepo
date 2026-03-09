@@ -16,8 +16,9 @@ export function JsonPreviewOverlay() {
 	if (!isOpen || !context) return null;
 
 	return (
-		<div role="presentation" className="fixed inset-0 z-[1100] flex flex-col bg-black/95" onClick={close}>
-			<div role="presentation" className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
+		<div className="fixed inset-0 z-[1100] flex flex-col bg-black/95">
+			<button type="button" className="absolute inset-0 cursor-default" onClick={close} aria-label="Close preview" />
+			<div className="relative flex flex-col h-full">
 				<div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
 					<span className="text-sm font-mono text-white/70">{context.label}</span>
 					<div className="flex items-center gap-3">
