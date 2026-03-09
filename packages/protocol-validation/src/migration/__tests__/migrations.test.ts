@@ -262,6 +262,126 @@ describe("Protocol Migrations", () => {
 		});
 	});
 
+	describe("full migration chain", () => {
+		it("migrates a v1 protocol to v8", () => {
+			const v1Protocol = {
+				schemaVersion: 1,
+				codebook: {
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								name: { name: "name", type: "text" },
+							},
+						},
+					},
+					edge: {},
+					ego: {},
+				},
+				stages: [],
+			};
+
+			const migrated = migrateProtocol(v1Protocol, undefined, { name: "Test Protocol" });
+			expect(migrated.schemaVersion).toBe(8);
+			expect(migrated).toHaveProperty("experiments");
+			expect(migrated.name).toBe("Test Protocol");
+		});
+
+		it("migrates a v3 protocol with dirty names to v8", () => {
+			const v3Protocol = {
+				schemaVersion: 3,
+				codebook: {
+					node: {
+						person: {
+							name: "My Type",
+							color: "node-color-seq-1",
+							variables: {
+								var1: { name: "first name", type: "text" },
+							},
+						},
+					},
+					edge: {},
+					ego: {},
+				},
+				stages: [],
+			};
+
+			const migrated = migrateProtocol(v3Protocol, undefined, { name: "Test Protocol" });
+			expect(migrated.schemaVersion).toBe(8);
+		});
+
+		it("migrates a v5 protocol with old NameGenerator types to v8", () => {
+			const v5Protocol = {
+				schemaVersion: 5,
+				codebook: {
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								name: { name: "name", type: "text" },
+							},
+						},
+					},
+					edge: {},
+					ego: {},
+				},
+				stages: [
+					{
+						id: "stage1",
+						type: "NameGeneratorAutoComplete",
+						label: "Test",
+						subject: { entity: "node", type: "person" },
+						prompts: [{ id: "p1", text: "Test" }],
+						panels: [],
+						dataSource: "existing",
+					},
+				],
+			};
+
+			const migrated = migrateProtocol(v5Protocol, undefined, { name: "Test Protocol" });
+			expect(migrated.schemaVersion).toBe(8);
+			// NameGeneratorAutoComplete should have been converted to NameGeneratorRoster by v5→v6
+			const stage = migrated.stages[0];
+			expect(stage).toBeDefined();
+			if (stage) {
+				expect(stage.type).toBe("NameGeneratorRoster");
+			}
+		});
+
+		it("reports correct migration path from v1 to v8", () => {
+			const info = getMigrationInfo(1, 8);
+			expect(info.canMigrate).toBe(true);
+			expect(info.path).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+			expect(info.stepsRequired).toBe(7);
+		});
+
+		it("reports migration notes for all steps that have them", () => {
+			const info = getMigrationInfo(1, 8);
+			expect(info.notes.length).toBeGreaterThan(0);
+			const versionsWithNotes = info.notes.map((n) => n.version);
+			expect(versionsWithNotes).toContain(4);
+			expect(versionsWithNotes).toContain(6);
+			expect(versionsWithNotes).toContain(8);
+		});
+
+		it("migrates a v1 protocol with string schemaVersion to v8", () => {
+			const v1Protocol = {
+				schemaVersion: "1",
+				codebook: {
+					node: {},
+					edge: {},
+					ego: {},
+				},
+				stages: [],
+			};
+
+			const migrated = migrateProtocol(v1Protocol, undefined, { name: "Test Protocol" });
+			expect(migrated.schemaVersion).toBe(8);
+		});
+	});
+
 	describe("no-op migrations", () => {
 		it("v1→v2: bumps version", () => {
 			const result = migrationV1toV2.migrate({ schemaVersion: 1 as const } as ProtocolDocument<1>, {});

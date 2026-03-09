@@ -6,10 +6,22 @@ import {
 	SchemaVersionSchema,
 	VersionedProtocolSchema,
 } from "../schemas";
+import migrationV1toV2 from "../schemas/2/migration";
+import migrationV2toV3 from "../schemas/3/migration";
+import migrationV3toV4 from "../schemas/4/migration";
+import migrationV4toV5 from "../schemas/5/migration";
+import migrationV5toV6 from "../schemas/6/migration";
+import migrationV6toV7 from "../schemas/7/migration";
 import migrationV7toV8 from "../schemas/8/migration";
 import { SchemaVersionDetectionError, ValidationError } from "./errors";
 import { type ProtocolDocument, protocolMigrations } from "./index";
 
+protocolMigrations.register(migrationV1toV2);
+protocolMigrations.register(migrationV2toV3);
+protocolMigrations.register(migrationV3toV4);
+protocolMigrations.register(migrationV4toV5);
+protocolMigrations.register(migrationV5toV6);
+protocolMigrations.register(migrationV6toV7);
 protocolMigrations.register(migrationV7toV8);
 
 export function detectSchemaVersion(document: unknown): SchemaVersion {
@@ -48,8 +60,15 @@ export function migrateProtocol(
 		}
 	}
 
+	// Ensure schemaVersion is numeric before passing to migration chain
+	const normalizedDocument = { ...(document as Record<string, unknown>), schemaVersion: detectedVersion };
+
 	// Perform migration
-	const migrated = protocolMigrations.migrate(document as ProtocolDocument<SchemaVersion>, targetVersion, dependencies);
+	const migrated = protocolMigrations.migrate(
+		normalizedDocument as ProtocolDocument<SchemaVersion>,
+		targetVersion,
+		dependencies,
+	);
 
 	// Validate migrated document against target schema
 	const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
