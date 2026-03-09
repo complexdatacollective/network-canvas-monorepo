@@ -45,7 +45,7 @@
 		"@faker-js/faker": "~6.0.0-alpha.5",
 		"@vitejs/plugin-react": "^5.1.2",
 		"@zippytech/sorty": "^2.0.0",
-		"animejs": "^2.2.0",
+		"animejs": "^4.3.6",
 		"async": "^3.2.0",
 		"autoprefixer": "~9.8.8",
 		"buffer": "^5.2.1",
