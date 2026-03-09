@@ -180,7 +180,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
 			const { protocol, assets } = await extractProtocol(new Uint8Array(buffer));
 
 			// Get filename from URL
-			const fileName = url.split("/").pop() || "remote_protocol.netcanvas";
+			const fileName = decodeURIComponent(url.split("/").pop() || "remote_protocol.netcanvas");
 			const protocolName = fileName.replace(/\.netcanvas$/, "");
 
 			// Handle migration if needed
