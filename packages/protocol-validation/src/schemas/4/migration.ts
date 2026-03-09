@@ -9,13 +9,15 @@ type AdditionalAttribute = { value: unknown; [key: string]: unknown };
 type Prompt = { additionalAttributes?: AdditionalAttribute[]; [key: string]: unknown };
 type Stage = { prompts?: Prompt[]; [key: string]: unknown };
 
-const setProps = (props: Record<string, unknown>, source: Record<string, unknown> = {}): Record<string, unknown> =>
-	Object.keys(props).reduce<Record<string, unknown>>((acc, key) => {
-		if (!source[key]) {
-			return acc;
+const setProps = (props: Record<string, unknown>, source: Record<string, unknown> = {}): Record<string, unknown> => {
+	const result = { ...source };
+	for (const key of Object.keys(props)) {
+		if (source[key]) {
+			result[key] = props[key];
 		}
-		return { ...acc, [key]: props[key] };
-	}, source);
+	}
+	return result;
+};
 
 const getNextSafeValue = (value: string, existing: string[], inc = 1): string => {
 	const incrementedValue = inc > 1 ? `${value}${inc}` : value;
@@ -39,20 +41,19 @@ const getNames = (obj: NamedRecord = {}): string[] =>
 		return entry ? entry.name : "";
 	});
 
-const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] =>
-	options.reduce<OptionEntry[]>(
-		(acc, { value, ...rest }) => [
-			...acc,
-			{
-				...rest,
-				value: getSafeValue(
-					value,
-					acc.map((o) => String(o.value)),
-				),
-			},
-		],
-		[],
-	);
+const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] => {
+	const result: OptionEntry[] = [];
+	for (const { value, ...rest } of options) {
+		result.push({
+			...rest,
+			value: getSafeValue(
+				value,
+				result.map((o) => String(o.value)),
+			),
+		});
+	}
+	return result;
+};
 
 const migrateVariable = (variable: VariableRecord[string], acc: VariableRecord = {}): VariableRecord[string] =>
 	setProps(
@@ -63,15 +64,15 @@ const migrateVariable = (variable: VariableRecord[string], acc: VariableRecord =
 		variable as unknown as Record<string, unknown>,
 	) as unknown as VariableRecord[string];
 
-const migrateVariables = (variables: VariableRecord = {}): VariableRecord =>
-	Object.keys(variables).reduce<VariableRecord>((acc, variableId) => {
+const migrateVariables = (variables: VariableRecord = {}): VariableRecord => {
+	const result: VariableRecord = {};
+	for (const variableId of Object.keys(variables)) {
 		const variable = variables[variableId];
-		if (!variable) return acc;
-		return {
-			...acc,
-			[variableId]: migrateVariable(variable, acc),
-		};
-	}, {});
+		if (!variable) continue;
+		result[variableId] = migrateVariable(variable, result);
+	}
+	return result;
+};
 
 const migrateType = (type: TypeEntry, acc: TypesRecord = {}): TypeEntry =>
 	setProps(
@@ -82,15 +83,15 @@ const migrateType = (type: TypeEntry, acc: TypesRecord = {}): TypeEntry =>
 		type as unknown as Record<string, unknown>,
 	) as unknown as TypeEntry;
 
-const migrateTypes = (types: TypesRecord = {}): TypesRecord =>
-	Object.keys(types).reduce<TypesRecord>((acc, typeId) => {
+const migrateTypes = (types: TypesRecord = {}): TypesRecord => {
+	const result: TypesRecord = {};
+	for (const typeId of Object.keys(types)) {
 		const type = types[typeId];
-		if (!type) return acc;
-		return {
-			...acc,
-			[typeId]: migrateType(type, acc),
-		};
-	}, {});
+		if (!type) continue;
+		result[typeId] = migrateType(type, result);
+	}
+	return result;
+};
 
 const migratePrompt = (prompt: Prompt): Prompt => {
 	const booleanOnlyAttributes = (prompt.additionalAttributes ?? []).filter(
