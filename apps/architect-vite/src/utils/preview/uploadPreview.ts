@@ -111,15 +111,23 @@ async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, file
 		// Set timeout to prevent hanging forever
 		xhr.timeout = ASSET_UPLOAD_TIMEOUT_MS;
 
-		// UploadThing may not send a response, so resolve when upload completes
+		// UploadThing may not send a response for presigned URL uploads.
+		// After the upload body is fully sent, wait briefly for the main XHR "load"
+		// event to arrive. Only fall back to resolving here when the response
+		// never completes (readyState never reaches DONE).
 		xhr.upload.addEventListener("load", () => {
-			// Small delay to allow any response/error to arrive first
-			setTimeout(() => settle(resolve), 500);
+			setTimeout(() => {
+				if (xhr.readyState !== XMLHttpRequest.DONE) {
+					settle(resolve);
+				}
+				// If readyState is DONE, the xhr "load" handler has already settled.
+			}, 500);
 		});
 
-		// If we do get a response, check if it's an error
+		// Determine success/failure from the actual server response when available.
+		// status === 0 means the connection was closed without an HTTP response.
 		xhr.addEventListener("load", () => {
-			if (xhr.status >= 200 && xhr.status < 300) {
+			if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
 				settle(resolve);
 			} else {
 				settle(() => reject(new Error(`Asset upload failed for ${fileName}: Server returned ${xhr.status}`)));
@@ -318,13 +326,16 @@ export async function uploadProtocolForPreview(
 	const { protocolId, presignedUrls } = initResponse;
 
 	// Step 2: Upload assets to presigned URLs (match by assetId, not index)
+	// Build a Map for O(1) lookups instead of O(n) find() on each iteration.
+	const fileAssetsMap = new Map(fileAssets.map((a) => [a.assetId, a]));
+
 	for (let i = 0; i < presignedUrls.length; i++) {
 		const presignedUrl = presignedUrls[i];
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
 		const { assetId, url } = presignedUrl;
-		const localAsset = fileAssets.find((a) => a.assetId === assetId);
+		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
 			throw new Error(`No local asset found for assetId: ${assetId}`);
