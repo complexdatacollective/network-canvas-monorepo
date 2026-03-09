@@ -88,8 +88,8 @@ catalogs:
       specifier: ^16.1.5
       version: 16.1.6
     postcss:
-      specifier: ^8.5.6
-      version: 8.5.6
+      specifier: ^8.5.8
+      version: 8.5.8
     posthog-js:
       specifier: ^1.347.2
       version: 1.347.2
@@ -216,7 +216,7 @@ importers:
         version: 5.5.3
       postcss:
         specifier: 'catalog:'
-        version: 8.5.6
+        version: 8.5.8
       react:
         specifier: 'catalog:'
         version: 19.2.3
@@ -840,7 +840,7 @@ importers:
         version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       postcss:
         specifier: 'catalog:'
-        version: 8.5.6
+        version: 8.5.8
       posthog-js:
         specifier: 'catalog:'
         version: 1.347.2
@@ -9781,6 +9781,10 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  postcss@8.5.8:
+    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
+    engines: {node: ^10 || ^12 || >=14}
+
   postgres-array@2.0.0:
     resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
     engines: {node: '>=4'}
@@ -15967,7 +15971,7 @@ snapshots:
       '@alloc/quick-lru': 5.2.0
       '@tailwindcss/node': 4.2.1
       '@tailwindcss/oxide': 4.2.1
-      postcss: 8.5.6
+      postcss: 8.5.8
       tailwindcss: 4.2.1
 
   '@tailwindcss/typography@0.5.19(tailwindcss@4.2.1)':
@@ -21828,6 +21832,12 @@ snapshots:
       source-map-js: 1.2.1
 
   postcss@8.5.6:
+    dependencies:
+      nanoid: 3.3.11
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
+  postcss@8.5.8:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
