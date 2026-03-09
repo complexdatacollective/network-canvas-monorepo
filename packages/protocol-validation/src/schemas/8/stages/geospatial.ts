@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker";
 import { getAssetId, getNodeVariableId } from "~/utils/mock-seeds";
 import { findDuplicateId } from "~/utils/validation-helpers";
 import { z } from "~/utils/zod-mock-extension";
-import { geospatialPromptSchema, IntroductionPanelSchema, NodeStageSubjectSchema } from "../common";
+import { geospatialPromptSchema, NodeStageSubjectSchema } from "../common";
 import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
 
@@ -62,6 +62,8 @@ const mapOptions = z.object({
 	targetFeatureProperty: z
 		.string()
 		.generateMock(() => faker.helpers.arrayElement(["name", "location_type", "category"])), // property of geojson to select
+	showTransit: z.boolean().optional(),
+	allowSearch: z.boolean().optional(),
 });
 
 export type MapOptions = z.infer<typeof mapOptions>;
@@ -86,7 +88,6 @@ export const geospatialStage = baseStageSchema
 					});
 				}
 			}),
-		introductionPanel: IntroductionPanelSchema,
 	})
 	.generateMock((base) => ({
 		...base,

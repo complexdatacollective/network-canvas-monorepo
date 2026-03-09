@@ -3,7 +3,15 @@ import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Button } from "~/lib/legacy-ui/components";
 
 // Browser-compatible basename (replaces node:path which doesn't work in browser)
-const basename = (filePath) => filePath?.split(/[\\/]/).pop() ?? filePath;
+const basename = (filePath) => {
+	if (filePath == null) return filePath;
+
+	// Trim trailing path separators so behavior matches node:path.basename
+	const trimmedPath = String(filePath).replace(/[\\/]+$/, "");
+	const parts = trimmedPath.split(/[\\/]/);
+
+	return parts.pop() ?? trimmedPath;
+};
 
 const genericAssetMessage = (
 	<>

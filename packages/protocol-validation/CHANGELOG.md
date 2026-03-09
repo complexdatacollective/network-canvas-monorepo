@@ -1,5 +1,24 @@
 # @codaco/protocol-validation
 
+## 11.1.0
+
+### Minor Changes
+
+- 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
+
+  - showTransit: When enabled, Fresco displays transit layers on the map
+  - allowSearch: When enabled, participants can search the map for locations
+
+  Both options default to false (disabled).
+
+## 11.0.0
+
+### Major Changes
+
+- 8f91391: Remove `introductionPanel` from Geospatial interface schema.
+
+  This is a breaking change for existing protocols that include an `introductionPanel` on Geospatial stages. Protocols with Geospatial interfaces no longer support or require an introduction panel.
+
 ## 10.1.0
 
 ### Minor Changes

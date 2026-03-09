@@ -11,6 +11,7 @@ import type {
 } from "./types";
 
 const PREVIEW_API_VERSION = "v1";
+const ASSET_UPLOAD_TIMEOUT_MS = 180_000; // 3 minutes per asset (supports large video files on slower connections)
 
 export type UploadProgress = {
 	phase: "preparing" | "uploading-assets" | "processing";
@@ -98,18 +99,43 @@ async function handleFetchError(response: Response): Promise<never> {
 async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileName: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
+		let settled = false;
 
-		// Resolve when upload completes - UploadThing may not send a response
+		const settle = (fn: () => void) => {
+			if (!settled) {
+				settled = true;
+				fn();
+			}
+		};
+
+		// Set timeout to prevent hanging forever
+		xhr.timeout = ASSET_UPLOAD_TIMEOUT_MS;
+
+		// UploadThing may not send a response, so resolve when upload completes
 		xhr.upload.addEventListener("load", () => {
-			setTimeout(() => resolve(), 500);
+			// Small delay to allow any response/error to arrive first
+			setTimeout(() => settle(resolve), 500);
+		});
+
+		// If we do get a response, check if it's an error
+		xhr.addEventListener("load", () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				settle(resolve);
+			} else {
+				settle(() => reject(new Error(`Asset upload failed for ${fileName}: Server returned ${xhr.status}`)));
+			}
 		});
 
 		xhr.addEventListener("error", () => {
-			reject(new Error(`Asset upload failed for ${fileName}: Network error`));
+			settle(() => reject(new Error(`Asset upload failed for ${fileName}: Network error`)));
 		});
 
 		xhr.addEventListener("abort", () => {
-			reject(new Error(`Asset upload was aborted for ${fileName}`));
+			settle(() => reject(new Error(`Asset upload was aborted for ${fileName}`)));
+		});
+
+		xhr.addEventListener("timeout", () => {
+			settle(() => reject(new Error(`Asset upload timed out for ${fileName}`)));
 		});
 
 		const formData = new FormData();
@@ -192,11 +218,22 @@ async function sendPreviewRequest<T extends PreviewResponse>(
 	apiToken: string | undefined,
 	request: PreviewRequest,
 ): Promise<T> {
-	const response = await fetch(`${frescoUrl}/api/preview/${PREVIEW_API_VERSION}`, {
-		method: "POST",
-		headers: getAuthHeaders(apiToken),
-		body: JSON.stringify(request),
-	});
+	let response: Response;
+	try {
+		response = await fetch(`${frescoUrl}/api/preview/${PREVIEW_API_VERSION}`, {
+			method: "POST",
+			headers: getAuthHeaders(apiToken),
+			body: JSON.stringify(request),
+		});
+	} catch (error) {
+		// TypeError is thrown by fetch for network failures (DNS, connection refused, etc.)
+		if (error instanceof TypeError) {
+			const networkError = new Error(`Could not connect to the preview server at ${frescoUrl}. (${error.message})`);
+			networkError.cause = error;
+			throw networkError;
+		}
+		throw error;
+	}
 
 	if (!response.ok) {
 		await handleFetchError(response);
@@ -234,107 +271,103 @@ export async function uploadProtocolForPreview(
 		asset_count: Object.keys(protocol.assetManifest ?? {}).length,
 	});
 
-	try {
-		// Get local assets and prepare request
-		onProgress?.({ phase: "preparing" });
-		const localAssets = await getLocalAssets(protocol);
+	// Get local assets and prepare request
+	onProgress?.({ phase: "preparing" });
+	const localAssets = await getLocalAssets(protocol);
 
-		// Separate file assets from apikey assets (apikey assets don't need presigned URLs)
-		const fileAssets = localAssets.filter((a) => a.type !== "apikey");
+	// Separate file assets from apikey assets (apikey assets don't need presigned URLs)
+	const fileAssets = localAssets.filter((a) => a.type !== "apikey");
 
-		// Build asset metadata for the initialize endpoint
-		const assetMeta = fileAssets.map((a) => ({
-			assetId: a.assetId,
-			name: a.name,
-			size: a.size,
-		}));
+	// Build asset metadata for the initialize endpoint
+	const assetMeta = fileAssets.map((a) => ({
+		assetId: a.assetId,
+		name: a.name,
+		size: a.size,
+	}));
 
-		// Step 1: Initialize preview - validates protocol and returns presigned URLs or ready status
-		const initRequest: PreviewRequest = {
-			type: "initialize-preview",
-			protocol: protocol,
-			assetMeta,
-		};
+	// Step 1: Initialize preview - validates protocol and returns presigned URLs or ready status
+	const initRequest: PreviewRequest = {
+		type: "initialize-preview",
+		protocol: protocol,
+		assetMeta,
+	};
 
-		const initResponse = await sendPreviewRequest<InitializeResponse>(frescoUrl, apiToken, initRequest);
+	const initResponse = await sendPreviewRequest<InitializeResponse>(frescoUrl, apiToken, initRequest);
 
-		// Handle rejected protocol
-		if (initResponse.status === "rejected") {
-			throw new Error(initResponse.message);
-		}
-
-		// Handle error response
-		if (initResponse.status === "error") {
-			throw new Error(initResponse.message);
-		}
-
-		// If ready immediately (protocol exists or no assets), return the response
-		if (initResponse.status === "ready") {
-			if (stageIndex > 0) {
-				const url = new URL(initResponse.previewUrl);
-				url.searchParams.set("step", stageIndex.toString());
-				return { ...initResponse, previewUrl: url.toString() };
-			}
-			return initResponse;
-		}
-
-		// Status is "job-created" - we have assets to upload
-		const { protocolId, presignedUrls } = initResponse;
-
-		// Step 2: Upload assets to presigned URLs
-		for (let i = 0; i < presignedUrls.length; i++) {
-			const uploadUrl = presignedUrls[i];
-			const localAsset = fileAssets[i];
-
-			if (!uploadUrl || !localAsset) {
-				throw new Error(`Missing upload URL or asset at index ${i}`);
-			}
-
-			onProgress?.({
-				phase: "uploading-assets",
-				current: i + 1,
-				total: presignedUrls.length,
-			});
-
-			try {
-				await uploadAssetToPresignedUrl(uploadUrl, localAsset.data, localAsset.name);
-			} catch (uploadError) {
-				// If upload fails, abort the preview job
-				await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
-					type: "abort-preview",
-					protocolId,
-				});
-				throw uploadError;
-			}
-		}
-
-		// Step 3: Complete the preview
-		onProgress?.({ phase: "processing" });
-
-		const completeRequest: PreviewRequest = {
-			type: "complete-preview",
-			protocolId,
-		};
-
-		const completeResponse = await sendPreviewRequest<CompleteResponse>(frescoUrl, apiToken, completeRequest);
-
-		if (completeResponse.status === "error") {
-			throw new Error(completeResponse.message);
-		}
-
-		// Append stage index to preview URL if needed
-		if (stageIndex > 0) {
-			const url = new URL(completeResponse.previewUrl);
-			url.searchParams.set("step", stageIndex.toString());
-			return { ...completeResponse, previewUrl: url.toString() };
-		}
-
-		return completeResponse;
-	} catch (error) {
-		// Handle network errors (TypeError is thrown by fetch for network failures)
-		if (error instanceof TypeError) {
-			throw new Error(`Could not connect to the preview server. (${error.message})`);
-		}
-		throw error;
+	// Handle rejected protocol
+	if (initResponse.status === "rejected") {
+		throw new Error(initResponse.message);
 	}
+
+	// Handle error response
+	if (initResponse.status === "error") {
+		throw new Error(initResponse.message);
+	}
+
+	// If ready immediately (protocol exists or no assets), return the response
+	if (initResponse.status === "ready") {
+		if (stageIndex > 0) {
+			const url = new URL(initResponse.previewUrl);
+			url.searchParams.set("step", stageIndex.toString());
+			return { ...initResponse, previewUrl: url.toString() };
+		}
+		return initResponse;
+	}
+
+	// Status is "job-created" - we have assets to upload
+	const { protocolId, presignedUrls } = initResponse;
+
+	// Step 2: Upload assets to presigned URLs (match by assetId, not index)
+	for (let i = 0; i < presignedUrls.length; i++) {
+		const presignedUrl = presignedUrls[i];
+		if (!presignedUrl) {
+			throw new Error(`Missing presigned URL at index ${i}`);
+		}
+		const { assetId, url } = presignedUrl;
+		const localAsset = fileAssets.find((a) => a.assetId === assetId);
+
+		if (!localAsset) {
+			throw new Error(`No local asset found for assetId: ${assetId}`);
+		}
+
+		onProgress?.({
+			phase: "uploading-assets",
+			current: i + 1,
+			total: presignedUrls.length,
+		});
+
+		try {
+			await uploadAssetToPresignedUrl(url, localAsset.data, localAsset.name);
+		} catch (uploadError) {
+			// If upload fails, abort the preview job
+			await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
+				type: "abort-preview",
+				protocolId,
+			});
+			throw uploadError;
+		}
+	}
+
+	// Step 3: Complete the preview
+	onProgress?.({ phase: "processing" });
+
+	const completeRequest: PreviewRequest = {
+		type: "complete-preview",
+		protocolId,
+	};
+
+	const completeResponse = await sendPreviewRequest<CompleteResponse>(frescoUrl, apiToken, completeRequest);
+
+	if (completeResponse.status === "error") {
+		throw new Error(completeResponse.message);
+	}
+
+	// Append stage index to preview URL if needed
+	if (stageIndex > 0) {
+		const url = new URL(completeResponse.previewUrl);
+		url.searchParams.set("step", stageIndex.toString());
+		return { ...completeResponse, previewUrl: url.toString() };
+	}
+
+	return completeResponse;
 }
