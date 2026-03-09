@@ -60,7 +60,7 @@
 		"crypto-browserify": "~3.12.1",
 		"csvtojson": "^2.0.8",
 		"dotenv": "4.0.0",
-		"electron": "^35.7.5",
+		"electron": "^40.6.1",
 		"electron-builder": "^26.4.0",
 		"electron-devtools-installer": "^3.0.0",
 		"electron-vite": "^5.0.0",
@@ -115,7 +115,7 @@
 		"vitest": "^4.0.0",
 		"@vitest/coverage-v8": "^4.0.0",
 		"whatwg-fetch": "2.0.3",
-		"xml2js": "~0.5.0",
+		"xml2js": "~0.6.2",
 		"xss": "^0.3.4"
 	},
 	"dependencies": {
