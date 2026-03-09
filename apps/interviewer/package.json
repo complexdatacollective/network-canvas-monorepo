@@ -41,7 +41,7 @@
 		"@codaco/shared-consts": "~0.0.1-alpha.3",
 		"@codaco/ui": "~5.8.6",
 		"@material-ui/icons": "^4.11.3",
-		"@electron/notarize": "~2.3.0",
+		"@electron/notarize": "~3.1.1",
 		"@faker-js/faker": "~6.0.0-alpha.5",
 		"@vitejs/plugin-react": "^5.1.2",
 		"@zippytech/sorty": "^2.0.0",
