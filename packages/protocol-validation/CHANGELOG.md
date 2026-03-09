@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 11.1.1
+
+### Patch Changes
+
+- 4f2d778: Export sort rule schema from filters module
+
 ## 11.1.0
 
 ### Minor Changes
