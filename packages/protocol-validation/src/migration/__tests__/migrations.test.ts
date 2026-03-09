@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { VersionedProtocolSchema } from "~/schemas";
+import migrationV1toV2 from "~/schemas/2/migration";
+import migrationV2toV3 from "~/schemas/3/migration";
+import migrationV4toV5 from "~/schemas/5/migration";
+import migrationV6toV7 from "~/schemas/7/migration";
 import { SchemaVersionDetectionError } from "../errors";
 import { MigrationChain, type ProtocolDocument } from "../index";
 import { detectSchemaVersion, getMigrationInfo, migrateProtocol, protocolMigrator } from "../migrate-protocol";
@@ -255,6 +259,38 @@ describe("Protocol Migrations", () => {
 				stages: [],
 			};
 			expect(() => migrateProtocol(v7Doc)).toThrow("Missing required migration dependencies: name");
+		});
+	});
+
+	describe("no-op migrations", () => {
+		it("v1→v2: bumps version", () => {
+			const result = migrationV1toV2.migrate({ schemaVersion: 1 as const } as ProtocolDocument<1>, {});
+			expect(result.schemaVersion).toBe(2);
+		});
+
+		it("v2→v3: bumps version", () => {
+			const result = migrationV2toV3.migrate({ schemaVersion: 2 as const } as ProtocolDocument<2>, {});
+			expect(result.schemaVersion).toBe(3);
+		});
+
+		it("v4→v5: bumps version", () => {
+			const result = migrationV4toV5.migrate({ schemaVersion: 4 as const } as ProtocolDocument<4>, {});
+			expect(result.schemaVersion).toBe(5);
+		});
+
+		it("v6→v7: bumps version", () => {
+			const result = migrationV6toV7.migrate({ schemaVersion: 6 as const } as ProtocolDocument<6>, {});
+			expect(result.schemaVersion).toBe(7);
+		});
+
+		it("v4→v5: has migration notes", () => {
+			expect(migrationV4toV5.notes).toBeDefined();
+			expect(migrationV4toV5.notes?.length).toBeGreaterThan(0);
+		});
+
+		it("v6→v7: has migration notes", () => {
+			expect(migrationV6toV7.notes).toBeDefined();
+			expect(migrationV6toV7.notes?.length).toBeGreaterThan(0);
 		});
 	});
 });
