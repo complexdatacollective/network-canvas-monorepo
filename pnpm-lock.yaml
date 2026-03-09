@@ -661,8 +661,8 @@ importers:
         specifier: ^3.0.6
         version: 3.0.6
       redux-remember:
-        specifier: ^5.3.2
-        version: 5.3.2(redux@5.0.1)
+        specifier: ^6.0.2
+        version: 6.0.2(redux@5.0.1)
       rehype-raw:
         specifier: ^7.0.0
         version: 7.0.0
@@ -10205,8 +10205,8 @@ packages:
       react:
         optional: true
 
-  redux-remember@5.3.2:
-    resolution: {integrity: sha512-V/pj8bt9+RMWDR/CXscugWwh4XMXo7A7bxWRfEhHlgDKNHOXgOno2Z2hyVLZiwNXZlp7hvaMWNlHD+HT1nEzEQ==}
+  redux-remember@6.0.2:
+    resolution: {integrity: sha512-Y5zvPujEEGYQMSJmODp3NjSj4BiXTHflhRs82btK/cHOwrJNh2CEVIBGlPTMRG6Pos3+Eea7M3vzhegEBFd0Lg==}
     peerDependencies:
       redux: '>=5.0.0'
 
@@ -22182,7 +22182,7 @@ snapshots:
     optionalDependencies:
       react: 16.14.0
 
-  redux-remember@5.3.2(redux@5.0.1):
+  redux-remember@6.0.2(redux@5.0.1):
     dependencies:
       redux: 5.0.1
 

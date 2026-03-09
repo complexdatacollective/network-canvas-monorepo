@@ -50,7 +50,7 @@
 		"redux": "^5.0.1",
 		"redux-form": "^8.3.6",
 		"redux-logger": "^3.0.6",
-		"redux-remember": "^5.3.2",
+		"redux-remember": "^6.0.2",
 		"rehype-raw": "^7.0.0",
 		"rehype-sanitize": "^6.0.0",
 		"remark-gemoji": "^8.0.0",
