@@ -496,23 +496,23 @@ importers:
         specifier: ^0.30.0
         version: 0.30.0(react@16.14.0)
       redux:
-        specifier: ^4.0.5
-        version: 4.2.1
+        specifier: ^5.0.1
+        version: 5.0.1
       redux-form:
         specifier: ^8.3.6
-        version: 8.3.10(immutable@4.3.7)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)(redux@4.2.1)
+        version: 8.3.10(immutable@4.3.7)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)(redux@5.0.1)
       redux-logger:
         specifier: ^2.7.4
         version: 2.10.2
       redux-mock-store:
         specifier: ^1.5.4
-        version: 1.5.5(redux@4.2.1)
+        version: 1.5.5(redux@5.0.1)
       redux-persist:
         specifier: ^6.0.0
-        version: 6.0.0(react@16.14.0)(redux@4.2.1)
+        version: 6.0.0(react@16.14.0)(redux@5.0.1)
       redux-thunk:
         specifier: ^2.3.0
-        version: 2.4.2(redux@4.2.1)
+        version: 2.4.2(redux@5.0.1)
       reselect:
         specifier: ^3.0.0
         version: 3.0.1
@@ -1064,7 +1064,7 @@ importers:
         version: 1.2.1
       connected-react-router:
         specifier: ^6.8.0
-        version: 6.9.3(history@5.3.0)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react-router@5.2.1(react@16.14.0))(react@16.14.0)(redux@4.2.1)
+        version: 6.9.3(history@5.3.0)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react-router@5.2.1(react@16.14.0))(react@16.14.0)(redux@5.0.1)
       cross-env:
         specifier: ^5.2.0
         version: 5.2.1
@@ -1189,23 +1189,23 @@ importers:
         specifier: ^0.26.0
         version: 0.26.0(react@16.14.0)
       redux:
-        specifier: ^4.0.5
-        version: 4.2.1
+        specifier: ^5.0.1
+        version: 5.0.1
       redux-form:
         specifier: ^8.3.6
-        version: 8.3.10(immutable@4.3.7)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)(redux@4.2.1)
+        version: 8.3.10(immutable@4.3.7)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)(redux@5.0.1)
       redux-logger:
         specifier: ^2.7.4
         version: 2.10.2
       redux-mock-store:
         specifier: ^1.5.3
-        version: 1.5.5(redux@4.2.1)
+        version: 1.5.5(redux@5.0.1)
       redux-persist:
         specifier: ^6.0.0
-        version: 6.0.0(react@16.14.0)(redux@4.2.1)
+        version: 6.0.0(react@16.14.0)(redux@5.0.1)
       redux-thunk:
         specifier: ^2.3.0
-        version: 2.4.2(redux@4.2.1)
+        version: 2.4.2(redux@5.0.1)
       regenerator-runtime:
         specifier: ^0.13.3
         version: 0.13.11
@@ -17414,7 +17414,7 @@ snapshots:
 
   confbox@0.2.2: {}
 
-  connected-react-router@6.9.3(history@5.3.0)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react-router@5.2.1(react@16.14.0))(react@16.14.0)(redux@4.2.1):
+  connected-react-router@6.9.3(history@5.3.0)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react-router@5.2.1(react@16.14.0))(react@16.14.0)(redux@5.0.1):
     dependencies:
       history: 5.3.0
       lodash.isequalwith: 4.4.0
@@ -17422,7 +17422,7 @@ snapshots:
       react: 16.14.0
       react-redux: 7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       react-router: 5.2.1(react@16.14.0)
-      redux: 4.2.1
+      redux: 5.0.1
     optionalDependencies:
       immutable: 4.3.7
       seamless-immutable: 7.1.4
@@ -22131,7 +22131,7 @@ snapshots:
       indent-string: 4.0.0
       strip-indent: 3.0.0
 
-  redux-form@8.3.10(immutable@4.3.7)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)(redux@4.2.1):
+  redux-form@8.3.10(immutable@4.3.7)(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)(redux@5.0.1):
     dependencies:
       '@babel/runtime': 7.28.4
       es6-error: 4.1.1
@@ -22143,7 +22143,7 @@ snapshots:
       react: 16.14.0
       react-is: 16.13.1
       react-redux: 7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      redux: 4.2.1
+      redux: 5.0.1
     optionalDependencies:
       immutable: 4.3.7
 
@@ -22171,14 +22171,14 @@ snapshots:
     dependencies:
       deep-diff: 0.3.8
 
-  redux-mock-store@1.5.5(redux@4.2.1):
+  redux-mock-store@1.5.5(redux@5.0.1):
     dependencies:
       lodash.isplainobject: 4.0.6
-      redux: 4.2.1
+      redux: 5.0.1
 
-  redux-persist@6.0.0(react@16.14.0)(redux@4.2.1):
+  redux-persist@6.0.0(react@16.14.0)(redux@5.0.1):
     dependencies:
-      redux: 4.2.1
+      redux: 5.0.1
     optionalDependencies:
       react: 16.14.0
 
@@ -22186,9 +22186,9 @@ snapshots:
     dependencies:
       redux: 5.0.1
 
-  redux-thunk@2.4.2(redux@4.2.1):
+  redux-thunk@2.4.2(redux@5.0.1):
     dependencies:
-      redux: 4.2.1
+      redux: 5.0.1
 
   redux-thunk@3.1.0(redux@5.0.1):
     dependencies:
