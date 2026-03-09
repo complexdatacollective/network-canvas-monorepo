@@ -100,8 +100,8 @@ catalogs:
       specifier: ^19.2.3
       version: 19.2.3
     tailwind-merge:
-      specifier: ^3.4.0
-      version: 3.4.0
+      specifier: ^3.5.0
+      version: 3.5.0
     tailwindcss:
       specifier: ^4.2.1
       version: 4.2.1
@@ -225,7 +225,7 @@ importers:
         version: 19.2.3(react@19.2.3)
       tailwind-merge:
         specifier: 'catalog:'
-        version: 3.4.0
+        version: 3.5.0
       zod:
         specifier: 'catalog:'
         version: 4.2.0
@@ -695,7 +695,7 @@ importers:
         version: 0.57.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(slate@0.57.3)
       tailwind-merge:
         specifier: 'catalog:'
-        version: 3.4.0
+        version: 3.5.0
       unified:
         specifier: ^11.0.5
         version: 11.0.5
@@ -925,7 +925,7 @@ importers:
         version: 11.1.2
       tailwind-merge:
         specifier: 'catalog:'
-        version: 3.4.0
+        version: 3.5.0
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.1
@@ -1458,7 +1458,7 @@ importers:
         version: 0.562.0(react@19.2.3)
       tailwind-merge:
         specifier: 'catalog:'
-        version: 3.4.0
+        version: 3.5.0
     devDependencies:
       '@codaco/tailwind-config':
         specifier: workspace:*
@@ -11041,8 +11041,8 @@ packages:
   tabbable@6.3.0:
     resolution: {integrity: sha512-EIHvdY5bPLuWForiR/AN2Bxngzpuwn1is4asboytXtpTgsArc+WmSJKVLlhdh71u7jFcryDqB2A8lQvj78MkyQ==}
 
-  tailwind-merge@3.4.0:
-    resolution: {integrity: sha512-uSaO4gnW+b3Y2aWoWfFpX62vn2sR3skfhbjsEnaBI81WD1wBLlHZe5sWf0AqjksNdYTbGBEd0UasQMT3SNV15g==}
+  tailwind-merge@3.5.0:
+    resolution: {integrity: sha512-I8K9wewnVDkL1NTGoqWmVEIlUcB9gFriAEkXkfCjX5ib8ezGxtR3xD7iZIxrfArjEsH7F1CHD4RFUtxefdqV/A==}
 
   tailwindcss-animate@1.0.7:
     resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
@@ -23265,7 +23265,7 @@ snapshots:
 
   tabbable@6.3.0: {}
 
-  tailwind-merge@3.4.0: {}
+  tailwind-merge@3.5.0: {}
 
   tailwindcss-animate@1.0.7(tailwindcss@4.2.1):
     dependencies:
