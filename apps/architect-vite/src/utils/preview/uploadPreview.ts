@@ -12,6 +12,13 @@ import type {
 
 const PREVIEW_API_VERSION = "v1";
 const ASSET_UPLOAD_TIMEOUT_MS = 180_000; // 3 minutes per asset (supports large video files on slower connections)
+// Grace period after the upload body is sent, waiting for an HTTP response before
+// assuming no response will arrive (e.g. UploadThing presigned URL uploads that
+// close the connection without a response body). Must be long enough to cover slow
+// server processing after receiving a large file, but short enough not to stall
+// indefinitely. The main XHR "load" handler cancels this timer, so it only fires
+// when truly no HTTP response has been received.
+const NO_RESPONSE_GRACE_PERIOD_MS = 5_000;
 
 export type UploadProgress = {
 	phase: "preparing" | "uploading-assets" | "processing";
@@ -111,15 +118,30 @@ async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, file
 		// Set timeout to prevent hanging forever
 		xhr.timeout = ASSET_UPLOAD_TIMEOUT_MS;
 
-		// UploadThing may not send a response, so resolve when upload completes
+		// UploadThing may not send a response for presigned URL uploads.
+		// After the upload body is fully sent, start a grace period waiting for the
+		// HTTP response. If the main XHR "load" event fires first (response received),
+		// it clears this timer and handles success/failure. The fallback only resolves
+		// when no HTTP response has arrived within the grace period.
+		let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+
 		xhr.upload.addEventListener("load", () => {
-			// Small delay to allow any response/error to arrive first
-			setTimeout(() => settle(resolve), 500);
+			noResponseTimer = setTimeout(() => {
+				if (xhr.readyState !== XMLHttpRequest.DONE) {
+					settle(resolve);
+				}
+			}, NO_RESPONSE_GRACE_PERIOD_MS);
 		});
 
-		// If we do get a response, check if it's an error
+		// Determine success/failure from the actual server response when available.
+		// Clear the no-response fallback timer so it doesn't race with this handler.
+		// status === 0 means the connection was closed without an HTTP response.
 		xhr.addEventListener("load", () => {
-			if (xhr.status >= 200 && xhr.status < 300) {
+			if (noResponseTimer !== null) {
+				clearTimeout(noResponseTimer);
+				noResponseTimer = null;
+			}
+			if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
 				settle(resolve);
 			} else {
 				settle(() => reject(new Error(`Asset upload failed for ${fileName}: Server returned ${xhr.status}`)));
@@ -318,13 +340,16 @@ export async function uploadProtocolForPreview(
 	const { protocolId, presignedUrls } = initResponse;
 
 	// Step 2: Upload assets to presigned URLs (match by assetId, not index)
+	// Build a Map for O(1) lookups instead of O(n) find() on each iteration.
+	const fileAssetsMap = new Map(fileAssets.map((a) => [a.assetId, a]));
+
 	for (let i = 0; i < presignedUrls.length; i++) {
 		const presignedUrl = presignedUrls[i];
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
 		const { assetId, url } = presignedUrl;
-		const localAsset = fileAssets.find((a) => a.assetId === assetId);
+		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
 			throw new Error(`No local asset found for assetId: ${assetId}`);
