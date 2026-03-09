@@ -70,7 +70,7 @@
 		"decompress": "^4.2.1",
 		"dmg-builder": "^26.4.0",
 		"electron": "^40.6.1",
-		"electron-builder": "^26.4.0",
+		"electron-builder": "^26.8.1",
 		"electron-devtools-installer": "^3.2.0",
 		"electron-log": "^4.2.2",
 		"electron-vite": "^5.0.0",
