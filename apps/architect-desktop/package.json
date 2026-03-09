@@ -59,7 +59,7 @@
 		"@vitest/coverage-v8": "^4.0.16",
 		"animejs": "^2.2.0",
 		"archiver": "^7.0.1",
-		"autoprefixer": "^9.8.8",
+		"autoprefixer": "^10.4.27",
 		"axios": "^1.13.6",
 		"babel-runtime": "6.26.0",
 		"change-case": "^3.0.1",
