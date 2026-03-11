@@ -46,7 +46,7 @@ const links: MenuItem[] = [
 		href: "https://community.networkcanvas.com",
 	},
 	{
-		translationKey: "documentation",
+		translationKey: "docs",
 		href: "/",
 	},
 	{
@@ -71,6 +71,10 @@ const links: MenuItem[] = [
 				image: "/images/studio.svg",
 			},
 		],
+	},
+	{
+		translationKey: "protocol gallery",
+		href: "https://protocolgallery.networkcanvas.com",
 	},
 	{
 		translationKey: "download",
