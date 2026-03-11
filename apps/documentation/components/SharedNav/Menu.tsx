@@ -46,7 +46,7 @@ const links: MenuItem[] = [
 		href: "https://community.networkcanvas.com",
 	},
 	{
-		translationKey: "documentation",
+		translationKey: "docs",
 		href: "/",
 	},
 	{
