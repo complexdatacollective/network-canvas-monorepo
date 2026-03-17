@@ -82,7 +82,7 @@
 		"jszip": "^3.7.0",
 		"lodash": "^4.17.23",
 		"object-assign": "4.1.1",
-		"postcss": "~8.4.28",
+		"postcss": "~8.4.32",
 		"postcss-flexbugs-fixes": "~4.2.1",
 		"postcss-preset-env": "~9.1.2",
 		"promise": "7.1.1",
