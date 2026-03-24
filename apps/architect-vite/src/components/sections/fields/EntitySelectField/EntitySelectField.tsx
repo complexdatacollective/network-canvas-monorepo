@@ -119,7 +119,7 @@ const EntitySelectField = ({
 		<div className={classes}>
 			{label && <h4>{label}</h4>}
 
-			<div className="flex-wrap flex [--base-node-size:7rem]">{renderOptions()}</div>
+			<div className="flex-wrap flex p-2 gap-2">{renderOptions()}</div>
 			{options.length === 0 && (
 				<p className="form-fields-entity-select__empty">
 					No {entityType} types currently defined. Use the button below to create one.

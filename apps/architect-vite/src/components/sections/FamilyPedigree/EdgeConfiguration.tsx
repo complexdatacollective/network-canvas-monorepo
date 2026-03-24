@@ -39,7 +39,7 @@ type VariableRowProps = {
 
 const VariableRow = ({ name, label, description, options, onCreateOption, edgeType }: VariableRowProps) => (
 	<div className="flex items-start gap-4">
-		<div className="flex flex-col gap-1 pt-2 shrink-0 w-72">
+		<div className="flex flex-col gap-1 pt-2 grow">
 			<span className="font-semibold">
 				{label}
 				<span className="text-error ms-0.5">*</span>
@@ -130,7 +130,7 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
 					/>
 				</Row>
 				{edgeType && (
-					<div className="flex flex-col gap-6 mt-6">
+					<div className="bg-surface-2 text-surface-2-foreground p-4 rounded flex flex-col gap-6 mt-6">
 						<VariableRow
 							name="edgeConfig.relationshipTypeVariable"
 							label="Relationship Type"

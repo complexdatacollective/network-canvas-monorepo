@@ -18,14 +18,7 @@ const PreviewNode = ({
 	selected = false,
 }: PreviewNodeProps) => {
 	const content = (
-		<Node
-			label={label}
-			selected={selected}
-			color={color}
-			shape={shape}
-			size="sm"
-			onClick={!selected ? onClick : undefined}
-		/>
+		<Node label={label} selected={selected} color={color} shape={shape} onClick={!selected ? onClick : undefined} />
 	);
 
 	const commonClasses = cx(
