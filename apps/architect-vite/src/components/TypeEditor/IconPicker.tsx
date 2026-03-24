@@ -152,7 +152,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 								))}
 							</Combobox.List>
 
-							<Combobox.Empty className="p-4 text-center text-sm text-[var(--color-charcoal)]">
+							<Combobox.Empty className="p-4 text-center text-sm text-[var(--color-charcoal)] empty:hidden">
 								No icons found
 							</Combobox.Empty>
 						</Combobox.Popup>
