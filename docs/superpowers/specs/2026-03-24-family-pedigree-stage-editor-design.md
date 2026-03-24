@@ -15,6 +15,7 @@ The new `FamilyPedigree` stage schema (`packages/protocol-validation/src/schemas
   type: "FamilyPedigree",
   nodeConfig: {
     type: string,                    // node type ID from codebook
+    nodeLabelVariable: string,        // text variable storing the node's display label
     egoVariable: string,             // boolean variable marking the ego node
     biologicalSexVariable: string,   // categorical (male/female/intersex/unknown)
     relationshipVariable: string,    // text variable storing relationship to ego
@@ -49,6 +50,7 @@ A single `<Section title="Node Configuration">` containing four sub-parts:
 - Same pattern as the existing `NodeType` section but rendered inline
 
 **Variable Pickers** (disabled until node type is selected)
+- **Node Label Variable**: `VariablePicker` filtered to text variables on the selected node type. Maps to `nodeConfig.nodeLabelVariable`. Supports inline variable creation via `NewVariableWindow` with `type: "text"`.
 - **Ego Variable**: `VariablePicker` filtered to boolean variables on the selected node type. Maps to `nodeConfig.egoVariable`. Supports inline variable creation via `NewVariableWindow` with `type: "boolean"`.
 - **Biological Sex Variable**: `VariablePicker` filtered to categorical variables whose options match `[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "intersex", label: "Intersex" }, { value: "unknown", label: "Unknown" }]` using `optionsMatch`. Maps to `nodeConfig.biologicalSexVariable`. Supports inline variable creation with locked options.
 - **Relationship Variable**: `VariablePicker` filtered to text variables on the selected node type. Maps to `nodeConfig.relationshipVariable`. Supports inline variable creation via `NewVariableWindow` with `type: "text"`.
@@ -180,6 +182,7 @@ All section components follow existing patterns:
 
 | Variable | Entity | Type | Locked Options |
 |----------|--------|------|----------------|
+| `nodeConfig.nodeLabelVariable` | node | text | none |
 | `nodeConfig.egoVariable` | node | boolean | none |
 | `nodeConfig.biologicalSexVariable` | node | categorical | `[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "intersex", label: "Intersex" }, { value: "unknown", label: "Unknown" }]` |
 | `nodeConfig.relationshipVariable` | node | text | none |

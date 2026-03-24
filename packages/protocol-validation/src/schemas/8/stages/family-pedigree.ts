@@ -6,6 +6,8 @@ import { baseStageSchema } from "./base";
 export const NodeConfigSchema = z.object({
 	// Node type for alter nodes in the codebook
 	type: z.string().generateMock(() => getNodeTypeId()),
+	// Text variable used to store the node's display label
+	nodeLabelVariable: z.string().generateMock(() => getNodeVariableId()),
 	// Boolean variable marking the ego node
 	egoVariable: z.string().generateMock(() => getNodeVariableId()),
 	// Categorical variable storing the biological sex of the node (male, female, intersex, unknown)

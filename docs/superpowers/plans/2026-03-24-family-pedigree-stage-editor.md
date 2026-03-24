@@ -797,6 +797,12 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 		handleCreatedVariable,
 	);
 
+	const handleNewNodeLabelVariable = (name: string) =>
+		openVariableWindow(
+			{ initialValues: { name, type: "text" }, lockedOptions: null },
+			{ field: "nodeConfig.nodeLabelVariable" },
+		);
+
 	const handleNewEgoVariable = (name: string) =>
 		openVariableWindow(
 			{ initialValues: { name, type: "boolean" }, lockedOptions: null },
@@ -836,6 +842,14 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 				{nodeType && (
 					<>
 						<div className="flex flex-col gap-6 mt-6">
+							<VariableRow
+								name="nodeConfig.nodeLabelVariable"
+								label="Node Label"
+								description="A text variable used to store the display label for each node in the pedigree."
+								entityType={nodeType}
+								options={textNodeVariables}
+								onCreateOption={handleNewNodeLabelVariable}
+							/>
 							<VariableRow
 								name="nodeConfig.egoVariable"
 								label="Ego Identifier"
