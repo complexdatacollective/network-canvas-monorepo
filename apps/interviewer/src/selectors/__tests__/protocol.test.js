@@ -2,7 +2,7 @@ import * as Protocol from "../protocol";
 
 const nodeVariables = {
 	person: {
-		iconVariant: "add-a-person",
+		icon: "add-a-person",
 		color: "node-color-seq-2",
 	},
 };

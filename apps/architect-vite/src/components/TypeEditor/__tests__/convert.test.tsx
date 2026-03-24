@@ -5,13 +5,13 @@ import { format, parse } from "../convert";
 const mockConfiguration = {
 	label: "Person",
 	color: "coral",
-	iconVariant: "add-a-person",
+	icon: "add-a-person",
 };
 
 const mockFormConfiguration = {
 	label: "Person",
 	color: "coral",
-	iconVariant: "add-a-person",
+	icon: "add-a-person",
 };
 
 describe("convert", () => {

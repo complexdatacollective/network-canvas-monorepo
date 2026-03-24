@@ -75,7 +75,7 @@ const mockProtocol = {
 		node: {
 			person: {
 				displayVariable: "name",
-				iconVariant: "add-a-person",
+				icon: "add-a-person",
 				variables: {
 					nickname: {
 						type: "text",

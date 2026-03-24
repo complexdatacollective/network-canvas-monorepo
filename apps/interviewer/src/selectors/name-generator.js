@@ -51,7 +51,7 @@ export const getInitialSortOrder = createSelector(stageSortOptions, (sortOptions
 export const makeGetNodeIconName = () =>
 	createSelector(getProtocolCodebook, makeGetSubjectType(), (codebook, nodeType) => {
 		const nodeInfo = codebook.node;
-		return nodeInfo?.[nodeType]?.iconVariant || "add-a-person";
+		return nodeInfo?.[nodeType]?.icon || "add-a-person";
 	});
 
 export const makeGetPanelConfiguration = () =>

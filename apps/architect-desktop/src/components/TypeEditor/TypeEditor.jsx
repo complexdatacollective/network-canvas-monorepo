@@ -16,12 +16,12 @@ const ICON_OPTIONS = ["add-a-person", "add-a-place"];
 const TypeEditor = ({ form, entity, type, existingTypes }) => {
 	const dispatch = useDispatch();
 	const getFormValue = formValueSelector(form);
-	const formIcon = useSelector((state) => getFormValue(state, "iconVariant"));
+	const formIcon = useSelector((state) => getFormValue(state, "icon"));
 
 	// Provide a default icon
 	useEffect(() => {
 		if (entity === "node" && !formIcon) {
-			dispatch(change(form, "iconVariant", ICON_OPTIONS[0]));
+			dispatch(change(form, "icon", ICON_OPTIONS[0]));
 		}
 	}, [entity, form, formIcon, dispatch]);
 
@@ -63,11 +63,11 @@ const TypeEditor = ({ form, entity, type, existingTypes }) => {
 					<Section title="Icon" summary={<p>Choose an icon to display on interfaces that create this {entity}.</p>}>
 						<ValidatedField
 							component={Fields.RadioGroup}
-							name="iconVariant"
+							name="icon"
 							options={ICON_OPTIONS}
 							optionComponent={IconOption}
 							validation={{ required: true }}
-							issueDescription="iconVariant"
+							issueDescription="icon"
 						/>
 					</Section>
 				)}

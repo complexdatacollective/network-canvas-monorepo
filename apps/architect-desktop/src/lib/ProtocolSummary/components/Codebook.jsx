@@ -20,7 +20,7 @@ const Codebook = () => {
 					entity="node"
 					type={id}
 					color={node.color}
-					iconVariant={node.iconVariant}
+					icon={node.icon}
 					name={node.name}
 					variables={node.variables}
 				/>
@@ -31,7 +31,7 @@ const Codebook = () => {
 					entity="edge"
 					type={id}
 					color={edge.color}
-					iconVariant={edge.iconVariant}
+					icon={edge.icon}
 					name={edge.name}
 					variables={edge.variables}
 				/>

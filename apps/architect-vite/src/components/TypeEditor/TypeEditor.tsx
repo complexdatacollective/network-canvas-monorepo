@@ -25,12 +25,12 @@ type TypeEditorProps = {
 const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
-	const formIcon = useAppSelector((state: RootState) => formSelector(state, "iconVariant"));
+	const formIcon = useAppSelector((state: RootState) => formSelector(state, "icon"));
 
 	// Provide a default icon
 	useEffect(() => {
 		if (entity === "node" && !formIcon) {
-			dispatch(change(form, "iconVariant", ICON_OPTIONS[0]));
+			dispatch(change(form, "icon", ICON_OPTIONS[0]));
 		}
 	}, [entity, form, formIcon, dispatch]);
 
@@ -74,13 +74,13 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 			{entity === "node" && (
 				<Section
 					title="Icon"
-					id={getFieldId("iconVariant")}
+					id={getFieldId("icon")}
 					summary={<p>Choose an icon to display on interfaces that create this {entity}.</p>}
 					layout="vertical"
 				>
 					<ValidatedField
 						component={RadioGroup}
-						name="iconVariant"
+						name="icon"
 						validation={{ required: true }}
 						componentProps={{
 							options: ICON_OPTIONS,

@@ -7,7 +7,8 @@
 			"4aebf73e-95e3-4fd1-95e7-237dcc4a4466": {
 				"name": "person",
 				"color": "node-color-seq-1",
-				"iconVariant": "add-a-person",
+				"icon": "add-a-person",
+				"shape": { "default": "circle" },
 				"variables": {
 					"6be95f85-c2d9-4daf-9de1-3939418af888": {
 						"name": "name",
@@ -488,7 +489,8 @@
 			"eda5e3bb-8e1c-4216-9e06-adc0ff6b7f73": {
 				"name": "venue",
 				"color": "node-color-seq-4",
-				"iconVariant": "add-a-place",
+				"icon": "add-a-place",
+				"shape": { "default": "circle" },
 				"variables": {
 					"66646d68-cd33-407b-a349-56707021df72": {
 						"name": "name",

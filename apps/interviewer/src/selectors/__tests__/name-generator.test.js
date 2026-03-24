@@ -38,7 +38,7 @@ const mockProtocol = {
 	codebook: {
 		node: {
 			person: {
-				iconVariant: "add-a-person",
+				icon: "add-a-person",
 			},
 		},
 	},

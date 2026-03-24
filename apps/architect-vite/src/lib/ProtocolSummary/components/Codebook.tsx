@@ -5,7 +5,7 @@ import SummaryContext from "./SummaryContext";
 
 type NodeOrEdgeType = {
 	color?: string;
-	iconVariant?: string;
+	icon?: string;
 	name: string;
 	variables?: Record<string, unknown>;
 };
