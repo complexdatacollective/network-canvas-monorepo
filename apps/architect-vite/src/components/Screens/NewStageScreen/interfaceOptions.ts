@@ -95,7 +95,7 @@ export const INTERFACE_TYPES: InterfaceType[] = [
 		type: "FamilyPedigree",
 		title: "Family Pedigree",
 		description:
-			"An interface for collecting family network data, allowing participants to build a family pedigree with relationships and capture additional attributes about family members.",
+			"An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.",
 	},
 	{
 		category: CATEGORIES.GENERATORS,
