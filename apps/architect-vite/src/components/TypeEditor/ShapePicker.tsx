@@ -51,7 +51,7 @@ const ShapePicker = ({
 							aria-label={`Select shape ${label}`}
 							tabIndex={0}
 						>
-							<Node label="" shape={value} color={nodeColor} size={nodeSize} disabled />
+							<Node label="" shape={value} color={nodeColor} size={nodeSize} />
 							{!small && <span className="form-fields-shape-picker__label">{label}</span>}
 						</div>
 					))}

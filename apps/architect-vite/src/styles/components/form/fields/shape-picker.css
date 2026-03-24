@@ -14,19 +14,11 @@
 	border-radius: var(--border-radius);
 	background: var(--color-surface-1);
 	cursor: pointer;
-	opacity: 0.5;
-	transition:
-		border-color var(--animation-duration-standard) var(--animation-easing),
-		opacity var(--animation-duration-standard) var(--animation-easing);
+	transition: border-color var(--animation-duration-standard) var(--animation-easing);
 }
 
 .form-fields-shape-picker__shape--selected {
 	border-color: var(--color-neon-coral);
-	opacity: 1;
-}
-
-.form-fields-shape-picker__shape:hover:not(.form-fields-shape-picker__shape--selected) {
-	opacity: 0.75;
 }
 
 .form-fields-shape-picker__label {

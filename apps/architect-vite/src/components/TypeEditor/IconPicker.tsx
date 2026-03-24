@@ -1,6 +1,6 @@
 import { Combobox } from "@base-ui-components/react/combobox";
 import type { LucideProps } from "lucide-react";
-import { icons as lucideIconMap } from "lucide-react";
+import { ChevronDown, icons as lucideIconMap, Search } from "lucide-react";
 import { type ComponentType, useMemo, useState } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
@@ -109,51 +109,59 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 					setQuery(inputValue);
 				}}
 			>
-				<div className="flex flex-col gap-sm">
-					<div className="flex items-center gap-md rounded-lg border border-border bg-white p-sm">
-						{selectedEntry && (
-							<div className="flex shrink-0 items-center justify-center text-foreground">
+				<Combobox.Trigger className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-surface-2)] bg-[var(--color-surface-1)] px-3 py-2 text-left text-sm text-[var(--color-foreground)]">
+					{selectedEntry ? (
+						<>
+							<span className="flex h-6 w-6 shrink-0 items-center justify-center">
 								<IconPreview entry={selectedEntry} size={24} />
-							</div>
-						)}
-						<Combobox.Input
-							placeholder="Search icons..."
-							className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-charcoal/50"
-						/>
-						{input.value && (
-							<Combobox.Clear className="flex shrink-0 items-center justify-center rounded p-xs text-charcoal hover:text-foreground">
-								✕
-							</Combobox.Clear>
-						)}
-					</div>
+							</span>
+							<span className="min-w-0 flex-1 truncate">{entryToLabel(selectedEntry)}</span>
+						</>
+					) : (
+						<span className="min-w-0 flex-1 truncate text-[var(--color-charcoal)]">Select an icon...</span>
+					)}
+					<ChevronDown size={16} className="shrink-0 text-[var(--color-charcoal)]" />
+				</Combobox.Trigger>
 
-					<Combobox.Portal>
-						<Combobox.Positioner align="start" sideOffset={4}>
-							<Combobox.Popup className="z-[var(--z-tooltip)] max-h-72 w-80 overflow-hidden rounded-lg border border-border bg-surface-1 shadow-md">
-								<Combobox.List className="overflow-y-auto p-xs" style={{ maxHeight: "calc(18rem - 8px)" }}>
-									{filteredIcons.map((entry) => (
-										<Combobox.Item
-											key={entry.isCustom ? `custom-${entry.name}` : entry.name}
-											value={entry}
-											className="flex cursor-pointer items-center gap-sm rounded-md px-sm py-xs text-sm text-surface-1-foreground outline-none data-[highlighted]:bg-surface-2 data-[selected]:font-semibold"
-										>
-											<span className="flex h-6 w-6 shrink-0 items-center justify-center">
-												<IconPreview entry={entry} size={18} />
-											</span>
-											<Combobox.ItemIndicator className="mr-xs">✓</Combobox.ItemIndicator>
-											<span className="truncate">{entryToLabel(entry)}</span>
-										</Combobox.Item>
-									))}
-								</Combobox.List>
-								<Combobox.Empty className="p-md text-center text-sm text-charcoal">No icons found</Combobox.Empty>
-							</Combobox.Popup>
-						</Combobox.Positioner>
-					</Combobox.Portal>
-				</div>
+				<Combobox.Portal>
+					<Combobox.Positioner align="start" sideOffset={4} className="z-[var(--z-tooltip)]">
+						<Combobox.Popup className="w-[var(--anchor-width)] min-w-[var(--anchor-width)] overflow-hidden rounded-lg border border-[var(--color-surface-2)] bg-[var(--color-surface-1)] shadow-md">
+							<div className="flex items-center gap-2 border-b border-[var(--color-surface-2)] px-3 py-2">
+								<Search size={16} className="shrink-0 text-[var(--color-charcoal)]" />
+								<Combobox.Input
+									placeholder="Search icons..."
+									className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-charcoal)]"
+								/>
+							</div>
+
+							<Combobox.List className="max-h-72 overflow-y-auto p-1">
+								{filteredIcons.map((entry) => (
+									<Combobox.Item
+										key={entry.isCustom ? `custom-${entry.name}` : entry.name}
+										value={entry}
+										className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--color-foreground)] outline-none data-[highlighted]:bg-[var(--color-surface-2)]"
+									>
+										<span className="flex h-5 w-5 shrink-0 items-center justify-center">
+											<IconPreview entry={entry} size={18} />
+										</span>
+										<span className="min-w-0 flex-1 truncate">{entryToLabel(entry)}</span>
+										<Combobox.ItemIndicator className="shrink-0 text-[var(--color-foreground)]">
+											✓
+										</Combobox.ItemIndicator>
+									</Combobox.Item>
+								))}
+							</Combobox.List>
+
+							<Combobox.Empty className="p-4 text-center text-sm text-[var(--color-charcoal)]">
+								No icons found
+							</Combobox.Empty>
+						</Combobox.Popup>
+					</Combobox.Positioner>
+				</Combobox.Portal>
 			</Combobox.Root>
 
 			{showError && (
-				<div className="mt-xs text-sm text-error">
+				<div className="mt-1 text-sm text-[var(--color-error)]">
 					<Icon name="warning" />
 					{error}
 				</div>

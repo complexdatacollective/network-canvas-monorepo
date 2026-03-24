@@ -65,19 +65,6 @@
 	margin-bottom: var(--space-xs);
 }
 
-.shape-variable-mapping__select-wrapper {
-	display: flex;
-	flex-direction: column;
-}
-
-.shape-variable-mapping__select {
-	background: var(--color-surface-1);
-	border: 1px solid var(--color-surface-2);
-	border-radius: var(--border-radius);
-	padding: var(--space-xs) var(--space-sm);
-	color: var(--color-foreground);
-	font-size: inherit;
-}
 
 .shape-variable-mapping__mapping {
 	display: flex;

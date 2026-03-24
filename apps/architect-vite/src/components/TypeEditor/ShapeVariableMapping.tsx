@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { change, formValueSelector } from "redux-form";
+import VariablePicker from "~/components/Form/Fields/VariablePicker/VariablePicker";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/store";
 import ShapePicker from "./ShapePicker";
@@ -42,6 +43,10 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 			.filter(([, v]) => ELIGIBLE_TYPES.has(v.type))
 			.map(([id, v]) => ({ id, name: v.name, type: v.type, options: v.options }));
 	}, [variables]);
+
+	const variableOptions = useMemo(() => {
+		return eligibleVariables.map((v) => ({ label: v.name, value: v.id, type: v.type }));
+	}, [eligibleVariables]);
 
 	const selectedVarId = dynamic?.variable;
 	const selectedVar = selectedVarId && variables ? variables[selectedVarId] : undefined;
@@ -144,23 +149,15 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 
 			{enabled && (
 				<div className="shape-variable-mapping__config">
-					<div className="shape-variable-mapping__select-wrapper">
-						<label className="shape-variable-mapping__field-label">Variable</label>
-						<select
-							className="shape-variable-mapping__select"
-							value={selectedVarId ?? ""}
-							onChange={(e) => handleVariableChange(e.target.value)}
-						>
-							<option value="" disabled>
-								Select a variable...
-							</option>
-							{eligibleVariables.map((v) => (
-								<option key={v.id} value={v.id}>
-									{v.name} ({v.type})
-								</option>
-							))}
-						</select>
-					</div>
+					<VariablePicker
+						label="Variable"
+						options={variableOptions}
+						disallowCreation
+						input={{
+							value: selectedVarId,
+							onChange: handleVariableChange,
+						}}
+					/>
 
 					{selectedVar && dynamic?.type === "discrete" && (
 						<div className="shape-variable-mapping__mapping">
