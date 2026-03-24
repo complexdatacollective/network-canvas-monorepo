@@ -1,5 +1,4 @@
 import window from "@app/behaviours/window";
-import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import Stackable from "@components/Stackable";
 import cx from "classnames";
 import PropTypes from "prop-types";
@@ -10,16 +9,11 @@ const Window = ({ show, title, children, leftControls, rightControls, className 
 		return null;
 	}
 
-	const dialogZIndex = getCSSVariableAsNumber("--z-dialog");
-
 	return (
 		<Stackable stackKey>
 			{({ stackIndex }) => (
 				<div
 					className={cx("window", className)}
-					style={{
-						zIndex: dialogZIndex + stackIndex,
-					}}
 					onClick={(e) => e.stopPropagation()}
 				>
 					<div className="window__container">

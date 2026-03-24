@@ -161,7 +161,9 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 
 					{selectedVar && dynamic?.type === "discrete" && (
 						<div className="shape-variable-mapping__mapping">
-							<label className="shape-variable-mapping__field-label">Shape for each value</label>
+							<label className="shape-variable-mapping__field-label text-base font-semibold">
+								Shape for each value
+							</label>
 							{getDiscreteOptions().map((option) => {
 								const currentShape = getShapeForValue(option.value);
 								return (

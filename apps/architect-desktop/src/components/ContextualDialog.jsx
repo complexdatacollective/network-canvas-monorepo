@@ -1,5 +1,4 @@
 import window from "@app/behaviours/window";
-import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
 import Stackable from "@components/Stackable";
 import cx from "classnames";
 import PropTypes from "prop-types";
@@ -27,8 +26,6 @@ Title.defaultProps = {
 };
 
 const Dialog = ({ show, children, className, onBlur }) => {
-	const dialogZIndex = getCSSVariableAsNumber("--z-dialog");
-
 	const handleBlur = useCallback(
 		(e) => {
 			e.stopPropagation();
@@ -46,9 +43,6 @@ const Dialog = ({ show, children, className, onBlur }) => {
 			{({ stackIndex }) => (
 				<div
 					className={cx("contextual-dialog", className)}
-					style={{
-						zIndex: dialogZIndex + stackIndex,
-					}}
 					onClick={handleBlur}
 				>
 					<div className="contextual-dialog__container">

@@ -221,7 +221,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 						onClick={() => setIsEditing(true)}
 						title="Click to rename this variable..."
 					>
-						{name ?? ""}
+						{name}
 					</motion.h4>
 				)}
 			</AnimatePresence>

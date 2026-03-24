@@ -51,7 +51,6 @@ const Dialog = ({
 				stiffness: 300,
 				damping: 30,
 			}}
-			style={{ zIndex: 1000 }}
 			className={cx(
 				"dialog",
 				{ [`dialog--${type}`]: type },

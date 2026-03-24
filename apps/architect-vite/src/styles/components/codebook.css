@@ -29,7 +29,7 @@
 }
 
 .codebook .codebook__category {
-	margin-top: var(--space-3xl);
+	margin-top: var(--space-xl);
 }
 
 .codebook .codebook__category-items {
@@ -58,14 +58,14 @@
 
 .codebook .codebook__entity {
 	overflow: hidden;
-	margin: var(--space-3xl) auto;
-	padding: var(--space-3xl);
+	margin: var(--space-xl) auto;
+	padding: var(--space-xl);
 	background: var(--color-surface-3);
 	border-radius: var(--radius);
 }
 
 .codebook .codebook__entity:first-child {
-	margin-top: var(--space-3xl);
+	margin-top: var(--space-xl);
 }
 
 .codebook .codebook__entity-detail {
@@ -88,7 +88,7 @@
 
 .codebook .codebook__entity-meta {
 	flex: 1;
-	padding-left: var(--space-3xl);
+	padding-left: var(--space-xl);
 }
 
 .codebook .codebook__entity-meta .link {

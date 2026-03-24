@@ -181,7 +181,6 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 units.unit(.5) units.unit(2) units.unit(1) rgb(0 0 0 / 25%); // sass-lint:disable-line no-color-literals
-  z-index: var(--z-dialog);
 
   h5 {
     margin: 0;
