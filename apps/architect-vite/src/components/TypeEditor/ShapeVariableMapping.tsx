@@ -161,9 +161,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 
 					{selectedVar && dynamic?.type === "discrete" && (
 						<div className="shape-variable-mapping__mapping">
-							<label className="shape-variable-mapping__field-label text-base font-semibold">
-								Shape for each value
-							</label>
+							<h4 className="shape-variable-mapping__field-label text-base font-semibold">Shape for each value</h4>
 							{getDiscreteOptions().map((option) => {
 								const currentShape = getShapeForValue(option.value);
 								return (
@@ -190,7 +188,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 
 					{selectedVar && dynamic?.type === "breakpoints" && (
 						<div className="shape-variable-mapping__mapping">
-							<label className="shape-variable-mapping__field-label">Thresholds</label>
+							<h4 className="shape-variable-mapping__field-label">Thresholds</h4>
 							<div className="shape-variable-mapping__row shape-variable-mapping__row--muted">
 								<span className="shape-variable-mapping__row-label">Below first threshold</span>
 								<span className="shape-variable-mapping__row-hint">uses default shape</span>

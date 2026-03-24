@@ -37,23 +37,19 @@ const ShapePicker = ({
 			<div className={cx("form-fields-shape-picker", { "form-fields-shape-picker--has-error": showError })}>
 				<div className="form-fields-shape-picker__shapes">
 					{SHAPES.map(({ value, label }) => (
-						<div
+						<button
 							key={value}
+							type="button"
 							className={cx("form-fields-shape-picker__shape", {
 								"form-fields-shape-picker__shape--selected": input.value === value,
 							})}
 							onClick={() => input.onChange(value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" || e.key === " ") input.onChange(value);
-							}}
-							role="radio"
-							aria-checked={input.value === value}
 							aria-label={`Select shape ${label}`}
-							tabIndex={0}
+							aria-pressed={input.value === value}
 						>
 							<Node label="" shape={value} color={nodeColor} size={nodeSize} />
 							{!small && <span className="form-fields-shape-picker__label">{label}</span>}
-						</div>
+						</button>
 					))}
 				</div>
 				{showError && (
