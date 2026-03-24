@@ -13,6 +13,7 @@ import ColorPicker from "../Form/Fields/ColorPicker";
 import getPalette from "./getPalette";
 import IconOption from "./IconOption";
 import ShapePicker from "./ShapePicker";
+import ShapeVariableMapping from "./ShapeVariableMapping";
 
 const ICON_OPTIONS = ["add-a-person", "add-a-place"];
 
@@ -88,6 +89,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 					layout="vertical"
 				>
 					<ValidatedField component={ShapePicker} name="shape.default" validation={{ required: true }} />
+					<ShapeVariableMapping form={form} />
 				</Section>
 			)}
 			{entity === "node" && (

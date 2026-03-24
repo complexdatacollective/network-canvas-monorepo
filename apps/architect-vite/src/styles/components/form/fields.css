@@ -15,6 +15,7 @@
 @import "./fields/multi-select.css";
 @import "./fields/color-picker.css";
 @import "./fields/shape-picker.css";
+@import "./fields/shape-variable-mapping.css";
 
 .form-field {
 	@apply form-field;
