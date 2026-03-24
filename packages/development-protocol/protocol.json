@@ -1176,7 +1176,8 @@
 			"person_node_type": {
 				"name": "person",
 				"color": "node-color-seq-1",
-				"iconVariant": "add-a-person",
+				"icon": "add-a-person",
+				"shape": { "default": "circle" },
 				"variables": {
 					"name_variable": {
 						"encrypted": true,
@@ -1662,7 +1663,8 @@
 			"venue_node_type": {
 				"name": "venue",
 				"color": "node-color-seq-4",
-				"iconVariant": "add-a-place",
+				"icon": "add-a-place",
+				"shape": { "default": "circle" },
 				"variables": {
 					"name_variable": {
 						"name": "name",
