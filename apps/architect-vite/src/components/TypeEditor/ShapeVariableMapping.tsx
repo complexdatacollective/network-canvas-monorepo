@@ -16,9 +16,10 @@ type Variable = {
 
 type ShapeVariableMappingProps = {
 	form: string;
+	nodeColor?: string;
 };
 
-const ShapeVariableMapping = ({ form }: ShapeVariableMappingProps) => {
+const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) => {
 	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 
@@ -211,6 +212,7 @@ const ShapeVariableMapping = ({ form }: ShapeVariableMappingProps) => {
 									<span className="shape-variable-mapping__threshold-arrow">→</span>
 									<ShapePicker
 										small
+										nodeColor={nodeColor}
 										input={{
 											value: threshold.shape,
 											onChange: (shape: string) => handleThresholdShapeChange(index, shape),

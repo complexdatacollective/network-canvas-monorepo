@@ -22,6 +22,7 @@
 		"@tippyjs/react": "^4.2.5",
 		"@types/redux-logger": "^3.0.13",
 		"animejs": "^2.2.0",
+		"class-variance-authority": "catalog:",
 		"classnames": "^2.2.6",
 		"clsx": "^2.1.1",
 		"csvtojson": "^2.0.10",
@@ -36,6 +37,7 @@
 		"mapbox-gl": "^3.18.0",
 		"motion": "^12.14.0",
 		"ohash": "^2.0.11",
+		"posthog-js": "catalog:",
 		"react": "catalog:",
 		"react-compound-slider": "^3.4.0",
 		"react-dom": "catalog:",
@@ -66,7 +68,6 @@
 		"uuid": "^13.0.0",
 		"vite-tsconfig-paths": "^6.1.1",
 		"wouter": "^3.7.1",
-		"posthog-js": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

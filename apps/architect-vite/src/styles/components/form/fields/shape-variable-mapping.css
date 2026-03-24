@@ -27,7 +27,7 @@
 }
 
 .shape-variable-mapping__toggle-btn--active {
-	background: var(--color-neon-coral);
+	background: var(--color-active);
 }
 
 .shape-variable-mapping__toggle-knob {

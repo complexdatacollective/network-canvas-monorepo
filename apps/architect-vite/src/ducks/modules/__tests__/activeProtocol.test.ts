@@ -47,6 +47,7 @@ const mockProtocol2: CurrentProtocol = {
 			person: {
 				name: "Person",
 				color: "node-color-seq-1",
+				shape: { default: "circle" },
 				variables: {},
 			},
 		},

@@ -13,7 +13,6 @@
 	border: 2px solid transparent;
 	border-radius: var(--border-radius);
 	background: var(--color-surface-1);
-	color: var(--color-platinum--dark);
 	cursor: pointer;
 	opacity: 0.5;
 	transition:
@@ -24,7 +23,6 @@
 .form-fields-shape-picker__shape--selected {
 	border-color: var(--color-neon-coral);
 	opacity: 1;
-	color: var(--color-neon-coral);
 }
 
 .form-fields-shape-picker__shape:hover:not(.form-fields-shape-picker__shape--selected) {

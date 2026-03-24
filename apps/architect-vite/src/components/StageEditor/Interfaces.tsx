@@ -182,7 +182,7 @@ const INTERFACE_CONFIGS = {
 		sections: [AnonymisationExplanation, AnonymisationValidation, EncryptedVariables, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/anonymisation/",
 	},
-	FamilyTreeCensus: {
+	FamilyPedigree: {
 		sections: [
 			NodeType,
 			FamilyTreeEdgeType,
@@ -193,7 +193,7 @@ const INTERFACE_CONFIGS = {
 			SkipLogic,
 			InterviewScript,
 		],
-		documentation: "https://documentation.networkcanvas.com/interface-documentation/family-tree-census/",
+		documentation: "https://documentation.networkcanvas.com/interface-documentation/family-pedigree/",
 	},
 } as const satisfies InterfaceRegistry;
 

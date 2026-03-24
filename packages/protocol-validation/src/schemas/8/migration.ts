@@ -9,6 +9,7 @@ const migrationV7toV8 = createMigration({
 - New interface: "geospatial interface". Allows the participant to select a location on a map based on a geojson shapefile.
 - New experimental interface: "anonymisation interface". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.
 - New interface: "one-to-many dyad-census". Allows the participant to link multiple alters at a time.
+- New interface: "family pedigree". A pedigree building interface designed for genetic disease monitoring scenarios, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
 - Add new validation options for form fields: \`greaterThanVariable\` and \`lessThanVariable\`.
 - Add new comparator options for skip logic and filter: \`contains\` and \`does not contain\`.
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.

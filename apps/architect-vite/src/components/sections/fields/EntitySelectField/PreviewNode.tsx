@@ -1,29 +1,38 @@
 import cx from "classnames";
-import { Node } from "~/lib/legacy-ui/components";
+import type { NodeShape } from "~/components/Node/Node";
+import Node from "~/components/Node/Node";
 
 type PreviewNodeProps = {
 	label: string;
 	color?: string;
+	shape?: NodeShape;
 	onClick?: (() => void) | undefined;
 	selected?: boolean;
 };
 
-const PreviewNode = ({ label, color = "node-color-seq-1", onClick, selected = false }: PreviewNodeProps) => {
-	const content = <Node label={label} selected={selected} color={color} />;
+const PreviewNode = ({
+	label,
+	color = "node-color-seq-1",
+	shape = "circle",
+	onClick,
+	selected = false,
+}: PreviewNodeProps) => {
+	const content = (
+		<Node
+			label={label}
+			selected={selected}
+			color={color}
+			shape={shape}
+			size="sm"
+			onClick={!selected ? onClick : undefined}
+		/>
+	);
 
 	const commonClasses = cx(
 		"preview-node",
 		{ "preview-node--selected": selected },
 		{ "preview-node--clickable": onClick },
 	);
-
-	if (onClick && !selected) {
-		return (
-			<button type="button" className={commonClasses} onClick={onClick} aria-label={`Select node ${label}`}>
-				{content}
-			</button>
-		);
-	}
 
 	return <div className={commonClasses}>{content}</div>;
 };

@@ -19,6 +19,7 @@ const state = {
 					person: {
 						name: "Person",
 						color: "node-color-seq-1" as const,
+						shape: { default: "circle" as const },
 						variables: {
 							2: {
 								name: "name",

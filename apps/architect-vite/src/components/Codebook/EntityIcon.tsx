@@ -1,14 +1,17 @@
-import { Icon, Node } from "~/lib/legacy-ui/components";
+import type { NodeShape } from "~/components/Node/Node";
+import Node from "~/components/Node/Node";
+import { Icon } from "~/lib/legacy-ui/components";
 
 type EntityIconProps = {
 	entity: string;
 	color?: string;
+	shape?: NodeShape;
 };
 
-const EntityIcon = ({ entity, color }: EntityIconProps) => {
+const EntityIcon = ({ entity, color, shape = "circle" }: EntityIconProps) => {
 	switch (entity) {
 		case "node":
-			return <Node label="" color={color} />;
+			return <Node label="" color={color} shape={shape} size="xxs" />;
 		case "edge":
 			return <Icon name="links" color={color} />;
 		case "asset":

@@ -67,7 +67,7 @@ catalogs:
       specifier: ^19.2.3
       version: 19.2.3
     class-variance-authority:
-      specifier: ^0.7.1
+      specifier: 0.7.1
       version: 0.7.1
     clsx:
       specifier: ^2.1.1
@@ -573,6 +573,9 @@ importers:
       animejs:
         specifier: ^2.2.0
         version: 2.2.0
+      class-variance-authority:
+        specifier: 'catalog:'
+        version: 0.7.1
       classnames:
         specifier: ^2.2.6
         version: 2.5.1

@@ -1,11 +1,13 @@
 import cx from "classnames";
+import type { NodeShape } from "~/components/Node/Node";
+import Node from "~/components/Node/Node";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
-const SHAPES = [
+const SHAPES: Array<{ value: NodeShape; label: string }> = [
 	{ value: "circle", label: "Circle" },
 	{ value: "square", label: "Square" },
 	{ value: "diamond", label: "Diamond" },
-] as const;
+];
 
 type ShapePickerProps = {
 	input: {
@@ -18,60 +20,40 @@ type ShapePickerProps = {
 		touched?: boolean;
 	};
 	small?: boolean;
+	nodeColor?: string;
 };
 
-const ShapeIcon = ({ shape, size }: { shape: string; size: number }) => {
-	switch (shape) {
-		case "circle":
-			return (
-				<svg width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="Circle shape">
-					<circle cx="12" cy="12" r="10" fill="currentColor" />
-				</svg>
-			);
-		case "square":
-			return (
-				<svg width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="Square shape">
-					<rect x="2" y="2" width="20" height="20" rx="2" fill="currentColor" />
-				</svg>
-			);
-		case "diamond":
-			return (
-				<svg width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="Diamond shape">
-					<rect x="2" y="2" width="20" height="20" rx="2" fill="currentColor" transform="rotate(45 12 12)" />
-				</svg>
-			);
-		default:
-			return null;
-	}
-};
-
-const ShapePicker = ({ input, meta: { error, invalid, touched }, small }: ShapePickerProps) => {
-	const iconSize = small ? 16 : 24;
+const ShapePicker = ({
+	input,
+	meta: { error, invalid, touched },
+	small,
+	nodeColor = "node-color-seq-1",
+}: ShapePickerProps) => {
+	const nodeSize = small ? "xxs" : "xs";
 	const showError = invalid && touched && error;
 
 	return (
 		<div className="form-field-container">
-			<div
-				className={cx("form-fields-shape-picker", {
-					"form-fields-shape-picker--has-error": showError,
-				})}
-			>
+			<div className={cx("form-fields-shape-picker", { "form-fields-shape-picker--has-error": showError })}>
 				<div className="form-fields-shape-picker__shapes">
 					{SHAPES.map(({ value, label }) => (
-						<button
+						<div
 							key={value}
-							type="button"
-							onClick={() => input.onChange(value)}
-							className={cx("form-fields-shape-picker__shape", `form-fields-shape-picker__shape--${value}`, {
+							className={cx("form-fields-shape-picker__shape", {
 								"form-fields-shape-picker__shape--selected": input.value === value,
 							})}
-							title={label}
+							onClick={() => input.onChange(value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") input.onChange(value);
+							}}
+							role="radio"
+							aria-checked={input.value === value}
 							aria-label={`Select shape ${label}`}
-							aria-pressed={input.value === value}
+							tabIndex={0}
 						>
-							<ShapeIcon shape={value} size={iconSize} />
+							<Node label="" shape={value} color={nodeColor} size={nodeSize} disabled />
 							{!small && <span className="form-fields-shape-picker__label">{label}</span>}
-						</button>
+						</div>
 					))}
 				</div>
 				{showError && (

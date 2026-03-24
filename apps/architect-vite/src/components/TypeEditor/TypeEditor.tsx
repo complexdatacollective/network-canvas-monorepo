@@ -4,18 +4,16 @@ import { connect } from "react-redux";
 import { change, formValueSelector } from "redux-form";
 import { Layout, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
-import { RadioGroup, Text } from "~/components/Form/Fields";
+import { Text } from "~/components/Form/Fields";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/store";
 import { getCodebook } from "~/selectors/protocol";
 import { getFieldId } from "~/utils/issues";
 import ColorPicker from "../Form/Fields/ColorPicker";
 import getPalette from "./getPalette";
-import IconOption from "./IconOption";
+import IconPicker from "./IconPicker";
 import ShapePicker from "./ShapePicker";
 import ShapeVariableMapping from "./ShapeVariableMapping";
-
-const ICON_OPTIONS = ["add-a-person", "add-a-place"];
 
 type TypeEditorProps = {
 	form: string;
@@ -29,11 +27,12 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formIcon = useAppSelector((state: RootState) => formSelector(state, "icon"));
 	const formShapeDefault = useAppSelector((state: RootState) => formSelector(state, "shape.default"));
+	const formColor = useAppSelector((state: RootState) => formSelector(state, "color")) as string | undefined;
 
 	// Provide a default icon
 	useEffect(() => {
 		if (entity === "node" && !formIcon) {
-			dispatch(change(form, "icon", ICON_OPTIONS[0]));
+			dispatch(change(form, "icon", "add-a-person"));
 		}
 	}, [entity, form, formIcon, dispatch]);
 
@@ -88,8 +87,13 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 					summary={<p>Choose a default shape for this node type.</p>}
 					layout="vertical"
 				>
-					<ValidatedField component={ShapePicker} name="shape.default" validation={{ required: true }} />
-					<ShapeVariableMapping form={form} />
+					<ValidatedField
+						component={ShapePicker}
+						name="shape.default"
+						validation={{ required: true }}
+						componentProps={{ nodeColor: formColor }}
+					/>
+					<ShapeVariableMapping form={form} nodeColor={formColor} />
 				</Section>
 			)}
 			{entity === "node" && (
@@ -99,15 +103,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 					summary={<p>Choose an icon to display on interfaces that create this {entity}.</p>}
 					layout="vertical"
 				>
-					<ValidatedField
-						component={RadioGroup}
-						name="icon"
-						validation={{ required: true }}
-						componentProps={{
-							options: ICON_OPTIONS,
-							optionComponent: IconOption,
-						}}
-					/>
+					<ValidatedField component={IconPicker} name="icon" validation={{ required: true }} />
 				</Section>
 			)}
 		</Layout>
