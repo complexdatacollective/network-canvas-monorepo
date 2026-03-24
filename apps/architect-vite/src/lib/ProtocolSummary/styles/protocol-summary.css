@@ -40,8 +40,6 @@
 }
 
 .protocol-summary-rules__rule {
-	--base-node-size: 5.6rem;
-
 	display: flex;
 	align-items: center;
 	width: 100%;
