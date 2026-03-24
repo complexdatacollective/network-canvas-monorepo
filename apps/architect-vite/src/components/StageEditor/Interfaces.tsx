@@ -8,12 +8,9 @@ import {
 	CardDisplayOptions,
 	CategoricalBinPrompts,
 	ContentGrid,
-	DiseaseNominationPrompts,
 	DyadCensusPrompts,
 	EncryptedVariables,
 	ExternalDataSource,
-	FamilyTreeEdgeType,
-	FamilyTreeVariables,
 	FilteredEdgeType,
 	Form,
 	GeospatialPrompts,
@@ -21,7 +18,6 @@ import {
 	IntroductionPanel,
 	MapOptions,
 	MinMaxAlterLimits,
-	NameGenerationStep,
 	NameGeneratorPrompts,
 	NameGeneratorRosterPrompts,
 	NarrativeBehaviours,
@@ -32,7 +28,6 @@ import {
 	OrdinalBinPrompts,
 	QuickAdd,
 	RemoveAfterConsideration,
-	ScaffoldingStep,
 	SearchOptionsForExternalData,
 	SkipLogic,
 	SociogramPrompts,
@@ -40,6 +35,10 @@ import {
 	TieStrengthCensusPrompts,
 	Title,
 } from "~/components/sections";
+import CensusPrompt from "~/components/sections/FamilyPedigree/CensusPrompt";
+import EdgeConfiguration from "~/components/sections/FamilyPedigree/EdgeConfiguration";
+import NodeConfiguration from "~/components/sections/FamilyPedigree/NodeConfiguration";
+import NominationPrompts from "~/components/sections/FamilyPedigree/NominationPrompts";
 import { FilteredNodeType } from "~/components/sections/NodeType";
 
 /**
@@ -183,16 +182,7 @@ const INTERFACE_CONFIGS = {
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/anonymisation/",
 	},
 	FamilyPedigree: {
-		sections: [
-			NodeType,
-			FamilyTreeEdgeType,
-			FamilyTreeVariables,
-			ScaffoldingStep,
-			NameGenerationStep,
-			DiseaseNominationPrompts,
-			SkipLogic,
-			InterviewScript,
-		],
+		sections: [NodeConfiguration, EdgeConfiguration, CensusPrompt, NominationPrompts, SkipLogic, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/family-pedigree/",
 	},
 } as const satisfies InterfaceRegistry;
