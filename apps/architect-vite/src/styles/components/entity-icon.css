@@ -1,0 +1,21 @@
+.entity-icon {
+	display: inline-flex;
+	flex-direction: row;
+	justify-content: flex-start;
+	align-items: center;
+}
+
+.entity-icon__graphic {
+	margin-right: 1rem;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.entity-icon--small .entity-icon__graphic {
+	margin-right: 0.5rem;
+}
+
+.entity-icon--tiny .entity-icon__graphic {
+	margin-right: 0.3rem;
+}

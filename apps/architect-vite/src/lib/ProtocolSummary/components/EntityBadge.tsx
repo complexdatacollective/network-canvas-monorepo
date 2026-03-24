@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { useContext } from "react";
 import EntityIcon from "~/components/Codebook/EntityIcon";
@@ -18,34 +17,19 @@ const EntityBadge = ({ type, entity, link = false, small = false, tiny = false }
 		protocol: { codebook },
 	} = useContext(SummaryContext);
 
-	const classes = cx("protocol-summary-entity-badge", {
-		"protocol-summary-entity-badge--small": small,
-		"protocol-summary-entity-badge--tiny": tiny,
-	});
-
 	const color = get(codebook, [entity, type, "color"]);
 	const name = get(codebook, [entity, type, "name"]);
 
+	const size = tiny ? "tiny" : small ? "small" : "default";
 	const label = small || tiny ? name : <h2>{name}</h2>;
 
-	const badge = (
-		<>
-			<div className="protocol-summary-entity-badge__icon">
-				<EntityIcon color={color} entity={entity} />
-			</div>
-			<div className="protocol-summary-entity-badge__label">{label}</div>
-		</>
-	);
+	const badge = <EntityIcon color={color} entity={entity} label={label} size={size} />;
 
 	if (!link) {
-		return <div className={classes}>{badge}</div>;
+		return badge;
 	}
 
-	return (
-		<DualLink to={`#entity-${type}`} className={classes}>
-			{badge}
-		</DualLink>
-	);
+	return <DualLink to={`#entity-${type}`}>{badge}</DualLink>;
 };
 
 export default EntityBadge;
