@@ -50,3 +50,6 @@ dist
 /.serena/cache
 
 apps/documentation/public/sidebar.json
+
+# Superpowers brainstorm sessions
+.superpowers/
