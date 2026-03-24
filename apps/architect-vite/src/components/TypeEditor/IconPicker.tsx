@@ -99,6 +99,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 		<div className="form-field-container">
 			<Combobox.Root<IconEntry>
 				value={selectedEntry}
+				filteredItems={filteredIcons}
 				onValueChange={(val) => {
 					if (val) {
 						input.onChange(entryToValue(val));
