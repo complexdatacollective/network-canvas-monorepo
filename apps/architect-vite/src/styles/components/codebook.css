@@ -120,7 +120,6 @@
 .codebook .codebook__variables-column,
 .codebook .codebook__variables-heading {
 	margin-right: 0;
-	height: var(--space-4xl);
 	padding: var(--space-md) var(--space-sm);
 	font-size: var(--text-base);
 }
