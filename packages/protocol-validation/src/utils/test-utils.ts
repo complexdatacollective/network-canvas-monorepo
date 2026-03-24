@@ -1,3 +1,5 @@
+import type { NodeDefinition } from "~/schemas/8/codebook/definitions";
+
 /**
  * Creates a base valid protocol for testing variations
  */
@@ -21,7 +23,7 @@ export const createBaseProtocol = () => ({
 			person: {
 				name: "Person",
 				color: "node-color-seq-1",
-				shape: { default: "circle" },
+				shape: { default: "circle" } as NodeDefinition["shape"],
 				variables: {
 					name: {
 						name: "Name",
@@ -53,7 +55,7 @@ export const createBaseProtocol = () => ({
 			colleague: {
 				name: "Colleague",
 				color: "node-color-seq-2",
-				shape: { default: "circle" },
+				shape: { default: "circle" } as NodeDefinition["shape"],
 				variables: {
 					name: {
 						name: "Name",

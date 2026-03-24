@@ -23,7 +23,8 @@ describe("Shape Mapping Validation", () => {
 
 	it("rejects an invalid default shape", () => {
 		const protocol = createBaseProtocol();
-		(protocol.codebook.node.person as Record<string, unknown>).shape = { default: "hexagon" };
+		// Intentionally using an invalid shape to test rejection
+		protocol.codebook.node.person.shape = { default: "hexagon" as "circle" };
 
 		const result = ProtocolSchemaV8.safeParse(protocol);
 		expect(result.success).toBe(false);
@@ -82,7 +83,7 @@ describe("Shape Mapping Validation", () => {
 
 	it("rejects a breakpoint shape mapping with 0 thresholds", () => {
 		const protocol = createBaseProtocol();
-		(protocol.codebook.node.person as Record<string, unknown>).shape = {
+		protocol.codebook.node.person.shape = {
 			default: "circle",
 			dynamic: {
 				variable: "age",
@@ -97,7 +98,7 @@ describe("Shape Mapping Validation", () => {
 
 	it("rejects a breakpoint shape mapping with 3 thresholds", () => {
 		const protocol = createBaseProtocol();
-		(protocol.codebook.node.person as Record<string, unknown>).shape = {
+		protocol.codebook.node.person.shape = {
 			default: "circle",
 			dynamic: {
 				variable: "age",
@@ -125,7 +126,7 @@ describe("Shape Mapping Validation", () => {
 
 	it("rejects discrete mapping with duplicate values", () => {
 		const protocol = createBaseProtocol();
-		(protocol.codebook.node.person as Record<string, unknown>).shape = {
+		protocol.codebook.node.person.shape = {
 			default: "circle",
 			dynamic: {
 				variable: "category",
@@ -143,7 +144,7 @@ describe("Shape Mapping Validation", () => {
 
 	it("rejects breakpoint thresholds not in ascending order", () => {
 		const protocol = createBaseProtocol();
-		(protocol.codebook.node.person as Record<string, unknown>).shape = {
+		protocol.codebook.node.person.shape = {
 			default: "circle",
 			dynamic: {
 				variable: "age",

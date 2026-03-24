@@ -49,9 +49,12 @@ const BreakpointShapeMappingSchema = z.strictObject({
 		)
 		.min(1)
 		.max(2)
-		.refine((items) => items.every((item, i) => i === 0 || item.value > items[i - 1].value), {
-			message: "Breakpoint thresholds must be sorted ascending with no duplicates",
-		}),
+		.refine(
+			(items) => items.every((item, i, arr) => i === 0 || item.value > (arr[i - 1]?.value ?? Number.NEGATIVE_INFINITY)),
+			{
+				message: "Breakpoint thresholds must be sorted ascending with no duplicates",
+			},
+		),
 });
 
 const ShapeMappingSchema = z.union([DiscreteShapeMappingSchema, BreakpointShapeMappingSchema]);
