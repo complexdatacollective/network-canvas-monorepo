@@ -11,7 +11,7 @@ export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
 		<BaseDialog.Backdrop
 			render={
 				<motion.div
-					className="fixed inset-0 min-h-dvh bg-rich-black/50 backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute z-[999]"
+					className="fixed inset-0 min-h-dvh bg-rich-black/50 backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					exit={{ opacity: 0 }}
@@ -62,7 +62,6 @@ function DialogPopup({ size, header, children, footer, className, onAnimationCom
 						damping: 30,
 					}}
 					onAnimationComplete={onAnimationComplete}
-					style={{ zIndex: 1000 }}
 					{...props}
 				>
 					{header && <div className="sticky top-0 bg-accent text-accent-foreground px-4 py-6">{header}</div>}
