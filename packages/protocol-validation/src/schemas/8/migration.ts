@@ -16,6 +16,8 @@ const migrationV7toV8 = createMigration({
 - Removed 'options' property for boolean Toggle variables. This property was not used.
 - Changed FilterRule type to use the same entity names as elsewhere
 - Added 'name' property to protocol (required dependency for migration)
+- Renamed 'iconVariant' to 'icon' on node definitions.
+- Added 'shape' property with default 'circle' to all node definitions.
 `,
 	migrate: (doc, deps) => {
 		const transformed = traverseAndTransform(doc as Record<string, unknown>, [
@@ -57,6 +59,21 @@ const migrationV7toV8 = createMigration({
 				fn: <V>(filterType: V) => {
 					if (filterType === "alter") return "node" as V;
 					return filterType;
+				},
+			},
+			{
+				// Rename 'iconVariant' to 'icon' and add 'shape' to node definitions
+				paths: ["codebook.node.*"],
+				fn: <V>(entityDefinition: V) => {
+					if (typeof entityDefinition === "object" && entityDefinition !== null) {
+						const typedEntity = entityDefinition as Record<string, unknown>;
+						if ("iconVariant" in typedEntity) {
+							typedEntity.icon = typedEntity.iconVariant;
+							delete typedEntity.iconVariant;
+						}
+						typedEntity.shape = { default: "circle" };
+					}
+					return entityDefinition;
 				},
 			},
 			{

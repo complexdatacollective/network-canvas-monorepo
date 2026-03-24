@@ -21,6 +21,7 @@ export const createBaseProtocol = () => ({
 			person: {
 				name: "Person",
 				color: "node-color-seq-1",
+				shape: { default: "circle" },
 				variables: {
 					name: {
 						name: "Name",
@@ -52,6 +53,7 @@ export const createBaseProtocol = () => ({
 			colleague: {
 				name: "Colleague",
 				color: "node-color-seq-2",
+				shape: { default: "circle" },
 				variables: {
 					name: {
 						name: "Name",

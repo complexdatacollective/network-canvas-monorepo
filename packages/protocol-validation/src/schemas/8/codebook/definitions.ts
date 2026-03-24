@@ -15,9 +15,55 @@ export const NodeColorSequence = [
 
 export type NodeColor = (typeof NodeColorSequence)[number];
 
+export const NodeShapes = ["circle", "square", "diamond"] as const;
+export type NodeShape = (typeof NodeShapes)[number];
+
+const DiscreteShapeMappingSchema = z.strictObject({
+	variable: z.string(),
+	type: z.literal("discrete"),
+	map: z
+		.array(
+			z.strictObject({
+				value: z.union([z.string(), z.number(), z.boolean()]),
+				shape: z.enum(NodeShapes),
+			}),
+		)
+		.refine(
+			(items) => {
+				const values = items.map((item) => JSON.stringify(item.value));
+				return new Set(values).size === values.length;
+			},
+			{ message: "Discrete shape mapping values must be unique" },
+		),
+});
+
+const BreakpointShapeMappingSchema = z.strictObject({
+	variable: z.string(),
+	type: z.literal("breakpoints"),
+	thresholds: z
+		.array(
+			z.strictObject({
+				value: z.number(),
+				shape: z.enum(NodeShapes),
+			}),
+		)
+		.min(1)
+		.max(2)
+		.refine((items) => items.every((item, i) => i === 0 || item.value > items[i - 1].value), {
+			message: "Breakpoint thresholds must be sorted ascending with no duplicates",
+		}),
+});
+
+const ShapeMappingSchema = z.union([DiscreteShapeMappingSchema, BreakpointShapeMappingSchema]);
+
+const ShapeSchema = z.strictObject({
+	default: z.enum(NodeShapes),
+	dynamic: ShapeMappingSchema.optional(),
+});
+
 const NodeDefinitionSchema = z.strictObject({
 	name: z.string(),
-	iconVariant: z
+	icon: z
 		.string()
 		.optional()
 		.generateMock(() => "add-a-person"),
@@ -26,6 +72,7 @@ const NodeDefinitionSchema = z.strictObject({
 	color: z
 		.union(NodeColorSequence.map((color) => z.literal(color)))
 		.generateMock(() => faker.helpers.arrayElement(NodeColorSequence)),
+	shape: ShapeSchema.generateMock(() => ({ default: "circle" as const })),
 });
 
 export { NodeDefinitionSchema };
