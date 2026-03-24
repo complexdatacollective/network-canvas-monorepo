@@ -86,3 +86,7 @@ export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
 export const geospatialPromptSchema = promptSchema.extend({
 	variable: z.string().generateMock(() => getNodeVariableId()),
 });
+
+export const familyPedigreeNominationPromptSchema = promptSchema.extend({
+	variable: z.string().generateMock(() => getNodeVariableId()),
+});

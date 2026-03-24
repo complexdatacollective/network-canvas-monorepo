@@ -11,7 +11,7 @@ import { anonymisationStage } from "./anonymisation";
 import { categoricalBinStage } from "./categorical-bin";
 import { dyadCensusStage } from "./dyad-census";
 import { egoFormStage } from "./ego-form";
-import { familyCensusStage } from "./family-tree-census";
+import { familyPedigreeStage } from "./family-pedigree";
 import { geospatialStage } from "./geospatial";
 import { informationStage } from "./information";
 import { nameGeneratorStage } from "./name-generator";
@@ -30,7 +30,7 @@ export * from "./anonymisation";
 export * from "./categorical-bin";
 export * from "./dyad-census";
 export * from "./ego-form";
-export * from "./family-tree-census";
+export * from "./family-pedigree";
 export * from "./geospatial";
 export * from "./information";
 export * from "./name-generator";
@@ -59,7 +59,7 @@ const stageSchemas = [
 	informationStage,
 	anonymisationStage,
 	oneToManyDyadCensusStage,
-	familyCensusStage,
+	familyPedigreeStage,
 	geospatialStage,
 ] as const;
 
