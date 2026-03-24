@@ -12,6 +12,7 @@ import { getFieldId } from "~/utils/issues";
 import ColorPicker from "../Form/Fields/ColorPicker";
 import getPalette from "./getPalette";
 import IconOption from "./IconOption";
+import ShapePicker from "./ShapePicker";
 
 const ICON_OPTIONS = ["add-a-person", "add-a-place"];
 
@@ -26,6 +27,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 	const dispatch = useAppDispatch();
 	const formSelector = useMemo(() => formValueSelector(form), [form]);
 	const formIcon = useAppSelector((state: RootState) => formSelector(state, "icon"));
+	const formShapeDefault = useAppSelector((state: RootState) => formSelector(state, "shape.default"));
 
 	// Provide a default icon
 	useEffect(() => {
@@ -33,6 +35,13 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 			dispatch(change(form, "icon", ICON_OPTIONS[0]));
 		}
 	}, [entity, form, formIcon, dispatch]);
+
+	// Provide a default shape
+	useEffect(() => {
+		if (entity === "node" && !formShapeDefault) {
+			dispatch(change(form, "shape.default", "circle"));
+		}
+	}, [entity, form, formShapeDefault, dispatch]);
 
 	const { name: paletteName, size: paletteSize } = getPalette(entity);
 
@@ -71,6 +80,16 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
 					componentProps={{ palette: paletteName, paletteRange: paletteSize }}
 				/>
 			</Section>
+			{entity === "node" && (
+				<Section
+					title="Shape"
+					id={getFieldId("shape")}
+					summary={<p>Choose a default shape for this node type.</p>}
+					layout="vertical"
+				>
+					<ValidatedField component={ShapePicker} name="shape.default" validation={{ required: true }} />
+				</Section>
+			)}
 			{entity === "node" && (
 				<Section
 					title="Icon"
