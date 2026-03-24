@@ -230,6 +230,7 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 								previewComponent={NodeFormFieldPreview}
 								fieldName="nodeConfig.form"
 								title="Edit Field"
+								validation={{}}
 								onChange={(value: unknown) => handleChangeFields(value as Record<string, unknown>)}
 								normalize={(value: unknown) => normalizeField(value as Record<string, unknown>)}
 								itemSelector={

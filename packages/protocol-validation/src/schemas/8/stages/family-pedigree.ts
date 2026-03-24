@@ -14,8 +14,8 @@ export const NodeConfigSchema = z.object({
 	biologicalSexVariable: z.string().generateMock(() => getNodeVariableId()),
 	// String variable storing the relationship to ego (e.g. 'sibling', 'parent')
 	relationshipVariable: z.string().generateMock(() => getNodeVariableId()),
-	// Form fields collected when creating a node
-	form: z.array(FormFieldSchema),
+	// Optional form fields collected when creating a node
+	form: z.array(FormFieldSchema).optional(),
 });
 
 export const EdgeConfigSchema = z.object({
