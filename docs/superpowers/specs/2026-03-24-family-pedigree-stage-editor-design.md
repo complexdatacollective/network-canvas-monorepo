@@ -16,6 +16,7 @@ The new `FamilyPedigree` stage schema (`packages/protocol-validation/src/schemas
   nodeConfig: {
     type: string,                    // node type ID from codebook
     egoVariable: string,             // boolean variable marking the ego node
+    biologicalSexVariable: string,   // categorical (male/female/intersex/unknown)
     relationshipVariable: string,    // text variable storing relationship to ego
     form: FormField[],               // array of { variable, prompt }
   },
@@ -49,6 +50,7 @@ A single `<Section title="Node Configuration">` containing four sub-parts:
 
 **Variable Pickers** (disabled until node type is selected)
 - **Ego Variable**: `VariablePicker` filtered to boolean variables on the selected node type. Maps to `nodeConfig.egoVariable`. Supports inline variable creation via `NewVariableWindow` with `type: "boolean"`.
+- **Biological Sex Variable**: `VariablePicker` filtered to categorical variables whose options match `[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "intersex", label: "Intersex" }, { value: "unknown", label: "Unknown" }]` using `optionsMatch`. Maps to `nodeConfig.biologicalSexVariable`. Supports inline variable creation with locked options.
 - **Relationship Variable**: `VariablePicker` filtered to text variables on the selected node type. Maps to `nodeConfig.relationshipVariable`. Supports inline variable creation via `NewVariableWindow` with `type: "text"`.
 
 Uses the same `VariableRow` layout pattern as the old `FamilyTreeVariables` component (label + description on the left, picker on the right).
@@ -179,6 +181,7 @@ All section components follow existing patterns:
 | Variable | Entity | Type | Locked Options |
 |----------|--------|------|----------------|
 | `nodeConfig.egoVariable` | node | boolean | none |
+| `nodeConfig.biologicalSexVariable` | node | categorical | `[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "intersex", label: "Intersex" }, { value: "unknown", label: "Unknown" }]` |
 | `nodeConfig.relationshipVariable` | node | text | none |
 | `edgeConfig.relationshipTypeVariable` | edge | categorical | `[{ value: "parent", label: "Parent" }, { value: "partner", label: "Partner" }]` |
 | `edgeConfig.isActiveVariable` | edge | boolean | none |

@@ -666,6 +666,7 @@ Pattern references:
 - `apps/architect-vite/src/components/sections/Form/withFormHandlers.tsx` (handleChangeFields logic)
 
 ```tsx
+import type { VariableOptions } from "@codaco/protocol-validation";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { difference, keys } from "lodash";
 import { useCallback } from "react";
@@ -688,9 +689,17 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { createVariableAsync, updateVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubject, makeGetVariable } from "~/selectors/codebook";
+import { optionsMatch } from "~/utils/variables";
 import NodeFormFieldPreview from "./NodeFormFieldPreview";
 
 const nodeEntity: Entity = "node";
+
+const BIOLOGICAL_SEX_OPTIONS: VariableOptions = [
+	{ value: "male", label: "Male" },
+	{ value: "female", label: "Female" },
+	{ value: "intersex", label: "Intersex" },
+	{ value: "unknown", label: "Unknown" },
+];
 
 // Fields that should NOT be reset when the node type changes.
 // edgeConfig and censusPrompt are independent of node type.
@@ -768,6 +777,9 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 	);
 
 	const booleanNodeVariables = nodeVariableOptions.filter((v) => v.type === "boolean");
+	const biologicalSexCompatible = nodeVariableOptions.filter(
+		(v) => v.type === "categorical" && optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
+	);
 	const textNodeVariables = nodeVariableOptions.filter((v) => v.type === "text");
 
 	const handleCreatedVariable = (...args: unknown[]) => {
@@ -789,6 +801,12 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 		openVariableWindow(
 			{ initialValues: { name, type: "boolean" }, lockedOptions: null },
 			{ field: "nodeConfig.egoVariable" },
+		);
+
+	const handleNewBiologicalSexVariable = (name: string) =>
+		openVariableWindow(
+			{ initialValues: { name, type: "categorical" }, lockedOptions: BIOLOGICAL_SEX_OPTIONS },
+			{ field: "nodeConfig.biologicalSexVariable" },
 		);
 
 	const handleNewRelationshipVariable = (name: string) =>
@@ -825,6 +843,14 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 								entityType={nodeType}
 								options={booleanNodeVariables}
 								onCreateOption={handleNewEgoVariable}
+							/>
+							<VariableRow
+								name="nodeConfig.biologicalSexVariable"
+								label="Biological Sex"
+								description="Stores the biological sex of each family member. Used for visual representation in the pedigree diagram."
+								entityType={nodeType}
+								options={biologicalSexCompatible}
+								onCreateOption={handleNewBiologicalSexVariable}
 							/>
 							<VariableRow
 								name="nodeConfig.relationshipVariable"
