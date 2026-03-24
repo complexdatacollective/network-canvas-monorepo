@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog as BaseDialog } from "@base-ui-components/react/dialog";
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { motion } from "motion/react";
 import type { ComponentProps, ReactNode } from "react";
 import { Button, Modal } from "~/lib/legacy-ui/components";

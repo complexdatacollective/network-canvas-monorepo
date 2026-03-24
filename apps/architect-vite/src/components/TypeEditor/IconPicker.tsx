@@ -1,4 +1,4 @@
-import { Combobox } from "@base-ui-components/react/combobox";
+import { Combobox } from "@base-ui/react/combobox";
 import type { LucideProps } from "lucide-react";
 import { ChevronDown, icons as lucideIconMap, Search } from "lucide-react";
 import { type ComponentType, useMemo, useState } from "react";
@@ -104,7 +104,6 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 						input.onChange(entryToValue(val));
 					}
 				}}
-				filteredItems={filteredIcons}
 				onInputValueChange={(inputValue) => {
 					setQuery(inputValue);
 				}}
