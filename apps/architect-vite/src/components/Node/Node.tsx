@@ -6,22 +6,9 @@ import usePrevious from "~/hooks/usePrevious";
 import { composeEventHandlers } from "~/utils/composeEventHandlers";
 import { cva, type VariantProps } from "~/utils/cva";
 
-export const NodeShapes = ["circle", "square", "diamond"] as const;
+const NodeShapes = ["circle", "square", "diamond"] as const;
 
 export type NodeShape = (typeof NodeShapes)[number];
-
-export const NodeColors = [
-	"node-color-seq-1",
-	"node-color-seq-2",
-	"node-color-seq-3",
-	"node-color-seq-4",
-	"node-color-seq-5",
-	"node-color-seq-6",
-	"node-color-seq-7",
-	"node-color-seq-8",
-] as const;
-
-export type NodeColorSequence = (typeof NodeColors)[number];
 
 const nodeVariants = cva(
 	[

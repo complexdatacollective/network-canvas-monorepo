@@ -66,14 +66,6 @@ export const paths = {
 		"stages[].presets[].groupVariable",
 		"stages[].presets[].edges.display[]",
 		"stages[].presets[].highlight[]",
-		// Legacy FamilyTreeCensus variable paths
-		"stages[].egoSexVariable",
-		"stages[].nodeSexVariable",
-		"stages[].relationshipToEgoVariable",
-		"stages[].nodeIsEgoVariable",
-		"stages[].relationshipTypeVariable",
-		"stages[].diseaseNominationStep[].variable",
-		"stages[].nameGenerationStep.form.fields[].variable",
 		// FamilyPedigree variable paths
 		"stages[].nodeConfig.nodeLabelVariable",
 		"stages[].nodeConfig.egoVariable",
@@ -155,4 +147,4 @@ const utils = {
 	collectPaths,
 };
 
-export { getVariableIndex, getAssetIndex, getNodeIndex, getEdgeIndex, utils };
+export { getAssetIndex, getEdgeIndex, getNodeIndex, getVariableIndex, utils };
