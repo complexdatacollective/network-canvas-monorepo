@@ -78,7 +78,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 	const items = configuration.items as { id?: string; type?: string; content?: string; size?: string }[] | undefined;
 	const interviewScript = configuration.interviewScript as string | undefined;
 
-	// FamilyTreeCensus
+	// Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
 	const edgeType = configuration.edgeType as { type: string; entity: string } | undefined;
 	const relationshipTypeVariable = configuration.relationshipTypeVariable as string | undefined;
 	const relationshipToEgoVariable = configuration.relationshipToEgoVariable as string | undefined;

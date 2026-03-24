@@ -35,9 +35,13 @@ export const paths = {
 		"stages[].presets[].edges.display[]",
 		"stages[].prompts[].createEdge",
 		["stages[].subject", mapSubject("edge")],
-		["stages[].edgeType", mapSubject("edge")], // FamilyTreeCensus edge type
+		["stages[].edgeType", mapSubject("edge")], // Legacy FamilyTreeCensus edge type
+		"stages[].edgeConfig.type", // FamilyPedigree edge type
 	],
-	nodes: [["stages[].subject", mapSubject("node")]],
+	nodes: [
+		["stages[].subject", mapSubject("node")],
+		"stages[].nodeConfig.type", // FamilyPedigree node type
+	],
 	variables: [
 		"stages[].quickAdd",
 		"stages[].form.fields[].variable",
@@ -62,7 +66,7 @@ export const paths = {
 		"stages[].presets[].groupVariable",
 		"stages[].presets[].edges.display[]",
 		"stages[].presets[].highlight[]",
-		// FamilyTreeCensus variable paths
+		// Legacy FamilyTreeCensus variable paths
 		"stages[].egoSexVariable",
 		"stages[].nodeSexVariable",
 		"stages[].relationshipToEgoVariable",
@@ -70,6 +74,16 @@ export const paths = {
 		"stages[].relationshipTypeVariable",
 		"stages[].diseaseNominationStep[].variable",
 		"stages[].nameGenerationStep.form.fields[].variable",
+		// FamilyPedigree variable paths
+		"stages[].nodeConfig.nodeLabelVariable",
+		"stages[].nodeConfig.egoVariable",
+		"stages[].nodeConfig.biologicalSexVariable",
+		"stages[].nodeConfig.relationshipVariable",
+		"stages[].nodeConfig.form[].variable",
+		"stages[].edgeConfig.relationshipTypeVariable",
+		"stages[].edgeConfig.isActiveVariable",
+		"stages[].edgeConfig.isGestationalCarrierVariable",
+		"stages[].nominationPrompts[].variable",
 		// `sameAs` and `differentFrom` are variable references in these locations
 		"codebook.ego.variables[].validation.sameAs",
 		"codebook.ego.variables[].validation.differentFrom",
