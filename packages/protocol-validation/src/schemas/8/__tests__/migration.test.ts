@@ -804,6 +804,102 @@ describe("Migration V7 to V8", () => {
 		});
 	});
 
+	describe("iconVariant to icon rename", () => {
+		it("renames iconVariant to icon on node definitions", () => {
+			const v7Protocol = {
+				schemaVersion: 7 as const,
+				codebook: {
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							iconVariant: "add-a-person",
+							variables: {
+								name: {
+									name: "Name",
+									type: "text",
+								},
+							},
+						},
+					},
+					edge: {},
+					ego: {},
+				},
+				stages: [],
+			} as Protocol<7>;
+
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
+			const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+			expect(parsed.codebook.node?.person?.icon).toBe("add-a-person");
+			expect(parsed.codebook.node?.person).not.toHaveProperty("iconVariant");
+		});
+
+		it("handles node definitions without iconVariant", () => {
+			const v7Protocol = {
+				schemaVersion: 7 as const,
+				codebook: {
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								name: {
+									name: "Name",
+									type: "text",
+								},
+							},
+						},
+					},
+					edge: {},
+					ego: {},
+				},
+				stages: [],
+			} as Protocol<7>;
+
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
+			const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+			expect(parsed.codebook.node?.person).not.toHaveProperty("iconVariant");
+			expect(parsed.codebook.node?.person?.name).toBe("Person");
+		});
+	});
+
+	describe("shape field addition", () => {
+		it("adds default circle shape to all node definitions", () => {
+			const v7Protocol = {
+				schemaVersion: 7 as const,
+				codebook: {
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								name: {
+									name: "Name",
+									type: "text",
+								},
+							},
+						},
+						organization: {
+							name: "Organization",
+							color: "node-color-seq-2",
+						},
+					},
+					edge: {},
+					ego: {},
+				},
+				stages: [],
+			} as Protocol<7>;
+
+			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
+			const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+			expect(parsed.codebook.node?.person?.shape).toEqual({ default: "circle" });
+			expect(parsed.codebook.node?.organization?.shape).toEqual({ default: "circle" });
+		});
+	});
+
 	describe("migration metadata", () => {
 		it("has correct from and to versions", () => {
 			expect(migrationV7toV8.from).toBe(7);
