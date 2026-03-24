@@ -20,7 +20,7 @@ export default function Modal({
 				{open && (
 					<BaseDialog.Portal keepMounted className="z-[var(--z-dialog)]">
 						<DialogBackdrop forceRender={forceRender} />
-						<BaseDialog.Popup>{children}</BaseDialog.Popup>
+						{children}
 					</BaseDialog.Portal>
 				)}
 			</AnimatePresence>

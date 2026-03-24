@@ -1,3 +1,4 @@
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import cx from "classnames";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
@@ -32,32 +33,36 @@ const Dialog = ({
 	classNames,
 }: DialogProps) => (
 	<Modal open={show} onOpenChange={() => onBlur()}>
-		<motion.div
-			initial={{ opacity: 0, y: "-10%", scale: 1.1 }}
-			animate={{
-				opacity: 1,
-				y: 0,
-				scale: 1,
-				filter: "blur(0px)",
-			}}
-			exit={{
-				opacity: 0,
-				y: "-10%",
-				scale: 1.5,
-				filter: "blur(10px)",
-			}}
-			transition={{
-				type: "spring",
-				stiffness: 300,
-				damping: 30,
-			}}
-			className={cx(
-				"dialog",
-				{ [`dialog--${type}`]: type },
-				classNames,
-				"p-6 flex flex-col gap-6",
-				"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg",
-			)}
+		<BaseDialog.Popup
+			render={
+				<motion.div
+					initial={{ opacity: 0, y: "-10%", scale: 1.1 }}
+					animate={{
+						opacity: 1,
+						y: 0,
+						scale: 1,
+						filter: "blur(0px)",
+					}}
+					exit={{
+						opacity: 0,
+						y: "-10%",
+						scale: 1.5,
+						filter: "blur(10px)",
+					}}
+					transition={{
+						type: "spring",
+						stiffness: 300,
+						damping: 30,
+					}}
+					className={cx(
+						"dialog",
+						{ [`dialog--${type}`]: type },
+						classNames,
+						"p-6 flex flex-col gap-6",
+						"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg",
+					)}
+				/>
+			}
 		>
 			<div className="flex gap-6">
 				{icon && (
@@ -72,7 +77,7 @@ const Dialog = ({
 				</div>
 			</div>
 			<footer className="flex gap-4 justify-end">{options}</footer>
-		</motion.div>
+		</BaseDialog.Popup>
 	</Modal>
 );
 
