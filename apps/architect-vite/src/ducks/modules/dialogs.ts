@@ -62,7 +62,8 @@ const dialogsSlice = createSlice({
 });
 
 // Export the action creators
-export const { addDialog, closeDialog } = dialogsSlice.actions;
+const { addDialog } = dialogsSlice.actions;
+export const { closeDialog } = dialogsSlice.actions;
 
 // Export the reducer as default
 export default dialogsSlice.reducer;

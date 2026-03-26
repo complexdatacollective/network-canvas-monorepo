@@ -13,11 +13,13 @@
 		},
 		"packages/protocol-validation": {},
 		"apps/architect-vite": {
-			"entry": ["index.html!", "src/main.tsx"],
-			"project": ["src/**/*.{ts,tsx,js,jsx}"],
+			"entry": ["index.html!"],
+			"vite": true,
+			"project": ["src/**/*.{ts,tsx}"],
 			"paths": {
 				"~/*": ["./src/*"]
 			},
+			"ignoreDependencies": ["@types/recompose"],
 			"ignore": ["src/**/*.d.ts", "src/test/**"]
 		},
 		"workers/development-protocol": {},
