@@ -40,7 +40,7 @@
 		"tar-stream": "^3.1.8",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
-		"vite": "^7.2.2",
+		"vite": "^8.0.3",
 		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:"
 	}

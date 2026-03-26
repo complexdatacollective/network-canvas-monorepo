@@ -65,7 +65,6 @@
 		"tailwind-merge": "catalog:",
 		"unified": "^11.0.5",
 		"uuid": "^13.0.0",
-		"vite-tsconfig-paths": "^6.1.1",
 		"wouter": "^3.9.0",
 		"zod": "catalog:"
 	},
@@ -85,7 +84,7 @@
 		"jsdom": "^27.4.0",
 		"tailwindcss": "^4.2.2",
 		"typescript": "catalog:",
-		"vite": "^7.2.2",
+		"vite": "^8.0.3",
 		"vitest": "catalog:"
 	}
 }

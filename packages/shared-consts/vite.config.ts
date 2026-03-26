@@ -13,7 +13,7 @@ export default defineConfig({
 			fileName: "index",
 			formats: ["es", "cjs"],
 		},
-		rollupOptions: {
+		rolldownOptions: {
 			external: ["zod"],
 			output: {
 				globals: {
