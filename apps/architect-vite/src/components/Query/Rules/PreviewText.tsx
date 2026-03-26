@@ -1,4 +1,4 @@
-import { get, isArray, isNil, join } from "lodash";
+import { get, isArray, isNil, join } from "es-toolkit/compat";
 import { SimpleVariablePill } from "../../Form/Fields/VariablePicker/VariablePill";
 import PreviewEdge from "../../sections/fields/EntitySelectField/PreviewEdge";
 import PreviewNode from "../../sections/fields/EntitySelectField/PreviewNode";

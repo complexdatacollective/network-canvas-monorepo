@@ -1,4 +1,4 @@
-import { first, isArray } from "lodash";
+import { first, isArray } from "es-toolkit/compat";
 import { connect } from "react-redux";
 import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";

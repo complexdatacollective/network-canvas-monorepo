@@ -1,5 +1,5 @@
 import type { VariableType } from "@codaco/protocol-validation";
-import { isEmpty } from "lodash";
+import { isEmpty } from "es-toolkit/compat";
 import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
 import { change } from "redux-form";

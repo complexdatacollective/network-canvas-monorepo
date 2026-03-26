@@ -1,4 +1,4 @@
-import { range } from "lodash";
+import { range } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 import safeName from "../safeName";
 

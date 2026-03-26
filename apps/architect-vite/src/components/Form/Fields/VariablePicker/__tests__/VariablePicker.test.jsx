@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
-import { noop } from "lodash";
+import { noop } from "es-toolkit/compat";
 import { Provider } from "react-redux";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import VariablePicker from "../VariablePicker";

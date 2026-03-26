@@ -1,4 +1,4 @@
-import { map } from "lodash";
+import { map } from "es-toolkit/compat";
 
 const NON_SORTABLE_TYPES = ["layout"];
 

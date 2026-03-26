@@ -1,4 +1,4 @@
-import { difference, get, intersection } from "lodash";
+import { difference, get, intersection } from "es-toolkit/compat";
 import { DateTime } from "luxon";
 
 export const now = () => DateTime.now();

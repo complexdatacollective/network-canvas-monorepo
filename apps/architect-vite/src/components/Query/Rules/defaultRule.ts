@@ -1,4 +1,4 @@
-import { pick } from "lodash";
+import { pick } from "es-toolkit/compat";
 
 const DEFAULT_OPTIONS = {
 	type: undefined,

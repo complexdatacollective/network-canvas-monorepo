@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
 import cx from "classnames";
-import { isBoolean } from "lodash";
+import { isBoolean } from "es-toolkit/compat";
 import { useEffect, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { times } from "lodash";
+import { times } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import createTimeline, { timelineActions } from "../timeline";

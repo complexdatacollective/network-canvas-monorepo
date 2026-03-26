@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { noop } from "lodash";
+import { noop } from "es-toolkit/compat";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
 import { vi } from "vitest";

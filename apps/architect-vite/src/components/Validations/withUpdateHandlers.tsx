@@ -1,4 +1,4 @@
-import { omit } from "lodash";
+import { omit } from "es-toolkit/compat";
 import { withHandlers } from "react-recompose";
 import { isValidationWithListValue, isValidationWithNumberValue, isValidationWithoutValue } from "./options";
 

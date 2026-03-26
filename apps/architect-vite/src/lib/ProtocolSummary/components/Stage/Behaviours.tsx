@@ -1,4 +1,4 @@
-import { map } from "lodash";
+import { map } from "es-toolkit/compat";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";
 

@@ -1,10 +1,10 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion, useAnimate } from "motion/react";
 import { type ButtonHTMLAttributes, type CSSProperties, forwardRef, useEffect } from "react";
 import { useNodeInteractions } from "~/hooks/useNodeInteractions";
 import usePrevious from "~/hooks/usePrevious";
 import { composeEventHandlers } from "~/utils/composeEventHandlers";
-import { cva, type VariantProps } from "~/utils/cva";
 
 const NodeShapes = ["circle", "square", "diamond"] as const;
 

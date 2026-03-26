@@ -1,4 +1,4 @@
-import { get, map, reduce } from "lodash";
+import { get, map, reduce } from "es-toolkit/compat";
 import { withProps } from "react-recompose";
 import { operatorsAsOptions, operatorsByType, validTypes } from "./options";
 

@@ -1,5 +1,5 @@
 import type { Codebook } from "@codaco/protocol-validation";
-import { flatMap, get, reduce } from "lodash";
+import { flatMap, get, reduce } from "es-toolkit/compat";
 import { paths, utils } from "../../selectors/indexes";
 
 type VariableConfiguration = {
@@ -72,7 +72,7 @@ type Protocol = {
 };
 
 export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
-	if (!protocol || !protocol.stages || !protocol.codebook) {
+	if (!protocol?.stages || !protocol.codebook) {
 		return [];
 	}
 

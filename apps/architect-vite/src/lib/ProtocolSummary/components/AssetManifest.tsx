@@ -1,4 +1,4 @@
-import { groupBy, isEmpty, map, toPairs } from "lodash";
+import { groupBy, isEmpty, map, toPairs } from "es-toolkit/compat";
 import { useContext } from "react";
 import Asset from "./Asset";
 import SummaryContext from "./SummaryContext";

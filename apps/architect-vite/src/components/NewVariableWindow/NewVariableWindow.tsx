@@ -1,5 +1,5 @@
 import type { Variable, VariableOptions } from "@codaco/protocol-validation";
-import { values } from "lodash";
+import { values } from "es-toolkit/compat";
 import { Lock } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { Field, formValueSelector } from "redux-form";

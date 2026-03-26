@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { range } from "lodash";
+import { range } from "es-toolkit";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
 type ColorOption = {

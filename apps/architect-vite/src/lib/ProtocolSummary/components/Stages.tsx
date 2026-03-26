@@ -1,4 +1,4 @@
-import { map } from "lodash";
+import { map } from "es-toolkit/compat";
 import { useContext } from "react";
 import Stage from "./Stage";
 import SummaryContext from "./SummaryContext";

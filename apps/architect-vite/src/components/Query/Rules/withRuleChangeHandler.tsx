@@ -1,4 +1,4 @@
-import { isArray, isNil, keys, pick } from "lodash";
+import { isArray, isNil, keys, pick } from "es-toolkit/compat";
 import { withHandlers } from "react-recompose";
 import { makeGetOptionsWithDefaults } from "./defaultRule";
 import { operatorsWithOptionCount } from "./options";

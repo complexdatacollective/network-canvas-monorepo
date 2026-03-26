@@ -16,7 +16,6 @@
 	},
 	"dependencies": {
 		"@codaco/art": "workspace:*",
-		"@posthog/react": "catalog:",
 		"@codaco/ui": "workspace:*",
 		"@docsearch/css": "^4.4.0",
 		"@docsearch/react": "^4.4.0",
@@ -24,6 +23,7 @@
 		"@mendable/search": "^0.0.206",
 		"@next/bundle-analyzer": "^16.1.6",
 		"@next/third-parties": "^16.1.6",
+		"@posthog/react": "catalog:",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-navigation-menu": "catalog:",
 		"@radix-ui/react-popover": "catalog:",
@@ -51,7 +51,6 @@
 		"@tailwindcss/typography": "catalog:",
 		"@types/hast": "^3.0.4",
 		"@types/node": "catalog:",
-		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@types/unist": "^3.0.3",
 		"gray-matter": "^4.0.3",

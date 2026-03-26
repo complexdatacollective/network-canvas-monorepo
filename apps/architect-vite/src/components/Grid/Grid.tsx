@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { throttle } from "lodash";
+import { throttle } from "es-toolkit/compat";
 import React, { Component } from "react";
 import GridLayout, { type Layout } from "react-grid-layout";
 import Icon from "~/lib/legacy-ui/components/Icon";

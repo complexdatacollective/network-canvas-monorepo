@@ -3,9 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import type { Endpoints } from "@octokit/types";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 import gunzip from "gunzip-maybe";
-import tarStream from "tar-stream";
+import * as tarStream from "tar-stream";
 
 type GitHubRelease = Endpoints["GET /repos/{owner}/{repo}/releases/latest"]["response"]["data"];
 

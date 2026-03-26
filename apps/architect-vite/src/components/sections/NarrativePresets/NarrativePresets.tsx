@@ -1,4 +1,4 @@
-import { isEmpty, omit } from "lodash";
+import { isEmpty, omit } from "es-toolkit/compat";
 import { compose } from "react-recompose";
 import { Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";

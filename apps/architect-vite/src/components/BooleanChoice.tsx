@@ -1,5 +1,5 @@
 import { compose } from "@reduxjs/toolkit";
-import { isEmpty, isNull } from "lodash";
+import { isEmpty, isNull } from "es-toolkit/compat";
 import { useEffect } from "react";
 import { connect } from "react-redux";
 import { change, Field, formValueSelector } from "redux-form";
@@ -34,13 +34,13 @@ const mapDispatchToProps = {
 	changeField: change,
 };
 
+const initialValues: OptionType[] = [
+	{ label: "Yes", value: true },
+	{ label: "No", value: false, negative: true },
+];
+
 const Options = compose(connect(mapStateToProps, mapDispatchToProps))(
 	({ form, formSelector, changeField }: OptionsProps) => {
-		const initialValues: OptionType[] = [
-			{ label: "Yes", value: true },
-			{ label: "No", value: false, negative: true },
-		];
-
 		useEffect(() => {
 			const currentOptions = formSelector("options");
 			if (isNull(currentOptions) || isEmpty(currentOptions)) {

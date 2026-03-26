@@ -1,4 +1,4 @@
-import { get, isArray, reduce } from "lodash";
+import { get, isArray, reduce } from "es-toolkit/compat";
 
 /**
  * Collect _values_ that match path from `obj`. We are using this

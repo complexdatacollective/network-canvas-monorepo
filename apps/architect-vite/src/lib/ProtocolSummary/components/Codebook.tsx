@@ -1,4 +1,4 @@
-import { toPairs } from "lodash";
+import { toPairs } from "es-toolkit/compat";
 import { useContext } from "react";
 import Entity from "./Entity";
 import SummaryContext from "./SummaryContext";

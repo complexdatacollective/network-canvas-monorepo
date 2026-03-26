@@ -108,7 +108,7 @@ const Timeline = () => {
 					values={stages}
 				>
 					{stages.flatMap((stage, index) => [
-						<InsertButton key={`insert_${stage.id}_${index}`} onClick={() => handleInsertStage(index)} />,
+						<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
 						<Reorder.Item
 							tabIndex={0}
 							key={stage.id}

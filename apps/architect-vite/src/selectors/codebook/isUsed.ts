@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import { getFormNames, getFormValues } from "redux-form";
 import { formName as EditableListFormName } from "~/components/EditableList";
 import { formName as StageEditorFormName } from "~/components/StageEditor/configuration";
@@ -67,7 +67,7 @@ export const makeGetIsUsed = (options: GetIsUsedOptions = {}) => {
 
 	// Uses getVariableIndex to share the same source of truth as usage display
 	return createSelector([getProtocol, formsSelector, getVariableIndex], (protocol, forms, variableIndex): IsUsedMap => {
-		if (!protocol || !protocol.codebook) {
+		if (!protocol?.codebook) {
 			return {};
 		}
 

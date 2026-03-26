@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { find, times } from "lodash";
+import { find, times } from "es-toolkit/compat";
 import React, { useEffect } from "react";
 import type { RangeItem } from "./DatePicker/helpers";
 

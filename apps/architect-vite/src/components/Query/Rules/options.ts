@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import { omit } from "lodash";
+import { omit } from "es-toolkit/compat";
 import { VARIABLE_TYPES } from "../../../config/variables";
 
 // Variable types that can't be used in rules

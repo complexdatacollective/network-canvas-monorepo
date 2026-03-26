@@ -1,4 +1,4 @@
-import { get, isString } from "lodash";
+import { get, isString } from "es-toolkit/compat";
 
 export type Option = string | { value: unknown; label: string; [key: string]: unknown };
 

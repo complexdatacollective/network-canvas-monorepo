@@ -48,9 +48,6 @@ catalogs:
     '@types/node':
       specifier: ^22.19.15
       version: 22.19.15
-    '@types/react':
-      specifier: ^19.2.8
-      version: 19.2.14
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
@@ -606,9 +603,6 @@ importers:
       '@types/luxon':
         specifier: ^3.7.1
         version: 3.7.1
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
@@ -751,9 +745,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.15
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
@@ -1143,9 +1134,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.15
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
       jsdom:
         specifier: ^27.4.0
         version: 27.4.0(bufferutil@4.1.0)
@@ -1342,9 +1330,6 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
       react:
         specifier: 'catalog:'
         version: 19.2.4

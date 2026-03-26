@@ -1,4 +1,4 @@
-import { get, isEmpty } from "lodash";
+import { get, isEmpty } from "es-toolkit/compat";
 
 type MockCSSVariables = {
 	[key: string]: string | number;

@@ -5,7 +5,7 @@ import {
 	type NodeColor,
 	NodeColorSequence,
 } from "@codaco/protocol-validation";
-import { get, size } from "lodash";
+import { get, size } from "es-toolkit/compat";
 
 export const getNextCategoryColor = (protocol: CurrentProtocol, entity: "node" | "edge") => {
 	if (entity === "node") {

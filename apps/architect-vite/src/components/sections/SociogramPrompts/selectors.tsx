@@ -46,7 +46,7 @@ export const getEdgeFilters = (state: RootState) => {
 	const getStageValue = formValueSelector("edit-stage");
 	const currentFilters = getStageValue(state, "filter") as CurrentFilters | undefined;
 
-	if (!currentFilters || !currentFilters.rules) {
+	if (!currentFilters?.rules) {
 		return [];
 	}
 	const edgeFilters = currentFilters.rules.filter((rule: FilterRule) => rule.type === "edge");

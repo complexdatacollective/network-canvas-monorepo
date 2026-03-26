@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import { get, isEmpty, noop } from "lodash";
+import { get, isEmpty, noop } from "es-toolkit/compat";
 import { CrossIcon as ClearIcon, SearchIcon } from "lucide-react";
 import Text from "./Text";
 

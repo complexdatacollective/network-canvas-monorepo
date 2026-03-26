@@ -1,5 +1,5 @@
 import type { Codebook, EdgeDefinition, EgoDefinition, NodeDefinition } from "@codaco/protocol-validation";
-import { flatMap } from "lodash";
+import { flatMap } from "es-toolkit/compat";
 
 const getIdsFromEntity = (entity: NodeDefinition | EdgeDefinition | EgoDefinition): string[] =>
 	entity.variables ? Object.keys(entity.variables) : [];

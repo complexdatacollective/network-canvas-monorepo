@@ -3,25 +3,9 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { motion } from "motion/react";
 import type { ComponentProps, ReactNode } from "react";
-import { Button, Modal } from "~/lib/legacy-ui/components";
+import Button from "~/lib/legacy-ui/components/Button";
+import Modal from "~/lib/legacy-ui/components/Modal";
 import { cn } from "~/utils/cn";
-
-export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
-	return (
-		<BaseDialog.Backdrop
-			render={
-				<motion.div
-					className="fixed inset-0 min-h-dvh bg-rich-black/50 backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
-					initial={{ opacity: 0 }}
-					animate={{ opacity: 1 }}
-					exit={{ opacity: 0 }}
-					transition={{ duration: 0.5 }}
-				/>
-			}
-			{...props}
-		/>
-	);
-}
 
 type DialogPopupProps = ComponentProps<typeof motion.div> & {
 	size?: "lg";

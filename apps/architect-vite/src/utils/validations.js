@@ -1,4 +1,4 @@
-import { get, isEmpty, isEqual, isNil, isNull, isRegExp, isUndefined, map, toPairs } from "lodash";
+import { get, isEmpty, isEqual, isNil, isNull, isRegExp, isUndefined, map, toPairs } from "es-toolkit/compat";
 import { DateTime } from "luxon";
 
 // Simple function to allow returning a custom message if provided, and

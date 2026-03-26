@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { clamp } from "lodash";
+import { clamp } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import React, { useCallback, useImperativeHandle, useRef } from "react";
 

@@ -1,5 +1,5 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
-import { map, pickBy } from "lodash";
+import { map, pickBy } from "es-toolkit/compat";
 
 const extraProperties = new Set(["type", "color"]);
 const typesWithOptions = new Set(["categorical", "ordinal"]);

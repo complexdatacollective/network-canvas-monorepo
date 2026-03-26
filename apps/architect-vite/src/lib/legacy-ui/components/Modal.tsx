@@ -1,7 +1,7 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { AnimatePresence } from "motion/react";
 import type { ReactNode } from "react";
-import { DialogBackdrop } from "~/components/NewComponents/Dialog";
+import { DialogBackdrop } from "~/components/NewComponents/DialogBackdrop";
 
 export default function Modal({
 	open,

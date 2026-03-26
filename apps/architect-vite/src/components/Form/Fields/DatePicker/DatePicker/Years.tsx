@@ -1,4 +1,4 @@
-import { range } from "lodash";
+import { range } from "es-toolkit";
 import { type ReactNode, useContext } from "react";
 import DatePickerContext from "./DatePickerContext";
 import { formatRangeItem, type RangeItem } from "./helpers";
@@ -17,7 +17,7 @@ type YearsProps = {
 const Years = ({ children }: YearsProps): ReactNode => {
 	const { range: dateRange } = useContext(DatePickerContext);
 
-	if (!dateRange || !dateRange.start || !dateRange.end) {
+	if (!dateRange?.start || !dateRange?.end) {
 		return children({ years: [] });
 	}
 

@@ -1,4 +1,4 @@
-import { compact, flatMap, isPlainObject } from "lodash";
+import { compact, flatMap, isPlainObject } from "es-toolkit/compat";
 
 /**
  * Converts a nested object into a flattened version with paths.

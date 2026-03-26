@@ -1,4 +1,4 @@
-import { get, isNull } from "lodash";
+import { get, isNull } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
 import EntityBadge from "../EntityBadge";

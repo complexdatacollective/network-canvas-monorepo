@@ -1,4 +1,4 @@
-import { includes } from "lodash";
+import { includes } from "es-toolkit/compat";
 import type { Editor } from "slate";
 import type { HistoryEditor } from "slate-history";
 import type { ReactEditor } from "slate-react";

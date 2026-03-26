@@ -1,4 +1,4 @@
-import { get, isEqual } from "lodash";
+import { get, isEqual } from "es-toolkit/compat";
 import { DateTime } from "luxon";
 
 export const now = () => DateTime.now();

@@ -60,7 +60,7 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 
 			const fieldName = targetField.getAttribute("data-name") || targetField.textContent;
 
-			if (fieldName && issueRefs && issueRefs.current[fieldId]) {
+			if (fieldName && issueRefs?.current[fieldId]) {
 				issueRefs.current[fieldId].textContent = fieldName;
 			}
 		});

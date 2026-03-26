@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { get, isNil, round } from "lodash";
+import { get, isNil, round } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { Handles, Slider, Ticks, Tracks } from "react-compound-slider";
 import Handle from "./Handle";

@@ -26,7 +26,6 @@
 	"devDependencies": {
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
-		"@types/react": "catalog:",
 		"react": "catalog:",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:"

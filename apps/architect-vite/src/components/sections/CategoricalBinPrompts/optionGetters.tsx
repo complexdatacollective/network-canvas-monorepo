@@ -1,4 +1,4 @@
-import { map } from "lodash";
+import { map } from "es-toolkit/compat";
 
 type VariableOption = {
 	value: string;

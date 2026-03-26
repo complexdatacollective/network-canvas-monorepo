@@ -1,5 +1,5 @@
 import type { Asset as ProtocolAsset } from "@codaco/protocol-validation";
-import { filter, map } from "lodash";
+import { filter, map } from "es-toolkit/compat";
 import { compose, withHandlers, withState } from "react-recompose";
 import { connect } from "react-redux";
 import type { Asset } from "~/ducks/modules/protocol/assetManifest";

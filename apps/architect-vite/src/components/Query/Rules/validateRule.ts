@@ -1,4 +1,4 @@
-import { isArray, isEmpty, isNil } from "lodash";
+import { isArray, isEmpty, isNil } from "es-toolkit/compat";
 import { operatorsWithOptionCount, operatorsWithValue } from "./options";
 
 type RuleOptions = {

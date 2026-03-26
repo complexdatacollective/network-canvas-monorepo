@@ -1,4 +1,4 @@
-import { range } from "lodash";
+import { range } from "es-toolkit";
 import { DateTime, Interval } from "luxon";
 import { type ReactNode, useContext } from "react";
 import DatePickerContext from "./DatePickerContext";

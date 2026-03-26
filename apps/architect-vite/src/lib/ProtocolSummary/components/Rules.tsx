@@ -26,14 +26,17 @@ const Rules = ({ filter = null }: RulesProps) => {
 
 	return (
 		<div className="protocol-summary-rules">
-			{rules.map(({ type, options }, n) => (
-				<React.Fragment key={`rule-${type}-${JSON.stringify(options)}-${n}`}>
-					<div className="protocol-summary-rules__rule">
-						<Rule type={type} options={options} codebook={protocol.codebook} />
-					</div>
-					{n !== rules.length - 1 && join && <Join value={join} />}
-				</React.Fragment>
-			))}
+			{rules.map(({ type, options }, index) => {
+				const key = `rule-${type}-${JSON.stringify(options)}`;
+				return (
+					<React.Fragment key={key}>
+						<div className="protocol-summary-rules__rule">
+							<Rule type={type} options={options} codebook={protocol.codebook} />
+						</div>
+						{index !== rules.length - 1 && join && <Join value={join} />}
+					</React.Fragment>
+				);
+			})}
 		</div>
 	);
 };

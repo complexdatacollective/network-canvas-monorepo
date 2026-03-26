@@ -1,5 +1,5 @@
 import type { Variable } from "@codaco/protocol-validation";
-import { map } from "lodash";
+import { map } from "es-toolkit/compat";
 import { Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import NumberField from "~/components/Form/Fields/Number";

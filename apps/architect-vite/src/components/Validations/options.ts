@@ -1,4 +1,4 @@
-import { get, without } from "lodash";
+import { get, without } from "es-toolkit/compat";
 
 const VALIDATIONS = {
 	text: ["required", "minLength", "maxLength", "unique", "differentFrom", "sameAs"],

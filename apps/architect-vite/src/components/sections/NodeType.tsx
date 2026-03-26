@@ -1,5 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
-import { difference, get, keys } from "lodash";
+import { difference, get, keys } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
 import { change, getFormValues } from "redux-form";

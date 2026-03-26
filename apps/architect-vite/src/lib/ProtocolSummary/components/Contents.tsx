@@ -1,4 +1,4 @@
-import { groupBy, isEmpty, map, toPairs } from "lodash";
+import { groupBy, isEmpty, map, toPairs } from "es-toolkit/compat";
 import React, { useContext } from "react";
 import DualLink from "./DualLink";
 import EntityBadge from "./EntityBadge";

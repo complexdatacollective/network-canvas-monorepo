@@ -1,6 +1,6 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
 import type { UnknownAction } from "@reduxjs/toolkit";
-import { difference, keys } from "lodash";
+import { difference, keys } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { compose, withHandlers } from "react-recompose";
 import { connect, useSelector } from "react-redux";

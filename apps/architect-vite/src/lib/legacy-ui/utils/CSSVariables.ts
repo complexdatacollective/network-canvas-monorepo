@@ -1,4 +1,4 @@
-import { isEmpty } from "lodash";
+import { isEmpty } from "es-toolkit/compat";
 
 const CSSVariable = (variableName: string): string | null => {
 	if (document.readyState !== "complete") {

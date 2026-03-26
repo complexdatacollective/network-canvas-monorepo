@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { get } from "lodash";
+import { get } from "es-toolkit/compat";
 import type { RootState } from "./root";
 
 // Define the shape of the app state

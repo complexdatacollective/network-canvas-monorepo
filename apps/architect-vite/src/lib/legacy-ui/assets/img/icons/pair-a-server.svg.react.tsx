@@ -3,6 +3,7 @@ import type { SVGProps } from "react";
 export default function SVG(props: SVGProps<SVGSVGElement>) {
 	return (
 		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" {...props}>
+			<title>Pair-Server</title>
 			<defs>
 				<linearGradient
 					id="linear-gradient"
@@ -21,7 +22,6 @@ export default function SVG(props: SVGProps<SVGSVGElement>) {
 					<circle className="cls-1" cx="205.19" cy="270.91" r="202.83" />
 				</clipPath>
 			</defs>
-			<title>Pair-Server</title>
 			<g id="Server">
 				<circle className="cls-2" cx="205.19" cy="270.12" r="202.83" />
 				<g className="cls-3">
