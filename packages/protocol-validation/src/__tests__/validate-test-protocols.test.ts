@@ -26,7 +26,6 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 		expect(protocols.length).toBeGreaterThan(0);
 	});
 
-	// Use a single test with detailed logging for each protocol
 	it("should validate each protocol individually with detailed logging", async () => {
 		for (let i = 0; i < protocols.length; i++) {
 			const protocol = protocols[i];
@@ -35,47 +34,45 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 			}
 
 			const filename = protocolFilenames[i];
-
 			const protocolVersion = Number(protocol.schemaVersion ?? 0);
 
-			// Skip if schema version is not supported (only numeric versions 7 and 8 are currently supported)
-			// Earlier versions used semver strings which should be ignored
-			if (protocolVersion !== 7 && protocolVersion !== 8) {
+			// Skip protocols with non-numeric schema versions (e.g. semver strings like "1.0.0")
+			if (!Number.isInteger(protocolVersion) || protocolVersion < 1 || protocolVersion > 8) {
 				// biome-ignore lint/suspicious/noConsole: logging
 				console.log(`Skipping unsupported schema version for ${filename}: ${protocol.schemaVersion}`);
 				continue;
 			}
 
-			// Add default name for v8 protocols that don't have one
-			// TODO: Remove this once all test protocols are updated with name field
 			const protocolName = filename?.replace(/\.netcanvas$/, "") ?? "Unknown Protocol";
-			const protocolWithName =
-				protocolVersion === 8 && !("name" in protocol) ? { ...protocol, name: protocolName } : protocol;
 
-			const startTime = Date.now();
-			const result = await validateProtocol(protocolWithName);
-			const duration = Date.now() - startTime;
+			if (protocolVersion === 8) {
+				// Validate v8 protocols directly
+				const protocolWithName = !("name" in protocol) ? { ...protocol, name: protocolName } : protocol;
 
-			// If there are errors, log them (using unified errors array)
-			if (!result.success) {
-				// biome-ignore lint/suspicious/noConsole: logging
-				console.error(`Validation failed for ${filename} (${duration}ms):`, result.error);
-			}
+				const startTime = Date.now();
+				const result = await validateProtocol(protocolWithName);
+				const duration = Date.now() - startTime;
 
-			// Test each protocol individually but within the same test
-			expect(result.success).toBe(true);
+				if (!result.success) {
+					// biome-ignore lint/suspicious/noConsole: logging
+					console.error(`Validation failed for ${filename} (${duration}ms):`, result.error);
+				}
 
-			// Migrate and validate protocols with schema version < 8
-			if (protocol.schemaVersion < 8) {
+				expect(result.success).toBe(true);
+			} else {
+				// For versions 1-7, migrate to v8 then validate
 				const migratedProtocol = migrateProtocol(protocol, undefined, { name: protocolName });
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
 					// biome-ignore lint/suspicious/noConsole: logging
-					console.error(`Migration validation failed for ${filename}:`, migrationResult.error);
+					console.error(
+						`Migration validation failed for ${filename} (v${protocolVersion} → v8):`,
+						migrationResult.error,
+					);
 				}
 
-				expect.soft(migrationResult.success).toBe(true);
+				expect(migrationResult.success).toBe(true);
 			}
 		}
 	});
