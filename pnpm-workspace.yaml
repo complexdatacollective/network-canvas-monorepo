@@ -5,8 +5,8 @@ packages:
   - workers/*
 
 catalog:
-  '@faker-js/faker': ^10.2.0
-  '@posthog/react': ^1.7.1
+  '@faker-js/faker': ^10.4.0
+  '@posthog/react': ^1.8.2
   '@radix-ui/react-checkbox': ^1.3.3
   '@radix-ui/react-collapsible': ^1.1.12
   '@radix-ui/react-dialog': ^1.1.15
@@ -19,33 +19,33 @@ catalog:
   '@radix-ui/react-switch': ^1.2.6
   '@radix-ui/react-tooltip': ^1.2.8
   '@tailwindcss/container-queries': ^0.1.1
-  '@tailwindcss/postcss': ^4.2.1
+  '@tailwindcss/postcss': ^4.2.2
   '@tailwindcss/typography': ^0.5.19
   '@tanstack/react-table': ^8.21.3
   '@types/node': ^22.19.15
-  '@types/react': ^19.2.8
+  '@types/react': ^19.2.14
   '@types/react-dom': ^19.2.3
   class-variance-authority: 0.7.1
   clsx: ^2.1.1
-  dotenv: ^17.2.3
-  es-toolkit: ^1.43.0
-  lucide-react: ^0.562.0
-  motion: ^12.24.10
-  next: ^16.1.5
-  postcss: ^8.5.6
-  posthog-js: ^1.347.2
-  react: ^19.2.3
-  react-dom: ^19.2.3
+  dotenv: ^17.3.1
+  es-toolkit: ^1.45.1
+  lucide-react: ^1.7.0
+  motion: ^12.38.0
+  next: ^16.2.1
+  postcss: ^8.5.8
+  posthog-js: ^1.363.6
+  react: ^19.2.4
+  react-dom: ^19.2.4
   tailwind-merge: ^3.5.0
-  tailwindcss: ^4.2.1
+  tailwindcss: ^4.2.2
   tailwindcss-animate: ^1.0.7
   tsx: ^4.21.0
   typescript: ^6.0.2
   vite: ^7.3.1
   vite-plugin-dts: ^4.5.4
-  vitest: ^4.0.17
-  wrangler: ^4.59.1
-  zod: ^4.2.0
+  vitest: ^4.1.1
+  wrangler: ^4.77.0
+  zod: ^4.3.6
 
 onlyBuiltDependencies:
   - '@biomejs/biome'

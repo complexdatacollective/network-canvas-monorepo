@@ -27,7 +27,7 @@
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"typescript": "catalog:",
-		"vite": "catalog:",
+		"vite": "^7.2.2",
 		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:"
 	}
