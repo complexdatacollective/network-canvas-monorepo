@@ -1,4 +1,4 @@
-import { compose, withState } from "recompose";
+import { compose, withState } from "react-recompose";
 import type { WrappedFieldArrayProps } from "redux-form";
 import { Section } from "~/components/EditorLayout";
 import { Button } from "~/lib/legacy-ui/components";

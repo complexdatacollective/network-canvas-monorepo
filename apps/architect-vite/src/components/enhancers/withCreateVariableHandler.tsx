@@ -1,7 +1,7 @@
 import type { VariableType } from "@codaco/protocol-validation";
 import { isEmpty } from "lodash";
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { change } from "redux-form";
 import { createVariableAsync, deleteVariableAsync } from "../../ducks/modules/protocol/codebook";
 import safeName from "../../utils/safeName";

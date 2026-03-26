@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 
 type Entity = "node" | "edge" | "ego";
 
-import { compose, withHandlers } from "recompose";
+import { compose, withHandlers } from "react-recompose";
 import type { FormAction } from "redux-form";
 import { change, SubmissionError } from "redux-form";
 import { getTypeForComponent } from "~/config/variables";

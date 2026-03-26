@@ -1,5 +1,5 @@
 import { omit } from "lodash";
-import { withHandlers } from "recompose";
+import { withHandlers } from "react-recompose";
 import { isValidationWithListValue, isValidationWithNumberValue, isValidationWithoutValue } from "./options";
 
 type ValidationValue = boolean | number | string | null;

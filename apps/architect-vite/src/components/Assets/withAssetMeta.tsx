@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
+import { compose } from "react-recompose";
 import { connect } from "react-redux";
-import { compose } from "recompose";
 import type { RootState } from "~/ducks/modules/root";
 import { getAssetManifest } from "~/selectors/protocol";
 

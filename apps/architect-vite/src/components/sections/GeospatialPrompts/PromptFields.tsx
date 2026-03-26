@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import NewVariableWindow, { type Entity, useNewVariableWindowState } from "~/components/NewVariableWindow";

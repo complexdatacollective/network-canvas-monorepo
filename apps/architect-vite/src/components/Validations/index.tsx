@@ -1,6 +1,6 @@
 import type { Variable } from "@codaco/protocol-validation";
 import type { ComponentProps } from "react";
-import { compose, withState } from "recompose";
+import { compose, withState } from "react-recompose";
 import Validations from "./Validations";
 import withStoreState from "./withStoreState";
 import withUpdateHandlers from "./withUpdateHandlers";

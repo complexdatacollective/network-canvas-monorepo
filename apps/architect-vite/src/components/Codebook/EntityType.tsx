@@ -1,5 +1,5 @@
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { Link } from "wouter";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { deleteTypeAsync } from "~/ducks/modules/protocol/codebook";

@@ -1,4 +1,4 @@
-import { compose, withHandlers, withState } from "recompose";
+import { compose, withHandlers, withState } from "react-recompose";
 import { makeGetOptionsWithDefaults } from "./defaultRule";
 import { templates } from "./options";
 
@@ -81,4 +81,4 @@ const withEntityRuleType = compose(
 	}),
 );
 
-export { withEntityRuleType, entityRuleTypes, entityRuleTypeOptions };
+export { entityRuleTypeOptions, entityRuleTypes, withEntityRuleType };

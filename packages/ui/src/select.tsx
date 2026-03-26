@@ -117,4 +117,4 @@ const SelectSeparator = forwardRef<ElementRef<typeof Separator>, ComponentPropsW
 );
 SelectSeparator.displayName = Separator.displayName;
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator };
+export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue };

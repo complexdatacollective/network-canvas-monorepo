@@ -1,7 +1,7 @@
 import { isEqual } from "es-toolkit/compat";
 import type React from "react";
 import { Component } from "react";
-import { compose, defaultProps } from "recompose";
+import { compose, defaultProps } from "react-recompose";
 import { getValidations } from "~/utils/validations";
 
 const getValue = (eventOrValue: unknown) => {

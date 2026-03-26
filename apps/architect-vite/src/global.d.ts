@@ -12,6 +12,12 @@ declare const require: undefined;
 declare const module: undefined;
 declare const exports: undefined;
 
+// Map react-recompose types to @types/recompose declarations
+declare module "react-recompose" {
+	// biome-ignore lint/correctness/noUnresolvedImports: re-exporting from @types/recompose ambient module
+	export * from "recompose";
+}
+
 // Type declaration for scrollparent module
 declare module "scrollparent" {
 	function scrollparent(element: HTMLElement): HTMLElement | Document;

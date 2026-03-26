@@ -1,6 +1,6 @@
 import type { Dispatch } from "@reduxjs/toolkit";
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { change } from "redux-form";
 import { updateVariableAsync } from "../../../ducks/modules/protocol/codebook";
 

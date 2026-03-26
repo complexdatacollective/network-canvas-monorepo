@@ -1,5 +1,5 @@
 import { PureComponent } from "react";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { BooleanField, Number as NumberField, Toggle } from "~/components/Form/Fields";

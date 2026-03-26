@@ -1,7 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
+import { compose, lifecycle } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, lifecycle } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/store";
 import { getVariableOptionsForSubject, getVariablesForSubject } from "~/selectors/codebook";

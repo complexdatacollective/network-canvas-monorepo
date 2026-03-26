@@ -1,5 +1,5 @@
+import { compose } from "react-recompose";
 import { useSelector } from "react-redux";
-import { compose } from "recompose";
 import type { FormAction } from "redux-form";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";

@@ -1,4 +1,4 @@
-import { withProps } from "recompose";
+import { withProps } from "react-recompose";
 import DetachedField from "~/components/DetachedField";
 import {
 	Number as NumberField,

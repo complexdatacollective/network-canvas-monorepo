@@ -1,5 +1,5 @@
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
 

@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";

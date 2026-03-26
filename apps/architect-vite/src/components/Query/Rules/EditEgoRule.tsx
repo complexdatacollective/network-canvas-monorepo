@@ -1,5 +1,5 @@
 import { isArray, isNil } from "es-toolkit/compat";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import DetachedField from "~/components/DetachedField";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import Section from "../../EditorLayout/Section";

@@ -1,6 +1,6 @@
 import type { Dispatch } from "@reduxjs/toolkit";
+import { compose, defaultProps, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, defaultProps, withHandlers } from "recompose";
 import type { UnknownAction } from "redux";
 import { change, formValueSelector } from "redux-form";
 import { v4 as uuid } from "uuid";

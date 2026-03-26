@@ -1,5 +1,5 @@
+import { compose } from "react-recompose";
 import { connect } from "react-redux";
-import { compose } from "recompose";
 import { change } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";

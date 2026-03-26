@@ -1,4 +1,4 @@
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import RuleText from "~/components/Query/Rules/PreviewText";
 import withDisplayOptions from "~/components/Query/Rules/withDisplayOptions";
 

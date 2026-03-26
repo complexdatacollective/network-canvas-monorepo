@@ -1,4 +1,4 @@
-import { compose, withHandlers, withState } from "recompose";
+import { compose, withHandlers, withState } from "react-recompose";
 import { getDefaultOptions } from "./defaultRule";
 import { templates } from "./options";
 import type { Rule, RuleOptions } from "./validateRule";

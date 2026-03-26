@@ -1,5 +1,5 @@
+import { compose, withState } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withState } from "recompose";
 import { formValueSelector } from "redux-form";
 
 type EdgeStateProps = {

@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import PromptText from "~/components/sections/PromptText";
 import DisplayEdgesSection from "./PromptFieldsEdges";
 import FieldsLayout from "./PromptFieldsLayout";

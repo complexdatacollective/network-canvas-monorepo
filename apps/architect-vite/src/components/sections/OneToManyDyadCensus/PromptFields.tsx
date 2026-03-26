@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
+import { compose } from "react-recompose";
 import { useSelector } from "react-redux";
-import { compose } from "recompose";
 import { formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import { Field as RichText } from "~/components/Form/Fields/RichText";

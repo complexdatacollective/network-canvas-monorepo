@@ -1,5 +1,5 @@
 import { get, map, reduce } from "lodash";
-import { withProps } from "recompose";
+import { withProps } from "react-recompose";
 import { operatorsAsOptions, operatorsByType, validTypes } from "./options";
 
 type Variable = {

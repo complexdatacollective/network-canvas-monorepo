@@ -173,4 +173,4 @@ const makeGetDeleteImpact = createSelector(getProtocol, makeGetUsageForType, (pr
 	),
 );
 
-export { getTypeUsageIndex, getSociogramTypeUsageIndex, makeGetUsageForType, makeGetDeleteImpact };
+export { getSociogramTypeUsageIndex, getTypeUsageIndex, makeGetDeleteImpact, makeGetUsageForType };

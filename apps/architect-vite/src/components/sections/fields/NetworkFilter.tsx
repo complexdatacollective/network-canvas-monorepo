@@ -1,8 +1,8 @@
 import { get } from "es-toolkit/compat";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
+import { compose, defaultProps } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, defaultProps } from "recompose";
 import { change, Field, getFormValues } from "redux-form";
 import { Filter as FilterQuery, ruleValidator, withFieldConnector, withStoreConnector } from "~/components/Query";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";

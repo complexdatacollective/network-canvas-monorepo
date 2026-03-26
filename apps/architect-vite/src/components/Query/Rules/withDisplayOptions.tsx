@@ -1,5 +1,5 @@
 import { get } from "es-toolkit/compat";
-import { withProps } from "recompose";
+import { withProps } from "react-recompose";
 
 type OptionItem = {
 	value: string | number;

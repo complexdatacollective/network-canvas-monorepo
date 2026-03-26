@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
+import { compose } from "react-recompose";
 import { connect } from "react-redux";
-import { compose } from "recompose";
 import type { RootState } from "~/ducks/store";
 import { getEntityProperties } from "./helpers";
 import Variables from "./Variables";

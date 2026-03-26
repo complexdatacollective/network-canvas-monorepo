@@ -1,4 +1,4 @@
-import { compose, withHandlers } from "recompose";
+import { compose, withHandlers } from "react-recompose";
 import { Icon } from "~/lib/legacy-ui/components";
 import RuleText, { Join } from "./PreviewText";
 import withDisplayOptions from "./withDisplayOptions";

@@ -1,7 +1,7 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
 import type { ComponentProps } from "react";
+import { compose } from "react-recompose";
 import { useSelector } from "react-redux";
-import { compose } from "recompose";
 import type { FormAction } from "redux-form";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";

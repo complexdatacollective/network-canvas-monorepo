@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { get, isString } from "es-toolkit/compat";
 import type { ComponentProps } from "react";
+import { compose, withHandlers, withProps, withStateHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers, withProps, withStateHandlers } from "recompose";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import EditableVariablePill from "../Form/Fields/VariablePicker/VariablePill";

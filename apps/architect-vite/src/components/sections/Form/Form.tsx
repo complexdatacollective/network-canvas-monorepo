@@ -1,4 +1,4 @@
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import EditableList from "~/components/EditableList";
 import { Section } from "~/components/EditorLayout";
 import withDisabledFormTitle from "~/components/enhancers/withDisabledFormTitle";

@@ -1,5 +1,5 @@
 import { isEmpty, omit } from "lodash";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { Section } from "~/components/EditorLayout";
 import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
 import EditableList from "../../EditableList";

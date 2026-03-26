@@ -1,4 +1,4 @@
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
 import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";

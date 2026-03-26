@@ -1,6 +1,6 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
+import { compose } from "react-recompose";
 import { useSelector } from "react-redux";
-import { compose } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import withDisabledAssetRequired from "~/components/enhancers/withDisabledAssetRequired";

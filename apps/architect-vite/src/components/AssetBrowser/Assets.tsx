@@ -1,4 +1,4 @@
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { RadioGroup } from "~/components/Form/Fields";
 import Asset from "./Asset";
 import withAssets from "./withAssets";

@@ -1,5 +1,5 @@
 import type React from "react";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { Row, Section } from "~/components/EditorLayout";
 import { ValidatedField } from "~/components/Form";
 import ColorPicker from "~/components/Form/Fields/ColorPicker";

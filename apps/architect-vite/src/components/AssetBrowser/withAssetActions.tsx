@@ -1,5 +1,5 @@
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
 import { deleteAsset, importAssetAsync } from "../../ducks/modules/protocol/assetManifest";
 

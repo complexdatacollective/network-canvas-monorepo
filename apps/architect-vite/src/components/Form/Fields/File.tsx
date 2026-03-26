@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { compose, withState } from "recompose";
+import { compose, withState } from "react-recompose";
 import Button from "~/lib/legacy-ui/components/Button";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";

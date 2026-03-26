@@ -82,4 +82,4 @@ const smartInsertThematicBreak = (editor: Editor): void => {
 	insertThematicBreak(editor);
 };
 
-export { toggleMark, toggleBlock, isMarkActive, isBlockActive, smartInsertThematicBreak };
+export { isBlockActive, isMarkActive, smartInsertThematicBreak, toggleBlock, toggleMark };

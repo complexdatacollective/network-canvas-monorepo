@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { formValueSelector } from "redux-form";
 import type { RootState } from "~/ducks/modules/root";
 import { getVariablesForSubject } from "../../selectors/codebook";

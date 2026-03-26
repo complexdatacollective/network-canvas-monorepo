@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import { BooleanField } from "~/components/Form/Fields";
 import ValidatedField from "~/components/Form/ValidatedField";
 import Icon from "~/lib/legacy-ui/components/Icon";

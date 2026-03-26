@@ -1,7 +1,7 @@
 import type { Asset as ProtocolAsset } from "@codaco/protocol-validation";
 import { filter, map } from "lodash";
+import { compose, withHandlers, withState } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers, withState } from "recompose";
 import type { Asset } from "~/ducks/modules/protocol/assetManifest";
 import type { RootState } from "~/ducks/modules/root";
 import { getAssetIndex, utils as indexUtils } from "~/selectors/indexes";

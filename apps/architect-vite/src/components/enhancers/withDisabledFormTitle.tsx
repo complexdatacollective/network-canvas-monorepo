@@ -1,4 +1,4 @@
-import { withProps } from "recompose";
+import { withProps } from "react-recompose";
 
 type PropsWithInterfaceType = {
 	interfaceType?: string;

@@ -1,7 +1,7 @@
 import type { Dispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useState } from "react";
+import { compose } from "react-recompose";
 import { connect } from "react-redux";
-import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import { DatePicker } from "~/components/Form/Fields";
 import { DATE_FORMATS } from "~/components/Form/Fields/DatePicker";

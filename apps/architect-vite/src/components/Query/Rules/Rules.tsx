@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { get } from "es-toolkit/compat";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import DetachedField from "~/components/DetachedField";
 import FieldError from "~/components/Form/FieldError";
 import RadioGroup from "~/components/Form/Fields/RadioGroup";

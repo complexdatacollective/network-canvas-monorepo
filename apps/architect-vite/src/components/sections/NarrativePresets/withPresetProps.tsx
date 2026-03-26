@@ -1,5 +1,5 @@
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
 import { createVariableAsync, deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
 import type { AppDispatch, RootState } from "~/ducks/store";

@@ -1,8 +1,8 @@
 import { BookOpenText, FileImage, Printer as PrintIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { compose } from "react-recompose";
 import { connect } from "react-redux";
-import { compose } from "recompose";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
 import { updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";

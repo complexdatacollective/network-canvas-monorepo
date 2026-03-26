@@ -1,7 +1,7 @@
 import { bindActionCreators, type Dispatch } from "@reduxjs/toolkit";
 import { has } from "es-toolkit/compat";
+import { compose, withHandlers, withProps } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers, withProps } from "recompose";
 import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
 import { importAssetAsync } from "~/ducks/modules/protocol/assetManifest";
 import Dropzone from "./Dropzone";

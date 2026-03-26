@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { compose, withState } from "recompose";
+import { compose, withState } from "react-recompose";
 import Radio from "~/components/Form/Fields/Radio";
 import NetworkThumbnail from "~/components/Thumbnail/Network";
 import type { FileInputPropsWithoutHOC } from "./File";

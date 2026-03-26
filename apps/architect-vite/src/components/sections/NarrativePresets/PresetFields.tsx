@@ -1,6 +1,6 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
+import { compose } from "react-recompose";
 import { useSelector } from "react-redux";
-import { compose } from "recompose";
 import { change, Field, formValueSelector } from "redux-form";
 import CheckboxGroup from "~/components/Form/Fields/CheckboxGroup";
 import Text from "~/components/Form/Fields/Text";

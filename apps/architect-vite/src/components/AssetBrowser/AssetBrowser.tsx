@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { compose } from "recompose";
+import { compose } from "react-recompose";
 import useExternalDataDownload from "~/components/AssetBrowser/useExternalDataDownload";
 import useExternalDataPreview from "~/components/AssetBrowser/useExternalDataPreview";
 import { Section } from "~/components/EditorLayout";

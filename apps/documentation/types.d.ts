@@ -1,3 +1,6 @@
+declare module "@fontsource-variable/quicksand";
+declare module "@docsearch/css";
+
 // declaring module for rehype-figure as it does not have types
 declare module "@microflash/rehype-figure" {
 	import type { Root } from "hast";

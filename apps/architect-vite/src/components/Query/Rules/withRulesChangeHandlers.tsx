@@ -1,4 +1,4 @@
-import { compose, withHandlers } from "recompose";
+import { compose, withHandlers } from "react-recompose";
 import { v4 as uuid } from "uuid";
 import validateRule, { type Rule } from "./validateRule";
 

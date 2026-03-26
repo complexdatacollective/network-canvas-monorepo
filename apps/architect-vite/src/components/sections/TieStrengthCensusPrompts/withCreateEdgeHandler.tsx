@@ -1,5 +1,5 @@
+import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
 import { createEdgeAsync } from "~/ducks/modules/protocol/codebook";
 import type { AppDispatch } from "~/ducks/store";
 
