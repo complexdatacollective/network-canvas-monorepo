@@ -41,7 +41,7 @@ describe("dialogs", () => {
 				dialogs: [{ ...dialog }],
 			});
 
-			store.dispatch(actionCreators.closeDialog(state.dialogs[0]!.id));
+			store.dispatch(actionCreators.closeDialog(state.dialogs[0]?.id ?? ""));
 
 			expect(store.getState()).toMatchObject({
 				dialogs: [],
@@ -79,7 +79,7 @@ describe("dialogs", () => {
 			const resultPromise = store.dispatch(actionCreators.openDialog(dialog));
 
 			const state = store.getState();
-			state.dialogs[0]!.onCancel!();
+			state.dialogs[0]?.onCancel?.();
 
 			const result = await resultPromise;
 			expect(result.payload).toBe(false);
@@ -93,7 +93,7 @@ describe("dialogs", () => {
 			const resultPromise = store.dispatch(actionCreators.openDialog(dialog));
 
 			const state = store.getState();
-			state.dialogs[0]!.onConfirm!();
+			state.dialogs[0]?.onConfirm?.();
 
 			const result = await resultPromise;
 			expect(result.payload).toBe(true);

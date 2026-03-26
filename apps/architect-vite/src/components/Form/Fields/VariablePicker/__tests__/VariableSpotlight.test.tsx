@@ -64,8 +64,8 @@ describe("VariableSpotlight", () => {
 
 		expect(items[0]).toHaveTextContent("Existing Variables");
 		expect(items[1]).toHaveTextContent("Just a number");
-		expect(items[1]!.querySelector(".icon")).toBeInTheDocument();
+		expect(items[1]?.querySelector(".icon")).toBeInTheDocument();
 		expect(items[2]).toHaveTextContent("Name");
-		expect(items[2]!.querySelector(".icon")).toBeInTheDocument();
+		expect(items[2]?.querySelector(".icon")).toBeInTheDocument();
 	});
 });

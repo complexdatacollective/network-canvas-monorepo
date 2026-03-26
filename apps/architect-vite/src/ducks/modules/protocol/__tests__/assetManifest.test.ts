@@ -21,7 +21,7 @@ describe("protocol/assetManifest", () => {
 				source: "uuid-file-location-in-protocol",
 				type: "image",
 			});
-			expect(entries[0]!.id).toBeTruthy();
+			expect(entries[0]?.id).toBeTruthy();
 		});
 
 		it("DELETE_ASSET correctly updates state", () => {

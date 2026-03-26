@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import type { Reducer, UnknownAction } from "@reduxjs/toolkit";
-import { times } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import createTimeline, { timelineActions } from "../timeline";
@@ -10,14 +9,6 @@ vi.mock("uuid");
 type DummyState = {
 	dummyState: boolean;
 	randomProperty: string;
-};
-
-type TimelineState = {
-	past: DummyState[];
-	present: DummyState | null;
-	timeline: string[];
-	future: DummyState[];
-	futureTimeline: string[];
 };
 
 (vi.mocked(uuid) as unknown as ReturnType<typeof vi.fn>).mockImplementation(() =>
@@ -37,6 +28,19 @@ const getRewindableReducer = (
 ) => createTimeline(reducer, options);
 
 const dummyAction: UnknownAction = { type: "DUMMY" };
+
+const applyTimes = <T>(
+	n: number,
+	reducer: (state: T | undefined, action: UnknownAction) => T,
+	action = dummyAction,
+	initial?: T,
+): T => {
+	let state: T | undefined = initial;
+	for (let i = 0; i < n; i++) {
+		state = reducer(state, action);
+	}
+	return state as T;
+};
 
 describe("timeline middleware", () => {
 	let rewindableReducer: ReturnType<typeof getRewindableReducer>;
@@ -62,10 +66,7 @@ describe("timeline middleware", () => {
 		});
 
 		it("each subsequent call adds an event to the timeline", () => {
-			const nextState = times(3).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(3, rewindableReducer);
 
 			expect(nextState.past.length).toBe(2);
 			expect(nextState.timeline.length).toBe(3); // +1 includes name for present
@@ -76,10 +77,7 @@ describe("timeline middleware", () => {
 			const reducer = (state = initialState) => state;
 			const timelineReducer = createTimeline(reducer);
 
-			const nextState = times(3).reduce(
-				(state) => timelineReducer(state, dummyAction),
-				undefined as ReturnType<typeof timelineReducer> | undefined,
-			)!;
+			const nextState = applyTimes(3, timelineReducer);
 
 			expect(nextState.past.length).toBe(0);
 			expect(nextState.timeline.length).toBe(1);
@@ -88,12 +86,10 @@ describe("timeline middleware", () => {
 
 	describe("jump() action", () => {
 		it("can revert to a specific point on the timeline", () => {
-			const nextState = times(10).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(10, rewindableReducer);
 
-			const rollbackState = rewindableReducer(nextState, timelineActions.jump(nextState.timeline[4]!));
+			const timelineEntry = nextState.timeline[4] ?? "";
+			const rollbackState = rewindableReducer(nextState, timelineActions.jump(timelineEntry));
 
 			expect(rollbackState.past).toEqual(nextState.past.slice(0, 4));
 			expect(rollbackState.timeline).toEqual(nextState.timeline.slice(0, 5));
@@ -101,10 +97,7 @@ describe("timeline middleware", () => {
 		});
 
 		it("if point does not exist it ignores action", () => {
-			const nextState = times(10).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(10, rewindableReducer);
 
 			const rollbackState = rewindableReducer(nextState, timelineActions.jump("NON_EXISTENT_POINT"));
 
@@ -116,10 +109,7 @@ describe("timeline middleware", () => {
 
 	describe("reset() action", () => {
 		it("can revert to an unused state", () => {
-			const nextState = times(10).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(10, rewindableReducer);
 
 			const resetState = rewindableReducer(nextState, timelineActions.reset());
 
@@ -139,10 +129,7 @@ describe("timeline middleware", () => {
 
 	describe("undo() action", () => {
 		it("moves to previous state", () => {
-			const nextState = times(5).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(5, rewindableReducer);
 
 			const undoState = rewindableReducer(nextState, timelineActions.undo());
 
@@ -152,10 +139,7 @@ describe("timeline middleware", () => {
 		});
 
 		it("moves present to future when undoing", () => {
-			const nextState = times(3).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(3, rewindableReducer);
 
 			const undoState = rewindableReducer(nextState, timelineActions.undo());
 
@@ -176,10 +160,7 @@ describe("timeline middleware", () => {
 
 	describe("redo() action", () => {
 		it("moves to next state in future", () => {
-			const nextState = times(5).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(5, rewindableReducer);
 			const undoState = rewindableReducer(nextState, timelineActions.undo());
 
 			const redoState = rewindableReducer(undoState, timelineActions.redo());
@@ -191,10 +172,7 @@ describe("timeline middleware", () => {
 		});
 
 		it("handles multiple redos", () => {
-			const nextState = times(5).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(5, rewindableReducer);
 			const undoState1 = rewindableReducer(nextState, timelineActions.undo());
 			const undoState2 = rewindableReducer(undoState1, timelineActions.undo());
 
@@ -209,10 +187,7 @@ describe("timeline middleware", () => {
 		});
 
 		it("does nothing if no future history", () => {
-			const nextState = times(3).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(3, rewindableReducer);
 
 			const redoState = rewindableReducer(nextState, timelineActions.redo());
 
@@ -223,10 +198,7 @@ describe("timeline middleware", () => {
 
 	describe("undo/redo interaction", () => {
 		it("clears future when making a new change after undo", () => {
-			const nextState = times(3).reduce(
-				(state) => rewindableReducer(state, dummyAction),
-				undefined as TimelineState | undefined,
-			)!;
+			const nextState = applyTimes(3, rewindableReducer);
 			const undoState = rewindableReducer(nextState, timelineActions.undo());
 
 			expect(undoState.future).toHaveLength(1);
@@ -251,10 +223,7 @@ describe("timeline middleware", () => {
 			});
 
 			it("timeline is limited to 3 items", () => {
-				const nextState = times(10).reduce(
-					(state) => rewindableReducer(state, dummyAction),
-					undefined as TimelineState | undefined,
-				)!;
+				const nextState = applyTimes(10, rewindableReducer);
 
 				expect(nextState.past.length).toBe(3);
 				expect(nextState.timeline.length).toBe(4); // +1 includes name for present
@@ -272,17 +241,9 @@ describe("timeline middleware", () => {
 			});
 
 			it("actions that are excluded do not create points on the timeline", () => {
-				// Add some regular actions
-				const nextState = times(3).reduce(
-					(state) => rewindableReducer(state, dummyAction),
-					undefined as TimelineState | undefined,
-				)!;
+				const nextState = applyTimes(3, rewindableReducer);
 
-				// Add some ignored actions
-				const filteredState = times(3).reduce(
-					(state) => rewindableReducer(state, { type: ignoredType }),
-					nextState as TimelineState | undefined,
-				)!;
+				const filteredState = applyTimes(3, rewindableReducer, { type: ignoredType }, nextState);
 
 				expect(filteredState.past.length).toBe(2);
 				expect(filteredState.timeline.length).toBe(3); // +1 includes name for present
