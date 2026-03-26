@@ -1,5 +1,16 @@
 # architect-vite
 
+## 7.6.0
+
+### Minor Changes
+
+- 7775d5f: Replace FamilyTreeCensus stage editor with FamilyPedigree, matching restructured protocol schema. The new editor organizes configuration into Node Configuration and Edge Configuration sections, simplifies the census prompt, and generalizes disease nomination prompts into generic nomination prompts.
+
+### Patch Changes
+
+- Updated dependencies [f1dbd8d]
+  - @codaco/protocol-validation@11.3.0
+
 ## 7.5.2
 
 ### Patch Changes
