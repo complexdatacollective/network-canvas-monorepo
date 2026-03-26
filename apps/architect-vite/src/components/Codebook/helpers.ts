@@ -62,10 +62,10 @@ const getCodebookVariableIndexFromValidationPath = (path: string): string | null
  * @param {any} value Value to match in usage index
  * @returns {string[]} List of paths ("usage array")
  */
-export const getUsage = (index: Record<string, string>, value: string): string[] =>
+export const getUsage = (index: Record<string, unknown>, value: string): string[] =>
 	reduce(
 		index,
-		(acc: string[], indexValue: string, path: string) => {
+		(acc: string[], indexValue: unknown, path: string) => {
 			if (indexValue !== value) {
 				return acc;
 			}
@@ -139,7 +139,7 @@ export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
  * @param {Record<string, unknown>} mergeProps Props to merge with the result
  * @returns {function} Function that can be used in map operations
  */
-export const makeGetEntityWithUsage = (index: Record<string, string>, mergeProps: Record<string, unknown>) =>
+export const makeGetEntityWithUsage = (index: Record<string, unknown>, mergeProps: Record<string, unknown>) =>
 	createSelector([getStageMetaByIndex, getVariableMetaByIndex], (stageMetaByIndex, variableMetaByIndex) => {
 		const search = utils.buildSearch([index]);
 

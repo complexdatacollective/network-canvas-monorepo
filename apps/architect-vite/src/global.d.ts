@@ -18,6 +18,19 @@ declare module "react-recompose" {
 	export * from "recompose";
 }
 
+// Type declaration for animejs v2
+declare module "animejs" {
+	type AnimeParams = {
+		targets?: unknown;
+		duration?: number;
+		easing?: unknown;
+		scrollTop?: number;
+		[key: string]: unknown;
+	};
+	function anime(params: AnimeParams): void;
+	export default anime;
+}
+
 // Type declaration for scrollparent module
 declare module "scrollparent" {
 	function scrollparent(element: HTMLElement): HTMLElement | Document;

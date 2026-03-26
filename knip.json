@@ -8,7 +8,6 @@
 	],
 	"workspaces": {
 		"packages/ui": {},
-		"apps/analytics-web": {},
 		"apps/documentation": {
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},

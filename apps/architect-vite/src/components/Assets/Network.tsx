@@ -43,13 +43,16 @@ const Network = ({ assetPath: _assetPath, assetId, assetName }: NetworkProps) =>
 			return;
 		}
 
-		networkReader(assetName, assetId).then((networkData: Partial<NetworkType>) => {
-			// Normalize the data to ensure edges is always present (CSV files only return nodes)
-			setContent({
-				nodes: networkData?.nodes ?? [],
-				edges: networkData?.edges ?? [],
+		const result = networkReader(assetName, assetId);
+		if (result) {
+			result.then((networkData: unknown) => {
+				const data = networkData as Partial<NetworkType> | undefined;
+				setContent({
+					nodes: data?.nodes ?? [],
+					edges: data?.edges ?? [],
+				});
 			});
-		});
+		}
 	}, [assetId, assetName]);
 
 	const allRows = useMemo(() => getRows(content), [content]);

@@ -133,7 +133,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		const unique = validations.uniqueByList(existingVariableNames)(value);
 		const allowed = validations.allowedVariableName()(value);
 
-		const validationResult = required || unique || allowed || undefined;
+		const validationResult = required || unique || allowed || null;
 		setValidation(validationResult);
 		setCanSubmit(!validationResult);
 	};

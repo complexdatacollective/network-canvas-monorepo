@@ -26,7 +26,8 @@ type IssuesProps = {
 };
 
 const Issues = ({ show = true, hideIssues }: IssuesProps) => {
-	const issues = useSelector(getFormSyncErrors(formName));
+	const formErrors = useSelector(getFormSyncErrors(formName));
+	const issues = formErrors as Record<string, unknown>;
 	const [open, setOpen] = useState(true);
 	const flatIssues = flattenIssues(issues);
 	const issueRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -87,7 +88,7 @@ const Issues = ({ show = true, hideIssues }: IssuesProps) => {
 		const link = target.closest("a")?.getAttribute("href");
 		if (link) {
 			const destination = document.querySelector(link);
-			if (destination) {
+			if (destination instanceof HTMLElement) {
 				scrollTo(destination);
 			}
 		}

@@ -120,15 +120,15 @@ const stagesSlice = createSlice({
 			if (stageIndex === -1) return;
 
 			const currentStage = state[stageIndex];
-			const previousStage = !overwrite ? currentStage : {};
-
 			invariant(currentStage, `Stage with ID ${stageId} not found`);
 
-			const newStage = {
+			const previousStage = !overwrite ? currentStage : ({} as Partial<Stage>);
+
+			const newStage: Stage = {
 				...previousStage,
 				...stageUpdate,
-				id: currentStage.id, // Preserve the original ID
-			};
+				id: currentStage.id,
+			} as Stage;
 
 			state[stageIndex] = prune(newStage);
 		},

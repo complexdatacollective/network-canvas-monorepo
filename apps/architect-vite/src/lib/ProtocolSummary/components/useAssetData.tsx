@@ -1,12 +1,14 @@
 import { get } from "es-toolkit/compat";
 import { useContext, useEffect, useState } from "react";
+import type { RootState } from "~/ducks/modules/root";
 import { getAssetPath, makeGetNetworkAssetVariables } from "~/selectors/assets";
 import { getAssetBlobUrl, revokeBlobUrl } from "~/utils/assetUtils";
 import SummaryContext from "./SummaryContext";
 
-const stubState = (assetManifest: Record<string, unknown>) => ({
-	activeProtocol: { present: { assetManifest } },
-});
+const stubState = (assetManifest: Record<string, unknown>): RootState =>
+	({
+		activeProtocol: { present: { assetManifest } },
+	}) as unknown as RootState;
 
 type AssetData = {
 	type?: string;

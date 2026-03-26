@@ -105,7 +105,6 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
 
 - **Apps**: End-user applications
   - `architect-vite` - Protocol designer (Vite + Redux)
-  - `analytics-web` - Next.js dashboard with turbopack
   - `documentation` - Documentation site
 - **Packages**: Shared libraries and utilities
   - `protocol-validation` - Zod schemas for protocol validation and migration
@@ -122,6 +121,7 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
   - `posthog-proxy` - PostHog proxy worker
 
 ### Key Technologies
+
 - **Build**: Vite for apps, custom build scripts for packages
 - **Validation**: Zod with complex cross-reference validation patterns
 - **Frontend**: React with various stacks (Vite + Redux for architect, Next.js for analytics)
@@ -129,6 +129,7 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
 - **Testing**: Vitest across all packages
 
 ### Critical Validation Patterns
+
 - `validateProtocol()` function in `protocol-validation` package - async function returning ValidationResult
 - Used extensively in architect app save operations
 - Validates both schema structure and business logic with descriptive error messages
@@ -196,6 +197,7 @@ Network Canvas uses a protocol-based system where:
 - ALL code style tasks to pass successfully before committing
 
 ### Code Standards
+
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
 - **No barrel files** - avoid index.js/ts except in exceptional circumstances
 - **Workspace dependencies**: Use `workspace:*` for internal package references
@@ -220,11 +222,13 @@ Network Canvas uses a protocol-based system where:
 - Each package has its own `package.json` with proper dependencies
 
 ### Dependencies
+
 - React ecosystem with Radix UI components via catalog
 - Node.js >= 20.0.0, pnpm >= 10.0.0 required
 - Heavy use of catalog dependencies in pnpm-workspace.yaml for consistency
 
 ### Development Workflow
+
 1. Always run `pnpm lint:fix` before committing
 2. Run `pnpm typecheck` to verify TypeScript compliance
 3. Use changesets for version management - never manually bump versions
