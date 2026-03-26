@@ -51,6 +51,7 @@
 		"@tailwindcss/typography": "catalog:",
 		"@types/hast": "^3.0.4",
 		"@types/node": "catalog:",
+		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@types/unist": "^3.0.3",
 		"gray-matter": "^4.0.3",
