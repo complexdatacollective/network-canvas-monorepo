@@ -106,7 +106,9 @@ export default function Spinner({ size = "md", customSize, className }: SpinnerP
 
 				for (let i = 0; i < ctrls.length; i++) {
 					const colors = spinnerColors[i];
-					void ctrls[i].start({
+					const ctrl = ctrls[i];
+					if (!colors || !ctrl) continue;
+					void ctrl.start({
 						x: ["50%", "0%", "50%"],
 						backgroundColor: [colors.dark, colors.light, colors.dark],
 						transition: {
@@ -141,6 +143,7 @@ export default function Spinner({ size = "md", customSize, className }: SpinnerP
 		>
 			{circlePositions.map((pos, index) => {
 				const colors = spinnerColors[index];
+				if (!colors) return null;
 
 				return (
 					<motion.div
