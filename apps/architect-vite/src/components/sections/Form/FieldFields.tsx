@@ -1,5 +1,6 @@
 import { omit } from "es-toolkit/compat";
 import type { ComponentType } from "react";
+import { Field } from "redux-form";
 import { Row, Section } from "~/components/EditorLayout";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import { Field as RichText } from "~/components/Form/Fields/RichText";
@@ -68,12 +69,16 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				</Row>
 			</Section>
 			<Section
-				title="Question Prompt"
+				title="Question"
 				id={getFieldId("prompt")}
-				summary={<p>Enter question for the participant. e.g. What is this person&apos;s name?</p>}
+				summary={<p>Configure the question prompt and optional hints for the participant.</p>}
 				layout="vertical"
 			>
 				<Row>
+					<h4>Prompt Text</h4>
+					<p className="text-sm text-current/70 mb-2">
+						Enter the question to display to the participant. Supports markdown formatting.
+					</p>
 					<ValidatedField
 						name="prompt"
 						component={RichText as ComponentType<Record<string, unknown>>}
@@ -82,6 +87,19 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 							inline: true,
 							placeholder: "What is this person's name?",
 						}}
+					/>
+				</Row>
+				<Row>
+					<h4>Hint Text</h4>
+					<p className="text-sm text-current/70 mb-2">
+						Optionally display a markdown-formatted hint below the question to help participants understand how to
+						answer.
+					</p>
+					<Field
+						name="hint"
+						component={RichText as ComponentType<Record<string, unknown>>}
+						inline
+						placeholder="e.g. Select all that apply..."
 					/>
 				</Row>
 			</Section>

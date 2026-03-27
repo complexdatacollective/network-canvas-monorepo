@@ -70,7 +70,7 @@ const LaunchPad = () => {
 
 	return (
 		<>
-			{isLoading && <ProtocolLoadingOverlay />}
+			<ProtocolLoadingOverlay open={isLoading} />
 			<div className="p-8 flex flex-col gap-8 flex-1">
 				<div className="flex flex-col flex-1">
 					<ProtocolDropzone onLoadProtocol={handleOpenProtocol} />

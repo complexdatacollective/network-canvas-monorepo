@@ -1,7 +1,8 @@
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { Icon, Spinner } from "~/lib/legacy-ui/components";
+import Spinner from "~/components/Spinner";
+import { Icon } from "~/lib/legacy-ui/components";
 import { acceptsFiles, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";
 
@@ -147,7 +148,7 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 					Drag and drop a file here to import it, or&nbsp;
 					<span className={`${className}__link`}>click here to select a file from your computer</span>.
 				</div>
-				<div className={`${className}__loading`}>{state.isActive && <Spinner small />}</div>
+				<div className={`${className}__loading`}>{state.isActive && <Spinner size="sm" />}</div>
 			</div>
 			{state.error && (
 				<div className={errorClasses}>

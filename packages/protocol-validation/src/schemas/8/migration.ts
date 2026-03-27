@@ -19,6 +19,8 @@ const migrationV7toV8 = createMigration({
 - Added 'name' property to protocol (required dependency for migration)
 - Renamed 'iconVariant' to 'icon' on node definitions.
 - Added 'shape' property with default 'circle' to all node definitions.
+- Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
+- Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 `,
 	migrate: (doc, deps) => {
 		const transformed = traverseAndTransform(doc as Record<string, unknown>, [

@@ -114,6 +114,7 @@ function Dialog({
 				<div className="border-t border-divider px-4 py-5 flex justify-end gap-2.5">
 					{!footer && (
 						<BaseDialog.Close
+							nativeButton={false}
 							render={
 								<Button
 									onClick={() => {

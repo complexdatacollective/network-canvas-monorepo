@@ -126,6 +126,7 @@ const EditableList = ({
 				footer={
 					<>
 						<Dialog.Close
+							nativeButton={false}
 							render={
 								<Button onClick={handleCancelEdit} color="platinum">
 									Cancel

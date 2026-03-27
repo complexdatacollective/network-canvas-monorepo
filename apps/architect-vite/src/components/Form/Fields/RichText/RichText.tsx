@@ -1,6 +1,6 @@
 import { EditListPlugin } from "@productboard/slate-edit-list";
 import { isEmpty } from "es-toolkit/compat";
-import isHotkey from "is-hotkey";
+import { isHotkey } from "is-hotkey";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createEditor, type Descendant, type Editor, Transforms as SlateTransforms } from "slate";
 import type { HistoryEditor } from "slate-history";

@@ -102,18 +102,14 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 		setIsEditing(false);
 	};
 
-	const existingVariablesSelector = useMemo(
-		() => (state: RootState) => {
-			const validEntity = (entity || "") as "node" | "edge" | "ego";
-			const validType = (entityType || "node") as "node" | "edge" | "ego";
-			return getVariablesForSubject(state, {
-				entity: validEntity,
-				type: validType,
-			});
-		},
+	const subject = useMemo(
+		() => ({
+			entity: (entity || "") as "node" | "edge" | "ego",
+			type: (entityType || "node") as "node" | "edge" | "ego",
+		}),
 		[entity, entityType],
 	);
-	const existingVariables = useAppSelector(existingVariablesSelector);
+	const existingVariables = useAppSelector((state: RootState) => getVariablesForSubject(state, subject));
 
 	const existingVariableNames = useMemo(
 		() =>
