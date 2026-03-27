@@ -1,0 +1,9 @@
+{
+	"type": "folder",
+	"localeLabels": {
+		"en": "Protocol Gallery"
+	},
+	"slug": "protocol-gallery",
+	"isExpanded": true,
+	"navOrder": 7
+}
