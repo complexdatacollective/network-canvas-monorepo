@@ -179,3 +179,100 @@ describe("v9 branchEntitySchema", () => {
 		expect(result.success).toBe(false);
 	});
 });
+
+import { collectionEntitySchema, entitySchema } from "../timeline/entity";
+
+describe("v9 collectionEntitySchema", () => {
+	it("accepts a collection with stage children", () => {
+		const result = collectionEntitySchema.safeParse({
+			id: "coll-1",
+			type: "Collection",
+			name: "Demographics",
+			children: [{ id: "s1", type: "Stage", stageType: "FinishInterview", label: "End" }],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("rejects an empty collection", () => {
+		const result = collectionEntitySchema.safeParse({
+			id: "coll-1",
+			type: "Collection",
+			name: "Empty",
+			children: [],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it("accepts nested collections", () => {
+		const result = collectionEntitySchema.safeParse({
+			id: "coll-outer",
+			type: "Collection",
+			name: "Outer",
+			children: [
+				{
+					id: "coll-inner",
+					type: "Collection",
+					name: "Inner",
+					children: [{ id: "s1", type: "Stage", stageType: "FinishInterview", label: "End" }],
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("accepts collections with branches", () => {
+		const result = collectionEntitySchema.safeParse({
+			id: "coll-1",
+			type: "Collection",
+			name: "Group",
+			children: [
+				{
+					id: "b1",
+					type: "Branch",
+					name: "Split",
+					slots: [
+						{ id: "slot-1", label: "A", filter: { join: "AND", rules: [] }, target: "s1" },
+						{ id: "slot-2", label: "B", default: true, target: "s1" },
+					],
+				},
+				{ id: "s1", type: "Stage", stageType: "FinishInterview", label: "End" },
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+});
+
+describe("v9 entitySchema", () => {
+	it("accepts a Stage entity", () => {
+		const result = entitySchema.safeParse({
+			id: "s1",
+			type: "Stage",
+			stageType: "FinishInterview",
+			label: "End",
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("accepts a Branch entity", () => {
+		const result = entitySchema.safeParse({
+			id: "b1",
+			type: "Branch",
+			name: "Split",
+			slots: [
+				{ id: "slot-1", label: "A", filter: { join: "AND", rules: [] }, target: "x" },
+				{ id: "slot-2", label: "B", default: true, target: "y" },
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("accepts a Collection entity", () => {
+		const result = entitySchema.safeParse({
+			id: "c1",
+			type: "Collection",
+			name: "Group",
+			children: [{ id: "s1", type: "Stage", stageType: "FinishInterview", label: "End" }],
+		});
+		expect(result.success).toBe(true);
+	});
+});
