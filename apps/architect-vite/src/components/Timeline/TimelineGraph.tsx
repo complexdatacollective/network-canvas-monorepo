@@ -27,129 +27,115 @@ function buildEntityIndex(entities: Entity[]): Map<string, Entity> {
 	return index;
 }
 
-function computeInDegree(entities: Entity[], index: Map<string, Entity>): Map<string, number> {
-	const inDegree = new Map<string, number>();
-	for (const [id] of index) {
-		inDegree.set(id, 0);
+function getEntityTarget(entity: Entity): string | undefined {
+	if (entity.type === "Stage" && "target" in entity) {
+		return (entity as { target?: string }).target;
 	}
+	return undefined;
+}
 
-	function countTargets(list: Entity[]) {
-		for (const entity of list) {
-			if (entity.type === "Stage" && "target" in entity) {
-				const target = (entity as { target?: string }).target;
-				if (target) {
-					inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
-				}
-			}
+function findConvergencePoint(branch: BranchEntity, index: Map<string, Entity>): string | null {
+	// Collect all reachable entity IDs from each slot path
+	const pathReachable: Set<string>[] = branch.slots.map((slot) => {
+		const ids = new Set<string>();
+		let current: string | undefined = slot.target;
+		const visited = new Set<string>();
+		while (current && !visited.has(current)) {
+			visited.add(current);
+			ids.add(current);
+			const entity = index.get(current);
+			if (!entity) break;
 			if (entity.type === "Branch") {
-				for (const slot of (entity as BranchEntity).slots) {
-					inDegree.set(slot.target, (inDegree.get(slot.target) ?? 0) + 1);
-				}
-			}
-			if (entity.type === "Collection") {
-				countTargets((entity as CollectionEntityType).children);
+				// Follow default slot of nested branches
+				const nested = entity as BranchEntity;
+				const defaultSlot = nested.slots.find((s) => s.default);
+				current = defaultSlot?.target;
+			} else {
+				current = getEntityTarget(entity);
 			}
 		}
+		return ids;
+	});
+
+	if (pathReachable.length === 0) return null;
+
+	// Walk the first path in order and find the first entity reachable from ALL paths
+	const firstSlot = branch.slots[0];
+	if (!firstSlot) return null;
+
+	let current: string | undefined = firstSlot.target;
+	const visited = new Set<string>();
+	while (current && !visited.has(current)) {
+		visited.add(current);
+
+		// Check if this entity is reachable from all other paths
+		const id = current;
+		const reachableFromAll = pathReachable.every((pathSet) => pathSet.has(id));
+		if (reachableFromAll) {
+			return current;
+		}
+
+		const entity = index.get(current);
+		if (!entity) break;
+		if (entity.type === "Branch") {
+			const nested = entity as BranchEntity;
+			const defaultSlot = nested.slots.find((s) => s.default);
+			current = defaultSlot?.target;
+		} else {
+			current = getEntityTarget(entity);
+		}
 	}
-	countTargets(entities);
-	return inDegree;
+
+	return null;
 }
 
-function resolveEntity(entityId: string, index: Map<string, Entity>): Entity | undefined {
-	return index.get(entityId);
-}
-
-type GraphPathSegment =
+type RenderNode =
 	| { kind: "stage"; entity: StageEntity }
-	| {
-			kind: "branch";
-			entity: BranchEntity;
-			paths: { slotLabel: string; isDefault: boolean; segments: GraphPathSegment[] }[];
-	  }
-	| { kind: "collection"; entity: CollectionEntityType; innerSegments: GraphPathSegment[] };
+	| { kind: "branch"; entity: BranchEntity; columns: { slotLabel: string; isDefault: boolean; nodes: RenderNode[] }[] }
+	| { kind: "collection"; entity: CollectionEntityType; innerNodes: RenderNode[] };
 
-function buildRenderTree(
+function buildRenderList(
 	startId: string,
+	stopAtId: string | null,
 	index: Map<string, Entity>,
-	inDegree: Map<string, number>,
 	visited: Set<string>,
-): GraphPathSegment[] {
-	const segments: GraphPathSegment[] = [];
+): RenderNode[] {
+	const nodes: RenderNode[] = [];
 	let currentId: string | undefined = startId;
 
 	while (currentId) {
+		if (currentId === stopAtId) break;
 		if (visited.has(currentId)) break;
 
-		const entity = resolveEntity(currentId, index);
+		const entity = index.get(currentId);
 		if (!entity) break;
-
-		// If this entity is a convergence point and we're not the first visitor, stop
-		const deg = inDegree.get(currentId) ?? 0;
-		if (deg > 1 && visited.has(`__approached_${currentId}`)) {
-			// This is a convergence point all paths have now reached
-			visited.delete(`__approached_${currentId}`);
-			// Continue rendering from here
-		} else if (deg > 1 && !visited.has(currentId)) {
-			// First path to reach this convergence point - mark it and stop
-			// The parent branch rendering will handle placing it after all columns
-			visited.add(`__approached_${currentId}`);
-			break;
-		}
 
 		visited.add(currentId);
 
 		if (entity.type === "Stage") {
 			const stage = entity as StageEntity;
-			segments.push({ kind: "stage", entity: stage });
+			nodes.push({ kind: "stage", entity: stage });
 			currentId = "target" in stage ? (stage.target as string | undefined) : undefined;
 		} else if (entity.type === "Branch") {
 			const branch = entity as BranchEntity;
-			visited.add(currentId);
+			const convergence = findConvergencePoint(branch, index);
 
-			// Find convergence point: entity targeted by multiple slots' downstream paths
-			// Build each slot's path
-			const branchPaths = branch.slots.map((slot) => {
-				const slotSegments = buildRenderTree(slot.target, index, inDegree, visited);
-				return {
-					slotLabel: slot.label,
-					isDefault: slot.default === true,
-					segments: slotSegments,
-				};
-			});
+			const columns = branch.slots.map((slot) => ({
+				slotLabel: slot.label,
+				isDefault: slot.default === true,
+				nodes: buildRenderList(slot.target, convergence, index, visited),
+			}));
 
-			segments.push({ kind: "branch", entity: branch, paths: branchPaths });
+			nodes.push({ kind: "branch", entity: branch, columns });
 
-			// After all branch paths, find the convergence point (if any)
-			// Look for an entity that was approached but not fully visited
-			let convergenceId: string | undefined;
-			for (const key of visited) {
-				if (key.startsWith("__approached_")) {
-					convergenceId = key.replace("__approached_", "");
-					break;
-				}
-			}
-
-			if (convergenceId) {
-				visited.delete(`__approached_${convergenceId}`);
-				currentId = convergenceId;
-			} else {
-				currentId = undefined;
-			}
+			// Continue from convergence point
+			currentId = convergence ?? undefined;
 		} else if (entity.type === "Collection") {
 			const collection = entity as CollectionEntityType;
-			visited.add(currentId);
+			const firstChild = collection.children[0];
+			const innerNodes = firstChild ? buildRenderList(firstChild.id, null, index, visited) : [];
+			nodes.push({ kind: "collection", entity: collection, innerNodes });
 
-			const innerSegments: GraphPathSegment[] = [];
-			if (collection.children.length > 0) {
-				const firstChild = collection.children[0];
-				if (firstChild) {
-					innerSegments.push(...buildRenderTree(firstChild.id, index, inDegree, visited));
-				}
-			}
-
-			segments.push({ kind: "collection", entity: collection, innerSegments });
-
-			// Collection's last child's target continues the main path
 			const lastChild = collection.children.at(-1);
 			if (lastChild && lastChild.type === "Stage" && "target" in lastChild && lastChild.target) {
 				currentId = lastChild.target as string;
@@ -161,7 +147,7 @@ function buildRenderTree(
 		}
 	}
 
-	return segments;
+	return nodes;
 }
 
 export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
@@ -201,93 +187,70 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 		[dispatch],
 	);
 
-	const renderTree = useMemo(() => {
+	const renderList = useMemo(() => {
 		if (!timeline || timeline.entities.length === 0) return [];
 		const index = buildEntityIndex(timeline.entities);
-		const inDegree = computeInDegree(timeline.entities, index);
 		const visited = new Set<string>();
-		return buildRenderTree(timeline.start, index, inDegree, visited);
+		return buildRenderList(timeline.start, null, index, visited);
 	}, [timeline]);
 
 	if (!timeline) return null;
 
 	let stageCounter = 0;
 
-	function renderSegments(segments: GraphPathSegment[]): React.ReactNode[] {
-		return segments.map((segment) => {
-			switch (segment.kind) {
+	function renderNodes(nodes: RenderNode[]): React.ReactNode[] {
+		return nodes.map((node) => {
+			switch (node.kind) {
 				case "stage": {
 					stageCounter++;
 					return (
-						<div key={segment.entity.id} className="flex flex-col items-center">
-							<StageNode
-								entity={segment.entity}
-								stageNumber={stageCounter}
-								onEdit={handleEdit}
-								onDelete={handleDelete}
-							/>
-							<InsertPoint afterEntityId={segment.entity.id} onInsert={handleInsert} />
+						<div key={node.entity.id} className="flex flex-col items-center">
+							<StageNode entity={node.entity} stageNumber={stageCounter} onEdit={handleEdit} onDelete={handleDelete} />
+							<InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />
 						</div>
 					);
 				}
 
 				case "branch": {
-					const pathCount = segment.paths.length;
 					return (
-						<div key={segment.entity.id} className="flex flex-col items-center w-full">
+						<div key={node.entity.id} className="flex flex-col items-center">
 							{/* Branch node */}
 							<BranchNode
-								entity={segment.entity}
+								entity={node.entity}
 								onEdit={handleEdit}
 								onDelete={handleDelete}
 								onReorderSlots={handleReorderSlots}
 							/>
 
-							{/* Connector lines from branch to columns */}
-							<div className="relative w-full flex justify-center">
-								<div className="flex items-start" style={{ gap: "2rem" }}>
-									{/* Horizontal connector bar */}
-									<div
-										className="absolute top-0 h-[3px] bg-timeline/30 rounded-full"
-										style={{
-											left: `calc(50% - ${(pathCount - 1) * 10}rem)`,
-											width: `${(pathCount - 1) * 20}rem`,
-										}}
-									/>
-								</div>
-							</div>
-
 							{/* Branch columns */}
-							<div
-								className="grid w-full gap-4 mt-0"
-								style={{
-									gridTemplateColumns: `repeat(${pathCount}, 1fr)`,
-								}}
-							>
-								{segment.paths.map((path) => (
-									<div key={`${segment.entity.id}-${path.slotLabel}`} className="flex flex-col items-center">
-										{/* Vertical line down into column */}
-										<div className="w-[3px] h-6 bg-timeline/30 rounded-full" />
+							<div className="flex gap-8 mt-2 mb-2">
+								{node.columns.map((col) => (
+									<div key={`${node.entity.id}-${col.slotLabel}`} className="flex flex-col items-center min-w-[14rem]">
+										{/* Vertical connector into column */}
+										<div className="w-[3px] h-5 bg-timeline/30 rounded-full" />
 
 										{/* Slot label */}
 										<div
-											className={`text-xs px-3 py-1 rounded-full mb-3 font-medium ${
-												path.isDefault
+											className={`text-xs px-3 py-1 rounded-full mb-2 font-medium whitespace-nowrap ${
+												col.isDefault
 													? "bg-action/15 text-action border border-action/30"
 													: "bg-surface-1 text-foreground/70 border border-border"
 											}`}
 										>
-											{path.slotLabel}
+											{col.slotLabel}
 										</div>
 
-										{/* Path content */}
-										<div className="flex flex-col items-center border-l-[3px] border-timeline/15 pl-0">
-											{path.segments.length > 0 ? (
-												renderSegments(path.segments)
-											) : (
-												<div className="text-xs text-foreground/30 italic py-4">(path continues)</div>
-											)}
-										</div>
+										{/* Column content */}
+										{col.nodes.length > 0 ? (
+											<div className="flex flex-col items-center border-l-[3px] border-timeline/20 rounded-bl-lg pl-0">
+												{renderNodes(col.nodes)}
+											</div>
+										) : (
+											<div className="w-[3px] h-8 bg-timeline/20 rounded-full" />
+										)}
+
+										{/* Vertical connector out of column */}
+										<div className="w-[3px] h-5 bg-timeline/30 rounded-full" />
 									</div>
 								))}
 							</div>
@@ -297,9 +260,9 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 
 				case "collection": {
 					return (
-						<div key={segment.entity.id} className="flex flex-col items-center">
-							<CollectionNode entity={segment.entity}>{renderSegments(segment.innerSegments)}</CollectionNode>
-							<InsertPoint afterEntityId={segment.entity.id} onInsert={handleInsert} />
+						<div key={node.entity.id} className="flex flex-col items-center">
+							<CollectionNode entity={node.entity}>{renderNodes(node.innerNodes)}</CollectionNode>
+							<InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />
 						</div>
 					);
 				}
@@ -310,5 +273,5 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 		});
 	}
 
-	return <div className="flex flex-col items-center gap-1 w-full">{renderSegments(renderTree)}</div>;
+	return <div className="flex flex-col items-center gap-1 w-full">{renderNodes(renderList)}</div>;
 }
