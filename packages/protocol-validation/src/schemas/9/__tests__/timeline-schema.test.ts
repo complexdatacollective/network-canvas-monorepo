@@ -276,3 +276,52 @@ describe("v9 entitySchema", () => {
 		expect(result.success).toBe(true);
 	});
 });
+
+import { stageEntitySchema } from "../stages";
+
+describe("v9 stageEntitySchema", () => {
+	it("discriminates by stageType - EgoForm", () => {
+		const egoForm = stageEntitySchema.safeParse({
+			id: "s1",
+			type: "Stage",
+			stageType: "EgoForm",
+			label: "Test",
+			target: "s2",
+			form: { fields: [] },
+			introductionPanel: { title: "Test", text: "Test" },
+		});
+		expect(egoForm.success).toBe(true);
+	});
+
+	it("discriminates by stageType - Information", () => {
+		const info = stageEntitySchema.safeParse({
+			id: "s2",
+			type: "Stage",
+			stageType: "Information",
+			label: "Info",
+			target: "s3",
+			items: [],
+		});
+		expect(info.success).toBe(true);
+	});
+
+	it("discriminates by stageType - FinishInterview", () => {
+		const finish = stageEntitySchema.safeParse({
+			id: "s3",
+			type: "Stage",
+			stageType: "FinishInterview",
+			label: "Done",
+		});
+		expect(finish.success).toBe(true);
+	});
+
+	it("rejects unknown stageType", () => {
+		const result = stageEntitySchema.safeParse({
+			id: "s1",
+			type: "Stage",
+			stageType: "NonExistent",
+			label: "Bad",
+		});
+		expect(result.success).toBe(false);
+	});
+});
