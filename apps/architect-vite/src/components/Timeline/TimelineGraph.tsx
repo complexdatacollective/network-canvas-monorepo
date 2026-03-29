@@ -1,4 +1,5 @@
 import type { BranchEntity, CollectionEntityType, Entity, StageEntity } from "@codaco/protocol-validation";
+import { Reorder } from "motion/react";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "wouter";
@@ -36,6 +37,31 @@ export default function TimelineGraph() {
 		[setLocation],
 	);
 
+	const handleReorder = useCallback(
+		(newOrder: Entity[]) => {
+			if (!timeline) return;
+			for (let i = 0; i < newOrder.length; i++) {
+				const newEntity = newOrder[i];
+				const oldEntity = timeline.entities[i];
+				if (!newEntity || !oldEntity) break;
+				if (newEntity.id !== oldEntity.id) {
+					const movedEntityId = newEntity.id;
+					const afterEntityId = i > 0 ? (newOrder[i - 1]?.id ?? null) : null;
+					dispatch(timelineSliceActions.moveEntity({ entityId: movedEntityId, afterEntityId }));
+					break;
+				}
+			}
+		},
+		[dispatch, timeline],
+	);
+
+	const handleReorderSlots = useCallback(
+		(branchId: string, slotIds: string[]) => {
+			dispatch(timelineSliceActions.reorderBranchSlots({ branchId, slotIds }));
+		},
+		[dispatch],
+	);
+
 	if (!timeline) return null;
 
 	const layout = computeLayout(timeline);
@@ -64,7 +90,12 @@ export default function TimelineGraph() {
 			case "Branch":
 				return (
 					<div key={entity.id}>
-						<BranchNode entity={entity as BranchEntity} onEdit={handleEdit} onDelete={handleDelete} />
+						<BranchNode
+							entity={entity as BranchEntity}
+							onEdit={handleEdit}
+							onDelete={handleDelete}
+							onReorderSlots={handleReorderSlots}
+						/>
 					</div>
 				);
 			case "Collection": {
@@ -80,5 +111,15 @@ export default function TimelineGraph() {
 		}
 	}
 
-	return <div className="timeline-graph">{timeline.entities.map((entity) => renderEntity(entity))}</div>;
+	return (
+		<div className="timeline-graph">
+			<Reorder.Group axis="y" values={timeline.entities} onReorder={handleReorder}>
+				{timeline.entities.map((entity) => (
+					<Reorder.Item key={entity.id} value={entity}>
+						{renderEntity(entity)}
+					</Reorder.Item>
+				))}
+			</Reorder.Group>
+		</div>
+	);
 }

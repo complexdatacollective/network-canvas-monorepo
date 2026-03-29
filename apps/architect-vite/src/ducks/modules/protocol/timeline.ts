@@ -13,7 +13,12 @@ type UpdateEntityPayload = {
 
 type MoveEntityPayload = {
 	entityId: string;
-	afterEntityId: string;
+	afterEntityId: string | null;
+};
+
+type ReorderBranchSlotsPayload = {
+	branchId: string;
+	slotIds: string[];
 };
 
 const initialState: Timeline = {
@@ -146,6 +151,19 @@ const timelineSlice = createSlice({
 			Object.assign(entity, updates, { id: entityId });
 		},
 
+		reorderBranchSlots: (state, action: PayloadAction<ReorderBranchSlotsPayload>) => {
+			const { branchId, slotIds } = action.payload;
+			const entity = findEntityById(state.entities, branchId);
+			if (!entity || entity.type !== "Branch") return;
+
+			const slotMap = new Map(entity.slots.map((s) => [s.id, s]));
+			const reordered = slotIds.map((id) => slotMap.get(id)).filter((s) => s !== undefined);
+
+			if (reordered.length === entity.slots.length) {
+				entity.slots = reordered;
+			}
+		},
+
 		moveEntity: (state, action: PayloadAction<MoveEntityPayload>) => {
 			const { entityId, afterEntityId } = action.payload;
 			const entity = findEntityById(state.entities, entityId);
@@ -164,6 +182,17 @@ const timelineSlice = createSlice({
 
 			// Remove from current position
 			removeEntityById(state.entities, entityId);
+
+			if (afterEntityId === null) {
+				// Insert at the start of the top-level entities list
+				const firstEntity = state.entities[0];
+				if (firstEntity) {
+					setEntityTarget(entity, firstEntity.id);
+				}
+				state.start = entityId;
+				state.entities.unshift(entity);
+				return;
+			}
 
 			// Insert at new position and rewire targets
 			const newParent = findEntityById(state.entities, afterEntityId);
