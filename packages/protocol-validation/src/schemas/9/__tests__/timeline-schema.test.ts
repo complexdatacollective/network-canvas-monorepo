@@ -277,6 +277,86 @@ describe("v9 entitySchema", () => {
 	});
 });
 
+import ProtocolSchemaV9 from "../schema";
+import { timelineSchema } from "../timeline/timeline";
+
+describe("v9 timelineSchema", () => {
+	it("accepts a minimal linear timeline", () => {
+		const result = timelineSchema.safeParse({
+			start: "s1",
+			entities: [
+				{ id: "s1", type: "Stage", stageType: "Information", label: "Welcome", target: "s2", items: [] },
+				{ id: "s2", type: "Stage", stageType: "FinishInterview", label: "Done" },
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("accepts a timeline with branches", () => {
+		const result = timelineSchema.safeParse({
+			start: "s1",
+			entities: [
+				{ id: "s1", type: "Stage", stageType: "Information", label: "Welcome", target: "b1", items: [] },
+				{
+					id: "b1",
+					type: "Branch",
+					name: "Split",
+					slots: [
+						{ id: "slot-1", label: "Path A", filter: { join: "AND", rules: [] }, target: "s2" },
+						{ id: "slot-2", label: "Default", default: true, target: "s3" },
+					],
+				},
+				{ id: "s2", type: "Stage", stageType: "FinishInterview", label: "Finish A" },
+				{ id: "s3", type: "Stage", stageType: "FinishInterview", label: "Finish B" },
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("rejects empty entities", () => {
+		const result = timelineSchema.safeParse({
+			start: "s1",
+			entities: [],
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe("v9 ProtocolSchemaV9", () => {
+	it("accepts a minimal valid v9 protocol", () => {
+		const result = ProtocolSchemaV9.safeParse({
+			name: "Test Protocol",
+			schemaVersion: 9,
+			codebook: { node: {}, edge: {} },
+			timeline: {
+				start: "s1",
+				entities: [{ id: "s1", type: "Stage", stageType: "FinishInterview", label: "Done" }],
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("rejects a protocol with stages array (v8 format)", () => {
+		const result = ProtocolSchemaV9.safeParse({
+			name: "Test",
+			schemaVersion: 9,
+			codebook: { node: {}, edge: {} },
+			stages: [],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it("rejects schemaVersion 8", () => {
+		const result = ProtocolSchemaV9.safeParse({
+			name: "Test",
+			schemaVersion: 8,
+			codebook: { node: {}, edge: {} },
+			timeline: { start: "s1", entities: [{ id: "s1", type: "Stage", stageType: "FinishInterview", label: "Done" }] },
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
 import { stageEntitySchema } from "../stages";
 
 describe("v9 stageEntitySchema", () => {

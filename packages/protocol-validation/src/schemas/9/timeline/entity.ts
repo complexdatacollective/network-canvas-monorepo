@@ -1,26 +1,16 @@
 import { z } from "~/utils/zod-mock-extension";
+import { type StageEntity, stageEntitySchema } from "../stages";
 import type { BranchEntity } from "./branch";
 import { branchEntitySchema } from "./branch";
 
-type StageEntityBase = { id: string; type: "Stage"; stageType: string; label: string; [key: string]: unknown };
-
-type CollectionEntityType = {
+export type CollectionEntityType = {
 	id: string;
 	type: "Collection";
 	name: string;
 	children: EntityType[];
 };
 
-type EntityType = StageEntityBase | BranchEntity | CollectionEntityType;
-
-const permissiveStageSchema = z
-	.object({
-		id: z.string(),
-		type: z.literal("Stage"),
-		stageType: z.string(),
-		label: z.string(),
-	})
-	.passthrough();
+type EntityType = StageEntity | BranchEntity | CollectionEntityType;
 
 export const collectionEntitySchema: z.ZodType<CollectionEntityType> = z.lazy(() =>
 	z.strictObject({
@@ -32,5 +22,5 @@ export const collectionEntitySchema: z.ZodType<CollectionEntityType> = z.lazy(()
 );
 
 export const entitySchema: z.ZodType<EntityType> = z.lazy(() =>
-	z.union([permissiveStageSchema, collectionEntitySchema, branchEntitySchema]),
+	z.union([stageEntitySchema, collectionEntitySchema, branchEntitySchema]),
 );
