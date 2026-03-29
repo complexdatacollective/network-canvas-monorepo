@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Entity } from "../timeline/entity";
 import type { Timeline } from "../timeline/timeline";
+import { validateCollectionConstraints } from "../validation/collections";
 import { buildEntityIndex, flattenAllEntities, flattenStageEntities } from "../validation/flatten";
 import { validateAllPathsTerminate, validateNoCycles, validateNoOrphans } from "../validation/graph";
 import { validateIdUniqueness, validateStartReference, validateTargetReferences } from "../validation/references";
@@ -171,5 +172,93 @@ describe("validateNoOrphans", () => {
 		const errors = validateNoOrphans(timeline);
 		expect(errors.length).toBeGreaterThan(0);
 		expect(errors[0]).toContain("orphan");
+	});
+});
+
+describe("validateCollectionConstraints", () => {
+	it("passes for valid internal targeting", () => {
+		const entities: Entity[] = [
+			{
+				id: "coll-1",
+				type: "Collection",
+				name: "Group",
+				children: [
+					{ id: "s1", type: "Stage", stageType: "Information", label: "A", target: "s2", items: [] } as Entity,
+					{
+						id: "s2",
+						type: "Stage",
+						stageType: "EgoForm",
+						label: "B",
+						target: "outside",
+						form: { fields: [] },
+						introductionPanel: { title: "T", text: "T" },
+					} as Entity,
+				],
+			} as Entity,
+			{ id: "outside", type: "Stage", stageType: "FinishInterview", label: "End" } as Entity,
+		];
+		const errors = validateCollectionConstraints(entities);
+		expect(errors).toHaveLength(0);
+	});
+
+	it("rejects non-last child targeting outside collection", () => {
+		const entities: Entity[] = [
+			{
+				id: "coll-1",
+				type: "Collection",
+				name: "Group",
+				children: [
+					{ id: "s1", type: "Stage", stageType: "Information", label: "A", target: "outside", items: [] } as Entity,
+					{ id: "s2", type: "Stage", stageType: "FinishInterview", label: "B" } as Entity,
+				],
+			} as Entity,
+			{ id: "outside", type: "Stage", stageType: "FinishInterview", label: "End" } as Entity,
+		];
+		const errors = validateCollectionConstraints(entities);
+		expect(errors.length).toBeGreaterThan(0);
+		expect(errors[0]).toContain("s1");
+	});
+
+	it("rejects branch as last child of collection", () => {
+		const entities: Entity[] = [
+			{
+				id: "coll-1",
+				type: "Collection",
+				name: "Group",
+				children: [
+					{ id: "s1", type: "Stage", stageType: "Information", label: "A", target: "b1", items: [] } as Entity,
+					{
+						id: "b1",
+						type: "Branch",
+						name: "Bad",
+						slots: [
+							{ id: "slot-1", label: "A", filter: { join: "AND", rules: [] }, target: "outside1" },
+							{ id: "slot-2", label: "B", default: true, target: "outside2" },
+						],
+					} as Entity,
+				],
+			} as Entity,
+		];
+		const errors = validateCollectionConstraints(entities);
+		expect(errors.length).toBeGreaterThan(0);
+		expect(errors[0]).toContain("last child");
+	});
+
+	it("rejects sibling targeting first child", () => {
+		const entities: Entity[] = [
+			{
+				id: "coll-1",
+				type: "Collection",
+				name: "Group",
+				children: [
+					{ id: "s1", type: "Stage", stageType: "Information", label: "A", target: "s2", items: [] } as Entity,
+					{ id: "s2", type: "Stage", stageType: "Information", label: "B", target: "s1", items: [] } as Entity,
+					{ id: "s3", type: "Stage", stageType: "FinishInterview", label: "C" } as Entity,
+				],
+			} as Entity,
+		];
+		const errors = validateCollectionConstraints(entities);
+		expect(errors.length).toBeGreaterThan(0);
+		expect(errors[0]).toContain("first child");
 	});
 });
