@@ -13,6 +13,7 @@ import migrationV4toV5 from "../schemas/5/migration";
 import migrationV5toV6 from "../schemas/6/migration";
 import migrationV6toV7 from "../schemas/7/migration";
 import migrationV7toV8 from "../schemas/8/migration";
+import migrationV8toV9 from "../schemas/9/migration";
 import { SchemaVersionDetectionError, ValidationError } from "./errors";
 import { type ProtocolDocument, protocolMigrations } from "./index";
 
@@ -23,6 +24,7 @@ protocolMigrations.register(migrationV4toV5);
 protocolMigrations.register(migrationV5toV6);
 protocolMigrations.register(migrationV6toV7);
 protocolMigrations.register(migrationV7toV8);
+protocolMigrations.register(migrationV8toV9);
 
 export function detectSchemaVersion(document: unknown): SchemaVersion {
 	try {

@@ -53,7 +53,7 @@ describe("Protocol Migration - Extended Tests", () => {
 			const info = getMigrationInfo(7);
 			expect(info.canMigrate).toBe(true);
 			expect(info.path).toContain(7);
-			expect(info.path[info.path.length - 1]).toBe(8); // Assuming current is 8
+			expect(info.path[info.path.length - 1]).toBe(9);
 		});
 
 		it("should indicate cannot migrate for unknown source version", () => {
@@ -119,10 +119,10 @@ describe("Protocol Migration - Extended Tests", () => {
 			expect(migrated.description).toBe("Test protocol");
 			expect(migrated.lastModified).toBe("2024-01-01T00:00:00.000Z");
 			expect(typeof migrated.codebook).toBe("object");
-			expect(Array.isArray(migrated.stages)).toBe(true);
+			expect(migrated).toHaveProperty("timeline");
 		});
 
-		it("should add experiments field during v7 to v8 migration", () => {
+		it("should produce a timeline after full migration from v7", () => {
 			const v7Doc = {
 				schemaVersion: 7,
 				description: "Test",
@@ -137,8 +137,8 @@ describe("Protocol Migration - Extended Tests", () => {
 
 			const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
 
-			expect(migrated).toHaveProperty("experiments");
-			expect(migrated.experiments).toEqual({});
+			expect(migrated.schemaVersion).toBe(9);
+			expect(migrated).toHaveProperty("timeline");
 		});
 
 		it("should handle null values in optional fields", () => {
@@ -156,7 +156,7 @@ describe("Protocol Migration - Extended Tests", () => {
 			// This should either migrate successfully or throw a clear validation error
 			try {
 				const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
-				expect(migrated.schemaVersion).toBe(8);
+				expect(migrated.schemaVersion).toBe(9);
 			} catch (e) {
 				expect(e).toBeInstanceOf(ValidationError);
 			}
@@ -180,8 +180,8 @@ describe("Protocol Migration - Extended Tests", () => {
 			const result2 = await protocolMigrator.migrate(v7Doc, { dependencies: { name: "Test Protocol" } });
 
 			// Without cache key, results should be different instances
-			expect(result1.schemaVersion).toBe(8);
-			expect(result2.schemaVersion).toBe(8);
+			expect(result1.schemaVersion).toBe(9);
+			expect(result2.schemaVersion).toBe(9);
 		});
 
 		it("should return different instances for different cache keys", async () => {
@@ -206,8 +206,8 @@ describe("Protocol Migration - Extended Tests", () => {
 			});
 
 			expect(result1).not.toBe(result2);
-			expect(result1.schemaVersion).toBe(8);
-			expect(result2.schemaVersion).toBe(8);
+			expect(result1.schemaVersion).toBe(9);
+			expect(result2.schemaVersion).toBe(9);
 		});
 
 		it("should handle clearing non-existent cache key", () => {
@@ -227,11 +227,11 @@ describe("Protocol Migration - Extended Tests", () => {
 			};
 
 			const result = await protocolMigrator.migrate(v7Doc, {
-				targetVersion: 8,
+				targetVersion: 9,
 				dependencies: { name: "Test Protocol" },
 			});
 
-			expect(result.schemaVersion).toBe(8);
+			expect(result.schemaVersion).toBe(9);
 		});
 
 		it("should cache with custom target version", async () => {
@@ -248,13 +248,13 @@ describe("Protocol Migration - Extended Tests", () => {
 
 			const result1 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "custom-target",
-				targetVersion: 8,
+				targetVersion: 9,
 				dependencies: { name: "Test Protocol" },
 			});
 
 			const result2 = await protocolMigrator.migrate(v7Doc, {
 				cacheKey: "custom-target",
-				targetVersion: 8,
+				targetVersion: 9,
 				dependencies: { name: "Test Protocol" },
 			});
 

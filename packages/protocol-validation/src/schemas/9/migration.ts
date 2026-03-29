@@ -19,10 +19,9 @@ type TimelineEntity = {
 	[key: string]: unknown;
 };
 
-// 9 is not yet in SchemaVersion (added in Task 12), so we cast here
 const migrationV8toV9 = createMigration({
-	from: 8 as SchemaVersion,
-	to: 9 as unknown as SchemaVersion,
+	from: 8 as const,
+	to: 9 as const,
 	dependencies: {},
 	notes: `
 - Replaced flat stages array with timeline graph structure.
@@ -39,6 +38,7 @@ const migrationV8toV9 = createMigration({
 			id: finishId,
 			type: "Stage",
 			stageType: "FinishInterview",
+			label: "Finish Interview",
 		};
 
 		const entities: TimelineEntity[] = [];
@@ -80,6 +80,7 @@ const migrationV8toV9 = createMigration({
 		// Second pass: wire up targets and branch slots
 		for (let i = 0; i < entries.length; i++) {
 			const entry = entries[i];
+			if (!entry) continue;
 
 			if (entry.entity.type === "Branch" && entry.originalStageId) {
 				const originalStageId = entry.originalStageId;
@@ -94,8 +95,8 @@ const migrationV8toV9 = createMigration({
 
 				const conditionSlot: Record<string, unknown> = {
 					id: crypto.randomUUID(),
+					label: skipLogic.action === "SKIP" ? "Skip condition" : "Show condition",
 					filter: skipLogic.filter,
-					default: false,
 					// SKIP: condition met → skip this stage (go to next), default → show stage
 					// SHOW: condition met → show stage, default → skip (go to next)
 					target: skipLogic.action === "SKIP" ? nextTargetId : originalStageId,
@@ -103,6 +104,7 @@ const migrationV8toV9 = createMigration({
 
 				const defaultSlot: Record<string, unknown> = {
 					id: crypto.randomUUID(),
+					label: "Default",
 					default: true,
 					target: skipLogic.action === "SKIP" ? originalStageId : nextTargetId,
 				};
@@ -126,11 +128,16 @@ const migrationV8toV9 = createMigration({
 
 		const { stages: _stages, ...restProtocol } = protocol;
 
+		const firstEntity = entities[0];
+		if (!firstEntity) {
+			throw new Error("Migration produced no timeline entities");
+		}
+
 		const result = {
 			...restProtocol,
 			schemaVersion: 9 as const,
 			timeline: {
-				start: entities[0].id,
+				start: firstEntity.id,
 				entities,
 			},
 		};

@@ -37,7 +37,7 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 			const protocolVersion = Number(protocol.schemaVersion ?? 0);
 
 			// Skip protocols with non-numeric schema versions (e.g. semver strings like "1.0.0")
-			if (!Number.isInteger(protocolVersion) || protocolVersion < 1 || protocolVersion > 8) {
+			if (!Number.isInteger(protocolVersion) || protocolVersion < 1 || protocolVersion > 9) {
 				// biome-ignore lint/suspicious/noConsole: logging
 				console.log(`Skipping unsupported schema version for ${filename}: ${protocol.schemaVersion}`);
 				continue;
@@ -45,8 +45,8 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 
 			const protocolName = filename?.replace(/\.netcanvas$/, "") ?? "Unknown Protocol";
 
-			if (protocolVersion === 8) {
-				// Validate v8 protocols directly
+			if (protocolVersion === 9) {
+				// Validate v9 protocols directly
 				const protocolWithName = !("name" in protocol) ? { ...protocol, name: protocolName } : protocol;
 
 				const startTime = Date.now();
@@ -60,14 +60,14 @@ describe.skipIf(!hasGitHubToken)("Test protocols", () => {
 
 				expect(result.success).toBe(true);
 			} else {
-				// For versions 1-7, migrate to v8 then validate
+				// For versions 1-8, migrate to v9 then validate
 				const migratedProtocol = migrateProtocol(protocol, undefined, { name: protocolName });
 				const migrationResult = await validateProtocol(migratedProtocol);
 
 				if (!migrationResult.success) {
 					// biome-ignore lint/suspicious/noConsole: logging
 					console.error(
-						`Migration validation failed for ${filename} (v${protocolVersion} → v8):`,
+						`Migration validation failed for ${filename} (v${protocolVersion} → v9):`,
 						migrationResult.error,
 					);
 				}
