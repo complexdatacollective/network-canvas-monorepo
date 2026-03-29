@@ -7,10 +7,10 @@ export type CollectionEntityType = {
 	id: string;
 	type: "Collection";
 	name: string;
-	children: EntityType[];
+	children: Entity[];
 };
 
-type EntityType = StageEntity | BranchEntity | CollectionEntityType;
+export type Entity = StageEntity | BranchEntity | CollectionEntityType;
 
 export const collectionEntitySchema: z.ZodType<CollectionEntityType> = z.lazy(() =>
 	z.strictObject({
@@ -21,6 +21,6 @@ export const collectionEntitySchema: z.ZodType<CollectionEntityType> = z.lazy(()
 	}),
 );
 
-export const entitySchema: z.ZodType<EntityType> = z.lazy(() =>
+export const entitySchema: z.ZodType<Entity> = z.lazy(() =>
 	z.union([stageEntitySchema, collectionEntitySchema, branchEntitySchema]),
 );
