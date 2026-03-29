@@ -31,7 +31,7 @@ export function validateTargetReferences(entities: Entity[]): string[] {
 	const index = buildEntityIndex(entities);
 
 	for (const entity of flattenAllEntities(entities)) {
-		if (entity.type === "Stage" && entity.target) {
+		if (entity.type === "Stage" && "target" in entity && entity.target) {
 			if (entity.target === entity.id) {
 				errors.push(`Entity "${entity.id}" has a self-referencing target`);
 			} else if (!index.has(entity.target)) {

@@ -1,11 +1,10 @@
-import type { StageEntity } from "../stages";
 import type { BranchSlot } from "../timeline/branch";
 import type { CollectionEntityType, Entity } from "../timeline/entity";
 import { flattenAllEntities } from "./flatten";
 
 function getTargetsForEntity(entity: Entity): string[] {
-	if (entity.type === "Stage" && "target" in entity && (entity as StageEntity).target) {
-		return [(entity as StageEntity).target as string];
+	if (entity.type === "Stage" && "target" in entity && entity.target) {
+		return [entity.target];
 	}
 	if (entity.type === "Branch") {
 		return (entity as { slots: BranchSlot[] }).slots.map((s) => s.target);

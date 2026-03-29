@@ -5,10 +5,7 @@ import { buildEntityIndex, flattenAllEntities } from "./flatten";
 
 function getSuccessors(entity: Entity): string[] {
 	if (entity.type === "Stage") {
-		if (entity.stageType === "FinishInterview") {
-			return [];
-		}
-		if (entity.target) {
+		if ("target" in entity && entity.target) {
 			return [entity.target];
 		}
 		return [];
@@ -20,8 +17,9 @@ function getSuccessors(entity: Entity): string[] {
 
 	if (entity.type === "Collection") {
 		const children = (entity as CollectionEntityType).children;
-		if (children.length > 0) {
-			return [children[0].id];
+		const firstChild = children[0];
+		if (firstChild) {
+			return [firstChild.id];
 		}
 		return [];
 	}
@@ -33,8 +31,9 @@ function resolveTarget(targetId: string, index: Map<string, Entity>): string {
 	const entity = index.get(targetId);
 	if (entity?.type === "Collection") {
 		const children = (entity as CollectionEntityType).children;
-		if (children.length > 0) {
-			return children[0].id;
+		const firstChild = children[0];
+		if (firstChild) {
+			return firstChild.id;
 		}
 	}
 	return targetId;
@@ -78,10 +77,9 @@ export function validateNoCycles(timeline: Timeline): string[] {
 
 	const startEntity = index.get(timeline.start);
 	if (startEntity) {
-		const resolvedStart =
-			startEntity.type === "Collection" && (startEntity as CollectionEntityType).children.length > 0
-				? (startEntity as CollectionEntityType).children[0].id
-				: timeline.start;
+		const firstCollectionChild =
+			startEntity.type === "Collection" ? (startEntity as CollectionEntityType).children[0] : undefined;
+		const resolvedStart = firstCollectionChild ? firstCollectionChild.id : timeline.start;
 		dfs(resolvedStart);
 	}
 
@@ -136,10 +134,9 @@ export function validateAllPathsTerminate(timeline: Timeline): string[] {
 
 	const startEntity = index.get(timeline.start);
 	if (startEntity) {
-		const resolvedStart =
-			startEntity.type === "Collection" && (startEntity as CollectionEntityType).children.length > 0
-				? (startEntity as CollectionEntityType).children[0].id
-				: timeline.start;
+		const firstCollectionChild =
+			startEntity.type === "Collection" ? (startEntity as CollectionEntityType).children[0] : undefined;
+		const resolvedStart = firstCollectionChild ? firstCollectionChild.id : timeline.start;
 		if (!checkTermination(resolvedStart, new Set())) {
 			errors.push("Not all paths from start reach a FinishInterview stage");
 		}
@@ -174,15 +171,7 @@ export function validateNoOrphans(timeline: Timeline): string[] {
 
 		const successors = getSuccessors(entity);
 		for (const successorId of successors) {
-			const targetEntity = index.get(successorId);
-			if (targetEntity) {
-				reachable.add(successorId);
-				if (targetEntity.type === "Collection") {
-					walk(successorId);
-				} else {
-					walk(successorId);
-				}
-			}
+			walk(successorId);
 		}
 	}
 
