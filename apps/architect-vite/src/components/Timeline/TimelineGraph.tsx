@@ -8,7 +8,6 @@ import { getTimeline } from "~/selectors/timeline";
 import BranchNode from "./BranchNode";
 import CollectionNode from "./CollectionNode";
 import InsertPoint from "./InsertPoint";
-import { computeLayout } from "./layout";
 import StageNode from "./StageNode";
 
 type TimelineGraphProps = {
@@ -72,19 +71,14 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 
 	if (!timeline) return null;
 
-	const layout = computeLayout(timeline);
-
 	let stageCounter = 0;
 
 	function renderEntity(entity: Entity): React.ReactNode {
-		const layoutNode = layout.get(entity.id);
-		if (!layoutNode) return null;
-
 		switch (entity.type) {
 			case "Stage": {
 				stageCounter++;
 				return (
-					<div key={entity.id}>
+					<div key={entity.id} className="flex flex-col items-center">
 						<StageNode
 							entity={entity as StageEntity}
 							stageNumber={stageCounter}
@@ -97,21 +91,25 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 			}
 			case "Branch":
 				return (
-					<div key={entity.id}>
+					<div key={entity.id} className="flex flex-col items-center">
 						<BranchNode
 							entity={entity as BranchEntity}
 							onEdit={handleEdit}
 							onDelete={handleDelete}
 							onReorderSlots={handleReorderSlots}
 						/>
+						<InsertPoint afterEntityId={entity.id} onInsert={handleInsert} />
 					</div>
 				);
 			case "Collection": {
 				const collection = entity as CollectionEntityType;
 				return (
-					<CollectionNode key={entity.id} entity={collection}>
-						{collection.children.map((child) => renderEntity(child))}
-					</CollectionNode>
+					<div key={entity.id} className="flex flex-col items-center">
+						<CollectionNode entity={collection}>
+							{collection.children.map((child) => renderEntity(child))}
+						</CollectionNode>
+						<InsertPoint afterEntityId={entity.id} onInsert={handleInsert} />
+					</div>
 				);
 			}
 			default:
@@ -120,14 +118,17 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 	}
 
 	return (
-		<div className="timeline-graph">
-			<Reorder.Group axis="y" values={timeline.entities} onReorder={handleReorder}>
-				{timeline.entities.map((entity) => (
-					<Reorder.Item key={entity.id} value={entity}>
-						{renderEntity(entity)}
-					</Reorder.Item>
-				))}
-			</Reorder.Group>
-		</div>
+		<Reorder.Group
+			axis="y"
+			values={timeline.entities}
+			onReorder={handleReorder}
+			className="flex flex-col items-center gap-1 list-none p-0 m-0"
+		>
+			{timeline.entities.map((entity) => (
+				<Reorder.Item key={entity.id} value={entity} className="list-none w-full flex justify-center">
+					{renderEntity(entity)}
+				</Reorder.Item>
+			))}
+		</Reorder.Group>
 	);
 }

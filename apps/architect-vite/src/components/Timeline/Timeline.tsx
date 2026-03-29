@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useSelector } from "react-redux";
 import { getStageList } from "~/selectors/protocol";
@@ -17,19 +18,19 @@ const Timeline = () => {
 	return (
 		<>
 			<div className="relative mb-24">
-				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
-				<div className="relative grid grid-cols-1 gap-6 pt-16 justify-items-center">
+				<div className="absolute left-1/2 top-0 w-[3px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline/30 pointer-events-none rounded-full" />
+				<div className="relative flex flex-col items-center gap-0 pt-12">
 					<TimelineGraph onInsertStage={handleInsertStage} />
 					<button
 						type="button"
-						className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
+						className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-8 cursor-pointer group w-full max-w-2xl py-3"
 						onClick={() => handleInsertStage(stages.length)}
 					>
 						<div />
-						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-foreground text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
-							+
+						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-action-foreground group-hover:scale-110 transition-transform duration-300">
+							<Plus size={22} />
 						</div>
-						<span className="justify-self-start group-hover:font-bold transition-all font-semibold text-lg">
+						<span className="justify-self-start text-foreground/60 group-hover:text-foreground font-semibold text-sm transition-colors">
 							Add new stage
 						</span>
 					</button>
