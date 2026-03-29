@@ -11,14 +11,18 @@ import InsertPoint from "./InsertPoint";
 import { computeLayout } from "./layout";
 import StageNode from "./StageNode";
 
-export default function TimelineGraph() {
+type TimelineGraphProps = {
+	onInsertStage?: (afterIndex: number) => void;
+};
+
+export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 	const dispatch = useDispatch();
 	const [, setLocation] = useLocation();
 	const timeline = useSelector(getTimeline);
 
 	const handleEdit = useCallback(
 		(entityId: string) => {
-			setLocation(`/protocol/entity/${entityId}`);
+			setLocation(`/protocol/stage/${entityId}`);
 		},
 		[setLocation],
 	);
@@ -32,9 +36,13 @@ export default function TimelineGraph() {
 
 	const handleInsert = useCallback(
 		(afterEntityId: string) => {
-			setLocation(`/protocol/entity/new?afterEntityId=${afterEntityId}`);
+			if (!timeline || !onInsertStage) return;
+			const index = timeline.entities.findIndex((e) => e.id === afterEntityId);
+			if (index >= 0) {
+				onInsertStage(index + 1);
+			}
 		},
-		[setLocation],
+		[timeline, onInsertStage],
 	);
 
 	const handleReorder = useCallback(

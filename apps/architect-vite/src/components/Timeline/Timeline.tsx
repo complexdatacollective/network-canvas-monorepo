@@ -19,7 +19,7 @@ const Timeline = () => {
 			<div className="relative mb-24">
 				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
 				<div className="relative grid grid-cols-1 gap-6 pt-16 justify-items-center">
-					<TimelineGraph />
+					<TimelineGraph onInsertStage={handleInsertStage} />
 					<button
 						type="button"
 						className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"

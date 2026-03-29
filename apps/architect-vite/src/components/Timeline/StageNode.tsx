@@ -1,5 +1,6 @@
 import type { StageEntity } from "@codaco/protocol-validation";
 import { useRef } from "react";
+import stageImages from "~/images/timeline";
 
 const DRAG_THRESHOLD = 5;
 
@@ -33,7 +34,10 @@ export default function StageNode({ entity, stageNumber, onEdit, onDelete }: Sta
 	return (
 		<div className="timeline-stage" data-entity-id={entity.id} onPointerDown={handlePointerDown}>
 			<button type="button" className="timeline-stage__edit-stage" onClick={handleEditClick}>
-				<img src={`/images/timeline/stage--${entity.stageType}.png`} alt={entity.stageType} />
+				<img
+					src={stageImages[entity.stageType as keyof typeof stageImages] ?? stageImages.Default}
+					alt={entity.stageType}
+				/>
 			</button>
 			<div className="timeline-stage__notch">{stageNumber}</div>
 			<div className="timeline-stage__label">{entity.label}</div>
