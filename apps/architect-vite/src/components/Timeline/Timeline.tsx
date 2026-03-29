@@ -18,7 +18,7 @@ const Timeline = () => {
 	return (
 		<>
 			<div className="relative mb-24">
-				<div className="absolute left-1/2 top-0 w-[3px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline/30 pointer-events-none rounded-full" />
+				{/* No global center line - connectors are rendered between entities by TimelineGraph */}
 				<div className="relative flex flex-col items-center gap-0 pt-12">
 					<TimelineGraph onInsertStage={handleInsertStage} />
 					<button

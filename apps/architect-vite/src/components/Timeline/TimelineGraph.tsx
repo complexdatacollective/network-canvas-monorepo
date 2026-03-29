@@ -1,5 +1,6 @@
 import type { BranchEntity, CollectionEntityType, Entity, StageEntity } from "@codaco/protocol-validation";
 import { ArrowDown } from "lucide-react";
+import { Reorder } from "motion/react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "wouter";
@@ -147,6 +148,10 @@ function buildRenderList(
 	return nodes;
 }
 
+function Connector() {
+	return <div className="w-[3px] h-6 bg-timeline/40 shrink-0" />;
+}
+
 export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 	const dispatch = useDispatch();
 	const [, setLocation] = useLocation();
@@ -177,6 +182,24 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 		[timeline, onInsertStage],
 	);
 
+	const handleReorder = useCallback(
+		(newOrder: Entity[]) => {
+			if (!timeline) return;
+			for (let i = 0; i < newOrder.length; i++) {
+				const newEntity = newOrder[i];
+				const oldEntity = timeline.entities[i];
+				if (!newEntity || !oldEntity) break;
+				if (newEntity.id !== oldEntity.id) {
+					const movedEntityId = newEntity.id;
+					const afterEntityId = i > 0 ? (newOrder[i - 1]?.id ?? null) : null;
+					dispatch(timelineSliceActions.moveEntity({ entityId: movedEntityId, afterEntityId }));
+					break;
+				}
+			}
+		},
+		[dispatch, timeline],
+	);
+
 	const renderList = useMemo(() => {
 		if (!timeline || timeline.entities.length === 0) return [];
 		const index = buildEntityIndex(timeline.entities);
@@ -188,61 +211,67 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 
 	let stageCounter = 0;
 
-	function renderNodes(nodes: RenderNode[], compact = false): React.ReactNode[] {
-		return nodes.map((node) => {
+	function renderNodes(nodes: RenderNode[]): React.ReactNode[] {
+		const result: React.ReactNode[] = [];
+
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
+			if (!node) continue;
+
+			// Add connector line before each node (except the first)
+			if (i > 0) {
+				result.push(
+					<Connector
+						key={`connector-before-${node.kind === "branch" ? node.entity.id : node.kind === "stage" ? node.entity.id : node.entity.id}`}
+					/>,
+				);
+			}
+
 			switch (node.kind) {
 				case "stage": {
 					stageCounter++;
-					return (
+					result.push(
 						<div key={node.entity.id} className="flex flex-col items-center">
-							<StageNode
-								entity={node.entity}
-								stageNumber={stageCounter}
-								compact={compact}
-								onEdit={handleEdit}
-								onDelete={handleDelete}
-							/>
-							{!compact && <InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />}
-						</div>
+							<StageNode entity={node.entity} stageNumber={stageCounter} onEdit={handleEdit} onDelete={handleDelete} />
+							<InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />
+						</div>,
 					);
+					break;
 				}
 
 				case "branch": {
-					return (
-						<div key={node.entity.id} className="flex flex-col items-center w-full max-w-4xl">
+					const colWidth = "max(20rem, 42rem)";
+
+					result.push(
+						<div key={node.entity.id} className="flex flex-col items-center">
 							{/* Branch header */}
 							<BranchNode entity={node.entity} onEdit={handleEdit} onDelete={handleDelete} />
 
-							{/* Horizontal connector from center to each column */}
-							<div className="relative w-full flex justify-center py-1">
-								{/* Vertical line from branch to horizontal bar */}
-								<div className="w-[3px] h-4 bg-timeline/40" />
-							</div>
+							{/* Vertical connector from branch diamond down to horizontal bar */}
+							<Connector />
 
-							{/* Columns container */}
-							<div className="relative flex justify-center w-full">
-								{/* Horizontal bar spanning across columns */}
+							{/* Forking area */}
+							<div className="flex flex-col items-center">
+								{/* Top horizontal bar */}
 								<div
-									className="absolute top-0 left-1/2 -translate-x-1/2 h-[3px] bg-timeline/40 rounded-full"
-									style={{
-										width: `${Math.max(node.columns.length - 1, 1) * 12}rem`,
-									}}
+									className="h-[3px] bg-timeline/40 rounded-full"
+									style={{ width: `calc(${node.columns.length} * ${colWidth})` }}
 								/>
 
-								{/* Column layout */}
-								<div className="flex gap-0 pt-0">
+								{/* Columns */}
+								<div className="flex">
 									{node.columns.map((col) => (
 										<div
 											key={`${node.entity.id}-${col.slotLabel}`}
 											className="flex flex-col items-center"
-											style={{ minWidth: "12rem" }}
+											style={{ width: colWidth }}
 										>
 											{/* Vertical line into column */}
-											<div className="w-[3px] h-5 bg-timeline/40" />
+											<Connector />
 
 											{/* Slot label */}
 											<div
-												className={`text-xs px-3 py-1 rounded-full mb-3 font-medium whitespace-nowrap ${
+												className={`text-xs px-3 py-1 rounded-full font-medium whitespace-nowrap mb-2 ${
 													col.isDefault
 														? "bg-action/15 text-action border border-action/30"
 														: "bg-surface-1 text-foreground/70 border border-border"
@@ -252,53 +281,58 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 											</div>
 
 											{/* Column content */}
-											<div className="flex flex-col items-center gap-2 min-h-[3rem]">
-												{col.nodes.length > 0 ? (
-													renderNodes(col.nodes, true)
-												) : (
-													<div className="flex flex-col items-center gap-1 py-2 text-foreground/30">
-														<ArrowDown size={16} />
-														<span className="text-[10px] italic">skip</span>
-													</div>
-												)}
-											</div>
+											{col.nodes.length > 0 ? (
+												<div className="flex flex-col items-center">{renderNodes(col.nodes)}</div>
+											) : (
+												<div className="flex flex-col items-center gap-1 py-4 text-foreground/30">
+													<ArrowDown size={16} />
+													<span className="text-[10px] italic">skip</span>
+												</div>
+											)}
 
 											{/* Vertical line out of column */}
-											<div className="w-[3px] h-5 bg-timeline/40 mt-2" />
+											<Connector />
 										</div>
 									))}
 								</div>
+
+								{/* Bottom horizontal bar (convergence) */}
+								<div
+									className="h-[3px] bg-timeline/40 rounded-full"
+									style={{ width: `calc(${node.columns.length} * ${colWidth})` }}
+								/>
 							</div>
 
-							{/* Horizontal bar converging */}
-							<div className="relative w-full flex justify-center">
-								<div
-									className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] bg-timeline/40 rounded-full"
-									style={{
-										width: `${Math.max(node.columns.length - 1, 1) * 12}rem`,
-									}}
-								/>
-								{/* Vertical line from horizontal bar back to center */}
-								<div className="w-[3px] h-4 bg-timeline/40 mt-[3px]" />
-							</div>
-						</div>
+							{/* Vertical connector from convergence bar down to next entity */}
+							<Connector />
+						</div>,
 					);
+					break;
 				}
 
 				case "collection": {
-					return (
+					result.push(
 						<div key={node.entity.id} className="flex flex-col items-center">
 							<CollectionNode entity={node.entity}>{renderNodes(node.innerNodes)}</CollectionNode>
 							<InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />
-						</div>
+						</div>,
 					);
+					break;
 				}
-
-				default:
-					return null;
 			}
-		});
+		}
+
+		return result;
 	}
 
-	return <div className="flex flex-col items-center gap-1 w-full">{renderNodes(renderList)}</div>;
+	return (
+		<Reorder.Group
+			axis="y"
+			values={timeline.entities}
+			onReorder={handleReorder}
+			className="flex flex-col items-center list-none p-0 m-0"
+		>
+			{timeline.entities.length > 0 && <>{renderNodes(renderList)}</>}
+		</Reorder.Group>
+	);
 }
