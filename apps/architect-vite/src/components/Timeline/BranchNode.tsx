@@ -1,47 +1,19 @@
 import type { BranchEntity } from "@codaco/protocol-validation";
 import { GitFork, Trash2 } from "lucide-react";
-import { Reorder } from "motion/react";
 
 type BranchNodeProps = {
 	entity: BranchEntity;
 	onEdit: (id: string) => void;
 	onDelete: (id: string) => void;
-	onReorderSlots?: (branchId: string, slotIds: string[]) => void;
 };
 
-export default function BranchNode({ entity, onEdit, onDelete, onReorderSlots }: BranchNodeProps) {
+export default function BranchNode({ entity, onEdit, onDelete }: BranchNodeProps) {
 	return (
 		<div
 			className="group/branch grid grid-cols-[1fr_auto_1fr] items-center gap-6 w-full max-w-2xl"
 			data-entity-id={entity.id}
 		>
-			<div className="justify-self-end w-44">
-				<Reorder.Group
-					axis="y"
-					values={entity.slots}
-					onReorder={(newSlots) => {
-						onReorderSlots?.(
-							entity.id,
-							newSlots.map((s) => s.id),
-						);
-					}}
-					className="flex flex-col gap-1"
-				>
-					{entity.slots.map((slot) => (
-						<Reorder.Item key={slot.id} value={slot}>
-							<div
-								className={`text-xs px-2.5 py-1.5 rounded cursor-grab active:cursor-grabbing transition-colors ${
-									slot.default
-										? "bg-action/15 text-action font-medium border border-action/30"
-										: "bg-surface-1 text-foreground/70 border border-border"
-								}`}
-							>
-								<span className="truncate block">{slot.label}</span>
-							</div>
-						</Reorder.Item>
-					))}
-				</Reorder.Group>
-			</div>
+			<div className="justify-self-end" />
 
 			<button
 				type="button"
@@ -59,7 +31,6 @@ export default function BranchNode({ entity, onEdit, onDelete, onReorderSlots }:
 				>
 					{entity.name}
 				</button>
-				<span className="text-xs text-foreground/40 tabular-nums">{entity.slots.length} paths</span>
 				<button
 					type="button"
 					onClick={() => onDelete(entity.id)}

@@ -1,4 +1,5 @@
 import type { BranchEntity, CollectionEntityType, Entity, StageEntity } from "@codaco/protocol-validation";
+import { ArrowDown } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "wouter";
@@ -35,7 +36,6 @@ function getEntityTarget(entity: Entity): string | undefined {
 }
 
 function findConvergencePoint(branch: BranchEntity, index: Map<string, Entity>): string | null {
-	// Collect all reachable entity IDs from each slot path
 	const pathReachable: Set<string>[] = branch.slots.map((slot) => {
 		const ids = new Set<string>();
 		let current: string | undefined = slot.target;
@@ -46,7 +46,6 @@ function findConvergencePoint(branch: BranchEntity, index: Map<string, Entity>):
 			const entity = index.get(current);
 			if (!entity) break;
 			if (entity.type === "Branch") {
-				// Follow default slot of nested branches
 				const nested = entity as BranchEntity;
 				const defaultSlot = nested.slots.find((s) => s.default);
 				current = defaultSlot?.target;
@@ -59,7 +58,6 @@ function findConvergencePoint(branch: BranchEntity, index: Map<string, Entity>):
 
 	if (pathReachable.length === 0) return null;
 
-	// Walk the first path in order and find the first entity reachable from ALL paths
 	const firstSlot = branch.slots[0];
 	if (!firstSlot) return null;
 
@@ -67,14 +65,11 @@ function findConvergencePoint(branch: BranchEntity, index: Map<string, Entity>):
 	const visited = new Set<string>();
 	while (current && !visited.has(current)) {
 		visited.add(current);
-
-		// Check if this entity is reachable from all other paths
 		const id = current;
 		const reachableFromAll = pathReachable.every((pathSet) => pathSet.has(id));
 		if (reachableFromAll) {
 			return current;
 		}
-
 		const entity = index.get(current);
 		if (!entity) break;
 		if (entity.type === "Branch") {
@@ -91,7 +86,11 @@ function findConvergencePoint(branch: BranchEntity, index: Map<string, Entity>):
 
 type RenderNode =
 	| { kind: "stage"; entity: StageEntity }
-	| { kind: "branch"; entity: BranchEntity; columns: { slotLabel: string; isDefault: boolean; nodes: RenderNode[] }[] }
+	| {
+			kind: "branch";
+			entity: BranchEntity;
+			columns: { slotLabel: string; isDefault: boolean; nodes: RenderNode[] }[];
+	  }
 	| { kind: "collection"; entity: CollectionEntityType; innerNodes: RenderNode[] };
 
 function buildRenderList(
@@ -127,8 +126,6 @@ function buildRenderList(
 			}));
 
 			nodes.push({ kind: "branch", entity: branch, columns });
-
-			// Continue from convergence point
 			currentId = convergence ?? undefined;
 		} else if (entity.type === "Collection") {
 			const collection = entity as CollectionEntityType;
@@ -180,13 +177,6 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 		[timeline, onInsertStage],
 	);
 
-	const handleReorderSlots = useCallback(
-		(branchId: string, slotIds: string[]) => {
-			dispatch(timelineSliceActions.reorderBranchSlots({ branchId, slotIds }));
-		},
-		[dispatch],
-	);
-
 	const renderList = useMemo(() => {
 		if (!timeline || timeline.entities.length === 0) return [];
 		const index = buildEntityIndex(timeline.entities);
@@ -198,61 +188,98 @@ export default function TimelineGraph({ onInsertStage }: TimelineGraphProps) {
 
 	let stageCounter = 0;
 
-	function renderNodes(nodes: RenderNode[]): React.ReactNode[] {
+	function renderNodes(nodes: RenderNode[], compact = false): React.ReactNode[] {
 		return nodes.map((node) => {
 			switch (node.kind) {
 				case "stage": {
 					stageCounter++;
 					return (
 						<div key={node.entity.id} className="flex flex-col items-center">
-							<StageNode entity={node.entity} stageNumber={stageCounter} onEdit={handleEdit} onDelete={handleDelete} />
-							<InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />
+							<StageNode
+								entity={node.entity}
+								stageNumber={stageCounter}
+								compact={compact}
+								onEdit={handleEdit}
+								onDelete={handleDelete}
+							/>
+							{!compact && <InsertPoint afterEntityId={node.entity.id} onInsert={handleInsert} />}
 						</div>
 					);
 				}
 
 				case "branch": {
 					return (
-						<div key={node.entity.id} className="flex flex-col items-center">
-							{/* Branch node */}
-							<BranchNode
-								entity={node.entity}
-								onEdit={handleEdit}
-								onDelete={handleDelete}
-								onReorderSlots={handleReorderSlots}
-							/>
+						<div key={node.entity.id} className="flex flex-col items-center w-full max-w-4xl">
+							{/* Branch header */}
+							<BranchNode entity={node.entity} onEdit={handleEdit} onDelete={handleDelete} />
 
-							{/* Branch columns */}
-							<div className="flex gap-8 mt-2 mb-2">
-								{node.columns.map((col) => (
-									<div key={`${node.entity.id}-${col.slotLabel}`} className="flex flex-col items-center min-w-[14rem]">
-										{/* Vertical connector into column */}
-										<div className="w-[3px] h-5 bg-timeline/30 rounded-full" />
+							{/* Horizontal connector from center to each column */}
+							<div className="relative w-full flex justify-center py-1">
+								{/* Vertical line from branch to horizontal bar */}
+								<div className="w-[3px] h-4 bg-timeline/40" />
+							</div>
 
-										{/* Slot label */}
+							{/* Columns container */}
+							<div className="relative flex justify-center w-full">
+								{/* Horizontal bar spanning across columns */}
+								<div
+									className="absolute top-0 left-1/2 -translate-x-1/2 h-[3px] bg-timeline/40 rounded-full"
+									style={{
+										width: `${Math.max(node.columns.length - 1, 1) * 12}rem`,
+									}}
+								/>
+
+								{/* Column layout */}
+								<div className="flex gap-0 pt-0">
+									{node.columns.map((col) => (
 										<div
-											className={`text-xs px-3 py-1 rounded-full mb-2 font-medium whitespace-nowrap ${
-												col.isDefault
-													? "bg-action/15 text-action border border-action/30"
-													: "bg-surface-1 text-foreground/70 border border-border"
-											}`}
+											key={`${node.entity.id}-${col.slotLabel}`}
+											className="flex flex-col items-center"
+											style={{ minWidth: "12rem" }}
 										>
-											{col.slotLabel}
-										</div>
+											{/* Vertical line into column */}
+											<div className="w-[3px] h-5 bg-timeline/40" />
 
-										{/* Column content */}
-										{col.nodes.length > 0 ? (
-											<div className="flex flex-col items-center border-l-[3px] border-timeline/20 rounded-bl-lg pl-0">
-												{renderNodes(col.nodes)}
+											{/* Slot label */}
+											<div
+												className={`text-xs px-3 py-1 rounded-full mb-3 font-medium whitespace-nowrap ${
+													col.isDefault
+														? "bg-action/15 text-action border border-action/30"
+														: "bg-surface-1 text-foreground/70 border border-border"
+												}`}
+											>
+												{col.slotLabel}
 											</div>
-										) : (
-											<div className="w-[3px] h-8 bg-timeline/20 rounded-full" />
-										)}
 
-										{/* Vertical connector out of column */}
-										<div className="w-[3px] h-5 bg-timeline/30 rounded-full" />
-									</div>
-								))}
+											{/* Column content */}
+											<div className="flex flex-col items-center gap-2 min-h-[3rem]">
+												{col.nodes.length > 0 ? (
+													renderNodes(col.nodes, true)
+												) : (
+													<div className="flex flex-col items-center gap-1 py-2 text-foreground/30">
+														<ArrowDown size={16} />
+														<span className="text-[10px] italic">skip</span>
+													</div>
+												)}
+											</div>
+
+											{/* Vertical line out of column */}
+											<div className="w-[3px] h-5 bg-timeline/40 mt-2" />
+										</div>
+									))}
+								</div>
+							</div>
+
+							{/* Horizontal bar converging */}
+							<div className="relative w-full flex justify-center">
+								<div
+									className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] bg-timeline/40 rounded-full"
+									style={{
+										width: `${Math.max(node.columns.length - 1, 1) * 12}rem`,
+									}}
+								/>
+								{/* Vertical line from horizontal bar back to center */}
+								<div className="w-[3px] h-4 bg-timeline/40 mt-[3px]" />
 							</div>
 						</div>
 					);

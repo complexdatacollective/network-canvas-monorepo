@@ -11,11 +11,12 @@ const getTimelineImage = (stageType: string) => get(timelineImages, stageType, t
 type StageNodeProps = {
 	entity: StageEntity;
 	stageNumber: number;
+	compact?: boolean;
 	onEdit: (id: string) => void;
 	onDelete: (id: string) => void;
 };
 
-export default function StageNode({ entity, stageNumber, onEdit, onDelete }: StageNodeProps) {
+export default function StageNode({ entity, stageNumber, compact, onEdit, onDelete }: StageNodeProps) {
 	const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
 	const handlePointerDown = (e: React.PointerEvent) => {
@@ -36,6 +37,41 @@ export default function StageNode({ entity, stageNumber, onEdit, onDelete }: Sta
 	};
 
 	const image = getTimelineImage(entity.stageType);
+
+	if (compact) {
+		return (
+			<div
+				className="group/stage flex flex-col items-center gap-1 w-full"
+				data-entity-id={entity.id}
+				onPointerDown={handlePointerDown}
+			>
+				<button
+					type="button"
+					onClick={handleEditClick}
+					className="cursor-pointer rounded-lg overflow-hidden bg-surface-accent shadow-sm hover:shadow-md hover:scale-[1.03] transition-all duration-300 w-28"
+				>
+					<div className="p-2">
+						{image && <img src={image} alt={entity.stageType} className="w-full h-auto pointer-events-none" />}
+					</div>
+				</button>
+				<button
+					type="button"
+					onClick={handleEditClick}
+					className="cursor-pointer text-center text-xs font-medium text-foreground hover:text-primary transition-colors truncate max-w-[10rem]"
+				>
+					{entity.label || "\u00A0"}
+				</button>
+				<button
+					type="button"
+					onClick={() => onDelete(entity.id)}
+					className="opacity-0 group-hover/stage:opacity-100 transition-opacity duration-200 cursor-pointer p-1 rounded-md hover:bg-error/10 text-error/60 hover:text-error"
+					title="Delete stage"
+				>
+					<Trash2 size={12} />
+				</button>
+			</div>
+		);
+	}
 
 	return (
 		<div
