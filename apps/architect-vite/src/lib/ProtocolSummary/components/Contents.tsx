@@ -1,3 +1,4 @@
+import type { CollectionEntityType, Entity, StageEntity } from "@codaco/protocol-validation";
 import { groupBy, isEmpty, map, toPairs } from "es-toolkit/compat";
 import React, { useContext } from "react";
 import DualLink from "./DualLink";
@@ -10,9 +11,22 @@ type Asset = {
 	[key: string]: unknown;
 };
 
+function flattenStageEntities(entities: Entity[]): StageEntity[] {
+	const result: StageEntity[] = [];
+	for (const entity of entities) {
+		if (entity.type === "Stage") {
+			result.push(entity);
+		} else if (entity.type === "Collection") {
+			result.push(...flattenStageEntities((entity as CollectionEntityType).children));
+		}
+	}
+	return result;
+}
+
 const Contents = () => {
 	const { protocol } = useContext(SummaryContext);
 
+	const stages = flattenStageEntities(protocol.timeline.entities);
 	const nodes = toPairs(protocol.codebook?.node ?? {});
 	const edges = toPairs(protocol.codebook?.edge ?? {});
 	const assets = groupBy(toPairs(protocol.assetManifest ?? {}), ([, asset]) => (asset as Asset).type);
@@ -24,14 +38,13 @@ const Contents = () => {
 				<ol>
 					<li>Stages</li>
 					<ol>
-						{protocol.stages &&
-							map(protocol.stages, ({ label, id }, index) => (
-								<li key={id}>
-									<DualLink to={`#stage-${id}`}>
-										{index + 1}. {label}
-									</DualLink>
-								</li>
-							))}
+						{stages.map(({ label, id }, index) => (
+							<li key={id}>
+								<DualLink to={`#stage-${id}`}>
+									{index + 1}. {label}
+								</DualLink>
+							</li>
+						))}
 					</ol>
 					<li>Codebook</li>
 					<ul>

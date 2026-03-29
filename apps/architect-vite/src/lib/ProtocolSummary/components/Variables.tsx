@@ -1,5 +1,5 @@
-import type { Variable } from "@codaco/protocol-validation";
-import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
+import type { CollectionEntityType, CurrentProtocol, Entity, StageEntity, Variable } from "@codaco/protocol-validation";
+import { get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import React, { useContext } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
@@ -9,24 +9,31 @@ import { renderValue } from "./helpers";
 import MiniTable from "./MiniTable";
 import SummaryContext from "./SummaryContext";
 
-type ProtocolType = {
-	stages?: Array<{ id: string; label: string }>;
-	[key: string]: unknown;
-};
-
 type IndexEntry = {
 	id: string;
 	stages?: string[];
 	[key: string]: unknown;
 };
 
-const getStageName = (protocol: ProtocolType) => (stageId: string) => {
-	const stageConfiguration = find(protocol.stages, ["id", stageId]);
-	return get(stageConfiguration, "label");
+function flattenStageEntities(entities: Entity[]): StageEntity[] {
+	const result: StageEntity[] = [];
+	for (const entity of entities) {
+		if (entity.type === "Stage") {
+			result.push(entity);
+		} else if (entity.type === "Collection") {
+			result.push(...flattenStageEntities((entity as CollectionEntityType).children));
+		}
+	}
+	return result;
+}
+
+const getStageName = (protocol: CurrentProtocol) => (stageId: string) => {
+	const stages = flattenStageEntities(protocol.timeline.entities);
+	const stageConfiguration = stages.find((s) => s.id === stageId);
+	return stageConfiguration?.label;
 };
 
-// TODO: Make this part of the index?
-const makeGetUsedIn = (protocol: ProtocolType) => (indexEntry: IndexEntry | undefined) => {
+const makeGetUsedIn = (protocol: CurrentProtocol) => (indexEntry: IndexEntry | undefined) => {
 	const stages = get(indexEntry, "stages", []) as string[];
 
 	return stages.map((stageId: string) => [stageId, getStageName(protocol)(stageId)]);
@@ -39,7 +46,7 @@ type VariablesProps = {
 const Variables = ({ variables }: VariablesProps) => {
 	const { protocol, index } = useContext(SummaryContext);
 
-	const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
+	const getUsedIn = makeGetUsedIn(protocol);
 
 	const sortedVariables = sortBy(toPairs(variables), [(variable) => (variable[1] as Variable).name.toLowerCase()]);
 

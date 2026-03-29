@@ -19,8 +19,8 @@ startAppListening({
 		const protocol = action.payload;
 		posthog.capture("protocol_opened", {
 			protocol_name: protocol?.name,
-			schema_version: protocol?.schemaVersion ?? 8,
-			stage_count: protocol?.stages?.length ?? 0,
+			schema_version: protocol?.schemaVersion ?? 9,
+			stage_count: protocol?.timeline?.entities?.length ?? 0,
 		});
 	},
 });
@@ -29,7 +29,7 @@ startAppListening({
 	actionCreator: createStage,
 	effect: (action) => {
 		posthog.capture("stage_added", {
-			stage_type: action.payload.stage.type ?? "unknown",
+			stage_type: action.payload.stage.stageType ?? "unknown",
 			stage_index: action.payload.index,
 		});
 	},
@@ -58,7 +58,7 @@ startAppListening({
 		const protocol = state.activeProtocol?.present;
 		posthog.capture("protocol_downloaded", {
 			protocol_name: protocol?.name,
-			stage_count: protocol?.stages?.length ?? 0,
+			stage_count: protocol?.timeline?.entities?.length ?? 0,
 		});
 	},
 });

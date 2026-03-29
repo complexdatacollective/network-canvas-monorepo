@@ -1,4 +1,4 @@
-import type { CurrentProtocol, Stage } from "@codaco/protocol-validation";
+import type { CurrentProtocol, StageEntity } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it } from "vitest";
 import activeProtocolReducer, { actionCreators } from "../activeProtocol";
@@ -7,8 +7,11 @@ import { test as stagesTest } from "../protocol/stages";
 const mockProtocol: CurrentProtocol = {
 	name: "Test Protocol",
 	description: "test description",
-	schemaVersion: 8,
-	stages: [],
+	schemaVersion: 9,
+	timeline: {
+		start: "",
+		entities: [],
+	},
 	codebook: {
 		node: {},
 		edge: {},
@@ -20,28 +23,32 @@ const mockProtocol: CurrentProtocol = {
 const mockProtocol2: CurrentProtocol = {
 	name: "Test Protocol 2",
 	description: "another description",
-	schemaVersion: 8,
-	stages: [
-		{
-			id: "stage-1",
-			type: "NameGenerator",
-			label: "Test Stage",
-			form: {
-				title: "Test Form",
-				fields: [],
-			},
-			subject: {
-				entity: "node",
-				type: "person",
-			},
-			prompts: [
-				{
-					id: "prompt-1",
-					text: "Test prompt",
+	schemaVersion: 9,
+	timeline: {
+		start: "stage-1",
+		entities: [
+			{
+				id: "stage-1",
+				type: "Stage",
+				stageType: "NameGenerator",
+				label: "Test Stage",
+				form: {
+					title: "Test Form",
+					fields: [],
 				},
-			],
-		},
-	],
+				subject: {
+					entity: "node",
+					type: "person",
+				},
+				prompts: [
+					{
+						id: "prompt-1",
+						text: "Test prompt",
+					},
+				],
+			},
+		],
+	},
 	codebook: {
 		node: {
 			person: {
@@ -55,7 +62,7 @@ const mockProtocol2: CurrentProtocol = {
 		ego: {},
 	},
 	assetManifest: {},
-};
+} as CurrentProtocol;
 
 describe("activeProtocol", () => {
 	describe("reducer", () => {
@@ -112,7 +119,7 @@ describe("activeProtocol", () => {
 			expect(state).not.toBeNull();
 			if (!state) return;
 			expect(state.description).toBe("Updated Description");
-			expect(state.stages).toEqual(mockProtocol.stages); // Other fields preserved
+			expect(state.timeline).toEqual(mockProtocol.timeline); // Other fields preserved
 		});
 
 		it("should clear active protocol", () => {
@@ -274,7 +281,7 @@ describe("activeProtocol", () => {
 		});
 
 		it("should process sub-reducers when protocol data exists", () => {
-			// Set protocol with stages and codebook
+			// Set protocol with timeline and codebook
 			store.dispatch(actionCreators.setActiveProtocol(mockProtocol2));
 
 			const state = store.getState().activeProtocol;
@@ -283,7 +290,7 @@ describe("activeProtocol", () => {
 			expect(state).not.toBeNull();
 			if (!state) return;
 			expect(state.description).toBe("another description");
-			expect(state.stages).toHaveLength(1);
+			expect(state.timeline.entities).toHaveLength(1);
 			expect(state.codebook.node?.person).toBeDefined();
 		});
 
@@ -292,14 +299,15 @@ describe("activeProtocol", () => {
 			store.dispatch(
 				stagesTest.createStage({
 					id: "test",
-					type: "NameGenerator",
+					type: "Stage",
+					stageType: "NameGenerator",
 					label: "Test Stage",
 					subject: {
 						entity: "node",
 						type: "person",
 					},
 					prompts: [],
-				} as unknown as Stage),
+				} as unknown as StageEntity),
 			);
 
 			const state = store.getState().activeProtocol;

@@ -288,7 +288,7 @@ export async function uploadProtocolForPreview(
 	const { frescoUrl, apiToken } = getFrescoConfig();
 
 	posthog.capture("protocol_previewed", {
-		stage_count: protocol.stages?.length ?? 0,
+		stage_count: protocol.timeline?.entities?.length ?? 0,
 		start_stage_index: stageIndex,
 		asset_count: Object.keys(protocol.assetManifest ?? {}).length,
 	});

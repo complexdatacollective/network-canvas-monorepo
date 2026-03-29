@@ -1,13 +1,14 @@
-import type { Stage } from "@codaco/protocol-validation";
+import type { StageEntity } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
 import reducer, { actionCreators, test } from "../stages";
 
 const mockStages = [
-	{ id: "3", type: "Information", label: "Foo" },
+	{ id: "3", type: "Stage", stageType: "Information", label: "Foo" },
 	{
 		id: "9",
-		type: "NameGenerator",
+		type: "Stage",
+		stageType: "NameGenerator",
 		label: "Bar",
 		prompts: [
 			{ id: "7", text: "prompt" },
@@ -15,18 +16,21 @@ const mockStages = [
 			{ id: "5", text: "prompt3" },
 		],
 	},
-	{ id: "5", type: "OrdinalBin", label: "Baz" },
-] as Stage[];
+	{ id: "5", type: "Stage", stageType: "OrdinalBin", label: "Baz" },
+] as StageEntity[];
 
 // Create a test store for async actions
-const createTestStore = (initialStages: Stage[] = []) => {
+const createTestStore = (initialStages: StageEntity[] = []) => {
 	return configureStore({
 		reducer: {
 			stages: reducer,
 			// Mock other reducers that might be needed
 			protocol: () => ({
 				present: {
-					stages: initialStages,
+					timeline: {
+						start: "",
+						entities: initialStages,
+					},
 				},
 			}),
 		},
@@ -38,7 +42,7 @@ describe("protocol.stages", () => {
 	describe("reducer", () => {
 		describe("createStage", () => {
 			it("Creates a stage", () => {
-				const newStage = { id: "new", type: "Information", label: "" } as Stage;
+				const newStage = { id: "new", type: "Stage", stageType: "Information", label: "" } as StageEntity;
 
 				const appendStageToState = reducer(mockStages, test.createStage(newStage));
 				expect(appendStageToState[3]).toMatchObject({ ...newStage });
@@ -56,12 +60,12 @@ describe("protocol.stages", () => {
 
 				expect(updatedStages[1]).toMatchObject({
 					label: "Hello world",
-					type: "NameGenerator",
+					stageType: "NameGenerator",
 				});
 			});
 
 			it("Replaces stage object if overwrite is true", () => {
-				const updatedStage = { something: "different" } as unknown as Stage;
+				const updatedStage = { something: "different" } as unknown as StageEntity;
 
 				const updatedStages = reducer(mockStages, test.updateStage("9", updatedStage, true));
 
@@ -74,8 +78,8 @@ describe("protocol.stages", () => {
 				const updatedStages = reducer(mockStages, test.deleteStage("9"));
 
 				expect(updatedStages).toEqual([
-					{ id: "3", type: "Information", label: "Foo" },
-					{ id: "5", type: "OrdinalBin", label: "Baz" },
+					{ id: "3", type: "Stage", stageType: "Information", label: "Foo" },
+					{ id: "5", type: "Stage", stageType: "OrdinalBin", label: "Baz" },
 				]);
 			});
 		});
@@ -85,17 +89,18 @@ describe("protocol.stages", () => {
 				const updatedStages = reducer(mockStages, test.deletePrompt("9", "3"));
 
 				expect(updatedStages).toEqual([
-					{ id: "3", type: "Information", label: "Foo" },
+					{ id: "3", type: "Stage", stageType: "Information", label: "Foo" },
 					{
 						id: "9",
-						type: "NameGenerator",
+						type: "Stage",
+						stageType: "NameGenerator",
 						label: "Bar",
 						prompts: [
 							{ id: "7", text: "prompt" },
 							{ id: "5", text: "prompt3" },
 						],
 					},
-					{ id: "5", type: "OrdinalBin", label: "Baz" },
+					{ id: "5", type: "Stage", stageType: "OrdinalBin", label: "Baz" },
 				]);
 			});
 		});

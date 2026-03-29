@@ -1,4 +1,4 @@
-import { type CurrentProtocol, type Stage, type StageType, validateProtocol } from "@codaco/protocol-validation";
+import { type CurrentProtocol, type StageEntity, type StageType, validateProtocol } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -28,28 +28,35 @@ type StageEditorProps = {
 };
 
 /**
- * Builds a protocol with the current wip stage inserted or updated.
+ * Builds a protocol with the current wip stage inserted or updated in the timeline.
  * Allows for validating and previewing the protocol with the current stage changes.
  * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
  */
 function buildProtocolWithStage(
 	protocol: CurrentProtocol,
-	stage: Stage,
+	stage: StageEntity,
 	stageId: string | null,
 	insertAtIndex?: number,
 ): CurrentProtocol {
-	// For new stages, generate a temp ID for validation/preview
-	const stageWithId = stageId ? stage : { ...stage, id: uuid() };
+	const stageWithId: StageEntity = stageId ? stage : { ...stage, id: uuid() };
+	const entities = [...protocol.timeline.entities];
+
+	if (stageId) {
+		const idx = entities.findIndex((e) => e.id === stageId);
+		if (idx !== -1) {
+			entities[idx] = stageWithId;
+		}
+	} else {
+		const insertAt = insertAtIndex ?? entities.length;
+		entities.splice(insertAt, 0, stageWithId);
+	}
 
 	return {
 		...protocol,
-		stages: stageId
-			? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
-			: [
-					...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
-					stageWithId,
-					...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
-				],
+		timeline: {
+			...protocol.timeline,
+			entities,
+		},
 	};
 }
 
@@ -64,13 +71,13 @@ const StageEditor = (props: StageEditorProps) => {
 	const stageIndex = useSelector((state: RootState) => getStageIndex(state, id || ""));
 	const protocol = useSelector(getProtocol);
 	const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
-	const interfaceType = (stage?.type || type || "Information") as StageType;
+	const interfaceType = (stage?.stageType || type || "Information") as StageType;
 	const template = getInterface(interfaceType).template || {};
-	const initialValues = stage || { ...template, type: interfaceType };
+	const initialValues = stage || { ...template, stageType: interfaceType, type: "Stage" as const };
 
 	// Get form state
 	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
-	const formValues = useSelector((state: RootState) => getFormValues(formName)(state)) as Stage | undefined;
+	const formValues = useSelector((state: RootState) => getFormValues(formName)(state)) as StageEntity | undefined;
 
 	// Preview state
 	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
@@ -79,7 +86,7 @@ const StageEditor = (props: StageEditorProps) => {
 	// Handle form submission
 	const onSubmit = useCallback(
 		(stageData: Record<string, unknown>) => {
-			const normalizedStage = omit(stageData, "_modified") as Stage;
+			const normalizedStage = omit(stageData, "_modified") as StageEntity;
 
 			if (id) {
 				dispatch(stageActions.updateStage(id, normalizedStage));
@@ -126,7 +133,7 @@ const StageEditor = (props: StageEditorProps) => {
 			return;
 		}
 
-		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
+		const normalizedStage = omit(formValues, ["_modified"]) as StageEntity;
 		const previewProtocol = buildProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
 
 		// Validate the protocol before previewing
@@ -146,7 +153,7 @@ const StageEditor = (props: StageEditorProps) => {
 		setUploadProgress(null);
 
 		try {
-			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
+			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.timeline.entities.length);
 			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
 
 			// Try to open popup - if blocked, show dialog with link

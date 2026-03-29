@@ -1,8 +1,10 @@
 import type {
+	CollectionEntityType,
 	EdgeDefinition,
 	EgoDefinition,
+	Entity,
 	NodeDefinition,
-	Stage,
+	StageEntity,
 	Variable,
 	Variables,
 } from "@codaco/protocol-validation";
@@ -24,9 +26,22 @@ type StageMeta = {
  * @param {Object} state Application state
  * @returns {Object[]} Stage meta sorted by index in state
  */
+function flattenStageEntities(entities: Entity[]): StageEntity[] {
+	const result: StageEntity[] = [];
+	for (const entity of entities) {
+		if (entity.type === "Stage") {
+			result.push(entity);
+		} else if (entity.type === "Collection") {
+			result.push(...flattenStageEntities((entity as CollectionEntityType).children));
+		}
+	}
+	return result;
+}
+
 const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] => {
 	if (!protocol) return [];
-	return protocol.stages.map(({ label, id }: Stage) => ({ label, id }));
+	const stages = flattenStageEntities(protocol.timeline.entities);
+	return stages.map(({ label, id }) => ({ label, id }));
 });
 
 const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {

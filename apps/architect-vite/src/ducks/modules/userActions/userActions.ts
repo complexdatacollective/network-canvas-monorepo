@@ -129,7 +129,10 @@ export const createNetcanvas = createAsyncThunk(
 			name,
 			description,
 			schemaVersion: APP_SCHEMA_VERSION,
-			stages: [],
+			timeline: {
+				start: "",
+				entities: [],
+			},
 			codebook: {
 				node: {},
 				edge: {},

@@ -1,4 +1,4 @@
-import type { Stage } from "@codaco/protocol-validation";
+import type { StageEntity } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
 import { compact, omit } from "es-toolkit/compat";
@@ -8,16 +8,16 @@ import { getNodeTypes } from "~/selectors/codebook";
 import { getStage } from "~/selectors/protocol";
 import prune from "~/utils/prune";
 
-type StagesState = Stage[];
+type StagesState = StageEntity[];
 
 type CreateStagePayload = {
-	stage: Stage;
+	stage: StageEntity;
 	index?: number;
 };
 
 type UpdateStagePayload = {
 	stageId: string;
-	stage: Partial<Stage>;
+	stage: Partial<StageEntity>;
 	overwrite?: boolean;
 };
 
@@ -42,9 +42,9 @@ const initialStage = {
 // Async thunks
 const createStageAsync = createAsyncThunk(
 	"stages/createStageAsync",
-	async ({ options, index }: { options: Partial<Stage>; index?: number }, { dispatch }) => {
+	async ({ options, index }: { options: Partial<StageEntity>; index?: number }, { dispatch }) => {
 		const stageId = uuid();
-		const stage = { ...initialStage, ...options, id: stageId } as Stage;
+		const stage = { ...initialStage, ...options, id: stageId } as StageEntity;
 
 		dispatch(stagesSlice.actions.createStage({ stage, index }));
 		return stage;
@@ -57,7 +57,7 @@ const deleteStageAsync = createAsyncThunk(
 		const state = getState() as RootState;
 		const stage = getStage(state, stageId);
 
-		if (stage?.type === "Anonymisation") {
+		if (stage?.stageType === "Anonymisation") {
 			// Remove encrypted from all variables
 			const nodeTypes = getNodeTypes(state);
 			const encryptedVariables = Object.values(nodeTypes).reduce(
@@ -122,13 +122,13 @@ const stagesSlice = createSlice({
 			const currentStage = state[stageIndex];
 			invariant(currentStage, `Stage with ID ${stageId} not found`);
 
-			const previousStage = !overwrite ? currentStage : ({} as Partial<Stage>);
+			const previousStage = !overwrite ? currentStage : ({} as Partial<StageEntity>);
 
-			const newStage: Stage = {
+			const newStage: StageEntity = {
 				...previousStage,
 				...stageUpdate,
 				id: currentStage.id,
-			} as Stage;
+			} as StageEntity;
 
 			state[stageIndex] = prune(newStage);
 		},
@@ -142,7 +142,7 @@ const stagesSlice = createSlice({
 			// Remove the item from oldIndex
 			const [movedStage] = state.splice(oldIndex, 1);
 			// Insert it at newIndex
-			state.splice(newIndex, 0, movedStage as Stage);
+			state.splice(newIndex, 0, movedStage as StageEntity);
 		},
 		deleteStage: (state, action: PayloadAction<string>) => {
 			const stageId = action.payload;
@@ -171,7 +171,7 @@ const stagesSlice = createSlice({
 						prompts,
 					};
 				}),
-			) as Stage[];
+			) as StageEntity[];
 		},
 	},
 });
@@ -182,7 +182,7 @@ export const createStage = stagesSlice.actions.createStage;
 // Export action creators (thunks)
 export const actionCreators = {
 	createStage: createStageAsync,
-	updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
+	updateStage: (stageId: string, stage: Partial<StageEntity>, overwrite = false) =>
 		stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
 	deleteStage: deleteStageAsync,
 	moveStage: (oldIndex: number, newIndex: number) => stagesSlice.actions.moveStage({ oldIndex, newIndex }),
@@ -192,16 +192,14 @@ export const actionCreators = {
 
 // Export for backwards compatibility and testing
 export const test = {
-	createStage: (stage: Stage, index?: number) => stagesSlice.actions.createStage({ stage, index }),
-	updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
+	createStage: (stage: StageEntity, index?: number) => stagesSlice.actions.createStage({ stage, index }),
+	updateStage: (stageId: string, stage: Partial<StageEntity>, overwrite = false) =>
 		stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
 	deleteStage: (stageId: string) => stagesSlice.actions.deleteStage(stageId),
 	moveStage: (oldIndex: number, newIndex: number) => stagesSlice.actions.moveStage({ oldIndex, newIndex }),
 	deletePrompt: (stageId: string, promptId: string | number, deleteEmptyStage = false) =>
 		stagesSlice.actions.deletePrompt({ stageId, promptId, deleteEmptyStage }),
 };
-
-// Note: StagesState is only used internally
 
 // Export the reducer as default
 export default stagesSlice.reducer;
