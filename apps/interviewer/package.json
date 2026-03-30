@@ -85,7 +85,7 @@
 		"object-assign": "4.1.1",
 		"postcss": "~8.4.49",
 		"postcss-flexbugs-fixes": "~4.2.1",
-		"postcss-preset-env": "~9.1.4",
+		"postcss-preset-env": "~11.2.0",
 		"promise": "7.1.1",
 		"prop-types": "^15.8.1",
 		"react": "^16.14.0",
