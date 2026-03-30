@@ -84,10 +84,10 @@ describe("Protocol Migrations", () => {
 			experiments: undefined,
 		};
 
-		it("migrates from v7 to v8", () => {
+		it("migrates from v7 to current (v9)", () => {
 			const migrated = migrateProtocol(v7Doc, undefined, { name: "Test Protocol" });
-			expect(migrated.schemaVersion).toBe(8);
-			expect(migrated).toHaveProperty("experiments");
+			expect(migrated.schemaVersion).toBe(9);
+			expect(migrated).toHaveProperty("timeline");
 		});
 
 		it("preserves existing data during migration", () => {
@@ -140,7 +140,7 @@ describe("Protocol Migrations", () => {
 				dependencies: { name: "Test Protocol" },
 			});
 
-			expect(result.schemaVersion).toBe(8);
+			expect(result.schemaVersion).toBe(9);
 		});
 
 		it("can clear all cache", async () => {
@@ -165,8 +165,8 @@ describe("Protocol Migrations", () => {
 				dependencies: { name: "Test Protocol" },
 			});
 
-			expect(result3.schemaVersion).toBe(8);
-			expect(result4.schemaVersion).toBe(8);
+			expect(result3.schemaVersion).toBe(9);
+			expect(result4.schemaVersion).toBe(9);
 			expect(result3).not.toBe(result4); // Different instances
 		});
 	});
@@ -240,8 +240,8 @@ describe("Protocol Migrations", () => {
 				stages: [],
 			};
 			const migrated = migrateProtocol(minimalV7Doc, undefined, { name: "Test Protocol" });
-			expect(migrated.schemaVersion).toBe(8);
-			expect(migrated).toHaveProperty("experiments");
+			expect(migrated.schemaVersion).toBe(9);
+			expect(migrated).toHaveProperty("timeline");
 		});
 
 		it("handles validation errors gracefully", () => {
@@ -263,7 +263,7 @@ describe("Protocol Migrations", () => {
 	});
 
 	describe("full migration chain", () => {
-		it("migrates a v1 protocol to v8", () => {
+		it("migrates a v1 protocol to v9", () => {
 			const v1Protocol = {
 				schemaVersion: 1,
 				codebook: {
@@ -283,12 +283,12 @@ describe("Protocol Migrations", () => {
 			};
 
 			const migrated = migrateProtocol(v1Protocol, undefined, { name: "Test Protocol" });
-			expect(migrated.schemaVersion).toBe(8);
-			expect(migrated).toHaveProperty("experiments");
+			expect(migrated.schemaVersion).toBe(9);
+			expect(migrated).toHaveProperty("timeline");
 			expect(migrated.name).toBe("Test Protocol");
 		});
 
-		it("migrates a v3 protocol with dirty names to v8", () => {
+		it("migrates a v3 protocol with dirty names to v9", () => {
 			const v3Protocol = {
 				schemaVersion: 3,
 				codebook: {
@@ -308,10 +308,10 @@ describe("Protocol Migrations", () => {
 			};
 
 			const migrated = migrateProtocol(v3Protocol, undefined, { name: "Test Protocol" });
-			expect(migrated.schemaVersion).toBe(8);
+			expect(migrated.schemaVersion).toBe(9);
 		});
 
-		it("migrates a v5 protocol with old NameGenerator types to v8", () => {
+		it("migrates a v5 protocol with old NameGenerator types to v9", () => {
 			const v5Protocol = {
 				schemaVersion: 5,
 				codebook: {
@@ -341,32 +341,34 @@ describe("Protocol Migrations", () => {
 			};
 
 			const migrated = migrateProtocol(v5Protocol, undefined, { name: "Test Protocol" });
-			expect(migrated.schemaVersion).toBe(8);
+			expect(migrated.schemaVersion).toBe(9);
 			// NameGeneratorAutoComplete should have been converted to NameGeneratorRoster by v5→v6
-			const stage = migrated.stages[0];
-			expect(stage).toBeDefined();
-			if (stage) {
-				expect(stage.type).toBe("NameGeneratorRoster");
-			}
+			// and the stage should now appear as a timeline entity with stageType
+			const timeline = migrated.timeline;
+			const stageEntity = timeline.entities.find(
+				(e) => e.type === "Stage" && "stageType" in e && e.stageType === "NameGeneratorRoster",
+			);
+			expect(stageEntity).toBeDefined();
 		});
 
-		it("reports correct migration path from v1 to v8", () => {
-			const info = getMigrationInfo(1, 8);
+		it("reports correct migration path from v1 to v9", () => {
+			const info = getMigrationInfo(1, 9);
 			expect(info.canMigrate).toBe(true);
-			expect(info.path).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-			expect(info.stepsRequired).toBe(7);
+			expect(info.path).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+			expect(info.stepsRequired).toBe(8);
 		});
 
 		it("reports migration notes for all steps that have them", () => {
-			const info = getMigrationInfo(1, 8);
+			const info = getMigrationInfo(1, 9);
 			expect(info.notes.length).toBeGreaterThan(0);
 			const versionsWithNotes = info.notes.map((n) => n.version);
 			expect(versionsWithNotes).toContain(4);
 			expect(versionsWithNotes).toContain(6);
 			expect(versionsWithNotes).toContain(8);
+			expect(versionsWithNotes).toContain(9);
 		});
 
-		it("migrates a v1 protocol with string schemaVersion to v8", () => {
+		it("migrates a v1 protocol with string schemaVersion to v9", () => {
 			const v1Protocol = {
 				schemaVersion: "1",
 				codebook: {
@@ -378,7 +380,7 @@ describe("Protocol Migrations", () => {
 			};
 
 			const migrated = migrateProtocol(v1Protocol, undefined, { name: "Test Protocol" });
-			expect(migrated.schemaVersion).toBe(8);
+			expect(migrated.schemaVersion).toBe(9);
 		});
 	});
 

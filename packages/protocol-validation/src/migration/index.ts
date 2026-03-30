@@ -3,12 +3,14 @@ import type { z } from "zod";
 import type { SchemaVersion } from "../schemas";
 import type ProtocolSchemaV7 from "../schemas/7/schema";
 import type ProtocolSchemaV8 from "../schemas/8/schema";
+import type ProtocolSchemaV9 from "../schemas/9/schema";
 import { MigrationNotPossibleError, MigrationStepError, VersionMismatchError } from "./errors";
 
 // Map schema versions to their inferred types
 type ProtocolTypeMap = {
 	7: z.infer<typeof ProtocolSchemaV7>;
 	8: z.infer<typeof ProtocolSchemaV8>;
+	9: z.infer<typeof ProtocolSchemaV9>;
 };
 
 export type ProtocolDocument<V extends SchemaVersion> = V extends keyof ProtocolTypeMap

@@ -12,7 +12,7 @@ const getTimelineImage = (type: string) => get(timelineImages, type, timelineIma
 const StageHeading = ({ _id }: { _id?: string }) => {
 	const { values } = useFormContext();
 
-	const type = get(values, "type") as string;
+	const type = get(values, "stageType") as string;
 
 	if (!type) {
 		return null;

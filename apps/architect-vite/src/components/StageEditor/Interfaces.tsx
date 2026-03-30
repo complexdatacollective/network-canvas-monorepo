@@ -185,6 +185,10 @@ const INTERFACE_CONFIGS = {
 		sections: [NodeConfiguration, EdgeConfiguration, CensusPrompt, NominationPrompts, SkipLogic, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/family-pedigree/",
 	},
+	FinishInterview: {
+		sections: [Title, InterviewScript],
+		documentation: "https://documentation.networkcanvas.com/interface-documentation/finish-interview/",
+	},
 } as const satisfies InterfaceRegistry;
 
 /**

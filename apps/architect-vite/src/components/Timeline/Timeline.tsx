@@ -1,42 +1,12 @@
-import { get } from "es-toolkit/compat";
-import { motion, Reorder } from "motion/react";
-import { useCallback, useRef, useState } from "react";
+import { Plus } from "lucide-react";
+import { useCallback, useState } from "react";
 import { useSelector } from "react-redux";
-import { useLocation } from "wouter";
-import { useAppDispatch } from "~/ducks/hooks";
-import { type DialogConfig, actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
-import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
-import timelineImages from "~/images/timeline";
-import filterIcon from "~/images/timeline/filter-icon.svg";
-import skipLogicIcon from "~/images/timeline/skip-logic-icon.svg";
-import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
-import { cn } from "~/utils/cn";
 import NewStageScreen from "../Screens/NewStageScreen";
-import InsertButton from "./InsertButton";
-
-const getTimelineImage = (type: string) => get(timelineImages, type, timelineImages.Default);
+import TimelineGraph from "./TimelineGraph";
 
 const Timeline = () => {
 	const stages = useSelector(getStageList);
-	const dispatch = useAppDispatch();
-	const pointerStart = useRef({ x: 0, y: 0 });
-
-	const deleteStage = useCallback(
-		(stageId: string) => {
-			dispatch(stageActions.deleteStage(stageId));
-		},
-		[dispatch],
-	);
-
-	const openDialog = useCallback(
-		(config: DialogConfig) => {
-			dispatch(dialogsActions.openDialog(config));
-		},
-		[dispatch],
-	);
-
-	const [, setLocation] = useLocation();
 	const [showNewStageDialog, setShowNewStageDialog] = useState(false);
 	const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
 
@@ -45,136 +15,26 @@ const Timeline = () => {
 		setShowNewStageDialog(true);
 	}, []);
 
-	const handleDeleteStage = useCallback(
-		(stageId: string) => {
-			openDialog({
-				type: "Warning",
-				title: "Delete stage",
-				message: "Are you sure you want to delete this stage from your protocol? This action cannot be undone!",
-				onConfirm: () => deleteStage(stageId),
-				confirmLabel: "Delete stage",
-			});
-		},
-		[openDialog, deleteStage],
-	);
-
-	const handleEditStage = useCallback(
-		(id: string) => {
-			setLocation(`/protocol/stage/${id}`);
-		},
-		[setLocation],
-	);
-
-	const handleReorder = useCallback(
-		(newOrder: typeof stages) => {
-			// Find which stage moved
-			for (let i = 0; i < newOrder.length; i++) {
-				if (newOrder[i]?.id !== stages[i]?.id) {
-					// Move to new index
-					const stageId = newOrder[i]?.id;
-					if (!stageId) continue;
-
-					const oldIndex = stages.findIndex((s) => s.id === stageId);
-					const newIndex = i;
-
-					if (oldIndex !== -1 && oldIndex !== newIndex) {
-						dispatch(stageActions.moveStage(oldIndex, newIndex));
-					}
-					break;
-				}
-			}
-		},
-		[stages, dispatch],
-	);
-
-	const itemClasses = cn(
-		"relative grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
-		"hover:bg-timeline-hover transition-colors duration-300 ease-in-out",
-		// Focus state for accessibility
-		"focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-timeline",
-	);
-
 	return (
 		<>
-			{/* Wrapper with timeline line */}
 			<div className="relative mb-24">
-				{/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
-				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
-
-				<Reorder.Group
-					axis="y"
-					onReorder={handleReorder}
-					className="relative grid grid-cols-1 gap-6 pt-16 justify-items-center"
-					values={stages}
-				>
-					{stages.flatMap((stage, index) => [
-						<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
-						<Reorder.Item
-							tabIndex={0}
-							key={stage.id}
-							value={stage}
-							layoutId={`timeline-stage-${stage.id}`}
-							className={itemClasses}
-							onPointerDown={(e) => {
-								pointerStart.current = { x: e.clientX, y: e.clientY };
-							}}
-							onClick={(e) => {
-								const dx = e.clientX - pointerStart.current.x;
-								const dy = e.clientY - pointerStart.current.y;
-								if (dx * dx + dy * dy < 25) {
-									handleEditStage(stage.id);
-								}
-							}}
-						>
-							<img
-								className="w-40 rounded shadow justify-self-end select-none pointer-events-none group-hover:scale-105 transition-transform duration-300 ease-in-out"
-								src={getTimelineImage(stage.type)}
-								alt={`${stage.type} interface`}
-								title={`${stage.type} interface`}
-							/>
-							<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
-								{index + 1}
-							</div>
-							<div className="justify-self-start">
-								<h4 className="group-hover:font-bold transition-all">{stage.label || "\u00A0"}</h4>
-								{(stage.hasFilter || stage.hasSkipLogic) && (
-									<div className="flex items-center gap-1 mt-1">
-										{stage.hasFilter && (
-											<img src={filterIcon} alt="Has filter" title="Has filter" className="w-5 h-5" />
-										)}
-										{stage.hasSkipLogic && (
-											<img src={skipLogicIcon} alt="Has skip logic" title="Has skip logic" className="w-5 h-5" />
-										)}
-									</div>
-								)}
-							</div>
-							<div className="absolute -right-40 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-								<Button
-									onClick={(e) => {
-										e.stopPropagation();
-										handleDeleteStage(stage.id);
-									}}
-									color="neon-coral"
-								>
-									Delete stage
-								</Button>
-							</div>
-						</Reorder.Item>,
-					])}
-
-					<motion.div
-						className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
+				{/* No global center line - connectors are rendered between entities by TimelineGraph */}
+				<div className="relative flex flex-col items-center gap-0 pt-12">
+					<TimelineGraph onInsertStage={handleInsertStage} />
+					<button
+						type="button"
+						className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-8 cursor-pointer group w-full max-w-2xl py-3"
 						onClick={() => handleInsertStage(stages.length)}
 					>
 						<div />
-						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-foreground text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
-							+
+						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-action-foreground group-hover:scale-110 transition-transform duration-300">
+							<Plus size={22} />
 						</div>
-						<span className="justify-self-start group-hover:font-bold transition-all font-semibold text-lg">
+						<span className="justify-self-start text-foreground/60 group-hover:text-foreground font-semibold text-sm transition-colors">
 							Add new stage
 						</span>
-					</motion.div>
-				</Reorder.Group>
+					</button>
+				</div>
 			</div>
 			<NewStageScreen open={showNewStageDialog} insertAtIndex={insertAtIndex} onOpenChange={setShowNewStageDialog} />
 		</>

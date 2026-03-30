@@ -17,60 +17,79 @@ const mockStateWithProtocol = {
 					},
 				},
 			},
-			stages: [
-				{
-					id: "bazz",
-					subject: { entity: "node", type: "foo" },
-				},
-				{
-					id: "pip",
-					subject: { entity: "node", type: "pop" },
-				},
-				{
-					id: "buzz",
-					prompts: [
-						{
-							id: "fizz",
-							subject: { entity: "node", type: "foo" },
-						},
-					],
-				},
-				{
-					id: "foxtrot",
-					prompts: [
-						{
-							id: "golf",
-							subject: { entity: "node", type: "foo" },
-						},
-						{
-							id: "hotel",
-							subject: { entity: "node", type: "pop" },
-						},
-					],
-				},
-				{
-					id: "alpha",
-					type: "Sociogram",
-					prompts: [
-						{
-							id: "bravo",
-							edges: {
-								creates: "charlie",
-								display: ["delta", "echo"],
+			timeline: {
+				start: "bazz",
+				entities: [
+					{
+						id: "bazz",
+						type: "Stage",
+						stageType: "NameGenerator",
+						label: "Bazz",
+						subject: { entity: "node", type: "foo" },
+					},
+					{
+						id: "pip",
+						type: "Stage",
+						stageType: "NameGenerator",
+						label: "Pip",
+						subject: { entity: "node", type: "pop" },
+					},
+					{
+						id: "buzz",
+						type: "Stage",
+						stageType: "NameGenerator",
+						label: "Buzz",
+						prompts: [
+							{
+								id: "fizz",
+								subject: { entity: "node", type: "foo" },
 							},
-						},
-					],
-				},
-				{
-					id: "mike",
-					type: "Sociogram",
-					prompts: [
-						{
-							id: "oscar",
-						},
-					],
-				},
-			],
+						],
+					},
+					{
+						id: "foxtrot",
+						type: "Stage",
+						stageType: "NameGenerator",
+						label: "Foxtrot",
+						prompts: [
+							{
+								id: "golf",
+								subject: { entity: "node", type: "foo" },
+							},
+							{
+								id: "hotel",
+								subject: { entity: "node", type: "pop" },
+							},
+						],
+					},
+					{
+						id: "alpha",
+						type: "Stage",
+						stageType: "Sociogram",
+						label: "Alpha",
+						prompts: [
+							{
+								id: "bravo",
+								edges: {
+									creates: "charlie",
+									display: ["delta", "echo"],
+								},
+							},
+						],
+					},
+					{
+						id: "mike",
+						type: "Stage",
+						stageType: "Sociogram",
+						label: "Mike",
+						prompts: [
+							{
+								id: "oscar",
+							},
+						],
+					},
+				],
+			},
 			forms: {
 				bar: {
 					entity: "node",
