@@ -92,7 +92,7 @@
 		"path-to-regexp": "^8.3.0",
 		"postcss": "^8.5.8",
 		"postcss-loader": "^4.3.0",
-		"postcss-preset-env": "^9.6.0",
+		"postcss-preset-env": "^11.2.0",
 		"postcss-url": "^8.0.0",
 		"prop-types": "^15.8.1",
 		"react": "^16.14.0",
