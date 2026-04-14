@@ -173,7 +173,10 @@ async function uploadAsset(
 			xhr.setRequestHeader(key, value);
 		}
 
-		xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
+		if (!Object.keys(headers).some((key) => key.toLowerCase() === "content-type")) {
+			xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
+		}
+
 		xhr.send(fileBlob);
 	});
 }
@@ -358,7 +361,7 @@ export async function uploadProtocolForPreview(
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
-		const { assetId, url, headers } = presignedUrl;
+		const { assetId, url, headers = {} } = presignedUrl;
 		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
