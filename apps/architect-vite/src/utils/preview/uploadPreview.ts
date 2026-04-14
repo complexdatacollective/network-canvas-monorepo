@@ -110,6 +110,12 @@ async function uploadAsset(
 	fileName: string,
 	options: { requiresAuth: boolean; apiToken?: string },
 ): Promise<void> {
+	if (options.requiresAuth && !options.apiToken) {
+		throw new Error(
+			"Upload requires authentication but no API token is configured. Set VITE_FRESCO_PREVIEW_API_TOKEN in your environment.",
+		);
+	}
+
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		let settled = false;
