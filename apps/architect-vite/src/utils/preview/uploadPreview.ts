@@ -108,7 +108,7 @@ async function uploadAsset(
 	uploadUrl: string,
 	fileBlob: Blob,
 	fileName: string,
-	options: { requiresAuth: boolean; bodyFormat: "raw" | "formdata"; apiToken?: string },
+	options: { requiresAuth: boolean; apiToken?: string },
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
@@ -172,14 +172,8 @@ async function uploadAsset(
 			xhr.setRequestHeader("Authorization", `Bearer ${options.apiToken}`);
 		}
 
-		if (options.bodyFormat === "raw") {
-			xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
-			xhr.send(fileBlob);
-		} else {
-			const formData = new FormData();
-			formData.append("file", fileBlob, fileName);
-			xhr.send(formData);
-		}
+		xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
+		xhr.send(fileBlob);
 	});
 }
 
@@ -363,7 +357,7 @@ export async function uploadProtocolForPreview(
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
-		const { assetId, url, requiresAuth, bodyFormat } = presignedUrl;
+		const { assetId, url, requiresAuth } = presignedUrl;
 		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
@@ -377,7 +371,7 @@ export async function uploadProtocolForPreview(
 		});
 
 		try {
-			await uploadAsset(url, localAsset.data, localAsset.name, { requiresAuth, bodyFormat, apiToken });
+			await uploadAsset(url, localAsset.data, localAsset.name, { requiresAuth, apiToken });
 		} catch (uploadError) {
 			// If upload fails, abort the preview job
 			await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
