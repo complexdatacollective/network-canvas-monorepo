@@ -108,14 +108,8 @@ async function uploadAsset(
 	uploadUrl: string,
 	fileBlob: Blob,
 	fileName: string,
-	options: { requiresAuth: boolean; apiToken?: string },
+	headers: Record<string, string>,
 ): Promise<void> {
-	if (options.requiresAuth && !options.apiToken) {
-		throw new Error(
-			"Upload requires authentication but no API token is configured. Set VITE_FRESCO_PREVIEW_API_TOKEN in your environment.",
-		);
-	}
-
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		let settled = false;
@@ -174,8 +168,9 @@ async function uploadAsset(
 
 		xhr.open("PUT", uploadUrl);
 
-		if (options.requiresAuth && options.apiToken) {
-			xhr.setRequestHeader("Authorization", `Bearer ${options.apiToken}`);
+		// Apply server-provided headers
+		for (const [key, value] of Object.entries(headers)) {
+			xhr.setRequestHeader(key, value);
 		}
 
 		xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
@@ -363,7 +358,7 @@ export async function uploadProtocolForPreview(
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
-		const { assetId, url, requiresAuth } = presignedUrl;
+		const { assetId, url, headers } = presignedUrl;
 		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
@@ -377,7 +372,7 @@ export async function uploadProtocolForPreview(
 		});
 
 		try {
-			await uploadAsset(url, localAsset.data, localAsset.name, { requiresAuth, apiToken });
+			await uploadAsset(url, localAsset.data, localAsset.name, headers);
 		} catch (uploadError) {
 			// If upload fails, abort the preview job
 			await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
