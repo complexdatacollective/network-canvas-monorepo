@@ -90,10 +90,29 @@ export const getNetworkVariables = async (assetId: string) => {
 	return getVariableNamesFromNetwork(network);
 };
 
-const validateNetwork = async (file: File) => {
+export type ValidationResult = {
+	duplicateCount: number;
+};
+
+const countDuplicateRows = (rows: Record<string, unknown>[]): number => {
+	const seen = new Set<string>();
+	let count = 0;
+	for (const row of rows) {
+		const key = JSON.stringify(row);
+		if (seen.has(key)) {
+			count++;
+		} else {
+			seen.add(key);
+		}
+	}
+	return count;
+};
+
+const validateNetwork = async (file: File): Promise<ValidationResult> => {
 	const extension = file.name.split(".").pop()?.toLowerCase() || "";
 
 	let network: Network | undefined;
+	let duplicateCount = 0;
 
 	if (extension === "json") {
 		const text = await file.text();
@@ -104,6 +123,7 @@ const validateNetwork = async (file: File) => {
 		let nodes: Network["nodes"];
 		try {
 			const rows = await csvModule.default({ checkColumn: true }).fromString(text);
+			duplicateCount = countDuplicateRows(rows);
 			nodes = rows.map((attributes) => ({ attributes })) as Network["nodes"];
 		} catch (e: unknown) {
 			const error = e as CodedError;
@@ -129,10 +149,10 @@ const validateNetwork = async (file: File) => {
 		throw error;
 	}
 
-	return true;
+	return { duplicateCount };
 };
 
-export const validateAsset = async (file: File) => {
+export const validateAsset = async (file: File): Promise<ValidationResult> => {
 	const assetType = getSupportedAssetType(file.name);
 
 	if (!assetType) {
@@ -140,10 +160,10 @@ export const validateAsset = async (file: File) => {
 	}
 
 	if (assetType === "network") {
-		await validateNetwork(file);
+		return await validateNetwork(file);
 	}
 
-	return true;
+	return { duplicateCount: 0 };
 };
 
 export const getGeoJsonVariables = async (assetId: string) => {
