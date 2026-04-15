@@ -98,12 +98,18 @@ async function handleFetchError(response: Response): Promise<never> {
 }
 
 /**
- * Upload an asset directly to UploadThing using the presigned URL
+ * Upload an asset using server-provided upload instructions.
  *
- * Uses XHR because UploadThing doesn't always send a response for presigned URLs,
- * so we resolve when the upload completes rather than waiting for a response.
+ * Uses XHR because some providers (UploadThing) don't always send a response
+ * for presigned URLs, so we resolve when the upload completes rather than
+ * waiting for a response.
  */
-async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, fileName: string): Promise<void> {
+async function uploadAsset(
+	uploadUrl: string,
+	fileBlob: Blob,
+	fileName: string,
+	headers: Record<string, string>,
+): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		let settled = false;
@@ -118,7 +124,7 @@ async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, file
 		// Set timeout to prevent hanging forever
 		xhr.timeout = ASSET_UPLOAD_TIMEOUT_MS;
 
-		// UploadThing may not send a response for presigned URL uploads.
+		// Some providers don't send a response for presigned URL uploads.
 		// After the upload body is fully sent, start a grace period waiting for the
 		// HTTP response. If the main XHR "load" event fires first (response received),
 		// it clears this timer and handles success/failure. The fallback only resolves
@@ -160,11 +166,18 @@ async function uploadAssetToPresignedUrl(uploadUrl: string, fileBlob: Blob, file
 			settle(() => reject(new Error(`Asset upload timed out for ${fileName}`)));
 		});
 
-		const formData = new FormData();
-		formData.append("file", fileBlob, fileName);
-
 		xhr.open("PUT", uploadUrl);
-		xhr.send(formData);
+
+		// Apply server-provided headers
+		for (const [key, value] of Object.entries(headers)) {
+			xhr.setRequestHeader(key, value);
+		}
+
+		if (!Object.keys(headers).some((key) => key.toLowerCase() === "content-type")) {
+			xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
+		}
+
+		xhr.send(fileBlob);
 	});
 }
 
@@ -348,7 +361,7 @@ export async function uploadProtocolForPreview(
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
-		const { assetId, url } = presignedUrl;
+		const { assetId, url, headers = {} } = presignedUrl;
 		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
@@ -362,7 +375,7 @@ export async function uploadProtocolForPreview(
 		});
 
 		try {
-			await uploadAssetToPresignedUrl(url, localAsset.data, localAsset.name);
+			await uploadAsset(url, localAsset.data, localAsset.name, headers);
 		} catch (uploadError) {
 			// If upload fails, abort the preview job
 			await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
