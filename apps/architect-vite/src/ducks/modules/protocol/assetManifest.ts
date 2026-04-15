@@ -2,7 +2,11 @@ import type { ExtractedAsset } from "@codaco/protocol-validation";
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { omit } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
-import { importAssetErrorDialog, invalidAssetErrorDialog } from "~/ducks/modules/protocol/utils/dialogs";
+import {
+	duplicateRowsWarningDialog,
+	importAssetErrorDialog,
+	invalidAssetErrorDialog,
+} from "~/ducks/modules/protocol/utils/dialogs";
 import { saveAssetToDb } from "~/utils/assetUtils";
 import { validateAsset } from "~/utils/protocols/assetTools";
 import { getSupportedAssetType } from "~/utils/protocols/importAsset";
@@ -49,10 +53,14 @@ export const importAssetAsync = createAsyncThunk(
 
 		try {
 			// Validate asset
-			await validateAsset(file).catch((error) => {
+			const validationResult = await validateAsset(file).catch((error) => {
 				dispatch(invalidAssetErrorDialog(error, name));
 				throw error;
 			});
+
+			if (validationResult.duplicateCount > 0) {
+				dispatch(duplicateRowsWarningDialog(name, validationResult.duplicateCount));
+			}
 
 			// Convert File to Blob and create ExtractedAsset
 			const blob = new Blob([file], { type: file.type });
