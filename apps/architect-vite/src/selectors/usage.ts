@@ -1,4 +1,4 @@
-import type { Stage } from "@codaco/protocol-validation";
+import type { CollectionEntityType, Entity, StageEntity } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { compact, flatMap, map, memoize, uniqBy } from "es-toolkit/compat";
 import { getProtocol } from "./protocol";
@@ -8,9 +8,21 @@ type SubjectUsageEntry = {
 	owner: { type: string; id?: string; promptId?: string; stageId?: string };
 };
 
-type StageWithSubject = Stage & { subject: { entity: string; type: string } };
+type StageWithSubject = StageEntity & { subject: { entity: string; type: string } };
 
 type FlatPrompt = Record<string, unknown> & { id: string; stageId: string };
+
+function flattenStageEntities(entities: Entity[]): StageEntity[] {
+	const result: StageEntity[] = [];
+	for (const entity of entities) {
+		if (entity.type === "Stage") {
+			result.push(entity);
+		} else if (entity.type === "Collection") {
+			result.push(...flattenStageEntities((entity as CollectionEntityType).children));
+		}
+	}
+	return result;
+}
 
 const getFormTypeUsageIndex = createSelector(getProtocol, (protocol): SubjectUsageEntry[] => {
 	const forms = (protocol as Record<string, unknown> | undefined)?.forms as
@@ -25,7 +37,8 @@ const getFormTypeUsageIndex = createSelector(getProtocol, (protocol): SubjectUsa
 
 const getStagesWithSubject = createSelector(getProtocol, (protocol): StageWithSubject[] => {
 	if (!protocol) return [];
-	return protocol.stages.filter((stage): stage is StageWithSubject => "subject" in stage && !!stage.subject);
+	const stages = flattenStageEntities(protocol.timeline.entities);
+	return stages.filter((stage): stage is StageWithSubject => "subject" in stage && !!stage.subject);
 });
 
 const getStageTypeUsageIndex = createSelector(getStagesWithSubject, (stagesWithSubject): SubjectUsageEntry[] =>
@@ -35,7 +48,7 @@ const getStageTypeUsageIndex = createSelector(getStagesWithSubject, (stagesWithS
 	})),
 );
 
-const flattenPromptsFromStages = (stages: Stage[]): FlatPrompt[] =>
+const flattenPromptsFromStages = (stages: StageEntity[]): FlatPrompt[] =>
 	compact(
 		flatMap(stages, (stage) => {
 			if (!("prompts" in stage) || !stage.prompts) return [];
@@ -45,7 +58,8 @@ const flattenPromptsFromStages = (stages: Stage[]): FlatPrompt[] =>
 
 const getPromptsWithSubject = createSelector(getProtocol, (protocol) => {
 	if (!protocol) return [];
-	return flattenPromptsFromStages(protocol.stages).filter((prompt) => !!prompt.subject);
+	const stages = flattenStageEntities(protocol.timeline.entities);
+	return flattenPromptsFromStages(stages).filter((prompt) => !!prompt.subject);
 });
 
 const getPromptTypeUsageIndex = createSelector(getPromptsWithSubject, (promptsWithSubject): SubjectUsageEntry[] =>
@@ -60,8 +74,9 @@ const getPromptTypeUsageIndex = createSelector(getPromptsWithSubject, (promptsWi
 
 const getSociogramTypeUsageIndex = createSelector(getProtocol, (protocol): SubjectUsageEntry[] => {
 	if (!protocol) return [];
+	const stages = flattenStageEntities(protocol.timeline.entities);
 	return flatMap(
-		flattenPromptsFromStages(protocol.stages.filter(({ type }) => type === "Sociogram")),
+		flattenPromptsFromStages(stages.filter(({ stageType }) => stageType === "Sociogram")),
 		({ stageId, id: promptId, ...prompt }) => {
 			const edges = prompt.edges as { display?: string[]; creates?: string } | undefined;
 			if (!edges) {
@@ -134,7 +149,7 @@ const makeGetDeleteImpact = createSelector(getProtocol, makeGetUsageForType, (pr
 
 			const perStagePromptCount = perStagePromptCountFromUsage(usage);
 
-			const stages = protocol?.stages ?? [];
+			const stages = protocol ? flattenStageEntities(protocol.timeline.entities) : [];
 			const additionallyDeletedStageIds = stages.reduce<string[]>((memo, stage) => {
 				const prompts = "prompts" in stage ? (stage.prompts as unknown[]) : undefined;
 				if (!prompts || prompts.length !== perStagePromptCount[stage.id]) {

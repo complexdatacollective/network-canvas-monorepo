@@ -5,7 +5,7 @@ import { assetDb } from "~/utils/assetDB";
 import { timelineActions } from "../middleware/timeline";
 import assetManifest from "./protocol/assetManifest";
 import codebook from "./protocol/codebook";
-import stages from "./protocol/stages";
+import timelineReducer from "./protocol/timeline";
 
 // Types
 type ActiveProtocolState = CurrentProtocol | null;
@@ -51,11 +51,11 @@ const activeProtocolSlice = createSlice({
 			// Apply sub-reducers to specific parts of the state.
 			// Mutate the draft only when the sub-reducer produces a new reference.
 			// Immer will automatically produce a new top-level reference from any mutations.
-			if (state.stages) {
-				const currentStages = current(state.stages);
-				const newStages = stages(currentStages, action);
-				if (newStages !== currentStages) {
-					state.stages = newStages as typeof state.stages;
+			if (state.timeline) {
+				const currentTimeline = current(state.timeline);
+				const newTimeline = timelineReducer(currentTimeline, action);
+				if (newTimeline !== currentTimeline) {
+					state.timeline = newTimeline as typeof state.timeline;
 				}
 			}
 

@@ -17,7 +17,7 @@ type Field = {
 
 const buildVariableEntry =
 	(
-		protocol: { stages?: Array<{ id: string; [key: string]: unknown }> },
+		protocol: Record<string, unknown>,
 		variablePaths: Record<string, unknown>,
 		fields: Field[],
 		entity: string,
@@ -56,29 +56,56 @@ const buildVariableEntry =
 		};
 	};
 
+type StageRecord = {
+	id: string;
+	form?: {
+		fields: Field[];
+	};
+	[key: string]: unknown;
+};
+
 type Protocol = {
-	stages?: Array<{
-		id: string;
-		form?: {
-			fields: Field[];
-		};
-		[key: string]: unknown;
-	}>;
+	timeline: {
+		start: string;
+		entities: Array<{ type: string; id: string; children?: unknown[]; [key: string]: unknown }>;
+	};
 	codebook?: {
 		node?: Record<string, { variables?: Record<string, VariableConfiguration> }>;
 		edge?: Record<string, { variables?: Record<string, VariableConfiguration> }>;
 		ego?: { variables?: Record<string, VariableConfiguration> };
 	};
+	[key: string]: unknown;
 };
 
+function flattenStages(
+	entities: Array<{ type: string; id: string; children?: unknown[]; [key: string]: unknown }>,
+): StageRecord[] {
+	const result: StageRecord[] = [];
+	for (const entity of entities) {
+		if (entity.type === "Stage") {
+			result.push(entity as StageRecord);
+		} else if (entity.type === "Collection" && Array.isArray(entity.children)) {
+			result.push(
+				...flattenStages(
+					entity.children as Array<{ type: string; id: string; children?: unknown[]; [key: string]: unknown }>,
+				),
+			);
+		}
+	}
+	return result;
+}
+
 export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
-	if (!protocol?.stages || !protocol.codebook) {
+	if (!protocol?.timeline?.entities || !protocol.codebook) {
 		return [];
 	}
 
-	const variablePaths = utils.collectPaths(paths.variables, protocol);
+	const stages = flattenStages(protocol.timeline.entities);
+	// collectPaths expects stages[*] paths; build a compatibility object
+	const protocolWithStages = { ...protocol, stages };
+	const variablePaths = utils.collectPaths(paths.variables, protocolWithStages);
 
-	const fields = flatMap(protocol.stages, (stage) => {
+	const fields = flatMap(stages, (stage) => {
 		if (!stage.form) {
 			return [];
 		}
@@ -108,7 +135,7 @@ export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
 						variables?: Record<string, VariableConfiguration>;
 					}
 				).variables,
-				buildVariableEntry(protocol, variablePaths, fields, entity, String(entityType)),
+				buildVariableEntry(protocolWithStages, variablePaths, fields, entity, String(entityType)),
 			),
 		);
 	});
