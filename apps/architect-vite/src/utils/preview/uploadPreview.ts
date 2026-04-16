@@ -109,6 +109,7 @@ async function uploadAsset(
 	fileBlob: Blob,
 	fileName: string,
 	headers: Record<string, string>,
+	bodyFormat: "raw" | "formdata",
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
@@ -173,11 +174,18 @@ async function uploadAsset(
 			xhr.setRequestHeader(key, value);
 		}
 
-		if (!Object.keys(headers).some((key) => key.toLowerCase() === "content-type")) {
-			xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
+		if (bodyFormat === "formdata") {
+			// XHR auto-sets Content-Type (with the multipart boundary) for FormData.
+			// Manually setting Content-Type here would break the boundary.
+			const formData = new FormData();
+			formData.append("file", fileBlob, fileName);
+			xhr.send(formData);
+		} else {
+			if (!Object.keys(headers).some((key) => key.toLowerCase() === "content-type")) {
+				xhr.setRequestHeader("Content-Type", fileBlob.type || "application/octet-stream");
+			}
+			xhr.send(fileBlob);
 		}
-
-		xhr.send(fileBlob);
 	});
 }
 
@@ -361,7 +369,7 @@ export async function uploadProtocolForPreview(
 		if (!presignedUrl) {
 			throw new Error(`Missing presigned URL at index ${i}`);
 		}
-		const { assetId, url, headers = {} } = presignedUrl;
+		const { assetId, url, headers = {}, bodyFormat } = presignedUrl;
 		const localAsset = fileAssetsMap.get(assetId);
 
 		if (!localAsset) {
@@ -375,7 +383,7 @@ export async function uploadProtocolForPreview(
 		});
 
 		try {
-			await uploadAsset(url, localAsset.data, localAsset.name, headers);
+			await uploadAsset(url, localAsset.data, localAsset.name, headers, bodyFormat);
 		} catch (uploadError) {
 			// If upload fails, abort the preview job
 			await sendPreviewRequest<AbortResponse>(frescoUrl, apiToken, {
