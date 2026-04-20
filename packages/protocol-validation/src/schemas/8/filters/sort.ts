@@ -5,7 +5,7 @@ import { z } from "~/utils/zod-mock-extension";
 const directions = ["asc", "desc"] as const;
 
 export const SortRuleSchema = z
-	.object({
+	.strictObject({
 		property: z.string(),
 		direction: z.enum(["asc", "desc"]),
 	})

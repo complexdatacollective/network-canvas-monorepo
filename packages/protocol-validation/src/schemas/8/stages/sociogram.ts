@@ -26,7 +26,7 @@ export const sociogramStage = baseStageSchema
 			})
 			.optional(),
 		behaviours: z
-			.object({
+			.strictObject({
 				automaticLayout: z.strictObject({ enabled: z.boolean() }).optional(),
 			})
 			.catchall(z.any())

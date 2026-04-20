@@ -44,7 +44,7 @@ export const validations = {
 	lessThanOrEqualToVariable: z.string().optional(),
 };
 
-export const ValidationsSchema = z.object(validations);
+export const ValidationsSchema = z.strictObject(validations);
 
 export type Validation = z.infer<typeof ValidationsSchema>;
 

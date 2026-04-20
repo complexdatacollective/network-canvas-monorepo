@@ -3,7 +3,7 @@ import { z } from "~/utils/zod-mock-extension";
 import { FormFieldSchema, familyPedigreeNominationPromptSchema } from "../common";
 import { baseStageSchema } from "./base";
 
-export const NodeConfigSchema = z.object({
+export const NodeConfigSchema = z.strictObject({
 	// Node type for alter nodes in the codebook
 	type: z.string().generateMock(() => getNodeTypeId()),
 	// Text variable used to store the node's display label
@@ -18,7 +18,7 @@ export const NodeConfigSchema = z.object({
 	form: z.array(FormFieldSchema).optional(),
 });
 
-export const EdgeConfigSchema = z.object({
+export const EdgeConfigSchema = z.strictObject({
 	// Edge type in the codebook (single type for both parent and partner edges)
 	type: z.string().generateMock(() => getEdgeTypeId()),
 	// Variable storing the relationship type value (discriminant for the Edge union)

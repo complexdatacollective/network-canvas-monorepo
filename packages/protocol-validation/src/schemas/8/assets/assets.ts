@@ -5,7 +5,7 @@ const fileNames = ["background.jpg", "logo.png", "map.geojson", "classmates.csv"
 const mockVideoNames = ["intro_video.mp4", "tutorial.mp4", "outro.mov"];
 const mockAudioNames = ["01.mp3", "02.mp3", "03.mp3"];
 
-const baseAssetSchema = z.object({
+const baseAssetSchema = z.strictObject({
 	id: z.string().optional(),
 	name: z.string(),
 });

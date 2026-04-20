@@ -16,7 +16,8 @@ const migrationV5toV6 = createMigration({
 			if (stage.type !== "NameGeneratorAutoComplete" && stage.type !== "NameGeneratorList") {
 				return stage;
 			}
-			return { ...stage, type: "NameGeneratorRoster" };
+			const { panels: _panels, ...rest } = stage;
+			return { ...rest, type: "NameGeneratorRoster" };
 		});
 
 		return {

@@ -421,24 +421,36 @@ describe("Migration V7 to V8", () => {
 			const v7Protocol = {
 				schemaVersion: 7 as const,
 				codebook: {
-					node: { person: { name: "Person", color: "node-color-seq-1" } },
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								category: {
+									name: "Category",
+									type: "categorical",
+									options: [{ label: "A", value: "a" }],
+								},
+							},
+						},
+					},
 					edge: {},
 					ego: {},
 				},
 				stages: [
 					{
 						id: "stage1",
-						type: "NameGenerator",
+						type: "Sociogram",
 						label: "Test Stage",
-						form: { fields: [] },
 						subject: { entity: "node", type: "person" },
-						prompts: [{ id: "prompt1", text: "Test prompt" }],
+						prompts: [{ id: "prompt1", text: "Test prompt", layout: { layoutVariable: "category" } }],
 						filter: {
 							rules: [
 								{
 									type: "alter", // Should become "node"
 									id: "rule1",
 									options: {
+										type: "person",
 										operator: "EXISTS",
 									},
 								},
@@ -461,7 +473,19 @@ describe("Migration V7 to V8", () => {
 			const v7Protocol = {
 				schemaVersion: 7 as const,
 				codebook: {
-					node: { person: { name: "Person", color: "node-color-seq-1" } },
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								category: {
+									name: "Category",
+									type: "categorical",
+									options: [{ label: "A", value: "a" }],
+								},
+							},
+						},
+					},
 					edge: {},
 					ego: {},
 				},
@@ -473,28 +497,6 @@ describe("Migration V7 to V8", () => {
 						form: { fields: [] },
 						subject: { entity: "node", type: "person" },
 						prompts: [{ id: "prompt1", text: "Test prompt" }],
-						filter: {
-							rules: [
-								{ type: "alter", id: "rule1", options: { operator: "EXISTS" } },
-								{
-									type: "alter",
-									id: "rule2",
-									options: { operator: "NOT_EXISTS" },
-								},
-							],
-						},
-						skipLogic: {
-							action: "SKIP",
-							filter: {
-								rules: [
-									{
-										type: "alter",
-										id: "rule3",
-										options: { operator: "EXISTS" },
-									},
-								],
-							},
-						},
 						panels: [
 							{
 								id: "panel1",
@@ -505,12 +507,42 @@ describe("Migration V7 to V8", () => {
 										{
 											type: "alter",
 											id: "rule4",
-											options: { operator: "EXISTS" },
+											options: { type: "person", operator: "EXISTS" },
 										},
 									],
 								},
 							},
 						],
+					},
+					{
+						id: "stage2",
+						type: "Sociogram",
+						label: "Sociogram Stage",
+						subject: { entity: "node", type: "person" },
+						prompts: [{ id: "prompt2", text: "Test prompt", layout: { layoutVariable: "category" } }],
+						filter: {
+							join: "AND",
+							rules: [
+								{ type: "alter", id: "rule1", options: { type: "person", operator: "EXISTS" } },
+								{
+									type: "alter",
+									id: "rule2",
+									options: { type: "person", operator: "NOT_EXISTS" },
+								},
+							],
+						},
+						skipLogic: {
+							action: "SKIP",
+							filter: {
+								rules: [
+									{
+										type: "alter",
+										id: "rule3",
+										options: { type: "person", operator: "EXISTS" },
+									},
+								],
+							},
+						},
 					},
 				],
 			};
@@ -518,13 +550,17 @@ describe("Migration V7 to V8", () => {
 			const migratedRaw = migrationV7toV8.migrate(v7Protocol, { name: "Test Protocol" });
 			const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
-			const stage = parsed.stages[0];
-			if (stage && "filter" in stage && "skipLogic" in stage && "panels" in stage) {
-				expect(stage.filter?.rules?.[0]?.type).toBe("node");
-				expect(stage.filter?.rules?.[1]?.type).toBe("node");
-				expect(stage.skipLogic?.filter?.rules?.[0]?.type).toBe("node");
-				const panels = stage.panels as Array<{ filter?: { rules?: Array<{ type?: string }> } }> | undefined;
+			const nameGenStage = parsed.stages[0];
+			if (nameGenStage && "panels" in nameGenStage) {
+				const panels = nameGenStage.panels as Array<{ filter?: { rules?: Array<{ type?: string }> } }> | undefined;
 				expect(panels?.[0]?.filter?.rules?.[0]?.type).toBe("node");
+			}
+
+			const sociogramStage = parsed.stages[1];
+			if (sociogramStage && "filter" in sociogramStage && "skipLogic" in sociogramStage) {
+				expect(sociogramStage.filter?.rules?.[0]?.type).toBe("node");
+				expect(sociogramStage.filter?.rules?.[1]?.type).toBe("node");
+				expect(sociogramStage.skipLogic?.filter?.rules?.[0]?.type).toBe("node");
 			}
 		});
 
@@ -532,23 +568,40 @@ describe("Migration V7 to V8", () => {
 			const v7Protocol = {
 				schemaVersion: 7 as const,
 				codebook: {
-					node: { person: { name: "Person", color: "node-color-seq-1" } },
-					edge: {},
-					ego: {},
+					node: {
+						person: {
+							name: "Person",
+							color: "node-color-seq-1",
+							variables: {
+								category: {
+									name: "Category",
+									type: "categorical",
+									options: [{ label: "A", value: "a" }],
+								},
+							},
+						},
+					},
+					edge: {
+						knows: {
+							name: "Knows",
+							color: "edge-color-seq-1",
+						},
+					},
+					ego: { variables: {} },
 				},
 				stages: [
 					{
 						id: "stage1",
-						type: "NameGenerator",
+						type: "Sociogram",
 						label: "Test Stage",
-						form: { fields: [] },
 						subject: { entity: "node", type: "person" },
-						prompts: [{ id: "prompt1", text: "Test prompt" }],
+						prompts: [{ id: "prompt1", text: "Test prompt", layout: { layoutVariable: "category" } }],
 						filter: {
+							join: "AND",
 							rules: [
 								{ type: "ego", id: "rule1", options: { operator: "EXISTS" } },
-								{ type: "edge", id: "rule2", options: { operator: "EXISTS" } },
-								{ type: "alter", id: "rule3", options: { operator: "EXISTS" } },
+								{ type: "edge", id: "rule2", options: { type: "knows", operator: "EXISTS" } },
+								{ type: "alter", id: "rule3", options: { type: "person", operator: "EXISTS" } },
 							],
 						},
 					},
@@ -719,20 +772,6 @@ describe("Migration V7 to V8", () => {
 								text: "Who do you know?",
 							},
 						],
-						filter: {
-							rules: [
-								{
-									type: "alter", // Should become "node"
-									id: "rule1",
-									options: {
-										type: "person",
-										attribute: "category",
-										operator: "EXACTLY",
-										value: "friend",
-									},
-								},
-							],
-						},
 						skipLogic: {
 							action: "SKIP",
 							filter: {
@@ -767,6 +806,36 @@ describe("Migration V7 to V8", () => {
 								},
 							},
 						],
+					},
+					{
+						id: "sociogram1",
+						type: "Sociogram",
+						label: "Sociogram",
+						subject: {
+							entity: "node",
+							type: "person",
+						},
+						prompts: [
+							{
+								id: "prompt1",
+								text: "Position nodes",
+								layout: { layoutVariable: "category" },
+							},
+						],
+						filter: {
+							rules: [
+								{
+									type: "alter", // Should become "node"
+									id: "rule1",
+									options: {
+										type: "person",
+										attribute: "category",
+										operator: "EXACTLY",
+										value: "friend",
+									},
+								},
+							],
+						},
 					},
 				],
 			} as Protocol<7>;

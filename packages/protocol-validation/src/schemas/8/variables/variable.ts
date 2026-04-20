@@ -19,7 +19,7 @@ const numberVariableSchema = baseVariableSchema
 		type: z.literal(VariableTypes.number),
 		component: z.literal(ComponentTypes.Number).optional(),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				minValue: true,
@@ -44,13 +44,13 @@ const scalarVariableSchema = baseVariableSchema
 		type: z.literal(VariableTypes.scalar),
 		component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
 		parameters: z
-			.object({
+			.strictObject({
 				minLabel: z.string().optional(),
 				maxLabel: z.string().optional(),
 			})
 			.optional(),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				minValue: true,
@@ -72,14 +72,14 @@ const dateTimeDatePickerSchema = baseVariableSchema
 		type: z.literal(VariableTypes.datetime),
 		component: z.literal(ComponentTypes.DatePicker).optional(),
 		parameters: z
-			.object({
+			.strictObject({
 				type: z.enum(["full", "month", "year"]).optional(),
 				min: z.string().optional(),
 				max: z.string().optional(),
 			})
 			.optional(),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				sameAs: true,
@@ -102,13 +102,14 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema
 		type: z.literal(VariableTypes.datetime),
 		component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
 		parameters: z
-			.object({
+			.strictObject({
+				anchor: z.string().optional(),
 				before: z.number().int().optional(),
 				after: z.number().int().optional(),
 			})
 			.optional(),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				sameAs: true,
@@ -134,7 +135,7 @@ const textVariableSchema = baseVariableSchema
 			.optional()
 			.generateMock(() => ComponentTypes.Text),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				minLength: true,
@@ -152,7 +153,7 @@ const textVariableSchema = baseVariableSchema
 
 const booleanOptionsSchema = z
 	.array(
-		z.object({
+		z.strictObject({
 			label: z.string().generateMock(() => `boolean option ${Math.floor(Math.random() * 100) + 1}`),
 			value: z.boolean().generateMock(() => Math.random() > 0.5),
 			negative: z
@@ -171,7 +172,7 @@ const booleanBooleanVariableSchema = baseVariableSchema
 		type: z.literal(VariableTypes.boolean),
 		component: z.literal(ComponentTypes.Boolean).optional(),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				sameAs: true,
@@ -191,7 +192,7 @@ const booleanToggleVariableSchema = baseVariableSchema
 		type: z.literal(VariableTypes.boolean),
 		component: z.literal(ComponentTypes.Toggle).optional(),
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				sameAs: true,
@@ -222,7 +223,7 @@ const ordinalVariableSchema = baseVariableSchema
 			.generateMock(() => ComponentTypes.RadioGroup),
 		options: categoricalOptionsSchema,
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				minSelected: true,
@@ -247,7 +248,7 @@ const categoricalVariableSchema = baseVariableSchema
 			.generateMock(() => ComponentTypes.CheckboxGroup),
 		options: categoricalOptionsSchema,
 		validation: z
-			.object(validations)
+			.strictObject(validations)
 			.pick({
 				required: true,
 				minSelected: true,

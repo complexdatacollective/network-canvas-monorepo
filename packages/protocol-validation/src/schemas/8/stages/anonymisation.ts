@@ -19,7 +19,7 @@ export const anonymisationStage = baseStageSchema.extend({
 			),
 	}),
 	validation: z
-		.object({
+		.strictObject({
 			minLength: z
 				.number()
 				.int()

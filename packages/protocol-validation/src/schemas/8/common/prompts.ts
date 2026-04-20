@@ -11,7 +11,7 @@ export const promptSchema = z.strictObject({
 
 export type BasePrompt = z.infer<typeof promptSchema>;
 
-const AdditionalAttributesSchema = z.array(z.object({ variable: VariableNameSchema, value: z.boolean() }));
+const AdditionalAttributesSchema = z.array(z.strictObject({ variable: VariableNameSchema, value: z.boolean() }));
 
 export type AdditionalAttributes = z.infer<typeof AdditionalAttributesSchema>;
 
@@ -21,17 +21,17 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
 
 export const sociogramPromptSchema = promptSchema.extend({
 	sortOrder: SortOrderSchema.optional(),
-	layout: z.object({
+	layout: z.strictObject({
 		layoutVariable: z.string().generateMock(() => getNodeVariableId()),
 	}),
 	edges: z
-		.object({
+		.strictObject({
 			display: z.array(z.string()).optional(),
 			create: z.string().optional(),
 		})
 		.optional(),
 	highlight: z
-		.object({
+		.strictObject({
 			allowHighlighting: z.boolean().optional(),
 			variable: z.string().optional(),
 		})
@@ -62,7 +62,7 @@ export const ordinalBinPromptSchema = promptSchema.extend({
 export const categoricalBinPromptSchema = promptSchema.extend({
 	variable: z.string().generateMock(() => getNodeVariableId()),
 	// TODO: This should be structured this way:
-	// otherOption: z.object({
+	// otherOption: z.strictObject({
 	// 	binLabel: z.string(),
 	// 	variable: z.string(),
 	// 	prompt: z.string(),

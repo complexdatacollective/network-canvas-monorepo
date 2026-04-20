@@ -41,7 +41,7 @@ export const nameGeneratorQuickAddStage = baseStageSchema
 				}
 			}),
 		behaviours: z
-			.object({
+			.strictObject({
 				minNodes: z.number().int().optional(),
 				maxNodes: z.number().int().optional(),
 			})

@@ -65,6 +65,28 @@ const migrationV7toV8 = createMigration({
 				},
 			},
 			{
+				// Remove top-level `filter` from stage types that don't support it in v8.
+				// V7 was lax so some protocols stored filter on stages like NameGenerator; v8 is strict.
+				paths: ["stages[]"],
+				fn: <V>(stage: V) => {
+					if (typeof stage !== "object" || stage === null) return stage;
+					const stagesWithoutFilter = new Set([
+						"NameGenerator",
+						"NameGeneratorQuickAdd",
+						"NameGeneratorRoster",
+						"Anonymisation",
+						"Information",
+						"EgoForm",
+						"FamilyPedigree",
+					]);
+					const typedStage = stage as Record<string, unknown>;
+					if (typeof typedStage.type === "string" && stagesWithoutFilter.has(typedStage.type)) {
+						delete typedStage.filter;
+					}
+					return stage;
+				},
+			},
+			{
 				// Rename 'iconVariant' to 'icon' and add 'shape' to node definitions
 				paths: ["codebook.node.*"],
 				fn: <V>(entityDefinition: V) => {

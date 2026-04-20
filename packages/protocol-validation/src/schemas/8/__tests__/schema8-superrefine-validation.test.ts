@@ -853,7 +853,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							join: "AND",
 							rules: [
@@ -1003,7 +1003,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -1066,7 +1066,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -1074,7 +1074,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 									type: "edge",
 									options: {
 										type: "knows",
-										attribute: "closeness",
+										attribute: "duration",
 										operator: "GREATER_THAN",
 										value: 2,
 									},
@@ -1195,7 +1195,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -1223,7 +1223,7 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 				...baseValidProtocol,
 				stages: [
 					{
-						...baseValidProtocol.stages[0],
+						...baseValidProtocol.stages[1],
 						filter: {
 							rules: [
 								{
@@ -1913,20 +1913,6 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								],
 							},
 						],
-						filter: {
-							rules: [
-								{
-									id: "filterRule1",
-									type: "node",
-									options: {
-										type: "person",
-										attribute: "age",
-										operator: "GREATER_THAN",
-										value: 18,
-									},
-								},
-							],
-						},
 						skipLogic: {
 							action: "SKIP",
 							filter: {
@@ -1980,19 +1966,6 @@ describe("Protocol Schema V8 - Superrefine Validation", () => {
 								],
 							},
 						],
-						filter: {
-							rules: [
-								{
-									id: "rule1",
-									type: "node",
-									options: {
-										type: "anotherNonexistent", // Error 4: Invalid filter entity type
-										attribute: "invalidAttribute", // Error 5: Invalid filter attribute
-										operator: "EXISTS",
-									},
-								},
-							],
-						},
 					},
 				],
 			};

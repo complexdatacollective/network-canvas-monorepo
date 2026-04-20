@@ -33,7 +33,7 @@ const mapboxStyleOptions = [
 
 const styleOptions = z.enum(mapboxStyleOptions.map((option) => option.value) as [string, ...string[]]);
 
-const mapOptions = z.object({
+const mapOptions = z.strictObject({
 	tokenAssetId: z.string().generateMock(() => getAssetId(0)),
 	style: styleOptions.generateMock(() => faker.helpers.arrayElement(mapboxStyleOptions).value),
 	center: z

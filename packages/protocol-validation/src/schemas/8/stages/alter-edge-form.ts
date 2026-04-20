@@ -2,12 +2,14 @@ import { faker } from "@faker-js/faker";
 import { getEdgeVariableId } from "~/utils/mock-seeds";
 import { z } from "~/utils/zod-mock-extension";
 import { EdgeStageSubjectSchema, FormSchema, IntroductionPanelSchema } from "../common";
+import { FilterSchema } from "../filters";
 import { baseStageSchema } from "./base";
 
 export const alterEdgeFormStage = baseStageSchema
 	.extend({
 		type: z.literal("AlterEdgeForm"),
 		subject: EdgeStageSubjectSchema,
+		filter: FilterSchema.optional(),
 		form: FormSchema,
 		introductionPanel: IntroductionPanelSchema,
 	})

@@ -11,7 +11,7 @@ export const oneToManyDyadCensusStage = baseStageSchema
 		type: z.literal("OneToManyDyadCensus"),
 		filter: FilterSchema.optional(),
 		subject: NodeStageSubjectSchema,
-		behaviours: z.object({
+		behaviours: z.strictObject({
 			removeAfterConsideration: z.boolean(),
 		}),
 		prompts: z

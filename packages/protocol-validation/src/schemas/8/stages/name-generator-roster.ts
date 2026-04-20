@@ -17,7 +17,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
 		})
 		.optional(),
 	sortOptions: z
-		.object({
+		.strictObject({
 			sortOrder: SortOrderSchema.optional(),
 			sortableProperties: z.array(z.strictObject({ label: z.string(), variable: z.string() })).optional(),
 		})
@@ -49,7 +49,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
 			}
 		}),
 	behaviours: z
-		.object({
+		.strictObject({
 			minNodes: z.number().int().optional(),
 			maxNodes: z.number().int().optional(),
 		})
