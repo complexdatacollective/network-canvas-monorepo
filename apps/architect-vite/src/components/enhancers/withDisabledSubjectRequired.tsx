@@ -12,9 +12,11 @@ const withDisabledSubjectRequired = withProps<InjectedProps, PropsWithSubject>((
 		return { disabled: false };
 	}
 
+	const entityLabel = interfaceType === "AlterEdgeForm" ? "an edge" : "a node";
+
 	return {
 		disabled: !type,
-		disabledMessage: "Select a node type above to configure this section.",
+		disabledMessage: `Select ${entityLabel} type above to configure this section.`,
 	};
 });
 
