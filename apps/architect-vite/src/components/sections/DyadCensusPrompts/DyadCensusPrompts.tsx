@@ -11,11 +11,13 @@ type DyadCensusPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
-const DyadCensusPrompts = ({ form, entity, type, disabled }: DyadCensusPromptsProps) => (
+const DyadCensusPrompts = ({ form, entity, type, disabled, disabledMessage }: DyadCensusPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable

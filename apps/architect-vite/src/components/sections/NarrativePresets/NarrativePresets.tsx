@@ -28,11 +28,13 @@ type NarrativePresetsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
-const NarrativePresets = ({ form, entity, type, disabled }: NarrativePresetsProps) => (
+const NarrativePresets = ({ form, entity, type, disabled, disabledMessage }: NarrativePresetsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more &quot;presets&quot; below, to create different visualizations that you can switch between within

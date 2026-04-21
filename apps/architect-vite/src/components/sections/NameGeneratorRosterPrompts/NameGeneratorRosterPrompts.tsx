@@ -13,12 +13,21 @@ type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 	dataSource?: string;
 };
 
-const NameGeneratorRosterPrompts = ({ form, entity, type, disabled, dataSource }: NameGeneratorRosterPromptsProps) => (
+const NameGeneratorRosterPrompts = ({
+	form,
+	entity,
+	type,
+	disabled,
+	disabledMessage,
+	dataSource,
+}: NameGeneratorRosterPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable

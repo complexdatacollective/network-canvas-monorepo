@@ -16,6 +16,7 @@ type OrdinalBinPromptsProps = StageEditorSectionProps & {
 	entity?: string | null;
 	type?: string | null;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
 const OrdinalBinPrompts = ({
@@ -24,9 +25,11 @@ const OrdinalBinPrompts = ({
 	type = null,
 	form,
 	disabled,
+	disabledMessage,
 }: OrdinalBinPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable

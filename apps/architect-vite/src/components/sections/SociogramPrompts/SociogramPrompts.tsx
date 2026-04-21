@@ -14,12 +14,21 @@ type SociogramPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 	usedVariableIndex?: Record<string, unknown>;
 };
 
-const SociogramPrompts = ({ form, entity, type, disabled, usedVariableIndex }: SociogramPromptsProps) => (
+const SociogramPrompts = ({
+	form,
+	entity,
+	type,
+	disabled,
+	disabledMessage,
+	usedVariableIndex,
+}: SociogramPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
