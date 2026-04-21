@@ -89,7 +89,8 @@ const Section = ({
 							title="Turn this feature on or off"
 							checked={isOpen}
 							onCheckedChange={changeToggleState}
-							className="shrink-0 grow-0"
+							disabled={disabled}
+							className={cn("shrink-0 grow-0", disabled && "opacity-50 cursor-not-allowed")}
 						/>
 					)}
 				</legend>
