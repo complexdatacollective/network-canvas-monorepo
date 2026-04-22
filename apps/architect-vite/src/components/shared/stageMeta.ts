@@ -1,26 +1,50 @@
-import { get } from "es-toolkit/compat";
-import timelineImages from "~/images/timeline";
+import categoricalIcon from "~/images/landing/categorical.svg";
+import interfaceIcon from "~/images/landing/interface.svg";
+import menuOrdIcon from "~/images/landing/menu-ord.svg";
+import menuSociogramIcon from "~/images/landing/menu-sociogram.svg";
+import nameGeneratorIcon from "~/images/landing/name-generator.svg";
+import relationshipIcon from "~/images/landing/relationship.svg";
 
 type Meta = { color: string; iconSrc: string; subLabel: string };
 
 const COLOR_BY_TYPE: Record<string, string> = {
 	Information: "hsl(237 79% 67%)",
-	NameGenerator: "hsl(168 100% 39%)",
-	NameGeneratorQuickAdd: "hsl(168 100% 39%)",
-	NameGeneratorRoster: "hsl(168 100% 39%)",
-	Sociogram: "hsl(342 77% 51%)",
-	DyadCensus: "hsl(45 100% 47%)",
-	OneToManyDyadCensus: "hsl(45 100% 47%)",
-	TieStrengthCensus: "hsl(293 87% 50%)",
-	OrdinalBin: "hsl(197 88% 47%)",
-	CategoricalBin: "hsl(325 100% 46%)",
-	Narrative: "hsl(237 77% 67%)",
-	AlterForm: "hsl(168 100% 39%)",
-	AlterEdgeForm: "hsl(168 100% 39%)",
-	EgoForm: "hsl(245 35% 25%)",
-	Geospatial: "hsl(168 100% 39%)",
-	Anonymisation: "hsl(227 4% 44%)",
-	FamilyPedigree: "hsl(237 77% 67%)",
+	NameGenerator: "hsl(342 77% 51%)",
+	NameGeneratorQuickAdd: "hsl(342 77% 51%)",
+	NameGeneratorRoster: "hsl(342 77% 51%)",
+	Sociogram: "hsl(46 100% 47%)",
+	DyadCensus: "hsl(46 100% 47%)",
+	OneToManyDyadCensus: "hsl(46 100% 47%)",
+	TieStrengthCensus: "hsl(46 100% 47%)",
+	OrdinalBin: "hsl(27 93% 54%)",
+	CategoricalBin: "hsl(103 46% 56%)",
+	Narrative: "hsl(237 79% 67%)",
+	AlterForm: "hsl(237 79% 67%)",
+	AlterEdgeForm: "hsl(237 79% 67%)",
+	EgoForm: "hsl(237 79% 67%)",
+	Geospatial: "hsl(46 100% 47%)",
+	Anonymisation: "hsl(237 79% 67%)",
+	FamilyPedigree: "hsl(237 79% 67%)",
+};
+
+const ICON_BY_TYPE: Record<string, string> = {
+	Information: interfaceIcon,
+	NameGenerator: nameGeneratorIcon,
+	NameGeneratorQuickAdd: nameGeneratorIcon,
+	NameGeneratorRoster: nameGeneratorIcon,
+	Sociogram: menuSociogramIcon,
+	DyadCensus: menuSociogramIcon,
+	OneToManyDyadCensus: menuSociogramIcon,
+	TieStrengthCensus: menuSociogramIcon,
+	OrdinalBin: menuOrdIcon,
+	CategoricalBin: categoricalIcon,
+	Narrative: relationshipIcon,
+	AlterForm: interfaceIcon,
+	AlterEdgeForm: interfaceIcon,
+	EgoForm: interfaceIcon,
+	Geospatial: menuSociogramIcon,
+	Anonymisation: interfaceIcon,
+	FamilyPedigree: relationshipIcon,
 };
 
 const SUB_LABEL_BY_TYPE: Record<string, string> = {
@@ -44,8 +68,8 @@ const SUB_LABEL_BY_TYPE: Record<string, string> = {
 };
 
 const DEFAULT_COLOR = "hsl(168 100% 39%)";
+const DEFAULT_ICON = interfaceIcon;
 
-// Splits a PascalCase stage type into a sentence (e.g. "NameGenerator" -> "Name generator").
 function humanizeStageType(type: string): string {
 	const spaced = type.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
 	if (!spaced) return type;
@@ -53,10 +77,9 @@ function humanizeStageType(type: string): string {
 }
 
 export function getStageDisplayMeta(type: string): Meta {
-	const iconSrc = get(timelineImages, type, timelineImages.Default);
 	return {
 		color: COLOR_BY_TYPE[type] ?? DEFAULT_COLOR,
-		iconSrc: typeof iconSrc === "string" ? iconSrc : "",
+		iconSrc: ICON_BY_TYPE[type] ?? DEFAULT_ICON,
 		subLabel: SUB_LABEL_BY_TYPE[type] ?? humanizeStageType(type),
 	};
 }
