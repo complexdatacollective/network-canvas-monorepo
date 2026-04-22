@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
 import { useAppDispatch } from "~/ducks/hooks";
+import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import { getStageList } from "~/selectors/protocol";
 import NewStageScreen from "../Screens/NewStageScreen";
@@ -30,6 +31,23 @@ const Timeline = () => {
 			setLocation(`/protocol/stage/${id}`);
 		},
 		[setLocation],
+	);
+
+	const handleDeleteStage = useCallback(
+		(id: string) => {
+			dispatch(
+				dialogsActions.openDialog({
+					type: "Warning",
+					title: "Delete stage",
+					message: "Are you sure you want to delete this stage from your protocol? This action cannot be undone!",
+					confirmLabel: "Delete stage",
+					onConfirm: () => {
+						dispatch(stageActions.deleteStage(id));
+					},
+				}),
+			);
+		},
+		[dispatch],
 	);
 
 	const handleReorder = useCallback(
@@ -80,6 +98,9 @@ const Timeline = () => {
 								color={getStageDisplayMeta(stage.type).color}
 								iconSrc={getStageDisplayMeta(stage.type).iconSrc}
 								labelPosition={index % 2 === 0 ? "below" : "above"}
+								onDelete={() => handleDeleteStage(stage.id)}
+								hasFilter={stage.hasFilter}
+								hasSkipLogic={stage.hasSkipLogic}
 							/>
 						</Reorder.Item>,
 					])}
