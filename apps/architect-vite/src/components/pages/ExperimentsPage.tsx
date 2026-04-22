@@ -1,24 +1,19 @@
-import { FlaskConical } from "lucide-react";
-import { useSelector } from "react-redux";
 import { useLocation } from "wouter";
-import ControlBar from "~/components/ControlBar";
-import { Layout } from "~/components/EditorLayout";
 import Switch from "~/components/NewComponents/Switch";
-import { useAppDispatch } from "~/ducks/hooks";
+import Card from "~/components/shared/Card";
+import ProtocolHeader from "~/components/shared/ProtocolHeader";
+import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { actionCreators } from "~/ducks/modules/activeProtocol";
-import { Button } from "~/lib/legacy-ui/components";
-import { getExperiments, getProtocol } from "~/selectors/protocol";
-import { cn } from "~/utils/cn";
+import useProtocolLoader from "~/hooks/useProtocolLoader";
+import { getExperiments, getProtocolName } from "~/selectors/protocol";
+import SubRouteNav from "./SubRouteNav";
 
 const ExperimentsPage = () => {
-	const [, setLocation] = useLocation();
+	useProtocolLoader();
 	const dispatch = useAppDispatch();
-	const protocol = useSelector(getProtocol);
-	const experiments = useSelector(getExperiments) ?? {};
-
-	const handleGoBack = () => {
-		setLocation("/protocol");
-	};
+	const [, navigate] = useLocation();
+	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+	const experiments = useAppSelector(getExperiments) ?? {};
 
 	const handleToggleExperiment = (key: string, checked: boolean) => {
 		dispatch(
@@ -28,72 +23,35 @@ const ExperimentsPage = () => {
 		);
 	};
 
-	if (!protocol) {
-		return (
-			<Layout>
-				<div className="flex flex-col items-center justify-center h-full gap-4">
-					<p>No protocol loaded. Please open a protocol first.</p>
-					<Button onClick={() => setLocation("/")} color="platinum">
-						Go Home
-					</Button>
-				</div>
-			</Layout>
-		);
-	}
-
 	const isEncryptedEnabled = experiments.encryptedVariables ?? false;
 
 	return (
-		<div className="relative flex flex-col h-dvh">
-			<div className="flex-1 overflow-y-auto">
-				<Layout>
-					<div
-						className="flex flex-col gap-6"
-						style={{
-							margin: "var(--space-xl) var(--space-5xl)",
-							maxWidth: "80rem",
-						}}
-					>
-						<div className="stage-heading">
-							<div className="flex items-center gap-3">
-								<div className="p-2 rounded-lg bg-mustard/20">
-									<FlaskConical className="w-6 h-6 text-mustard" />
-								</div>
-								<h1 className="screen-heading">Experimental Features</h1>
-							</div>
-							<p>These features are experimental and may not be fully supported.</p>
-						</div>
-
-						<div className="flex flex-col gap-4">
-							<div
-								className={cn(
-									"flex items-center gap-4 p-4 rounded-lg transition-colors",
-									isEncryptedEnabled ? "border-sea-green/50 bg-sea-green/10" : "bg-surface-1",
-								)}
-							>
-								<div className="flex-1 min-w-0">
-									<h4>Encrypted Variables</h4>
-									<p className="text-sm text-muted-foreground">
-										Enable support for encrypted variables in the codebook. This allows sensitive data to be collected
-										securely.
-									</p>
-								</div>
-								<Switch
-									checked={isEncryptedEnabled}
-									onCheckedChange={(checked) => handleToggleExperiment("encryptedVariables", checked)}
-								/>
-							</div>
-						</div>
-					</div>
-				</Layout>
-			</div>
-			<ControlBar
-				secondaryButtons={[
-					<Button key="go-back" onClick={handleGoBack} color="platinum">
-						Go Back
-					</Button>,
-				]}
+		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+			<ProtocolHeader
+				protocolName={protocolName}
+				subsection="Experiments"
+				actions={<SubRouteNav active="experiments" />}
+				onLogoClick={() => navigate("/protocol")}
 			/>
+			<main className="flex-1 overflow-auto">
+				<div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
+					<Card padding="lg">
+						<div className="flex items-center justify-between gap-4">
+							<div className="flex flex-col">
+								<span className="font-heading text-base font-extrabold">Encrypted Variables</span>
+								<span className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
+									Enable support for encrypted variables in the codebook. This allows sensitive data to be collected
+									securely.
+								</span>
+							</div>
+							<Switch
+								checked={isEncryptedEnabled}
+								onCheckedChange={(checked) => handleToggleExperiment("encryptedVariables", checked)}
+							/>
+						</div>
+					</Card>
+				</div>
+			</main>
 		</div>
 	);
 };
