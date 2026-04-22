@@ -52,7 +52,7 @@ export default function TimelineStation({
 	);
 
 	const stationCircle = (
-		<div className="relative flex size-[80px] shrink-0 items-center justify-center rounded-full bg-white">
+		<div className="relative z-10 flex size-[80px] shrink-0 items-center justify-center rounded-full bg-white">
 			<div className="flex size-[64px] items-center justify-center rounded-full" style={{ background: color }}>
 				<img src={iconSrc} alt="" className="size-[26px]" style={{ filter: "brightness(0) invert(1)" }} />
 			</div>
