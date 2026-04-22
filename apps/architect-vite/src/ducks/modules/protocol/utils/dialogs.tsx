@@ -70,6 +70,22 @@ export const invalidAssetErrorDialog = (e: AssetError, filePath: string) => {
 	});
 };
 
+export const duplicateRowsWarningDialog = (filePath: string, count: number) => {
+	return dialogActions.openDialog({
+		type: "Warning",
+		title: `Warning: ${basename(filePath)} contains duplicate rows`,
+		message: (
+			<>
+				<p>
+					The file contains {count} duplicate {count === 1 ? "row" : "rows"}. Duplicate rows will be removed when this
+					roster is used in Fresco.
+				</p>
+				<p>Consider removing duplicates from your CSV file before importing.</p>
+			</>
+		),
+	});
+};
+
 export const importAssetErrorDialog = (e: AssetError, filePath: string) => {
 	e.friendlyMessage = (
 		<>
