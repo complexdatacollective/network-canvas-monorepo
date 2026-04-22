@@ -5,9 +5,10 @@ import { compose } from "react-recompose";
 import { connect } from "react-redux";
 import { useLocation } from "wouter";
 import { TextArea } from "~/components/Form/Fields";
+import Card from "~/components/shared/Card";
+import PillButton from "~/components/shared/PillButton";
 import { updateProtocolDescription, updateProtocolName } from "~/ducks/modules/activeProtocol";
 import type { RootState } from "~/ducks/modules/root";
-import { Button, Icon } from "~/lib/legacy-ui/components";
 import { getIsProtocolValid, getProtocol, getProtocolName } from "~/selectors/protocol";
 
 type OverviewProps = {
@@ -46,64 +47,54 @@ const Overview = ({
 	}, [setLocation]);
 
 	return (
-		<div className="overview">
-			<div className="overview__panel">
-				<div className="protocol-name">
-					<input
-						type="text"
-						className="overview-name"
-						value={localName}
-						onChange={(e) => setLocalName(e.target.value)}
-						onBlur={() => {
-							const trimmed = localName.trim();
-							trimmed ? updateName({ name: trimmed }) : setLocalName(name ?? "");
-						}}
-						placeholder="Enter protocol name..."
-					/>
-				</div>
-				<div>
-					<TextArea
-						placeholder="Enter a description for your protocol..."
-						input={{
-							value: description,
-							onChange: ({ target: { value } }) => updateDescription({ description: value }),
-						}}
-					/>
-				</div>
+		<Card padding="lg">
+			<input
+				type="text"
+				value={localName}
+				onChange={(e) => setLocalName(e.target.value)}
+				onBlur={() => {
+					const trimmed = localName.trim();
+					trimmed ? updateName({ name: trimmed }) : setLocalName(name ?? "");
+				}}
+				placeholder="Enter protocol name…"
+				className="w-full border-0 bg-transparent font-heading text-4xl font-extrabold leading-tight tracking-tight outline-none"
+				style={{ color: "hsl(240 35% 17%)" }}
+			/>
+			<TextArea
+				placeholder="Enter a description for your protocol…"
+				input={{
+					value: description,
+					onChange: ({ target: { value } }) => updateDescription({ description: value }),
+				}}
+			/>
+			<div className="mt-4 flex flex-wrap gap-2">
+				<PillButton
+					variant="secondary"
+					size="sm"
+					onClick={handleNavigateToCodebook}
+					icon={<BookOpenText className="size-4" />}
+				>
+					Codebook
+				</PillButton>
+				<PillButton
+					variant="secondary"
+					size="sm"
+					onClick={handleNavigateToAssets}
+					icon={<FileImage className="size-4" />}
+				>
+					Assets
+				</PillButton>
+				<PillButton
+					variant="secondary"
+					size="sm"
+					onClick={handlePrintSummary}
+					disabled={!protocolIsValid}
+					icon={<PrintIcon className="size-4" />}
+				>
+					Printable Summary
+				</PillButton>
 			</div>
-			<div className="overview__footer">
-				<div className="icon">
-					<Icon name="protocol-card" />
-				</div>
-				<div className="action-buttons">
-					<div className="action-buttons__button" title="Printable Summary">
-						<Button
-							onClick={handlePrintSummary}
-							color="slate-blue"
-							icon={<PrintIcon />}
-							disabled={!protocolIsValid}
-							content="Printable Summary"
-						/>
-					</div>
-					<div className="action-buttons__button" title="Resource Library">
-						<Button
-							onClick={handleNavigateToAssets}
-							color="neon-coral"
-							icon={<FileImage />}
-							content="Resource Library"
-						/>
-					</div>
-					<div className="action-buttons__button" title="Manage Codebook">
-						<Button
-							onClick={handleNavigateToCodebook}
-							color="sea-serpent"
-							icon={<BookOpenText />}
-							content="Manage Codebook"
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
+		</Card>
 	);
 };
 

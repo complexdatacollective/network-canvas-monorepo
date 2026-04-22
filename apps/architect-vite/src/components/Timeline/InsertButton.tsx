@@ -5,18 +5,17 @@ type InsertButtonProps = {
 };
 
 const InsertButton = ({ onClick }: InsertButtonProps) => (
-	<motion.div
-		className="grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4"
+	<motion.button
+		type="button"
 		onClick={onClick}
+		aria-label="Insert stage here"
+		className="group flex size-6 cursor-pointer items-center justify-center rounded-full bg-white opacity-40 transition-opacity hover:opacity-100"
+		style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
 	>
-		<div />
-		<div className="w-10 h-10 rounded-full bg-timeline flex items-center justify-center text-primary-foreground text-4xl font-medium scale-40 group-hover:scale-110 group-hover:bg-action transition-all duration-300 ease-in-out">
-			<span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">+</span>
-		</div>
-		<span className="justify-self-start opacity-0 group-hover:opacity-100 group-hover:font-bold transition-all font-semibold text-lg">
-			Add stage here
+		<span className="text-base font-bold" style={{ color: "hsl(240 35% 17%)" }}>
+			+
 		</span>
-	</motion.div>
+	</motion.button>
 );
 
 export default InsertButton;
