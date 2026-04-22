@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useLocation } from "wouter";
 import NewProtocolDialog from "~/components/NewProtocolDialog";
-import AppBackground from "~/components/shared/AppBackground";
 import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from "~/config";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { type StoredProtocol, selectRecentProtocols } from "~/ducks/modules/protocols";
@@ -349,8 +348,6 @@ const Home = () => {
 			</div>
 
 			<NewProtocolDialog open={showNewDialog} onOpenChange={setShowNewDialog} onSubmit={handleCreate} />
-
-			<AppBackground />
 		</>
 	);
 };

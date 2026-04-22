@@ -2,129 +2,164 @@
 
 @layer base {
 	:root {
-		/* UI Colors */
-		/* To generate dark color variants, subtract 5% from the lightness. */
-		--dark-mod: 5%;
-		--neon-coral-hue: 342;
-		--neon-coral-saturation: 76.9%;
-		--neon-coral-lightness: 50.8%;
-		--neon-coral: var(--neon-coral-hue) var(--neon-coral-saturation) var(--neon-coral-lightness);
-		--neon-coral-dark: var(--neon-coral-hue) var(--neon-coral-saturation)
-			calc(var(--neon-coral-lightness) - var(--dark-mod));
+		/* Brand palette — HSL triples, consumed via hsl(var(--name)) across the app.
+		   Values aligned to design-tokens source (colors_and_type.css). */
+		--neon-coral: 342 77% 51%; /* #E2215B */
+		--neon-coral-dark: 341 76% 46%; /* #CE1C54 */
 
-		--mustard-hue: 46;
-		--mustard-saturation: 100%;
-		--mustard-lightness: 47%;
-		--mustard: var(--mustard-hue) var(--mustard-saturation) var(--mustard-lightness);
-		--mustard-dark: var(--mustard-hue) var(--mustard-saturation) calc(var(--mustard-lightness) - var(--dark-mod));
+		--mustard: 45 100% 47%; /* #F2B700 */
+		--mustard-dark: 45 100% 43%; /* #DBA500 */
 
-		--sea-green-hue: 168;
-		--sea-green-saturation: 100%;
-		--sea-green-lightness: 35%;
-		--sea-green: var(--sea-green-hue) var(--sea-green-saturation) var(--sea-green-lightness);
-		--sea-green-dark: var(--sea-green-hue) var(--sea-green-saturation)
-			calc(var(--sea-green-lightness) - var(--dark-mod));
+		--sea-green: 168 100% 39%; /* #00C9A2 */
+		--sea-green-dark: 168 100% 36%; /* #00BA96 */
 
-		--slate-blue-hue: 237;
-		--slate-blue-saturation: 79%;
-		--slate-blue-lightness: 65%;
-		--slate-blue: var(--slate-blue-hue) var(--slate-blue-saturation) var(--slate-blue-lightness);
-		--slate-blue-dark: var(--slate-blue-hue) var(--slate-blue-saturation)
-			calc(var(--slate-blue-lightness) - var(--dark-mod));
+		--slate-blue: 237 77% 67%; /* #6B72EC */
+		--slate-blue-dark: 237 76% 65%; /* #5E66EA */
 
-		--navy-taupe-hue: 248;
-		--navy-taupe-saturation: 34%;
-		--navy-taupe-lightness: 25%;
-		--navy-taupe: var(--navy-taupe-hue) var(--navy-taupe-saturation) var(--navy-taupe-lightness);
-		--navy-taupe-dark: var(--navy-taupe-hue) var(--navy-taupe-saturation)
-			calc(var(--navy-taupe-lightness) - var(--dark-mod));
+		--navy-taupe: 245 35% 25%; /* #2D2955 */
+		--navy-taupe-dark: 245 35% 20%;
 
-		--cyber-grape-hue: 240;
-		--cyber-grape-saturation: 33%;
-		--cyber-grape-lightness: 29%;
-		--cyber-grape: var(--cyber-grape-hue) var(--cyber-grape-saturation) var(--cyber-grape-lightness);
-		--cyber-grape-dark: var(--cyber-grape-hue) var(--cyber-grape-saturation)
-			calc(var(--cyber-grape-lightness) - var(--dark-mod));
+		--cyber-grape: 240 34% 34%; /* #3A3A75 */
+		--cyber-grape-dark: 240 37% 29%; /* #2F2F65 */
 
-		--rich-black-hue: 240;
-		--rich-black-saturation: 35%;
-		--rich-black-lightness: 10%;
-		--rich-black: var(--rich-black-hue) var(--rich-black-saturation) var(--rich-black-lightness);
-		--rich-black-dark: var(--rich-black-hue) var(--rich-black-saturation)
-			calc(var(--rich-black-lightness) - var(--dark-mod));
+		--rich-black: 243 34% 13%; /* #16152B */
+		--rich-black-dark: 243 34% 8%;
 
-		--charcoal-hue: 231;
-		--charcoal-saturation: 4%;
-		--charcoal-lightness: 43%;
-		--charcoal: var(--charcoal-hue) var(--charcoal-saturation) var(--charcoal-lightness);
-		--charcoal-dark: var(--charcoal-hue) var(--charcoal-saturation) calc(var(--charcoal-lightness) - var(--dark-mod));
+		--charcoal: 227 4% 44%; /* #6D6F76 */
+		--charcoal-dark: 227 4% 39%;
 
-		--platinum-hue: 210;
-		--platinum-saturation: 43%;
-		--platinum-lightness: 95%;
-		--platinum: var(--platinum-hue) var(--platinum-saturation) var(--platinum-lightness);
-		--platinum-dark: var(--platinum-hue) var(--platinum-saturation) calc(var(--platinum-lightness) - var(--dark-mod));
+		--platinum: 192 23% 96%; /* #F2F6F7 */
+		--platinum-dark: 187 18% 87%; /* #DAE3E5 */
 
-		--sea-serpent-hue: 190;
-		--sea-serpent-saturation: 87%;
-		--sea-serpent-lightness: 47%;
-		--sea-serpent: var(--sea-serpent-hue) var(--sea-serpent-saturation) var(--sea-serpent-lightness);
-		--sea-serpent-dark: var(--sea-serpent-hue) var(--sea-serpent-saturation)
-			calc(var(--sea-serpent-lightness) - var(--dark-mod));
+		--sea-serpent: 197 88% 47%; /* #0FB2E2 */
+		--sea-serpent-dark: 197 88% 42%;
 
-		--purple-pizazz-hue: 291;
-		--purple-pizazz-saturation: 86%;
-		--purple-pizazz-lightness: 52%;
-		--purple-pizazz: var(--purple-pizazz-hue) var(--purple-pizazz-saturation) var(--purple-pizazz-lightness);
-		--purple-pizazz-dark: var(--purple-pizazz-hue) var(--purple-pizazz-saturation)
-			calc(var(--purple-pizazz-lightness) - var(--dark-mod));
+		--purple-pizazz: 293 87% 50%; /* #D30FEF */
+		--purple-pizazz-dark: 293 87% 45%;
 
-		--paradise-pink-hue: 331;
-		--paradise-pink-saturation: 100%;
-		--paradise-pink-lightness: 57%;
-		--paradise-pink: var(--paradise-pink-hue) var(--paradise-pink-saturation) var(--paradise-pink-lightness);
-		--paradise-pink-dark: var(--paradise-pink-hue) var(--paradise-pink-saturation)
-			calc(var(--paradise-pink-lightness) - var(--dark-mod));
+		--paradise-pink: 336 100% 61%; /* #FF3A8C */
+		--paradise-pink-dark: 336 100% 56%;
 
-		--cerulean-blue-hue: 216;
-		--cerulean-blue-saturation: 100%;
-		--cerulean-blue-lightness: 53%;
-		--cerulean-blue: var(--cerulean-blue-hue) var(--cerulean-blue-saturation) var(--cerulean-blue-lightness);
-		--cerulean-blue-dark: var(--cerulean-blue-hue) var(--cerulean-blue-saturation)
-			calc(var(--cerulean-blue-lightness) - var(--dark-mod));
+		--cerulean-blue: 215 100% 53%; /* #0F70FF */
+		--cerulean-blue-dark: 215 100% 48%;
 
-		--kiwi-hue: 103;
-		--kiwi-saturation: 46%;
-		--kiwi-lightness: 56%;
-		--kiwi: var(--kiwi-hue) var(--kiwi-saturation) var(--kiwi-lightness);
-		--kiwi-dark: var(--kiwi-hue) var(--kiwi-saturation) calc(var(--kiwi-lightness) - var(--dark-mod));
+		--kiwi: 105 47% 54%; /* #70BF54 */
+		--kiwi-dark: 105 47% 49%;
 
-		--neon-carrot-hue: 32;
-		--neon-carrot-saturation: 92%;
-		--neon-carrot-lightness: 52%;
-		--neon-carrot: var(--neon-carrot-hue) var(--neon-carrot-saturation) var(--neon-carrot-lightness);
-		--neon-carrot-dark: var(--neon-carrot-hue) var(--neon-carrot-saturation)
-			calc(var(--neon-carrot-lightness) - var(--dark-mod));
+		--neon-carrot: 28 93% 54%; /* #F7891E */
+		--neon-carrot-dark: 28 93% 49%;
 
-		--barbie-pink-hue: 328;
-		--barbie-pink-saturation: 100%;
-		--barbie-pink-lightness: 47%;
-		--barbie-pink: var(--barbie-pink-hue) var(--barbie-pink-saturation) var(--barbie-pink-lightness);
-		--barbie-pink-dark: var(--barbie-pink-hue) var(--barbie-pink-saturation)
-			calc(var(--barbie-pink-lightness) - var(--dark-mod));
+		--barbie-pink: 325 100% 46%; /* #ED008C */
+		--barbie-pink-dark: 325 100% 41%;
 
-		--tomato-hue: 356;
-		--tomato-saturation: 77%;
-		--tomato-lightness: 54%;
-		--tomato: var(--tomato-hue) var(--tomato-saturation) var(--tomato-lightness);
-		--tomato-dark: var(--tomato-hue) var(--tomato-saturation) calc(var(--tomato-lightness) - var(--dark-mod));
+		--tomato: 354 81% 54%; /* #E82D3F */
+		--tomato-dark: 354 81% 49%;
 
 		--white: 0 0% 100%;
+
+		/* Brand hex aliases — match design tokens 1:1 for inline / SVG usage. */
+		--nc-coral: #e2215b;
+		--nc-coral-dark: #ce1c54;
+		--nc-sea-green: #00c9a2;
+		--nc-sea-green-dark: #00ba96;
+		--nc-mustard: #f2b700;
+		--nc-mustard-dark: #dba500;
+		--nc-slate-blue: #6b72ec;
+		--nc-slate-blue-dark: #5e66ea;
+		--nc-cyber-grape: #3a3a75;
+		--nc-cyber-grape-dark: #2f2f65;
+		--nc-navy-taupe: #2d2955;
+		--nc-rich-black: #16152b;
+		--nc-purple-pizazz: #d30fef;
+		--nc-paradise-pink: #ff3a8c;
+		--nc-barbie-pink: #ed008c;
+		--nc-tomato: #e82d3f;
+		--nc-neon-carrot: #f7891e;
+		--nc-kiwi: #70bf54;
+		--nc-sea-serpent: #0fb2e2;
+		--nc-cerulean-blue: #0f70ff;
+		--nc-charcoal: #6d6f76;
+		--nc-platinum: #f2f6f7;
+		--nc-platinum-dark: #dae3e5;
+
+		/* Dashboard semantic surface — light, purple-tinted. */
+		--bg: #fbfafc;
+		--fg: #1f1b3a;
+		--fg-muted: color-mix(in oklab, var(--fg) 65%, white);
+		--fg-subtle: color-mix(in oklab, var(--fg) 40%, white);
+		--surface: #ffffff;
+		--surface-1: #f6f3f8;
+		--surface-2: #efeaf4;
+		--surface-3: #e6dfee;
+		--outline: #e8e2ee;
+		--input-bg: #ffffff;
+
+		--primary: var(--nc-cyber-grape);
+		--primary-fg: #ffffff;
+		--accent: var(--nc-sea-green);
+		--accent-fg: #ffffff;
+		--secondary: var(--nc-slate-blue);
+		--secondary-fg: #ffffff;
+		--link: var(--nc-slate-blue);
+
+		--success: var(--nc-sea-green);
+		--warning: #d67100;
+		--danger: var(--nc-tomato);
+		--info: var(--nc-cerulean-blue);
+
+		/* Interview semantic scope — override by wrapping with data-theme="interview". */
+		--iv-bg: var(--nc-navy-taupe);
+		--iv-fg: #ffffff;
+		--iv-surface: #37336a;
+		--iv-surface-1: #3e3a72;
+		--iv-surface-2: #45407a;
+		--iv-surface-3: #4d4782;
+		--iv-accent: var(--nc-sea-green);
+		--iv-secondary: var(--nc-slate-blue);
+		--iv-destructive: var(--nc-coral);
+		--iv-node: var(--nc-coral);
+		--iv-edge: var(--nc-mustard);
+
+		/* Typography — sibling families per design tokens. */
+		--font-display: "Nunito", system-ui, sans-serif;
+		--font-heading: "Nunito", system-ui, sans-serif;
+		--font-body: "Inclusive Sans", system-ui, sans-serif;
+		--font-mono: "Fira Code", ui-monospace, monospace;
+
+		--weight-light: 300;
+		--weight-regular: 400;
+		--weight-medium: 500;
+		--weight-semi: 600;
+		--weight-bold: 700;
+		--weight-black: 900;
+
+		--caps-tracking: 0.15em;
+
+		/* Colored shadow system — grape-tinted, inherits light theme. */
+		--shadow-color: oklch(0.16 0.09 290);
+		--shadow-sm: 0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 12%, transparent),
+			0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+		--shadow-md: 0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 14%, transparent),
+			0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 22%, transparent);
+		--shadow-lg: 0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+			0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+		--shadow-xl: 0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+			0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+		--shadow-node: 0 6px 0 0 rgba(0, 0, 0, 0.25);
+
+		/* Motion */
+		--ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+		--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+		--ease-shake: cubic-bezier(0.36, 0.07, 0.19, 0.97);
+		--dur-quick: 150ms;
+		--dur-base: 250ms;
+		--dur-slow: 400ms;
 
 		--base-font-size: 16px;
 
 		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-		--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+		--shadow: 0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 12%, transparent),
+			0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 20%, transparent);
 		--modal-overlay: rgb(0 0 0 / 0.5);
 
 		--z-fx: 1;
@@ -138,10 +173,10 @@
 		--picker-size: 60px;
 		--picker-border-size: 4px;
 
-		--animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+		--animation-easing: var(--ease-standard);
 		--animation-duration-standard: 300ms;
 		--animation-duration-slow: 500ms;
-		--animation-duration-fast: 150ms;
+		--animation-duration-fast: var(--dur-quick);
 
 		--node-color-seq-1: var(--neon-coral);
 		--node-color-seq-1-dark: var(--neon-coral-dark);
@@ -201,13 +236,33 @@
 @layer base {
 	html {
 		font-size: var(--base-font-size);
-		font-family: "Quicksand", sans-serif;
+		font-family: var(--font-body);
 		font-optical-sizing: auto;
 		@apply h-full w-full;
 	}
 
 	body {
 		@apply bg-background text-foreground overflow-hidden h-full w-full;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	/* Interview scope — flips surface/accent tokens and swaps to the display (Nunito) family. */
+	[data-theme="interview"] {
+		color: var(--iv-fg);
+		background: var(--iv-bg);
+		--fg: var(--iv-fg);
+		--bg: var(--iv-bg);
+		--surface: var(--iv-surface);
+		--surface-1: var(--iv-surface-1);
+		--surface-2: var(--iv-surface-2);
+		--surface-3: var(--iv-surface-3);
+		--accent: var(--iv-accent);
+		--primary: var(--iv-accent);
+		--secondary: var(--iv-secondary);
+		--link: var(--iv-accent);
+		--outline: rgba(255, 255, 255, 0.2);
+		--input-bg: var(--nc-navy-taupe);
+		font-family: var(--font-display);
 	}
 
 	/* These two tags are semantic, so I think its okay to apply styles to them directly in the global styles. */
@@ -296,6 +351,38 @@
 
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
+
+	/* Design-token brand hex — for bg-nc-coral, text-nc-sea-green, etc. */
+	--color-nc-coral: #e2215b;
+	--color-nc-coral-dark: #ce1c54;
+	--color-nc-sea-green: #00c9a2;
+	--color-nc-sea-green-dark: #00ba96;
+	--color-nc-mustard: #f2b700;
+	--color-nc-mustard-dark: #dba500;
+	--color-nc-slate-blue: #6b72ec;
+	--color-nc-slate-blue-dark: #5e66ea;
+	--color-nc-cyber-grape: #3a3a75;
+	--color-nc-cyber-grape-dark: #2f2f65;
+	--color-nc-navy-taupe: #2d2955;
+	--color-nc-rich-black: #16152b;
+
+	/* Semantic dashboard tokens — for bg-surface, text-fg, border-outline, etc. */
+	--color-bg: var(--bg);
+	--color-fg: var(--fg);
+	--color-fg-muted: var(--fg-muted);
+	--color-fg-subtle: var(--fg-subtle);
+	--color-surface: var(--surface);
+	--color-surface-1: var(--surface-1);
+	--color-surface-2: var(--surface-2);
+	--color-surface-3: var(--surface-3);
+	--color-outline: var(--outline);
+	--color-input-bg: var(--input-bg);
+
+	/* Typography families exposed to Tailwind utilities. */
+	--font-display: "Nunito", system-ui, sans-serif;
+	--font-heading: "Nunito", system-ui, sans-serif;
+	--font-body: "Inclusive Sans", system-ui, sans-serif;
+	--font-mono: "Fira Code", ui-monospace, monospace;
 
 	--space-0: 0;
 	--space-xs: 0.3rem;
@@ -402,13 +489,15 @@
 	--color-rule-operator: var(--color-rules-operator);
 	--color-rule-value: var(--color-rules-value);
 
+
+	--base-radius: 2rem;
 	--radius-none: 0px;
-	--radius-sm: 0.125rem;
-	--radius: 0.6rem;
-	--radius-md: 0.75rem;
-	--radius-lg: 0.95rem;
-	--radius-xl: 1.25rem;
-	--radius-2xl: 1.6rem;
+	--radius-sm: calc(var(--base-radius) * 0.5);
+	--radius: var(--base-radius);
+	--radius-md: calc(var(--base-radius) * 0.75);
+	--radius-lg: calc(var(--base-radius) * 1.25);
+	--radius-xl: calc(var(--base-radius) * 1.5);
+	--radius-2xl: calc(var(--base-radius) * 2);
 	--radius-full: 9999px;
 
 	--animate-wiggle: wiggle 1s ease-in-out infinite;
@@ -484,20 +573,35 @@
 	}
 }
 
+@keyframes nc-toast-in {
+	0% {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 @utility h1 {
 	@apply text-3xl leading-tight font-bold my-6 mx-0;
+	font-family: var(--font-heading);
 }
 
 @utility h2 {
 	@apply text-2xl leading-tight font-bold my-6 mx-0;
+	font-family: var(--font-heading);
 }
 
 @utility h3 {
 	@apply text-xl leading-tight font-semibold my-2 mx-0;
+	font-family: var(--font-heading);
 }
 
 @utility h4 {
 	@apply text-lg leading-normal font-semibold my-2 mx-0;
+	font-family: var(--font-heading);
 }
 
 /* Small heading utility - replaces .small-heading placeholder */

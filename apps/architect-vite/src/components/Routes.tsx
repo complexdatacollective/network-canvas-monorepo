@@ -2,19 +2,23 @@ import { Route, Switch } from "wouter";
 import Home from "~/components/Home/Home";
 import Protocol from "~/components/Protocol";
 import { AssetsPage, CodebookPage, ExperimentsPage, StageEditorPage, SummaryPage } from "~/components/pages";
+import AppBackground from "./shared/AppBackground";
 
 const Routes = () => {
 	return (
-		<Switch>
-			<Route path="/protocol" component={Protocol} />
-			<Route path="/protocol/assets" component={AssetsPage} />
-			<Route path="/protocol/codebook" component={CodebookPage} />
-			<Route path="/protocol/summary" component={SummaryPage} />
-			<Route path="/protocol/stage/:stageId" component={StageEditorPage} />
-			<Route path="/protocol/experiments" component={ExperimentsPage} />
+		<>
+			<AppBackground />
+			<Switch>
+				<Route path="/protocol" component={Protocol} />
+				<Route path="/protocol/assets" component={AssetsPage} />
+				<Route path="/protocol/codebook" component={CodebookPage} />
+				<Route path="/protocol/summary" component={SummaryPage} />
+				<Route path="/protocol/stage/:stageId" component={StageEditorPage} />
+				<Route path="/protocol/experiments" component={ExperimentsPage} />
 
-			<Route path="/" component={Home} />
-		</Switch>
+				<Route path="/" component={Home} />
+			</Switch>
+		</>
 	);
 };
 

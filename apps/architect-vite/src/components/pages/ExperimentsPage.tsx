@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import Switch from "~/components/NewComponents/Switch";
-import AppBackground from "~/components/shared/AppBackground";
 import Card from "~/components/shared/Card";
 import ProtocolHeader from "~/components/shared/ProtocolHeader";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
@@ -27,36 +26,33 @@ const ExperimentsPage = () => {
 	const isEncryptedEnabled = experiments.encryptedVariables ?? false;
 
 	return (
-		<>
-			<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-				<ProtocolHeader
-					protocolName={protocolName}
-					subsection="Experiments"
-					actions={<SubRouteNav active="experiments" />}
-					onLogoClick={() => navigate("/protocol")}
-				/>
-				<main className="flex-1 overflow-auto">
-					<div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
-						<Card padding="lg">
-							<div className="flex items-center justify-between gap-4">
-								<div className="flex flex-col">
-									<span className="font-heading text-base font-extrabold">Encrypted Variables</span>
-									<span className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
-										Enable support for encrypted variables in the codebook. This allows sensitive data to be collected
-										securely.
-									</span>
-								</div>
-								<Switch
-									checked={isEncryptedEnabled}
-									onCheckedChange={(checked) => handleToggleExperiment("encryptedVariables", checked)}
-								/>
+		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+			<ProtocolHeader
+				protocolName={protocolName}
+				subsection="Experiments"
+				actions={<SubRouteNav active="experiments" />}
+				onLogoClick={() => navigate("/protocol")}
+			/>
+			<main className="flex-1 overflow-auto">
+				<div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
+					<Card padding="lg">
+						<div className="flex items-center justify-between gap-4">
+							<div className="flex flex-col">
+								<span className="font-heading text-base font-extrabold">Encrypted Variables</span>
+								<span className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
+									Enable support for encrypted variables in the codebook. This allows sensitive data to be collected
+									securely.
+								</span>
 							</div>
-						</Card>
-					</div>
-				</main>
-			</div>
-			<AppBackground />
-		</>
+							<Switch
+								checked={isEncryptedEnabled}
+								onCheckedChange={(checked) => handleToggleExperiment("encryptedVariables", checked)}
+							/>
+						</div>
+					</Card>
+				</div>
+			</main>
+		</div>
 	);
 };
 
