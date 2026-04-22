@@ -84,15 +84,13 @@ export default function TimelineStation({
 				{labelPosition === "left" ? (
 					<>
 						<div className="flex flex-1 justify-end">{labelPill}</div>
-						{indexBadge}
 						{stationCircle}
-						<div className="flex-1" />
+						<div className="flex flex-1 justify-start">{indexBadge}</div>
 					</>
 				) : (
 					<>
-						<div className="flex-1" />
+						<div className="flex flex-1 justify-end">{indexBadge}</div>
 						{stationCircle}
-						{indexBadge}
 						<div className="flex flex-1 justify-start">{labelPill}</div>
 					</>
 				)}
