@@ -6,6 +6,7 @@ import createTimeline from "../middleware/timeline";
 import activeProtocol from "./activeProtocol";
 import app from "./app";
 import dialogs from "./dialogs";
+import preview from "./preview";
 import protocols from "./protocols";
 import protocolValidation from "./protocolValidation";
 
@@ -25,6 +26,7 @@ export const rootReducer = combineReducers({
 	activeProtocol: createTimeline(activeProtocol, timelineOptions),
 	protocols,
 	protocolValidation,
+	preview,
 });
 
 // Export the root state type
