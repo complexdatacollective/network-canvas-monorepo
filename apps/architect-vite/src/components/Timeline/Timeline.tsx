@@ -73,37 +73,43 @@ const Timeline = () => {
 
 	return (
 		<>
-			<TimelineRail railColor="hsl(220 4% 88%)">
-				<Reorder.Group axis="y" onReorder={handleReorder} values={stages} className="flex flex-col items-center gap-6">
-					{stages.flatMap((stage, index) => [
-						<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
-						<Reorder.Item
-							tabIndex={0}
-							key={stage.id}
-							value={stage}
-							layoutId={`timeline-stage-${stage.id}`}
-							className="cursor-pointer focus:outline-none"
-							onPointerDown={(e) => {
-								pointerStart.current = { x: e.clientX, y: e.clientY };
-							}}
-							onClick={(e) => {
-								const dx = e.clientX - pointerStart.current.x;
-								const dy = e.clientY - pointerStart.current.y;
-								if (dx * dx + dy * dy < 25) handleEditStage(stage.id);
-							}}
-						>
-							<TimelineStation
-								label={stage.label ?? "Untitled stage"}
-								index={index}
-								color={getStageDisplayMeta(stage.type).color}
-								iconSrc={getStageDisplayMeta(stage.type).iconSrc}
-								labelPosition={index % 2 === 0 ? "right" : "left"}
-								onDelete={() => handleDeleteStage(stage.id)}
-								hasFilter={stage.hasFilter}
-								hasSkipLogic={stage.hasSkipLogic}
-							/>
-						</Reorder.Item>,
-					])}
+			<TimelineRail>
+				<Reorder.Group axis="y" onReorder={handleReorder} values={stages} className="flex w-full flex-col items-center">
+					{stages.flatMap((stage, index) => {
+						const previousStage = index > 0 ? stages[index - 1] : undefined;
+						const incomingRailColor = previousStage ? getStageDisplayMeta(previousStage.type).color : undefined;
+						return [
+							<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
+							<Reorder.Item
+								tabIndex={0}
+								key={stage.id}
+								value={stage}
+								layoutId={`timeline-stage-${stage.id}`}
+								className="w-full cursor-pointer focus:outline-none"
+								onPointerDown={(e) => {
+									pointerStart.current = { x: e.clientX, y: e.clientY };
+								}}
+								onClick={(e) => {
+									const dx = e.clientX - pointerStart.current.x;
+									const dy = e.clientY - pointerStart.current.y;
+									if (dx * dx + dy * dy < 25) handleEditStage(stage.id);
+								}}
+							>
+								<TimelineStation
+									label={stage.label ?? "Untitled stage"}
+									subLabel={getStageDisplayMeta(stage.type).subLabel}
+									index={index}
+									color={getStageDisplayMeta(stage.type).color}
+									iconSrc={getStageDisplayMeta(stage.type).iconSrc}
+									labelPosition={index % 2 === 0 ? "right" : "left"}
+									incomingRailColor={incomingRailColor}
+									onDelete={() => handleDeleteStage(stage.id)}
+									hasFilter={stage.hasFilter}
+									hasSkipLogic={stage.hasSkipLogic}
+								/>
+							</Reorder.Item>,
+						];
+					})}
 					<InsertButton key="insert_end" onClick={() => handleInsertStage(stages.length)} />
 				</Reorder.Group>
 			</TimelineRail>
