@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import AppBackground from "~/components/shared/AppBackground";
 import Card from "~/components/shared/Card";
 import ProtocolHeader from "~/components/shared/ProtocolHeader";
 import { useAppSelector } from "~/ducks/hooks";
@@ -34,35 +35,38 @@ const SummaryPage = () => {
 	const index = getCodebookIndex(protocol);
 
 	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection="Summary"
-				actions={<SubRouteNav active="summary" />}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<main className="flex-1 overflow-auto print:h-auto print:overflow-visible">
-				<SummaryContext.Provider value={{ protocol, protocolName, index }}>
-					<div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 print:max-w-none print:gap-4 print:p-0">
-						<Card padding="lg">
-							<Cover />
-						</Card>
-						<Card padding="lg">
-							<Contents />
-						</Card>
-						<Card padding="lg">
-							<Stages />
-						</Card>
-						<Card padding="lg">
-							<Codebook />
-						</Card>
-						<Card padding="lg">
-							<AssetManifest />
-						</Card>
-					</div>
-				</SummaryContext.Provider>
-			</main>
-		</div>
+		<>
+			<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+				<ProtocolHeader
+					protocolName={protocolName}
+					subsection="Summary"
+					actions={<SubRouteNav active="summary" />}
+					onLogoClick={() => navigate("/protocol")}
+				/>
+				<main className="flex-1 overflow-auto print:h-auto print:overflow-visible">
+					<SummaryContext.Provider value={{ protocol, protocolName, index }}>
+						<div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 print:max-w-none print:gap-4 print:p-0">
+							<Card padding="lg">
+								<Cover />
+							</Card>
+							<Card padding="lg">
+								<Contents />
+							</Card>
+							<Card padding="lg">
+								<Stages />
+							</Card>
+							<Card padding="lg">
+								<Codebook />
+							</Card>
+							<Card padding="lg">
+								<AssetManifest />
+							</Card>
+						</div>
+					</SummaryContext.Provider>
+				</main>
+			</div>
+			<AppBackground />
+		</>
 	);
 };
 

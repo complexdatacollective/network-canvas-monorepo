@@ -1,6 +1,7 @@
 import { Check, Download, Redo, Undo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
+import AppBackground from "~/components/shared/AppBackground";
 import PillButton from "~/components/shared/PillButton";
 import PreviewIframe from "~/components/shared/PreviewIframe";
 import ProtocolHeader from "~/components/shared/ProtocolHeader";
@@ -90,22 +91,25 @@ const Protocol = () => {
 	);
 
 	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader protocolName={protocolName} actions={actions} onLogoClick={handleClose} />
-			<div className="flex-1 overflow-hidden">
-				<SplitPane
-					left={<PreviewIframe />}
-					right={
-						<div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
-							<Overview />
-							<Timeline />
-						</div>
-					}
-					narrowPreviewOpen={narrowPreviewOpen}
-					onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
-				/>
+		<>
+			<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+				<ProtocolHeader protocolName={protocolName} actions={actions} onLogoClick={handleClose} />
+				<div className="flex-1 overflow-hidden">
+					<SplitPane
+						left={<PreviewIframe />}
+						right={
+							<div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+								<Overview />
+								<Timeline />
+							</div>
+						}
+						narrowPreviewOpen={narrowPreviewOpen}
+						onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
+					/>
+				</div>
 			</div>
-		</div>
+			<AppBackground />
+		</>
 	);
 };
 

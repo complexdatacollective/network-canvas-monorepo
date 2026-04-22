@@ -2,6 +2,7 @@ import { Check, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import StageEditor from "~/components/StageEditor/StageEditor";
+import AppBackground from "~/components/shared/AppBackground";
 import PillButton from "~/components/shared/PillButton";
 import PreviewIframe from "~/components/shared/PreviewIframe";
 import ProtocolHeader from "~/components/shared/ProtocolHeader";
@@ -52,31 +53,34 @@ const StageEditorPage = () => {
 	);
 
 	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection={stageLabel}
-				actions={actions}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<div className="flex-1 overflow-hidden">
-				<SplitPane
-					left={<PreviewIframe stageIndex={stageIndex} />}
-					right={
-						<StageEditor
-							id={stageId}
-							insertAtIndex={insertAtIndex}
-							type={type}
-							submitRequestId={submitRequested}
-							cancelRequestId={cancelRequested}
-							onValidityChange={setIsValid}
-						/>
-					}
-					narrowPreviewOpen={narrowPreviewOpen}
-					onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
+		<>
+			<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+				<ProtocolHeader
+					protocolName={protocolName}
+					subsection={stageLabel}
+					actions={actions}
+					onLogoClick={() => navigate("/protocol")}
 				/>
+				<div className="flex-1 overflow-hidden">
+					<SplitPane
+						left={<PreviewIframe stageIndex={stageIndex} />}
+						right={
+							<StageEditor
+								id={stageId}
+								insertAtIndex={insertAtIndex}
+								type={type}
+								submitRequestId={submitRequested}
+								cancelRequestId={cancelRequested}
+								onValidityChange={setIsValid}
+							/>
+						}
+						narrowPreviewOpen={narrowPreviewOpen}
+						onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
+					/>
+				</div>
 			</div>
-		</div>
+			<AppBackground />
+		</>
 	);
 };
 
