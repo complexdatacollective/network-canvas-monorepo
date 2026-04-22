@@ -31,15 +31,11 @@ export default function TimelineStation({
 			className="flex max-w-[280px] flex-col rounded-full bg-white px-6 py-3"
 			style={{ boxShadow: "0 8px 20px rgba(22,21,43,0.10)" }}
 		>
-			<div className="flex items-center gap-2">
-				{hasFilter && <img src={filterIcon} alt="Filter" className="size-4" />}
-				{hasSkipLogic && <img src={skipLogicIcon} alt="Skip logic" className="size-4" />}
-				<div
-					className="truncate font-heading text-[19px] font-extrabold leading-tight tracking-tight"
-					style={{ color: "hsl(240 35% 17%)" }}
-				>
-					{label}
-				</div>
+			<div
+				className="truncate font-heading text-[19px] font-extrabold leading-tight tracking-tight"
+				style={{ color: "hsl(240 35% 17%)" }}
+			>
+				{label}
 			</div>
 			<div className="mt-[3px] text-[12px] font-bold uppercase leading-none tracking-[0.16em]" style={{ color }}>
 				{subLabel}
@@ -48,8 +44,12 @@ export default function TimelineStation({
 	);
 
 	const indexBadge = (
-		<div className="font-mono text-[12px] tracking-[0.1em]" style={{ color: "hsl(220 4% 44%)" }}>
-			{String(index + 1).padStart(2, "0")}
+		<div className="flex items-center gap-1.5">
+			<div className="font-mono text-[12px] tracking-[0.1em]" style={{ color: "hsl(220 4% 44%)" }}>
+				{String(index + 1).padStart(2, "0")}
+			</div>
+			{hasFilter && <img src={filterIcon} alt="Filter" className="size-4" />}
+			{hasSkipLogic && <img src={skipLogicIcon} alt="Skip logic" className="size-4" />}
 		</div>
 	);
 
