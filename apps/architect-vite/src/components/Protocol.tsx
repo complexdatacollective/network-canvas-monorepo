@@ -1,4 +1,4 @@
-import { Check, Download, Redo, Undo } from "lucide-react";
+import { BookOpenText, Check, Download, FileImage, Printer as PrintIcon, Redo, Undo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import PillButton from "~/components/shared/PillButton";
@@ -10,7 +10,7 @@ import { clearActiveProtocol, redo, undo } from "~/ducks/modules/activeProtocol"
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
-import { getCanRedo, getCanUndo, getIsProtocolDirty, getProtocolName } from "~/selectors/protocol";
+import { getCanRedo, getCanUndo, getIsProtocolDirty, getIsProtocolValid, getProtocolName } from "~/selectors/protocol";
 import Overview from "./Overview";
 import Timeline from "./Timeline";
 
@@ -23,6 +23,7 @@ const Protocol = () => {
 	const canUndo = useAppSelector(getCanUndo);
 	const canRedo = useAppSelector(getCanRedo);
 	const isDirty = useAppSelector(getIsProtocolDirty);
+	const isProtocolValid = useAppSelector(getIsProtocolValid);
 
 	const [isDownloading, setIsDownloading] = useState(false);
 	const [justDownloaded, setJustDownloaded] = useState(false);
@@ -57,6 +58,31 @@ const Protocol = () => {
 
 	const actions = (
 		<>
+			<PillButton
+				variant="secondary"
+				size="sm"
+				onClick={() => navigate("/protocol/codebook")}
+				icon={<BookOpenText className="size-4" />}
+			>
+				Codebook
+			</PillButton>
+			<PillButton
+				variant="secondary"
+				size="sm"
+				onClick={() => navigate("/protocol/assets")}
+				icon={<FileImage className="size-4" />}
+			>
+				Assets
+			</PillButton>
+			<PillButton
+				variant="secondary"
+				size="sm"
+				onClick={() => navigate("/protocol/summary")}
+				disabled={!isProtocolValid}
+				icon={<PrintIcon className="size-4" />}
+			>
+				Summary
+			</PillButton>
 			<button
 				type="button"
 				onClick={() => dispatch(undo())}
@@ -90,7 +116,7 @@ const Protocol = () => {
 	);
 
 	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+		<div className="flex h-dvh flex-col pt-16">
 			<ProtocolHeader protocolName={protocolName} actions={actions} onLogoClick={handleClose} />
 			<div className="flex-1 overflow-hidden">
 				<SplitPane
