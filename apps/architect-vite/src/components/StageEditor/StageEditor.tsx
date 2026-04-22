@@ -1,82 +1,45 @@
-import { type CurrentProtocol, type Stage, type StageType, validateProtocol } from "@codaco/protocol-validation";
+import type { Stage, StageType } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
-import { getFormValues, isDirty as isFormDirty } from "redux-form";
-import { v1 as uuid } from "uuid";
+import { isDirty as isFormDirty, isValid as isFormValidSelector, submit as submitForm } from "redux-form";
 import { useLocation } from "wouter";
-import ControlBar from "~/components/ControlBar";
-import Editor from "~/components/Editor";
-import ExternalLink from "~/components/ExternalLink";
+import Card from "~/components/shared/Card";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
-import { Button } from "~/lib/legacy-ui/components";
-import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
-import { ensureError } from "~/utils/ensureError";
-import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
+import { getStage, getStageIndex } from "~/selectors/protocol";
+import Editor from "../Editor";
 import { formName } from "./configuration";
-import type { SectionComponent } from "./Interfaces";
-import { getInterface } from "./Interfaces";
+import { getInterface, type SectionComponent } from "./Interfaces";
 import StageHeading from "./StageHeading";
 
 type StageEditorProps = {
 	id?: string | null;
 	insertAtIndex?: number;
 	type?: string;
+	submitRequestId: number;
+	cancelRequestId: number;
+	onValidityChange?: (valid: boolean) => void;
 };
 
-/**
- * Builds a protocol with the current wip stage inserted or updated.
- * Allows for validating and previewing the protocol with the current stage changes.
- * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
- */
-function buildProtocolWithStage(
-	protocol: CurrentProtocol,
-	stage: Stage,
-	stageId: string | null,
-	insertAtIndex?: number,
-): CurrentProtocol {
-	// For new stages, generate a temp ID for validation/preview
-	const stageWithId = stageId ? stage : { ...stage, id: uuid() };
-
-	return {
-		...protocol,
-		stages: stageId
-			? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
-			: [
-					...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
-					stageWithId,
-					...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
-				],
-	};
-}
-
 const StageEditor = (props: StageEditorProps) => {
-	const { id = null, type, insertAtIndex } = props;
+	const { id = null, type, insertAtIndex, submitRequestId, cancelRequestId, onValidityChange } = props;
 
 	const dispatch = useAppDispatch();
 	const [, setLocation] = useLocation();
 
-	// Get stage metadata from Redux state
 	const stage = useSelector((state: RootState) => getStage(state, id || ""));
 	const stageIndex = useSelector((state: RootState) => getStageIndex(state, id || ""));
-	const protocol = useSelector(getProtocol);
 	const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
 	const interfaceType = (stage?.type || type || "Information") as StageType;
 	const template = getInterface(interfaceType).template || {};
 	const initialValues = stage || { ...template, type: interfaceType };
 
-	// Get form state
 	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
-	const formValues = useSelector((state: RootState) => getFormValues(formName)(state)) as Stage | undefined;
+	const isFormValid = useSelector((state: RootState) => isFormValidSelector(formName)(state));
 
-	// Preview state
-	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
-	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
-
-	// Handle form submission
 	const onSubmit = useCallback(
 		(stageData: Record<string, unknown>) => {
 			const normalizedStage = omit(stageData, "_modified") as Stage;
@@ -92,14 +55,12 @@ const StageEditor = (props: StageEditorProps) => {
 		[id, insertAtIndex, setLocation, dispatch],
 	);
 
-	// Cancel handler with unsaved changes confirmation
 	const handleCancel = useCallback((): boolean => {
 		if (!hasUnsavedChanges) {
 			setLocation("/protocol");
 			return true;
 		}
 
-		// Show confirmation dialog for unsaved changes
 		dispatch(
 			dialogActions.openDialog({
 				type: "Warning",
@@ -114,107 +75,31 @@ const StageEditor = (props: StageEditorProps) => {
 		return false;
 	}, [hasUnsavedChanges, setLocation, dispatch]);
 
-	const handlePreview = useCallback(async () => {
-		if (!protocol || !formValues) {
-			dispatch(
-				dialogActions.openDialog({
-					type: "Error",
-					title: "Preview Error",
-					message: "No protocol loaded",
-				}),
-			);
-			return;
-		}
-
-		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
-		const previewProtocol = buildProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
-
-		// Validate the protocol before previewing
-		const validationResult = await validateProtocol(previewProtocol);
-		if (!validationResult.success) {
-			dispatch(
-				dialogActions.openDialog({
-					type: "Error",
-					title: "Cannot Preview",
-					message: ensureError(validationResult.error).message,
-				}),
-			);
-			return;
-		}
-
-		setIsUploadingPreview(true);
-		setUploadProgress(null);
-
-		try {
-			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
-			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
-
-			// Try to open popup - if blocked, show dialog with link
-			const popup = window.open(previewUrl, "_blank", "noopener,noreferrer");
-			if (!popup) {
-				dispatch(
-					dialogActions.openDialog({
-						type: "Notice",
-						title: "Preview Ready",
-						message: (
-							<div className="flex flex-col gap-4">
-								<p>Your browser blocked the preview popup. Click the link below to open it:</p>
-								<span className="break-all">
-									<ExternalLink href={previewUrl}>{previewUrl}</ExternalLink>
-								</span>
-							</div>
-						),
-						confirmLabel: "Close",
-					}),
-				);
-			}
-		} catch (error) {
-			dispatch(
-				dialogActions.openDialog({
-					type: "Error",
-					title: "Preview Failed",
-					message: error instanceof Error ? error.message : "Failed to upload protocol for preview",
-				}),
-			);
-		} finally {
-			setIsUploadingPreview(false);
-			setUploadProgress(null);
-		}
-	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
-	const renderSections = (sectionsList: readonly SectionComponent[]) =>
-		sectionsList.map((SectionComponent: SectionComponent, sectionIndex: number) => {
-			const sectionKey = `${interfaceType}-${sectionIndex}`;
-			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
-		});
+	useEffect(() => {
+		onValidityChange?.(isFormValid);
+	}, [isFormValid, onValidityChange]);
+
+	useEffect(() => {
+		if (submitRequestId === 0) return;
+		dispatch(submitForm(formName));
+	}, [submitRequestId, dispatch]);
+
+	useEffect(() => {
+		if (cancelRequestId === 0) return;
+		handleCancel();
+	}, [cancelRequestId, handleCancel]);
 
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-			<div className="relative flex flex-col h-dvh">
-				<div className="overflow-auto flex flex-col items-center basis-auto">
-					<StageHeading />
-					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
-				</div>
-				<ControlBar
-					secondaryButtons={[
-						<Button key="cancel" onClick={handleCancel} color="platinum">
-							Cancel
-						</Button>,
-					]}
-					buttons={[
-						<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview}>
-							{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
-						</Button>,
-						...(hasUnsavedChanges
-							? [
-									<Button key="submit" type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
-										Finished Editing
-									</Button>,
-								]
-							: []),
-					]}
-				/>
+			<div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+				<StageHeading />
+				{sections.map((SectionComponent: SectionComponent) => (
+					<Card key={`${interfaceType}-${SectionComponent.displayName ?? SectionComponent.name}`}>
+						<SectionComponent form={formName} stagePath={stagePath} interfaceType={interfaceType} />
+					</Card>
+				))}
 			</div>
 		</Editor>
 	);

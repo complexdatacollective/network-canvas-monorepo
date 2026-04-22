@@ -54,6 +54,16 @@ export const getStageIndex = (state: RootState, id: string) => {
 	return stageIndex;
 };
 
+export const getStageLabelById = (state: RootState, id: string): string | undefined =>
+	getProtocol(state)?.stages?.find((s: { id: string; label?: string }) => s.id === id)?.label;
+
+export const getStageIndexById = (state: RootState, id: string): number => {
+	const stages = getProtocol(state)?.stages;
+	if (!stages) return 0;
+	const idx = stages.findIndex((s: { id: string }) => s.id === id);
+	return idx === -1 ? 0 : idx;
+};
+
 const networkTypes = new Set(["network", "async:network"]);
 
 // TODO: Does this method make sense here?
