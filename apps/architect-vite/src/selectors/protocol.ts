@@ -112,6 +112,8 @@ export const getCanUndo = (state: RootState): boolean => {
 	return wouldBePresent !== null && wouldBePresent !== undefined;
 };
 
+export const getIsProtocolDirty = (state: RootState): boolean => getCanUndo(state);
+
 export const getCanRedo = (state: RootState): boolean => {
 	const future = state.activeProtocol?.future || [];
 	return future.length > 0;
