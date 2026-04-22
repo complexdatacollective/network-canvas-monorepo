@@ -10,7 +10,7 @@ describe("<TimelineStation />", () => {
 				index={0}
 				color="hsl(168 100% 39%)"
 				iconSrc="/icon.svg"
-				labelPosition="below"
+				labelPosition="right"
 			/>,
 		);
 		expect(screen.getByText("Introduction")).toBeInTheDocument();
@@ -24,7 +24,7 @@ describe("<TimelineStation />", () => {
 				index={0}
 				color="hsl(168 100% 39%)"
 				iconSrc="/icon.svg"
-				labelPosition="below"
+				labelPosition="right"
 			/>,
 		);
 		expect(screen.queryByRole("button", { name: "Delete stage" })).toBeNull();
@@ -38,7 +38,7 @@ describe("<TimelineStation />", () => {
 				index={0}
 				color="hsl(168 100% 39%)"
 				iconSrc="/icon.svg"
-				labelPosition="below"
+				labelPosition="right"
 				onDelete={onDelete}
 			/>,
 		);
@@ -52,7 +52,7 @@ describe("<TimelineStation />", () => {
 				index={0}
 				color="hsl(168 100% 39%)"
 				iconSrc="/icon.svg"
-				labelPosition="below"
+				labelPosition="right"
 				hasFilter
 			/>,
 		);
@@ -66,7 +66,7 @@ describe("<TimelineStation />", () => {
 				index={0}
 				color="hsl(168 100% 39%)"
 				iconSrc="/icon.svg"
-				labelPosition="below"
+				labelPosition="right"
 				hasSkipLogic
 			/>,
 		);

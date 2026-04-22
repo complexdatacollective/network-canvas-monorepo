@@ -74,7 +74,7 @@ const Timeline = () => {
 	return (
 		<>
 			<TimelineRail railColor="hsl(220 4% 88%)">
-				<Reorder.Group axis="x" onReorder={handleReorder} values={stages} className="flex items-center gap-6">
+				<Reorder.Group axis="y" onReorder={handleReorder} values={stages} className="flex flex-col items-center gap-6">
 					{stages.flatMap((stage, index) => [
 						<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
 						<Reorder.Item
@@ -97,7 +97,7 @@ const Timeline = () => {
 								index={index}
 								color={getStageDisplayMeta(stage.type).color}
 								iconSrc={getStageDisplayMeta(stage.type).iconSrc}
-								labelPosition={index % 2 === 0 ? "below" : "above"}
+								labelPosition={index % 2 === 0 ? "right" : "left"}
 								onDelete={() => handleDeleteStage(stage.id)}
 								hasFilter={stage.hasFilter}
 								hasSkipLogic={stage.hasSkipLogic}
