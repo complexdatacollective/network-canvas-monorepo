@@ -5,12 +5,19 @@ type PropsWithSubject = {
 	type?: string;
 };
 
-const withDisabledSubjectRequired = withProps<{ disabled: boolean }, PropsWithSubject>(({ interfaceType, type }) => {
-	if (interfaceType === "EgoForm") {
+type InjectedProps = { disabled: boolean; disabledMessage?: string };
+
+const withDisabledSubjectRequired = withProps<InjectedProps, PropsWithSubject>(({ interfaceType, type }) => {
+	if (interfaceType === "EgoForm" || type) {
 		return { disabled: false };
 	}
 
-	return { disabled: !type };
+	const entityLabel = interfaceType === "AlterEdgeForm" ? "an edge" : "a node";
+
+	return {
+		disabled: true,
+		disabledMessage: `Select ${entityLabel} type above to configure this section.`,
+	};
 });
 
 export default withDisabledSubjectRequired;

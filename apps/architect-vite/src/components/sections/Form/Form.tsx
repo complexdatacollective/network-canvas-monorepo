@@ -15,6 +15,7 @@ import withFormHandlers from "./withFormHandlers";
 type FormProps = StageEditorSectionProps & {
 	handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
 	disabled?: boolean;
+	disabledMessage?: string;
 	disableFormTitle?: boolean;
 	type?: string | null;
 	entity?: string | null;
@@ -24,12 +25,14 @@ const Form = ({
 	handleChangeFields,
 	form,
 	disabled = false,
+	disabledMessage,
 	type = null,
 	entity = null,
 	disableFormTitle = false,
 }: FormProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		group
 		title="Form"
 		summary={

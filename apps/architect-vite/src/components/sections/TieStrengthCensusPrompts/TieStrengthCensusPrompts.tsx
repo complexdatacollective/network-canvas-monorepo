@@ -14,6 +14,7 @@ type TieStrengthCensusPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
 const TieStrengthCensusPrompts = ({
@@ -22,9 +23,11 @@ const TieStrengthCensusPrompts = ({
 	entity,
 	type,
 	disabled,
+	disabledMessage,
 }: TieStrengthCensusPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable

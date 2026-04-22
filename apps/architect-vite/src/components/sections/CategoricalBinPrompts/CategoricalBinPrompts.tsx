@@ -15,6 +15,7 @@ type CategoricalBinPromptsProps = StageEditorSectionProps & {
 	type?: string | null;
 	form: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
 const CategoricalBinPrompts = ({
@@ -23,9 +24,11 @@ const CategoricalBinPrompts = ({
 	type = null,
 	form,
 	disabled,
+	disabledMessage,
 }: CategoricalBinPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable

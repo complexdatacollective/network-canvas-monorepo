@@ -13,11 +13,13 @@ type GeospatialPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
-const GeospatialPrompts = ({ form, entity, type, disabled }: GeospatialPromptsProps) => (
+const GeospatialPrompts = ({ form, entity, type, disabled, disabledMessage }: GeospatialPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable

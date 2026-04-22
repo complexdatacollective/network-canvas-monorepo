@@ -12,6 +12,7 @@ type SectionProps = {
 	title: string;
 	summary?: React.ReactNode;
 	disabled?: boolean;
+	disabledMessage?: string;
 	group?: boolean;
 	children: React.ReactNode;
 	className?: string;
@@ -25,7 +26,8 @@ const Section = ({
 	id = null,
 	title,
 	summary = null,
-	disabled: _disabled = false,
+	disabled = false,
+	disabledMessage = "Complete the required options above to enable this section.",
 	group: _group = false,
 	children,
 	className = "",
@@ -87,18 +89,33 @@ const Section = ({
 							title="Turn this feature on or off"
 							checked={isOpen}
 							onCheckedChange={changeToggleState}
-							className="shrink-0 grow-0"
+							disabled={disabled}
+							className={cn("shrink-0 grow-0", disabled && "opacity-50 cursor-not-allowed")}
 						/>
 					)}
 				</legend>
 				<div className="text-current/70">{summary}</div>
 			</div>
 			<fieldset className={classes}>
-				{isOpen && children}
-				{toggleable && !isOpen && layout !== "vertical" && (
-					<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic">
-						Click the toggle to enable this feature...
-					</div>
+				{disabled ? (
+					layout === "horizontal" ? (
+						<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic rounded">
+							{disabledMessage}
+						</div>
+					) : (
+						<div className="flex items-center justify-center p-8 bg-border/75 text-foreground/70 font-semibold italic text-center rounded">
+							{disabledMessage}
+						</div>
+					)
+				) : (
+					<>
+						{isOpen && children}
+						{toggleable && !isOpen && layout !== "vertical" && (
+							<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic">
+								Click the toggle to enable this feature...
+							</div>
+						)}
+					</>
 				)}
 				{id && <IssueAnchor fieldName={id} description={title} />}
 			</fieldset>

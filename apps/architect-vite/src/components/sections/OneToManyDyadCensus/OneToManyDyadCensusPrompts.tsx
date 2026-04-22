@@ -11,11 +11,19 @@ type OneToManyDyadCensusPromptsProps = StageEditorSectionProps & {
 	entity?: string;
 	type?: string;
 	disabled?: boolean;
+	disabledMessage?: string;
 };
 
-const OneToManyDyadCensusPrompts = ({ form, entity, type, disabled }: OneToManyDyadCensusPromptsProps) => (
+const OneToManyDyadCensusPrompts = ({
+	form,
+	entity,
+	type,
+	disabled,
+	disabledMessage,
+}: OneToManyDyadCensusPromptsProps) => (
 	<Section
 		disabled={disabled}
+		disabledMessage={disabledMessage}
 		summary={
 			<p>
 				Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable
