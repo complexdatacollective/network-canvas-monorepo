@@ -2,10 +2,12 @@ import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import Codebook from "~/components/Codebook/Codebook";
 import EntityTypeDialog from "~/components/Codebook/EntityTypeDialog";
-import ControlBar from "~/components/ControlBar";
-import { Layout } from "~/components/EditorLayout";
+import Card from "~/components/shared/Card";
+import ProtocolHeader from "~/components/shared/ProtocolHeader";
+import { useAppSelector } from "~/ducks/hooks";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
-import { Button } from "~/lib/legacy-ui/components";
+import { getProtocolName } from "~/selectors/protocol";
+import SubRouteNav from "./SubRouteNav";
 
 type DialogState = {
 	entity?: string;
@@ -13,16 +15,11 @@ type DialogState = {
 };
 
 const CodebookPage = () => {
-	const [, setLocation] = useLocation();
+	useProtocolLoader();
+	const [, navigate] = useLocation();
+	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dialogState, setDialogState] = useState<DialogState>({});
-
-	// Load the protocol based on URL parameters
-	useProtocolLoader();
-
-	const handleGoBack = () => {
-		setLocation("/protocol");
-	};
 
 	const handleOpenEntityDialog = useCallback((entity: string, type?: string) => {
 		setDialogState({ entity, type });
@@ -35,26 +32,20 @@ const CodebookPage = () => {
 	}, []);
 
 	return (
-		<div className="relative flex flex-col h-dvh">
-			<div className="flex-1 overflow-y-auto">
-				<Layout>
-					<div className="stage-heading">
-						<h1 className="screen-heading">Codebook</h1>
-						<p>
-							Below you can find an overview of the node and edge types that you have defined while creating your
-							interview. Entities that are unused may be deleted.
-						</p>
-					</div>
-					<Codebook onEditEntity={handleOpenEntityDialog} />
-				</Layout>
-			</div>
-			<ControlBar
-				secondaryButtons={[
-					<Button key="go-back" onClick={handleGoBack} color="platinum">
-						Go Back
-					</Button>,
-				]}
+		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+			<ProtocolHeader
+				protocolName={protocolName}
+				subsection="Codebook"
+				actions={<SubRouteNav active="codebook" />}
+				onLogoClick={() => navigate("/protocol")}
 			/>
+			<main className="flex-1 overflow-auto">
+				<div className="mx-auto max-w-5xl px-6 py-8">
+					<Card padding="lg">
+						<Codebook onEditEntity={handleOpenEntityDialog} />
+					</Card>
+				</div>
+			</main>
 			<EntityTypeDialog
 				show={dialogOpen}
 				entity={dialogState.entity}
