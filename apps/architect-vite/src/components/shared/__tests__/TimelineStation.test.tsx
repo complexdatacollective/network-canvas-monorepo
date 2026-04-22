@@ -78,37 +78,4 @@ describe("<TimelineStation />", () => {
 		);
 		expect(screen.getByAltText("Skip logic")).toBeInTheDocument();
 	});
-
-	it("renders an incoming rail segment with the provided color", () => {
-		const { container } = render(
-			<TimelineStation
-				label="Introduction"
-				subLabel="Information screen"
-				index={1}
-				color="hsl(168 100% 39%)"
-				iconSrc="/icon.svg"
-				labelPosition="right"
-				incomingRailColor="rgb(104, 111, 237)"
-			/>,
-		);
-		const segment = container.querySelector('[aria-hidden="true"]');
-		expect(segment).not.toBeNull();
-		// jsdom normalizes color values, so we check the serialized inline style
-		// contains the color we passed in (rgb form so the comparison is stable).
-		expect(segment?.getAttribute("style")).toContain("rgb(104, 111, 237)");
-	});
-
-	it("does not render an incoming rail segment when incomingRailColor is omitted", () => {
-		const { container } = render(
-			<TimelineStation
-				label="Introduction"
-				subLabel="Information screen"
-				index={0}
-				color="hsl(168 100% 39%)"
-				iconSrc="/icon.svg"
-				labelPosition="right"
-			/>,
-		);
-		expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
-	});
 });

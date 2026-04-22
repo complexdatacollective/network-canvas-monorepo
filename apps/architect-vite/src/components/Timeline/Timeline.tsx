@@ -9,8 +9,8 @@ import { getStageList } from "~/selectors/protocol";
 import NewStageScreen from "../Screens/NewStageScreen";
 import { getStageDisplayMeta } from "../shared/stageMeta";
 import TimelineRail from "../shared/TimelineRail";
+import TimelineSegment from "../shared/TimelineSegment";
 import TimelineStation from "../shared/TimelineStation";
-import InsertButton from "./InsertButton";
 
 const Timeline = () => {
 	const stages = useSelector(getStageList);
@@ -77,9 +77,13 @@ const Timeline = () => {
 				<Reorder.Group axis="y" onReorder={handleReorder} values={stages} className="flex w-full flex-col items-center">
 					{stages.flatMap((stage, index) => {
 						const previousStage = index > 0 ? stages[index - 1] : undefined;
-						const incomingRailColor = previousStage ? getStageDisplayMeta(previousStage.type).color : undefined;
+						const railColor = previousStage ? getStageDisplayMeta(previousStage.type).color : undefined;
 						return [
-							<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
+							<TimelineSegment
+								key={`seg_${stage.id}`}
+								railColor={railColor}
+								onInsert={() => handleInsertStage(index)}
+							/>,
 							<Reorder.Item
 								tabIndex={0}
 								key={stage.id}
@@ -102,7 +106,6 @@ const Timeline = () => {
 									color={getStageDisplayMeta(stage.type).color}
 									iconSrc={getStageDisplayMeta(stage.type).iconSrc}
 									labelPosition={index % 2 === 0 ? "right" : "left"}
-									incomingRailColor={incomingRailColor}
 									onDelete={() => handleDeleteStage(stage.id)}
 									hasFilter={stage.hasFilter}
 									hasSkipLogic={stage.hasSkipLogic}
@@ -110,7 +113,7 @@ const Timeline = () => {
 							</Reorder.Item>,
 						];
 					})}
-					<InsertButton key="insert_end" onClick={() => handleInsertStage(stages.length)} />
+					<TimelineSegment key="seg_end" onInsert={() => handleInsertStage(stages.length)} />
 				</Reorder.Group>
 			</TimelineRail>
 			<NewStageScreen open={showNewStageDialog} insertAtIndex={insertAtIndex} onOpenChange={setShowNewStageDialog} />

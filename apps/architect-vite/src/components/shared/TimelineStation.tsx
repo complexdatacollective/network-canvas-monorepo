@@ -8,7 +8,6 @@ type Props = {
 	color: string;
 	iconSrc: string;
 	labelPosition: "left" | "right";
-	incomingRailColor?: string;
 	onDelete?: () => void;
 	hasFilter?: boolean;
 	hasSkipLogic?: boolean;
@@ -21,7 +20,6 @@ export default function TimelineStation({
 	color,
 	iconSrc,
 	labelPosition,
-	incomingRailColor,
 	onDelete,
 	hasFilter,
 	hasSkipLogic,
@@ -76,25 +74,20 @@ export default function TimelineStation({
 	);
 
 	return (
-		<div className="flex w-full flex-col items-center">
-			{incomingRailColor && (
-				<div aria-hidden className="h-10 w-4" style={{ background: incomingRailColor, opacity: 0.9 }} />
+		<div className="group flex w-full items-center justify-center gap-4">
+			{labelPosition === "left" ? (
+				<>
+					<div className="flex flex-1 justify-end">{labelPill}</div>
+					{stationCircle}
+					<div className="flex flex-1 justify-start">{indexBadge}</div>
+				</>
+			) : (
+				<>
+					<div className="flex flex-1 justify-end">{indexBadge}</div>
+					{stationCircle}
+					<div className="flex flex-1 justify-start">{labelPill}</div>
+				</>
 			)}
-			<div className="group flex w-full items-center justify-center gap-4">
-				{labelPosition === "left" ? (
-					<>
-						<div className="flex flex-1 justify-end">{labelPill}</div>
-						{stationCircle}
-						<div className="flex flex-1 justify-start">{indexBadge}</div>
-					</>
-				) : (
-					<>
-						<div className="flex flex-1 justify-end">{indexBadge}</div>
-						{stationCircle}
-						<div className="flex flex-1 justify-start">{labelPill}</div>
-					</>
-				)}
-			</div>
 		</div>
 	);
 }
