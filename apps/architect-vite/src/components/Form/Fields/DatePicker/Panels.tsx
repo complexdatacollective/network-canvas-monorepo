@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { cx } from "~/utils/cva";
 
 type PanelsProps = {
 	children?: ReactNode;
@@ -7,7 +8,7 @@ type PanelsProps = {
 
 const Panels = ({ children = null }: PanelsProps) => (
 	<motion.div
-		className="date-picker__panels"
+		className={cx("bg-surface-1 h-72 overflow-hidden")}
 		initial={{ scaleY: 0, opacity: 0 }}
 		animate={{ scaleY: 1, opacity: 1 }}
 		exit={{ scaleY: 0, opacity: 0 }}
@@ -15,7 +16,7 @@ const Panels = ({ children = null }: PanelsProps) => (
 		transition={{ duration: 0.2, type: "tween" }}
 		layout
 	>
-		<motion.div className="date-picker__panels-container" layout>
+		<motion.div className="relative h-72" layout>
 			{children}
 		</motion.div>
 	</motion.div>

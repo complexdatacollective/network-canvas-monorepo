@@ -1,7 +1,7 @@
-import cx from "classnames";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FocusEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import useScrollTo from "~/lib/legacy-ui/hooks/useScrollTo";
+import { cx } from "~/utils/cva";
 import DateComponent from "./DatePicker/DateComponent";
 import DatePicker from "./DatePicker/DatePicker";
 import Days from "./DatePicker/Days";
@@ -19,6 +19,10 @@ type DatePickerInputProps = {
 	parameters?: Record<string, unknown>;
 	parentRef: RefObject<HTMLElement | null>;
 	placeholder?: string | null;
+	id?: string;
+	"aria-invalid"?: boolean;
+	"aria-required"?: boolean;
+	"aria-describedby"?: string;
 };
 
 const DatePickerInput = ({
@@ -27,6 +31,10 @@ const DatePickerInput = ({
 	parameters = {},
 	parentRef,
 	placeholder = null,
+	id,
+	"aria-invalid": ariaInvalid,
+	"aria-required": ariaRequired,
+	"aria-describedby": ariaDescribedBy,
 }: DatePickerInputProps) => {
 	const ref = useRef<HTMLDivElement>(null);
 
@@ -72,10 +80,6 @@ const DatePickerInput = ({
 	const handleClickPreview = (open = true) => setPanelsOpen(open);
 	const today = now().toObject();
 
-	const datePickerClasses = cx("date-picker", {
-		"date-picker--is-active": panelsOpen,
-	});
-
 	const handleFocus = () => {
 		if (isEmpty(value)) {
 			setPanelsOpen(true);
@@ -104,27 +108,41 @@ const DatePickerInput = ({
 					const todayDay = date.year === today.year && date.month === today.month ? today.day : null;
 
 					const handleBlur = (e: FocusEvent<HTMLDivElement>) => {
-						if (!e.target.classList.contains("date-picker")) {
-							return;
+						if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+							// Only reset when focus truly leaves the picker
+							if (!isComplete) {
+								onChange({ year: null, month: null, day: null });
+							}
 						}
-						// dump incomplete state
-						if (!isComplete) {
-							onChange({ year: null, month: null, day: null });
-						}
-						// setPanelsOpen(false);
 					};
 
 					return (
 						<LayoutGroup>
 							<motion.div
-								className={datePickerClasses}
+								id={id}
+								className={cx(
+									"text-input-contrast relative max-w-full",
+									"[--datepicker-panel-bg:var(--color-surface-1)]",
+								)}
 								onBlur={handleBlur}
 								onFocus={handleFocus}
 								tabIndex={0}
 								role="button"
+								aria-invalid={ariaInvalid || undefined}
+								aria-required={ariaRequired || undefined}
+								aria-describedby={ariaDescribedBy}
+								data-active={panelsOpen || undefined}
 							>
 								<DatePreview onClick={handleClickPreview} isActive={panelsOpen} placeholder={placeholder} />
-								<motion.div ref={ref} layout className="date-picker__container">
+								<motion.div
+									ref={ref}
+									layout
+									className={cx(
+										"absolute w-full max-w-[30rem]",
+										"z-50 mb-12",
+										"shadow-[0_2rem_3rem_0_var(--color-modal-window-box-shadow)]",
+									)}
+								>
 									<AnimatePresence>
 										{panelsOpen && (
 											<Panels>

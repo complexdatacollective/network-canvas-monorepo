@@ -1,6 +1,6 @@
-import cx from "classnames";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { cx } from "~/utils/cva";
 
 type PanelProps = {
 	type?: string | null;
@@ -20,12 +20,6 @@ const getAnimation = ({ isComplete, isActive }: { isComplete: boolean; isActive:
 };
 
 const Panel = ({ type = null, isComplete = false, isActive = false, children = null }: PanelProps) => {
-	const className = cx("date-picker__panel", {
-		[`date-picker__panel--${type}`]: type,
-		"date-picker__panel--is-complete": isComplete,
-		"date-picker__panel--is-active": isActive,
-	});
-
 	const animate = getAnimation({ isActive, isComplete });
 
 	return (
@@ -33,7 +27,8 @@ const Panel = ({ type = null, isComplete = false, isActive = false, children = n
 			initial={{ x: 0 }}
 			animate={animate}
 			transition={{ duration: 0.2, type: "tween" }}
-			className={className}
+			data-type={type ?? undefined}
+			className={cx("absolute top-0 left-0 flex h-72 w-full flex-row shrink-0 basis-full")}
 		>
 			{children}
 		</motion.div>
