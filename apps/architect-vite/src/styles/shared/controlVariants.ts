@@ -318,11 +318,11 @@ export const nativeSelectVariants = cva({
 		"cursor-[inherit]",
 		"[font-size:inherit]",
 		"appearance-none border-none bg-transparent bg-none p-0 outline-none focus:ring-0",
-		"disabled:bg-transparent",
+		"disabled:bg-transparent", // Prevent browser default disabled background from overriding wrapper
 		"bg-no-repeat",
 		"bg-[length:1.2em_1.2em]",
 		"bg-right",
 		"bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')]",
-		"pr-[1.5em]",
+		"pr-[1.5em]", // Right padding to prevent text from overlapping with dropdown arrow
 	),
 });
