@@ -2,7 +2,7 @@ import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { compose } from "react-recompose";
 import DetachedField from "~/components/DetachedField";
-import FieldError from "~/components/Form/FieldError";
+import { FieldErrors } from "~/components/Form/FieldErrors";
 import RadioGroup from "~/components/Form/Fields/RadioGroup";
 import Button from "~/lib/legacy-ui/components/Button";
 import EditRule from "./EditRule";
@@ -84,7 +84,7 @@ const Rules = ({
 					onDeleteRule={handleDeleteRule}
 					codebook={codebook}
 				/>
-				<FieldError show={hasError} error={error || ""} />
+				<FieldErrors id={`rules-${type}-error`} errors={error ? [error] : []} show={hasError} />
 			</div>
 
 			<div className="rules-rules__add-new">

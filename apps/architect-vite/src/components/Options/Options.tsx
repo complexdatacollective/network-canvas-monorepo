@@ -4,7 +4,7 @@ import { Reorder } from "motion/react";
 import type React from "react";
 import { useRef } from "react";
 import { FieldArray } from "redux-form";
-import FieldError from "~/components/Form/FieldError";
+import { FieldErrors } from "~/components/Form/FieldErrors";
 import { Button } from "~/lib/legacy-ui/components";
 import Option from "./Option";
 
@@ -130,7 +130,12 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 					})}
 				</Reorder.Group>
 
-				<FieldError show={submitFailed && !!error} error={error} />
+				<FieldErrors
+					id={`${fields.name}-error`}
+					name={fields.name}
+					errors={error ? [error] : []}
+					show={submitFailed && !!error}
+				/>
 			</div>
 			<AddItem onClick={() => fields.push({})} />
 		</div>

@@ -2,7 +2,7 @@ import type { Variable } from "@codaco/protocol-validation";
 import { keys as getKeys, isNull, toPairs } from "es-toolkit/compat";
 import type React from "react";
 import { Field } from "redux-form";
-import FieldError from "~/components/Form/FieldError";
+import { FieldErrors } from "~/components/Form/FieldErrors";
 import { Button } from "~/lib/legacy-ui/components";
 import { multiSelectContainerStyles, multiSelectRulesStyles } from "~/styles/shared/multiSelectStyles";
 import Validation from "./Validation";
@@ -54,6 +54,7 @@ type ValidationOption = {
 
 type ValidationsFieldProps = {
 	input: {
+		name: string;
 		value: Array<[string, string | number | boolean | null]>;
 	};
 	options?: ValidationOption[];
@@ -94,7 +95,7 @@ const ValidationsField = ({
 				))}
 				{children}
 			</div>
-			<FieldError show={hasError} error={error} />
+			<FieldErrors id={`${input.name}-error`} name={input.name} errors={error ? [error] : []} show={hasError} />
 		</div>
 	);
 };
