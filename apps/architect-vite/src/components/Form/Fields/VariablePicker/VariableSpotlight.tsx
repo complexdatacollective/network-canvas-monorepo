@@ -40,10 +40,13 @@ const ListItem = ({
 	}, [selected]);
 
 	const classes = cx(
-		"spotlight-list-item",
-		{ "spotlight-list-item--selected": selected },
-		{ "spotlight-list-item--clickable": onSelect },
-		{ "spotlight-list-item--disabled": disabled },
+		"flex w-full items-center justify-between px-[var(--space-lg)] py-[var(--space-xs)] [&_.variable-pill]:flex-auto",
+		{
+			"bg-primary [--variable-pill-shadow-color:hsl(var(--sea-green-dark))] [--color-text:var(--color-white)]":
+				selected,
+		},
+		{ "cursor-pointer": onSelect },
+		{ "cursor-not-allowed": disabled },
 	);
 
 	const handleClick = () => {
@@ -61,7 +64,7 @@ const ListItem = ({
 
 	if (onSelect) {
 		return (
-			<li ref={ref}>
+			<li ref={ref} data-testid="spotlight-list-item">
 				<button
 					type="button"
 					className={classes}
@@ -72,14 +75,18 @@ const ListItem = ({
 					disabled={disabled}
 				>
 					{children}
-					{selected && <kbd>Enter&nbsp;&#8629;</kbd>}
+					{selected && (
+						<kbd className="bg-surface-1 border-charcoal ml-[var(--space-md)] flex items-center justify-center rounded-[5px] border p-[var(--space-xs)]">
+							Enter&nbsp;&#8629;
+						</kbd>
+					)}
 				</button>
 			</li>
 		);
 	}
 
 	return (
-		<li ref={ref}>
+		<li ref={ref} data-testid="spotlight-list-item">
 			<div className={classes}>{children}</div>
 		</li>
 	);
@@ -91,8 +98,8 @@ type DividerProps = {
 
 const Divider = ({ legend }: DividerProps) => (
 	<ListItem>
-		<fieldset className="divider-header">
-			<legend>{legend}</legend>
+		<fieldset className="border-surface-3 w-full border-t-2">
+			<legend className="text-text/50 px-[var(--space-md)] py-[var(--space-xs)] text-center">{legend}</legend>
 		</fieldset>
 	</ListItem>
 );
@@ -192,11 +199,11 @@ const VariableSpotlight = ({
 
 	const renderResults = () => (
 		<Scroller>
-			<ol>
+			<ol className="m-0 list-none p-0">
 				{filterTerm && options.filter((item) => item.label === filterTerm).length !== 1 && (
 					<>
 						{disallowCreation && hasFilterTerm && !hasFilterResults && (
-							<div className="variable-spotlight__empty">
+							<div className="flex basis-full items-center gap-[var(--space-xs)] rounded px-[var(--space-lg)] py-[var(--space-md)] [&_.icon]:shrink-0">
 								<Icon name="warning" />
 								<div>
 									<p>
@@ -219,7 +226,7 @@ const VariableSpotlight = ({
 										}}
 										removeSelected={() => setCursor(0)}
 									>
-										<div className="create-new">
+										<div className="text-text flex items-center justify-center px-[var(--space-md)] py-[var(--space-xs)] font-medium [&_.icon]:mr-[var(--space-md)] [&_.icon]:h-[var(--space-md)]">
 											<Icon name="add" color="charcoal" />
 											<span>
 												Create new variable called &quot;
@@ -230,7 +237,7 @@ const VariableSpotlight = ({
 									</ListItem>
 								) : (
 									<ListItem disabled>
-										<div className="create-new">
+										<div className="text-text flex items-center justify-center px-[var(--space-md)] py-[var(--space-xs)] font-medium [&_.icon]:mr-[var(--space-md)] [&_.icon]:h-[var(--space-md)]">
 											<Icon name="warning" />
 											<span>
 												Cannot create variable named &quot;
@@ -367,7 +374,7 @@ const VariableSpotlight = ({
 					type: "spring",
 				}}
 			>
-				<header className="variable-spotlight__header">
+				<header className="shrink-0 basis-[3.2rem] px-[var(--space-lg)] py-[var(--space-md)] [&_.form-field]:mb-0 [&_.form-field-container]:mb-0">
 					<Search
 						autoFocus
 						placeholder={disallowCreation ? "Find a variable..." : "Create or find a variable..."}
@@ -379,12 +386,15 @@ const VariableSpotlight = ({
 					/>
 				</header>
 				<motion.main
-					className="variable-spotlight__list"
+					className="flex max-h-[60vh] flex-auto flex-col overflow-hidden pb-[var(--space-xs)] [&_.scrollable]:[mask-image:none]"
 					variants={resultsVariants}
 					transition={{ duration: 0.2, ease: "easeInOut" }}
 				>
 					{!disallowCreation && !hasOptions && (
-						<div className="variable-spotlight__empty">
+						<div
+							data-testid="variable-spotlight-empty"
+							className="flex basis-full items-center gap-[var(--space-xs)] rounded px-[var(--space-lg)] py-[var(--space-md)] [&_.icon]:shrink-0"
+						>
 							<Icon name="info" />
 							<div>
 								<p>
@@ -398,7 +408,10 @@ const VariableSpotlight = ({
 						</div>
 					)}
 					{disallowCreation && !hasFilterTerm && !hasOptions && (
-						<div className="variable-spotlight__empty">
+						<div
+							data-testid="variable-spotlight-empty"
+							className="flex basis-full items-center gap-[var(--space-xs)] rounded px-[var(--space-lg)] py-[var(--space-md)] [&_.icon]:shrink-0"
+						>
 							<Icon name="warning" />
 							<div>
 								<p>

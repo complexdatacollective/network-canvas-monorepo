@@ -30,7 +30,7 @@ describe("VariableSpotlight", () => {
 			</Provider>,
 		);
 
-		expect(baseElement.querySelector(".variable-spotlight__empty")).toBeInTheDocument();
+		expect(baseElement.querySelector('[data-testid="variable-spotlight-empty"]')).toBeInTheDocument();
 	});
 
 	it("it renders options", () => {
@@ -60,7 +60,7 @@ describe("VariableSpotlight", () => {
 			</Provider>,
 		);
 
-		const items = baseElement.querySelectorAll(".spotlight-list-item");
+		const items = baseElement.querySelectorAll('[data-testid="spotlight-list-item"]');
 
 		expect(items[0]).toHaveTextContent("Existing Variables");
 		expect(items[1]).toHaveTextContent("Just a number");
