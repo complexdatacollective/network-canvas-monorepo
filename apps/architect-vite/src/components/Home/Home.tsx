@@ -87,7 +87,7 @@ const Home = () => {
 			<ProtocolLoadingOverlay open={isLoading} />
 			<NewProtocolDialog open={showNewDialog} onOpenChange={setShowNewDialog} onSubmit={handleCreate} />
 
-			<div {...getRootProps()} className="relative flex flex-col h-dvh overflow-y-auto">
+			<div {...getRootProps()} className="relative flex flex-col h-dvh overflow-hidden">
 				<input {...getInputProps()} />
 
 				{isDragActive && (
@@ -112,9 +112,9 @@ const Home = () => {
 					</div>
 				</header>
 
-				<main className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-8 pb-8 gap-8">
-					<div className="flex flex-col md:flex-row gap-8 w-full items-start">
-						<div aria-hidden className="hidden md:block md:w-1/2 h-screen shrink-0 pointer-events-none">
+				<main className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-8 pb-8 gap-8 min-h-0">
+					<div className="flex flex-col md:flex-row gap-8 w-full items-start flex-1 min-h-0">
+						<div aria-hidden className="hidden md:block md:w-1/2 h-full shrink-0 pointer-events-none">
 							<TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
 						</div>
 
@@ -129,7 +129,7 @@ const Home = () => {
 								</p>
 							</div>
 
-							<div className="flex flex-wrap gap-3">
+							<div className="flex flex-row gap-3">
 								<Button size="large" color="sea-green" onClick={() => setShowNewDialog(true)}>
 									<FilePlus />
 									Create a new protocol
