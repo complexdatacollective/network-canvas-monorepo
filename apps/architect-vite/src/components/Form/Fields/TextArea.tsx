@@ -1,10 +1,40 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
-import cx from "classnames";
-import { useRef } from "react";
+import { memo, type ReactNode, useMemo, useRef } from "react";
 import { v4 as uuid } from "uuid";
-import Icon from "~/lib/legacy-ui/components/Icon";
-import MarkdownLabel from "./MarkdownLabel";
+import { BaseField } from "~/components/Form/BaseField";
+import {
+	controlVariants,
+	inputControlVariants,
+	interactiveStateVariants,
+	multilineContentVariants,
+	placeholderVariants,
+	stateVariants,
+	textSizeVariants,
+} from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
+
+const textareaWrapperVariants = compose(
+	controlVariants,
+	inputControlVariants,
+	stateVariants,
+	interactiveStateVariants,
+	cva({ base: cx("h-auto w-full") }),
+);
+
+const textareaVariants = compose(
+	textSizeVariants,
+	multilineContentVariants,
+	placeholderVariants,
+	cva({
+		base: cx(
+			"resize-y max-w-full size-full",
+			"cursor-[inherit]",
+			"[font-size:inherit]",
+			"border-none bg-transparent outline-none focus:ring-0",
+			"transition-none",
+		),
+	}),
+);
 
 type TextAreaProps = {
 	input?: {
@@ -24,6 +54,10 @@ type TextAreaProps = {
 	className?: string;
 	placeholder?: string;
 	hidden?: boolean;
+	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	hint?: ReactNode;
 };
 
 const TextArea = ({
@@ -31,38 +65,53 @@ const TextArea = ({
 	meta = {},
 	label = null,
 	fieldLabel = null,
-	className = "",
+	className,
 	placeholder = "",
 	hidden = false,
+	disabled = false,
+	readOnly = false,
+	required = false,
+	hint,
 }: TextAreaProps) => {
-	const id = useRef(uuid());
+	const { error, invalid, touched } = meta;
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-	const { active, error, invalid, touched } = meta;
+	const state = getInputState({ disabled, readOnly, meta });
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
 
-	const seamlessClasses = cx(className, "form-field-text", {
-		"form-field-text--has-focus": active,
-		"form-field-text--has-error": invalid && touched && error,
-	});
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
+
+	const anyLabel = fieldLabel ?? label ?? undefined;
 
 	return (
-		<label htmlFor={id.current} className="form-field-container" hidden={hidden}>
-			{(fieldLabel || label) && <MarkdownLabel label={fieldLabel || label || ""} />}
-			<div className={seamlessClasses}>
+		<BaseField
+			id={id}
+			name={input.name}
+			label={anyLabel ?? undefined}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+			containerProps={hidden ? { hidden: true } : undefined}
+		>
+			<div className={cx(textareaWrapperVariants({ state }), className)}>
 				<textarea
-					id={id.current}
-					className="form-field form-field-text form-field-text--area form-field-text__input"
-					placeholder={placeholder}
 					{...input}
+					id={id}
+					placeholder={placeholder}
+					disabled={disabled}
+					readOnly={readOnly}
+					aria-required={required || undefined}
+					aria-invalid={showErrors || undefined}
+					aria-describedby={describedBy}
+					className={textareaVariants()}
 				/>
-				{invalid && touched && (
-					<div className="form-field-text__error">
-						<Icon name="warning" />
-						{error}
-					</div>
-				)}
 			</div>
-		</label>
+		</BaseField>
 	);
 };
 
-export default TextArea;
+export default memo(TextArea);
