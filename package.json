@@ -1,17 +1,17 @@
 {
 	"private": true,
 	"scripts": {
-		"build": "pnpm -r build",
+		"build": "turbo run build",
 		"build:changed-packages": "node scripts/build-changed-packages.mjs",
-		"dev": "pnpm -r dev",
-		"test": "pnpm -r --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' test",
-		"test:watch": "pnpm -r --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' test:watch",
+		"dev": "turbo watch dev",
+		"test": "turbo run test --filter=!network-canvas-interviewer --filter=!network-canvas-architect --filter=!@codaco/network-exporters --filter=!@codaco/network-query",
+		"test:watch": "turbo watch test:watch --filter=!network-canvas-interviewer --filter=!network-canvas-architect --filter=!@codaco/network-exporters --filter=!@codaco/network-query",
 		"publish-packages": "pnpm exec changeset publish",
 		"version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
 		"changeset": "changeset add",
 		"lint": "biome check .",
 		"lint:fix": "biome check . --write",
-		"typecheck": "pnpm -r --no-bail --filter '!network-canvas-interviewer' --filter '!network-canvas-architect' --filter '!@codaco/network-exporters' --filter '!@codaco/network-query' run typecheck",
+		"typecheck": "turbo run typecheck --continue --filter=!network-canvas-interviewer --filter=!network-canvas-architect --filter=!@codaco/network-exporters --filter=!@codaco/network-query",
 		"prepare": "husky",
 		"knip": "knip --exclude catalog"
 	},
@@ -23,6 +23,7 @@
 		"husky": "^9.1.7",
 		"knip": "^6.6.2",
 		"lint-staged": "^16.4.0",
+		"turbo": "^2.9.6",
 		"typescript": "catalog:"
 	},
 	"pnpm": {

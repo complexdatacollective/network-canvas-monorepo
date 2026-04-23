@@ -1,0 +1,49 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "tui",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": [
+				"src/**",
+				"tsconfig*.json",
+				"vite.config.*",
+				"electron.vite.config.*",
+				"next.config.*",
+				"package.json"
+			],
+			"outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
+		},
+		"network-canvas-architect#build": {
+			"dependsOn": ["^build", "network-canvas-interviewer#build"],
+			"inputs": [
+				"src/**",
+				"scripts/**",
+				"tsconfig*.json",
+				"electron.vite.config.*",
+				"electron-builder.config.*",
+				"package.json"
+			],
+			"outputs": ["out/**", "dist/**"]
+		},
+		"dev": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"persistent": true
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"inputs": ["src/**", "__tests__/**", "vitest.config.*", "package.json"],
+			"outputs": []
+		},
+		"test:watch": {
+			"cache": false,
+			"persistent": true
+		},
+		"typecheck": {
+			"dependsOn": ["^build"],
+			"inputs": ["src/**", "tsconfig*.json", "package.json"],
+			"outputs": []
+		}
+	}
+}
