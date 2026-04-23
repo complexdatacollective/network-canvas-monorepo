@@ -1,9 +1,9 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
-import cx from "classnames";
+import { type ReactNode, useMemo, useRef } from "react";
+import { v4 as uuid } from "uuid";
+import { BaseField } from "~/components/Form/BaseField";
 import BooleanToggle from "~/lib/legacy-ui/components/Boolean/Boolean";
-import Icon from "~/lib/legacy-ui/components/Icon";
-import MarkdownLabel from "./MarkdownLabel";
+import { cx } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
 
 type BooleanValue = boolean | string | number | null;
 
@@ -20,12 +20,15 @@ type BooleanFieldProps = {
 	fieldLabel?: string | null;
 	noReset?: boolean;
 	className?: string;
+	hint?: ReactNode;
+	required?: boolean;
 	input: {
 		name: string;
 		value: BooleanValue;
 		onChange: (value: BooleanValue) => void;
 	};
 	disabled?: boolean;
+	readOnly?: boolean;
 	options?: BooleanOption[];
 	meta?: {
 		error?: string;
@@ -39,46 +42,52 @@ const BooleanField = ({
 	fieldLabel = null,
 	noReset = false,
 	className = "",
+	hint,
+	required = false,
 	input,
 	disabled = false,
+	readOnly = false,
 	options = [
 		{ label: "Yes", value: true },
 		{ label: "No", value: false, negative: true },
 	],
 	meta = {},
 }: BooleanFieldProps) => {
-	const { error, invalid, touched } = meta;
-	const componentClasses = cx(
-		"form-field-container form-field-boolean",
-		className,
-		{
-			"form-field-boolean--disabled": disabled,
-		},
-		{
-			"form-field-boolean--has-error": invalid && touched && error,
-		},
-	);
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-	const anyLabel = fieldLabel || label;
+	const { error, invalid, touched } = meta;
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
+	const state = getInputState({ disabled, readOnly, meta });
+
+	const anyLabel = fieldLabel ?? label ?? undefined;
 
 	return (
-		<div className={componentClasses}>
-			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className="form-field-boolean__control">
+		<BaseField
+			id={id}
+			name={input.name}
+			label={anyLabel ?? undefined}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+		>
+			<fieldset
+				aria-labelledby={anyLabel ? `${id}-label` : undefined}
+				aria-invalid={showErrors || undefined}
+				className={cx("w-full border-0 p-0", className)}
+				data-state={state}
+				disabled={disabled}
+			>
 				<BooleanToggle
 					options={options as Parameters<typeof BooleanToggle>[0]["options"]}
 					value={input.value as boolean | null}
 					onChange={input.onChange as (value: boolean | null) => void}
 					noReset={noReset}
 				/>
-				{invalid && touched && (
-					<div className="form-field-boolean__error">
-						<Icon name="warning" />
-						{error}
-					</div>
-				)}
-			</div>
-		</div>
+			</fieldset>
+		</BaseField>
 	);
 };
 

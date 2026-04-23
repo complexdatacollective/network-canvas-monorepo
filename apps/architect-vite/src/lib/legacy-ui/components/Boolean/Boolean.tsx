@@ -16,9 +16,9 @@ type BooleanProps = {
 	onChange: (value: boolean | null) => void;
 };
 
-const BooleanField = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
-	<div className="form-field boolean">
-		<div className="boolean__options">
+const BooleanToggle = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
+	<div className="flex w-full flex-col gap-2">
+		<div className="flex w-full gap-2">
 			{options.map(({ label, value: optionValue, classes, icon, negative }) => (
 				<BooleanOption
 					classes={classes}
@@ -32,8 +32,12 @@ const BooleanField = ({ noReset, options = [], value = null, onChange = () => {}
 			))}
 		</div>
 		{!noReset && (
-			<div className="boolean__reset">
-				<button type="button" onClick={() => onChange(null)}>
+			<div>
+				<button
+					type="button"
+					onClick={() => onChange(null)}
+					className="cursor-pointer text-sm text-input-contrast underline hover:text-input-contrast/80"
+				>
 					Reset answer
 				</button>
 			</div>
@@ -41,4 +45,4 @@ const BooleanField = ({ noReset, options = [], value = null, onChange = () => {}
 	</div>
 );
 
-export default BooleanField;
+export default BooleanToggle;
