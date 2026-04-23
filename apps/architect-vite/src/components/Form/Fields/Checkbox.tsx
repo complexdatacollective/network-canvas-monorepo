@@ -1,9 +1,21 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
-import cx from "classnames";
 import { memo, useRef } from "react";
 import { v4 as uuid } from "uuid";
+import { controlLabelVariants, groupOptionVariants, smallSizeVariants } from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
+
+const checkboxVariants = compose(
+	smallSizeVariants,
+	cva({
+		base: cx(
+			"focusable aspect-square shrink-0 appearance-none",
+			"rounded-sm border-2 border-input-contrast/30 bg-input",
+			"transition-colors duration-200",
+			"checked:bg-primary checked:border-primary",
+			"disabled:opacity-50 disabled:cursor-not-allowed",
+		),
+	}),
+);
 
 export type CheckboxProps = {
 	label?: React.ReactNode;
@@ -22,16 +34,11 @@ export type CheckboxProps = {
 const Checkbox = ({ label, className = "", input, disabled = false, fieldLabel, ...rest }: CheckboxProps) => {
 	const id = useRef(uuid());
 
-	const componentClasses = cx("form-field-checkbox", className, {
-		"form-field-checkbox--disabled": disabled,
-	});
-
 	const { name, value, onChange, ...inputRest } = input;
 
 	return (
-		<label className={componentClasses} htmlFor={id.current}>
+		<label className={cx(groupOptionVariants({ disabled }), className)} htmlFor={id.current}>
 			<input
-				className="form-field-checkbox__input"
 				id={id.current}
 				name={name}
 				// input.checked is only provided by redux form if type="checkbox" or type="radio" is
@@ -39,12 +46,17 @@ const Checkbox = ({ label, className = "", input, disabled = false, fieldLabel, 
 				// input.value
 				checked={!!value}
 				onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
+				disabled={disabled}
 				{...(inputRest as Record<string, unknown>)}
 				{...(rest as Record<string, unknown>)}
 				type="checkbox"
+				className={checkboxVariants()}
 			/>
-			<div className="form-field-checkbox__checkbox" />
-			{label && <MarkdownLabel inline label={label} className="form-field-inline-label" />}
+			{label && (
+				<span className={cx(controlLabelVariants(), "cursor-[inherit]", disabled && "opacity-50")}>
+					<MarkdownLabel inline label={label} />
+				</span>
+			)}
 		</label>
 	);
 };
