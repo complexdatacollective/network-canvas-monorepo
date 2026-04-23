@@ -46,8 +46,8 @@ export default function TimelineStation({
 			<div className="font-mono text-[12px] tracking-[0.1em]" style={{ color: "hsl(220 4% 44%)" }}>
 				{String(index + 1).padStart(2, "0")}
 			</div>
-			{hasFilter && <img src={filterIcon} alt="Filter" className="size-4" />}
-			{hasSkipLogic && <img src={skipLogicIcon} alt="Skip logic" className="size-4" />}
+			{hasFilter && <img src={filterIcon} alt="Filter" className="size-8" />}
+			{hasSkipLogic && <img src={skipLogicIcon} alt="Skip logic" className="size-8" />}
 		</div>
 	);
 

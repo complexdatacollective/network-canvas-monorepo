@@ -32,7 +32,7 @@ const CodebookPage = () => {
 	}, []);
 
 	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
+		<div className="flex h-dvh flex-col pt-16">
 			<ProtocolHeader
 				protocolName={protocolName}
 				subsection="Codebook"

@@ -12,10 +12,7 @@ type Props = {
 
 export default function ProtocolHeader({ protocolName, subsection, actions, onLogoClick }: Props) {
 	return (
-		<header
-			className="fixed left-0 right-0 top-0 z-30 flex items-center gap-4 px-6 py-3"
-			style={{ background: "#F3EFF6" }}
-		>
+		<header className="fixed left-0 right-0 top-0 z-30 flex items-center gap-4 px-6 py-3">
 			<button
 				type="button"
 				aria-label="Architect home"

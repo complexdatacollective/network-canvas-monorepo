@@ -242,7 +242,7 @@
 	}
 
 	body {
-		@apply bg-background text-foreground overflow-hidden h-full w-full;
+		@apply bg-[#F3EFF6] text-foreground overflow-hidden h-full w-full;
 		-webkit-font-smoothing: antialiased;
 	}
 

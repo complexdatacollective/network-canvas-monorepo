@@ -163,7 +163,6 @@ const Home = () => {
 				{...getRootProps({
 					className: "w-full h-dvh",
 				})}
-				style={{ background: "#F3EFF6" }}
 			>
 				<input {...getInputProps()} />
 
@@ -182,7 +181,7 @@ const Home = () => {
 					{/* Top bar */}
 					<header className="absolute left-4 right-4 top-4 z-10 flex items-center sm:left-8 sm:right-8 sm:top-6 xl:left-12 xl:right-12 xl:top-7 2xl:left-14 2xl:right-14 2xl:top-9 min-[1920px]:left-16 min-[1920px]:right-16 min-[1920px]:top-11">
 						<div
-							className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-1.5 pr-3 sm:gap-3.5 sm:py-2 sm:pl-2 sm:pr-4.5 2xl:gap-4 2xl:py-2.5 2xl:pr-5 min-[1920px]:gap-5 min-[1920px]:pr-6"
+							className="flex items-center gap-2.5 rounded-full bg-white/50 py-1.5 pl-1.5 pr-3 sm:gap-3.5 sm:py-2 sm:pl-2 sm:pr-4.5 2xl:gap-4 2xl:py-2.5 2xl:pr-5 min-[1920px]:gap-5 min-[1920px]:pr-6"
 							style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.08)" }}
 						>
 							<img src={architectIcon} alt="" className="size-12 rounded-full" />
@@ -289,7 +288,7 @@ const Home = () => {
 
 						{/* Drop card */}
 						<div
-							className="flex items-center gap-3.5 rounded bg-white px-4 py-3.5 sm:px-5 sm:py-4 2xl:gap-4 2xl:px-6 2xl:py-5 min-[1920px]:gap-5 min-[1920px]:px-7 min-[1920px]:py-6"
+							className="flex items-center gap-3.5 rounded bg-white/40 px-4 py-3.5 sm:px-5 sm:py-4 2xl:gap-4 2xl:px-6 2xl:py-5 min-[1920px]:gap-5 min-[1920px]:px-7 min-[1920px]:py-6"
 							style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.06)" }}
 						>
 							<div
@@ -375,7 +374,7 @@ type LedgerProps = {
 function Ledger({ mode, onModeChange, recents, templates, onOpenRecent, onOpenTemplate }: LedgerProps) {
 	return (
 		<div
-			className="flex min-h-[220px] flex-col overflow-hidden rounded bg-white py-3.5 xl:min-h-0 xl:flex-1 2xl:py-4 min-[1920px]:py-5"
+			className="flex min-h-[220px] flex-col overflow-hidden rounded bg-white/40 py-3.5 xl:min-h-0 xl:flex-1 2xl:py-4 min-[1920px]:py-5"
 			style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.06)" }}
 		>
 			<div className="flex items-center gap-1.5 px-3.5 pb-2.5 2xl:px-4 2xl:pb-3 min-[1920px]:px-5">

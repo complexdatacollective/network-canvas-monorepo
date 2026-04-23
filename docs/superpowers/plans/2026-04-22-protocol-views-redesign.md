@@ -127,6 +127,7 @@ git commit -m "docs: protocol redesign pre-flight notes"
 Introduces three variants matching Home's button language: `primary` (sea-green with 3D shadow), `secondary` (white with soft shadow), `tertiary` (transparent).
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/PillButton.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/PillButton.test.tsx`
 
@@ -139,33 +140,33 @@ import { describe, expect, it, vi } from "vitest";
 import PillButton from "../PillButton";
 
 describe("<PillButton />", () => {
-	it("renders children and handles click", async () => {
-		const onClick = vi.fn();
-		render(
-			<PillButton variant="primary" onClick={onClick}>
-				Create protocol
-			</PillButton>,
-		);
-		const btn = screen.getByRole("button", { name: /create protocol/i });
-		btn.click();
-		expect(onClick).toHaveBeenCalledOnce();
-	});
+ it("renders children and handles click", async () => {
+  const onClick = vi.fn();
+  render(
+   <PillButton variant="primary" onClick={onClick}>
+    Create protocol
+   </PillButton>,
+  );
+  const btn = screen.getByRole("button", { name: /create protocol/i });
+  btn.click();
+  expect(onClick).toHaveBeenCalledOnce();
+ });
 
-	it("applies primary variant styles", () => {
-		render(<PillButton variant="primary">Go</PillButton>);
-		const btn = screen.getByRole("button");
-		expect(btn).toHaveClass("rounded-full");
-		expect(btn.getAttribute("style")).toContain("hsl(168 100% 39%)");
-	});
+ it("applies primary variant styles", () => {
+  render(<PillButton variant="primary">Go</PillButton>);
+  const btn = screen.getByRole("button");
+  expect(btn).toHaveClass("rounded-full");
+  expect(btn.getAttribute("style")).toContain("hsl(168 100% 39%)");
+ });
 
-	it("respects disabled", () => {
-		render(
-			<PillButton variant="primary" disabled>
-				Go
-			</PillButton>,
-		);
-		expect(screen.getByRole("button")).toBeDisabled();
-	});
+ it("respects disabled", () => {
+  render(
+   <PillButton variant="primary" disabled>
+    Go
+   </PillButton>,
+  );
+  expect(screen.getByRole("button")).toBeDisabled();
+ });
 });
 ```
 
@@ -187,11 +188,11 @@ export type PillButtonVariant = "primary" | "secondary" | "tertiary";
 export type PillButtonSize = "md" | "sm";
 
 type Props = {
-	variant: PillButtonVariant;
-	size?: PillButtonSize;
-	icon?: ReactNode;
-	iconPosition?: "left" | "right";
-	children?: ReactNode;
+ variant: PillButtonVariant;
+ size?: PillButtonSize;
+ icon?: ReactNode;
+ iconPosition?: "left" | "right";
+ children?: ReactNode;
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 const SEA_GREEN = "hsl(168 100% 39%)";
@@ -199,34 +200,34 @@ const SEA_GREEN_DARK = "hsl(168 100% 26%)";
 const INK = "hsl(240 35% 17%)";
 
 const baseClass =
-	"inline-flex items-center justify-center gap-2.5 rounded-full font-heading font-bold uppercase tracking-[0.15em] cursor-pointer transition-opacity disabled:cursor-not-allowed disabled:opacity-50";
+ "inline-flex items-center justify-center gap-2.5 rounded-full font-heading font-bold uppercase tracking-[0.15em] cursor-pointer transition-opacity disabled:cursor-not-allowed disabled:opacity-50";
 
 const sizeClass: Record<PillButtonSize, string> = {
-	md: "px-7 py-4 text-[12.5px]",
-	sm: "px-5 py-2.5 text-[11px]",
+ md: "px-7 py-4 text-[12.5px]",
+ sm: "px-5 py-2.5 text-[11px]",
 };
 
 const PillButton = forwardRef<HTMLButtonElement, Props>(function PillButton(
-	{ variant, size = "md", icon, iconPosition = "left", children, className = "", style, ...rest },
-	ref,
+ { variant, size = "md", icon, iconPosition = "left", children, className = "", style, ...rest },
+ ref,
 ) {
-	const variantStyle =
-		variant === "primary"
-			? { background: SEA_GREEN, color: "#fff", boxShadow: `0 4px 0 ${SEA_GREEN_DARK}` }
-			: variant === "secondary"
-				? { background: "#fff", color: INK, boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }
-				: { background: "transparent", color: INK };
+ const variantStyle =
+  variant === "primary"
+   ? { background: SEA_GREEN, color: "#fff", boxShadow: `0 4px 0 ${SEA_GREEN_DARK}` }
+   : variant === "secondary"
+    ? { background: "#fff", color: INK, boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }
+    : { background: "transparent", color: INK };
 
-	const composed = `${baseClass} ${sizeClass[size]} ${className}`.trim();
-	const inlineStyle = { ...variantStyle, ...style };
+ const composed = `${baseClass} ${sizeClass[size]} ${className}`.trim();
+ const inlineStyle = { ...variantStyle, ...style };
 
-	return (
-		<button ref={ref} type="button" className={composed} style={inlineStyle} {...rest}>
-			{icon && iconPosition === "left" && <span className="flex items-center">{icon}</span>}
-			{children}
-			{icon && iconPosition === "right" && <span className="flex items-center">{icon}</span>}
-		</button>
-	);
+ return (
+  <button ref={ref} type="button" className={composed} style={inlineStyle} {...rest}>
+   {icon && iconPosition === "left" && <span className="flex items-center">{icon}</span>}
+   {children}
+   {icon && iconPosition === "right" && <span className="flex items-center">{icon}</span>}
+  </button>
+ );
 });
 
 export default PillButton;
@@ -263,6 +264,7 @@ git commit -m "feat(architect-vite): add PillButton shared primitive"
 White surface with the shadow token from Home (`0 4px 12px rgba(22,21,43,0.08)`), rounded, consistent padding.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/Card.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/Card.test.tsx`
 
@@ -275,21 +277,21 @@ import { describe, expect, it } from "vitest";
 import Card from "../Card";
 
 describe("<Card />", () => {
-	it("renders children with card styles", () => {
-		render(<Card>content</Card>);
-		const el = screen.getByText("content").parentElement!;
-		expect(el).toHaveClass("bg-white");
-		expect(el.getAttribute("style")).toContain("rgba(22,21,43,0.08)");
-	});
+ it("renders children with card styles", () => {
+  render(<Card>content</Card>);
+  const el = screen.getByText("content").parentElement!;
+  expect(el).toHaveClass("bg-white");
+  expect(el.getAttribute("style")).toContain("rgba(22,21,43,0.08)");
+ });
 
-	it("accepts padding prop", () => {
-		render(
-			<Card padding="lg" data-testid="card">
-				x
-			</Card>,
-		);
-		expect(screen.getByTestId("card")).toHaveClass("p-8");
-	});
+ it("accepts padding prop", () => {
+  render(
+   <Card padding="lg" data-testid="card">
+    x
+   </Card>,
+  );
+  expect(screen.getByTestId("card")).toHaveClass("p-8");
+ });
 });
 ```
 
@@ -310,27 +312,27 @@ import { type HTMLAttributes, type ReactNode } from "react";
 type CardPadding = "sm" | "md" | "lg";
 
 const paddingClass: Record<CardPadding, string> = {
-	sm: "p-4",
-	md: "p-6",
-	lg: "p-8",
+ sm: "p-4",
+ md: "p-6",
+ lg: "p-8",
 };
 
 type Props = {
-	padding?: CardPadding;
-	children: ReactNode;
+ padding?: CardPadding;
+ children: ReactNode;
 } & HTMLAttributes<HTMLDivElement>;
 
 export default function Card({ padding = "md", children, className = "", style, ...rest }: Props) {
-	const composed = `bg-white rounded-2xl ${paddingClass[padding]} ${className}`.trim();
-	return (
-		<div
-			className={composed}
-			style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.08)", ...style }}
-			{...rest}
-		>
-			{children}
-		</div>
-	);
+ const composed = `bg-white rounded-2xl ${paddingClass[padding]} ${className}`.trim();
+ return (
+  <div
+   className={composed}
+   style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.08)", ...style }}
+   {...rest}
+  >
+   {children}
+  </div>
+ );
 }
 ```
 
@@ -357,6 +359,7 @@ git commit -m "feat(architect-vite): add Card shared primitive"
 Small uppercase tracked label used in Home's version pill and the new stage-type badge.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/Badge.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/Badge.test.tsx`
 
@@ -369,17 +372,17 @@ import { describe, expect, it } from "vitest";
 import Badge from "../Badge";
 
 describe("<Badge />", () => {
-	it("renders children", () => {
-		render(<Badge color="hsl(168 100% 26%)">web</Badge>);
-		expect(screen.getByText("web")).toBeInTheDocument();
-	});
+ it("renders children", () => {
+  render(<Badge color="hsl(168 100% 26%)">web</Badge>);
+  expect(screen.getByText("web")).toBeInTheDocument();
+ });
 
-	it("applies uppercase tracked styles", () => {
-		render(<Badge color="hsl(168 100% 26%)">web</Badge>);
-		const el = screen.getByText("web");
-		expect(el).toHaveClass("uppercase");
-		expect(el).toHaveClass("font-bold");
-	});
+ it("applies uppercase tracked styles", () => {
+  render(<Badge color="hsl(168 100% 26%)">web</Badge>);
+  const el = screen.getByText("web");
+  expect(el).toHaveClass("uppercase");
+  expect(el).toHaveClass("font-bold");
+ });
 });
 ```
 
@@ -398,23 +401,23 @@ Expected: FAIL.
 import { type ReactNode } from "react";
 
 type Props = {
-	color: string;
-	background?: string;
-	children: ReactNode;
+ color: string;
+ background?: string;
+ children: ReactNode;
 };
 
 export default function Badge({ color, background, children }: Props) {
-	return (
-		<span
-			className="rounded-full px-2.5 py-[3px] text-[11px] font-bold uppercase tracking-[0.15em]"
-			style={{
-				background: background ?? `color-mix(in srgb, ${color} 18%, transparent)`,
-				color,
-			}}
-		>
-			{children}
-		</span>
-	);
+ return (
+  <span
+   className="rounded-full px-2.5 py-[3px] text-[11px] font-bold uppercase tracking-[0.15em]"
+   style={{
+    background: background ?? `color-mix(in srgb, ${color} 18%, transparent)`,
+    color,
+   }}
+  >
+   {children}
+  </span>
+ );
 }
 ```
 
@@ -441,6 +444,7 @@ git commit -m "feat(architect-vite): add Badge shared primitive"
 Fixed top bar matching Home's header visually, but parameterized for editor context: protocol breadcrumb on the left (logo, version badge, protocol name, optional subsection), slot for right-side actions.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/ProtocolHeader.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/ProtocolHeader.test.tsx`
 
@@ -453,32 +457,32 @@ import { describe, expect, it, vi } from "vitest";
 import ProtocolHeader from "../ProtocolHeader";
 
 describe("<ProtocolHeader />", () => {
-	it("renders protocol name in the breadcrumb", () => {
-		render(<ProtocolHeader protocolName="MyProtocol" />);
-		expect(screen.getByText("MyProtocol")).toBeInTheDocument();
-	});
+ it("renders protocol name in the breadcrumb", () => {
+  render(<ProtocolHeader protocolName="MyProtocol" />);
+  expect(screen.getByText("MyProtocol")).toBeInTheDocument();
+ });
 
-	it("renders subsection after a separator when provided", () => {
-		render(<ProtocolHeader protocolName="MyProtocol" subsection="Assets" />);
-		expect(screen.getByText("Assets")).toBeInTheDocument();
-	});
+ it("renders subsection after a separator when provided", () => {
+  render(<ProtocolHeader protocolName="MyProtocol" subsection="Assets" />);
+  expect(screen.getByText("Assets")).toBeInTheDocument();
+ });
 
-	it("renders action slot on the right", () => {
-		render(
-			<ProtocolHeader
-				protocolName="P"
-				actions={<button type="button">Save</button>}
-			/>,
-		);
-		expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-	});
+ it("renders action slot on the right", () => {
+  render(
+   <ProtocolHeader
+    protocolName="P"
+    actions={<button type="button">Save</button>}
+   />,
+  );
+  expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+ });
 
-	it("calls onLogoClick when logo is clicked", async () => {
-		const onLogoClick = vi.fn();
-		render(<ProtocolHeader protocolName="P" onLogoClick={onLogoClick} />);
-		screen.getByRole("button", { name: /architect home/i }).click();
-		expect(onLogoClick).toHaveBeenCalledOnce();
-	});
+ it("calls onLogoClick when logo is clicked", async () => {
+  const onLogoClick = vi.fn();
+  render(<ProtocolHeader protocolName="P" onLogoClick={onLogoClick} />);
+  screen.getByRole("button", { name: /architect home/i }).click();
+  expect(onLogoClick).toHaveBeenCalledOnce();
+ });
 });
 ```
 
@@ -500,51 +504,51 @@ import { appVersion } from "~/utils/appVersion";
 import Badge from "./Badge";
 
 type Props = {
-	protocolName: string;
-	subsection?: string;
-	actions?: ReactNode;
-	onLogoClick?: () => void;
+ protocolName: string;
+ subsection?: string;
+ actions?: ReactNode;
+ onLogoClick?: () => void;
 };
 
 export default function ProtocolHeader({ protocolName, subsection, actions, onLogoClick }: Props) {
-	return (
-		<header
-			className="fixed left-0 right-0 top-0 z-30 flex items-center gap-4 px-6 py-3"
-			style={{ background: "#F3EFF6" }}
-		>
-			<button
-				type="button"
-				aria-label="Architect home"
-				onClick={onLogoClick}
-				className="flex cursor-pointer items-center gap-3 rounded-full bg-white py-1.5 pl-1.5 pr-3"
-				style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.08)" }}
-			>
-				<img src={architectIcon} alt="" className="size-10 rounded-full" />
-				<span className="font-heading text-base font-extrabold">Architect</span>
-				<Badge color="hsl(168 100% 26%)">v{appVersion}</Badge>
-			</button>
+ return (
+  <header
+   className="fixed left-0 right-0 top-0 z-30 flex items-center gap-4 px-6 py-3"
+   
+  >
+   <button
+    type="button"
+    aria-label="Architect home"
+    onClick={onLogoClick}
+    className="flex cursor-pointer items-center gap-3 rounded-full bg-white py-1.5 pl-1.5 pr-3"
+    style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.08)" }}
+   >
+    <img src={architectIcon} alt="" className="size-10 rounded-full" />
+    <span className="font-heading text-base font-extrabold">Architect</span>
+    <Badge color="hsl(168 100% 26%)">v{appVersion}</Badge>
+   </button>
 
-			<nav
-				aria-label="Protocol breadcrumb"
-				className="flex min-w-0 items-center gap-2 font-heading text-sm font-bold"
-				style={{ color: "hsl(240 35% 17%)" }}
-			>
-				<span className="truncate max-w-[32ch]">{protocolName}</span>
-				{subsection && (
-					<>
-						<span aria-hidden style={{ color: "hsl(220 4% 44%)" }}>
-							▸
-						</span>
-						<span className="truncate max-w-[32ch]" style={{ color: "hsl(220 4% 44%)" }}>
-							{subsection}
-						</span>
-					</>
-				)}
-			</nav>
+   <nav
+    aria-label="Protocol breadcrumb"
+    className="flex min-w-0 items-center gap-2 font-heading text-sm font-bold"
+    style={{ color: "hsl(240 35% 17%)" }}
+   >
+    <span className="truncate max-w-[32ch]">{protocolName}</span>
+    {subsection && (
+     <>
+      <span aria-hidden style={{ color: "hsl(220 4% 44%)" }}>
+       ▸
+      </span>
+      <span className="truncate max-w-[32ch]" style={{ color: "hsl(220 4% 44%)" }}>
+       {subsection}
+      </span>
+     </>
+    )}
+   </nav>
 
-			{actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
-		</header>
-	);
+   {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
+  </header>
+ );
 }
 ```
 
@@ -571,6 +575,7 @@ git commit -m "feat(architect-vite): add ProtocolHeader shared primitive"
 Responsive 50/50 layout. Above 1280px: 50/50. 1024–1279px: 40/60. Below 1024px: collapses to a toggleable preview panel on top of the editor (closed by default).
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/SplitPane.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/SplitPane.test.tsx`
 
@@ -583,23 +588,23 @@ import { describe, expect, it } from "vitest";
 import SplitPane from "../SplitPane";
 
 describe("<SplitPane />", () => {
-	it("renders both left and right slots", () => {
-		render(<SplitPane left={<div>PREVIEW</div>} right={<div>EDITOR</div>} />);
-		expect(screen.getByText("PREVIEW")).toBeInTheDocument();
-		expect(screen.getByText("EDITOR")).toBeInTheDocument();
-	});
+ it("renders both left and right slots", () => {
+  render(<SplitPane left={<div>PREVIEW</div>} right={<div>EDITOR</div>} />);
+  expect(screen.getByText("PREVIEW")).toBeInTheDocument();
+  expect(screen.getByText("EDITOR")).toBeInTheDocument();
+ });
 
-	it("supports a narrow-viewport toggle", () => {
-		render(
-			<SplitPane
-				left={<div>PREVIEW</div>}
-				right={<div>EDITOR</div>}
-				narrowPreviewOpen={false}
-				onNarrowPreviewToggle={() => {}}
-			/>,
-		);
-		expect(screen.getByRole("button", { name: /preview/i })).toBeInTheDocument();
-	});
+ it("supports a narrow-viewport toggle", () => {
+  render(
+   <SplitPane
+    left={<div>PREVIEW</div>}
+    right={<div>EDITOR</div>}
+    narrowPreviewOpen={false}
+    onNarrowPreviewToggle={() => {}}
+   />,
+  );
+  expect(screen.getByRole("button", { name: /preview/i })).toBeInTheDocument();
+ });
 });
 ```
 
@@ -618,38 +623,38 @@ Expected: FAIL.
 import { type ReactNode } from "react";
 
 type Props = {
-	left: ReactNode;
-	right: ReactNode;
-	narrowPreviewOpen?: boolean;
-	onNarrowPreviewToggle?: () => void;
+ left: ReactNode;
+ right: ReactNode;
+ narrowPreviewOpen?: boolean;
+ onNarrowPreviewToggle?: () => void;
 };
 
 export default function SplitPane({ left, right, narrowPreviewOpen = false, onNarrowPreviewToggle }: Props) {
-	return (
-		<div className="flex h-full w-full flex-col lg:flex-row">
-			{/* Narrow-viewport preview toggle */}
-			{onNarrowPreviewToggle && (
-				<button
-					type="button"
-					onClick={onNarrowPreviewToggle}
-					aria-expanded={narrowPreviewOpen}
-					className="flex items-center justify-between px-4 py-2 text-left font-heading text-xs font-bold uppercase tracking-[0.15em] lg:hidden"
-					style={{ background: "rgba(255,255,255,0.6)" }}
-				>
-					<span>Preview</span>
-					<span aria-hidden>{narrowPreviewOpen ? "▾" : "▸"}</span>
-				</button>
-			)}
+ return (
+  <div className="flex h-full w-full flex-col lg:flex-row">
+   {/* Narrow-viewport preview toggle */}
+   {onNarrowPreviewToggle && (
+    <button
+     type="button"
+     onClick={onNarrowPreviewToggle}
+     aria-expanded={narrowPreviewOpen}
+     className="flex items-center justify-between px-4 py-2 text-left font-heading text-xs font-bold uppercase tracking-[0.15em] lg:hidden"
+     style={{ background: "rgba(255,255,255,0.6)" }}
+    >
+     <span>Preview</span>
+     <span aria-hidden>{narrowPreviewOpen ? "▾" : "▸"}</span>
+    </button>
+   )}
 
-			<div
-				className={`${narrowPreviewOpen ? "h-[50dvh]" : "h-0"} overflow-hidden lg:h-auto lg:basis-2/5 xl:basis-1/2`}
-			>
-				{left}
-			</div>
+   <div
+    className={`${narrowPreviewOpen ? "h-[50dvh]" : "h-0"} overflow-hidden lg:h-auto lg:basis-2/5 xl:basis-1/2`}
+   >
+    {left}
+   </div>
 
-			<div className="flex-1 overflow-auto lg:basis-3/5 xl:basis-1/2">{right}</div>
-		</div>
-	);
+   <div className="flex-1 overflow-auto lg:basis-3/5 xl:basis-1/2">{right}</div>
+  </div>
+ );
 }
 ```
 
@@ -676,6 +681,7 @@ git commit -m "feat(architect-vite): add SplitPane shared primitive"
 State container for preview upload results, keyed by protocol hash to allow cache hits across navigations.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/ducks/modules/preview.ts`
 - Create: `apps/architect-vite/src/ducks/modules/__tests__/preview.test.ts`
 - Modify: `apps/architect-vite/src/ducks/store.ts` — register reducer.
@@ -686,34 +692,34 @@ State container for preview upload results, keyed by protocol hash to allow cach
 // apps/architect-vite/src/ducks/modules/__tests__/preview.test.ts
 import { describe, expect, it } from "vitest";
 import previewReducer, {
-	previewUploadStarted,
-	previewUploadSucceeded,
-	previewUploadFailed,
-	type PreviewState,
+ previewUploadStarted,
+ previewUploadSucceeded,
+ previewUploadFailed,
+ type PreviewState,
 } from "../preview";
 
 const initial: PreviewState = { status: "idle", url: null, error: null, lastUploadedAt: null, lastUploadedHash: null };
 
 describe("preview reducer", () => {
-	it("transitions idle → uploading", () => {
-		const next = previewReducer(initial, previewUploadStarted({ hash: "abc" }));
-		expect(next.status).toBe("uploading");
-	});
+ it("transitions idle → uploading", () => {
+  const next = previewReducer(initial, previewUploadStarted({ hash: "abc" }));
+  expect(next.status).toBe("uploading");
+ });
 
-	it("records url and hash on success", () => {
-		const next = previewReducer(initial, previewUploadSucceeded({ url: "https://x", hash: "abc", at: 10 }));
-		expect(next.status).toBe("ready");
-		expect(next.url).toBe("https://x");
-		expect(next.lastUploadedHash).toBe("abc");
-		expect(next.lastUploadedAt).toBe(10);
-		expect(next.error).toBeNull();
-	});
+ it("records url and hash on success", () => {
+  const next = previewReducer(initial, previewUploadSucceeded({ url: "https://x", hash: "abc", at: 10 }));
+  expect(next.status).toBe("ready");
+  expect(next.url).toBe("https://x");
+  expect(next.lastUploadedHash).toBe("abc");
+  expect(next.lastUploadedAt).toBe(10);
+  expect(next.error).toBeNull();
+ });
 
-	it("records error on failure", () => {
-		const next = previewReducer(initial, previewUploadFailed({ error: "boom" }));
-		expect(next.status).toBe("error");
-		expect(next.error).toBe("boom");
-	});
+ it("records error on failure", () => {
+  const next = previewReducer(initial, previewUploadFailed({ error: "boom" }));
+  expect(next.status).toBe("error");
+  expect(next.error).toBe("boom");
+ });
 });
 ```
 
@@ -734,47 +740,47 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 export type PreviewStatus = "idle" | "uploading" | "ready" | "error";
 
 export type PreviewState = {
-	status: PreviewStatus;
-	url: string | null;
-	error: string | null;
-	lastUploadedAt: number | null;
-	lastUploadedHash: string | null;
+ status: PreviewStatus;
+ url: string | null;
+ error: string | null;
+ lastUploadedAt: number | null;
+ lastUploadedHash: string | null;
 };
 
 const initialState: PreviewState = {
-	status: "idle",
-	url: null,
-	error: null,
-	lastUploadedAt: null,
-	lastUploadedHash: null,
+ status: "idle",
+ url: null,
+ error: null,
+ lastUploadedAt: null,
+ lastUploadedHash: null,
 };
 
 const previewSlice = createSlice({
-	name: "preview",
-	initialState,
-	reducers: {
-		previewUploadStarted(state, _action: PayloadAction<{ hash: string }>) {
-			state.status = "uploading";
-			state.error = null;
-		},
-		previewUploadSucceeded(
-			state,
-			action: PayloadAction<{ url: string; hash: string; at: number }>,
-		) {
-			state.status = "ready";
-			state.url = action.payload.url;
-			state.lastUploadedAt = action.payload.at;
-			state.lastUploadedHash = action.payload.hash;
-			state.error = null;
-		},
-		previewUploadFailed(state, action: PayloadAction<{ error: string }>) {
-			state.status = "error";
-			state.error = action.payload.error;
-		},
-		previewReset() {
-			return initialState;
-		},
-	},
+ name: "preview",
+ initialState,
+ reducers: {
+  previewUploadStarted(state, _action: PayloadAction<{ hash: string }>) {
+   state.status = "uploading";
+   state.error = null;
+  },
+  previewUploadSucceeded(
+   state,
+   action: PayloadAction<{ url: string; hash: string; at: number }>,
+  ) {
+   state.status = "ready";
+   state.url = action.payload.url;
+   state.lastUploadedAt = action.payload.at;
+   state.lastUploadedHash = action.payload.hash;
+   state.error = null;
+  },
+  previewUploadFailed(state, action: PayloadAction<{ error: string }>) {
+   state.status = "error";
+   state.error = action.payload.error;
+  },
+  previewReset() {
+   return initialState;
+  },
+ },
 });
 
 export const { previewUploadStarted, previewUploadSucceeded, previewUploadFailed, previewReset } = previewSlice.actions;
@@ -794,8 +800,8 @@ Add it to the reducer map alongside existing entries:
 
 ```ts
 reducer: {
-	// ...existing entries
-	preview: previewReducer,
+ // ...existing entries
+ preview: previewReducer,
 },
 ```
 
@@ -825,6 +831,7 @@ git commit -m "feat(architect-vite): add preview slice for iframe upload state"
 Derived from `canUndo`. The Download (Save) action is the sink; dirty means "there are undo entries since last mount" — which is good enough as a proxy.
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/selectors/protocol.ts`
 - Create: `apps/architect-vite/src/selectors/__tests__/protocolDirty.test.ts`
 
@@ -839,17 +846,17 @@ import type { RootState } from "~/ducks/store";
 type MinState = { activeProtocol: { past: unknown[]; present: unknown; future: unknown[] } };
 
 function makeState(pastLength: number): RootState {
-	return { activeProtocol: { past: new Array(pastLength).fill({}), present: {}, future: [] } } as unknown as RootState;
+ return { activeProtocol: { past: new Array(pastLength).fill({}), present: {}, future: [] } } as unknown as RootState;
 }
 
 describe("getIsProtocolDirty", () => {
-	it("is false when there are no undo entries", () => {
-		expect(getIsProtocolDirty(makeState(0))).toBe(false);
-	});
+ it("is false when there are no undo entries", () => {
+  expect(getIsProtocolDirty(makeState(0))).toBe(false);
+ });
 
-	it("is true when there are undo entries", () => {
-		expect(getIsProtocolDirty(makeState(3))).toBe(true);
-	});
+ it("is true when there are undo entries", () => {
+  expect(getIsProtocolDirty(makeState(3))).toBe(true);
+ });
 });
 ```
 
@@ -893,6 +900,7 @@ git commit -m "feat(architect-vite): add getIsProtocolDirty selector"
 Listens to protocol state, hashes it, debounces upload by ~2s, shows loading/error/idle states inside the pane, renders the iframe at the returned URL.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/PreviewIframe.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/PreviewIframe.test.tsx`
 
@@ -908,74 +916,74 @@ import PreviewIframe from "../PreviewIframe";
 import previewReducer from "~/ducks/modules/preview";
 
 vi.mock("~/utils/preview/uploadPreview", () => ({
-	uploadProtocolForPreview: vi.fn(async () => ({
-		status: "ready",
-		previewUrl: "https://example.test/preview",
-		protocolId: "p1",
-	})),
+ uploadProtocolForPreview: vi.fn(async () => ({
+  status: "ready",
+  previewUrl: "https://example.test/preview",
+  protocolId: "p1",
+ })),
 }));
 
 function renderWithStore(component: React.ReactNode, protocolPresent: unknown = { name: "P", stages: [] }) {
-	const store = configureStore({
-		reducer: {
-			preview: previewReducer,
-			activeProtocol: (state = { present: protocolPresent, past: [], future: [] }) => state,
-		},
-	});
-	return render(<Provider store={store}>{component}</Provider>);
+ const store = configureStore({
+  reducer: {
+   preview: previewReducer,
+   activeProtocol: (state = { present: protocolPresent, past: [], future: [] }) => state,
+  },
+ });
+ return render(<Provider store={store}>{component}</Provider>);
 }
 
 describe("<PreviewIframe />", () => {
-	it("shows a skeleton on initial mount with no cached url", () => {
-		renderWithStore(<PreviewIframe stageIndex={0} />);
-		expect(screen.getByTestId("preview-skeleton")).toBeInTheDocument();
-	});
+ it("shows a skeleton on initial mount with no cached url", () => {
+  renderWithStore(<PreviewIframe stageIndex={0} />);
+  expect(screen.getByTestId("preview-skeleton")).toBeInTheDocument();
+ });
 
-	it("renders the iframe once a url is ready", async () => {
-		const store = configureStore({
-			reducer: {
-				preview: previewReducer,
-				activeProtocol: (state = { present: { name: "P" }, past: [], future: [] }) => state,
-			},
-			preloadedState: {
-				preview: {
-					status: "ready",
-					url: "https://example.test/preview",
-					error: null,
-					lastUploadedAt: 1,
-					lastUploadedHash: "h",
-				},
-				activeProtocol: { present: { name: "P" }, past: [], future: [] },
-			},
-		});
-		render(
-			<Provider store={store}>
-				<PreviewIframe stageIndex={0} />
-			</Provider>,
-		);
-		const iframe = screen.getByTitle("Protocol preview") as HTMLIFrameElement;
-		expect(iframe.src).toBe("https://example.test/preview");
-	});
+ it("renders the iframe once a url is ready", async () => {
+  const store = configureStore({
+   reducer: {
+    preview: previewReducer,
+    activeProtocol: (state = { present: { name: "P" }, past: [], future: [] }) => state,
+   },
+   preloadedState: {
+    preview: {
+     status: "ready",
+     url: "https://example.test/preview",
+     error: null,
+     lastUploadedAt: 1,
+     lastUploadedHash: "h",
+    },
+    activeProtocol: { present: { name: "P" }, past: [], future: [] },
+   },
+  });
+  render(
+   <Provider store={store}>
+    <PreviewIframe stageIndex={0} />
+   </Provider>,
+  );
+  const iframe = screen.getByTitle("Protocol preview") as HTMLIFrameElement;
+  expect(iframe.src).toBe("https://example.test/preview");
+ });
 
-	it("shows an error state with retry button when upload fails", () => {
-		const store = configureStore({
-			reducer: {
-				preview: previewReducer,
-				activeProtocol: (state = { present: { name: "P" }, past: [], future: [] }) => state,
-			},
-			preloadedState: {
-				preview: { status: "error", url: null, error: "boom", lastUploadedAt: null, lastUploadedHash: null },
-				activeProtocol: { present: { name: "P" }, past: [], future: [] },
-			},
-		});
-		render(
-			<Provider store={store}>
-				<PreviewIframe stageIndex={0} />
-			</Provider>,
-		);
-		expect(screen.getByText(/Preview unavailable/i)).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
-	});
+ it("shows an error state with retry button when upload fails", () => {
+  const store = configureStore({
+   reducer: {
+    preview: previewReducer,
+    activeProtocol: (state = { present: { name: "P" }, past: [], future: [] }) => state,
+   },
+   preloadedState: {
+    preview: { status: "error", url: null, error: "boom", lastUploadedAt: null, lastUploadedHash: null },
+    activeProtocol: { present: { name: "P" }, past: [], future: [] },
+   },
+  });
+  render(
+   <Provider store={store}>
+    <PreviewIframe stageIndex={0} />
+   </Provider>,
+  );
+  expect(screen.getByText(/Preview unavailable/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+ });
 });
 ```
 
@@ -994,9 +1002,9 @@ Expected: FAIL — module not found.
 import { useCallback, useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import {
-	previewUploadFailed,
-	previewUploadStarted,
-	previewUploadSucceeded,
+ previewUploadFailed,
+ previewUploadStarted,
+ previewUploadSucceeded,
 } from "~/ducks/modules/preview";
 import { getProtocol } from "~/selectors/protocol";
 import { uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
@@ -1004,113 +1012,113 @@ import { uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
 const DEBOUNCE_MS = 2000;
 
 type Props = {
-	stageIndex?: number;
+ stageIndex?: number;
 };
 
 function stableHash(value: unknown): string {
-	return JSON.stringify(value, Object.keys(value as Record<string, unknown>).sort());
+ return JSON.stringify(value, Object.keys(value as Record<string, unknown>).sort());
 }
 
 export default function PreviewIframe({ stageIndex = 0 }: Props) {
-	const dispatch = useAppDispatch();
-	const protocol = useAppSelector(getProtocol);
-	const { status, url, error, lastUploadedHash } = useAppSelector((s) => s.preview);
+ const dispatch = useAppDispatch();
+ const protocol = useAppSelector(getProtocol);
+ const { status, url, error, lastUploadedHash } = useAppSelector((s) => s.preview);
 
-	const latestHash = useRef<string>("");
-	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const inflight = useRef<AbortController | null>(null);
+ const latestHash = useRef<string>("");
+ const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const inflight = useRef<AbortController | null>(null);
 
-	const runUpload = useCallback(
-		async (hash: string) => {
-			if (!protocol) return;
-			inflight.current?.abort();
-			const controller = new AbortController();
-			inflight.current = controller;
-			dispatch(previewUploadStarted({ hash }));
-			try {
-				const result = await uploadProtocolForPreview(protocol, stageIndex);
-				if (controller.signal.aborted) return;
-				if (result.status === "ready") {
-					dispatch(previewUploadSucceeded({ url: result.previewUrl, hash, at: Date.now() }));
-				} else {
-					dispatch(previewUploadFailed({ error: result.message ?? "Upload failed" }));
-				}
-			} catch (err) {
-				if (controller.signal.aborted) return;
-				dispatch(previewUploadFailed({ error: err instanceof Error ? err.message : "Upload failed" }));
-			}
-		},
-		[dispatch, protocol, stageIndex],
-	);
+ const runUpload = useCallback(
+  async (hash: string) => {
+   if (!protocol) return;
+   inflight.current?.abort();
+   const controller = new AbortController();
+   inflight.current = controller;
+   dispatch(previewUploadStarted({ hash }));
+   try {
+    const result = await uploadProtocolForPreview(protocol, stageIndex);
+    if (controller.signal.aborted) return;
+    if (result.status === "ready") {
+     dispatch(previewUploadSucceeded({ url: result.previewUrl, hash, at: Date.now() }));
+    } else {
+     dispatch(previewUploadFailed({ error: result.message ?? "Upload failed" }));
+    }
+   } catch (err) {
+    if (controller.signal.aborted) return;
+    dispatch(previewUploadFailed({ error: err instanceof Error ? err.message : "Upload failed" }));
+   }
+  },
+  [dispatch, protocol, stageIndex],
+ );
 
-	useEffect(() => {
-		if (!protocol) return;
-		const hash = stableHash(protocol) + `|stage=${stageIndex}`;
-		if (hash === latestHash.current && hash === lastUploadedHash) return;
-		latestHash.current = hash;
-		if (timer.current) clearTimeout(timer.current);
-		timer.current = setTimeout(() => {
-			void runUpload(hash);
-		}, DEBOUNCE_MS);
-		return () => {
-			if (timer.current) clearTimeout(timer.current);
-		};
-	}, [protocol, stageIndex, lastUploadedHash, runUpload]);
+ useEffect(() => {
+  if (!protocol) return;
+  const hash = stableHash(protocol) + `|stage=${stageIndex}`;
+  if (hash === latestHash.current && hash === lastUploadedHash) return;
+  latestHash.current = hash;
+  if (timer.current) clearTimeout(timer.current);
+  timer.current = setTimeout(() => {
+   void runUpload(hash);
+  }, DEBOUNCE_MS);
+  return () => {
+   if (timer.current) clearTimeout(timer.current);
+  };
+ }, [protocol, stageIndex, lastUploadedHash, runUpload]);
 
-	const onRetry = useCallback(() => {
-		if (!protocol) return;
-		void runUpload(latestHash.current);
-	}, [protocol, runUpload]);
+ const onRetry = useCallback(() => {
+  if (!protocol) return;
+  void runUpload(latestHash.current);
+ }, [protocol, runUpload]);
 
-	return (
-		<div className="relative h-full w-full" style={{ background: "#F3EFF6" }}>
-			{status === "error" && (
-				<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-					<div className="font-heading text-sm font-bold" style={{ color: "hsl(240 35% 17%)" }}>
-						Preview unavailable
-					</div>
-					<div className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
-						{error}
-					</div>
-					<button
-						type="button"
-						onClick={onRetry}
-						className="rounded-full bg-white px-4 py-1.5 font-heading text-xs font-bold uppercase tracking-[0.15em]"
-						style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
-					>
-						Retry
-					</button>
-				</div>
-			)}
+ return (
+  <div className="relative h-full w-full" >
+   {status === "error" && (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+     <div className="font-heading text-sm font-bold" style={{ color: "hsl(240 35% 17%)" }}>
+      Preview unavailable
+     </div>
+     <div className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
+      {error}
+     </div>
+     <button
+      type="button"
+      onClick={onRetry}
+      className="rounded-full bg-white px-4 py-1.5 font-heading text-xs font-bold uppercase tracking-[0.15em]"
+      style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
+     >
+      Retry
+     </button>
+    </div>
+   )}
 
-			{status !== "error" && !url && (
-				<div
-					data-testid="preview-skeleton"
-					className="flex h-full items-center justify-center text-xs"
-					style={{ color: "hsl(220 4% 44%)" }}
-				>
-					{status === "uploading" ? "Preparing preview…" : "Loading preview…"}
-				</div>
-			)}
+   {status !== "error" && !url && (
+    <div
+     data-testid="preview-skeleton"
+     className="flex h-full items-center justify-center text-xs"
+     style={{ color: "hsl(220 4% 44%)" }}
+    >
+     {status === "uploading" ? "Preparing preview…" : "Loading preview…"}
+    </div>
+   )}
 
-			{url && (
-				<iframe
-					title="Protocol preview"
-					src={url}
-					className="h-full w-full border-0"
-				/>
-			)}
+   {url && (
+    <iframe
+     title="Protocol preview"
+     src={url}
+     className="h-full w-full border-0"
+    />
+   )}
 
-			{status === "uploading" && url && (
-				<div
-					className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 font-heading text-[10px] font-bold uppercase tracking-[0.15em]"
-					style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)", color: "hsl(220 4% 44%)" }}
-				>
-					Updating…
-				</div>
-			)}
-		</div>
-	);
+   {status === "uploading" && url && (
+    <div
+     className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 font-heading text-[10px] font-bold uppercase tracking-[0.15em]"
+     style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)", color: "hsl(220 4% 44%)" }}
+    >
+     Updating…
+    </div>
+   )}
+  </div>
+ );
 }
 ```
 
@@ -1137,6 +1145,7 @@ git commit -m "feat(architect-vite): add PreviewIframe with debounced uploads"
 A single station on the rail: colored circle, white-filtered stage-type icon, pill label below, index above.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/TimelineStation.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/TimelineStation.test.tsx`
 
@@ -1149,19 +1158,19 @@ import { describe, expect, it } from "vitest";
 import TimelineStation from "../TimelineStation";
 
 describe("<TimelineStation />", () => {
-	it("renders label and index", () => {
-		render(
-			<TimelineStation
-				label="Introduction"
-				index={0}
-				color="hsl(168 100% 39%)"
-				iconSrc="/icon.svg"
-				labelPosition="below"
-			/>,
-		);
-		expect(screen.getByText("Introduction")).toBeInTheDocument();
-		expect(screen.getByText("01")).toBeInTheDocument();
-	});
+ it("renders label and index", () => {
+  render(
+   <TimelineStation
+    label="Introduction"
+    index={0}
+    color="hsl(168 100% 39%)"
+    iconSrc="/icon.svg"
+    labelPosition="below"
+   />,
+  );
+  expect(screen.getByText("Introduction")).toBeInTheDocument();
+  expect(screen.getByText("01")).toBeInTheDocument();
+ });
 });
 ```
 
@@ -1178,42 +1187,42 @@ Expected: FAIL.
 ```tsx
 // apps/architect-vite/src/components/shared/TimelineStation.tsx
 type Props = {
-	label: string;
-	index: number;
-	color: string;
-	iconSrc: string;
-	labelPosition: "above" | "below";
+ label: string;
+ index: number;
+ color: string;
+ iconSrc: string;
+ labelPosition: "above" | "below";
 };
 
 export default function TimelineStation({ label, index, color, iconSrc, labelPosition }: Props) {
-	return (
-		<div className="flex flex-col items-center">
-			<div
-				className={`font-mono text-[11px] tracking-[0.1em] ${labelPosition === "below" ? "mb-1.5" : "order-3 mt-1.5"}`}
-				style={{ color: "hsl(220 4% 44%)" }}
-			>
-				{String(index + 1).padStart(2, "0")}
-			</div>
+ return (
+  <div className="flex flex-col items-center">
+   <div
+    className={`font-mono text-[11px] tracking-[0.1em] ${labelPosition === "below" ? "mb-1.5" : "order-3 mt-1.5"}`}
+    style={{ color: "hsl(220 4% 44%)" }}
+   >
+    {String(index + 1).padStart(2, "0")}
+   </div>
 
-			<div className="relative flex size-[72px] items-center justify-center rounded-full bg-white">
-				<div className="flex size-[56px] items-center justify-center rounded-full" style={{ background: color }}>
-					<img src={iconSrc} alt="" className="size-[26px]" style={{ filter: "brightness(0) invert(1)" }} />
-				</div>
-			</div>
+   <div className="relative flex size-[72px] items-center justify-center rounded-full bg-white">
+    <div className="flex size-[56px] items-center justify-center rounded-full" style={{ background: color }}>
+     <img src={iconSrc} alt="" className="size-[26px]" style={{ filter: "brightness(0) invert(1)" }} />
+    </div>
+   </div>
 
-			<div
-				className={`mt-2 max-w-[16ch] rounded-full bg-white px-4 py-1.5 ${labelPosition === "above" ? "order-1 mb-2 mt-0" : ""}`}
-				style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.10)" }}
-			>
-				<div
-					className="truncate text-center font-heading text-[13px] font-extrabold leading-tight"
-					style={{ color: "hsl(240 35% 17%)" }}
-				>
-					{label}
-				</div>
-			</div>
-		</div>
-	);
+   <div
+    className={`mt-2 max-w-[16ch] rounded-full bg-white px-4 py-1.5 ${labelPosition === "above" ? "order-1 mb-2 mt-0" : ""}`}
+    style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.10)" }}
+   >
+    <div
+     className="truncate text-center font-heading text-[13px] font-extrabold leading-tight"
+     style={{ color: "hsl(240 35% 17%)" }}
+    >
+     {label}
+    </div>
+   </div>
+  </div>
+ );
 }
 ```
 
@@ -1240,6 +1249,7 @@ git commit -m "feat(architect-vite): add TimelineStation primitive"
 The horizontal rail container. Renders a colored line behind a row of stations with insert "+" affordances between them, on top of which `Reorder.Group` from `motion/react` composes.
 
 **Files:**
+
 - Create: `apps/architect-vite/src/components/shared/TimelineRail.tsx`
 - Create: `apps/architect-vite/src/components/shared/__tests__/TimelineRail.test.tsx`
 
@@ -1252,22 +1262,22 @@ import { describe, expect, it } from "vitest";
 import TimelineRail from "../TimelineRail";
 
 describe("<TimelineRail />", () => {
-	it("renders children", () => {
-		render(
-			<TimelineRail>
-				<div data-testid="station-1" />
-				<div data-testid="station-2" />
-			</TimelineRail>,
-		);
-		expect(screen.getByTestId("station-1")).toBeInTheDocument();
-		expect(screen.getByTestId("station-2")).toBeInTheDocument();
-	});
+ it("renders children", () => {
+  render(
+   <TimelineRail>
+    <div data-testid="station-1" />
+    <div data-testid="station-2" />
+   </TimelineRail>,
+  );
+  expect(screen.getByTestId("station-1")).toBeInTheDocument();
+  expect(screen.getByTestId("station-2")).toBeInTheDocument();
+ });
 
-	it("applies a rail background when railColor is provided", () => {
-		const { container } = render(<TimelineRail railColor="hsl(168 100% 39%)">x</TimelineRail>);
-		const rail = container.querySelector('[data-part="rail"]');
-		expect(rail).not.toBeNull();
-	});
+ it("applies a rail background when railColor is provided", () => {
+  const { container } = render(<TimelineRail railColor="hsl(168 100% 39%)">x</TimelineRail>);
+  const rail = container.querySelector('[data-part="rail"]');
+  expect(rail).not.toBeNull();
+ });
 });
 ```
 
@@ -1286,24 +1296,24 @@ Expected: FAIL.
 import { type ReactNode } from "react";
 
 type Props = {
-	children: ReactNode;
-	railColor?: string;
+ children: ReactNode;
+ railColor?: string;
 };
 
 export default function TimelineRail({ children, railColor }: Props) {
-	return (
-		<div className="relative w-full overflow-x-auto py-8">
-			{railColor && (
-				<div
-					data-part="rail"
-					aria-hidden
-					className="pointer-events-none absolute left-0 right-0 top-1/2 h-4 -translate-y-1/2 rounded-full"
-					style={{ background: railColor, opacity: 0.9 }}
-				/>
-			)}
-			<div className="relative flex items-center gap-6 px-6">{children}</div>
-		</div>
-	);
+ return (
+  <div className="relative w-full overflow-x-auto py-8">
+   {railColor && (
+    <div
+     data-part="rail"
+     aria-hidden
+     className="pointer-events-none absolute left-0 right-0 top-1/2 h-4 -translate-y-1/2 rounded-full"
+     style={{ background: railColor, opacity: 0.9 }}
+    />
+   )}
+   <div className="relative flex items-center gap-6 px-6">{children}</div>
+  </div>
+ );
 }
 ```
 
@@ -1332,6 +1342,7 @@ git commit -m "feat(architect-vite): add TimelineRail primitive"
 Compose `ProtocolHeader` + `SplitPane` + `PreviewIframe` + restyled Overview + Timeline. Retires the local `ProtocolControlBar` usage from this route (the component file still exists until Task 17).
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/components/Protocol.tsx`
 - Modify: `apps/architect-vite/src/components/Overview.tsx`
 - Modify: `apps/architect-vite/src/components/Timeline/Timeline.tsx`
@@ -1358,98 +1369,98 @@ import Overview from "./Overview";
 import Timeline from "./Timeline";
 
 const Protocol = () => {
-	useProtocolLoader();
-	const dispatch = useAppDispatch();
-	const [, navigate] = useLocation();
+ useProtocolLoader();
+ const dispatch = useAppDispatch();
+ const [, navigate] = useLocation();
 
-	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
-	const canUndo = useAppSelector(getCanUndo);
-	const canRedo = useAppSelector(getCanRedo);
-	const isDirty = useAppSelector(getIsProtocolDirty);
+ const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+ const canUndo = useAppSelector(getCanUndo);
+ const canRedo = useAppSelector(getCanRedo);
+ const isDirty = useAppSelector(getIsProtocolDirty);
 
-	const [isDownloading, setIsDownloading] = useState(false);
-	const [justDownloaded, setJustDownloaded] = useState(false);
-	const [narrowPreviewOpen, setNarrowPreviewOpen] = useState(false);
+ const [isDownloading, setIsDownloading] = useState(false);
+ const [justDownloaded, setJustDownloaded] = useState(false);
+ const [narrowPreviewOpen, setNarrowPreviewOpen] = useState(false);
 
-	const handleDownload = useCallback(async () => {
-		setIsDownloading(true);
-		try {
-			await dispatch(exportNetcanvas()).unwrap();
-			setJustDownloaded(true);
-			setTimeout(() => setJustDownloaded(false), 2000);
-		} finally {
-			setIsDownloading(false);
-		}
-	}, [dispatch]);
+ const handleDownload = useCallback(async () => {
+  setIsDownloading(true);
+  try {
+   await dispatch(exportNetcanvas()).unwrap();
+   setJustDownloaded(true);
+   setTimeout(() => setJustDownloaded(false), 2000);
+  } finally {
+   setIsDownloading(false);
+  }
+ }, [dispatch]);
 
-	const handleClose = useCallback(() => {
-		dispatch(
-			dialogActions.openDialog({
-				type: "Warning",
-				title: "Clear Editor?",
-				message:
-					"Returning to the start screen will clear the current protocol from the editor. If you have made changes, please download the updated version first.",
-				confirmLabel: "Return to start screen",
-				onConfirm: () => {
-					dispatch(clearActiveProtocol());
-					navigate("/");
-				},
-			}),
-		);
-	}, [dispatch, navigate]);
+ const handleClose = useCallback(() => {
+  dispatch(
+   dialogActions.openDialog({
+    type: "Warning",
+    title: "Clear Editor?",
+    message:
+     "Returning to the start screen will clear the current protocol from the editor. If you have made changes, please download the updated version first.",
+    confirmLabel: "Return to start screen",
+    onConfirm: () => {
+     dispatch(clearActiveProtocol());
+     navigate("/");
+    },
+   }),
+  );
+ }, [dispatch, navigate]);
 
-	const actions = (
-		<>
-			<button
-				type="button"
-				onClick={() => dispatch(undo())}
-				disabled={!canUndo}
-				aria-label="Undo"
-				className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-white disabled:opacity-40"
-				style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
-			>
-				<Undo className="size-4" />
-			</button>
-			<button
-				type="button"
-				onClick={() => dispatch(redo())}
-				disabled={!canRedo}
-				aria-label="Redo"
-				className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-white disabled:opacity-40"
-				style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
-			>
-				<Redo className="size-4" />
-			</button>
-			<PillButton
-				variant="primary"
-				size="sm"
-				onClick={handleDownload}
-				disabled={isDownloading}
-				icon={justDownloaded ? <Check className="size-4" /> : <Download className="size-4" />}
-			>
-				{justDownloaded ? "Saved" : isDownloading ? "Saving…" : isDirty ? "Save •" : "Save"}
-			</PillButton>
-		</>
-	);
+ const actions = (
+  <>
+   <button
+    type="button"
+    onClick={() => dispatch(undo())}
+    disabled={!canUndo}
+    aria-label="Undo"
+    className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-white disabled:opacity-40"
+    style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
+   >
+    <Undo className="size-4" />
+   </button>
+   <button
+    type="button"
+    onClick={() => dispatch(redo())}
+    disabled={!canRedo}
+    aria-label="Redo"
+    className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-white disabled:opacity-40"
+    style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
+   >
+    <Redo className="size-4" />
+   </button>
+   <PillButton
+    variant="primary"
+    size="sm"
+    onClick={handleDownload}
+    disabled={isDownloading}
+    icon={justDownloaded ? <Check className="size-4" /> : <Download className="size-4" />}
+   >
+    {justDownloaded ? "Saved" : isDownloading ? "Saving…" : isDirty ? "Save •" : "Save"}
+   </PillButton>
+  </>
+ );
 
-	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader protocolName={protocolName} actions={actions} onLogoClick={handleClose} />
-			<div className="flex-1 overflow-hidden">
-				<SplitPane
-					left={<PreviewIframe />}
-					right={
-						<div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
-							<Overview />
-							<Timeline />
-						</div>
-					}
-					narrowPreviewOpen={narrowPreviewOpen}
-					onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
-				/>
-			</div>
-		</div>
-	);
+ return (
+  <div className="flex h-dvh flex-col pt-16" >
+   <ProtocolHeader protocolName={protocolName} actions={actions} onLogoClick={handleClose} />
+   <div className="flex-1 overflow-hidden">
+    <SplitPane
+     left={<PreviewIframe />}
+     right={
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+       <Overview />
+       <Timeline />
+      </div>
+     }
+     narrowPreviewOpen={narrowPreviewOpen}
+     onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
+    />
+   </div>
+  </div>
+ );
 };
 
 export default Protocol;
@@ -1463,44 +1474,44 @@ Replace the contents of the `Overview` function's `return` with:
 
 ```tsx
 return (
-	<Card padding="lg">
-		<input
-			type="text"
-			value={localName}
-			onChange={(e) => setLocalName(e.target.value)}
-			onBlur={() => {
-				const trimmed = localName.trim();
-				trimmed ? updateName({ name: trimmed }) : setLocalName(name ?? "");
-			}}
-			placeholder="Enter protocol name…"
-			className="w-full border-0 bg-transparent font-heading text-4xl font-extrabold leading-tight tracking-tight outline-none"
-			style={{ color: "hsl(240 35% 17%)" }}
-		/>
-		<TextArea
-			placeholder="Enter a description for your protocol…"
-			input={{
-				value: description,
-				onChange: ({ target: { value } }) => updateDescription({ description: value }),
-			}}
-		/>
-		<div className="mt-4 flex flex-wrap gap-2">
-			<PillButton variant="secondary" size="sm" onClick={handleNavigateToCodebook} icon={<BookOpenText className="size-4" />}>
-				Codebook
-			</PillButton>
-			<PillButton variant="secondary" size="sm" onClick={handleNavigateToAssets} icon={<FileImage className="size-4" />}>
-				Assets
-			</PillButton>
-			<PillButton
-				variant="secondary"
-				size="sm"
-				onClick={handlePrintSummary}
-				disabled={!protocolIsValid}
-				icon={<PrintIcon className="size-4" />}
-			>
-				Printable Summary
-			</PillButton>
-		</div>
-	</Card>
+ <Card padding="lg">
+  <input
+   type="text"
+   value={localName}
+   onChange={(e) => setLocalName(e.target.value)}
+   onBlur={() => {
+    const trimmed = localName.trim();
+    trimmed ? updateName({ name: trimmed }) : setLocalName(name ?? "");
+   }}
+   placeholder="Enter protocol name…"
+   className="w-full border-0 bg-transparent font-heading text-4xl font-extrabold leading-tight tracking-tight outline-none"
+   style={{ color: "hsl(240 35% 17%)" }}
+  />
+  <TextArea
+   placeholder="Enter a description for your protocol…"
+   input={{
+    value: description,
+    onChange: ({ target: { value } }) => updateDescription({ description: value }),
+   }}
+  />
+  <div className="mt-4 flex flex-wrap gap-2">
+   <PillButton variant="secondary" size="sm" onClick={handleNavigateToCodebook} icon={<BookOpenText className="size-4" />}>
+    Codebook
+   </PillButton>
+   <PillButton variant="secondary" size="sm" onClick={handleNavigateToAssets} icon={<FileImage className="size-4" />}>
+    Assets
+   </PillButton>
+   <PillButton
+    variant="secondary"
+    size="sm"
+    onClick={handlePrintSummary}
+    disabled={!protocolIsValid}
+    icon={<PrintIcon className="size-4" />}
+   >
+    Printable Summary
+   </PillButton>
+  </div>
+ </Card>
 );
 ```
 
@@ -1526,40 +1537,40 @@ import { STAGE_META } from "~/components/Home/timelineScript";
 
 // In the return block, replace the existing Reorder.Group with:
 <TimelineRail railColor="hsl(220 4% 88%)">
-	<Reorder.Group
-		axis="x"
-		onReorder={handleReorder}
-		values={stages}
-		className="flex items-center gap-6"
-	>
-		{stages.flatMap((stage, index) => [
-			<InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
-			<Reorder.Item
-				tabIndex={0}
-				key={stage.id}
-				value={stage}
-				layoutId={`timeline-stage-${stage.id}`}
-				className="cursor-pointer focus:outline-none"
-				onPointerDown={(e) => {
-					pointerStart.current = { x: e.clientX, y: e.clientY };
-				}}
-				onClick={(e) => {
-					const dx = e.clientX - pointerStart.current.x;
-					const dy = e.clientY - pointerStart.current.y;
-					if (dx * dx + dy * dy < 25) handleEditStage(stage.id);
-				}}
-			>
-				<TimelineStation
-					label={stage.label ?? "Untitled stage"}
-					index={index}
-					color={STAGE_META[stage.type]?.color ?? "hsl(168 100% 39%)"}
-					iconSrc={STAGE_META[stage.type]?.icon ?? ""}
-					labelPosition={index % 2 === 0 ? "below" : "above"}
-				/>
-			</Reorder.Item>,
-		])}
-		<InsertButton key="insert_end" onClick={() => handleInsertStage(stages.length)} />
-	</Reorder.Group>
+ <Reorder.Group
+  axis="x"
+  onReorder={handleReorder}
+  values={stages}
+  className="flex items-center gap-6"
+ >
+  {stages.flatMap((stage, index) => [
+   <InsertButton key={`insert_${stage.id}`} onClick={() => handleInsertStage(index)} />,
+   <Reorder.Item
+    tabIndex={0}
+    key={stage.id}
+    value={stage}
+    layoutId={`timeline-stage-${stage.id}`}
+    className="cursor-pointer focus:outline-none"
+    onPointerDown={(e) => {
+     pointerStart.current = { x: e.clientX, y: e.clientY };
+    }}
+    onClick={(e) => {
+     const dx = e.clientX - pointerStart.current.x;
+     const dy = e.clientY - pointerStart.current.y;
+     if (dx * dx + dy * dy < 25) handleEditStage(stage.id);
+    }}
+   >
+    <TimelineStation
+     label={stage.label ?? "Untitled stage"}
+     index={index}
+     color={STAGE_META[stage.type]?.color ?? "hsl(168 100% 39%)"}
+     iconSrc={STAGE_META[stage.type]?.icon ?? ""}
+     labelPosition={index % 2 === 0 ? "below" : "above"}
+    />
+   </Reorder.Item>,
+  ])}
+  <InsertButton key="insert_end" onClick={() => handleInsertStage(stages.length)} />
+ </Reorder.Group>
 </TimelineRail>
 ```
 
@@ -1578,21 +1589,21 @@ const meta = stage.type in STAGE_META ? STAGE_META[stage.type as keyof typeof ST
 import { motion } from "motion/react";
 
 type InsertButtonProps = {
-	onClick: () => void;
+ onClick: () => void;
 };
 
 const InsertButton = ({ onClick }: InsertButtonProps) => (
-	<motion.button
-		type="button"
-		onClick={onClick}
-		aria-label="Insert stage here"
-		className="group flex size-6 cursor-pointer items-center justify-center rounded-full bg-white opacity-40 transition-opacity hover:opacity-100"
-		style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
-	>
-		<span className="text-base font-bold" style={{ color: "hsl(240 35% 17%)" }}>
-			+
-		</span>
-	</motion.button>
+ <motion.button
+  type="button"
+  onClick={onClick}
+  aria-label="Insert stage here"
+  className="group flex size-6 cursor-pointer items-center justify-center rounded-full bg-white opacity-40 transition-opacity hover:opacity-100"
+  style={{ boxShadow: "0 2px 8px rgba(22,21,43,0.08)" }}
+ >
+  <span className="text-base font-bold" style={{ color: "hsl(240 35% 17%)" }}>
+   +
+  </span>
+ </motion.button>
 );
 
 export default InsertButton;
@@ -1632,6 +1643,7 @@ git commit -m "refactor(architect-vite): redesign /protocol with split-pane prev
 Replace `StageEditor`'s local `ControlBar` with header actions; wrap its form sections in `Card`s; compose with `ProtocolHeader` + `SplitPane` + `PreviewIframe` in `StageEditorPage`.
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/components/pages/StageEditorPage.tsx`
 - Modify: `apps/architect-vite/src/components/StageEditor/StageEditor.tsx`
 - Modify: `apps/architect-vite/src/components/StageEditor/StageHeading.tsx`
@@ -1657,73 +1669,73 @@ import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { getProtocolName, getStageIndexById, getStageLabelById } from "~/selectors/protocol";
 
 const StageEditorPage = () => {
-	const { stageId: rawStageId } = useParams();
-	useProtocolLoader();
-	const [, navigate] = useLocation();
+ const { stageId: rawStageId } = useParams();
+ useProtocolLoader();
+ const [, navigate] = useLocation();
 
-	const urlParams = new URLSearchParams(window.location.search);
-	const insertAtIndex = urlParams.get("insertAtIndex") ? Number(urlParams.get("insertAtIndex")) : undefined;
-	const type = urlParams.get("type") || undefined;
-	const stageId = rawStageId === "new" ? undefined : rawStageId;
+ const urlParams = new URLSearchParams(window.location.search);
+ const insertAtIndex = urlParams.get("insertAtIndex") ? Number(urlParams.get("insertAtIndex")) : undefined;
+ const type = urlParams.get("type") || undefined;
+ const stageId = rawStageId === "new" ? undefined : rawStageId;
 
-	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
-	const stageLabel = useAppSelector((s) => (stageId ? getStageLabelById(s, stageId) : undefined)) ?? "New stage";
-	const stageIndex = useAppSelector((s) => (stageId ? getStageIndexById(s, stageId) : 0));
+ const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+ const stageLabel = useAppSelector((s) => (stageId ? getStageLabelById(s, stageId) : undefined)) ?? "New stage";
+ const stageIndex = useAppSelector((s) => (stageId ? getStageIndexById(s, stageId) : 0));
 
-	const [submitRequested, setSubmitRequested] = useState(0);
-	const [cancelRequested, setCancelRequested] = useState(0);
-	const [isDirty, setIsDirty] = useState(false);
-	const [isValid, setIsValid] = useState(true);
-	const [narrowPreviewOpen, setNarrowPreviewOpen] = useState(false);
+ const [submitRequested, setSubmitRequested] = useState(0);
+ const [cancelRequested, setCancelRequested] = useState(0);
+ const [isDirty, setIsDirty] = useState(false);
+ const [isValid, setIsValid] = useState(true);
+ const [narrowPreviewOpen, setNarrowPreviewOpen] = useState(false);
 
-	const triggerSubmit = useCallback(() => setSubmitRequested((v) => v + 1), []);
-	const triggerCancel = useCallback(() => setCancelRequested((v) => v + 1), []);
+ const triggerSubmit = useCallback(() => setSubmitRequested((v) => v + 1), []);
+ const triggerCancel = useCallback(() => setCancelRequested((v) => v + 1), []);
 
-	const actions = (
-		<>
-			<PillButton variant="tertiary" size="sm" onClick={triggerCancel} icon={<X className="size-4" />}>
-				Cancel
-			</PillButton>
-			<PillButton
-				variant="primary"
-				size="sm"
-				onClick={triggerSubmit}
-				disabled={!isValid}
-				icon={<Check className="size-4" />}
-			>
-				Done
-			</PillButton>
-		</>
-	);
+ const actions = (
+  <>
+   <PillButton variant="tertiary" size="sm" onClick={triggerCancel} icon={<X className="size-4" />}>
+    Cancel
+   </PillButton>
+   <PillButton
+    variant="primary"
+    size="sm"
+    onClick={triggerSubmit}
+    disabled={!isValid}
+    icon={<Check className="size-4" />}
+   >
+    Done
+   </PillButton>
+  </>
+ );
 
-	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection={stageLabel}
-				actions={actions}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<div className="flex-1 overflow-hidden">
-				<SplitPane
-					left={<PreviewIframe stageIndex={stageIndex} />}
-					right={
-						<StageEditor
-							id={stageId}
-							insertAtIndex={insertAtIndex}
-							type={type}
-							submitRequestId={submitRequested}
-							cancelRequestId={cancelRequested}
-							onDirtyChange={setIsDirty}
-							onValidityChange={setIsValid}
-						/>
-					}
-					narrowPreviewOpen={narrowPreviewOpen}
-					onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
-				/>
-			</div>
-		</div>
-	);
+ return (
+  <div className="flex h-dvh flex-col pt-16" >
+   <ProtocolHeader
+    protocolName={protocolName}
+    subsection={stageLabel}
+    actions={actions}
+    onLogoClick={() => navigate("/protocol")}
+   />
+   <div className="flex-1 overflow-hidden">
+    <SplitPane
+     left={<PreviewIframe stageIndex={stageIndex} />}
+     right={
+      <StageEditor
+       id={stageId}
+       insertAtIndex={insertAtIndex}
+       type={type}
+       submitRequestId={submitRequested}
+       cancelRequestId={cancelRequested}
+       onDirtyChange={setIsDirty}
+       onValidityChange={setIsValid}
+      />
+     }
+     narrowPreviewOpen={narrowPreviewOpen}
+     onNarrowPreviewToggle={() => setNarrowPreviewOpen((v) => !v)}
+    />
+   </div>
+  </div>
+ );
 };
 
 export default StageEditorPage;
@@ -1733,10 +1745,10 @@ If `getStageLabelById` / `getStageIndexById` do not exist, add them in `src/sele
 
 ```ts
 export const getStageLabelById = (state: RootState, id: string): string | undefined =>
-	getProtocol(state)?.stages?.find((s: { id: string; label?: string }) => s.id === id)?.label;
+ getProtocol(state)?.stages?.find((s: { id: string; label?: string }) => s.id === id)?.label;
 
 export const getStageIndexById = (state: RootState, id: string): number =>
-	getProtocol(state)?.stages?.findIndex((s: { id: string }) => s.id === id) ?? 0;
+ getProtocol(state)?.stages?.findIndex((s: { id: string }) => s.id === id) ?? 0;
 ```
 
 - [ ] **Step 2: Update `StageEditor.tsx` to accept external submit/cancel triggers**
@@ -1747,45 +1759,45 @@ Key edits (sketched — preserve the existing file's imports and body around the
 
 ```tsx
 type StageEditorProps = {
-	id?: string | null;
-	insertAtIndex?: number;
-	type?: string;
-	submitRequestId: number;
-	cancelRequestId: number;
-	onDirtyChange: (dirty: boolean) => void;
-	onValidityChange: (valid: boolean) => void;
+ id?: string | null;
+ insertAtIndex?: number;
+ type?: string;
+ submitRequestId: number;
+ cancelRequestId: number;
+ onDirtyChange: (dirty: boolean) => void;
+ onValidityChange: (valid: boolean) => void;
 };
 
 // Inside the component:
 useEffect(() => {
-	onDirtyChange(hasUnsavedChanges);
+ onDirtyChange(hasUnsavedChanges);
 }, [hasUnsavedChanges, onDirtyChange]);
 
 useEffect(() => {
-	onValidityChange(isValid);
+ onValidityChange(isValid);
 }, [isValid, onValidityChange]);
 
 useEffect(() => {
-	if (submitRequestId === 0) return;
-	void formRef.current?.requestSubmit();
+ if (submitRequestId === 0) return;
+ void formRef.current?.requestSubmit();
 }, [submitRequestId]);
 
 useEffect(() => {
-	if (cancelRequestId === 0) return;
-	handleCancel();
+ if (cancelRequestId === 0) return;
+ handleCancel();
 }, [cancelRequestId, handleCancel]);
 
 // Remove the <ControlBar ... /> block from the returned JSX.
 // Wrap each rendered section in a Card:
 return (
-	<form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
-		<StageHeading />
-		{sections.map((SectionComponent, sectionIndex) => (
-			<Card key={`${interfaceType}-${sectionIndex}`}>
-				<SectionComponent form={formName} stagePath={stagePath} interfaceType={interfaceType} />
-			</Card>
-		))}
-	</form>
+ <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+  <StageHeading />
+  {sections.map((SectionComponent, sectionIndex) => (
+   <Card key={`${interfaceType}-${sectionIndex}`}>
+    <SectionComponent form={formName} stagePath={stagePath} interfaceType={interfaceType} />
+   </Card>
+  ))}
+ </form>
 );
 ```
 
@@ -1811,37 +1823,37 @@ import { getTimelineImage } from "~/utils/getTimelineImage";
 import { STAGE_META } from "~/components/Home/timelineScript";
 
 const StageHeading = ({ _id }: { _id?: string }) => {
-	const { values } = useFormContext();
-	const type = get(values, "type") as string;
-	const meta = type in STAGE_META ? STAGE_META[type as keyof typeof STAGE_META] : null;
-	const documentationLink = get(getInterface(type as StageType), "documentation", null);
+ const { values } = useFormContext();
+ const type = get(values, "type") as string;
+ const meta = type in STAGE_META ? STAGE_META[type as keyof typeof STAGE_META] : null;
+ const documentationLink = get(getInterface(type as StageType), "documentation", null);
 
-	return (
-		<Card padding="lg">
-			<div className="flex items-center gap-3">
-				{meta && <Badge color={meta.color}>{meta.sub}</Badge>}
-				{documentationLink && (
-					<a
-						href={documentationLink}
-						target="_blank"
-						rel="noreferrer"
-						className="text-xs underline"
-						style={{ color: "hsl(220 4% 44%)" }}
-					>
-						Documentation
-					</a>
-				)}
-			</div>
-			<ValidatedField
-				name="label"
-				component={Text}
-				placeholder="Enter your stage name here"
-				maxLength={50}
-				validation={{ required: true }}
-				autoFocus
-			/>
-		</Card>
-	);
+ return (
+  <Card padding="lg">
+   <div className="flex items-center gap-3">
+    {meta && <Badge color={meta.color}>{meta.sub}</Badge>}
+    {documentationLink && (
+     <a
+      href={documentationLink}
+      target="_blank"
+      rel="noreferrer"
+      className="text-xs underline"
+      style={{ color: "hsl(220 4% 44%)" }}
+     >
+      Documentation
+     </a>
+    )}
+   </div>
+   <ValidatedField
+    name="label"
+    component={Text}
+    placeholder="Enter your stage name here"
+    maxLength={50}
+    validation={{ required: true }}
+    autoFocus
+   />
+  </Card>
+ );
 };
 
 export default StageHeading;
@@ -1881,6 +1893,7 @@ git commit -m "refactor(architect-vite): redesign /protocol/stage with header ac
 Single-column layout. Compose `ProtocolHeader` + centered max-w-5xl column with the existing `AssetBrowser` on top of a `Card` wrap.
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/components/pages/AssetsPage.tsx`
 
 - [ ] **Step 1: Rewrite `AssetsPage.tsx`**
@@ -1897,27 +1910,27 @@ import { getProtocolName } from "~/selectors/protocol";
 import SubRouteNav from "./SubRouteNav";
 
 const AssetsPage = () => {
-	useProtocolLoader();
-	const [, navigate] = useLocation();
-	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+ useProtocolLoader();
+ const [, navigate] = useLocation();
+ const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
 
-	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection="Assets"
-				actions={<SubRouteNav active="assets" />}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<main className="flex-1 overflow-auto">
-				<div className="mx-auto max-w-5xl px-6 py-8">
-					<Card padding="lg">
-						<AssetBrowser sectionLayout="vertical" />
-					</Card>
-				</div>
-			</main>
-		</div>
-	);
+ return (
+  <div className="flex h-dvh flex-col pt-16" >
+   <ProtocolHeader
+    protocolName={protocolName}
+    subsection="Assets"
+    actions={<SubRouteNav active="assets" />}
+    onLogoClick={() => navigate("/protocol")}
+   />
+   <main className="flex-1 overflow-auto">
+    <div className="mx-auto max-w-5xl px-6 py-8">
+     <Card padding="lg">
+      <AssetBrowser sectionLayout="vertical" />
+     </Card>
+    </div>
+   </main>
+  </div>
+ );
 };
 
 export default AssetsPage;
@@ -1932,37 +1945,37 @@ import { useLocation } from "wouter";
 type SubRoute = "assets" | "codebook" | "summary" | "experiments";
 
 const ROUTES: Record<SubRoute, { label: string; path: string }> = {
-	assets: { label: "Assets", path: "/protocol/assets" },
-	codebook: { label: "Codebook", path: "/protocol/codebook" },
-	summary: { label: "Summary", path: "/protocol/summary" },
-	experiments: { label: "Experiments", path: "/protocol/experiments" },
+ assets: { label: "Assets", path: "/protocol/assets" },
+ codebook: { label: "Codebook", path: "/protocol/codebook" },
+ summary: { label: "Summary", path: "/protocol/summary" },
+ experiments: { label: "Experiments", path: "/protocol/experiments" },
 };
 
 type Props = {
-	active: SubRoute;
+ active: SubRoute;
 };
 
 export default function SubRouteNav({ active }: Props) {
-	const [, navigate] = useLocation();
-	return (
-		<nav className="flex items-center gap-1" aria-label="Protocol sections">
-			{(Object.entries(ROUTES) as [SubRoute, (typeof ROUTES)[SubRoute]][]).map(([key, { label, path }]) => (
-				<button
-					key={key}
-					type="button"
-					onClick={() => navigate(path)}
-					className="cursor-pointer rounded-full px-3 py-1.5 font-heading text-[11px] font-bold uppercase tracking-[0.15em]"
-					style={{
-						color: key === active ? "hsl(240 35% 17%)" : "hsl(220 4% 44%)",
-						background: key === active ? "#ffffff" : "transparent",
-						boxShadow: key === active ? "0 2px 8px rgba(22,21,43,0.08)" : "none",
-					}}
-				>
-					{label}
-				</button>
-			))}
-		</nav>
-	);
+ const [, navigate] = useLocation();
+ return (
+  <nav className="flex items-center gap-1" aria-label="Protocol sections">
+   {(Object.entries(ROUTES) as [SubRoute, (typeof ROUTES)[SubRoute]][]).map(([key, { label, path }]) => (
+    <button
+     key={key}
+     type="button"
+     onClick={() => navigate(path)}
+     className="cursor-pointer rounded-full px-3 py-1.5 font-heading text-[11px] font-bold uppercase tracking-[0.15em]"
+     style={{
+      color: key === active ? "hsl(240 35% 17%)" : "hsl(220 4% 44%)",
+      background: key === active ? "#ffffff" : "transparent",
+      boxShadow: key === active ? "0 2px 8px rgba(22,21,43,0.08)" : "none",
+     }}
+    >
+     {label}
+    </button>
+   ))}
+  </nav>
+ );
 }
 ```
 
@@ -1991,6 +2004,7 @@ git commit -m "refactor(architect-vite): redesign /protocol/assets single-column
 Same shell as Assets, with the existing `Codebook` component inside a `Card`.
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/components/pages/CodebookPage.tsx`
 
 - [ ] **Step 1: Rewrite `CodebookPage.tsx`**
@@ -2007,27 +2021,27 @@ import { getProtocolName } from "~/selectors/protocol";
 import SubRouteNav from "./SubRouteNav";
 
 const CodebookPage = () => {
-	useProtocolLoader();
-	const [, navigate] = useLocation();
-	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+ useProtocolLoader();
+ const [, navigate] = useLocation();
+ const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
 
-	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection="Codebook"
-				actions={<SubRouteNav active="codebook" />}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<main className="flex-1 overflow-auto">
-				<div className="mx-auto max-w-5xl px-6 py-8">
-					<Card padding="lg">
-						<Codebook />
-					</Card>
-				</div>
-			</main>
-		</div>
-	);
+ return (
+  <div className="flex h-dvh flex-col pt-16" >
+   <ProtocolHeader
+    protocolName={protocolName}
+    subsection="Codebook"
+    actions={<SubRouteNav active="codebook" />}
+    onLogoClick={() => navigate("/protocol")}
+   />
+   <main className="flex-1 overflow-auto">
+    <div className="mx-auto max-w-5xl px-6 py-8">
+     <Card padding="lg">
+      <Codebook />
+     </Card>
+    </div>
+   </main>
+  </div>
+ );
 };
 
 export default CodebookPage;
@@ -2048,6 +2062,7 @@ git commit -m "refactor(architect-vite): redesign /protocol/codebook single-colu
 ### Task 15: Refactor `/protocol/summary`
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/components/pages/SummaryPage.tsx`
 
 - [ ] **Step 1: Rewrite `SummaryPage.tsx`**
@@ -2072,46 +2087,46 @@ import { getProtocolName } from "~/selectors/protocol";
 import SubRouteNav from "./SubRouteNav";
 
 const SummaryPage = () => {
-	useProtocolLoader();
-	const [, navigate] = useLocation();
-	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+ useProtocolLoader();
+ const [, navigate] = useLocation();
+ const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
 
-	useEffect(() => {
-		document.documentElement.classList.add("print");
-		return () => document.documentElement.classList.remove("print");
-	}, []);
+ useEffect(() => {
+  document.documentElement.classList.add("print");
+  return () => document.documentElement.classList.remove("print");
+ }, []);
 
-	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection="Summary"
-				actions={<SubRouteNav active="summary" />}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<main className="flex-1 overflow-auto print:h-auto print:overflow-visible">
-				<SummaryContext>
-					<div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 print:max-w-none print:gap-4 print:p-0">
-						<Card padding="lg">
-							<Cover />
-						</Card>
-						<Card padding="lg">
-							<Contents />
-						</Card>
-						<Card padding="lg">
-							<Stages />
-						</Card>
-						<Card padding="lg">
-							<Codebook />
-						</Card>
-						<Card padding="lg">
-							<AssetManifest />
-						</Card>
-					</div>
-				</SummaryContext>
-			</main>
-		</div>
-	);
+ return (
+  <div className="flex h-dvh flex-col pt-16" >
+   <ProtocolHeader
+    protocolName={protocolName}
+    subsection="Summary"
+    actions={<SubRouteNav active="summary" />}
+    onLogoClick={() => navigate("/protocol")}
+   />
+   <main className="flex-1 overflow-auto print:h-auto print:overflow-visible">
+    <SummaryContext>
+     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 print:max-w-none print:gap-4 print:p-0">
+      <Card padding="lg">
+       <Cover />
+      </Card>
+      <Card padding="lg">
+       <Contents />
+      </Card>
+      <Card padding="lg">
+       <Stages />
+      </Card>
+      <Card padding="lg">
+       <Codebook />
+      </Card>
+      <Card padding="lg">
+       <AssetManifest />
+      </Card>
+     </div>
+    </SummaryContext>
+   </main>
+  </div>
+ );
 };
 
 export default SummaryPage;
@@ -2132,6 +2147,7 @@ git commit -m "refactor(architect-vite): redesign /protocol/summary single-colum
 ### Task 16: Refactor `/protocol/experiments`
 
 **Files:**
+
 - Modify: `apps/architect-vite/src/components/pages/ExperimentsPage.tsx`
 
 - [ ] **Step 1: Rewrite `ExperimentsPage.tsx`**
@@ -2150,46 +2166,46 @@ import { getProtocol, getProtocolName } from "~/selectors/protocol";
 import SubRouteNav from "./SubRouteNav";
 
 const ExperimentsPage = () => {
-	useProtocolLoader();
-	const dispatch = useAppDispatch();
-	const [, navigate] = useLocation();
-	const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
-	const protocol = useAppSelector(getProtocol);
-	const experiments = protocol?.experiments ?? {};
+ useProtocolLoader();
+ const dispatch = useAppDispatch();
+ const [, navigate] = useLocation();
+ const protocolName = useAppSelector(getProtocolName) ?? "Untitled protocol";
+ const protocol = useAppSelector(getProtocol);
+ const experiments = protocol?.experiments ?? {};
 
-	const setExperiment = (key: string, value: boolean) =>
-		dispatch(updateProtocol({ experiments: { ...experiments, [key]: value } }));
+ const setExperiment = (key: string, value: boolean) =>
+  dispatch(updateProtocol({ experiments: { ...experiments, [key]: value } }));
 
-	return (
-		<div className="flex h-dvh flex-col pt-16" style={{ background: "#F3EFF6" }}>
-			<ProtocolHeader
-				protocolName={protocolName}
-				subsection="Experiments"
-				actions={<SubRouteNav active="experiments" />}
-				onLogoClick={() => navigate("/protocol")}
-			/>
-			<main className="flex-1 overflow-auto">
-				<div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
-					<Card padding="lg">
-						<label className="flex items-center justify-between gap-4">
-							<span className="flex flex-col">
-								<span className="font-heading text-base font-extrabold">Encrypted Variables</span>
-								<span className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
-									Enable client-side encryption of variable values during interviews.
-								</span>
-							</span>
-							<input
-								type="checkbox"
-								checked={!!experiments.encryption}
-								onChange={(e) => setExperiment("encryption", e.target.checked)}
-								className="size-5 cursor-pointer"
-							/>
-						</label>
-					</Card>
-				</div>
-			</main>
-		</div>
-	);
+ return (
+  <div className="flex h-dvh flex-col pt-16" >
+   <ProtocolHeader
+    protocolName={protocolName}
+    subsection="Experiments"
+    actions={<SubRouteNav active="experiments" />}
+    onLogoClick={() => navigate("/protocol")}
+   />
+   <main className="flex-1 overflow-auto">
+    <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
+     <Card padding="lg">
+      <label className="flex items-center justify-between gap-4">
+       <span className="flex flex-col">
+        <span className="font-heading text-base font-extrabold">Encrypted Variables</span>
+        <span className="text-xs" style={{ color: "hsl(220 4% 44%)" }}>
+         Enable client-side encryption of variable values during interviews.
+        </span>
+       </span>
+       <input
+        type="checkbox"
+        checked={!!experiments.encryption}
+        onChange={(e) => setExperiment("encryption", e.target.checked)}
+        className="size-5 cursor-pointer"
+       />
+      </label>
+     </Card>
+    </div>
+   </main>
+  </div>
+ );
 };
 
 export default ExperimentsPage;
@@ -2210,6 +2226,7 @@ git commit -m "refactor(architect-vite): redesign /protocol/experiments single-c
 ### Task 17: Retire `ProtocolControlBar`
 
 **Files:**
+
 - Delete: `apps/architect-vite/src/components/ProtocolControlBar.tsx`
 - Delete: `apps/architect-vite/src/components/__tests__/ProtocolControlBar.test.tsx`
 

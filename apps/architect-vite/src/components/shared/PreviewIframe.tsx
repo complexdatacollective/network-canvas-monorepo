@@ -66,7 +66,7 @@ export default function PreviewIframe({ stageIndex = 0 }: Props) {
 	}, [protocol, runUpload]);
 
 	return (
-		<div className="relative h-full w-full" style={{ background: "#F3EFF6" }}>
+		<div className="relative h-full w-full">
 			{status === "error" && (
 				<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
 					<div className="font-heading text-sm font-bold" style={{ color: "hsl(240 35% 17%)" }}>
