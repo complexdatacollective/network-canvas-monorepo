@@ -1,11 +1,65 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
-import cx from "classnames";
 import { isBoolean } from "es-toolkit/compat";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { v4 as uuid } from "uuid";
-import Icon from "~/lib/legacy-ui/components/Icon";
-import MarkdownLabel from "./MarkdownLabel";
+import { BaseField } from "~/components/Form/BaseField";
+import { controlVariants, smallSizeVariants } from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
+
+const toggleTrackVariants = compose(
+	controlVariants,
+	smallSizeVariants,
+	cva({
+		base: cx(
+			"relative inline-flex aspect-2/1 items-center rounded-full p-[0.2em]",
+			"inset-surface border-0",
+			"focusable-within outline-(--input-border)",
+			"transition-colors duration-200",
+			"cursor-pointer",
+		),
+		variants: {
+			checked: {
+				true: "",
+				false: "",
+			},
+			state: {
+				normal: "",
+				disabled: "cursor-not-allowed opacity-50",
+				readOnly: "cursor-default",
+				invalid: "",
+			},
+		},
+		compoundVariants: [
+			{ checked: false, state: "normal", class: "bg-input-contrast/30" },
+			{ checked: true, state: "normal", class: "bg-success" },
+			{ checked: false, state: "disabled", class: "bg-input-contrast/10" },
+			{ checked: true, state: "disabled", class: "bg-input-contrast/30" },
+			{ checked: false, state: "readOnly", class: "bg-input-contrast/20" },
+			{ checked: true, state: "readOnly", class: "bg-input-contrast/50" },
+			{ checked: false, state: "invalid", class: "bg-input-contrast/30 outline-destructive outline-2" },
+			{ checked: true, state: "invalid", class: "bg-current outline-destructive outline-2" },
+		],
+		defaultVariants: {
+			checked: false,
+			state: "normal",
+		},
+	}),
+);
+
+const toggleThumbVariants = cva({
+	base: cx("pointer-events-none block aspect-square h-full rounded-full shadow-sm", "transition-colors duration-200"),
+	variants: {
+		state: {
+			normal: "bg-input",
+			disabled: "bg-input-contrast/30",
+			readOnly: "bg-input-contrast/40",
+			invalid: "bg-input",
+		},
+	},
+	defaultVariants: {
+		state: "normal",
+	},
+});
 
 type ToggleProps = {
 	label?: string | null;
@@ -13,6 +67,10 @@ type ToggleProps = {
 	fieldLabel?: string | null;
 	className?: string;
 	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	hint?: React.ReactNode;
+	size?: "sm" | "md" | "lg" | "xl";
 	input: {
 		name?: string;
 		value?: unknown;
@@ -24,7 +82,6 @@ type ToggleProps = {
 		invalid?: boolean;
 		touched?: boolean;
 	};
-	[key: string]: unknown;
 };
 
 const Toggle = ({
@@ -33,15 +90,18 @@ const Toggle = ({
 	fieldLabel = null,
 	className = "",
 	disabled = false,
+	readOnly = false,
+	required = false,
+	hint,
+	size = "md",
 	input,
 	meta = {},
-	...rest
 }: ToggleProps) => {
-	const id = useRef(uuid());
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-	// Because redux forms will just not pass on this
-	// field if it was never touched and we need it to
-	// return `false`.
+	// Redux form doesn't submit untouched fields, so coerce undefined to false
+	// on mount to ensure the store always has a boolean for this field.
 	useEffect(() => {
 		if (!isBoolean(input.value)) {
 			input.onChange(false);
@@ -49,46 +109,55 @@ const Toggle = ({
 	}, [input]);
 
 	const { error, invalid, touched } = meta;
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
+	const state = getInputState({ disabled, readOnly, meta });
+	const checked = !!input.value;
 
-	const containerClassNames = cx("form-field-container", {
-		"form-field-toggle--has-error": invalid && touched && error,
-	});
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
 
-	const componentClasses = cx("form-field", "form-field-toggle", className, {
-		"form-field-toggle--disabled": disabled,
-		"form-field-toggle--has-error": invalid && touched && error,
-	});
+	const anyLabel = fieldLabel ?? label ?? undefined;
 
-	const { name, value, onChange, ...inputRest } = input;
+	const { name, value: _value, onChange, ...inputRest } = input;
 
 	return (
-		<div className={containerClassNames}>
-			{fieldLabel && <MarkdownLabel label={fieldLabel} />}
-			<label className={componentClasses} htmlFor={id.current} title={title}>
+		<BaseField
+			id={id}
+			name={name}
+			label={anyLabel ?? undefined}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+		>
+			<label
+				className={cx(
+					toggleTrackVariants({ checked, state, size, className }),
+					checked ? "justify-end" : "justify-start",
+				)}
+				htmlFor={id}
+				title={title}
+			>
 				<input
-					className="form-field-toggle__input"
-					id={id.current}
+					id={id}
 					name={name}
-					checked={!!value}
+					type="checkbox"
+					role="switch"
+					checked={checked}
+					aria-checked={checked}
 					onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
 					disabled={disabled}
-					type="checkbox"
-					value="true"
+					readOnly={readOnly}
+					aria-required={required || undefined}
+					aria-invalid={showErrors || undefined}
+					aria-describedby={describedBy}
+					className="sr-only"
 					{...(inputRest as Record<string, unknown>)}
-					{...(rest as Record<string, unknown>)}
 				/>
-				<div className="form-field-toggle__toggle">
-					<span className="form-field-toggle__button" />
-				</div>
-				{label && <MarkdownLabel inline label={label} className="form-field-inline-label" />}
+				<span aria-hidden className={toggleThumbVariants({ state })} />
 			</label>
-			{invalid && touched && (
-				<div className="form-field-toggle__error">
-					<Icon name="warning" />
-					{error}
-				</div>
-			)}
-		</div>
+		</BaseField>
 	);
 };
 
