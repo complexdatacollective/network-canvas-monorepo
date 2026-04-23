@@ -25,7 +25,7 @@ const NavLink = ({ href, children }: NavLinkProps) => (
 const headerPillVariants = cva("flex items-center bg-surface-1 rounded-full shadow-sm", {
 	variants: {
 		size: {
-			md: "gap-4 px-8 py-2 text-base",
+			md: "gap-3 sm:gap-4 px-4 sm:px-8 py-2 text-sm sm:text-base",
 			sm: "gap-2 px-4 py-1 text-xs",
 		},
 	},
@@ -47,32 +47,36 @@ const Home = () => {
 	return (
 		<div className="relative flex flex-col h-dvh">
 			<div className="overflow-y-auto flex flex-col">
-				<div className="flex justify-between items-center gap-8 w-full max-w-6xl mx-auto px-6 py-8 text-foreground">
-					<HeaderPill className="pl-3">
-						<img src={networkCanvasLogo} alt="Network Canvas" className="h-14 w-14" />
-						<span className="font-bold text-lg">Architect</span>
+				<div className="flex justify-between items-center gap-4 sm:gap-8 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-foreground">
+					<HeaderPill className="pl-2 sm:pl-3">
+						<img src={networkCanvasLogo} alt="Network Canvas" className="h-10 w-10 sm:h-14 sm:w-14" />
+						<span className="font-bold text-base sm:text-lg">Architect</span>
 						<Badge color="sea-green">WEB</Badge>
 					</HeaderPill>
-					<div className="flex items-center gap-12">
-						<nav className="flex items-center gap-10 text-base font-semibold tracking-widest">
+					<div className="flex items-center gap-6 lg:gap-12">
+						<nav className="hidden md:flex items-center gap-6 lg:gap-10 text-base font-semibold tracking-widest">
 							<NavLink href="https://documentation.networkcanvas.com">Docs</NavLink>
 							<NavLink href="https://community.networkcanvas.com">Community</NavLink>
 							<NavLink href="https://github.com/complexdatacollective">Github</NavLink>
 						</nav>
-						<HeaderPill size="sm" className="font-semibold">
+						<HeaderPill size="sm" className="hidden sm:flex font-semibold">
 							<span className="h-2 w-2 rounded-full bg-active" />
 							<span>v{appVersion}</span>
 						</HeaderPill>
 					</div>
 				</div>
 
-				<div className="flex-1 flex flex-col items-center px-8 pt-12">
+				<div className="flex-1 flex flex-col items-center px-8 pt-4">
 					<div className="w-full max-w-5xl flex-1 flex flex-col">
-						<div className="flex md:flex-row flex-col items-center justify-center gap-8">
+						<div className="flex flex-col items-center text-center gap-6">
 							<img src={headerGraphic} alt="Network Canvas Architect" className="h-24" />
-							<div className="text-left">
-								<h2 className="text-4xl font-semibold mb-0">Welcome to Architect</h2>
-								<p className="text-lg">A tool for building Network Canvas Interviews</p>
+							<div>
+								<h2 className="text-6xl font-bold tracking-tight mb-3">
+									Welcome to <span className="text-action">Architect</span>
+								</h2>
+								<p className="text-lg text-foreground/60 max-w-md mx-auto">
+									A tool for building Network Canvas interviews.
+								</p>
 							</div>
 						</div>
 
