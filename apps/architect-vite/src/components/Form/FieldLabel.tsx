@@ -18,9 +18,12 @@ export function FieldLabel({ id, htmlFor, required = false, children, className 
 		>
 			{children}
 			{required && (
-				<span className="text-destructive ml-1" aria-hidden="true">
-					*
-				</span>
+				<>
+					<span className="text-destructive ml-1" aria-hidden="true">
+						*
+					</span>
+					<span className="sr-only"> (required)</span>
+				</>
 			)}
 		</label>
 	);
