@@ -1,23 +1,101 @@
-import cx from "classnames";
-import type React from "react";
-import { PureComponent } from "react";
-import ReactSelect, { type ActionMeta, type OptionProps, type ValueType } from "react-select";
-import Icon from "~/lib/legacy-ui/components/Icon";
+import { type ReactNode, useMemo, useRef } from "react";
+import ReactSelect, {
+	type ActionMeta,
+	type OptionProps,
+	components as reactSelectComponents,
+	type ValueType,
+} from "react-select";
+import { v4 as uuid } from "uuid";
+import { BaseField } from "~/components/Form/BaseField";
+import {
+	controlVariants,
+	dropdownItemVariants,
+	heightVariants,
+	inlineSpacingVariants,
+	inputControlVariants,
+	interactiveStateVariants,
+	stateVariants,
+	textSizeVariants,
+	wrapperPaddingVariants,
+} from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
 
-const getValue = (options: SelectOption[], value: unknown) => {
-	const foundValue = options.find((option) => option.value === value);
-	if (!foundValue) {
-		return null;
-	}
+const selectWrapperVariants = compose(
+	heightVariants,
+	textSizeVariants,
+	controlVariants,
+	inputControlVariants,
+	inlineSpacingVariants,
+	wrapperPaddingVariants,
+	stateVariants,
+	interactiveStateVariants,
+	cva({
+		base: cx(
+			"max-w-full min-w-0 w-full px-0!",
+			// react-select renders its own Control/ValueContainer/Input chain; flatten
+			// those surfaces so the outer wrapper's padding/height drives layout.
+			"[&_.form-fields-select__control]:size-full [&_.form-fields-select__control]:min-h-0 [&_.form-fields-select__control]:cursor-pointer",
+			"[&_.form-fields-select__value-container]:tablet-landscape:px-6 [&_.form-fields-select__value-container]:px-4 [&_.form-fields-select__value-container]:py-0",
+			"[&_.form-fields-select__single-value]:text-input-contrast [&_.form-fields-select__single-value]:m-0",
+			"[&_.form-fields-select__placeholder]:text-input-contrast/50 [&_.form-fields-select__placeholder]:italic",
+			"[&_.form-fields-select__input-container]:text-input-contrast [&_.form-fields-select__input-container]:m-0 [&_.form-fields-select__input-container]:p-0",
+			"[&_.form-fields-select__input]:text-input-contrast",
+			"[&_.form-fields-select__indicator-separator]:hidden",
+			"[&_.form-fields-select__indicator]:text-input-contrast",
+		),
+	}),
+);
 
-	return foundValue;
-};
+// react-select portals the menu, so wrapper selectors don't apply. These class
+// strings are handed to custom Menu/MenuList components via typed className props.
+const menuClasses = cx(
+	"elevation-high rounded-sm border-2 border-transparent",
+	"bg-surface-popover text-surface-popover-contrast",
+	"overflow-hidden",
+);
+
+const menuListClasses = cx("p-1 max-h-96 overflow-auto");
 
 type SelectOption = {
 	value: unknown;
 	label?: string;
 	__createNewOption__?: boolean;
 };
+
+// react-select v3 has no `classNames` prop (introduced in v5). Custom Option
+// delivers Tailwind classes via the shared dropdownItemVariants, mapped from
+// react-select's boolean state props to data attributes the variant expects.
+const CustomOption = (props: OptionProps<SelectOption, false>) => {
+	const { isSelected, isFocused, isDisabled, innerProps, innerRef, children } = props;
+	return (
+		<div
+			ref={innerRef}
+			{...innerProps}
+			data-selected={isSelected || undefined}
+			data-highlighted={isFocused || undefined}
+			data-disabled={isDisabled || undefined}
+			className={cx(dropdownItemVariants(), "text-base")}
+		>
+			{children}
+		</div>
+	);
+};
+
+// Menu is portaled outside the wrapper, so selectors on the wrapper don't reach
+// it. Wrapping the default Menu in an outer div gives us an owned surface for
+// Tailwind popover styling while keeping react-select's positioning logic.
+const CustomMenu = (props: React.ComponentProps<typeof reactSelectComponents.Menu>) => (
+	<reactSelectComponents.Menu {...props}>
+		<div className={menuClasses}>{props.children}</div>
+	</reactSelectComponents.Menu>
+);
+
+const CustomMenuList = (props: React.ComponentProps<typeof reactSelectComponents.MenuList>) => (
+	<reactSelectComponents.MenuList {...props}>
+		<div className={menuListClasses}>{props.children}</div>
+	</reactSelectComponents.MenuList>
+);
 
 type SelectProps = {
 	className?: string;
@@ -30,120 +108,146 @@ type SelectProps = {
 		value: unknown;
 		onChange: (value: unknown) => void;
 		onBlur?: (value: unknown) => void;
+		name?: string;
 		[key: string]: unknown;
 	};
 	label?: string | null;
+	fieldLabel?: string | null;
+	placeholder?: string;
 	children?: React.ReactNode;
 	meta?: {
 		invalid?: boolean;
 		error?: string | null;
 		touched?: boolean;
 	};
+	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	hint?: ReactNode;
 };
 
-const defaultSelectProps: Partial<SelectProps> = {
-	options: [],
-	input: { value: null, onChange: () => {} },
-	meta: {},
-	onDeleteOption: null,
-	createNewOption: false,
-	onCreateNew: null,
-};
-
-class Select extends PureComponent<SelectProps> {
-	static defaultProps = defaultSelectProps;
-
-	get value() {
-		const { options = [], input } = this.props;
-		if (!input) return null;
-		return getValue(options, input.value);
+const getValue = (options: SelectOption[], value: unknown) => {
+	const foundValue = options.find((option) => option.value === value);
+	if (!foundValue) {
+		return null;
 	}
+	return foundValue;
+};
 
-	handleChange = (value: ValueType<SelectOption, false>, _actionMeta: ActionMeta<SelectOption>) => {
-		const { onCreateNew, input } = this.props;
+const Select = ({
+	className,
+	input,
+	options = [],
+	children,
+	selectOptionComponent,
+	label = null,
+	fieldLabel = null,
+	placeholder,
+	createNewOption = false,
+	onCreateNew = null,
+	meta = {},
+	disabled = false,
+	readOnly = false,
+	required = false,
+	hint,
+	onDeleteOption: _onDeleteOption,
+	...rest
+}: SelectProps) => {
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-		const option = value as SelectOption | null;
+	const { invalid = false, error = null, touched = false } = meta;
 
-		if (!option || !input) return;
+	const state = getInputState({ disabled, readOnly, meta: { touched, invalid } });
+	const showErrors = Boolean(invalid && touched && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
 
-		/* eslint-disable no-underscore-dangle */
-		if (option.__createNewOption__) {
+	if (!input) return null;
+
+	const { onBlur, onChange, value, name, ...inputRest } = input;
+
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
+
+	const anyLabel = fieldLabel ?? label ?? undefined;
+
+	const optionsWithNew: SelectOption[] = createNewOption
+		? [...options, { value: null, __createNewOption__: true }]
+		: options;
+
+	const selectedValue = getValue(options, value);
+
+	const handleChange = (newValue: ValueType<SelectOption, false>, _actionMeta: ActionMeta<SelectOption>) => {
+		if (!newValue) return;
+		if (newValue.__createNewOption__) {
 			onCreateNew?.();
 			return;
 		}
-		/* eslint-enable */
-		input.onChange(option.value);
+		onChange(newValue.value);
 	};
 
-	handleBlur = () => {
-		const { input } = this.props;
-		if (!input?.onBlur) {
-			return;
-		}
-		input.onBlur(input.value);
+	const handleBlur = () => {
+		if (!onBlur) return;
+		onBlur(value);
 	};
 
-	render() {
-		const {
-			className,
-			input,
-			options = [],
-			children,
-			selectOptionComponent,
-			label,
-			createNewOption,
-			meta = {},
-			...rest
-		} = this.props;
+	const customComponents = {
+		Option: selectOptionComponent ?? CustomOption,
+		Menu: CustomMenu,
+		MenuList: CustomMenuList,
+	};
 
-		if (!input) return null;
-
-		const { onBlur, ...inputRest } = input;
-		const { invalid, error, touched } = meta;
-
-		const optionsWithNew = createNewOption
-			? ([...options, { __createNewOption__: createNewOption }] as SelectOption[])
-			: options;
-
-		const componentClasses = cx(className, "form-fields-select", {
-			"form-fields-select--has-error": invalid && touched && error,
-		});
-		return (
-			<div className={componentClasses}>
-				{label && <h4>{label}</h4>}
+	return (
+		<BaseField
+			id={id}
+			name={name}
+			label={anyLabel ?? undefined}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+		>
+			<div className={cx(selectWrapperVariants({ state }), className)}>
 				<ReactSelect
-					className="form-fields-select"
+					inputId={id}
+					className="size-full"
 					classNamePrefix="form-fields-select"
-					// eslint-disable-next-line react/jsx-props-no-spreading
+					aria-invalid={showErrors || undefined}
+					aria-required={required || undefined}
+					aria-describedby={describedBy}
 					{...(inputRest as Record<string, unknown>)}
+					name={name}
 					options={optionsWithNew}
-					value={this.value}
-					components={selectOptionComponent ? { Option: selectOptionComponent } : undefined}
-					styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
+					value={selectedValue}
+					placeholder={placeholder}
+					isDisabled={disabled || readOnly}
+					components={customComponents}
+					// React-select paints its own surfaces via emotion; zero them out so
+					// theme tokens applied via Tailwind classes can take over. The portaled
+					// menu keeps its positioning but delegates appearance to the class
+					// strings attached through form-fields-select__menu / __menu-list.
+					styles={{
+						control: (base) => ({ ...base, border: 0, boxShadow: "none", backgroundColor: "transparent" }),
+						menu: (base) => ({ ...base, backgroundColor: "transparent", boxShadow: "none", margin: 0 }),
+						menuList: (base) => ({ ...base, padding: 0 }),
+						menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+						option: () => ({}),
+					}}
 					menuPortalTarget={document.body}
-					onChange={this.handleChange}
+					onChange={handleChange}
 					// ReactSelect has unusual onBlur that doesn't play nicely with redux-forms
 					// https://github.com/erikras/redux-form/issues/82#issuecomment-386108205
 					// Sending the old value on blur, and disabling blurInputOnSelect work in
 					// a round about way, and still allow us to use the `touched` property.
-					onBlur={this.handleBlur}
+					onBlur={handleBlur}
 					blurInputOnSelect={false}
-					// eslint-disable-next-line react/jsx-props-no-spreading
 					{...(rest as Record<string, unknown>)}
 				>
 					{children}
 				</ReactSelect>
-				{invalid && touched && (
-					<div className="form-fields-select__error">
-						<Icon name="warning" />
-						{error}
-					</div>
-				)}
 			</div>
-		);
-	}
-}
-
-// Default props handled via TypeScript optional properties and destructuring defaults
+		</BaseField>
+	);
+};
 
 export default Select;
