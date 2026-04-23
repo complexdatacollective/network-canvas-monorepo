@@ -1,7 +1,6 @@
-import cx from "classnames";
 import type { NodeShape } from "~/components/Node/Node";
 import Node from "~/components/Node/Node";
-import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 
 const SHAPES: Array<{ value: NodeShape; label: string }> = [
 	{ value: "circle", label: "Circle" },
@@ -33,32 +32,30 @@ const ShapePicker = ({
 	const showError = invalid && touched && error;
 
 	return (
-		<div className="form-field-container">
-			<div className={cx("form-fields-shape-picker", { "form-fields-shape-picker--has-error": showError })}>
-				<div className="form-fields-shape-picker__shapes">
-					{SHAPES.map(({ value, label }) => (
-						<button
-							key={value}
-							type="button"
-							className={cx("form-fields-shape-picker__shape", {
-								"form-fields-shape-picker__shape--selected": input.value === value,
-							})}
-							onClick={() => input.onChange(value)}
-							aria-label={`Select shape ${label}`}
-							aria-pressed={input.value === value}
-						>
-							<Node label="" shape={value} color={nodeColor} size={nodeSize} />
-							{!small && <span className="form-fields-shape-picker__label">{label}</span>}
-						</button>
-					))}
-				</div>
-				{showError && (
-					<div className="form-fields-shape-picker__error">
-						<Icon name="warning" />
-						{error}
-					</div>
-				)}
+		<div className="block w-full">
+			<div className="flex flex-wrap gap-[var(--space-sm)]">
+				{SHAPES.map(({ value, label }) => (
+					<button
+						key={value}
+						type="button"
+						className={cx(
+							"bg-surface-1 flex cursor-pointer flex-col items-center gap-[var(--space-xs)] rounded border-2 border-transparent p-[var(--space-sm)] transition-colors duration-200",
+							input.value === value && "border-neon-coral",
+						)}
+						onClick={() => input.onChange(value)}
+						aria-label={`Select shape ${label}`}
+						aria-pressed={input.value === value}
+					>
+						<Node label="" shape={value} color={nodeColor} size={nodeSize} />
+						{!small && <span className="text-text text-sm">{label}</span>}
+					</button>
+				))}
 			</div>
+			{showError && (
+				<p className="bg-destructive text-destructive-contrast mt-[var(--space-sm)] rounded-sm px-[var(--space-xs)] py-[var(--space-xs)] text-sm">
+					{error}
+				</p>
+			)}
 		</div>
 	);
 };

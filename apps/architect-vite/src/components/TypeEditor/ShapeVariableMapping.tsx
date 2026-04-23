@@ -3,6 +3,7 @@ import { change, formValueSelector } from "redux-form";
 import VariablePicker from "~/components/Form/Fields/VariablePicker/VariablePicker";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import type { RootState } from "~/ducks/store";
+import { cx } from "~/utils/cva";
 import ShapePicker from "./ShapePicker";
 
 const DISCRETE_TYPES = new Set(["categorical", "ordinal", "boolean"]);
@@ -19,6 +20,10 @@ type ShapeVariableMappingProps = {
 	form: string;
 	nodeColor?: string;
 };
+
+const rowClasses =
+	"bg-surface-1 flex items-center gap-[var(--space-sm)] rounded px-[var(--space-sm)] py-[var(--space-xs)]";
+const fieldLabelClasses = "text-text/70 mb-[var(--space-xs)] block text-sm";
 
 const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) => {
 	const dispatch = useAppDispatch();
@@ -131,24 +136,34 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 	};
 
 	return (
-		<div className="shape-variable-mapping">
-			<div className="shape-variable-mapping__toggle">
-				<label className="shape-variable-mapping__toggle-label">
+		<div className="mt-[var(--space-md)]">
+			<div className="border-surface-2 border-t py-[var(--space-sm)]">
+				<label className="flex cursor-pointer items-center justify-between font-semibold">
 					<span>Map variable to shape</span>
 					<button
 						type="button"
-						className={`shape-variable-mapping__toggle-btn ${enabled ? "shape-variable-mapping__toggle-btn--active" : ""}`}
+						className={cx(
+							"relative h-6 w-11 cursor-pointer rounded-full border-none transition-colors duration-200",
+							enabled ? "bg-active" : "bg-surface-2",
+						)}
 						onClick={handleToggle}
 						aria-pressed={enabled}
 					>
-						<span className="shape-variable-mapping__toggle-knob" />
+						<span
+							className={cx(
+								"absolute top-[3px] left-[3px] h-[18px] w-[18px] rounded-full bg-white transition-transform duration-200",
+								enabled && "translate-x-[20px]",
+							)}
+						/>
 					</button>
 				</label>
-				<p className="shape-variable-mapping__description">Override the default shape based on a variable's value.</p>
+				<p className="text-text/70 mt-[var(--space-xs)] text-sm">
+					Override the default shape based on a variable's value.
+				</p>
 			</div>
 
 			{enabled && (
-				<div className="shape-variable-mapping__config">
+				<div className="mt-[var(--space-md)] flex flex-col gap-[var(--space-md)]">
 					<VariablePicker
 						label="Variable"
 						options={variableOptions}
@@ -160,13 +175,13 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 					/>
 
 					{selectedVar && dynamic?.type === "discrete" && (
-						<div className="shape-variable-mapping__mapping">
-							<h4 className="shape-variable-mapping__field-label text-base font-semibold">Shape for each value</h4>
+						<div className="flex flex-col gap-[var(--space-xs)]">
+							<h4 className={cx(fieldLabelClasses, "text-base font-semibold")}>Shape for each value</h4>
 							{getDiscreteOptions().map((option) => {
 								const currentShape = getShapeForValue(option.value);
 								return (
-									<div key={String(option.value)} className="shape-variable-mapping__row">
-										<span className="shape-variable-mapping__row-label">{option.label}</span>
+									<div key={String(option.value)} className={rowClasses}>
+										<span className="flex-1 text-sm">{option.label}</span>
 										<ShapePicker
 											small
 											input={{
@@ -179,7 +194,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 								);
 							})}
 							{getDiscreteOptions().some((opt) => !getShapeForValue(opt.value)) && (
-								<p className="shape-variable-mapping__warning">
+								<p className="text-warning mt-[var(--space-xs)] text-xs">
 									Some values are unmapped and will use the default shape.
 								</p>
 							)}
@@ -187,18 +202,18 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 					)}
 
 					{selectedVar && dynamic?.type === "breakpoints" && (
-						<div className="shape-variable-mapping__mapping">
-							<h4 className="shape-variable-mapping__field-label">Thresholds</h4>
-							<div className="shape-variable-mapping__row shape-variable-mapping__row--muted">
-								<span className="shape-variable-mapping__row-label">Below first threshold</span>
-								<span className="shape-variable-mapping__row-hint">uses default shape</span>
+						<div className="flex flex-col gap-[var(--space-xs)]">
+							<h4 className={fieldLabelClasses}>Thresholds</h4>
+							<div className={cx(rowClasses, "opacity-60")}>
+								<span className="flex-1 text-sm">Below first threshold</span>
+								<span className="text-text/70 text-xs">uses default shape</span>
 							</div>
 							{(dynamic.thresholds ?? []).map((threshold, index) => (
-								<div key={`threshold-${threshold.value}`} className="shape-variable-mapping__row">
-									<span className="shape-variable-mapping__threshold-prefix">≥</span>
+								<div key={`threshold-${threshold.value}`} className={rowClasses}>
+									<span className="text-text/70 text-sm">≥</span>
 									<input
 										type="number"
-										className="shape-variable-mapping__threshold-input"
+										className="bg-surface-2 border-surface-2 text-text w-[70px] rounded-sm border p-[var(--space-xs)] text-center"
 										value={threshold.value}
 										onChange={(e) => handleThresholdValueChange(index, Number.parseFloat(e.target.value) || 0)}
 										onBlur={() => {
@@ -206,7 +221,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 											dispatch(change(form, "shape.dynamic.thresholds", sorted));
 										}}
 									/>
-									<span className="shape-variable-mapping__threshold-arrow">→</span>
+									<span className="text-text/70 text-sm">→</span>
 									<ShapePicker
 										small
 										nodeColor={nodeColor}
@@ -218,7 +233,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 									/>
 									<button
 										type="button"
-										className="shape-variable-mapping__remove-btn"
+										className="hover:text-destructive text-text/70 cursor-pointer border-none bg-transparent px-[var(--space-xs)] text-xl leading-none"
 										onClick={() => handleRemoveThreshold(index)}
 										aria-label="Remove threshold"
 									>
@@ -227,7 +242,11 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 								</div>
 							))}
 							{(dynamic.thresholds ?? []).length < 2 && (
-								<button type="button" className="shape-variable-mapping__add-btn" onClick={handleAddThreshold}>
+								<button
+									type="button"
+									className="bg-surface-1 border-surface-2 text-text/70 hover:border-text/70 mt-[var(--space-xs)] cursor-pointer rounded border border-dashed p-[var(--space-xs)] text-sm"
+									onClick={handleAddThreshold}
+								>
 									+ Add threshold
 								</button>
 							)}
