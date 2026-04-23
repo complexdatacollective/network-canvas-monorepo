@@ -31,8 +31,8 @@ export function FieldErrors({ id, name, errors, show, className }: FieldErrorsPr
 						className,
 					)}
 				>
-					{errors.map((e, i) => (
-						<span key={`${id}-err-${i}`}>{e}</span>
+					{errors.map((e) => (
+						<span key={`${id}-${e}`}>{e}</span>
 					))}
 				</motion.div>
 			)}
