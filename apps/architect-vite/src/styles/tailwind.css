@@ -332,6 +332,7 @@
 
 	--color-background: hsl(var(--platinum));
 	--color-foreground: hsl(var(--cyber-grape));
+	--color-muted-foreground: hsl(var(--cyber-grape) / 60%);
 
 	--color-primary: hsl(var(--cyber-grape));
 	--color-primary-foreground: hsl(var(--white));
@@ -498,6 +499,14 @@
 
 @utility h4 {
 	@apply text-lg leading-normal font-semibold my-2 mx-0;
+}
+
+@utility hero {
+	@apply text-6xl leading-tight font-bold tracking-tight;
+}
+
+@utility lead {
+	@apply text-lg leading-normal text-muted-foreground;
 }
 
 /* Small heading utility - replaces .small-heading placeholder */
