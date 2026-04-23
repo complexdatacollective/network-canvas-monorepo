@@ -1,14 +1,39 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
-import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { untouch } from "redux-form";
+import { v4 as uuid } from "uuid";
+import { BaseField } from "~/components/Form/BaseField";
 import { Text } from "~/components/Form/Fields";
 import { useAppDispatch } from "~/ducks/hooks";
 import { Button } from "~/lib/legacy-ui/components";
-import Icon from "~/lib/legacy-ui/components/Icon";
+import {
+	controlVariants,
+	heightVariants,
+	inlineSpacingVariants,
+	inputControlVariants,
+	interactiveStateVariants,
+	nativeSelectVariants,
+	stateVariants,
+	textSizeVariants,
+	wrapperPaddingVariants,
+} from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
 import { getValidator } from "~/utils/validations";
+
+const selectWrapperVariants = compose(
+	heightVariants,
+	textSizeVariants,
+	controlVariants,
+	inputControlVariants,
+	inlineSpacingVariants,
+	wrapperPaddingVariants,
+	stateVariants,
+	interactiveStateVariants,
+	cva({ base: cx("max-w-full min-w-0 w-full") }),
+);
 
 type Option = {
 	label: string;
@@ -45,6 +70,8 @@ type NativeSelectProps = {
 	reserved?: Option[];
 	validation?: Record<string, unknown> | null;
 	disabled?: boolean;
+	required?: boolean;
+	hint?: ReactNode;
 	input: InputProps;
 	meta?: MetaProps;
 	entity?: string;
@@ -54,7 +81,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	label = null,
 	options = [],
 	placeholder = "Select an option",
-	className = "",
+	className,
 	onCreateOption = null,
 	onCreateNew = null,
 	createLabelText = "✨ Create new ✨",
@@ -65,6 +92,8 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	reserved = [],
 	validation = null,
 	disabled = false,
+	required = false,
+	hint,
 	input,
 	meta = {
 		invalid: false,
@@ -79,9 +108,17 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 	const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
 	const [newOptionError, setNewOptionError] = useState<string | false>(false);
 	const dispatch = useAppDispatch();
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
 	const { onBlur, ...inputProps } = input;
 	const { invalid = false, error = null, touched = false, form } = meta;
+
+	const state = getInputState({ disabled, meta: { touched, invalid } });
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
 
 	const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
 		const value = event.target.value;
@@ -160,25 +197,6 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 		[valueButNotSubmitted],
 	);
 
-	/**
-	 * This passes through validation errors from the select to the Text field for
-	 * creating new options. It also has to handle when the create new option form
-	 * hasn't been shown
-	 *
-	 * touched:
-	 *   - touched: controlled by parent input, and triggered/reset from child as needed
-	 *   - new option isn't null (prevents "required" immediately showing) AND new option
-	 *     isn't valid. Combined this allows the correct error to be shown.
-	 * invalid:
-	 *   - !isValidCreateOption: validate the new variable Text field value
-	 *   - valueButNotSubmitted: true if value entered in Text field but not submitted
-	 *   - invalid: parent select invalid prop. Will be set to true when validation is
-	 *     triggered and we have no value set
-	 * error:
-	 *   - newOptionError: error message from Text field variable validation
-	 *   - error: parent select error message. Will usually be "Required"
-	 */
-
 	const calculateMeta = useMemo(() => {
 		const localInvalid = !isValidCreateOption(newOptionValue);
 		return {
@@ -209,17 +227,12 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 		transition: { duration: 0.5 },
 	};
 
-	const componentClasses = cx(className, "form-fields-select-native", {
-		"form-fields-select-native--has-error": invalid && touched && error,
-		"form-fields-select-native--disabled": disabled,
-	});
-
 	return (
-		<motion.div className="form-fields-select-native__wrapper">
+		<motion.div className="w-full">
 			<AnimatePresence initial={false} mode="wait">
 				{showCreateOptionForm ? (
 					<motion.div
-						className="form-fields-select-native__new-section"
+						className="bg-surface-2 p-4 rounded"
 						key="new-section"
 						variants={variants}
 						initial="hide"
@@ -244,7 +257,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								error: calculateMeta.error ?? undefined,
 							}}
 						/>
-						<div className="button-footer">
+						<div className="flex items-center justify-end gap-2">
 							<Button color="platinum" onClick={() => setShowCreateOptionForm(false)}>
 								Cancel
 							</Button>
@@ -254,39 +267,42 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 						</div>
 					</motion.div>
 				) : (
-					<motion.div
-						key="select-section"
-						className={componentClasses}
-						initial="hide"
-						variants={variants}
-						exit="hide"
-						animate="show"
-					>
-						{label && <h4>{label}</h4>}
-						<select
-							className="form-fields-select-native__component"
-							{...inputProps}
-							value={inputProps.value || "_placeholder"}
-							onChange={handleChange}
-							disabled={!!disabled}
-							{...rest}
+					<motion.div key="select-section" initial="hide" variants={variants} exit="hide" animate="show">
+						<BaseField
+							id={id}
+							name={inputProps.name}
+							label={label ?? undefined}
+							hint={hint}
+							required={required}
+							errors={errors}
+							showErrors={showErrors}
 						>
-							<option disabled={!allowPlaceholderSelect} value="_placeholder">
-								-- {placeholder} --
-							</option>
-							{(onCreateOption || onCreateNew) && <option value="_create">{createLabelText}</option>}
-							{sortedOptions.map((option) => (
-								<option key={`${option.label}_${option.value}`} value={option.value} disabled={!!option.disabled}>
-									{option.label}
-								</option>
-							))}
-						</select>
-						{invalid && touched && (
-							<div className="form-fields-select-native__error">
-								<Icon name="warning" />
-								{error}
+							<div className={cx(selectWrapperVariants({ state }), className)}>
+								<select
+									{...inputProps}
+									{...rest}
+									id={id}
+									value={inputProps.value || "_placeholder"}
+									onChange={handleChange}
+									onBlur={onBlur}
+									disabled={!!disabled}
+									aria-required={required || undefined}
+									aria-invalid={showErrors || undefined}
+									aria-describedby={describedBy}
+									className={nativeSelectVariants()}
+								>
+									<option disabled={!allowPlaceholderSelect} value="_placeholder">
+										-- {placeholder} --
+									</option>
+									{(onCreateOption || onCreateNew) && <option value="_create">{createLabelText}</option>}
+									{sortedOptions.map((option) => (
+										<option key={`${option.label}_${option.value}`} value={option.value} disabled={!!option.disabled}>
+											{option.label}
+										</option>
+									))}
+								</select>
 							</div>
-						)}
+						</BaseField>
 					</motion.div>
 				)}
 			</AnimatePresence>
