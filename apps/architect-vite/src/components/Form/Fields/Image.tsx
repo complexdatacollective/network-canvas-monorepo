@@ -11,8 +11,8 @@ const ImageInput = (props: ImageInputProps) => (
 		{...props}
 	>
 		{(id: string) => (
-			<div className="form-fields-image">
-				<BackgroundImage id={id} className="form-fields-image__image" />
+			<div className="bg-rich-black w-full rounded p-[var(--space-md)]">
+				<BackgroundImage id={id} className="h-[30vh] w-full bg-contain bg-center bg-no-repeat" />
 			</div>
 		)}
 	</File>

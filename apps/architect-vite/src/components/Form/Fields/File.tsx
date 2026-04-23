@@ -1,11 +1,14 @@
-import cx from "classnames";
 import type React from "react";
+import { useMemo, useRef } from "react";
 import { compose, withState } from "react-recompose";
+import { v4 as uuid } from "uuid";
+import { BaseField } from "~/components/Form/BaseField";
 import Button from "~/lib/legacy-ui/components/Button";
-import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
 
 type InputProps = {
+	name?: string;
 	value: string;
 	onChange: (value: string) => void;
 };
@@ -29,6 +32,9 @@ export type FileInputPropsWithoutHOC = {
 	showBrowser?: boolean;
 	onCloseBrowser?: () => void;
 	label?: string;
+	fieldLabel?: string;
+	hint?: React.ReactNode;
+	required?: boolean;
 	type?: string;
 	selected?: string;
 	className?: string;
@@ -46,16 +52,27 @@ const withShowBrowser = withState<FileInputPropsWithoutHOC, boolean, "showBrowse
 
 const FileInput = ({
 	setShowBrowser,
-	input: { value, onChange },
-	meta: { error, invalid, touched },
+	input,
+	meta,
 	showBrowser,
 	onCloseBrowser,
 	label,
+	fieldLabel,
+	hint,
+	required = false,
 	type,
 	selected,
 	className,
 	children,
 }: FileInputProps) => {
+	const idRef = useRef(uuid());
+	const id = idRef.current;
+
+	const { value, onChange, name } = input;
+	const { error, invalid, touched } = meta;
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
+
 	const closeBrowser = () => {
 		setShowBrowser(false);
 		onCloseBrowser?.();
@@ -79,34 +96,34 @@ const FileInput = ({
 		onChange(assetId);
 	};
 
-	const fieldClasses = cx("form-fields-file", className, "form-field-container", {
-		"form-fields-file--replace": !!value,
-		"form-fields-file--has-error": error,
-	});
+	const anyLabel = fieldLabel ?? label ?? undefined;
 
 	return (
-		<div className={fieldClasses}>
-			{label && <h4 className="form-field-label">{label}</h4>}
-			{invalid && touched && (
-				<div className="form-fields-file__error">
-					<Icon name="warning" />
-					{error}
+		<BaseField
+			id={id}
+			name={name}
+			label={anyLabel}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+		>
+			<div className={cx("relative block", className)}>
+				{value && <div className="relative overflow-hidden">{children?.(value)}</div>}
+				<div className="mt-[var(--space-md)]">
+					<Button onClick={handleBrowseLibrary} color="sea-green">
+						{!value ? "Select resource" : "Update resource"}
+					</Button>
 				</div>
-			)}
-			<div className="form-fields-file__preview">{children?.(value)}</div>
-			<div className="form-fields-file__browse">
-				<Button onClick={handleBrowseLibrary} color="sea-green">
-					{!value ? "Select resource" : "Update resource"}
-				</Button>
+				<AssetBrowserWindow
+					show={showBrowser}
+					type={type}
+					selected={selected}
+					onSelect={handleSelectAsset}
+					onCancel={handleBlurBrowser}
+				/>
 			</div>
-			<AssetBrowserWindow
-				show={showBrowser}
-				type={type}
-				selected={selected}
-				onSelect={handleSelectAsset}
-				onCancel={handleBlurBrowser}
-			/>
-		</div>
+		</BaseField>
 	);
 };
 

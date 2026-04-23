@@ -4,10 +4,6 @@
 @import "./fields/variable-picker.css";
 @import "./fields/markdown.css";
 @import "./fields/mode.css";
-@import "./fields/file.css";
-@import "./fields/audio.css";
-@import "./fields/image.css";
-@import "./fields/video.css";
 @import "./fields/shape-picker.css";
 @import "./fields/shape-variable-mapping.css";
 

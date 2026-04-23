@@ -11,7 +11,7 @@ const AudioInput = (props: AudioInputProps) => (
 		{...props}
 	>
 		{(id: string) => (
-			<div className="form-fields-audio">
+			<div className="flex w-full items-end justify-center [&>audio]:w-full">
 				<Audio id={id} controls />
 			</div>
 		)}
