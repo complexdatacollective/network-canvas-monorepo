@@ -297,6 +297,23 @@
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
 
+	/* Breakpoints — override Tailwind defaults with the fresco set */
+	--breakpoint-*: initial;
+	--breakpoint-phone: 320px;
+	--breakpoint-phone-portrait-max: 479px;
+	--breakpoint-phone-landscape: 480px;
+	--breakpoint-phone-landscape-max: 767px;
+	--breakpoint-tablet-portrait: 768px;
+	--breakpoint-tablet-portrait-max: 1023px;
+	--breakpoint-tablet-landscape: 1024px;
+	--breakpoint-tablet-landscape-max: 1279px;
+	--breakpoint-laptop: 1280px;
+	--breakpoint-laptop-max: 1535px;
+	--breakpoint-desktop: 1536px;
+	--breakpoint-desktop-max: 1919px;
+	--breakpoint-desktop-lg: 1920px;
+	--breakpoint-desktop-xl: 2560px;
+
 	--space-0: 0;
 	--space-xs: 0.3rem;
 	--space-sm: 0.6rem;
