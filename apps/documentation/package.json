@@ -29,7 +29,7 @@
 		"@radix-ui/react-popover": "catalog:",
 		"@t3-oss/env-nextjs": "^0.13.11",
 		"@vercel/analytics": "^2.0.1",
-		"class-variance-authority": "catalog:",
+		"cva": "catalog:",
 		"clsx": "catalog:",
 		"dotenv": "catalog:",
 		"lucide-react": "catalog:",

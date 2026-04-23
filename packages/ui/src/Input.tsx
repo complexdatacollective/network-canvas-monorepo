@@ -1,9 +1,8 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { Label } from "./Label";
-import { cn } from "./utils";
+import { cva, cx, type VariantProps } from "./utils";
 
-export const inputClasses = cn(
+export const inputClasses = cx(
 	"text-input-foreground flex h-10 w-full rounded-input border border-border bg-input ring-offset-background",
 	"disabled:cursor-not-allowed disabled:opacity-50",
 	"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -11,7 +10,8 @@ export const inputClasses = cn(
 	"file:border-0 file:bg-transparent file:text-sm file:font-medium",
 );
 
-export const inputVariants = cva(inputClasses, {
+export const inputVariants = cva({
+	base: inputClasses,
 	variants: {
 		size: {
 			default: "h-10 px-3 py-2 text-sm [&.adornment-left]:mr-2",
@@ -41,7 +41,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 	({ className, size, inputClassName, type, label, hint, rightAdornment, leftAdornment, error, ...props }, ref) => {
 		const id = props.id ?? props.name;
 		return (
-			<div className={cn("relative mt-4 grid items-center gap-2", className)}>
+			<div className={cx("relative mt-4 grid items-center gap-2", className)}>
 				{label && (
 					<Label htmlFor={id} required={props.required}>
 						{label}
@@ -53,7 +53,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 					<input
 						id={id}
 						type={type}
-						className={cn(
+						className={cx(
 							inputVariants({ size }),
 							Boolean(leftAdornment) && "pl-10",
 							Boolean(rightAdornment) && "pr-10",

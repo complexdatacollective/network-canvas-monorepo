@@ -1,13 +1,12 @@
 "use client";
 
 import { Slot } from "@radix-ui/react-slot";
-import type { VariantProps } from "class-variance-authority";
-import { cva } from "class-variance-authority";
 import React from "react";
 
-import { cn } from "../utils";
+import { cva, cx, type VariantProps } from "../utils";
 
-export const headingVariants = cva("text-balance", {
+export const headingVariants = cva({
+	base: "text-balance",
 	variants: {
 		variant: {
 			h1: "mb-6 scroll-m-20 text-3xl font-extrabold tracking-tight [&:not(:first-child)]:mt-8",
@@ -49,7 +48,7 @@ export type HeadingProps = {
 const Heading = React.forwardRef<HTMLElement, HeadingProps>(
 	({ className, variant, margin, as, asChild, ...props }, ref) => {
 		const Comp = asChild ? Slot : (as ?? (variant ? variantElementMap[variant] : undefined) ?? "div");
-		return <Comp className={cn(headingVariants({ variant, margin, className }))} ref={ref} {...props} />;
+		return <Comp className={cx(headingVariants({ variant, margin, className }))} ref={ref} {...props} />;
 	},
 );
 

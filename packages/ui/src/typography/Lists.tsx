@@ -1,4 +1,4 @@
-import { cn } from "../utils";
+import { cx } from "../utils";
 import { baseParagraphClasses } from "./Paragraph";
 
 type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
@@ -6,10 +6,10 @@ type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {
 	className?: string;
 };
 
-const listContainerClasses = cn("my-5 ml-8 [&>li]:mt-2");
+const listContainerClasses = cx("my-5 ml-8 [&>li]:mt-2");
 
 export function UnorderedList({ children, className }: UnorderedListProps) {
-	return <ul className={cn(listContainerClasses, "list-disc", className)}>{children}</ul>;
+	return <ul className={cx(listContainerClasses, "list-disc", className)}>{children}</ul>;
 }
 
 type OrderedListProps = React.HTMLAttributes<HTMLOListElement> & {
@@ -18,7 +18,7 @@ type OrderedListProps = React.HTMLAttributes<HTMLOListElement> & {
 };
 
 export function OrderedList({ children, className }: OrderedListProps) {
-	return <ol className={cn(listContainerClasses, "list-decimal", className)}>{children}</ol>;
+	return <ol className={cx(listContainerClasses, "list-decimal", className)}>{children}</ol>;
 }
 
 type ListItemProps = React.HTMLAttributes<HTMLLIElement> & {
@@ -28,7 +28,7 @@ type ListItemProps = React.HTMLAttributes<HTMLLIElement> & {
 
 export function ListItem({ children, className }: ListItemProps) {
 	return (
-		<li className={cn(baseParagraphClasses, "pl-2 [&>ol]:mb-0 [&>ol]:mt-2 [&>ul]:mb-0 [&>ul]:mt-2", className)}>
+		<li className={cx(baseParagraphClasses, "pl-2 [&>ol]:mb-0 [&>ol]:mt-2 [&>ul]:mb-0 [&>ul]:mt-2", className)}>
 			{children}
 		</li>
 	);

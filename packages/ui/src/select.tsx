@@ -18,7 +18,7 @@ import {
 import { Check, ChevronDown } from "lucide-react";
 import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
 
-import { cn } from "./utils";
+import { cx } from "./utils";
 
 const Select = Root;
 
@@ -26,7 +26,7 @@ const SelectGroup = Group;
 
 const SelectValue = forwardRef<ElementRef<typeof Value>, ComponentPropsWithoutRef<typeof Value>>(
 	({ className, ...props }, ref) => (
-		<span className={cn("overflow-hidden text-ellipsis whitespace-nowrap", className)}>
+		<span className={cx("overflow-hidden text-ellipsis whitespace-nowrap", className)}>
 			<Value ref={ref} {...props} />
 		</span>
 	),
@@ -34,14 +34,14 @@ const SelectValue = forwardRef<ElementRef<typeof Value>, ComponentPropsWithoutRe
 
 SelectValue.displayName = Value.displayName;
 
-export const selectTriggerStyles = cn(
+export const selectTriggerStyles = cx(
 	"text-input-foreground flex h-10 w-full items-center justify-between rounded-input border border-border bg-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
 	"focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
 );
 
 const SelectTrigger = forwardRef<ElementRef<typeof Trigger>, ComponentPropsWithoutRef<typeof Trigger>>(
 	({ className, children, ...props }, ref) => (
-		<Trigger ref={ref} className={cn(selectTriggerStyles, className)} {...props}>
+		<Trigger ref={ref} className={cx(selectTriggerStyles, className)} {...props}>
 			{children}
 			<Icon asChild>
 				<ChevronDown className="h-4 w-4 opacity-50" />
@@ -57,7 +57,7 @@ const SelectContent = forwardRef<ElementRef<typeof Content>, ComponentPropsWitho
 			<Content
 				// This is a workaround for this issue: https://github.com/radix-ui/primitives/issues/1658
 				ref={(ref) => ref?.addEventListener("touchend", (e) => e.preventDefault())}
-				className={cn(
+				className={cx(
 					"relative z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
 					position === "popper" &&
 						"data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
@@ -67,7 +67,7 @@ const SelectContent = forwardRef<ElementRef<typeof Content>, ComponentPropsWitho
 				{...props}
 			>
 				<Viewport
-					className={cn(
+					className={cx(
 						"p-1",
 						position === "popper" &&
 							"h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
@@ -83,7 +83,7 @@ SelectContent.displayName = Content.displayName;
 
 const SelectLabel = forwardRef<ElementRef<typeof Label>, ComponentPropsWithoutRef<typeof Label>>(
 	({ className, ...props }, ref) => (
-		<Label ref={ref} className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)} {...props} />
+		<Label ref={ref} className={cx("py-1.5 pl-8 pr-2 text-sm font-semibold", className)} {...props} />
 	),
 );
 SelectLabel.displayName = Label.displayName;
@@ -92,7 +92,7 @@ const SelectItem = forwardRef<ElementRef<typeof Item>, ComponentPropsWithoutRef<
 	({ className, children, ...props }, ref) => (
 		<Item
 			ref={ref}
-			className={cn(
+			className={cx(
 				"relative flex w-full cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
 				className,
 			)}
@@ -112,7 +112,7 @@ SelectItem.displayName = Item.displayName;
 
 const SelectSeparator = forwardRef<ElementRef<typeof Separator>, ComponentPropsWithoutRef<typeof Separator>>(
 	({ className, ...props }, ref) => (
-		<Separator ref={ref} className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />
+		<Separator ref={ref} className={cx("-mx-1 my-1 h-px bg-muted", className)} {...props} />
 	),
 );
 SelectSeparator.displayName = Separator.displayName;

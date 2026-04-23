@@ -1,88 +1,84 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion, useAnimate } from "motion/react";
 import { type ButtonHTMLAttributes, type CSSProperties, forwardRef, useEffect } from "react";
 import { useNodeInteractions } from "~/hooks/useNodeInteractions";
 import usePrevious from "~/hooks/usePrevious";
 import { composeEventHandlers } from "~/utils/composeEventHandlers";
+import { cva, type VariantProps } from "~/utils/cva";
 
 const NodeShapes = ["circle", "square", "diamond"] as const;
 
 export type NodeShape = (typeof NodeShapes)[number];
 
-const nodeVariants = cva(
-	[
+const nodeVariants = cva({
+	base: [
 		"relative inline-flex items-center justify-center outline-offset-6 focus-visible:outline-2 focus-visible:outline-offset-4",
 		"aspect-square",
 		"text-white",
 		"[--base-hsl:var(--node-color-seq-1)] [--base:hsl(var(--base-hsl))] [--dark:hsl(var(--base-hsl)/0.85)]",
 		"bg-[linear-gradient(145deg,var(--base)_0%,var(--base)_50%,var(--dark)_50%,var(--dark)_100%)]",
 	],
-	{
-		variants: {
-			size: {
-				xxs: "size-8",
-				xs: "size-14",
-				sm: "size-20",
-				md: "size-28",
-				lg: "size-36",
-			},
-			shape: {
-				circle: "rounded-full",
-				square: "rounded",
-				diamond: "rotate-45 rounded",
-			},
-			color: {
-				"node-color-seq-1": "[--base-hsl:var(--node-color-seq-1)]",
-				"node-color-seq-2": "[--base-hsl:var(--node-color-seq-2)]",
-				"node-color-seq-3": "[--base-hsl:var(--node-color-seq-3)]",
-				"node-color-seq-4": "[--base-hsl:var(--node-color-seq-4)]",
-				"node-color-seq-5": "[--base-hsl:var(--node-color-seq-5)]",
-				"node-color-seq-6": "[--base-hsl:var(--node-color-seq-6)]",
-				"node-color-seq-7": "[--base-hsl:var(--node-color-seq-7)]",
-				"node-color-seq-8": "[--base-hsl:var(--node-color-seq-8)]",
-			},
-			disabled: {
-				true: "pointer-events-none saturate-50",
-				false: "",
-			},
+	variants: {
+		size: {
+			xxs: "size-8",
+			xs: "size-14",
+			sm: "size-20",
+			md: "size-28",
+			lg: "size-36",
 		},
-		compoundVariants: [
-			{ shape: "square", size: "xxs", className: "rounded-[8px]" },
-			{ shape: "square", size: "xs", className: "rounded-[16px]" },
-			{ shape: "square", size: "sm", className: "rounded-[24px]" },
-			{ shape: "square", size: "lg", className: "rounded-[34px]" },
-			{ shape: "diamond", size: "xxs", className: "rounded-[8px]" },
-			{ shape: "diamond", size: "xs", className: "rounded-[16px]" },
-			{ shape: "diamond", size: "sm", className: "rounded-[24px]" },
-			{ shape: "diamond", size: "lg", className: "rounded-[34px]" },
-		],
-		defaultVariants: {
-			size: "md",
-			shape: "circle",
-			color: "node-color-seq-1",
-			disabled: false,
+		shape: {
+			circle: "rounded-full",
+			square: "rounded",
+			diamond: "rotate-45 rounded",
+		},
+		color: {
+			"node-color-seq-1": "[--base-hsl:var(--node-color-seq-1)]",
+			"node-color-seq-2": "[--base-hsl:var(--node-color-seq-2)]",
+			"node-color-seq-3": "[--base-hsl:var(--node-color-seq-3)]",
+			"node-color-seq-4": "[--base-hsl:var(--node-color-seq-4)]",
+			"node-color-seq-5": "[--base-hsl:var(--node-color-seq-5)]",
+			"node-color-seq-6": "[--base-hsl:var(--node-color-seq-6)]",
+			"node-color-seq-7": "[--base-hsl:var(--node-color-seq-7)]",
+			"node-color-seq-8": "[--base-hsl:var(--node-color-seq-8)]",
+		},
+		disabled: {
+			true: "pointer-events-none saturate-50",
+			false: "",
 		},
 	},
-);
+	compoundVariants: [
+		{ shape: "square", size: "xxs", class: "rounded-[8px]" },
+		{ shape: "square", size: "xs", class: "rounded-[16px]" },
+		{ shape: "square", size: "sm", class: "rounded-[24px]" },
+		{ shape: "square", size: "lg", class: "rounded-[34px]" },
+		{ shape: "diamond", size: "xxs", class: "rounded-[8px]" },
+		{ shape: "diamond", size: "xs", class: "rounded-[16px]" },
+		{ shape: "diamond", size: "sm", class: "rounded-[24px]" },
+		{ shape: "diamond", size: "lg", class: "rounded-[34px]" },
+	],
+	defaultVariants: {
+		size: "md",
+		shape: "circle",
+		color: "node-color-seq-1",
+		disabled: false,
+	},
+});
 
-const labelVariants = cva(
-	"overflow-hidden text-center hyphens-auto whitespace-pre-line px-2 leading-5! text-wrap break-words",
-	{
-		variants: {
-			size: {
-				xxs: "text-xs",
-				xs: "text-xs",
-				sm: "text-sm",
-				md: "text-base",
-				lg: "text-lg",
-			},
-		},
-		defaultVariants: {
-			size: "md",
+const labelVariants = cva({
+	base: "overflow-hidden text-center hyphens-auto whitespace-pre-line px-2 leading-5! text-wrap break-words",
+	variants: {
+		size: {
+			xxs: "text-xs",
+			xs: "text-xs",
+			sm: "text-sm",
+			md: "text-base",
+			lg: "text-lg",
 		},
 	},
-);
+	defaultVariants: {
+		size: "md",
+	},
+});
 
 function mergeRefs<T>(...refs: Array<React.Ref<T> | React.RefObject<T | null> | undefined>) {
 	return (node: T | null) => {

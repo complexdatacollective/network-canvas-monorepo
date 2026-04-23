@@ -2,7 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
-import { cn } from "../utils";
+import { cx } from "../utils";
 import { paragraphVariants } from "./Paragraph";
 
 export const Details = forwardRef<
@@ -15,7 +15,7 @@ export const Details = forwardRef<
 	return (
 		<details
 			ref={ref}
-			className={cn(
+			className={cx(
 				paragraphVariants({ margin: "forced" }),
 				"my-5 rounded-xl border-2 border-border px-5 [&_svg]:open:rotate-90", // Rotate the summary arrow
 				className,
@@ -45,7 +45,7 @@ export const Summary = forwardRef<
 	return (
 		<summary
 			ref={ref}
-			className={cn(
+			className={cx(
 				"flex cursor-pointer select-none list-none items-center gap-2",
 
 				className,

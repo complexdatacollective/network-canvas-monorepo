@@ -6,7 +6,7 @@ import * as React from "react";
 
 import Heading from "./typography/Heading";
 import { paragraphVariants } from "./typography/Paragraph";
-import { cn } from "./utils";
+import { cx } from "./utils";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -21,7 +21,7 @@ export const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<DialogPrimitive.Overlay
 		ref={ref}
-		className={cn(
+		className={cx(
 			"fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
 			className,
 		)}
@@ -40,7 +40,7 @@ export const DialogContentEmpty = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<DialogPortal>
 		<DialogOverlay />
-		<DialogPrimitive.Content ref={ref} className={cn(dialogContentClasses, className)} {...props} asChild>
+		<DialogPrimitive.Content ref={ref} className={cx(dialogContentClasses, className)} {...props} asChild>
 			{children}
 		</DialogPrimitive.Content>
 	</DialogPortal>
@@ -54,7 +54,7 @@ const DialogContent = React.forwardRef<
 		<DialogOverlay />
 		<DialogPrimitive.Content
 			ref={ref}
-			className={cn(dialogContentClasses, "gap-4 border bg-card p-6 shadow-lg sm:rounded-lg md:w-full", className)}
+			className={cx(dialogContentClasses, "gap-4 border bg-card p-6 shadow-lg sm:rounded-lg md:w-full", className)}
 			{...props}
 		>
 			{children}
@@ -68,19 +68,19 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+	<div className={cx("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+	<div className={cx("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
 );
 DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Title>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => <Heading variant="h3" {...props} className={cn(className)} ref={ref} />);
+>(({ className, ...props }, ref) => <Heading variant="h3" {...props} className={cx(className)} ref={ref} />);
 
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
@@ -88,7 +88,7 @@ const DialogDescription = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Description>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
-	<div ref={ref} className={cn(paragraphVariants({ variant: "smallText" }), className)} {...props} />
+	<div ref={ref} className={cx(paragraphVariants({ variant: "smallText" }), className)} {...props} />
 ));
 
 DialogDescription.displayName = DialogPrimitive.Description.displayName;

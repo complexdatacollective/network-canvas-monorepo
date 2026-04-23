@@ -2,7 +2,7 @@
 
 import { Content, Provider, Root, Trigger } from "@radix-ui/react-tooltip";
 import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
-import { cn } from "./utils";
+import { cx } from "./utils";
 
 const TooltipProvider = Provider;
 
@@ -15,7 +15,7 @@ const TooltipContent = forwardRef<ElementRef<typeof Content>, ComponentPropsWith
 		<Content
 			ref={ref}
 			sideOffset={sideOffset}
-			className={cn(
+			className={cx(
 				"z-50 overflow-hidden rounded-md border bg-popover p-4 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
 				className,
 			)}

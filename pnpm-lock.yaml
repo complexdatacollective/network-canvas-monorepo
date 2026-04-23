@@ -54,12 +54,12 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
-    class-variance-authority:
-      specifier: 0.7.1
-      version: 0.7.1
     clsx:
       specifier: ^2.1.1
       version: 2.1.1
+    cva:
+      specifier: 1.0.0-beta.4
+      version: 1.0.0-beta.4
     dotenv:
       specifier: ^17.3.1
       version: 17.3.1
@@ -442,9 +442,6 @@ importers:
       animejs:
         specifier: ^2.2.0
         version: 2.2.0
-      class-variance-authority:
-        specifier: 'catalog:'
-        version: 0.7.1
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
@@ -454,6 +451,9 @@ importers:
       csvtojson:
         specifier: ^2.0.14
         version: 2.0.14
+      cva:
+        specifier: 'catalog:'
+        version: 1.0.0-beta.4(typescript@6.0.2)
       dexie:
         specifier: ^4.3.0
         version: 4.3.0
@@ -674,12 +674,12 @@ importers:
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@16.2.1(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0))(react@19.2.4)
-      class-variance-authority:
-        specifier: 'catalog:'
-        version: 0.7.1
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
+      cva:
+        specifier: 'catalog:'
+        version: 1.0.0-beta.4(typescript@6.0.2)
       dotenv:
         specifier: 'catalog:'
         version: 17.3.1
@@ -1310,9 +1310,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: 'catalog:'
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      class-variance-authority:
+      cva:
         specifier: 'catalog:'
-        version: 0.7.1
+        version: 1.0.0-beta.4(typescript@6.0.2)
       lucide-react:
         specifier: 'catalog:'
         version: 1.7.0(react@19.2.4)
@@ -6124,9 +6124,6 @@ packages:
     resolution: {integrity: sha512-Mz9QMT5fJe7bKI7MH31UilT5cEK5EHHRCccw/YRFsRY47AuNgaV6HY3rscp0/I4Q+tTW/5zoqpSeRRI54TkDWA==}
     engines: {node: '>= 0.10'}
 
-  class-variance-authority@0.7.1:
-    resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
-
   classnames@2.5.1:
     resolution: {integrity: sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow==}
 
@@ -6430,6 +6427,14 @@ packages:
 
   cuint@0.2.2:
     resolution: {integrity: sha512-d4ZVpCW31eWwCMe1YT3ur7mUDnTXbgwyzaL320DrcRT45rfjYxkt5QWLrmOJ+/UEAI2+fQgKe/fCjR8l4TpRgw==}
+
+  cva@1.0.0-beta.4:
+    resolution: {integrity: sha512-F/JS9hScapq4DBVQXcK85l9U91M6ePeXoBMSp7vypzShoefUBxjQTo3g3935PUHgQd+IW77DjbPRIxugy4/GCQ==}
+    peerDependencies:
+      typescript: '>= 4.5.5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   d3-array@1.2.4:
     resolution: {integrity: sha512-KHW6M86R+FUPYGb3R5XiYjXPq7VzwxZ22buHhAEVG5ztoEcZZMLov530mmccaqA1GghZArjQV46fuc8kUqhhHw==}
@@ -17030,10 +17035,6 @@ snapshots:
       safe-buffer: 5.2.1
       to-buffer: 1.2.2
 
-  class-variance-authority@0.7.1:
-    dependencies:
-      clsx: 2.1.1
-
   classnames@2.5.1: {}
 
   cli-cursor@3.1.0:
@@ -17370,6 +17371,12 @@ snapshots:
       lodash: 4.17.23
 
   cuint@0.2.2: {}
+
+  cva@1.0.0-beta.4(typescript@6.0.2):
+    dependencies:
+      clsx: 2.1.1
+    optionalDependencies:
+      typescript: 6.0.2
 
   d3-array@1.2.4: {}
 
