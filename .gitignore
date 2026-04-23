@@ -53,3 +53,6 @@ apps/documentation/public/sidebar.json
 
 # Superpowers brainstorm sessions
 .superpowers/
+
+# Claude Code per-developer session state and local config
+.claude/
