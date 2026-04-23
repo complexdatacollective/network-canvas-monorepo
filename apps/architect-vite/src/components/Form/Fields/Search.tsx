@@ -1,7 +1,6 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import { get, isEmpty, noop } from "es-toolkit/compat";
 import { CrossIcon as ClearIcon, SearchIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import Text from "./Text";
 
 type SearchProps = {
@@ -14,6 +13,9 @@ type SearchProps = {
 	color?: string;
 	autoFocus?: boolean;
 	placeholder?: string;
+	label?: string | null;
+	hint?: ReactNode;
+	required?: boolean;
 	[key: string]: unknown;
 };
 
@@ -37,7 +39,6 @@ const Search = ({ input = { onChange: noop }, color, autoFocus, placeholder, ...
 				color,
 				cursor: "pointer",
 			}}
-			className="color-input-foreground"
 			onClick={handleClear}
 		/>
 	);
@@ -50,6 +51,7 @@ const Search = ({ input = { onChange: noop }, color, autoFocus, placeholder, ...
 			autoFocus={autoFocus}
 			placeholder={placeholder}
 			type="search"
+			{...props}
 		/>
 	);
 };

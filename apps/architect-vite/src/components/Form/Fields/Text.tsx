@@ -1,10 +1,51 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
-import cx from "classnames";
-import { memo, useRef, useState } from "react";
+import { memo, type ReactNode, useMemo, useRef } from "react";
 import { v4 as uuid } from "uuid";
-import Icon from "~/lib/legacy-ui/components/Icon";
-import MarkdownLabel from "./MarkdownLabel";
+import { BaseField } from "~/components/Form/BaseField";
+import {
+	controlVariants,
+	heightVariants,
+	inlineSpacingVariants,
+	inputControlVariants,
+	interactiveStateVariants,
+	placeholderVariants,
+	proportionalLucideIconVariants,
+	stateVariants,
+	textSizeVariants,
+	wrapperPaddingVariants,
+} from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
+
+const inputWrapperVariants = compose(
+	heightVariants,
+	textSizeVariants,
+	controlVariants,
+	inputControlVariants,
+	inlineSpacingVariants,
+	wrapperPaddingVariants,
+	proportionalLucideIconVariants,
+	stateVariants,
+	interactiveStateVariants,
+	cva({
+		base: cx("max-w-full min-w-0", "w-auto shrink-0", "[&_button]:h-10"),
+	}),
+);
+
+const inputVariants = compose(
+	placeholderVariants,
+	cva({
+		base: cx(
+			"cursor-[inherit]",
+			"[font-size:inherit]",
+			"p-0",
+			"field-sizing-content min-w-0 grow basis-0",
+			"border-none bg-transparent outline-none focus:ring-0",
+			"transition-none",
+			"[&::-webkit-search-cancel-button]:hidden",
+			"[&::-webkit-search-decoration]:hidden",
+		),
+	}),
+);
 
 type TextInputProps = {
 	input?: {
@@ -27,8 +68,12 @@ type TextInputProps = {
 	type?: "text" | "number" | "search";
 	autoFocus?: boolean;
 	hidden?: boolean;
-	adornmentLeft?: React.ReactNode;
-	adornmentRight?: React.ReactNode;
+	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	hint?: ReactNode;
+	adornmentLeft?: ReactNode;
+	adornmentRight?: ReactNode;
 };
 
 const TextInput = ({
@@ -37,69 +82,58 @@ const TextInput = ({
 	label = null,
 	placeholder = "Enter some text...",
 	fieldLabel = null,
-	className = "",
+	className,
 	type = "text",
 	autoFocus: _autoFocus = false,
 	hidden = false,
+	disabled = false,
+	readOnly = false,
+	required = false,
+	hint,
 	adornmentLeft = null,
 	adornmentRight = null,
 }: TextInputProps) => {
 	const { error, invalid, touched } = meta;
-	const id = useRef(uuid());
-	const [hasFocus, setFocus] = useState(false);
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-	const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
-		setFocus(true);
-		if (input.onFocus) {
-			input.onFocus(event);
-		}
-	};
+	const state = getInputState({ disabled, readOnly, meta });
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
 
-	const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-		setFocus(false);
-		if (input.onBlur) {
-			input.onBlur(event);
-		}
-	};
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
 
-	const hasLeftAdornment = !!adornmentLeft;
-	const hasRightAdornment = !!adornmentRight;
-	const hasAdornment = hasLeftAdornment || hasRightAdornment;
-
-	const seamlessClasses = cx(className, "form-field-text", {
-		"form-field-text--has-focus": hasFocus,
-		"form-field-text--has-error": invalid && touched && error,
-		"form-field-text--adornment": hasAdornment,
-		"form-field-text--has-left-adornment": hasLeftAdornment,
-		"form-field-text--has-right-adornment": hasRightAdornment,
-	});
-
-	const anyLabel = fieldLabel || label;
+	const anyLabel = fieldLabel ?? label ?? undefined;
 
 	return (
-		<div className="form-field-container" hidden={hidden}>
-			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
-			<div className={seamlessClasses}>
+		<BaseField
+			id={id}
+			name={input.name}
+			label={anyLabel ?? undefined}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+			containerProps={hidden ? { hidden: true } : undefined}
+		>
+			<div className={cx(inputWrapperVariants({ state }), className)}>
+				{adornmentLeft}
 				<input
-					id={id.current}
-					name={input.name}
-					className="form-field form-field-text__input"
-					placeholder={placeholder?.toString()} // eslint-disable-line
-					type={type}
 					{...input}
-					onBlur={handleBlur}
-					onFocus={handleFocus}
+					id={id}
+					type={type}
+					placeholder={placeholder?.toString()}
+					disabled={disabled}
+					readOnly={readOnly}
+					aria-required={required || undefined}
+					aria-invalid={showErrors || undefined}
+					aria-describedby={describedBy}
+					className={inputVariants()}
 				/>
-				{adornmentLeft && <div className="form-field-text__adornment-left">{adornmentLeft}</div>}
-				{adornmentRight && <div className="form-field-text__adornment-right">{adornmentRight}</div>}
-				{invalid && touched && (
-					<div className="form-field-text__error">
-						<Icon name="warning" />
-						{error}
-					</div>
-				)}
+				{adornmentRight}
 			</div>
-		</div>
+		</BaseField>
 	);
 };
 
