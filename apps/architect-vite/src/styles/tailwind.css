@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@plugin "@tailwindcss/forms";
+@plugin "./plugins/tailwind-inset-surface/index.ts";
+@plugin "./plugins/tailwind-elevation/index.ts";
+
 @layer base {
 	:root {
 		/* UI Colors */
