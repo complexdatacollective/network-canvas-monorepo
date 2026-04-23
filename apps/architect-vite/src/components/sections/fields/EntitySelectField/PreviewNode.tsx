@@ -1,6 +1,6 @@
-import cx from "classnames";
 import type { NodeShape } from "~/components/Node/Node";
 import Node from "~/components/Node/Node";
+import { cx } from "~/utils/cva";
 
 type PreviewNodeProps = {
 	label: string;
@@ -16,18 +16,10 @@ const PreviewNode = ({
 	shape = "circle",
 	onClick,
 	selected = false,
-}: PreviewNodeProps) => {
-	const content = (
+}: PreviewNodeProps) => (
+	<div className={cx(onClick && !selected && "cursor-pointer")}>
 		<Node label={label} selected={selected} color={color} shape={shape} onClick={!selected ? onClick : undefined} />
-	);
-
-	const commonClasses = cx(
-		"preview-node",
-		{ "preview-node--selected": selected },
-		{ "preview-node--clickable": onClick },
-	);
-
-	return <div className={commonClasses}>{content}</div>;
-};
+	</div>
+);
 
 export default PreviewNode;

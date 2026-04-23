@@ -1,5 +1,5 @@
-import cx from "classnames";
 import { Icon } from "~/lib/legacy-ui/components";
+import { cx } from "~/utils/cva";
 
 type PreviewEdgeProps = {
 	label: string;
@@ -17,9 +17,11 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false }: Preview
 	);
 
 	const commonClasses = cx(
-		"preview-edge",
-		{ "preview-edge--selected": selected },
-		{ "preview-edge--clickable": onClick },
+		// The rounded radius is "arbitrarily large" per the legacy intent — a pill shape
+		"bg-surface-1 relative m-[var(--space-sm)] flex flex-row items-center rounded-[12rem] border-4 border-transparent px-[var(--space-md)] py-[var(--space-sm)] transition-colors duration-200",
+		"[&_.icon]:mr-[var(--space-sm)]",
+		selected && "pointer-events-none border-(--edge-color)",
+		onClick && "clickable",
 	);
 
 	if (onClick && !selected) {

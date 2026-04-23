@@ -1,11 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
-import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { v4 as uuid } from "uuid";
 import NewTypeDialog from "~/components/Dialog/NewTypeDialog";
+import { BaseField } from "~/components/Form/BaseField";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
-import { Icon } from "~/lib/legacy-ui/components";
 import Button from "~/lib/legacy-ui/components/Button";
 import { getEdgeTypes, getNodeTypes } from "../../../../selectors/codebook";
 import { asOptions } from "../../../../selectors/utils";
@@ -20,6 +20,7 @@ type EntitySelectFieldProps = {
 	entityType: "node" | "edge";
 	label?: string | null;
 	input: {
+		name?: string;
 		value?: string;
 		onChange: (value: string) => void;
 	};
@@ -34,10 +35,12 @@ type EntitySelectFieldProps = {
 const EntitySelectField = ({
 	entityType,
 	label = null,
-	input: { value, onChange },
-	meta: { error, invalid, touched },
+	input: { name, value, onChange },
+	meta,
 	promptBeforeChange = null,
 }: EntitySelectFieldProps) => {
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 	const dispatch = useAppDispatch();
 	const edgeOptions = useSelector(getEdgeOptions);
 	const nodeOptions = useSelector(getNodeOptions);
@@ -50,7 +53,9 @@ const EntitySelectField = ({
 		return nodeOptions;
 	}, [entityType, edgeOptions, nodeOptions]);
 
-	const hasError = !!touched && !!error;
+	const { error, invalid, touched } = meta;
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
 
 	const handleClickItem = useCallback(
 		(clickedItem: string) => {
@@ -111,36 +116,22 @@ const EntitySelectField = ({
 		[options, value, handleClickItem, PreviewComponent],
 	);
 
-	const classes = cx("form-fields-entity-select flex flex-col items-start gap-4", {
-		"form-fields-entity-select--has-error": hasError,
-	});
-
 	return (
-		<div className={classes}>
-			{label && <h4>{label}</h4>}
-
-			<div className="flex-wrap flex p-2 gap-2">{renderOptions()}</div>
-			{options.length === 0 && (
-				<p className="form-fields-entity-select__empty">
-					No {entityType} types currently defined. Use the button below to create one.
-				</p>
-			)}
-			<Button icon="add" onClick={handleOpenCreateNewType} color="sea-green">
-				Create new {entityType} type
-			</Button>
-			{invalid && touched && (
-				<div className="form-fields-entity-select__error">
-					<Icon name="warning" />
-					{error}
-				</div>
-			)}
-			<NewTypeDialog
-				show={showNewTypeDialog}
-				entityType={entityType}
-				onComplete={handleNewTypeComplete}
-				onCancel={handleNewTypeCancel}
-			/>
-		</div>
+		<BaseField id={id} name={name} label={label ?? undefined} errors={errors} showErrors={showErrors}>
+			<div className="flex flex-col items-start gap-4 [--base-node-size:7rem]">
+				<div className="flex flex-row flex-wrap justify-start gap-2 p-2">{renderOptions()}</div>
+				{options.length === 0 && <p>No {entityType} types currently defined. Use the button below to create one.</p>}
+				<Button icon="add" onClick={handleOpenCreateNewType} color="sea-green">
+					Create new {entityType} type
+				</Button>
+				<NewTypeDialog
+					show={showNewTypeDialog}
+					entityType={entityType}
+					onComplete={handleNewTypeComplete}
+					onCancel={handleNewTypeCancel}
+				/>
+			</div>
+		</BaseField>
 	);
 };
 
