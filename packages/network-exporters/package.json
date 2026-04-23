@@ -22,7 +22,7 @@
 	"dependencies": {
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
-		"@xmldom/xmldom": "^0.9.8",
+		"@xmldom/xmldom": "^0.8.13",
 		"es-toolkit": "catalog:",
 		"ohash": "^1.1.6",
 		"sanitize-filename": "^1.6.4",
@@ -31,7 +31,7 @@
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"typescript": "catalog:",
-		"vite": "^8.0.3",
+		"vite": "^7.3.2",
 		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:"
 	}
