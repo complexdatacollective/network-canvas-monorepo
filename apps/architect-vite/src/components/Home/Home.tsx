@@ -76,23 +76,11 @@ const Home = () => {
 		noKeyboard: true,
 	});
 
-	const handleTrySample = () => {
+	const handleOpenSample = () => {
 		void runAction(async () => {
 			await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL));
 		});
 	};
-
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			if (!(e.metaKey || e.ctrlKey)) return;
-			if (e.key === "o" || e.key === "O") {
-				e.preventDefault();
-				open();
-			}
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [open]);
 
 	return (
 		<>
@@ -154,7 +142,7 @@ const Home = () => {
 
 							<p className="text-sm">
 								First time?{" "}
-								<button type="button" onClick={handleTrySample} className="action-link">
+								<button type="button" onClick={handleOpenSample} className="action-link">
 									Explore a sample protocol
 								</button>
 							</p>
