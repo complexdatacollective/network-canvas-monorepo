@@ -509,6 +509,11 @@
 	@apply text-lg leading-normal text-muted-foreground;
 }
 
+@utility action-link {
+	@apply font-bold underline decoration-2 underline-offset-4 cursor-pointer;
+	text-decoration-color: var(--color-action);
+}
+
 /* Small heading utility - replaces .small-heading placeholder */
 @utility small-heading {
 	font-size: var(--text-sm);

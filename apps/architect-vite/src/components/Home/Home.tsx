@@ -1,8 +1,16 @@
+import { FilePlus, FolderOpen } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import NewProtocolDialog from "~/components/NewProtocolDialog";
+import { SAMPLE_PROTOCOL_URL } from "~/config";
+import { useAppDispatch } from "~/ducks/hooks";
+import { createNetcanvas, openLocalNetcanvas, openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import headerGraphic from "~/images/Arc-Flat.svg";
 import networkCanvasLogo from "~/images/NC-Mark.svg";
+import Button from "~/lib/legacy-ui/components/Button";
 import { appVersion } from "~/utils/appVersion";
 import Badge from "../Badge";
-import LaunchPad from "./LaunchPad";
+import ProtocolLoadingOverlay from "./ProtocolLoadingOverlay";
 
 type NavLinkProps = {
 	href: string;
@@ -14,47 +22,137 @@ const NavLink = ({ href, children }: NavLinkProps) => (
 		href={href}
 		target="_blank"
 		rel="noopener noreferrer"
-		className="small-heading hover:text-primary underline decoration-2 underline-offset-8 decoration-transparent hover:decoration-action transition-all"
+		className="small-heading hover:text-primary underline decoration-2 underline-offset-8 decoration-transparent hover:decoration-(--color-action) transition-all"
 	>
 		{children}
 	</a>
 );
 
 const Home = () => {
+	const dispatch = useAppDispatch();
+	const [isLoading, setIsLoading] = useState(false);
+	const [showNewDialog, setShowNewDialog] = useState(false);
+
+	const runAction = useCallback(async (action: () => Promise<unknown>) => {
+		setIsLoading(true);
+		try {
+			await action();
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+
+	const handleCreate = useCallback(
+		(values: { name: string; description?: string }) => {
+			setShowNewDialog(false);
+			void runAction(async () => {
+				await dispatch(createNetcanvas(values));
+			});
+		},
+		[dispatch, runAction],
+	);
+
+	const onDrop = (files: File[]) => {
+		const file = files[0];
+		if (file) {
+			void runAction(async () => {
+				await dispatch(openLocalNetcanvas(file));
+			});
+		}
+	};
+
+	const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+		onDrop,
+		accept: { "application/octet-stream": [".netcanvas"] },
+		multiple: false,
+		noClick: true,
+		noKeyboard: true,
+	});
+
+	const handleTrySample = () => {
+		void runAction(async () => {
+			await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL));
+		});
+	};
+
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (!(e.metaKey || e.ctrlKey)) return;
+			if (e.key === "o" || e.key === "O") {
+				e.preventDefault();
+				open();
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [open]);
+
 	return (
-		<div className="flex flex-col h-dvh overflow-y-auto">
-			<header className="flex justify-between items-center gap-4 sm:gap-8 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
-				<div className="flex items-center gap-3 sm:gap-4 pl-2 sm:pl-3 pr-4 sm:pr-8 py-2 bg-surface-1 rounded-full shadow-sm">
-					<img src={networkCanvasLogo} alt="Network Canvas" className="h-10 w-10 sm:h-14 sm:w-14" />
-					<h3>Architect</h3>
-					<Badge color="sea-green">WEB</Badge>
-				</div>
-				<div className="flex items-center gap-6 lg:gap-12">
-					<nav className="hidden md:flex items-center gap-6 lg:gap-10">
-						<NavLink href="https://documentation.networkcanvas.com">Docs</NavLink>
-						<NavLink href="https://community.networkcanvas.com">Community</NavLink>
-						<NavLink href="https://github.com/complexdatacollective">Github</NavLink>
-					</nav>
-					<Badge color="white" className="hidden sm:inline-flex">
-						<span className="h-2 w-2 rounded-full bg-active" />v{appVersion}
-					</Badge>
-				</div>
-			</header>
+		<>
+			<ProtocolLoadingOverlay open={isLoading} />
+			<NewProtocolDialog open={showNewDialog} onOpenChange={setShowNewDialog} onSubmit={handleCreate} />
 
-			<main className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-8 pt-4">
-				<div className="flex flex-col items-center text-center gap-6">
-					<img src={headerGraphic} alt="Network Canvas Architect" className="h-24" />
-					<div>
-						<h2 className="hero mb-3">
-							Welcome to <span className="text-action">Architect</span>
-						</h2>
-						<p className="lead max-w-md mx-auto">A tool for building Network Canvas interviews.</p>
+			<div {...getRootProps()} className="relative flex flex-col h-dvh overflow-y-auto">
+				<input {...getInputProps()} />
+
+				{isDragActive && (
+					<div className="pointer-events-none fixed inset-3 z-50 rounded-2xl border-4 border-dashed border-action bg-action/10" />
+				)}
+
+				<header className="flex justify-between items-center gap-4 sm:gap-8 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
+					<div className="flex items-center gap-3 sm:gap-4 pl-2 sm:pl-3 pr-4 sm:pr-8 py-2 bg-surface-1 rounded-full shadow-sm">
+						<img src={networkCanvasLogo} alt="Network Canvas" className="h-10 w-10 sm:h-14 sm:w-14" />
+						<h3>Architect</h3>
+						<Badge color="sea-green">WEB</Badge>
 					</div>
-				</div>
+					<div className="flex items-center gap-6 lg:gap-12">
+						<nav className="hidden md:flex items-center gap-6 lg:gap-10">
+							<NavLink href="https://documentation.networkcanvas.com">Docs</NavLink>
+							<NavLink href="https://community.networkcanvas.com">Community</NavLink>
+							<NavLink href="https://github.com/complexdatacollective">Github</NavLink>
+						</nav>
+						<Badge color="white" className="hidden sm:inline-flex">
+							<span className="h-2 w-2 rounded-full bg-active" />v{appVersion}
+						</Badge>
+					</div>
+				</header>
 
-				<LaunchPad />
-			</main>
-		</div>
+				<main className="flex-1 flex flex-col items-center max-w-5xl mx-auto w-full px-8 pt-16 pb-8 gap-8">
+					<div className="flex flex-col items-center text-center gap-6">
+						<img src={headerGraphic} alt="Network Canvas Architect" className="h-24" />
+						<div>
+							<h2 className="hero mb-3">
+								Welcome to <span className="text-action">Architect</span>
+							</h2>
+							<p className="lead max-w-xl">
+								Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and
+								categorical data, map connections, and explore narratives.
+							</p>
+						</div>
+
+						<div className="flex flex-wrap justify-center gap-3">
+							<Button size="large" color="sea-green" onClick={() => setShowNewDialog(true)}>
+								<FilePlus />
+								Create a new protocol
+							</Button>
+							<Button size="large" color="slate-blue" onClick={open}>
+								<FolderOpen />
+								Open existing protocol
+							</Button>
+						</div>
+
+						<p className="text-sm">
+							First time?{" "}
+							<button type="button" onClick={handleTrySample} className="action-link">
+								Explore a sample protocol
+							</button>
+						</p>
+					</div>
+
+					{/* <DevTools /> */}
+				</main>
+			</div>
+		</>
 	);
 };
 

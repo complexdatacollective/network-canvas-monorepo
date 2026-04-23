@@ -1,0 +1,91 @@
+import { CodeXml, Trash } from "lucide-react";
+import { useState } from "react";
+import { DEVELOPMENT_PROTOCOL_URL } from "~/config";
+import { useAppDispatch } from "~/ducks/hooks";
+import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
+import { clearAllStorage } from "~/utils/assetDB";
+import { cn } from "~/utils/cn";
+import ProtocolLoadingOverlay from "./ProtocolLoadingOverlay";
+
+type LaunchCardProps = {
+	icon: React.ReactNode;
+	title: string;
+	description: string;
+	onClick: () => void;
+	classNames?: string;
+};
+
+const LaunchCard = ({ icon, title, description, onClick, classNames }: LaunchCardProps) => (
+	<button
+		type="button"
+		onClick={onClick}
+		onKeyDown={(e) => e.key === "Enter" && onClick()}
+		className={cn(
+			"rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 flex p-4 gap-4 items-center border",
+			classNames,
+		)}
+	>
+		<div className="flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0">
+			<div>{icon}</div>
+		</div>
+		<div className="flex flex-col text-left justify-center">
+			<span className="font-semibold">{title}</span>
+			<span className="text-sm mt-0.5 font-thin">{description}</span>
+		</div>
+	</button>
+);
+
+const DevTools = () => {
+	const dispatch = useAppDispatch();
+	const [isLoading, setIsLoading] = useState(false);
+
+	if (!import.meta.env.DEV) return null;
+
+	const handleOpenProtocol = async (action: () => Promise<unknown>) => {
+		setIsLoading(true);
+		try {
+			await action();
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const installDevelopmentProtocol = () =>
+		handleOpenProtocol(async () => await dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL)));
+
+	const handleClearStorage = () => {
+		clearAllStorage();
+	};
+
+	return (
+		<>
+			<ProtocolLoadingOverlay open={isLoading} />
+			<div className="flex flex-col gap-4">
+				<div className="flex items-center gap-4">
+					<div className="bg-accent/10 text-primary rounded-md px-3 py-1 flex gap-2 items-center">
+						<span className="text-sm">Development Tools</span>
+					</div>
+					<div className="flex-1 h-px bg-surface-3" />
+				</div>
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+					<LaunchCard
+						icon={<CodeXml />}
+						title="Development Protocol"
+						description="Install development protocol"
+						onClick={installDevelopmentProtocol}
+						classNames="bg-primary/5 text-primary"
+					/>
+					<LaunchCard
+						icon={<Trash />}
+						title="Clear All Data"
+						description="Clear Redux state, localStorage, and IndexedDB"
+						onClick={handleClearStorage}
+						classNames="bg-error/5 text-error"
+					/>
+				</div>
+			</div>
+		</>
+	);
+};
+
+export default DevTools;
