@@ -16,11 +16,12 @@
 		"knip": "knip --exclude catalog"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.9",
-		"@changesets/cli": "^2.30.0",
+		"@biomejs/biome": "^2.4.13",
+		"@changesets/cli": "^2.31.0",
 		"@types/node": "catalog:",
+		"@typescript/native-preview": "^7.0.0-dev.20260421.2",
 		"husky": "^9.1.7",
-		"knip": "^6.0.6",
+		"knip": "^6.6.2",
 		"lint-staged": "^16.4.0",
 		"typescript": "catalog:"
 	},

@@ -12,7 +12,7 @@
 	"types": "./dist/index.d.ts",
 	"description": "Utilities for validating and migrating Network Canvas protocol files.",
 	"scripts": {
-		"build": "tsc --noEmit && vite build",
+		"build": "tsgo --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"test": "vitest --run",
 		"test:watch": "vitest",
@@ -40,7 +40,7 @@
 		"tar-stream": "^3.1.8",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
-		"vite": "^8.0.3",
+		"vite": "^8.0.10",
 		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:"
 	}

@@ -17,7 +17,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsc --noEmit && vite build",
+		"build": "tsgo --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"clean": "rm -rf .turbo node_modules dist",
 		"typecheck": "tsc --build --noEmit"
@@ -35,7 +35,7 @@
 		"@codaco/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"typescript": "catalog:",
-		"vite": "^8.0.3",
+		"vite": "^8.0.10",
 		"vite-plugin-dts": "catalog:"
 	},
 	"dependencies": {
