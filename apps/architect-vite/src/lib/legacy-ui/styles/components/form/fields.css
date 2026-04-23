@@ -41,7 +41,6 @@
 /* Import field-specific styles */
 @import "./fields/boolean.css";
 @import "./fields/radio-group.css";
-@import "./fields/checkbox-group.css";
 @import "./fields/toggle.css";
 @import "./fields/toggle-button.css";
 @import "./fields/toggle-button-group.css";
