@@ -90,7 +90,7 @@ export const getNetworkVariables = async (assetId: string) => {
 	return getVariableNamesFromNetwork(network);
 };
 
-export type ValidationResult = {
+type ValidationResult = {
 	duplicateCount: number;
 };
 
