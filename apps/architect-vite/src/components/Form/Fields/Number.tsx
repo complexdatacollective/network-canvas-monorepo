@@ -50,7 +50,7 @@ const inputVariants = compose(
 );
 
 const stepperButtonVariants = cx(
-	"aspect-square h-full rounded-none",
+	"aspect-square h-full! rounded-none",
 	"flex items-center justify-center",
 	"bg-input-contrast/5 text-input-contrast",
 	"hover:bg-accent hover:text-accent-contrast",
