@@ -1,50 +1,68 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
-import cx from "classnames";
-import { useCallback, useRef } from "react";
+import { type ReactNode, useCallback, useMemo, useRef } from "react";
 import { v4 as uuid } from "uuid";
-import Icon from "~/lib/legacy-ui/components/Icon";
-import MarkdownLabel from "./MarkdownLabel";
+import { BaseField } from "~/components/Form/BaseField";
+import { groupSpacingVariants, orientationVariants } from "~/styles/shared/controlVariants";
+import { compose, cva } from "~/utils/cva";
+import { getInputState } from "~/utils/getInputState";
 import Radio from "./Radio";
 import type { Option } from "./utils/options";
 import { asOptionObject, getValue } from "./utils/options";
 
+const groupVariants = compose(groupSpacingVariants, orientationVariants, cva({ base: "" }));
+
+type RadioOptionProps = {
+	input: {
+		name?: string;
+		value: unknown;
+		checked?: boolean;
+		onChange: () => void;
+	};
+	label: string;
+	disabled?: boolean;
+	[key: string]: unknown;
+};
+
 type RadioGroupProps = {
 	options?: Option[];
+	className?: string | null;
 	label?: string | null;
+	fieldLabel?: string | null;
+	hint?: ReactNode;
+	required?: boolean;
+	disabled?: boolean;
+	orientation?: "horizontal" | "vertical";
+	useColumns?: boolean;
+	size?: "sm" | "md" | "lg" | "xl";
 	input: {
-		value: unknown;
 		name: string;
+		value: unknown;
 		onChange: (value: unknown) => void;
 	};
-	className?: string | null;
-	fieldLabel?: string | null;
+	optionComponent?: React.ComponentType<RadioOptionProps>;
 	meta?: {
 		error?: string;
 		invalid?: boolean;
 		touched?: boolean;
 	};
-	optionComponent?: React.ComponentType<{
-		input: {
-			value: unknown;
-			checked?: boolean;
-			onChange: () => void;
-		};
-		label: string;
-		[key: string]: unknown;
-	}>;
 };
 
 const RadioGroup = ({
 	options = [],
+	className,
 	label = null,
-	input,
-	className = null,
 	fieldLabel = null,
-	meta = {},
+	hint,
+	required = false,
+	disabled = false,
+	orientation = "vertical",
+	useColumns = false,
+	size = "md",
+	input,
 	optionComponent: OptionComponent = Radio,
+	meta = {},
 }: RadioGroupProps) => {
-	const _id = useRef(uuid());
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
 	const onChange = useCallback(
 		(index: number) => {
@@ -56,6 +74,15 @@ const RadioGroup = ({
 		[input, options],
 	);
 
+	const { error, invalid, touched } = meta;
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
+	const state = getInputState({ disabled, meta });
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
+
+	const anyLabel = fieldLabel ?? label ?? undefined;
+
 	const renderOption = useCallback(
 		(option: Option, index: number) => {
 			const { value: optionValue, label: optionLabel, ...optionRest } = asOptionObject(option);
@@ -65,39 +92,41 @@ const RadioGroup = ({
 				<OptionComponent
 					key={index}
 					input={{
+						name: input.name,
 						value: index,
 						checked: selected,
 						onChange: () => onChange(index),
 					}}
 					label={optionLabel}
+					disabled={disabled}
 					{...optionRest}
 				/>
 			);
 		},
-		[input.value, onChange, OptionComponent],
+		[input.value, input.name, onChange, OptionComponent, disabled],
 	);
 
-	const { error, invalid, touched } = meta;
-
-	const containerClassNames = cx("form-field-container", {
-		"form-field-radio-group--has-error": invalid && touched && error,
-	});
-
-	const classNames = cx("form-field", "form-field-radio-group", className);
-
-	const anyLabel = fieldLabel || label;
-
 	return (
-		<div className={containerClassNames}>
-			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className={classNames}>{options.map(renderOption)}</div>
-			{invalid && touched && (
-				<div className="form-field-radio-group__error">
-					<Icon name="warning" />
-					{error}
-				</div>
-			)}
-		</div>
+		<BaseField
+			id={id}
+			name={input.name}
+			label={anyLabel}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+		>
+			<fieldset
+				aria-labelledby={anyLabel ? `${id}-label` : undefined}
+				aria-invalid={showErrors || undefined}
+				aria-describedby={describedBy}
+				className={groupVariants({ size, orientation, useColumns, className })}
+				data-state={state}
+				disabled={disabled}
+			>
+				{options.map(renderOption)}
+			</fieldset>
+		</BaseField>
 	);
 };
 
