@@ -1,8 +1,6 @@
 @import "./fields/variable-select.css";
 @import "./fields/entity-select.css";
-@import "./fields/input-preview.css";
 @import "./fields/variable-picker.css";
-@import "./fields/markdown.css";
 @import "./fields/mode.css";
 @import "./fields/shape-picker.css";
 @import "./fields/shape-variable-mapping.css";
