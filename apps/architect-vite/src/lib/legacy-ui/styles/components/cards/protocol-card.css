@@ -169,7 +169,7 @@
 	&.protocol-card--obsolete {
 		.protocol-card__icon-section {
 			color: #ff9dbb;
-			background: var(--color-error);
+			background: var(--color-destructive);
 		}
 
 		.protocol-name,

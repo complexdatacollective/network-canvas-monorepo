@@ -47,7 +47,7 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	background: var(--color-error);
+	background: var(--color-destructive);
 }
 
 .rules-preview-rule__delete .icon {
@@ -57,7 +57,7 @@
 
 .rules-preview-rule__delete .icon .cls-1,
 .rules-preview-rule__delete .icon .cls-2 {
-	fill: var(--color-sortable-foreground);
+	fill: var(--color-sortable-contrast);
 }
 
 .rules-preview-rule:hover {
@@ -70,7 +70,7 @@
 }
 
 .rules-preview-rule:hover .rules-preview-rule__text {
-	color: var(--color-primary-foreground);
+	color: var(--color-primary-contrast);
 }
 
 .stage-editor-section {

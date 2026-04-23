@@ -63,13 +63,13 @@
 	border-radius: 0.75rem;
 	padding: 0.5rem;
 	font-size: 0.7rem;
-	color: var(--color-error-foreground);
+	color: var(--color-destructive-contrast);
 	content: "Unused";
 	position: absolute;
 	margin: 0;
 	bottom: 0.45rem;
 	left: 0.45rem;
-	background: var(--color-error);
+	background: var(--color-destructive);
 }
 
 .asset-browser-asset--clickable .asset-browser-asset__preview .thumbnail {

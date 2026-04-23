@@ -49,7 +49,7 @@
 .home-section {
 	position: relative;
 	border-radius: var(--radius);
-	box-shadow: 0 0.6rem .2rem 0 var(--color-border);
+	box-shadow: 0 0.6rem .2rem 0 var(--color-outline);
 	margin: 2.4rem auto;
 	max-width: 70rem;
 	overflow: hidden;
@@ -227,7 +227,7 @@
 }
 
 .welcome-header--is-open {
-	box-shadow: 0 0.6rem .2rem 0 var(--color-border);
+	box-shadow: 0 0.6rem .2rem 0 var(--color-outline);
 }
 
 .welcome-header__header {

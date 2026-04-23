@@ -21,7 +21,7 @@ function DialogPopup({ size, header, children, footer, className, onAnimationCom
 			className={cn(
 				"w-3xl",
 				"fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden",
-				"bg-surface-1 text-surface-1-foreground max-h-[80vh] flex flex-col",
+				"bg-surface-1 text-surface-1-contrast max-h-[80vh] flex flex-col",
 				"shadow-xl",
 				className,
 			)}
@@ -48,10 +48,10 @@ function DialogPopup({ size, header, children, footer, className, onAnimationCom
 					onAnimationComplete={onAnimationComplete}
 					{...props}
 				>
-					{header && <div className="sticky top-0 bg-accent text-accent-foreground px-4 py-6">{header}</div>}
+					{header && <div className="sticky top-0 bg-accent text-accent-contrast px-4 py-6">{header}</div>}
 					<div className="flex-1 overflow-y-auto px-4 py-6">{children}</div>
 					{footer && (
-						<div className="sticky bottom-0 bg-accent text-accent-foreground px-4 py-6 flex justify-end gap-2.5">
+						<div className="sticky bottom-0 bg-accent text-accent-contrast px-4 py-6 flex justify-end gap-2.5">
 							{footer}
 						</div>
 					)}
@@ -66,7 +66,7 @@ function DialogTitle(props: BaseDialog.Title.Props) {
 }
 
 function DialogDescription(props: BaseDialog.Description.Props) {
-	return <BaseDialog.Description className="text-base text-surface-2-foreground" {...props} />;
+	return <BaseDialog.Description className="text-base text-surface-2-contrast" {...props} />;
 }
 
 type DialogProps = {

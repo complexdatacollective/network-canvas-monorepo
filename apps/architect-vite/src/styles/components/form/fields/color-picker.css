@@ -1,6 +1,6 @@
 .form-fields-color-picker__edit {
 	background: var(--color-surface-1);
-	color: var(--color-input-foreground);
+	color: var(--color-input-contrast);
 	border-radius: 1rem 1rem 0 0;
 	padding: var(--space-sm) 0 0 var(--space-sm);
 }
@@ -8,7 +8,7 @@
 .form-fields-color-picker__label {
 	font-family: var(--heading-font-family);
 	font-size: inherit;
-	color: var(--color-foreground);
+	color: var(--color-text);
 	margin-top: var(--space-xl);
 	margin-bottom: var(--space-md);
 	font-weight: var(--font-weight-semibold);
@@ -63,8 +63,8 @@
 
 .form-fields-color-picker__error {
 	opacity: 0;
-	background: var(--color-error);
-	color: var(--color-error-foreground);
+	background: var(--color-destructive);
+	color: var(--color-destructive-contrast);
 	transition:
 		opacity var(--animation-easing) var(--animation-duration-standard),
 		max-height var(--animation-easing) var(--animation-duration-standard);
@@ -78,7 +78,7 @@
 }
 
 .form-fields-color-picker--has-error .form-fields-color-picker__edit {
-	border: var(--space-xs) solid var(--color-error);
+	border: var(--space-xs) solid var(--color-destructive);
 }
 
 .form-fields-color-picker--has-error .form-fields-color-picker__error {

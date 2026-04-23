@@ -3,7 +3,7 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: flex-start;
-	color: var(--color-foreground);
+	color: var(--color-text);
 	position: relative;
 	z-index: var(--z-default);
 
@@ -12,7 +12,7 @@
 		align-items: center;
 		justify-content: center;
 		background-color: var(--color-rule-control);
-		color: var(--color-foreground);
+		color: var(--color-text);
 		border: 0;
 		border-radius: var(--space-lg);
 		width: var(--space-lg);
@@ -28,7 +28,7 @@
 		align-items: center;
 		justify-content: center;
 		background-color: var(--color-rule-delete);
-		color: var(--color-foreground);
+		color: var(--color-text);
 		border: 0;
 		position: absolute;
 		top: 0;
@@ -169,7 +169,7 @@
 			opacity var(--animation-duration-standard) var(--animation-easing),
 			transform var(--animation-duration-standard) var(--animation-easing);
 		background-color: var(--color-primary);
-		color: var(--color-primary-foreground);
+		color: var(--color-primary-contrast);
 		border: 0;
 		border-radius: 100%;
 		width: var(--space-lg);
@@ -201,7 +201,7 @@
 		padding: 0 var(--space-2xl);
 		margin-left: var(--space-xs);
 		background-color: var(--color-surface-1);
-		color: var(--color-sortable-foreground);
+		color: var(--color-sortable-contrast);
 		border-radius: var(--space-xs);
 		height: var(--space-lg);
 		text-transform: uppercase;
@@ -247,7 +247,7 @@
 		width: 100%;
 		transform: translateY(-50%);
 		left: 0;
-		color: var(--color-foreground);
+		color: var(--color-text);
 		background-color: transparent;
 		border: 0;
 		appearance: none;
@@ -278,7 +278,7 @@
 		transform: translateY(-50%);
 		left: 0;
 		background-color: transparent;
-		color: var(--color-foreground);
+		color: var(--color-text);
 		border: 0;
 	}
 

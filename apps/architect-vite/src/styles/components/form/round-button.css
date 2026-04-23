@@ -1,7 +1,7 @@
 .form-round-button {
 	font-size: var(--text-2xl);
 	background-color: var(--color-surface-accent);
-	color: var(--color-foreground);
+	color: var(--color-text);
 	width: var(--space-xl);
 	height: var(--space-xl);
 	border-radius: 100%;

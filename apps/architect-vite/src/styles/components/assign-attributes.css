@@ -39,12 +39,12 @@
 }
 
 .assign-attributes-attribute__variable .form-fields-variable-picker fieldset {
-	border-color: var(--color-border);
+	border-color: var(--color-outline);
 }
 
 .assign-attributes-attribute__value {
 	flex: 1 0 auto;
-	border: 2px dashed var(--color-border);
+	border: 2px dashed var(--color-outline);
 	padding: var(--space-md);
 	border-radius: var(--radius);
 }

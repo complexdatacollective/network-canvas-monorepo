@@ -9,7 +9,7 @@
 .options .options__option {
 	display: flex;
 	background-color: var(--color-form-control);
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 	z-index: var(--z-fx);
 	transition: background-color var(--animation-easing)
 		var(--animation-duration-standard);
@@ -57,7 +57,7 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 }
 
 .options .options__option-delete .icon,
@@ -70,7 +70,7 @@
 .options .options__option-delete .icon .cls-2,
 .options .options__option-handle .icon .cls-1,
 .options .options__option-handle .icon .cls-2 {
-	fill: var(--color-sortable-foreground);
+	fill: var(--color-sortable-contrast);
 }
 
 .options .options__option-handle {
@@ -87,11 +87,11 @@
 }
 
 .options.options--has-error .options__option {
-	background-color: var(--color-error);
+	background-color: var(--color-destructive);
 }
 
 .options.options--has-error .options__option-label {
-	color: var(--color-primary-foreground);
+	color: var(--color-primary-contrast);
 }
 
 .options.options--has-error .options__delete,

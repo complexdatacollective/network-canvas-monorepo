@@ -65,9 +65,9 @@ const VariableRow = ({ name, label, description, entityType, options, onCreateOp
 		<div className="flex flex-col gap-1 pt-2 grow">
 			<span className="font-semibold">
 				{label}
-				<span className="text-error ms-0.5">*</span>
+				<span className="text-destructive ms-0.5">*</span>
 			</span>
-			<span className="text-sm text-foreground/60 leading-snug">{description}</span>
+			<span className="text-sm text-text/60 leading-snug">{description}</span>
 		</div>
 		<div className="relative flex-1">
 			<IssueAnchor fieldName={name} description={`${label} Variable`} />
@@ -178,7 +178,7 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 
 				{nodeType && (
 					<>
-						<div className="bg-surface-2 text-surface-2-foreground p-4 rounded flex flex-col gap-6 my-6">
+						<div className="bg-surface-2 text-surface-2-contrast p-4 rounded flex flex-col gap-6 my-6">
 							<VariableRow
 								name="nodeConfig.nodeLabelVariable"
 								label="Node Label"
@@ -222,7 +222,7 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 								</p>
 							}
 							layout="vertical"
-							className="bg-surface-2 text-surface-2-foreground p-4"
+							className="bg-surface-2 text-surface-2-contrast p-4"
 						>
 							<EditableList
 								label="Form Fields"

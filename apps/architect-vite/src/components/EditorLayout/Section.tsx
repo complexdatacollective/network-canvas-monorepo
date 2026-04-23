@@ -5,7 +5,7 @@ import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
 const containerClasses =
-	"p-6 shadow-md rounded bg-[var(--current-surface)] text-[var(--current-surface-foreground)] relative";
+	"p-6 shadow-md rounded bg-[var(--current-surface)] text-[var(--current-surface-contrast)] relative";
 
 type SectionProps = {
 	id?: string | null;
@@ -63,7 +63,7 @@ const Section = ({
 		<div
 			className={cn(
 				"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
-				"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative",
+				"[--current-surface:var(--color-surface-1)] [--current-surface-contrast:var(--color-surface-1-contrast)] relative",
 				"w-full max-w-7xl",
 				layout === "horizontal" && "grid grid-cols-[20rem_auto] gap-8",
 				layout === "vertical" && "flex flex-col mb-4",
@@ -77,12 +77,12 @@ const Section = ({
 						"flex gap-4 items-center text-right",
 						layout === "vertical" && "text-xl font-semibold tracking-tight",
 						layout === "horizontal" &&
-							"small-heading px-6 py-2 rounded items-center justify-between flex-row-reverse bg-border sticky top-2",
+							"small-heading px-6 py-2 rounded items-center justify-between flex-row-reverse bg-outline sticky top-2",
 					)}
 				>
 					<span>
 						{title}
-						{!toggleable && <span className="text-error ms-1">*</span>}
+						{!toggleable && <span className="text-destructive ms-1">*</span>}
 					</span>
 					{toggleable && (
 						<Switch
@@ -99,11 +99,11 @@ const Section = ({
 			<fieldset className={classes}>
 				{disabled ? (
 					layout === "horizontal" ? (
-						<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic rounded">
+						<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-outline/75 text-text/70 font-semibold italic rounded">
 							{disabledMessage}
 						</div>
 					) : (
-						<div className="flex items-center justify-center p-8 bg-border/75 text-foreground/70 font-semibold italic text-center rounded">
+						<div className="flex items-center justify-center p-8 bg-outline/75 text-text/70 font-semibold italic text-center rounded">
 							{disabledMessage}
 						</div>
 					)
@@ -111,7 +111,7 @@ const Section = ({
 					<>
 						{isOpen && children}
 						{toggleable && !isOpen && layout !== "vertical" && (
-							<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic">
+							<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-outline/75 text-text/70 font-semibold italic">
 								Click the toggle to enable this feature...
 							</div>
 						)}

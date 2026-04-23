@@ -36,7 +36,7 @@
 	width: 100%;
 	height: 100%;
 	border-radius: 100%;
-	border-color: var(--color-border);
+	border-color: var(--color-outline);
 	border-width: var(--global-input-border-size);
 	border-style: solid;
 	transition: border-color var(--animation-easing)
@@ -68,7 +68,7 @@
 }
 
 .form-field-radio:hover .form-field-radio__radio::before {
-	border-color: var(--color-border);
+	border-color: var(--color-outline);
 }
 
 .form-field-radio__input:checked + .form-field-radio__radio::before {

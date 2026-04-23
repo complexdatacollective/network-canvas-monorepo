@@ -3,7 +3,7 @@
 .form-fields-variable-picker {
 	--variable-pill-background: var(--color-white);
 	--variable-pill-shadow-color: var(--color-variable-pill-shadow);
-	border: 2px dashed var(--color-border);
+	border: 2px dashed var(--color-outline);
 	padding: var(--space-md);
 	border-radius: var(--radius);
 }
@@ -17,6 +17,6 @@
 }
 
 .form-fields-variable-picker .form-fields-variable-picker__error {
-	color: var(--color-error);
+	color: var(--color-destructive);
 	margin-bottom: 0;
 }

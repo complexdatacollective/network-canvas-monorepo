@@ -11,7 +11,7 @@
 		word-break: break-all;
 		position: absolute;
 		z-index: 2;
-		background: var(--color-border);
+		background: var(--color-outline);
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);

@@ -5,7 +5,7 @@
 	left: 0;
 	width: 100%;
 	background: var(--settings);
-	color: var(--color-primary-foreground);
+	color: var(--color-primary-contrast);
 	font-weight: var(--font-weight-semibold);
 	user-select: text !important;
 }

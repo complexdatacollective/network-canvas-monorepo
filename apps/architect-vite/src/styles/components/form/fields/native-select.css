@@ -30,8 +30,8 @@
 
 	.form-fields-select-native__error {
 		opacity: 0;
-		background: var(--color-error);
-		color: var(--color-error-foreground);
+		background: var(--color-destructive);
+		color: var(--color-destructive-contrast);
 		padding: var(--space-xs) var(--space-xs);
 		display: flex;
 		align-items: center;
@@ -45,7 +45,7 @@
 		display: block;
 		font-size: var(--text-base);
 		font-weight: normal;
-		color: var(--color-input-foreground);
+		color: var(--color-input-contrast);
 		padding: var(--space-sm) var(--space-md);
 		width: 100%;
 		min-height: var(--space-md);
@@ -79,14 +79,14 @@
 			/* Placeholder */
 			&:disabled {
 				font-style: italic;
-				color: var(--color-surface-2-foreground);
+				color: var(--color-surface-2-contrast);
 			}
 		}
 	}
 
 	&.form-fields-select-native--has-error {
 		& .form-fields-select-native__component {
-			border: var(--space-xs) solid var(--color-error);
+			border: var(--space-xs) solid var(--color-destructive);
 			margin-bottom: 0;
 		}
 

@@ -6,8 +6,8 @@
 
 .form-field-boolean .form-field-boolean__error {
 	opacity: 0;
-	background: var(--color-error);
-	color: var(--color-foreground);
+	background: var(--color-destructive);
+	color: var(--color-text);
 	transition:
 		opacity var(--animation-easing) var(--animation-duration-standard),
 		max-height var(--animation-easing) var(--animation-duration-standard);
@@ -26,7 +26,7 @@
 
 .form-field-boolean.form-field-boolean--has-error .form-field {
 	margin-bottom: 0;
-	border: 0.125rem solid var(--color-error);
+	border: 0.125rem solid var(--color-destructive);
 }
 
 .boolean .boolean__options {
@@ -39,7 +39,7 @@
 	display: block;
 	font-size: 0.9rem;
 	margin-top: 1rem;
-	color: var(--color-input-foreground);
+	color: var(--color-input-contrast);
 	text-decoration: underline;
 }
 
@@ -67,7 +67,7 @@
 	margin-right: calc(0.6rem * 0.5);
 	margin-left: 0;
 	background: var(--color-input);
-	color: var(--color-input-foreground);
+	color: var(--color-input-contrast);
 }
 
 .boolean-option:not(:disabled):hover {
@@ -106,7 +106,7 @@
 }
 
 .boolean-option.boolean-option--selected.boolean-option--negative {
-	border-color: var(--color-error);
+	border-color: var(--color-destructive);
 }
 
 .round-checkbox {
@@ -118,7 +118,7 @@
 	width: var(--global-input-element-size);
 	height: var(--global-input-element-size);
 	border-radius: 100%;
-	border-color: var(--color-border);
+	border-color: var(--color-outline);
 	border-width: var(--global-input-border-size);
 	border-style: solid;
 	transition-property: border-color, background-color;
@@ -142,7 +142,7 @@
 }
 
 .round-checkbox.round-checkbox--checked.round-checkbox--negative {
-	background-color: var(--color-error);
+	background-color: var(--color-destructive);
 }
 
 .round-checkbox.round-checkbox--checked svg {

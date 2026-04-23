@@ -160,7 +160,7 @@
 
 	&.action-button--white {
 		background: var(--color-white);
-		color: var(--color-surface-accent-foreground);
+		color: var(--color-surface-accent-contrast);
 
 		&:hover {
 			background: var(--color-surface-2);

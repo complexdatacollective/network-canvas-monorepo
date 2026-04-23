@@ -60,7 +60,7 @@
 
 		&.timeline__insert--new,
 		&:hover {
-			color: var(--color-foreground);
+			color: var(--color-text);
 
 			&::before {
 				transform: translateX(-50%);
@@ -120,7 +120,7 @@
 	margin-top: var(--space-xl);
 
 	.timeline-stage__notch {
-		@apply h4 !m-0 h-10 w-10 rounded-full absolute bg-timeline flex justify-center items-center text-timeline-foreground left-1/2 top-1/2 -translate-1/2;
+		@apply h4 !m-0 h-10 w-10 rounded-full absolute bg-timeline flex justify-center items-center text-timeline-contrast left-1/2 top-1/2 -translate-1/2;
 	}
 
 	.timeline-stage__controls {
@@ -166,7 +166,7 @@
 
 		&-preview {
 			width: 100%;
-			color: var(--color-primary-foreground);
+			color: var(--color-primary-contrast);
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -235,7 +235,7 @@
 		height: var(--space-md);
 
 		.cls-1 {
-			fill: var(--color-primary-foreground);
+			fill: var(--color-primary-contrast);
 		}
 	}
 }

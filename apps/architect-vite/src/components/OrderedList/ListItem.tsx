@@ -24,7 +24,7 @@ const ListItem = ({
 
 	const componentClasses = cx(
 		"group",
-		"bg-accent text-accent-foreground flex rounded px-4 justify-between items-center gap-4 select-none cursor-pointer shadow",
+		"bg-accent text-accent-contrast flex rounded px-4 justify-between items-center gap-4 select-none cursor-pointer shadow",
 		className,
 	);
 

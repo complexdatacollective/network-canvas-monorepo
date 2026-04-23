@@ -59,7 +59,7 @@ const Dialog = ({
 						{ [`dialog--${type}`]: type },
 						classNames,
 						"p-6 flex flex-col gap-6",
-						"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg",
+						"bg-slate-blue-dark text-accent-contrast w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg",
 					)}
 				/>
 			}

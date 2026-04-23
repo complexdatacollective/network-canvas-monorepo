@@ -12,7 +12,7 @@
 	--disabled-color: var(--color-charcoal);
 	--label-color: var(--color-white);
 	--tooltip-color: var(--color-surface-accent);
-	--tooltip-label: var(--color-surface-accent-foreground);
+	--tooltip-label: var(--color-surface-accent-contrast);
 }
 
 .form-field-slider__tracks {
@@ -215,8 +215,8 @@
 
 .form-field-slider__error {
 	opacity: 0;
-	background: var(--color-error);
-	color: var(--color-error);
+	background: var(--color-destructive);
+	color: var(--color-destructive);
 	transition:
 		opacity var(--animation-easing) var(--animation-duration-standard),
 		max-height var(--animation-easing) var(--animation-duration-standard);
@@ -232,7 +232,7 @@
 .form-field-slider.form-field-slider--has-error .form-field {
 	border-width: 0.1rem;
 	border-style: solid;
-	border-color: var(--color-error);
+	border-color: var(--color-destructive);
 	margin-bottom: 0;
 }
 

@@ -1,7 +1,7 @@
 .items-item {
 	width: 100%;
 	background-color: var(--color-sortable-background);
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 	display: flex;
 	flex-direction: row;
 	align-items: stretch;
@@ -15,7 +15,7 @@
 
 .items-item__control .icon .cls-1,
 .items-item__control .icon .cls-2 {
-	fill: var(--color-sortable-foreground);
+	fill: var(--color-sortable-contrast);
 }
 
 .items-item__content {

@@ -71,7 +71,7 @@ class Button extends PureComponent<ButtonProps> {
 			size === "small" && "h-8 px-4 text-xs",
 			size === "large" && "h-12 px-8 text-base",
 			// colors
-			"bg-platinum border border-border hover:bg-platinum-dark",
+			"bg-platinum border border-outline hover:bg-platinum-dark",
 			color === "neon-coral" && "bg-neon-coral border-neon-coral-dark text-white hover:bg-neon-coral-dark",
 			color === "sea-green" && "bg-sea-green border-sea-green-dark text-white hover:bg-sea-green-dark",
 			color === "slate-blue" && "bg-slate-blue border-slate-blue-dark text-white hover:bg-slate-blue-dark",

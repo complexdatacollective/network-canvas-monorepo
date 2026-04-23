@@ -7,7 +7,7 @@
 	padding: var(--space-sm) var(--space-xl);
 	width: 100%;
 	background-color: var(--color-slate-blue-dark);
-	box-shadow: 0 var(--space-sm) 0.2rem 0 var(--color-border);
+	box-shadow: 0 var(--space-sm) 0.2rem 0 var(--color-outline);
 	z-index: var(--z-panel);
 
 	.overview-summary__header {
@@ -36,7 +36,7 @@
 
 .overview {
 	@apply w-full max-w-4xl mx-auto bg-white flex flex-col rounded relative mt-10 overflow-hidden;
-	box-shadow: 0 var(--space-sm) 0.2rem 0 var(--color-border);
+	box-shadow: 0 var(--space-sm) 0.2rem 0 var(--color-outline);
 
 	.overview__panel {
 		@apply py-4 px-6;

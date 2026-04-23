@@ -4,7 +4,7 @@
 }
 
 .stage-heading a {
-	color: var(--color-foreground);
+	color: var(--color-text);
 	font-weight: var(--font-weight-bold);
 	border-bottom: 2px solid var(--color-primary);
 }
@@ -58,7 +58,7 @@
 }
 
 .stage-heading--shadow {
-	box-shadow: 0 var(--space-sm) var(--space-xs) 0 var(--color-border);
+	box-shadow: 0 var(--space-sm) var(--space-xs) 0 var(--color-outline);
 }
 
 .stage-heading.stage-heading--collapsed {
@@ -93,8 +93,8 @@
 
 .stage-heading .form-field-toggle__label,
 .stage-heading .form-fields-edge-select {
-	--color-input-foreground: var(--color-white);
-	color: var(--color-input-foreground);
+	--color-input-contrast: var(--color-white);
+	color: var(--color-input-contrast);
 }
 
 .stage-heading .stage-header-sections {

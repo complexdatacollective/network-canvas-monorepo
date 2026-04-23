@@ -23,7 +23,7 @@
 .form-fields-multi-select__rule {
 	display: flex;
 	background-color: var(--color-sortable-background);
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 	border-radius: var(--space-xs);
 	z-index: var(--z-fx);
 	transition: background-color var(--animation-easing)
@@ -137,7 +137,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 }
 
 .form-fields-multi-select__add .icon,
@@ -150,7 +150,7 @@
 .form-fields-multi-select__add .icon .cls-2,
 .form-fields-multi-select__handle .icon .cls-1,
 .form-fields-multi-select__handle .icon .cls-2 {
-	fill: var(--color-sortable-foreground);
+	fill: var(--color-sortable-contrast);
 }
 
 .form-fields-multi-select__handle {
@@ -177,12 +177,12 @@
 }
 
 .form-fields-multi-select__field--has-error .form-fields-multi-select__rule {
-	background-color: var(--color-error);
+	background-color: var(--color-destructive);
 }
 
 .form-fields-multi-select__field--has-error
 	.form-fields-multi-select__rule-option-label {
-	color: var(--color-error-foreground);
+	color: var(--color-destructive-contrast);
 }
 
 .form-fields-multi-select__field--has-error .form-fields-multi-select__handle {

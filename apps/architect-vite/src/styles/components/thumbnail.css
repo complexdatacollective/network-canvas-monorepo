@@ -1,6 +1,6 @@
 .thumbnail {
 	background-color: hsl(var(--cyber-grape));
-	color: var(--color-primary-foreground);
+	color: var(--color-primary-contrast);
 	border-radius: var(--radius);
 	display: inline-flex;
 	align-items: center;

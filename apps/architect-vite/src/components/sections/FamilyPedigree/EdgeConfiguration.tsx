@@ -42,9 +42,9 @@ const VariableRow = ({ name, label, description, options, onCreateOption, edgeTy
 		<div className="flex flex-col gap-1 pt-2 grow">
 			<span className="font-semibold">
 				{label}
-				<span className="text-error ms-0.5">*</span>
+				<span className="text-destructive ms-0.5">*</span>
 			</span>
-			<span className="text-sm text-foreground/60 leading-snug">{description}</span>
+			<span className="text-sm text-text/60 leading-snug">{description}</span>
 		</div>
 		<div className="relative flex-1">
 			<IssueAnchor fieldName={name} description={`${label} Variable`} />
@@ -130,7 +130,7 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
 					/>
 				</Row>
 				{edgeType && (
-					<div className="bg-surface-2 text-surface-2-foreground p-4 rounded flex flex-col gap-6 mt-6">
+					<div className="bg-surface-2 text-surface-2-contrast p-4 rounded flex flex-col gap-6 mt-6">
 						<VariableRow
 							name="edgeConfig.relationshipTypeVariable"
 							label="Relationship Type"

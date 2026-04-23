@@ -34,6 +34,6 @@
 	}
 
 	&.tip__error {
-		@apply bg-error/10;
+		@apply bg-destructive/10;
 	}
 }

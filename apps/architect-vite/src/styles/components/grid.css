@@ -27,8 +27,8 @@
 
 .grid .grid__error {
 	opacity: 0;
-	background-color: var(--color-error);
-	color: var(--color-primary-foreground);
+	background-color: var(--color-destructive);
+	color: var(--color-primary-contrast);
 	border-radius: 0.5rem;
 	max-height: 0;
 	margin-top: 1.2rem;
@@ -65,7 +65,7 @@
 	align-items: stretch;
 	justify-content: flex-start;
 	background-color: var(--color-sortable-background);
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 	border-radius: 0.5rem;
 	overflow: hidden;
 }
@@ -112,7 +112,7 @@
 
 .grid-item__delete .icon .cls-1,
 .grid-item__delete .icon .cls-2 {
-	fill: var(--color-sortable-foreground);
+	fill: var(--color-sortable-contrast);
 }
 
 .grid-item__content {
@@ -131,7 +131,7 @@
 
 .grid-item__content .assets {
 	background-color: var(--color-sortable-background);
-	color: var(--color-sortable-foreground);
+	color: var(--color-sortable-contrast);
 	height: auto;
 }
 

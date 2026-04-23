@@ -1,6 +1,6 @@
 .assets {
 	background-color: var(--color-surface-2);
-	color: var(--color-foreground);
+	color: var(--color-text);
 	border-radius: var(--space-md);
 	display: flex;
 	justify-content: center;
@@ -27,7 +27,7 @@
 
 		&.assets--existing {
 			background-color: var(--color-info);
-			color: var(--color-info-foreground);
+			color: var(--color-info-contrast);
 			font-style: italic;
 		}
 	}

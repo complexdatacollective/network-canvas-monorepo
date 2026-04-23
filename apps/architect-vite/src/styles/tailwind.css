@@ -211,7 +211,7 @@
 	}
 
 	body {
-		@apply bg-background text-foreground overflow-hidden h-full w-full;
+		@apply bg-background text-text overflow-hidden h-full w-full;
 	}
 
 	/* These two tags are semantic, so I think its okay to apply styles to them directly in the global styles. */
@@ -352,46 +352,48 @@
 	--font-weight-black: 900;
 
 	--color-background: hsl(var(--platinum));
-	--color-foreground: hsl(var(--cyber-grape));
+	--color-text: hsl(var(--cyber-grape));
 
 	--color-primary: hsl(var(--cyber-grape));
-	--color-primary-foreground: hsl(var(--white));
+	--color-primary-contrast: hsl(var(--white));
 
 	--color-secondary: hsl(var(--neon-coral));
-	--color-secondary-foreground: hsl(var(--white));
+	--color-secondary-contrast: hsl(var(--white));
 	--color-accent: hsl(var(--slate-blue));
-	--color-accent-foreground: hsl(var(--white));
+	--color-accent-contrast: hsl(var(--white));
 
 	--color-action: hsl(var(--sea-green));
-	--color-action-foreground: hsl(var(--white));
+	--color-action-contrast: hsl(var(--white));
 
 	--color-timeline: hsl(var(--neon-coral));
-	--color-timeline-foreground: hsl(var(--white));
+	--color-timeline-contrast: hsl(var(--white));
 
 	--color-success: hsl(var(--kiwi));
-	--color-success-foreground: hsl(var(--white));
+	--color-success-contrast: hsl(var(--white));
 	--color-warning: hsl(var(--neon-carrot));
-	--color-warning-foreground: hsl(var(--white));
-	--color-error: hsl(var(--tomato));
-	--color-error-foreground: hsl(var(--white));
+	--color-warning-contrast: hsl(var(--white));
+	--color-destructive: hsl(var(--tomato));
+	--color-destructive-contrast: hsl(var(--white));
 	--color-info: hsl(var(--cerulean-blue));
-	--color-info-foreground: hsl(var(--white));
+	--color-info-contrast: hsl(var(--white));
 
 	--color-surface-1: hsl(var(--white));
-	--color-surface-1-foreground: hsl(var(--navy-taupe));
+	--color-surface-1-contrast: hsl(var(--navy-taupe));
 	--color-surface-2: hsl(var(--platinum));
-	--color-surface-2-foreground: hsl(var(--navy-taupe));
+	--color-surface-2-contrast: hsl(var(--navy-taupe));
 	--color-surface-3: hsl(var(--platinum-dark));
-	--color-surface-3-foreground: hsl(var(--color-navy-taupe-dark));
+	--color-surface-3-contrast: hsl(var(--color-navy-taupe-dark));
 	--color-surface-accent: hsl(var(--navy-taupe));
-	--color-surface-accent-foreground: hsl(var(--white));
+	--color-surface-accent-contrast: hsl(var(--white));
+	--color-surface-popover: hsl(var(--white));
+	--color-surface-popover-contrast: hsl(var(--navy-taupe));
 
 	--color-hover: hsl(var(--sea-green-dark));
 	--color-focus: hsl(var(--sea-green));
 	--color-active: hsl(var(--sea-green));
 	--color-selected: var(--color-mustard);
 
-	--color-border: hsl(var(--platinum-dark));
+	--color-outline: hsl(var(--platinum-dark));
 	--color-divider: hsl(var(--platinum-dark));
 	--color-link: hsl(var(--neon-coral));
 
@@ -399,12 +401,12 @@
 	--color-shadow-elevated: rgb(0 0 0 / 25%);
 
 	--color-input: hsl(var(--white));
-	--color-input-foreground: hsl(var(--charcoal));
+	--color-input-contrast: hsl(var(--charcoal));
 	--color-input-placeholder: hsl(var(--color-platinum-dark));
 	--color-input-active: var(--color-active);
 
 	--color-sortable-background: hsl(var(--slate-blue));
-	--color-sortable-foreground: hsl(var(--white));
+	--color-sortable-contrast: hsl(var(--white));
 
 	--color-form-control: hsl(var(--sea-serpent));
 
@@ -559,9 +561,9 @@
 
 /* Form field utility - replaces form-field mixin */
 @utility form-field {
-	@apply w-full rounded-lg border border-border;
+	@apply w-full rounded-lg border border-outline;
 	background-color: var(--color-white);
-	color: var(--color-input-foreground);
+	color: var(--color-input-contrast);
 	padding: var(--space-sm) var(--space-md);
 	line-height: var(--leading-normal);
 
@@ -580,12 +582,12 @@
 		font-weight: 200;
 		display: block;
 		margin: 0;
-		color: var(--color-input-foreground);
+		color: var(--color-input-contrast);
 	}
 }
 
 @utility section-container {
-	@apply relative shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)] w-full overflow-hidden;
+	@apply relative shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-contrast)] w-full overflow-hidden;
 }
 
 /* Clickable utilities - enhanced 3D effect with multiple depths */

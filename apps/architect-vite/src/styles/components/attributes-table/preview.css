@@ -21,7 +21,7 @@
 
 	.attributes-table-preview__error {
 		font-style: italic;
-		color: var(--color-error);
+		color: var(--color-destructive);
 	}
 
 	.attributes-table-preview__delete {

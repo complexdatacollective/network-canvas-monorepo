@@ -12,7 +12,7 @@ img.form-fields-select {
 
 .form-fields-select__error {
 	opacity: 0;
-	color: var(--color-error-foreground);
+	color: var(--color-destructive-contrast);
 	transition:
 		opacity var(--animation-easing) var(--animation-duration-standard),
 		max-height var(--animation-easing) var(--animation-duration-standard);
@@ -20,7 +20,7 @@ img.form-fields-select {
 
 .form-fields-select__control {
 	background: var(--color-surface-1);
-	color: var(--color-foreground);
+	color: var(--color-text);
 	border: 0;
 	border-radius: 1rem 1rem 0 0;
 	padding: 0 var(--space-md);
@@ -35,7 +35,7 @@ img.form-fields-select {
 }
 
 .form-fields-select__placeholder {
-	color: var(--color-surface-2-foreground);
+	color: var(--color-surface-2-contrast);
 	font-style: italic;
 }
 
@@ -60,7 +60,7 @@ img.form-fields-select {
 
 .form-fields-select__option:active {
 	background-color: hsl(var(--color-primary));
-	color: var(--color-primary-foreground);
+	color: var(--color-primary-contrast);
 }
 
 .form-fields-select__option--is-focused {
@@ -121,8 +121,8 @@ img.form-fields-select {
 }
 
 .form-fields-select__item--warning {
-	background: var(--color-error);
-	color: var(--color-error-foreground);
+	background: var(--color-destructive);
+	color: var(--color-destructive-contrast);
 }
 
 .form-fields-select__full {
@@ -137,7 +137,7 @@ img.form-fields-select {
 
 .form-fields-select__error {
 	opacity: 0;
-	background: var(--color-error);
+	background: var(--color-destructive);
 	padding: var(--space-sm) var(--space-xs);
 	display: flex;
 	align-items: center;
@@ -152,7 +152,7 @@ img.form-fields-select {
 }
 
 .form-fields-select--has-error .form-fields-select__control {
-	border: 0.1rem solid var(--color-error);
+	border: 0.1rem solid var(--color-destructive);
 }
 
 .form-fields-select--light-background .form-fields-select__control {

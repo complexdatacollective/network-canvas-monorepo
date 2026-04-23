@@ -23,13 +23,13 @@
 
 .form-fields-shape-picker__label {
 	font-size: var(--font-size-sm);
-	color: var(--color-foreground);
+	color: var(--color-text);
 }
 
 .form-fields-shape-picker__error {
 	opacity: 0;
-	background: var(--color-error);
-	color: var(--color-error-foreground);
+	background: var(--color-destructive);
+	color: var(--color-destructive-contrast);
 	transition:
 		opacity var(--animation-easing) var(--animation-duration-standard),
 		max-height var(--animation-easing) var(--animation-duration-standard);

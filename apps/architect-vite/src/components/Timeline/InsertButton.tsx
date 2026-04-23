@@ -10,7 +10,7 @@ const InsertButton = ({ onClick }: InsertButtonProps) => (
 		onClick={onClick}
 	>
 		<div />
-		<div className="w-10 h-10 rounded-full bg-timeline flex items-center justify-center text-primary-foreground text-4xl font-medium scale-40 group-hover:scale-110 group-hover:bg-action transition-all duration-300 ease-in-out">
+		<div className="w-10 h-10 rounded-full bg-timeline flex items-center justify-center text-primary-contrast text-4xl font-medium scale-40 group-hover:scale-110 group-hover:bg-action transition-all duration-300 ease-in-out">
 			<span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">+</span>
 		</div>
 		<span className="justify-self-start opacity-0 group-hover:opacity-100 group-hover:font-bold transition-all font-semibold text-lg">

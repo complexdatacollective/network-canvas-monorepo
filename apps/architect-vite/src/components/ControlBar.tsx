@@ -52,7 +52,7 @@ const ControlBar = ({ buttons = null, secondaryButtons = null, className }: Cont
 
 	return (
 		<motion.div
-			className={cn("text-primary-foreground bg-primary w-full flex justify-between items-center py-4 px-6", className)}
+			className={cn("text-primary-contrast bg-primary w-full flex justify-between items-center py-4 px-6", className)}
 			variants={barVariants}
 		>
 			<AnimatePresence>{buttonLayout}</AnimatePresence>

@@ -10,7 +10,7 @@
 		font-weight: inherit;
 		background-color: var(--color-input);
 		width: 100%;
-		color: var(--color-input-foreground);
+		color: var(--color-input-contrast);
 		border: 0;
 		border-bottom-width: calc(0.6rem * 0.25);
 		border-bottom-style: solid;
@@ -56,8 +56,8 @@
 
 	.form-field-text__error {
 		opacity: 0;
-		background: var(--color-error);
-		color: var(--color-error-foreground);
+		background: var(--color-destructive);
+		color: var(--color-destructive-contrast);
 		transition:
 			opacity var(--animation-easing) var(--animation-duration-standard),
 			max-height var(--animation-easing) var(--animation-duration-standard);
@@ -95,7 +95,7 @@
 
 		.form-field-text__input {
 			margin-bottom: 0;
-			border: 0.125rem solid var(--color-error);
+			border: 0.125rem solid var(--color-destructive);
 		}
 	}
 }

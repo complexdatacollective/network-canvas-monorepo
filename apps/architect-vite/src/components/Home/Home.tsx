@@ -7,7 +7,7 @@ const Home = () => {
 	return (
 		<div className="relative flex flex-col h-dvh">
 			<div className="overflow-y-auto flex flex-col">
-				<div className="flex justify-between items-center px-8 py-1 bg-accent text-accent-foreground">
+				<div className="flex justify-between items-center px-8 py-1 bg-accent text-accent-contrast">
 					<div className="flex items-center gap-3">
 						<img src={networkCanvasLogo} alt="Network Canvas" className="h-8 w-8" />
 						<div className="flex items-baseline gap-2">

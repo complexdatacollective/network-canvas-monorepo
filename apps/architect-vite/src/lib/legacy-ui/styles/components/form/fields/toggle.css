@@ -36,7 +36,7 @@
 			border-radius: 50%;
 			height: var(--global-input-element-size);
 			width: var(--global-input-element-size);
-			background-color: var(--color-border);
+			background-color: var(--color-outline);
 			transition: transform var(--animation-duration-fast)
 				var(--animation-easing);
 		}
@@ -54,8 +54,8 @@
 
 	.form-field-toggle__error {
 		opacity: 0;
-		background: var(--color-error);
-		color: var(--color-foreground);
+		background: var(--color-destructive);
+		color: var(--color-text);
 		transition:
 			opacity var(--animation-easing) var(--animation-duration-standard),
 			max-height var(--animation-easing) var(--animation-duration-standard);
@@ -74,7 +74,7 @@
 		}
 
 		.form-field-toggle {
-			border: 0.125rem solid var(--color-error);
+			border: 0.125rem solid var(--color-destructive);
 			margin-bottom: 0;
 		}
 	}

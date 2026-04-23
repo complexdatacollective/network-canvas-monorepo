@@ -9,7 +9,7 @@
 		font-weight: 200;
 		display: block;
 		margin: 0;
-		color: var(--color-input-foreground);
+		color: var(--color-input-contrast);
 	}
 
 	display: block;
@@ -20,8 +20,8 @@
 
 	.form-field-togglebutton-group__error {
 		opacity: 0;
-		background: var(--color-error);
-		color: var(--color-foreground);
+		background: var(--color-destructive);
+		color: var(--color-text);
 		transition:
 			opacity var(--animation-easing) var(--animation-duration-standard),
 			max-height var(--animation-easing) var(--animation-duration-standard);
@@ -41,7 +41,7 @@
 
 		.form-field__inline {
 			margin-bottom: 0;
-			border: 0.125rem solid var(--color-error);
+			border: 0.125rem solid var(--color-destructive);
 		}
 	}
 }

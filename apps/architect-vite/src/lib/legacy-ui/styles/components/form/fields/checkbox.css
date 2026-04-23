@@ -30,7 +30,7 @@
 	content: "";
 	width: 100%;
 	height: 100%;
-	border-color: var(--color-border);
+	border-color: var(--color-outline);
 	border-width: var(--global-input-border-size);
 	border-style: solid;
 	transition: border-color var(--animation-easing)
@@ -67,7 +67,7 @@
 .form-field-checkbox
 	.form-field-checkbox__input:checked
 	+ .form-field-checkbox__checkbox::before {
-	border-color: var(--color-border);
+	border-color: var(--color-outline);
 }
 
 .form-field-checkbox

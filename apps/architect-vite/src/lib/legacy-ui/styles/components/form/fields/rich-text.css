@@ -3,7 +3,7 @@
 	background: var(--color-input);
 	border-radius: 1rem 1rem 0 0;
 	overflow: hidden;
-	border: 1px solid var(--color-border);
+	border: 1px solid var(--color-outline);
 
 	.rich-text__toolbar {
 		background: hsl(var(--platinum));
@@ -27,7 +27,7 @@
 			overflow: auto;
 		}
 		cursor: text;
-		color: var(--color-input-foreground);
+		color: var(--color-input-contrast);
 		padding: 0 calc(0.6rem * 2);
 		border-bottom-width: calc(0.6rem * 0.25);
 		border-bottom-style: solid;
@@ -117,14 +117,14 @@
 		}
 
 		.rich-text {
-			border: 0.125rem solid var(--color-error);
+			border: 0.125rem solid var(--color-destructive);
 		}
 	}
 
 	.form-field-rich-text__error {
 		opacity: 0;
-		background: var(--color-error);
-		color: var(--color-error);
+		background: var(--color-destructive);
+		color: var(--color-destructive);
 		transition:
 			opacity var(--animation-easing) var(--animation-duration-standard),
 			max-height var(--animation-easing) var(--animation-duration-standard);

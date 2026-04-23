@@ -26,7 +26,7 @@
 		transition:
 			opacity var(--animation-duration-standard),
 			max-height var(--animation-duration-standard);
-		color: var(--color-foreground);
+		color: var(--color-text);
 		padding: 0 var(--space-lg);
 	}
 

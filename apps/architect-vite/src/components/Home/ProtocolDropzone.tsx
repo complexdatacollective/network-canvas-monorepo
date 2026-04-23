@@ -47,7 +47,7 @@ export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzonePro
 			>
 				<input {...getInputProps()} />
 				<div className="w-12 h-12 bg-primary p-2 rounded-full flex items-center justify-center">
-					<Upload className="text-primary-foreground" />
+					<Upload className="text-primary-contrast" />
 				</div>
 				<h3>Upload a Network Canvas protocol to get started</h3>
 				<p className="text-sm">Drag and drop your .netcanvas file here, or click to browse</p>

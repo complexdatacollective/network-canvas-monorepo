@@ -24,7 +24,7 @@ const LaunchCard = ({ icon, title, description, onClick, classNames, devOnly }: 
 		onClick={onClick}
 		onKeyDown={(e) => e.key === "Enter" && onClick()}
 		className={cn(
-			"text-primary-foreground rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 flex p-4 gap-4 items-center",
+			"text-primary-contrast rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 flex p-4 gap-4 items-center",
 			devOnly && "border",
 			classNames,
 		)}
@@ -125,7 +125,7 @@ const LaunchPad = () => {
 								description="Clear Redux state, localStorage, and IndexedDB"
 								onClick={handleClearStorage}
 								devOnly
-								classNames="bg-error/5 text-error"
+								classNames="bg-destructive/5 text-destructive"
 							/>
 						</div>
 					</div>

@@ -20,7 +20,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 	return (
 		<div className="codebook space-y-6">
 			{!hasAnyContent && (
-				<div className="bg-muted border border-border rounded-lg p-6">
+				<div className="bg-muted border border-outline rounded-lg p-6">
 					<p className="text-muted-foreground text-center">
 						There are currently no types or variables defined in this protocol. When you have created some interview
 						stages, the types and variables will be shown here.

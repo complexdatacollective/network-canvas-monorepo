@@ -6,7 +6,7 @@
 	display: flex;
 	flex-direction: column;
 	background: var(--color-surface-1);
-	color: var(--color-foreground);
+	color: var(--color-text);
 	box-shadow: 0 0 4rem 0 var(--color-modal-window-box-shadow);
 	border-color: var(--color-primary);
 	border-style: solid;
@@ -77,7 +77,7 @@
 }
 
 .dialog.dialog--error {
-	border-color: var(--color-error);
+	border-color: var(--color-destructive);
 }
 
 .dialog.dialog--error .error__stack-trace {

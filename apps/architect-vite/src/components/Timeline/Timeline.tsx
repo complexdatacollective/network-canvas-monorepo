@@ -132,7 +132,7 @@ const Timeline = () => {
 								alt={`${stage.type} interface`}
 								title={`${stage.type} interface`}
 							/>
-							<div className="bg-timeline text-timeline-foreground rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
+							<div className="bg-timeline text-timeline-contrast rounded-full h-10 w-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-in-out">
 								{index + 1}
 							</div>
 							<div className="justify-self-start">
@@ -167,7 +167,7 @@ const Timeline = () => {
 						onClick={() => handleInsertStage(stages.length)}
 					>
 						<div />
-						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-foreground text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
+						<div className="w-10 h-10 rounded-full bg-action flex items-center justify-center text-primary-contrast text-4xl font-medium group-hover:scale-110 transition-transform duration-300 ease-in-out">
 							+
 						</div>
 						<span className="justify-self-start group-hover:font-bold transition-all font-semibold text-lg">
