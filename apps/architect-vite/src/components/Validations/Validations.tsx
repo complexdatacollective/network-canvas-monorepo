@@ -1,10 +1,10 @@
 import type { Variable } from "@codaco/protocol-validation";
-import cx from "classnames";
 import { keys as getKeys, isNull, toPairs } from "es-toolkit/compat";
 import type React from "react";
 import { Field } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
+import { multiSelectContainerStyles, multiSelectRulesStyles } from "~/styles/shared/multiSelectStyles";
 import Validation from "./Validation";
 
 const validate = (validations: Record<string, unknown>): string | undefined => {
@@ -75,13 +75,11 @@ const ValidationsField = ({
 	children = null,
 	...rest
 }: ValidationsFieldProps) => {
-	const fieldClassNames = cx("form-fields-multi-select__field", {
-		"form-fields-multi-select__field--has-error": submitFailed && error,
-	});
+	const hasError = Boolean(submitFailed && error);
 
 	return (
-		<div className={fieldClassNames}>
-			<div className="form-fields-multi-select__rules">
+		<div>
+			<div className={multiSelectRulesStyles} data-invalid={hasError || undefined}>
 				{input.value.map(([key, value]) => (
 					<Validation
 						key={key}
@@ -89,13 +87,14 @@ const ValidationsField = ({
 						itemValue={value}
 						options={options}
 						existingVariables={existingVariables}
+						invalid={hasError}
 						// eslint-disable-next-line react/jsx-props-no-spreading
 						{...rest}
 					/>
 				))}
 				{children}
 			</div>
-			<FieldError show={!!(submitFailed && error)} error={error} />
+			<FieldError show={hasError} error={error} />
 		</div>
 	);
 };
@@ -128,7 +127,7 @@ const Validations = ({
 	const isFull = usedOptions.length === availableOptions.length;
 
 	return (
-		<div className="form-fields-multi-select">
+		<div className={multiSelectContainerStyles}>
 			<Field
 				name={name}
 				component={ValidationsField}

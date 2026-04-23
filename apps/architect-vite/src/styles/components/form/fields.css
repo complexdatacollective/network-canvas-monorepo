@@ -9,7 +9,6 @@
 @import "./fields/image.css";
 @import "./fields/video.css";
 @import "./fields/data-source.css";
-@import "./fields/multi-select.css";
 @import "./fields/color-picker.css";
 @import "./fields/shape-picker.css";
 @import "./fields/shape-variable-mapping.css";

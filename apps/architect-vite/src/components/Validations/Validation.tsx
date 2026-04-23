@@ -3,6 +3,12 @@ import { map } from "es-toolkit/compat";
 import { Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import NumberField from "~/components/Form/Fields/Number";
+import {
+	multiSelectRuleControlStyles,
+	multiSelectRuleOptionStyles,
+	multiSelectRuleOptionsStyles,
+	multiSelectRuleVariants,
+} from "~/styles/shared/multiSelectStyles";
 import NativeSelect from "../Form/Fields/NativeSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 
@@ -18,6 +24,7 @@ type ValidationProps = {
 	itemKey?: string;
 	itemValue?: boolean | number | string | null;
 	existingVariables: Record<string, Pick<Variable, "name" | "type">>;
+	invalid?: boolean;
 };
 
 const noop = () => {};
@@ -29,6 +36,7 @@ const Validation = ({
 	itemKey = "",
 	itemValue = null,
 	existingVariables,
+	invalid = false,
 }: ValidationProps) => {
 	const handleKeyChange = (option: string | null) => {
 		onUpdate(option || "", itemValue, itemKey || "");
@@ -72,9 +80,9 @@ const Validation = ({
 	};
 
 	return (
-		<div className="form-fields-multi-select__rule group">
-			<div className="form-fields-multi-select__rule-options">
-				<div className="form-fields-multi-select__rule-option">
+		<div className={`group ${multiSelectRuleVariants({ invalid })}`}>
+			<div className={multiSelectRuleOptionsStyles}>
+				<div className={multiSelectRuleOptionStyles}>
 					<NativeSelect
 						options={options}
 						input={keyInputProps}
@@ -83,12 +91,12 @@ const Validation = ({
 					/>
 				</div>
 				{itemKey && isValidationWithNumberValue(itemKey) && (
-					<div className="form-fields-multi-select__rule-option">
+					<div className={multiSelectRuleOptionStyles}>
 						<NumberField input={numberValueInputProps} validation={{ required: true }} />
 					</div>
 				)}
 				{itemKey && isValidationWithListValue(itemKey) && (
-					<div className="form-fields-multi-select__rule-option">
+					<div className={multiSelectRuleOptionStyles}>
 						<NativeSelect
 							options={existingVariableOptions}
 							input={listValueInputProps}
@@ -98,7 +106,7 @@ const Validation = ({
 					</div>
 				)}
 			</div>
-			<div className="form-fields-multi-select__rule-control">
+			<div className={multiSelectRuleControlStyles}>
 				<motion.div
 					layout
 					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"

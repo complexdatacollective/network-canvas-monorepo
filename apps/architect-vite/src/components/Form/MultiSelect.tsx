@@ -11,6 +11,14 @@ import { change, FieldArray, formValueSelector } from "redux-form";
 import NativeSelect from "~/components/Form/Fields/NativeSelect";
 import type { RootState } from "~/ducks/modules/root";
 import { Button } from "~/lib/legacy-ui/components";
+import {
+	multiSelectContainerStyles,
+	multiSelectRuleControlStyles,
+	multiSelectRuleOptionStyles,
+	multiSelectRuleOptionsStyles,
+	multiSelectRulesStyles,
+	multiSelectRuleVariants,
+} from "~/styles/shared/multiSelectStyles";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 import ValidatedField from "./ValidatedField";
 
@@ -94,24 +102,29 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 
 	return (
 		<Reorder.Item
-			className="group form-fields-multi-select__rule"
+			className={`group ${multiSelectRuleVariants()}`}
 			value={internalItem}
 			dragListener={false}
 			dragControls={controls}
 		>
-			<div className="form-fields-multi-select__rule-control">
-				<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
-					<GripVertical className="cursor-grab" />
-				</div>
+			<div className={multiSelectRuleControlStyles}>
+				<button
+					type="button"
+					aria-label="Drag to reorder"
+					className="cursor-grab touch-none bg-transparent p-0 text-current border-0"
+					onPointerDown={(e) => controls.start(e)}
+				>
+					<GripVertical />
+				</button>
 			</div>
 
-			<div className="form-fields-multi-select__rule-options">
+			<div className={multiSelectRuleOptionsStyles}>
 				{properties.map(({ fieldName, component, ...rest }, index) => {
 					const selectOptions = options(fieldName, rowValues, allValues);
 					const FieldComponent = component ?? NativeSelect;
 					const componentProps = component ? rest : { options: selectOptions, ...rest };
 					return (
-						<div className="form-fields-multi-select__rule-option" key={fieldName}>
+						<div className={multiSelectRuleOptionStyles} key={fieldName}>
 							<ValidatedField
 								component={FieldComponent as React.ComponentType<Record<string, unknown>>}
 								name={`${field}.${fieldName}`}
@@ -123,7 +136,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 					);
 				})}
 			</div>
-			<div className="form-fields-multi-select__rule-control">
+			<div className={multiSelectRuleControlStyles}>
 				<motion.div
 					layout
 					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"
@@ -261,13 +274,8 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({ fields, maxItems = null
 
 	return (
 		<>
-			<div className="form-fields-multi-select w-full">
-				<Reorder.Group
-					className="form-fields-multi-select__rules"
-					onReorder={handleReorder}
-					values={internalItems}
-					axis="y"
-				>
+			<div className={multiSelectContainerStyles}>
+				<Reorder.Group className={multiSelectRulesStyles} onReorder={handleReorder} values={internalItems} axis="y">
 					{internalItems.map((internalItem, index) => {
 						const field = `${fields.name}[${index}]`;
 
@@ -308,8 +316,8 @@ type MultiSelectProps = {
 };
 
 const MultiSelect = ({ name, properties, options, label = "", ...rest }: MultiSelectProps) => (
-	<div className="form-fields-multi-select w-full">
-		{label && <h4>{label}</h4>}
+	<fieldset className={`border-0 p-0 m-0 ${multiSelectContainerStyles}`}>
+		{label && <legend className="h4">{label}</legend>}
 		<FieldArray
 			name={name}
 			component={Items as unknown as React.ComponentType<WrappedFieldArrayProps<ItemValue> & Record<string, unknown>>}
@@ -318,7 +326,7 @@ const MultiSelect = ({ name, properties, options, label = "", ...rest }: MultiSe
 			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...rest}
 		/>
-	</div>
+	</fieldset>
 );
 
 export default MultiSelect;
