@@ -1,13 +1,12 @@
-import cx from "classnames";
-import type React from "react";
-import { useRef } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { v4 as uuid } from "uuid";
-import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
-import Icon from "~/lib/legacy-ui/components/Icon";
+import { BaseField } from "~/components/Form/BaseField";
+import { getInputState } from "~/utils/getInputState";
 import RichText from "./RichText";
 
 type RichTextFieldProps = {
 	input: {
+		name?: string;
 		value: string;
 		onChange: (value: string) => void;
 		onFocus?: React.FocusEventHandler;
@@ -20,52 +19,72 @@ type RichTextFieldProps = {
 		touched?: boolean;
 	};
 	label?: string | null;
+	fieldLabel?: string | null;
 	placeholder?: string;
 	autoFocus?: boolean;
 	inline?: boolean;
 	disallowedTypes?: string[];
 	className?: string | null;
+	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	hint?: ReactNode;
 };
 
 const RichTextField = ({
 	input,
 	meta = {},
 	label = null,
+	fieldLabel = null,
 	placeholder,
 	autoFocus = false,
 	inline = false,
 	disallowedTypes = [],
 	className = null,
+	disabled = false,
+	readOnly = false,
+	required = false,
+	hint,
 }: RichTextFieldProps) => {
-	const _id = useRef(uuid());
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-	const anyLabel = label;
+	const { error, invalid, touched } = meta;
 
-	const seamlessClasses = cx(className, "form-field-rich-text", {
-		"form-field-rich-text--has-focus": meta.active,
-		"form-field-rich-text--has-error": meta.invalid && meta.touched && meta.error,
-	});
+	const state = getInputState({ disabled, readOnly, meta });
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
+
+	const describedBy =
+		[hint ? `${id}-hint` : null, showErrors ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
+
+	const anyLabel = fieldLabel ?? label ?? undefined;
 
 	return (
-		<div className="form-field-container">
-			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
-			<div className={seamlessClasses}>
-				<RichText
-					value={input.value}
-					onChange={input.onChange}
-					placeholder={placeholder}
-					autoFocus={autoFocus}
-					inline={inline}
-					disallowedTypes={disallowedTypes}
-				/>
-				{meta.invalid && meta.touched && (
-					<div className="form-field-rich-text__error">
-						<Icon name="warning" />
-						{meta.error}
-					</div>
-				)}
-			</div>
-		</div>
+		<BaseField
+			id={id}
+			name={input.name}
+			label={anyLabel ?? undefined}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+		>
+			<RichText
+				id={id}
+				className={className ?? undefined}
+				value={input.value}
+				onChange={input.onChange}
+				placeholder={placeholder}
+				autoFocus={autoFocus}
+				inline={inline}
+				disallowedTypes={disallowedTypes}
+				state={state}
+				ariaInvalid={showErrors || undefined}
+				ariaRequired={required || undefined}
+				ariaDescribedBy={describedBy}
+			/>
+		</BaseField>
 	);
 };
 

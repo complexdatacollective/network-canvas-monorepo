@@ -6,6 +6,9 @@ import { createEditor, type Descendant, type Editor, Transforms as SlateTransfor
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";
 import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
+import { multilineContentVariants, placeholderVariants } from "~/styles/shared/controlVariants";
+import { compose, cva, cx } from "~/utils/cva";
+import type { InputState } from "~/utils/getInputState";
 import Element from "./Element";
 import Leaf from "./Leaf";
 import { toggleMark } from "./lib/actions";
@@ -17,6 +20,36 @@ import withVoids from "./lib/withVoids";
 import RichTextContainer from "./RichTextContainer";
 import Toolbar from "./Toolbar";
 
+const editableVariants = compose(
+	multilineContentVariants,
+	placeholderVariants,
+	cva({
+		base: cx(
+			"order-2 flex-1 cursor-text outline-none",
+			// List styles within slate's editable region
+			"[&_ul]:my-4 [&_ul]:pl-6 [&_ul]:list-disc",
+			"[&_ol]:my-4 [&_ol]:pl-6 [&_ol]:list-decimal",
+			"[&_li]:my-1 [&_li_p]:m-0",
+			"[&_blockquote]:border-l-4 [&_blockquote]:border-input-contrast/10 [&_blockquote]:pl-4",
+			// Slate's default placeholder is a position:absolute span; style it
+			// through attribute selectors to match the italic/transparent look of
+			// other multiline fields without arbitrary values.
+			"[&_[data-slate-placeholder]]:text-input-contrast/50 [&_[data-slate-placeholder]]:italic",
+		),
+	}),
+	cva({
+		variants: {
+			inline: {
+				true: "",
+				false: "resize-y overflow-auto",
+			},
+		},
+		defaultVariants: {
+			inline: false,
+		},
+	}),
+);
+
 type CustomEditor = Editor &
 	ReactEditor &
 	HistoryEditor & {
@@ -25,12 +58,18 @@ type CustomEditor = Editor &
 	};
 
 type RichTextProps = {
+	id?: string;
+	className?: string;
 	value?: string;
 	placeholder?: string;
 	onChange?: (value: string) => void;
 	inline?: boolean;
 	disallowedTypes?: string[];
 	autoFocus?: boolean;
+	state?: InputState;
+	ariaInvalid?: boolean;
+	ariaRequired?: boolean;
+	ariaDescribedBy?: string;
 };
 
 const HOTKEYS: Record<string, string> = {
@@ -98,12 +137,18 @@ const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) =
  */
 
 const RichText = ({
+	id,
+	className,
 	autoFocus = false,
 	inline = false,
 	disallowedTypes = [],
 	onChange = () => {},
 	value: initialValue = "",
 	placeholder = "Enter some text...",
+	state = "normal",
+	ariaInvalid,
+	ariaRequired,
+	ariaDescribedBy,
 }: RichTextProps) => {
 	const [isInitialized, setIsInitialized] = useState(false);
 	const [value, setValue] = useState<Descendant[]>(defaultValue);
@@ -226,16 +271,20 @@ const RichText = ({
 
 	return (
 		<Slate editor={editor} initialValue={value} value={value} onChange={setValue}>
-			<RichTextContainer>
+			<RichTextContainer state={state} className={className}>
 				<Toolbar />
-				<div className={`rich-text__editable ${inline ? "rich-text__editable--inline" : ""}`}>
+				<div className={editableVariants({ inline })}>
 					<Editable
+						id={id}
 						renderElement={Element}
 						renderLeaf={Leaf}
 						placeholder={placeholder}
 						spellCheck
 						autoFocus={autoFocus}
 						onKeyDown={handleKeyDown}
+						aria-invalid={ariaInvalid}
+						aria-required={ariaRequired}
+						aria-describedby={ariaDescribedBy}
 					/>
 				</div>
 			</RichTextContainer>
