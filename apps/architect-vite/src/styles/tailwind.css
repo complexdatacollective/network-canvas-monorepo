@@ -502,7 +502,7 @@
 }
 
 @utility hero {
-	@apply text-6xl leading-tight font-bold tracking-tight;
+	@apply text-7xl leading-tight font-bold tracking-tight;
 }
 
 @utility lead {
