@@ -1,11 +1,10 @@
-import { BookOpen, CodeXml, Download, Trash, UsersRound } from "lucide-react";
+import { CodeXml, Trash } from "lucide-react";
 import { useState } from "react";
 import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from "~/config";
 import { useAppDispatch } from "~/ducks/hooks";
 import { openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import { clearAllStorage } from "~/utils/assetDB";
 import { cn } from "~/utils/cn";
-import { openExternalLink } from "../ExternalLink";
 import ProtocolDropzone from "./ProtocolDropzone";
 import ProtocolLoadingOverlay from "./ProtocolLoadingOverlay";
 
@@ -73,33 +72,7 @@ const LaunchPad = () => {
 			<ProtocolLoadingOverlay open={isLoading} />
 			<div className="p-8 flex flex-col gap-8 flex-1">
 				<div className="flex flex-col flex-1">
-					<ProtocolDropzone onLoadProtocol={handleOpenProtocol} />
-
-					<div className="flex flex-col gap-4">
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-							<LaunchCard
-								icon={<UsersRound />}
-								title="User Community"
-								description="Ask questions and get help"
-								onClick={() => openExternalLink("https://community.networkcanvas.com")}
-								classNames="bg-cerulean-blue"
-							/>
-							<LaunchCard
-								icon={<BookOpen />}
-								title="Documentation"
-								description="Learn how to use Architect"
-								onClick={() => openExternalLink("https://documentation.networkcanvas.com")}
-								classNames="bg-sea-serpent"
-							/>
-							<LaunchCard
-								icon={<Download />}
-								title="Sample Protocol"
-								description="Explore a sample project"
-								onClick={downloadSampleProtocol}
-								classNames="bg-mustard"
-							/>
-						</div>
-					</div>
+					<ProtocolDropzone onLoadProtocol={handleOpenProtocol} onTrySample={downloadSampleProtocol} />
 				</div>
 
 				{import.meta.env.DEV && (

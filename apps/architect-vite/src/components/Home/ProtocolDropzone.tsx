@@ -1,4 +1,4 @@
-import { FilePlus, FolderOpen, Upload } from "lucide-react";
+import { Download, FilePlus, FolderOpen, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import NewProtocolDialog from "~/components/NewProtocolDialog";
@@ -9,9 +9,10 @@ import { cn } from "~/utils/cn";
 
 type ProtocolDropzoneProps = {
 	onLoadProtocol: (action: () => Promise<unknown>) => Promise<void>;
+	onTrySample: () => void;
 };
 
-export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzoneProps) {
+export default function ProtocolDropzone({ onLoadProtocol, onTrySample }: ProtocolDropzoneProps) {
 	const dispatch = useAppDispatch();
 	const [showNewProtocolDialog, setShowNewProtocolDialog] = useState(false);
 
@@ -72,6 +73,16 @@ export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzonePro
 					>
 						<FolderOpen />
 						Open existing
+					</Button>
+					<Button
+						color="platinum"
+						onClick={(e) => {
+							e.stopPropagation();
+							onTrySample();
+						}}
+					>
+						<Download />
+						Sample Protocol
 					</Button>
 				</div>
 			</div>
