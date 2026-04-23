@@ -1,7 +1,9 @@
-import cx from "classnames";
 import { get, isNil, round } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { Handles, Slider, Ticks, Tracks } from "react-compound-slider";
+import { sliderRootVariants } from "~/styles/shared/controlVariants";
+import { cva, cx } from "~/utils/cva";
+import type { InputState } from "~/utils/getInputState";
 import Handle from "./Handle";
 import Tick from "./Tick";
 import Track from "./Track";
@@ -20,9 +22,24 @@ type SliderInputProps = {
 		minLabel?: string;
 		maxLabel?: string;
 	};
+	state?: InputState;
 };
 
-const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: SliderInputProps) => {
+// Outer frame variant that carries the CSS custom properties the inner
+// track / handle / tick markup consumes.
+const sliderFrameVariants = cva({
+	base: cx(
+		"group relative mb-[var(--space-xl)] h-[var(--slider-height)]",
+		// Leave room on both sides so tooltips/labels aren't clipped
+		"w-[calc(100%-calc(var(--slider-align-margin)*2))]",
+		"mx-[var(--slider-align-margin)]",
+		"[--slider-touch-height:var(--space-xl)]",
+		"[--slider-height:calc(var(--space-xl)*2)]",
+		"[--slider-align-margin:calc(var(--space-xl)*2)]",
+	),
+});
+
+const SliderInput = ({ options = [], value, type, onBlur, parameters = {}, state = "normal" }: SliderInputProps) => {
 	const isLikert = useCallback(() => type === "LIKERT", [type]);
 	const isVisualAnalogScale = useCallback(() => type === "VAS", [type]);
 
@@ -96,24 +113,30 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 	const tickCount = getTickCount();
 	const showTooltips = !isVisualAnalogScale();
 	const isNotSet = isNil(value);
-
-	const className = cx(
-		"form-field-slider__slider",
-		{ "form-field-slider__slider--likert": isLikert() },
-		{ "form-field-slider__slider--vas": isVisualAnalogScale() },
-		{ "form-field-slider__slider--not-set": isNotSet },
-	);
+	const hasFlatTrack = isLikert() || isVisualAnalogScale();
 
 	if (!type) {
 		return null;
 	}
 
+	const isDisabled = state === "disabled" || state === "readOnly";
+	const rootProps: Record<string, unknown> = {};
+	if (hasFlatTrack) {
+		rootProps["data-flat-track"] = true;
+	}
+
 	return (
-		<div className="form-field">
-			<Slider {...sliderProps} className={className} onSlideEnd={handleSlideEnd}>
+		<div className={cx(sliderRootVariants({ state }), "w-full")}>
+			<Slider
+				{...sliderProps}
+				className={sliderFrameVariants()}
+				onSlideEnd={handleSlideEnd}
+				disabled={isDisabled}
+				rootProps={rootProps}
+			>
 				<Handles>
 					{({ handles, activeHandleID, getHandleProps }) => (
-						<div className="form-field-slider__handles">
+						<div className="relative h-full w-full">
 							{handles.map((handle) => (
 								<Handle
 									key={handle.id}
@@ -121,6 +144,8 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 									getLabelForValue={getLabelForValue}
 									domain={sliderProps.domain}
 									isActive={handle.id === activeHandleID}
+									state={state}
+									isPristine={isNotSet}
 									getHandleProps={getHandleProps}
 									showTooltips={showTooltips}
 								/>
@@ -130,9 +155,17 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 				</Handles>
 				<Tracks>
 					{({ tracks, getTrackProps }) => (
-						<div className="form-field-slider__tracks">
-							{tracks.map(({ id, source, target }) => (
-								<Track key={id} source={source} target={target} getTrackProps={getTrackProps} />
+						// react-compound-slider renders tracks as segments between handles rather than
+						// as a single rail; the filled/unfilled portions are drawn inside each <Track>.
+						<div className="absolute top-[calc(var(--slider-height)*0.5)] z-[1] h-[var(--slider-touch-height)] w-full -translate-y-1/2">
+							{tracks.map(({ id, source, target }, index) => (
+								<Track
+									key={id}
+									source={source}
+									target={target}
+									isFilled={index === 0 && !hasFlatTrack}
+									getTrackProps={getTrackProps}
+								/>
 							))}
 						</div>
 					)}
@@ -140,7 +173,7 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 				{tickCount && (
 					<Ticks count={tickCount}>
 						{({ ticks }) => (
-							<div className="form-field-slider__ticks">
+							<div className="relative top-[calc(var(--slider-height)*0.5)] left-0 w-full">
 								{ticks.map((tick) => (
 									<Tick tick={tick} key={tick.id} getLabelForValue={getLabelForValue} />
 								))}

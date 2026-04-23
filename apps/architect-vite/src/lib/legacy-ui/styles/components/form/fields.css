@@ -39,6 +39,4 @@
 }
 
 /* Import field-specific styles */
-@import "./fields/range.css";
-@import "./fields/slider.css";
 @import "./fields/rich-text.css";

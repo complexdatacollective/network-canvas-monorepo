@@ -1,12 +1,17 @@
-import cx from "classnames";
-import Icon from "~/lib/legacy-ui/components/Icon";
-import MarkdownLabel from "./MarkdownLabel";
+import { useMemo, useRef } from "react";
+import { v4 as uuid } from "uuid";
+import { BaseField } from "~/components/Form/BaseField";
+import { getInputState } from "~/utils/getInputState";
 import Slider from "./Slider/Slider";
 
 type SliderFieldProps = {
 	label?: React.ReactNode;
 	className?: string;
 	hidden?: boolean;
+	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	hint?: React.ReactNode;
 	input: {
 		name: string;
 		value: string | number | null;
@@ -46,12 +51,8 @@ const getSliderType = (variableType: string) => {
 
 const hasValue = (value: string | number | null): boolean => value !== "";
 
-/**
- * Empty string value should be treated as `null`
- * because redux-forms turns `null` values (e.g.
- * unset values) into empty strings when
- * building the input object...
- */
+// Redux-form turns unset (null) values into empty strings when building the
+// input object, so we restore the null sentinel before handing off to Slider.
 const getValue = (value: string | number | null) => {
 	if (!hasValue(value)) {
 		return null;
@@ -68,30 +69,45 @@ const SliderField = ({
 	fieldLabel = null,
 	className = "",
 	hidden = false,
+	disabled = false,
+	readOnly = false,
+	required = false,
+	hint,
 	type,
 }: SliderFieldProps) => {
 	const { error, invalid, touched } = meta;
+	const idRef = useRef(uuid());
+	const id = idRef.current;
 
-	const formFieldClasses = cx(className, "form-field-slider", {
-		"form-field-slider--has-error": invalid && touched,
-	});
+	const state = getInputState({ disabled, readOnly, meta });
+	const showErrors = Boolean(touched && invalid && error);
+	const errors = useMemo(() => (error ? [error] : []), [error]);
 
-	const anyLabel = fieldLabel || label;
+	const anyLabel = fieldLabel ?? (typeof label === "string" ? label : undefined);
 	const sliderType = getSliderType(type);
 
 	return (
-		<div className="form-field-container" hidden={hidden}>
-			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className={formFieldClasses} data-name={input.name}>
-				<Slider options={options} parameters={parameters} type={sliderType} {...input} value={getValue(input.value)} />
-				{invalid && touched && (
-					<div className="form-field-slider__error">
-						<Icon name="warning" />
-						{error}
-					</div>
-				)}
+		<BaseField
+			id={id}
+			name={input.name}
+			label={anyLabel}
+			hint={hint}
+			required={required}
+			errors={errors}
+			showErrors={showErrors}
+			containerProps={hidden ? { hidden: true } : undefined}
+		>
+			<div data-name={input.name} className={className}>
+				<Slider
+					options={options}
+					parameters={parameters}
+					type={sliderType}
+					{...input}
+					value={getValue(input.value)}
+					state={state}
+				/>
 			</div>
-		</div>
+		</BaseField>
 	);
 };
 
