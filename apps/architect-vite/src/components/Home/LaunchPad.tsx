@@ -76,7 +76,7 @@ const LaunchPad = () => {
 					<ProtocolDropzone onLoadProtocol={handleOpenProtocol} />
 
 					<div className="flex flex-col gap-4">
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+						<div className="grid grid-cols-1 tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 gap-4 w-full">
 							<LaunchCard
 								icon={<UsersRound />}
 								title="User Community"
@@ -110,7 +110,7 @@ const LaunchPad = () => {
 							</div>
 							<div className="flex-1 h-px bg-surface-3" />
 						</div>
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+						<div className="grid grid-cols-1 tablet-portrait:grid-cols-2 gap-4 w-full">
 							<LaunchCard
 								icon={<CodeXml />}
 								title="Development Protocol"

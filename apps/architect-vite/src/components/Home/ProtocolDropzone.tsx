@@ -52,7 +52,7 @@ export default function ProtocolDropzone({ onLoadProtocol }: ProtocolDropzonePro
 				<h3>Upload a Network Canvas protocol to get started</h3>
 				<p className="text-sm">Drag and drop your .netcanvas file here, or click to browse</p>
 
-				<div className="flex md:flex-row flex-col gap-2">
+				<div className="flex tablet-portrait:flex-row flex-col gap-2">
 					<Button
 						color="sea-green"
 						onClick={(e) => {
