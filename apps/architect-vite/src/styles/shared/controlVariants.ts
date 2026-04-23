@@ -32,25 +32,6 @@ export const sliderRootVariants = cva({
 	},
 });
 
-export const sliderControlVariants = cva({
-	base: cx("relative flex h-10 w-full items-center px-3"),
-});
-
-export const sliderTrackVariants = cva({
-	base: cx("inset-surface relative h-4 w-full rounded border-2", "transition-colors duration-200"),
-	variants: {
-		state: {
-			normal: "bg-input border-transparent",
-			disabled: "bg-input-contrast/5 border-transparent",
-			readOnly: "bg-input-contrast/10 border-transparent",
-			invalid: "bg-input border-destructive",
-		},
-	},
-	defaultVariants: {
-		state: "normal",
-	},
-});
-
 export const sliderThumbVariants = compose(
 	smallSizeVariants,
 	cva({
@@ -78,10 +59,6 @@ export const sliderThumbVariants = compose(
 		},
 	}),
 );
-
-export const sliderTickContainerStyles = cx("absolute inset-0 w-full");
-
-export const sliderTickStyles = cx("h-full w-1 bg-[color-mix(in_oklab,var(--input)_70%,var(--input-contrast))]");
 
 // Base variants for all 'control' like components (inputs, buttons, etc)
 export const controlVariants = cva({
