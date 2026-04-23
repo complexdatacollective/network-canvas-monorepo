@@ -1,3 +1,4 @@
+import { motion, useReducedMotion, type Variants } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useLocation } from "wouter";
@@ -44,6 +45,21 @@ const DEV_TEMPLATES: Template[] = [
 	},
 ];
 
+const RIGHT_COLUMN_VARIANTS: Variants = {
+	hidden: {},
+	shown: { transition: { staggerChildren: 0.1, delayChildren: 0.08 } },
+};
+
+const RIGHT_ITEM_VARIANTS: Variants = {
+	hidden: { opacity: 0, y: 24 },
+	shown: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 18, mass: 1.5 } },
+};
+
+const HEADER_VARIANTS: Variants = {
+	hidden: { opacity: 0 },
+	shown: { opacity: 1, transition: { duration: 0.25, ease: "easeOut" } },
+};
+
 function formatRelative(ts: number): string {
 	const diffMs = Date.now() - ts;
 	const min = Math.round(diffMs / 60000);
@@ -61,6 +77,8 @@ const Home = () => {
 	const dispatch = useAppDispatch();
 	const [, navigate] = useLocation();
 	const recents = useAppSelector(selectRecentProtocols(6));
+	const reducedMotion = useReducedMotion();
+	const initialAnimateState = reducedMotion ? "shown" : "hidden";
 
 	const [visibleCount, setVisibleCount] = useState(3);
 	const [isLoading, setIsLoading] = useState(false);
@@ -179,9 +197,14 @@ const Home = () => {
 
 				<div className="relative mx-auto flex px-4 max-w-7xl">
 					{/* Top bar */}
-					<header className="absolute left-4 right-4 top-4 z-10 flex items-center sm:left-8 sm:right-8 sm:top-6 xl:left-12 xl:right-12 xl:top-7 2xl:left-14 2xl:right-14 2xl:top-9 min-[1920px]:left-16 min-[1920px]:right-16 min-[1920px]:top-11">
+					<motion.header
+						className="absolute left-4 right-4 top-4 z-10 flex items-center sm:left-8 sm:right-8 sm:top-6 xl:left-12 xl:right-12 xl:top-7 2xl:left-14 2xl:right-14 2xl:top-9 min-[1920px]:left-16 min-[1920px]:right-16 min-[1920px]:top-11"
+						variants={HEADER_VARIANTS}
+						initial={initialAnimateState}
+						animate="shown"
+					>
 						<div
-							className="flex items-center gap-2.5 rounded-full bg-white/50 py-1.5 pl-1.5 pr-3 sm:gap-3.5 sm:py-2 sm:pl-2 sm:pr-4.5 2xl:gap-4 2xl:py-2.5 2xl:pr-5 min-[1920px]:gap-5 min-[1920px]:pr-6"
+							className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-1.5 pr-3 sm:gap-3.5 sm:py-2 sm:pl-2 sm:pr-4.5 2xl:gap-4 2xl:py-2.5 2xl:pr-5 min-[1920px]:gap-5 min-[1920px]:pr-6"
 							style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.08)" }}
 						>
 							<img src={architectIcon} alt="" className="size-12 rounded-full" />
@@ -229,7 +252,7 @@ const Home = () => {
 								{appVersion} · What's new
 							</div>
 						</nav>
-					</header>
+					</motion.header>
 				</div>
 
 				<div className="mx-auto px-6 flex h-full z-10 justify-center items-center">
@@ -239,8 +262,13 @@ const Home = () => {
 					</div>
 
 					{/* Right panel — content */}
-					<section className="flex shrink-0 w-full flex-col gap-6 h-full pt-40 pb-6 max-w-xl">
-						<div>
+					<motion.section
+						className="flex shrink-0 w-full flex-col gap-6 h-full pt-40 pb-6 max-w-xl"
+						variants={RIGHT_COLUMN_VARIANTS}
+						initial={initialAnimateState}
+						animate="shown"
+					>
+						<motion.div variants={RIGHT_ITEM_VARIANTS}>
 							<h1 className="mx-0 mb-4 mt-3.5 text-8xl font-extrabold leading-[0.90] tracking-[-0.028em]">
 								Networks,
 								<br />
@@ -252,10 +280,13 @@ const Home = () => {
 								Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and
 								categorical data, map connections and explore narratives.
 							</p>
-						</div>
+						</motion.div>
 
 						{/* CTAs */}
-						<div className="flex flex-col flex-wrap items-stretch gap-3 sm:flex-row sm:items-center">
+						<motion.div
+							variants={RIGHT_ITEM_VARIANTS}
+							className="flex flex-col flex-wrap items-stretch gap-3 sm:flex-row sm:items-center"
+						>
 							<button
 								type="button"
 								onClick={() => setShowNewDialog(true)}
@@ -284,10 +315,11 @@ const Home = () => {
 							>
 								Open from disk
 							</button>
-						</div>
+						</motion.div>
 
 						{/* Drop card */}
-						<div
+						<motion.div
+							variants={RIGHT_ITEM_VARIANTS}
 							className="flex items-center gap-3.5 rounded bg-white/40 px-4 py-3.5 sm:px-5 sm:py-4 2xl:gap-4 2xl:px-6 2xl:py-5 min-[1920px]:gap-5 min-[1920px]:px-7 min-[1920px]:py-6"
 							style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.06)" }}
 						>
@@ -315,7 +347,7 @@ const Home = () => {
 							<span className="hidden sm:inline">
 								<Kbd>⌘O</Kbd>
 							</span>
-						</div>
+						</motion.div>
 
 						{/* Recents / Templates ledger */}
 						<Ledger
@@ -323,13 +355,14 @@ const Home = () => {
 							onModeChange={setLedgerMode}
 							recents={recents}
 							templates={templates}
+							variants={RIGHT_ITEM_VARIANTS}
 							onOpenRecent={handleOpenRecent}
 							onOpenTemplate={(t) => {
 								popToast(`Creating from template: ${t.name}`);
 								handleOpenTemplate(t.url);
 							}}
 						/>
-					</section>
+					</motion.section>
 				</div>
 
 				{toast && (
@@ -367,13 +400,15 @@ type LedgerProps = {
 	onModeChange: (mode: "recent" | "templates") => void;
 	recents: StoredProtocol[];
 	templates: Template[];
+	variants?: Variants;
 	onOpenRecent: (protocol: StoredProtocol) => void;
 	onOpenTemplate: (template: Template) => void;
 };
 
-function Ledger({ mode, onModeChange, recents, templates, onOpenRecent, onOpenTemplate }: LedgerProps) {
+function Ledger({ mode, onModeChange, recents, templates, variants, onOpenRecent, onOpenTemplate }: LedgerProps) {
 	return (
-		<div
+		<motion.div
+			variants={variants}
 			className="flex min-h-[220px] flex-col overflow-hidden rounded bg-white/40 py-3.5 xl:min-h-0 xl:flex-1 2xl:py-4 min-[1920px]:py-5"
 			style={{ boxShadow: "0 4px 12px rgba(22,21,43,0.06)" }}
 		>
@@ -482,7 +517,7 @@ function Ledger({ mode, onModeChange, recents, templates, onOpenRecent, onOpenTe
 						</button>
 					))}
 			</div>
-		</div>
+		</motion.div>
 	);
 }
 

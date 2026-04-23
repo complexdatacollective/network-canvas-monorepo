@@ -1,4 +1,5 @@
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef } from "react";
 import { STAGE_META, type TimelineStop } from "./timelineScript";
 
 // Internal SVG design coordinates. The outer container width controls the
@@ -23,6 +24,9 @@ const INDEX_W = 36;
 // Keeping this bounded stops the DOM growing without limit while the timeline
 // loops.
 const VISIBLE_WINDOW = 7;
+// Stagger between stations during the initial-mount cascade (newest first,
+// then progressively older above).
+const INITIAL_BLOOM_STAGGER_S = 0.12;
 
 type TransitMapProps = {
 	stops: TimelineStop[];
@@ -32,6 +36,13 @@ type TransitMapProps = {
 type WindowedStop = TimelineStop & { absoluteIndex: number };
 
 export default function TransitMap({ stops, count }: TransitMapProps) {
+	const reducedMotion = useReducedMotion();
+	const firstMountRef = useRef(true);
+	const isFirstMount = firstMountRef.current;
+	useEffect(() => {
+		firstMountRef.current = false;
+	}, []);
+
 	const windowSize = Math.min(count, VISIBLE_WINDOW);
 	const windowStart = count - windowSize;
 	const stations: WindowedStop[] = Array.from({ length: windowSize }, (_, k) => {
@@ -72,15 +83,17 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 							const y1 = prev.absoluteIndex * STATION_GAP;
 							const y2 = s.absoluteIndex * STATION_GAP;
 							const isNewSeg = s.absoluteIndex === newestAbs;
+							const drawSegment = !reducedMotion && (isFirstMount || isNewSeg);
+							const segDelay = isFirstMount ? (windowSize - i) * INITIAL_BLOOM_STAGGER_S : 0;
 							return (
 								<motion.line
 									key={`seg-${s.absoluteIndex}`}
 									x1={STATION_X}
 									y1={y1}
 									x2={STATION_X}
-									initial={isNewSeg ? { y2: y1 } : false}
+									initial={drawSegment ? { y2: y1 } : false}
 									animate={{ y2 }}
-									transition={{ type: "spring", stiffness: 110, damping: 23, mass: 2 }}
+									transition={{ type: "spring", stiffness: 110, damping: 23, mass: 2, delay: segDelay }}
 									stroke={prevMeta.color}
 									strokeWidth={LINE_STROKE}
 									strokeLinecap="round"
@@ -106,10 +119,17 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 							);
 						})}
 
-						{stations.map((s) => {
+						{stations.map((s, i) => {
 							const y = s.absoluteIndex * STATION_GAP;
 							const meta = STAGE_META[s.key];
 							const isNewest = s.absoluteIndex === newestAbs;
+							const entryDelay = reducedMotion
+								? undefined
+								: isFirstMount
+									? (windowSize - 1 - i) * INITIAL_BLOOM_STAGGER_S
+									: isNewest
+										? 0
+										: undefined;
 							return (
 								<Station
 									key={`station-${s.absoluteIndex}`}
@@ -121,6 +141,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 									isNewest={isNewest}
 									labelLeft={s.absoluteIndex % 2 === 1}
 									index={s.absoluteIndex}
+									entryDelay={entryDelay}
 								/>
 							);
 						})}
@@ -140,22 +161,25 @@ type StationProps = {
 	isNewest: boolean;
 	labelLeft: boolean;
 	index: number;
+	entryDelay?: number;
 };
 
-function Station({ x, y, meta, label, sub, isNewest, labelLeft, index }: StationProps) {
-	const stationSpring = { type: "spring", stiffness: 110, damping: 15, mass: 2 } as const;
-	const labelSpring = { type: "spring", stiffness: 110, damping: 21, mass: 2, delay: 0.15 } as const;
-	const indexSpring = { type: "spring", stiffness: 110, damping: 21, mass: 2, delay: 0.2 } as const;
+function Station({ x, y, meta, label, sub, isNewest, labelLeft, index, entryDelay }: StationProps) {
+	const shouldEntry = entryDelay !== undefined;
+	const baseDelay = entryDelay ?? 0;
+	const stationSpring = { type: "spring", stiffness: 110, damping: 15, mass: 2, delay: baseDelay } as const;
+	const labelSpring = { type: "spring", stiffness: 110, damping: 21, mass: 2, delay: 0.15 + baseDelay } as const;
+	const indexSpring = { type: "spring", stiffness: 110, damping: 21, mass: 2, delay: 0.2 + baseDelay } as const;
 
 	return (
 		<g>
 			{/* Station disc + halo + icon: slide up from below */}
 			<motion.g
-				initial={isNewest ? { y: 120, opacity: 0 } : false}
+				initial={shouldEntry ? { y: 120, opacity: 0 } : false}
 				animate={{ y: 0, opacity: 1 }}
 				transition={stationSpring}
 			>
-				{isNewest && (
+				{isNewest && shouldEntry && (
 					<motion.circle
 						cx={x}
 						cy={y}
@@ -163,7 +187,7 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index }: Station
 						stroke={meta.color}
 						initial={{ r: STATION_R, opacity: 1, strokeWidth: 6 }}
 						animate={{ r: HALO_R, opacity: 0, strokeWidth: 1.5 }}
-						transition={{ duration: 1.2, delay: 0.5, ease: "easeOut" }}
+						transition={{ duration: 1.2, delay: 0.5 + baseDelay, ease: "easeOut" }}
 					/>
 				)}
 				<circle cx={x} cy={y} r={STATION_R} fill="#fff" />
@@ -183,7 +207,7 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index }: Station
 
 			{/* Label pill: slide in from its outer side */}
 			<motion.g
-				initial={isNewest ? { x: labelLeft ? -80 : 80, opacity: 0 } : false}
+				initial={shouldEntry ? { x: labelLeft ? -80 : 80, opacity: 0 } : false}
 				animate={{ x: 0, opacity: 1 }}
 				transition={labelSpring}
 			>
@@ -199,7 +223,7 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index }: Station
 						style={{ justifyContent: labelLeft ? "flex-end" : "flex-start" }}
 					>
 						<div
-							className="min-w-0 rounded-full bg-white px-6 py-3 font-heading"
+							className="min-w-0 rounded-full bg-white/40 px-6 py-3 font-heading"
 							style={{
 								boxShadow: "0 8px 20px rgba(22,21,43,0.10)",
 								maxWidth: LABEL_W - 20,
@@ -221,7 +245,7 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index }: Station
 
 			{/* Index marker: slide in from the opposite outer side */}
 			<motion.g
-				initial={isNewest ? { x: labelLeft ? 60 : -60, opacity: 0 } : false}
+				initial={shouldEntry ? { x: labelLeft ? 60 : -60, opacity: 0 } : false}
 				animate={{ x: 0, opacity: 1 }}
 				transition={indexSpring}
 			>
