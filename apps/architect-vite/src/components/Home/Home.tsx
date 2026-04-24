@@ -6,6 +6,7 @@ import { SAMPLE_PROTOCOL_URL } from "~/config";
 import { useAppDispatch } from "~/ducks/hooks";
 import { createNetcanvas, openLocalNetcanvas, openRemoteNetcanvas } from "~/ducks/modules/userActions/userActions";
 import Button from "~/lib/legacy-ui/components/Button";
+import DevTools from "./DevTools";
 import Header from "./Header";
 import ProtocolLoadingOverlay from "./ProtocolLoadingOverlay";
 import TransitMap from "./TransitMap";
@@ -123,9 +124,9 @@ const Home = () => {
 							</div>
 						</div>
 					</div>
-
-					{/* <DevTools /> */}
 				</main>
+
+				<DevTools runAction={runAction} />
 			</div>
 		</>
 	);

@@ -4,6 +4,7 @@ import architectIcon from "~/images/Arc-Flat.svg";
 import { IconButton } from "~/lib/legacy-ui/components/Button";
 import { appVersion } from "~/utils/appVersion";
 import Badge from "../Badge";
+import FloatingSurface from "../FloatingSurface";
 
 type NavLinkProps = {
 	href: string;
@@ -36,11 +37,11 @@ const Header = () => {
 
 	return (
 		<header className="relative flex justify-between sm:gap-8 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
-			<div className="flex items-center gap-3 sm:gap-4 pl-2 sm:pl-3 pr-4 sm:pr-8 py-2 bg-surface-1 rounded-full shadow-sm">
+			<FloatingSurface shape="pill" className="flex items-center gap-3 sm:gap-4 pl-2 sm:pl-3 pr-4 sm:pr-8">
 				<img src={architectIcon} alt="Architect" className="h-10 w-10 sm:h-14 sm:w-14" />
 				<h3>Architect</h3>
 				<Badge color="sea-green">WEB</Badge>
-			</div>
+			</FloatingSurface>
 
 			<div className="flex items-center gap-6 lg:gap-12">
 				<nav className="hidden md:flex items-center gap-6 lg:gap-10">
@@ -66,13 +67,17 @@ const Header = () => {
 			</div>
 
 			{menuOpen && (
-				<nav className="md:hidden absolute top-full left-4 right-4 mt-2 z-[var(--z-panel)] flex flex-col gap-4 bg-surface-1 rounded-2xl shadow-md p-6">
+				<FloatingSurface
+					as="nav"
+					shape="card"
+					className="md:hidden absolute top-full left-4 right-4 mt-2 z-(--z-panel) flex flex-col gap-4"
+				>
 					{NAV_LINKS.map(({ href, label }) => (
 						<NavLink key={href} href={href} onClick={closeMenu}>
 							{label}
 						</NavLink>
 					))}
-				</nav>
+				</FloatingSurface>
 			)}
 		</header>
 	);
