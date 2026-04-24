@@ -509,6 +509,14 @@
 	@apply text-lg leading-normal text-muted-foreground;
 }
 
+@utility hint {
+	@apply text-xs leading-normal text-muted-foreground;
+}
+
+@utility code {
+	@apply font-mono text-[0.9em] rounded-sm bg-foreground/5 px-1 py-0.5;
+}
+
 @utility action-link {
 	@apply font-bold underline decoration-2 underline-offset-4 cursor-pointer;
 	text-decoration-color: var(--color-action);
