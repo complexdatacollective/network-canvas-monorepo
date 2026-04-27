@@ -522,6 +522,10 @@
 	text-decoration-color: var(--color-action);
 }
 
+@utility nav-link {
+	@apply small-heading hover:text-primary underline decoration-2 underline-offset-8 decoration-transparent hover:decoration-(--color-action) transition-colors;
+}
+
 /* Small heading utility - replaces .small-heading placeholder */
 @utility small-heading {
 	font-size: var(--text-sm);

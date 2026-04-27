@@ -70,12 +70,15 @@ const Home = () => {
 			<ProtocolLoadingOverlay open={isLoading} />
 			<NewProtocolDialog open={showNewDialog} onOpenChange={setShowNewDialog} onSubmit={handleCreate} />
 
-			<div {...getRootProps()} className="flex flex-col">
+			<div {...getRootProps()} className="flex flex-col h-dvh">
 				<input {...getInputProps()} />
 
 				{/* Dropzone */}
 				{isDragActive && (
-					<div className="fixed inset-3 z-50 rounded-2xl border-4 border-dashed border-action bg-action/10" />
+					<div
+						aria-hidden
+						className="fixed inset-3 z-(--z-global-ui) rounded-2xl border-4 border-dashed border-action bg-action/10"
+					/>
 				)}
 
 				<Header />
@@ -90,9 +93,9 @@ const Home = () => {
 
 						<div className="flex-1 flex flex-col gap-6 text-left items-start pt-12">
 							<div>
-								<h2 className="hero mb-3">
+								<h1 className="hero mb-3">
 									Welcome to <span className="text-action">Architect</span>
-								</h2>
+								</h1>
 								<p className="lead max-w-xl">
 									Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and
 									categorical data, map connections, and explore narratives.
