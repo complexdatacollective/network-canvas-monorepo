@@ -11,7 +11,7 @@ type DevToolsProps = {
 const DevTools = ({ runAction }: DevToolsProps) => {
 	const dispatch = useAppDispatch();
 
-	if (import.meta.env.DEV) return null;
+	if (!import.meta.env.DEV) return null;
 
 	const installDevelopmentProtocol = () =>
 		runAction(async () => {
