@@ -79,8 +79,8 @@ catalogs:
       specifier: ^8.5.10
       version: 8.5.10
     posthog-js:
-      specifier: ^1.371.2
-      version: 1.371.2
+      specifier: ^1.372.2
+      version: 1.372.2
     react:
       specifier: ^19.2.5
       version: 19.2.5
@@ -492,7 +492,7 @@ importers:
         version: 2.0.11
       posthog-js:
         specifier: 'catalog:'
-        version: 1.371.2
+        version: 1.372.2
       react:
         specifier: 'catalog:'
         version: 19.2.5
@@ -664,7 +664,7 @@ importers:
         version: 16.2.4(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react@19.2.5)
       '@posthog/react':
         specifier: 'catalog:'
-        version: 1.9.0(@types/react@19.2.14)(posthog-js@1.371.2)(react@19.2.5)
+        version: 1.9.0(@types/react@19.2.14)(posthog-js@1.372.2)(react@19.2.5)
       '@radix-ui/react-dialog':
         specifier: 'catalog:'
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -709,7 +709,7 @@ importers:
         version: 8.5.10
       posthog-js:
         specifier: 'catalog:'
-        version: 1.371.2
+        version: 1.372.2
       react:
         specifier: 'catalog:'
         version: 19.2.5
@@ -4181,8 +4181,8 @@ packages:
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
 
-  '@posthog/core@1.27.1':
-    resolution: {integrity: sha512-130F5zAmGoY0KAqdT2FYfU79mk54z0wTWfCMkyzXmkKz2eg23694O2ofaAf4NuIdI8e6LFNHyaZ7aWbatUeW5A==}
+  '@posthog/core@1.27.6':
+    resolution: {integrity: sha512-FjvgPdORywAjgjtgkZJ2/x9ED52jtOJym/RVldY4Oa7wzmlY49rxZm8gvOlocEnjP90bSbj3ko7qVjXNhftFvA==}
 
   '@posthog/react@1.9.0':
     resolution: {integrity: sha512-lVdTsWT5+PtHBu44gSQ7QohbLjAYqHkFAIGAQ+HV8Eh9yj+OcnQ7mXCmyhaMlTBD3z7D0H1eWMp4vQaFnsIyWQ==}
@@ -4194,8 +4194,8 @@ packages:
       '@types/react':
         optional: true
 
-  '@posthog/types@1.371.2':
-    resolution: {integrity: sha512-Ak3kuGMPBTjuoK6Ki0kQbq9eROk7LRJ3GBkbQINCZBT9FPlHvlXRwQr0/OVsi4xYPSMSGxWjRDMPFsR9Px66Cg==}
+  '@posthog/types@1.372.2':
+    resolution: {integrity: sha512-dx+WImdDg2NDqaDowTmW+BMNalUfPKngR+g1Iom8ULSav+fGacxexv6fSOl0uSVBwYZsDFe7qNUu0NB/rwGjEw==}
 
   '@productboard/slate-edit-list@0.21.5':
     resolution: {integrity: sha512-FABqyZPHA+/tzxSBgFnbINvT5XOeQI1toc15oMLWTOHuuqcJjAE7RaGdBZu/0kJAiKm52XTmKxYXkzbzRmRUUw==}
@@ -9584,8 +9584,8 @@ packages:
     resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  posthog-js@1.371.2:
-    resolution: {integrity: sha512-2cd4NqsFbBUiBAXLRCcM8De4lA/x2ZmNI7ii3BegpQItMKZUk2w1HY/91pLvvwEyShWa2WGloBJSCBJAVo/hWg==}
+  posthog-js@1.372.2:
+    resolution: {integrity: sha512-FS+vKDXB1vghrVch3EDi3IRcoH5OnLQYxchHWi+8U4D4PzWQZnZLo5vyMRL1+ZUHNEZ2v599uX3UKhRZv2z6Cg==}
 
   postject@1.0.0-alpha.6:
     resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
@@ -14695,7 +14695,7 @@ snapshots:
   '@mendable/search@0.0.206(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       html-react-parser: 4.2.10(react@19.2.5)
-      posthog-js: 1.371.2
+      posthog-js: 1.372.2
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
@@ -15149,18 +15149,18 @@ snapshots:
 
   '@poppinss/exception@1.2.3': {}
 
-  '@posthog/core@1.27.1':
+  '@posthog/core@1.27.6':
     dependencies:
-      '@posthog/types': 1.371.2
+      '@posthog/types': 1.372.2
 
-  '@posthog/react@1.9.0(@types/react@19.2.14)(posthog-js@1.371.2)(react@19.2.5)':
+  '@posthog/react@1.9.0(@types/react@19.2.14)(posthog-js@1.372.2)(react@19.2.5)':
     dependencies:
-      posthog-js: 1.371.2
+      posthog-js: 1.372.2
       react: 19.2.5
     optionalDependencies:
       '@types/react': 19.2.14
 
-  '@posthog/types@1.371.2': {}
+  '@posthog/types@1.372.2': {}
 
   '@productboard/slate-edit-list@0.21.5(slate-react@0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3))(slate@0.57.3)':
     dependencies:
@@ -21821,15 +21821,15 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  posthog-js@1.371.2:
+  posthog-js@1.372.2:
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/api-logs': 0.208.0
       '@opentelemetry/exporter-logs-otlp-http': 0.208.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.6.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-logs': 0.208.0(@opentelemetry/api@1.9.1)
-      '@posthog/core': 1.27.1
-      '@posthog/types': 1.371.2
+      '@posthog/core': 1.27.6
+      '@posthog/types': 1.372.2
       core-js: 3.49.0
       dompurify: 3.3.3
       fflate: 0.4.8
