@@ -7,7 +7,7 @@ import relationshipIcon from "~/images/landing/relationship.svg";
 
 export type StageKind = "info" | "namegen" | "cat" | "ordbin" | "sociogram" | "narrative";
 
-export type StageMeta = {
+type StageMeta = {
 	key: StageKind;
 	label: string;
 	color: string;

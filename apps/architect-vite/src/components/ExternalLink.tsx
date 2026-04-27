@@ -1,6 +1,6 @@
 import type React from "react";
 
-export const openExternalLink = (href: string) => {
+const openExternalLink = (href: string) => {
 	window.open(href, "_blank", "noopener,noreferrer");
 };
 

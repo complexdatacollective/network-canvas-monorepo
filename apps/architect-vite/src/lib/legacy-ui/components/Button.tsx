@@ -14,7 +14,7 @@ const renderButtonIcon = ({ icon }: { icon?: string | React.ReactElement }) => {
 	return iconElement;
 };
 
-export type ButtonColor =
+type ButtonColor =
 	| "sea-green"
 	| "neon-coral"
 	| "slate-blue"
@@ -35,7 +35,7 @@ export type ButtonColor =
 	| "tomato"
 	| "white";
 
-export type ButtonSize = "small" | "large";
+type ButtonSize = "small" | "large";
 
 type ComputeClassesArgs = {
 	color?: ButtonColor;
