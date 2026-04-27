@@ -85,7 +85,7 @@ const Home = () => {
 
 				{/* Hero section */}
 
-				<main className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-8 pb-8 gap-8 min-h-0">
+				<main className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-8 pb-8 gap-8 min-h-0 overflow-y-auto">
 					<div className="flex flex-col md:flex-row gap-8 w-full items-start flex-1 min-h-0">
 						<div aria-hidden className="hidden md:block md:w-1/2 h-full shrink-0 pointer-events-none">
 							<TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
