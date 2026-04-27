@@ -22,7 +22,7 @@ const NavLink = ({ href, onClick, children }: NavLinkProps) => (
 const NAV_LINKS = [
 	{ href: "https://documentation.networkcanvas.com", label: "Docs" },
 	{ href: "https://community.networkcanvas.com", label: "Community" },
-	{ href: "https://github.com/complexdatacollective", label: "Github" },
+	{ href: "https://github.com/complexdatacollective", label: "GitHub" },
 ];
 
 const Header = () => {
