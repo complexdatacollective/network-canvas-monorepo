@@ -1,6 +1,7 @@
 import { get } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import type { RootState } from "~/ducks/modules/root";
 import { getAssetManifest } from "~/selectors/protocol";
 import { getGeoJsonVariables, getNetworkVariables } from "~/utils/protocols/assetTools";
 
@@ -39,7 +40,7 @@ function useVariablesFromExternalData(
 	type = "network",
 ): VariablesState {
 	const [state, setState] = useState<VariablesState>(initialState);
-	const assetManifest = useSelector(getAssetManifest);
+	const asset = useSelector((s: RootState) => (dataSource ? get(getAssetManifest(s), dataSource) : undefined));
 
 	useEffect(() => {
 		if (!dataSource) {
@@ -48,7 +49,7 @@ function useVariablesFromExternalData(
 
 		setState({ isVariablesLoading: true, variables: [], variablesError: null });
 
-		if (!get(assetManifest, dataSource)) {
+		if (!asset) {
 			setState((s) => ({ ...s, isVariablesLoading: false, variables: [] }));
 			return;
 		}
@@ -75,7 +76,7 @@ function useVariablesFromExternalData(
 					variablesError: e.toString(),
 				}));
 			});
-	}, [dataSource, type, asOptions, assetManifest]);
+	}, [dataSource, type, asOptions, asset]);
 
 	return state;
 }
