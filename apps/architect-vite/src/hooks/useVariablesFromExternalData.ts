@@ -1,7 +1,8 @@
+import { get } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import type { RootState } from "~/ducks/modules/root";
-import { makeGetGeoJsonAssetVariables, makeGetNetworkAssetVariables } from "~/selectors/assets";
+import { getAssetManifest } from "~/selectors/protocol";
+import { getGeoJsonVariables, getNetworkVariables } from "~/utils/protocols/assetTools";
 
 type VariableOption = { label: string; value: string };
 
@@ -20,6 +21,8 @@ const initialState: VariablesState = {
 	variablesError: null,
 };
 
+const toOptions = (variables: string[]): VariableOption[] => variables.map((v) => ({ label: v, value: v }));
+
 function useVariablesFromExternalData(
 	dataSource: string | undefined,
 	asOptions: true,
@@ -36,8 +39,7 @@ function useVariablesFromExternalData(
 	type = "network",
 ): VariablesState {
 	const [state, setState] = useState<VariablesState>(initialState);
-
-	const rootState = useSelector((s: RootState) => s);
+	const assetManifest = useSelector(getAssetManifest);
 
 	useEffect(() => {
 		if (!dataSource) {
@@ -46,12 +48,25 @@ function useVariablesFromExternalData(
 
 		setState({ isVariablesLoading: true, variables: [], variablesError: null });
 
-		const getVariablesFn =
-			type === "geojson" ? makeGetGeoJsonAssetVariables(rootState) : makeGetNetworkAssetVariables(rootState);
+		if (!get(assetManifest, dataSource)) {
+			setState((s) => ({ ...s, isVariablesLoading: false, variables: [] }));
+			return;
+		}
 
-		getVariablesFn(dataSource, asOptions)
+		const fetchVariables = async (): Promise<string[]> => {
+			if (type === "geojson") {
+				return getGeoJsonVariables(dataSource);
+			}
+			return (await getNetworkVariables(dataSource)) ?? [];
+		};
+
+		fetchVariables()
 			.then((variables) => {
-				setState((s) => ({ ...s, isVariablesLoading: false, variables: variables ?? [] }));
+				setState((s) => ({
+					...s,
+					isVariablesLoading: false,
+					variables: asOptions ? toOptions(variables) : variables,
+				}));
 			})
 			.catch((e: Error) => {
 				setState((s) => ({
@@ -60,7 +75,7 @@ function useVariablesFromExternalData(
 					variablesError: e.toString(),
 				}));
 			});
-	}, [dataSource, type, asOptions, rootState]);
+	}, [dataSource, type, asOptions, assetManifest]);
 
 	return state;
 }
