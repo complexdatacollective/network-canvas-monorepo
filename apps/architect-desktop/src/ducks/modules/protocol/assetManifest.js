@@ -5,7 +5,7 @@ import { getWorkingPath } from "@selectors/session";
 import { pathSync } from "@utils/electronBridge";
 import log from "@utils/logger";
 import { omit } from "lodash";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { saveableChange } from "../session";
 
 const IMPORT_ASSET = "PROTOCOL/IMPORT_ASSET";

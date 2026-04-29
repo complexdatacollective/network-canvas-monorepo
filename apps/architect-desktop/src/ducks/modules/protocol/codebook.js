@@ -1,6 +1,6 @@
 import prune from "@app/utils/prune";
 import { find, get, has, isEmpty, omit } from "lodash";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { getAllVariableUUIDsByEntity, getVariablesForSubject } from "../../../selectors/codebook";
 import { makeGetIsUsed } from "../../../selectors/codebook/isUsed";
 import { makeGetUsageForType } from "../../../selectors/usage";

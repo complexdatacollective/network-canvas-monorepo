@@ -1,6 +1,6 @@
 import { entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { has, omit, reduce } from "lodash";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { actionTypes as installedProtocolsActionTypes } from "./installedProtocols";
 import networkReducer, { actionCreators as networkActions, actionTypes as networkActionTypes } from "./network";
 import { actionCreators as SessionWorkerActions } from "./sessionWorkers";

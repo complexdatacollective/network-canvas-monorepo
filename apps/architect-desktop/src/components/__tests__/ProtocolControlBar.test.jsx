@@ -3,7 +3,7 @@
 import { mount } from "enzyme";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
-import testState from "../../__tests__/testState.json" with { type: "json" };
+import testState from "../../__tests__/testState.json";
 import ProtocolControlBar from "../ProtocolControlBar";
 
 const mockProps = {

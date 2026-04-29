@@ -2,7 +2,7 @@
  * Extract protocol utility with secure API support.
  */
 import Zip from "jszip";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import inEnvironment from "../Environment";
 import { pathSync } from "../electronAPI";
 import environments from "../environments";

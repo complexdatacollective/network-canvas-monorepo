@@ -1,5 +1,5 @@
 import { compose, withHandlers } from "recompose";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import validateRule from "./validateRule";
 
 const withRulesChangeHandlers = compose(

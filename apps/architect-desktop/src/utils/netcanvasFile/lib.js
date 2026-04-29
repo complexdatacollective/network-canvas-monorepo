@@ -2,7 +2,7 @@ import { archive, extract } from "@app/utils/protocols/lib/archive";
 import { pruneProtocol } from "@app/utils/prune";
 import pruneProtocolAssets from "@app/utils/pruneProtocolAssets";
 import { electronAPI } from "@utils/electronBridge";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { errors, handleError } from "./errors";
 
 /**

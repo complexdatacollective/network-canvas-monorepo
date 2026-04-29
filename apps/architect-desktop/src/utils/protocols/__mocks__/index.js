@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import testState from "../../../__tests__/testState.json" with { type: "json" };
+import testState from "../../../__tests__/testState.json";
 
 export const importAsset = vi.fn((protocolPath, filePath) => Promise.resolve(`${protocolPath}/${filePath}`));
 export const saveProtocol = vi.fn(() => Promise.resolve("/dev/null/fake/user/protocol/path"));

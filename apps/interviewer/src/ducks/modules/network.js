@@ -1,6 +1,6 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { find, get, isMatch, keys, omit, reject } from "lodash";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 
 /*
  * For actionCreators see `src/ducks/modules/sessions`

@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import mockState from "../../../../__tests__/testState.json" with { type: "json" };
+import mockState from "../../../../__tests__/testState.json";
 import { getEdgesForSubject, getHighlightVariablesForSubject, getLayoutVariablesForSubject } from "../selectors";
 
 jest.mock("redux-form", () => ({

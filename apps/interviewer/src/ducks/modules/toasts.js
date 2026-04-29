@@ -1,4 +1,4 @@
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 
 const ADD_TOAST = "TOASTS/ADD_TOAST";
 const UPDATE_TOAST = "TOASTS/UPDATE_TOAST";

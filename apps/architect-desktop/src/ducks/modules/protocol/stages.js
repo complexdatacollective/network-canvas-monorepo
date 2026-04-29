@@ -2,7 +2,7 @@ import prune from "@app/utils/prune";
 import { getStage } from "@selectors/protocol";
 import { compact, get, omit } from "lodash";
 import { arrayMove } from "react-sortable-hoc";
-import uuid from "uuid/v1";
+import { v1 as uuid } from "uuid";
 import { getNodeTypes } from "../../../selectors/codebook";
 import { saveableChange } from "../session";
 

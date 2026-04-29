@@ -1,7 +1,7 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import faker from "@faker-js/faker";
 import { has, omit, times } from "lodash";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { actionCreators as sessionsActions } from "./sessions";
 
 const MOCK_GENERATE_NODES = "MOCK/GENERATE_NODES";

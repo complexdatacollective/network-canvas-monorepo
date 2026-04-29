@@ -1,7 +1,7 @@
 import { SUPPORTED_EXTENSION_TYPE_MAP } from "@app/config";
 import { electronAPI } from "@utils/electronBridge";
 import { findKey, toLower } from "lodash";
-import uuid from "uuid/v1";
+import { v1 as uuid } from "uuid";
 
 /**
  * Function that determines the type of an asset file when importing. Types are defined

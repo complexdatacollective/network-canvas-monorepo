@@ -1,7 +1,7 @@
 import { entityAttributesProperty } from "@codaco/shared-consts";
 import { mapValues, omit, orderBy, values } from "lodash";
 import { createSelector } from "reselect";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { get } from "../utils/lodash-replacements";
 
 const DefaultFinishStage = {

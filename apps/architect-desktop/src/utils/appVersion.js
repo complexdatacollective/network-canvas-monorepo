@@ -1,6 +1,6 @@
 import { electronAPI } from "@utils/electronBridge";
 import { get } from "lodash";
-import codenames from "../codenames.json" with { type: "json" };
+import codenames from "../codenames";
 
 let cachedVersion = null;
 let cachedCodename = null;

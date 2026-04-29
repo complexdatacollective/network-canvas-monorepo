@@ -2,7 +2,7 @@ import { Icon } from "@codaco/ui";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useEffect, useRef } from "react";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 
 const dashIndex = [4, 7];
 

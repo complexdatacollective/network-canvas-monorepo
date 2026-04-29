@@ -8,8 +8,8 @@ import reducer, { actionCreators, actionTypes, getReducer } from "../sessions";
 const mockSessionId = "session-1";
 
 vi.mock("../network");
-vi.mock("uuid/v4", () => ({
-	default: vi.fn(() => mockSessionId),
+vi.mock("uuid", () => ({
+	v4: vi.fn(() => mockSessionId),
 }));
 
 const middlewares = [thunk];

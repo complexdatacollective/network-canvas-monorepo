@@ -1,7 +1,7 @@
 import { isMatch } from "lodash";
 import { vi } from "vitest";
-import developmentProtocol from "../../development-protocol/protocol.json" with { type: "json" };
-import testState from "./testState.json" with { type: "json" };
+import developmentProtocol from "../../development-protocol/protocol.json";
+import testState from "./testState.json";
 
 export const getMockState = (mergeProps) => ({
 	...testState,

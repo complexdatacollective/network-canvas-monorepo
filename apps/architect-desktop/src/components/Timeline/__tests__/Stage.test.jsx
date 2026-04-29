@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { shallow } from "enzyme";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { UnconnectedStage } from "../Stage";
 
 jest.mock("@codaco/ui/lib/utils/CSSVariables");

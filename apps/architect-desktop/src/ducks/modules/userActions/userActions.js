@@ -21,7 +21,7 @@ import CancellationError from "@utils/cancellationError";
 import { electronAPI } from "@utils/electronBridge";
 import { getNewFileName } from "@utils/netcanvasFile/netcanvasFile";
 import axios from "axios";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { createImportToast, updateDownloadProgress } from "./userActionToasts";
 
 const protocolsLock = createLock("PROTOCOLS");

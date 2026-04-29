@@ -5,7 +5,7 @@ import { set } from "lodash";
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
 import { describe, expect, it } from "vitest";
-import testState from "../../../../__tests__/testState.json" with { type: "json" };
+import testState from "../../../../__tests__/testState.json";
 import reducer, { actionCreators, actionTypes, test } from "../codebook";
 import { test as stageActions } from "../stages";
 

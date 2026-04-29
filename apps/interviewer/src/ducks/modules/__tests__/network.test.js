@@ -1,5 +1,5 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty as PK } from "@codaco/shared-consts";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { vi } from "vitest";
 import reducer, { actionCreators, actionTypes } from "../network";
 

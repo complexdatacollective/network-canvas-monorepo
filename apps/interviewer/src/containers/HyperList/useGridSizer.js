@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { renderToString } from "react-dom/server";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 
 /**
  * This is an enhancement for react-window, which allows items in a grid

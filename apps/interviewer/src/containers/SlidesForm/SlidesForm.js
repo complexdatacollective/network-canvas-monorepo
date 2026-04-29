@@ -7,7 +7,7 @@ import PropTypes from "prop-types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { connect, useDispatch } from "react-redux";
 import { isDirty, isValid, submit } from "redux-form";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { actionCreators as dialogActions } from "../../ducks/modules/dialogs";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
 

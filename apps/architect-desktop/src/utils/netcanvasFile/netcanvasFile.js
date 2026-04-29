@@ -1,13 +1,13 @@
 import { APP_SCHEMA_VERSION } from "@app/config";
 import { saveDialog } from "@app/utils/dialogs";
-import protocolTemplate from "@app/utils/protocolTemplate.json" with { type: "json" };
+import protocolTemplate from "@app/utils/protocolTemplate";
 import { pruneProtocol } from "@app/utils/prune";
 import validateProtocol from "@app/utils/validateProtocol";
 import { canUpgrade, migrateProtocol } from "@codaco/protocol-validation";
 import { electronAPI, pathSync } from "@utils/electronBridge";
 import log from "@utils/logger";
 import { isEqual } from "lodash";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { errors, handleError } from "./errors";
 import {
 	commitNetcanvas,

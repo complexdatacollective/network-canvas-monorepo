@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers, withStateHandlers } from "recompose";
 import { bindActionCreators } from "redux";
 import { change, formValueSelector } from "redux-form";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 
 const mapStateToProps = (state, { form, fieldName }) => {
 	const items = formValueSelector(form)(state, fieldName);

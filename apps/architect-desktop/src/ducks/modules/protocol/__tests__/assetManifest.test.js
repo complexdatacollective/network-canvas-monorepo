@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { getThunkMocks, toHaveDispatched } from "@app/__tests__/testHelpers";
-import testState from "@app/__tests__/testState.json" with { type: "json" };
+import testState from "@app/__tests__/testState.json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import reducer, { actionCreators, test } from "../assetManifest";
 

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { get, isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import useDropMonitor from "../behaviours/DragAndDrop/useDropMonitor";
 import Loading from "../components/Loading";
 import Panel from "../components/Panel";

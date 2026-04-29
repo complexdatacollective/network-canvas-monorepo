@@ -1,7 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useRef } from "react";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 
 const Switch = ({ label, on, disabled, className, onChange }) => {
 	const id = useRef(uuid());

@@ -1,6 +1,6 @@
 /* global FileTransfer */
 
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import friendlyErrorMessage from "../../utils/friendlyErrorMessage";
 import inEnvironment from "../Environment";
 import environments from "../environments";

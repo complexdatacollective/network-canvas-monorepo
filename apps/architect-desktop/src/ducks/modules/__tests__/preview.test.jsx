@@ -2,7 +2,7 @@
 
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
-import testState from "../../../__tests__/testState.json" with { type: "json" };
+import testState from "../../../__tests__/testState.json";
 import { actionCreators } from "../preview";
 
 jest.mock("../../../utils/previewDriver");

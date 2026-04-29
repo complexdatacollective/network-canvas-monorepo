@@ -2,7 +2,7 @@ import { Icon } from "@codaco/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import { defaultTo } from "lodash";
 import { useEffect, useRef, useState } from "react";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { FIRST_LOAD_UI_ELEMENT_DELAY } from "./constants";
 
 /**

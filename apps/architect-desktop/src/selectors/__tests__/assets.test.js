@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import { describe, expect, it, vi } from "vitest";
-import mockState from "../../__tests__/testState.json" with { type: "json" };
+import mockState from "../../__tests__/testState.json";
 import * as assets from "../assets";
 
 // Mock electronBridge

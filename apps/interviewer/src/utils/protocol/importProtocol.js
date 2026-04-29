@@ -4,7 +4,7 @@
 
 import { ProgressBar, Spinner } from "@codaco/ui";
 import React from "react";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { PROTOCOL_EXTENSION } from "../../config";
 import { actionCreators as installedProtocolActions } from "../../ducks/modules/installedProtocols";
 import { actionCreators as toastActions } from "../../ducks/modules/toasts";

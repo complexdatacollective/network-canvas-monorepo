@@ -3,7 +3,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import { compose, withState } from "recompose";
 import { bindActionCreators } from "redux";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { actionCreators as stackActions } from "../ducks/modules/stacks";
 
 const withStackableId = withState("stackableId", "setStackableId", null);

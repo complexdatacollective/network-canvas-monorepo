@@ -8,7 +8,7 @@ import { useCallback } from "react";
 import { connect, useDispatch } from "react-redux";
 import { bindActionCreators } from "redux";
 import { arrayPush, change, Field, formValueSelector } from "redux-form";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import IssueAnchor from "../../IssueAnchor";
 import NodePanel from "./NodePanel";
 

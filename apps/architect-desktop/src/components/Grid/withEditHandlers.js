@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { compose, defaultProps, withHandlers } from "recompose";
 import { change, formValueSelector } from "redux-form";
-import uuid from "uuid";
+import { v4 as uuid } from "uuid";
 import { getRemainingSpace } from "./helpers";
 
 const mapStateToProps = (state, { capacity, form, fieldName, itemSelector, editField, template }) => {
