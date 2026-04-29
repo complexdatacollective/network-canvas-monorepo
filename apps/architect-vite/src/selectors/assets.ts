@@ -1,6 +1,6 @@
 import { get } from "es-toolkit/compat";
 import type { RootState } from "~/ducks/modules/root";
-import { getGeoJsonVariables, getNetworkVariables } from "~/utils/protocols/assetTools";
+import { getNetworkVariables } from "~/utils/protocols/assetTools";
 import { getAssetManifest } from "./protocol";
 
 export const getAssetPath = (state: RootState, dataSource: string) => {
@@ -45,21 +45,3 @@ export const makeGetNetworkAssetVariables =
 
 		return variables;
 	};
-
-export const makeGetGeoJsonAssetVariables = (state: RootState) => async (dataSource: string) => {
-	const assetManifest = getAssetManifest(state);
-	const asset = get(assetManifest, dataSource);
-
-	if (!asset) {
-		return null;
-	}
-
-	const variables = await getGeoJsonVariables(dataSource);
-
-	const variableOptions = variables.map((attribute: string) => ({
-		label: attribute,
-		value: attribute,
-	}));
-
-	return variableOptions;
-};
