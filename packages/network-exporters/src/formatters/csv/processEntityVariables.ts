@@ -2,28 +2,21 @@
 
 import type { Codebook, EntityDefinition } from "@codaco/protocol-validation";
 import { entityAttributesProperty, type NcEdge, type NcEgo, type NcNode } from "@codaco/shared-consts";
-import type { ExportOptions } from "../../types";
+import type { ExportOptions } from "../../options";
 import { getEntityAttributes, isCategoricalOptionSelected } from "../../utils/general";
 
 // TODO: move to protocol validation
 export type VariableDefinition = NonNullable<EntityDefinition["variables"]>[string];
 
-/**
- *
- * @param {*} entityObject
- * @param {*} entity
- * @param {*} codebook
- * @param {*} exportOptions
- * @returns
- */
 const processEntityVariables = (
 	entityObject: NcEdge | NcNode | NcEgo,
 	entity: "ego" | "node" | "edge",
 	codebook: Codebook,
 	exportOptions: ExportOptions,
-) => ({
-	...entityObject,
-	attributes: Object.keys(getEntityAttributes(entityObject)).reduce((accumulatedAttributes, attributeUUID) => {
+) => {
+	const attributes: Record<string, unknown> = {};
+
+	for (const attributeUUID of Object.keys(getEntityAttributes(entityObject))) {
 		let codebookAttribute: VariableDefinition | undefined;
 
 		if (entity === "ego") {
@@ -40,87 +33,52 @@ const processEntityVariables = (
 		if (attributeType === "categorical") {
 			const attributeOptions = codebookAttribute?.options ?? [];
 
-			if (attributeIsEncrypted) {
-				// If the variable is encrypted, we don't want to export it.
-				return {
-					...accumulatedAttributes,
-					...attributeOptions.reduce((accumulatedOptions, optionName) => {
-						return {
-							...accumulatedOptions,
-							[`${attributeName}_${optionName.value}`]: "ENCRYPTED",
-						};
-					}, {}),
-				};
+			for (const optionName of attributeOptions) {
+				const key = `${attributeName}_${optionName.value}`;
+				if (attributeIsEncrypted) {
+					attributes[key] = "ENCRYPTED";
+				} else {
+					attributes[key] = isCategoricalOptionSelected(attributeData, optionName.value);
+				}
 			}
-
-			const optionData = attributeOptions.reduce(
-				(accumulatedOptions, optionName) => ({
-					...accumulatedOptions,
-					[`${attributeName}_${optionName.value}`]: isCategoricalOptionSelected(attributeData, optionName.value),
-				}),
-				{},
-			);
-			return { ...accumulatedAttributes, ...optionData };
+			continue;
 		}
 
 		if (attributeType === "layout") {
+			const coords = attributeData as { x: number; y: number } | null | undefined;
+			const xCoord = coords?.x;
+			const yCoord = coords?.y;
+
 			if (attributeIsEncrypted) {
-				return {
-					...accumulatedAttributes,
-					[`${attributeName}_x`]: "ENCRYPTED",
-					[`${attributeName}_y`]: "ENCRYPTED",
-				};
+				attributes[`${attributeName}_x`] = "ENCRYPTED";
+				attributes[`${attributeName}_y`] = "ENCRYPTED";
+				continue;
 			}
 
-			// Process screenLayoutCoordinates option
-			const xCoord = (
-				attributeData as
-					| {
-							x: number;
-							y: number;
-					  }
-					| undefined
-			)?.x;
-			const yCoord = (
-				attributeData as
-					| {
-							x: number;
-							y: number;
-					  }
-					| undefined
-			)?.y;
+			attributes[`${attributeName}_x`] = xCoord;
+			attributes[`${attributeName}_y`] = yCoord;
 
-			const { screenLayoutWidth, screenLayoutHeight, useScreenLayoutCoordinates } = exportOptions.globalOptions;
-
-			const screenSpaceAttributes =
-				attributeData && useScreenLayoutCoordinates
-					? {
-							[`${attributeName}_screenSpaceX`]: ((xCoord as number) * screenLayoutWidth).toFixed(2),
-							[`${attributeName}_screenSpaceY`]: ((1.0 - (yCoord as number)) * screenLayoutHeight).toFixed(2),
-						}
-					: {};
-
-			const layoutAttrs = {
-				[`${attributeName}_x`]: xCoord,
-				[`${attributeName}_y`]: yCoord,
-				...screenSpaceAttributes,
-			};
-
-			return { ...accumulatedAttributes, ...layoutAttrs };
+			if (
+				attributeData &&
+				exportOptions.globalOptions.useScreenLayoutCoordinates &&
+				xCoord !== undefined &&
+				yCoord !== undefined
+			) {
+				const { screenLayoutWidth, screenLayoutHeight } = exportOptions.globalOptions;
+				attributes[`${attributeName}_screenSpaceX`] = (xCoord * screenLayoutWidth).toFixed(2);
+				attributes[`${attributeName}_screenSpaceY`] = ((1.0 - yCoord) * screenLayoutHeight).toFixed(2);
+			}
+			continue;
 		}
 
 		if (attributeName) {
-			if (attributeIsEncrypted) {
-				return {
-					...accumulatedAttributes,
-					[attributeName]: "ENCRYPTED",
-				};
-			}
-			return { ...accumulatedAttributes, [attributeName]: attributeData };
+			attributes[attributeName] = attributeIsEncrypted ? "ENCRYPTED" : attributeData;
+		} else {
+			attributes[attributeUUID] = attributeData;
 		}
+	}
 
-		return { ...accumulatedAttributes, [attributeUUID]: attributeData };
-	}, {}),
-});
+	return { ...entityObject, attributes };
+};
 
 export default processEntityVariables;

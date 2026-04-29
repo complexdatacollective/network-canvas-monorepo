@@ -1,35 +1,82 @@
 {
 	"name": "@codaco/network-exporters",
-	"version": "0.1.2",
-	"description": "Network export formatters for Network Canvas (CSV, GraphML)",
+	"version": "1.0.0-alpha.0",
+	"description": "Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML.",
+	"license": "GPL-3.0-or-later",
+	"author": "Complex Data Collective <hello@complexdatacollective.org>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git"
+	},
 	"type": "module",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"main": "./dist/pipeline.js",
+	"types": "./dist/pipeline.d.ts",
 	"exports": {
-		".": "./dist/index.js"
+		"./pipeline": {
+			"types": "./dist/pipeline.d.ts",
+			"import": "./dist/pipeline.js"
+		},
+		"./options": {
+			"types": "./dist/options.d.ts",
+			"import": "./dist/options.js"
+		},
+		"./input": {
+			"types": "./dist/input.d.ts",
+			"import": "./dist/input.js"
+		},
+		"./output": {
+			"types": "./dist/output.d.ts",
+			"import": "./dist/output.js"
+		},
+		"./events": {
+			"types": "./dist/events.d.ts",
+			"import": "./dist/events.js"
+		},
+		"./errors": {
+			"types": "./dist/errors.d.ts",
+			"import": "./dist/errors.js"
+		},
+		"./services/InterviewRepository": {
+			"types": "./dist/services/InterviewRepository.d.ts",
+			"import": "./dist/services/InterviewRepository.js"
+		},
+		"./services/FileStorage": {
+			"types": "./dist/services/FileStorage.d.ts",
+			"import": "./dist/services/FileStorage.js"
+		},
+		"./services/FileSystem": {
+			"types": "./dist/services/FileSystem.d.ts",
+			"import": "./dist/services/FileSystem.js"
+		},
+		"./layers/NodeFileSystem": {
+			"types": "./dist/layers/NodeFileSystem.d.ts",
+			"import": "./dist/layers/NodeFileSystem.js"
+		}
 	},
 	"files": [
 		"dist"
 	],
-	"license": "GPL-3.0-or-later",
 	"scripts": {
 		"build": "tsgo --noEmit && vite build",
 		"dev": "npm run build -- --watch",
 		"typecheck": "tsgo --noEmit",
-		"test": "vitest run",
+		"test": "vitest --run",
 		"test:watch": "vitest"
 	},
 	"dependencies": {
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
-		"@xmldom/xmldom": "^0.9.10",
+		"@xmldom/xmldom": "catalog:",
+		"archiver": "catalog:",
+		"effect": "catalog:",
 		"es-toolkit": "catalog:",
-		"ohash": "^2.0.11",
-		"sanitize-filename": "^1.6.4",
+		"ohash": "catalog:",
+		"sanitize-filename": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
+		"@types/archiver": "catalog:",
 		"@types/node": "catalog:",
 		"typescript": "catalog:",
 		"vite": "catalog:",

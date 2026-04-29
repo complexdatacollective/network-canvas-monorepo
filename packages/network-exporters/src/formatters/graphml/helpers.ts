@@ -15,9 +15,10 @@ import {
 	sessionStartTimeProperty,
 	type VariableValue,
 } from "@codaco/shared-consts";
-import { DOMImplementation, type Element } from "@xmldom/xmldom";
+import { DOMImplementation } from "@xmldom/xmldom";
 import { isNil } from "es-toolkit";
-import type { EdgeWithResequencedID, NodeWithResequencedID, SessionVariables } from "../../types";
+import type { EdgeWithResequencedID, NodeWithResequencedID } from "../../input";
+import type { ExportFileNetwork } from "../../session/exportFile";
 import { getEntityAttributes } from "../../utils/general";
 
 export function getCodebookVariablesForEntity(
@@ -48,7 +49,8 @@ export function deriveEntityType(
 		return "node";
 	}
 
-	return Object.hasOwn(entities[0] as object, edgeSourceProperty) ? "edge" : "node";
+	const first = entities[0];
+	return first !== undefined && Object.hasOwn(first, edgeSourceProperty) ? "edge" : "node";
 }
 
 export function createDocumentFragment() {
@@ -58,11 +60,12 @@ export function createDocumentFragment() {
 	return fragment;
 }
 
-export const setUpXml = (sessionVariables: SessionVariables) => {
+export const setUpXml = (sessionVariables: ExportFileNetwork["sessionVariables"]) => {
 	const doc = new DOMImplementation().createDocument(null, "graphml", null);
 
 	// Set the necessary namespaces and attributes
-	const root = doc.documentElement as Element;
+	const root = doc.documentElement;
+	if (!root) throw new Error("GraphML document missing root element");
 	root.setAttribute("xmlns", "http://graphml.graphdrawing.org/xmlns");
 	root.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
 	root.setAttribute(
@@ -187,9 +190,9 @@ export const createDataElement = (attributes: Record<string, string>, text: stri
 	const dom = new DOMImplementation().createDocument(null, "root", null);
 	const textNode = dom.createTextNode(text);
 	const element = dom.createElement("data");
-	for (const [key, val] of Object.entries(attributes)) {
+	Object.entries(attributes).forEach(([key, val]) => {
 		element.setAttribute(key, val);
-	}
+	});
 
 	element.appendChild(textNode);
 

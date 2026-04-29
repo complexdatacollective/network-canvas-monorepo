@@ -2,14 +2,14 @@ import type { Codebook } from "@codaco/protocol-validation";
 import { ncUUIDProperty } from "@codaco/shared-consts";
 import { DOMParser, type Document, type Element, type LiveNodeList, MIME_TYPE } from "@xmldom/xmldom";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { ExportOptions } from "../../../options";
 import {
 	mockCodebook,
 	mockExportOptions,
 	mockNetwork,
 	mockNetwork2,
 	processMockNetworks,
-} from "../../../__tests__/mockObjects";
-import type { ExportOptions } from "../../../types";
+} from "../../csv/__tests__/mockObjects";
 import graphMLGenerator from "../createGraphML";
 
 function getDataElementByKey(elements: Element[], key: string) {
@@ -32,8 +32,11 @@ const buildXML = (...args: Parameters<typeof graphMLGenerator>) => {
 };
 
 describe("buildGraphML", () => {
-	const edgeType = mockCodebook.edge["mock-edge-type"].name;
-	const nodeType = mockCodebook.node["mock-node-type"].name;
+	const edgeTypeDef = mockCodebook.edge?.["mock-edge-type"] as { name: string } | undefined;
+	const nodeTypeDef = mockCodebook.node?.["mock-node-type"] as { name: string } | undefined;
+	if (!edgeTypeDef || !nodeTypeDef) throw new Error("Mock codebook is missing expected type definitions");
+	const edgeType = edgeTypeDef.name;
+	const nodeType = nodeTypeDef.name;
 	const codebook = mockCodebook as unknown as Codebook; // Codebook type mistakenly requires variables on all entities - fixed in schema 8
 	let exportOptions: ExportOptions;
 	let xml: Document;
@@ -45,9 +48,9 @@ describe("buildGraphML", () => {
 		};
 
 		const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2]);
-		const protocolNetwork = (
-			processedNetworks["protocol-uid-1"] as NonNullable<(typeof processedNetworks)["protocol-uid-1"]>
-		)[0];
+		const protocolSessions = processedNetworks["protocol-uid-1"];
+		const protocolNetwork = protocolSessions?.[0];
+		if (!protocolNetwork) throw new Error("No sessions for protocol-uid-1");
 		xml = buildXML(protocolNetwork, codebook, exportOptions);
 	});
 
@@ -60,9 +63,8 @@ describe("buildGraphML", () => {
 	});
 
 	it("defaults to undirected edges", () => {
-		const graphElement = xml.getElementsByTagName("graph")[0] as Element;
-
-		expect(graphElement.getAttribute("edgedefault")).toEqual("undirected");
+		const graphElement = xml.getElementsByTagName("graph")[0];
+		expect(graphElement?.getAttribute("edgedefault")).toEqual("undirected");
 	});
 
 	it("adds nodes", () => {
@@ -74,11 +76,15 @@ describe("buildGraphML", () => {
 	});
 
 	it("adds node and edge type data key", () => {
-		const node = xml.getElementsByTagName("node")[0] as Element;
-		const edge = xml.getElementsByTagName("edge")[0] as Element;
+		const node = xml.getElementsByTagName("node")[0];
+		const edge = xml.getElementsByTagName("edge")[0];
 
-		const nodeTypeDataElement = getDataElementByKey(Array.from(node.getElementsByTagName("data")), "networkCanvasType");
-		const edgeTypeDataElement = getDataElementByKey(Array.from(edge.getElementsByTagName("data")), "networkCanvasType");
+		const nodeTypeDataElement = node
+			? getDataElementByKey(Array.from(node.getElementsByTagName("data")), "networkCanvasType")
+			: undefined;
+		const edgeTypeDataElement = edge
+			? getDataElementByKey(Array.from(edge.getElementsByTagName("data")), "networkCanvasType")
+			: undefined;
 
 		expect(nodeTypeDataElement?.textContent).toEqual(nodeType);
 		expect(edgeTypeDataElement?.textContent).toEqual(edgeType);
@@ -86,11 +92,18 @@ describe("buildGraphML", () => {
 
 	describe("ego", () => {
 		it("adds ego data", () => {
-			const graphElement = xml.getElementsByTagName("graph")[0] as Element;
-			const graphData: Record<string, string | null> = {};
-			for (const node of getChildElements(graphElement, xml.getElementsByTagName("data"))) {
-				graphData[node.getAttribute("key") as string] = node.textContent;
-			}
+			const graphElement = xml.getElementsByTagName("graph")[0];
+			if (!graphElement) throw new Error("Missing graph element");
+
+			const graphData = getChildElements(graphElement, xml.getElementsByTagName("data")).reduce<
+				Record<string, string | null>
+			>((acc, node) => {
+				const key = node.getAttribute("key");
+				if (key) {
+					acc[key] = node.textContent;
+				}
+				return acc;
+			}, {});
 
 			expect(graphData).toMatchObject({
 				[ncUUIDProperty]: "ego-id-1",
@@ -118,10 +131,10 @@ describe("buildGraphML", () => {
 	});
 
 	it("includes 0 and false values", () => {
-		const carl = getNodeById(Array.from(xml.getElementsByTagName("node")), "2") as Element;
+		const carl = getNodeById(Array.from(xml.getElementsByTagName("node")), "2");
+		if (!carl) throw new Error("Missing carl node");
 
 		const zeroValue = getDataElementByKey(Array.from(carl.getElementsByTagName("data")), "mock-uuid-2");
-
 		const falseValue = getDataElementByKey(Array.from(carl.getElementsByTagName("data")), "mock-uuid-4");
 
 		expect(zeroValue?.textContent).toEqual("0");
@@ -150,21 +163,25 @@ describe("buildGraphML", () => {
 
 	it("excludes null values", () => {
 		const nodes = Array.from(xml.getElementsByTagName("node"));
-		const dee = getNodeById(nodes, "1") as Element;
+		const dee = getNodeById(nodes, "1");
+		if (!dee) throw new Error("Missing dee node");
 		const deeData = Array.from(dee.getElementsByTagName("data"));
 
 		expect(deeData.length).toEqual(10);
 		expect(getDataElementByKey(deeData, "mock-uuid-5")?.textContent).toEqual(undefined);
 
-		const carl = getNodeById(nodes, "2") as Element;
+		const carl = getNodeById(nodes, "2");
+		if (!carl) throw new Error("Missing carl node");
 		const carlData = Array.from(carl.getElementsByTagName("data"));
 		expect(carlData.length).toEqual(10);
 		expect(getDataElementByKey(carlData, "mock-uuid-5")?.textContent).toEqual(undefined);
 
-		const jumbo = getNodeById(nodes, "3") as Element;
+		const jumbo = getNodeById(nodes, "3");
+		if (!jumbo) throw new Error("Missing jumbo node");
 		expect(jumbo.getElementsByTagName("data").length).toEqual(6);
 
-		const francis = getNodeById(nodes, "4") as Element;
+		const francis = getNodeById(nodes, "4");
+		if (!francis) throw new Error("Missing francis node");
 		const francisData = Array.from(francis.getElementsByTagName("data"));
 		expect(francis.getElementsByTagName("data").length).toEqual(9);
 		expect(getDataElementByKey(francisData, "mock-uuid-5")?.textContent).toEqual(undefined);
@@ -172,10 +189,15 @@ describe("buildGraphML", () => {
 	});
 
 	it("includes keys for all used variables", () => {
-		const graphData: Record<string, string | null> = {};
-		for (const node of Array.from(xml.getElementsByTagName("key")).filter((n) => n.getAttribute("for") === "node")) {
-			graphData[node.getAttribute("id") as string] = node.getAttribute("for");
-		}
+		const graphData = Array.from(xml.getElementsByTagName("key"))
+			.filter((node) => node.getAttribute("for") === "node")
+			.reduce<Record<string, string | null>>((acc, node) => {
+				const id = node.getAttribute("id");
+				if (id) {
+					acc[id] = node.getAttribute("for");
+				}
+				return acc;
+			}, {});
 
 		expect(graphData).toMatchObject({
 			"mock-uuid-1": "node",
@@ -188,8 +210,10 @@ describe("buildGraphML", () => {
 			"mock-uuid-5": "node",
 		});
 	});
+
 	it("places <key> elements before any <graph> element", () => {
-		const graphmlElement = xml.getElementsByTagName("graphml")[0] as Element;
+		const graphmlElement = xml.getElementsByTagName("graphml")[0];
+		if (!graphmlElement) throw new Error("Missing graphml element");
 		const childElements = Array.from(graphmlElement.childNodes).filter((node) => node.nodeType === 1) as Element[];
 
 		const graphIndex = childElements.findIndex((el) => el.tagName === "graph");
@@ -213,7 +237,8 @@ describe("buildGraphML", () => {
 
 		// For each boolean key, check all data elements that use it
 		for (const key of booleanKeys) {
-			const keyId = key.getAttribute("id") as string;
+			const keyId = key.getAttribute("id");
+			if (!keyId) continue;
 			const dataElements = Array.from(xml.getElementsByTagName("data")).filter(
 				(data) => data.getAttribute("key") === keyId,
 			);

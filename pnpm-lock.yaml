@@ -45,6 +45,9 @@ catalogs:
     '@tailwindcss/typography':
       specifier: ^0.5.19
       version: 0.5.19
+    '@types/archiver':
+      specifier: ^7.0.0
+      version: 7.0.0
     '@types/node':
       specifier: ^22.19.17
       version: 22.19.17
@@ -54,6 +57,12 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
+    '@xmldom/xmldom':
+      specifier: ^0.9.9
+      version: 0.9.10
+    archiver:
+      specifier: ^7.0.1
+      version: 7.0.1
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -63,6 +72,9 @@ catalogs:
     dotenv:
       specifier: ^17.4.2
       version: 17.4.2
+    effect:
+      specifier: ^3.21.0
+      version: 3.21.2
     es-toolkit:
       specifier: ^1.46.0
       version: 1.46.0
@@ -75,6 +87,9 @@ catalogs:
     next:
       specifier: ^16.2.4
       version: 16.2.4
+    ohash:
+      specifier: ^2.0.11
+      version: 2.0.11
     postcss:
       specifier: ^8.5.10
       version: 8.5.10
@@ -87,6 +102,9 @@ catalogs:
     react-dom:
       specifier: ^19.2.5
       version: 19.2.5
+    sanitize-filename:
+      specifier: ^1.6.4
+      version: 1.6.4
     tailwind-merge:
       specifier: ^3.5.0
       version: 3.5.0
@@ -1166,16 +1184,22 @@ importers:
         specifier: workspace:*
         version: link:../shared-consts
       '@xmldom/xmldom':
-        specifier: ^0.9.10
+        specifier: 'catalog:'
         version: 0.9.10
+      archiver:
+        specifier: 'catalog:'
+        version: 7.0.1
+      effect:
+        specifier: 'catalog:'
+        version: 3.21.2
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.0
       ohash:
-        specifier: ^2.0.11
+        specifier: 'catalog:'
         version: 2.0.11
       sanitize-filename:
-        specifier: ^1.6.4
+        specifier: 'catalog:'
         version: 1.6.4
       zod:
         specifier: 'catalog:'
@@ -1184,6 +1208,9 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@types/archiver':
+        specifier: 'catalog:'
+        version: 7.0.0
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.17
@@ -5215,6 +5242,9 @@ packages:
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
+  '@types/archiver@7.0.0':
+    resolution: {integrity: sha512-/3vwGwx9n+mCQdYZ2IKGGHEFL30I96UgBlk8EtRDDFQ9uxM1l4O5Ci6r00EMAkiDaTqD9DQ6nVrWRICnBPtzzg==}
+
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
 
@@ -5382,6 +5412,9 @@ packages:
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+
+  '@types/readdir-glob@1.1.5':
+    resolution: {integrity: sha512-raiuEPUYqXu+nvtY2Pe8s8FEmZ3x5yAH4VkLdihcPdalvsHltomrRC9BzuStrJ9yk06470hS0Crw0f1pXqD+Hg==}
 
   '@types/recompose@0.30.15':
     resolution: {integrity: sha512-glX9JbRTG4WSaWxDrsHlinoRC1YRb0vNr+ocPBgBTJgMawkYx8fqwuduahzy25XBSc3xfG/k9b5XPyW6FuHVkw==}
@@ -6891,6 +6924,9 @@ packages:
   ecc-jsbn@0.1.2:
     resolution: {integrity: sha512-eh9O+hwRHNbG4BLTjEl3nw044CkGm5X6LoaCf7LPp7UU8Qrt47JYNi6nPX8xjW97TKGKm1ouctg0QSpZe9qrnw==}
 
+  effect@3.21.2:
+    resolution: {integrity: sha512-rXd2FGDM8KdjSIrc+mqEELo7ScW7xTVxEf1iInmPSpIde9/nyGuFM710cjTo7/EreGXiUX2MOonPpprbz2XHCg==}
+
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
     engines: {node: '>=0.10.0'}
@@ -7231,6 +7267,10 @@ packages:
 
   faker@6.6.6:
     resolution: {integrity: sha512-9tCqYEDHI5RYFQigXFwF1hnCwcWCOJl/hmll0lr5D2Ljjb0o4wphb69wikeJDz5qCEzXCoPvG6ss5SDP6IfOdg==}
+
+  fast-check@3.23.2:
+    resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
+    engines: {node: '>=8.0.0'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -9734,6 +9774,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pure-rand@6.1.0:
+    resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
   qs@6.5.5:
     resolution: {integrity: sha512-mzR4sElr1bfCaPJe7m8ilJ6ZXdDaGoObcYR0ZHSsktM/Lt21MVHj5De30GQH2eiZ1qGRTO7LCAzQsUeXTNexWQ==}
@@ -15920,6 +15963,10 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
+  '@types/archiver@7.0.0':
+    dependencies:
+      '@types/readdir-glob': 1.1.5
+
   '@types/argparse@1.0.38': {}
 
   '@types/aria-query@5.0.4': {}
@@ -16115,6 +16162,10 @@ snapshots:
   '@types/react@19.2.14':
     dependencies:
       csstype: 3.2.3
+
+  '@types/readdir-glob@1.1.5':
+    dependencies:
+      '@types/node': 25.6.0
 
   '@types/recompose@0.30.15':
     dependencies:
@@ -17943,6 +17994,11 @@ snapshots:
       jsbn: 0.1.1
       safer-buffer: 2.1.2
 
+  effect@3.21.2:
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      fast-check: 3.23.2
+
   ejs@3.1.10:
     dependencies:
       jake: 10.9.4
@@ -18494,6 +18550,10 @@ snapshots:
     optional: true
 
   faker@6.6.6: {}
+
+  fast-check@3.23.2:
+    dependencies:
+      pure-rand: 6.1.0
 
   fast-deep-equal@3.1.3: {}
 
@@ -21689,6 +21749,8 @@ snapshots:
       pump: 2.0.1
 
   punycode@2.3.1: {}
+
+  pure-rand@6.1.0: {}
 
   qs@6.5.5: {}
 

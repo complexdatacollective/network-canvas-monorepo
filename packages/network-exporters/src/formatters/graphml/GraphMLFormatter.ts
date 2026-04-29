@@ -1,15 +1,16 @@
 import type { WriteStream } from "node:fs";
 import type { Codebook } from "@codaco/protocol-validation";
-import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
+import type { ExportOptions } from "../../options";
+import type { ExportFileNetwork } from "../../session/exportFile";
 import graphMLGenerator from "./createGraphML";
 
 /** Class providing a graphML formatter. */
 class GraphMLFormatter {
-	network: SessionWithResequencedIDs;
+	network: ExportFileNetwork;
 	codebook: Codebook;
 	exportOptions: ExportOptions;
 
-	constructor(network: SessionWithResequencedIDs, codebook: Codebook, exportOptions: ExportOptions) {
+	constructor(network: ExportFileNetwork, codebook: Codebook, exportOptions: ExportOptions) {
 		this.network = network;
 		this.codebook = codebook;
 		this.exportOptions = exportOptions;

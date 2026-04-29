@@ -13,7 +13,7 @@ import type {
 	SessionsByProtocol,
 	SessionWithNetworkEgo,
 	SessionWithResequencedIDs,
-} from "../types";
+} from "../input";
 
 const resequenceEntities = (target: SessionWithNetworkEgo[]): SessionWithResequencedIDs[] => {
 	return target.map((session) => {
@@ -46,8 +46,8 @@ const resequenceEntities = (target: SessionWithNetworkEgo[]): SessionWithReseque
 					[ncSourceUUID]: edge[edgeSourceProperty],
 					[ncTargetUUID]: edge[edgeTargetProperty],
 					[edgeExportIDProperty]: resequencedEdgeId,
-					from: IDLookupMap[edge[edgeSourceProperty]] as string,
-					to: IDLookupMap[edge[edgeTargetProperty]] as string,
+					from: IDLookupMap[edge[edgeSourceProperty]] ?? edge[edgeSourceProperty],
+					to: IDLookupMap[edge[edgeTargetProperty]] ?? edge[edgeTargetProperty],
 				};
 
 				return newEdge;
@@ -63,9 +63,9 @@ const resequenceEntities = (target: SessionWithNetworkEgo[]): SessionWithReseque
 export const resequenceIds = (sessionsByProtocol: SessionsByProtocol) => {
 	const result: Record<string, SessionWithResequencedIDs[]> = {};
 
-	for (const [protocol, sessions] of Object.entries(sessionsByProtocol)) {
+	Object.entries(sessionsByProtocol).forEach(([protocol, sessions]) => {
 		result[protocol] = resequenceEntities(sessions);
-	}
+	});
 
 	return result;
 };

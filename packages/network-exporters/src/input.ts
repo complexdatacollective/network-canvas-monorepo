@@ -1,3 +1,4 @@
+import type { Codebook } from "@codaco/protocol-validation";
 import type {
 	caseProperty,
 	codebookHashProperty,
@@ -16,7 +17,7 @@ import type {
 	sessionProperty,
 	sessionStartTimeProperty,
 } from "@codaco/shared-consts";
-import { z } from "zod";
+import { NcNetworkSchema } from "@codaco/shared-consts";
 
 type NodeWithEgo = NcNode & {
 	[egoProperty]: string;
@@ -50,45 +51,6 @@ export type SessionWithNetworkEgo = Omit<FormattedSession, "nodes" | "edges"> & 
 	edges: EdgeWithEgo[];
 };
 
-export const ExportOptionsSchema = z.object({
-	exportGraphML: z.boolean(),
-	exportCSV: z.boolean(),
-	globalOptions: z.object({
-		useScreenLayoutCoordinates: z.boolean(),
-		screenLayoutHeight: z.number(),
-		screenLayoutWidth: z.number(),
-		useDirectedEdges: z.boolean().optional(),
-		unifyNetworks: z.boolean().optional(),
-	}),
-});
-
-export type ExportOptions = z.infer<typeof ExportOptionsSchema>;
-
-export type ExportFormat = "graphml" | "attributeList" | "edgeList" | "ego" | "adjacencyMatrix";
-
-export const exportFormats: ExportFormat[] = ["graphml", "attributeList", "edgeList", "ego", "adjacencyMatrix"];
-
-type ExportError = {
-	success: false;
-	error: Error;
-};
-
-type ExportSuccess = {
-	success: true;
-	filePath: string;
-};
-
-export type ExportResult = ExportError | ExportSuccess;
-
-export type ExportReturn = {
-	zipUrl?: string;
-	zipKey?: string;
-	status: "success" | "error" | "cancelled" | "partial";
-	error: string | null;
-	successfulExports?: ExportResult[];
-	failedExports?: ExportResult[];
-};
-
 export type NodeWithResequencedID = NodeWithEgo & {
 	[nodeExportIDProperty]: number;
 };
@@ -104,8 +66,21 @@ export type SessionWithResequencedIDs = Omit<FormattedSession, "nodes" | "edges"
 	edges: EdgeWithResequencedID[];
 };
 
-export type ArchiveResult = {
-	path: string;
-	completed: ExportResult[];
-	rejected: ExportResult[];
+export type ProtocolExportInput = {
+	hash: string;
+	name: string;
+	codebook: Codebook;
+};
+
+export type InterviewExportInput = {
+	id: string;
+	participantIdentifier: string;
+	startTime: Date;
+	finishTime: Date | null;
+	network: NcNetwork;
+	protocol: ProtocolExportInput;
+};
+
+export const parseNcNetwork = (raw: unknown): NcNetwork => {
+	return NcNetworkSchema.parse(raw);
 };
