@@ -15,7 +15,8 @@ import {
 	nodeExportIDProperty,
 } from "@codaco/shared-consts";
 import { DOMImplementation, type DocumentFragment } from "@xmldom/xmldom";
-import type { EdgeWithResequencedID, ExportOptions, NodeWithResequencedID } from "../../types";
+import type { EdgeWithResequencedID, NodeWithResequencedID } from "../../input";
+import type { ExportOptions } from "../../options";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import { createDataElement, createDocumentFragment, deriveEntityType } from "./helpers";
 import processAttributes from "./processAttributes";
@@ -37,10 +38,10 @@ export default function getDataElementGenerator(codebook: Codebook, exportOption
 			fragment.appendChild(entityDataElements);
 		} else {
 			// Iterate entities
-			for (const entity of entities) {
+			entities.forEach((entity) => {
 				const entityDataElements = generateDataElementsForEntity(entity, codebook, exportOptions);
 				fragment.appendChild(entityDataElements);
-			}
+			});
 		}
 
 		return fragment;

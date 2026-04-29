@@ -2,7 +2,8 @@ import type { Codebook } from "@codaco/protocol-validation";
 import { type NcEgo, ncSourceUUID, ncTargetUUID, ncTypeProperty, ncUUIDProperty } from "@codaco/shared-consts";
 import { DOMImplementation, type DocumentFragment } from "@xmldom/xmldom";
 import { get } from "es-toolkit/compat";
-import type { EdgeWithResequencedID, ExportOptions, NodeWithResequencedID } from "../../types";
+import type { EdgeWithResequencedID, NodeWithResequencedID } from "../../input";
+import type { ExportOptions } from "../../options";
 import { getEntityAttributes } from "../../utils/general";
 import type { VariableDefinition } from "../csv/processEntityVariables";
 import {
@@ -29,12 +30,10 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 
 		const entityType = deriveEntityType(incomingEntities);
 
-		let entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[];
-		if (entityType === "ego") {
-			entities = [incomingEntities as NcEgo];
-		} else {
-			entities = incomingEntities as NodeWithResequencedID[] | EdgeWithResequencedID[];
-		}
+		const entities =
+			entityType === "ego"
+				? ([incomingEntities] as NcEgo[])
+				: (incomingEntities as NodeWithResequencedID[] | EdgeWithResequencedID[]);
 
 		if (entityType === "node" && !done.has("type")) {
 			const typeDataElement = dom.createElement("key");
@@ -104,12 +103,12 @@ function generateKeysForEntities(
 	const keyTarget = entityType === "ego" ? "graph" : entityType;
 
 	// Loop over entities
-	for (const entity of entities) {
+	entities.forEach((entity) => {
 		const elementAttributes = getEntityAttributes(entity);
 		const codebookVariables = getCodebookVariablesForEntity(entity, codebook);
 
 		// Loop over attributes for this entity
-		for (const variableId of Object.keys(elementAttributes)) {
+		Object.keys(elementAttributes).forEach((variableId) => {
 			const codebookVariable = codebookVariables[variableId];
 
 			// Test if we have already created a key for this variable, and that it
@@ -200,11 +199,10 @@ function generateKeysForEntities(
 
 						// If there are no options, we can't create keys for this variable
 						if (!options) {
-							continue;
+							return;
 						}
 
-						for (let index = 0; index < options.length; index++) {
-							const option = options[index] as (typeof options)[number];
+						options.forEach((option, index) => {
 							// Hash the value to ensure that it is NKTOKEN compliant
 							const hashedOptionValue = sha1(String(option.value));
 
@@ -220,16 +218,12 @@ function generateKeysForEntities(
 								keyElement2.setAttribute("for", keyTarget);
 								fragment.appendChild(keyElement2);
 							}
-						}
+						});
 						break;
 					}
 					case "scalar":
 						keyElement.setAttribute("attr.type", "float");
 						break;
-					case "text":
-					case "datetime":
-					case "location":
-					case undefined:
 					default:
 						keyElement.setAttribute("attr.type", "string");
 				}
@@ -238,8 +232,8 @@ function generateKeysForEntities(
 				fragment.appendChild(keyElement);
 				done.add(variableId);
 			}
-		}
-	}
+		});
+	});
 
 	return fragment;
 }

@@ -1,8 +1,6 @@
 import type { NodeDefinition } from "@codaco/protocol-validation";
 import type { EntityAttributesProperty, NcNode } from "@codaco/shared-consts";
 
-// To be a valid label candidate, an attribute value must not be empty/null/undefined,
-// and must be castable as a string or number.
 const isValidLabelCandidate = (
 	value: unknown,
 	variableDefinition?: NonNullable<NodeDefinition["variables"]>[string],
@@ -13,7 +11,6 @@ const isValidLabelCandidate = (
 
 	const type = typeof value;
 
-	// If there's no variable definition, just check the type of value
 	if (!variableDefinition) {
 		if (type === "string" || type === "number") {
 			return true;
@@ -25,13 +22,10 @@ const isValidLabelCandidate = (
 			variableDefinition.type === "datetime" ||
 			variableDefinition.type === "location"
 		) {
-			// If there is a variable definition allow additional types if the variable is encrypted
 			if (variableDefinition.encrypted) {
-				// Only allow text, number, datetime, and location, since they can be cast to string
 				return true;
 			}
 
-			// If not encrypted, check for a valid value that can be cas to a string
 			return type === "string" || type === "number";
 		}
 	}
@@ -39,14 +33,10 @@ const isValidLabelCandidate = (
 	return false;
 };
 
-// See: https://github.com/complexdatacollective/Network-Canvas/wiki/Node-Labeling
 export const getNodeLabelAttribute = (
 	codebookVariables: NodeDefinition["variables"],
 	nodeAttributes: NcNode[EntityAttributesProperty],
 ): string | null => {
-	// 1. In the codebook for the stage's subject, look for a variable with a name
-	// property of "name", and try to retrieve this value by key in the node's
-	// attributes
 	const variableCalledName = Object.entries(codebookVariables ?? {}).find(
 		([, variable]) => variable.name.toLowerCase() === "name",
 	);
@@ -55,9 +45,6 @@ export const getNodeLabelAttribute = (
 		return variableCalledName[0];
 	}
 
-	// 2. Look for a variable in the codebook with a name property that contains
-	// "name" (case insensitive), and try to retrieve this value by key in the node's
-	// attributes,
 	const test = /name/i;
 	const match = Object.keys(codebookVariables ?? {}).find(
 		(attribute) =>
@@ -68,10 +55,6 @@ export const getNodeLabelAttribute = (
 		return match;
 	}
 
-	// 3. As above but for node attribute keys.
-	// Since node attribute keys are UIDs when generated in Architect, the only circumstance
-	// where this would return a valid label is for external data. Therefore we don't need
-	// to pass the codebook.
 	const nodeVariableCalledName = Object.keys(nodeAttributes).find(
 		(attribute) => test.test(attribute) && isValidLabelCandidate(nodeAttributes[attribute]),
 	);
@@ -80,9 +63,7 @@ export const getNodeLabelAttribute = (
 		return nodeVariableCalledName;
 	}
 
-	// 4. Collect all the codebook variables of type text, and iterate over them on the
-	// node, returning the first one that has a value assigned.
-	const textVariables = Object.entries(codebookVariables ?? {}).filter(([_, variable]) => variable.type === "text");
+	const textVariables = Object.entries(codebookVariables ?? {}).filter(([_key, variable]) => variable.type === "text");
 
 	for (const [variableKey] of textVariables) {
 		if (isValidLabelCandidate(nodeAttributes[variableKey], codebookVariables?.[variableKey])) {
@@ -90,6 +71,5 @@ export const getNodeLabelAttribute = (
 		}
 	}
 
-	// 5. Last resort is to return null. Consumers should handle this.
 	return null;
 };

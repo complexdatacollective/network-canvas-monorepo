@@ -1,7 +1,7 @@
 import type { Codebook } from "@codaco/protocol-validation";
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import type { ExportOptions } from "../../../types";
+import type { ExportOptions } from "../../../options";
 import processEntityVariables from "../processEntityVariables";
 
 const mockExportOptions: ExportOptions = {

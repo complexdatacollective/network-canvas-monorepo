@@ -72,7 +72,6 @@
 			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.ts",
 			"!apps/interviewer",
 			"!apps/architect-desktop",
-			"!packages/network-exporters",
 			"!packages/network-query",
 			"!**/worker-configuration.d.ts"
 		]

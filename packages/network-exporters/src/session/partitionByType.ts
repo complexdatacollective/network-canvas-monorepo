@@ -1,5 +1,6 @@
 import type { Codebook } from "@codaco/protocol-validation";
-import type { EdgeWithResequencedID, ExportFormat, NodeWithResequencedID, SessionWithResequencedIDs } from "../types";
+import type { EdgeWithResequencedID, NodeWithResequencedID, SessionWithResequencedIDs } from "../input";
+import type { ExportFormat } from "../options";
 
 /**
  * Partition a network as needed for edge-list and adjacency-matrix formats.
@@ -33,8 +34,12 @@ export const partitionByType = (
 
 			const partitionedNodeMap = session.nodes.reduce(
 				(nodeMap, node) => {
-					nodeMap[node.type] = nodeMap[node.type] ?? [];
-					(nodeMap[node.type] as NodeWithResequencedID[]).push(node);
+					const existing = nodeMap[node.type];
+					if (existing) {
+						existing.push(node);
+					} else {
+						nodeMap[node.type] = [node];
+					}
 					return nodeMap;
 				},
 				{} as Record<string, NodeWithResequencedID[]>,
@@ -43,7 +48,7 @@ export const partitionByType = (
 			return Object.entries(partitionedNodeMap).map(([nodeType, nodes]) => ({
 				...session,
 				nodes,
-				partitionEntity: getEntityName(nodeType, "node") ?? nodeType,
+				partitionEntity: getEntityName(nodeType, "node") ?? undefined,
 			}));
 		}
 
@@ -55,8 +60,12 @@ export const partitionByType = (
 
 			const partitionedEdgeMap = session?.edges?.reduce(
 				(edgeMap, edge) => {
-					edgeMap[edge.type] = edgeMap[edge.type] ?? [];
-					(edgeMap[edge.type] as EdgeWithResequencedID[]).push(edge);
+					const existing = edgeMap[edge.type];
+					if (existing) {
+						existing.push(edge);
+					} else {
+						edgeMap[edge.type] = [edge];
+					}
 					return edgeMap;
 				},
 				{} as Record<string, EdgeWithResequencedID[]>,
@@ -65,7 +74,7 @@ export const partitionByType = (
 			return Object.entries(partitionedEdgeMap).map(([edgeType, edges]) => ({
 				...session,
 				edges,
-				partitionEntity: getEntityName(edgeType, "edge") ?? edgeType,
+				partitionEntity: getEntityName(edgeType, "edge") ?? undefined,
 			}));
 		}
 	}

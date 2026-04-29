@@ -12,11 +12,15 @@ import {
 	sessionStartTimeProperty,
 } from "@codaco/shared-consts";
 import { groupBy } from "es-toolkit";
-import { insertEgoIntoSessionNetworks } from "../session/insertEgoIntoSessionNetworks";
-import { resequenceIds } from "../session/resequenceIds";
-import type { ExportOptions, FormattedSession } from "../types";
+import type { FormattedSession } from "../../../input";
+import type { ExportOptions } from "../../../options";
+import { insertEgoIntoSessionNetworks } from "../../../session/insertEgoIntoSessionNetworks";
+import { resequenceIds } from "../../../session/resequenceIds";
 
-export const mockCodebook: Codebook = {
+// The mock uses simplified color values and variable types not present in the
+// strict Codebook schema (e.g. 'layout' type, bare 'color' string), so a cast
+// is required — the same approach used in createGraphML.test.ts.
+export const mockCodebook = {
 	ego: {
 		variables: {
 			"mock-uuid-1": { name: "egoName", type: "text" },
@@ -59,7 +63,7 @@ export const mockCodebook: Codebook = {
 			color: "color",
 		},
 	},
-};
+} as unknown as Codebook;
 
 export const mockExportOptions: ExportOptions = {
 	exportGraphML: true,
@@ -71,7 +75,7 @@ export const mockExportOptions: ExportOptions = {
 	},
 };
 
-export const mockNetwork: FormattedSession = {
+export const mockNetwork = {
 	nodes: [
 		{
 			[entityPrimaryKeyProperty]: "1",
@@ -123,7 +127,6 @@ export const mockNetwork: FormattedSession = {
 	],
 	edges: [
 		{
-			[entityPrimaryKeyProperty]: "edge-1",
 			from: "1",
 			to: "2",
 			type: "mock-edge-type",
@@ -141,20 +144,20 @@ export const mockNetwork: FormattedSession = {
 		},
 	},
 	sessionVariables: {
-		[caseProperty]: "123",
+		[caseProperty]: 123,
 		[protocolName]: "protocol name",
 		[protocolProperty]: "protocol-uid-1",
 		[sessionProperty]: "session-id-1",
-		[sessionStartTimeProperty]: "100",
-		[sessionFinishTimeProperty]: "200",
-		[sessionExportTimeProperty]: "300",
+		[sessionStartTimeProperty]: 100,
+		[sessionFinishTimeProperty]: 200,
+		[sessionExportTimeProperty]: 300,
 		[codebookHashProperty]: "14fa461bf4b98155e82adc86532938553b4d33a9",
 		APP_VERSION: "mock-app-version",
 		COMMIT_HASH: "mock-commit-hash",
 	},
 };
 
-export const mockNetwork2: FormattedSession = {
+export const mockNetwork2 = {
 	nodes: [
 		{
 			[entityPrimaryKeyProperty]: "10",
@@ -175,15 +178,7 @@ export const mockNetwork2: FormattedSession = {
 			},
 		},
 	],
-	edges: [
-		{
-			[entityPrimaryKeyProperty]: "edge-10",
-			from: "10",
-			to: "20",
-			type: "mock-edge-type",
-			[entityAttributesProperty]: {},
-		},
-	],
+	edges: [{ from: "10", to: "20", type: "mock-edge-type" }],
 	ego: {
 		[entityPrimaryKeyProperty]: "ego-id-10",
 		[entityAttributesProperty]: {
@@ -193,22 +188,24 @@ export const mockNetwork2: FormattedSession = {
 		},
 	},
 	sessionVariables: {
-		[caseProperty]: "456",
+		[caseProperty]: 456,
 		[protocolName]: "protocol name",
 		[protocolProperty]: "protocol-uid-1",
 		[sessionProperty]: "session-id-2",
-		[sessionStartTimeProperty]: "1000",
-		[sessionFinishTimeProperty]: "2000",
-		[sessionExportTimeProperty]: "3000",
+		[sessionStartTimeProperty]: 1000,
+		[sessionFinishTimeProperty]: 2000,
+		[sessionExportTimeProperty]: 3000,
 		[codebookHashProperty]: "14fa461bf4b98155e82adc86532938553b4d33a9",
 		APP_VERSION: "mock-app-version",
 		COMMIT_HASH: "mock-commit-hash",
 	},
 };
 
-// Function designed to mirror the flow in FileExportManager.exportSessions()
-export const processMockNetworks = (networkCollection: FormattedSession[]) => {
-	const sessionsWithEgo = insertEgoIntoSessionNetworks(networkCollection);
+// Mirrors the flow in FileExportManager.exportSessions(). The parameter accepts
+// unknown[] because mock session variables use numeric timestamps rather than
+// the string timestamps that FormattedSession requires; callers need not cast.
+export const processMockNetworks = (networkCollection: unknown[]) => {
+	const sessionsWithEgo = insertEgoIntoSessionNetworks(networkCollection as FormattedSession[]);
 	const sessionsByProtocol = groupBy(sessionsWithEgo, (s) => s.sessionVariables[protocolProperty]);
 	const sessionsWithResequencedIDs = resequenceIds(sessionsByProtocol);
 

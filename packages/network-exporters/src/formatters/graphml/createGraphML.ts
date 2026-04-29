@@ -1,6 +1,7 @@
 import type { Codebook } from "@codaco/protocol-validation";
-import { type Element, XMLSerializer } from "@xmldom/xmldom";
-import type { ExportOptions, SessionWithResequencedIDs } from "../../types";
+import { XMLSerializer } from "@xmldom/xmldom";
+import type { ExportOptions } from "../../options";
+import type { ExportFileNetwork } from "../../session/exportFile";
 import getDataElementGenerator from "./generateDataElements";
 import getKeyElementGenerator from "./generateKeyElements";
 import { setUpXml } from "./helpers";
@@ -11,17 +12,21 @@ import { setUpXml } from "./helpers";
  * @param {*} codebook
  * @param {*} exportOptions
  */
-function graphMLGenerator(network: SessionWithResequencedIDs, codebook: Codebook, exportOptions: ExportOptions) {
+function graphMLGenerator(network: ExportFileNetwork, codebook: Codebook, exportOptions: ExportOptions) {
 	const xmlDoc = setUpXml(network.sessionVariables);
 
 	const generateKeyElements = getKeyElementGenerator(codebook, exportOptions);
 	const generateDataElements = getDataElementGenerator(codebook, exportOptions);
 
 	// <graphml /> is where <key /> elements are attached
-	const graphMLElement = xmlDoc.getElementsByTagName("graphml")[0] as Element;
+	const graphMLElement = xmlDoc.getElementsByTagName("graphml")[0];
 
 	// <graph /> is where <data />, <node />, and <edge /> elements are attached
-	const graphElement = xmlDoc.getElementsByTagName("graph")[0] as Element;
+	const graphElement = xmlDoc.getElementsByTagName("graph")[0];
+
+	if (!graphMLElement || !graphElement) {
+		throw new Error("GraphML document missing expected root elements");
+	}
 
 	if (network.ego) {
 		graphMLElement.insertBefore(generateKeyElements(network.ego), graphElement);

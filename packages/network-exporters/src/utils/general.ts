@@ -1,8 +1,8 @@
 import { caseProperty, entityAttributesProperty, type NcEntity, sessionProperty } from "@codaco/shared-consts";
+import { isNil } from "es-toolkit";
 import sanitizeFilename from "sanitize-filename";
-import type { ExportFormat, SessionWithResequencedIDs } from "../types";
-
-export const getEntityAttributes = (entity: NcEntity) => entity?.[entityAttributesProperty] || {};
+import type { SessionWithResequencedIDs } from "../input";
+import type { ExportFormat } from "../options";
 
 const escapeFilePart = (part: string) => part.replace(/\W/g, "");
 
@@ -64,15 +64,17 @@ export const isCategoricalOptionSelected = (
 	attributeData: unknown,
 	optionValue: string | number | boolean,
 ): boolean => {
-	if (!attributeData) {
+	// isNil, not `!attributeData`: a stored `0` / `false` is a valid option
+	// value that must reach the equality / includes checks below.
+	if (isNil(attributeData)) {
 		return false;
 	}
 
-	// If it's an array, use Array.prototype.includes (strict equality)
 	if (Array.isArray(attributeData)) {
 		return attributeData.includes(optionValue);
 	}
 
-	// If it's a single value (string, number, or boolean), check for exact equality
 	return attributeData === optionValue;
 };
+
+export const getEntityAttributes = (entity: NcEntity) => entity?.[entityAttributesProperty] || {};
