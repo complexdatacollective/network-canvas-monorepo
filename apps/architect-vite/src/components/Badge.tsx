@@ -5,9 +5,10 @@ type BadgeProps = React.HTMLAttributes<HTMLDivElement> & {
 	color: string;
 };
 
-const Badge = ({ color, children = null, ...rest }: BadgeProps) => {
+const Badge = ({ color, className, children = null, ...rest }: BadgeProps) => {
 	const badgeClasses = cn(
-		"inline-block rounded-full px-2.5 py-1 text-xs shadow-sm",
+		"inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm",
+		color === "white" && "bg-surface-1 text-foreground",
 		color === "neon-coral" && "bg-neon-coral text-white",
 		color === "sea-green" && "bg-sea-green text-white",
 		color === "slate-blue" && "bg-slate-blue text-white",
@@ -23,6 +24,7 @@ const Badge = ({ color, children = null, ...rest }: BadgeProps) => {
 		color === "tomato" && "bg-tomato text-white",
 		color === "purple-pizazz" && "bg-purple-pizazz text-white",
 		color === "slate-blue-dark" && "bg-slate-blue-dark text-white",
+		className,
 	);
 
 	return (

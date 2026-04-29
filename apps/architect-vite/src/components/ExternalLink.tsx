@@ -1,6 +1,6 @@
 import type React from "react";
 
-export const openExternalLink = (href: string) => {
+const openExternalLink = (href: string) => {
 	window.open(href, "_blank", "noopener,noreferrer");
 };
 
@@ -16,11 +16,7 @@ const ExternalLink = ({ children, href }: ExternalLinkProps) => {
 	};
 
 	return (
-		<a
-			href={href}
-			onClick={handleClick}
-			className="font-bold underline decoration-[color:var(--color-action)] underline-offset-4 decoration-2"
-		>
+		<a href={href} onClick={handleClick} className="action-link">
 			{children}
 		</a>
 	);

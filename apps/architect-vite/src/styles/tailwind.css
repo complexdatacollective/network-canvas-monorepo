@@ -332,6 +332,7 @@
 
 	--color-background: hsl(var(--platinum));
 	--color-foreground: hsl(var(--cyber-grape));
+	--color-muted-foreground: hsl(var(--cyber-grape) / 60%);
 
 	--color-primary: hsl(var(--cyber-grape));
 	--color-primary-foreground: hsl(var(--white));
@@ -498,6 +499,31 @@
 
 @utility h4 {
 	@apply text-lg leading-normal font-semibold my-2 mx-0;
+}
+
+@utility hero {
+	@apply text-7xl leading-tight font-bold tracking-tight;
+}
+
+@utility lead {
+	@apply text-lg leading-normal text-muted-foreground;
+}
+
+@utility hint {
+	@apply text-xs leading-normal text-muted-foreground;
+}
+
+@utility code {
+	@apply font-mono text-[0.9em] rounded-sm bg-foreground/5 px-1 py-0.5;
+}
+
+@utility action-link {
+	@apply font-bold underline decoration-2 underline-offset-4 cursor-pointer;
+	text-decoration-color: var(--color-action);
+}
+
+@utility nav-link {
+	@apply small-heading hover:text-primary underline decoration-2 underline-offset-8 decoration-transparent hover:decoration-(--color-action) transition-colors;
 }
 
 /* Small heading utility - replaces .small-heading placeholder */

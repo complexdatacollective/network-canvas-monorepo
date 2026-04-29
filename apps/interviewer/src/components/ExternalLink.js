@@ -5,7 +5,7 @@
 import PropTypes from "prop-types";
 import { isCordova, isElectron } from "../utils/Environment";
 
-export const openExternalLink = (href) => {
+const openExternalLink = (href) => {
 	if (isElectron()) {
 		if (window.electronAPI?.shell?.openExternal) {
 			window.electronAPI.shell.openExternal(href);
