@@ -1,5 +1,3 @@
-import { Readable } from "node:stream";
-
 export const csvEOL = "\r\n";
 
 const DIFFICULT_CHARACTERS = ['"', ",", "\r", "\n"];
@@ -25,10 +23,13 @@ export function sanitizeCellValue(value: unknown): string | number | boolean | n
 	if (typeof value === "number" || typeof value === "boolean") {
 		return value;
 	}
-	// bigint, symbol, function — convert safely
 	return `${value as bigint}`;
 }
 
-export function toReadable(rows: Iterable<string>): Readable {
-	return Readable.from(rows);
+const encoder = new TextEncoder();
+
+export async function* toAsyncBytes(rows: Iterable<string>): AsyncIterable<Uint8Array> {
+	for (const row of rows) {
+		yield encoder.encode(row);
+	}
 }

@@ -1,4 +1,3 @@
-import type { Readable } from "node:stream";
 import type { Codebook } from "@codaco/protocol-validation";
 import {
 	egoProperty,
@@ -9,7 +8,7 @@ import {
 } from "@codaco/shared-consts";
 import type { SessionWithResequencedIDs } from "../../input";
 import type { ExportOptions } from "../../options";
-import { csvEOL, sanitizeCellValue, toReadable } from "./csvShared";
+import { csvEOL, sanitizeCellValue, toAsyncBytes } from "./csvShared";
 import processEntityVariables from "./processEntityVariables";
 
 const printableAttribute = (attribute: string) => (attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute);
@@ -55,10 +54,10 @@ export function* attributeListRows(
 	}
 }
 
-export function attributeListReadable(
+export function attributeListBytes(
 	network: SessionWithResequencedIDs,
 	codebook: Codebook,
 	exportOptions: ExportOptions,
-): Readable {
-	return toReadable(attributeListRows(network, codebook, exportOptions));
+): AsyncIterable<Uint8Array> {
+	return toAsyncBytes(attributeListRows(network, codebook, exportOptions));
 }
