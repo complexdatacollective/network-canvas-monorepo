@@ -75,6 +75,7 @@
 			"types": "./dist/styles/plugins/motion-spring.d.ts",
 			"default": "./dist/styles/plugins/motion-spring.js"
 		},
+		"./styles.css": "./dist/styles.css",
 		"./styles/colors.css": "./dist/styles/colors.css"
 	},
 	"scripts": {

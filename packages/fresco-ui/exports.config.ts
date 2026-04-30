@@ -35,4 +35,7 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./styles/plugins/motion-spring", source: "styles/plugins/motion-spring.ts" },
 ];
 
-export const cssEntries: ExportEntry[] = [{ subpath: "./styles/colors.css", source: "styles/colors.css" }];
+export const cssEntries: ExportEntry[] = [
+	{ subpath: "./styles.css", source: "styles.css" },
+	{ subpath: "./styles/colors.css", source: "styles/colors.css" },
+];
