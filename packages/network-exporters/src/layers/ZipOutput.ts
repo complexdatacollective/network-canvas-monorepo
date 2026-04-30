@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Effect, Fiber, Layer } from "effect";
 import { Zip, ZipPassThrough } from "fflate";
 import { OutputError } from "../errors";
 import type { OutputResult } from "../output";
@@ -78,10 +78,17 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
 	const appendEntry = async (name: string, data: AsyncIterable<Uint8Array>) => {
 		const passThrough = new ZipPassThrough(name);
 		zip.add(passThrough);
-		for await (const chunk of data) {
-			passThrough.push(chunk);
+		try {
+			for await (const chunk of data) {
+				passThrough.push(chunk);
+			}
+			passThrough.push(new Uint8Array(0), true);
+		} catch (cause) {
+			// Finalise the entry so fflate's internal state isn't left half-written,
+			// then propagate so the Effect.tryPromise wrapper maps to OutputError.
+			passThrough.push(new Uint8Array(0), true);
+			throw cause;
 		}
-		passThrough.push(new Uint8Array(0), true);
 	};
 
 	const finalize = async () => {
@@ -112,29 +119,42 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
 			Effect.sync(() => {
 				const fileName = `${ARCHIVE_PREFIX}-${Date.now()}.zip`;
 				const handle = createFflateZipStream(fileName);
-				const sinkPromise = Effect.runPromise(sink(handle.iterable, fileName));
-				return { handle, sinkPromise };
+				// Forking keeps sink failures inside the Effect runtime so they propagate
+				// through the join in `end` instead of becoming detached promise rejections.
+				const sinkFiber = Effect.runFork(sink(handle.iterable, fileName));
+				return { handle, sinkFiber };
 			}),
 
 		writeEntry: (rawHandle, entry) => {
 			const { handle } = rawHandle as { handle: ZipStreamHandle };
 			return Effect.tryPromise({
 				try: () => handle.appendEntry(entry.name, entry.data),
-				catch: (cause) => new OutputError({ cause }),
+				catch: (cause) => {
+					handle.abort(cause);
+					return new OutputError({ cause });
+				},
 			});
 		},
 
 		end: (rawHandle) => {
-			const { handle, sinkPromise } = rawHandle as {
+			const { handle, sinkFiber } = rawHandle as {
 				handle: ZipStreamHandle;
-				sinkPromise: Promise<OutputResult>;
+				sinkFiber: Fiber.RuntimeFiber<OutputResult, OutputError>;
 			};
 			return Effect.tryPromise({
-				try: async () => {
-					await handle.finalize();
-					return await sinkPromise;
+				try: () => handle.finalize(),
+				catch: (cause) => {
+					handle.abort(cause);
+					return new OutputError({ cause });
 				},
-				catch: (cause) => new OutputError({ cause }),
-			});
+			}).pipe(
+				Effect.flatMap(() =>
+					Fiber.join(sinkFiber).pipe(
+						Effect.catchAll((cause) =>
+							cause instanceof OutputError ? Effect.fail(cause) : Effect.fail(new OutputError({ cause })),
+						),
+					),
+				),
+			);
 		},
 	});

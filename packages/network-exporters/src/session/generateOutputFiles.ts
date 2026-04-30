@@ -1,4 +1,3 @@
-import os from "node:os";
 import { sessionProperty } from "@codaco/shared-consts";
 import { Effect, Queue, Ref } from "effect";
 import { invariant } from "es-toolkit";
@@ -9,6 +8,19 @@ import type { ExportFailure, ExportSuccess, OutputEntry } from "../output";
 import { getFilePrefix } from "../utils/general";
 import exportFile, { type GenerationResult } from "./exportFile";
 import { partitionByType } from "./partitionByType";
+
+// Lazy node:os import keeps the module browser-bundleable; the dynamic import
+// is tree-shaken/skipped when navigator.hardwareConcurrency is available.
+const getDefaultConcurrency = async (): Promise<number> => {
+	if (typeof navigator !== "undefined" && "hardwareConcurrency" in navigator) {
+		return navigator.hardwareConcurrency;
+	}
+	if (typeof globalThis.process !== "undefined") {
+		const os = await import("node:os");
+		return os.cpus().length;
+	}
+	return 4;
+};
 
 type ExportItem = {
 	prefix: string;
@@ -68,13 +80,7 @@ export const generateOutputFilesEffect = (
 	Effect.gen(function* () {
 		const items = buildExportItems(protocols, exportOptions, unifiedSessions);
 		const total = items.length;
-		const defaultConcurrency =
-			typeof navigator !== "undefined" && "hardwareConcurrency" in navigator
-				? navigator.hardwareConcurrency
-				: typeof globalThis.process !== "undefined"
-					? os.cpus().length
-					: 4;
-		const concurrency = exportOptions.concurrency ?? defaultConcurrency;
+		const concurrency = exportOptions.concurrency ?? (yield* Effect.promise(() => getDefaultConcurrency()));
 		const completedRef = yield* Ref.make(0);
 
 		yield* Queue.offer(progressQueue, {
