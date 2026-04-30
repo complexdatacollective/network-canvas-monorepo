@@ -32,7 +32,7 @@ export default defineConfig({
 			// Single nominal entry to satisfy Vite's lib-mode requirement.
 			// The real entry set is provided via rolldownOptions.input below;
 			// preserveModules walks the dep graph from there.
-			entry: resolve(here, "src/_placeholder.ts"),
+			entry: resolve(here, "src/Alert.tsx"),
 			formats: ["es"],
 		},
 		rolldownOptions: {

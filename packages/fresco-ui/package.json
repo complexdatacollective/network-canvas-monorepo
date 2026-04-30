@@ -11,10 +11,6 @@
 		"dist"
 	],
 	"exports": {
-		"./_placeholder": {
-			"types": "./dist/_placeholder.d.ts",
-			"default": "./dist/_placeholder.js"
-		},
 		"./Alert": {
 			"types": "./dist/Alert.d.ts",
 			"default": "./dist/Alert.js"
@@ -22,10 +18,6 @@
 		"./badge": {
 			"types": "./dist/badge.d.ts",
 			"default": "./dist/badge.js"
-		},
-		"./button-constants": {
-			"types": "./dist/button-constants.d.ts",
-			"default": "./dist/button-constants.js"
 		},
 		"./NativeLink": {
 			"types": "./dist/NativeLink.d.ts",
@@ -143,14 +135,6 @@
 			"types": "./dist/utils/cva.d.ts",
 			"default": "./dist/utils/cva.js"
 		},
-		"./utils/generatePublicId": {
-			"types": "./dist/utils/generatePublicId.d.ts",
-			"default": "./dist/utils/generatePublicId.js"
-		},
-		"./utils/prettify": {
-			"types": "./dist/utils/prettify.d.ts",
-			"default": "./dist/utils/prettify.js"
-		},
 		"./utils/composeEventHandlers": {
 			"types": "./dist/utils/composeEventHandlers.d.ts",
 			"default": "./dist/utils/composeEventHandlers.js"
@@ -158,10 +142,6 @@
 		"./utils/NoSSRWrapper": {
 			"types": "./dist/utils/NoSSRWrapper.d.ts",
 			"default": "./dist/utils/NoSSRWrapper.js"
-		},
-		"./utils/scrollParent": {
-			"types": "./dist/utils/scrollParent.d.ts",
-			"default": "./dist/utils/scrollParent.js"
 		},
 		"./hooks/useSafeAnimate": {
 			"types": "./dist/hooks/useSafeAnimate.d.ts",

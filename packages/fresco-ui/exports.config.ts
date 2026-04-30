@@ -11,12 +11,9 @@
 export type ExportEntry = { subpath: string; source: string };
 
 export const exportEntries: ExportEntry[] = [
-	{ subpath: "./_placeholder", source: "_placeholder.ts" },
-
 	// Primitives
 	{ subpath: "./Alert", source: "Alert.tsx" },
 	{ subpath: "./badge", source: "badge.tsx" },
-	{ subpath: "./button-constants", source: "button-constants.ts" },
 	{ subpath: "./NativeLink", source: "NativeLink.tsx" },
 	{ subpath: "./Pips", source: "Pips.tsx" },
 	{ subpath: "./ProgressBar", source: "ProgressBar.tsx" },
@@ -59,11 +56,8 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./typography/UnorderedList",   source: "typography/UnorderedList.tsx" },
 
 	{ subpath: "./utils/cva", source: "utils/cva.ts" },
-	{ subpath: "./utils/generatePublicId", source: "utils/generatePublicId.ts" },
-	{ subpath: "./utils/prettify", source: "utils/prettify.ts" },
 	{ subpath: "./utils/composeEventHandlers", source: "utils/composeEventHandlers.ts" },
 	{ subpath: "./utils/NoSSRWrapper", source: "utils/NoSSRWrapper.tsx" },
-	{ subpath: "./utils/scrollParent", source: "utils/scrollParent.ts" },
 
 	{ subpath: "./hooks/useSafeAnimate", source: "hooks/useSafeAnimate.ts" },
 	{ subpath: "./hooks/useNodeInteractions", source: "hooks/useNodeInteractions.ts" },
