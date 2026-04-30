@@ -14,10 +14,13 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./_placeholder", source: "_placeholder.ts" },
 
 	// Primitives
+	{ subpath: "./Alert", source: "Alert.tsx" },
 	{ subpath: "./badge", source: "badge.tsx" },
 	{ subpath: "./button-constants", source: "button-constants.ts" },
+	{ subpath: "./NativeLink", source: "NativeLink.tsx" },
 	{ subpath: "./Pips", source: "Pips.tsx" },
 	{ subpath: "./ProgressBar", source: "ProgressBar.tsx" },
+	{ subpath: "./RenderMarkdown", source: "RenderMarkdown.tsx" },
 	{ subpath: "./ResizableFlexPanel", source: "ResizableFlexPanel.tsx" },
 	{ subpath: "./ScrollArea", source: "ScrollArea.tsx" },
 	{ subpath: "./skeleton", source: "skeleton.tsx" },
