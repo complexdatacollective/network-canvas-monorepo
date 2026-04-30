@@ -1,0 +1,40 @@
+{
+	"name": "@codaco/fresco-ui",
+	"version": "0.0.0",
+	"type": "module",
+	"license": "MIT",
+	"description": "Fresco UI components, styles, and utilities",
+	"sideEffects": [
+		"**/*.css"
+	],
+	"files": [
+		"dist"
+	],
+	"exports": {},
+	"scripts": {
+		"build": "node scripts/build-exports.mjs && vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --build --noEmit",
+		"test": "vitest run",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build",
+		"prepublishOnly": "pnpm build",
+		"clean": "rm -rf .turbo node_modules dist"
+	},
+	"peerDependencies": {
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"@biomejs/biome": "^2.4.13",
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vite-plugin-dts": "^5.0.0",
+		"tinyglobby": "^0.2.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}
