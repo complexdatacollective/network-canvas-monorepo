@@ -27,6 +27,17 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./Spinner", source: "Spinner.tsx" },
 	{ subpath: "./TimeAgo", source: "TimeAgo.tsx" },
 
+	// Button
+	{ subpath: "./Button", source: "Button.tsx" },
+	{ subpath: "./CloseButton", source: "CloseButton.tsx" },
+
+	// Radix primitives
+	{ subpath: "./dropdown-menu", source: "dropdown-menu.tsx" },
+	{ subpath: "./popover", source: "popover.tsx" },
+	{ subpath: "./tooltip", source: "tooltip.tsx" },
+	{ subpath: "./table", source: "table.tsx" },
+	{ subpath: "./Label", source: "Label.tsx" },
+
 	// Layout
 	{ subpath: "./layout/Surface",              source: "layout/Surface.tsx" },
 	{ subpath: "./layout/ResponsiveContainer",  source: "layout/ResponsiveContainer.tsx" },

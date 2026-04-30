@@ -63,6 +63,34 @@
 			"types": "./dist/TimeAgo.d.ts",
 			"default": "./dist/TimeAgo.js"
 		},
+		"./Button": {
+			"types": "./dist/Button.d.ts",
+			"default": "./dist/Button.js"
+		},
+		"./CloseButton": {
+			"types": "./dist/CloseButton.d.ts",
+			"default": "./dist/CloseButton.js"
+		},
+		"./dropdown-menu": {
+			"types": "./dist/dropdown-menu.d.ts",
+			"default": "./dist/dropdown-menu.js"
+		},
+		"./popover": {
+			"types": "./dist/popover.d.ts",
+			"default": "./dist/popover.js"
+		},
+		"./tooltip": {
+			"types": "./dist/tooltip.d.ts",
+			"default": "./dist/tooltip.js"
+		},
+		"./table": {
+			"types": "./dist/table.d.ts",
+			"default": "./dist/table.js"
+		},
+		"./Label": {
+			"types": "./dist/Label.d.ts",
+			"default": "./dist/Label.js"
+		},
 		"./layout/Surface": {
 			"types": "./dist/layout/Surface.d.ts",
 			"default": "./dist/layout/Surface.js"
