@@ -10,6 +10,6 @@
 
 export type ExportEntry = { subpath: string; source: string };
 
-export const exportEntries: ExportEntry[] = [];
+export const exportEntries: ExportEntry[] = [{ subpath: "./_placeholder", source: "_placeholder.ts" }];
 
 export const cssEntries: ExportEntry[] = [];

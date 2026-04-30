@@ -10,7 +10,12 @@
 	"files": [
 		"dist"
 	],
-	"exports": {},
+	"exports": {
+		"./_placeholder": {
+			"types": "./dist/_placeholder.d.ts",
+			"default": "./dist/_placeholder.js"
+		}
+	},
 	"scripts": {
 		"build": "node scripts/build-exports.mjs && vite build",
 		"dev": "vite build --watch",

@@ -81,6 +81,8 @@ export default defineConfig({
 		dts({
 			include: "src",
 			exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**"],
+			// Strip the `src/` prefix so dts outputs land alongside the JS in `dist/`.
+			entryRoot: "src",
 		}),
 		cssCopyPlugin(),
 	],
