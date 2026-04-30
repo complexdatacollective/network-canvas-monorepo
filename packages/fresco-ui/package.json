@@ -22,10 +22,41 @@
 		"clean": "rm -rf .turbo node_modules dist"
 	},
 	"peerDependencies": {
+		"@codaco/protocol-validation": "catalog:",
+		"@codaco/shared-consts": "catalog:",
+		"immer": "catalog:",
+		"motion": "catalog:",
 		"react": "catalog:",
-		"react-dom": "catalog:"
+		"react-dom": "catalog:",
+		"tailwindcss": "catalog:",
+		"zod": "catalog:",
+		"zustand": "catalog:"
 	},
-	"dependencies": {},
+	"dependencies": {
+		"@base-ui/react": "catalog:",
+		"@radix-ui/react-slot": "catalog:",
+		"@tiptap/core": "catalog:",
+		"@tiptap/extension-bullet-list": "catalog:",
+		"@tiptap/extension-heading": "catalog:",
+		"@tiptap/extension-ordered-list": "catalog:",
+		"@tiptap/extension-paragraph": "catalog:",
+		"@tiptap/pm": "catalog:",
+		"@tiptap/react": "catalog:",
+		"@tiptap/starter-kit": "catalog:",
+		"comlink": "catalog:",
+		"cva": "catalog:",
+		"es-toolkit": "catalog:",
+		"fuse.js": "catalog:",
+		"lucide-react": "catalog:",
+		"nanoid": "catalog:",
+		"react-aria-components": "catalog:",
+		"react-best-merge-refs": "catalog:",
+		"react-markdown": "catalog:",
+		"rehype-raw": "catalog:",
+		"rehype-sanitize": "catalog:",
+		"remark-gemoji": "catalog:",
+		"tailwind-merge": "catalog:"
+	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@biomejs/biome": "^2.4.13",
