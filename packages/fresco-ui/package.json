@@ -14,6 +14,50 @@
 		"./_placeholder": {
 			"types": "./dist/_placeholder.d.ts",
 			"default": "./dist/_placeholder.js"
+		},
+		"./utils/cva": {
+			"types": "./dist/utils/cva.d.ts",
+			"default": "./dist/utils/cva.js"
+		},
+		"./utils/generatePublicId": {
+			"types": "./dist/utils/generatePublicId.d.ts",
+			"default": "./dist/utils/generatePublicId.js"
+		},
+		"./utils/prettify": {
+			"types": "./dist/utils/prettify.d.ts",
+			"default": "./dist/utils/prettify.js"
+		},
+		"./utils/composeEventHandlers": {
+			"types": "./dist/utils/composeEventHandlers.d.ts",
+			"default": "./dist/utils/composeEventHandlers.js"
+		},
+		"./utils/NoSSRWrapper": {
+			"types": "./dist/utils/NoSSRWrapper.d.ts",
+			"default": "./dist/utils/NoSSRWrapper.js"
+		},
+		"./utils/scrollParent": {
+			"types": "./dist/utils/scrollParent.d.ts",
+			"default": "./dist/utils/scrollParent.js"
+		},
+		"./hooks/useSafeAnimate": {
+			"types": "./dist/hooks/useSafeAnimate.d.ts",
+			"default": "./dist/hooks/useSafeAnimate.js"
+		},
+		"./hooks/useNodeInteractions": {
+			"types": "./dist/hooks/useNodeInteractions.d.ts",
+			"default": "./dist/hooks/useNodeInteractions.js"
+		},
+		"./hooks/usePrevious": {
+			"types": "./dist/hooks/usePrevious.d.ts",
+			"default": "./dist/hooks/usePrevious.js"
+		},
+		"./hooks/useResizablePanel": {
+			"types": "./dist/hooks/useResizablePanel.d.ts",
+			"default": "./dist/hooks/useResizablePanel.js"
+		},
+		"./hooks/useSafeLocalStorage": {
+			"types": "./dist/hooks/useSafeLocalStorage.d.ts",
+			"default": "./dist/hooks/useSafeLocalStorage.js"
 		}
 	},
 	"scripts": {
@@ -60,7 +104,8 @@
 		"rehype-raw": "catalog:",
 		"rehype-sanitize": "catalog:",
 		"remark-gemoji": "catalog:",
-		"tailwind-merge": "catalog:"
+		"tailwind-merge": "catalog:",
+		"usehooks-ts": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
@@ -68,6 +113,8 @@
 		"@testing-library/jest-dom": "catalog:",
 		"@testing-library/react": "catalog:",
 		"@testing-library/user-event": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
 		"jsdom": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",

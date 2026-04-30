@@ -24,6 +24,9 @@ const cssCopyPlugin = () => ({
 });
 
 export default defineConfig({
+	oxc: {
+		jsx: { runtime: "automatic" },
+	},
 	build: {
 		lib: {
 			// Single nominal entry to satisfy Vite's lib-mode requirement.
@@ -68,6 +71,7 @@ export default defineConfig({
 				/^es-toolkit/,
 				/^zod/,
 				/^tailwindcss/,
+				/^usehooks-ts/,
 			],
 			output: {
 				format: "esm",
