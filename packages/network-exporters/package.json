@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/network-exporters",
-	"version": "1.0.0-alpha.0",
+	"version": "1.0.0-next.1",
 	"description": "Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML.",
 	"license": "GPL-3.0-or-later",
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
