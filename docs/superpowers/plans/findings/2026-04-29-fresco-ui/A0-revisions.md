@@ -197,6 +197,67 @@ The original spec said `useProtocolForm` moves to `lib/interviewer/forms/useProt
 
 ## Where each revision lands in the plan
 
+## R7 — Additional findings during C1+C2 dispatch (2026-04-30)
+
+Two issues surfaced when C1+C2 first ran:
+
+### R7a — Add `useSafeLocalStorage` to migration scope
+
+`hooks/useResizablePanel.ts` imports `useSafeLocalStorage` from `~/hooks/useSafeLocalStorage`. Add it.
+
+- Source: `~/Projects/fresco-next/hooks/useSafeLocalStorage.ts` → `packages/fresco-ui/src/hooks/useSafeLocalStorage.ts`
+- Brings new third-party deps: `usehooks-ts` (Fresco currently uses `^3.1.1`). `zod/mini` is already covered by the catalog `zod` entry.
+- Add `usehooks-ts: ^3.1.1` to the monorepo catalog (`pnpm-workspace.yaml`).
+- Add `usehooks-ts: catalog:` to `packages/fresco-ui/package.json` `dependencies`.
+- Add to the rewrite table: `from '~/hooks/useSafeLocalStorage'` → `from './useSafeLocalStorage'` (within the package).
+- Add to the G4 codemod rule list: `from '~/hooks/useSafeLocalStorage'` → `from '@codaco/fresco-ui/hooks/useSafeLocalStorage'`.
+- Add to `exports.config.ts` allowlist: `{ subpath: './hooks/useSafeLocalStorage', source: 'hooks/useSafeLocalStorage.ts' }`.
+
+### R7b — Reshape `NoSSRWrapper` to drop the `next/dynamic` dependency
+
+Fresco's `utils/NoSSRWrapper.tsx` uses `next/dynamic` with `ssr: false` — a Next-specific API. The package must be consumable from non-Next monorepo apps (architect-vite, interviewer) so this dependency must go.
+
+The current implementation:
+
+```tsx
+import dynamic from 'next/dynamic';
+const NoSSRWrapper = ({ children }) => <>{children}</>;
+const NoSSRWrapperDynamic = dynamic(() => Promise.resolve(NoSSRWrapper), { ssr: false });
+export const withNoSSRWrapper = (WrappedComponent) => (props) =>
+  <NoSSRWrapperDynamic><WrappedComponent {...props} /></NoSSRWrapperDynamic>;
+```
+
+Replace with a generic mount-detection pattern (same observable behaviour for SSR consumers, no Next dep, works in non-SSR consumers as a no-op-after-mount):
+
+```tsx
+import { useEffect, useState, type ComponentProps, type ComponentType, type ReactNode } from 'react';
+
+const NoSSRWrapper = ({ children }: { children: ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? <>{children}</> : null;
+};
+
+export const withNoSSRWrapper = <P extends object>(
+  WrappedComponent: ComponentType<P>,
+): React.FC<ComponentProps<ComponentType<P>>> => {
+  const WithNoSSRWrapper: React.FC<ComponentProps<ComponentType<P>>> = (props) => (
+    <NoSSRWrapper>
+      <WrappedComponent {...props} />
+    </NoSSRWrapper>
+  );
+  return WithNoSSRWrapper;
+};
+```
+
+Notes:
+- The original `NoSSRWrapper` (without Dynamic) was identity (`<>{children}</>`). The reshape makes it actually skip server render via mount detection. Behaviour is functionally equivalent for the use case (skip SSR), and works in any React environment.
+- Drop `next/dynamic` from imports. Keep the file's docstring relevant — strip the Next-specific apologia, keep the alternatives note.
+
+This reshape happens during the C1+C2 file copy (subagent rewrites the file content as part of the migration, not a verbatim copy).
+
+## Revision index
+
 | Revision | Plan tasks affected |
 |---|---|
 | R1 (scope additions) | C1 (utils — add composeEventHandlers, NoSSRWrapper), C2 (hooks — add useNodeInteractions, usePrevious, useResizablePanel), C9 (Icon — add custom icons directory + reshape import), G4 (codemod rules) |
@@ -205,3 +266,5 @@ The original spec said `useProtocolForm` moves to `lib/interviewer/forms/useProt
 | R4 (Fresco branch) | All G-tasks (G1-G7) |
 | R5 (catalog additions) | B2 (uses A3 directly) |
 | R6 (useProtocolForm location) | G3 (verify location during execution) |
+| R7a (useSafeLocalStorage scope) | C2 (hooks — add useSafeLocalStorage), B2 retroactively (catalog: add `usehooks-ts`), G4 (codemod rule) |
+| R7b (NoSSRWrapper reshape) | C1 (utils — reshape during copy) |
