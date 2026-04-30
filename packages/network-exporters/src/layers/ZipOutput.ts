@@ -116,10 +116,7 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
 	return { fileName, iterable, appendEntry, finalize, abort };
 }
 
-export type ZipSink = (
-	zipStream: AsyncIterable<Uint8Array>,
-	fileName: string,
-) => Effect.Effect<OutputResult, OutputError>;
+type ZipSink = (zipStream: AsyncIterable<Uint8Array>, fileName: string) => Effect.Effect<OutputResult, OutputError>;
 
 export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
 	Layer.succeed(Output, {

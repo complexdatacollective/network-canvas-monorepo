@@ -18,7 +18,7 @@ import { partitionByProtocolAvailability } from "./partitionByProtocolAvailabili
 import { perSession } from "./perSession";
 import { resequenceSessionIds } from "./resequenceIds";
 
-export type ProcessSessionsResult = {
+type ProcessSessionsResult = {
 	readonly grouped: Record<string, SessionWithResequencedIDs[]>;
 	readonly protocols: Record<string, ProtocolExportInput>;
 	readonly failures: ExportFailure[];

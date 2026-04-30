@@ -66,7 +66,7 @@ function buildExportItems(
 	return items;
 }
 
-export type GenerateOutputFilesResult = {
+type GenerateOutputFilesResult = {
 	readonly successes: { readonly success: ExportSuccess; readonly entry: OutputEntry }[];
 	readonly failures: ExportFailure[];
 };

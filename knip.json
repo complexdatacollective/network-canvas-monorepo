@@ -16,9 +16,9 @@
 				"src/events.ts!",
 				"src/errors.ts!",
 				"src/services/InterviewRepository.ts!",
-				"src/services/FileStorage.ts!",
-				"src/services/FileSystem.ts!",
-				"src/layers/NodeFileSystem.ts!"
+				"src/services/ProtocolRepository.ts!",
+				"src/services/Output.ts!",
+				"src/layers/ZipOutput.ts!"
 			]
 		},
 		"apps/architect-vite": {
