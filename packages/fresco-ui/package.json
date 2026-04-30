@@ -47,6 +47,10 @@
 			"types": "./dist/ResizableFlexPanel.d.ts",
 			"default": "./dist/ResizableFlexPanel.js"
 		},
+		"./RichTextRenderer": {
+			"types": "./dist/RichTextRenderer.d.ts",
+			"default": "./dist/RichTextRenderer.js"
+		},
 		"./ScrollArea": {
 			"types": "./dist/ScrollArea.d.ts",
 			"default": "./dist/ScrollArea.js"
@@ -82,6 +86,10 @@
 		"./Toast": {
 			"types": "./dist/Toast.d.ts",
 			"default": "./dist/Toast.js"
+		},
+		"./Modal": {
+			"types": "./dist/Modal/Modal.d.ts",
+			"default": "./dist/Modal/Modal.js"
 		},
 		"./dropdown-menu": {
 			"types": "./dist/dropdown-menu.d.ts",

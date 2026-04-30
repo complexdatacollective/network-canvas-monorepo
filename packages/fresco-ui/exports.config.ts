@@ -22,6 +22,7 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./ProgressBar", source: "ProgressBar.tsx" },
 	{ subpath: "./RenderMarkdown", source: "RenderMarkdown.tsx" },
 	{ subpath: "./ResizableFlexPanel", source: "ResizableFlexPanel.tsx" },
+	{ subpath: "./RichTextRenderer", source: "RichTextRenderer.tsx" },
 	{ subpath: "./ScrollArea", source: "ScrollArea.tsx" },
 	{ subpath: "./skeleton", source: "skeleton.tsx" },
 	{ subpath: "./Spinner", source: "Spinner.tsx" },
@@ -35,6 +36,9 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./Icon", source: "Icon.tsx" },
 	{ subpath: "./Node", source: "Node.tsx" },
 	{ subpath: "./Toast", source: "Toast.tsx" },
+
+	// Modal
+	{ subpath: "./Modal", source: "Modal/Modal.tsx" },
 
 	// Radix primitives
 	{ subpath: "./dropdown-menu", source: "dropdown-menu.tsx" },
