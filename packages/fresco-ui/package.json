@@ -441,6 +441,7 @@
 		"@chromatic-com/storybook": "^5.1.2",
 		"@codaco/tsconfig": "workspace:*",
 		"@biomejs/biome": "^2.4.13",
+		"@faker-js/faker": "catalog:",
 		"@storybook/addon-a11y": "^10.3.5",
 		"@storybook/addon-docs": "^10.3.5",
 		"@storybook/addon-vitest": "^10.3.5",
