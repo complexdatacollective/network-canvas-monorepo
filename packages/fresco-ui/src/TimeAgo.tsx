@@ -1,0 +1,75 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { withNoSSRWrapper } from './utils/NoSSRWrapper';
+
+const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+};
+
+type TimeAgoProps = React.TimeHTMLAttributes<HTMLTimeElement> & {
+  date: Date | string | number;
+  dateOptions?: Intl.DateTimeFormatOptions;
+};
+
+const TimeAgo: React.FC<TimeAgoProps> = ({
+  date: dateProp,
+  dateOptions,
+  ...props
+}) => {
+  const date = useMemo(() => new Date(dateProp), [dateProp]);
+  const opts = dateOptions ?? DEFAULT_DATE_OPTIONS;
+  const localisedDate = new Intl.DateTimeFormat(navigator.language, opts).format(
+    date,
+  );
+
+  const [timeAgo, setTimeAgo] = useState<string>('');
+
+  useEffect(() => {
+    const calculateTimeAgo = () => {
+      const now = new Date();
+      const distance = now.getTime() - date.getTime();
+
+      if (distance < 60000) {
+        setTimeAgo('just now');
+      } else if (distance < 3600000) {
+        const singleOrPlural =
+          Math.floor(distance / 60000) === 1 ? 'minute' : 'minutes';
+        setTimeAgo(`${Math.floor(distance / 60000)} ${singleOrPlural} ago`);
+      } else if (distance < 86400000) {
+        const singleOrPlural =
+          Math.floor(distance / 3600000) === 1 ? 'hour' : 'hours';
+        setTimeAgo(`${Math.floor(distance / 3600000)} ${singleOrPlural} ago`);
+      } else if (distance < 604800000) {
+        const singleOrPlural =
+          Math.floor(distance / 86400000) === 1 ? 'day' : 'days';
+        setTimeAgo(`${Math.floor(distance / 86400000)} ${singleOrPlural} ago`);
+      } else {
+        // More than a week ago, fall back to Intl.DateTimeFormat
+        setTimeAgo(localisedDate);
+      }
+    };
+
+    calculateTimeAgo();
+
+    // Update time ago every minute
+    const interval = setInterval(calculateTimeAgo, 60000);
+
+    return () => clearInterval(interval);
+  }, [date, localisedDate]);
+
+  return (
+    <time
+      {...props}
+      data-testid="time-ago"
+      dateTime={localisedDate}
+      title={localisedDate}
+    >
+      {timeAgo}
+    </time>
+  );
+};
+
+export default withNoSSRWrapper(TimeAgo);

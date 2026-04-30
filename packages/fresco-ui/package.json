@@ -15,6 +15,42 @@
 			"types": "./dist/_placeholder.d.ts",
 			"default": "./dist/_placeholder.js"
 		},
+		"./badge": {
+			"types": "./dist/badge.d.ts",
+			"default": "./dist/badge.js"
+		},
+		"./button-constants": {
+			"types": "./dist/button-constants.d.ts",
+			"default": "./dist/button-constants.js"
+		},
+		"./Pips": {
+			"types": "./dist/Pips.d.ts",
+			"default": "./dist/Pips.js"
+		},
+		"./ProgressBar": {
+			"types": "./dist/ProgressBar.d.ts",
+			"default": "./dist/ProgressBar.js"
+		},
+		"./ResizableFlexPanel": {
+			"types": "./dist/ResizableFlexPanel.d.ts",
+			"default": "./dist/ResizableFlexPanel.js"
+		},
+		"./ScrollArea": {
+			"types": "./dist/ScrollArea.d.ts",
+			"default": "./dist/ScrollArea.js"
+		},
+		"./skeleton": {
+			"types": "./dist/skeleton.d.ts",
+			"default": "./dist/skeleton.js"
+		},
+		"./Spinner": {
+			"types": "./dist/Spinner.d.ts",
+			"default": "./dist/Spinner.js"
+		},
+		"./TimeAgo": {
+			"types": "./dist/TimeAgo.d.ts",
+			"default": "./dist/TimeAgo.js"
+		},
 		"./utils/cva": {
 			"types": "./dist/utils/cva.d.ts",
 			"default": "./dist/utils/cva.js"

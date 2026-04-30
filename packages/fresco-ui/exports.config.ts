@@ -13,6 +13,17 @@ export type ExportEntry = { subpath: string; source: string };
 export const exportEntries: ExportEntry[] = [
 	{ subpath: "./_placeholder", source: "_placeholder.ts" },
 
+	// Primitives
+	{ subpath: "./badge", source: "badge.tsx" },
+	{ subpath: "./button-constants", source: "button-constants.ts" },
+	{ subpath: "./Pips", source: "Pips.tsx" },
+	{ subpath: "./ProgressBar", source: "ProgressBar.tsx" },
+	{ subpath: "./ResizableFlexPanel", source: "ResizableFlexPanel.tsx" },
+	{ subpath: "./ScrollArea", source: "ScrollArea.tsx" },
+	{ subpath: "./skeleton", source: "skeleton.tsx" },
+	{ subpath: "./Spinner", source: "Spinner.tsx" },
+	{ subpath: "./TimeAgo", source: "TimeAgo.tsx" },
+
 	{ subpath: "./utils/cva", source: "utils/cva.ts" },
 	{ subpath: "./utils/generatePublicId", source: "utils/generatePublicId.ts" },
 	{ subpath: "./utils/prettify", source: "utils/prettify.ts" },
