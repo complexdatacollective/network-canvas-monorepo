@@ -71,6 +71,18 @@
 			"types": "./dist/CloseButton.d.ts",
 			"default": "./dist/CloseButton.js"
 		},
+		"./Icon": {
+			"types": "./dist/Icon.d.ts",
+			"default": "./dist/Icon.js"
+		},
+		"./Node": {
+			"types": "./dist/Node.d.ts",
+			"default": "./dist/Node.js"
+		},
+		"./Toast": {
+			"types": "./dist/Toast.d.ts",
+			"default": "./dist/Toast.js"
+		},
 		"./dropdown-menu": {
 			"types": "./dist/dropdown-menu.d.ts",
 			"default": "./dist/dropdown-menu.js"

@@ -31,6 +31,11 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./Button", source: "Button.tsx" },
 	{ subpath: "./CloseButton", source: "CloseButton.tsx" },
 
+	// Icon (and friends)
+	{ subpath: "./Icon", source: "Icon.tsx" },
+	{ subpath: "./Node", source: "Node.tsx" },
+	{ subpath: "./Toast", source: "Toast.tsx" },
+
 	// Radix primitives
 	{ subpath: "./dropdown-menu", source: "dropdown-menu.tsx" },
 	{ subpath: "./popover", source: "popover.tsx" },
