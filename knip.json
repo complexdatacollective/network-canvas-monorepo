@@ -1,26 +1,14 @@
 {
 	"$schema": "https://unpkg.com/knip@latest/schema.json",
 	"ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
+	"tags": ["-public"],
 	"workspaces": {
 		"packages/ui": {},
 		"apps/documentation": {
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},
 		"packages/protocol-validation": {},
-		"packages/network-exporters": {
-			"entry": [
-				"src/pipeline.ts!",
-				"src/options.ts!",
-				"src/input.ts!",
-				"src/output.ts!",
-				"src/events.ts!",
-				"src/errors.ts!",
-				"src/services/InterviewRepository.ts!",
-				"src/services/ProtocolRepository.ts!",
-				"src/services/Output.ts!",
-				"src/layers/ZipOutput.ts!"
-			]
-		},
+		"packages/network-exporters": {},
 		"apps/architect-vite": {
 			"entry": ["index.html!"],
 			"vite": true,

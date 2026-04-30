@@ -26,8 +26,6 @@ type EdgeWithEgo = NcEdge & {
 	[egoProperty]: string;
 };
 
-export type SessionsByProtocol = Record<string, SessionWithNetworkEgo[]>;
-
 export type SessionVariables = {
 	[caseProperty]: string;
 	[sessionProperty]: string;

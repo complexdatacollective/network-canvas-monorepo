@@ -9,8 +9,6 @@ import { Output } from "./services/Output";
 import { generateOutputFilesEffect } from "./session/generateOutputFiles";
 import { processSessions } from "./session/processSessions";
 
-export type ExportedProtocol = import("./input").ProtocolExportInput;
-
 export const exportPipeline = (
 	interviewIds: string[],
 	exportOptions: ExportOptions,

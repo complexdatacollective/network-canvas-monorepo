@@ -41,6 +41,9 @@ export type ExportFailure =
 			readonly error: SessionProcessingError;
 	  };
 
+/**
+ * @public
+ */
 export type ExportResult = ExportSuccess | { readonly success: false; readonly failure: ExportFailure };
 
 export type ExportReturn = {

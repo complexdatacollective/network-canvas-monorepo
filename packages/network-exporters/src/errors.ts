@@ -27,6 +27,9 @@ export class SessionProcessingError extends Data.TaggedError("NetworkExporters/S
 	readonly sessionId: string;
 }> {}
 
+/**
+ * @public
+ */
 export type ExportError = DatabaseError | OutputError;
 
 type AnyExportError = ExportError | ExportGenerationError | ProtocolNotFoundError | SessionProcessingError;
