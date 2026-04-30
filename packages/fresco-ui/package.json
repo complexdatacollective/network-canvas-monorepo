@@ -58,7 +58,12 @@
 		"./hooks/useSafeLocalStorage": {
 			"types": "./dist/hooks/useSafeLocalStorage.d.ts",
 			"default": "./dist/hooks/useSafeLocalStorage.js"
-		}
+		},
+		"./styles/controlVariants": {
+			"types": "./dist/styles/controlVariants.d.ts",
+			"default": "./dist/styles/controlVariants.js"
+		},
+		"./styles/colors.css": "./dist/styles/colors.css"
 	},
 	"scripts": {
 		"build": "node scripts/build-exports.mjs && vite build",

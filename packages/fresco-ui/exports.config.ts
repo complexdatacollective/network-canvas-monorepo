@@ -25,6 +25,9 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./hooks/usePrevious", source: "hooks/usePrevious.ts" },
 	{ subpath: "./hooks/useResizablePanel", source: "hooks/useResizablePanel.ts" },
 	{ subpath: "./hooks/useSafeLocalStorage", source: "hooks/useSafeLocalStorage.tsx" },
+
+	// Styles
+	{ subpath: "./styles/controlVariants", source: "styles/controlVariants.ts" },
 ];
 
-export const cssEntries: ExportEntry[] = [];
+export const cssEntries: ExportEntry[] = [{ subpath: "./styles/colors.css", source: "styles/colors.css" }];
