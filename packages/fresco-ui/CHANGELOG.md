@@ -1,5 +1,11 @@
 # @codaco/fresco-ui
 
+## 0.1.0-next.1
+
+### Patch Changes
+
+- Expose `./dnd/dnd`, `./form/components/Field/Field`, four form field components (`LikertScale`, `RelativeDatePicker`, `ToggleButtonGroup`, `VisualAnalogScale`), `./form/store/types`, and `./form/utils/ymd`. These are required by Fresco's `useProtocolForm` (relocated to `lib/interviewer/forms/`) and by Fresco code that imported the dnd barrel.
+
 ## 0.1.0-next.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/fresco-ui",
-	"version": "0.1.0-next.0",
+	"version": "0.1.0-next.1",
 	"type": "module",
 	"license": "MIT",
 	"description": "Fresco UI components, styles, and utilities",
@@ -195,6 +195,10 @@
 			"types": "./dist/dialogs/useWizard.d.ts",
 			"default": "./dist/dialogs/useWizard.js"
 		},
+		"./dnd/dnd": {
+			"types": "./dist/dnd/dnd.d.ts",
+			"default": "./dist/dnd/dnd.js"
+		},
 		"./dnd/types": {
 			"types": "./dist/dnd/types.d.ts",
 			"default": "./dist/dnd/types.js"
@@ -307,6 +311,10 @@
 			"types": "./dist/form/components/fields/InputField.d.ts",
 			"default": "./dist/form/components/fields/InputField.js"
 		},
+		"./form/components/fields/LikertScale": {
+			"types": "./dist/form/components/fields/LikertScale.d.ts",
+			"default": "./dist/form/components/fields/LikertScale.js"
+		},
 		"./form/components/fields/PasswordField": {
 			"types": "./dist/form/components/fields/PasswordField.d.ts",
 			"default": "./dist/form/components/fields/PasswordField.js"
@@ -314,6 +322,10 @@
 		"./form/components/fields/RadioGroup": {
 			"types": "./dist/form/components/fields/RadioGroup.d.ts",
 			"default": "./dist/form/components/fields/RadioGroup.js"
+		},
+		"./form/components/fields/RelativeDatePicker": {
+			"types": "./dist/form/components/fields/RelativeDatePicker.d.ts",
+			"default": "./dist/form/components/fields/RelativeDatePicker.js"
 		},
 		"./form/components/fields/RichSelectGroup": {
 			"types": "./dist/form/components/fields/RichSelectGroup.d.ts",
@@ -339,6 +351,10 @@
 			"types": "./dist/form/components/fields/TextArea.d.ts",
 			"default": "./dist/form/components/fields/TextArea.js"
 		},
+		"./form/components/fields/ToggleButtonGroup": {
+			"types": "./dist/form/components/fields/ToggleButtonGroup.d.ts",
+			"default": "./dist/form/components/fields/ToggleButtonGroup.js"
+		},
 		"./form/components/fields/ToggleField": {
 			"types": "./dist/form/components/fields/ToggleField.d.ts",
 			"default": "./dist/form/components/fields/ToggleField.js"
@@ -346,6 +362,10 @@
 		"./form/components/fields/ToggleFieldSkeleton": {
 			"types": "./dist/form/components/fields/ToggleFieldSkeleton.d.ts",
 			"default": "./dist/form/components/fields/ToggleFieldSkeleton.js"
+		},
+		"./form/components/fields/VisualAnalogScale": {
+			"types": "./dist/form/components/fields/VisualAnalogScale.d.ts",
+			"default": "./dist/form/components/fields/VisualAnalogScale.js"
 		},
 		"./form/components/Form": {
 			"types": "./dist/form/components/Form.d.ts",
@@ -386,6 +406,10 @@
 		"./form/utils/getInputState": {
 			"types": "./dist/form/utils/getInputState.d.ts",
 			"default": "./dist/form/utils/getInputState.js"
+		},
+		"./form/utils/ymd": {
+			"types": "./dist/form/utils/ymd.d.ts",
+			"default": "./dist/form/utils/ymd.js"
 		},
 		"./styles.css": "./dist/styles.css",
 		"./styles/colors.css": "./dist/styles/colors.css"

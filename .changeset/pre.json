@@ -20,6 +20,7 @@
     "posthog-proxy-worker": "0.0.0"
   },
   "changesets": [
+    "expand-public-api-for-fresco",
     "family-pedigree-editor",
     "initial-fresco-ui-release",
     "network-exporters-effect-rewrite",
