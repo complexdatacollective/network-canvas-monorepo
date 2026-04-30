@@ -1,12 +1,7 @@
-'use client';
+"use client";
 
-import { useContext, useMemo } from 'react';
-import {
-  MotionConfigContext,
-  useAnimate,
-  useReducedMotionConfig,
-  type AnimationScope,
-} from 'motion/react';
+import { type AnimationScope, MotionConfigContext, useAnimate, useReducedMotionConfig } from "motion/react";
+import { useContext, useMemo } from "react";
 
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
 
@@ -23,65 +18,61 @@ type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
  * renders correctly without creating WAAPI animations.
  */
 export function useSafeAnimate<T extends Element = HTMLDivElement>() {
-  const [scope, animate] = useAnimate<T>();
-  const { skipAnimations } = useContext(MotionConfigContext);
-  const shouldReduceMotion = useReducedMotionConfig();
+	const [scope, animate] = useAnimate<T>();
+	const { skipAnimations } = useContext(MotionConfigContext);
+	const shouldReduceMotion = useReducedMotionConfig();
 
-  const shouldSkip = !!skipAnimations || !!shouldReduceMotion;
+	const shouldSkip = !!skipAnimations || !!shouldReduceMotion;
 
-  const safeAnimate = useMemo(() => {
-    if (!shouldSkip) return animate;
+	const safeAnimate = useMemo(() => {
+		if (!shouldSkip) return animate;
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const voidFn = () => {};
-    const noop = {
-      stop: voidFn,
-      cancel: voidFn,
-      complete: voidFn,
-      pause: voidFn,
-      play: voidFn,
-      then: (resolve?: () => void) => {
-        resolve?.();
-        return noop;
-      },
-      time: 0,
-      speed: 1,
-      startTime: null,
-      state: 'finished' as const,
-      duration: 0,
-      attachTimeline: () => voidFn,
-      flatten: voidFn,
-    };
+		// eslint-disable-next-line @typescript-eslint/no-empty-function
+		const voidFn = () => {};
+		const noop = {
+			stop: voidFn,
+			cancel: voidFn,
+			complete: voidFn,
+			pause: voidFn,
+			play: voidFn,
+			// biome-ignore lint/suspicious/noThenProperty: Motion's animation handle is thenable; the noop must match that contract so `await animate(...)` resolves.
+			then: (resolve?: () => void) => {
+				resolve?.();
+				return noop;
+			},
+			time: 0,
+			speed: 1,
+			startTime: null,
+			state: "finished" as const,
+			duration: 0,
+			attachTimeline: () => voidFn,
+			flatten: voidFn,
+		};
 
-    return ((...args: Parameters<AnimateFn<T>>) => {
-      const [elementOrSelector, keyframes] = args;
+		return ((...args: Parameters<AnimateFn<T>>) => {
+			const [elementOrSelector, keyframes] = args;
 
-      if (
-        elementOrSelector instanceof Element &&
-        keyframes &&
-        typeof keyframes === 'object' &&
-        !Array.isArray(keyframes)
-      ) {
-        const el = elementOrSelector as HTMLElement;
-        for (const [prop, value] of Object.entries(keyframes)) {
-          const finalValue = Array.isArray(value)
-            ? value[value.length - 1]
-            : value;
-          if (
-            typeof finalValue === 'string' ||
-            typeof finalValue === 'number'
-          ) {
-            el.style.setProperty(
-              prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`),
-              String(finalValue),
-            );
-          }
-        }
-      }
+			if (
+				elementOrSelector instanceof Element &&
+				keyframes &&
+				typeof keyframes === "object" &&
+				!Array.isArray(keyframes)
+			) {
+				const el = elementOrSelector as HTMLElement;
+				for (const [prop, value] of Object.entries(keyframes)) {
+					const finalValue = Array.isArray(value) ? value[value.length - 1] : value;
+					if (typeof finalValue === "string" || typeof finalValue === "number") {
+						el.style.setProperty(
+							prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`),
+							String(finalValue),
+						);
+					}
+				}
+			}
 
-      return noop;
-    }) as unknown as AnimateFn<T>;
-  }, [shouldSkip, animate]);
+			return noop;
+		}) as unknown as AnimateFn<T>;
+	}, [shouldSkip, animate]);
 
-  return [scope, safeAnimate] as [AnimationScope<T>, AnimateFn<T>];
+	return [scope, safeAnimate] as [AnimationScope<T>, AnimateFn<T>];
 }
