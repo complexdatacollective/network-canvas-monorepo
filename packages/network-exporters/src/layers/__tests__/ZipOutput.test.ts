@@ -47,8 +47,12 @@ describe("makeZipOutput", () => {
 
 		expect(captured.fileName).toMatch(/^networkCanvasExport-\d+\.zip$/);
 		expect(captured.bytes).not.toBeNull();
-		const unzipped = unzipSync(captured.bytes!);
-		expect(new TextDecoder().decode(unzipped["hello.txt"]!)).toBe("world");
+		const bytes = captured.bytes;
+		if (bytes === null) throw new Error("captured.bytes was null");
+		const unzipped = unzipSync(bytes);
+		const helloFile = unzipped["hello.txt"];
+		if (!helloFile) throw new Error("hello.txt missing from zip");
+		expect(new TextDecoder().decode(helloFile)).toBe("world");
 		expect(result.key).toBe(captured.fileName);
 	});
 
@@ -84,9 +88,15 @@ describe("makeZipOutput", () => {
 		await Effect.runPromise(program.pipe(Effect.provide(makeZipOutput(sink))));
 
 		expect(captured.bytes).not.toBeNull();
-		const unzipped = unzipSync(captured.bytes!);
-		expect(new TextDecoder().decode(unzipped["a.txt"]!)).toBe("alpha");
-		expect(new TextDecoder().decode(unzipped["b.txt"]!)).toBe("bravo");
+		const bytes = captured.bytes;
+		if (bytes === null) throw new Error("captured.bytes was null");
+		const unzipped = unzipSync(bytes);
+		const aFile = unzipped["a.txt"];
+		if (!aFile) throw new Error("a.txt missing from zip");
+		const bFile = unzipped["b.txt"];
+		if (!bFile) throw new Error("b.txt missing from zip");
+		expect(new TextDecoder().decode(aFile)).toBe("alpha");
+		expect(new TextDecoder().decode(bFile)).toBe("bravo");
 	});
 
 	it("propagates a sink failure as OutputError", async () => {

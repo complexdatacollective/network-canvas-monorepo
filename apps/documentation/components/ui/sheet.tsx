@@ -2,14 +2,14 @@
 
 import { Content, Description, Overlay, Portal, Root, Title } from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
-import { type ComponentPropsWithoutRef, type ElementRef, forwardRef, type HTMLAttributes } from "react";
+import { type ComponentPropsWithoutRef, type ComponentRef, forwardRef, type HTMLAttributes } from "react";
 import { cn } from "~/lib/utils";
 
 const Sheet = Root;
 
 const SheetPortal = Portal;
 
-const SheetOverlay = forwardRef<ElementRef<typeof Overlay>, ComponentPropsWithoutRef<typeof Overlay>>(
+const SheetOverlay = forwardRef<ComponentRef<typeof Overlay>, ComponentPropsWithoutRef<typeof Overlay>>(
 	({ className, ...props }, ref) => (
 		<Overlay
 			className={cn(
@@ -44,7 +44,7 @@ const sheetVariants = cva(
 
 type SheetContentProps = object & ComponentPropsWithoutRef<typeof Content> & VariantProps<typeof sheetVariants>;
 
-const SheetContent = forwardRef<ElementRef<typeof Content>, SheetContentProps>(
+const SheetContent = forwardRef<ComponentRef<typeof Content>, SheetContentProps>(
 	({ side = "right", className, children, ...props }, ref) => (
 		<SheetPortal>
 			<SheetOverlay />
@@ -66,14 +66,14 @@ const SheetFooter = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) =>
 );
 SheetFooter.displayName = "SheetFooter";
 
-const SheetTitle = forwardRef<ElementRef<typeof Title>, ComponentPropsWithoutRef<typeof Title>>(
+const SheetTitle = forwardRef<ComponentRef<typeof Title>, ComponentPropsWithoutRef<typeof Title>>(
 	({ className, ...props }, ref) => (
 		<Title ref={ref} className={cn("text-lg font-semibold text-foreground", className)} {...props} />
 	),
 );
 SheetTitle.displayName = Title.displayName;
 
-const SheetDescription = forwardRef<ElementRef<typeof Description>, ComponentPropsWithoutRef<typeof Description>>(
+const SheetDescription = forwardRef<ComponentRef<typeof Description>, ComponentPropsWithoutRef<typeof Description>>(
 	({ className, ...props }, ref) => (
 		<Description ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
 	),

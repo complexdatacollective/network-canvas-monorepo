@@ -57,18 +57,26 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
 						const head = queue.shift();
 						if (head === null) {
 							resolve({ value: undefined as unknown as Uint8Array, done: true });
-						} else {
-							resolve({ value: head!, done: false });
+							return;
 						}
+						if (head === undefined) {
+							reject(new Error("queue inconsistency: shift returned undefined unexpectedly"));
+							return;
+						}
+						resolve({ value: head, done: false });
 						return;
 					}
 					resolveNext = () => {
 						const head = queue.shift();
 						if (head === null) {
 							resolve({ value: undefined as unknown as Uint8Array, done: true });
-						} else {
-							resolve({ value: head!, done: false });
+							return;
 						}
+						if (head === undefined) {
+							reject(new Error("queue inconsistency: shift returned undefined unexpectedly"));
+							return;
+						}
+						resolve({ value: head, done: false });
 					};
 					rejectNext = reject;
 				}),
