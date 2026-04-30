@@ -28,6 +28,11 @@ export const exportEntries: ExportEntry[] = [
 
 	// Styles
 	{ subpath: "./styles/controlVariants", source: "styles/controlVariants.ts" },
+
+	// Tailwind plugins (loaded by consumers via @plugin)
+	{ subpath: "./styles/plugins/elevation", source: "styles/plugins/elevation/elevation.ts" },
+	{ subpath: "./styles/plugins/inset-surface", source: "styles/plugins/inset-surface/inset-surface.ts" },
+	{ subpath: "./styles/plugins/motion-spring", source: "styles/plugins/motion-spring.ts" },
 ];
 
 export const cssEntries: ExportEntry[] = [{ subpath: "./styles/colors.css", source: "styles/colors.css" }];

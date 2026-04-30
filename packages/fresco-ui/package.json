@@ -63,6 +63,18 @@
 			"types": "./dist/styles/controlVariants.d.ts",
 			"default": "./dist/styles/controlVariants.js"
 		},
+		"./styles/plugins/elevation": {
+			"types": "./dist/styles/plugins/elevation/elevation.d.ts",
+			"default": "./dist/styles/plugins/elevation/elevation.js"
+		},
+		"./styles/plugins/inset-surface": {
+			"types": "./dist/styles/plugins/inset-surface/inset-surface.d.ts",
+			"default": "./dist/styles/plugins/inset-surface/inset-surface.js"
+		},
+		"./styles/plugins/motion-spring": {
+			"types": "./dist/styles/plugins/motion-spring.d.ts",
+			"default": "./dist/styles/plugins/motion-spring.js"
+		},
 		"./styles/colors.css": "./dist/styles/colors.css"
 	},
 	"scripts": {
