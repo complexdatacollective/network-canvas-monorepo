@@ -24,6 +24,16 @@ export const exportEntries: ExportEntry[] = [
 	{ subpath: "./Spinner", source: "Spinner.tsx" },
 	{ subpath: "./TimeAgo", source: "TimeAgo.tsx" },
 
+	// Layout
+	{ subpath: "./layout/Surface",              source: "layout/Surface.tsx" },
+	{ subpath: "./layout/ResponsiveContainer",  source: "layout/ResponsiveContainer.tsx" },
+
+	// Typography
+	{ subpath: "./typography/Heading",         source: "typography/Heading.tsx" },
+	{ subpath: "./typography/Paragraph",       source: "typography/Paragraph.tsx" },
+	{ subpath: "./typography/PageHeader",      source: "typography/PageHeader.tsx" },
+	{ subpath: "./typography/UnorderedList",   source: "typography/UnorderedList.tsx" },
+
 	{ subpath: "./utils/cva", source: "utils/cva.ts" },
 	{ subpath: "./utils/generatePublicId", source: "utils/generatePublicId.ts" },
 	{ subpath: "./utils/prettify", source: "utils/prettify.ts" },

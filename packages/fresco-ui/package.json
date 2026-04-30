@@ -51,6 +51,30 @@
 			"types": "./dist/TimeAgo.d.ts",
 			"default": "./dist/TimeAgo.js"
 		},
+		"./layout/Surface": {
+			"types": "./dist/layout/Surface.d.ts",
+			"default": "./dist/layout/Surface.js"
+		},
+		"./layout/ResponsiveContainer": {
+			"types": "./dist/layout/ResponsiveContainer.d.ts",
+			"default": "./dist/layout/ResponsiveContainer.js"
+		},
+		"./typography/Heading": {
+			"types": "./dist/typography/Heading.d.ts",
+			"default": "./dist/typography/Heading.js"
+		},
+		"./typography/Paragraph": {
+			"types": "./dist/typography/Paragraph.d.ts",
+			"default": "./dist/typography/Paragraph.js"
+		},
+		"./typography/PageHeader": {
+			"types": "./dist/typography/PageHeader.d.ts",
+			"default": "./dist/typography/PageHeader.js"
+		},
+		"./typography/UnorderedList": {
+			"types": "./dist/typography/UnorderedList.d.ts",
+			"default": "./dist/typography/UnorderedList.js"
+		},
 		"./utils/cva": {
 			"types": "./dist/utils/cva.d.ts",
 			"default": "./dist/utils/cva.js"
