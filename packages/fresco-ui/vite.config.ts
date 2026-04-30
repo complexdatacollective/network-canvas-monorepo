@@ -33,10 +33,13 @@ export default defineConfig({
 			formats: ["es"],
 		},
 		rolldownOptions: {
-			input: globSync(["src/**/*.{ts,tsx}", "!src/**/*.{stories,test,spec}.{ts,tsx}", "!src/**/__tests__/**"], {
-				cwd: here,
-				absolute: true,
-			}),
+			input: globSync(
+				["src/**/*.{ts,tsx}", "!src/**/*.{stories,test,spec}.{ts,tsx}", "!src/**/__tests__/**", "!src/test-setup.ts"],
+				{
+					cwd: here,
+					absolute: true,
+				},
+			),
 			external: [
 				/^react/,
 				/^react-dom/,
@@ -80,7 +83,7 @@ export default defineConfig({
 	plugins: [
 		dts({
 			include: "src",
-			exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**"],
+			exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/test-setup.ts"],
 			// Strip the `src/` prefix so dts outputs land alongside the JS in `dist/`.
 			entryRoot: "src",
 		}),
