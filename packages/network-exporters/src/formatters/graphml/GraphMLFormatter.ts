@@ -14,10 +14,8 @@ class GraphMLFormatter {
 		this.exportOptions = exportOptions;
 	}
 
-	writeToString() {
-		const generator = graphMLGenerator(this.network, this.codebook, this.exportOptions);
-
-		return generator;
+	writeToString(): Promise<string> {
+		return graphMLGenerator(this.network, this.codebook, this.exportOptions);
 	}
 }
 

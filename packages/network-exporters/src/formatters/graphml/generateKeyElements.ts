@@ -16,7 +16,9 @@ import {
 
 // <key> elements provide the type definitions for GraphML data elements
 export default function getKeyElementGenerator(codebook: Codebook, exportOptions: ExportOptions) {
-	return (incomingEntities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo): DocumentFragment => {
+	return async (
+		incomingEntities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
+	): Promise<DocumentFragment> => {
 		// Important to create the fragment on each invocation
 		const fragment = createDocumentFragment();
 		const dom = new DOMImplementation().createDocument(null, "root", null);
@@ -76,7 +78,7 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 			done.add("originalEdgeSource");
 		}
 
-		const entityKeys = generateKeysForEntities(
+		const entityKeys = await generateKeysForEntities(
 			entities as NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[],
 			entityType,
 			codebook,
@@ -89,13 +91,13 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 	};
 }
 
-function generateKeysForEntities(
+async function generateKeysForEntities(
 	entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[],
 	entityType: "node" | "edge" | "ego",
 	codebook: Codebook,
 	exportOptions: ExportOptions,
 	done: Set<string>,
-): DocumentFragment {
+): Promise<DocumentFragment> {
 	const fragment = createDocumentFragment();
 	const dom = new DOMImplementation().createDocument(null, "root", null);
 
@@ -103,12 +105,12 @@ function generateKeysForEntities(
 	const keyTarget = entityType === "ego" ? "graph" : entityType;
 
 	// Loop over entities
-	entities.forEach((entity) => {
+	for (const entity of entities) {
 		const elementAttributes = getEntityAttributes(entity);
 		const codebookVariables = getCodebookVariablesForEntity(entity, codebook);
 
 		// Loop over attributes for this entity
-		Object.keys(elementAttributes).forEach((variableId) => {
+		for (const variableId of Object.keys(elementAttributes)) {
 			const codebookVariable = codebookVariables[variableId];
 
 			// Test if we have already created a key for this variable, and that it
@@ -128,7 +130,7 @@ function generateKeysForEntities(
 					// If variableType is undefined, variable wasn't in the codebook (could be external data).
 					// This means that key might not be a UUID, so update the key ID to be SHA1 of variable
 					// name to ensure it is xs:NMTOKEN compliant
-					const hashedKeyName = sha1(variableId);
+					const hashedKeyName = await sha1(variableId);
 					keyElement.setAttribute("id", hashedKeyName);
 				}
 
@@ -199,12 +201,13 @@ function generateKeysForEntities(
 
 						// If there are no options, we can't create keys for this variable
 						if (!options) {
-							return;
+							break;
 						}
 
+						const hashedOptionValues = await Promise.all(options.map((option) => sha1(String(option.value))));
+
 						options.forEach((option, index) => {
-							// Hash the value to ensure that it is NKTOKEN compliant
-							const hashedOptionValue = sha1(String(option.value));
+							const hashedOptionValue = hashedOptionValues[index];
 
 							if (index === options.length - 1) {
 								keyElement.setAttribute("id", `${variableId}_${hashedOptionValue}`);
@@ -232,8 +235,8 @@ function generateKeysForEntities(
 				fragment.appendChild(keyElement);
 				done.add(variableId);
 			}
-		});
-	});
+		}
+	}
 
 	return fragment;
 }

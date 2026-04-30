@@ -11,6 +11,6 @@ export async function* graphmlBytes(
 	exportOptions: ExportOptions,
 ): AsyncIterable<Uint8Array> {
 	const formatter = new GraphMLFormatter(network, codebook, exportOptions);
-	const xml = formatter.writeToString();
+	const xml = await formatter.writeToString();
 	yield encoder.encode(xml);
 }

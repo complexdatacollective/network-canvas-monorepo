@@ -23,8 +23,8 @@ function getNodeById(nodes: Element[], id: string) {
 const getChildElements = (parentEl: Element, elements: LiveNodeList<Element>) =>
 	Array.from(elements).filter((el) => el.parentNode === parentEl);
 
-const buildXML = (...args: Parameters<typeof graphMLGenerator>) => {
-	const xmlString = graphMLGenerator(...args);
+const buildXML = async (...args: Parameters<typeof graphMLGenerator>) => {
+	const xmlString = await graphMLGenerator(...args);
 
 	const parser = new DOMParser();
 	const result = parser.parseFromString(xmlString, MIME_TYPE.XML_APPLICATION);
@@ -41,7 +41,7 @@ describe("buildGraphML", () => {
 	let exportOptions: ExportOptions;
 	let xml: Document;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		exportOptions = {
 			...mockExportOptions,
 			exportGraphML: true,
@@ -51,7 +51,7 @@ describe("buildGraphML", () => {
 		const protocolSessions = processedNetworks["protocol-uid-1"];
 		const protocolNetwork = protocolSessions?.[0];
 		if (!protocolNetwork) throw new Error("No sessions for protocol-uid-1");
-		xml = buildXML(protocolNetwork, codebook, exportOptions);
+		xml = await buildXML(protocolNetwork, codebook, exportOptions);
 	});
 
 	it("produces a graphml document", () => {
