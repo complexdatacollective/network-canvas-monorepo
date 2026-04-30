@@ -43,7 +43,7 @@ function classifyCause(
 	cause: unknown,
 ): { kind: "oom" } | { kind: "disk-full" } | { kind: "timeout" } | { kind: "connection" } | { kind: "unknown" } {
 	if (cause && typeof cause === "object" && "code" in cause) {
-		const code = (cause as { code?: unknown }).code;
+		const code = cause.code;
 		if (code === "ENOSPC") return { kind: "disk-full" };
 		if (code === "ETIMEDOUT" || code === "ESOCKETTIMEDOUT") return { kind: "timeout" };
 		if (code === "ECONNREFUSED" || code === "ECONNRESET") return { kind: "connection" };
