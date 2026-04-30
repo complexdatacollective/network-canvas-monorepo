@@ -1195,6 +1195,9 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.0
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       ohash:
         specifier: 'catalog:'
         version: 2.0.11
@@ -7317,6 +7320,9 @@ packages:
 
   fflate@0.4.8:
     resolution: {integrity: sha512-FJqqoDBR00Mdj9ppamLa/Y7vxm+PRmNWA67N846RvsoYVMKB4q3y/de5PA7gUmRMYK/8CMz2GDZQmCRN1wBcWA==}
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   file-selector@2.1.2:
     resolution: {integrity: sha512-QgXo+mXTe8ljeqUFaX3QVHc5osSItJ/Km+xpocx0aSqWGMSCf6qYs/VnzZgS864Pjn5iceMRFigeAV7AfTlaig==}
@@ -18604,6 +18610,8 @@ snapshots:
       picomatch: 4.0.4
 
   fflate@0.4.8: {}
+
+  fflate@0.8.2: {}
 
   file-selector@2.1.2:
     dependencies:
