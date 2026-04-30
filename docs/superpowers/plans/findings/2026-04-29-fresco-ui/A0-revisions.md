@@ -268,3 +268,50 @@ This reshape happens during the C1+C2 file copy (subagent rewrites the file cont
 | R6 (useProtocolForm location) | G3 (verify location during execution) |
 | R7a (useSafeLocalStorage scope) | C2 (hooks — add useSafeLocalStorage), B2 retroactively (catalog: add `usehooks-ts`), G4 (codemod rule) |
 | R7b (NoSSRWrapper reshape) | C1 (utils — reshape during copy) |
+| R8 (NativeLink split) | New C-task: extract `NativeLink` from Fresco's `components/ui/Link.tsx` into `packages/fresco-ui/src/NativeLink.tsx`. Fresco's `Link.tsx` keeps only the default Next-coupled `Link` export and moves to `components/Link.tsx` per spec §3.2 (G3). Codemod rule G4: `from '~/components/ui/Link'` is NOT migrated to `@codaco/fresco-ui/Link` — it's relocated to `~/components/Link` per G3. The two NativeLink consumers (Link.tsx itself and RenderMarkdown.tsx) handle the import differently: RenderMarkdown imports from package locally; any Fresco code importing `NativeLink` (currently zero) imports from `@codaco/fresco-ui/NativeLink` post-codemod. |
+| R9 (C6 reorder) | Original plan order (C6 primitives → C7 Button → C8 Radix → … → C12 layout → C13 typography) was wrong: `Alert.tsx` and `RenderMarkdown.tsx` (in C6) depend on layout/typography. New order: C12+C13 first (already done), then a "C6.5" task that lands Alert + NativeLink + RenderMarkdown. C6 was completed partially (9 of 11 components landed) and the deferred two will land in C6.5. |
+
+## R8 — Extract `NativeLink` from `Link.tsx`
+
+Fresco's `components/ui/Link.tsx` exports two things:
+
+- `Link` (default) — wraps `next/link`. Coupled to Next.js. Stays in Fresco per spec §3.2.
+- `NativeLink` (named) — wraps a plain `<a>`. No Next coupling. Generic. Used by `RenderMarkdown.tsx`.
+
+Since `NativeLink` is the only export `RenderMarkdown` needs (and `RenderMarkdown` is migrating), split:
+
+- Copy `NativeLink` (the named export, plus its shared className constants) into `packages/fresco-ui/src/NativeLink.tsx`.
+- The function body matches Fresco's verbatim:
+  ```tsx
+  import { cx } from './utils/cva';
+
+  const groupClasses =
+    'group text-link focusable rounded-sm font-semibold transition-all duration-300 ease-in-out';
+  const spanClasses =
+    'from-link to-link bg-linear-to-r bg-[length:0%_2px] bg-bottom-left bg-no-repeat pb-[2px] transition-all duration-200 ease-out group-hover:bg-[length:100%_2px]';
+
+  export function NativeLink({ className, ...props }: React.ComponentProps<'a'>) {
+    return (
+      <a className={cx(groupClasses, className)} {...props}>
+        <span className={spanClasses}>{props.children}</span>
+      </a>
+    );
+  }
+  ```
+- Add to allowlist: `{ subpath: './NativeLink', source: 'NativeLink.tsx' }`.
+
+Fresco-side: when Link.tsx moves to `components/Link.tsx` in Phase G3, drop the `NativeLink` export from it (no Fresco code imports it; only RenderMarkdown did, and RenderMarkdown is now in the package).
+
+## R9 — C6 reorder
+
+Original plan order was wrong (Alert/RenderMarkdown in C6 depend on layout+typography in C12/C13). Actual execution order:
+
+- C1+C2: utils + hooks ✓
+- C3: shared styles ✓
+- C4+C5: tailwind plugins + styles.css ✓
+- C6 (partial — 9 of 11): primitives without internal cross-deps ✓
+- **C12+C13: layout + typography** ✓ (moved up)
+- **C6.5: Alert + NativeLink + RenderMarkdown** (new — handles the deferred C6 items)
+- C7 onward: Button, Radix primitives, Icon/Node/Toast, Modal, RichTextRenderer, subsystems
+
+This reordering doesn't change anything later in the plan; it just resolves the dependency mismatch that surfaced.
