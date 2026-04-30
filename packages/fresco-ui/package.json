@@ -60,6 +60,7 @@
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"@biomejs/biome": "^2.4.13",
+		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vite-plugin-dts": "^5.0.0",
