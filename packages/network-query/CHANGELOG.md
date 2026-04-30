@@ -1,5 +1,16 @@
 # @codaco/network-query
 
+## 1.0.0
+
+### Major Changes
+
+- e31e28d: Substantial rewrite of `@codaco/network-query` with source converted to TypeScript and tests reorganized under `src/__tests__/`.
+
+### Patch Changes
+
+- Updated dependencies [f1dbd8d]
+  - @codaco/protocol-validation@11.4.0
+
 ## 0.1.2
 
 ### Patch Changes
