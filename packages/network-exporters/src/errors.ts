@@ -5,7 +5,7 @@ export class DatabaseError extends Data.TaggedError("NetworkExporters/DatabaseEr
 	readonly cause: unknown;
 }> {}
 
-export class FileSystemError extends Data.TaggedError("NetworkExporters/FileSystemError")<{
+export class OutputError extends Data.TaggedError("NetworkExporters/OutputError")<{
 	readonly cause: unknown;
 }> {}
 
@@ -16,24 +16,27 @@ export class ExportGenerationError extends Data.TaggedError("NetworkExporters/Ex
 	readonly partitionEntity?: string;
 }> {}
 
-export class ArchiveError extends Data.TaggedError("NetworkExporters/ArchiveError")<{
-	readonly cause: unknown;
+export class ProtocolNotFoundError extends Data.TaggedError("NetworkExporters/ProtocolNotFoundError")<{
+	readonly hash: string;
+	readonly sessionId: string;
 }> {}
 
-export class FileStorageError extends Data.TaggedError("NetworkExporters/FileStorageError")<{
+export class SessionProcessingError extends Data.TaggedError("NetworkExporters/SessionProcessingError")<{
 	readonly cause: unknown;
+	readonly stage: "format" | "insertEgo" | "resequence";
+	readonly sessionId: string;
 }> {}
 
-type ExportError = DatabaseError | FileSystemError | ArchiveError | FileStorageError;
+export type ExportError = DatabaseError | OutputError;
 
-type AnyExportError = ExportError | ExportGenerationError;
+type AnyExportError = ExportError | ExportGenerationError | ProtocolNotFoundError | SessionProcessingError;
 
 const TAG_FALLBACK_MESSAGE: Record<AnyExportError["_tag"], string> = {
 	"NetworkExporters/DatabaseError": "Database connection failed",
-	"NetworkExporters/FileSystemError": "A filesystem error occurred",
-	"NetworkExporters/ArchiveError": "Failed to create the export archive",
-	"NetworkExporters/FileStorageError": "Failed to upload the export archive",
+	"NetworkExporters/OutputError": "Output failed",
 	"NetworkExporters/ExportGenerationError": "Failed to generate an export file",
+	"NetworkExporters/ProtocolNotFoundError": "Protocol not found",
+	"NetworkExporters/SessionProcessingError": "Failed to process session",
 };
 
 function classifyCause(
@@ -64,12 +67,17 @@ export function describeExportError(error: unknown, stage?: string): string {
 		}`;
 	}
 
-	if (
-		error instanceof DatabaseError ||
-		error instanceof FileSystemError ||
-		error instanceof ArchiveError ||
-		error instanceof FileStorageError
-	) {
+	if (error instanceof ProtocolNotFoundError) {
+		return `Protocol ${error.hash} not found for session ${error.sessionId}`;
+	}
+
+	if (error instanceof SessionProcessingError) {
+		return `Failed to process session ${error.sessionId} during ${error.stage}: ${
+			error.cause instanceof Error ? error.cause.message : String(error.cause)
+		}`;
+	}
+
+	if (error instanceof DatabaseError || error instanceof OutputError) {
 		const classification = classifyCause(error.cause);
 		switch (classification.kind) {
 			case "oom":

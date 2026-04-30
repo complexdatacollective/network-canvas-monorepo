@@ -1,24 +1,21 @@
-type ExportStage = "fetching" | "formatting" | "generating" | "archiving" | "uploading";
+type ExportStage = "fetching" | "formatting" | "generating" | "outputting";
 
 export const stageMessages: Record<ExportStage, string> = {
 	fetching: "Fetching interview data...",
 	formatting: "Formatting sessions...",
 	generating: "Generating files...",
-	archiving: "Creating archive...",
-	uploading: "Uploading...",
+	outputting: "Writing output...",
 };
 
 type ExportStageEvent = {
 	type: "stage";
 	stage: ExportStage;
 	message: string;
-	current?: number;
-	total?: number;
 };
 
 type ExportProgressEvent = {
 	type: "progress";
-	stage: "generating";
+	stage: "generating" | "outputting";
 	current: number;
 	total: number;
 };

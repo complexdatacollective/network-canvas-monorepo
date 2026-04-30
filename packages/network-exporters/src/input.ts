@@ -17,7 +17,6 @@ import type {
 	sessionProperty,
 	sessionStartTimeProperty,
 } from "@codaco/shared-consts";
-import { NcNetworkSchema } from "@codaco/shared-consts";
 
 type NodeWithEgo = NcNode & {
 	[egoProperty]: string;
@@ -78,9 +77,5 @@ export type InterviewExportInput = {
 	startTime: Date;
 	finishTime: Date | null;
 	network: NcNetwork;
-	protocol: ProtocolExportInput;
-};
-
-export const parseNcNetwork = (raw: unknown): NcNetwork => {
-	return NcNetworkSchema.parse(raw);
+	protocolHash: string;
 };
