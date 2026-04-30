@@ -39,6 +39,7 @@ export const exportEntries: ExportEntry[] = [
 
 	// Modal
 	{ subpath: "./Modal", source: "Modal/Modal.tsx" },
+	{ subpath: "./Modal/ModalPopup", source: "Modal/ModalPopup.tsx" },
 
 	// Radix primitives
 	{ subpath: "./dropdown-menu", source: "dropdown-menu.tsx" },

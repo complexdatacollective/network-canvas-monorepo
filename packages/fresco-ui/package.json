@@ -91,6 +91,10 @@
 			"types": "./dist/Modal/Modal.d.ts",
 			"default": "./dist/Modal/Modal.js"
 		},
+		"./Modal/ModalPopup": {
+			"types": "./dist/Modal/ModalPopup.d.ts",
+			"default": "./dist/Modal/ModalPopup.js"
+		},
 		"./dropdown-menu": {
 			"types": "./dist/dropdown-menu.d.ts",
 			"default": "./dist/dropdown-menu.js"
