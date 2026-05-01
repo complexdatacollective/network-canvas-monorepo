@@ -1,0 +1,484 @@
+{
+	"name": "@codaco/fresco-ui",
+	"version": "2.0.1",
+	"type": "module",
+	"license": "MIT",
+	"description": "Fresco UI components, styles, and utilities",
+	"sideEffects": [
+		"**/*.css"
+	],
+	"files": [
+		"dist"
+	],
+	"exports": {
+		"./Alert": {
+			"types": "./dist/Alert.d.ts",
+			"default": "./dist/Alert.js"
+		},
+		"./Badge": {
+			"types": "./dist/Badge.d.ts",
+			"default": "./dist/Badge.js"
+		},
+		"./NativeLink": {
+			"types": "./dist/NativeLink.d.ts",
+			"default": "./dist/NativeLink.js"
+		},
+		"./Pips": {
+			"types": "./dist/Pips.d.ts",
+			"default": "./dist/Pips.js"
+		},
+		"./ProgressBar": {
+			"types": "./dist/ProgressBar.d.ts",
+			"default": "./dist/ProgressBar.js"
+		},
+		"./RenderMarkdown": {
+			"types": "./dist/RenderMarkdown.d.ts",
+			"default": "./dist/RenderMarkdown.js"
+		},
+		"./ResizableFlexPanel": {
+			"types": "./dist/ResizableFlexPanel.d.ts",
+			"default": "./dist/ResizableFlexPanel.js"
+		},
+		"./RichTextRenderer": {
+			"types": "./dist/RichTextRenderer.d.ts",
+			"default": "./dist/RichTextRenderer.js"
+		},
+		"./ScrollArea": {
+			"types": "./dist/ScrollArea.d.ts",
+			"default": "./dist/ScrollArea.js"
+		},
+		"./Skeleton": {
+			"types": "./dist/Skeleton.d.ts",
+			"default": "./dist/Skeleton.js"
+		},
+		"./Spinner": {
+			"types": "./dist/Spinner.d.ts",
+			"default": "./dist/Spinner.js"
+		},
+		"./TimeAgo": {
+			"types": "./dist/TimeAgo.d.ts",
+			"default": "./dist/TimeAgo.js"
+		},
+		"./Button": {
+			"types": "./dist/Button.d.ts",
+			"default": "./dist/Button.js"
+		},
+		"./CloseButton": {
+			"types": "./dist/CloseButton.d.ts",
+			"default": "./dist/CloseButton.js"
+		},
+		"./Icon": {
+			"types": "./dist/Icon.d.ts",
+			"default": "./dist/Icon.js"
+		},
+		"./Node": {
+			"types": "./dist/Node.d.ts",
+			"default": "./dist/Node.js"
+		},
+		"./Toast": {
+			"types": "./dist/Toast.d.ts",
+			"default": "./dist/Toast.js"
+		},
+		"./Modal": {
+			"types": "./dist/Modal/Modal.d.ts",
+			"default": "./dist/Modal/Modal.js"
+		},
+		"./Modal/ModalPopup": {
+			"types": "./dist/Modal/ModalPopup.d.ts",
+			"default": "./dist/Modal/ModalPopup.js"
+		},
+		"./DropdownMenu": {
+			"types": "./dist/DropdownMenu.d.ts",
+			"default": "./dist/DropdownMenu.js"
+		},
+		"./Popover": {
+			"types": "./dist/Popover.d.ts",
+			"default": "./dist/Popover.js"
+		},
+		"./Tooltip": {
+			"types": "./dist/Tooltip.d.ts",
+			"default": "./dist/Tooltip.js"
+		},
+		"./Table": {
+			"types": "./dist/Table.d.ts",
+			"default": "./dist/Table.js"
+		},
+		"./Label": {
+			"types": "./dist/Label.d.ts",
+			"default": "./dist/Label.js"
+		},
+		"./layout/Surface": {
+			"types": "./dist/layout/Surface.d.ts",
+			"default": "./dist/layout/Surface.js"
+		},
+		"./layout/ResponsiveContainer": {
+			"types": "./dist/layout/ResponsiveContainer.d.ts",
+			"default": "./dist/layout/ResponsiveContainer.js"
+		},
+		"./typography/Heading": {
+			"types": "./dist/typography/Heading.d.ts",
+			"default": "./dist/typography/Heading.js"
+		},
+		"./typography/Paragraph": {
+			"types": "./dist/typography/Paragraph.d.ts",
+			"default": "./dist/typography/Paragraph.js"
+		},
+		"./typography/PageHeader": {
+			"types": "./dist/typography/PageHeader.d.ts",
+			"default": "./dist/typography/PageHeader.js"
+		},
+		"./typography/UnorderedList": {
+			"types": "./dist/typography/UnorderedList.d.ts",
+			"default": "./dist/typography/UnorderedList.js"
+		},
+		"./utils/cva": {
+			"types": "./dist/utils/cva.d.ts",
+			"default": "./dist/utils/cva.js"
+		},
+		"./utils/composeEventHandlers": {
+			"types": "./dist/utils/composeEventHandlers.d.ts",
+			"default": "./dist/utils/composeEventHandlers.js"
+		},
+		"./utils/NoSSRWrapper": {
+			"types": "./dist/utils/NoSSRWrapper.d.ts",
+			"default": "./dist/utils/NoSSRWrapper.js"
+		},
+		"./hooks/useSafeAnimate": {
+			"types": "./dist/hooks/useSafeAnimate.d.ts",
+			"default": "./dist/hooks/useSafeAnimate.js"
+		},
+		"./hooks/useNodeInteractions": {
+			"types": "./dist/hooks/useNodeInteractions.d.ts",
+			"default": "./dist/hooks/useNodeInteractions.js"
+		},
+		"./hooks/usePrevious": {
+			"types": "./dist/hooks/usePrevious.d.ts",
+			"default": "./dist/hooks/usePrevious.js"
+		},
+		"./hooks/useResizablePanel": {
+			"types": "./dist/hooks/useResizablePanel.d.ts",
+			"default": "./dist/hooks/useResizablePanel.js"
+		},
+		"./hooks/useSafeLocalStorage": {
+			"types": "./dist/hooks/useSafeLocalStorage.d.ts",
+			"default": "./dist/hooks/useSafeLocalStorage.js"
+		},
+		"./styles/controlVariants": {
+			"types": "./dist/styles/controlVariants.d.ts",
+			"default": "./dist/styles/controlVariants.js"
+		},
+		"./dialogs/Dialog": {
+			"types": "./dist/dialogs/Dialog.d.ts",
+			"default": "./dist/dialogs/Dialog.js"
+		},
+		"./dialogs/DialogProvider": {
+			"types": "./dist/dialogs/DialogProvider.d.ts",
+			"default": "./dist/dialogs/DialogProvider.js"
+		},
+		"./dialogs/useDialog": {
+			"types": "./dist/dialogs/useDialog.d.ts",
+			"default": "./dist/dialogs/useDialog.js"
+		},
+		"./dialogs/useWizard": {
+			"types": "./dist/dialogs/useWizard.d.ts",
+			"default": "./dist/dialogs/useWizard.js"
+		},
+		"./dnd/dnd": {
+			"types": "./dist/dnd/dnd.d.ts",
+			"default": "./dist/dnd/dnd.js"
+		},
+		"./dnd/types": {
+			"types": "./dist/dnd/types.d.ts",
+			"default": "./dist/dnd/types.js"
+		},
+		"./dnd/useAccessibilityAnnouncements": {
+			"types": "./dist/dnd/useAccessibilityAnnouncements.d.ts",
+			"default": "./dist/dnd/useAccessibilityAnnouncements.js"
+		},
+		"./dnd/useDragSource": {
+			"types": "./dist/dnd/useDragSource.d.ts",
+			"default": "./dist/dnd/useDragSource.js"
+		},
+		"./dnd/useDropTarget": {
+			"types": "./dist/dnd/useDropTarget.d.ts",
+			"default": "./dist/dnd/useDropTarget.js"
+		},
+		"./dnd/utils": {
+			"types": "./dist/dnd/utils.d.ts",
+			"default": "./dist/dnd/utils.js"
+		},
+		"./collection/components/Collection": {
+			"types": "./dist/collection/components/Collection.d.ts",
+			"default": "./dist/collection/components/Collection.js"
+		},
+		"./collection/components/CollectionFilterInput": {
+			"types": "./dist/collection/components/CollectionFilterInput.d.ts",
+			"default": "./dist/collection/components/CollectionFilterInput.js"
+		},
+		"./collection/components/CollectionSortButton": {
+			"types": "./dist/collection/components/CollectionSortButton.d.ts",
+			"default": "./dist/collection/components/CollectionSortButton.js"
+		},
+		"./collection/dnd/useDragAndDrop": {
+			"types": "./dist/collection/dnd/useDragAndDrop.d.ts",
+			"default": "./dist/collection/dnd/useDragAndDrop.js"
+		},
+		"./collection/layout/InlineGridLayout": {
+			"types": "./dist/collection/layout/InlineGridLayout.d.ts",
+			"default": "./dist/collection/layout/InlineGridLayout.js"
+		},
+		"./collection/layout/ListLayout": {
+			"types": "./dist/collection/layout/ListLayout.d.ts",
+			"default": "./dist/collection/layout/ListLayout.js"
+		},
+		"./collection/sorting/types": {
+			"types": "./dist/collection/sorting/types.d.ts",
+			"default": "./dist/collection/sorting/types.js"
+		},
+		"./collection/types": {
+			"types": "./dist/collection/types.d.ts",
+			"default": "./dist/collection/types.js"
+		},
+		"./form/Field/Field": {
+			"types": "./dist/form/Field/Field.d.ts",
+			"default": "./dist/form/Field/Field.js"
+		},
+		"./form/Field/types": {
+			"types": "./dist/form/Field/types.d.ts",
+			"default": "./dist/form/Field/types.js"
+		},
+		"./form/Field/UnconnectedField": {
+			"types": "./dist/form/Field/UnconnectedField.d.ts",
+			"default": "./dist/form/Field/UnconnectedField.js"
+		},
+		"./form/FieldGroup": {
+			"types": "./dist/form/FieldGroup.d.ts",
+			"default": "./dist/form/FieldGroup.js"
+		},
+		"./form/FieldLabel": {
+			"types": "./dist/form/FieldLabel.d.ts",
+			"default": "./dist/form/FieldLabel.js"
+		},
+		"./form/FieldNamespace": {
+			"types": "./dist/form/FieldNamespace.d.ts",
+			"default": "./dist/form/FieldNamespace.js"
+		},
+		"./form/fields/ArrayField/ArrayField": {
+			"types": "./dist/form/fields/ArrayField/ArrayField.d.ts",
+			"default": "./dist/form/fields/ArrayField/ArrayField.js"
+		},
+		"./form/fields/Boolean": {
+			"types": "./dist/form/fields/Boolean.d.ts",
+			"default": "./dist/form/fields/Boolean.js"
+		},
+		"./form/fields/Checkbox": {
+			"types": "./dist/form/fields/Checkbox.d.ts",
+			"default": "./dist/form/fields/Checkbox.js"
+		},
+		"./form/fields/CheckboxGroup": {
+			"types": "./dist/form/fields/CheckboxGroup.d.ts",
+			"default": "./dist/form/fields/CheckboxGroup.js"
+		},
+		"./form/fields/Combobox/Combobox": {
+			"types": "./dist/form/fields/Combobox/Combobox.d.ts",
+			"default": "./dist/form/fields/Combobox/Combobox.js"
+		},
+		"./form/fields/Combobox/shared": {
+			"types": "./dist/form/fields/Combobox/shared.d.ts",
+			"default": "./dist/form/fields/Combobox/shared.js"
+		},
+		"./form/fields/DatePicker": {
+			"types": "./dist/form/fields/DatePicker.d.ts",
+			"default": "./dist/form/fields/DatePicker.js"
+		},
+		"./form/fields/getPasswordStrength": {
+			"types": "./dist/form/fields/getPasswordStrength.d.ts",
+			"default": "./dist/form/fields/getPasswordStrength.js"
+		},
+		"./form/fields/InputField": {
+			"types": "./dist/form/fields/InputField.d.ts",
+			"default": "./dist/form/fields/InputField.js"
+		},
+		"./form/fields/LikertScale": {
+			"types": "./dist/form/fields/LikertScale.d.ts",
+			"default": "./dist/form/fields/LikertScale.js"
+		},
+		"./form/fields/PasswordField": {
+			"types": "./dist/form/fields/PasswordField.d.ts",
+			"default": "./dist/form/fields/PasswordField.js"
+		},
+		"./form/fields/RadioGroup": {
+			"types": "./dist/form/fields/RadioGroup.d.ts",
+			"default": "./dist/form/fields/RadioGroup.js"
+		},
+		"./form/fields/RelativeDatePicker": {
+			"types": "./dist/form/fields/RelativeDatePicker.d.ts",
+			"default": "./dist/form/fields/RelativeDatePicker.js"
+		},
+		"./form/fields/RichSelectGroup": {
+			"types": "./dist/form/fields/RichSelectGroup.d.ts",
+			"default": "./dist/form/fields/RichSelectGroup.js"
+		},
+		"./form/fields/RichTextEditor": {
+			"types": "./dist/form/fields/RichTextEditor.d.ts",
+			"default": "./dist/form/fields/RichTextEditor.js"
+		},
+		"./form/fields/SegmentedCodeField": {
+			"types": "./dist/form/fields/SegmentedCodeField.d.ts",
+			"default": "./dist/form/fields/SegmentedCodeField.js"
+		},
+		"./form/fields/Select/Native": {
+			"types": "./dist/form/fields/Select/Native.d.ts",
+			"default": "./dist/form/fields/Select/Native.js"
+		},
+		"./form/fields/Select/Styled": {
+			"types": "./dist/form/fields/Select/Styled.d.ts",
+			"default": "./dist/form/fields/Select/Styled.js"
+		},
+		"./form/fields/TextArea": {
+			"types": "./dist/form/fields/TextArea.d.ts",
+			"default": "./dist/form/fields/TextArea.js"
+		},
+		"./form/fields/ToggleButtonGroup": {
+			"types": "./dist/form/fields/ToggleButtonGroup.d.ts",
+			"default": "./dist/form/fields/ToggleButtonGroup.js"
+		},
+		"./form/fields/ToggleField": {
+			"types": "./dist/form/fields/ToggleField.d.ts",
+			"default": "./dist/form/fields/ToggleField.js"
+		},
+		"./form/fields/ToggleFieldSkeleton": {
+			"types": "./dist/form/fields/ToggleFieldSkeleton.d.ts",
+			"default": "./dist/form/fields/ToggleFieldSkeleton.js"
+		},
+		"./form/fields/VisualAnalogScale": {
+			"types": "./dist/form/fields/VisualAnalogScale.d.ts",
+			"default": "./dist/form/fields/VisualAnalogScale.js"
+		},
+		"./form/Form": {
+			"types": "./dist/form/Form.d.ts",
+			"default": "./dist/form/Form.js"
+		},
+		"./form/SubmitButton": {
+			"types": "./dist/form/SubmitButton.d.ts",
+			"default": "./dist/form/SubmitButton.js"
+		},
+		"./form/hooks/useField": {
+			"types": "./dist/form/hooks/useField.d.ts",
+			"default": "./dist/form/hooks/useField.js"
+		},
+		"./form/hooks/useFormState": {
+			"types": "./dist/form/hooks/useFormState.d.ts",
+			"default": "./dist/form/hooks/useFormState.js"
+		},
+		"./form/hooks/useFormStore": {
+			"types": "./dist/form/hooks/useFormStore.d.ts",
+			"default": "./dist/form/hooks/useFormStore.js"
+		},
+		"./form/hooks/useFormValue": {
+			"types": "./dist/form/hooks/useFormValue.d.ts",
+			"default": "./dist/form/hooks/useFormValue.js"
+		},
+		"./form/store/formStoreProvider": {
+			"types": "./dist/form/store/formStoreProvider.d.ts",
+			"default": "./dist/form/store/formStoreProvider.js"
+		},
+		"./form/store/types": {
+			"types": "./dist/form/store/types.d.ts",
+			"default": "./dist/form/store/types.js"
+		},
+		"./form/utils/focusFirstError": {
+			"types": "./dist/form/utils/focusFirstError.d.ts",
+			"default": "./dist/form/utils/focusFirstError.js"
+		},
+		"./form/utils/getInputState": {
+			"types": "./dist/form/utils/getInputState.d.ts",
+			"default": "./dist/form/utils/getInputState.js"
+		},
+		"./form/utils/ymd": {
+			"types": "./dist/form/utils/ymd.d.ts",
+			"default": "./dist/form/utils/ymd.js"
+		},
+		"./styles.css": "./dist/styles.css"
+	},
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --build --noEmit",
+		"test": "vitest run",
+		"test:unit": "vitest run --project=unit",
+		"test:storybook": "vitest run --project=storybook",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build",
+		"prepublishOnly": "pnpm build",
+		"clean": "rm -rf .turbo node_modules dist"
+	},
+	"peerDependencies": {
+		"@codaco/protocol-validation": "11.4.0-alpha.0",
+		"@codaco/shared-consts": "5.0.0",
+		"@codaco/tailwind-config": "workspace:^",
+		"immer": "^11.1.4",
+		"motion": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"tailwindcss": "catalog:",
+		"zod": "catalog:",
+		"zustand": "^5.0.12"
+	},
+	"dependencies": {
+		"@base-ui/react": "1.4.0",
+		"@radix-ui/react-slot": "catalog:",
+		"@tiptap/core": "^3.22.3",
+		"@tiptap/extension-bullet-list": "^3.22.3",
+		"@tiptap/extension-heading": "^3.22.3",
+		"@tiptap/extension-ordered-list": "^3.22.3",
+		"@tiptap/extension-paragraph": "^3.22.3",
+		"@tiptap/pm": "^3.22.4",
+		"@tiptap/react": "^3.22.3",
+		"@tiptap/starter-kit": "^3.22.3",
+		"comlink": "^4.4.2",
+		"cva": "1.0.0-beta.4",
+		"es-toolkit": "catalog:",
+		"fuse.js": "^7.3.0",
+		"lucide-react": "catalog:",
+		"nanoid": "^5.1.9",
+		"react-aria-components": "^1.16.0",
+		"react-best-merge-refs": "^1.0.2",
+		"react-markdown": "^10.1.0",
+		"rehype-raw": "^7.0.0",
+		"rehype-sanitize": "^6.0.0",
+		"remark-gemoji": "^8.0.0",
+		"tailwind-merge": "catalog:",
+		"usehooks-ts": "^3.1.1"
+	},
+	"devDependencies": {
+		"@chromatic-com/storybook": "^5.1.2",
+		"@codaco/tsconfig": "workspace:*",
+		"@faker-js/faker": "catalog:",
+		"@storybook/addon-a11y": "^10.3.5",
+		"@storybook/addon-docs": "^10.3.5",
+		"@storybook/addon-vitest": "^10.3.5",
+		"@storybook/react-vite": "^10.3.5",
+		"@tailwindcss/vite": "catalog:",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.0",
+		"@testing-library/user-event": "^14.6.1",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@vitejs/plugin-react": "catalog:",
+		"@vitest/browser": "^4.1.5",
+		"@vitest/browser-playwright": "^4.1.5",
+		"chromatic": "^16.2.0",
+		"jsdom": "^29.0.2",
+		"playwright": "^1.59.1",
+		"storybook": "^10.3.5",
+		"tinyglobby": "^0.2.0",
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:",
+		"vitest": "catalog:"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

@@ -1,10 +1,27 @@
 {
 	"name": "@codaco/tailwind-config",
-	"version": "0.1.0",
-	"private": true,
+	"version": "0.4.0",
+	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
 	"type": "module",
+	"sideEffects": [
+		"**/*.css"
+	],
+	"files": [
+		"base.ts",
+		"fresco.ts",
+		"globals.css",
+		"fresco"
+	],
 	"exports": {
 		"./fresco": "./fresco.ts",
+		"./fresco/theme.css": "./fresco/theme.css",
+		"./fresco/colors.css": "./fresco/colors.css",
+		"./fresco/default-theme.css": "./fresco/default-theme.css",
+		"./fresco/interview-theme.css": "./fresco/interview-theme.css",
+		"./fresco/fonts.css": "./fresco/fonts.css",
+		"./fresco/plugins/elevation/elevation": "./fresco/plugins/elevation/elevation.ts",
+		"./fresco/plugins/inset-surface/inset-surface": "./fresco/plugins/inset-surface/inset-surface.ts",
+		"./fresco/plugins/motion-spring": "./fresco/plugins/motion-spring.ts",
 		"./base": "./base.ts",
 		"./globals.css": "./globals.css"
 	},
@@ -14,11 +31,15 @@
 		"typecheck": "tsgo --noEmit"
 	},
 	"dependencies": {
+		"motion": "catalog:",
 		"tailwindcss": "catalog:",
 		"tailwindcss-animate": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"typescript": "catalog:"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }
