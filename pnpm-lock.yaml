@@ -9,12 +9,33 @@ catalogs:
     '@faker-js/faker':
       specifier: ^10.4.0
       version: 10.4.0
+    '@next/bundle-analyzer':
+      specifier: ^16.2.4
+      version: 16.2.4
+    '@next/third-parties':
+      specifier: ^16.2.4
+      version: 16.2.4
+    '@posthog/react':
+      specifier: ^1.9.0
+      version: 1.9.0
     '@radix-ui/react-dialog':
       specifier: ^1.1.15
       version: 1.1.15
     '@radix-ui/react-slot':
       specifier: ^1.2.4
       version: 1.2.4
+    '@tailwindcss/container-queries':
+      specifier: ^0.1.1
+      version: 0.1.1
+    '@tailwindcss/postcss':
+      specifier: ^4.2.4
+      version: 4.2.4
+    '@tailwindcss/typography':
+      specifier: ^0.5.19
+      version: 0.5.19
+    '@tailwindcss/vite':
+      specifier: ^4.2.4
+      version: 4.2.4
     '@types/node':
       specifier: ^22.19.17
       version: 22.19.17
@@ -42,6 +63,9 @@ catalogs:
     motion:
       specifier: ^12.38.0
       version: 12.38.0
+    next:
+      specifier: ^16.2.4
+      version: 16.2.4
     posthog-js:
       specifier: ^1.372.2
       version: 1.372.2
@@ -57,6 +81,9 @@ catalogs:
     tailwindcss:
       specifier: ^4.2.4
       version: 4.2.4
+    tailwindcss-animate:
+      specifier: ^1.0.7
+      version: 1.0.7
     tsx:
       specifier: ^4.21.0
       version: 4.21.0
@@ -401,7 +428,7 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.5)(redux@5.0.1))(react@19.2.5)
       '@tailwindcss/vite':
-        specifier: ^4.2.4
+        specifier: 'catalog:'
         version: 4.2.4(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@tippyjs/react':
         specifier: ^4.2.6
@@ -621,13 +648,13 @@ importers:
         specifier: ^0.0.206
         version: 0.0.206(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@next/bundle-analyzer':
-        specifier: ^16.2.4
+        specifier: 'catalog:'
         version: 16.2.4(bufferutil@4.1.0)
       '@next/third-parties':
-        specifier: ^16.2.4
+        specifier: 'catalog:'
         version: 16.2.4(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react@19.2.5)
       '@posthog/react':
-        specifier: ^1.9.0
+        specifier: 'catalog:'
         version: 1.9.0(@types/react@19.2.14)(posthog-js@1.372.2)(react@19.2.5)
       '@radix-ui/react-dialog':
         specifier: 'catalog:'
@@ -660,7 +687,7 @@ importers:
         specifier: 'catalog:'
         version: 12.38.0(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next:
-        specifier: ^16.2.4
+        specifier: 'catalog:'
         version: 16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
       next-intl:
         specifier: ^4.9.1
@@ -691,13 +718,13 @@ importers:
         specifier: ^2.1.4
         version: 2.1.4
       '@tailwindcss/container-queries':
-        specifier: ^0.1.1
+        specifier: 'catalog:'
         version: 0.1.1(tailwindcss@4.2.4)
       '@tailwindcss/postcss':
-        specifier: ^4.2.4
+        specifier: 'catalog:'
         version: 4.2.4
       '@tailwindcss/typography':
-        specifier: ^0.5.19
+        specifier: 'catalog:'
         version: 0.5.19(tailwindcss@4.2.4)
       '@types/hast':
         specifier: ^3.0.4
@@ -1505,7 +1532,7 @@ importers:
         specifier: 'catalog:'
         version: 4.2.4
       tailwindcss-animate:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(tailwindcss@4.2.4)
     devDependencies:
       '@codaco/tsconfig':
@@ -6542,11 +6569,6 @@ packages:
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
-  baseline-browser-mapping@2.10.10:
-    resolution: {integrity: sha512-sUoJ3IMxx4AyRqO4MLeHlnGDkyXRoUG0/AI9fjK+vS72ekpV0yWVY7O0BVjmBcRtkNcsAO2QDZ4tdKKGoI6YaQ==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
-
   baseline-browser-mapping@2.10.23:
     resolution: {integrity: sha512-xwVXGqevyKPsiuQdLj+dZMVjidjJV508TBqexND5HrF89cGdCYCJFB3qhcxRHSeMctdCfbR1jrxBajhDy7o29g==}
     engines: {node: '>=6.0.0'}
@@ -7565,10 +7587,6 @@ packages:
 
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
-
-  enhanced-resolve@5.20.1:
-    resolution: {integrity: sha512-Qohcme7V1inbAfvjItgw0EaxVX5q2rdVEZHRBrEQdRZTssLDGsL8Lwrznl8oQ/6kuTJONLaDcGjkNP247XEhcA==}
-    engines: {node: '>=10.13.0'}
 
   enhanced-resolve@5.21.0:
     resolution: {integrity: sha512-otxSQPw4lkOZWkHpB3zaEQs6gWYEsmX4xQF68ElXC/TWvGxGMSGOvoNbaLXm6/cS/fSfHtsEdw90y20PCd+sCA==}
@@ -11638,10 +11656,6 @@ packages:
 
   tailwindcss@4.2.4:
     resolution: {integrity: sha512-HhKppgO81FQof5m6TEnuBWCZGgfRAWbaeOaGT00KOy/Pf/j6oUihdvBpA7ltCeAvZpFhW3j0PTclkxsd4IXYDA==}
-
-  tapable@2.3.2:
-    resolution: {integrity: sha512-1MOpMXuhGzGL5TTCZFItxCc0AARf1EZFQkGqMm7ERKj8+Hgr5oLvJOVFcC+lRmR8hCe2S3jC4T5D7Vg/d7/fhA==}
-    engines: {node: '>=6'}
 
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
@@ -16740,7 +16754,7 @@ snapshots:
   '@tailwindcss/node@4.2.4':
     dependencies:
       '@jridgewell/remapping': 2.3.5
-      enhanced-resolve: 5.20.1
+      enhanced-resolve: 5.21.0
       jiti: 2.6.1
       lightningcss: 1.32.0
       magic-string: 0.30.21
@@ -18212,8 +18226,6 @@ snapshots:
 
   base64-js@1.5.1: {}
 
-  baseline-browser-mapping@2.10.10: {}
-
   baseline-browser-mapping@2.10.23: {}
 
   bcrypt-pbkdf@1.0.2:
@@ -18326,7 +18338,7 @@ snapshots:
 
   browserslist@4.28.1:
     dependencies:
-      baseline-browser-mapping: 2.10.10
+      baseline-browser-mapping: 2.10.23
       caniuse-lite: 1.0.30001791
       electron-to-chromium: 1.5.325
       node-releases: 2.0.36
@@ -19446,11 +19458,6 @@ snapshots:
   end-of-stream@1.4.5:
     dependencies:
       once: 1.4.0
-
-  enhanced-resolve@5.20.1:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.3.2
 
   enhanced-resolve@5.21.0:
     dependencies:
@@ -24800,8 +24807,6 @@ snapshots:
       tailwindcss: 4.2.4
 
   tailwindcss@4.2.4: {}
-
-  tapable@2.3.2: {}
 
   tapable@2.3.3: {}
 

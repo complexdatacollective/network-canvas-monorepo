@@ -17,7 +17,7 @@
 		"@codaco/tsconfig": "workspace:*",
 		"@productboard/slate-edit-list": "^0.21.5",
 		"@reduxjs/toolkit": "^2.11.2",
-		"@tailwindcss/vite": "^4.2.4",
+		"@tailwindcss/vite": "catalog:",
 		"@tippyjs/react": "^4.2.6",
 		"@types/redux-logger": "^3.0.13",
 		"animejs": "^2.2.0",
