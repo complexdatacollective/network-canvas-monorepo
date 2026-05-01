@@ -167,18 +167,6 @@
 			"types": "./dist/styles/controlVariants.d.ts",
 			"default": "./dist/styles/controlVariants.js"
 		},
-		"./styles/plugins/elevation": {
-			"types": "./dist/styles/plugins/elevation/elevation.d.ts",
-			"default": "./dist/styles/plugins/elevation/elevation.js"
-		},
-		"./styles/plugins/inset-surface": {
-			"types": "./dist/styles/plugins/inset-surface/inset-surface.d.ts",
-			"default": "./dist/styles/plugins/inset-surface/inset-surface.js"
-		},
-		"./styles/plugins/motion-spring": {
-			"types": "./dist/styles/plugins/motion-spring.d.ts",
-			"default": "./dist/styles/plugins/motion-spring.js"
-		},
 		"./dialogs/Dialog": {
 			"types": "./dist/dialogs/Dialog.d.ts",
 			"default": "./dist/dialogs/Dialog.js"
@@ -411,14 +399,15 @@
 			"types": "./dist/form/utils/ymd.d.ts",
 			"default": "./dist/form/utils/ymd.js"
 		},
-		"./styles.css": "./dist/styles.css",
-		"./styles/colors.css": "./dist/styles/colors.css"
+		"./styles.css": "./dist/styles.css"
 	},
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --build --noEmit",
 		"test": "vitest run",
+		"test:unit": "vitest run --project=unit",
+		"test:storybook": "vitest run --project=storybook",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
 		"prepublishOnly": "pnpm build",
@@ -437,6 +426,7 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "catalog:",
+		"@codaco/tailwind-config": "workspace:*",
 		"@radix-ui/react-slot": "catalog:",
 		"@tiptap/core": "catalog:",
 		"@tiptap/extension-bullet-list": "catalog:",
@@ -476,8 +466,11 @@
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "^5.2.0",
+		"@vitest/browser": "^4.1.5",
+		"@vitest/browser-playwright": "^4.1.5",
 		"chromatic": "^16.2.0",
 		"jsdom": "catalog:",
+		"playwright": "^1.59.1",
 		"storybook": "^10.3.5",
 		"tinyglobby": "^0.2.0",
 		"typescript": "catalog:",

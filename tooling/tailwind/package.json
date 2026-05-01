@@ -5,6 +5,12 @@
 	"type": "module",
 	"exports": {
 		"./fresco": "./fresco.ts",
+		"./fresco/theme.css": "./fresco/theme.css",
+		"./fresco/colors.css": "./fresco/colors.css",
+		"./fresco/default-theme.css": "./fresco/default-theme.css",
+		"./fresco/plugins/elevation/elevation": "./fresco/plugins/elevation/elevation.ts",
+		"./fresco/plugins/inset-surface/inset-surface": "./fresco/plugins/inset-surface/inset-surface.ts",
+		"./fresco/plugins/motion-spring": "./fresco/plugins/motion-spring.ts",
 		"./base": "./base.ts",
 		"./globals.css": "./globals.css"
 	},
@@ -14,6 +20,7 @@
 		"typecheck": "tsgo --noEmit"
 	},
 	"dependencies": {
+		"motion": "catalog:",
 		"tailwindcss": "catalog:",
 		"tailwindcss-animate": "catalog:"
 	},
