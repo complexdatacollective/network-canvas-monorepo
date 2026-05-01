@@ -6,8 +6,9 @@ import isChromatic from "chromatic/isChromatic";
 import { StrictMode } from "react";
 import Providers from "./Providers";
 import "../src/styles.css";
-import "./themes/default.css";
-import "./themes/interview.css";
+import "@codaco/tailwind-config/fresco/fonts.css";
+import "@codaco/tailwind-config/fresco/default-theme.css";
+import "@codaco/tailwind-config/fresco/interview-theme.css";
 import { getInitialTheme, globalTypes, withTheme } from "./theme-switcher";
 
 // @chromatic-com/storybook is not included here because it doesn't export a
