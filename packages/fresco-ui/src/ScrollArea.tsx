@@ -8,12 +8,6 @@ type ScrollSnapType = "mandatory" | "proximity";
 
 type ScrollSnapAxis = "x" | "y" | "both";
 
-// Props that should go on the viewport (inner scrollable element) rather than the container
-type ViewportProps = Pick<
-	React.HTMLAttributes<HTMLDivElement>,
-	"onKeyDown" | "onKeyUp" | "onFocus" | "onBlur" | "tabIndex"
->;
-
 type ScrollAreaProps = {
 	viewportClassName?: string;
 	/** Whether to show gradient fade at scroll edges. Defaults to true. */
@@ -33,22 +27,10 @@ type ScrollAreaProps = {
 	remeasureKey?: unknown;
 	/** Optional accessible label for the scroll region. */
 	"aria-label"?: string;
-} & ViewportProps &
-	Omit<
-		React.HTMLAttributes<HTMLElement>,
-		| "onDrag"
-		| "onDragEnd"
-		| "onDragStart"
-		| "onAnimationStart"
-		| "onAnimationEnd"
-		| "onAnimationIteration"
-		// Viewport props - handled separately
-		| "onKeyDown"
-		| "onKeyUp"
-		| "onFocus"
-		| "onBlur"
-		| "tabIndex"
-	>;
+} & Omit<
+	React.HTMLAttributes<HTMLElement>,
+	"onDrag" | "onDragEnd" | "onDragStart" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"
+>;
 
 const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
 	(
@@ -61,12 +43,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
 			snap,
 			snapAxis = "both",
 			remeasureKey,
-			// Viewport props - these go on the inner scrollable element
-			onKeyDown,
-			onKeyUp,
-			onFocus,
-			onBlur,
-			tabIndex,
+			tabIndex = 0,
 			...rest
 		},
 		ref,
@@ -167,11 +144,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
 			<div className={cx("relative flex h-full min-h-0 flex-1", className)}>
 				<section
 					ref={useMergeRefs({ viewportRef, ref })}
-					tabIndex={tabIndex ?? 0}
-					onKeyDown={onKeyDown}
-					onKeyUp={onKeyUp}
-					onFocus={onFocus}
-					onBlur={onBlur}
+					tabIndex={tabIndex}
 					className={cx(
 						"focusable",
 						"py-2",
