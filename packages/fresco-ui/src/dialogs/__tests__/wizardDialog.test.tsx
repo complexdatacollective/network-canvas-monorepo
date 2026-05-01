@@ -9,7 +9,11 @@ import { useWizard } from "../useWizard";
 function SimpleStep() {
 	const { setStepData } = useWizard();
 
-	return <button type="button" onClick={() => setStepData({ step1: "done" })}>Set Data</button>;
+	return (
+		<button type="button" onClick={() => setStepData({ step1: "done" })}>
+			Set Data
+		</button>
+	);
 }
 
 function SecondStep() {
@@ -18,7 +22,9 @@ function SecondStep() {
 	return (
 		<div>
 			<span data-testid="step1-data">{typeof data.step1 === "string" ? data.step1 : ""}</span>
-			<button type="button" onClick={() => setStepData({ step2: "done" })}>Set Data 2</button>
+			<button type="button" onClick={() => setStepData({ step2: "done" })}>
+				Set Data 2
+			</button>
 		</div>
 	);
 }
@@ -51,7 +57,11 @@ function TestWizardComponent({
 		onResult(result);
 	};
 
-	return <button type="button" onClick={handleOpen}>Open</button>;
+	return (
+		<button type="button" onClick={handleOpen}>
+			Open
+		</button>
+	);
 }
 
 describe("useWizard hook", () => {
@@ -260,7 +270,11 @@ describe("Wizard Dialog with setNextEnabled", () => {
 			onResult(result);
 		};
 
-		return <button type="button" onClick={handleOpen}>Open</button>;
+		return (
+			<button type="button" onClick={handleOpen}>
+				Open
+			</button>
+		);
 	}
 
 	it("should disable Continue when setNextEnabled(false) is called", async () => {
@@ -296,8 +310,12 @@ describe("Wizard Dialog resetStepOverrides", () => {
 
 			return (
 				<div>
-					<button type="button" onClick={() => setNextEnabled(false)}>Disable</button>
-					<button type="button" onClick={() => setNextEnabled(true)}>Enable</button>
+					<button type="button" onClick={() => setNextEnabled(false)}>
+						Disable
+					</button>
+					<button type="button" onClick={() => setNextEnabled(true)}>
+						Enable
+					</button>
 				</div>
 			);
 		}
@@ -390,10 +408,18 @@ describe("Wizard Dialog goToStep", () => {
 		return (
 			<div>
 				<span data-testid="current-step">{currentStep}</span>
-				<button type="button" onClick={() => goToStep(-1)}>Go Negative</button>
-				<button type="button" onClick={() => goToStep(totalSteps)}>Go Past End</button>
-				<button type="button" onClick={() => goToStep(0)}>Go To 0</button>
-				<button type="button" onClick={() => goToStep(2)}>Go To 2</button>
+				<button type="button" onClick={() => goToStep(-1)}>
+					Go Negative
+				</button>
+				<button type="button" onClick={() => goToStep(totalSteps)}>
+					Go Past End
+				</button>
+				<button type="button" onClick={() => goToStep(0)}>
+					Go To 0
+				</button>
+				<button type="button" onClick={() => goToStep(2)}>
+					Go To 2
+				</button>
 			</div>
 		);
 	}
@@ -475,7 +501,11 @@ describe("Wizard Dialog setBeforeNext", () => {
 			onResult(result);
 		};
 
-		return <button type="button" onClick={handleOpen}>Open</button>;
+		return (
+			<button type="button" onClick={handleOpen}>
+				Open
+			</button>
+		);
 	}
 
 	it("should block navigation when beforeNext returns false", async () => {
@@ -638,7 +668,11 @@ describe("Wizard Dialog setBeforeNext", () => {
 				onRes(result);
 			};
 
-			return <button type="button" onClick={handleOpen}>Open</button>;
+			return (
+				<button type="button" onClick={handleOpen}>
+					Open
+				</button>
+			);
 		}
 
 		render(
@@ -752,7 +786,9 @@ describe("Wizard Dialog setBeforeNext", () => {
 			return (
 				<div>
 					<span data-testid="skip-state">{skipMiddle ? "on" : "off"}</span>
-					<button type="button" onClick={() => setStepData({ skipMiddle: !skipMiddle })}>Toggle skip</button>
+					<button type="button" onClick={() => setStepData({ skipMiddle: !skipMiddle })}>
+						Toggle skip
+					</button>
 				</div>
 			);
 		}
@@ -858,7 +894,9 @@ describe("Wizard Dialog skip", () => {
 			return (
 				<div>
 					<span data-testid="skip-state">{skipMiddle ? "on" : "off"}</span>
-					<button type="button" onClick={() => setStepData({ skipMiddle: !skipMiddle })}>Toggle skip</button>
+					<button type="button" onClick={() => setStepData({ skipMiddle: !skipMiddle })}>
+						Toggle skip
+					</button>
 				</div>
 			);
 		}

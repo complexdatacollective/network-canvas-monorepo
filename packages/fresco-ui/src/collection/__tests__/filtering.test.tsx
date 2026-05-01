@@ -98,8 +98,12 @@ function FilterManagerConsumer() {
 			<span data-testid="query">{filterManager.query}</span>
 			<span data-testid="is-filtering">{filterManager.isFiltering.toString()}</span>
 			<span data-testid="has-active-filter">{filterManager.hasActiveFilter.toString()}</span>
-			<button type="button" onClick={() => filterManager.setQuery("test")}>Set Query</button>
-			<button type="button" onClick={() => filterManager.clearFilter()}>Clear</button>
+			<button type="button" onClick={() => filterManager.setQuery("test")}>
+				Set Query
+			</button>
+			<button type="button" onClick={() => filterManager.clearFilter()}>
+				Clear
+			</button>
 		</div>
 	);
 }
@@ -301,7 +305,9 @@ describe("Collection Filtering", () => {
 				const [query, setQuery] = useState("initial");
 				return (
 					<>
-						<button type="button" onClick={() => setQuery("updated")}>Update Query</button>
+						<button type="button" onClick={() => setQuery("updated")}>
+							Update Query
+						</button>
 						<FilterableCollection filterQuery={query} />
 					</>
 				);

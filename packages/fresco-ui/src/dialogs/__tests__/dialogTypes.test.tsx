@@ -328,8 +328,12 @@ describe("Dialog button actions", () => {
 
 		return (
 			<div>
-				<button type="button" onClick={openAcknowledgeDialog}>Open Acknowledge</button>
-				<button type="button" onClick={openChoiceDialog}>Open Choice</button>
+				<button type="button" onClick={openAcknowledgeDialog}>
+					Open Acknowledge
+				</button>
+				<button type="button" onClick={openChoiceDialog}>
+					Open Choice
+				</button>
 				<div data-testid="result">{lastResult === undefined ? "No result" : JSON.stringify(lastResult)}</div>
 			</div>
 		);
@@ -455,7 +459,11 @@ describe("Dialog button actions", () => {
 				onResult(result);
 			};
 
-			return <button type="button" onClick={handleOpen}>Test</button>;
+			return (
+				<button type="button" onClick={handleOpen}>
+					Test
+				</button>
+			);
 		}
 
 		render(
@@ -507,7 +515,11 @@ describe("confirm with async onConfirm", () => {
 			onResult(result);
 		};
 
-		return <button type="button" onClick={handleClick}>Open Async Confirm</button>;
+		return (
+			<button type="button" onClick={handleClick}>
+				Open Async Confirm
+			</button>
+		);
 	}
 
 	it("should return true when async onConfirm completes successfully", async () => {

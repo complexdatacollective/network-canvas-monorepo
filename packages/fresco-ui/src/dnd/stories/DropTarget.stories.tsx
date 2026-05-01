@@ -277,7 +277,8 @@ export const VisualFeedback: Story = {
 							eventLog.map((log, i) => <div key={i}>{log}</div>)
 						)}
 					</div>
-					<button type="button"
+					<button
+						type="button"
 						onClick={() => setEventLog([])}
 						style={{
 							marginTop: "8px",

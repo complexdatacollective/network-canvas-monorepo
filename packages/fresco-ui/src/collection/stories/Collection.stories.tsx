@@ -263,7 +263,8 @@ function PrimaryStoryRender(args: PrimaryStoryArgs) {
 				<button type="button" onClick={addItem} className="focusable bg-surface-1 rounded px-3 py-1 text-sm">
 					Add Item
 				</button>
-				<button type="button"
+				<button
+					type="button"
 					onClick={removeItem}
 					disabled={items.length === 0}
 					className="focusable bg-surface-1 rounded px-3 py-1 text-sm disabled:opacity-50"
