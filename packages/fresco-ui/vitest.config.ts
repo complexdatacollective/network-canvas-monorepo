@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
@@ -8,7 +9,7 @@ import { defineConfig } from "vitest/config";
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-	plugins: [react()],
+	plugins: [react(), tailwindcss()],
 	// `fuse.js` is imported lazily by the inlined search worker, so Vite's static
 	// scanner doesn't see it before the first browser test starts. Pre-bundling it
 	// here keeps Playwright's connection from being torn down by a mid-test
