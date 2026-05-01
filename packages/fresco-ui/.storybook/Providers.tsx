@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import DialogProvider from "../src/dialogs/DialogProvider";
 import { DndStoreProvider } from "../src/dnd/DndStoreProvider";
 import { Toaster } from "../src/Toast";
-import { TooltipProvider } from "../src/tooltip";
+import { TooltipProvider } from "../src/Tooltip";
 
 declare global {
 	// eslint-disable-next-line no-var

@@ -9,6 +9,11 @@
 
 @import "tailwindcss";
 
+/* Google Fonts @import for Nunito (heading font). MUST come before any
+   rule-producing import so it lands at the top of the CSS stream — CSS
+   spec requires `@import` to precede all rules except @charset / @layer. */
+@import "@codaco/tailwind-config/fresco/fonts.css";
+
 /* NC palette channel triplets (oklch L C H). The relative-color values used
    in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
 @import "@codaco/tailwind-config/fresco/colors.css";

@@ -1,0 +1,13 @@
+/*
+ * @codaco/tailwind-config — Fresco font loading
+ *
+ * Loads Nunito (used by `--font-heading` in default-theme.css). Imported
+ * separately so the Google Fonts `@import` lands at the top of the CSS
+ * stream, before any rule-producing imports — CSS spec requires `@import`
+ * statements to precede all other rules.
+ *
+ * Consumers that self-host fonts should skip this file and provide their
+ * own font-loading mechanism.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap');

@@ -6,12 +6,10 @@
  * on top of this by re-declaring the same variables in their own
  * `@layer theme` block.
  *
- * Loads Nunito (used for `--font-heading`) from Google Fonts. Consumers
- * that need to self-host fonts should skip this file and provide their
- * own theme values.
+ * The Nunito font referenced by `--heading-font` is loaded from `fonts.css`
+ * (imported separately so its `@import url(...)` lands at the top of the
+ * CSS stream, as the CSS spec requires).
  */
-
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap');
 
 @layer theme {
   :root {

@@ -124,6 +124,9 @@ jobs:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
 
+      - name: Install Playwright Chromium (for fresco-ui storybook tests)
+        run: pnpm --filter @codaco/fresco-ui exec playwright install --with-deps chromium
+
       - name: Create .env file and run tests
         run: |
           echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
