@@ -54,7 +54,7 @@
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^12.1.5",
 		"@tippyjs/react": "^4.2.6",
-		"@vitejs/plugin-react": "^5.2.0",
+		"@vitejs/plugin-react": "catalog:",
 		"@vitest/coverage-v8": "^4.1.1",
 		"animejs": "^2.2.0",
 		"archiver": "^7.0.1",

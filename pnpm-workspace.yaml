@@ -40,6 +40,7 @@ catalog:
   '@types/node': ^22.19.17
   '@types/react': ^19.2.14
   '@types/react-dom': ^19.2.3
+  '@vitejs/plugin-react': ^6.0.1
   '@xmldom/xmldom': ^0.9.9
   archiver: ^7.0.1
   class-variance-authority: 0.7.1
