@@ -40,12 +40,19 @@ export type ExtractValue<C extends ValidFieldComponent> = "value" extends keyof 
 
 /**
  * Constraint for valid field components.
- * Components must accept value and onChange props compatible with FieldValue.
  *
- * No way around the any here due to the dynamic nature of component props.
+ * Components passed to Field/UnconnectedField are required to accept
+ * value/onChange (FieldValueProps) and the props Field/UnconnectedField
+ * inject (InjectedFieldProps). They typically declare those plus
+ * additional custom props via CreateFormFieldProps.
+ *
+ * The constraint is contravariant in its prop shape, so any concrete
+ * component whose props extend the required field-state shape satisfies
+ * it. Field/UnconnectedField are generic over `C extends ValidFieldComponent`
+ * so `React.ComponentProps<C>` still resolves to the consumer's concrete
+ * prop shape at the call site.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ValidFieldComponent = React.ComponentType<any>;
+export type ValidFieldComponent = React.ComponentType<FieldValueProps<FieldValue> & InjectedFieldProps>;
 
 // ═══════════════════════════════════════════════════════════════
 // Value-based validation prop inference

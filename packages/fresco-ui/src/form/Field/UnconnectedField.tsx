@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutGroup } from "motion/react";
-import { type ReactNode, useId } from "react";
+import { createElement, type ReactNode, useId } from "react";
 import type { ValidationContext } from "../store/types";
 import type { ValidationPropKey } from "../validation/functions";
 import { BaseField } from "./BaseField";
@@ -68,20 +68,30 @@ type UnconnectedFieldProps<C extends ValidFieldComponent> = FieldOwnProps<C> &
  * ```
  */
 export default function UnconnectedField<C extends ValidFieldComponent>({
-	id: providedId,
 	label,
 	hint,
 	inline,
-	required,
 	errors,
 	showErrors,
-	component: Component,
+	component,
 	...componentProps
 }: UnconnectedFieldProps<C>) {
-	const generatedId = useId();
-	const id = providedId ?? generatedId;
+	const id = useId();
+	const required = Boolean(componentProps.required);
 
 	const describedBy = [hint && `${id}-hint`, errors?.length && `${id}-error`].filter(Boolean).join(" ");
+
+	// Use createElement instead of JSX so we can hand React the merged props
+	// without TS demanding they match the narrow ValidFieldComponent shape.
+	// ValidFieldComponent only encodes the minimum required by Field — the
+	// concrete component declared by the consumer accepts these merged props
+	// because UnconnectedFieldProps is built from React.ComponentProps<C>.
+	const mergedProps: React.ComponentProps<C> = {
+		...componentProps,
+		id,
+		"aria-required": required,
+		"aria-describedby": describedBy || undefined,
+	} as React.ComponentProps<C>;
 
 	return (
 		<LayoutGroup id={id}>
@@ -90,17 +100,11 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
 				label={label}
 				hint={hint}
 				inline={inline}
-				required={Boolean(componentProps.required)}
+				required={required}
 				errors={errors}
 				showErrors={showErrors}
 			>
-				<Component
-					id={id}
-					aria-required={required ?? false}
-					aria-describedby={describedBy || undefined}
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					{...(componentProps as any)}
-				/>
+				{createElement(component, mergedProps)}
 			</BaseField>
 		</LayoutGroup>
 	);

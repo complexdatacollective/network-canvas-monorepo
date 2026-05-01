@@ -1,5 +1,6 @@
 "use client";
 
+import { createElement } from "react";
 import { useField } from "../hooks/useField";
 import type { FieldValue } from "../store/types";
 import { filterValidationProps } from "../validation/helpers";
@@ -25,7 +26,7 @@ export default function Field<C extends ValidFieldComponent>({
 	validationContext,
 	validateOnChange,
 	validateOnChangeDelay,
-	component: Component,
+	component,
 	disabled,
 	readOnly,
 	...componentProps
@@ -43,6 +44,18 @@ export default function Field<C extends ValidFieldComponent>({
 		...componentProps,
 	});
 
+	// Use createElement instead of JSX so we can hand React the merged props
+	// without TS demanding they match the narrow ValidFieldComponent shape.
+	// ValidFieldComponent only encodes the minimum required by Field — the
+	// concrete component declared by the consumer accepts these merged props
+	// because FieldProps is built from React.ComponentProps<C>.
+	const mergedProps = {
+		id,
+		name,
+		...fieldProps,
+		...filterValidationProps(componentProps),
+	} as React.ComponentProps<C>;
+
 	return (
 		<BaseField
 			id={id}
@@ -56,15 +69,7 @@ export default function Field<C extends ValidFieldComponent>({
 			showErrors={meta.shouldShowError}
 			containerProps={containerProps}
 		>
-			{
-				<Component
-					id={id}
-					name={name}
-					{...fieldProps}
-					/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-					{...(filterValidationProps(componentProps) as any)}
-				/>
-			}
+			{createElement(component, mergedProps)}
 		</BaseField>
 	);
 }
