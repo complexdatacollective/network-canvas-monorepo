@@ -87,14 +87,14 @@ export default function useResizablePanel({
 		[orientation, persistedBasis],
 	);
 
-	const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+	const handlePointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
 		e.preventDefault();
 		e.currentTarget.setPointerCapture(e.pointerId);
 		setIsDragging(true);
 	}, []);
 
 	const handlePointerMove = useCallback(
-		(e: React.PointerEvent<HTMLDivElement>) => {
+		(e: React.PointerEvent<HTMLElement>) => {
 			if (!isDragging) return;
 
 			const rawPercent = getPercentFromPointer(e.clientX, e.clientY);
@@ -104,7 +104,7 @@ export default function useResizablePanel({
 		[isDragging, getPercentFromPointer, hasBreakpoints, breakpoints, setBasis],
 	);
 
-	const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+	const handlePointerUp = useCallback((e: React.PointerEvent<HTMLElement>) => {
 		e.currentTarget.releasePointerCapture(e.pointerId);
 		setIsDragging(false);
 	}, []);
@@ -128,7 +128,7 @@ export default function useResizablePanel({
 	);
 
 	const handleKeyDown = useCallback(
-		(e: React.KeyboardEvent<HTMLDivElement>) => {
+		(e: React.KeyboardEvent<HTMLElement>) => {
 			const isHorizontal = orientation === "horizontal";
 			const increaseKey = isHorizontal ? "ArrowRight" : "ArrowDown";
 			const decreaseKey = isHorizontal ? "ArrowLeft" : "ArrowUp";

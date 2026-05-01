@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, forwardRef, type ReactNode } from "react";
+import { Children, forwardRef, type ReactNode, useId } from "react";
 import { useMergeRefs } from "react-best-merge-refs";
 import useResizablePanel from "./hooks/useResizablePanel";
 import { cx } from "./utils/cva";
@@ -60,6 +60,10 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
 
 		const [firstChild, secondChild] = Children.toArray(children);
 
+		const baseId = useId();
+		const firstPanelId = `${baseId}-panel-1`;
+		const secondPanelId = `${baseId}-panel-2`;
+
 		return (
 			<div
 				ref={mergedRef}
@@ -73,6 +77,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
 			>
 				{/* First panel */}
 				<div
+					id={firstPanelId}
 					className={cx(
 						"flex shrink-0 flex-col overflow-hidden",
 						isOverridden &&
@@ -86,19 +91,22 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
 					{firstChild}
 				</div>
 
-				{/* Resize handle */}
-				<div
-					role="separator"
+				{/* Resize handle — uses role="slider" because the user adjusts a
+				    value (panel split %) within a range, which matches the slider
+				    pattern and exposes the same aria-value* properties to AT. */}
+				<button
+					type="button"
+					role="slider"
 					aria-orientation={orientation}
 					aria-valuenow={Math.round(activeBasis)}
 					aria-valuemin={min}
 					aria-valuemax={max}
+					aria-controls={`${firstPanelId} ${secondPanelId}`}
 					aria-label={ariaLabel ?? "Resize panels"}
-					tabIndex={0}
 					className={cx(
 						"group",
 						"focusable relative z-10 flex shrink-0 items-center justify-center",
-						"touch-none select-none",
+						"touch-none select-none border-0 bg-transparent p-0",
 						isHorizontal ? "w-4 cursor-col-resize" : "h-4 cursor-row-resize",
 						isOverridden && "pointer-events-none opacity-0",
 						"transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)",
@@ -106,9 +114,9 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
 					{...handleProps}
 				>
 					{/* Visual grip indicator */}
-					<div
+					<span
 						className={cx(
-							"rounded-full bg-white/30",
+							"block rounded-full bg-white/30",
 							"spring-[0.5,0.6]",
 							"ease-in-out",
 							"transition-[background-color,transform] duration-150",
@@ -117,10 +125,12 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
 							!isDragging && !isOverridden && "group-hover:bg-white/50 hover:scale-125 hover:bg-white/50",
 						)}
 					/>
-				</div>
+				</button>
 
 				{/* Second panel */}
-				<div className={cx("flex min-h-0 min-w-0 flex-1 flex-col")}>{secondChild}</div>
+				<div id={secondPanelId} className={cx("flex min-h-0 min-w-0 flex-1 flex-col")}>
+					{secondChild}
+				</div>
 			</div>
 		);
 	},
