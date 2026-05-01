@@ -1,5 +1,15 @@
 # @codaco/tailwind-config
 
+## 0.4.0
+
+### Minor Changes
+
+- c0cc415: Move the canonical Fresco themes (default + interview) into @codaco/tailwind-config.
+  The previous default-theme.css was a stripped subset; it's now replaced with the
+  full theme including light + dark variants and Inclusive Sans body font.
+  The new interview-theme.css adds the interview-mode palette (keyed off
+  :root:has([data-interview])).
+
 ## 0.3.0
 
 ### Minor Changes
