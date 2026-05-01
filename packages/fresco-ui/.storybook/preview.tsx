@@ -27,7 +27,6 @@ export default definePreview({
           'UI',
           'Systems',
           ['Form', 'Dialogs', 'DragAndDrop'],
-          'Interview',
           '*',
         ],
       },
