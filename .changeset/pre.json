@@ -23,6 +23,7 @@
     "expand-public-api-for-fresco",
     "family-pedigree-editor",
     "initial-fresco-ui-release",
+    "inline-search-worker",
     "network-exporters-effect-rewrite",
     "network-query-typescript-rewrite",
     "node-shape-mapping"

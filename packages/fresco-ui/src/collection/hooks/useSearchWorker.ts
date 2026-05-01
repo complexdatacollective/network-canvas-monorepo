@@ -2,6 +2,7 @@
 
 import { type Remote, releaseProxy, wrap } from "comlink";
 import { useCallback, useEffect, useRef, useState } from "react";
+import SearchWorker from "../filtering/search.worker.ts?worker&inline";
 import type { FilterProperty, FuseOptions, WorkerSearchResult } from "../filtering/types";
 import type { Key, KeyExtractor } from "../types";
 
@@ -68,7 +69,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
 	useEffect(() => {
 		isUnmountedRef.current = false;
 
-		const worker = new Worker(new URL("../filtering/search.worker.ts", import.meta.url), { type: "module" });
+		const worker = new SearchWorker();
 
 		workerRef.current = worker;
 		apiRef.current = wrap<SearchEngine>(worker);

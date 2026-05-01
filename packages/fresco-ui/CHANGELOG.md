@@ -1,5 +1,11 @@
 # @codaco/fresco-ui
 
+## 0.1.0-next.2
+
+### Patch Changes
+
+- Inline the Collection's search Web Worker as a base64 blob URL. The previous build emitted the worker as a separate file at `dist/assets/search.worker-<hash>.js` with an absolute URL that consumers (Next.js, etc.) couldn't resolve. Switching to Vite's `?worker&inline` syntax embeds the worker so it works in any environment.
+
 ## 0.1.0-next.1
 
 ### Patch Changes
