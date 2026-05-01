@@ -22,7 +22,7 @@
 	"dependencies": {
 		"motion": "catalog:",
 		"tailwindcss": "catalog:",
-		"tailwindcss-animate": "catalog:"
+		"tailwindcss-animate": "^1.0.7"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",

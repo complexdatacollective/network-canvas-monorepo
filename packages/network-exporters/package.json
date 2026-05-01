@@ -66,12 +66,12 @@
 	"dependencies": {
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
-		"@xmldom/xmldom": "catalog:",
-		"effect": "catalog:",
+		"@xmldom/xmldom": "^0.9.9",
+		"effect": "^3.21.0",
 		"es-toolkit": "catalog:",
 		"fflate": "^0.8.2",
-		"ohash": "catalog:",
-		"sanitize-filename": "catalog:",
+		"ohash": "^2.0.11",
+		"sanitize-filename": "^1.6.4",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
