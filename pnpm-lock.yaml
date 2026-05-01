@@ -87,9 +87,6 @@ catalogs:
     '@tiptap/starter-kit':
       specifier: ^3.22.3
       version: 3.22.5
-    '@types/archiver':
-      specifier: ^7.0.0
-      version: 7.0.0
     '@types/node':
       specifier: ^22.19.17
       version: 22.19.17
@@ -102,9 +99,6 @@ catalogs:
     '@xmldom/xmldom':
       specifier: ^0.9.9
       version: 0.9.10
-    archiver:
-      specifier: ^7.0.1
-      version: 7.0.1
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -1445,15 +1439,15 @@ importers:
       '@xmldom/xmldom':
         specifier: 'catalog:'
         version: 0.9.10
-      archiver:
-        specifier: 'catalog:'
-        version: 7.0.1
       effect:
         specifier: 'catalog:'
         version: 3.21.2
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.0
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       ohash:
         specifier: 'catalog:'
         version: 2.0.11
@@ -1467,9 +1461,6 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@types/archiver':
-        specifier: 'catalog:'
-        version: 7.0.0
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.17
@@ -5809,9 +5800,6 @@ packages:
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
-  '@types/archiver@7.0.0':
-    resolution: {integrity: sha512-/3vwGwx9n+mCQdYZ2IKGGHEFL30I96UgBlk8EtRDDFQ9uxM1l4O5Ci6r00EMAkiDaTqD9DQ6nVrWRICnBPtzzg==}
-
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
 
@@ -5985,9 +5973,6 @@ packages:
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
-
-  '@types/readdir-glob@1.1.5':
-    resolution: {integrity: sha512-raiuEPUYqXu+nvtY2Pe8s8FEmZ3x5yAH4VkLdihcPdalvsHltomrRC9BzuStrJ9yk06470hS0Crw0f1pXqD+Hg==}
 
   '@types/recompose@0.30.15':
     resolution: {integrity: sha512-glX9JbRTG4WSaWxDrsHlinoRC1YRb0vNr+ocPBgBTJgMawkYx8fqwuduahzy25XBSc3xfG/k9b5XPyW6FuHVkw==}
@@ -6857,9 +6842,6 @@ packages:
   camelcase@3.0.0:
     resolution: {integrity: sha512-4nhGqUkc4BqbBBB4Q6zLuD7lzzrHYrjKGeYaEji/3tFR5VdJu9v+LilhGIVe8wxEJPPOeWo7eg8dwY13TZ1BNg==}
     engines: {node: '>=0.10.0'}
-
-  caniuse-lite@1.0.30001781:
-    resolution: {integrity: sha512-RdwNCyMsNBftLjW6w01z8bKEvT6e/5tpPVEgtn22TiLGlstHOVecsX2KHFkD5e/vRnIE4EGzpuIODb3mtswtkw==}
 
   caniuse-lite@1.0.30001791:
     resolution: {integrity: sha512-yk0l/YSrOnFZk3UROpDLQD9+kC1l4meK/wed583AXrzoarMGJcbRi2Q4RaUYbKxYAsZ8sWmaSa/DsLmdBeI1vQ==}
@@ -7997,6 +7979,9 @@ packages:
 
   fflate@0.4.8:
     resolution: {integrity: sha512-FJqqoDBR00Mdj9ppamLa/Y7vxm+PRmNWA67N846RvsoYVMKB4q3y/de5PA7gUmRMYK/8CMz2GDZQmCRN1wBcWA==}
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   file-selector@2.1.2:
     resolution: {integrity: sha512-QgXo+mXTe8ljeqUFaX3QVHc5osSItJ/Km+xpocx0aSqWGMSCf6qYs/VnzZgS864Pjn5iceMRFigeAV7AfTlaig==}
@@ -17264,10 +17249,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@types/archiver@7.0.0':
-    dependencies:
-      '@types/readdir-glob': 1.1.5
-
   '@types/argparse@1.0.38': {}
 
   '@types/aria-query@5.0.4': {}
@@ -17467,10 +17448,6 @@ snapshots:
   '@types/react@19.2.14':
     dependencies:
       csstype: 3.2.3
-
-  '@types/readdir-glob@1.1.5':
-    dependencies:
-      '@types/node': 25.6.0
 
   '@types/recompose@0.30.15':
     dependencies:
@@ -18592,8 +18569,6 @@ snapshots:
       upper-case: 1.1.3
 
   camelcase@3.0.0: {}
-
-  caniuse-lite@1.0.30001781: {}
 
   caniuse-lite@1.0.30001791: {}
 
@@ -20002,6 +19977,8 @@ snapshots:
       picomatch: 4.0.4
 
   fflate@0.4.8: {}
+
+  fflate@0.8.2: {}
 
   file-selector@2.1.2:
     dependencies:
@@ -22222,8 +22199,8 @@ snapshots:
     dependencies:
       '@next/env': 16.2.4
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.10.10
-      caniuse-lite: 1.0.30001781
+      baseline-browser-mapping: 2.10.23
+      caniuse-lite: 1.0.30001791
       postcss: 8.4.31
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { Codebook, Variable } from "@codaco/protocol-validation";
 import {
 	caseProperty,
@@ -110,9 +109,17 @@ export const setUpXml = (sessionVariables: ExportFileNetwork["sessionVariables"]
 	return doc;
 };
 
-// Utility sha1 function that returns hashed text
-export const sha1 = (text: string) => {
-	return createHash("sha1").update(text, "utf8").digest("hex");
+const utf8Encoder = new TextEncoder();
+
+export const sha1 = async (text: string): Promise<string> => {
+	const data = utf8Encoder.encode(text);
+	const digest = await crypto.subtle.digest("SHA-1", data);
+	const bytes = new Uint8Array(digest);
+	let hex = "";
+	for (const byte of bytes) {
+		hex += byte.toString(16).padStart(2, "0");
+	}
+	return hex;
 };
 
 /**

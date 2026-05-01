@@ -1,12 +1,8 @@
-import fs from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { Readable } from "node:stream";
 import type { Codebook } from "@codaco/protocol-validation";
 import { Effect } from "effect";
 import { ExportGenerationError } from "../errors";
 import type { ExportFormat, ExportOptions } from "../options";
-import type { ExportResult } from "../output";
+import type { ExportFailure, ExportSuccess, OutputEntry } from "../output";
 import { getFileExtension, makeFilename } from "../utils/general";
 import { getFormatter } from "../utils/getFormatter";
 import type { partitionByType } from "./partitionByType";
@@ -22,62 +18,45 @@ type ExportFileParams = {
 	sessionId: string;
 };
 
-const exportFile = (params: ExportFileParams): Effect.Effect<ExportResult> =>
-	Effect.async<ExportResult>((resume) => {
+export type GenerationResult =
+	| { ok: true; success: ExportSuccess; entry: OutputEntry }
+	| { ok: false; failure: ExportFailure };
+
+const exportFile = (params: ExportFileParams): Effect.Effect<GenerationResult> =>
+	Effect.sync(() => {
 		const { prefix, exportFormat, network, codebook, exportOptions, sessionId } = params;
-
-		const toReadable = getFormatter(exportFormat);
+		const toBytes = getFormatter(exportFormat);
 		const extension = getFileExtension(exportFormat);
-		const outputName = makeFilename(prefix, network.partitionEntity, exportFormat, extension);
-		const filePath = join(tmpdir(), outputName);
+		const name = makeFilename(prefix, network.partitionEntity, exportFormat, extension);
 
-		const failure = (cause: unknown): ExportResult => ({
-			success: false,
-			format: exportFormat,
-			sessionId,
-			partitionEntity: network.partitionEntity,
-			error: new ExportGenerationError({
+		try {
+			const data = toBytes(network, codebook, exportOptions);
+			const success: ExportSuccess = {
+				success: true,
+				format: exportFormat,
+				sessionId,
+				partitionEntity: network.partitionEntity,
+				name,
+			};
+			return { ok: true, success, entry: { name, data } };
+		} catch (cause) {
+			const error = new ExportGenerationError({
 				cause,
 				format: exportFormat,
 				sessionId,
 				partitionEntity: network.partitionEntity,
-			}),
-		});
-
-		const success: ExportResult = {
-			success: true,
-			filePath,
-			format: exportFormat,
-			sessionId,
-			partitionEntity: network.partitionEntity,
-		};
-
-		let inputStream: Readable;
-		try {
-			inputStream = toReadable(network, codebook, exportOptions);
-		} catch (error) {
-			resume(Effect.succeed(failure(error)));
-			return;
+			});
+			return {
+				ok: false,
+				failure: {
+					kind: "generation",
+					sessionId,
+					format: exportFormat,
+					partitionEntity: network.partitionEntity,
+					error,
+				},
+			};
 		}
-
-		const writeStream = fs.createWriteStream(filePath);
-		let settled = false;
-		const settle = (result: ExportResult) => {
-			if (settled) return;
-			settled = true;
-			resume(Effect.succeed(result));
-		};
-
-		inputStream.on("error", (error) => settle(failure(error)));
-		writeStream.on("error", (error) => settle(failure(error)));
-		writeStream.on("finish", () => settle(success));
-
-		inputStream.pipe(writeStream);
-
-		return Effect.sync(() => {
-			inputStream.destroy();
-			writeStream.destroy();
-		});
 	});
 
 export default exportFile;

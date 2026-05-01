@@ -1,5 +1,8 @@
 import { z } from "zod/mini";
 
+/**
+ * @public
+ */
 export const ExportOptionsSchema = z.object({
 	exportGraphML: z.boolean(),
 	exportCSV: z.boolean(),

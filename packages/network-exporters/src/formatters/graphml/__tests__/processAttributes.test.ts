@@ -32,7 +32,7 @@ const getDataElements = (fragment: XmlDomDocumentFragment) => {
 
 describe("processAttributes", () => {
 	describe("categorical variables", () => {
-		it("should not match substring values in categorical options", () => {
+		it("should not match substring values in categorical options", async () => {
 			// This test verifies that "male" is NOT matched when only "female" is selected
 			const codebook = {
 				node: {
@@ -61,7 +61,7 @@ describe("processAttributes", () => {
 				},
 			} as unknown as NodeWithResequencedID;
 
-			const result = processAttributes(node, codebook, mockExportOptions);
+			const result = await processAttributes(node, codebook, mockExportOptions);
 			const dataElements = getDataElements(result);
 
 			// The keys are hashed, so we need to find them by looking for true/false values
@@ -74,7 +74,7 @@ describe("processAttributes", () => {
 			expect(falseCount).toBe(1); // male is false
 		});
 
-		it("should not do substring matching when categorical data is a string (legacy/edge case)", () => {
+		it("should not do substring matching when categorical data is a string (legacy/edge case)", async () => {
 			// This test specifically checks for the bug where includes() would do
 			// substring matching when the first argument is a string
 			const codebook = {
@@ -105,7 +105,7 @@ describe("processAttributes", () => {
 				},
 			} as unknown as NodeWithResequencedID;
 
-			const result = processAttributes(node, codebook, mockExportOptions);
+			const result = await processAttributes(node, codebook, mockExportOptions);
 			const dataElements = getDataElements(result);
 
 			// 'male' should NOT be true just because it's a substring of 'female'
@@ -117,7 +117,7 @@ describe("processAttributes", () => {
 			expect(falseCount).toBe(1); // male should be false (not true due to substring match)
 		});
 
-		it("should handle string categorical data with numeric-like values", () => {
+		it("should handle string categorical data with numeric-like values", async () => {
 			const codebook = {
 				node: {
 					person: {
@@ -147,7 +147,7 @@ describe("processAttributes", () => {
 				},
 			} as unknown as NodeWithResequencedID;
 
-			const result = processAttributes(node, codebook, mockExportOptions);
+			const result = await processAttributes(node, codebook, mockExportOptions);
 			const dataElements = getDataElements(result);
 
 			// '1' should NOT match just because '10' contains '1'

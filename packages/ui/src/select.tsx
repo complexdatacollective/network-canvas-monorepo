@@ -16,7 +16,7 @@ import {
 	Viewport,
 } from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
-import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
+import { type ComponentPropsWithoutRef, type ComponentRef, forwardRef } from "react";
 
 import { cn } from "./utils";
 
@@ -24,7 +24,7 @@ const Select = Root;
 
 const SelectGroup = Group;
 
-const SelectValue = forwardRef<ElementRef<typeof Value>, ComponentPropsWithoutRef<typeof Value>>(
+const SelectValue = forwardRef<ComponentRef<typeof Value>, ComponentPropsWithoutRef<typeof Value>>(
 	({ className, ...props }, ref) => (
 		<span className={cn("overflow-hidden text-ellipsis whitespace-nowrap", className)}>
 			<Value ref={ref} {...props} />
@@ -39,7 +39,7 @@ export const selectTriggerStyles = cn(
 	"focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
 );
 
-const SelectTrigger = forwardRef<ElementRef<typeof Trigger>, ComponentPropsWithoutRef<typeof Trigger>>(
+const SelectTrigger = forwardRef<ComponentRef<typeof Trigger>, ComponentPropsWithoutRef<typeof Trigger>>(
 	({ className, children, ...props }, ref) => (
 		<Trigger ref={ref} className={cn(selectTriggerStyles, className)} {...props}>
 			{children}
@@ -51,7 +51,7 @@ const SelectTrigger = forwardRef<ElementRef<typeof Trigger>, ComponentPropsWitho
 );
 SelectTrigger.displayName = Trigger.displayName;
 
-const SelectContent = forwardRef<ElementRef<typeof Content>, ComponentPropsWithoutRef<typeof Content>>(
+const SelectContent = forwardRef<ComponentRef<typeof Content>, ComponentPropsWithoutRef<typeof Content>>(
 	({ className, children, position = "popper", ...props }, _) => (
 		<Portal>
 			<Content
@@ -81,14 +81,14 @@ const SelectContent = forwardRef<ElementRef<typeof Content>, ComponentPropsWitho
 );
 SelectContent.displayName = Content.displayName;
 
-const SelectLabel = forwardRef<ElementRef<typeof Label>, ComponentPropsWithoutRef<typeof Label>>(
+const SelectLabel = forwardRef<ComponentRef<typeof Label>, ComponentPropsWithoutRef<typeof Label>>(
 	({ className, ...props }, ref) => (
 		<Label ref={ref} className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)} {...props} />
 	),
 );
 SelectLabel.displayName = Label.displayName;
 
-const SelectItem = forwardRef<ElementRef<typeof Item>, ComponentPropsWithoutRef<typeof Item>>(
+const SelectItem = forwardRef<ComponentRef<typeof Item>, ComponentPropsWithoutRef<typeof Item>>(
 	({ className, children, ...props }, ref) => (
 		<Item
 			ref={ref}
@@ -110,7 +110,7 @@ const SelectItem = forwardRef<ElementRef<typeof Item>, ComponentPropsWithoutRef<
 );
 SelectItem.displayName = Item.displayName;
 
-const SelectSeparator = forwardRef<ElementRef<typeof Separator>, ComponentPropsWithoutRef<typeof Separator>>(
+const SelectSeparator = forwardRef<ComponentRef<typeof Separator>, ComponentPropsWithoutRef<typeof Separator>>(
 	({ className, ...props }, ref) => (
 		<Separator ref={ref} className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />
 	),

@@ -10,11 +10,11 @@ import { createDataElement, createDocumentFragment, getCodebookVariablesForEntit
  * Function for processing attributes of an entity. Processing means creating
  * one or more <data> elements for each attribute.
  */
-function processAttributes(
+async function processAttributes(
 	entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
 	codebook: Codebook,
 	exportOptions: ExportOptions,
-): DocumentFragment {
+): Promise<DocumentFragment> {
 	const fragment = createDocumentFragment();
 
 	const createDomDataElement = (key: string, value: string) => {
@@ -25,10 +25,10 @@ function processAttributes(
 	const variables = getCodebookVariablesForEntity(entity, codebook);
 	const entityAttributes = getEntityAttributes(entity);
 
-	Object.entries(entityAttributes).forEach(([key, value]) => {
+	for (const [key, value] of Object.entries(entityAttributes)) {
 		// Don't process empty values.
 		if (value === null) {
-			return;
+			continue;
 		}
 
 		const codebookEntry = variables?.[key];
@@ -38,7 +38,7 @@ function processAttributes(
 		if (!codebookEntry) {
 			// eslint-disable-next-line @typescript-eslint/no-base-to-string
 			createDomDataElement(key, String(value));
-			return;
+			continue;
 		}
 
 		const variableIsEncrypted = codebookEntry.encrypted;
@@ -46,21 +46,19 @@ function processAttributes(
 		switch (codebookEntry.type) {
 			case "categorical": {
 				const options = codebookEntry.options;
+				const hashedValues = await Promise.all(options.map((option) => sha1(String(option.value))));
 
 				if (variableIsEncrypted) {
 					// If the variable is encrypted, we don't want to export it.
-					options.forEach((option) => {
-						const hashedOptionValue = sha1(String(option.value));
-						const optionKey = `${key}_${hashedOptionValue}`;
-
+					options.forEach((_option, index) => {
+						const optionKey = `${key}_${hashedValues[index]}`;
 						createDomDataElement(optionKey, "ENCRYPTED");
 					});
-					return;
+					break;
 				}
 
-				options.forEach((option) => {
-					const hashedOptionValue = sha1(String(option.value));
-					const optionKey = `${key}_${hashedOptionValue}`;
+				options.forEach((option, index) => {
+					const optionKey = `${key}_${hashedValues[index]}`;
 
 					const attributeValue = entityAttributes[key];
 					const isSelected = isCategoricalOptionSelected(attributeValue, option.value);
@@ -74,7 +72,7 @@ function processAttributes(
 					// If the variable is encrypted, we don't want to export it.
 					createDomDataElement(`${key}_X`, "ENCRYPTED");
 					createDomDataElement(`${key}_Y`, "ENCRYPTED");
-					return;
+					break;
 				}
 
 				const { x: xCoord, y: yCoord } = entityAttributes[key] as {
@@ -105,7 +103,7 @@ function processAttributes(
 			case "scalar": {
 				if (variableIsEncrypted) {
 					createDomDataElement(key, "ENCRYPTED");
-					return;
+					break;
 				}
 
 				const rawValue = value as string | number | boolean | unknown[];
@@ -115,7 +113,7 @@ function processAttributes(
 				break;
 			}
 		}
-	});
+	}
 
 	return fragment;
 }

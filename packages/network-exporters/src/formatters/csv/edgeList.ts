@@ -1,4 +1,3 @@
-import type { Readable } from "node:stream";
 import type { Codebook } from "@codaco/protocol-validation";
 import {
 	edgeExportIDProperty,
@@ -11,7 +10,7 @@ import {
 } from "@codaco/shared-consts";
 import type { SessionWithResequencedIDs } from "../../input";
 import type { ExportOptions } from "../../options";
-import { csvEOL, sanitizeCellValue, toReadable } from "./csvShared";
+import { csvEOL, sanitizeCellValue, toAsyncBytes } from "./csvShared";
 import processEntityVariables from "./processEntityVariables";
 
 const TOP_LEVEL_KEYS = new Set<string>([
@@ -70,10 +69,10 @@ export function* edgeListRows(
 	}
 }
 
-export function edgeListReadable(
+export function edgeListBytes(
 	network: SessionWithResequencedIDs,
 	codebook: Codebook,
 	exportOptions: ExportOptions,
-): Readable {
-	return toReadable(edgeListRows(network, codebook, exportOptions));
+): AsyncIterable<Uint8Array> {
+	return toAsyncBytes(edgeListRows(network, codebook, exportOptions));
 }

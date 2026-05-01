@@ -1,15 +1,16 @@
-import { Readable } from "node:stream";
 import type { Codebook } from "@codaco/protocol-validation";
 import type { ExportOptions } from "../../options";
 import type { ExportFileNetwork } from "../../session/exportFile";
 import GraphMLFormatter from "./GraphMLFormatter";
 
-export function graphmlReadable(
+const encoder = new TextEncoder();
+
+export async function* graphmlBytes(
 	network: ExportFileNetwork,
 	codebook: Codebook,
 	exportOptions: ExportOptions,
-): Readable {
+): AsyncIterable<Uint8Array> {
 	const formatter = new GraphMLFormatter(network, codebook, exportOptions);
-	const xml = formatter.writeToString();
-	return Readable.from([xml]);
+	const xml = await formatter.writeToString();
+	yield encoder.encode(xml);
 }

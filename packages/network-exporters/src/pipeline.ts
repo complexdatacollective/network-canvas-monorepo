@@ -1,28 +1,13 @@
-import { Effect, Queue } from "effect";
-import { ArchiveError } from "./errors";
-import { type ExportEvent, stageMessages } from "./events";
-import { formatExportableSessions } from "./formatters/formatExportableSessions";
-import type { InterviewExportInput, ProtocolExportInput } from "./input";
+import { Effect, Queue, Ref } from "effect";
+import type { ExportEvent } from "./events";
+import { stageMessages } from "./events";
+import type { InterviewExportInput } from "./input";
 import type { ExportOptions } from "./options";
-import type { ExportReturn } from "./output";
-import { FileStorage } from "./services/FileStorage";
-import { FileSystem } from "./services/FileSystem";
+import type { ExportFailure, ExportReturn, ExportSuccess } from "./output";
 import { InterviewRepository } from "./services/InterviewRepository";
-import archive from "./session/archive";
+import { Output } from "./services/Output";
 import { generateOutputFilesEffect } from "./session/generateOutputFiles";
-import groupByProtocolProperty from "./session/groupByProtocolProperty";
-import { insertEgoIntoSessionNetworks } from "./session/insertEgoIntoSessionNetworks";
-import { resequenceIds } from "./session/resequenceIds";
-
-export type ExportedProtocol = ProtocolExportInput;
-
-function buildProtocolsMap(sessions: InterviewExportInput[]): Record<string, ProtocolExportInput> {
-	const protocolsMap = new Map<string, ProtocolExportInput>();
-	sessions.forEach((session) => {
-		protocolsMap.set(session.protocol.hash, session.protocol);
-	});
-	return Object.fromEntries(protocolsMap);
-}
+import { processSessions } from "./session/processSessions";
 
 export const exportPipeline = (
 	interviewIds: string[],
@@ -31,8 +16,7 @@ export const exportPipeline = (
 ) =>
 	Effect.gen(function* () {
 		const repo = yield* InterviewRepository;
-		const fs = yield* FileSystem;
-		const fileStorage = yield* FileStorage;
+		const output = yield* Output;
 
 		yield* Queue.offer(progressQueue, {
 			type: "stage",
@@ -40,7 +24,9 @@ export const exportPipeline = (
 			message: stageMessages.fetching,
 		});
 
-		const sessions = yield* repo.getForExport(interviewIds).pipe(Effect.withSpan("export.fetch"));
+		const sessions: InterviewExportInput[] = yield* repo
+			.getForExport(interviewIds)
+			.pipe(Effect.withSpan("export.fetch"));
 
 		yield* Queue.offer(progressQueue, {
 			type: "stage",
@@ -48,59 +34,57 @@ export const exportPipeline = (
 			message: stageMessages.formatting,
 		});
 
-		const protocols = buildProtocolsMap(sessions);
-		const formatted = formatExportableSessions(sessions, exportOptions);
-		const withEgo = insertEgoIntoSessionNetworks(formatted);
-		const grouped = groupByProtocolProperty(withEgo);
-		const resequenced = resequenceIds(grouped);
+		const failuresRef = yield* Ref.make<ExportFailure[]>([]);
 
-		const exportResults = yield* generateOutputFilesEffect(protocols, exportOptions, resequenced, progressQueue).pipe(
-			Effect.withSpan("export.generateFiles"),
-		);
+		const {
+			grouped,
+			protocols,
+			failures: formatFailures,
+		} = yield* processSessions(sessions, exportOptions).pipe(Effect.withSpan("export.format"));
+
+		yield* Ref.update(failuresRef, (curr) => [...curr, ...formatFailures]);
+
+		const { successes, failures: generationFailures } = yield* generateOutputFilesEffect(
+			protocols,
+			exportOptions,
+			grouped,
+			progressQueue,
+		).pipe(Effect.withSpan("export.generateFiles"));
+
+		yield* Ref.update(failuresRef, (curr) => [...curr, ...generationFailures]);
 
 		yield* Queue.offer(progressQueue, {
 			type: "stage",
-			stage: "archiving",
-			message: stageMessages.archiving,
+			stage: "outputting",
+			message: stageMessages.outputting,
 		});
 
-		const archiveResult = yield* Effect.tryPromise({
-			try: () => archive(exportResults),
-			catch: (error) => new ArchiveError({ cause: error }),
-		}).pipe(Effect.withSpan("export.archive"));
+		const handle = yield* output.begin().pipe(Effect.withSpan("export.outputBegin"));
 
-		const tempPaths = exportResults
-			.filter((r): r is Extract<typeof r, { success: true }> => r.success)
-			.map((r) => r.filePath);
-		tempPaths.push(archiveResult.path);
-
-		return yield* Effect.gen(function* () {
+		const total = successes.length;
+		let written = 0;
+		for (const { entry } of successes) {
+			yield* output.writeEntry(handle, entry).pipe(Effect.withSpan("export.writeEntry"));
+			written += 1;
 			yield* Queue.offer(progressQueue, {
-				type: "stage",
-				stage: "uploading",
-				message: stageMessages.uploading,
+				type: "progress",
+				stage: "outputting",
+				current: written,
+				total,
 			});
+		}
 
-			const archiveStream = yield* fs.readStream(archiveResult.path);
-			const { key } = yield* fileStorage
-				.upload(archiveStream, archiveResult.fileName)
-				.pipe(Effect.withSpan("export.upload"));
+		const outputResult = yield* output.end(handle).pipe(Effect.withSpan("export.outputEnd"));
 
-			const downloadUrl = yield* fileStorage.getDownloadUrl(key).pipe(Effect.withSpan("export.getDownloadUrl"));
+		const finalFailures = yield* Ref.get(failuresRef);
+		const successfulExports: ExportSuccess[] = successes.map((s) => s.success);
 
-			const result: ExportReturn = {
-				zipUrl: downloadUrl,
-				zipKey: key,
-				status: archiveResult.rejected.length ? "partial" : "success",
-				successfulExports: archiveResult.completed,
-				failedExports: archiveResult.rejected,
-			};
-			return result;
-		}).pipe(
-			Effect.ensuring(
-				Effect.forEach(tempPaths, (path) => fs.deleteFile(path).pipe(Effect.catchAll(() => Effect.void)), {
-					discard: true,
-				}),
-			),
-		);
+		const result: ExportReturn = {
+			status: finalFailures.length > 0 ? "partial" : "success",
+			successfulExports,
+			failedExports: finalFailures,
+			output: outputResult,
+		};
+
+		return result;
 	});

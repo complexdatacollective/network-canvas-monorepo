@@ -12,7 +12,11 @@ import { setUpXml } from "./helpers";
  * @param {*} codebook
  * @param {*} exportOptions
  */
-function graphMLGenerator(network: ExportFileNetwork, codebook: Codebook, exportOptions: ExportOptions) {
+async function graphMLGenerator(
+	network: ExportFileNetwork,
+	codebook: Codebook,
+	exportOptions: ExportOptions,
+): Promise<string> {
 	const xmlDoc = setUpXml(network.sessionVariables);
 
 	const generateKeyElements = getKeyElementGenerator(codebook, exportOptions);
@@ -29,15 +33,23 @@ function graphMLGenerator(network: ExportFileNetwork, codebook: Codebook, export
 	}
 
 	if (network.ego) {
-		graphMLElement.insertBefore(generateKeyElements(network.ego), graphElement);
-		graphElement.appendChild(generateDataElements(network.ego));
+		const [egoKeys, egoData] = await Promise.all([generateKeyElements(network.ego), generateDataElements(network.ego)]);
+		graphMLElement.insertBefore(egoKeys, graphElement);
+		graphElement.appendChild(egoData);
 	}
 
-	graphMLElement.insertBefore(generateKeyElements(network.nodes), graphElement);
-	graphElement.appendChild(generateDataElements(network.nodes));
+	const [nodeKeys, nodeData, edgeKeys, edgeData] = await Promise.all([
+		generateKeyElements(network.nodes),
+		generateDataElements(network.nodes),
+		generateKeyElements(network.edges),
+		generateDataElements(network.edges),
+	]);
 
-	graphMLElement.insertBefore(generateKeyElements(network.edges), graphElement);
-	graphElement.appendChild(generateDataElements(network.edges));
+	graphMLElement.insertBefore(nodeKeys, graphElement);
+	graphElement.appendChild(nodeData);
+
+	graphMLElement.insertBefore(edgeKeys, graphElement);
+	graphElement.appendChild(edgeData);
 
 	// Serialize the XML document
 	const serializer = new XMLSerializer();

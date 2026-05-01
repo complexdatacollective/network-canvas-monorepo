@@ -14,8 +14,8 @@ import {
 import { groupBy } from "es-toolkit";
 import type { FormattedSession } from "../../../input";
 import type { ExportOptions } from "../../../options";
-import { insertEgoIntoSessionNetworks } from "../../../session/insertEgoIntoSessionNetworks";
-import { resequenceIds } from "../../../session/resequenceIds";
+import { insertEgoIntoSessionNetwork } from "../../../session/insertEgoIntoSessionNetworks";
+import { resequenceSessionIds } from "../../../session/resequenceIds";
 
 // The mock uses simplified color values and variable types not present in the
 // strict Codebook schema (e.g. 'layout' type, bare 'color' string), so a cast
@@ -201,13 +201,10 @@ export const mockNetwork2 = {
 	},
 };
 
-// Mirrors the flow in FileExportManager.exportSessions(). The parameter accepts
-// unknown[] because mock session variables use numeric timestamps rather than
-// the string timestamps that FormattedSession requires; callers need not cast.
+// Mirrors the flow in processSessions. The parameter accepts unknown[] because
+// mock session variables use numeric timestamps rather than the string
+// timestamps that FormattedSession requires; callers need not cast.
 export const processMockNetworks = (networkCollection: unknown[]) => {
-	const sessionsWithEgo = insertEgoIntoSessionNetworks(networkCollection as FormattedSession[]);
-	const sessionsByProtocol = groupBy(sessionsWithEgo, (s) => s.sessionVariables[protocolProperty]);
-	const sessionsWithResequencedIDs = resequenceIds(sessionsByProtocol);
-
-	return sessionsWithResequencedIDs;
+	const sessions = (networkCollection as FormattedSession[]).map(insertEgoIntoSessionNetwork).map(resequenceSessionIds);
+	return groupBy(sessions, (s) => s.sessionVariables[protocolProperty]);
 };

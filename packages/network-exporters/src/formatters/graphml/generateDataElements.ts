@@ -25,7 +25,7 @@ import processAttributes from "./processAttributes";
  * Function that returns a function that generates <data> elements for a given entity
  */
 export default function getDataElementGenerator(codebook: Codebook, exportOptions: ExportOptions) {
-	return (entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo): DocumentFragment => {
+	return async (entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo): Promise<DocumentFragment> => {
 		const fragment = createDocumentFragment();
 
 		if (!entities) {
@@ -34,25 +34,27 @@ export default function getDataElementGenerator(codebook: Codebook, exportOption
 
 		// If the entity is an object (not an array) it is an ego
 		if (!Array.isArray(entities)) {
-			const entityDataElements = generateDataElementsForEntity(entities, codebook, exportOptions);
+			const entityDataElements = await generateDataElementsForEntity(entities, codebook, exportOptions);
 			fragment.appendChild(entityDataElements);
 		} else {
-			// Iterate entities
-			entities.forEach((entity) => {
-				const entityDataElements = generateDataElementsForEntity(entity, codebook, exportOptions);
+			// Process entities in parallel; append results in original order to preserve output stability
+			const entityFragments = await Promise.all(
+				entities.map((entity) => generateDataElementsForEntity(entity, codebook, exportOptions)),
+			);
+			for (const entityDataElements of entityFragments) {
 				fragment.appendChild(entityDataElements);
-			});
+			}
 		}
 
 		return fragment;
 	};
 }
 
-function generateDataElementsForEntity(
+async function generateDataElementsForEntity(
 	entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
 	codebook: Codebook,
 	exportOptions: ExportOptions,
-): DocumentFragment {
+): Promise<DocumentFragment> {
 	const fragment = createDocumentFragment();
 	const dom = new DOMImplementation().createDocument(null, "root", null);
 	const entityType = deriveEntityType(entity);
@@ -67,7 +69,7 @@ function generateDataElementsForEntity(
 
 		fragment.appendChild(keyDataElement);
 
-		const dataElements = processAttributes(entity, codebook, exportOptions);
+		const dataElements = await processAttributes(entity, codebook, exportOptions);
 
 		fragment.appendChild(dataElements);
 
@@ -127,7 +129,7 @@ function generateDataElementsForEntity(
 		}
 	}
 
-	const dataElements = processAttributes(entity, codebook, exportOptions);
+	const dataElements = await processAttributes(entity, codebook, exportOptions);
 	domElement.appendChild(dataElements);
 	fragment.appendChild(domElement);
 

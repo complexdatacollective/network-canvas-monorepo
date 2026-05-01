@@ -1,9 +1,8 @@
-import type { Readable } from "node:stream";
 import type { Codebook } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from "@codaco/shared-consts";
 import type { SessionWithResequencedIDs } from "../../input";
 import type { ExportOptions } from "../../options";
-import { csvEOL, toReadable } from "./csvShared";
+import { csvEOL, toAsyncBytes } from "./csvShared";
 
 class AdjacencyMatrix {
 	readonly uniqueNodeIds: string[];
@@ -71,10 +70,10 @@ export function* adjacencyMatrixRows(
 	yield* matrix.rows();
 }
 
-export function adjacencyMatrixReadable(
+export function adjacencyMatrixBytes(
 	network: SessionWithResequencedIDs,
 	codebook: Codebook,
 	options: ExportOptions,
-): Readable {
-	return toReadable(adjacencyMatrixRows(network, codebook, options));
+): AsyncIterable<Uint8Array> {
+	return toAsyncBytes(adjacencyMatrixRows(network, codebook, options));
 }
