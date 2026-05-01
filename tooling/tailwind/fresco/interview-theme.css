@@ -50,7 +50,7 @@
 
     --warning: color-mix(
       in oklch,
-      oklch(from var(--color-neon-carrot) l calc(c + 0.3) h),
+      oklch(from oklch(var(--neon-carrot)) l calc(c + 0.3) h),
       white 40%
     );
     --warning-contrast: color-mix(
