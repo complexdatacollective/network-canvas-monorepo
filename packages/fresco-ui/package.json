@@ -478,7 +478,6 @@
 		"@vitejs/plugin-react": "^5.2.0",
 		"chromatic": "^16.2.0",
 		"jsdom": "catalog:",
-		"nuqs": "^2.8.9",
 		"storybook": "^10.3.5",
 		"tinyglobby": "^0.2.0",
 		"typescript": "catalog:",

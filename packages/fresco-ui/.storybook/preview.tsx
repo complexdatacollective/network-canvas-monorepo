@@ -3,7 +3,6 @@ import addonDocs from '@storybook/addon-docs';
 import addonVitest from '@storybook/addon-vitest';
 import { definePreview } from '@storybook/react-vite';
 import isChromatic from 'chromatic/isChromatic';
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { StrictMode } from 'react';
 import Providers from './Providers';
 import '../src/styles.css';
@@ -84,10 +83,7 @@ export default definePreview({
            * required by base-ui: https://base-ui.com/react/overview/quick-start#portals
            */}
           <div className="root h-full">
-            <Providers
-              nuqsAdapter={NuqsTestingAdapter}
-              disableAnimations={disableAnimations}
-            >
+            <Providers disableAnimations={disableAnimations}>
               <Story />
             </Providers>
           </div>

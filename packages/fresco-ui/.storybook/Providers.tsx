@@ -3,7 +3,7 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import { MotionConfig } from 'motion/react';
-import type { ComponentType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import DialogProvider from '../src/dialogs/DialogProvider';
 import { DndStoreProvider } from '../src/dnd/DndStoreProvider';
 import { Toaster } from '../src/Toast';
@@ -17,32 +17,28 @@ declare global {
 type ProvidersProps = {
   children: ReactNode;
   disableAnimations?: boolean;
-  nuqsAdapter: ComponentType<{ children: ReactNode }>;
 };
 
 export default function Providers({
   children,
   disableAnimations,
-  nuqsAdapter: NuqsAdapter,
 }: ProvidersProps) {
   if (disableAnimations) {
     globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
   }
 
   return (
-    <NuqsAdapter>
-      <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
-        <DirectionProvider direction="ltr">
-          <Toast.Provider limit={7}>
-            <TooltipProvider>
-              <DndStoreProvider>
-                <DialogProvider>{children}</DialogProvider>
-              </DndStoreProvider>
-            </TooltipProvider>
-            <Toaster />
-          </Toast.Provider>
-        </DirectionProvider>
-      </MotionConfig>
-    </NuqsAdapter>
+    <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
+      <DirectionProvider direction="ltr">
+        <Toast.Provider limit={7}>
+          <TooltipProvider>
+            <DndStoreProvider>
+              <DialogProvider>{children}</DialogProvider>
+            </DndStoreProvider>
+          </TooltipProvider>
+          <Toaster />
+        </Toast.Provider>
+      </DirectionProvider>
+    </MotionConfig>
   );
 }
