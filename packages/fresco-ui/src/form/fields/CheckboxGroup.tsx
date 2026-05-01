@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { RenderMarkdown } from "../../RenderMarkdown";
 import {
 	controlLabelVariants,
@@ -74,6 +75,8 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
 	const isControlled = value !== undefined;
 	const currentValues = isControlled ? value : (defaultValue ?? []);
 
+	const optionIdPrefix = useId();
+
 	return (
 		<div className="@container w-full">
 			<fieldset
@@ -91,16 +94,19 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
 				{options.map((option) => {
 					const isOptionDisabled = disabled ?? option.disabled;
 					const isChecked = currentValues.includes(option.value);
+					const optionId = `${optionIdPrefix}-${option.value}`;
 
 					return (
 						<label
 							key={option.value}
+							htmlFor={optionId}
 							className={groupOptionVariants({
 								size,
 								disabled: isOptionDisabled,
 							})}
 						>
 							<Checkbox
+								id={optionId}
 								name={name}
 								{...(isControlled ? { checked: isChecked } : { defaultChecked: isChecked })}
 								disabled={isOptionDisabled}

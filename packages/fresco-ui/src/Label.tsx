@@ -14,6 +14,8 @@ const Label = React.forwardRef<
 		{
 			className,
 			required,
+			htmlFor,
+			children,
 			onAnimationStart: _onAnimationStart,
 			onAnimationEnd: _onAnimationEnd,
 			onAnimationIteration: _onAnimationIteration,
@@ -31,10 +33,11 @@ const Label = React.forwardRef<
 	) => (
 		<label
 			ref={ref}
+			htmlFor={htmlFor}
 			className={cx("inline-block", headingVariants({ level: "label" }), "peer-disabled:opacity-70", className)}
 			{...props}
 		>
-			{props.children}
+			{children}
 			{required && (
 				<span className="text-destructive" aria-hidden="true">
 					{" "}

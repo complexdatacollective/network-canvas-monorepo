@@ -313,11 +313,19 @@ function TagInlineItem({
 		return (
 			<motion.div key="edit-mode" layout className={cx("flex w-full flex-col gap-4 p-4")}>
 				<motion.div layout className="flex flex-col gap-2">
-					<label className="text-sm font-medium">Label</label>
-					<InputField name="label" value={label} onChange={(v) => setLabel(v ?? "")} placeholder="Enter tag label" />
+					<label htmlFor="tag-label-input" className="text-sm font-medium">
+						Label
+					</label>
+					<InputField
+						id="tag-label-input"
+						name="label"
+						value={label}
+						onChange={(v) => setLabel(v ?? "")}
+						placeholder="Enter tag label"
+					/>
 				</motion.div>
 				<motion.div layout className="flex flex-col gap-2">
-					<label className="text-sm font-medium">Color</label>
+					<span className="text-sm font-medium">Color</span>
 					<motion.div layout className="flex gap-2">
 						{(Object.keys(TAG_COLORS) as TagItem["color"][]).map((c) => (
 							<button

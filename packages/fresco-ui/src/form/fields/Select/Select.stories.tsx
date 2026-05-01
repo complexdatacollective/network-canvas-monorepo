@@ -394,8 +394,11 @@ export const UsageExamples: Story = {
 					</Heading>
 					<div className="tablet-landscape:grid-cols-2 grid gap-6">
 						<div className="space-y-2">
-							<label className="text-sm font-medium">Native</label>
+							<label htmlFor="country-native" className="text-sm font-medium">
+								Native
+							</label>
 							<NativeSelectField
+								id="country-native"
 								name="country-native"
 								options={countryOptions}
 								placeholder="Select your country"
@@ -404,8 +407,11 @@ export const UsageExamples: Story = {
 							/>
 						</div>
 						<div className="space-y-2">
-							<label className="text-sm font-medium">Styled</label>
+							<label htmlFor="country-styled" className="text-sm font-medium">
+								Styled
+							</label>
 							<StyledSelectField
+								id="country-styled"
 								name="country-styled"
 								options={countryOptions}
 								placeholder="Select your country"
@@ -422,8 +428,11 @@ export const UsageExamples: Story = {
 					</Heading>
 					<div className="tablet-landscape:grid-cols-2 grid gap-6">
 						<div className="space-y-2">
-							<label className="text-sm font-medium">Native</label>
+							<label htmlFor="priority-native" className="text-sm font-medium">
+								Native
+							</label>
 							<NativeSelectField
+								id="priority-native"
 								name="priority-native"
 								options={priorityOptions}
 								placeholder="Select priority level"
@@ -432,8 +441,11 @@ export const UsageExamples: Story = {
 							/>
 						</div>
 						<div className="space-y-2">
-							<label className="text-sm font-medium">Styled</label>
+							<label htmlFor="priority-styled" className="text-sm font-medium">
+								Styled
+							</label>
 							<StyledSelectField
+								id="priority-styled"
 								name="priority-styled"
 								options={priorityOptions}
 								placeholder="Select priority level"

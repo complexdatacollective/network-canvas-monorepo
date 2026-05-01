@@ -578,9 +578,12 @@ export const TypeSafeOnChange: Story = {
 		return (
 			<div className="flex w-80 flex-col gap-6">
 				<div className="space-y-2">
-					<label className="text-sm font-medium">Text Input</label>
+					<label htmlFor="text-input" className="text-sm font-medium">
+						Text Input
+					</label>
 					<InputField
 						{...restArgs}
+						id="text-input"
 						type="text"
 						value={textValue}
 						onChange={(v) => setTextValue(v ?? "")}
@@ -592,9 +595,12 @@ export const TypeSafeOnChange: Story = {
 					</Paragraph>
 				</div>
 				<div className="space-y-2">
-					<label className="text-sm font-medium">Number Input</label>
+					<label htmlFor="number-input" className="text-sm font-medium">
+						Number Input
+					</label>
 					<InputField
 						{...restArgs}
+						id="number-input"
 						type="number"
 						value={numberValue?.toString() ?? ""}
 						onChange={(v) => setNumberValue(v ? Number(v) : undefined)}

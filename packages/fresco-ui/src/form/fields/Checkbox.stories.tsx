@@ -126,20 +126,20 @@ export const Interactive: Story = {
 export const WithLabels: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4">
-			<label className="flex items-center gap-3">
-				<Checkbox aria-label="Accept terms" />
+			<label htmlFor="cb-accept" className="flex items-center gap-3">
+				<Checkbox id="cb-accept" aria-label="Accept terms" />
 				<span className="text-sm">Accept terms and conditions</span>
 			</label>
-			<label className="flex items-center gap-3">
-				<Checkbox aria-label="Subscribe to newsletter" />
+			<label htmlFor="cb-newsletter" className="flex items-center gap-3">
+				<Checkbox id="cb-newsletter" aria-label="Subscribe to newsletter" />
 				<span className="text-sm">Subscribe to newsletter</span>
 			</label>
-			<label className="flex items-center gap-3">
-				<Checkbox defaultChecked aria-label="Remember me" />
+			<label htmlFor="cb-remember" className="flex items-center gap-3">
+				<Checkbox id="cb-remember" defaultChecked aria-label="Remember me" />
 				<span className="text-sm">Remember me</span>
 			</label>
-			<label className="flex items-center gap-3 opacity-50">
-				<Checkbox disabled aria-label="Disabled option" />
+			<label htmlFor="cb-disabled" className="flex items-center gap-3 opacity-50">
+				<Checkbox id="cb-disabled" disabled aria-label="Disabled option" />
 				<span className="text-sm">Disabled option</span>
 			</label>
 		</div>

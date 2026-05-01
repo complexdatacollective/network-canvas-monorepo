@@ -3,6 +3,7 @@
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup, type RadioGroupProps } from "@base-ui/react/radio-group";
 import { motion } from "motion/react";
+import { useId } from "react";
 import { RenderMarkdown } from "../../RenderMarkdown";
 import {
 	controlLabelVariants,
@@ -91,6 +92,8 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
 	const stringValue = isControlled ? (value !== undefined ? String(value) : "") : undefined;
 	const stringDefaultValue = !isControlled && defaultValue !== undefined ? String(defaultValue) : undefined;
 
+	const optionIdPrefix = useId();
+
 	return (
 		<div className="@container w-full">
 			<RadioGroup
@@ -116,6 +119,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
 				{options.map((option) => {
 					const isOptionDisabled = disabled ?? option.disabled;
 					const optionValue = String(option.value);
+					const optionId = `${optionIdPrefix}-${optionValue}`;
 
 					const getOptionState = () => {
 						if (isOptionDisabled) return "disabled" as const;
@@ -126,6 +130,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
 					return (
 						<label
 							key={optionValue}
+							htmlFor={optionId}
 							className={groupOptionVariants({
 								size,
 								disabled: isOptionDisabled,
@@ -147,6 +152,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
 									render={(renderProps, state) => (
 										<button
 											{...renderProps}
+											id={optionId}
 											type="button"
 											aria-label={option.label}
 											className={radioIndicatorVariants({

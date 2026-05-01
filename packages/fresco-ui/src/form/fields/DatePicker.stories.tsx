@@ -488,8 +488,11 @@ export const BirthDateExample: Story = {
 		return (
 			<div className="w-full max-w-md space-y-3">
 				<div>
-					<label className="mb-2 block text-sm font-medium">Date of Birth</label>
+					<label htmlFor="birth-date-input" className="mb-2 block text-sm font-medium">
+						Date of Birth
+					</label>
 					<DatePickerField
+						id="birth-date-input"
 						type="full"
 						value={birthDate}
 						onChange={(v) => setBirthDate(v ?? "")}
