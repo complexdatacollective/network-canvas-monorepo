@@ -1,5 +1,13 @@
 # @codaco/fresco-ui
 
+## 0.1.1
+
+### Patch Changes
+
+- Port two fixes from Fresco's `next` branch:
+  - **Combobox**: control `inputValue` and only honour `input-change` so the user's search query survives item-press. Resets the query on popup close. Workaround for [mui/base-ui#3977](https://github.com/mui/base-ui/issues/3977) / [#4360](https://github.com/mui/base-ui/issues/4360).
+  - **PasswordField**: `Omit<..., 'type'>` so consumers can't override the input type and break the password masking.
+
 ## 0.1.0
 
 ### Minor Changes

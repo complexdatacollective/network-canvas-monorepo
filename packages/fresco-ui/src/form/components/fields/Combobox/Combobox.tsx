@@ -2,7 +2,7 @@
 
 import { Combobox } from "@base-ui/react/combobox";
 import { Check, ChevronsUpDown, SearchIcon } from "lucide-react";
-import { type ComponentPropsWithoutRef, useMemo } from "react";
+import { type ComponentPropsWithoutRef, useMemo, useState } from "react";
 import Button from "../../../../Button";
 import Surface from "../../../../layout/Surface";
 import { ScrollArea } from "../../../../ScrollArea";
@@ -52,6 +52,12 @@ function ComboboxField(props: ComboboxFieldProps) {
 		...rest
 	} = props;
 
+	// Workaround until base-ui ships `keepFilterText` (mui/base-ui#4360).
+	// The recommended pattern from mui/base-ui#3977 is to control `inputValue`
+	// and only honour `input-change`, so base-ui's internal `input-clear` on
+	// item press doesn't wipe the user's search query.
+	const [inputValue, setInputValue] = useState("");
+
 	const handleValueChange = (newValue: unknown[] | null, _event: Combobox.Root.ChangeEventDetails) => {
 		if (newValue === null) {
 			onChange?.([]);
@@ -59,6 +65,20 @@ function ComboboxField(props: ComboboxFieldProps) {
 			const typedValue = newValue as ComboboxOption[];
 			onChange?.(typedValue.map((opt) => opt.value));
 		}
+	};
+
+	const handleInputValueChange = (
+		next: string | string[] | number | undefined,
+		details: Combobox.Root.ChangeEventDetails,
+	) => {
+		// Only react to user typing. base-ui fires `input-clear` itself when an
+		// item is pressed in multi-select mode with the input inside the popup
+		// (see AriaCombobox `handleSelection`), which would otherwise wipe the
+		// search query the moment a user picks a result.
+		if (details.reason !== "input-change") {
+			return;
+		}
+		setInputValue(typeof next === "string" ? next : "");
 	};
 
 	const handleSelectAll = () => {
@@ -96,6 +116,11 @@ function ComboboxField(props: ComboboxFieldProps) {
 			items={options}
 			value={selectedOptions}
 			onValueChange={handleValueChange}
+			inputValue={inputValue}
+			onInputValueChange={handleInputValueChange}
+			onOpenChange={(open) => {
+				if (!open) setInputValue("");
+			}}
 			disabled={disabled ?? readOnly}
 			name={name}
 		>
