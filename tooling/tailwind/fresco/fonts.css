@@ -2,10 +2,13 @@
  * @codaco/tailwind-config — Fresco font loading
  *
  * Loads Nunito (heading font, also body font in interview theme) and
- * Inclusive Sans (body font in the default theme). Imported separately so
- * the Google Fonts `@import` lands at the top of the CSS stream, before
- * any rule-producing import — CSS spec requires `@import` statements to
- * precede all other rules except @charset / @layer.
+ * Inclusive Sans (body font in the default theme). The nested `@import
+ * url(...)` below must be the first @import in the compiled CSS stream
+ * (the CSS spec only allows @charset / @layer to precede @import). The
+ * package's `styles.css` therefore imports this file BEFORE
+ * `@import "tailwindcss"` — Tailwind expands into rules during PostCSS
+ * and would otherwise push this url() past those rules, causing
+ * @tailwindcss/postcss to reject the build.
  *
  * Consumers that self-host fonts should skip this file and provide their
  * own font-loading mechanism.

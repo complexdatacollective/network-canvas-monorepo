@@ -7,12 +7,15 @@
  * scan the package's compiled JS for utility classes.
  */
 
-@import "tailwindcss";
-
-/* Google Fonts @import for Nunito (heading font). MUST come before any
-   rule-producing import so it lands at the top of the CSS stream — CSS
-   spec requires `@import` to precede all rules except @charset / @layer. */
+/* Google Fonts @import for Nunito (heading font) and Inclusive Sans (body).
+   MUST be the first import: it nests an `@import url('https://fonts.…')`
+   which the CSS spec requires to precede all rules aside from @charset /
+   @layer. `@import "tailwindcss"` expands into thousands of real rules
+   during PostCSS processing, so anything that re-imports url() afterward
+   is rejected by @tailwindcss/postcss in consumer apps. */
 @import "@codaco/tailwind-config/fresco/fonts.css";
+
+@import "tailwindcss";
 
 /* NC palette channel triplets (oklch L C H). The relative-color values used
    in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
