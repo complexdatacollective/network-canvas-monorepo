@@ -104,6 +104,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
 			>
 				<BaseCheckbox.Indicator className="text-primary flex" keepMounted>
 					<svg
+						aria-hidden="true"
 						viewBox="0 0 24 24"
 						fill="none"
 						className={checkboxIndicatorVariants({ size })}

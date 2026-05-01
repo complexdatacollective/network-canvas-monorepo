@@ -3,6 +3,7 @@ import type { SVGProps } from "react";
 export default function Icon(props: SVGProps<SVGSVGElement>) {
 	return (
 		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" {...props}>
+			<title>Trash bin</title>
 			<rect className="fill-platinum" x="64.33" y="43.16" width="16" height="16" rx="7.91" ry="7.91" />
 			<rect className="fill-platinum" x="97.68" y="29.16" width="16" height="16" rx="7.91" ry="7.91" />
 			<path className="fill-sea-green" d="M93.62 140H26.38L10 52h100l-16.38 88z" />

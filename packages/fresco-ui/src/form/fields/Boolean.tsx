@@ -99,6 +99,7 @@ function BooleanIndicator({
 	return (
 		<span aria-hidden className={booleanIndicatorVariants({ state })}>
 			<svg
+				aria-hidden="true"
 				viewBox="0 0 24 24"
 				fill="currentColor"
 				className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"

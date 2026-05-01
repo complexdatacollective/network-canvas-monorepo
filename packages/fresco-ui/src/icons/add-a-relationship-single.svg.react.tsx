@@ -3,6 +3,7 @@ import type { SVGProps } from "react";
 export default function Icon(props: SVGProps<SVGSVGElement>) {
 	return (
 		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 174.3 162.5" {...props}>
+			<title>Add a relationship</title>
 			<rect
 				x="120.8"
 				y="32.4"

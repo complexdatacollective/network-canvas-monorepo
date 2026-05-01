@@ -308,6 +308,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 							>
 								{isSingle ? (
 									<svg
+										aria-hidden="true"
 										viewBox="0 0 24 24"
 										fill="currentColor"
 										className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"
@@ -327,6 +328,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 									</svg>
 								) : (
 									<svg
+										aria-hidden="true"
 										viewBox="0 0 24 24"
 										fill="none"
 										className="text-primary size-full p-[0.1em]"
