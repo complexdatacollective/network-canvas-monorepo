@@ -66,17 +66,10 @@ function ClickableDraggableItem({
 	});
 
 	return (
-		<div
+		<button
+			type="button"
 			{...dragProps}
-			role="button"
-			tabIndex={0}
 			onClick={onClick}
-			onKeyDown={(event) => {
-				if (event.key === "Enter" || event.key === " ") {
-					event.preventDefault();
-					onClick();
-				}
-			}}
 			style={{
 				padding: "16px",
 				margin: "8px",
@@ -90,7 +83,7 @@ function ClickableDraggableItem({
 		>
 			{children}
 			{isSelected && <span style={{ marginLeft: "8px" }}>✓</span>}
-		</div>
+		</button>
 	);
 }
 

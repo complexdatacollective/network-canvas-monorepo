@@ -27,10 +27,9 @@ function AccessibleDragItem({
 	});
 
 	return (
-		<div
+		<button
+			type="button"
 			{...dragProps}
-			role="button"
-			tabIndex={0}
 			style={{
 				padding: "16px",
 				margin: "8px",
@@ -59,7 +58,7 @@ function AccessibleDragItem({
 		>
 			{children}
 			{isDragging && <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>Dragging...</div>}
-		</div>
+		</button>
 	);
 }
 
@@ -92,9 +91,8 @@ function AccessibleDropZone({
 	});
 
 	return (
-		<div
+		<section
 			{...dropProps}
-			role="region"
 			tabIndex={-1}
 			aria-label={announcedName ?? `Drop Zone ${id}`}
 			style={{
@@ -114,26 +112,9 @@ function AccessibleDropZone({
 					isDragging && willAccept ? (isOver ? "#e8f5e9" : "#e3f2fd") : isDragging ? "#ffebee" : "#fafafa",
 				...style,
 			}}
-			onFocus={(e) => {
-				if (isDragging) {
-					e.currentTarget.style.borderColor = "#ff9800";
-					e.currentTarget.style.borderStyle = "solid";
-					e.currentTarget.style.boxShadow = "0 0 0 3px rgba(255, 152, 0, 0.3)";
-					e.currentTarget.style.transform = "scale(1.02)";
-				}
-			}}
-			onBlur={(e) => {
-				if (isDragging) {
-					e.currentTarget.style.borderStyle = "dashed";
-					e.currentTarget.style.boxShadow = "none";
-					e.currentTarget.style.transform = "scale(1)";
-					const originalColor = willAccept ? (isOver ? "#4caf50" : "#2196f3") : "#f44336";
-					e.currentTarget.style.borderColor = originalColor;
-				}
-			}}
 		>
 			{children}
-		</div>
+		</section>
 	);
 }
 
@@ -328,10 +309,9 @@ function LoggingDragItem({
 	);
 
 	return (
-		<div
+		<button
+			type="button"
 			{...dragProps}
-			role="button"
-			tabIndex={0}
 			style={{
 				...dragProps.style,
 				padding: "16px",
@@ -368,7 +348,7 @@ function LoggingDragItem({
 		>
 			{children}
 			{isDragging && <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>Dragging...</div>}
-		</div>
+		</button>
 	);
 }
 
@@ -413,9 +393,8 @@ function LoggingDropZone({
 	});
 
 	return (
-		<div
+		<section
 			{...dropProps}
-			role="region"
 			tabIndex={-1}
 			aria-label={announcedName ?? `Drop Zone ${id}`}
 			style={{
@@ -434,26 +413,9 @@ function LoggingDropZone({
 				backgroundColor:
 					isDragging && willAccept ? (isOver ? "#e8f5e9" : "#e3f2fd") : isDragging ? "#ffebee" : "#fafafa",
 			}}
-			onFocus={(e) => {
-				if (isDragging) {
-					e.currentTarget.style.borderColor = "#ff9800";
-					e.currentTarget.style.borderStyle = "solid";
-					e.currentTarget.style.boxShadow = "0 0 0 3px rgba(255, 152, 0, 0.3)";
-					e.currentTarget.style.transform = "scale(1.02)";
-				}
-			}}
-			onBlur={(e) => {
-				if (isDragging) {
-					e.currentTarget.style.borderStyle = "dashed";
-					e.currentTarget.style.boxShadow = "none";
-					e.currentTarget.style.transform = "scale(1)";
-					const originalColor = willAccept ? (isOver ? "#4caf50" : "#2196f3") : "#f44336";
-					e.currentTarget.style.borderColor = originalColor;
-				}
-			}}
 		>
 			{children}
-		</div>
+		</section>
 	);
 }
 
