@@ -51,7 +51,7 @@ function findEntryByValue(value: string): IconEntry | null {
 		return { name: value, isCustom: true };
 	}
 
-	if (value in lucideIconMap) {
+	if (Object.prototype.hasOwnProperty.call(lucideIconMap, value)) {
 		return { name: value, isCustom: false };
 	}
 
