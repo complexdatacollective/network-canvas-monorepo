@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
 import { useState } from 'react';
 import Heading from './typography/Heading';
-import RichTextEditorField from './form/components/fields/RichTextEditor';
+import RichTextEditorField from './form/fields/RichTextEditor';
 import RichTextRenderer from './RichTextRenderer';
 
 const meta: Meta<typeof RichTextRenderer> = {

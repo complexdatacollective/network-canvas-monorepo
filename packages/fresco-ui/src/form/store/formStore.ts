@@ -2,7 +2,7 @@ import { enableMapSet } from "immer";
 import { z } from "zod/mini";
 import { immer } from "zustand/middleware/immer";
 import { createStore, type Mutate, type StoreApi } from "zustand/vanilla";
-import type { FieldValue } from "../components/Field/types";
+import type { FieldValue } from "../Field/types";
 import { setValue } from "../utils/objectPath";
 import { validateFieldValue } from "../validation/helpers";
 import type { FieldConfig, FieldState, FlattenedErrors, FormConfig, FormSubmitHandler } from "./types";

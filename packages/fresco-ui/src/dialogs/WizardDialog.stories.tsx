@@ -4,9 +4,9 @@ import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 import Paragraph from '../typography/Paragraph';
 import Button from '../Button';
 import { useWizard } from './useWizard';
-import UnconnectedField from '../form/components/Field/UnconnectedField';
-import InputField from '../form/components/fields/InputField';
-import RadioGroupField from '../form/components/fields/RadioGroup';
+import UnconnectedField from '../form/Field/UnconnectedField';
+import InputField from '../form/fields/InputField';
+import RadioGroupField from '../form/fields/RadioGroup';
 import useDialog from './useDialog';
 
 function NameStep() {

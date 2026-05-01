@@ -239,129 +239,129 @@
 			"types": "./dist/collection/types.d.ts",
 			"default": "./dist/collection/types.js"
 		},
-		"./form/components/Field/Field": {
-			"types": "./dist/form/components/Field/Field.d.ts",
-			"default": "./dist/form/components/Field/Field.js"
+		"./form/Field/Field": {
+			"types": "./dist/form/Field/Field.d.ts",
+			"default": "./dist/form/Field/Field.js"
 		},
-		"./form/components/Field/types": {
-			"types": "./dist/form/components/Field/types.d.ts",
-			"default": "./dist/form/components/Field/types.js"
+		"./form/Field/types": {
+			"types": "./dist/form/Field/types.d.ts",
+			"default": "./dist/form/Field/types.js"
 		},
-		"./form/components/Field/UnconnectedField": {
-			"types": "./dist/form/components/Field/UnconnectedField.d.ts",
-			"default": "./dist/form/components/Field/UnconnectedField.js"
+		"./form/Field/UnconnectedField": {
+			"types": "./dist/form/Field/UnconnectedField.d.ts",
+			"default": "./dist/form/Field/UnconnectedField.js"
 		},
-		"./form/components/FieldGroup": {
-			"types": "./dist/form/components/FieldGroup.d.ts",
-			"default": "./dist/form/components/FieldGroup.js"
+		"./form/FieldGroup": {
+			"types": "./dist/form/FieldGroup.d.ts",
+			"default": "./dist/form/FieldGroup.js"
 		},
-		"./form/components/FieldLabel": {
-			"types": "./dist/form/components/FieldLabel.d.ts",
-			"default": "./dist/form/components/FieldLabel.js"
+		"./form/FieldLabel": {
+			"types": "./dist/form/FieldLabel.d.ts",
+			"default": "./dist/form/FieldLabel.js"
 		},
-		"./form/components/FieldNamespace": {
-			"types": "./dist/form/components/FieldNamespace.d.ts",
-			"default": "./dist/form/components/FieldNamespace.js"
+		"./form/FieldNamespace": {
+			"types": "./dist/form/FieldNamespace.d.ts",
+			"default": "./dist/form/FieldNamespace.js"
 		},
-		"./form/components/fields/ArrayField/ArrayField": {
-			"types": "./dist/form/components/fields/ArrayField/ArrayField.d.ts",
-			"default": "./dist/form/components/fields/ArrayField/ArrayField.js"
+		"./form/fields/ArrayField/ArrayField": {
+			"types": "./dist/form/fields/ArrayField/ArrayField.d.ts",
+			"default": "./dist/form/fields/ArrayField/ArrayField.js"
 		},
-		"./form/components/fields/Boolean": {
-			"types": "./dist/form/components/fields/Boolean.d.ts",
-			"default": "./dist/form/components/fields/Boolean.js"
+		"./form/fields/Boolean": {
+			"types": "./dist/form/fields/Boolean.d.ts",
+			"default": "./dist/form/fields/Boolean.js"
 		},
-		"./form/components/fields/Checkbox": {
-			"types": "./dist/form/components/fields/Checkbox.d.ts",
-			"default": "./dist/form/components/fields/Checkbox.js"
+		"./form/fields/Checkbox": {
+			"types": "./dist/form/fields/Checkbox.d.ts",
+			"default": "./dist/form/fields/Checkbox.js"
 		},
-		"./form/components/fields/CheckboxGroup": {
-			"types": "./dist/form/components/fields/CheckboxGroup.d.ts",
-			"default": "./dist/form/components/fields/CheckboxGroup.js"
+		"./form/fields/CheckboxGroup": {
+			"types": "./dist/form/fields/CheckboxGroup.d.ts",
+			"default": "./dist/form/fields/CheckboxGroup.js"
 		},
-		"./form/components/fields/Combobox/Combobox": {
-			"types": "./dist/form/components/fields/Combobox/Combobox.d.ts",
-			"default": "./dist/form/components/fields/Combobox/Combobox.js"
+		"./form/fields/Combobox/Combobox": {
+			"types": "./dist/form/fields/Combobox/Combobox.d.ts",
+			"default": "./dist/form/fields/Combobox/Combobox.js"
 		},
-		"./form/components/fields/Combobox/shared": {
-			"types": "./dist/form/components/fields/Combobox/shared.d.ts",
-			"default": "./dist/form/components/fields/Combobox/shared.js"
+		"./form/fields/Combobox/shared": {
+			"types": "./dist/form/fields/Combobox/shared.d.ts",
+			"default": "./dist/form/fields/Combobox/shared.js"
 		},
-		"./form/components/fields/DatePicker": {
-			"types": "./dist/form/components/fields/DatePicker.d.ts",
-			"default": "./dist/form/components/fields/DatePicker.js"
+		"./form/fields/DatePicker": {
+			"types": "./dist/form/fields/DatePicker.d.ts",
+			"default": "./dist/form/fields/DatePicker.js"
 		},
-		"./form/components/fields/getPasswordStrength": {
-			"types": "./dist/form/components/fields/getPasswordStrength.d.ts",
-			"default": "./dist/form/components/fields/getPasswordStrength.js"
+		"./form/fields/getPasswordStrength": {
+			"types": "./dist/form/fields/getPasswordStrength.d.ts",
+			"default": "./dist/form/fields/getPasswordStrength.js"
 		},
-		"./form/components/fields/InputField": {
-			"types": "./dist/form/components/fields/InputField.d.ts",
-			"default": "./dist/form/components/fields/InputField.js"
+		"./form/fields/InputField": {
+			"types": "./dist/form/fields/InputField.d.ts",
+			"default": "./dist/form/fields/InputField.js"
 		},
-		"./form/components/fields/LikertScale": {
-			"types": "./dist/form/components/fields/LikertScale.d.ts",
-			"default": "./dist/form/components/fields/LikertScale.js"
+		"./form/fields/LikertScale": {
+			"types": "./dist/form/fields/LikertScale.d.ts",
+			"default": "./dist/form/fields/LikertScale.js"
 		},
-		"./form/components/fields/PasswordField": {
-			"types": "./dist/form/components/fields/PasswordField.d.ts",
-			"default": "./dist/form/components/fields/PasswordField.js"
+		"./form/fields/PasswordField": {
+			"types": "./dist/form/fields/PasswordField.d.ts",
+			"default": "./dist/form/fields/PasswordField.js"
 		},
-		"./form/components/fields/RadioGroup": {
-			"types": "./dist/form/components/fields/RadioGroup.d.ts",
-			"default": "./dist/form/components/fields/RadioGroup.js"
+		"./form/fields/RadioGroup": {
+			"types": "./dist/form/fields/RadioGroup.d.ts",
+			"default": "./dist/form/fields/RadioGroup.js"
 		},
-		"./form/components/fields/RelativeDatePicker": {
-			"types": "./dist/form/components/fields/RelativeDatePicker.d.ts",
-			"default": "./dist/form/components/fields/RelativeDatePicker.js"
+		"./form/fields/RelativeDatePicker": {
+			"types": "./dist/form/fields/RelativeDatePicker.d.ts",
+			"default": "./dist/form/fields/RelativeDatePicker.js"
 		},
-		"./form/components/fields/RichSelectGroup": {
-			"types": "./dist/form/components/fields/RichSelectGroup.d.ts",
-			"default": "./dist/form/components/fields/RichSelectGroup.js"
+		"./form/fields/RichSelectGroup": {
+			"types": "./dist/form/fields/RichSelectGroup.d.ts",
+			"default": "./dist/form/fields/RichSelectGroup.js"
 		},
-		"./form/components/fields/RichTextEditor": {
-			"types": "./dist/form/components/fields/RichTextEditor.d.ts",
-			"default": "./dist/form/components/fields/RichTextEditor.js"
+		"./form/fields/RichTextEditor": {
+			"types": "./dist/form/fields/RichTextEditor.d.ts",
+			"default": "./dist/form/fields/RichTextEditor.js"
 		},
-		"./form/components/fields/SegmentedCodeField": {
-			"types": "./dist/form/components/fields/SegmentedCodeField.d.ts",
-			"default": "./dist/form/components/fields/SegmentedCodeField.js"
+		"./form/fields/SegmentedCodeField": {
+			"types": "./dist/form/fields/SegmentedCodeField.d.ts",
+			"default": "./dist/form/fields/SegmentedCodeField.js"
 		},
-		"./form/components/fields/Select/Native": {
-			"types": "./dist/form/components/fields/Select/Native.d.ts",
-			"default": "./dist/form/components/fields/Select/Native.js"
+		"./form/fields/Select/Native": {
+			"types": "./dist/form/fields/Select/Native.d.ts",
+			"default": "./dist/form/fields/Select/Native.js"
 		},
-		"./form/components/fields/Select/Styled": {
-			"types": "./dist/form/components/fields/Select/Styled.d.ts",
-			"default": "./dist/form/components/fields/Select/Styled.js"
+		"./form/fields/Select/Styled": {
+			"types": "./dist/form/fields/Select/Styled.d.ts",
+			"default": "./dist/form/fields/Select/Styled.js"
 		},
-		"./form/components/fields/TextArea": {
-			"types": "./dist/form/components/fields/TextArea.d.ts",
-			"default": "./dist/form/components/fields/TextArea.js"
+		"./form/fields/TextArea": {
+			"types": "./dist/form/fields/TextArea.d.ts",
+			"default": "./dist/form/fields/TextArea.js"
 		},
-		"./form/components/fields/ToggleButtonGroup": {
-			"types": "./dist/form/components/fields/ToggleButtonGroup.d.ts",
-			"default": "./dist/form/components/fields/ToggleButtonGroup.js"
+		"./form/fields/ToggleButtonGroup": {
+			"types": "./dist/form/fields/ToggleButtonGroup.d.ts",
+			"default": "./dist/form/fields/ToggleButtonGroup.js"
 		},
-		"./form/components/fields/ToggleField": {
-			"types": "./dist/form/components/fields/ToggleField.d.ts",
-			"default": "./dist/form/components/fields/ToggleField.js"
+		"./form/fields/ToggleField": {
+			"types": "./dist/form/fields/ToggleField.d.ts",
+			"default": "./dist/form/fields/ToggleField.js"
 		},
-		"./form/components/fields/ToggleFieldSkeleton": {
-			"types": "./dist/form/components/fields/ToggleFieldSkeleton.d.ts",
-			"default": "./dist/form/components/fields/ToggleFieldSkeleton.js"
+		"./form/fields/ToggleFieldSkeleton": {
+			"types": "./dist/form/fields/ToggleFieldSkeleton.d.ts",
+			"default": "./dist/form/fields/ToggleFieldSkeleton.js"
 		},
-		"./form/components/fields/VisualAnalogScale": {
-			"types": "./dist/form/components/fields/VisualAnalogScale.d.ts",
-			"default": "./dist/form/components/fields/VisualAnalogScale.js"
+		"./form/fields/VisualAnalogScale": {
+			"types": "./dist/form/fields/VisualAnalogScale.d.ts",
+			"default": "./dist/form/fields/VisualAnalogScale.js"
 		},
-		"./form/components/Form": {
-			"types": "./dist/form/components/Form.d.ts",
-			"default": "./dist/form/components/Form.js"
+		"./form/Form": {
+			"types": "./dist/form/Form.d.ts",
+			"default": "./dist/form/Form.js"
 		},
-		"./form/components/SubmitButton": {
-			"types": "./dist/form/components/SubmitButton.d.ts",
-			"default": "./dist/form/components/SubmitButton.js"
+		"./form/SubmitButton": {
+			"types": "./dist/form/SubmitButton.d.ts",
+			"default": "./dist/form/SubmitButton.js"
 		},
 		"./form/hooks/useField": {
 			"types": "./dist/form/hooks/useField.d.ts",

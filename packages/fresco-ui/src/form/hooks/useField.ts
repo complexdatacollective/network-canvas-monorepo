@@ -1,8 +1,8 @@
 import { debounce } from "es-toolkit";
 import { type ReactNode, useCallback, useEffect, useId, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { FieldValue, ValidationPropsCatalogue } from "../components/Field/types";
-import { useFieldNamespace } from "../components/FieldNamespace";
+import type { FieldValue, ValidationPropsCatalogue } from "../Field/types";
+import { useFieldNamespace } from "../FieldNamespace";
 import type { FieldState, ValidationContext } from "../store/types";
 import { validationPropKeys } from "../validation/functions";
 import { makeValidationFunction, makeValidationHints } from "../validation/helpers";

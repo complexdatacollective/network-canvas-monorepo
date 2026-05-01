@@ -3,9 +3,9 @@ import type { NcNetwork } from "@codaco/shared-consts";
 import type * as z from "zod/mini";
 
 // Re-export FieldValue for convenience
-export type { FieldValue } from "../components/Field/types";
+export type { FieldValue } from "../Field/types";
 
-import type { FieldValue } from "../components/Field/types";
+import type { FieldValue } from "../Field/types";
 
 // ═══════════════════════════════════════════════════════════════
 // Validation types

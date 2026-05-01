@@ -4,7 +4,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { type ReactNode, useCallback } from "react";
 import { useShallow } from "zustand/shallow";
 import { IconButton } from "../../Button";
-import InputField from "../../form/components/fields/InputField";
+import InputField from "../../form/fields/InputField";
 import { cx } from "../../utils/cva";
 import { useCollectionStore, useOptionalFilterManager } from "../contexts";
 
