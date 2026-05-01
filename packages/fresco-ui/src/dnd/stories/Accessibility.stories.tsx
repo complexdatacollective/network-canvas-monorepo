@@ -29,6 +29,8 @@ function AccessibleDragItem({
 	return (
 		<div
 			{...dragProps}
+			role="button"
+			tabIndex={0}
 			style={{
 				padding: "16px",
 				margin: "8px",
@@ -92,6 +94,9 @@ function AccessibleDropZone({
 	return (
 		<div
 			{...dropProps}
+			role="region"
+			tabIndex={-1}
+			aria-label={announcedName ?? `Drop Zone ${id}`}
 			style={{
 				padding: "20px",
 				margin: "8px",
@@ -325,6 +330,8 @@ function LoggingDragItem({
 	return (
 		<div
 			{...dragProps}
+			role="button"
+			tabIndex={0}
 			style={{
 				...dragProps.style,
 				padding: "16px",
@@ -408,6 +415,9 @@ function LoggingDropZone({
 	return (
 		<div
 			{...dropProps}
+			role="region"
+			tabIndex={-1}
+			aria-label={announcedName ?? `Drop Zone ${id}`}
 			style={{
 				padding: "20px",
 				margin: "8px",

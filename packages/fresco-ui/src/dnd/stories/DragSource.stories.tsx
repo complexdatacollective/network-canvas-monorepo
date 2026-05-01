@@ -68,7 +68,15 @@ function ClickableDraggableItem({
 	return (
 		<div
 			{...dragProps}
+			role="button"
+			tabIndex={0}
 			onClick={onClick}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					onClick();
+				}
+			}}
 			style={{
 				padding: "16px",
 				margin: "8px",
