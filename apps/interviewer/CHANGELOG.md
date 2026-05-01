@@ -1,5 +1,12 @@
 # network-canvas-interviewer
 
+## 6.5.8
+
+### Patch Changes
+
+- Updated dependencies [23efeeb]
+  - @codaco/network-exporters@1.0.1
+
 ## 6.5.7
 
 ### Patch Changes
