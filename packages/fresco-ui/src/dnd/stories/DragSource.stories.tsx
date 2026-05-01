@@ -223,57 +223,55 @@ export const ClickAndDrag: Story = {
 		const [dropCount, setDropCount] = useState(0);
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h3" margin="none">
-						Click vs Drag Behavior
-					</Heading>
-					<Paragraph margin="none" className="mb-4 text-[#666]">
-						<strong>Mouse/Touch:</strong> Click to select (opens form in real usage), drag to move. Threshold is 4px.
-						<br />
-						<strong>Keyboard:</strong> Enter = click/select, Space = start drag, Arrow keys = navigate drop targets,
-						Escape = cancel.
-					</Paragraph>
+			<div style={{ padding: "20px" }}>
+				<Heading level="h3" margin="none">
+					Click vs Drag Behavior
+				</Heading>
+				<Paragraph margin="none" className="mb-4 text-[#666]">
+					<strong>Mouse/Touch:</strong> Click to select (opens form in real usage), drag to move. Threshold is 4px.
+					<br />
+					<strong>Keyboard:</strong> Enter = click/select, Space = start drag, Arrow keys = navigate drop targets,
+					Escape = cancel.
+				</Paragraph>
 
-					<div
-						style={{
-							padding: "12px",
-							marginBottom: "16px",
-							backgroundColor: "#f5f5f5",
-							borderRadius: "8px",
-						}}
-					>
-						<div>
-							Clicked item: <strong>{clickedItem ?? "None (click an item)"}</strong>
-						</div>
-						<div>
-							Drop count: <strong>{dropCount}</strong>
-						</div>
+				<div
+					style={{
+						padding: "12px",
+						marginBottom: "16px",
+						backgroundColor: "#f5f5f5",
+						borderRadius: "8px",
+					}}
+				>
+					<div>
+						Clicked item: <strong>{clickedItem ?? "None (click an item)"}</strong>
 					</div>
-
-					<div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
-						<div>
-							<Heading level="h4" margin="none">
-								Clickable & Draggable Items
-							</Heading>
-							{["Item A", "Item B", "Item C"].map((name) => (
-								<ClickableDraggableItem
-									key={name}
-									id={name}
-									type="clickable"
-									onClick={() => setClickedItem(name)}
-									isSelected={clickedItem === name}
-								>
-									{name}
-								</ClickableDraggableItem>
-							))}
-						</div>
-						<DropZone accepts={["clickable"]} onDrop={() => setDropCount((c) => c + 1)}>
-							Drop items here
-						</DropZone>
+					<div>
+						Drop count: <strong>{dropCount}</strong>
 					</div>
 				</div>
-			</>
+
+				<div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+					<div>
+						<Heading level="h4" margin="none">
+							Clickable & Draggable Items
+						</Heading>
+						{["Item A", "Item B", "Item C"].map((name) => (
+							<ClickableDraggableItem
+								key={name}
+								id={name}
+								type="clickable"
+								onClick={() => setClickedItem(name)}
+								isSelected={clickedItem === name}
+							>
+								{name}
+							</ClickableDraggableItem>
+						))}
+					</div>
+					<DropZone accepts={["clickable"]} onDrop={() => setDropCount((c) => c + 1)}>
+						Drop items here
+					</DropZone>
+				</div>
+			</div>
 		);
 	},
 };
@@ -283,74 +281,72 @@ export const TypeRestrictions: Story = {
 		const [lastDrop, setLastDrop] = useState<string>("");
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h3" margin="none">
-						Type Restrictions
-					</Heading>
-					{lastDrop && (
-						<div
-							style={{
-								padding: "8px",
-								marginBottom: "16px",
-								backgroundColor: "#e8f5e9",
-								borderRadius: "4px",
-								fontSize: "14px",
+			<div style={{ padding: "20px" }}>
+				<Heading level="h3" margin="none">
+					Type Restrictions
+				</Heading>
+				{lastDrop && (
+					<div
+						style={{
+							padding: "8px",
+							marginBottom: "16px",
+							backgroundColor: "#e8f5e9",
+							borderRadius: "4px",
+							fontSize: "14px",
+						}}
+					>
+						Last dropped: {lastDrop}
+					</div>
+				)}
+				<div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+					<div>
+						<Heading level="h4" margin="none">
+							Items
+						</Heading>
+						<DraggableItem id="fruit-1" type="fruit" style={{ backgroundColor: "#ffcdd2" }}>
+							🍎 Apple
+						</DraggableItem>
+						<DraggableItem id="veggie-1" type="vegetable" style={{ backgroundColor: "#c8e6c9" }}>
+							🥕 Carrot
+						</DraggableItem>
+						<DraggableItem id="protein-1" type="protein" style={{ backgroundColor: "#d1c4e9" }}>
+							🍖 Meat
+						</DraggableItem>
+					</div>
+					<div>
+						<Heading level="h4" margin="none">
+							Drop Zones
+						</Heading>
+						<DropZone
+							accepts={["fruit"]}
+							onDrop={(metadata) => {
+								const id = typeof metadata?.id === "string" ? metadata.id : "unknown";
+								setLastDrop(`Fruit: ${id}`);
 							}}
 						>
-							Last dropped: {lastDrop}
-						</div>
-					)}
-					<div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
-						<div>
-							<Heading level="h4" margin="none">
-								Items
-							</Heading>
-							<DraggableItem id="fruit-1" type="fruit" style={{ backgroundColor: "#ffcdd2" }}>
-								🍎 Apple
-							</DraggableItem>
-							<DraggableItem id="veggie-1" type="vegetable" style={{ backgroundColor: "#c8e6c9" }}>
-								🥕 Carrot
-							</DraggableItem>
-							<DraggableItem id="protein-1" type="protein" style={{ backgroundColor: "#d1c4e9" }}>
-								🍖 Meat
-							</DraggableItem>
-						</div>
-						<div>
-							<Heading level="h4" margin="none">
-								Drop Zones
-							</Heading>
-							<DropZone
-								accepts={["fruit"]}
-								onDrop={(metadata) => {
-									const id = typeof metadata?.id === "string" ? metadata.id : "unknown";
-									setLastDrop(`Fruit: ${id}`);
-								}}
-							>
-								Fruits Only
-							</DropZone>
-							<DropZone
-								accepts={["vegetable"]}
-								onDrop={(metadata) => {
-									const id = typeof metadata?.id === "string" ? metadata.id : "unknown";
-									setLastDrop(`Vegetable: ${id}`);
-								}}
-							>
-								Vegetables Only
-							</DropZone>
-							<DropZone
-								accepts={["fruit", "vegetable", "protein"]}
-								onDrop={(metadata) => {
-									const id = typeof metadata?.id === "string" ? metadata.id : "unknown";
-									setLastDrop(`Any: ${id}`);
-								}}
-							>
-								All Types
-							</DropZone>
-						</div>
+							Fruits Only
+						</DropZone>
+						<DropZone
+							accepts={["vegetable"]}
+							onDrop={(metadata) => {
+								const id = typeof metadata?.id === "string" ? metadata.id : "unknown";
+								setLastDrop(`Vegetable: ${id}`);
+							}}
+						>
+							Vegetables Only
+						</DropZone>
+						<DropZone
+							accepts={["fruit", "vegetable", "protein"]}
+							onDrop={(metadata) => {
+								const id = typeof metadata?.id === "string" ? metadata.id : "unknown";
+								setLastDrop(`Any: ${id}`);
+							}}
+						>
+							All Types
+						</DropZone>
 					</div>
 				</div>
-			</>
+			</div>
 		);
 	},
 };

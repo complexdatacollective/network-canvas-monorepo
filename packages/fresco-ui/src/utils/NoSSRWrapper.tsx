@@ -12,7 +12,7 @@ import { type ComponentProps, type ComponentType, type ReactNode, useEffect, use
 const NoSSRWrapper = ({ children }: { children: ReactNode }) => {
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => setMounted(true), []);
-	return mounted ? <>{children}</> : null;
+	return mounted ? children : null;
 };
 
 export const withNoSSRWrapper = <P extends object>(

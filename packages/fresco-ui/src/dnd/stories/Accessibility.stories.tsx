@@ -192,104 +192,102 @@ export const KeyboardNavigation: Story = {
 		};
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h2" margin="none">
-						Keyboard Navigation Demo
+			<div style={{ padding: "20px" }}>
+				<Heading level="h2" margin="none">
+					Keyboard Navigation Demo
+				</Heading>
+
+				<div
+					style={{
+						marginBottom: "20px",
+						padding: "16px",
+						backgroundColor: "#e8eaf6",
+						borderRadius: "8px",
+					}}
+				>
+					<Heading level="h3" margin="none" className="mb-3">
+						Instructions
 					</Heading>
-
-					<div
-						style={{
-							marginBottom: "20px",
-							padding: "16px",
-							backgroundColor: "#e8eaf6",
-							borderRadius: "8px",
-						}}
-					>
-						<Heading level="h3" margin="none" className="mb-3">
-							Instructions
-						</Heading>
-						<div style={{ fontSize: "14px", marginBottom: "12px" }}>{instructions}</div>
-						<div style={{ fontSize: "12px", color: "#666" }}>
-							<strong>Keyboard Controls:</strong>
-							<UnorderedList className="my-2">
-								<li>
-									<kbd>Tab</kbd> - Navigate between items
-								</li>
-								<li>
-									<kbd>Space</kbd>/<kbd>Enter</kbd> - Start/stop dragging
-								</li>
-								<li>
-									<kbd>↑↓←→</kbd> - Navigate drop zones while dragging
-								</li>
-								<li>
-									<kbd>Escape</kbd> - Cancel drag operation
-								</li>
-							</UnorderedList>
-						</div>
-					</div>
-
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gap: "20px",
-						}}
-					>
-						<div>
-							<Heading level="h3" margin="none">
-								Source Items
-							</Heading>
-							{items
-								.filter((item) => item.zone === "source")
-								.map((item) => (
-									<AccessibleDragItem key={item.id} id={item.id} type="document" announcedName={item.name}>
-										📄 {item.name}
-									</AccessibleDragItem>
-								))}
-						</div>
-
-						<div>
-							<Heading level="h3" margin="none">
-								Target Zones
-							</Heading>
-							<AccessibleDropZone
-								id="archive-zone"
-								accepts={["document"]}
-								announcedName="Archive Folder"
-								onDrop={(metadata) => {
-									if (metadata) {
-										const id = typeof metadata.id === "string" ? metadata.id : "";
-										moveItem(id, "archive");
-									}
-								}}
-								onDragEnter={() => setInstructions("Over Archive folder - press Space or Enter to drop")}
-							>
-								📁 Archive
-								<br />
-								{items.filter((item) => item.zone === "archive").length} items
-							</AccessibleDropZone>
-
-							<AccessibleDropZone
-								id="trash-zone"
-								accepts={["document"]}
-								announcedName="Trash Can"
-								onDrop={(metadata) => {
-									if (metadata) {
-										const id = typeof metadata.id === "string" ? metadata.id : "";
-										moveItem(id, "trash");
-									}
-								}}
-								onDragEnter={() => setInstructions("Over Trash - press Space or Enter to delete")}
-							>
-								🗑️ Trash
-								<br />
-								{items.filter((item) => item.zone === "trash").length} items
-							</AccessibleDropZone>
-						</div>
+					<div style={{ fontSize: "14px", marginBottom: "12px" }}>{instructions}</div>
+					<div style={{ fontSize: "12px", color: "#666" }}>
+						<strong>Keyboard Controls:</strong>
+						<UnorderedList className="my-2">
+							<li>
+								<kbd>Tab</kbd> - Navigate between items
+							</li>
+							<li>
+								<kbd>Space</kbd>/<kbd>Enter</kbd> - Start/stop dragging
+							</li>
+							<li>
+								<kbd>↑↓←→</kbd> - Navigate drop zones while dragging
+							</li>
+							<li>
+								<kbd>Escape</kbd> - Cancel drag operation
+							</li>
+						</UnorderedList>
 					</div>
 				</div>
-			</>
+
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: "1fr 1fr",
+						gap: "20px",
+					}}
+				>
+					<div>
+						<Heading level="h3" margin="none">
+							Source Items
+						</Heading>
+						{items
+							.filter((item) => item.zone === "source")
+							.map((item) => (
+								<AccessibleDragItem key={item.id} id={item.id} type="document" announcedName={item.name}>
+									📄 {item.name}
+								</AccessibleDragItem>
+							))}
+					</div>
+
+					<div>
+						<Heading level="h3" margin="none">
+							Target Zones
+						</Heading>
+						<AccessibleDropZone
+							id="archive-zone"
+							accepts={["document"]}
+							announcedName="Archive Folder"
+							onDrop={(metadata) => {
+								if (metadata) {
+									const id = typeof metadata.id === "string" ? metadata.id : "";
+									moveItem(id, "archive");
+								}
+							}}
+							onDragEnter={() => setInstructions("Over Archive folder - press Space or Enter to drop")}
+						>
+							📁 Archive
+							<br />
+							{items.filter((item) => item.zone === "archive").length} items
+						</AccessibleDropZone>
+
+						<AccessibleDropZone
+							id="trash-zone"
+							accepts={["document"]}
+							announcedName="Trash Can"
+							onDrop={(metadata) => {
+								if (metadata) {
+									const id = typeof metadata.id === "string" ? metadata.id : "";
+									moveItem(id, "trash");
+								}
+							}}
+							onDragEnter={() => setInstructions("Over Trash - press Space or Enter to delete")}
+						>
+							🗑️ Trash
+							<br />
+							{items.filter((item) => item.zone === "trash").length} items
+						</AccessibleDropZone>
+					</div>
+				</div>
+			</div>
 		);
 	},
 };
@@ -473,124 +471,122 @@ export const ScreenReaderAnnouncements: Story = {
 		const items = ["Screen Reader Test Item A", "Screen Reader Test Item B", "Screen Reader Test Item C"];
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h2" margin="none">
-						Screen Reader Announcements
-					</Heading>
+			<div style={{ padding: "20px" }}>
+				<Heading level="h2" margin="none">
+					Screen Reader Announcements
+				</Heading>
 
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gap: "20px",
-						}}
-					>
-						<div>
-							<Heading level="h3" margin="none">
-								Interactive Elements
-							</Heading>
-							<Paragraph margin="none" className="mb-4 text-sm text-[#666]">
-								Use keyboard or mouse to interact. All actions will be announced for screen readers and logged to the
-								right.
-							</Paragraph>
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: "1fr 1fr",
+						gap: "20px",
+					}}
+				>
+					<div>
+						<Heading level="h3" margin="none">
+							Interactive Elements
+						</Heading>
+						<Paragraph margin="none" className="mb-4 text-sm text-[#666]">
+							Use keyboard or mouse to interact. All actions will be announced for screen readers and logged to the
+							right.
+						</Paragraph>
 
-							{items.map((item, index) => (
-								<LoggingDragItem
-									key={index}
-									id={`sr-item-${index}`}
-									type="test"
-									announcedName={item}
-									onAnnounce={logAnnouncement}
-								>
-									{item}
-								</LoggingDragItem>
-							))}
-
-							<LoggingDropZone
-								id="sr-drop-zone"
-								accepts={["test"]}
-								announcedName="Screen Reader Test Drop Zone"
-								onDrop={() => setDragCount((prev) => prev + 1)}
+						{items.map((item, index) => (
+							<LoggingDragItem
+								key={index}
+								id={`sr-item-${index}`}
+								type="test"
+								announcedName={item}
 								onAnnounce={logAnnouncement}
 							>
-								Drop Zone
-								<br />
-								<small>Items dropped: {dragCount}</small>
-							</LoggingDropZone>
+								{item}
+							</LoggingDragItem>
+						))}
+
+						<LoggingDropZone
+							id="sr-drop-zone"
+							accepts={["test"]}
+							announcedName="Screen Reader Test Drop Zone"
+							onDrop={() => setDragCount((prev) => prev + 1)}
+							onAnnounce={logAnnouncement}
+						>
+							Drop Zone
+							<br />
+							<small>Items dropped: {dragCount}</small>
+						</LoggingDropZone>
+					</div>
+
+					<div>
+						<Heading level="h3" margin="none">
+							Live Announcements
+						</Heading>
+						<div
+							ref={announcementsRef}
+							style={{
+								height: "300px",
+								overflow: "auto",
+								backgroundColor: "#f5f5f5",
+								border: "1px solid #ddd",
+								borderRadius: "4px",
+								padding: "12px",
+								fontSize: "12px",
+								fontFamily: "monospace",
+							}}
+						>
+							{announcements.length === 0 ? (
+								<div style={{ color: "#999" }}>
+									Screen reader announcements will appear here...
+									<br />
+									Try dragging items to see the announcements.
+								</div>
+							) : (
+								announcements.map((announcement, index) => (
+									<div key={index} style={{ marginBottom: "4px", wordWrap: "break-word" }}>
+										{announcement}
+									</div>
+								))
+							)}
 						</div>
 
-						<div>
-							<Heading level="h3" margin="none">
-								Live Announcements
-							</Heading>
-							<div
-								ref={announcementsRef}
+						<div style={{ marginTop: "12px" }}>
+							<button
+								onClick={() => setAnnouncements([])}
 								style={{
-									height: "300px",
-									overflow: "auto",
-									backgroundColor: "#f5f5f5",
-									border: "1px solid #ddd",
+									padding: "8px 16px",
+									backgroundColor: "#f44336",
+									color: "white",
+									border: "none",
 									borderRadius: "4px",
-									padding: "12px",
-									fontSize: "12px",
-									fontFamily: "monospace",
+									cursor: "pointer",
+									fontSize: "14px",
 								}}
 							>
-								{announcements.length === 0 ? (
-									<div style={{ color: "#999" }}>
-										Screen reader announcements will appear here...
-										<br />
-										Try dragging items to see the announcements.
-									</div>
-								) : (
-									announcements.map((announcement, index) => (
-										<div key={index} style={{ marginBottom: "4px", wordWrap: "break-word" }}>
-											{announcement}
-										</div>
-									))
-								)}
-							</div>
-
-							<div style={{ marginTop: "12px" }}>
-								<button
-									onClick={() => setAnnouncements([])}
-									style={{
-										padding: "8px 16px",
-										backgroundColor: "#f44336",
-										color: "white",
-										border: "none",
-										borderRadius: "4px",
-										cursor: "pointer",
-										fontSize: "14px",
-									}}
-								>
-									Clear Log
-								</button>
-								<button
-									onClick={() => {
-										const message = "Test announcement from button";
-										logAnnouncement(message);
-										announce(message);
-									}}
-									style={{
-										padding: "8px 16px",
-										backgroundColor: "#2196f3",
-										color: "white",
-										border: "none",
-										borderRadius: "4px",
-										cursor: "pointer",
-										fontSize: "14px",
-										marginLeft: "8px",
-									}}
-								>
-									Test Announcement
-								</button>
-							</div>
+								Clear Log
+							</button>
+							<button
+								onClick={() => {
+									const message = "Test announcement from button";
+									logAnnouncement(message);
+									announce(message);
+								}}
+								style={{
+									padding: "8px 16px",
+									backgroundColor: "#2196f3",
+									color: "white",
+									border: "none",
+									borderRadius: "4px",
+									cursor: "pointer",
+									fontSize: "14px",
+									marginLeft: "8px",
+								}}
+							>
+								Test Announcement
+							</button>
 						</div>
 					</div>
 				</div>
-			</>
+			</div>
 		);
 	},
 };
@@ -618,181 +614,179 @@ export const AriaAttributes: Story = {
 		];
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h2" margin="none">
-						ARIA Attributes Demo
+			<div style={{ padding: "20px" }}>
+				<Heading level="h2" margin="none">
+					ARIA Attributes Demo
+				</Heading>
+
+				<div
+					style={{
+						marginBottom: "20px",
+						padding: "16px",
+						backgroundColor: "#fff3e0",
+						borderRadius: "8px",
+					}}
+				>
+					<Heading level="h3" margin="none" className="mb-3">
+						ARIA Attribute Inspection
 					</Heading>
+					<Paragraph margin="none" className="mb-2 text-sm">
+						Use browser dev tools to inspect the ARIA attributes on draggable items:
+					</Paragraph>
+					<UnorderedList className="text-sm">
+						<li>
+							<code>role=&quot;button&quot;</code> - Makes items keyboard focusable
+						</li>
+						<li>
+							<code>aria-label</code> - Provides accessible name
+						</li>
+						<li>
+							<code>aria-grabbed</code> - Indicates if item is being dragged
+						</li>
+						<li>
+							<code>aria-dropeffect=&quot;move&quot;</code> - Describes the drag operation
+						</li>
+						<li>
+							<code>tabIndex=&quot;0&quot;</code> - Enables keyboard navigation
+						</li>
+					</UnorderedList>
+				</div>
 
-					<div
-						style={{
-							marginBottom: "20px",
-							padding: "16px",
-							backgroundColor: "#fff3e0",
-							borderRadius: "8px",
-						}}
-					>
-						<Heading level="h3" margin="none" className="mb-3">
-							ARIA Attribute Inspection
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: "1fr 1fr",
+						gap: "20px",
+					}}
+				>
+					<div>
+						<Heading level="h3" margin="none">
+							Draggable Items with ARIA
 						</Heading>
-						<Paragraph margin="none" className="mb-2 text-sm">
-							Use browser dev tools to inspect the ARIA attributes on draggable items:
-						</Paragraph>
-						<UnorderedList className="text-sm">
-							<li>
-								<code>role=&quot;button&quot;</code> - Makes items keyboard focusable
-							</li>
-							<li>
-								<code>aria-label</code> - Provides accessible name
-							</li>
-							<li>
-								<code>aria-grabbed</code> - Indicates if item is being dragged
-							</li>
-							<li>
-								<code>aria-dropeffect=&quot;move&quot;</code> - Describes the drag operation
-							</li>
-							<li>
-								<code>tabIndex=&quot;0&quot;</code> - Enables keyboard navigation
-							</li>
-						</UnorderedList>
-					</div>
-
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gap: "20px",
-						}}
-					>
-						<div>
-							<Heading level="h3" margin="none">
-								Draggable Items with ARIA
-							</Heading>
-							{items.map((item) => (
-								<div key={item.id} style={{ marginBottom: "16px" }}>
-									<AccessibleDragItem
-										id={item.id}
-										type="aria-test"
-										announcedName={`${item.name} - ${item.description}`}
-										style={{
-											cursor: "pointer",
-											borderColor: selectedItem === item.id ? "#4caf50" : "#2196f3",
-										}}
-									>
-										<div>
-											<strong>{item.name}</strong>
-											<div
-												style={{
-													fontSize: "12px",
-													color: "#666",
-													marginTop: "4px",
-												}}
-											>
-												{item.description}
-											</div>
-										</div>
-									</AccessibleDragItem>
-
-									<div
-										style={{
-											fontSize: "12px",
-											color: "#666",
-											fontFamily: "monospace",
-										}}
-									>
-										ARIA attributes: role, aria-label, aria-grabbed, aria-dropeffect, tabIndex
-									</div>
-								</div>
-							))}
-						</div>
-
-						<div>
-							<Heading level="h3" margin="none">
-								Drop Zones
-							</Heading>
-							<AccessibleDropZone
-								id="aria-drop-primary"
-								accepts={["aria-test"]}
-								announcedName="Primary Drop Zone with ARIA support"
-								onDrop={(metadata) => {
-									if (metadata) {
-										const id = typeof metadata.id === "string" ? metadata.id : "";
-										setSelectedItem(id);
-									}
-								}}
-							>
-								Primary Zone
-								<br />
-								<small>Accepts all items</small>
-							</AccessibleDropZone>
-
-							<AccessibleDropZone
-								id="aria-drop-secondary"
-								accepts={["other"]} // Doesn't accept our items
-								announcedName="Secondary Drop Zone (rejects items)"
-							>
-								Secondary Zone
-								<br />
-								<small>Rejects all test items</small>
-							</AccessibleDropZone>
-
-							{selectedItem && (
-								<div
+						{items.map((item) => (
+							<div key={item.id} style={{ marginBottom: "16px" }}>
+								<AccessibleDragItem
+									id={item.id}
+									type="aria-test"
+									announcedName={`${item.name} - ${item.description}`}
 									style={{
-										marginTop: "20px",
-										padding: "12px",
-										backgroundColor: "#e8f5e9",
-										borderRadius: "6px",
+										cursor: "pointer",
+										borderColor: selectedItem === item.id ? "#4caf50" : "#2196f3",
 									}}
 								>
-									<strong>Last dropped:</strong> {selectedItem}
+									<div>
+										<strong>{item.name}</strong>
+										<div
+											style={{
+												fontSize: "12px",
+												color: "#666",
+												marginTop: "4px",
+											}}
+										>
+											{item.description}
+										</div>
+									</div>
+								</AccessibleDragItem>
+
+								<div
+									style={{
+										fontSize: "12px",
+										color: "#666",
+										fontFamily: "monospace",
+									}}
+								>
+									ARIA attributes: role, aria-label, aria-grabbed, aria-dropeffect, tabIndex
 								</div>
-							)}
-						</div>
+							</div>
+						))}
 					</div>
 
-					<div
-						style={{
-							marginTop: "30px",
-							padding: "16px",
-							backgroundColor: "#e3f2fd",
-							borderRadius: "8px",
-						}}
-					>
-						<Heading level="h3" margin="none" className="mb-3">
-							Accessibility Testing Tips
+					<div>
+						<Heading level="h3" margin="none">
+							Drop Zones
 						</Heading>
-						<div className="text-sm">
-							<Paragraph margin="none">
-								<strong>Screen Reader Testing:</strong>
-							</Paragraph>
-							<UnorderedList className="mt-1 mb-3">
-								<li>Test with NVDA, JAWS, or VoiceOver</li>
-								<li>Verify all elements are announced correctly</li>
-								<li>Check that drag operations provide clear feedback</li>
-							</UnorderedList>
+						<AccessibleDropZone
+							id="aria-drop-primary"
+							accepts={["aria-test"]}
+							announcedName="Primary Drop Zone with ARIA support"
+							onDrop={(metadata) => {
+								if (metadata) {
+									const id = typeof metadata.id === "string" ? metadata.id : "";
+									setSelectedItem(id);
+								}
+							}}
+						>
+							Primary Zone
+							<br />
+							<small>Accepts all items</small>
+						</AccessibleDropZone>
 
-							<Paragraph margin="none">
-								<strong>Keyboard Testing:</strong>
-							</Paragraph>
-							<UnorderedList className="mt-1 mb-3">
-								<li>Navigate using Tab key only</li>
-								<li>Verify all functionality is accessible via keyboard</li>
-								<li>Test that focus indicators are clearly visible</li>
-							</UnorderedList>
+						<AccessibleDropZone
+							id="aria-drop-secondary"
+							accepts={["other"]} // Doesn't accept our items
+							announcedName="Secondary Drop Zone (rejects items)"
+						>
+							Secondary Zone
+							<br />
+							<small>Rejects all test items</small>
+						</AccessibleDropZone>
 
-							<Paragraph margin="none">
-								<strong>Tools:</strong>
-							</Paragraph>
-							<UnorderedList className="mt-1">
-								<li>Browser DevTools Accessibility Panel</li>
-								<li>axe DevTools extension</li>
-								<li>Lighthouse accessibility audit</li>
-							</UnorderedList>
-						</div>
+						{selectedItem && (
+							<div
+								style={{
+									marginTop: "20px",
+									padding: "12px",
+									backgroundColor: "#e8f5e9",
+									borderRadius: "6px",
+								}}
+							>
+								<strong>Last dropped:</strong> {selectedItem}
+							</div>
+						)}
 					</div>
 				</div>
-			</>
+
+				<div
+					style={{
+						marginTop: "30px",
+						padding: "16px",
+						backgroundColor: "#e3f2fd",
+						borderRadius: "8px",
+					}}
+				>
+					<Heading level="h3" margin="none" className="mb-3">
+						Accessibility Testing Tips
+					</Heading>
+					<div className="text-sm">
+						<Paragraph margin="none">
+							<strong>Screen Reader Testing:</strong>
+						</Paragraph>
+						<UnorderedList className="mt-1 mb-3">
+							<li>Test with NVDA, JAWS, or VoiceOver</li>
+							<li>Verify all elements are announced correctly</li>
+							<li>Check that drag operations provide clear feedback</li>
+						</UnorderedList>
+
+						<Paragraph margin="none">
+							<strong>Keyboard Testing:</strong>
+						</Paragraph>
+						<UnorderedList className="mt-1 mb-3">
+							<li>Navigate using Tab key only</li>
+							<li>Verify all functionality is accessible via keyboard</li>
+							<li>Test that focus indicators are clearly visible</li>
+						</UnorderedList>
+
+						<Paragraph margin="none">
+							<strong>Tools:</strong>
+						</Paragraph>
+						<UnorderedList className="mt-1">
+							<li>Browser DevTools Accessibility Panel</li>
+							<li>axe DevTools extension</li>
+							<li>Lighthouse accessibility audit</li>
+						</UnorderedList>
+					</div>
+				</div>
+			</div>
 		);
 	},
 };
@@ -814,253 +808,251 @@ export const AccessibilityPlayground: Story = {
 		};
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h2" margin="none">
-						Accessibility Testing Playground
+			<div style={{ padding: "20px" }}>
+				<Heading level="h2" margin="none">
+					Accessibility Testing Playground
+				</Heading>
+
+				<div
+					style={{
+						marginBottom: "20px",
+						padding: "16px",
+						backgroundColor: "#f5f5f5",
+						borderRadius: "8px",
+					}}
+				>
+					<Heading level="h3" margin="none" className="mb-4">
+						Accessibility Configuration
 					</Heading>
-
-					<div
-						style={{
-							marginBottom: "20px",
-							padding: "16px",
-							backgroundColor: "#f5f5f5",
-							borderRadius: "8px",
-						}}
-					>
-						<Heading level="h3" margin="none" className="mb-4">
-							Accessibility Configuration
-						</Heading>
-						<div
-							style={{
-								display: "grid",
-								gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-								gap: "12px",
-							}}
-						>
-							<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-								<input
-									type="checkbox"
-									checked={config.showFocusRings}
-									onChange={(e) =>
-										setConfig((prev) => ({
-											...prev,
-											showFocusRings: e.target.checked,
-										}))
-									}
-								/>
-								Enhanced Focus Indicators
-							</label>
-
-							<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-								<input
-									type="checkbox"
-									checked={config.enableAnnouncements}
-									onChange={(e) =>
-										setConfig((prev) => ({
-											...prev,
-											enableAnnouncements: e.target.checked,
-										}))
-									}
-								/>
-								Screen Reader Announcements
-							</label>
-
-							<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-								<input
-									type="checkbox"
-									checked={config.showAriaLabels}
-									onChange={(e) =>
-										setConfig((prev) => ({
-											...prev,
-											showAriaLabels: e.target.checked,
-										}))
-									}
-								/>
-								Show ARIA Labels Visually
-							</label>
-
-							<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-								<input
-									type="checkbox"
-									checked={config.keyboardOnly}
-									onChange={(e) =>
-										setConfig((prev) => ({
-											...prev,
-											keyboardOnly: e.target.checked,
-										}))
-									}
-								/>
-								Keyboard-Only Mode
-							</label>
-						</div>
-					</div>
-
 					<div
 						style={{
 							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gap: "20px",
+							gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+							gap: "12px",
 						}}
 					>
-						<div>
-							<Heading level="h3" margin="none">
-								Test Elements
-							</Heading>
-							<AccessibleDragItem
-								id="test-element-1"
-								type="playground"
-								announcedName="Accessibility Test Element 1"
-								style={{
-									position: "relative",
-									pointerEvents: config.keyboardOnly ? "none" : "auto",
-									// Enhanced focus ring when option is enabled
-									...(config.showFocusRings && {
-										borderWidth: "3px",
-										borderColor: "#2196f3",
-									}),
-								}}
-							>
-								Test Element 1
-								{config.showAriaLabels && (
-									<div
-										style={{
-											position: "absolute",
-											top: "-8px",
-											left: "8px",
-											backgroundColor: "#333",
-											color: "white",
-											padding: "2px 6px",
-											borderRadius: "3px",
-											fontSize: "10px",
-										}}
-									>
-										aria-label: &quot;Accessibility Test Element 1&quot;
-									</div>
-								)}
-							</AccessibleDragItem>
+						<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+							<input
+								type="checkbox"
+								checked={config.showFocusRings}
+								onChange={(e) =>
+									setConfig((prev) => ({
+										...prev,
+										showFocusRings: e.target.checked,
+									}))
+								}
+							/>
+							Enhanced Focus Indicators
+						</label>
 
-							<AccessibleDragItem
-								id="test-element-2"
-								type="playground"
-								announcedName="Accessibility Test Element 2"
-								style={{
-									position: "relative",
-									pointerEvents: config.keyboardOnly ? "none" : "auto",
-									...(config.showFocusRings && {
-										borderWidth: "3px",
-										borderColor: "#2196f3",
-									}),
-								}}
-							>
-								Test Element 2
-								{config.showAriaLabels && (
-									<div
-										style={{
-											position: "absolute",
-											top: "-8px",
-											left: "8px",
-											backgroundColor: "#333",
-											color: "white",
-											padding: "2px 6px",
-											borderRadius: "3px",
-											fontSize: "10px",
-										}}
-									>
-										aria-label: &quot;Accessibility Test Element 2&quot;
-									</div>
-								)}
-							</AccessibleDragItem>
-						</div>
+						<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+							<input
+								type="checkbox"
+								checked={config.enableAnnouncements}
+								onChange={(e) =>
+									setConfig((prev) => ({
+										...prev,
+										enableAnnouncements: e.target.checked,
+									}))
+								}
+							/>
+							Screen Reader Announcements
+						</label>
 
-						<div>
-							<Heading level="h3" margin="none">
-								Test Controls
-							</Heading>
-							<div style={{ marginBottom: "16px" }}>
-								<button
-									onClick={() => runAccessibilityTest("Focus Navigation")}
-									style={{
-										padding: "8px 16px",
-										margin: "4px",
-										backgroundColor: "#2196f3",
-										color: "white",
-										border: "none",
-										borderRadius: "4px",
-										cursor: "pointer",
-									}}
-								>
-									Test Focus Navigation
-								</button>
+						<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+							<input
+								type="checkbox"
+								checked={config.showAriaLabels}
+								onChange={(e) =>
+									setConfig((prev) => ({
+										...prev,
+										showAriaLabels: e.target.checked,
+									}))
+								}
+							/>
+							Show ARIA Labels Visually
+						</label>
 
-								<button
-									onClick={() => runAccessibilityTest("Screen Reader Compatibility")}
-									style={{
-										padding: "8px 16px",
-										margin: "4px",
-										backgroundColor: "#4caf50",
-										color: "white",
-										border: "none",
-										borderRadius: "4px",
-										cursor: "pointer",
-									}}
-								>
-									Test Screen Reader
-								</button>
-
-								<button
-									onClick={() => runAccessibilityTest("Keyboard-Only Usage")}
-									style={{
-										padding: "8px 16px",
-										margin: "4px",
-										backgroundColor: "#ff9800",
-										color: "white",
-										border: "none",
-										borderRadius: "4px",
-										cursor: "pointer",
-									}}
-								>
-									Test Keyboard Only
-								</button>
-							</div>
-
-							<AccessibleDropZone
-								id="test-drop-zone"
-								accepts={["playground"]}
-								announcedName="Accessibility Test Drop Zone"
-								onDrop={(metadata) => {
-									if (metadata) {
-										const id = typeof metadata.id === "string" ? metadata.id : "unknown";
-										runAccessibilityTest(`Drop of ${id}`);
-									}
-								}}
-							>
-								Test Drop Zone
-							</AccessibleDropZone>
-
-							{testResults.length > 0 && (
-								<div style={{ marginTop: "16px" }}>
-									<Heading level="h4" margin="none">
-										Test Results
-									</Heading>
-									<div
-										style={{
-											backgroundColor: "#e8f5e9",
-											padding: "12px",
-											borderRadius: "4px",
-											fontSize: "14px",
-										}}
-									>
-										{testResults.map((result, index) => (
-											<div key={index}>{result}</div>
-										))}
-									</div>
-								</div>
-							)}
-						</div>
+						<label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+							<input
+								type="checkbox"
+								checked={config.keyboardOnly}
+								onChange={(e) =>
+									setConfig((prev) => ({
+										...prev,
+										keyboardOnly: e.target.checked,
+									}))
+								}
+							/>
+							Keyboard-Only Mode
+						</label>
 					</div>
 				</div>
-			</>
+
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: "1fr 1fr",
+						gap: "20px",
+					}}
+				>
+					<div>
+						<Heading level="h3" margin="none">
+							Test Elements
+						</Heading>
+						<AccessibleDragItem
+							id="test-element-1"
+							type="playground"
+							announcedName="Accessibility Test Element 1"
+							style={{
+								position: "relative",
+								pointerEvents: config.keyboardOnly ? "none" : "auto",
+								// Enhanced focus ring when option is enabled
+								...(config.showFocusRings && {
+									borderWidth: "3px",
+									borderColor: "#2196f3",
+								}),
+							}}
+						>
+							Test Element 1
+							{config.showAriaLabels && (
+								<div
+									style={{
+										position: "absolute",
+										top: "-8px",
+										left: "8px",
+										backgroundColor: "#333",
+										color: "white",
+										padding: "2px 6px",
+										borderRadius: "3px",
+										fontSize: "10px",
+									}}
+								>
+									aria-label: &quot;Accessibility Test Element 1&quot;
+								</div>
+							)}
+						</AccessibleDragItem>
+
+						<AccessibleDragItem
+							id="test-element-2"
+							type="playground"
+							announcedName="Accessibility Test Element 2"
+							style={{
+								position: "relative",
+								pointerEvents: config.keyboardOnly ? "none" : "auto",
+								...(config.showFocusRings && {
+									borderWidth: "3px",
+									borderColor: "#2196f3",
+								}),
+							}}
+						>
+							Test Element 2
+							{config.showAriaLabels && (
+								<div
+									style={{
+										position: "absolute",
+										top: "-8px",
+										left: "8px",
+										backgroundColor: "#333",
+										color: "white",
+										padding: "2px 6px",
+										borderRadius: "3px",
+										fontSize: "10px",
+									}}
+								>
+									aria-label: &quot;Accessibility Test Element 2&quot;
+								</div>
+							)}
+						</AccessibleDragItem>
+					</div>
+
+					<div>
+						<Heading level="h3" margin="none">
+							Test Controls
+						</Heading>
+						<div style={{ marginBottom: "16px" }}>
+							<button
+								onClick={() => runAccessibilityTest("Focus Navigation")}
+								style={{
+									padding: "8px 16px",
+									margin: "4px",
+									backgroundColor: "#2196f3",
+									color: "white",
+									border: "none",
+									borderRadius: "4px",
+									cursor: "pointer",
+								}}
+							>
+								Test Focus Navigation
+							</button>
+
+							<button
+								onClick={() => runAccessibilityTest("Screen Reader Compatibility")}
+								style={{
+									padding: "8px 16px",
+									margin: "4px",
+									backgroundColor: "#4caf50",
+									color: "white",
+									border: "none",
+									borderRadius: "4px",
+									cursor: "pointer",
+								}}
+							>
+								Test Screen Reader
+							</button>
+
+							<button
+								onClick={() => runAccessibilityTest("Keyboard-Only Usage")}
+								style={{
+									padding: "8px 16px",
+									margin: "4px",
+									backgroundColor: "#ff9800",
+									color: "white",
+									border: "none",
+									borderRadius: "4px",
+									cursor: "pointer",
+								}}
+							>
+								Test Keyboard Only
+							</button>
+						</div>
+
+						<AccessibleDropZone
+							id="test-drop-zone"
+							accepts={["playground"]}
+							announcedName="Accessibility Test Drop Zone"
+							onDrop={(metadata) => {
+								if (metadata) {
+									const id = typeof metadata.id === "string" ? metadata.id : "unknown";
+									runAccessibilityTest(`Drop of ${id}`);
+								}
+							}}
+						>
+							Test Drop Zone
+						</AccessibleDropZone>
+
+						{testResults.length > 0 && (
+							<div style={{ marginTop: "16px" }}>
+								<Heading level="h4" margin="none">
+									Test Results
+								</Heading>
+								<div
+									style={{
+										backgroundColor: "#e8f5e9",
+										padding: "12px",
+										borderRadius: "4px",
+										fontSize: "14px",
+									}}
+								>
+									{testResults.map((result, index) => (
+										<div key={index}>{result}</div>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
 		);
 	},
 };

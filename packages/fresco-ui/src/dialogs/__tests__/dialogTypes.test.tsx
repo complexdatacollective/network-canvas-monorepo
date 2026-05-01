@@ -474,7 +474,7 @@ describe("Dialog button actions", () => {
 
 		// Close with null (simulating backdrop click or escape)
 		await act(async () => {
-			await closeDialogRef!("test-null-close", null);
+			await closeDialogRef?.("test-null-close", null);
 		});
 
 		// Wait for animation timeout

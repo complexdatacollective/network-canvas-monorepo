@@ -167,78 +167,76 @@ export const MultipleTypes: Story = {
 		};
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h3" margin="none">
-						Multiple Drop Zones
-					</Heading>
+			<div style={{ padding: "20px" }}>
+				<Heading level="h3" margin="none">
+					Multiple Drop Zones
+				</Heading>
 
-					{dropLog.length > 0 && (
-						<div style={{ marginBottom: "16px" }}>
-							<Heading level="h4" margin="none">
-								Drop Log:
-							</Heading>
-							<UnorderedList className="text-sm text-[#666]">
-								{dropLog.map((log, i) => (
-									<li key={i}>{log}</li>
-								))}
-							</UnorderedList>
-						</div>
-					)}
+				{dropLog.length > 0 && (
+					<div style={{ marginBottom: "16px" }}>
+						<Heading level="h4" margin="none">
+							Drop Log:
+						</Heading>
+						<UnorderedList className="text-sm text-[#666]">
+							{dropLog.map((log, i) => (
+								<li key={i}>{log}</li>
+							))}
+						</UnorderedList>
+					</div>
+				)}
 
-					<div style={{ display: "flex", gap: "20px" }}>
-						<div>
-							<Heading level="h4" margin="none">
-								Items
-							</Heading>
-							<DraggableItem id="img1" type="image" style={{ backgroundColor: "#ffcdd2" }}>
-								🖼️ Image
-							</DraggableItem>
-							<DraggableItem id="vid1" type="video" style={{ backgroundColor: "#c8e6c9" }}>
-								🎥 Video
-							</DraggableItem>
-							<DraggableItem id="doc1" type="document" style={{ backgroundColor: "#d1c4e9" }}>
-								📄 Document
-							</DraggableItem>
-						</div>
+				<div style={{ display: "flex", gap: "20px" }}>
+					<div>
+						<Heading level="h4" margin="none">
+							Items
+						</Heading>
+						<DraggableItem id="img1" type="image" style={{ backgroundColor: "#ffcdd2" }}>
+							🖼️ Image
+						</DraggableItem>
+						<DraggableItem id="vid1" type="video" style={{ backgroundColor: "#c8e6c9" }}>
+							🎥 Video
+						</DraggableItem>
+						<DraggableItem id="doc1" type="document" style={{ backgroundColor: "#d1c4e9" }}>
+							📄 Document
+						</DraggableItem>
+					</div>
 
-						<div style={{ flex: 1 }}>
-							<div
-								style={{
-									display: "grid",
-									gridTemplateColumns: "1fr 1fr",
-									gap: "16px",
-								}}
-							>
-								<div>
-									<Heading level="h4" margin="none">
-										Images Only
-									</Heading>
-									<DropTargetExample accepts={["image"]} onDrop={handleDrop("Images Folder")}>
-										Images Only
-									</DropTargetExample>
-								</div>
-								<div>
-									<Heading level="h4" margin="none">
-										Videos Only
-									</Heading>
-									<DropTargetExample accepts={["video"]} onDrop={handleDrop("Videos Folder")}>
-										Videos Only
-									</DropTargetExample>
-								</div>
-								<div style={{ gridColumn: "1 / -1" }}>
-									<Heading level="h4" margin="none">
-										All Files
-									</Heading>
-									<DropTargetExample accepts={["image", "video", "document"]} onDrop={handleDrop("All Files Folder")}>
-										Any File Type
-									</DropTargetExample>
-								</div>
+					<div style={{ flex: 1 }}>
+						<div
+							style={{
+								display: "grid",
+								gridTemplateColumns: "1fr 1fr",
+								gap: "16px",
+							}}
+						>
+							<div>
+								<Heading level="h4" margin="none">
+									Images Only
+								</Heading>
+								<DropTargetExample accepts={["image"]} onDrop={handleDrop("Images Folder")}>
+									Images Only
+								</DropTargetExample>
+							</div>
+							<div>
+								<Heading level="h4" margin="none">
+									Videos Only
+								</Heading>
+								<DropTargetExample accepts={["video"]} onDrop={handleDrop("Videos Folder")}>
+									Videos Only
+								</DropTargetExample>
+							</div>
+							<div style={{ gridColumn: "1 / -1" }}>
+								<Heading level="h4" margin="none">
+									All Files
+								</Heading>
+								<DropTargetExample accepts={["image", "video", "document"]} onDrop={handleDrop("All Files Folder")}>
+									Any File Type
+								</DropTargetExample>
 							</div>
 						</div>
 					</div>
 				</div>
-			</>
+			</div>
 		);
 	},
 };
@@ -253,102 +251,100 @@ export const VisualFeedback: Story = {
 		};
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h3" margin="none">
-						Visual Feedback States
+			<div style={{ padding: "20px" }}>
+				<Heading level="h3" margin="none">
+					Visual Feedback States
+				</Heading>
+
+				<div style={{ marginBottom: "16px" }}>
+					<Heading level="h4" margin="none">
+						Event Log:
 					</Heading>
+					<div
+						style={{
+							height: "100px",
+							overflow: "auto",
+							backgroundColor: "#f5f5f5",
+							padding: "8px",
+							borderRadius: "4px",
+							fontSize: "12px",
+							fontFamily: "monospace",
+						}}
+					>
+						{eventLog.length === 0 ? (
+							<div style={{ color: "#999" }}>Start dragging to see events...</div>
+						) : (
+							eventLog.map((log, i) => <div key={i}>{log}</div>)
+						)}
+					</div>
+					<button
+						onClick={() => setEventLog([])}
+						style={{
+							marginTop: "8px",
+							padding: "4px 12px",
+							fontSize: "12px",
+							backgroundColor: "#f44336",
+							color: "white",
+							border: "none",
+							borderRadius: "4px",
+							cursor: "pointer",
+						}}
+					>
+						Clear Log
+					</button>
+				</div>
 
-					<div style={{ marginBottom: "16px" }}>
-						<Heading level="h4" margin="none">
-							Event Log:
-						</Heading>
-						<div
-							style={{
-								height: "100px",
-								overflow: "auto",
-								backgroundColor: "#f5f5f5",
-								padding: "8px",
-								borderRadius: "4px",
-								fontSize: "12px",
-								fontFamily: "monospace",
-							}}
-						>
-							{eventLog.length === 0 ? (
-								<div style={{ color: "#999" }}>Start dragging to see events...</div>
-							) : (
-								eventLog.map((log, i) => <div key={i}>{log}</div>)
-							)}
-						</div>
-						<button
-							onClick={() => setEventLog([])}
-							style={{
-								marginTop: "8px",
-								padding: "4px 12px",
-								fontSize: "12px",
-								backgroundColor: "#f44336",
-								color: "white",
-								border: "none",
-								borderRadius: "4px",
-								cursor: "pointer",
-							}}
-						>
-							Clear Log
-						</button>
+				<div style={{ display: "flex", gap: "20px" }}>
+					<div>
+						<DraggableItem id="test1" type="test">
+							Test Item
+						</DraggableItem>
 					</div>
 
-					<div style={{ display: "flex", gap: "20px" }}>
-						<div>
-							<DraggableItem id="test1" type="test">
-								Test Item
-							</DraggableItem>
-						</div>
-
-						<div
-							style={{
-								flex: 1,
-								display: "grid",
-								gridTemplateColumns: "1fr 1fr",
-								gap: "16px",
-							}}
+					<div
+						style={{
+							flex: 1,
+							display: "grid",
+							gridTemplateColumns: "1fr 1fr",
+							gap: "16px",
+						}}
+					>
+						<DropTargetExample
+							accepts={["test"]}
+							name="Zone A"
+							onDrop={() => logEvent("DROP", "Zone A")}
+							onDragEnter={() => logEvent("ENTER", "Zone A")}
+							onDragLeave={() => logEvent("LEAVE", "Zone A")}
 						>
-							<DropTargetExample
-								accepts={["test"]}
-								name="Zone A"
-								onDrop={() => logEvent("DROP", "Zone A")}
-								onDragEnter={() => logEvent("ENTER", "Zone A")}
-								onDragLeave={() => logEvent("LEAVE", "Zone A")}
-							>
-								Zone A (Accepts test)
-							</DropTargetExample>
+							Zone A (Accepts test)
+						</DropTargetExample>
 
-							<DropTargetExample
-								accepts={["other"]}
-								name="Zone B"
-								onDragEnter={() => logEvent("ENTER", "Zone B")}
-								onDragLeave={() => logEvent("LEAVE", "Zone B")}
-							>
-								Zone B (Rejects test)
-							</DropTargetExample>
-						</div>
-					</div>
-
-					<div className="mt-4 text-sm text-[#666]">
-						<strong>Visual States:</strong>
-						<UnorderedList>
-							<li>
-								<strong>Blue border:</strong> Will accept the dragged item
-							</li>
-							<li>
-								<strong>Green border:</strong> Item is over and will accept
-							</li>
-							<li>
-								<strong>Red border:</strong> Will not accept the dragged item
-							</li>
-						</UnorderedList>
+						<DropTargetExample
+							accepts={["other"]}
+							name="Zone B"
+							onDragEnter={() => logEvent("ENTER", "Zone B")}
+							onDragLeave={() => logEvent("LEAVE", "Zone B")}
+						>
+							Zone B (Rejects test)
+						</DropTargetExample>
 					</div>
 				</div>
-			</>
+
+				<div className="mt-4 text-sm text-[#666]">
+					<strong>Visual States:</strong>
+					<UnorderedList>
+						<li>
+							<strong>Blue border:</strong> Will accept the dragged item
+						</li>
+						<li>
+							<strong>Green border:</strong> Item is over and will accept
+						</li>
+						<li>
+							<strong>Red border:</strong> Will not accept the dragged item
+						</li>
+					</UnorderedList>
+				</div>
+			</div>
 		);
 	},
 };
@@ -363,51 +359,49 @@ export const NestedDropTargets: Story = {
 		};
 
 		return (
-			<>
-				<div style={{ padding: "20px" }}>
-					<Heading level="h3" margin="none">
-						Nested Drop Targets
-					</Heading>
+			<div style={{ padding: "20px" }}>
+				<Heading level="h3" margin="none">
+					Nested Drop Targets
+				</Heading>
 
-					{drops.length > 0 && (
-						<div style={{ marginBottom: "16px" }}>
-							<strong>Drops:</strong> {drops.map((d) => `${d.item} → ${d.zone}`).join(", ")}
-						</div>
-					)}
+				{drops.length > 0 && (
+					<div style={{ marginBottom: "16px" }}>
+						<strong>Drops:</strong> {drops.map((d) => `${d.item} → ${d.zone}`).join(", ")}
+					</div>
+				)}
 
-					<div style={{ display: "flex", gap: "20px" }}>
-						<div>
-							<DraggableItem id="nested1" type="item">
-								Draggable Item
-							</DraggableItem>
-						</div>
+				<div style={{ display: "flex", gap: "20px" }}>
+					<div>
+						<DraggableItem id="nested1" type="item">
+							Draggable Item
+						</DraggableItem>
+					</div>
 
-						<div style={{ flex: 1 }}>
+					<div style={{ flex: 1 }}>
+						<DropTargetExample
+							accepts={["item"]}
+							name="Outer Container"
+							onDrop={handleDrop("Outer")}
+							style={{ padding: "40px", backgroundColor: "#e8f5e9" }}
+							minHeight={200}
+						>
+							<div>Outer Drop Zone</div>
 							<DropTargetExample
 								accepts={["item"]}
-								name="Outer Container"
-								onDrop={handleDrop("Outer")}
-								style={{ padding: "40px", backgroundColor: "#e8f5e9" }}
-								minHeight={200}
+								name="Inner Container"
+								onDrop={handleDrop("Inner")}
+								style={{
+									backgroundColor: "#fff3e0",
+									margin: "16px 0",
+								}}
+								minHeight={80}
 							>
-								<div>Outer Drop Zone</div>
-								<DropTargetExample
-									accepts={["item"]}
-									name="Inner Container"
-									onDrop={handleDrop("Inner")}
-									style={{
-										backgroundColor: "#fff3e0",
-										margin: "16px 0",
-									}}
-									minHeight={80}
-								>
-									Inner Drop Zone
-								</DropTargetExample>
+								Inner Drop Zone
 							</DropTargetExample>
-						</div>
+						</DropTargetExample>
 					</div>
 				</div>
-			</>
+			</div>
 		);
 	},
 };

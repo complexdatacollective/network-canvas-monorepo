@@ -43,7 +43,7 @@ export default function compareVariables(value1: unknown, value2: FieldValue, ty
 	if (type === "number" || type === "scalar" || type === "ordinal") {
 		const num1 = Number(value1);
 		const num2 = Number(value2);
-		if (!isNaN(num1) && !isNaN(num2)) {
+		if (!Number.isNaN(num1) && !Number.isNaN(num2)) {
 			return num1 - num2;
 		}
 	}

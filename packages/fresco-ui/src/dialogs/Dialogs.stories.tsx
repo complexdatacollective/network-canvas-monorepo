@@ -544,7 +544,7 @@ export const AsyncConfirmWithError: Story = {
 				cancelLabel: "Cancel",
 				intent: "default",
 				onConfirm: async (signal) => {
-					await new Promise<void>((resolve, reject) => {
+					await new Promise<void>((_resolve, reject) => {
 						const timeout = setTimeout(() => reject(new Error("Network request failed: connection refused")), 1000);
 						signal.addEventListener("abort", () => {
 							clearTimeout(timeout);

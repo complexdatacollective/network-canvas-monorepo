@@ -47,7 +47,7 @@ export const required = (parameter?: boolean | string) => () => {
 
 			// Handle number fields
 			if (typeof value === "number") {
-				if (isNaN(value)) {
+				if (Number.isNaN(value)) {
 					ctx.addIssue({
 						code: "custom",
 						input: value,
@@ -103,7 +103,7 @@ const minLength: ValidationFunction<number> = (min) => () => {
  * Uses coerce to handle string inputs from HTML number inputs
  */
 const minValue: ValidationFunction<number> = (min) => () => {
-	invariant(!isNaN(Number(min)), "Min value must be specified");
+	invariant(!Number.isNaN(Number(min)), "Min value must be specified");
 
 	const hint = `Enter a value greater than or equal to ${min}.`;
 
@@ -267,7 +267,7 @@ const min: ValidationFunction<number | string> = (minParam) => () => {
 
 			const numValue = Number(value);
 			const numMin = Number(minParam);
-			if (isNaN(numValue) || isNaN(numMin)) return;
+			if (Number.isNaN(numValue) || Number.isNaN(numMin)) return;
 			if (numValue < numMin) {
 				ctx.addIssue({
 					code: "custom",
@@ -316,7 +316,7 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
 
 			const numValue = Number(value);
 			const numMax = Number(maxParam);
-			if (isNaN(numValue) || isNaN(numMax)) return;
+			if (Number.isNaN(numValue) || Number.isNaN(numMax)) return;
 			if (numValue > numMax) {
 				ctx.addIssue({
 					code: "custom",
