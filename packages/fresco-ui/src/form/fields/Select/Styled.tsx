@@ -3,8 +3,8 @@ import { Check, ChevronDown } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
 import { dropdownItemVariants } from "../../../styles/controlVariants";
 import { cx, type VariantProps } from "../../../utils/cva";
-import { getInputState } from "../../utils/getInputState";
 import type { FieldValueProps, InjectedFieldProps } from "../../Field/types";
+import { getInputState } from "../../utils/getInputState";
 import { type SelectOption, selectWrapperVariants } from "./shared";
 
 type SelectProps = FieldValueProps<string | number> &

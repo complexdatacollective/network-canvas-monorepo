@@ -3,11 +3,11 @@
 import { LayoutGroup } from "motion/react";
 import { type ComponentProps, useId } from "react";
 import { cx } from "../utils/cva";
+import FormErrorsList from "./FormErrors";
 import { useForm } from "./hooks/useForm";
 import FormStoreProvider from "./store/formStoreProvider";
 import type { FormSubmitHandler } from "./store/types";
 import { focusFirstError } from "./utils/focusFirstError";
-import FormErrorsList from "./FormErrors";
 
 type FormProps = {
 	onSubmit: FormSubmitHandler;

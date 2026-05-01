@@ -11,8 +11,8 @@ import {
 	sliderTrackVariants,
 } from "../../styles/controlVariants";
 import { cx } from "../../utils/cva";
-import { getInputState } from "../utils/getInputState";
 import type { CreateFormFieldProps } from "../Field/types";
+import { getInputState } from "../utils/getInputState";
 
 type VisualAnalogScaleFieldProps = CreateFormFieldProps<
 	number,

@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import FormStoreProvider from "../../store/formStoreProvider";
 import Field from "../../Field/Field";
 import Form from "../../Form";
 import SubmitButton from "../../SubmitButton";
+import FormStoreProvider from "../../store/formStoreProvider";
 import DatePickerField from "../DatePicker";
 
 function optionValues(select: HTMLElement): string[] {

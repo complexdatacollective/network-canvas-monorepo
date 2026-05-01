@@ -22,8 +22,8 @@ import {
 import { headingVariants } from "../../typography/Heading";
 import { paragraphVariants } from "../../typography/Paragraph";
 import { compose, cva, cx } from "../../utils/cva";
-import { getInputState } from "../utils/getInputState";
 import type { CreateFormFieldProps } from "../Field/types";
+import { getInputState } from "../utils/getInputState";
 
 const ToolbarButton = (props: Toolbar.Button.Props) => {
 	return <Toolbar.Button {...props} render={<Toggle />} />;

@@ -1,8 +1,8 @@
 import { isEmpty } from "es-toolkit/compat";
 import { nativeSelectVariants } from "../../../styles/controlVariants";
 import { cx, type VariantProps } from "../../../utils/cva";
-import { getInputState } from "../../utils/getInputState";
 import type { CreateFormFieldProps } from "../../Field/types";
+import { getInputState } from "../../utils/getInputState";
 import { type SelectOption, selectWrapperVariants } from "./shared";
 
 type SelectProps = CreateFormFieldProps<

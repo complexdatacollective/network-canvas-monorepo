@@ -13,8 +13,8 @@ import {
 } from "../../styles/controlVariants";
 import { headingVariants } from "../../typography/Heading";
 import { compose, cva, cx } from "../../utils/cva";
-import { getInputState } from "../utils/getInputState";
 import type { CreateFormFieldProps } from "../Field/types";
+import { getInputState } from "../utils/getInputState";
 
 type BooleanOption = {
 	label: string;

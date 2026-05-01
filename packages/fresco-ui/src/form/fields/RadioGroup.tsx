@@ -16,8 +16,8 @@ import {
 	stateVariants,
 } from "../../styles/controlVariants";
 import { compose, cva, cx, type VariantProps } from "../../utils/cva";
-import { getInputState } from "../utils/getInputState";
 import type { CreateFormFieldProps } from "../Field/types";
+import { getInputState } from "../utils/getInputState";
 
 const radioGroupWrapperVariants = compose(
 	controlVariants,

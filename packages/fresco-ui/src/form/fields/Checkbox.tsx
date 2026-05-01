@@ -2,12 +2,7 @@
 
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { type ComponentPropsWithoutRef, forwardRef, useState } from "react";
-import {
-	controlVariants,
-	inputControlVariants,
-	smallSizeVariants,
-	stateVariants,
-} from "../../styles/controlVariants";
+import { controlVariants, inputControlVariants, smallSizeVariants, stateVariants } from "../../styles/controlVariants";
 import { compose, cva, type VariantProps } from "../../utils/cva";
 import { getInputState } from "../utils/getInputState";
 

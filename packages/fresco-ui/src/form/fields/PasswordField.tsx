@@ -6,10 +6,7 @@ import { cx } from "../../utils/cva";
 import { getPasswordStrength } from "./getPasswordStrength";
 import InputField from "./InputField";
 
-type PasswordFieldProps = Omit<
-	React.ComponentProps<typeof InputField>,
-	"type"
-> & {
+type PasswordFieldProps = Omit<React.ComponentProps<typeof InputField>, "type"> & {
 	showStrengthMeter?: boolean;
 };
 

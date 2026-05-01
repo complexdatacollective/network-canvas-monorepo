@@ -8,8 +8,8 @@ import Surface from "../../../layout/Surface";
 import { ScrollArea } from "../../../ScrollArea";
 import { dropdownItemVariants, proportionalLucideIconVariants } from "../../../styles/controlVariants";
 import { cx, type VariantProps } from "../../../utils/cva";
-import { getInputState } from "../../utils/getInputState";
 import type { FieldValueProps, InjectedFieldProps } from "../../Field/types";
+import { getInputState } from "../../utils/getInputState";
 import InputField from "../InputField";
 import { type ComboboxOption, comboboxTriggerVariants } from "./shared";
 

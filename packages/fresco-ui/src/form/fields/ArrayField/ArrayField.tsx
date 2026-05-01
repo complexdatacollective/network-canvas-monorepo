@@ -11,8 +11,8 @@ import {
 	stateVariants,
 } from "../../../styles/controlVariants";
 import { compose, cva, cx } from "../../../utils/cva";
-import { getInputState } from "../../utils/getInputState";
 import type { CreateFormFieldProps } from "../../Field/types";
+import { getInputState } from "../../utils/getInputState";
 import { useArrayFieldItems, type WithItemProperties } from "./useArrayFieldItems";
 
 // Stable empty array to prevent infinite re-renders when value is undefined
