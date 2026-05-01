@@ -2,18 +2,20 @@
  * @codaco/tailwind-config — Fresco default theme values
  *
  * Provides the semantic CSS variable values that `theme.css` resolves
- * against. Consumers may layer alternate themes (e.g. `interview`, `dark`)
- * on top of this by re-declaring the same variables in their own
- * `@layer theme` block.
+ * against. Light theme by default, with a dark theme variant keyed off
+ * `[data-theme='dark']`. Consumers may layer alternate themes (e.g.
+ * `interview-theme.css`) on top of this by re-declaring the same
+ * variables in their own `@layer theme` block.
  *
- * The Nunito font referenced by `--heading-font` is loaded from `fonts.css`
- * (imported separately so its `@import url(...)` lands at the top of the
- * CSS stream, as the CSS spec requires).
+ * The Inclusive Sans (body) and Nunito (heading) fonts referenced below
+ * are loaded from `fonts.css` (imported separately so its `@import url(...)`
+ * lands at the top of the CSS stream, as the CSS spec requires).
  */
 
 @layer theme {
   :root {
     --heading-font: 'Nunito', sans-serif;
+    --body-font: 'Inclusive Sans', sans-serif;
 
     /* TW default uses rem, we use em so that spacing scales with local font size */
     --spacing-base: 0.25em;
@@ -134,5 +136,39 @@
     --cat-8: oklch(var(--barbie-pink));
     --cat-9: oklch(var(--tomato));
     --cat-10: oklch(var(--slate-blue));
+  }
+
+  /**
+    The dark interview theme has purple background with light text.
+  */
+  [data-theme='dark'] {
+    --background: 19% 0.03 var(--base-hue);
+    --contrast: 97% 0.001 var(--base-hue);
+
+    /* Reduce chroma for better contrast */
+    --primary: 34% 0.15 var(--base-hue);
+    --accent: 50% 0.15 var(--accent-hue);
+
+    --muted-contrast: 40% 0.01 var(--base-hue);
+
+    --link: 65% 0.15 var(--accent-hue);
+
+    --border-color: 33% 0.01 var(--base-hue);
+
+    --input: var(--background);
+    --input-contrast: var(--contrast);
+
+    /* Surfaces */
+    --surface-0: var(--background);
+    --surface-0-contrast: var(--contrast);
+
+    --surface-1: 26% 0.03 var(--base-hue);
+    --surface-1-contrast: var(--contrast);
+    --surface-2: 30% 0.03 var(--base-hue);
+    --surface-2-contrast: var(--contrast);
+    --surface-3: 33% 0.03 var(--base-hue);
+    --surface-3-contrast: var(--contrast);
+    --surface-4: 36% 0.03 var(--base-hue);
+    --surface-4-contrast: var(--contrast);
   }
 }
