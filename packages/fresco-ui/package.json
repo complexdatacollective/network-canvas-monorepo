@@ -15,9 +15,9 @@
 			"types": "./dist/Alert.d.ts",
 			"default": "./dist/Alert.js"
 		},
-		"./badge": {
-			"types": "./dist/badge.d.ts",
-			"default": "./dist/badge.js"
+		"./Badge": {
+			"types": "./dist/Badge.d.ts",
+			"default": "./dist/Badge.js"
 		},
 		"./NativeLink": {
 			"types": "./dist/NativeLink.d.ts",
@@ -47,9 +47,9 @@
 			"types": "./dist/ScrollArea.d.ts",
 			"default": "./dist/ScrollArea.js"
 		},
-		"./skeleton": {
-			"types": "./dist/skeleton.d.ts",
-			"default": "./dist/skeleton.js"
+		"./Skeleton": {
+			"types": "./dist/Skeleton.d.ts",
+			"default": "./dist/Skeleton.js"
 		},
 		"./Spinner": {
 			"types": "./dist/Spinner.d.ts",
@@ -87,21 +87,21 @@
 			"types": "./dist/Modal/ModalPopup.d.ts",
 			"default": "./dist/Modal/ModalPopup.js"
 		},
-		"./dropdown-menu": {
-			"types": "./dist/dropdown-menu.d.ts",
-			"default": "./dist/dropdown-menu.js"
+		"./DropdownMenu": {
+			"types": "./dist/DropdownMenu.d.ts",
+			"default": "./dist/DropdownMenu.js"
 		},
-		"./popover": {
-			"types": "./dist/popover.d.ts",
-			"default": "./dist/popover.js"
+		"./Popover": {
+			"types": "./dist/Popover.d.ts",
+			"default": "./dist/Popover.js"
 		},
-		"./tooltip": {
-			"types": "./dist/tooltip.d.ts",
-			"default": "./dist/tooltip.js"
+		"./Tooltip": {
+			"types": "./dist/Tooltip.d.ts",
+			"default": "./dist/Tooltip.js"
 		},
-		"./table": {
-			"types": "./dist/table.d.ts",
-			"default": "./dist/table.js"
+		"./Table": {
+			"types": "./dist/Table.d.ts",
+			"default": "./dist/Table.js"
 		},
 		"./Label": {
 			"types": "./dist/Label.d.ts",

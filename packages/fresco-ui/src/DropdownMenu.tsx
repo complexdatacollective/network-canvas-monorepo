@@ -4,7 +4,7 @@ import { Menu } from "@base-ui/react/menu";
 import { Check, CheckIcon, ChevronRight } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import * as React from "react";
-import { BaseUISharedPopoverContainer } from "./popover";
+import { BaseUISharedPopoverContainer } from "./Popover";
 import { dropdownItemVariants, proportionalLucideIconVariants } from "./styles/controlVariants";
 import { cx } from "./utils/cva";
 

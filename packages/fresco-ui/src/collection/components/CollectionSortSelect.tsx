@@ -9,7 +9,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "../../dropdown-menu";
+} from "../../DropdownMenu";
 import { cx } from "../../utils/cva";
 import { useCollectionStore, useOptionalSortManager } from "../contexts";
 import type { SortableProperty, SortDirection, SortProperty } from "../sorting/types";
