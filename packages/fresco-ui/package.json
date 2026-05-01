@@ -426,7 +426,7 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "1.4.0",
-		"@codaco/tailwind-config": "workspace:*",
+		"@codaco/tailwind-config": "workspace:^",
 		"@radix-ui/react-slot": "catalog:",
 		"@tiptap/core": "^3.22.3",
 		"@tiptap/extension-bullet-list": "^3.22.3",

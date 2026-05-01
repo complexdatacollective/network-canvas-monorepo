@@ -1130,7 +1130,7 @@ importers:
         specifier: 5.0.0
         version: link:../shared-consts
       '@codaco/tailwind-config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../tooling/tailwind
       '@radix-ui/react-slot':
         specifier: 'catalog:'
