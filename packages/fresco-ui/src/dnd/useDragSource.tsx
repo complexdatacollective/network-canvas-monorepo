@@ -91,7 +91,9 @@ export function useDragSource(options: Prettify<DragSourceOptions>): Prettify<Us
 			clonedElement.style.boxSizing = computedStyle.boxSizing;
 
 			clonedElement.removeAttribute("id");
-			clonedElement.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+			clonedElement.querySelectorAll("[id]").forEach((el) => {
+				el.removeAttribute("id");
+			});
 
 			return createElement("div", {
 				dangerouslySetInnerHTML: { __html: clonedElement.outerHTML },

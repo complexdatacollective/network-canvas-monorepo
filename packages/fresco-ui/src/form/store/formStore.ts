@@ -310,7 +310,7 @@ export const createFormStore = (): FormStoreApi => {
 							}
 						});
 					}
-				} catch (err) {
+				} catch {
 					set((draft) => {
 						const form = draft;
 						if (form?.fields.get(fieldName)) {

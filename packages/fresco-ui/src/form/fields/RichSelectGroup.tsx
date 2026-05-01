@@ -239,7 +239,6 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 			<fieldset
 				id={id}
 				{...fieldsetProps}
-				role={isSingle ? "radiogroup" : "group"}
 				className={richSelectGroupVariants({
 					size,
 					orientation,
@@ -250,8 +249,8 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 				aria-label={fieldsetProps["aria-label"]}
 				aria-labelledby={fieldsetProps["aria-labelledby"]}
 				aria-describedby={fieldsetProps["aria-describedby"]}
-				aria-readonly={readOnly ?? undefined}
 				aria-invalid={fieldsetProps["aria-invalid"] ?? undefined}
+				data-readonly={readOnly ? "true" : undefined}
 			>
 				{options.map((option, index) => {
 					const isOptionDisabled = disabled ?? option.disabled;

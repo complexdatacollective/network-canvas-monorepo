@@ -154,15 +154,19 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
 			const newChars = [...chars];
 			while (newChars.length < segments) newChars.push("");
 
-			if (validChars.length === 1) {
-				newChars[index] = validChars[0]!;
+			const [firstChar] = validChars;
+			if (validChars.length === 1 && firstChar !== undefined) {
+				newChars[index] = firstChar;
 				updateValue(newChars);
 				if (index < segments - 1) {
 					focusSegment(index + 1);
 				}
 			} else {
 				for (let i = 0; i < validChars.length && index + i < segments; i++) {
-					newChars[index + i] = validChars[i]!;
+					const ch = validChars[i];
+					if (ch !== undefined) {
+						newChars[index + i] = ch;
+					}
 				}
 				updateValue(newChars);
 				const nextIndex = Math.min(index + validChars.length, segments - 1);
@@ -219,7 +223,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
 			while (newChars.length < segments) newChars.push("");
 
 			for (let i = 0; i < validChars.length && startIndex + i < segments; i++) {
-				newChars[startIndex + i] = validChars[i]!;
+				const ch = validChars[i];
+				if (ch !== undefined) {
+					newChars[startIndex + i] = ch;
+				}
 			}
 			updateValue(newChars);
 
@@ -237,9 +244,8 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
 	const separatorSet = new Set(separatorAfter);
 
 	return (
-		<div
+		<fieldset
 			className={cx(segmentGroupVariants({ size }), className)}
-			role="group"
 			aria-label={rest["aria-describedby"] ? undefined : "Code input"}
 		>
 			{Array.from({ length: segments }, (_, i) => (
@@ -285,7 +291,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
 					)}
 				</span>
 			))}
-		</div>
+		</fieldset>
 	);
 }
 

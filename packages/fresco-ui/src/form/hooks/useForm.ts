@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useLayoutEffect, useRef } from "react";
+import { type SyntheticEvent, useCallback, useLayoutEffect, useRef } from "react";
 import type { FlattenedErrors, FormConfig } from "../store/types";
 import useFormStore from "./useFormStore";
 
@@ -45,7 +45,7 @@ export function useForm(config: FormConfig) {
 	}, [reset, registerForm]);
 
 	const handleSubmit = useCallback(
-		async (e: FormEvent) => {
+		async (e: SyntheticEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
 			setSubmitting(true);
@@ -78,7 +78,7 @@ export function useForm(config: FormConfig) {
 					formErrors: result.formErrors ?? [],
 					fieldErrors: result.fieldErrors ?? {},
 				});
-			} catch (error) {
+			} catch {
 				setErrors({
 					formErrors: ["An error occurred while submitting the form."],
 					fieldErrors: {},

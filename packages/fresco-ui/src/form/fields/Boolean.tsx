@@ -185,12 +185,11 @@ export default function BooleanField(props: BooleanFieldProps) {
 			<fieldset
 				id={id}
 				{...rest}
-				role="radiogroup"
 				className="flex w-full items-stretch gap-2 border-0 p-0 *:flex-1"
 				disabled={disabled}
 				aria-label={label ?? rest["aria-label"]}
-				aria-readonly={readOnly ?? undefined}
 				aria-invalid={rest["aria-invalid"] ?? undefined}
+				data-readonly={readOnly ? "true" : undefined}
 			>
 				{label && <legend className="sr-only">{label}</legend>}
 				{options.map((option, index) => {

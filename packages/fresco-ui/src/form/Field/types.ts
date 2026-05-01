@@ -152,8 +152,7 @@ export type ValidationPropsForValue<V> = CommonValidationProps &
 export type CreateFormFieldProps<
 	V extends FieldValue,
 	TElement extends keyof React.JSX.IntrinsicElements,
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-	TCustom = {},
+	TCustom = Record<never, never>,
 > = FieldValueProps<V> &
 	InjectedFieldProps &
 	Omit<React.JSX.IntrinsicElements[TElement], keyof FieldValueProps<V> | keyof InjectedFieldProps | keyof TCustom> &
