@@ -452,7 +452,6 @@
 		"usehooks-ts": "^3.1.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.13",
 		"@chromatic-com/storybook": "^5.1.2",
 		"@codaco/tsconfig": "workspace:*",
 		"@faker-js/faker": "catalog:",
