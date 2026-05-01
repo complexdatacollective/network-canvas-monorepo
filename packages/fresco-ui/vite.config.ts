@@ -1,12 +1,25 @@
 import { copyFile, mkdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { globSync } from "tinyglobby";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
-import { externalizeDeps } from "vite-plugin-externalize-deps";
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// Build a regex array of every dep + peerDep so rolldown leaves them external.
+// Inline (vs. vite-plugin-externalize-deps) because the plugin returns a
+// function-form `external`, which Storybook's rolldown integration rejects
+// when it merges its own externals array (`external.1 Function-type` error).
+const pkg: {
+	dependencies?: Record<string, string>;
+	peerDependencies?: Record<string, string>;
+} = createRequire(import.meta.url)("./package.json");
+const externalPackages = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.peerDependencies ?? {})];
+const externalRegex = new RegExp(
+	`^(?:${externalPackages.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?:/.+)?$`,
+);
 
 // Tailwind v4 source CSS uses `@import "tailwindcss"`, `@theme`, `@plugin`,
 // `@source` directives intended for the consumer's Tailwind to compile.
@@ -44,6 +57,7 @@ export default defineConfig({
 					absolute: true,
 				},
 			),
+			external: [externalRegex, /^node:/],
 			output: {
 				format: "esm",
 				preserveModules: true,
@@ -56,7 +70,6 @@ export default defineConfig({
 		emptyOutDir: true,
 	},
 	plugins: [
-		externalizeDeps(),
 		dts({
 			include: "src",
 			exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/test-setup.ts"],

@@ -476,7 +476,6 @@
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vite-plugin-dts": "^5.0.0",
-		"vite-plugin-externalize-deps": "^0.10.0",
 		"vitest": "catalog:"
 	},
 	"publishConfig": {
