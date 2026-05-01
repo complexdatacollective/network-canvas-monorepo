@@ -296,8 +296,8 @@ importers:
         specifier: ^7.28.5
         version: 7.28.5(@babel/core@7.29.0)
       '@codaco/protocol-validation':
-        specifier: ^5.0.2
-        version: 5.0.2
+        specifier: ^11.4.0
+        version: link:../../packages/protocol-validation
       '@codaco/ui':
         specifier: ^5.8.6
         version: 5.8.6(@types/react@19.2.14)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -1266,7 +1266,7 @@ importers:
         version: 1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@codaco/protocol-validation':
         specifier: 'catalog:'
-        version: link:../protocol-validation
+        version: 11.4.0-alpha.0
       '@codaco/shared-consts':
         specifier: 'catalog:'
         version: link:../shared-consts
@@ -2727,16 +2727,15 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@codaco/protocol-validation@5.0.2':
-    resolution: {integrity: sha512-HH68/XTI4dPy1WDTpNzhn5PM44+0fj4ZNFkWMqRsPpRgRvhbnnVR+bynDsk/BGKxPF9gdvqx2wvBX0AUbdGOMw==}
-    engines: {node: '>=20.0.0'}
+  '@codaco/protocol-validation@11.4.0-alpha.0':
+    resolution: {integrity: sha512-/58nFJxRjW2TV9iopfqPQM6utMVSZCYRcV0o8b5Rlk/oLSRN97KkqHUTI5j7QJcJYT8N/yNmw8aGq+tdlNseSg==}
     hasBin: true
 
   '@codaco/shared-consts@0.0.2':
     resolution: {integrity: sha512-qPmZQm50NhIuQGznQx00kdCxXJ/rOW8UkCrLPQObmPFjq3iIOTwBjAWddq7gRBsDByRfdB/gMCwcd7Pay2aOFQ==}
 
-  '@codaco/shared-consts@4.0.0':
-    resolution: {integrity: sha512-j39tdNf93FlZ4R2ycZ+FpHNjzgAXcz92fVpC59Cg7k0loWkuMpoEfArzaZyI0mXGT0BEned5BJ+kG7hBu77wDw==}
+  '@codaco/shared-consts@5.0.0':
+    resolution: {integrity: sha512-7neTWHNjw6Y7FdVOU8htO2OshADlpS9vI+5mQEDWOdtlL8BdHmBflqQlZE8lFjzBin8tUI9jIlxsLlMYOpjm/w==}
     engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
@@ -12702,9 +12701,6 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
@@ -14452,17 +14448,17 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260421.1':
     optional: true
 
-  '@codaco/protocol-validation@5.0.2':
+  '@codaco/protocol-validation@11.4.0-alpha.0':
     dependencies:
-      '@codaco/shared-consts': 4.0.0
-      ajv: 8.18.0
-      zod: 3.25.76
+      '@codaco/shared-consts': 5.0.0
+      '@faker-js/faker': 10.4.0
+      zod: 4.3.6
 
   '@codaco/shared-consts@0.0.2': {}
 
-  '@codaco/shared-consts@4.0.0':
+  '@codaco/shared-consts@5.0.0':
     dependencies:
-      zod: 3.25.76
+      zod: 4.3.6
 
   '@codaco/ui@5.8.6(@types/react@19.2.14)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
@@ -26056,8 +26052,6 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
-
-  zod@3.25.76: {}
 
   zod@4.3.6: {}
 
