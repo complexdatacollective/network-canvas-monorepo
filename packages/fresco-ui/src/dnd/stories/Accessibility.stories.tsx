@@ -550,7 +550,7 @@ export const ScreenReaderAnnouncements: Story = {
 						</div>
 
 						<div style={{ marginTop: "12px" }}>
-							<button
+							<button type="button"
 								onClick={() => setAnnouncements([])}
 								style={{
 									padding: "8px 16px",
@@ -564,7 +564,7 @@ export const ScreenReaderAnnouncements: Story = {
 							>
 								Clear Log
 							</button>
-							<button
+							<button type="button"
 								onClick={() => {
 									const message = "Test announcement from button";
 									logAnnouncement(message);
@@ -971,7 +971,7 @@ export const AccessibilityPlayground: Story = {
 							Test Controls
 						</Heading>
 						<div style={{ marginBottom: "16px" }}>
-							<button
+							<button type="button"
 								onClick={() => runAccessibilityTest("Focus Navigation")}
 								style={{
 									padding: "8px 16px",
@@ -986,7 +986,7 @@ export const AccessibilityPlayground: Story = {
 								Test Focus Navigation
 							</button>
 
-							<button
+							<button type="button"
 								onClick={() => runAccessibilityTest("Screen Reader Compatibility")}
 								style={{
 									padding: "8px 16px",
@@ -1001,7 +1001,7 @@ export const AccessibilityPlayground: Story = {
 								Test Screen Reader
 							</button>
 
-							<button
+							<button type="button"
 								onClick={() => runAccessibilityTest("Keyboard-Only Usage")}
 								style={{
 									padding: "8px 16px",

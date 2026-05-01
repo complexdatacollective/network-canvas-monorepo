@@ -139,6 +139,7 @@ export default function ToggleField(props: ToggleFieldProps) {
 			nativeButton
 			render={
 				<button
+					type="button"
 					className={toggleContainerVariants({
 						size,
 						checked: value,

@@ -260,10 +260,10 @@ function PrimaryStoryRender(args: PrimaryStoryArgs) {
 	return (
 		<div className={cx(collectionClasses, "h-screen")}>
 			<div className="flex items-center gap-4">
-				<button onClick={addItem} className="focusable bg-surface-1 rounded px-3 py-1 text-sm">
+				<button type="button" onClick={addItem} className="focusable bg-surface-1 rounded px-3 py-1 text-sm">
 					Add Item
 				</button>
-				<button
+				<button type="button"
 					onClick={removeItem}
 					disabled={items.length === 0}
 					className="focusable bg-surface-1 rounded px-3 py-1 text-sm disabled:opacity-50"
