@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { globSync } from "tinyglobby";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { externalizeDeps } from "vite-plugin-externalize-deps";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -43,36 +44,6 @@ export default defineConfig({
 					absolute: true,
 				},
 			),
-			external: [
-				/^react/,
-				/^react-dom/,
-				/^@radix-ui/,
-				/^@base-ui/,
-				/^motion/,
-				/^@tiptap/,
-				/^lucide-react/,
-				/^class-variance-authority/,
-				/^cva/,
-				/^clsx/,
-				/^tailwind-merge/,
-				/^luxon/,
-				/^zustand/,
-				/^immer/,
-				/^@codaco\//,
-				/^react-aria-components/,
-				/^react-best-merge-refs/,
-				/^react-markdown/,
-				/^remark-/,
-				/^rehype-/,
-				/^comlink/,
-				/^fuse\.js/,
-				/^nanoid/,
-				/^@faker-js\//,
-				/^es-toolkit/,
-				/^zod/,
-				/^tailwindcss/,
-				/^usehooks-ts/,
-			],
 			output: {
 				format: "esm",
 				preserveModules: true,
@@ -85,6 +56,7 @@ export default defineConfig({
 		emptyOutDir: true,
 	},
 	plugins: [
+		externalizeDeps(),
 		dts({
 			include: "src",
 			exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/test-setup.ts"],
