@@ -15,3 +15,10 @@
 		position: relative;
 	}
 }
+
+/* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
+   outside the canvas iframe, so the body rule above doesn't reach it.
+   Paint the docs preview canvas with the theme background directly. */
+.sbdocs-preview {
+	background: var(--background) !important;
+}
