@@ -415,7 +415,7 @@
 		"./styles/colors.css": "./dist/styles/colors.css"
 	},
 	"scripts": {
-		"build": "node scripts/build-exports.mjs && vite build",
+		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --build --noEmit",
 		"test": "vitest run",
@@ -480,7 +480,6 @@
 		"jsdom": "catalog:",
 		"nuqs": "^2.8.9",
 		"storybook": "^10.3.5",
-		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vite-plugin-dts": "^5.0.0",
