@@ -34,3 +34,10 @@
    migrated components are discovered by Tailwind's class scanner. Path is
    relative to dist/styles.css. */
 @source "./**/*.js";
+
+/* fresco-ui components hard-code `interview:` / `dashboard:` variant prefixes
+   (e.g. Button.tsx swaps default-color tokens via `interview:[...]`). These
+   variants must be registered in the same Tailwind compilation pass that
+   scans the components, so they live here rather than in consumer globals. */
+@custom-variant interview (:root:has([data-interview]) &);
+@custom-variant dashboard (:root:not(:has([data-interview])) &);

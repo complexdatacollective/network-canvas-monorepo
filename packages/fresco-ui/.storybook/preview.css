@@ -1,0 +1,17 @@
+/*
+ * Storybook-only base styles. Consumers of @codaco/fresco-ui supply their
+ * own globals (see Fresco's globals.css for the canonical example) — this
+ * file plays the same role for the storybook iframe so the theme bg paints
+ * the full viewport instead of only the wrapper that carries bg-background.
+ *
+ * @reference pulls fresco-ui's tokens/plugins into scope so @apply works
+ * without re-emitting the bundle.
+ */
+@reference "../src/styles.css";
+
+@layer base {
+	body {
+		@apply bg-background text-text publish-colors font-body;
+		position: relative;
+	}
+}
