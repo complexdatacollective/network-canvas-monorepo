@@ -31,9 +31,11 @@ type ScrollAreaProps = {
 	 * changes when the animation completes to trigger a fresh measurement.
 	 */
 	remeasureKey?: unknown;
+	/** Optional accessible label for the scroll region. */
+	"aria-label"?: string;
 } & ViewportProps &
 	Omit<
-		React.HTMLAttributes<HTMLDivElement>,
+		React.HTMLAttributes<HTMLElement>,
 		| "onDrag"
 		| "onDragEnd"
 		| "onDragStart"
@@ -48,7 +50,7 @@ type ScrollAreaProps = {
 		| "tabIndex"
 	>;
 
-const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
+const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
 	(
 		{
 			className,
@@ -69,7 +71,7 @@ const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
 		},
 		ref,
 	) => {
-		const viewportRef = useRef<HTMLDivElement>(null);
+		const viewportRef = useRef<HTMLElement>(null);
 		const rafIdRef = useRef<number | null>(null);
 
 		const updateScrollVariables = useCallback(() => {
@@ -163,7 +165,7 @@ const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
 
 		return (
 			<div className={cx("relative flex h-full min-h-0 flex-1", className)}>
-				<div
+				<section
 					ref={useMergeRefs({ viewportRef, ref })}
 					tabIndex={tabIndex ?? 0}
 					onKeyDown={onKeyDown}
@@ -196,7 +198,7 @@ const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
 					{...rest}
 				>
 					{children}
-				</div>
+				</section>
 			</div>
 		);
 	},

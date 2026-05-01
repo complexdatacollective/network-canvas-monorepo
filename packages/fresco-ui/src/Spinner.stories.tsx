@@ -246,9 +246,13 @@ export const AnimationModes: Story = {
 					<span className="text-center text-xs text-current/70">Spins once on mount</span>
 				</div>
 				<div className="flex flex-col items-center gap-4">
-					<div className="cursor-pointer" onClick={() => setControlledAnimating((prev) => !prev)}>
+					<button
+						type="button"
+						className="cursor-pointer border-0 bg-transparent p-0"
+						onClick={() => setControlledAnimating((prev) => !prev)}
+					>
 						<Spinner size="md" animationMode="controlled" isAnimating={controlledAnimating} />
-					</div>
+					</button>
 					<span className="text-xs font-medium">controlled</span>
 					<span className="text-center text-xs text-current/70">Click to toggle</span>
 				</div>

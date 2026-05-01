@@ -156,7 +156,6 @@ function LivePreviewComponent() {
 				<RichTextEditorField
 					id="preview-editor"
 					name="content"
-					aria-describedby=""
 					value={content}
 					onChange={(v) => setContent(v ?? content)}
 				/>
@@ -193,7 +192,6 @@ function WithJsonPreviewComponent() {
 				<RichTextEditorField
 					id="json-editor"
 					name="content"
-					aria-describedby=""
 					value={content}
 					onChange={(v) => setContent(v ?? content)}
 				/>

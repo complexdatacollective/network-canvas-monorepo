@@ -114,7 +114,7 @@ export const RenderPropPattern: Story = {
 				<Heading
 					level="h2"
 					render={({ className, children }) => (
-						<a href="#" className={`${className ?? ""} hover:underline`}>
+						<a href="https://example.com" className={`${className ?? ""} hover:underline`}>
 							{children ?? "Clickable Heading Link"}
 						</a>
 					)}

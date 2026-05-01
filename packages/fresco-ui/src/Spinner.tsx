@@ -6,7 +6,9 @@ import { cva, cx, type VariantProps } from "./utils/cva";
 
 const ANIMATION_DURATION = 1.8;
 
-const spinnerColors = [
+type SpinnerColor = { light: string; dark: string };
+
+const spinnerColors: readonly SpinnerColor[] = [
 	{
 		light: "oklch(73.83% 0.13 217.55)", // sea-serpent
 		dark: "oklch(68.83% 0.13 217.55)", // sea-serpent-dark
@@ -24,6 +26,8 @@ const spinnerColors = [
 		dark: "oklch(65% 0.2 171.52)", // sea-green-dark
 	},
 ];
+
+const fallbackColor: SpinnerColor = { light: "oklch(70% 0 0)", dark: "oklch(60% 0 0)" };
 
 const circlePositions = [
 	{ top: -1, left: 0, rotate: 0 },
@@ -151,9 +155,10 @@ export default function Spinner({
 
 		// Animate half-circles: merge then split
 		halfCircleControls.forEach((ctrl, i) => {
+			const colors = spinnerColors[i] ?? fallbackColor;
 			void ctrl.start({
 				x: ["50%", "0%", "50%"],
-				backgroundColor: [spinnerColors[i]!.dark, spinnerColors[i]!.light, spinnerColors[i]!.dark],
+				backgroundColor: [colors.dark, colors.light, colors.dark],
 				transition: {
 					duration: ANIMATION_DURATION,
 					ease: [0.4, 0, 0.2, 1],
@@ -199,7 +204,9 @@ export default function Spinner({
 		return () => {
 			isMounted = false;
 			containerControls.stop();
-			halfCircleControls.forEach((ctrl) => ctrl.stop());
+			halfCircleControls.forEach((ctrl) => {
+				ctrl.stop();
+			});
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [animationMode, isAnimating, shouldLoop, shouldReduceMotion]);
@@ -219,7 +226,7 @@ export default function Spinner({
 			onHoverStart={handleHoverStart}
 		>
 			{circlePositions.map((pos, index) => {
-				const colors = spinnerColors[index]!;
+				const colors = spinnerColors[index] ?? fallbackColor;
 
 				return (
 					<motion.div

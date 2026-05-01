@@ -163,7 +163,7 @@ export const WithLinks: Story = {
 				<AlertTitle>New Feature Available</AlertTitle>
 				<AlertDescription>
 					We&apos;ve added a new export feature.{" "}
-					<a href="#" className="font-medium underline">
+					<a href="https://example.com/learn" className="font-medium underline">
 						Learn more
 					</a>{" "}
 					about how to use it.
@@ -174,7 +174,7 @@ export const WithLinks: Story = {
 				<AlertTitle>Action Required</AlertTitle>
 				<AlertDescription>
 					Your subscription expires soon.{" "}
-					<a href="#" className="font-medium underline">
+					<a href="https://example.com/renew" className="font-medium underline">
 						Renew now
 					</a>{" "}
 					to avoid interruption.
