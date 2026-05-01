@@ -1,8 +1,17 @@
 {
 	"name": "@codaco/tailwind-config",
 	"version": "0.1.0",
-	"private": true,
+	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
 	"type": "module",
+	"sideEffects": [
+		"**/*.css"
+	],
+	"files": [
+		"base.ts",
+		"fresco.ts",
+		"globals.css",
+		"fresco"
+	],
 	"exports": {
 		"./fresco": "./fresco.ts",
 		"./fresco/theme.css": "./fresco/theme.css",
@@ -27,5 +36,8 @@
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
 		"typescript": "catalog:"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }
