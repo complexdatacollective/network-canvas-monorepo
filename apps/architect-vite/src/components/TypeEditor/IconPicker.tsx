@@ -16,13 +16,6 @@ const allIcons: IconEntry[] = [
 	...Object.keys(lucideIconMap).map((name) => ({ name, isCustom: false })),
 ];
 
-function toLucideKebab(name: string): string {
-	return name
-		.replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-		.replace(/([A-Z])([A-Z][a-z])/g, "$1-$2")
-		.toLowerCase();
-}
-
 function IconPreview({ entry, size = 20 }: { entry: IconEntry; size?: number }) {
 	if (entry.isCustom) {
 		return <Icon name={entry.name} style={{ width: size, height: size }} />;
@@ -54,23 +47,15 @@ const MAX_VISIBLE_ITEMS = 200;
 function findEntryByValue(value: string): IconEntry | null {
 	if (!value) return null;
 
-	const customMatch = CUSTOM_ICONS.find((c) => c === value);
-	if (customMatch) return { name: customMatch, isCustom: true };
+	if ((CUSTOM_ICONS as readonly string[]).includes(value)) {
+		return { name: value, isCustom: true };
+	}
 
-	const lucideMatch = Object.keys(lucideIconMap).find((k) => toLucideKebab(k) === value || k === value);
-	if (lucideMatch) return { name: lucideMatch, isCustom: false };
+	if (value in lucideIconMap) {
+		return { name: value, isCustom: false };
+	}
 
 	return null;
-}
-
-function entryToValue(entry: IconEntry): string {
-	if (entry.isCustom) return entry.name;
-	return toLucideKebab(entry.name);
-}
-
-function entryToLabel(entry: IconEntry): string {
-	if (entry.isCustom) return entry.name;
-	return toLucideKebab(entry.name);
 }
 
 const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProps) => {
@@ -82,8 +67,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 		const lowerQuery = query.toLowerCase();
 		const matches: IconEntry[] = [];
 		for (const entry of allIcons) {
-			const searchName = entry.isCustom ? entry.name : toLucideKebab(entry.name);
-			if (searchName.toLowerCase().includes(lowerQuery)) {
+			if (entry.name.toLowerCase().includes(lowerQuery)) {
 				matches.push(entry);
 				if (matches.length >= MAX_VISIBLE_ITEMS) break;
 			}
@@ -102,7 +86,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 				filteredItems={filteredIcons}
 				onValueChange={(val) => {
 					if (val) {
-						input.onChange(entryToValue(val));
+						input.onChange(val.name);
 					}
 				}}
 				onInputValueChange={(inputValue) => {
@@ -115,7 +99,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 							<span className="flex h-6 w-6 shrink-0 items-center justify-center">
 								<IconPreview entry={selectedEntry} size={24} />
 							</span>
-							<span className="min-w-0 flex-1 truncate">{entryToLabel(selectedEntry)}</span>
+							<span className="min-w-0 flex-1 truncate">{selectedEntry.name}</span>
 						</>
 					) : (
 						<span className="min-w-0 flex-1 truncate text-[var(--color-charcoal)]">Select an icon...</span>
@@ -144,7 +128,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 										<span className="flex h-5 w-5 shrink-0 items-center justify-center">
 											<IconPreview entry={entry} size={18} />
 										</span>
-										<span className="min-w-0 flex-1 truncate">{entryToLabel(entry)}</span>
+										<span className="min-w-0 flex-1 truncate">{entry.name}</span>
 										<Combobox.ItemIndicator className="shrink-0 text-[var(--color-foreground)]">
 											✓
 										</Combobox.ItemIndicator>
