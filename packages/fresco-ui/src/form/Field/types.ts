@@ -39,20 +39,16 @@ export type ExtractValue<C extends ValidFieldComponent> = "value" extends keyof 
 	: never;
 
 /**
- * Constraint for valid field components.
- *
- * Components passed to Field/UnconnectedField are required to accept
- * value/onChange (FieldValueProps) and the props Field/UnconnectedField
- * inject (InjectedFieldProps). They typically declare those plus
- * additional custom props via CreateFormFieldProps.
- *
- * The constraint is contravariant in its prop shape, so any concrete
- * component whose props extend the required field-state shape satisfies
- * it. Field/UnconnectedField are generic over `C extends ValidFieldComponent`
- * so `React.ComponentProps<C>` still resolves to the consumer's concrete
- * prop shape at the call site.
+ * Constraint for valid field components. Concrete field components have
+ * narrower value types (e.g. InputField only accepts string|number) than
+ * the FieldValue union, and contravariance in React.ComponentType<P> means
+ * any non-`any` constraint forces consumers to handle the entire union.
+ * The `any` here is load-bearing: Field/UnconnectedField are still generic
+ * over `C extends ValidFieldComponent`, so `React.ComponentProps<C>`
+ * recovers the consumer's concrete prop shape at every call site.
  */
-export type ValidFieldComponent = React.ComponentType<FieldValueProps<FieldValue> & InjectedFieldProps>;
+// biome-ignore lint/suspicious/noExplicitAny: see comment above
+export type ValidFieldComponent = React.ComponentType<any>;
 
 // ═══════════════════════════════════════════════════════════════
 // Value-based validation prop inference
