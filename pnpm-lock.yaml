@@ -1305,7 +1305,7 @@ importers:
         specifier: workspace:*
         version: link:../shared-consts
       '@xmldom/xmldom':
-        specifier: ^0.9.9
+        specifier: ^0.9.10
         version: 0.9.10
       effect:
         specifier: ^3.21.0
