@@ -176,6 +176,47 @@ jobs:
     - name: Build changed packages only
       run: pnpm run build:changed-packages
 
+    # TEMPORARY: diagnose OIDC trusted publishing failure (#480). Remove after.
+    - name: Diagnose OIDC environment
+      env:
+        NPM_CONFIG_PROVENANCE: true
+      run: |
+        set +e
+        echo "=== Versions ==="
+        echo "node: $(node --version)"
+        echo "npm:  $(npm --version)"
+        echo "pnpm: $(pnpm --version)"
+
+        echo ""
+        echo "=== OIDC env presence ==="
+        echo "ACTIONS_ID_TOKEN_REQUEST_URL set:   ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+        echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+        echo "NPM_CONFIG_PROVENANCE: ${NPM_CONFIG_PROVENANCE:-(unset)}"
+        echo "GITHUB_REPOSITORY:     ${GITHUB_REPOSITORY:-(unset)}"
+        echo "GITHUB_WORKFLOW_REF:   ${GITHUB_WORKFLOW_REF:-(unset)}"
+
+        echo ""
+        echo "=== .npmrc files ==="
+        for f in ./.npmrc "$HOME/.npmrc" /etc/npmrc; do
+          if [ -f "$f" ]; then
+            echo "--- $f ---"
+            sed 's/_authToken=.*/_authToken=<redacted>/' "$f"
+          else
+            echo "--- $f: (not present) ---"
+          fi
+        done
+
+        echo ""
+        echo "=== npm whoami (forces auth path) ==="
+        npm whoami --registry=https://registry.npmjs.org
+        echo "exit: $?"
+
+        echo ""
+        echo "=== npm publish --dry-run for @codaco/network-query ==="
+        cd packages/network-query
+        npm publish --dry-run --access public --provenance
+        echo "exit: $?"
+
     - name: Create Release Pull Request
       uses: changesets/action@v1
       with:
