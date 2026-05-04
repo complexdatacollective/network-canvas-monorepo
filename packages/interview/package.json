@@ -56,7 +56,6 @@
 		"es-toolkit": "catalog:",
 		"lucide-react": "catalog:",
 		"mapbox-gl": "^3.22.0",
-		"nuqs": "^2.8.9",
 		"ohash": "^2.0.11",
 		"react-redux": "catalog:",
 		"redux-logger": "catalog:",

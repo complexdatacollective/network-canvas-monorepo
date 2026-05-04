@@ -1,9 +1,9 @@
 "use client";
 
 import { invariant } from "es-toolkit";
-import { parseAsInteger, useQueryState } from "nuqs";
 import { type ElementType, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useStepControl } from "../contract/context";
 import { getStages } from "../ducks/modules/protocol";
 import { updatePrompt, updateStage } from "../ducks/modules/session";
 import getInterface from "../Interfaces";
@@ -16,8 +16,25 @@ import useReadyForNextStage from "./useReadyForNextStage";
 export default function useInterviewNavigation() {
 	const dispatch = useDispatch();
 
-	// State
-	const [queryStep, setQueryStep] = useQueryState("step", parseAsInteger.withOptions({ history: "push" }));
+	// "Intended step" can be host-controlled (Shell receives currentStep +
+	// onStepChange props) or package-internal. The host is responsible for
+	// persisting the value if desired (URL, localStorage, etc.).
+	const { currentStep: controlledStep, onStepChange } = useStepControl();
+	const isControlled = controlledStep !== undefined;
+	const [internalStep, setInternalStep] = useState<number>(controlledStep ?? 0);
+	const intendedStep = isControlled ? controlledStep : internalStep;
+
+	const setStep = useCallback(
+		(next: number) => {
+			if (isControlled) {
+				onStepChange?.(next);
+			} else {
+				setInternalStep(next);
+			}
+		},
+		[isControlled, onStepChange],
+	);
+
 	const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
 
 	// Two-phase navigation state.
@@ -150,11 +167,11 @@ export default function useInterviewNavigation() {
 			setProgress(fakeProgress);
 			registerBeforeNext(null);
 
-			void setQueryStep(nextValidStageIndexRef.current);
+			setStep(nextValidStageIndexRef.current);
 		})();
 
 		setForceNavigationDisabled(false);
-	}, [dispatch, isLastPrompt, promptIndex, registerBeforeNext, stageCount, getPromptCountForStage, setQueryStep]);
+	}, [dispatch, isLastPrompt, promptIndex, registerBeforeNext, stageCount, getPromptCountForStage, setStep]);
 
 	const moveBackward = useCallback(async () => {
 		if (isTransitioningRef.current) return;
@@ -176,11 +193,11 @@ export default function useInterviewNavigation() {
 			const fakeProgress = calculateProgress(previousValidStageIndexRef.current, stageCount, 0, prevPromptCount);
 			setProgress(fakeProgress);
 			registerBeforeNext(null);
-			void setQueryStep(previousValidStageIndexRef.current);
+			setStep(previousValidStageIndexRef.current);
 		})();
 
 		setForceNavigationDisabled(false);
-	}, [setQueryStep, dispatch, isFirstPrompt, promptIndex, registerBeforeNext, stageCount, getPromptCountForStage]);
+	}, [setStep, dispatch, isFirstPrompt, promptIndex, registerBeforeNext, stageCount, getPromptCountForStage]);
 
 	const getNavigationHelpers = useCallback(
 		() => ({
@@ -207,33 +224,26 @@ export default function useInterviewNavigation() {
 		isTransitioningRef.current = false;
 	}, [dispatch]);
 
-	// Initialize URL step param on first load
-	useEffect(() => {
-		if (queryStep === null) {
-			void setQueryStep(currentStep, { history: "replace" });
-		}
-	}, [queryStep, currentStep, setQueryStep]);
-
-	// Two-phase navigation: when URL changes, start exit animation.
+	// Two-phase navigation: when intended step changes, start exit animation.
 	// Redux currentStep is NOT updated here — it's deferred to handleExitComplete.
 	useEffect(() => {
-		if (queryStep !== null && queryStep !== currentStep) {
-			pendingStepRef.current = queryStep;
+		if (intendedStep !== currentStep) {
+			pendingStepRef.current = intendedStep;
 			if (!isTransitioningRef.current) {
 				isTransitioningRef.current = true;
 				setShowStage(false);
 			}
 		}
-	}, [queryStep, currentStep]);
+	}, [intendedStep, currentStep]);
 
 	// If the current stage should be skipped, move to the previous valid stage.
 	useEffect(() => {
 		if (!isCurrentStepValid) {
 			// eslint-disable-next-line no-console
 			console.log("⚠️ Invalid stage! Moving you to the previous valid stage...");
-			void setQueryStep(previousValidStageIndex, { history: "replace" });
+			setStep(previousValidStageIndex);
 		}
-	}, [setQueryStep, isCurrentStepValid, previousValidStageIndex]);
+	}, [setStep, isCurrentStepValid, previousValidStageIndex]);
 
 	const { canMoveForward, canMoveBackward } = useSelector(getNavigationInfo);
 

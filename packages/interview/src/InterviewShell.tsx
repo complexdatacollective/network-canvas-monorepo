@@ -17,6 +17,7 @@ import type {
 	FinishHandler,
 	InterviewerFlags,
 	InterviewPayload,
+	StepChangeHandler,
 	SyncHandler,
 } from "./contract/types";
 import useInterviewNavigation from "./hooks/useInterviewNavigation";
@@ -108,16 +109,34 @@ function Interview() {
 	);
 }
 
+/**
+ * `currentStep` and `onStepChange` together implement the controlled-component
+ * pattern for the rendered stage index. Provide both to drive the step from
+ * the host (e.g. to persist it in the URL or session storage); omit both to
+ * let the package own step state internally. Mixing the two (providing only
+ * one) is unsupported.
+ */
 type InterviewShellProps = {
 	payload: InterviewPayload;
 	onSync: SyncHandler;
 	onFinish: FinishHandler;
 	onRequestAsset: AssetRequestHandler;
 	onError?: ErrorHandler;
+	currentStep?: number;
+	onStepChange?: StepChangeHandler;
 	flags?: InterviewerFlags;
 };
 
-const InterviewShell = ({ payload, onSync, onFinish, onRequestAsset, onError, flags }: InterviewShellProps) => {
+const InterviewShell = ({
+	payload,
+	onSync,
+	onFinish,
+	onRequestAsset,
+	onError,
+	currentStep,
+	onStepChange,
+	flags,
+}: InterviewShellProps) => {
 	// Anchor onSync in a ref so the store factory receives a stable callback
 	// (the sync middleware closes over it once at store creation). Hosts
 	// commonly pass an inline arrow, which would otherwise force the store to
@@ -137,7 +156,14 @@ const InterviewShell = ({ payload, onSync, onFinish, onRequestAsset, onError, fl
 
 	return (
 		<Provider store={reduxStore}>
-			<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} onError={onError} flags={flags}>
+			<ContractProvider
+				onFinish={onFinish}
+				onRequestAsset={onRequestAsset}
+				onError={onError}
+				currentStep={currentStep}
+				onStepChange={onStepChange}
+				flags={flags}
+			>
 				{/*
 				 * Interview-scoped DialogProvider (nested below the app-root one in
 				 * components/Providers). Required because dialogs opened from inside

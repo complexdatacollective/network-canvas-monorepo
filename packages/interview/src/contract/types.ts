@@ -44,6 +44,8 @@ export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 export type ErrorHandler = (error: Error, context?: Record<string, unknown>) => void;
 
+export type StepChangeHandler = (step: number) => void;
+
 export type InterviewerFlags = {
 	isE2E?: boolean;
 	isDevelopment?: boolean;
