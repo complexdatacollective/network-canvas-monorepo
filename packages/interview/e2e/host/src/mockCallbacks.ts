@@ -1,9 +1,4 @@
-import type {
-	AssetRequestHandler,
-	FinishHandler,
-	SessionPayload,
-	SyncHandler,
-} from "../../../src/contract/types";
+import type { AssetRequestHandler, FinishHandler, SessionPayload, SyncHandler } from "../../../src/contract/types";
 
 export type InterviewStateStore = Map<string, SessionPayload>;
 
@@ -17,10 +12,7 @@ export function makeMockSync(store: InterviewStateStore): SyncHandler {
 	};
 }
 
-export const mockFinish: FinishHandler = async (
-	_interviewId: string,
-	_signal: AbortSignal,
-): Promise<void> => {
+export const mockFinish: FinishHandler = async (_interviewId: string, _signal: AbortSignal): Promise<void> => {
 	// No-op finish handler for e2e tests.
 };
 

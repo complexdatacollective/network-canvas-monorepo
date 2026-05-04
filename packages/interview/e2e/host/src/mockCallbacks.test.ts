@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SessionPayload } from "../../../src/contract/types";
 import { createInitialNetwork } from "../../../src/store/modules/session";
-import {
-	createInterviewStateStore,
-	makeMockAssetRequest,
-	makeMockSync,
-	mockFinish,
-} from "./mockCallbacks";
+import { createInterviewStateStore, makeMockAssetRequest, makeMockSync, mockFinish } from "./mockCallbacks";
 
 function makeSession(overrides?: Partial<SessionPayload>): SessionPayload {
 	return {

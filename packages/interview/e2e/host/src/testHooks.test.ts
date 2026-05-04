@@ -37,7 +37,6 @@ describe("installTestHooks", () => {
 	});
 
 	afterEach(() => {
-		// biome-ignore lint/performance/noDelete: cleaning up globalThis for test isolation
 		delete (globalThis as Record<string, unknown>).__test;
 	});
 
@@ -46,10 +45,7 @@ describe("installTestHooks", () => {
 	});
 
 	it("exposes installProtocol, createInterview, getNetworkState", () => {
-		const testGlobal = (globalThis as Record<string, unknown>).__test as Record<
-			string,
-			unknown
-		>;
+		const testGlobal = (globalThis as Record<string, unknown>).__test as Record<string, unknown>;
 		expect(typeof testGlobal.installProtocol).toBe("function");
 		expect(typeof testGlobal.createInterview).toBe("function");
 		expect(typeof testGlobal.getNetworkState).toBe("function");
@@ -62,7 +58,6 @@ describe("getTestState", () => {
 	});
 
 	afterEach(() => {
-		// biome-ignore lint/performance/noDelete: cleaning up globalThis for test isolation
 		delete (globalThis as Record<string, unknown>).__test;
 	});
 
@@ -86,10 +81,7 @@ describe("getTestState", () => {
 	it("reflects interview + session after createInterview is called", () => {
 		const testGlobal = (globalThis as Record<string, unknown>).__test as {
 			installProtocol: (p: ProtocolPayload) => void;
-			createInterview: (
-				protocolId: string,
-				participantId: string,
-			) => string;
+			createInterview: (protocolId: string, participantId: string) => string;
 		};
 		const protocol = makeProtocol({ id: "p-2" });
 		testGlobal.installProtocol(protocol);
@@ -125,7 +117,6 @@ describe("subscribe", () => {
 	});
 
 	afterEach(() => {
-		// biome-ignore lint/performance/noDelete: cleaning up globalThis for test isolation
 		delete (globalThis as Record<string, unknown>).__test;
 	});
 
@@ -202,11 +193,11 @@ describe("subscribe", () => {
 });
 
 declare global {
-	interface Window {
+	type Window = {
 		__test?: {
 			installProtocol: (protocol: ProtocolPayload) => void;
 			createInterview: (protocolId: string, participantId: string) => string;
 			getNetworkState: (interviewId: string) => unknown;
 		};
-	}
+	};
 }
