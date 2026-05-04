@@ -6,7 +6,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { getCodebook } from "../ducks/modules/protocol";
-import { useNodeLabel } from "../Interfaces/Anonymisation/useNodeLabel";
+import { useNodeLabel } from "../interfaces/Anonymisation/useNodeLabel";
 import { getNetworkNodes, resolveNodeShape } from "../selectors/session";
 
 type ConnectedNodeProps = Omit<React.ComponentProps<typeof UINode>, "type" | "shape" | "color" | "label"> & {

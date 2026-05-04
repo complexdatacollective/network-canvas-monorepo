@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useStepControl } from "../contract/context";
 import { getStages } from "../ducks/modules/protocol";
 import { updatePrompt, updateStage } from "../ducks/modules/session";
-import getInterface from "../Interfaces";
+import getInterface from "../interfaces";
 import { getCurrentStage, getNavigationInfo, getPromptCount, getStageCount } from "../selectors/session";
 import { getNavigableStages } from "../selectors/skip-logic";
 import { calculateProgress } from "../selectors/utils";

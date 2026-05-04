@@ -7,7 +7,7 @@ import Form from "@codaco/fresco-ui/form/Form";
 import InputField from "@codaco/fresco-ui/form/fields/InputField";
 import { AnimatePresence, motion, type Transition, useWillChange } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
-import { usePassphrase } from "../Interfaces/Anonymisation/usePassphrase";
+import { usePassphrase } from "../interfaces/Anonymisation/usePassphrase";
 import Overlay from "./Overlay";
 
 const transition: Transition = {

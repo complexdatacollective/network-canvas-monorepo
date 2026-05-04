@@ -6,7 +6,7 @@ import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
-import DrawerNode from "../Interfaces/Sociogram/DrawerNode";
+import DrawerNode from "../interfaces/Sociogram/DrawerNode";
 
 type NodeDrawerProps = {
 	nodes: NcNode[];
