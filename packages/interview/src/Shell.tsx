@@ -116,7 +116,7 @@ function Interview() {
  * let the package own step state internally. Mixing the two (providing only
  * one) is unsupported.
  */
-type InterviewShellProps = {
+type ShellProps = {
 	payload: InterviewPayload;
 	onSync: SyncHandler;
 	onFinish: FinishHandler;
@@ -127,7 +127,7 @@ type InterviewShellProps = {
 	flags?: InterviewerFlags;
 };
 
-const InterviewShell = ({
+const Shell = ({
 	payload,
 	onSync,
 	onFinish,
@@ -136,7 +136,7 @@ const InterviewShell = ({
 	currentStep,
 	onStepChange,
 	flags,
-}: InterviewShellProps) => {
+}: ShellProps) => {
 	// Anchor onSync in a ref so the store factory receives a stable callback
 	// (the sync middleware closes over it once at store creation). Hosts
 	// commonly pass an inline arrow, which would otherwise force the store to
@@ -180,4 +180,4 @@ const InterviewShell = ({
 	);
 };
 
-export default InterviewShell;
+export default Shell;
