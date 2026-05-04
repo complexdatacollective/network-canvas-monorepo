@@ -5,7 +5,6 @@
 	transform-origin: 0 100%;
 	overflow: hidden;
 	color: var(--color-primary-foreground);
-	max-height: auto;
 }
 
 .issues__title-bar {

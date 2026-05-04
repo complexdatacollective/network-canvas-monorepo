@@ -38,9 +38,8 @@ export const useFormContext = () => {
 };
 
 /**
- * A thin wrapper over redux form's Form component that handles displaying issues
- * when the form is submitted and there are validation errors.
- *
+ * A thin wrapper over redux form's Form component that exposes form
+ * state via FormContext for descendants to consume.
  */
 const Editor = (props: EditorProps) => {
 	const {
