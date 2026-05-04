@@ -22,7 +22,6 @@
 .rules-preview-rule__text .variable-pill {
 	margin: 0 0.8rem;
 	max-width: 24rem;
-	color: var(--color-surface-1-foreground);
 }
 
 .rules-preview-rule__text .preview-edge,
@@ -73,4 +72,5 @@
 
 .rules-preview-rule__text .preview-edge {
 	background: var(--color-surface-2);
+	color: var(--color-surface-2-foreground);
 }
