@@ -1,21 +1,31 @@
 #!/usr/bin/env sh
 
-current_branch=$(git rev-parse --abbrev-ref HEAD)
+# Detect what is actually being pushed by reading stdin. Each line is:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+# We only want the strict checks to run when the main branch ref is being
+# pushed, not on tag-only pushes (e.g. the per-package release tags emitted
+# by changesets/action, which would otherwise fail under hook load).
+pushing_main=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    pushing_main=1
+  fi
+done
 
-if [ "$current_branch" = "main" ]; then
+if [ "$pushing_main" = "1" ]; then
   echo "🔍 Running strict checks for main branch..."
-  
+
   # Run biome check without --unsafe flag for stricter validation
   pnpm biome check . || {
     echo "❌ Biome checks failed. Please fix all linting errors before pushing to main."
     exit 1
   }
-  
+
   # Run type checking
   pnpm run typecheck || {
     echo "❌ Type checking failed. Please fix all type errors before pushing to main."
     exit 1
   }
-  
+
   echo "✅ All checks passed for main branch push."
 fi
