@@ -151,8 +151,8 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1
       electron-log:
-        specifier: ^4.4.8
-        version: 4.4.8
+        specifier: ^5.4.3
+        version: 5.4.3
       fs-extra:
         specifier: ^8.1.0
         version: 8.1.0
@@ -829,8 +829,8 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1
       electron-log:
-        specifier: ^4.4.8
-        version: 4.4.8
+        specifier: ^5.4.3
+        version: 5.4.3
       fs-extra:
         specifier: ^11.3.4
         version: 11.3.4
@@ -7508,8 +7508,9 @@ packages:
   electron-devtools-installer@3.2.1:
     resolution: {integrity: sha512-FaCi+oDCOBTw0gJUsuw5dXW32b2Ekh5jO8lI1NRCQigo3azh2VogsIi0eelMVrP1+LkN/bewyH3Xoo1USjO0eQ==}
 
-  electron-log@4.4.8:
-    resolution: {integrity: sha512-QQ4GvrXO+HkgqqEOYbi+DHL7hj5JM+nHi/j+qrN9zeeXVKy8ZABgbu4CnG+BBqDZ2+tbeq9tUC4DZfIWFU5AZA==}
+  electron-log@5.4.3:
+    resolution: {integrity: sha512-sOUsM3LjZdugatazSQ/XTyNcw8dfvH1SYhXWiJyfYodAAKOZdHs0txPiLDXFzOZbhXgAgshQkshH2ccq0feyLQ==}
+    engines: {node: '>= 14'}
 
   electron-publish@26.6.0:
     resolution: {integrity: sha512-LsyHMMqbvJ2vsOvuWJ19OezgF2ANdCiHpIucDHNiLhuI+/F3eW98ouzWSRmXXi82ZOPZXC07jnIravY4YYwCLQ==}
@@ -19333,7 +19334,7 @@ snapshots:
       tslib: 2.8.1
       unzip-crx-3: 0.2.0
 
-  electron-log@4.4.8: {}
+  electron-log@5.4.3: {}
 
   electron-publish@26.6.0:
     dependencies:
