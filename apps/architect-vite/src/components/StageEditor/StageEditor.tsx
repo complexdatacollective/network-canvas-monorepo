@@ -192,6 +192,12 @@ const StageEditor = (props: StageEditorProps) => {
 			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
 		});
 
+	const previewButton = (
+		<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview || isStageInvalid}>
+			{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
+		</Button>
+	);
+
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
 			<div className="relative flex flex-col h-dvh">
@@ -207,18 +213,16 @@ const StageEditor = (props: StageEditorProps) => {
 						</Button>,
 					]}
 					buttons={[
-						<Tooltip
-							key="preview"
-							content={
-								isStageInvalid
-									? "Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."
-									: null
-							}
-						>
-							<Button onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview || isStageInvalid}>
-								{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
-							</Button>
-						</Tooltip>,
+						isStageInvalid ? (
+							<Tooltip
+								key="preview"
+								content="Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."
+							>
+								{previewButton}
+							</Tooltip>
+						) : (
+							previewButton
+						),
 						...(hasUnsavedChanges
 							? [
 									<Button key="submit" type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
