@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { action } from "storybook/actions";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "../../utils/SyntheticInterview/SyntheticInterview";
-import type { ComponentType } from "../../utils/SyntheticInterview/types";
+import { SyntheticInterview } from "../../synthetic/SyntheticInterview";
+import type { ComponentType } from "../../synthetic/types";
 
 const logAction = action("redux");
 const onAction = (a: { type: string; payload?: unknown }) => {

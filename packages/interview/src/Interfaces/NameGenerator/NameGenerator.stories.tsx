@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "../../utils/SyntheticInterview/SyntheticInterview";
+import { SyntheticInterview } from "../../synthetic/SyntheticInterview";
 
 type StageType = "NameGenerator" | "NameGeneratorQuickAdd";
 
