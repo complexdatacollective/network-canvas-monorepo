@@ -52,12 +52,12 @@ type Codebook = {
 	};
 };
 
-type GenerateNetworkOptions = {
+export type GenerateNetworkOptions = {
 	simulateDropOut?: boolean;
 	respectSkipLogicAndFiltering?: boolean;
 };
 
-type GenerateNetworkResult = {
+export type GenerateNetworkResult = {
 	network: NcNetwork;
 	stageMetadata: Record<string, unknown> | null;
 	currentStep: number;
