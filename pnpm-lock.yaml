@@ -1403,9 +1403,6 @@ importers:
       ohash:
         specifier: ^2.0.11
         version: 2.0.11
-      posthog-js:
-        specifier: ^1.367.0
-        version: 1.372.2
       react:
         specifier: 'catalog:'
         version: 19.2.5

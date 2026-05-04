@@ -58,7 +58,6 @@
 		"mapbox-gl": "^3.22.0",
 		"nuqs": "^2.8.9",
 		"ohash": "^2.0.11",
-		"posthog-js": "^1.367.0",
 		"react-redux": "catalog:",
 		"redux-logger": "catalog:",
 		"redux-thunk": "^3.1.0",

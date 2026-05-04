@@ -42,6 +42,8 @@ export type FinishHandler = (interviewId: string, signal: AbortSignal) => Promis
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
+export type ErrorHandler = (error: Error, context?: Record<string, unknown>) => void;
+
 export type InterviewerFlags = {
 	isE2E?: boolean;
 	isDevelopment?: boolean;

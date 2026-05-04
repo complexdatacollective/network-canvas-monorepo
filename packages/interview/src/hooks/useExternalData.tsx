@@ -1,6 +1,5 @@
 import type { Panel, StageSubject } from "@codaco/protocol-validation";
 import type { NcNode } from "@codaco/shared-consts";
-import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useContractHandlers } from "../contract/context";
@@ -12,7 +11,7 @@ import loadExternalData, { makeVariableUUIDReplacer } from "../utils/loadExterna
 const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject | null) => {
 	const assetManifest = useSelector(getAssetManifest);
 	const codebook = useSelector(getCodebook);
-	const { onRequestAsset } = useContractHandlers();
+	const { onRequestAsset, onError } = useContractHandlers();
 
 	const [externalData, setExternalData] = useState<NcNode[] | null>(null);
 	const [status, setStatus] = useState<{
@@ -54,7 +53,7 @@ const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject 
 				}
 			} catch (e) {
 				const error = ensureError(e);
-				posthog.captureException(error, {
+				onError(error, {
 					tags: { feature: "external-data", dataSource: String(dataSource) },
 				});
 				// eslint-disable-next-line no-console
@@ -66,7 +65,7 @@ const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject 
 		return () => {
 			cancelled = true;
 		};
-	}, [dataSource, assetManifest, codebook, subject, onRequestAsset]);
+	}, [dataSource, assetManifest, codebook, subject, onRequestAsset, onError]);
 
 	return { externalData, status };
 };

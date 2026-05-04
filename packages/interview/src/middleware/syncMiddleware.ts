@@ -2,7 +2,6 @@
 
 import type { Middleware } from "@reduxjs/toolkit";
 import { debounce, isEqual, omit } from "es-toolkit";
-import posthog from "posthog-js";
 import type { SessionPayload, SyncHandler } from "../contract/types";
 import { ensureError } from "../utils/ensureError";
 
@@ -33,7 +32,6 @@ export const createSyncMiddleware = ({
 				const error = ensureError(e);
 				// eslint-disable-next-line no-console
 				console.error("❌ Error syncing data:", error);
-				posthog.captureException(error);
 			})
 			.finally(() => {
 				isSyncing = false;

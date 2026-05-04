@@ -13,6 +13,7 @@ import { StageMetadataProvider } from "./contexts/StageMetadataContext";
 import { ContractProvider } from "./contract/context";
 import type {
 	AssetRequestHandler,
+	ErrorHandler,
 	FinishHandler,
 	InterviewerFlags,
 	InterviewPayload,
@@ -112,10 +113,11 @@ type InterviewShellProps = {
 	onSync: SyncHandler;
 	onFinish: FinishHandler;
 	onRequestAsset: AssetRequestHandler;
+	onError?: ErrorHandler;
 	flags?: InterviewerFlags;
 };
 
-const InterviewShell = ({ payload, onSync, onFinish, onRequestAsset, flags }: InterviewShellProps) => {
+const InterviewShell = ({ payload, onSync, onFinish, onRequestAsset, onError, flags }: InterviewShellProps) => {
 	// Anchor onSync in a ref so the store factory receives a stable callback
 	// (the sync middleware closes over it once at store creation). Hosts
 	// commonly pass an inline arrow, which would otherwise force the store to
@@ -135,7 +137,7 @@ const InterviewShell = ({ payload, onSync, onFinish, onRequestAsset, flags }: In
 
 	return (
 		<Provider store={reduxStore}>
-			<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} flags={flags}>
+			<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} onError={onError} flags={flags}>
 				{/*
 				 * Interview-scoped DialogProvider (nested below the app-root one in
 				 * components/Providers). Required because dialogs opened from inside

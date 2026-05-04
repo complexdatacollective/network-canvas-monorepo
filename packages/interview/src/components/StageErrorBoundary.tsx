@@ -2,26 +2,28 @@ import Icon from "@codaco/fresco-ui/Icon";
 import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import posthog from "posthog-js";
 import React, { Component, type ReactNode } from "react";
+import { useContractHandlers } from "../contract/context";
+import type { ErrorHandler } from "../contract/types";
 import CopyDebugInfoButton from "./CopyDebugInfoButton";
 
-type StageErrorBoundaryProps = {
+type StageErrorBoundaryInnerProps = {
 	children: ReactNode;
+	onError: ErrorHandler;
 };
 
 type StageErrorBoundaryState = {
 	error?: Error;
 };
 
-class StageErrorBoundary extends Component<StageErrorBoundaryProps, StageErrorBoundaryState> {
-	constructor(props: StageErrorBoundaryProps) {
+class StageErrorBoundaryInner extends Component<StageErrorBoundaryInnerProps, StageErrorBoundaryState> {
+	constructor(props: StageErrorBoundaryInnerProps) {
 		super(props);
 		this.state = {};
 	}
 
 	componentDidCatch(error: Error, info: React.ErrorInfo) {
-		posthog.captureException(error, {
+		this.props.onError(error, {
 			componentStack: info.componentStack,
 		});
 		this.setState({ error });
@@ -57,5 +59,14 @@ class StageErrorBoundary extends Component<StageErrorBoundaryProps, StageErrorBo
 		return children;
 	}
 }
+
+type StageErrorBoundaryProps = {
+	children: ReactNode;
+};
+
+const StageErrorBoundary = ({ children }: StageErrorBoundaryProps) => {
+	const { onError } = useContractHandlers();
+	return <StageErrorBoundaryInner onError={onError}>{children}</StageErrorBoundaryInner>;
+};
 
 export default StageErrorBoundary;
