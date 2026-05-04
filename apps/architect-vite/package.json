@@ -27,7 +27,7 @@
 		"csvtojson": "^2.0.14",
 		"dexie": "^4.4.2",
 		"es-toolkit": "^1.46.0",
-		"fuse.js": "^3.6.1",
+		"fuse.js": "^7.3.0",
 		"is-hotkey": "^0.2.0",
 		"jszip": "^3.10.1",
 		"lucide-react": "catalog:",
