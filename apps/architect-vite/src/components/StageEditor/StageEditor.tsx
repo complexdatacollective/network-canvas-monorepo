@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import Editor from "~/components/Editor";
 import ExternalLink from "~/components/ExternalLink";
+import Issues from "~/components/Issues";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
@@ -196,6 +197,7 @@ const StageEditor = (props: StageEditorProps) => {
 					<StageHeading />
 					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
 				</div>
+				<Issues />
 				<ControlBar
 					secondaryButtons={[
 						<Button key="cancel" onClick={handleCancel} color="platinum">
