@@ -11,6 +11,7 @@ type InterviewEntry = {
 type TestState = {
 	protocols: Map<string, ProtocolPayload>;
 	interviews: Map<string, InterviewEntry>;
+	assetUrls: Map<string, string>;
 	sync: SyncHandler;
 };
 
@@ -23,6 +24,7 @@ function createEmptyState(): TestState {
 	return {
 		protocols: new Map<string, ProtocolPayload>(),
 		interviews: new Map<string, InterviewEntry>(),
+		assetUrls: new Map<string, string>(),
 		sync: makeSyncHandler(),
 	};
 }
@@ -57,14 +59,19 @@ export function subscribe(fn: StateSubscriber): () => void {
 export function installTestHooks(): void {
 	// Reset state on each install so tests are isolated.
 	state = createEmptyState();
+	subscribers.clear();
 
 	const testHooks = {
 		installProtocol(protocol: ProtocolPayload): void {
 			state.protocols.set(protocol.id, protocol);
-			const assetUrls = new Map<string, string>();
 			for (const asset of protocol.assets) {
-				assetUrls.set(asset.assetId, "");
+				state.assetUrls.set(asset.assetId, "");
 			}
+			notifySubscribers();
+		},
+
+		setAssetUrl(assetId: string, url: string): void {
+			state.assetUrls.set(assetId, url);
 			notifySubscribers();
 		},
 

@@ -190,6 +190,39 @@ describe("subscribe", () => {
 
 		unsubscribe();
 	});
+
+	it("re-installing clears stale subscribers from a prior install", () => {
+		const listener = vi.fn();
+		subscribe(listener);
+		installTestHooks();
+
+		const testGlobal = (globalThis as Record<string, unknown>).__test as {
+			installProtocol: (p: ProtocolPayload) => void;
+		};
+		testGlobal.installProtocol(makeProtocol());
+
+		expect(listener).not.toHaveBeenCalled();
+	});
+});
+
+describe("setAssetUrl", () => {
+	beforeEach(() => {
+		installTestHooks();
+	});
+
+	afterEach(() => {
+		delete (globalThis as Record<string, unknown>).__test;
+	});
+
+	it("setAssetUrl stores URL accessible via getTestState", () => {
+		const testGlobal = (globalThis as Record<string, unknown>).__test as {
+			setAssetUrl: (id: string, url: string) => void;
+		};
+		testGlobal.setAssetUrl("asset-1", "http://localhost:4200/protocols/p1/asset-1.png");
+		expect(getTestState().assetUrls.get("asset-1")).toBe(
+			"http://localhost:4200/protocols/p1/asset-1.png",
+		);
+	});
 });
 
 declare global {
@@ -198,6 +231,7 @@ declare global {
 			installProtocol: (protocol: ProtocolPayload) => void;
 			createInterview: (protocolId: string, participantId: string) => string;
 			getNetworkState: (interviewId: string) => unknown;
+			setAssetUrl: (assetId: string, url: string) => void;
 		};
 	};
 }
