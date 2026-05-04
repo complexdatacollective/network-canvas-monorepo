@@ -46,6 +46,7 @@
 
 .preview-edge {
 	background: var(--color-surface-1);
+	color: var(--color-surface-1-foreground);
 	margin: var(--space-sm);
 	display: flex;
 	flex-direction: row;
