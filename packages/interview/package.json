@@ -67,6 +67,7 @@
 	"devDependencies": {
 		"@chromatic-com/storybook": "^5.1.2",
 		"@codaco/tsconfig": "workspace:*",
+		"@playwright/test": "^1.59.1",
 		"@storybook/addon-a11y": "^10.3.5",
 		"@storybook/addon-docs": "^10.3.5",
 		"@storybook/addon-vitest": "^10.3.5",
@@ -85,6 +86,7 @@
 		"jsdom": "^29.0.2",
 		"playwright": "^1.59.1",
 		"storybook": "^10.3.5",
+		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vite-plugin-dts": "catalog:",
