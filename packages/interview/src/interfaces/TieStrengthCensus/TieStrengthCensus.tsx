@@ -11,7 +11,7 @@ import { useSelector } from "react-redux";
 import BooleanOption from "../../components/BooleanOption";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import { getCodebook } from "../../ducks/modules/protocol";
+import { getCodebook } from "../../store/modules/protocol";
 import {
 	addEdge,
 	type DyadCensusMetadataItem,
@@ -19,7 +19,7 @@ import {
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
-} from "../../ducks/modules/session";
+} from "../../store/modules/session";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useStageValidation from "../../hooks/useStageValidation";
 import { getNodePairs } from "../../selectors/dyad-census";
@@ -29,7 +29,7 @@ import {
 	getNetworkNodesForType,
 	getStageMetadata,
 } from "../../selectors/session";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import type { VariableOptions, VariableOptionValue } from "../../utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";

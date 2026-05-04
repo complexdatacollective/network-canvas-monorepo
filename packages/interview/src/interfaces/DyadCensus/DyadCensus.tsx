@@ -13,7 +13,7 @@ import {
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
-} from "../../ducks/modules/session";
+} from "../../store/modules/session";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useStageValidation from "../../hooks/useStageValidation";
 import { getNodePairs } from "../../selectors/dyad-census";
@@ -23,7 +23,7 @@ import {
 	getNetworkNodesForType,
 	getStageMetadata,
 } from "../../selectors/session";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import Pair from "./components/Pair";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";

@@ -25,7 +25,7 @@ import {
 	getPromptId,
 	makeGetNodeById,
 } from "../../selectors/session";
-import type { RootState } from "../../store";
+import type { RootState } from "../store";
 import { getDefaultAttributesForEntityType } from "../../utils/getDefaultAttributesForEntityType";
 import { getShouldEncryptNames } from "./protocol";
 

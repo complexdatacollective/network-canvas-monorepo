@@ -1,7 +1,7 @@
 import { type Stage, stageSchema } from "@codaco/protocol-validation";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import { StageMetadataSchema } from "../../ducks/modules/session";
+import { StageMetadataSchema } from "../../store/modules/session";
 import { generateNetwork } from "../generateNetwork";
 
 type Codebook = Parameters<typeof generateNetwork>[0];

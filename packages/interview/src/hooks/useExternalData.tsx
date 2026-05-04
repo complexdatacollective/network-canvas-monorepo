@@ -3,7 +3,7 @@ import type { NcNode } from "@codaco/shared-consts";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useContractHandlers } from "../contract/context";
-import { getAssetManifest, getCodebook } from "../ducks/modules/protocol";
+import { getAssetManifest, getCodebook } from "../store/modules/protocol";
 import { ensureError } from "../utils/ensureError";
 import { getVariableTypeReplacements } from "../utils/externalData";
 import loadExternalData, { makeVariableUUIDReplacer } from "../utils/loadExternalData";

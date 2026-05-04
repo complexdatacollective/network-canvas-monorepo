@@ -7,8 +7,8 @@ import {
 	addNode as addNodeToNetwork,
 	deleteNode,
 	updateStageMetadata,
-} from "../../ducks/modules/session";
-import type { useAppDispatch } from "../../store";
+} from "../../store/modules/session";
+import type { useAppDispatch } from "../../store/store";
 import { computeAllDisplayLabels } from "./pedigree-layout/utils/getDisplayLabel";
 
 enableMapSet();

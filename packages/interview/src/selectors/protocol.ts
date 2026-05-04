@@ -1,7 +1,7 @@
 import type { Variable } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
-import { getAssetManifest, getCodebook } from "../ducks/modules/protocol";
+import { getAssetManifest, getCodebook } from "../store/modules/protocol";
 import { getStageSubject } from "./session";
 
 // Get all variables for all subjects in the codebook, adding the entity and type

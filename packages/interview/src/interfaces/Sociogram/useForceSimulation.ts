@@ -3,7 +3,7 @@ import { clamp } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CanvasStoreApi } from "../../canvas/useCanvasStore";
 import { useContractFlags } from "../../contract/context";
-import type { AppDispatch } from "../../store";
+import type { AppDispatch } from "../../store/store";
 
 const SIM_RANGE = 250;
 

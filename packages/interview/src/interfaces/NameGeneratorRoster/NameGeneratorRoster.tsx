@@ -23,7 +23,7 @@ import NodeList from "../../components/NodeList";
 import Panel from "../../components/Panel";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import { addNode, deleteNode } from "../../ducks/modules/session";
+import { addNode, deleteNode } from "../../store/modules/session";
 import useNodeLimits from "../../hooks/useNodeLimits";
 import { getNodeVariables } from "../../selectors/interface";
 import { getSearchOptions, getSortOptions } from "../../selectors/name-generator";
@@ -34,7 +34,7 @@ import {
 	getPromptAdditionalAttributes,
 	getStageNodeCount,
 } from "../../selectors/session";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch } from "../../store/store";
 import { mapNCType } from "../../utils/createSorter";
 import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
 import { usePassphrase } from "../Anonymisation/usePassphrase";

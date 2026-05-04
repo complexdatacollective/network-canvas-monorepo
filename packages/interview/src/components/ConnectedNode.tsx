@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import type React from "react";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { getCodebook } from "../ducks/modules/protocol";
+import { getCodebook } from "../store/modules/protocol";
 import { useNodeLabel } from "../interfaces/Anonymisation/useNodeLabel";
 import { getNetworkNodes, resolveNodeShape } from "../selectors/session";
 

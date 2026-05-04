@@ -22,13 +22,13 @@ import {
 	addNode as addNodeAction,
 	addNodeToPrompt as addNodeToPromptAction,
 	deleteNode as deleteNodeAction,
-} from "../../ducks/modules/session";
+} from "../../store/modules/session";
 import useMediaQuery from "../../hooks/useMediaQuery";
 import useNodeLimits from "../../hooks/useNodeLimits";
 import usePortalTarget from "../../hooks/usePortalTarget";
 import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
 import { getNetworkNodesForPrompt, getPromptAdditionalAttributes, getStageNodeCount } from "../../selectors/session";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import { usePassphrase } from "../Anonymisation/usePassphrase";
 import { decryptData } from "../Anonymisation/utils";

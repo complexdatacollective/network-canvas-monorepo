@@ -1,7 +1,7 @@
 import type { Codebook } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
-import { getCodebook } from "../../../ducks/modules/protocol";
+import { getCodebook } from "../../../store/modules/protocol";
 import { getCurrentStage } from "../../../selectors/session";
 
 const getNodeConfig = createSelector(getCurrentStage, (stage) => {

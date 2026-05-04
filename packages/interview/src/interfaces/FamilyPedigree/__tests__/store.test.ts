@@ -1,6 +1,6 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import type { useAppDispatch } from "../../../store";
+import type { useAppDispatch } from "../../../store/store";
 import { createFamilyPedigreeStore, type VariableConfig } from "../store";
 
 const testConfig: VariableConfig = {

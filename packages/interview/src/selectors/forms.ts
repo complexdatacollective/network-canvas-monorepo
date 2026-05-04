@@ -1,7 +1,7 @@
 import type { FormField, Variable } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
-import { getCodebook } from "../ducks/modules/protocol";
+import { getCodebook } from "../store/modules/protocol";
 import { getCodebookVariablesForSubjectType } from "./protocol";
 import { getNetwork, getStageSubject } from "./session";
 

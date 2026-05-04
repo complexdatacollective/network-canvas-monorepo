@@ -2,7 +2,7 @@ import { filter as customFilter } from "@codaco/network-query";
 import type { Panel } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { createSelector } from "@reduxjs/toolkit";
-import { getCodebook } from "../ducks/modules/protocol";
+import { getCodebook } from "../store/modules/protocol";
 import {
 	getCurrentStage,
 	getNetworkEdges,

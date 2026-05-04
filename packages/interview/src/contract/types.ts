@@ -1,5 +1,5 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
-import type { SessionState } from "../ducks/modules/session";
+import type { SessionState } from "../store/modules/session";
 
 /**
  * Package-internal asset representation. Has only the fields the interviewer

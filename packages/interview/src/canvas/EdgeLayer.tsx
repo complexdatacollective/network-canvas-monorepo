@@ -2,8 +2,8 @@ import type { NcEdge } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
-import { getCodebook } from "../ducks/modules/protocol";
-import type { RootState } from "../store";
+import { getCodebook } from "../store/modules/protocol";
+import type { RootState } from "../store/store";
 import type { CanvasStoreApi } from "./useCanvasStore";
 
 type EdgeLayerProps = {

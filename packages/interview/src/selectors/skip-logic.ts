@@ -1,6 +1,6 @@
 import { getQuery } from "@codaco/network-query";
 import { createSelector } from "@reduxjs/toolkit";
-import { getStages } from "../ducks/modules/protocol";
+import { getStages } from "../store/modules/protocol";
 import { getNetwork, getStageIndex } from "./session";
 
 // Hacked together version of isStageSkipped that returns a map of all stages.

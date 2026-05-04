@@ -9,9 +9,9 @@ import Panels from "../../../components/Panels";
 import {
 	deleteNode as deleteNodeAction,
 	removeNodeFromPrompt as removeNodeFromPromptAction,
-} from "../../../ducks/modules/session";
+} from "../../../store/modules/session";
 import { getPanelConfiguration } from "../../../selectors/name-generator";
-import { useAppDispatch } from "../../../store";
+import { useAppDispatch } from "../../../store/store";
 import NodePanel from "./NodePanel";
 
 /**

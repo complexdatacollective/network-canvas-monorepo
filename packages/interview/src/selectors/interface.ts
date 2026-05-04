@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getCodebook } from "../ducks/modules/protocol";
+import { getCodebook } from "../store/modules/protocol";
 import { getSubjectType } from "./session";
 
 export const getNodeVariables = createSelector(getCodebook, getSubjectType, (codebook, nodeType) => {

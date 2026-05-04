@@ -17,12 +17,12 @@ import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { updateNode as updateNodeAction } from "../../../ducks/modules/session";
+import { updateNode as updateNodeAction } from "../../../store/modules/session";
 import useProtocolForm from "../../../forms/useProtocolForm";
 import { useCelebrate } from "../../../hooks/useCelebrate";
 import { getNodeIconName } from "../../../selectors/name-generator";
 import { getPromptAdditionalAttributes } from "../../../selectors/session";
-import { useAppDispatch } from "../../../store";
+import { useAppDispatch } from "../../../store/store";
 
 type NodeFormProps = {
 	selectedNode: NcNode | null;

@@ -22,7 +22,7 @@ import type {
 } from "./contract/types";
 import useInterviewNavigation from "./hooks/useInterviewNavigation";
 import useMediaQuery from "./hooks/useMediaQuery";
-import { store } from "./store";
+import { store } from "./store/store";
 
 const variants = {
 	initial: { opacity: 0 },

@@ -3,7 +3,7 @@ import { invariant } from "es-toolkit";
 import { createContext, useContext, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useStore } from "zustand";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch } from "../../store/store";
 import {
 	createFamilyPedigreeStore,
 	type FamilyPedigreeStore,

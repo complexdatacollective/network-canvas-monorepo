@@ -8,7 +8,7 @@ import {
 	type NcNode,
 } from "@codaco/shared-consts";
 import { v4 as uuid } from "uuid";
-import type { DyadCensusMetadataItem } from "../ducks/modules/session";
+import type { DyadCensusMetadataItem } from "../store/modules/session";
 import type { VariableOptions } from "../utils/codebook";
 import type { VariableEntry, VariableOption } from "./types";
 import { ValueGenerator } from "./ValueGenerator";

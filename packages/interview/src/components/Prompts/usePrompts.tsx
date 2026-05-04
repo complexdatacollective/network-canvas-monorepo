@@ -1,7 +1,7 @@
 import type { EntityDefinition, Prompt, SortOrder } from "@codaco/protocol-validation";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { updatePrompt } from "../../ducks/modules/session";
+import { updatePrompt } from "../../store/modules/session";
 import { getAllVariableUUIDsByEntity } from "../../selectors/protocol";
 import { getPromptIndex, getPrompts } from "../../selectors/session";
 import { type ProcessedSortRule, processProtocolSortRule } from "../../utils/createSorter";

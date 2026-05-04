@@ -2,8 +2,8 @@
 
 import type { Middleware } from "@reduxjs/toolkit";
 import { debounce, isEqual, omit } from "es-toolkit";
-import type { SessionPayload, SyncHandler } from "../contract/types";
-import { ensureError } from "../utils/ensureError";
+import type { SessionPayload, SyncHandler } from "../../contract/types";
+import { ensureError } from "../../utils/ensureError";
 
 type SyncMiddlewareState = { session: SessionPayload };
 

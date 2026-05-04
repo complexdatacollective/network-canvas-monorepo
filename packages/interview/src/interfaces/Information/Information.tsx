@@ -9,7 +9,7 @@ import type { Item } from "@codaco/protocol-validation";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useContractFlags } from "../../contract/context";
-import { getAssetManifest } from "../../ducks/modules/protocol";
+import { getAssetManifest } from "../../store/modules/protocol";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
 import type { StageProps } from "../../types";
 
