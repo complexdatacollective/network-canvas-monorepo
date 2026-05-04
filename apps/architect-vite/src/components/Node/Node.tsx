@@ -11,8 +11,6 @@ const NodeShapes = ["circle", "square", "diamond"] as const;
 
 export type NodeShape = (typeof NodeShapes)[number];
 
-export type NodeSize = "xxs" | "xs" | "sm" | "md" | "lg";
-
 const nodeVariants = cva(
 	[
 		"relative inline-flex items-center justify-center outline-offset-6 focus-visible:outline-2 focus-visible:outline-offset-4",
@@ -69,6 +67,8 @@ const nodeVariants = cva(
 		},
 	},
 );
+
+export type NodeSize = NonNullable<VariantProps<typeof nodeVariants>["size"]>;
 
 const labelVariants = cva(
 	"overflow-hidden text-center hyphens-auto whitespace-pre-line px-2 leading-5! text-wrap break-words",
