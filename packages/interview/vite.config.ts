@@ -10,6 +10,7 @@ export default defineConfig({
 			entryRoot: "src",
 			include: ["src/**/*.ts", "src/**/*.tsx"],
 			exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx"],
+			rollupTypes: true,
 		}),
 	],
 	build: {

@@ -47,9 +47,9 @@
 	"dependencies": {
 		"@base-ui/react": "catalog:",
 		"@codaco/network-query": "workspace:^",
+		"@faker-js/faker": "catalog:",
 		"@mapbox/search-js-react": "^1.5.1",
 		"@reduxjs/toolkit": "catalog:",
-		"@faker-js/faker": "catalog:",
 		"concaveman": "^2.0.0",
 		"csvtojson": "^2.0.14",
 		"d3-force": "^3.0.0",
@@ -68,8 +68,8 @@
 		"zustand": "^5.0.12"
 	},
 	"devDependencies": {
-		"@codaco/tsconfig": "workspace:*",
 		"@chromatic-com/storybook": "^5.1.2",
+		"@codaco/tsconfig": "workspace:*",
 		"@storybook/addon-a11y": "^10.3.5",
 		"@storybook/addon-docs": "^10.3.5",
 		"@storybook/addon-vitest": "^10.3.5",
@@ -77,9 +77,11 @@
 		"@tailwindcss/vite": "catalog:",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.0",
+		"@types/concaveman": "^1.1.6",
 		"@types/d3-force": "^3.0.10",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
+		"@types/redux-logger": "^3.0.13",
 		"@vitejs/plugin-react": "catalog:",
 		"@vitest/browser": "^4.1.5",
 		"@vitest/browser-playwright": "^4.1.5",
