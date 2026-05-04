@@ -2,13 +2,13 @@ import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
 import type { ReactNode } from "react";
 
 type TooltipProps = {
-	content: ReactNode;
+	content?: ReactNode;
 	children: ReactNode;
 	side?: "top" | "bottom" | "left" | "right";
 };
 
 export default function Tooltip({ content, children, side = "top" }: TooltipProps) {
-	if (!content) return <>{children}</>;
+	if (content == null) return <>{children}</>;
 
 	return (
 		<BaseTooltip.Root>
