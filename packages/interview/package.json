@@ -3,7 +3,7 @@
 	"version": "1.0.0-alpha.0",
 	"type": "module",
 	"license": "MIT",
-	"description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
+	"description": "Network Canvas interview engine \u2014 Shell component, synthetic network generator, session contract.",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
@@ -91,7 +91,9 @@
 		"typescript": "catalog:",
 		"vite": "catalog:",
 		"vite-plugin-dts": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"jszip": "^3.10.1",
+		"@types/jszip": "^3.4.1"
 	},
 	"publishConfig": {
 		"access": "public"

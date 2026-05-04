@@ -1,12 +1,8 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import type { AssetRequestHandler, InterviewPayload, StepChangeHandler } from "@codaco/interview";
 import { Shell } from "@codaco/interview";
-import type { AssetRequestHandler, InterviewPayload } from "@codaco/interview";
-import {
-	createInterviewStateStore,
-	makeMockSync,
-	mockFinish,
-} from "./mockCallbacks";
-import { installTestHooks, subscribe, getTestState } from "./testHooks";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { createInterviewStateStore, makeMockSync, mockFinish } from "./mockCallbacks";
+import { getTestState, installTestHooks, subscribe } from "./testHooks";
 
 const sessionStore = createInterviewStateStore();
 const mockSync = makeMockSync(sessionStore);
@@ -30,13 +26,28 @@ function useTestState() {
 	);
 }
 
+function getStepFromUrl(): number | undefined {
+	const params = new URLSearchParams(window.location.search);
+	const step = params.get("step");
+	return step !== null ? Number(step) : undefined;
+}
+
 export default function App() {
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const [currentStep, setCurrentStep] = useState<number | undefined>(undefined);
 	useTestState();
 
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
 		setActiveId(params.get("interviewId"));
+		setCurrentStep(getStepFromUrl());
+	}, []);
+
+	const onStepChange = useCallback<StepChangeHandler>((step) => {
+		setCurrentStep(step);
+		const params = new URLSearchParams(window.location.search);
+		params.set("step", String(step));
+		window.history.replaceState(null, "", `?${params.toString()}`);
 	}, []);
 
 	if (!activeId) {
@@ -64,6 +75,8 @@ export default function App() {
 			onSync={mockSync}
 			onFinish={mockFinish}
 			onRequestAsset={mockAssetReq}
+			currentStep={currentStep}
+			onStepChange={onStepChange}
 			flags={{ isE2E: true }}
 		/>
 	);
