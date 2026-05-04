@@ -5,8 +5,7 @@ import type { Action } from "@reduxjs/toolkit";
 import { LocateFixed, ZoomIn, ZoomOut } from "lucide-react";
 // import 'mapbox-gl/dist/mapbox-gl.css';
 import { AnimatePresence, motion, type Variants } from "motion/react";
-import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import type { ThunkDispatch } from "redux-thunk";
 import Node from "../../components/ConnectedNode";
@@ -24,16 +23,15 @@ import CollapsablePrompts from "../Sociogram/CollapsablePrompts";
 import { isMapboxStubBrowser } from "./isMapboxStubBrowser";
 import { type ExtendedMapOptions, useMapbox } from "./useMapbox";
 
-// Dynamic import with ssr:false - @mapbox/search-js-web accesses document at module load
-const GeospatialSearch = dynamic(() => import("./GeospatialSearch"), {
-	ssr: false,
-});
+// Lazy import: @mapbox/search-js-web accesses document at module load, so the
+// chunk must only resolve in the browser. The package is "use client" throughout,
+// so React.lazy effectively achieves the same deferred-load behaviour next/dynamic
+// gave us — Suspense at the call site handles the loading boundary.
+const GeospatialSearch = lazy(() => import("./GeospatialSearch"));
 
-// Dynamic import keeps the stub out of production bundles. The stub is only
+// Lazy import keeps the stub out of production bundles. The stub is only
 // reachable when isE2E && isMapboxStubBrowser() — gated at the JSX level.
-const GeospatialStubSearch = dynamic(() => import("./GeospatialStubSearch"), {
-	ssr: false,
-});
+const GeospatialStubSearch = lazy(() => import("./GeospatialStubSearch"));
 
 const STUB_ZOOM_STEP = 1;
 
@@ -348,18 +346,21 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 					</div>
 				)}
 
-				{mapOptions.allowSearch &&
-					(useStub ? (
-						<GeospatialStubSearch className="absolute top-4 left-4 z-20" />
-					) : (
-						<GeospatialSearch
-							accessToken={accessToken}
-							map={mapRef.current}
-							proximity={mapOptions.center}
-							resetKey={navState.activeIndex}
-							className="absolute top-4 left-4 z-20"
-						/>
-					))}
+				{mapOptions.allowSearch && (
+					<Suspense fallback={null}>
+						{useStub ? (
+							<GeospatialStubSearch className="absolute top-4 left-4 z-20" />
+						) : (
+							<GeospatialSearch
+								accessToken={accessToken}
+								map={mapRef.current}
+								proximity={mapOptions.center}
+								resetKey={navState.activeIndex}
+								className="absolute top-4 left-4 z-20"
+							/>
+						)}
+					</Suspense>
+				)}
 
 				{/* Map toolbar - zoom controls */}
 				<MotionSurface
