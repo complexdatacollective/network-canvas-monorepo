@@ -6,7 +6,11 @@ export default defineConfig({
 	test: {
 		environment: "jsdom",
 		globals: true,
-		include: ["src/**/*.{test,spec}.{ts,tsx}", "src/**/__tests__/**/*.{test,spec}.{ts,tsx}"],
+		include: [
+			"src/**/*.{test,spec}.{ts,tsx}",
+			"src/**/__tests__/**/*.{test,spec}.{ts,tsx}",
+			"e2e/host/src/**/*.{test,spec}.{ts,tsx}",
+		],
 		exclude: ["**/node_modules/**", "**/dist/**", "**/*.stories.{ts,tsx}"],
 	},
 });
