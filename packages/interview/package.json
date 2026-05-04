@@ -38,6 +38,8 @@
 		"@codaco/protocol-validation": "11.4.0-alpha.0",
 		"@codaco/shared-consts": "5.0.0",
 		"@codaco/tailwind-config": "workspace:^",
+		"immer": "^11.1.4",
+		"motion": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"tailwindcss": "catalog:"
@@ -48,8 +50,6 @@
 		"@reduxjs/toolkit": "^2.11.0",
 		"@faker-js/faker": "catalog:",
 		"es-toolkit": "catalog:",
-		"immer": "^11.1.4",
-		"motion": "catalog:",
 		"react-redux": "^9.2.0",
 		"redux-logger": "^3.0.6",
 		"redux-thunk": "^3.1.0",
