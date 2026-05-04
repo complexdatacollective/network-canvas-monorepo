@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@base-ui/react':
+      specifier: ^1.4.1
+      version: 1.4.1
     '@faker-js/faker':
       specifier: ^10.4.0
       version: 10.4.0
@@ -24,6 +27,9 @@ catalogs:
     '@radix-ui/react-slot':
       specifier: ^1.2.4
       version: 1.2.4
+    '@reduxjs/toolkit':
+      specifier: ^2.11.2
+      version: 2.11.2
     '@tailwindcss/container-queries':
       specifier: ^0.1.1
       version: 0.1.1
@@ -57,6 +63,9 @@ catalogs:
     es-toolkit:
       specifier: ^1.46.0
       version: 1.46.0
+    immer:
+      specifier: ^11.1.4
+      version: 11.1.4
     lucide-react:
       specifier: ^1.9.0
       version: 1.9.0
@@ -75,6 +84,12 @@ catalogs:
     react-dom:
       specifier: ^19.2.5
       version: 19.2.5
+    react-redux:
+      specifier: ^9.2.0
+      version: 9.2.0
+    redux-logger:
+      specifier: ^3.0.6
+      version: 3.0.6
     tailwind-merge:
       specifier: ^3.5.0
       version: 3.5.0
@@ -90,6 +105,9 @@ catalogs:
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
+    uuid:
+      specifier: ^14.0.0
+      version: 14.0.0
     vite:
       specifier: ^8.0.10
       version: 8.0.10
@@ -410,7 +428,7 @@ importers:
   apps/architect-vite:
     dependencies:
       '@base-ui/react':
-        specifier: ^1.4.1
+        specifier: 'catalog:'
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@codaco/protocol-validation':
         specifier: workspace:*
@@ -425,7 +443,7 @@ importers:
         specifier: ^0.21.5
         version: 0.21.5(slate-react@0.57.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(slate@0.57.3))(slate@0.57.3)
       '@reduxjs/toolkit':
-        specifier: ^2.11.2
+        specifier: 'catalog:'
         version: 2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.5)(redux@5.0.1))(react@19.2.5)
       '@tailwindcss/vite':
         specifier: 'catalog:'
@@ -509,7 +527,7 @@ importers:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.5)
       react-redux:
-        specifier: ^9.2.0
+        specifier: 'catalog:'
         version: 9.2.0(@types/react@19.2.14)(react@19.2.5)(redux@5.0.1)
       react-select:
         specifier: ^3.2.0
@@ -524,7 +542,7 @@ importers:
         specifier: ^8.3.10
         version: 8.3.10(immutable@4.3.8)(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.5)(redux@5.0.1))(react@19.2.5)(redux@5.0.1)
       redux-logger:
-        specifier: ^3.0.6
+        specifier: 'catalog:'
         version: 3.0.6
       redux-remember:
         specifier: ^6.0.2
@@ -566,7 +584,7 @@ importers:
         specifier: ^11.0.5
         version: 11.0.5
       uuid:
-        specifier: ^14.0.0
+        specifier: 'catalog:'
         version: 14.0.0
       wouter:
         specifier: ^3.9.0
@@ -1148,8 +1166,8 @@ importers:
   packages/fresco-ui:
     dependencies:
       '@base-ui/react':
-        specifier: 1.4.0
-        version: 1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        specifier: 'catalog:'
+        version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@codaco/protocol-validation':
         specifier: 11.4.0-alpha.0
         version: 11.4.0-alpha.0
@@ -1199,7 +1217,7 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0
       immer:
-        specifier: ^11.1.4
+        specifier: 'catalog:'
         version: 11.1.4
       lucide-react:
         specifier: 'catalog:'
@@ -1329,8 +1347,8 @@ importers:
   packages/interview:
     dependencies:
       '@base-ui/react':
-        specifier: 1.4.0
-        version: 1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        specifier: 'catalog:'
+        version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
@@ -1350,13 +1368,13 @@ importers:
         specifier: 'catalog:'
         version: 10.4.0
       '@reduxjs/toolkit':
-        specifier: ^2.11.0
+        specifier: 'catalog:'
         version: 2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.5)(redux@5.0.1))(react@19.2.5)
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.0
       immer:
-        specifier: ^11.1.4
+        specifier: 'catalog:'
         version: 11.1.4
       motion:
         specifier: 'catalog:'
@@ -1368,10 +1386,10 @@ importers:
         specifier: 'catalog:'
         version: 19.2.5(react@19.2.5)
       react-redux:
-        specifier: ^9.2.0
+        specifier: 'catalog:'
         version: 9.2.0(@types/react@19.2.14)(react@19.2.5)(redux@5.0.1)
       redux-logger:
-        specifier: ^3.0.6
+        specifier: 'catalog:'
         version: 3.0.6
       redux-thunk:
         specifier: ^3.1.0
@@ -1380,7 +1398,7 @@ importers:
         specifier: 'catalog:'
         version: 4.2.4
       uuid:
-        specifier: ^14.0.0
+        specifier: 'catalog:'
         version: 14.0.0
     devDependencies:
       '@chromatic-com/storybook':
@@ -2531,19 +2549,6 @@ packages:
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
-  '@base-ui/react@1.4.0':
-    resolution: {integrity: sha512-QcqdVbr/+ba2/RAKJIV1PV6S02Q5+r6a4Eym8ndBw+ZbBILkkmQAyRxXCg/pArrHnkrGeU8goe26aw0h6eE8pg==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      '@date-fns/tz': ^1.2.0
-      '@types/react': ^17 || ^18 || ^19
-      date-fns: ^4.0.0
-      react: ^17 || ^18 || ^19
-      react-dom: ^17 || ^18 || ^19
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-
   '@base-ui/react@1.4.1':
     resolution: {integrity: sha512-Ab5/LIhcmL8BQcsBUYiOfkSDRdLpvgUBzMK30cu684JPcLclYlztharvCZyNNgzJtbAiREzI9q0pI5erHCMgCw==}
     engines: {node: '>=14.0.0'}
@@ -2559,16 +2564,6 @@ packages:
       '@types/react':
         optional: true
       date-fns:
-        optional: true
-
-  '@base-ui/utils@0.2.7':
-    resolution: {integrity: sha512-nXYKhiL/0JafyJE8PfcflipGftOftlIwKd72rU15iZ1M5yqgg5J9P8NHU71GReDuXco5MJA/eVQqUT5WRqX9sA==}
-    peerDependencies:
-      '@types/react': ^17 || ^18 || ^19
-      react: ^17 || ^18 || ^19
-      react-dom: ^17 || ^18 || ^19
-    peerDependenciesMeta:
-      '@types/react':
         optional: true
 
   '@base-ui/utils@0.2.8':
@@ -14138,20 +14133,6 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@base-ui/react@1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
-    dependencies:
-      '@babel/runtime': 7.29.2
-      '@base-ui/utils': 0.2.7(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@date-fns/tz': 1.4.1
-      '@floating-ui/react-dom': 2.1.8(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@floating-ui/utils': 0.2.11
-      date-fns: 4.1.0
-      react: 19.2.5
-      react-dom: 19.2.5(react@19.2.5)
-      use-sync-external-store: 1.6.0(react@19.2.5)
-    optionalDependencies:
-      '@types/react': 19.2.14
-
   '@base-ui/react@1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@babel/runtime': 7.29.2
@@ -14165,17 +14146,6 @@ snapshots:
       '@date-fns/tz': 1.4.1
       '@types/react': 19.2.14
       date-fns: 4.1.0
-
-  '@base-ui/utils@0.2.7(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
-    dependencies:
-      '@babel/runtime': 7.29.2
-      '@floating-ui/utils': 0.2.11
-      react: 19.2.5
-      react-dom: 19.2.5(react@19.2.5)
-      reselect: 5.1.1
-      use-sync-external-store: 1.6.0(react@19.2.5)
-    optionalDependencies:
-      '@types/react': 19.2.14
 
   '@base-ui/utils@0.2.8(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
@@ -14737,7 +14707,8 @@ snapshots:
     dependencies:
       postcss: 8.5.10
 
-  '@date-fns/tz@1.4.1': {}
+  '@date-fns/tz@1.4.1':
+    optional: true
 
   '@develar/schema-utils@2.6.5':
     dependencies:
@@ -19139,7 +19110,8 @@ snapshots:
       es-errors: 1.3.0
       is-data-view: 1.0.2
 
-  date-fns@4.1.0: {}
+  date-fns@4.1.0:
+    optional: true
 
   de-indent@1.0.2: {}
 

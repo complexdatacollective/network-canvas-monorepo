@@ -38,22 +38,22 @@
 		"@codaco/protocol-validation": "11.4.0-alpha.0",
 		"@codaco/shared-consts": "5.0.0",
 		"@codaco/tailwind-config": "workspace:^",
-		"immer": "^11.1.4",
+		"immer": "catalog:",
 		"motion": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"tailwindcss": "catalog:"
 	},
 	"dependencies": {
-		"@base-ui/react": "1.4.0",
+		"@base-ui/react": "catalog:",
 		"@codaco/network-query": "workspace:^",
-		"@reduxjs/toolkit": "^2.11.0",
+		"@reduxjs/toolkit": "catalog:",
 		"@faker-js/faker": "catalog:",
 		"es-toolkit": "catalog:",
-		"react-redux": "^9.2.0",
-		"redux-logger": "^3.0.6",
+		"react-redux": "catalog:",
+		"redux-logger": "catalog:",
 		"redux-thunk": "^3.1.0",
-		"uuid": "^14.0.0"
+		"uuid": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",

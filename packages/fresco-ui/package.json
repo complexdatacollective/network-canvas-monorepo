@@ -422,7 +422,7 @@
 		"@codaco/protocol-validation": "11.4.0-alpha.0",
 		"@codaco/shared-consts": "5.0.0",
 		"@codaco/tailwind-config": "workspace:^",
-		"immer": "^11.1.4",
+		"immer": "catalog:",
 		"motion": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
@@ -431,7 +431,7 @@
 		"zustand": "^5.0.12"
 	},
 	"dependencies": {
-		"@base-ui/react": "1.4.0",
+		"@base-ui/react": "catalog:",
 		"@radix-ui/react-slot": "catalog:",
 		"@tiptap/core": "^3.22.3",
 		"@tiptap/extension-bullet-list": "^3.22.3",
