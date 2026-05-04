@@ -123,9 +123,8 @@ export class ProtocolFixture {
 		}
 
 		await this.page.evaluate(
-			([p, a]: [ProtocolPayload, ResolvedAsset[]]) =>
-				window.__test.installProtocol(p, a),
-			[payload, assets] as [ProtocolPayload, ResolvedAsset[]],
+			(p: ProtocolPayload) => window.__test.installProtocol(p),
+			payload,
 		);
 
 		this.installedProtocolIds.push(protocolId);

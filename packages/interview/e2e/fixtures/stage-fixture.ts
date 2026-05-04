@@ -38,7 +38,11 @@ async function navigateDndToTarget(
 ): Promise<void> {
 	// Must use evaluate for focus — nodes have tabIndex=-1 (roving tabindex)
 	// and Playwright's .focus() fails silently in WebKit for unfocusable elements.
-	await sourceLocator.evaluate((el) => (el as HTMLElement).focus());
+	await sourceLocator.evaluate((el) => {
+		if (el instanceof HTMLElement) {
+			el.focus();
+		}
+	});
 	await sourceLocator.press("Control+d");
 
 	// After Ctrl+D, the DnD system creates a visual clone of the dragged node,
@@ -987,7 +991,11 @@ class NodePanelFixture {
 		// with setPointerCapture on synthetic pointer events from Playwright's mouse
 		// API. The nodes have tabIndex=-1 (roving tabindex within a listbox), so we
 		// must focus them programmatically rather than via Tab.
-		await nodeInPanel.evaluate((el) => (el as HTMLElement).focus());
+		await nodeInPanel.evaluate((el) => {
+			if (el instanceof HTMLElement) {
+				el.focus();
+			}
+		});
 		await nodeInPanel.press("Control+d");
 		// After Ctrl+D, DnD creates a visual clone so the locator may match 2
 		// elements. Use page.keyboard since focus is already established.

@@ -7,7 +7,7 @@ import type {
 declare global {
 	interface Window {
 		__test: {
-			installProtocol(protocol: ProtocolPayload, assets: ResolvedAsset[]): void;
+			installProtocol(protocol: ProtocolPayload): void;
 			setAssetUrl(assetId: string, url: string): void;
 			createInterview(protocolId: string, participantId?: string): string;
 			getNetworkState(interviewId: string): SessionPayload["network"] | undefined;
