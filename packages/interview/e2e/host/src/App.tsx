@@ -1,8 +1,13 @@
 import type { AssetRequestHandler, InterviewPayload, StepChangeHandler } from "@codaco/interview";
-import { Shell } from "@codaco/interview";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { InterviewToastViewport, Shell, interviewToastManager } from "@codaco/interview";
+import { Toast } from "@base-ui/react/toast";
+import { MotionConfig } from "motion/react";
+import { DndStoreProvider } from "@codaco/fresco-ui/dnd/dnd";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createInterviewStateStore, makeMockSync, mockFinish } from "./mockCallbacks";
 import { getTestState, installTestHooks, subscribe } from "./testHooks";
+
+globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 
 const sessionStore = createInterviewStateStore();
 const mockSync = makeMockSync(sessionStore);
@@ -50,34 +55,56 @@ export default function App() {
 		window.history.replaceState(null, "", `?${params.toString()}`);
 	}, []);
 
+	const entry = activeId ? getTestState().interviews.get(activeId) : undefined;
+	const protocol = entry ? getTestState().protocols.get(entry.protocolId) : undefined;
+
+	// Stable ref to the current entry/protocol so useMemo only recreates the
+	// payload (and thus the Redux store inside Shell) when the interview ID
+	// changes, not on every step change or App re-render.
+	const entryRef = useRef(entry);
+	entryRef.current = entry;
+	const protocolRef = useRef(protocol);
+	protocolRef.current = protocol;
+
+	const payload: InterviewPayload | null = useMemo(() => {
+		const e = entryRef.current;
+		const p = protocolRef.current;
+		if (!e || !p) return null;
+		return { session: e.session, protocol: p };
+	}, [activeId]);
+
 	if (!activeId) {
 		return <div>No interview selected. Use ?interviewId=... in the URL.</div>;
 	}
 
-	const entry = getTestState().interviews.get(activeId);
 	if (!entry) {
 		return <div>Unknown interview ID: {activeId}</div>;
 	}
 
-	const protocol = getTestState().protocols.get(entry.protocolId);
 	if (!protocol) {
 		return <div>Unknown protocol for interview: {entry.protocolId}</div>;
 	}
 
-	const payload: InterviewPayload = {
-		session: entry.session,
-		protocol,
-	};
+	if (!payload) {
+		return <div>Loading...</div>;
+	}
 
 	return (
-		<Shell
-			payload={payload}
-			onSync={mockSync}
-			onFinish={mockFinish}
-			onRequestAsset={mockAssetReq}
-			currentStep={currentStep}
-			onStepChange={onStepChange}
-			flags={{ isE2E: true }}
-		/>
+		<MotionConfig reducedMotion="user" skipAnimations>
+			<Toast.Provider toastManager={interviewToastManager}>
+				<DndStoreProvider>
+					<Shell
+						payload={payload}
+						onSync={mockSync}
+						onFinish={mockFinish}
+						onRequestAsset={mockAssetReq}
+						currentStep={currentStep}
+						onStepChange={onStepChange}
+						flags={{ isE2E: true }}
+					/>
+				</DndStoreProvider>
+				<InterviewToastViewport />
+			</Toast.Provider>
+		</MotionConfig>
 	);
 }

@@ -2,10 +2,18 @@ import { v4 as uuid } from "uuid";
 import type { ProtocolPayload, SessionPayload, SyncHandler } from "../../../src/contract/types";
 import { createInitialNetwork } from "../../../src/store/modules/session";
 
+const STORAGE_KEY = "__e2e_test_state";
+
 type InterviewEntry = {
 	protocolId: string;
 	participantId: string;
 	session: SessionPayload;
+};
+
+type SerializableState = {
+	protocols: Record<string, ProtocolPayload>;
+	interviews: Record<string, InterviewEntry>;
+	assetUrls: Record<string, string>;
 };
 
 type TestState = {
@@ -34,6 +42,7 @@ function makeSyncHandler(): SyncHandler {
 		const entry = state.interviews.get(interviewId);
 		if (entry) {
 			state.interviews.set(interviewId, { ...entry, session });
+			persistState();
 			notifySubscribers();
 		}
 	};
@@ -42,6 +51,40 @@ function makeSyncHandler(): SyncHandler {
 function notifySubscribers(): void {
 	for (const subscriber of subscribers) {
 		subscriber();
+	}
+}
+
+function persistState(): void {
+	try {
+		const serializable: SerializableState = {
+			protocols: Object.fromEntries(state.protocols),
+			interviews: Object.fromEntries(state.interviews),
+			assetUrls: Object.fromEntries(state.assetUrls),
+		};
+		sessionStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+	} catch {
+		// Ignore storage errors
+	}
+}
+
+function restoreState(): TestState {
+	try {
+		const raw = sessionStorage.getItem(STORAGE_KEY);
+		if (!raw) return createEmptyState();
+		const parsed = JSON.parse(raw) as SerializableState;
+		const restored = createEmptyState();
+		for (const [k, v] of Object.entries(parsed.protocols)) {
+			restored.protocols.set(k, v);
+		}
+		for (const [k, v] of Object.entries(parsed.interviews)) {
+			restored.interviews.set(k, v);
+		}
+		for (const [k, v] of Object.entries(parsed.assetUrls)) {
+			restored.assetUrls.set(k, v);
+		}
+		return restored;
+	} catch {
+		return createEmptyState();
 	}
 }
 
@@ -57,8 +100,9 @@ export function subscribe(fn: StateSubscriber): () => void {
 }
 
 export function installTestHooks(): void {
-	// Reset state on each install so tests are isolated.
-	state = createEmptyState();
+	// Restore persisted state so that protocols/interviews installed before
+	// a page navigation (page.goto) survive the reload.
+	state = restoreState();
 	subscribers.clear();
 
 	const testHooks = {
@@ -67,11 +111,13 @@ export function installTestHooks(): void {
 			for (const asset of protocol.assets) {
 				state.assetUrls.set(asset.assetId, "");
 			}
+			persistState();
 			notifySubscribers();
 		},
 
 		setAssetUrl(assetId: string, url: string): void {
 			state.assetUrls.set(assetId, url);
+			persistState();
 			notifySubscribers();
 		},
 
@@ -87,12 +133,20 @@ export function installTestHooks(): void {
 				currentStep: 0,
 			};
 			state.interviews.set(id, { protocolId, participantId, session });
+			persistState();
 			notifySubscribers();
 			return id;
 		},
 
 		getNetworkState(interviewId: string): SessionPayload["network"] | undefined {
 			return state.interviews.get(interviewId)?.session.network;
+		},
+
+		/** Clear all persisted state. Call this between test suites to reset. */
+		reset(): void {
+			state = createEmptyState();
+			sessionStorage.removeItem(STORAGE_KEY);
+			notifySubscribers();
 		},
 	};
 
