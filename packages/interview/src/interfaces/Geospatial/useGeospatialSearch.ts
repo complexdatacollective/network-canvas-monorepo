@@ -20,7 +20,24 @@ export type UseGeospatialSearchProps = {
 	resetKey?: string | number;
 };
 
-export const useGeospatialSearch = ({ accessToken, map, proximity, resetKey }: UseGeospatialSearchProps) => {
+export type UseGeospatialSearchReturn = {
+	query: string;
+	handleQueryChange: (value: string | undefined) => void;
+	suggestions: Suggestion[];
+	isLoading: boolean;
+	handleSelect: (suggestion: Suggestion) => Promise<void>;
+	clear: () => void;
+};
+
+// Explicit return-type annotation: without it, tsc infers a type that references
+// `SearchBoxSuggestion` from `@mapbox/search-js-core` via a pnpm-mangled path
+// that is not portable in the emitted .d.ts.
+export const useGeospatialSearch = ({
+	accessToken,
+	map,
+	proximity,
+	resetKey,
+}: UseGeospatialSearchProps): UseGeospatialSearchReturn => {
 	const [query, setQuery] = useState("");
 	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 	const [isLoading, setIsLoading] = useState(false);

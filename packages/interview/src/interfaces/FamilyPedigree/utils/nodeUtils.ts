@@ -1,8 +1,18 @@
 import type { Codebook } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
-import { getCodebook } from "../../../store/modules/protocol";
 import { getCurrentStage } from "../../../selectors/session";
+import { getCodebook } from "../../../store/modules/protocol";
+import type { RootState } from "../../../store/store";
+
+type ResolvedNodeFormField = {
+	variableId: string;
+	prompt: string;
+	component: string;
+	type: string;
+	options: unknown;
+	validation: Record<string, unknown> | undefined;
+};
 
 const getNodeConfig = createSelector(getCurrentStage, (stage) => {
 	invariant(stage.type === "FamilyPedigree", "Stage must be FamilyPedigree");
@@ -19,7 +29,7 @@ export const getNodeForm = createSelector(getNodeConfig, (c) => c.form);
  * Resolves nodeConfig.form fields against the codebook to produce
  * renderable field definitions with component type, options, and validation.
  */
-export const getResolvedNodeFormFields = createSelector(
+export const getResolvedNodeFormFields: (state: RootState) => ResolvedNodeFormField[] = createSelector(
 	getCodebook,
 	getNodeType,
 	getNodeForm,
@@ -29,7 +39,7 @@ export const getResolvedNodeFormFields = createSelector(
 		if (!variables) return [];
 
 		return form
-			.map((field) => {
+			.map((field): ResolvedNodeFormField | null => {
 				const variable = variables[field.variable];
 				if (!variable || !("component" in variable)) return null;
 				return {
@@ -41,7 +51,7 @@ export const getResolvedNodeFormFields = createSelector(
 					validation: "validation" in variable ? (variable.validation as Record<string, unknown>) : undefined,
 				};
 			})
-			.filter((f) => f !== null);
+			.filter((f): f is ResolvedNodeFormField => f !== null);
 	},
 );
 

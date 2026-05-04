@@ -3,6 +3,7 @@ import type { Panel } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { createSelector } from "@reduxjs/toolkit";
 import { getCodebook } from "../store/modules/protocol";
+import type { RootState } from "../store/store";
 import {
 	getCurrentStage,
 	getNetworkEdges,
@@ -51,7 +52,7 @@ export const getSortOptions = createSelector(getCurrentStage, (stage) => {
 	return stage.sortOptions;
 });
 
-export const getPanelNodes = (panelConfig: Panel, externalData: NcNode[] | null) =>
+export const getPanelNodes = (panelConfig: Panel, externalData: NcNode[] | null): ((state: RootState) => NcNode[]) =>
 	createSelector(
 		getNetworkNodesForPrompt,
 		getNetworkNodesForOtherPrompts,

@@ -1,9 +1,11 @@
 import { type EntityPrimaryKey, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
-import { createSelectorCreator, lruMemoize as defaultMemoize } from "@reduxjs/toolkit";
+import { type createSelector, createSelectorCreator, lruMemoize as defaultMemoize } from "@reduxjs/toolkit";
 import { isEqual } from "es-toolkit";
 
-// create a "selector creator" that uses lodash.isEqual instead of ===
-export const createDeepEqualSelector = createSelectorCreator(defaultMemoize, isEqual);
+// create a "selector creator" that uses lodash.isEqual instead of ===.
+// Annotated as `typeof createSelector` to keep the public emitted type portable
+// (reselect's `CreateSelectorFunction` is not nameable from a pnpm-mangled path).
+export const createDeepEqualSelector: typeof createSelector = createSelectorCreator(defaultMemoize, isEqual);
 
 /**
  * Utility function to calculate the progress of the interview.

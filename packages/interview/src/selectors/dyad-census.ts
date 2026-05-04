@@ -1,4 +1,5 @@
 import { entityPrimaryKeyProperty } from "@codaco/shared-consts";
+import type { RootState } from "../store/store";
 import { getNetworkNodesForType } from "./session";
 import { createDeepEqualSelector } from "./utils";
 
@@ -9,7 +10,7 @@ type PairAccumulator = {
 	pool: string[];
 };
 
-export const getNodePairs = createDeepEqualSelector(getNetworkNodesForType, (nodes) => {
+export const getNodePairs: (state: RootState) => Pair[] = createDeepEqualSelector(getNetworkNodesForType, (nodes) => {
 	const nodeIds = nodes.map((node) => node[entityPrimaryKeyProperty]);
 
 	const pairs = nodeIds.reduce<PairAccumulator>(
