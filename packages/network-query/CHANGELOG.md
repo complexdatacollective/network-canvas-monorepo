@@ -1,5 +1,11 @@
 # @codaco/network-query
 
+## 1.0.1
+
+### Patch Changes
+
+- Republish to fix 1.0.0 which was published with an empty `dist/` folder. The build script's "no pending changesets" fallback excluded `@codaco/network-query`, so its build artifacts were never produced before publish.
+
 ## 1.0.0
 
 ### Major Changes
