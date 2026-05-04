@@ -226,12 +226,12 @@ describe("setAssetUrl", () => {
 });
 
 declare global {
-	type Window = {
+	interface Window {
 		__test?: {
 			installProtocol: (protocol: ProtocolPayload) => void;
 			createInterview: (protocolId: string, participantId: string) => string;
 			getNetworkState: (interviewId: string) => unknown;
 			setAssetUrl: (assetId: string, url: string) => void;
 		};
-	};
+	}
 }

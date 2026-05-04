@@ -1,10 +1,16 @@
+import type {
+	ProtocolPayload,
+	ResolvedAsset,
+	SessionPayload,
+} from "@codaco/interview";
+
 declare global {
-	type Window = {
+	interface Window {
 		__test: {
-			installProtocol(protocol: Record<string, unknown>): void;
+			installProtocol(protocol: ProtocolPayload, assets: ResolvedAsset[]): void;
 			setAssetUrl(assetId: string, url: string): void;
-			createInterview(protocolId: string, participantId: string): string;
-			getNetworkState(interviewId: string): unknown;
+			createInterview(protocolId: string, participantId?: string): string;
+			getNetworkState(interviewId: string): SessionPayload["network"] | undefined;
 		};
 		__e2eMap?: {
 			getSource(id: string): unknown;
@@ -15,7 +21,8 @@ declare global {
 			resize(): void;
 			triggerRepaint(): void;
 		};
-	};
+	}
+
 	var __test: Window["__test"];
 	var __e2eMap: Window["__e2eMap"];
 }

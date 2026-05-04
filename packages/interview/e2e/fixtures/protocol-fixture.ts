@@ -1,19 +1,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { Codebook, CurrentProtocol, VersionedProtocol } from "@codaco/protocol-validation";
+import type { Codebook, CurrentProtocol } from "@codaco/protocol-validation";
+import {
+	CurrentProtocolSchema,
+	VersionedProtocolSchema,
+} from "@codaco/protocol-validation";
 import type { Page } from "@playwright/test";
 import { v4 as uuid } from "uuid";
-import type { ProtocolPayload, ResolvedAsset } from "../../src/contract/types.js";
-
-type NetworkState = {
-	nodes: {
-		_uid: string;
-		type: string;
-		attributes: Record<string, unknown>;
-	}[];
-	edges: { _uid: string; type: string; from: string; to: string }[];
-	ego: { _uid: string; attributes: Record<string, unknown> };
-};
+import type {
+	ProtocolPayload,
+	ResolvedAsset,
+	SessionPayload,
+} from "../../src/contract/types.js";
 
 type AssetEntry = {
 	name: string;
@@ -62,7 +60,9 @@ export class ProtocolFixture {
 			throw new Error("protocol.json not found in zip");
 		}
 
-		const protocolJson: VersionedProtocol = JSON.parse(protocolString) as VersionedProtocol;
+		const protocolJson = VersionedProtocolSchema.parse(
+			JSON.parse(protocolString),
+		);
 
 		const protocolId = uuid();
 		const protocolAssetDir = path.join(this.assetDir, protocolId);
@@ -90,8 +90,13 @@ export class ProtocolFixture {
 		}
 
 		const protocolJsonStr = JSON.stringify(protocolJson);
-		const rewrittenStr = protocolJsonStr.replace(/asset:\/\/([^"]+)/g, `${this.assetServerUrl}/${protocolId}/$1`);
-		const rewrittenProtocol: CurrentProtocol = JSON.parse(rewrittenStr) as CurrentProtocol;
+		const rewrittenStr = protocolJsonStr.replace(
+			/asset:\/\/([^"]+)/g,
+			`${this.assetServerUrl}/${protocolId}/$1`,
+		);
+		const rewrittenProtocol = CurrentProtocolSchema.parse(
+			JSON.parse(rewrittenStr),
+		);
 
 		const assets = this.buildResolvedAssets(rewrittenProtocol);
 
@@ -105,16 +110,23 @@ export class ProtocolFixture {
 		for (const asset of assets) {
 			if (asset.type === "apikey") continue;
 			const manifestEntry = rewrittenProtocol.assetManifest?.[asset.assetId];
-			const source = manifestEntry && "source" in manifestEntry ? manifestEntry.source : undefined;
+			const source =
+				manifestEntry && "source" in manifestEntry
+					? manifestEntry.source
+					: undefined;
 			if (!source) continue;
 			const resolvedUrl = `${this.assetServerUrl}/${protocolId}/${source}`;
-			await this.page.evaluate(([id, url]: [string, string]) => window.__test.setAssetUrl(id, url), [
-				asset.assetId,
-				resolvedUrl,
-			] as [string, string]);
+			await this.page.evaluate(
+				([id, url]: [string, string]) => window.__test.setAssetUrl(id, url),
+				[asset.assetId, resolvedUrl] as [string, string],
+			);
 		}
 
-		await this.page.evaluate((p: ProtocolPayload) => window.__test.installProtocol(p), payload);
+		await this.page.evaluate(
+			([p, a]: [ProtocolPayload, ResolvedAsset[]]) =>
+				window.__test.installProtocol(p, a),
+			[payload, assets] as [ProtocolPayload, ResolvedAsset[]],
+		);
 
 		this.installedProtocolIds.push(protocolId);
 
@@ -131,46 +143,71 @@ export class ProtocolFixture {
 		if (!protocol.assetManifest) return [];
 
 		const assets: ResolvedAsset[] = [];
-		const validTypes = ["image", "video", "audio", "network", "geojson"] as const;
+		const validTypes = [
+			"image",
+			"video",
+			"audio",
+			"network",
+			"geojson",
+		] as const;
 		type ValidType = (typeof validTypes)[number];
 
-		for (const [assetId, entry] of Object.entries(protocol.assetManifest)) {
-			const asset = entry as AssetEntry;
+		function isAssetEntry(entry: unknown): entry is AssetEntry {
+			return (
+				typeof entry === "object" && entry !== null && "type" in entry
+			);
+		}
 
-			if (asset.type === "apikey") {
+		function isValidType(t: string): t is ValidType {
+			return (validTypes as readonly string[]).includes(t);
+		}
+
+		for (const [assetId, entry] of Object.entries(protocol.assetManifest)) {
+			if (!isAssetEntry(entry)) continue;
+
+			if (entry.type === "apikey") {
 				assets.push({
 					assetId,
-					name: asset.name,
+					name: entry.name,
 					type: "apikey",
-					value: typeof asset.value === "string" ? asset.value : undefined,
+					value: typeof entry.value === "string" ? entry.value : undefined,
 				});
 				continue;
 			}
 
-			if (!asset.source) continue;
-			if (!validTypes.includes(asset.type as ValidType)) continue;
+			if (!entry.source) continue;
+			if (!isValidType(entry.type)) continue;
 
 			assets.push({
 				assetId,
-				name: asset.name,
-				type: asset.type as ValidType,
+				name: entry.name,
+				type: entry.type,
 			});
 		}
 
 		return assets;
 	}
 
-	async createInterview(protocolId: string, participantIdentifier?: string): Promise<string> {
-		const participantId = participantIdentifier ?? `e2e-participant-${Date.now()}`;
-		return this.page.evaluate(([pid, partId]: [string, string]) => window.__test.createInterview(pid, partId), [
-			protocolId,
-			participantId,
-		] as [string, string]);
+	async createInterview(
+		protocolId: string,
+		participantIdentifier?: string,
+	): Promise<string> {
+		const participantId =
+			participantIdentifier ?? `e2e-participant-${Date.now()}`;
+		return this.page.evaluate(
+			([pid, partId]: [string, string]) =>
+				window.__test.createInterview(pid, partId),
+			[protocolId, participantId] as [string, string],
+		);
 	}
 
-	async getNetworkState(interviewId: string): Promise<NetworkState | undefined> {
-		const result: unknown = await this.page.evaluate((id: string) => window.__test.getNetworkState(id), interviewId);
-		return result as NetworkState | undefined;
+	async getNetworkState(
+		interviewId: string,
+	): Promise<SessionPayload["network"] | undefined> {
+		return this.page.evaluate(
+			(id: string) => window.__test.getNetworkState(id),
+			interviewId,
+		);
 	}
 
 	/**
@@ -238,11 +275,14 @@ export class ProtocolFixture {
 
 		while (Date.now() - startTime < timeout) {
 			const state = await this.getNetworkState(interviewId);
-			if (state?.nodes.some((n) => Object.values(n.attributes).includes(nodeName))) return;
+			if (state?.nodes.some((n) => Object.values(n.attributes).includes(nodeName)))
+				return;
 			await new Promise((resolve) => setTimeout(resolve, interval));
 		}
 
-		throw new Error(`Timeout waiting for node "${nodeName}" to appear after ${timeout}ms`);
+		throw new Error(
+			`Timeout waiting for node "${nodeName}" to appear after ${timeout}ms`,
+		);
 	}
 
 	/**
@@ -259,13 +299,17 @@ export class ProtocolFixture {
 
 		while (Date.now() - startTime < timeout) {
 			const state = await this.getNetworkState(interviewId);
-			const node = state?.nodes.find((n) => Object.values(n.attributes).includes(nodeName));
+			const node = state?.nodes.find((n) =>
+				Object.values(n.attributes).includes(nodeName),
+			);
 			if (node?.attributes[attributeId] != null) return;
 			await new Promise((resolve) => setTimeout(resolve, interval));
 		}
 
 		const finalState = await this.getNetworkState(interviewId);
-		const node = finalState?.nodes.find((n) => Object.values(n.attributes).includes(nodeName));
+		const node = finalState?.nodes.find((n) =>
+			Object.values(n.attributes).includes(nodeName),
+		);
 		throw new Error(
 			`Timeout waiting for node "${nodeName}" attribute ${attributeId} to be set. ` +
 				`Node found: ${!!node}, attribute value: ${JSON.stringify(node?.attributes[attributeId])} after ${timeout}ms`,
@@ -274,7 +318,9 @@ export class ProtocolFixture {
 
 	async logNetworkState(interviewId: string): Promise<void> {
 		const state = await this.getNetworkState(interviewId);
-		process.stdout.write(`Network state for ${interviewId}:\n${JSON.stringify(state, null, 2)}\n`);
+		process.stdout.write(
+			`Network state for ${interviewId}:\n${JSON.stringify(state, null, 2)}\n`,
+		);
 	}
 
 	async uninstall(protocolId: string): Promise<void> {
