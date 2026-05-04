@@ -90,7 +90,7 @@
 		"prop-types": "^15.8.1",
 		"react": "^16.14.0",
 		"react-dom": "^16.14.0",
-		"react-flip-toolkit": "^5.0.5",
+		"react-flip-toolkit": "^7.2.4",
 		"react-redux": "^7.2.9",
 		"react-router-dom": "^5.3.4",
 		"react-transition-group": "^2.9.0",

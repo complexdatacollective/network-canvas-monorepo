@@ -40,7 +40,7 @@
 		"react-compound-slider": "^3.4.0",
 		"react-dom": "catalog:",
 		"react-dropzone": "^15.0.0",
-		"react-flip-toolkit": "^6.6.9",
+		"react-flip-toolkit": "^7.2.4",
 		"react-grid-layout": "^1.5.3",
 		"react-markdown": "^10.1.0",
 		"react-recompose": "^0.33.0",

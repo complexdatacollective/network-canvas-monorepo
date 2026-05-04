@@ -320,8 +320,8 @@ importers:
         specifier: ^16.14.0
         version: 16.14.0(react@16.14.0)
       react-flip-toolkit:
-        specifier: ^6.6.9
-        version: 6.6.9(prop-types@15.8.1)(react@16.14.0)
+        specifier: ^7.2.4
+        version: 7.2.4(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       react-grid-layout:
         specifier: ^0.16.6
         version: 0.16.6(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -497,8 +497,8 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0(react@19.2.5)
       react-flip-toolkit:
-        specifier: ^6.6.9
-        version: 6.6.9(prop-types@15.8.1)(react@19.2.5)
+        specifier: ^7.2.4
+        version: 7.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react-grid-layout:
         specifier: ^1.5.3
         version: 1.5.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -1022,8 +1022,8 @@ importers:
         specifier: ^16.14.0
         version: 16.14.0(react@16.14.0)
       react-flip-toolkit:
-        specifier: ^5.0.5
-        version: 5.0.5(prop-types@15.8.1)(react@16.14.0)
+        specifier: ^7.2.4
+        version: 7.2.4(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       react-redux:
         specifier: ^7.2.9
         version: 7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -7932,6 +7932,10 @@ packages:
     resolution: {integrity: sha512-PpOwAdQ/YlXQ2vj8a3h8IipDuYRi3wceVQQGYWxNINccq40Anw7BlsEXCMbt1Zt+OLA6Fq9suIpIWD0OsnISlw==}
     engines: {node: '>=8'}
 
+  flip-toolkit@7.2.4:
+    resolution: {integrity: sha512-NT81ikyHPk72riMe1U01x698YIMSypMF5mQBhRklWVgf2xgWH3EPfrrVRAkz/+TSCq0rLPsr/uKIYkwHrowKZQ==}
+    engines: {node: '>=8', npm: '>=5'}
+
   follow-redirects@1.16.0:
     resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
@@ -9706,6 +9710,10 @@ packages:
     resolution: {integrity: sha512-Qfp5XZL1cJDOabOT8H5gnqMTmM4NjvYzHp4I/Kt/Sl76OVkOBBHRFlPspGV0hYvMoqQsypFjT/Yp7Km0beXW9g==}
     engines: {node: '>=22.12.0'}
 
+  node-abi@4.29.0:
+    resolution: {integrity: sha512-bGc7hHz6lrdpMqH3XqfiHc5PKzEhjgUj6OLpTXynkLi9JZKyMByI/tdpm4Liu6O2BjtE1lakBWXjOQS1EnSQLQ==}
+    engines: {node: '>=22.12.0'}
+
   node-addon-api@1.7.2:
     resolution: {integrity: sha512-ibPK3iA+vaY1eEjESkQkM0BbCqFOaZMiXRTtdB0u7b4djtY6JnsjvPdUHVMg6xQt3B8fpTTWHI9A+ADjM9frzg==}
 
@@ -10560,18 +10568,12 @@ packages:
     peerDependencies:
       react: '>= 16.8 || 18.0.0'
 
-  react-flip-toolkit@5.0.5:
-    resolution: {integrity: sha512-6iGUEVBPONjgGGvpHS54DDRfZyy0thoZgpavaizGMCLzkoTpA+Lkh0k4jUZBPbRu/cGpNHyCKk+0YVG/bQmGLA==}
-    peerDependencies:
-      prop-types: ^15.6.2
-      react: 16.x
-
-  react-flip-toolkit@6.6.9:
-    resolution: {integrity: sha512-0q0/zn0r2an0GfW4TOs4oDHO8ZtWXi1Z0+104m5Z/haJskkLvCqITFfoEmFN5c+NH7qa01c6UyBd2IhupMhxQw==}
+  react-flip-toolkit@7.2.4:
+    resolution: {integrity: sha512-+aZBZwzHBDfJzMRLjAAOKiBkrk8PV0YFVE0k1x85+UsykApLwg8a0LlQ5H80uFltFZmGtrQ7EE1krhiZ1jI5ig==}
     engines: {node: '>=8', npm: '>=5'}
     peerDependencies:
-      prop-types: ^15.x.x
-      react: 16.x
+      react: '>= 16.x'
+      react-dom: '>= 16.x'
 
   react-grid-layout@0.16.6:
     resolution: {integrity: sha512-h2EsYgsqcESLJeevQSJsEKp8hhh+phOlXDJoMhlV2e7T3VWQL+S6iCF3iD/LK19r4oyRyOMDEir0KV+eLXrAyw==}
@@ -10993,9 +10995,6 @@ packages:
 
   rematrix@0.2.2:
     resolution: {integrity: sha512-agFFS3RzrLXJl5LY5xg/xYyXvUuVAnkhgKO7RaO9J1Ssth6yvbO+PIiV67V59MB5NCdAK2flvGvNT4mdKVniFA==}
-
-  rematrix@0.2.3:
-    resolution: {integrity: sha512-azqvZjYaJZhWy2kxcajtyweoAmLDeqIvqMK8nEJW18vTJut58LO5KmfEK8Jkws/el9aTbyWBXhjvawDjR82hWg==}
 
   repeat-string@1.6.1:
     resolution: {integrity: sha512-PV0dzCYDNfRi1jCDbJzpW7jNNDRuCOG/jI5ctQcGKt/clZD+YcPS3yIlWuTJMmESC8aevCFmWJy5wjAFgNqN6w==}
@@ -12291,8 +12290,8 @@ packages:
     engines: {node: '>= 10.13.0'}
     hasBin: true
 
-  webpack-sources@3.4.0:
-    resolution: {integrity: sha512-gHwIe1cgBvvfLeu1Yz/dcFpmHfKDVxxyqI+kzqmuxZED81z2ChxpyqPaWcNqigPywhaEke7AjSGga+kxY55gjQ==}
+  webpack-sources@3.4.1:
+    resolution: {integrity: sha512-eACpxRN02yaawnt+uUNIF7Qje6A9zArxBbcAJjK1PK3S9Ycg5jIuJ8pW4q8EMnwNZCEGltcjkRx1QzOxOkKD8A==}
     engines: {node: '>=10.13.0'}
 
   webpack-virtual-modules@0.6.2:
@@ -14729,7 +14728,7 @@ snapshots:
     dependencies:
       '@malept/cross-spawn-promise': 2.0.0
       debug: 4.4.3
-      node-abi: 4.28.0
+      node-abi: 4.29.0
       node-api-version: 0.2.1
       node-gyp: 12.3.0
       read-binary-file-arch: 1.0.6
@@ -19934,6 +19933,10 @@ snapshots:
       locate-path: 5.0.0
       path-exists: 4.0.0
 
+  flip-toolkit@7.2.4:
+    dependencies:
+      rematrix: 0.2.2
+
   follow-redirects@1.16.0: {}
 
   for-each@0.3.5:
@@ -22154,6 +22157,10 @@ snapshots:
     dependencies:
       semver: 7.7.4
 
+  node-abi@4.29.0:
+    dependencies:
+      semver: 7.7.4
+
   node-addon-api@1.7.2:
     optional: true
 
@@ -23309,23 +23316,19 @@ snapshots:
       prop-types: 15.8.1
       react: 19.2.5
 
-  react-flip-toolkit@5.0.5(prop-types@15.8.1)(react@16.14.0):
+  react-flip-toolkit@7.2.4(react-dom@16.14.0(react@16.14.0))(react@16.14.0):
     dependencies:
+      flip-toolkit: 7.2.4
       prop-types: 15.8.1
       react: 16.14.0
-      rematrix: 0.2.3
+      react-dom: 16.14.0(react@16.14.0)
 
-  react-flip-toolkit@6.6.9(prop-types@15.8.1)(react@16.14.0):
+  react-flip-toolkit@7.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
-      prop-types: 15.8.1
-      react: 16.14.0
-      rematrix: 0.2.2
-
-  react-flip-toolkit@6.6.9(prop-types@15.8.1)(react@19.2.5):
-    dependencies:
+      flip-toolkit: 7.2.4
       prop-types: 15.8.1
       react: 19.2.5
-      rematrix: 0.2.2
+      react-dom: 19.2.5(react@19.2.5)
 
   react-grid-layout@0.16.6(react-dom@16.14.0(react@16.14.0))(react@16.14.0):
     dependencies:
@@ -23991,8 +23994,6 @@ snapshots:
       - supports-color
 
   rematrix@0.2.2: {}
-
-  rematrix@0.2.3: {}
 
   repeat-string@1.6.1: {}
 
@@ -25570,7 +25571,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  webpack-sources@3.4.0: {}
+  webpack-sources@3.4.1: {}
 
   webpack-virtual-modules@0.6.2: {}
 
@@ -25600,7 +25601,7 @@ snapshots:
       tapable: 2.3.3
       terser-webpack-plugin: 5.5.0(@swc/core@1.15.21)(esbuild@0.27.4)(webpack@5.105.2(@swc/core@1.15.21)(esbuild@0.27.4))
       watchpack: 2.5.1
-      webpack-sources: 3.4.0
+      webpack-sources: 3.4.1
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild
@@ -25632,7 +25633,7 @@ snapshots:
       tapable: 2.3.3
       terser-webpack-plugin: 5.5.0(esbuild@0.27.4)(webpack@5.105.2(esbuild@0.27.4))
       watchpack: 2.5.1
-      webpack-sources: 3.4.0
+      webpack-sources: 3.4.1
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild
