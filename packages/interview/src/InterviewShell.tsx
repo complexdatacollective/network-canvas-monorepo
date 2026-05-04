@@ -6,7 +6,7 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
-import { InterviewToastProvider } from "./components/InterviewToast";
+import { InterviewToastProvider } from "./toast/InterviewToast";
 import Navigation from "./components/Navigation";
 import StageErrorBoundary from "./components/StageErrorBoundary";
 import { StageMetadataProvider } from "./contexts/StageMetadataContext";
