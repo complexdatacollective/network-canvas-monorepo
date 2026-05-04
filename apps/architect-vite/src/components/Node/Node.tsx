@@ -4,11 +4,14 @@ import { AnimatePresence, motion, useAnimate } from "motion/react";
 import { type ButtonHTMLAttributes, type CSSProperties, forwardRef, useEffect } from "react";
 import { useNodeInteractions } from "~/hooks/useNodeInteractions";
 import usePrevious from "~/hooks/usePrevious";
+import { cn } from "~/utils/cn";
 import { composeEventHandlers } from "~/utils/composeEventHandlers";
 
 const NodeShapes = ["circle", "square", "diamond"] as const;
 
 export type NodeShape = (typeof NodeShapes)[number];
+
+export type NodeSize = "xxs" | "xs" | "sm" | "md" | "lg";
 
 const nodeVariants = cva(
 	[
@@ -41,6 +44,7 @@ const nodeVariants = cva(
 				"node-color-seq-6": "[--base-hsl:var(--node-color-seq-6)]",
 				"node-color-seq-7": "[--base-hsl:var(--node-color-seq-7)]",
 				"node-color-seq-8": "[--base-hsl:var(--node-color-seq-8)]",
+				platinum: "[--base-hsl:var(--platinum)] text-surface-2-foreground",
 			},
 			disabled: {
 				true: "pointer-events-none saturate-50",
@@ -206,13 +210,15 @@ const Node = forwardRef<HTMLButtonElement, UINodeProps>((props, ref) => {
 			disabled={disabled}
 			aria-label={ariaLabel ?? (label || undefined)}
 			aria-pressed={hasClickHandler ? selected : undefined}
-			className={nodeVariants({
-				size,
-				shape,
-				color: color as VariantProps<typeof nodeVariants>["color"],
-				disabled,
+			className={cn(
+				nodeVariants({
+					size,
+					shape,
+					color: color as VariantProps<typeof nodeVariants>["color"],
+					disabled,
+				}),
 				className,
-			})}
+			)}
 			style={{
 				...nodeProps.style,
 				...style,
