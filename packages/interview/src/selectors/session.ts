@@ -1,52 +1,40 @@
-import type {
-    Codebook,
-    NodeDefinition,
-    StageSubject,
-} from '@codaco/protocol-validation';
+import type { NodeColorSequence, NodeShape } from "@codaco/fresco-ui/Node";
+import { filter as customFilter } from "@codaco/network-query";
+import type { Codebook, NodeDefinition, StageSubject } from "@codaco/protocol-validation";
 import {
-    entityAttributesProperty,
-    type EntityPrimaryKey,
-    entityPrimaryKeyProperty,
-    type NcNode,
-} from '@codaco/shared-consts';
-import { createSelector } from '@reduxjs/toolkit';
-import { intersection, invariant } from 'es-toolkit';
-import { filter, includes } from 'es-toolkit/compat';
-import { type NodeColorSequence, type NodeShape } from '@codaco/fresco-ui/Node';
-import { filter as customFilter } from '@codaco/network-query';
-import { getCodebook, getStages } from '../ducks/modules/protocol';
-import { type RootState } from '../store';
-import { calculateProgress } from './utils';
+	type EntityPrimaryKey,
+	entityAttributesProperty,
+	entityPrimaryKeyProperty,
+	type NcNode,
+} from "@codaco/shared-consts";
+import { createSelector } from "@reduxjs/toolkit";
+import { intersection, invariant } from "es-toolkit";
+import { filter, includes } from "es-toolkit/compat";
+import { getCodebook, getStages } from "../ducks/modules/protocol";
+import type { RootState } from "../store";
+import { calculateProgress } from "./utils";
 
 const getActiveSession = (state: RootState) => {
-  return state.session;
+	return state.session;
 };
 
 export const getInterviewId = (state: RootState) => state.session.id;
 
 export const getStageIndex = (state: RootState) => state.session.currentStep;
 
-export const getStageMetadata = createSelector(
-  getActiveSession,
-  getStageIndex,
-  (session, stageIndex) => {
-    if (!stageIndex) return undefined;
-    return session?.stageMetadata?.[stageIndex] ?? undefined;
-  },
-);
+export const getStageMetadata = createSelector(getActiveSession, getStageIndex, (session, stageIndex) => {
+	if (!stageIndex) return undefined;
+	return session?.stageMetadata?.[stageIndex] ?? undefined;
+});
 
-export const getCurrentStage = createSelector(
-  getStages,
-  getStageIndex,
-  (stages, currentStep) => {
-    const result = stages[currentStep];
+export const getCurrentStage = createSelector(getStages, getStageIndex, (stages, currentStep) => {
+	const result = stages[currentStep];
 
-    // This use of invariant is okay, because this genuinely should never happen
-    invariant(result, 'getCurrentStage: No stage found');
+	// This use of invariant is okay, because this genuinely should never happen
+	invariant(result, "getCurrentStage: No stage found");
 
-    return result;
-  },
-);
+	return result;
+});
 
 /**
  * Returns the subject for the current stage, or `null` for subjectless stages
@@ -59,260 +47,198 @@ export const getCurrentStage = createSelector(
  * this selector threw, those stale subscriptions would crash.
  */
 export const getStageSubject = createSelector(getCurrentStage, (stage) => {
-  invariant(stage, 'getStageSubject: No current stage found');
+	invariant(stage, "getStageSubject: No current stage found");
 
-  if (
-    stage.type === 'Information' ||
-    stage.type === 'Anonymisation' ||
-    stage.type === 'FamilyPedigree'
-  ) {
-    return null;
-  }
+	if (stage.type === "Information" || stage.type === "Anonymisation" || stage.type === "FamilyPedigree") {
+		return null;
+	}
 
-  if (stage.type === 'EgoForm') {
-    return {
-      entity: 'ego' as const,
-    };
-  }
+	if (stage.type === "EgoForm") {
+		return {
+			entity: "ego" as const,
+		};
+	}
 
-  return stage.subject;
+	return stage.subject;
 });
 
 export const getSubjectType = createSelector(getStageSubject, (subject) => {
-  if (!subject || subject.entity === 'ego') {
-    return null;
-  }
+	if (!subject || subject.entity === "ego") {
+		return null;
+	}
 
-  return subject.type;
+	return subject.type;
 });
 
-export const getCurrentStageId = createSelector(
-  getCurrentStage,
-  (currentStage) => {
-    return currentStage.id;
-  },
-);
+export const getCurrentStageId = createSelector(getCurrentStage, (currentStage) => {
+	return currentStage.id;
+});
 
-export const getPromptIndex = createSelector(
-  getActiveSession,
-  (session) => session?.promptIndex ?? 0,
-);
+export const getPromptIndex = createSelector(getActiveSession, (session) => session?.promptIndex ?? 0);
 
 export const getPrompts = createSelector(getCurrentStage, (stage) => {
-  if (!stage) {
-    return null;
-  }
+	if (!stage) {
+		return null;
+	}
 
-  if ('prompts' in stage) {
-    return stage.prompts;
-  }
+	if ("prompts" in stage) {
+		return stage.prompts;
+	}
 
-  return null;
+	return null;
 });
 
 const stagePromptIds = createSelector(getPrompts, (prompts) => {
-  if (!prompts) {
-    return [];
-  }
-  return prompts.map((prompt) => prompt.id);
+	if (!prompts) {
+		return [];
+	}
+	return prompts.map((prompt) => prompt.id);
 });
 
-export const getCurrentPrompt = createSelector(
-  getPrompts,
-  getPromptIndex,
-  (prompts, promptIndex) => {
-    if (!prompts) {
-      return null;
-    }
+export const getCurrentPrompt = createSelector(getPrompts, getPromptIndex, (prompts, promptIndex) => {
+	if (!prompts) {
+		return null;
+	}
 
-    return prompts[promptIndex];
-  },
-);
+	return prompts[promptIndex];
+});
 
-export const getPromptAdditionalAttributes = createSelector(
-  getCurrentPrompt,
-  (prompt): Record<string, boolean> => {
-    if (!prompt || !('additionalAttributes' in prompt)) {
-      return {};
-    }
+export const getPromptAdditionalAttributes = createSelector(getCurrentPrompt, (prompt): Record<string, boolean> => {
+	if (!prompt || !("additionalAttributes" in prompt)) {
+		return {};
+	}
 
-    return (prompt.additionalAttributes ?? []).reduce(
-      (acc, { variable, value }) => ({
-        ...acc,
-        [variable]: value,
-      }),
-      {} as Record<string, boolean>,
-    );
-  },
-);
+	return (prompt.additionalAttributes ?? []).reduce(
+		(acc, { variable, value }) => ({
+			...acc,
+			[variable]: value,
+		}),
+		{} as Record<string, boolean>,
+	);
+});
 
 export const getPromptSortOrder = createSelector(getCurrentPrompt, (prompt) => {
-  if (prompt && 'sortOrder' in prompt) {
-    return prompt.sortOrder;
-  }
-  return undefined;
+	if (prompt && "sortOrder" in prompt) {
+		return prompt.sortOrder;
+	}
+	return undefined;
 });
 
 export const getPromptCount = createSelector(
-  getPrompts,
-  (prompts) => prompts?.length ?? 1, // If there are no prompts we have "1" prompt
+	getPrompts,
+	(prompts) => prompts?.length ?? 1, // If there are no prompts we have "1" prompt
 );
 
-const getIsFirstPrompt = createSelector(
-  getPromptIndex,
-  (promptIndex) => promptIndex === 0,
-);
+const getIsFirstPrompt = createSelector(getPromptIndex, (promptIndex) => promptIndex === 0);
 
 const getIsLastPrompt = createSelector(
-  getPromptIndex,
-  getPromptCount,
-  (promptIndex, promptCount) => promptIndex === promptCount - 1,
+	getPromptIndex,
+	getPromptCount,
+	(promptIndex, promptCount) => promptIndex === promptCount - 1,
 );
 
-const getIsFirstStage = createSelector(
-  getStageIndex,
-  (currentStep) => currentStep === 0,
-);
+const getIsFirstStage = createSelector(getStageIndex, (currentStep) => currentStep === 0);
 
 const getIsLastStage = createSelector(
-  getStageIndex,
-  getStages,
-  (currentStep, stages) => currentStep === stages.length - 1,
+	getStageIndex,
+	getStages,
+	(currentStep, stages) => currentStep === stages.length - 1,
 );
 
-export const getStageCount = createSelector(
-  getStages,
-  (stages) => stages.length,
-);
+export const getStageCount = createSelector(getStages, (stages) => stages.length);
 
 const getSessionProgress = createSelector(
-  getStageIndex,
-  getStageCount,
-  getPromptIndex,
-  getPromptCount,
-  calculateProgress,
+	getStageIndex,
+	getStageCount,
+	getPromptIndex,
+	getPromptCount,
+	calculateProgress,
 );
 
 export const getNavigationInfo = createSelector(
-  getSessionProgress,
-  getStageIndex,
-  getPromptIndex,
-  getIsFirstPrompt,
-  getIsLastPrompt,
-  getIsFirstStage,
-  getIsLastStage,
-  (
-    progress,
-    currentStep,
-    promptIndex,
-    isFirstPrompt,
-    isLastPrompt,
-    isFirstStage,
-    isLastStage,
-  ) => {
-    return {
-      progress,
-      currentStep,
-      promptIndex,
-      isFirstPrompt,
-      isLastPrompt,
-      isFirstStage,
-      isLastStage,
-      canMoveForward: !(isLastPrompt && isLastStage),
-      canMoveBackward: !(isFirstPrompt && isFirstStage),
-    };
-  },
+	getSessionProgress,
+	getStageIndex,
+	getPromptIndex,
+	getIsFirstPrompt,
+	getIsLastPrompt,
+	getIsFirstStage,
+	getIsLastStage,
+	(progress, currentStep, promptIndex, isFirstPrompt, isLastPrompt, isFirstStage, isLastStage) => {
+		return {
+			progress,
+			currentStep,
+			promptIndex,
+			isFirstPrompt,
+			isLastPrompt,
+			isFirstStage,
+			isLastStage,
+			canMoveForward: !(isLastPrompt && isLastStage),
+			canMoveBackward: !(isFirstPrompt && isFirstStage),
+		};
+	},
 );
 
-export const getNetwork = createSelector(
-  getActiveSession,
-  (session) => session.network,
-);
+export const getNetwork = createSelector(getActiveSession, (session) => session.network);
 
 const getStageFilter = createSelector(getCurrentStage, (stage) => {
-  if (!stage) {
-    return null;
-  }
+	if (!stage) {
+		return null;
+	}
 
-  if ('filter' in stage) {
-    return stage.filter;
-  }
+	if ("filter" in stage) {
+		return stage.filter;
+	}
 
-  return null;
+	return null;
 });
 
 // Filtered network
-const getFilteredNetwork = createSelector(
-  getNetwork,
-  getStageFilter,
-  (network, nodeFilter) => {
-    if (!network) {
-      return null;
-    }
+const getFilteredNetwork = createSelector(getNetwork, getStageFilter, (network, nodeFilter) => {
+	if (!network) {
+		return null;
+	}
 
-    if (nodeFilter) {
-      return customFilter(nodeFilter)(network);
-    }
+	if (nodeFilter) {
+		return customFilter(nodeFilter)(network);
+	}
 
-    return network;
-  },
-);
+	return network;
+});
 
-export const getNetworkNodes = createSelector(
-  getFilteredNetwork,
-  (network) => network?.nodes ?? [],
-);
+export const getNetworkNodes = createSelector(getFilteredNetwork, (network) => network?.nodes ?? []);
 
-export const getNetworkEgo = createSelector(
-  getFilteredNetwork,
-  (network) => network?.ego ?? null,
-);
+export const getNetworkEgo = createSelector(getFilteredNetwork, (network) => network?.ego ?? null);
 
-export const getEgoAttributes = createSelector(
-  getNetworkEgo,
-  (ego) => ego?.[entityAttributesProperty] ?? {},
-);
+export const getEgoAttributes = createSelector(getNetworkEgo, (ego) => ego?.[entityAttributesProperty] ?? {});
 
-export const getNetworkEdges = createSelector(
-  getFilteredNetwork,
-  (network) => network?.edges ?? [],
-);
+export const getNetworkEdges = createSelector(getFilteredNetwork, (network) => network?.edges ?? []);
 
-export const makeGetNodeById = createSelector(
-  getNetworkNodes,
-  (nodes) => (nodeId: NcNode[EntityPrimaryKey]) => {
-    if (!nodes) {
-      return null;
-    }
+export const makeGetNodeById = createSelector(getNetworkNodes, (nodes) => (nodeId: NcNode[EntityPrimaryKey]) => {
+	if (!nodes) {
+		return null;
+	}
 
-    const node = nodes.find(
-      (node) => node[entityPrimaryKeyProperty] === nodeId,
-    );
-    return node ?? null;
-  },
-);
+	const node = nodes.find((node) => node[entityPrimaryKeyProperty] === nodeId);
+	return node ?? null;
+});
 
-export const getNodeTypeDefinition = createSelector(
-  getCodebook,
-  getStageSubject,
-  (codebook, subject) => {
-    if (!subject || subject.entity === 'ego') {
-      return null;
-    }
-    return codebook.node?.[subject.type] ?? null;
-  },
-);
+export const getNodeTypeDefinition = createSelector(getCodebook, getStageSubject, (codebook, subject) => {
+	if (!subject || subject.entity === "ego") {
+		return null;
+	}
+	return codebook.node?.[subject.type] ?? null;
+});
 
 export const getNodeColorSelector = createSelector(
-  getCodebook,
-  getSubjectType,
-  (codebook, nodeType): NodeColorSequence => {
-    if (!nodeType) {
-      return 'node-color-seq-1';
-    }
+	getCodebook,
+	getSubjectType,
+	(codebook, nodeType): NodeColorSequence => {
+		if (!nodeType) {
+			return "node-color-seq-1";
+		}
 
-    return codebook.node?.[nodeType]?.color ?? 'node-color-seq-1';
-  },
+		return codebook.node?.[nodeType]?.color ?? "node-color-seq-1";
+	},
 );
 
 /**
@@ -320,78 +246,63 @@ export const getNodeColorSelector = createSelector(
  * attributes. Uses the dynamic mapping (discrete or breakpoints) when
  * configured, falling back to the default shape.
  */
-export function resolveNodeShape(
-  shapeDef: NodeDefinition['shape'],
-  attributes: Record<string, unknown>,
-): NodeShape {
-  if (!shapeDef.dynamic) return shapeDef.default;
+export function resolveNodeShape(shapeDef: NodeDefinition["shape"], attributes: Record<string, unknown>): NodeShape {
+	if (!shapeDef.dynamic) return shapeDef.default;
 
-  const variableValue = attributes[shapeDef.dynamic.variable];
+	const variableValue = attributes[shapeDef.dynamic.variable];
 
-  if (shapeDef.dynamic.type === 'discrete') {
-    const match = shapeDef.dynamic.map.find(
-      (entry) => entry.value === variableValue,
-    );
-    return match?.shape ?? shapeDef.default;
-  }
+	if (shapeDef.dynamic.type === "discrete") {
+		const match = shapeDef.dynamic.map.find((entry) => entry.value === variableValue);
+		return match?.shape ?? shapeDef.default;
+	}
 
-  // Breakpoints: value must be numeric
-  if (typeof variableValue !== 'number') return shapeDef.default;
-  const { thresholds } = shapeDef.dynamic;
+	// Breakpoints: value must be numeric
+	if (typeof variableValue !== "number") return shapeDef.default;
+	const { thresholds } = shapeDef.dynamic;
 
-  // Walk thresholds in reverse — return the first shape whose threshold
-  // the value meets or exceeds.
-  for (let i = thresholds.length - 1; i >= 0; i--) {
-    if (variableValue >= thresholds[i]!.value) {
-      return thresholds[i]!.shape;
-    }
-  }
-  return shapeDef.default;
+	// Walk thresholds in reverse — return the first shape whose threshold
+	// the value meets or exceeds.
+	for (let i = thresholds.length - 1; i >= 0; i--) {
+		if (variableValue >= thresholds[i]!.value) {
+			return thresholds[i]!.shape;
+		}
+	}
+	return shapeDef.default;
 }
 
-const getEdgeColor = createSelector(
-  getCodebook,
-  getStageSubject,
-  (codebook, stageSubject) => {
-    if (stageSubject?.entity !== 'edge') {
-      return 'edge-color-seq-1';
-    }
+const getEdgeColor = createSelector(getCodebook, getStageSubject, (codebook, stageSubject) => {
+	if (stageSubject?.entity !== "edge") {
+		return "edge-color-seq-1";
+	}
 
-    const edgeType = stageSubject.type;
+	const edgeType = stageSubject.type;
 
-    return (
-      (codebook as Codebook)?.edge?.[edgeType]?.color ?? 'edge-color-seq-1'
-    );
-  },
-);
+	return (codebook as Codebook)?.edge?.[edgeType]?.color ?? "edge-color-seq-1";
+});
 
-export const getEdgeColorForType = (
-  type: Extract<StageSubject, { entity: 'edge' }>['type'],
-) =>
-  createSelector(getCodebook, (codebook) => {
-    if (!type) {
-      return 'edge-color-seq-1';
-    }
+export const getEdgeColorForType = (type: Extract<StageSubject, { entity: "edge" }>["type"]) =>
+	createSelector(getCodebook, (codebook) => {
+		if (!type) {
+			return "edge-color-seq-1";
+		}
 
-    return (codebook as Codebook)?.edge?.[type]?.color ?? 'edge-color-seq-1';
-  });
+		return (codebook as Codebook)?.edge?.[type]?.color ?? "edge-color-seq-1";
+	});
 
 export const makeGetEdgeColor = () => getEdgeColor;
 
 export const getCategoricalOptions = createSelector(
-  getCodebook,
-  getSubjectType,
-  (_, props: Record<string, string>) => props.variableId ?? null,
-  (codebook, subjectType: string | null, variableId: string | null) => {
-    if (!subjectType || !variableId) {
-      return [];
-    }
+	getCodebook,
+	getSubjectType,
+	(_, props: Record<string, string>) => props.variableId ?? null,
+	(codebook, subjectType: string | null, variableId: string | null) => {
+		if (!subjectType || !variableId) {
+			return [];
+		}
 
-    const variable = (codebook as Codebook).node?.[subjectType]?.variables?.[
-      variableId
-    ];
-    return variable && 'options' in variable ? variable.options : [];
-  },
+		const variable = (codebook as Codebook).node?.[subjectType]?.variables?.[variableId];
+		return variable && "options" in variable ? variable.options : [];
+	},
 );
 
 /**
@@ -399,57 +310,39 @@ export const getCategoricalOptions = createSelector(
  * Get the current prompt/stage subject, and filter the network by this edge type.
  */
 
-export const getNetworkEdgesForType = createSelector(
-  getNetworkEdges,
-  getStageSubject,
-  (edges, subject) => {
-    if (!subject || subject.entity === 'ego') {
-      return [];
-    }
+export const getNetworkEdgesForType = createSelector(getNetworkEdges, getStageSubject, (edges, subject) => {
+	if (!subject || subject.entity === "ego") {
+		return [];
+	}
 
-    return edges.filter((edge) => edge.type === subject.type);
-  },
-);
+	return edges.filter((edge) => edge.type === subject.type);
+});
 
-export const getNetworkNodesForType = createSelector(
-  getNetworkNodes,
-  getStageSubject,
-  (nodes, subject) => {
-    if (!subject || !nodes || subject.entity === 'ego') {
-      return [];
-    }
+export const getNetworkNodesForType = createSelector(getNetworkNodes, getStageSubject, (nodes, subject) => {
+	if (!subject || !nodes || subject.entity === "ego") {
+		return [];
+	}
 
-    return nodes.filter((node) => node.type === subject.type);
-  },
-);
+	return nodes.filter((node) => node.type === subject.type);
+});
 
 export const getStageNodeCount = createSelector(
-  getNetworkNodesForType,
-  stagePromptIds,
-  (nodes, promptIds: string[]) =>
-    filter(
-      nodes,
-      (node) => intersection(node.promptIDs ?? [], promptIds).length > 0,
-    ).length,
+	getNetworkNodesForType,
+	stagePromptIds,
+	(nodes, promptIds: string[]) =>
+		filter(nodes, (node) => intersection(node.promptIDs ?? [], promptIds).length > 0).length,
 );
 
-export const getPromptId = createSelector(
-  getPrompts,
-  getPromptIndex,
-  (prompts, promptIndex) => {
-    if (!prompts) {
-      return null;
-    }
+export const getPromptId = createSelector(getPrompts, getPromptIndex, (prompts, promptIndex) => {
+	if (!prompts) {
+		return null;
+	}
 
-    return prompts[promptIndex]?.id ?? null;
-  },
-);
+	return prompts[promptIndex]?.id ?? null;
+});
 
-export const getNetworkNodesForPrompt = createSelector(
-  getNetworkNodesForType,
-  getPromptId,
-  (nodes, promptId) =>
-    filter(nodes, (node) => includes(node.promptIDs ?? [], promptId)),
+export const getNetworkNodesForPrompt = createSelector(getNetworkNodesForType, getPromptId, (nodes, promptId) =>
+	filter(nodes, (node) => includes(node.promptIDs ?? [], promptId)),
 );
 
 /**
@@ -459,9 +352,6 @@ export const getNetworkNodesForPrompt = createSelector(
  * prompt's promptId.
  */
 
-export const getNetworkNodesForOtherPrompts = createSelector(
-  getNetworkNodesForType,
-  getPromptId,
-  (nodes, promptId) =>
-    filter(nodes, (node) => !includes(node.promptIDs ?? [], promptId)),
+export const getNetworkNodesForOtherPrompts = createSelector(getNetworkNodesForType, getPromptId, (nodes, promptId) =>
+	filter(nodes, (node) => !includes(node.promptIDs ?? [], promptId)),
 );

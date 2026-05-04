@@ -1,64 +1,53 @@
-import { createSelector } from '@reduxjs/toolkit';
-import { getQuery } from '@codaco/network-query';
-import { getStages } from '../ducks/modules/protocol';
-import { getNetwork, getStageIndex } from './session';
+import { getQuery } from "@codaco/network-query";
+import { createSelector } from "@reduxjs/toolkit";
+import { getStages } from "../ducks/modules/protocol";
+import { getNetwork, getStageIndex } from "./session";
 
 // Hacked together version of isStageSkipped that returns a map of all stages.
 // This is more convenient to use with useSelector.
 const getSkipMap = createSelector(
-  getStages,
-  getNetwork,
-  (stages, network): Record<number, boolean> =>
-    stages.reduce((acc: Record<number, boolean>, stage, index: number) => {
-      const skipLogic = stage.skipLogic;
+	getStages,
+	getNetwork,
+	(stages, network): Record<number, boolean> =>
+		stages.reduce((acc: Record<number, boolean>, stage, index: number) => {
+			const skipLogic = stage.skipLogic;
 
-      if (!skipLogic) {
-        return {
-          ...acc,
-          [index]: false,
-        };
-      }
+			if (!skipLogic) {
+				return {
+					...acc,
+					[index]: false,
+				};
+			}
 
-      const skipOnMatch = skipLogic.action === 'SKIP';
-      const result = getQuery(skipLogic.filter)(network);
-      const isSkipped = (skipOnMatch && result) || (!skipOnMatch && !result);
+			const skipOnMatch = skipLogic.action === "SKIP";
+			const result = getQuery(skipLogic.filter)(network);
+			const isSkipped = (skipOnMatch && result) || (!skipOnMatch && !result);
 
-      return {
-        ...acc,
-        [index]: isSkipped,
-      };
-    }, {}),
+			return {
+				...acc,
+				[index]: isSkipped,
+			};
+		}, {}),
 );
 
 // Selector that uses the skipMap to determine the idex of the next and previous
 // valid stages.
-export const getNavigableStages = createSelector(
-  getSkipMap,
-  getStageIndex,
-  (skipMap, currentStep) => {
-    // To determine if the current step is valid, we check if it is not skipped,
-    // and that it is within the bounds of the skipMap.
-    const isCurrentStepValid =
-      !skipMap[currentStep] && skipMap[currentStep] !== undefined;
+export const getNavigableStages = createSelector(getSkipMap, getStageIndex, (skipMap, currentStep) => {
+	// To determine if the current step is valid, we check if it is not skipped,
+	// and that it is within the bounds of the skipMap.
+	const isCurrentStepValid = !skipMap[currentStep] && skipMap[currentStep] !== undefined;
 
-    const nextStage = Object.keys(skipMap).find(
-      (stage) =>
-        parseInt(stage) > currentStep && skipMap[parseInt(stage)] === false,
-    );
+	const nextStage = Object.keys(skipMap).find(
+		(stage) => Number.parseInt(stage) > currentStep && skipMap[Number.parseInt(stage)] === false,
+	);
 
-    const previousStage = Object.keys(skipMap)
-      .reverse()
-      .find(
-        (stage) =>
-          parseInt(stage) < currentStep && skipMap[parseInt(stage)] === false,
-      );
+	const previousStage = Object.keys(skipMap)
+		.reverse()
+		.find((stage) => Number.parseInt(stage) < currentStep && skipMap[Number.parseInt(stage)] === false);
 
-    return {
-      isCurrentStepValid,
-      nextValidStageIndex: nextStage ? parseInt(nextStage) : currentStep,
-      previousValidStageIndex: previousStage
-        ? parseInt(previousStage)
-        : currentStep,
-    };
-  },
-);
+	return {
+		isCurrentStepValid,
+		nextValidStageIndex: nextStage ? Number.parseInt(nextStage) : currentStep,
+		previousValidStageIndex: previousStage ? Number.parseInt(previousStage) : currentStep,
+	};
+});

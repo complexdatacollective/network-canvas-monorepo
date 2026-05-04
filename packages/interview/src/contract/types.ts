@@ -1,5 +1,5 @@
-import { type CurrentProtocol } from '@codaco/protocol-validation';
-import { type SessionState } from '~/lib/interviewer/ducks/modules/session';
+import type { CurrentProtocol } from "@codaco/protocol-validation";
+import type { SessionState } from "~/lib/interviewer/ducks/modules/session";
 
 /**
  * Package-internal asset representation. Has only the fields the interviewer
@@ -7,10 +7,10 @@ import { type SessionState } from '~/lib/interviewer/ducks/modules/session';
  * for apikey-style assets). URLs are resolved lazily via AssetRequestHandler.
  */
 export type ResolvedAsset = {
-  assetId: string;
-  name: string;
-  type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
-  value?: string; // populated for apikey assets only
+	assetId: string;
+	name: string;
+	type: "image" | "video" | "audio" | "network" | "geojson" | "apikey";
+	value?: string; // populated for apikey assets only
 };
 
 /**
@@ -19,10 +19,10 @@ export type ResolvedAsset = {
  * older protocols are migrated to the current version at import time, so
  * downstream code never sees a versioned union.
  */
-export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
-  id: string;
-  importedAt: string; // ISO
-  assets: ResolvedAsset[];
+export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
+	id: string;
+	importedAt: string; // ISO
+	assets: ResolvedAsset[];
 };
 
 /**
@@ -32,23 +32,17 @@ export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
 export type SessionPayload = SessionState;
 
 export type InterviewPayload = {
-  session: SessionPayload;
-  protocol: ProtocolPayload;
+	session: SessionPayload;
+	protocol: ProtocolPayload;
 };
 
-export type SyncHandler = (
-  interviewId: string,
-  session: SessionPayload,
-) => Promise<void>;
+export type SyncHandler = (interviewId: string, session: SessionPayload) => Promise<void>;
 
-export type FinishHandler = (
-  interviewId: string,
-  signal: AbortSignal,
-) => Promise<void>;
+export type FinishHandler = (interviewId: string, signal: AbortSignal) => Promise<void>;
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 export type InterviewerFlags = {
-  isE2E?: boolean;
-  isDevelopment?: boolean;
+	isE2E?: boolean;
+	isDevelopment?: boolean;
 };

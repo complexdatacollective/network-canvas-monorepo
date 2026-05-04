@@ -1,15 +1,15 @@
-import { type FormField, type Variable } from '@codaco/protocol-validation';
-import { createSelector } from '@reduxjs/toolkit';
-import { invariant } from 'es-toolkit';
-import { getCodebook } from '../ducks/modules/protocol';
-import { getCodebookVariablesForSubjectType } from './protocol';
-import { getNetwork, getStageSubject } from './session';
+import type { FormField, Variable } from "@codaco/protocol-validation";
+import { createSelector } from "@reduxjs/toolkit";
+import { invariant } from "es-toolkit";
+import { getCodebook } from "../ducks/modules/protocol";
+import { getCodebookVariablesForSubjectType } from "./protocol";
+import { getNetwork, getStageSubject } from "./session";
 
 type CodebookVariableWithComponent = Extract<Variable, { component?: unknown }>;
 
 export type Subject = {
-  entity: 'node' | 'edge' | 'ego';
-  type?: string;
+	entity: "node" | "edge" | "ego";
+	type?: string;
 };
 
 /**
@@ -18,71 +18,68 @@ export type Subject = {
  * from the current stage in Redux state.
  */
 const getCodebookVariablesForProvidedSubject = createSelector(
-  [getCodebook, (_state, subject: Subject | null) => subject],
-  (codebook, subject) => {
-    if (!subject) {
-      return {};
-    }
+	[getCodebook, (_state, subject: Subject | null) => subject],
+	(codebook, subject) => {
+		if (!subject) {
+			return {};
+		}
 
-    if (subject.entity === 'ego') {
-      return codebook?.ego?.variables ?? {};
-    }
+		if (subject.entity === "ego") {
+			return codebook?.ego?.variables ?? {};
+		}
 
-    const { entity, type } = subject;
-    if (!type) {
-      return {};
-    }
+		const { entity, type } = subject;
+		if (!type) {
+			return {};
+		}
 
-    return codebook?.[entity]?.[type]?.variables ?? {};
-  },
+		return codebook?.[entity]?.[type]?.variables ?? {};
+	},
 );
 
 /**
  * Creates field metadata from form fields and codebook variables.
  * Used by useProtocolForm to convert protocol form definitions to Field components.
  */
-const createFieldMetadata = (
-  variables: Record<string, Variable>,
-  fields: FormField[],
-) => {
-  // Return empty array if no variables (allows graceful handling during mount)
-  if (!variables || Object.keys(variables).length === 0) {
-    return [];
-  }
+const createFieldMetadata = (variables: Record<string, Variable>, fields: FormField[]) => {
+	// Return empty array if no variables (allows graceful handling during mount)
+	if (!variables || Object.keys(variables).length === 0) {
+		return [];
+	}
 
-  // Guard against invalid fields input
-  if (!Array.isArray(fields)) {
-    return [];
-  }
+	// Guard against invalid fields input
+	if (!Array.isArray(fields)) {
+		return [];
+	}
 
-  return fields.map(({ variable, prompt, hint, showValidationHints }) => {
-    if (!variables[variable]) {
-      throw new Error(`Missing codebook entry for variable: ${variable}`);
-    }
+	return fields.map(({ variable, prompt, hint, showValidationHints }) => {
+		if (!variables[variable]) {
+			throw new Error(`Missing codebook entry for variable: ${variable}`);
+		}
 
-    const codebookEntry = variables[variable];
+		const codebookEntry = variables[variable];
 
-    invariant(
-      'component' in codebookEntry && codebookEntry.component !== undefined,
-      'Missing component for codebook entry',
-    );
+		invariant(
+			"component" in codebookEntry && codebookEntry.component !== undefined,
+			"Missing component for codebook entry",
+		);
 
-    return {
-      ...(codebookEntry as CodebookVariableWithComponent),
-      variable,
-      label: prompt,
-      hint,
-      showValidationHints,
-    };
-  });
+		return {
+			...(codebookEntry as CodebookVariableWithComponent),
+			variable,
+			label: prompt,
+			hint,
+			showValidationHints,
+		};
+	});
 };
 
 /**
  * Select field metadata using the current stage subject from Redux state.
  */
 export const selectFieldMetadata = createSelector(
-  [getCodebookVariablesForSubjectType, (_, fields: FormField[]) => fields],
-  createFieldMetadata,
+	[getCodebookVariablesForSubjectType, (_, fields: FormField[]) => fields],
+	createFieldMetadata,
 );
 
 /**
@@ -90,18 +87,15 @@ export const selectFieldMetadata = createSelector(
  * Use this when the subject is known from component props (e.g., in SlidesForm).
  */
 export const selectFieldMetadataWithSubject = createSelector(
-  [
-    getCodebookVariablesForProvidedSubject,
-    (_state, _subject: Subject | null, fields: FormField[]) => fields,
-  ],
-  createFieldMetadata,
+	[getCodebookVariablesForProvidedSubject, (_state, _subject: Subject | null, fields: FormField[]) => fields],
+	createFieldMetadata,
 );
 
 export const getValidationContext = createSelector(
-  [getCodebook, getNetwork, getStageSubject],
-  (codebook, network, stageSubject) => ({
-    codebook,
-    network,
-    stageSubject,
-  }),
+	[getCodebook, getNetwork, getStageSubject],
+	(codebook, network, stageSubject) => ({
+		codebook,
+		network,
+		stageSubject,
+	}),
 );

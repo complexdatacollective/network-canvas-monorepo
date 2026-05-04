@@ -10,6 +10,6 @@
  * firefox, webkit).
  */
 export function isMapboxStubBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return !navigator.userAgent.includes('Chrome/');
+	if (typeof navigator === "undefined") return false;
+	return !navigator.userAgent.includes("Chrome/");
 }
