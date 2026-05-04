@@ -8,11 +8,10 @@ import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import type { VariableOptions, VariableOptionValue } from "~/lib/codebook";
-import BooleanOption from "~/lib/interviewer/components/BooleanOption";
-import Prompts from "~/lib/interviewer/components/Prompts";
-import { usePrompts } from "~/lib/interviewer/components/Prompts/usePrompts";
-import { getCodebook } from "~/lib/interviewer/ducks/modules/protocol";
+import BooleanOption from "../../components/BooleanOption";
+import Prompts from "../../components/Prompts";
+import { usePrompts } from "../../components/Prompts/usePrompts";
+import { getCodebook } from "../../ducks/modules/protocol";
 import {
 	addEdge,
 	type DyadCensusMetadataItem,
@@ -20,18 +19,19 @@ import {
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
-} from "~/lib/interviewer/ducks/modules/session";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import useStageValidation from "~/lib/interviewer/hooks/useStageValidation";
+} from "../../ducks/modules/session";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import useStageValidation from "../../hooks/useStageValidation";
+import { getNodePairs } from "../../selectors/dyad-census";
 import {
 	getEdgeColorForType,
 	getNetworkEdges,
 	getNetworkNodesForType,
 	getStageMetadata,
-} from "~/lib/interviewer/selectors/session";
-import { useAppDispatch } from "~/lib/interviewer/store";
-import type { StageProps } from "~/lib/interviewer/types";
-import { getNodePairs } from "../../selectors/dyad-census";
+} from "../../selectors/session";
+import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
+import type { VariableOptions, VariableOptionValue } from "../../utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";
 import Pair from "./Pair";
 

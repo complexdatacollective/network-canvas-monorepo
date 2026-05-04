@@ -1,6 +1,6 @@
 import { clamp } from "es-toolkit";
 import { type RefObject, useCallback, useRef } from "react";
-import type { CanvasStoreApi } from "~/lib/interviewer/canvas/useCanvasStore";
+import type { CanvasStoreApi } from "./useCanvasStore";
 
 const DRAG_THRESHOLD = 5;
 const NUDGE_AMOUNT = 0.02;

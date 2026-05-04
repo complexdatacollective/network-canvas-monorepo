@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeScaling } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/scaling";
-import type { PedigreeLayout } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+import { computeScaling } from "../scaling";
+import type { PedigreeLayout } from "../types";
 
 describe("computeScaling", () => {
 	const mockLayout: PedigreeLayout = {

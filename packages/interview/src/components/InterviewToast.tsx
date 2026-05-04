@@ -6,7 +6,7 @@ import { type ToastVariant, toastVariants, variantIcons } from "@codaco/fresco-u
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { cva, cx } from "@codaco/fresco-ui/utils/cva";
 import { createContext, type FocusEvent, type ReactNode, type RefObject, useCallback, useContext, useRef } from "react";
-import { interviewToastManager } from "~/lib/interviewer/components/interviewToastManager";
+import { interviewToastManager } from "./interviewToastManager";
 
 type InterviewToastContextValue = {
 	forwardButtonRef: RefObject<HTMLButtonElement | null>;

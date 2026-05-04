@@ -1,9 +1,5 @@
-import { sugiyamaLayout } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/sugiyamaLayout";
-import type {
-	Hints,
-	PedigreeInput,
-	PedigreeLayout,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+import { sugiyamaLayout } from "./sugiyamaLayout";
+import type { Hints, PedigreeInput, PedigreeLayout } from "./types";
 
 export function alignPedigree(
 	ped: PedigreeInput,

@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { isNil } from "es-toolkit";
 import { get, has } from "es-toolkit/compat";
-import { getEntityAttributes } from "~/utils/networkEntities";
+import { getEntityAttributes } from "../utils/networkEntities";
 import { getCurrentPrompt, getNetworkEdges, getNetworkNodes, getStageSubject } from "./session";
 import { createDeepEqualSelector } from "./utils";
 

@@ -58,7 +58,7 @@ export function tableCounts(arr: number[]): Map<number, number> {
 	return counts;
 }
 
-import type { ParentConnection } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+import type { ParentConnection } from "./types";
 
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {

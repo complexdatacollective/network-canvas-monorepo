@@ -13,9 +13,9 @@ import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { useCelebrate } from "~/lib/interviewer/hooks/useCelebrate";
-import { getNodeIconName } from "~/lib/interviewer/selectors/name-generator";
-import { getNodeColorSelector } from "~/lib/interviewer/selectors/session";
+import { useCelebrate } from "../../../hooks/useCelebrate";
+import { getNodeIconName } from "../../../selectors/name-generator";
+import { getNodeColorSelector } from "../../../selectors/session";
 
 function convertToNodeColor(color: NodeColorSequence): string {
 	switch (color) {

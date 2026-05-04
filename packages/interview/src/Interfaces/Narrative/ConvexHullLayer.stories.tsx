@@ -1,8 +1,8 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useRef } from "react";
-import { createCanvasStore } from "~/lib/interviewer/canvas/useCanvasStore";
-import ConvexHullLayer from "~/lib/interviewer/Interfaces/Narrative/ConvexHullLayer";
+import { createCanvasStore } from "../../canvas/useCanvasStore";
+import ConvexHullLayer from "./ConvexHullLayer";
 
 type CategoricalValue = string | number | boolean;
 

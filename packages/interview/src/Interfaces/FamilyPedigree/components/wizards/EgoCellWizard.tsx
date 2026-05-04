@@ -2,18 +2,15 @@
 
 import useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import { AnimatePresence, motion } from "motion/react";
-import ActionButton from "~/lib/interviewer/components/ActionButton";
-import AdditionalParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/AdditionalParentsStep";
-import BioParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/BioParentsStep";
-import ChildrenDetailStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/ChildrenDetailStep";
-import OtherParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/OtherParentsStep";
-import ParentPartnershipsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/ParentPartnershipsStep";
-import PartnerAndChildrenStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/PartnerAndChildrenStep";
-import {
-	type EgoCellResult,
-	egoCellTransform,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/transforms/egoCellTransform";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import ActionButton from "../../../../components/ActionButton";
+import type { VariableConfig } from "../../store";
+import AdditionalParentsStep from "../quickStartWizard/AdditionalParentsStep";
+import BioParentsStep from "../quickStartWizard/BioParentsStep";
+import ChildrenDetailStep from "../quickStartWizard/ChildrenDetailStep";
+import OtherParentsStep from "../quickStartWizard/OtherParentsStep";
+import ParentPartnershipsStep from "../quickStartWizard/ParentPartnershipsStep";
+import PartnerAndChildrenStep from "../quickStartWizard/PartnerAndChildrenStep";
+import { type EgoCellResult, egoCellTransform } from "./transforms/egoCellTransform";
 
 type EgoCellWizardProps = {
 	egoId?: string;

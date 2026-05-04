@@ -6,9 +6,9 @@ import Field from "@codaco/fresco-ui/form/Field/Field";
 import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import RichSelectGroupField from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
-import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/fieldOptions";
-import PersonFields from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/PersonFields";
-import type { CommitBatch, VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { CommitBatch, VariableConfig } from "../../store";
+import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "../quickStartWizard/fieldOptions";
+import PersonFields from "../quickStartWizard/PersonFields";
 
 const KNOWN_PERSON_KEYS = new Set(["name"]);
 

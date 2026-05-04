@@ -1,9 +1,9 @@
 import { entityPrimaryKeyProperty, type NcEdge, type NcNode } from "@codaco/shared-consts";
 import { clamp } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CanvasStoreApi } from "~/lib/interviewer/canvas/useCanvasStore";
-import { useContractFlags } from "~/lib/interviewer/contract/context";
-import type { AppDispatch } from "~/lib/interviewer/store";
+import type { CanvasStoreApi } from "../../canvas/useCanvasStore";
+import { useContractFlags } from "../../contract/context";
+import type { AppDispatch } from "../../store";
 
 const SIM_RANGE = 250;
 

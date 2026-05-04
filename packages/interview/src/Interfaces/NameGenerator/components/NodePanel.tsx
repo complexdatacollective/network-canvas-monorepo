@@ -4,12 +4,12 @@ import type { Panel as PanelType } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { useCallback, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
-import NodeList from "~/lib/interviewer/components/NodeList";
-import Panel from "~/lib/interviewer/components/Panel";
-import useExternalData from "~/lib/interviewer/hooks/useExternalData";
-import ExternalNodeItem from "~/lib/interviewer/Interfaces/NameGenerator/components/ExternalNodeItem";
-import { getPanelNodes } from "~/lib/interviewer/selectors/name-generator";
-import { getStageSubject } from "~/lib/interviewer/selectors/session";
+import NodeList from "../../../components/NodeList";
+import Panel from "../../../components/Panel";
+import useExternalData from "../../../hooks/useExternalData";
+import { getPanelNodes } from "../../../selectors/name-generator";
+import { getStageSubject } from "../../../selectors/session";
+import ExternalNodeItem from "./ExternalNodeItem";
 
 type NodePanelProps = {
 	panelConfig: PanelType;

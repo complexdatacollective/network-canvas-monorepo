@@ -2,9 +2,9 @@ import { useDropTarget } from "@codaco/fresco-ui/dnd/dnd";
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcEdge, type NcNode } from "@codaco/shared-consts";
 import { clamp } from "es-toolkit";
 import { type ReactNode, type RefCallback, useCallback, useEffect, useRef } from "react";
-import CanvasNode from "~/lib/interviewer/canvas/CanvasNode";
-import EdgeLayer from "~/lib/interviewer/canvas/EdgeLayer";
-import type { CanvasStoreApi } from "~/lib/interviewer/canvas/useCanvasStore";
+import CanvasNode from "./CanvasNode";
+import EdgeLayer from "./EdgeLayer";
+import type { CanvasStoreApi } from "./useCanvasStore";
 
 type CanvasProps = {
 	background: ReactNode;

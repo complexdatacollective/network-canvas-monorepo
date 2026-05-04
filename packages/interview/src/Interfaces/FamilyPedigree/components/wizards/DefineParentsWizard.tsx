@@ -1,14 +1,11 @@
 import type useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import ParentPartnershipsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/ParentPartnershipsStep";
-import GenericAdditionalParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/GenericAdditionalParentsStep";
-import GenericBioParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/GenericBioParentsStep";
-import GenericOtherParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/GenericOtherParentsStep";
-import {
-	type EgoCellResult,
-	egoCellTransform,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/transforms/egoCellTransform";
-import type { CommitBatch, VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { CommitBatch, VariableConfig } from "../../store";
+import ParentPartnershipsStep from "../quickStartWizard/ParentPartnershipsStep";
+import GenericAdditionalParentsStep from "./steps/GenericAdditionalParentsStep";
+import GenericBioParentsStep from "./steps/GenericBioParentsStep";
+import GenericOtherParentsStep from "./steps/GenericOtherParentsStep";
+import { type EgoCellResult, egoCellTransform } from "./transforms/egoCellTransform";
 
 function getNodeDisplayName(nodeId: string, nodes: Map<string, NcNode>, variableConfig: VariableConfig): string {
 	const node = nodes.get(nodeId);

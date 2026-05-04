@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import ConcentricCircles from "~/lib/interviewer/components/ConcentricCircles";
+import ConcentricCircles from "./ConcentricCircles";
 
 const meta: Meta<typeof ConcentricCircles> = {
 	title: "Interview/Components/ConcentricCircles",

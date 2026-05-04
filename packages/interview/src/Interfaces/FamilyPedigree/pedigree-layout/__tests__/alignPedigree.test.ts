@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { alignPedigree } from "../alignPedigree";
+import { computeConnectors } from "../connectors";
+import type { ParentConnection, PedigreeInput, ScalingParams } from "../types";
 import {
 	blendedFamily,
 	crossFamily,
@@ -11,14 +14,7 @@ import {
 	threeGeneration,
 	twinFamily,
 	wideFamily,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/__tests__/fixtures";
-import { alignPedigree } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/alignPedigree";
-import { computeConnectors } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/connectors";
-import type {
-	ParentConnection,
-	PedigreeInput,
-	ScalingParams,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+} from "./fixtures";
 
 describe("alignPedigree", () => {
 	it("lays out a nuclear family", () => {

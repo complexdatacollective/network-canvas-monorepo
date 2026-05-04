@@ -4,9 +4,9 @@ import Surface from "@codaco/fresco-ui/layout/Surface";
 import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { useEffect } from "react";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import useReadyForNextStage from "~/lib/interviewer/hooks/useReadyForNextStage";
-import type { BeforeNextFunction } from "~/lib/interviewer/types";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import type { BeforeNextFunction } from "../../types";
 
 type IntroPanelProps = {
 	title: string;

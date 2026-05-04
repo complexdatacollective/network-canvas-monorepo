@@ -5,8 +5,8 @@ import type { FieldValue } from "@codaco/fresco-ui/form/Field/types";
 import FieldNamespace from "@codaco/fresco-ui/form/FieldNamespace";
 import InputField from "@codaco/fresco-ui/form/fields/InputField";
 import { useSelector } from "react-redux";
-import useProtocolForm from "~/lib/interviewer/forms/useProtocolForm";
-import { getNodeForm, getNodeType } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
+import useProtocolForm from "../../../../forms/useProtocolForm";
+import { getNodeForm, getNodeType } from "../../utils/nodeUtils";
 
 type PersonFieldsProps = {
 	namespace?: string;

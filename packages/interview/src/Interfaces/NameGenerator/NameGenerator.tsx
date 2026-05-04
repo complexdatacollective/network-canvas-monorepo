@@ -14,12 +14,8 @@ import { has } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSelector } from "react-redux";
-import useMediaQuery from "~/hooks/useMediaQuery";
-import usePortalTarget from "~/hooks/usePortalTarget";
-import NodeBin from "~/lib/interviewer/components/NodeBin";
-import NodeList from "~/lib/interviewer/components/NodeList";
-import useNodeLimits from "~/lib/interviewer/hooks/useNodeLimits";
-import type { StageProps } from "~/lib/interviewer/types";
+import NodeBin from "../../components/NodeBin";
+import NodeList from "../../components/NodeList";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
 import {
@@ -27,9 +23,13 @@ import {
 	addNodeToPrompt as addNodeToPromptAction,
 	deleteNode as deleteNodeAction,
 } from "../../ducks/modules/session";
+import useMediaQuery from "../../hooks/useMediaQuery";
+import useNodeLimits from "../../hooks/useNodeLimits";
+import usePortalTarget from "../../hooks/usePortalTarget";
 import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
 import { getNetworkNodesForPrompt, getPromptAdditionalAttributes, getStageNodeCount } from "../../selectors/session";
 import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
 import { usePassphrase } from "../Anonymisation/usePassphrase";
 import { decryptData } from "../Anonymisation/utils";
 import NodeForm from "./components/NodeForm";

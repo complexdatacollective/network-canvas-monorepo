@@ -1,6 +1,6 @@
 "use client";
 
-import UIPrompts from "~/lib/interviewer/components/Prompts/Prompts";
+import UIPrompts from "./Prompts/Prompts";
 import { usePrompts } from "./Prompts/usePrompts";
 
 const Prompts = ({ small }: { small?: boolean }) => {

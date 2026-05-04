@@ -7,7 +7,6 @@ import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import type { StageProps } from "~/lib/interviewer/types";
 import NodeDrawer from "../../components/NodeDrawer";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
@@ -16,6 +15,7 @@ import useReadyForNextStage from "../../hooks/useReadyForNextStage";
 import { makeGetCodebookForNodeType } from "../../selectors/protocol";
 import { getNodeColorSelector } from "../../selectors/session";
 import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import CategoricalBinItem from "./components/CategoricalBinItem";
 import { useCategoricalBins } from "./useCategoricalBins";

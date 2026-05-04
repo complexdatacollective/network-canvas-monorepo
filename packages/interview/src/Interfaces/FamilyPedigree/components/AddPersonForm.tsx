@@ -6,10 +6,10 @@ import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import RichSelectGroupField from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { useSelector } from "react-redux";
-import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/fieldOptions";
-import PersonFields from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/PersonFields";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
-import { getNodeLabelVariable } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
+import type { VariableConfig } from "../store";
+import { getNodeLabelVariable } from "../utils/nodeUtils";
+import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "./quickStartWizard/fieldOptions";
+import PersonFields from "./quickStartWizard/PersonFields";
 
 export type AddPersonMode = "parent" | "child" | "partner" | "sibling";
 

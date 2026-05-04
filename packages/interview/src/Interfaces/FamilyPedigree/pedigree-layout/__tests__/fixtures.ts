@@ -1,9 +1,4 @@
-import type {
-	ParentConnection,
-	PartnerConnection,
-	PedigreeInput,
-	Relation,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+import type { ParentConnection, PartnerConnection, PedigreeInput, Relation } from "../types";
 
 const sp = (parentIndex: number): ParentConnection => ({
 	parentIndex,

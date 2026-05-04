@@ -8,11 +8,11 @@ import {
 } from "@codaco/shared-consts";
 import { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import Node from "~/lib/interviewer/components/ConnectedNode";
-import { updateNode } from "~/lib/interviewer/ducks/modules/session";
-import { getNetworkNodesForType } from "~/lib/interviewer/selectors/session";
-import { useAppDispatch } from "~/lib/interviewer/store";
-import type { StageProps } from "~/lib/interviewer/types";
+import Node from "../../components/ConnectedNode";
+import { updateNode } from "../../ducks/modules/session";
+import { getNetworkNodesForType } from "../../selectors/session";
+import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
 import IntroPanel from "../SlidesForm/IntroPanel";
 import SlidesForm from "../SlidesForm/SlidesForm";
 

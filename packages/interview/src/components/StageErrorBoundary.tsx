@@ -4,7 +4,7 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import posthog from "posthog-js";
 import React, { Component, type ReactNode } from "react";
-import CopyDebugInfoButton from "~/components/CopyDebugInfoButton";
+import CopyDebugInfoButton from "./CopyDebugInfoButton";
 
 type StageErrorBoundaryProps = {
 	children: ReactNode;

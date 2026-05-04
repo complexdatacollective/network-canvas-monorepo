@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useContractHandlers } from "~/lib/interviewer/contract/context";
+import { useContractHandlers } from "../contract/context";
 
 type AssetUrlState = {
 	url: string | null;

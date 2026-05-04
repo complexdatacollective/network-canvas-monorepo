@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useMemo } from "react";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "~/lib/interviewer/utils/SyntheticInterview/SyntheticInterview";
-import type { VariableOption } from "~/lib/interviewer/utils/SyntheticInterview/types";
+import { SyntheticInterview } from "../../utils/SyntheticInterview/SyntheticInterview";
+import type { VariableOption } from "../../utils/SyntheticInterview/types";
 
 const ORDINAL_LABELS = [
 	"Strongly Disagree",

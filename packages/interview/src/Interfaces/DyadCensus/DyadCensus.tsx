@@ -5,26 +5,26 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import Prompts from "~/lib/interviewer/components/Prompts";
-import { usePrompts } from "~/lib/interviewer/components/Prompts/usePrompts";
+import Prompts from "../../components/Prompts";
+import { usePrompts } from "../../components/Prompts/usePrompts";
 import {
 	addEdge,
 	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
-} from "~/lib/interviewer/ducks/modules/session";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import useStageValidation from "~/lib/interviewer/hooks/useStageValidation";
+} from "../../ducks/modules/session";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import useStageValidation from "../../hooks/useStageValidation";
+import { getNodePairs } from "../../selectors/dyad-census";
 import {
 	getEdgeColorForType,
 	getNetworkEdges,
 	getNetworkNodesForType,
 	getStageMetadata,
-} from "~/lib/interviewer/selectors/session";
-import { useAppDispatch } from "~/lib/interviewer/store";
-import type { StageProps } from "~/lib/interviewer/types";
-import { getNodePairs } from "../../selectors/dyad-census";
+} from "../../selectors/session";
+import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
 import Pair from "./components/Pair";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";
 

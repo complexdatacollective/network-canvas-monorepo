@@ -12,11 +12,11 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import { ArrowRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef } from "react";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import { useCelebrate } from "~/lib/interviewer/hooks/useCelebrate";
-import useReadyForNextStage from "~/lib/interviewer/hooks/useReadyForNextStage";
-import type { StageProps } from "~/lib/interviewer/types";
 import EncryptionBackground from "../../components/EncryptedBackground";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import { useCelebrate } from "../../hooks/useCelebrate";
+import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import type { StageProps } from "../../types";
 import { usePassphrase } from "./usePassphrase";
 
 type AnonymisationProps = StageProps<"Anonymisation">;

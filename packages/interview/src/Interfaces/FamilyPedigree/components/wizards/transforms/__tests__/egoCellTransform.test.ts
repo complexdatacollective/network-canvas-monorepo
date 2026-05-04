@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { egoCellTransform } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/transforms/egoCellTransform";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { VariableConfig } from "../../../../store";
+import { egoCellTransform } from "../egoCellTransform";
 
 const variableConfig: VariableConfig = {
 	nodeType: "person",

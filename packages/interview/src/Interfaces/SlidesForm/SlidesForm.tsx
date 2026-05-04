@@ -28,13 +28,13 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useScrolledToBottom } from "~/hooks/useScrolledToBottom";
-import useProtocolForm from "~/lib/interviewer/forms/useProtocolForm";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import type { BeforeNextFunction, Direction } from "~/lib/interviewer/types";
+import useProtocolForm from "../../forms/useProtocolForm";
+import useBeforeNext from "../../hooks/useBeforeNext";
 import useInterviewNavigation from "../../hooks/useInterviewNavigation";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import { useScrolledToBottom } from "../../hooks/useScrolledToBottom";
 import type { Subject } from "../../selectors/forms";
+import type { BeforeNextFunction, Direction } from "../../types";
 
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
 	form: Form;

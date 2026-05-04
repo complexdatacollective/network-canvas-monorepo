@@ -8,9 +8,9 @@ import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from 
 import { motion, animate as motionAnimate } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import Node from "~/lib/interviewer/components/ConnectedNode";
-import { makeGetCodebookVariablesForNodeType } from "~/lib/interviewer/selectors/protocol";
-import { getNodeLabelAttribute } from "~/lib/interviewer/utils/getNodeLabelAttribute";
+import { makeGetCodebookVariablesForNodeType } from "../selectors/protocol";
+import { getNodeLabelAttribute } from "../utils/getNodeLabelAttribute";
+import Node from "./ConnectedNode";
 
 // Props that NodeList always provides internally — consumers can't override these
 type InternalCollectionProps =

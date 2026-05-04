@@ -7,36 +7,25 @@ import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { useNodeMeasurement } from "~/hooks/useNodeMeasurement";
-import AddPersonFields, {
-	type AddPersonMode,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/components/AddPersonForm";
-import { openAddChildWizard } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/AddChildWizard";
-import { openAddParentWizard } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/AddParentWizard";
-import { openAddSiblingWizard } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/AddSiblingWizard";
-import { openDefineParentsWizard } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/DefineParentsWizard";
-import { useFamilyPedigreeStore } from "~/lib/interviewer/Interfaces/FamilyPedigree/FamilyPedigreeProvider";
-import NodeContextMenu, {
-	type NodeContextMenuAction,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/NodeContextMenu";
-import PedigreeLayout from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout";
-import PedigreeNode, {
-	computeNodeDisplayLabels,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import { useNodeMeasurement } from "../../../../hooks/useNodeMeasurement";
+import AddPersonFields, { type AddPersonMode } from "../../components/AddPersonForm";
+import { openAddChildWizard } from "../../components/wizards/AddChildWizard";
+import { openAddParentWizard } from "../../components/wizards/AddParentWizard";
+import { openAddSiblingWizard } from "../../components/wizards/AddSiblingWizard";
+import { openDefineParentsWizard } from "../../components/wizards/DefineParentsWizard";
+import { useFamilyPedigreeStore } from "../../FamilyPedigreeProvider";
+import type { ParentEdge } from "../../schema";
+import type { VariableConfig } from "../../store";
 import {
 	getEdgeTypeKey,
 	getIsActiveVariable,
 	getIsGestationalCarrierVariable,
 	getRelationshipTypeVariable,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/edgeUtils";
-import {
-	getEgoVariable,
-	getNodeLabelVariable,
-	getNodeTypeKey,
-	getResolvedNodeFormFields,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
-import type { ParentEdge } from "~/schemas/familyPedigree";
+} from "../../utils/edgeUtils";
+import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey, getResolvedNodeFormFields } from "../../utils/nodeUtils";
+import NodeContextMenu, { type NodeContextMenuAction } from "./NodeContextMenu";
+import PedigreeLayout from "./PedigreeLayout";
+import PedigreeNode, { computeNodeDisplayLabels } from "./PedigreeNode";
 
 type PedigreeViewProps = {
 	overrideNodes?: Map<string, NcNode>;

@@ -12,9 +12,9 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import type { VariableOption } from "~/lib/codebook";
-import { getCodebook } from "~/lib/interviewer/ducks/modules/protocol";
-import { getSubjectType } from "~/lib/interviewer/selectors/session";
+import { getCodebook } from "../../ducks/modules/protocol";
+import { getSubjectType } from "../../selectors/session";
+import type { VariableOption } from "../../utils/codebook";
 
 type NarrativeStage = Extract<Stage, { type: "Narrative" }>;
 type Preset = NarrativeStage["presets"][number];

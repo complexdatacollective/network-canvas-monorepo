@@ -3,11 +3,11 @@ import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { useClickUnlessDragged } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/useClickUnlessDragged";
-import { computeAllDisplayLabels } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
-import { getNodeShapeDefinition } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
-import { getNodeColorSelector, resolveNodeShape } from "~/lib/interviewer/selectors/session";
+import { getNodeColorSelector, resolveNodeShape } from "../../../../selectors/session";
+import type { VariableConfig } from "../../store";
+import { getNodeShapeDefinition } from "../../utils/nodeUtils";
+import { useClickUnlessDragged } from "../useClickUnlessDragged";
+import { computeAllDisplayLabels } from "../utils/getDisplayLabel";
 
 export function AdoptionBrackets({ children }: { children: React.ReactNode }) {
 	const bracketStyle = "absolute top-1 bottom-1 w-1.5 border-white/80 border-y-2";

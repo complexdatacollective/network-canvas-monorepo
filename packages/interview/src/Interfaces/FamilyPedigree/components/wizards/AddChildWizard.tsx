@@ -1,18 +1,13 @@
 import type useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import PersonFields from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/PersonFields";
-import BioTriadStep, {
-	type BioTriadConfig,
-	BioTriadConfigProvider,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/BioTriadStep";
-import GenericAdditionalParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/GenericAdditionalParentsStep";
-import GenericOtherParentsStep from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/GenericOtherParentsStep";
-import NewParentPartnershipsStep, {
-	shouldSkipNewParentPartnerships,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/NewParentPartnershipsStep";
-import { childCellTransform } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/transforms/childCellTransform";
-import type { CommitBatch, VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { CommitBatch, VariableConfig } from "../../store";
+import PersonFields from "../quickStartWizard/PersonFields";
+import BioTriadStep, { type BioTriadConfig, BioTriadConfigProvider } from "./steps/BioTriadStep";
+import GenericAdditionalParentsStep from "./steps/GenericAdditionalParentsStep";
+import GenericOtherParentsStep from "./steps/GenericOtherParentsStep";
+import NewParentPartnershipsStep, { shouldSkipNewParentPartnerships } from "./steps/NewParentPartnershipsStep";
+import { childCellTransform } from "./transforms/childCellTransform";
 
 function buildNodeOptions(
 	nodes: Map<string, NcNode>,

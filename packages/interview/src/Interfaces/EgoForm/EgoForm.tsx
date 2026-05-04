@@ -14,14 +14,14 @@ import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { useScrolledToBottom } from "~/hooks/useScrolledToBottom";
-import useProtocolForm from "~/lib/interviewer/forms/useProtocolForm";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import type { BeforeNextFunction, StageProps } from "~/lib/interviewer/types";
 import { updateEgo } from "../../ducks/modules/session";
+import useProtocolForm from "../../forms/useProtocolForm";
+import useBeforeNext from "../../hooks/useBeforeNext";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import { useScrolledToBottom } from "../../hooks/useScrolledToBottom";
 import { getEgoAttributes } from "../../selectors/session";
 import { useAppDispatch } from "../../store";
+import type { BeforeNextFunction, StageProps } from "../../types";
 
 type EgoFormProps = StageProps<"EgoForm">;
 

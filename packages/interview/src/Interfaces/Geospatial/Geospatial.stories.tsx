@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useMemo } from "react";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "~/lib/interviewer/utils/SyntheticInterview/SyntheticInterview";
+import { SyntheticInterview } from "../../utils/SyntheticInterview/SyntheticInterview";
 
 // Requires STORYBOOK_MAPBOX_TOKEN env var to be set
 const MAPBOX_TOKEN = import.meta.env.STORYBOOK_MAPBOX_TOKEN as string;

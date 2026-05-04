@@ -9,8 +9,8 @@ export type ExtendedMapOptions = MapOptions & {
 import mapboxgl from "mapbox-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { useContractFlags } from "~/lib/interviewer/contract/context";
-import { makeGetApiKeyAssetValue } from "~/lib/interviewer/selectors/protocol";
+import { useContractFlags } from "../../contract/context";
+import { makeGetApiKeyAssetValue } from "../../selectors/protocol";
 
 const MAP_CONSTS = {
 	FILL_OPACITY: 0.5,

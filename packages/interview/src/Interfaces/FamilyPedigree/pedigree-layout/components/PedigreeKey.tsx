@@ -1,9 +1,6 @@
 "use client";
 
-import {
-	DASHED_PATTERN,
-	EDGE_WIDTH,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/EdgeRenderer";
+import { DASHED_PATTERN, EDGE_WIDTH } from "./EdgeRenderer";
 
 type KeyEntry = {
 	label: string;

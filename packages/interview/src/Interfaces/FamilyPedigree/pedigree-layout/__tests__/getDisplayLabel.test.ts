@@ -1,7 +1,7 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import { getDisplayLabel } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { VariableConfig } from "../../store";
+import { getDisplayLabel } from "../utils/getDisplayLabel";
 
 const variableConfig: VariableConfig = {
 	nodeType: "person",

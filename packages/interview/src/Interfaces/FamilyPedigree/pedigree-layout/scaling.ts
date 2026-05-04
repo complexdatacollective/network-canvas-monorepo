@@ -1,4 +1,4 @@
-import type { PedigreeLayout, ScalingParams } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+import type { PedigreeLayout, ScalingParams } from "./types";
 
 /**
  * Compute scaling parameters for pedigree rendering.

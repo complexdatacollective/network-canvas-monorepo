@@ -1,8 +1,8 @@
 import type { Codebook } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
-import { getCodebook } from "~/lib/interviewer/ducks/modules/protocol";
-import { getCurrentStage } from "~/lib/interviewer/selectors/session";
+import { getCodebook } from "../../../ducks/modules/protocol";
+import { getCurrentStage } from "../../../selectors/session";
 
 const getNodeConfig = createSelector(getCurrentStage, (stage) => {
 	invariant(stage.type === "FamilyPedigree", "Stage must be FamilyPedigree");

@@ -3,10 +3,10 @@ import type { NcNode } from "@codaco/shared-consts";
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { useContractHandlers } from "~/lib/interviewer/contract/context";
-import { getVariableTypeReplacements } from "~/lib/interviewer/utils/externalData";
-import { ensureError } from "~/utils/ensureError";
+import { useContractHandlers } from "../contract/context";
 import { getAssetManifest, getCodebook } from "../ducks/modules/protocol";
+import { ensureError } from "../utils/ensureError";
+import { getVariableTypeReplacements } from "../utils/externalData";
 import loadExternalData, { makeVariableUUIDReplacer } from "../utils/loadExternalData";
 
 const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject | null) => {

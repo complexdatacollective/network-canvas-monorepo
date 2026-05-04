@@ -5,13 +5,13 @@ import type { SortOrder } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { motion } from "motion/react";
 import { memo } from "react";
-import useMediaQuery from "~/hooks/useMediaQuery";
-import { getEntityAttributes } from "~/utils/networkEntities";
 import NodeList from "../../../components/NodeList";
 import { usePrompts } from "../../../components/Prompts/usePrompts";
 import { updateNode } from "../../../ducks/modules/session";
+import useMediaQuery from "../../../hooks/useMediaQuery";
 import useSortedNodeList from "../../../hooks/useSortedNodeList";
 import { useAppDispatch } from "../../../store";
+import { getEntityAttributes } from "../../../utils/networkEntities";
 import type { OrdinalBinItem as OrdinalBinItemType } from "../useOrdinalBins";
 
 type OrdinalBinItemProps = {

@@ -1,6 +1,6 @@
 import { createElement, useEffect, useRef } from "react";
-import useReadyForNextStage from "~/lib/interviewer/hooks/useReadyForNextStage";
-import useStageValidation from "~/lib/interviewer/hooks/useStageValidation";
+import useReadyForNextStage from "./useReadyForNextStage";
+import useStageValidation from "./useStageValidation";
 
 type UseNodeLimitsOptions = {
 	stageNodeCount: number;

@@ -1,8 +1,8 @@
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { type RefObject, useCallback } from "react";
-import { useCanvasDrag } from "~/lib/interviewer/canvas/useCanvasDrag";
-import { type CanvasStoreApi, useCanvasStore } from "~/lib/interviewer/canvas/useCanvasStore";
-import Node from "~/lib/interviewer/components/ConnectedNode";
+import Node from "../components/ConnectedNode";
+import { useCanvasDrag } from "./useCanvasDrag";
+import { type CanvasStoreApi, useCanvasStore } from "./useCanvasStore";
 
 type CanvasNodeProps = {
 	node: NcNode;

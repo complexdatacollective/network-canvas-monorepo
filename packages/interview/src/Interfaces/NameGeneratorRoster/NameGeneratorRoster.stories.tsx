@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "~/lib/interviewer/utils/SyntheticInterview/SyntheticInterview";
+import { SyntheticInterview } from "../../utils/SyntheticInterview/SyntheticInterview";
 
 const ROSTER_SIZES = [50, 100, 1000, 5000, 50000] as const;
 type RosterSize = (typeof ROSTER_SIZES)[number];

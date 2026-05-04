@@ -1,7 +1,7 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import { childCellTransform } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/transforms/childCellTransform";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { VariableConfig } from "../../../../store";
+import { childCellTransform } from "../childCellTransform";
 
 const variableConfig: VariableConfig = {
 	nodeType: "person",

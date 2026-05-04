@@ -5,7 +5,7 @@ import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import { useFormValue } from "@codaco/fresco-ui/form/hooks/useFormValue";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { useContext, useMemo } from "react";
-import { BioTriadConfigContext } from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/steps/BioTriadStep";
+import { BioTriadConfigContext } from "./BioTriadStep";
 
 const partnershipOptions = [
 	{ value: "current", label: "Current partners" },

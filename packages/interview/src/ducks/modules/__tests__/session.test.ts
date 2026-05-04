@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
-import { addEdge, addNode, createInitialNetwork, updateEgo } from "~/lib/interviewer/ducks/modules/session";
+import { addEdge, addNode, createInitialNetwork, updateEgo } from "../session";
 
 /**
  * Minimal store setup for testing session thunks.

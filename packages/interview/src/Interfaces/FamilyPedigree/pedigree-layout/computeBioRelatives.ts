@@ -1,5 +1,5 @@
 import type { NcEdge } from "@codaco/shared-consts";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { VariableConfig } from "../store";
 
 /**
  * Compute which nodes are biological relatives of ego.

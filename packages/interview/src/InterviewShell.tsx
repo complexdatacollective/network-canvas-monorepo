@@ -6,21 +6,21 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
-import useMediaQuery from "~/hooks/useMediaQuery";
-import { InterviewToastProvider } from "~/lib/interviewer/components/InterviewToast";
-import Navigation from "~/lib/interviewer/components/Navigation";
-import StageErrorBoundary from "~/lib/interviewer/components/StageErrorBoundary";
-import { StageMetadataProvider } from "~/lib/interviewer/contexts/StageMetadataContext";
-import { ContractProvider } from "~/lib/interviewer/contract/context";
+import { InterviewToastProvider } from "./components/InterviewToast";
+import Navigation from "./components/Navigation";
+import StageErrorBoundary from "./components/StageErrorBoundary";
+import { StageMetadataProvider } from "./contexts/StageMetadataContext";
+import { ContractProvider } from "./contract/context";
 import type {
 	AssetRequestHandler,
 	FinishHandler,
 	InterviewerFlags,
 	InterviewPayload,
 	SyncHandler,
-} from "~/lib/interviewer/contract/types";
-import useInterviewNavigation from "~/lib/interviewer/hooks/useInterviewNavigation";
-import { store } from "~/lib/interviewer/store";
+} from "./contract/types";
+import useInterviewNavigation from "./hooks/useInterviewNavigation";
+import useMediaQuery from "./hooks/useMediaQuery";
+import { store } from "./store";
 
 const variants = {
 	initial: { opacity: 0 },

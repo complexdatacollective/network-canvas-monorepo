@@ -1,7 +1,7 @@
 import { configureStore, createAction, type UnknownAction } from "@reduxjs/toolkit";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import type { SessionState } from "~/lib/interviewer/ducks/modules/session";
-import { createSyncMiddleware } from "~/lib/interviewer/middleware/syncMiddleware";
+import type { SessionState } from "../../ducks/modules/session";
+import { createSyncMiddleware } from "../syncMiddleware";
 
 // --- Helpers ---
 

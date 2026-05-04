@@ -1,7 +1,7 @@
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { icons } from "lucide-react";
-import ActionButton from "~/lib/interviewer/components/ActionButton";
+import ActionButton from "./ActionButton";
 
 const meta: Meta<typeof ActionButton> = {
 	title: "Interview/Components/ActionButton",

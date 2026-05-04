@@ -1,8 +1,8 @@
 "use client";
 
 import { useContext, useEffect, useRef } from "react";
-import { StageMetadataContext } from "~/lib/interviewer/contexts/StageMetadataContext";
-import type { BeforeNextFunction } from "~/lib/interviewer/types";
+import { StageMetadataContext } from "../contexts/StageMetadataContext";
+import type { BeforeNextFunction } from "../types";
 
 export default function useBeforeNext(handler: BeforeNextFunction) {
 	const registerBeforeNext = useContext(StageMetadataContext);

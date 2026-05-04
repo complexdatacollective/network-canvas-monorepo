@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getShouldEncryptNames } from "~/lib/interviewer/ducks/modules/protocol";
+import { getShouldEncryptNames } from "../../ducks/modules/protocol";
 import {
 	getPassphrase,
 	getPassphraseInvalid,
@@ -8,7 +8,7 @@ import {
 	setPassphraseInvalid as setPassphraseInvalidAction,
 	setShowPassphrasePrompter,
 	showPassphrasePrompter,
-} from "~/lib/interviewer/ducks/modules/ui";
+} from "../../ducks/modules/ui";
 
 export const usePassphrase = () => {
 	const dispatch = useDispatch();

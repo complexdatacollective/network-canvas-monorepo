@@ -1,4 +1,4 @@
-import type { ResolvedAsset } from "~/lib/interviewer/contract/types";
+import type { ResolvedAsset } from "./types";
 
 const validAssetTypes = [
 	"image",

@@ -9,12 +9,12 @@ import {
 import { invariant } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { useSelector } from "react-redux";
-import useExternalData from "~/lib/interviewer/hooks/useExternalData";
-import { getStageCardOptions } from "~/lib/interviewer/selectors/name-generator";
-import { getNetworkNodes, getNodeTypeDefinition } from "~/lib/interviewer/selectors/session";
-import { getNodeLabelAttribute } from "~/lib/interviewer/utils/getNodeLabelAttribute";
-import getParentKeyByNameValue from "~/lib/interviewer/utils/getParentKeyByNameValue";
-import { getEntityAttributes } from "~/utils/networkEntities";
+import useExternalData from "../../hooks/useExternalData";
+import { getStageCardOptions } from "../../selectors/name-generator";
+import { getNetworkNodes, getNodeTypeDefinition } from "../../selectors/session";
+import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
+import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
+import { getEntityAttributes } from "../../utils/networkEntities";
 import type { NameGeneratorRosterProps } from "./helpers";
 
 /**

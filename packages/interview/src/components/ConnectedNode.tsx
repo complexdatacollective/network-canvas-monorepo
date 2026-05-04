@@ -5,9 +5,9 @@ import { motion } from "motion/react";
 import type React from "react";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { getNetworkNodes, resolveNodeShape } from "~/lib/interviewer/selectors/session";
 import { getCodebook } from "../ducks/modules/protocol";
 import { useNodeLabel } from "../Interfaces/Anonymisation/useNodeLabel";
+import { getNetworkNodes, resolveNodeShape } from "../selectors/session";
 
 type ConnectedNodeProps = Omit<React.ComponentProps<typeof UINode>, "type" | "shape" | "color" | "label"> & {
 	nodeId: NcNode[typeof entityPrimaryKeyProperty];

@@ -7,9 +7,9 @@ import {
 	addNode as addNodeToNetwork,
 	deleteNode,
 	updateStageMetadata,
-} from "~/lib/interviewer/ducks/modules/session";
-import { computeAllDisplayLabels } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel";
-import type { useAppDispatch } from "~/lib/interviewer/store";
+} from "../../ducks/modules/session";
+import type { useAppDispatch } from "../../store";
+import { computeAllDisplayLabels } from "./pedigree-layout/utils/getDisplayLabel";
 
 enableMapSet();
 

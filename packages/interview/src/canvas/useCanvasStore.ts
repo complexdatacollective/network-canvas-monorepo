@@ -2,8 +2,8 @@ import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from 
 import { clamp } from "es-toolkit";
 import { createStore, useStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { updateNode } from "~/lib/interviewer/ducks/modules/session";
-import type { AppDispatch } from "~/lib/interviewer/store";
+import { updateNode } from "../ducks/modules/session";
+import type { AppDispatch } from "../store";
 
 type Position = { x: number; y: number };
 type CanvasDimensions = { width: number; height: number };

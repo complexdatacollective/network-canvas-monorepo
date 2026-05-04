@@ -18,25 +18,25 @@ import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shar
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
-import Loading from "~/lib/interviewer/components/Loading";
-import NodeList from "~/lib/interviewer/components/NodeList";
-import Panel from "~/lib/interviewer/components/Panel";
-import Prompts from "~/lib/interviewer/components/Prompts";
-import { usePrompts } from "~/lib/interviewer/components/Prompts/usePrompts";
-import { addNode, deleteNode } from "~/lib/interviewer/ducks/modules/session";
-import useNodeLimits from "~/lib/interviewer/hooks/useNodeLimits";
-import { getNodeVariables } from "~/lib/interviewer/selectors/interface";
-import { getSearchOptions, getSortOptions } from "~/lib/interviewer/selectors/name-generator";
-import { getCodebookVariablesForSubjectType } from "~/lib/interviewer/selectors/protocol";
+import Loading from "../../components/Loading";
+import NodeList from "../../components/NodeList";
+import Panel from "../../components/Panel";
+import Prompts from "../../components/Prompts";
+import { usePrompts } from "../../components/Prompts/usePrompts";
+import { addNode, deleteNode } from "../../ducks/modules/session";
+import useNodeLimits from "../../hooks/useNodeLimits";
+import { getNodeVariables } from "../../selectors/interface";
+import { getSearchOptions, getSortOptions } from "../../selectors/name-generator";
+import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
 import {
 	getNetworkNodesForPrompt,
 	getNodeColorSelector,
 	getPromptAdditionalAttributes,
 	getStageNodeCount,
-} from "~/lib/interviewer/selectors/session";
-import { useAppDispatch } from "~/lib/interviewer/store";
-import { mapNCType } from "~/lib/interviewer/utils/createSorter";
-import getParentKeyByNameValue from "~/lib/interviewer/utils/getParentKeyByNameValue";
+} from "../../selectors/session";
+import { useAppDispatch } from "../../store";
+import { mapNCType } from "../../utils/createSorter";
+import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
 import { usePassphrase } from "../Anonymisation/usePassphrase";
 import DataCard from "./DataCard";
 import DropOverlay from "./DropOverlay";

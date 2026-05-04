@@ -1,17 +1,10 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, test } from "vitest";
-import { alignPedigree } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/alignPedigree";
-import {
-	computeLayoutMetrics,
-	type LayoutDimensions,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/layoutDimensions";
-import {
-	buildConnectorData,
-	pedigreeLayoutToPositions,
-	storeToPedigreeInput,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/pedigreeAdapter";
-import type { PedigreeLayout } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { VariableConfig } from "../../store";
+import { alignPedigree } from "../alignPedigree";
+import { computeLayoutMetrics, type LayoutDimensions } from "../layoutDimensions";
+import { buildConnectorData, pedigreeLayoutToPositions, storeToPedigreeInput } from "../pedigreeAdapter";
+import type { PedigreeLayout } from "../types";
 
 const variableConfig: VariableConfig = {
 	nodeType: "person",

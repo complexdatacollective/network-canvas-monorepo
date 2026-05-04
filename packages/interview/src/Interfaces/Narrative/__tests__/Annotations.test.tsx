@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import Annotations from "~/lib/interviewer/Interfaces/Narrative/Annotations";
+import Annotations from "../Annotations";
 
 afterEach(cleanup);
 

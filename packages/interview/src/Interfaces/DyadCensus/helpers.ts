@@ -1,5 +1,5 @@
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
-import type { DyadCensusMetadataItem } from "~/lib/interviewer/ducks/modules/session";
+import type { DyadCensusMetadataItem } from "../../ducks/modules/session";
 
 type Pair = [string, string];
 

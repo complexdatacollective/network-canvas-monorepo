@@ -2,8 +2,8 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { EdgeColor } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { motion } from "motion/react";
-import Node from "~/lib/interviewer/components/ConnectedNode";
-import { edgeColorMap } from "~/lib/interviewer/utils/edgeColorMap";
+import Node from "../../components/ConnectedNode";
+import { edgeColorMap } from "../../utils/edgeColorMap";
 
 const pairVariants = {
 	initial: (isForwards: boolean) => ({

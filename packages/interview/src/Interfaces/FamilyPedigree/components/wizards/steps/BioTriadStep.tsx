@@ -7,7 +7,7 @@ import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import PersonFields from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/PersonFields";
+import PersonFields from "../../quickStartWizard/PersonFields";
 
 type NodeOption = {
 	value: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef } from "react";
-import type { AssetRequestHandler, FinishHandler, InterviewerFlags } from "~/lib/interviewer/contract/types";
+import type { AssetRequestHandler, FinishHandler, InterviewerFlags } from "./types";
 
 type ContractHandlers = {
 	onFinish: FinishHandler;

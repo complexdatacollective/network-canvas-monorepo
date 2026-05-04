@@ -1,6 +1,6 @@
 import { useDragSource } from "@codaco/fresco-ui/dnd/dnd";
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
-import { ConnectedMotionNode } from "~/lib/interviewer/components/ConnectedNode";
+import { ConnectedMotionNode } from "../../components/ConnectedNode";
 
 type DrawerNodeProps = {
 	node: NcNode;

@@ -9,8 +9,8 @@ import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { useSelector } from "react-redux";
-import useProtocolForm from "~/lib/interviewer/forms/useProtocolForm";
-import { getNodeForm, getNodeType } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
+import useProtocolForm from "../../../../forms/useProtocolForm";
+import { getNodeForm, getNodeType } from "../../utils/nodeUtils";
 
 const PARENT_ROLE_OPTIONS = [
 	{ value: "step-parent", label: "Step-parent" },

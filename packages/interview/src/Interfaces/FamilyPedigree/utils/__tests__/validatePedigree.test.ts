@@ -1,7 +1,7 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
-import { validatePedigreeCompleteness } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/validatePedigree";
+import type { VariableConfig } from "../../store";
+import { validatePedigreeCompleteness } from "../validatePedigree";
 
 const variableConfig: VariableConfig = {
 	nodeType: "person",

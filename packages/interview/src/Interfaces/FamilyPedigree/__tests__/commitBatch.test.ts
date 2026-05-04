@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFamilyPedigreeStore, type VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import { createFamilyPedigreeStore, type VariableConfig } from "../store";
 
 const variableConfig: VariableConfig = {
 	nodeType: "person",

@@ -8,9 +8,9 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, LayoutGroup, motion, useMotionValue } from "motion/react";
 import { type RefObject, useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { useFamilyPedigreeStore } from "~/lib/interviewer/Interfaces/FamilyPedigree/FamilyPedigreeProvider";
-import { getRelationshipTypeVariable } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/edgeUtils";
-import { getEgoVariable, getNodeLabelVariable } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
+import { useFamilyPedigreeStore } from "../FamilyPedigreeProvider";
+import { getRelationshipTypeVariable } from "../utils/edgeUtils";
+import { getEgoVariable, getNodeLabelVariable } from "../utils/nodeUtils";
 
 type ChecklistItem = {
 	id: string;

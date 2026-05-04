@@ -4,34 +4,27 @@ import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
 import { useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import Prompts from "~/lib/interviewer/components/Prompts/Prompts";
-import { useContractFlags } from "~/lib/interviewer/contract/context";
-import { toggleNodeAttributes } from "~/lib/interviewer/ducks/modules/session";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import PedigreeChecklist from "~/lib/interviewer/Interfaces/FamilyPedigree/components/PedigreeChecklist";
-import EgoCellWizard from "~/lib/interviewer/Interfaces/FamilyPedigree/components/wizards/EgoCellWizard";
-import {
-	FamilyPedigreeProvider,
-	useFamilyPedigreeStore,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/FamilyPedigreeProvider";
-import FamilyPedigreePlaceholder from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/FamilyPedigreePlaceholder";
-import PedigreeView from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/PedigreeView";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import Prompts from "../../components/Prompts/Prompts";
+import { useContractFlags } from "../../contract/context";
+import { toggleNodeAttributes } from "../../ducks/modules/session";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import { getNetworkEdges, getNetworkNodes, getStageMetadata } from "../../selectors/session";
+import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
+import PedigreeChecklist from "./components/PedigreeChecklist";
+import EgoCellWizard from "./components/wizards/EgoCellWizard";
+import { FamilyPedigreeProvider, useFamilyPedigreeStore } from "./FamilyPedigreeProvider";
+import FamilyPedigreePlaceholder from "./pedigree-layout/components/FamilyPedigreePlaceholder";
+import PedigreeView from "./pedigree-layout/components/PedigreeView";
+import type { VariableConfig } from "./store";
 import {
 	getEdgeTypeKey,
 	getIsActiveVariable,
 	getIsGestationalCarrierVariable,
 	getRelationshipTypeVariable,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/edgeUtils";
-import {
-	getEgoVariable,
-	getNodeLabelVariable,
-	getNodeTypeKey,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
-import { validatePedigreeCompleteness } from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/validatePedigree";
-import { getNetworkEdges, getNetworkNodes, getStageMetadata } from "~/lib/interviewer/selectors/session";
-import { useAppDispatch } from "~/lib/interviewer/store";
-import type { StageProps } from "~/lib/interviewer/types";
+} from "./utils/edgeUtils";
+import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
+import { validatePedigreeCompleteness } from "./utils/validatePedigree";
 
 const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 	const {

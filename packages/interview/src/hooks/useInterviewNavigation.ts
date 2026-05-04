@@ -4,14 +4,14 @@ import { invariant } from "es-toolkit";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { type ElementType, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getStages } from "~/lib/interviewer/ducks/modules/protocol";
-import { updatePrompt, updateStage } from "~/lib/interviewer/ducks/modules/session";
-import useReadyForNextStage from "~/lib/interviewer/hooks/useReadyForNextStage";
-import getInterface from "~/lib/interviewer/Interfaces";
-import { getCurrentStage, getNavigationInfo, getPromptCount, getStageCount } from "~/lib/interviewer/selectors/session";
-import { getNavigableStages } from "~/lib/interviewer/selectors/skip-logic";
-import { calculateProgress } from "~/lib/interviewer/selectors/utils";
-import type { BeforeNextFunction, Direction, RegisterBeforeNext, StageProps } from "~/lib/interviewer/types";
+import { getStages } from "../ducks/modules/protocol";
+import { updatePrompt, updateStage } from "../ducks/modules/session";
+import getInterface from "../Interfaces";
+import { getCurrentStage, getNavigationInfo, getPromptCount, getStageCount } from "../selectors/session";
+import { getNavigableStages } from "../selectors/skip-logic";
+import { calculateProgress } from "../selectors/utils";
+import type { BeforeNextFunction, Direction, RegisterBeforeNext, StageProps } from "../types";
+import useReadyForNextStage from "./useReadyForNextStage";
 
 export default function useInterviewNavigation() {
 	const dispatch = useDispatch();

@@ -9,29 +9,29 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import type { ThunkDispatch } from "redux-thunk";
-import Node from "~/lib/interviewer/components/ConnectedNode";
-import { usePrompts } from "~/lib/interviewer/components/Prompts/usePrompts";
-import { useContractFlags } from "~/lib/interviewer/contract/context";
-import { updateNode as updateNodeAction } from "~/lib/interviewer/ducks/modules/session";
-import { useAssetUrl } from "~/lib/interviewer/hooks/useAssetUrl";
-import useBeforeNext from "~/lib/interviewer/hooks/useBeforeNext";
-import usePropSelector from "~/lib/interviewer/hooks/usePropSelector";
-import useReadyForNextStage from "~/lib/interviewer/hooks/useReadyForNextStage";
-import { isMapboxStubBrowser } from "~/lib/interviewer/Interfaces/Geospatial/isMapboxStubBrowser";
-import { type ExtendedMapOptions, useMapbox } from "~/lib/interviewer/Interfaces/Geospatial/useMapbox";
-import CollapsablePrompts from "~/lib/interviewer/Interfaces/Sociogram/CollapsablePrompts";
-import { getNetworkNodesForType } from "~/lib/interviewer/selectors/session";
-import type { RootState } from "~/lib/interviewer/store";
-import type { Direction, StageProps } from "~/lib/interviewer/types";
+import Node from "../../components/ConnectedNode";
+import { usePrompts } from "../../components/Prompts/usePrompts";
+import { useContractFlags } from "../../contract/context";
+import { updateNode as updateNodeAction } from "../../ducks/modules/session";
+import { useAssetUrl } from "../../hooks/useAssetUrl";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import usePropSelector from "../../hooks/usePropSelector";
+import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import { getNetworkNodesForType } from "../../selectors/session";
+import type { RootState } from "../../store";
+import type { Direction, StageProps } from "../../types";
+import CollapsablePrompts from "../Sociogram/CollapsablePrompts";
+import { isMapboxStubBrowser } from "./isMapboxStubBrowser";
+import { type ExtendedMapOptions, useMapbox } from "./useMapbox";
 
 // Dynamic import with ssr:false - @mapbox/search-js-web accesses document at module load
-const GeospatialSearch = dynamic(() => import("~/lib/interviewer/Interfaces/Geospatial/GeospatialSearch"), {
+const GeospatialSearch = dynamic(() => import("./GeospatialSearch"), {
 	ssr: false,
 });
 
 // Dynamic import keeps the stub out of production bundles. The stub is only
 // reachable when isE2E && isMapboxStubBrowser() — gated at the JSX level.
-const GeospatialStubSearch = dynamic(() => import("~/lib/interviewer/Interfaces/Geospatial/GeospatialStubSearch"), {
+const GeospatialStubSearch = dynamic(() => import("./GeospatialStubSearch"), {
 	ssr: false,
 });
 

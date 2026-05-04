@@ -2,11 +2,11 @@
 
 import { combineReducers, configureStore, type Middleware } from "@reduxjs/toolkit";
 import { useDispatch } from "react-redux";
-import type { InterviewPayload, SyncHandler } from "~/lib/interviewer/contract/types";
-import protocol from "~/lib/interviewer/ducks/modules/protocol";
-import session from "~/lib/interviewer/ducks/modules/session";
-import ui from "~/lib/interviewer/ducks/modules/ui";
+import type { InterviewPayload, SyncHandler } from "./contract/types";
 import logger from "./ducks/middleware/logger";
+import protocol from "./ducks/modules/protocol";
+import session from "./ducks/modules/session";
+import ui from "./ducks/modules/ui";
 import { createSyncMiddleware } from "./middleware/syncMiddleware";
 
 const rootReducer = combineReducers({

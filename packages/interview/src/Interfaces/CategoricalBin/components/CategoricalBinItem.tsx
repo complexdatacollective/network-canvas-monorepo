@@ -7,10 +7,10 @@ import type { NcNode } from "@codaco/shared-consts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
-import { useCelebrate } from "~/lib/interviewer/hooks/useCelebrate";
-import { getCurrentStageId } from "~/lib/interviewer/selectors/session";
 import NodeList from "../../../components/NodeList";
 import { usePrompts } from "../../../components/Prompts/usePrompts";
+import { useCelebrate } from "../../../hooks/useCelebrate";
+import { getCurrentStageId } from "../../../selectors/session";
 import BinSummary from "./BinSummary";
 
 type CategoricalBinItemProps = {

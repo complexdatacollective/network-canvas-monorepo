@@ -22,7 +22,7 @@ import {
 	type Subject,
 	selectFieldMetadata,
 	selectFieldMetadataWithSubject,
-} from "~/lib/interviewer/selectors/forms";
+} from "../selectors/forms";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fieldTypeMap: Record<ComponentType, React.ComponentType<any>> = {

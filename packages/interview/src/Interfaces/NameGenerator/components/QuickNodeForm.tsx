@@ -4,7 +4,7 @@ import type { EntityAttributesProperty, NcNode } from "@codaco/shared-consts";
 import { motion, type Variants } from "motion/react";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
-import { getPromptAdditionalAttributes } from "~/lib/interviewer/selectors/session";
+import { getPromptAdditionalAttributes } from "../../../selectors/session";
 import QuickAddField from "./QuickAddField";
 
 const containerVariants: Variants = {

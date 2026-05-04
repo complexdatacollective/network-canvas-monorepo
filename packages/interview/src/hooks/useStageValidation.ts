@@ -2,10 +2,10 @@
 
 import type { ToastVariant } from "@codaco/fresco-ui/Toast";
 import { type ReactNode, useCallback, useContext, useEffect, useRef } from "react";
-import { useInterviewToastContext } from "~/lib/interviewer/components/InterviewToast";
-import { interviewToastManager } from "~/lib/interviewer/components/interviewToastManager";
-import { StageMetadataContext } from "~/lib/interviewer/contexts/StageMetadataContext";
-import type { Direction } from "~/lib/interviewer/types";
+import { useInterviewToastContext } from "../components/InterviewToast";
+import { interviewToastManager } from "../components/interviewToastManager";
+import { StageMetadataContext } from "../contexts/StageMetadataContext";
+import type { Direction } from "../types";
 
 type StageConstraint = {
 	direction: "forwards" | "backwards" | "both";

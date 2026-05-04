@@ -81,7 +81,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Provider } from "react-redux";
 import { action } from "storybook/actions";
-import useProtocolForm from "~/lib/interviewer/forms/useProtocolForm";
+import useProtocolForm from "./useProtocolForm";
 
 // Mock protocol data
 const mockProtocol = {

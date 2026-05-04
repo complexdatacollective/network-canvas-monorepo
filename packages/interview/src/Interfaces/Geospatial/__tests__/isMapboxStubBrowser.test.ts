@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isMapboxStubBrowser } from "~/lib/interviewer/Interfaces/Geospatial/isMapboxStubBrowser";
+import { isMapboxStubBrowser } from "../isMapboxStubBrowser";
 
 describe("isMapboxStubBrowser", () => {
 	const originalNavigator = globalThis.navigator;

@@ -4,7 +4,7 @@ import { useFormValue } from "@codaco/fresco-ui/form/hooks/useFormValue";
 import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import PersonFields from "~/lib/interviewer/Interfaces/FamilyPedigree/components/quickStartWizard/PersonFields";
+import PersonFields from "./PersonFields";
 
 export default function ChildrenDetailStep() {
 	const { childrenWithPartnerCount } = useFormValue(["childrenWithPartnerCount"]);

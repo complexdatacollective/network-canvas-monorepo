@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { screen, userEvent, within } from "storybook/test";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "~/lib/interviewer/utils/SyntheticInterview/SyntheticInterview";
+import { SyntheticInterview } from "../../utils/SyntheticInterview/SyntheticInterview";
 
 function createFamilyPedigreeInterview(seed: number) {
 	const si = new SyntheticInterview(seed);

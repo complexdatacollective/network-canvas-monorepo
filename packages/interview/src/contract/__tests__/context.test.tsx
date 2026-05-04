@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { ContractProvider, useContractFlags, useContractHandlers } from "~/lib/interviewer/contract/context";
-import type { AssetRequestHandler, FinishHandler, InterviewerFlags } from "~/lib/interviewer/contract/types";
+import { ContractProvider, useContractFlags, useContractHandlers } from "../context";
+import type { AssetRequestHandler, FinishHandler, InterviewerFlags } from "../types";
 
 const wrap = (value: { onFinish: FinishHandler; onRequestAsset: AssetRequestHandler; flags?: InterviewerFlags }) =>
 	function Wrapper({ children }: { children: React.ReactNode }) {

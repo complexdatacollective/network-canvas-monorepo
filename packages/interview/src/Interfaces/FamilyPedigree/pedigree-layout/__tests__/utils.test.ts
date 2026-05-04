@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ParentConnection } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
+import type { ParentConnection } from "../types";
 import {
 	ancestor,
 	chaseup,
@@ -11,7 +11,7 @@ import {
 	rank,
 	tableCounts,
 	which,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/utils";
+} from "../utils";
 
 describe("createMatrix", () => {
 	it("creates a 2D array of correct dimensions", () => {

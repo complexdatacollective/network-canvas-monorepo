@@ -1,5 +1,5 @@
 import type { VariableValue } from "@codaco/shared-consts";
-import type { CommitBatch, VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { CommitBatch, VariableConfig } from "../../../store";
 
 const KNOWN_BIO_PARENT_KEYS = new Set(["is-donor", "name", "gestationalCarrier"]);
 

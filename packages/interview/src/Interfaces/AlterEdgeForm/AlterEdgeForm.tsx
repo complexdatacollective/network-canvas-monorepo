@@ -10,11 +10,11 @@ import {
 import { find } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import Node from "~/lib/interviewer/components/ConnectedNode";
-import { updateEdge } from "~/lib/interviewer/ducks/modules/session";
-import { getNetworkEdgesForType, getNetworkNodes, makeGetEdgeColor } from "~/lib/interviewer/selectors/session";
-import { useAppDispatch } from "~/lib/interviewer/store";
-import type { StageProps } from "~/lib/interviewer/types";
+import Node from "../../components/ConnectedNode";
+import { updateEdge } from "../../ducks/modules/session";
+import { getNetworkEdgesForType, getNetworkNodes, makeGetEdgeColor } from "../../selectors/session";
+import { useAppDispatch } from "../../store";
+import type { StageProps } from "../../types";
 import { edgeColorMap } from "../../utils/edgeColorMap";
 import IntroPanel from "../SlidesForm/IntroPanel";
 import SlidesForm from "../SlidesForm/SlidesForm";

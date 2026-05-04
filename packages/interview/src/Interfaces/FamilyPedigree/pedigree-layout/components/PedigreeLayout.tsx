@@ -3,18 +3,11 @@
 import Spinner from "@codaco/fresco-ui/Spinner";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { type ReactNode, useMemo } from "react";
-import { alignPedigree } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/alignPedigree";
-import { PedigreeEdgeSvg } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/components/EdgeRenderer";
-import {
-	computeLayoutMetrics,
-	type LayoutDimensions,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/layoutDimensions";
-import {
-	buildConnectorData,
-	pedigreeLayoutToPositions,
-	storeToPedigreeInput,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/pedigreeAdapter";
-import type { VariableConfig } from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+import type { VariableConfig } from "../../store";
+import { alignPedigree } from "../alignPedigree";
+import { computeLayoutMetrics, type LayoutDimensions } from "../layoutDimensions";
+import { buildConnectorData, pedigreeLayoutToPositions, storeToPedigreeInput } from "../pedigreeAdapter";
+import { PedigreeEdgeSvg } from "./EdgeRenderer";
 
 type PedigreeLayoutNode = NcNode & { id: string };
 

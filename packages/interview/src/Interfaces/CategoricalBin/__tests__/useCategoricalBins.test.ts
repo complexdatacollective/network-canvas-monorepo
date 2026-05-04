@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isUncategorised } from "~/lib/interviewer/Interfaces/CategoricalBin/useCategoricalBins";
+import { isUncategorised } from "../useCategoricalBins";
 
 describe("isUncategorised", () => {
 	it("treats a node with stored 0 on the active variable as categorised", () => {

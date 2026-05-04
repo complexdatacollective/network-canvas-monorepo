@@ -1,7 +1,7 @@
 import type { Stage } from "@codaco/protocol-validation";
 import { createSelector, createSlice } from "@reduxjs/toolkit";
 import { v4 } from "uuid";
-import type { ProtocolPayload } from "~/lib/interviewer/contract/types";
+import type { ProtocolPayload } from "../../contract/types";
 
 type ProtocolState = ProtocolPayload;
 

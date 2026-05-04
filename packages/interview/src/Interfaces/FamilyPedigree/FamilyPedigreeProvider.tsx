@@ -3,25 +3,21 @@ import { invariant } from "es-toolkit";
 import { createContext, useContext, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useStore } from "zustand";
+import { useAppDispatch } from "../../store";
 import {
 	createFamilyPedigreeStore,
 	type FamilyPedigreeStore,
 	type FamilyPedigreeStoreApi,
 	type NodeMetadata,
 	type VariableConfig,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/store";
+} from "./store";
 import {
 	getEdgeTypeKey,
 	getIsActiveVariable,
 	getIsGestationalCarrierVariable,
 	getRelationshipTypeVariable,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/edgeUtils";
-import {
-	getEgoVariable,
-	getNodeLabelVariable,
-	getNodeTypeKey,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/utils/nodeUtils";
-import { useAppDispatch } from "~/lib/interviewer/store";
+} from "./utils/edgeUtils";
+import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
 
 const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(undefined);
 

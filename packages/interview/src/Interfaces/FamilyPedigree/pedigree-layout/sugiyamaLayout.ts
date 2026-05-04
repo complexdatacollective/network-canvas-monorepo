@@ -1,11 +1,6 @@
-import { kindepth } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/kindepth";
-import type {
-	ParentConnection,
-	ParentEdgeType,
-	PedigreeInput,
-	PedigreeLayout,
-} from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/types";
-import { ancestor } from "~/lib/interviewer/Interfaces/FamilyPedigree/pedigree-layout/utils";
+import { kindepth } from "./kindepth";
+import type { ParentConnection, ParentEdgeType, PedigreeInput, PedigreeLayout } from "./types";
+import { ancestor } from "./utils";
 
 type PartnerGroup = {
 	members: number[];

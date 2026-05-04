@@ -6,8 +6,8 @@ import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { useSelector } from "react-redux";
-import { useContractHandlers } from "~/lib/interviewer/contract/context";
-import { getInterviewId } from "~/lib/interviewer/selectors/session";
+import { useContractHandlers } from "../contract/context";
+import { getInterviewId } from "../selectors/session";
 
 const FinishSession = () => {
 	const interviewId = useSelector(getInterviewId);
