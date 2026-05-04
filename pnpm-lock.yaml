@@ -55,8 +55,8 @@ catalogs:
       specifier: ^17.4.2
       version: 17.4.2
     es-toolkit:
-      specifier: ^1.46.0
-      version: 1.46.0
+      specifier: ^1.46.1
+      version: 1.46.1
     lucide-react:
       specifier: ^1.9.0
       version: 1.9.0
@@ -1194,7 +1194,7 @@ importers:
         version: 1.0.0-beta.4(typescript@6.0.3)
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.46.0
+        version: 1.46.1
       fuse.js:
         specifier: ^7.3.0
         version: 7.3.0
@@ -1342,7 +1342,7 @@ importers:
         version: 3.21.2
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.46.0
+        version: 1.46.1
       fflate:
         specifier: ^0.8.2
         version: 0.8.2
@@ -1385,7 +1385,7 @@ importers:
         version: link:../shared-consts
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.46.0
+        version: 1.46.1
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -7695,6 +7695,9 @@ packages:
 
   es-toolkit@1.46.0:
     resolution: {integrity: sha512-IToJ6ct9OLl5zz6WsC/1vZEwfSZ7Myil+ygl5Tf30Xjn9AEkzNB4kqp2G7VUJKF1DtTx/ra5M5KLlXvzOg51BA==}
+
+  es-toolkit@1.46.1:
+    resolution: {integrity: sha512-5eNtXOs3tbfxXOj04tjjseeWkRWaoCjdEI+96DgwzZoe6c9juL49pXlzAFTI72aWC9Y8p7168g6XIKjh7k6pyQ==}
 
   es6-error@4.1.1:
     resolution: {integrity: sha512-Um/+FxMr9CISWh0bi5Zv0iOD+4cFh5qLeks1qhAopKVAJw3drgKbKySikp7wGhDL0HPeaja0P5ULZrxLkniUVg==}
@@ -19659,6 +19662,8 @@ snapshots:
       is-symbol: 1.1.1
 
   es-toolkit@1.46.0: {}
+
+  es-toolkit@1.46.1: {}
 
   es6-error@4.1.1: {}
 
