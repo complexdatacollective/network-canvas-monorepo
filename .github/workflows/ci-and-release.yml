@@ -138,10 +138,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
     # Only run on main branch pushes (not PRs) and only if lint and test jobs succeed
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [setup, lint, test]
     runs-on: ubuntu-latest
+    environment: npm-publish
     env:
       NEXT_PUBLIC_DOCS_PATH: "docs"
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -185,4 +187,4 @@ jobs:
         createGithubReleases: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        NPM_CONFIG_PROVENANCE: true

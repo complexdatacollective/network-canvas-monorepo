@@ -4,6 +4,11 @@
 	"type": "module",
 	"license": "MIT",
 	"description": "Fresco UI components, styles, and utilities",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+		"directory": "packages/fresco-ui"
+	},
 	"sideEffects": [
 		"**/*.css"
 	],

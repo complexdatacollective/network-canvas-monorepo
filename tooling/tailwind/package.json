@@ -2,6 +2,11 @@
 	"name": "@codaco/tailwind-config",
 	"version": "0.4.0",
 	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+		"directory": "tooling/tailwind"
+	},
 	"type": "module",
 	"sideEffects": [
 		"**/*.css"

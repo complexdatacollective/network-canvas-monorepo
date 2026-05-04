@@ -2,6 +2,11 @@
 	"name": "@codaco/shared-consts",
 	"version": "5.0.0",
 	"description": "Shared constants and typescript definitions for the Network Canvas project.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+		"directory": "packages/shared-consts"
+	},
 	"type": "module",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",

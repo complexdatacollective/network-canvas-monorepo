@@ -18,6 +18,11 @@
 	],
 	"author": "Complex Data Collective <hello@complexdatacollective.org>",
 	"license": "GPL-3.0-or-later",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+		"directory": "packages/development-protocol"
+	},
 	"engines": {
 		"node": ">=20.0.0"
 	}
