@@ -4,7 +4,11 @@ set -euo pipefail
 # Run @codaco/interview e2e suite in Docker for snapshot determinism.
 # Mirrors Fresco's tests/e2e/scripts/run-e2e.sh in spirit.
 
-cd "$(dirname "$0")/../.."
+# Resolve to the monorepo root so the full workspace (lockfile, sibling
+# packages, pnpm-workspace.yaml) is available inside the container.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MONOREPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+cd "$MONOREPO_ROOT"
 
 export CI=true
 docker run --rm \
