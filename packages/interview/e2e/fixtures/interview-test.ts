@@ -6,12 +6,6 @@ import { test as baseTest, expect } from "./test.js";
 
 const VISUAL_STYLES = `
   [data-testid="background-blobs"] { visibility: hidden !important; }
-  *, *::before, *::after {
-    animation: none !important;
-    animation-duration: 0s !important;
-    transition: none !important;
-    transition-duration: 0s !important;
-  }
   *:focus-visible,
   *:has(:focus-visible) {
     outline: none !important;
@@ -97,6 +91,14 @@ export const test = baseTest.extend<InterviewTestFixtures, InterviewWorkerFixtur
 	sharedPage: [
 		async ({ sharedContext }, use) => {
 			const page = await sharedContext.newPage();
+			// Navigate to the host app so that installTestHooks() runs and
+			// window.__test is available before protocol.install() calls page.evaluate().
+			await page.goto("/");
+			await page.waitForFunction(() => typeof window.__test !== "undefined", {
+				timeout: 30_000,
+			});
+			// Clear any state left over from a previous test run (persisted in sessionStorage).
+			await page.evaluate(() => window.__test.reset());
 			await use(page);
 		},
 		{ scope: "worker" },
