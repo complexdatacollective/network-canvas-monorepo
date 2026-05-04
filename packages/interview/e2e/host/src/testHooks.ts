@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import type { ProtocolPayload, SessionPayload, SyncHandler } from "../../../src/contract/types";
+import type { ProtocolPayload, SessionPayload } from "../../../src/contract/types";
 import { createInitialNetwork } from "../../../src/store/modules/session";
 
 const STORAGE_KEY = "__e2e_test_state";
@@ -20,7 +20,6 @@ type TestState = {
 	protocols: Map<string, ProtocolPayload>;
 	interviews: Map<string, InterviewEntry>;
 	assetUrls: Map<string, string>;
-	sync: SyncHandler;
 };
 
 type StateSubscriber = () => void;
@@ -33,18 +32,6 @@ function createEmptyState(): TestState {
 		protocols: new Map<string, ProtocolPayload>(),
 		interviews: new Map<string, InterviewEntry>(),
 		assetUrls: new Map<string, string>(),
-		sync: makeSyncHandler(),
-	};
-}
-
-function makeSyncHandler(): SyncHandler {
-	return async (interviewId: string, session: SessionPayload): Promise<void> => {
-		const entry = state.interviews.get(interviewId);
-		if (entry) {
-			state.interviews.set(interviewId, { ...entry, session });
-			persistState();
-			notifySubscribers();
-		}
 	};
 }
 
@@ -123,6 +110,9 @@ export function installTestHooks(): void {
 
 		createInterview(protocolId: string, participantId: string): string {
 			const id = uuid();
+			// This session is the initial payload Shell mounts with. After
+			// mount, Shell owns its state in Redux — getNetworkState reads
+			// from that live store, not from this snapshot.
 			const session: SessionPayload = {
 				id,
 				startTime: new Date().toISOString(),
@@ -138,8 +128,10 @@ export function installTestHooks(): void {
 			return id;
 		},
 
-		getNetworkState(interviewId: string): SessionPayload["network"] | undefined {
-			return state.interviews.get(interviewId)?.session.network;
+		// Reads live state from the running Shell's Redux store. Shell exposes
+		// it on window.__interviewStore when flags.isE2E is true.
+		getNetworkState(): SessionPayload["network"] | undefined {
+			return window.__interviewStore?.getState().session.network;
 		},
 
 		/** Clear all persisted state. Call this between test suites to reset. */

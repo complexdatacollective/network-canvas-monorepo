@@ -16,6 +16,7 @@ import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
 import { getEntityAttributes } from "../../utils/networkEntities";
 import type { NameGeneratorRosterProps } from "./helpers";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 /**
  * Format details needed for list cards
@@ -59,10 +60,10 @@ export type UseItemElement = {
 
 // Returns all nodes associated with external data
 const useItems = (props: NameGeneratorRosterProps) => {
-	const nodeTypeDefinition = useSelector(getNodeTypeDefinition);
+	const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
 	const { externalData, status } = useExternalData(props.stage.dataSource, props.stage.subject);
-	const networkNodes = useSelector(getNetworkNodes);
-	const cardOptions = useSelector(getStageCardOptions);
+	const networkNodes = useStageSelector(getNetworkNodes);
+	const cardOptions = useStageSelector(getStageCardOptions);
 
 	const excludeItems = networkNodes.map((item) => item[entityPrimaryKeyProperty]);
 

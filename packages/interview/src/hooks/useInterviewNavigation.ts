@@ -1,63 +1,54 @@
 "use client";
 
 import { invariant } from "es-toolkit";
-import { type ElementType, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ElementType, useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useStepControl } from "../contract/context";
-import { getStages } from "../store/modules/protocol";
-import { updatePrompt, updateStage } from "../store/modules/session";
+import { useCurrentStep } from "../contexts/CurrentStepContext";
 import getInterface from "../interfaces";
 import { getCurrentStage, getNavigationInfo, getPromptCount, getStageCount } from "../selectors/session";
 import { getNavigableStages } from "../selectors/skip-logic";
 import { calculateProgress } from "../selectors/utils";
+import { getStages } from "../store/modules/protocol";
+import { transitionStage, updatePrompt } from "../store/modules/session";
 import type { BeforeNextFunction, Direction, RegisterBeforeNext, StageProps } from "../types";
 import useReadyForNextStage from "./useReadyForNextStage";
+import { useStageSelector } from "./useStageSelector";
 
 export default function useInterviewNavigation() {
 	const dispatch = useDispatch();
 
-	// "Intended step" can be host-controlled (Shell receives currentStep +
-	// onStepChange props) or package-internal. The host is responsible for
-	// persisting the value if desired (URL, localStorage, etc.).
-	const { currentStep: controlledStep, onStepChange } = useStepControl();
-	const isControlled = controlledStep !== undefined;
-	const [internalStep, setInternalStep] = useState<number>(controlledStep ?? 0);
-	const intendedStep = isControlled ? controlledStep : internalStep;
-
-	const setStep = useCallback(
-		(next: number) => {
-			if (isControlled) {
-				onStepChange?.(next);
-			} else {
-				setInternalStep(next);
-			}
-		},
-		[isControlled, onStepChange],
-	);
+	// `currentStep` is the latest navigation target (updated synchronously when
+	// the user presses next). `displayedStep` lags during a stage exit
+	// animation — see CurrentStepContext for the rationale. We use
+	// `displayedStep` for the rendered stage's data and `currentStep` only
+	// for navigation logic that needs the target.
+	const { currentStep, displayedStep, setCurrentStep: setStep, commitDisplayedStep } = useCurrentStep();
 
 	const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
 
-	// Two-phase navigation state.
-	// Starts false so that AnimatePresence sees the first child as "entering"
-	// rather than "appearing", which enables variant propagation to descendants.
-	const [showStage, setShowStage] = useState(false);
-	const pendingStepRef = useRef<number | null>(null);
-	const isTransitioningRef = useRef(false);
+	// `showStage` toggles the rendered stage in/out of the JSX entirely so that
+	// AnimatePresence sees "no child" during a transition (rather than a child
+	// with a different key) and *fully unmounts* the old stage before any new
+	// data reaches it. Without this, the still-mounted old stage's components
+	// would receive the new context value mid-exit and re-render with the
+	// wrong stage data, often crashing.
+	const [showStage, setShowStage] = useState(true);
 
-	// Show the stage on mount (before paint so there's no visual delay).
-	useLayoutEffect(() => {
-		setShowStage(true);
-	}, []);
+	useEffect(() => {
+		if (currentStep !== displayedStep) {
+			setShowStage(false);
+		}
+	}, [currentStep, displayedStep]);
 
 	// Selectors
-	const stage = useSelector(getCurrentStage);
+	const stage = useStageSelector(getCurrentStage);
 	const CurrentInterface = stage ? (getInterface(stage.type) as ElementType<StageProps>) : null;
 
 	const { isReady: isReadyForNextStage } = useReadyForNextStage();
-	const { currentStep, isLastPrompt, isFirstPrompt, promptIndex } = useSelector(getNavigationInfo);
-	const { nextValidStageIndex, previousValidStageIndex, isCurrentStepValid } = useSelector(getNavigableStages);
+	const { isLastPrompt, isFirstPrompt, promptIndex } = useStageSelector(getNavigationInfo);
+	const { nextValidStageIndex, previousValidStageIndex, isCurrentStepValid } = useStageSelector(getNavigableStages);
 	const stageCount = useSelector(getStageCount);
-	const promptCount = useSelector(getPromptCount);
+	const promptCount = useStageSelector(getPromptCount);
 	const stages = useSelector(getStages);
 
 	// Helper to get prompt count for a specific stage index
@@ -145,10 +136,9 @@ export default function useInterviewNavigation() {
 	};
 
 	const moveForward = useCallback(async () => {
-		if (isTransitioningRef.current) return;
 		setForceNavigationDisabled(true);
 
-		await (async () => {
+		try {
 			const stageAllowsNavigation = await canNavigate("forwards");
 
 			if (!stageAllowsNavigation) {
@@ -168,16 +158,15 @@ export default function useInterviewNavigation() {
 			registerBeforeNext(null);
 
 			setStep(nextValidStageIndexRef.current);
-		})();
-
-		setForceNavigationDisabled(false);
+		} finally {
+			setForceNavigationDisabled(false);
+		}
 	}, [dispatch, isLastPrompt, promptIndex, registerBeforeNext, stageCount, getPromptCountForStage, setStep]);
 
 	const moveBackward = useCallback(async () => {
-		if (isTransitioningRef.current) return;
 		setForceNavigationDisabled(true);
 
-		await (async () => {
+		try {
 			const stageAllowsNavigation = await canNavigate("backwards");
 
 			if (!stageAllowsNavigation) {
@@ -194,9 +183,9 @@ export default function useInterviewNavigation() {
 			setProgress(fakeProgress);
 			registerBeforeNext(null);
 			setStep(previousValidStageIndexRef.current);
-		})();
-
-		setForceNavigationDisabled(false);
+		} finally {
+			setForceNavigationDisabled(false);
+		}
 	}, [setStep, dispatch, isFirstPrompt, promptIndex, registerBeforeNext, stageCount, getPromptCountForStage]);
 
 	const getNavigationHelpers = useCallback(
@@ -207,34 +196,19 @@ export default function useInterviewNavigation() {
 		[moveForward, moveBackward],
 	);
 
+	// AnimatePresence's onExitComplete callback. Runs synchronously after the
+	// previous stage has fully exited and is about to be unmounted. We must
+	// reset stage-local Redux state (`transitionStage` clears promptIndex,
+	// stageRequiresEncryption, and the passphrase prompter) BEFORE the new
+	// stage's first render — otherwise the new stage's components see a
+	// stale promptIndex from the previous stage and may crash trying to
+	// access a prompt that doesn't exist on the new stage type.
 	const handleExitComplete = useCallback(() => {
-		const target = pendingStepRef.current;
-		if (target === null) return;
-
-		// Clear any stale beforeNext handlers that were re-registered by the
-		// exiting stage during its exit animation renders. Without this,
-		// interfaces that call registerBeforeNext() during render (e.g.
-		// DyadCensus, EgoForm, SlidesForm) leave behind handlers with stale
-		// closures that block navigation on the incoming stage.
+		commitDisplayedStep();
+		dispatch(transitionStage());
 		beforeNextHandlers.current.clear();
-
-		dispatch(updateStage(target));
-		pendingStepRef.current = null;
 		setShowStage(true);
-		isTransitioningRef.current = false;
-	}, [dispatch]);
-
-	// Two-phase navigation: when intended step changes, start exit animation.
-	// Redux currentStep is NOT updated here — it's deferred to handleExitComplete.
-	useEffect(() => {
-		if (intendedStep !== currentStep) {
-			pendingStepRef.current = intendedStep;
-			if (!isTransitioningRef.current) {
-				isTransitioningRef.current = true;
-				setShowStage(false);
-			}
-		}
-	}, [intendedStep, currentStep]);
+	}, [commitDisplayedStep, dispatch]);
 
 	// If the current stage should be skipped, move to the previous valid stage.
 	useEffect(() => {
@@ -245,14 +219,15 @@ export default function useInterviewNavigation() {
 		}
 	}, [setStep, isCurrentStepValid, previousValidStageIndex]);
 
-	const { canMoveForward, canMoveBackward } = useSelector(getNavigationInfo);
+	const { canMoveForward, canMoveBackward } = useStageSelector(getNavigationInfo);
 
 	return {
 		// Stage rendering
 		stage,
 		currentStep,
-		CurrentInterface,
+		displayedStep,
 		showStage,
+		CurrentInterface,
 		registerBeforeNext,
 		getNavigationHelpers,
 		handleExitComplete,
@@ -260,9 +235,8 @@ export default function useInterviewNavigation() {
 		// Navigation controls
 		moveForward,
 		moveBackward,
-		disableMoveForward: forceNavigationDisabled || !showStage || !canMoveForward,
-		disableMoveBackward:
-			forceNavigationDisabled || !showStage || (!canMoveBackward && beforeNextHandlers.current.size === 0),
+		disableMoveForward: forceNavigationDisabled || !canMoveForward,
+		disableMoveBackward: forceNavigationDisabled || (!canMoveBackward && beforeNextHandlers.current.size === 0),
 		pulseNext: isReadyForNextStage,
 		progress,
 	};

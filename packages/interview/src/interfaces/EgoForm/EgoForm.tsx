@@ -22,6 +22,7 @@ import { useScrolledToBottom } from "../../hooks/useScrolledToBottom";
 import { getEgoAttributes } from "../../selectors/session";
 import { useAppDispatch } from "../../store/store";
 import type { BeforeNextFunction, StageProps } from "../../types";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type EgoFormProps = StageProps<"EgoForm">;
 
@@ -59,7 +60,7 @@ const EgoFormInner = (props: EgoFormProps) => {
 	}, [fields, hasScrolledToBottom]);
 
 	const { updateReady: setIsReadyForNext } = useReadyForNextStage();
-	const egoAttributes = useSelector(getEgoAttributes);
+	const egoAttributes = useStageSelector(getEgoAttributes);
 
 	const beforeNext: BeforeNextFunction = async (direction) => {
 		// If direction is backwards, and the form is invalid, check if the user

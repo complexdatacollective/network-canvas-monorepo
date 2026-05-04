@@ -9,6 +9,38 @@
  * The Nunito font is loaded from `fonts.css`.
  */
 
+/*
+ * Reference-import the theme tokens so theme() can resolve breakpoint
+ * values inside @media queries below. `reference` makes the @theme block
+ * available for compile-time resolution without re-emitting its CSS
+ * rules into this file's output.
+ *
+ * https://github.com/tailwindlabs/tailwindcss/discussions/15366
+ */
+@import '@codaco/tailwind-config/fresco/theme.css' reference;
+
+@layer base {
+  /*
+   * Responsive font-size for interview mode. Tailwind's spacing/sizing
+   * utilities are rem-based, so scaling the local font-size proportionally
+   * scales every utility (size-20, p-4, gap-8, etc.) for descendants — the
+   * interview UI is sized as a single unit per viewport. Scoped to the
+   * [data-interview] element itself so it only affects Shell's subtree;
+   * the host page's typography is unaffected.
+   */
+  [data-interview] {
+    font-size: 16px;
+
+    @media (width >= theme(--breakpoint-tablet-landscape-max)) {
+      font-size: 18px;
+    }
+
+    @media (width >= theme(--breakpoint-desktop-lg)) {
+      font-size: 20px;
+    }
+  }
+}
+
 @layer theme {
   :root:has([data-interview]) {
     --heading-font: 'Nunito', sans-serif;

@@ -18,11 +18,12 @@ import type { StageProps } from "../../types";
 import { edgeColorMap } from "../../utils/edgeColorMap";
 import IntroPanel from "../SlidesForm/IntroPanel";
 import SlidesForm from "../SlidesForm/SlidesForm";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 function EdgeHeader({ item }: { item: NcEdge }) {
 	const getEdgeColor = useMemo(() => makeGetEdgeColor(), []);
-	const edgeColor = useSelector(getEdgeColor);
-	const nodes = useSelector(getNetworkNodes);
+	const edgeColor = useStageSelector(getEdgeColor);
+	const nodes = useStageSelector(getNetworkNodes);
 
 	const fromNode = find(nodes, [entityPrimaryKeyProperty, item.from]);
 	const toNode = find(nodes, [entityPrimaryKeyProperty, item.to]);
@@ -38,7 +39,7 @@ function EdgeHeader({ item }: { item: NcEdge }) {
 
 const AlterEdgeForm = (props: StageProps<"AlterEdgeForm">) => {
 	const { stage } = props;
-	const items = useSelector(getNetworkEdgesForType);
+	const items = useStageSelector(getNetworkEdgesForType);
 	const dispatch = useAppDispatch();
 	const [showIntro, setShowIntro] = useState(true);
 

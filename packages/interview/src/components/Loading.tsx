@@ -1,10 +1,15 @@
 import Spinner from "@codaco/fresco-ui/Spinner";
 import Heading from "@codaco/fresco-ui/typography/Heading";
-import cx from "classnames";
+import { cx } from "@codaco/fresco-ui/utils/cva";
 import { motion } from "motion/react";
-import PropTypes from "prop-types";
 
-const Loading = ({ message, className = "", small = false }) => (
+type LoadingProps = {
+	message?: string;
+	className?: string;
+	small?: boolean;
+};
+
+const Loading = ({ message, className = "", small = false }: LoadingProps) => (
 	<motion.div
 		className={cx("loading", className)}
 		key="loading"
@@ -13,14 +18,8 @@ const Loading = ({ message, className = "", small = false }) => (
 		exit={{ opacity: 0 }}
 	>
 		<Heading level="h4">{message}</Heading>
-		<Spinner small={small} />
+		<Spinner size={small ? "sm" : "md"} />
 	</motion.div>
 );
-
-Loading.propTypes = {
-	message: PropTypes.string,
-	className: PropTypes.string,
-	small: PropTypes.bool,
-};
 
 export default Loading;

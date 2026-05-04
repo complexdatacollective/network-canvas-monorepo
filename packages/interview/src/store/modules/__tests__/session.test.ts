@@ -82,6 +82,7 @@ describe("addNode", () => {
 						"var-uuid-1": "John",
 						"var-uuid-2": "Doe",
 					},
+					currentStep: 0,
 				}),
 			);
 
@@ -109,6 +110,7 @@ describe("addNode", () => {
 				addNode({
 					type: "test-node-type-uuid",
 					attributeData: {},
+					currentStep: 0,
 				}),
 			);
 
@@ -126,6 +128,7 @@ describe("addNode", () => {
 			const result = await store.dispatch(
 				addNode({
 					type: "test-node-type-uuid",
+					currentStep: 0,
 				}),
 			);
 
@@ -156,6 +159,7 @@ describe("addNode", () => {
 							"var-uuid-1": "John",
 							unknownKey: "value",
 						},
+						currentStep: 0,
 					}),
 				);
 
@@ -183,6 +187,7 @@ describe("addNode", () => {
 							first_language: "English", // Unknown - from CSV column
 						},
 						allowUnknownAttributes: true,
+						currentStep: 0,
 					}),
 				);
 
@@ -213,6 +218,7 @@ describe("addNode", () => {
 							anotherField: 123,
 						},
 						allowUnknownAttributes: true,
+						currentStep: 0,
 					}),
 				);
 
@@ -246,6 +252,7 @@ describe("addNode", () => {
 					attributeData: {
 						"var-uuid-1": "John",
 					},
+					currentStep: 0,
 				}),
 			);
 
@@ -399,6 +406,7 @@ describe("addEdge", () => {
 					attributeData: {
 						"edge-var-1": 5,
 					},
+					currentStep: 0,
 				}),
 			);
 

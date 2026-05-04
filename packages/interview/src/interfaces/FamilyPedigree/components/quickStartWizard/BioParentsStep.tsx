@@ -12,10 +12,11 @@ import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { useSelector } from "react-redux";
 import useProtocolForm from "../../../../forms/useProtocolForm";
 import { getNodeForm, getNodeType } from "../../utils/nodeUtils";
+import { useStageSelector } from "../../../../hooks/useStageSelector";
 
 export default function BioParentsForm() {
-	const nodeType = useSelector(getNodeType);
-	const nodeForm = useSelector(getNodeForm);
+	const nodeType = useStageSelector(getNodeType);
+	const nodeForm = useStageSelector(getNodeForm);
 
 	const { fieldComponents } = useProtocolForm({
 		subject: {

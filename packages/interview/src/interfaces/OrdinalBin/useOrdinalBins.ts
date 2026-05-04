@@ -1,11 +1,11 @@
 import type { Stage } from "@codaco/protocol-validation";
 import { entityAttributesProperty, type NcNode } from "@codaco/shared-consts";
 import { invariant, isNil } from "es-toolkit";
-import { useSelector } from "react-redux";
 import { usePrompts } from "../../components/Prompts/usePrompts";
 import useSortedNodeList from "../../hooks/useSortedNodeList";
 import { makeGetCodebookVariableById } from "../../selectors/protocol";
 import { getNetworkNodesForType } from "../../selectors/session";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 export type OrdinalBinItem = {
 	label: string;
@@ -16,12 +16,12 @@ export type OrdinalBinItem = {
 type OrdinalBinPrompts = Extract<Stage, { type: "OrdinalBin" }>["prompts"][number];
 
 export function useOrdinalBins() {
-	const stageNodes = useSelector(getNetworkNodesForType);
+	const stageNodes = useStageSelector(getNetworkNodesForType);
 	const {
 		prompt: { variable: activePromptVariable, bucketSortOrder },
 	} = usePrompts<OrdinalBinPrompts>();
 
-	const getVariableDefinition = useSelector(makeGetCodebookVariableById);
+	const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
 	const variableDefinition = getVariableDefinition(activePromptVariable);
 
 	invariant(

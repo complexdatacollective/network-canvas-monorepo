@@ -129,7 +129,12 @@ export class InterviewFixture {
 	}
 
 	/**
-	 * Click next and wait for the step URL param to change.
+	 * Click next and wait for the new stage to be fully mounted.
+	 *
+	 * The Shell uses a two-phase transition: first the URL updates (controlled
+	 * step changes immediately), then the exit animation plays, then the new
+	 * stage mounts. We wait for the URL change and then for the stage element
+	 * to reflect the new Redux step index (set only after exit animation).
 	 */
 	async next(): Promise<void> {
 		const before = this.getCurrentStep();
@@ -183,9 +188,18 @@ export class InterviewFixture {
 
 	private async waitForStageLoad(): Promise<void> {
 		const mainLocator = this.page.locator("main[data-interview]");
+		const currentStep = this.getCurrentStep();
 
 		try {
 			await expect(mainLocator).toBeVisible({ timeout: 15000 });
+			// If we know the expected step, wait for the Shell's two-phase
+			// transition to complete. The motion.div gets data-stage-step={n} only
+			// after handleExitComplete updates Redux (via onExitComplete or timer).
+			if (currentStep !== null) {
+				await this.page
+					.locator(`[data-stage-step="${currentStep}"]`)
+					.waitFor({ state: "attached", timeout: 5_000 });
+			}
 		} catch (error) {
 			const url = this.page.url();
 			const title = await this.page.title();

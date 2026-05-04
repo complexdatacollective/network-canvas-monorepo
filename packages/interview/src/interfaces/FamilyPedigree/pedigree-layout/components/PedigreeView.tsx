@@ -26,6 +26,7 @@ import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey, getResolvedNodeFo
 import NodeContextMenu, { type NodeContextMenuAction } from "./NodeContextMenu";
 import PedigreeLayout from "./PedigreeLayout";
 import PedigreeNode, { computeNodeDisplayLabels } from "./PedigreeNode";
+import { useStageSelector } from "../../../../hooks/useStageSelector";
 
 type PedigreeViewProps = {
 	overrideNodes?: Map<string, NcNode>;
@@ -54,14 +55,14 @@ export default function PedigreeView({
 	const removeNode = useFamilyPedigreeStore((s) => s.removeNode);
 	const commitBatch = useFamilyPedigreeStore((s) => s.commitBatch);
 
-	const nodeType = useSelector(getNodeTypeKey);
-	const edgeType = useSelector(getEdgeTypeKey);
-	const nodeLabelVariable = useSelector(getNodeLabelVariable);
-	const egoVariable = useSelector(getEgoVariable);
-	const relationshipTypeVariable = useSelector(getRelationshipTypeVariable);
-	const isActiveVariable = useSelector(getIsActiveVariable);
-	const isGestationalCarrierVariable = useSelector(getIsGestationalCarrierVariable);
-	const resolvedFormFields = useSelector(getResolvedNodeFormFields);
+	const nodeType = useStageSelector(getNodeTypeKey);
+	const edgeType = useStageSelector(getEdgeTypeKey);
+	const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+	const egoVariable = useStageSelector(getEgoVariable);
+	const relationshipTypeVariable = useStageSelector(getRelationshipTypeVariable);
+	const isActiveVariable = useStageSelector(getIsActiveVariable);
+	const isGestationalCarrierVariable = useStageSelector(getIsGestationalCarrierVariable);
+	const resolvedFormFields = useStageSelector(getResolvedNodeFormFields);
 
 	const variableConfig: VariableConfig = {
 		nodeType,

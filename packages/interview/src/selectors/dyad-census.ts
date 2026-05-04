@@ -10,26 +10,29 @@ type PairAccumulator = {
 	pool: string[];
 };
 
-export const getNodePairs: (state: RootState) => Pair[] = createDeepEqualSelector(getNetworkNodesForType, (nodes) => {
-	const nodeIds = nodes.map((node) => node[entityPrimaryKeyProperty]);
+export const getNodePairs: (state: RootState, currentStep: number) => Pair[] = createDeepEqualSelector(
+	getNetworkNodesForType,
+	(nodes) => {
+		const nodeIds = nodes.map((node) => node[entityPrimaryKeyProperty]);
 
-	const pairs = nodeIds.reduce<PairAccumulator>(
-		({ result, pool }, id) => {
-			const nextPool = pool.filter((alterId) => alterId !== id);
+		const pairs = nodeIds.reduce<PairAccumulator>(
+			({ result, pool }, id) => {
+				const nextPool = pool.filter((alterId) => alterId !== id);
 
-			if (nextPool.length === 0) {
-				return { result, pool: nextPool };
-			}
+				if (nextPool.length === 0) {
+					return { result, pool: nextPool };
+				}
 
-			const newPairs: Pair[] = nextPool.map((alterId) => [id, alterId]);
+				const newPairs: Pair[] = nextPool.map((alterId) => [id, alterId]);
 
-			return {
-				result: [...result, ...newPairs],
-				pool: nextPool,
-			};
-		},
-		{ pool: nodeIds, result: [] },
-	);
+				return {
+					result: [...result, ...newPairs],
+					pool: nextPool,
+				};
+			},
+			{ pool: nodeIds, result: [] },
+		);
 
-	return pairs.result;
-});
+		return pairs.result;
+	},
+);

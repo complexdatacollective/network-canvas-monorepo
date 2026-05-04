@@ -129,7 +129,6 @@ export type SessionState = {
 	exportTime: string | null;
 	lastUpdated: string;
 	network: NcNetwork;
-	currentStep: number;
 	promptIndex?: number;
 	stageMetadata?: StageMetadata; // Used as temporary storage by DyadCensus/TieStrengthCensus
 	stageRequiresEncryption?: boolean; // Set to true by the stage if it detects that nodes it creates require encryption
@@ -137,7 +136,7 @@ export type SessionState = {
 
 const actionTypes = {
 	updatePrompt: "SESSION/UPDATE_PROMPT",
-	updateStage: "SESSION/UPDATE_STAGE",
+	transitionStage: "SESSION/TRANSITION_STAGE",
 	updateStageMetadata: "SESSION/UPDATE_STAGE_METADATA",
 	addNode: "NETWORK/ADD_NODE" as const,
 	deleteNode: "NETWORK/DELETE_NODE" as const,
@@ -170,6 +169,8 @@ type AddNodeArgs = {
 		[entityPrimaryKeyProperty]: NcNode[EntityPrimaryKey];
 	};
 	useEncryption?: boolean;
+	/** The host-controlled current stage step. Provide via `useCurrentStep()`. */
+	currentStep: number;
 	/**
 	 * When true, allows attributes that don't exist in the codebook.
 	 * Use this for external data (e.g., roster CSVs) where columns may not
@@ -179,7 +180,7 @@ type AddNodeArgs = {
 };
 
 export const addNode = createAsyncThunk(actionTypes.addNode, async (args: AddNodeArgs, thunkApi) => {
-	const { type, attributeData, modelData, useEncryption, allowUnknownAttributes } = args;
+	const { type, attributeData, modelData, useEncryption, allowUnknownAttributes, currentStep } = args;
 	const state = thunkApi.getState() as RootState;
 
 	const getCodebookVariablesForNodeType = makeGetCodebookVariablesForNodeType(state);
@@ -201,7 +202,7 @@ export const addNode = createAsyncThunk(actionTypes.addNode, async (args: AddNod
 		...attributeData,
 	};
 
-	const sessionMeta = getSessionMeta(state);
+	const sessionMeta = getSessionMeta(state, currentStep);
 
 	if (!useEncryption) {
 		return {
@@ -239,12 +240,13 @@ export const addEdge = createAsyncThunk(
 			to: NcNode[EntityPrimaryKey];
 			type: NcNode["type"];
 			attributeData?: Record<string, unknown>;
+			currentStep: number;
 		},
 		{ getState },
 	) => {
-		const { from, to, type, attributeData } = props;
+		const { from, to, type, attributeData, currentStep } = props;
 		const state = getState() as RootState;
-		const sessionMeta = getSessionMeta(state);
+		const sessionMeta = getSessionMeta(state, currentStep);
 
 		const getCodebookVariablesForEdgeType = makeGetCodebookVariablesForEdgeType(state);
 
@@ -285,12 +287,13 @@ export const updateNode = createAsyncThunk(
 			nodeId: NcNode[EntityPrimaryKey];
 			newModelData?: Record<string, unknown>;
 			newAttributeData: NcNode[EntityAttributesProperty];
+			currentStep: number;
 		},
 		thunkApi,
 	) => {
-		const { newAttributeData, newModelData, nodeId } = args;
+		const { newAttributeData, newModelData, nodeId, currentStep } = args;
 		const state = thunkApi.getState() as RootState;
-		const getNodeById = makeGetNodeById(state);
+		const getNodeById = makeGetNodeById(state, currentStep);
 		const node = getNodeById(nodeId);
 
 		invariant(node, "Node not found");
@@ -344,7 +347,13 @@ export const deleteNode = createAction<NcNode[EntityPrimaryKey]>(actionTypes.del
 export const deleteEdge = createAction<NcEdge[EntityPrimaryKey]>(actionTypes.deleteEdge);
 
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
-export const updateStage = createAction<number>(actionTypes.updateStage);
+/**
+ * Signals that the host-controlled `currentStep` has changed and any
+ * stage-local Redux state should be reset. The reducer resets
+ * `promptIndex` to 0 and clears `stageRequiresEncryption`. The `currentStep`
+ * itself is NOT stored in Redux — it lives in `CurrentStepContext`.
+ */
+export const transitionStage = createAction(actionTypes.transitionStage);
 
 export const updateEgo = createAsyncThunk(
 	actionTypes.updateEgo,
@@ -379,10 +388,11 @@ export const toggleEdge = createAsyncThunk(
 			to: NcNode[EntityPrimaryKey];
 			type: NcNode["type"];
 			attributeData?: Record<string, unknown>;
+			currentStep: number;
 		},
 		{ getState, dispatch },
 	) => {
-		const { from, to, type, attributeData } = props;
+		const { from, to, type, attributeData, currentStep } = props;
 		const state = getState() as RootState;
 
 		const existingEdge = edgeExists(state.session.network.edges, from, to, type);
@@ -391,7 +401,7 @@ export const toggleEdge = createAsyncThunk(
 			return dispatch(deleteEdge(existingEdge));
 		}
 
-		return dispatch(addEdge({ from, to, type, attributeData }));
+		return dispatch(addEdge({ from, to, type, attributeData, currentStep }));
 	},
 );
 
@@ -403,12 +413,13 @@ export const addNodeToPrompt = createAsyncThunk(
 		props: {
 			nodeId: NcNode[EntityPrimaryKey];
 			promptAttributes: Record<string, boolean>;
+			currentStep: number;
 		},
 		{ getState },
 	) => {
-		const { nodeId, promptAttributes } = props;
+		const { nodeId, promptAttributes, currentStep } = props;
 		const state = getState() as RootState;
-		const promptId = getPromptId(state);
+		const promptId = getPromptId(state, currentStep);
 
 		return {
 			nodeId,
@@ -425,11 +436,12 @@ export const toggleNodeAttributes = createAction<{
 
 export const removeNodeFromPrompt = createAsyncThunk(
 	actionTypes.removeNodeFromPrompt,
-	(nodeId: NcNode[EntityPrimaryKey], { getState }) => {
+	(args: { nodeId: NcNode[EntityPrimaryKey]; currentStep: number }, { getState }) => {
+		const { nodeId, currentStep } = args;
 		const state = getState() as RootState;
-		const promptId = getPromptId(state);
+		const promptId = getPromptId(state, currentStep);
 		invariant(promptId, "Prompt ID is required to remove a node from a prompt");
-		const promptAttributes = getPromptAdditionalAttributes(state);
+		const promptAttributes = getPromptAdditionalAttributes(state, currentStep);
 
 		return {
 			nodeId,
@@ -477,7 +489,9 @@ export const updateEdge = createAsyncThunk(
 	},
 );
 
-export const updateStageMetadata = createAction<StageMetadataEntry>(actionTypes.updateStageMetadata);
+export const updateStageMetadata = createAction<{ currentStep: number; metadata: StageMetadataEntry }>(
+	actionTypes.updateStageMetadata,
+);
 
 const sessionReducer = createReducer(initialState, (builder) => {
 	builder.addCase(addNode.fulfilled, (state, action) => {
@@ -628,10 +642,9 @@ const sessionReducer = createReducer(initialState, (builder) => {
 		};
 	});
 
-	builder.addCase(updateStage, (state, action) => {
+	builder.addCase(transitionStage, (state) => {
 		return withLastUpdated({
 			...state,
-			currentStep: action.payload,
 			promptIndex: 0,
 			stageRequiresEncryption: false,
 		});
@@ -747,13 +760,12 @@ const sessionReducer = createReducer(initialState, (builder) => {
 	});
 
 	builder.addCase(updateStageMetadata, (state, action) => {
-		const stageMetadata = action.payload;
-		const currentStep = state.currentStep;
+		const { currentStep, metadata } = action.payload;
 		return withLastUpdated({
 			...state,
 			stageMetadata: {
 				...state.stageMetadata,
-				[currentStep]: stageMetadata,
+				[currentStep]: metadata,
 			},
 		});
 	});

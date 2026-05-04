@@ -16,6 +16,7 @@ import { useSelector } from "react-redux";
 import { useCelebrate } from "../../../hooks/useCelebrate";
 import { getNodeIconName } from "../../../selectors/name-generator";
 import { getNodeColorSelector } from "../../../selectors/session";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 function convertToNodeColor(color: NodeColorSequence): string {
 	switch (color) {
@@ -124,8 +125,8 @@ export default function QuickAddField({
 		setChecked(true);
 	};
 
-	const nodeColor = useSelector(getNodeColorSelector);
-	const icon = useSelector(getNodeIconName);
+	const nodeColor = useStageSelector(getNodeColorSelector);
+	const icon = useStageSelector(getNodeIconName);
 
 	// Close form when disabled
 	useEffect(() => {

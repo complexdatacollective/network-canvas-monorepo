@@ -29,11 +29,8 @@ export const getNodeForm = createSelector(getNodeConfig, (c) => c.form);
  * Resolves nodeConfig.form fields against the codebook to produce
  * renderable field definitions with component type, options, and validation.
  */
-export const getResolvedNodeFormFields: (state: RootState) => ResolvedNodeFormField[] = createSelector(
-	getCodebook,
-	getNodeType,
-	getNodeForm,
-	(codebook, nodeType, form) => {
+export const getResolvedNodeFormFields: (state: RootState, currentStep: number) => ResolvedNodeFormField[] =
+	createSelector(getCodebook, getNodeType, getNodeForm, (codebook, nodeType, form) => {
 		if (!form) return [];
 		const variables = (codebook as Codebook).node?.[nodeType]?.variables;
 		if (!variables) return [];
@@ -52,8 +49,7 @@ export const getResolvedNodeFormFields: (state: RootState) => ResolvedNodeFormFi
 				};
 			})
 			.filter((f): f is ResolvedNodeFormField => f !== null);
-	},
-);
+	});
 
 export const getNodeShapeDefinition = createSelector(getCodebook, getNodeType, (codebook, nodeType) => {
 	return (codebook as Codebook).node?.[nodeType]?.shape ?? null;

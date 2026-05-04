@@ -20,6 +20,8 @@ import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import CategoricalBinItem from "./components/CategoricalBinItem";
 import { useCategoricalBins } from "./useCategoricalBins";
 import { useCircleLayout } from "./useCircleLayout";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type CategoricalBinStageProps = StageProps<"CategoricalBin">;
 
@@ -101,8 +103,9 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const panelFraction = Math.max(0.25, 0.5 - 0.04 * Math.max(0, bins.length - 4));
 
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 	const { openDialog } = useDialog();
-	const nodeColor = useSelector(getNodeColorSelector);
+	const nodeColor = useStageSelector(getNodeColorSelector);
 	const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
 
 	const handleDropNode = async (node: NcNode, binIndex: number) => {
@@ -141,6 +144,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 						[variable]: null,
 						[otherVariable]: typeof result.otherVariable === "string" ? result.otherVariable : null,
 					},
+					currentStep,
 				}),
 			);
 
@@ -153,6 +157,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 					...(otherVariable ? { [otherVariable]: null } : {}),
 					[variable]: bin.value,
 				},
+				currentStep,
 			}),
 		);
 	};

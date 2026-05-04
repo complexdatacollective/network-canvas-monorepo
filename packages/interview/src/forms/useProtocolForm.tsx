@@ -17,12 +17,15 @@ import { addDays, todayYmd } from "@codaco/fresco-ui/form/utils/ymd";
 import type { ComponentType, FormField } from "@codaco/protocol-validation";
 import { type ReactNode, useMemo } from "react";
 import { useSelector } from "react-redux";
+import { useStageSelector } from "../hooks/useStageSelector";
+
 import {
 	getValidationContext,
 	type Subject,
-	selectFieldMetadata,
 	selectFieldMetadataWithSubject,
+	selectFieldMetadataFromVariables,
 } from "../selectors/forms";
+import { getCodebookVariablesForSubjectType } from "../selectors/protocol";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fieldTypeMap: Record<ComponentType, React.ComponentType<any>> = {
@@ -68,7 +71,7 @@ export default function useProtocolForm({
 	namespace?: string;
 	currentEntityId?: string;
 }) {
-	const baseValidationContext = useSelector(getValidationContext) as ValidationContext | null;
+	const baseValidationContext = useStageSelector(getValidationContext) as ValidationContext | null;
 
 	const validationContext = useMemo<ValidationContext | null>(() => {
 		if (!baseValidationContext) return null;
@@ -76,8 +79,13 @@ export default function useProtocolForm({
 		return { ...baseValidationContext, currentEntityId };
 	}, [baseValidationContext, currentEntityId]);
 
-	const fieldsMetadata = useSelector((state) =>
-		subject ? selectFieldMetadataWithSubject(state, subject, fields) : selectFieldMetadata(state, fields),
+	const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+	const subjectFieldsMetadata = useSelector((state) =>
+		subject !== undefined ? selectFieldMetadataWithSubject(state, subject, fields) : null,
+	);
+	const fieldsMetadata = useMemo(
+		() => subjectFieldsMetadata ?? selectFieldMetadataFromVariables(stageVariables, fields),
+		[subjectFieldsMetadata, stageVariables, fields],
 	);
 
 	const fieldsWithMetadata = fieldsMetadata.map((field, index) => {

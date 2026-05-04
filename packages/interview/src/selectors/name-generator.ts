@@ -52,7 +52,10 @@ export const getSortOptions = createSelector(getCurrentStage, (stage) => {
 	return stage.sortOptions;
 });
 
-export const getPanelNodes = (panelConfig: Panel, externalData: NcNode[] | null): ((state: RootState) => NcNode[]) =>
+export const getPanelNodes = (
+	panelConfig: Panel,
+	externalData: NcNode[] | null,
+): ((state: RootState, currentStep: number) => NcNode[]) =>
 	createSelector(
 		getNetworkNodesForPrompt,
 		getNetworkNodesForOtherPrompts,

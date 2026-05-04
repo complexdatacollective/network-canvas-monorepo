@@ -42,6 +42,8 @@ import DataCard from "./DataCard";
 import DropOverlay from "./DropOverlay";
 import { convertNamesToUUIDs, type NameGeneratorRosterProps } from "./helpers";
 import useItems, { type UseItemElement } from "./useItems";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 /**
  * Maps Network Canvas variable types (which include 'hierarchy' and
@@ -76,22 +78,23 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 	const interfaceRef = useRef(null);
 
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
-	const newNodeAttributes = useSelector(getPromptAdditionalAttributes);
-	const codebookForNodeType = useSelector(getCodebookVariablesForSubjectType);
-	const nodesForPrompt = useSelector(getNetworkNodesForPrompt);
+	const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+	const codebookForNodeType = useStageSelector(getCodebookVariablesForSubjectType);
+	const nodesForPrompt = useStageSelector(getNetworkNodesForPrompt);
 
-	const dropNodeColor = useSelector(getNodeColorSelector);
+	const dropNodeColor = useStageSelector(getNodeColorSelector);
 
 	const { status: itemsStatus, items, excludeItems } = useItems(props);
 
-	const stageNodeCount = useSelector(getStageNodeCount);
+	const stageNodeCount = useStageSelector(getStageNodeCount);
 	const minNodes = stage.behaviours?.minNodes ?? 0;
 	const maxNodes = stage.behaviours?.maxNodes ?? Number.POSITIVE_INFINITY;
 
 	// --- Search / filter setup ---
-	const searchOptions = useSelector(getSearchOptions);
-	const nodeVariables = useSelector(getNodeVariables);
+	const searchOptions = useStageSelector(getSearchOptions);
+	const nodeVariables = useStageSelector(getNodeVariables);
 
 	const filterKeys = useMemo(() => {
 		if (!searchOptions) return undefined;
@@ -114,7 +117,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 	}, [searchOptions]);
 
 	// --- Sort setup ---
-	const sortOptions = useSelector(getSortOptions);
+	const sortOptions = useStageSelector(getSortOptions);
 
 	const { initialSortRules, sortableProperties } = useMemo<{
 		initialSortRules: SortRule[] | undefined;
@@ -213,6 +216,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 				attributeData,
 				useEncryption,
 				allowUnknownAttributes: true,
+				currentStep,
 			}),
 		);
 	};

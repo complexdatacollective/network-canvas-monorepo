@@ -34,6 +34,8 @@ import type { StageProps } from "../../types";
 import type { VariableOptions, VariableOptionValue } from "../../utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";
 import Pair from "./Pair";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 const fadeVariants = {
 	initial: { opacity: 0, transition: { duration: 0.5 } },
@@ -69,6 +71,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 	const { stage, getNavigationHelpers } = props;
 	const { moveForward } = getNavigationHelpers();
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
 	const [isIntroduction, setIsIntroduction] = useState(true);
 	const [isForwards, setIsForwards] = useState(true);
@@ -83,12 +86,12 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 		negativeLabel: string;
 	}>();
 
-	const nodes = useSelector(getNetworkNodesForType);
-	const edges = useSelector(getNetworkEdges);
+	const nodes = useStageSelector(getNetworkNodesForType);
+	const edges = useStageSelector(getNetworkEdges);
 	const edgeColor = useSelector(getEdgeColorForType(createEdge));
-	const stageMetadata = useSelector(getStageMetadata);
+	const stageMetadata = useStageSelector(getStageMetadata);
 	const codebook = useSelector(getCodebook);
-	const pairs = useSelector(getNodePairs);
+	const pairs = useStageSelector(getNodePairs);
 
 	const edgeVariableOptions = (
 		edgeVariable ? get(codebook, ["edge", createEdge, "variables", edgeVariable, "options"]) : []
@@ -225,13 +228,23 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 				? stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item))
 				: [];
 
-			dispatch(updateStageMetadata([...existingMetadata, [promptIndex, ...pair, false]] as DyadCensusMetadataItem[]));
+			dispatch(
+				updateStageMetadata({
+					currentStep,
+					metadata: [...existingMetadata, [promptIndex, ...pair, false]] as DyadCensusMetadataItem[],
+				}),
+			);
 			return;
 		}
 
 		// Ordinal option selected - create or update edge with variable value
 		if (isDyadCensusMetadata(stageMetadata)) {
-			dispatch(updateStageMetadata(stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item))));
+			dispatch(
+				updateStageMetadata({
+					currentStep,
+					metadata: stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item)),
+				}),
+			);
 		}
 
 		if (existingEdgeId) {
@@ -252,6 +265,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 					attributeData: {
 						[edgeVariable!]: value,
 					},
+					currentStep,
 				}),
 			);
 		}

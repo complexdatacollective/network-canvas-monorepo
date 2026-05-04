@@ -7,6 +7,7 @@ import { usePrompts } from "../../components/Prompts/usePrompts";
 import useSortedNodeList, { getSortedNodeList } from "../../hooks/useSortedNodeList";
 import { getAllVariableUUIDsByEntity, makeGetCodebookVariableById } from "../../selectors/protocol";
 import { getNetworkNodesForType } from "../../selectors/session";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 const matchVariableValue = (node: NcNode, variable: string, value: string | number | boolean) => {
 	const variableValue = node[entityAttributesProperty][variable];
@@ -44,13 +45,13 @@ export function isUncategorised(
 }
 
 export function useCategoricalBins() {
-	const stageNodes = useSelector(getNetworkNodesForType);
+	const stageNodes = useStageSelector(getNetworkNodesForType);
 	const {
 		prompt: { variable: activePromptVariable, otherVariable, otherOptionLabel, bucketSortOrder },
 	} = usePrompts<CategoricalBinPrompts>();
 
 	const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
-	const getVariableDefinition = useSelector(makeGetCodebookVariableById);
+	const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
 	const variableDefinition = getVariableDefinition(activePromptVariable);
 
 	const categoricalOptions = variableDefinition && "options" in variableDefinition ? variableDefinition.options! : [];

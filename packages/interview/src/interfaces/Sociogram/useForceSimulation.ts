@@ -34,6 +34,7 @@ type UseForceSimulationOptions = {
 	layoutVariable: string;
 	store: CanvasStoreApi;
 	dispatch: AppDispatch;
+	currentStep: number;
 };
 
 export function useForceSimulation({
@@ -43,6 +44,7 @@ export function useForceSimulation({
 	layoutVariable,
 	store,
 	dispatch,
+	currentStep,
 }: UseForceSimulationOptions) {
 	const { isE2E } = useContractFlags();
 	const workerRef = useRef<Worker | null>(null);
@@ -114,7 +116,7 @@ export function useForceSimulation({
 					.map((n) => [n.nodeId, toNormalized(n)]);
 				store.getState().setBatchPositions(entries);
 				setIsRunning(false);
-				store.getState().syncToRedux(dispatch, layoutVariable);
+				store.getState().syncToRedux(dispatch, layoutVariable, currentStep);
 			}
 		};
 

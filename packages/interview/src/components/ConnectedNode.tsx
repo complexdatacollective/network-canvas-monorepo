@@ -8,6 +8,7 @@ import { useSelector } from "react-redux";
 import { getCodebook } from "../store/modules/protocol";
 import { useNodeLabel } from "../interfaces/Anonymisation/useNodeLabel";
 import { getNetworkNodes, resolveNodeShape } from "../selectors/session";
+import { useStageSelector } from "../hooks/useStageSelector";
 
 type ConnectedNodeProps = Omit<React.ComponentProps<typeof UINode>, "type" | "shape" | "color" | "label"> & {
 	nodeId: NcNode[typeof entityPrimaryKeyProperty];
@@ -31,7 +32,7 @@ const makeSelectNodeMeta = (nodeId: NcNode[typeof entityPrimaryKeyProperty], typ
 export default function ConnectedNode({ nodeId, type, ref, ...rest }: ConnectedNodeProps) {
 	const selectNodeMeta = useMemo(() => makeSelectNodeMeta(nodeId, type), [nodeId, type]);
 
-	const nodeMeta = useSelector(selectNodeMeta);
+	const nodeMeta = useStageSelector(selectNodeMeta);
 
 	const node = nodeMeta?.node;
 	const label = useNodeLabel(node);

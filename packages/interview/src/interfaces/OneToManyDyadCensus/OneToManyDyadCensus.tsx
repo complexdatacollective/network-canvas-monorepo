@@ -19,6 +19,8 @@ import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import type { ProtocolSortRule } from "../../utils/createSorter";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type OneToManyDyadCensusProps = StageProps<"OneToManyDyadCensus">;
 
@@ -30,6 +32,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 	} = props;
 
 	const [currentStep, setCurrentStep] = useState(0);
+	const { currentStep: stageStep } = useCurrentStep();
 
 	// The ScrollArea viewport uses overflow-auto which clips nodes during
 	// layoutId animations across the Surface boundary. Temporarily switch to
@@ -47,8 +50,8 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 		binSortOrder?: ProtocolSortRule[];
 	}>();
 
-	const nodes = useSelector(getNetworkNodesForType);
-	const edges = useSelector(getNetworkEdges);
+	const nodes = useStageSelector(getNetworkNodesForType);
+	const edges = useStageSelector(getNetworkEdges);
 
 	const sortedSource = useSortedNodeList(nodes, bucketSortOrder);
 
@@ -114,11 +117,12 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 				from: sourceNode[entityPrimaryKeyProperty],
 				to: target[entityPrimaryKeyProperty],
 				type: createEdge,
+				currentStep: stageStep,
 			});
 
 			void dispatch(edgeAction);
 		},
-		[createEdge, dispatch],
+		[createEdge, dispatch, stageStep],
 	);
 
 	const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 16 }), []);

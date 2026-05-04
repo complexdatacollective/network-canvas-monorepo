@@ -1,20 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProtocolPayload, SessionPayload } from "../../../src/contract/types";
-import { createInitialNetwork } from "../../../src/store/modules/session";
+import type { ProtocolPayload } from "../../../src/contract/types";
 import { getTestState, installTestHooks, subscribe } from "./testHooks";
-
-function makeSession(overrides?: Partial<SessionPayload>): SessionPayload {
-	return {
-		id: "session-1",
-		startTime: new Date().toISOString(),
-		finishTime: null,
-		exportTime: null,
-		lastUpdated: new Date().toISOString(),
-		network: createInitialNetwork(),
-		currentStep: 0,
-		...overrides,
-	};
-}
 
 function makeProtocol(overrides?: Partial<ProtocolPayload>): ProtocolPayload {
 	return {
@@ -78,7 +64,7 @@ describe("getTestState", () => {
 		expect(state.protocols.get("p-1")).toEqual(protocol);
 	});
 
-	it("reflects interview + session after createInterview is called", () => {
+	it("reflects interview after createInterview is called", () => {
 		const testGlobal = (globalThis as Record<string, unknown>).__test as {
 			installProtocol: (p: ProtocolPayload) => void;
 			createInterview: (protocolId: string, participantId: string) => string;
@@ -92,22 +78,6 @@ describe("getTestState", () => {
 		expect(state.interviews.has(interviewId)).toBe(true);
 		expect(state.interviews.get(interviewId)?.protocolId).toBe("p-2");
 		expect(state.interviews.get(interviewId)?.session.currentStep).toBe(0);
-	});
-
-	it("getNetworkState returns the current network for an interview", () => {
-		const testGlobal = (globalThis as Record<string, unknown>).__test as {
-			installProtocol: (p: ProtocolPayload) => void;
-			createInterview: (protocolId: string, participantId: string) => string;
-			getNetworkState: (interviewId: string) => unknown;
-		};
-		const protocol = makeProtocol({ id: "p-3" });
-		testGlobal.installProtocol(protocol);
-
-		const interviewId = testGlobal.createInterview("p-3", "participant-2");
-		const network = testGlobal.getNetworkState(interviewId);
-
-		expect(network).toBeDefined();
-		expect((network as { nodes: unknown[] }).nodes).toEqual([]);
 	});
 });
 
@@ -163,34 +133,6 @@ describe("subscribe", () => {
 		expect(listener).not.toHaveBeenCalled();
 	});
 
-	it("sync handler updates interview session and notifies subscribers", async () => {
-		const listener = vi.fn();
-		const unsubscribe = subscribe(listener);
-
-		const testGlobal = (globalThis as Record<string, unknown>).__test as {
-			installProtocol: (p: ProtocolPayload) => void;
-			createInterview: (protocolId: string, participantId: string) => string;
-		};
-		const protocol = makeProtocol({ id: "p-5" });
-		testGlobal.installProtocol(protocol);
-		listener.mockClear();
-
-		const interviewId = testGlobal.createInterview("p-5", "participant-4");
-		listener.mockClear();
-
-		const state = getTestState();
-		const entry = state.interviews.get(interviewId);
-		expect(entry).toBeDefined();
-
-		const updatedSession = makeSession({ id: interviewId, currentStep: 3 });
-		await state.sync(interviewId, updatedSession);
-
-		expect(state.interviews.get(interviewId)?.session.currentStep).toBe(3);
-		expect(listener).toHaveBeenCalledOnce();
-
-		unsubscribe();
-	});
-
 	it("re-installing clears stale subscribers from a prior install", () => {
 		const listener = vi.fn();
 		subscribe(listener);
@@ -219,19 +161,6 @@ describe("setAssetUrl", () => {
 			setAssetUrl: (id: string, url: string) => void;
 		};
 		testGlobal.setAssetUrl("asset-1", "http://localhost:4200/protocols/p1/asset-1.png");
-		expect(getTestState().assetUrls.get("asset-1")).toBe(
-			"http://localhost:4200/protocols/p1/asset-1.png",
-		);
+		expect(getTestState().assetUrls.get("asset-1")).toBe("http://localhost:4200/protocols/p1/asset-1.png");
 	});
 });
-
-declare global {
-	interface Window {
-		__test?: {
-			installProtocol: (protocol: ProtocolPayload) => void;
-			createInterview: (protocolId: string, participantId: string) => string;
-			getNetworkState: (interviewId: string) => unknown;
-			setAssetUrl: (assetId: string, url: string) => void;
-		};
-	}
-}

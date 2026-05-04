@@ -10,6 +10,7 @@ import { getCurrentStageId } from "../../selectors/session";
 import type { StageProps } from "../../types";
 import OrdinalBinItem from "./components/OrdinalBinItem";
 import { useOrdinalBins } from "./useOrdinalBins";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type OrdinalBinStageProps = StageProps<"OrdinalBin">;
 
@@ -33,7 +34,7 @@ const OrdinalBin = (_props: OrdinalBinStageProps) => {
 		prompt: { variable: activePromptVariable },
 	} = usePrompts<OrdinalBinPrompts>();
 
-	const stageId = useSelector(getCurrentStageId);
+	const stageId = useStageSelector(getCurrentStageId);
 	const { bins, unplacedNodes } = useOrdinalBins();
 
 	const { updateReady } = useReadyForNextStage();

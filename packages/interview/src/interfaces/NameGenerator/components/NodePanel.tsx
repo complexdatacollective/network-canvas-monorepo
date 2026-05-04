@@ -10,6 +10,7 @@ import useExternalData from "../../../hooks/useExternalData";
 import { getPanelNodes } from "../../../selectors/name-generator";
 import { getStageSubject } from "../../../selectors/session";
 import ExternalNodeItem from "./ExternalNodeItem";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type NodePanelProps = {
 	panelConfig: PanelType;
@@ -26,11 +27,11 @@ type NodePanelProps = {
 function NodePanel(props: NodePanelProps) {
 	const { panelNumber, id, onUpdate, panelConfig, onDrop, minimize, accepts, animationKey } = props;
 
-	const stageSubject = useSelector(getStageSubject);
+	const stageSubject = useStageSelector(getStageSubject);
 
 	const { externalData } = useExternalData(panelConfig.dataSource, stageSubject);
 
-	const nodes = useSelector(getPanelNodes(panelConfig, externalData));
+	const nodes = useStageSelector(getPanelNodes(panelConfig, externalData));
 
 	// Because the index is used to determine whether node originated in this list
 	// we need to supply an index for the unfiltered list for externalData.

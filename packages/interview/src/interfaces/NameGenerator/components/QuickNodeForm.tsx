@@ -4,8 +4,10 @@ import type { EntityAttributesProperty, NcNode } from "@codaco/shared-consts";
 import { motion, type Variants } from "motion/react";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
+import { useContractFlags } from "../../../contract/context";
 import { getPromptAdditionalAttributes } from "../../../selectors/session";
 import QuickAddField from "./QuickAddField";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 const containerVariants: Variants = {
 	animate: {
@@ -32,7 +34,8 @@ type QuickNodeFormProps = {
 };
 
 const QuickNodeForm = ({ disabled, targetVariable, onShowForm, addNode }: QuickNodeFormProps) => {
-	const newNodeAttributes = useSelector(getPromptAdditionalAttributes);
+	const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+	const { isE2E } = useContractFlags();
 
 	const handleSubmit: FormSubmitHandler = useCallback(
 		async (values) => {
@@ -73,6 +76,8 @@ const QuickNodeForm = ({ disabled, targetVariable, onShowForm, addNode }: QuickN
 			<motion.div
 				className="absolute right-12 bottom-4 z-20"
 				variants={containerVariants}
+				initial={isE2E ? "animate" : "initial"}
+				animate="animate"
 				layout
 				data-testid="quick-add-form"
 			>

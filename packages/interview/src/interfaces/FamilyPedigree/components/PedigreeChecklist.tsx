@@ -11,6 +11,7 @@ import { useSelector } from "react-redux";
 import { useFamilyPedigreeStore } from "../FamilyPedigreeProvider";
 import { getRelationshipTypeVariable } from "../utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable } from "../utils/nodeUtils";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type ChecklistItem = {
 	id: string;
@@ -28,9 +29,9 @@ export default function PedigreeChecklist({
 }) {
 	const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
 	const edges = useFamilyPedigreeStore((s) => s.network.edges);
-	const nodeLabelVariable = useSelector(getNodeLabelVariable);
-	const egoVariable = useSelector(getEgoVariable);
-	const relationshipTypeVariable = useSelector(getRelationshipTypeVariable);
+	const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+	const egoVariable = useStageSelector(getEgoVariable);
+	const relationshipTypeVariable = useStageSelector(getRelationshipTypeVariable);
 
 	const [dismissed, setDismissed] = useState(false);
 	const [manuallyChecked, setManuallyChecked] = useState<Set<string>>(new Set());

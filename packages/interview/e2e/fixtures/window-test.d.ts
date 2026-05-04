@@ -1,8 +1,4 @@
-import type {
-	ProtocolPayload,
-	ResolvedAsset,
-	SessionPayload,
-} from "@codaco/interview";
+import type { ProtocolPayload, SessionPayload } from "@codaco/interview";
 
 declare global {
 	interface Window {
@@ -10,7 +6,8 @@ declare global {
 			installProtocol(protocol: ProtocolPayload): void;
 			setAssetUrl(assetId: string, url: string): void;
 			createInterview(protocolId: string, participantId?: string): string;
-			getNetworkState(interviewId: string): SessionPayload["network"] | undefined;
+			getNetworkState(): SessionPayload["network"] | undefined;
+			reset(): void;
 		};
 		__e2eMap?: {
 			getSource(id: string): unknown;

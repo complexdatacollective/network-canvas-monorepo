@@ -7,7 +7,6 @@ import {
 	type NcNode,
 } from "@codaco/shared-consts";
 import { useCallback, useEffect, useState } from "react";
-import { useSelector } from "react-redux";
 import Node from "../../components/ConnectedNode";
 import { updateNode } from "../../store/modules/session";
 import { getNetworkNodesForType } from "../../selectors/session";
@@ -15,11 +14,14 @@ import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import IntroPanel from "../SlidesForm/IntroPanel";
 import SlidesForm from "../SlidesForm/SlidesForm";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 const AlterForm = (props: StageProps<"AlterForm">) => {
 	const { stage } = props;
-	const items = useSelector(getNetworkNodesForType);
+	const items = useStageSelector(getNetworkNodesForType);
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 	const [showIntro, setShowIntro] = useState(true);
 
 	const handleUpdateItem = useCallback(
@@ -28,10 +30,11 @@ const AlterForm = (props: StageProps<"AlterForm">) => {
 				updateNode({
 					nodeId: id,
 					newAttributeData,
+					currentStep,
 				}),
 			);
 		},
-		[dispatch],
+		[dispatch, currentStep],
 	);
 
 	const renderHeader = useCallback((item: NcNode | NcEdge) => {

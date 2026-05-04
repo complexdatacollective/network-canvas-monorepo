@@ -9,7 +9,7 @@ import path from "node:path";
 import { expect, test } from "../fixtures/interview-test.js";
 import { expectURL } from "../helpers/expectations.js";
 
-const SILOS_PROTOCOL_PATH = path.resolve(import.meta.dirname, "../../data/silos.netcanvas");
+const SILOS_PROTOCOL_PATH = path.resolve(import.meta.dirname, "../data/silos.netcanvas");
 
 // Shared protocol ID across all test suites
 let sharedProtocolId: string;

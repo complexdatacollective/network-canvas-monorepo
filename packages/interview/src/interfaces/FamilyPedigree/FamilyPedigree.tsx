@@ -25,6 +25,7 @@ import {
 } from "./utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
 import { validatePedigreeCompleteness } from "./utils/validatePedigree";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 	const {
@@ -46,13 +47,13 @@ const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 	const resetNetwork = useFamilyPedigreeStore((s) => s.resetNetwork);
 	const setActiveNominationVariable = useFamilyPedigreeStore((s) => s.setActiveNominationVariable);
 
-	const nodeType = useSelector(getNodeTypeKey);
-	const edgeType = useSelector(getEdgeTypeKey);
-	const nodeLabelVariable = useSelector(getNodeLabelVariable);
-	const egoVariable = useSelector(getEgoVariable);
-	const relationshipTypeVariable = useSelector(getRelationshipTypeVariable);
-	const isActiveVariable = useSelector(getIsActiveVariable);
-	const isGestationalCarrierVariable = useSelector(getIsGestationalCarrierVariable);
+	const nodeType = useStageSelector(getNodeTypeKey);
+	const edgeType = useStageSelector(getEdgeTypeKey);
+	const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+	const egoVariable = useStageSelector(getEgoVariable);
+	const relationshipTypeVariable = useStageSelector(getRelationshipTypeVariable);
+	const isActiveVariable = useStageSelector(getIsActiveVariable);
+	const isGestationalCarrierVariable = useStageSelector(getIsGestationalCarrierVariable);
 	const variableConfig: VariableConfig = {
 		nodeType,
 		edgeType,
@@ -63,10 +64,10 @@ const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 		isGestationalCarrierVariable,
 	};
 
-	const allNodes = useSelector(getNetworkNodes);
-	const allEdges = useSelector(getNetworkEdges);
+	const allNodes = useStageSelector(getNetworkNodes);
+	const allEdges = useStageSelector(getNetworkEdges);
 
-	const stageMetadata = useSelector(getStageMetadata) as { isNetworkCommitted?: boolean } | undefined;
+	const stageMetadata = useStageSelector(getStageMetadata) as { isNetworkCommitted?: boolean } | undefined;
 	const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
 
 	const reduxNodesMap = useMemo(() => new Map<string, NcNode>(allNodes.map((n) => [n._uid, n])), [allNodes]);
@@ -370,8 +371,8 @@ const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 };
 
 export default function FamilyPedigreeWithProvider(props: StageProps<"FamilyPedigree">) {
-	const allNodes = useSelector(getNetworkNodes);
-	const allEdges = useSelector(getNetworkEdges);
+	const allNodes = useStageSelector(getNetworkNodes);
+	const allEdges = useStageSelector(getNetworkEdges);
 	return (
 		<FamilyPedigreeProvider nodes={allNodes} edges={allEdges}>
 			<FamilyPedigree {...props} />

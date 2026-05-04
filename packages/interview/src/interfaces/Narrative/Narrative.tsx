@@ -16,13 +16,16 @@ import Annotations, { type AnnotationsHandle } from "./Annotations";
 import ConvexHullLayer from "./ConvexHullLayer";
 import DrawingControls from "./DrawingControls";
 import PresetSwitcher from "./PresetSwitcher";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type NarrativeProps = StageProps<"Narrative">;
 
 const Narrative = ({ stage }: NarrativeProps) => {
 	const dispatch = useAppDispatch();
-	const nodes = useSelector(getNetworkNodes);
-	const edges = useSelector(getNetworkEdges);
+	const { currentStep } = useCurrentStep();
+	const nodes = useStageSelector(getNetworkNodes);
+	const edges = useStageSelector(getNetworkEdges);
 	const interfaceRef = useRef<HTMLDivElement>(null);
 
 	const [presetIndex, setPresetIndex] = useState(0);
@@ -124,15 +127,19 @@ const Narrative = ({ stage }: NarrativeProps) => {
 					newAttributeData: {
 						[layoutVariable]: { x: position.x, y: position.y },
 					},
+					currentStep,
 				}),
 			);
 		},
-		[dispatch, layoutVariable],
+		[dispatch, layoutVariable, currentStep],
 	);
 
-	// Get categorical options for convex hulls
-	const categoricalOptions = useSelector((state: RootState) =>
-		getCategoricalOptions(state, {
+	// Get categorical options for convex hulls. Use useStageSelector (which
+	// reads displayedStep, not currentStep) so a stale render during a stage
+	// exit animation doesn't briefly resolve options against the next stage's
+	// subject type.
+	const categoricalOptions = useStageSelector((state, step) =>
+		getCategoricalOptions(state, step, {
 			variableId: convexHullVariable,
 		}),
 	) as VariableOptions;

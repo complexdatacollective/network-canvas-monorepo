@@ -10,6 +10,7 @@ import type { VariableConfig } from "../store";
 import { getNodeLabelVariable } from "../utils/nodeUtils";
 import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "./quickStartWizard/fieldOptions";
 import PersonFields from "./quickStartWizard/PersonFields";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 export type AddPersonMode = "parent" | "child" | "partner" | "sibling";
 
@@ -33,7 +34,7 @@ function getNodeName(nodeId: string, nodes: Map<string, NcNode>, nodeLabelVariab
 }
 
 export default function AddPersonFields({ mode, anchorNodeId, nodes, edges, variableConfig }: AddPersonFieldsProps) {
-	const nodeLabelVariable = useSelector(getNodeLabelVariable);
+	const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
 
 	// For 'child' mode: find partners of the anchor node
 	const partners =

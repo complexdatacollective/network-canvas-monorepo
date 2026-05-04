@@ -10,6 +10,7 @@ import { usePrompts } from "../../../components/Prompts/usePrompts";
 import { updateNode } from "../../../store/modules/session";
 import useMediaQuery from "../../../hooks/useMediaQuery";
 import useSortedNodeList from "../../../hooks/useSortedNodeList";
+import { useCurrentStep } from "../../../contexts/CurrentStepContext";
 import { useAppDispatch } from "../../../store/store";
 import { getEntityAttributes } from "../../../utils/networkEntities";
 import type { OrdinalBinItem as OrdinalBinItemType } from "../useOrdinalBins";
@@ -54,6 +55,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 	const { bin, index, activePromptVariable, stageId, promptId, sortOrder = [], totalBins } = props;
 
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 	const { prompt } = usePrompts();
 	const isPortrait = useMediaQuery("(orientation: portrait)");
 
@@ -76,6 +78,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 			updateNode({
 				nodeId: meta[entityPrimaryKeyProperty],
 				newAttributeData: { [activePromptVariable]: bin.value },
+				currentStep,
 			}),
 		);
 	};

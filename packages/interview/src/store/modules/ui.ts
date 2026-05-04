@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { updateStage } from "./session";
+import { transitionStage } from "./session";
 
 type UIState = {
 	FORM_IS_READY: boolean;
@@ -38,8 +38,8 @@ const uiSlice = createSlice({
 		}),
 	},
 	extraReducers: (builder) => {
-		// Reset showPassphrasePrompter when the stage is updated
-		builder.addCase(updateStage, (state) => ({
+		// Reset showPassphrasePrompter when the stage transitions
+		builder.addCase(transitionStage, (state) => ({
 			...state,
 			showPassphrasePrompter: false,
 		}));

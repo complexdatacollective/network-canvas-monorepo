@@ -77,6 +77,7 @@ export const createFamilyPedigreeStore = (
 	initialNodeMetadata: Map<string, NodeMetadata>,
 	variableConfig: VariableConfig,
 	dispatch?: ReturnType<typeof useAppDispatch>,
+	currentStep?: number,
 ) => {
 	return createStore<FamilyPedigreeStore>()(
 		immer((set, get) => {
@@ -237,9 +238,12 @@ export const createFamilyPedigreeStore = (
 
 					dispatch?.(
 						updateStageMetadata({
-							isNetworkCommitted: true,
-							nodes: serializedNodes,
-							edges: serializedEdges,
+							currentStep: currentStep ?? 0,
+							metadata: {
+								isNetworkCommitted: true,
+								nodes: serializedNodes,
+								edges: serializedEdges,
+							},
 						}),
 					);
 				},
@@ -258,6 +262,7 @@ export const createFamilyPedigreeStore = (
 								attributeData: { ...node.attributes },
 								modelData: { _uid: reduxId },
 								allowUnknownAttributes: true,
+								currentStep: currentStep ?? 0,
 							}),
 						);
 
@@ -276,6 +281,7 @@ export const createFamilyPedigreeStore = (
 									from: mappedFrom,
 									to: mappedTo,
 									attributeData: { ...edge.attributes },
+									currentStep: currentStep ?? 0,
 								}),
 							);
 						}
@@ -310,7 +316,12 @@ export const createFamilyPedigreeStore = (
 						state.activeNominationVariable = null;
 					});
 
-					dispatch?.(updateStageMetadata({ isNetworkCommitted: false }));
+					dispatch?.(
+						updateStageMetadata({
+							currentStep: currentStep ?? 0,
+							metadata: { isNetworkCommitted: false },
+						}),
+					);
 				},
 			};
 		}),

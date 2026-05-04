@@ -83,6 +83,13 @@ export const selectFieldMetadata = createSelector(
 );
 
 /**
+ * Create field metadata from variables and fields directly (no Redux state needed).
+ * Use this when you already have the variables from useStageSelector.
+ */
+export const selectFieldMetadataFromVariables = (variables: Record<string, Variable>, fields: FormField[]) =>
+	createFieldMetadata(variables, fields);
+
+/**
  * Select field metadata using a subject provided as a prop.
  * Use this when the subject is known from component props (e.g., in SlidesForm).
  */

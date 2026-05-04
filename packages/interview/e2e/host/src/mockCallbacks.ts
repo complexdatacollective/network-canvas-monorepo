@@ -1,16 +1,9 @@
-import type { AssetRequestHandler, FinishHandler, SessionPayload, SyncHandler } from "../../../src/contract/types";
+import type { AssetRequestHandler, FinishHandler, SyncHandler } from "../../../src/contract/types";
 
-export type InterviewStateStore = Map<string, SessionPayload>;
-
-export function createInterviewStateStore(): InterviewStateStore {
-	return new Map<string, SessionPayload>();
-}
-
-export function makeMockSync(store: InterviewStateStore): SyncHandler {
-	return async (interviewId: string, session: SessionPayload): Promise<void> => {
-		store.set(interviewId, session);
-	};
-}
+// The Shell is a self-contained Redux island in the e2e host. There is no
+// remote sink for sessions — Playwright reads state straight from the live
+// Redux store via window.__interviewStore. So sync is a no-op.
+export const mockSync: SyncHandler = async (): Promise<void> => {};
 
 export const mockFinish: FinishHandler = async (_interviewId: string, _signal: AbortSignal): Promise<void> => {
 	// No-op finish handler for e2e tests.

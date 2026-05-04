@@ -8,6 +8,7 @@ import type { VariableConfig } from "../../store";
 import { getNodeShapeDefinition } from "../../utils/nodeUtils";
 import { useClickUnlessDragged } from "../useClickUnlessDragged";
 import { computeAllDisplayLabels } from "../utils/getDisplayLabel";
+import { useStageSelector } from "../../../../hooks/useStageSelector";
 
 export function AdoptionBrackets({ children }: { children: React.ReactNode }) {
 	const bracketStyle = "absolute top-1 bottom-1 w-1.5 border-white/80 border-y-2";
@@ -141,8 +142,8 @@ export default function PedigreeNode({
 }: PedigreeNodeProps) {
 	const { id } = node;
 
-	const nodeColor = useSelector(getNodeColorSelector);
-	const shapeDef = useSelector(getNodeShapeDefinition);
+	const nodeColor = useStageSelector(getNodeColorSelector);
+	const shapeDef = useStageSelector(getNodeShapeDefinition);
 
 	const shape = useMemo(() => {
 		if (!shapeDef) return "square";

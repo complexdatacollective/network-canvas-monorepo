@@ -4,13 +4,10 @@ import { Toast } from "@base-ui/react/toast";
 import { MotionConfig } from "motion/react";
 import { DndStoreProvider } from "@codaco/fresco-ui/dnd/dnd";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { createInterviewStateStore, makeMockSync, mockFinish } from "./mockCallbacks";
+import { mockFinish, mockSync } from "./mockCallbacks";
 import { getTestState, installTestHooks, subscribe } from "./testHooks";
 
 globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
-
-const sessionStore = createInterviewStateStore();
-const mockSync = makeMockSync(sessionStore);
 
 const mockAssetReq: AssetRequestHandler = async (assetId: string) => {
 	const url = getTestState().assetUrls.get(assetId);

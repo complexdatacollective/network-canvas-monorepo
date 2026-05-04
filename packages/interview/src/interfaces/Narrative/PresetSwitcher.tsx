@@ -11,9 +11,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import { getCodebook } from "../../store/modules/protocol";
 import { getSubjectType } from "../../selectors/session";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import type { VariableOption } from "../../utils/codebook";
 
 type NarrativeStage = Extract<Stage, { type: "Narrative" }>;
@@ -120,7 +120,7 @@ export default function PresetSwitcher({
 		[currentPreset],
 	);
 
-	const { categoricalOptions, edges, highlightLabels } = useSelector(selector);
+	const { categoricalOptions, edges, highlightLabels } = useStageSelector(selector);
 
 	const hasHighlights = highlightLabels.length > 0;
 	const hasEdges = edges.length > 0;

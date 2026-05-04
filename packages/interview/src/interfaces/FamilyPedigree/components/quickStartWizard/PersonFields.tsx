@@ -7,6 +7,7 @@ import InputField from "@codaco/fresco-ui/form/fields/InputField";
 import { useSelector } from "react-redux";
 import useProtocolForm from "../../../../forms/useProtocolForm";
 import { getNodeForm, getNodeType } from "../../utils/nodeUtils";
+import { useStageSelector } from "../../../../hooks/useStageSelector";
 
 type PersonFieldsProps = {
 	namespace?: string;
@@ -19,8 +20,8 @@ type PersonFieldsProps = {
 };
 
 export default function PersonFields({ namespace, initial, namePlaceholder = "Enter name" }: PersonFieldsProps) {
-	const nodeType = useSelector(getNodeType);
-	const nodeForm = useSelector(getNodeForm);
+	const nodeType = useStageSelector(getNodeType);
+	const nodeForm = useStageSelector(getNodeForm);
 
 	const { fieldComponents } = useProtocolForm({
 		subject: {

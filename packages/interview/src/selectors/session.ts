@@ -34,7 +34,14 @@ const getActiveSession = (state: RootState) => {
 
 export const getInterviewId = (state: RootState) => state.session.id;
 
-export const getStageIndex = (state: RootState) => state.session.currentStep;
+/**
+ * Identity selector for the host-supplied current stage index. Components
+ * obtain the value from `useCurrentStep()` (which resolves controlled vs.
+ * uncontrolled mode) and pass it as the second argument to any selector
+ * downstream of `getStageIndex`. The package no longer stores currentStep in
+ * Redux, so every selector that needs it must accept it from the caller.
+ */
+export const getStageIndex = (_state: RootState, currentStep: number): number => currentStep;
 
 export const getStageMetadata = createSelector(getActiveSession, getStageIndex, (session, stageIndex) => {
 	if (!stageIndex) return undefined;
@@ -169,7 +176,7 @@ const getSessionProgress = createSelector(
 	calculateProgress,
 );
 
-export const getNavigationInfo: (state: RootState) => NavigationInfo = createSelector(
+export const getNavigationInfo: (state: RootState, currentStep: number) => NavigationInfo = createSelector(
 	getSessionProgress,
 	getStageIndex,
 	getPromptIndex,
@@ -305,27 +312,30 @@ export const getEdgeColorForType = (type: Extract<StageSubject, { entity: "edge"
 
 export const makeGetEdgeColor = () => getEdgeColor;
 
-export const getCategoricalOptions: (state: RootState, props: Record<string, string>) => VariableOptions =
-	createSelector(
-		getCodebook,
-		getSubjectType,
-		(_, props: Record<string, string>) => props.variableId ?? null,
-		(codebook, subjectType: string | null, variableId: string | null): VariableOptions => {
-			if (!subjectType || !variableId) {
-				return [];
-			}
+export const getCategoricalOptions: (
+	state: RootState,
+	currentStep: number,
+	props: Record<string, string>,
+) => VariableOptions = createSelector(
+	getCodebook,
+	getSubjectType,
+	(_state: RootState, _currentStep: number, props: Record<string, string>) => props.variableId ?? null,
+	(codebook, subjectType: string | null, variableId: string | null): VariableOptions => {
+		if (!subjectType || !variableId) {
+			return [];
+		}
 
-			const variable = (codebook as Codebook).node?.[subjectType]?.variables?.[variableId];
-			return variable && "options" in variable ? (variable.options ?? []) : [];
-		},
-	);
+		const variable = (codebook as Codebook).node?.[subjectType]?.variables?.[variableId];
+		return variable && "options" in variable ? (variable.options ?? []) : [];
+	},
+);
 
 /**
  * makeNetworkEdgesForType()
  * Get the current prompt/stage subject, and filter the network by this edge type.
  */
 
-export const getNetworkEdgesForType: (state: RootState) => NcEdge[] = createSelector(
+export const getNetworkEdgesForType: (state: RootState, currentStep: number) => NcEdge[] = createSelector(
 	getNetworkEdges,
 	getStageSubject,
 	(edges, subject) => {
@@ -337,7 +347,7 @@ export const getNetworkEdgesForType: (state: RootState) => NcEdge[] = createSele
 	},
 );
 
-export const getNetworkNodesForType: (state: RootState) => NcNode[] = createSelector(
+export const getNetworkNodesForType: (state: RootState, currentStep: number) => NcNode[] = createSelector(
 	getNetworkNodes,
 	getStageSubject,
 	(nodes, subject) => {
@@ -349,7 +359,7 @@ export const getNetworkNodesForType: (state: RootState) => NcNode[] = createSele
 	},
 );
 
-export const getStageNodeCount: (state: RootState) => number = createSelector(
+export const getStageNodeCount: (state: RootState, currentStep: number) => number = createSelector(
 	getNetworkNodesForType,
 	stagePromptIds,
 	(nodes, promptIds: string[]) =>
@@ -364,7 +374,7 @@ export const getPromptId = createSelector(getPrompts, getPromptIndex, (prompts, 
 	return prompts[promptIndex]?.id ?? null;
 });
 
-export const getNetworkNodesForPrompt: (state: RootState) => NcNode[] = createSelector(
+export const getNetworkNodesForPrompt: (state: RootState, currentStep: number) => NcNode[] = createSelector(
 	getNetworkNodesForType,
 	getPromptId,
 	(nodes, promptId) => filter(nodes, (node) => includes(node.promptIDs ?? [], promptId)),
@@ -377,7 +387,7 @@ export const getNetworkNodesForPrompt: (state: RootState) => NcNode[] = createSe
  * prompt's promptId.
  */
 
-export const getNetworkNodesForOtherPrompts: (state: RootState) => NcNode[] = createSelector(
+export const getNetworkNodesForOtherPrompts: (state: RootState, currentStep: number) => NcNode[] = createSelector(
 	getNetworkNodesForType,
 	getPromptId,
 	(nodes, promptId) => filter(nodes, (node) => !includes(node.promptIDs ?? [], promptId)),

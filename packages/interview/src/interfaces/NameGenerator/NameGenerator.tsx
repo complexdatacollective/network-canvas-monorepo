@@ -35,6 +35,8 @@ import { decryptData } from "../Anonymisation/utils";
 import NodeForm from "./components/NodeForm";
 import NodePanels from "./components/NodePanels";
 import QuickNodeForm from "./components/QuickNodeForm";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type NameGeneratorProps = StageProps<"NameGeneratorQuickAdd" | "NameGenerator">;
 
@@ -65,12 +67,13 @@ const NameGenerator = (props: NameGeneratorProps) => {
 	const minNodes = behaviours?.minNodes ?? 0;
 	const maxNodes = behaviours?.maxNodes ?? Number.POSITIVE_INFINITY;
 
-	const stageNodeCount = useSelector(getStageNodeCount);
-	const newNodeAttributes = useSelector(getPromptAdditionalAttributes);
-	const nodesForPrompt = useSelector(getNetworkNodesForPrompt);
-	const codebookForNodeType = useSelector(getCodebookVariablesForSubjectType);
+	const stageNodeCount = useStageSelector(getStageNodeCount);
+	const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+	const nodesForPrompt = useStageSelector(getNetworkNodesForPrompt);
+	const codebookForNodeType = useStageSelector(getCodebookVariablesForSubjectType);
 
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
 	const useEncryption = useMemo(() => {
 		if (Object.keys(newNodeAttributes).some((variableId) => codebookForNodeType[variableId]?.encrypted)) {
@@ -103,9 +106,10 @@ const NameGenerator = (props: NameGeneratorProps) => {
 				addNodeToPromptAction({
 					nodeId,
 					promptAttributes,
+					currentStep,
 				}),
 			),
-		[dispatch],
+		[dispatch, currentStep],
 	);
 
 	const deleteNode = useCallback(
@@ -130,10 +134,11 @@ const NameGenerator = (props: NameGeneratorProps) => {
 					useEncryption,
 					allowUnknownAttributes: options?.allowUnknownAttributes,
 					modelData: options?.modelData,
+					currentStep,
 				}),
 			);
 		},
-		[dispatch, stage.subject.type, useEncryption],
+		[dispatch, stage.subject.type, useEncryption, currentStep],
 	);
 
 	const { maxNodesReached } = useNodeLimits({

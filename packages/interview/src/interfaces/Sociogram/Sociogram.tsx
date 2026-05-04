@@ -3,7 +3,6 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
 import Canvas from "../../canvas/Canvas";
 import { createCanvasStore, useCanvasStore } from "../../canvas/useCanvasStore";
 import ConcentricCircles from "../../components/ConcentricCircles";
@@ -19,6 +18,8 @@ import type { StageProps } from "../../types";
 import CollapsablePrompts from "./CollapsablePrompts";
 import SimulationPanel from "./SimulationPanel";
 import { useForceSimulation } from "./useForceSimulation";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 type SociogramProps = StageProps<"Sociogram">;
 
@@ -45,14 +46,15 @@ const Sociogram = (stageProps: SociogramProps) => {
 	const concentricCircles = get(stage, "background.concentricCircles");
 	const skewedTowardCenter = get(stage, "background.skewedTowardCenter");
 
-	const allNodes = useSelector(getNodes);
-	const placedNodes = useSelector(getPlacedNodes);
-	const unplacedNodes = useSelector(getUnplacedNodes);
-	const sortOrder = useSelector(getPromptSortOrder);
+	const { currentStep } = useCurrentStep();
+	const allNodes = useStageSelector(getNodes);
+	const placedNodes = useStageSelector(getPlacedNodes);
+	const unplacedNodes = useStageSelector(getUnplacedNodes);
+	const sortOrder = useStageSelector(getPromptSortOrder);
 	const sortedUnplacedNodes = useSortedNodeList(unplacedNodes, sortOrder);
 
 	const canvasNodes = layoutMode === "AUTOMATIC" ? allNodes : placedNodes;
-	const edges = useSelector(getEdges);
+	const edges = useStageSelector(getEdges);
 
 	// Zustand store for real-time positions
 	const storeRef = useRef(createCanvasStore());
@@ -76,6 +78,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 		layoutVariable,
 		store,
 		dispatch,
+		currentStep,
 	});
 
 	const selectedNodeId = useCanvasStore(store, (state) => state.selectedNodeId);
@@ -98,6 +101,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 							from: currentSelectedNodeId,
 							to: nodeId,
 							type: createEdge,
+							currentStep,
 						}),
 					);
 					store.getState().selectNode(null);
@@ -127,10 +131,11 @@ const Sociogram = (stageProps: SociogramProps) => {
 					newAttributeData: {
 						[layoutVariable]: { x: position.x, y: position.y },
 					},
+					currentStep,
 				}),
 			);
 		},
-		[dispatch, layoutVariable],
+		[dispatch, layoutVariable, currentStep],
 	);
 
 	// Handle drop from drawer to canvas
@@ -143,10 +148,11 @@ const Sociogram = (stageProps: SociogramProps) => {
 					newAttributeData: {
 						[layoutVariable]: { x: position.x, y: position.y },
 					},
+					currentStep,
 				}),
 			);
 		},
-		[store, dispatch, layoutVariable],
+		[store, dispatch, layoutVariable, currentStep],
 	);
 
 	const background = backgroundImage ? (

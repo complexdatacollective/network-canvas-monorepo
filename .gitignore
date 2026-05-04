@@ -53,3 +53,8 @@ apps/documentation/public/sidebar.json
 
 # Superpowers brainstorm sessions
 .superpowers/
+
+# Playwright e2e artifacts
+**/test-results/
+**/playwright-report/
+packages/interview/e2e/.assets/

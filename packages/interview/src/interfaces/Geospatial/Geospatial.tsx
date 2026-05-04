@@ -12,10 +12,11 @@ import Node from "../../components/ConnectedNode";
 import { usePrompts } from "../../components/Prompts/usePrompts";
 import { useContractFlags } from "../../contract/context";
 import { updateNode as updateNodeAction } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
 import useBeforeNext from "../../hooks/useBeforeNext";
-import usePropSelector from "../../hooks/usePropSelector";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getNetworkNodesForType } from "../../selectors/session";
 import type { RootState } from "../../store/store";
 import type { Direction, StageProps } from "../../types";
@@ -109,9 +110,8 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 		variable?: string;
 	}>();
 
-	const stageNodes = usePropSelector(getNetworkNodesForType, {
-		stage,
-	});
+	const { currentStep } = useCurrentStep();
+	const stageNodes = useStageSelector(getNetworkNodesForType);
 
 	const { url: dataSourceUrl } = useAssetUrl(mapOptions.dataSourceAssetId);
 
@@ -124,8 +124,8 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 			nodeId: string;
 			newModelData?: Record<string, unknown>;
 			newAttributeData: Record<string, VariableValue>;
-		}) => dispatch(updateNodeAction({ nodeId, newModelData, newAttributeData })),
-		[dispatch],
+		}) => dispatch(updateNodeAction({ nodeId, newModelData, newAttributeData, currentStep })),
+		[dispatch, currentStep],
 	);
 
 	const setLocationValue = useCallback(

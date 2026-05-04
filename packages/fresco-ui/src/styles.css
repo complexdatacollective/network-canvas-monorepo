@@ -28,6 +28,12 @@
    alternate themes (e.g. interview, dark) on top of this. */
 @import "@codaco/tailwind-config/fresco/default-theme.css";
 
+/* Foundational @utility / @custom-variant definitions used by fresco-ui's
+   own components (`focusable`, `focus-styles`) and by sibling packages such
+   as `@codaco/interview` (`interface`, `root`). Importing here means every
+   consumer of fresco-ui's styles.css gets them automatically. */
+@import "@codaco/tailwind-config/fresco/utilities.css";
+
 /* Custom Tailwind plugins. */
 @plugin "@codaco/tailwind-config/fresco/plugins/elevation/elevation";
 @plugin "@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface";

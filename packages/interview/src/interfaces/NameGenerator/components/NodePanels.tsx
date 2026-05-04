@@ -4,15 +4,16 @@ import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { invariant } from "es-toolkit";
 import { get } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import Panels from "../../../components/Panels";
 import {
 	deleteNode as deleteNodeAction,
 	removeNodeFromPrompt as removeNodeFromPromptAction,
 } from "../../../store/modules/session";
+import { useCurrentStep } from "../../../contexts/CurrentStepContext";
 import { getPanelConfiguration } from "../../../selectors/name-generator";
 import { useAppDispatch } from "../../../store/store";
 import NodePanel from "./NodePanel";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 /**
  * Configures and renders `NodePanels` according to the protocol config
@@ -37,13 +38,14 @@ function NodePanels(props: NodePanelsProps) {
 	const dragItem = useDndStore((state: DndStore) => state.dragItem);
 	const meta = dragItem?.metadata as NcNode & { itemType: string };
 
-	const panels = useSelector(getPanelConfiguration);
+	const panels = useStageSelector(getPanelConfiguration);
 
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
 	const removeNodeFromPrompt = useCallback(
-		(nodeId: string) => dispatch(removeNodeFromPromptAction(nodeId)),
-		[dispatch],
+		(nodeId: string) => dispatch(removeNodeFromPromptAction({ nodeId, currentStep })),
+		[dispatch, currentStep],
 	);
 	const deleteNode = useCallback((nodeId: string) => dispatch(deleteNodeAction(nodeId)), [dispatch]);
 

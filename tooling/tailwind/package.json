@@ -23,6 +23,7 @@
 		"./fresco/colors.css": "./fresco/colors.css",
 		"./fresco/default-theme.css": "./fresco/default-theme.css",
 		"./fresco/interview-theme.css": "./fresco/interview-theme.css",
+		"./fresco/utilities.css": "./fresco/utilities.css",
 		"./fresco/fonts.css": "./fresco/fonts.css",
 		"./fresco/plugins/elevation/elevation": "./fresco/plugins/elevation/elevation.ts",
 		"./fresco/plugins/inset-surface/inset-surface": "./fresco/plugins/inset-surface/inset-surface.ts",

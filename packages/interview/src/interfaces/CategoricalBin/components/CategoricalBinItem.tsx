@@ -12,6 +12,7 @@ import { usePrompts } from "../../../components/Prompts/usePrompts";
 import { useCelebrate } from "../../../hooks/useCelebrate";
 import { getCurrentStageId } from "../../../selectors/session";
 import BinSummary from "./BinSummary";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type CategoricalBinItemProps = {
 	label: string;
@@ -43,7 +44,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 	const {
 		prompt: { id: promptId },
 	} = usePrompts<CategoricalBinPrompts>();
-	const stageId = useSelector(getCurrentStageId);
+	const stageId = useStageSelector(getCurrentStageId);
 	const binRef = useRef<HTMLDivElement>(null);
 	const celebrate = useCelebrate(binRef, {
 		particleSize: "large",

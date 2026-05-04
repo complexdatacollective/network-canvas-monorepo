@@ -1,8 +1,8 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { invariant } from "es-toolkit";
 import { createContext, useContext, useRef } from "react";
-import { useSelector } from "react-redux";
 import { useStore } from "zustand";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import { useAppDispatch } from "../../store/store";
 import {
 	createFamilyPedigreeStore,
@@ -18,6 +18,7 @@ import {
 	getRelationshipTypeVariable,
 } from "./utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(undefined);
 
@@ -32,14 +33,15 @@ export const FamilyPedigreeProvider = ({
 }) => {
 	const storeRef = useRef<FamilyPedigreeStoreApi>(undefined);
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
-	const nodeType = useSelector(getNodeTypeKey);
-	const edgeType = useSelector(getEdgeTypeKey);
-	const nodeLabelVariable = useSelector(getNodeLabelVariable);
-	const egoVariable = useSelector(getEgoVariable);
-	const relationshipTypeVariable = useSelector(getRelationshipTypeVariable);
-	const isActiveVariable = useSelector(getIsActiveVariable);
-	const isGestationalCarrierVariable = useSelector(getIsGestationalCarrierVariable);
+	const nodeType = useStageSelector(getNodeTypeKey);
+	const edgeType = useStageSelector(getEdgeTypeKey);
+	const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+	const egoVariable = useStageSelector(getEgoVariable);
+	const relationshipTypeVariable = useStageSelector(getRelationshipTypeVariable);
+	const isActiveVariable = useStageSelector(getIsActiveVariable);
+	const isGestationalCarrierVariable = useStageSelector(getIsGestationalCarrierVariable);
 	const variableConfig: VariableConfig = {
 		nodeType,
 		edgeType,
@@ -64,6 +66,7 @@ export const FamilyPedigreeProvider = ({
 		initialNodeMetadata,
 		variableConfig,
 		dispatch,
+		currentStep,
 	);
 
 	return <FamilyPedigreeContext.Provider value={storeRef.current}>{children}</FamilyPedigreeContext.Provider>;

@@ -107,6 +107,11 @@ export class ProtocolFixture {
 			assets,
 		};
 
+		await this.page.evaluate(
+			(p: ProtocolPayload) => window.__test.installProtocol(p),
+			payload,
+		);
+
 		for (const asset of assets) {
 			if (asset.type === "apikey") continue;
 			const manifestEntry = rewrittenProtocol.assetManifest?.[asset.assetId];
@@ -121,11 +126,6 @@ export class ProtocolFixture {
 				[asset.assetId, resolvedUrl] as [string, string],
 			);
 		}
-
-		await this.page.evaluate(
-			(p: ProtocolPayload) => window.__test.installProtocol(p),
-			payload,
-		);
 
 		this.installedProtocolIds.push(protocolId);
 
@@ -201,12 +201,9 @@ export class ProtocolFixture {
 	}
 
 	async getNetworkState(
-		interviewId: string,
+		_interviewId: string,
 	): Promise<SessionPayload["network"] | undefined> {
-		return this.page.evaluate(
-			(id: string) => window.__test.getNetworkState(id),
-			interviewId,
-		);
+		return this.page.evaluate(() => window.__test.getNetworkState());
 	}
 
 	/**

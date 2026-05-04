@@ -5,6 +5,7 @@ import { updatePrompt } from "../../store/modules/session";
 import { getAllVariableUUIDsByEntity } from "../../selectors/protocol";
 import { getPromptIndex, getPrompts } from "../../selectors/session";
 import { type ProcessedSortRule, processProtocolSortRule } from "../../utils/createSorter";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 function isSortOrder(value: unknown): value is SortOrder {
 	return (
@@ -84,7 +85,7 @@ export const usePrompts = <T extends Record<string, unknown> = Record<string, un
 	const setPrompt = useCallback((promptIndex: number) => dispatch(updatePrompt(promptIndex)), [dispatch]);
 
 	const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
-	const prompts = useSelector(getPrompts);
+	const prompts = useStageSelector(getPrompts);
 
 	const processedPrompts = processSortRules(prompts, codebookVariables);
 

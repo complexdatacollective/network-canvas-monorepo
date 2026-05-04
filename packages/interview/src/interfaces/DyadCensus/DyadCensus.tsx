@@ -27,6 +27,8 @@ import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import Pair from "./components/Pair";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 
 const choiceVariants = {
 	initial: { opacity: 0, translateY: "120%" },
@@ -50,6 +52,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 	const { stage, getNavigationHelpers } = props;
 	const { moveForward } = getNavigationHelpers();
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
 	const [isIntroduction, setIsIntroduction] = useState(true);
 	const [isForwards, setIsForwards] = useState(true);
@@ -60,11 +63,11 @@ export default function DyadCensus(props: DyadCensusProps) {
 		prompt: { createEdge },
 	} = usePrompts<(typeof stage.prompts)[number]>();
 
-	const nodes = useSelector(getNetworkNodesForType);
-	const edges = useSelector(getNetworkEdges);
+	const nodes = useStageSelector(getNetworkNodesForType);
+	const edges = useStageSelector(getNetworkEdges);
 	const edgeColor = useSelector(getEdgeColorForType(createEdge));
-	const stageMetadata = useSelector(getStageMetadata);
-	const pairs = useSelector(getNodePairs);
+	const stageMetadata = useStageSelector(getStageMetadata);
+	const pairs = useStageSelector(getNodePairs);
 
 	const pair = pairIndex >= 0 && pairIndex < pairs.length ? (pairs[pairIndex] ?? null) : null;
 	const [fromNode, toNode] = getNodePair(nodes, pair);
@@ -177,12 +180,17 @@ export default function DyadCensus(props: DyadCensusProps) {
 		setIsTouched(true);
 
 		if (value === true) {
-			void dispatch(addEdge({ from: pair[0], to: pair[1], type: createEdge }));
+			void dispatch(addEdge({ from: pair[0], to: pair[1], type: createEdge, currentStep }));
 
 			if (isDyadCensusMetadata(stageMetadata)) {
-				dispatch(updateStageMetadata(stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item))));
+				dispatch(
+					updateStageMetadata({
+						currentStep,
+						metadata: stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item)),
+					}),
+				);
 			} else {
-				dispatch(updateStageMetadata([] as DyadCensusMetadataItem[]));
+				dispatch(updateStageMetadata({ currentStep, metadata: [] as DyadCensusMetadataItem[] }));
 			}
 			return;
 		}
@@ -196,7 +204,12 @@ export default function DyadCensus(props: DyadCensusProps) {
 			? stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item))
 			: [];
 
-		dispatch(updateStageMetadata([...existingMetadata, [promptIndex, ...pair, value]] as DyadCensusMetadataItem[]));
+		dispatch(
+			updateStageMetadata({
+				currentStep,
+				metadata: [...existingMetadata, [promptIndex, ...pair, value]] as DyadCensusMetadataItem[],
+			}),
+		);
 	};
 
 	return (

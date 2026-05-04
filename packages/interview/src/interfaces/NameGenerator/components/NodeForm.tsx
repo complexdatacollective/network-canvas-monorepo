@@ -16,13 +16,14 @@ import {
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { useCurrentStep } from "../../../contexts/CurrentStepContext";
 import { updateNode as updateNodeAction } from "../../../store/modules/session";
 import useProtocolForm from "../../../forms/useProtocolForm";
 import { useCelebrate } from "../../../hooks/useCelebrate";
 import { getNodeIconName } from "../../../selectors/name-generator";
 import { getPromptAdditionalAttributes } from "../../../selectors/session";
 import { useAppDispatch } from "../../../store/store";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type NodeFormProps = {
 	selectedNode: NcNode | null;
@@ -35,12 +36,13 @@ type NodeFormProps = {
 const NodeForm = (props: NodeFormProps) => {
 	const { selectedNode, form, disabled, onClose, addNode } = props;
 
-	const newNodeAttributes = useSelector(getPromptAdditionalAttributes);
-	const icon = useSelector(getNodeIconName);
+	const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+	const icon = useStageSelector(getNodeIconName);
 
 	const [show, setShow] = useState(false);
 
 	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
 
 	const circleRef = useRef<HTMLDivElement>(null);
 	const celebrate = useCelebrate(circleRef, { particles: true });
@@ -50,8 +52,8 @@ const NodeForm = (props: NodeFormProps) => {
 			nodeId: NcNode[EntityPrimaryKey];
 			newModelData?: Record<string, unknown>;
 			newAttributeData: NcNode[EntityAttributesProperty];
-		}) => dispatch(updateNodeAction(payload)),
-		[dispatch],
+		}) => dispatch(updateNodeAction({ ...payload, currentStep })),
+		[dispatch, currentStep],
 	);
 
 	// When a selected node is passed in, we are editing an existing node.

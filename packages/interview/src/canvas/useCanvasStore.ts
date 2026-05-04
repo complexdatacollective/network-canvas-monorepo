@@ -26,7 +26,7 @@ type CanvasActions = {
 	syncFromNodes: (nodes: NcNode[], layoutVariable: string) => void;
 	syncNewFromNodes: (nodes: NcNode[], layoutVariable: string) => void;
 	selectNode: (nodeId: string | null) => void;
-	syncToRedux: (dispatch: AppDispatch, layoutVariable: string) => void;
+	syncToRedux: (dispatch: AppDispatch, layoutVariable: string, currentStep: number) => void;
 };
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -126,7 +126,7 @@ export const createCanvasStore = () =>
 				set({ selectedNodeId: nodeId });
 			},
 
-			syncToRedux: (dispatch, layoutVariable) => {
+			syncToRedux: (dispatch, layoutVariable, currentStep) => {
 				const { positions } = get();
 				for (const [nodeId, position] of positions) {
 					void dispatch(
@@ -135,6 +135,7 @@ export const createCanvasStore = () =>
 							newAttributeData: {
 								[layoutVariable]: { x: position.x, y: position.y },
 							},
+							currentStep,
 						}),
 					);
 				}

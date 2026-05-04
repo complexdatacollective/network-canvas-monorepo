@@ -11,6 +11,7 @@ import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { useSelector } from "react-redux";
 import useProtocolForm from "../../../../../forms/useProtocolForm";
 import { getNodeForm, getNodeType } from "../../../utils/nodeUtils";
+import { useStageSelector } from "../../../../../hooks/useStageSelector";
 
 const PARENT_ROLE_OPTIONS = [
 	{ value: "step-parent", label: "Step-parent" },
@@ -19,8 +20,8 @@ const PARENT_ROLE_OPTIONS = [
 ];
 
 function AdditionalParentFields({ index }: { index: number }) {
-	const nodeType = useSelector(getNodeType);
-	const nodeForm = useSelector(getNodeForm);
+	const nodeType = useStageSelector(getNodeType);
+	const nodeForm = useStageSelector(getNodeForm);
 
 	const { fieldComponents } = useProtocolForm({
 		subject: {
