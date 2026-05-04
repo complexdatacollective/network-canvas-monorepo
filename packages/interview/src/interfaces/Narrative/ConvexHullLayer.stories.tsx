@@ -1,5 +1,5 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef } from "react";
 import { createCanvasStore } from "../../canvas/useCanvasStore";
 import ConvexHullLayer from "./ConvexHullLayer";

@@ -1,5 +1,5 @@
 import Heading from "@codaco/fresco-ui/typography/Heading";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { icons } from "lucide-react";
 import ActionButton from "./ActionButton";
 

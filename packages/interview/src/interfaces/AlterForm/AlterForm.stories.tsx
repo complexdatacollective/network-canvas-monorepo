@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { action } from "storybook/actions";
 import SuperJSON from "superjson";

@@ -1,6 +1,6 @@
 import { type EntityAttributesProperty, entityAttributesProperty, type NcNode } from "@codaco/shared-consts";
 import { configureStore } from "@reduxjs/toolkit";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { Provider } from "react-redux";
 import QuickNodeForm from "./QuickNodeForm";

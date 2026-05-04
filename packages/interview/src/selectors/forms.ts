@@ -75,14 +75,6 @@ const createFieldMetadata = (variables: Record<string, Variable>, fields: FormFi
 };
 
 /**
- * Select field metadata using the current stage subject from Redux state.
- */
-export const selectFieldMetadata = createSelector(
-	[getCodebookVariablesForSubjectType, (_, fields: FormField[]) => fields],
-	createFieldMetadata,
-);
-
-/**
  * Create field metadata from variables and fields directly (no Redux state needed).
  * Use this when you already have the variables from useStageSelector.
  */

@@ -1,5 +1,5 @@
 import Button from "@codaco/fresco-ui/Button";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useRef } from "react";
 import { useCelebrate } from "./useCelebrate";
 

@@ -58,4 +58,4 @@ apps/documentation/public/sidebar.json
 # Playwright e2e artifacts
 **/test-results/
 **/playwright-report/
-packages/interview/e2e/.assets/
+packages/interview/e2e/.assets/storybook-static/

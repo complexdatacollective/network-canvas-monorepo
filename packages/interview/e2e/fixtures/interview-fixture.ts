@@ -1,5 +1,4 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { expectURL } from "../helpers/expectations.js";
 
 type CaptureOptions = {
 	mask?: Locator[];
@@ -218,4 +217,3 @@ export class InterviewFixture {
 	}
 }
 
-export { expectURL };

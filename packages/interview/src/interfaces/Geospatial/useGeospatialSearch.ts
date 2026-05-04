@@ -20,7 +20,7 @@ export type UseGeospatialSearchProps = {
 	resetKey?: string | number;
 };
 
-export type UseGeospatialSearchReturn = {
+type UseGeospatialSearchReturn = {
 	query: string;
 	handleQueryChange: (value: string | undefined) => void;
 	suggestions: Suggestion[];

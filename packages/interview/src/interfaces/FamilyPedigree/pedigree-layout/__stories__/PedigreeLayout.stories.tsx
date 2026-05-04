@@ -1,7 +1,7 @@
 import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { faker } from "@faker-js/faker";
-import type { Meta, StoryFn } from "@storybook/nextjs-vite";
+import type { Meta, StoryFn } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { useNodeMeasurement } from "../../../../hooks/useNodeMeasurement";
 import type { VariableConfig } from "../../store";

@@ -13,7 +13,7 @@ type AssetEntry = {
 	value?: string;
 };
 
-export type InstalledProtocol = {
+type InstalledProtocol = {
 	protocolId: string;
 	name: string;
 	stages: CurrentProtocol["stages"];

@@ -2,7 +2,7 @@ import type { DragMetadata } from "@codaco/fresco-ui/dnd/dnd";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { configureStore } from "@reduxjs/toolkit";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { Provider } from "react-redux";

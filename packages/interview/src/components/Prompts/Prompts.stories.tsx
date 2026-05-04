@@ -1,7 +1,7 @@
 import { Button } from "@codaco/fresco-ui/Button";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { Prompt as TPrompt } from "@codaco/protocol-validation";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";

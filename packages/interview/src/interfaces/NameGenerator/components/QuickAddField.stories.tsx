@@ -1,7 +1,7 @@
 import Form from "@codaco/fresco-ui/form/Form";
 import type { FormSubmitHandler } from "@codaco/fresco-ui/form/store/types";
 import { configureStore } from "@reduxjs/toolkit";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Provider } from "react-redux";
 import { action } from "storybook/actions";
 import { fn } from "storybook/test";

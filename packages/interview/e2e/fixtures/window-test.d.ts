@@ -1,7 +1,10 @@
 import type { ProtocolPayload, SessionPayload } from "@codaco/interview";
 
 declare global {
-	type Window = {
+	// `interface` is required (not `type`) so this declaration MERGES with
+	// the global Window from lib.dom.d.ts.
+	// biome-ignore lint/style/useConsistentTypeDefinitions: declaration merging
+	interface Window {
 		__test: {
 			installProtocol(protocol: ProtocolPayload): void;
 			setAssetUrl(assetId: string, url: string): void;
@@ -18,7 +21,7 @@ declare global {
 			resize(): void;
 			triggerRepaint(): void;
 		};
-	};
+	}
 
 	var __test: Window["__test"];
 	var __e2eMap: Window["__e2eMap"];

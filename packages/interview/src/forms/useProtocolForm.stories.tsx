@@ -78,7 +78,7 @@ import Form from "@codaco/fresco-ui/form/Form";
 import SubmitButton from "@codaco/fresco-ui/form/SubmitButton";
 import type { Form as TForm } from "@codaco/protocol-validation";
 import { configureStore } from "@reduxjs/toolkit";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Provider } from "react-redux";
 import { action } from "storybook/actions";
 import useProtocolForm from "./useProtocolForm";

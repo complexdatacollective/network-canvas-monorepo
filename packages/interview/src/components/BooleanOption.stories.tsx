@@ -1,5 +1,5 @@
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import BooleanOption from "./BooleanOption";
 
