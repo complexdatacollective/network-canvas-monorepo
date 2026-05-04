@@ -79,10 +79,10 @@ describe("makeMockAssetRequest", () => {
 		await expect(handler("asset-abc")).resolves.toBe("https://example.com/image.png");
 	});
 
-	it("resolves an empty string for an unknown assetId", async () => {
+	it("throws for an unknown assetId", async () => {
 		const assetUrls = new Map<string, string>();
 		const handler = makeMockAssetRequest(assetUrls);
 
-		await expect(handler("unknown")).resolves.toBe("");
+		await expect(handler("unknown")).rejects.toThrow(/No URL registered/);
 	});
 });

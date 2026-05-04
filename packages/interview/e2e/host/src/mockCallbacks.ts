@@ -18,6 +18,8 @@ export const mockFinish: FinishHandler = async (_interviewId: string, _signal: A
 
 export function makeMockAssetRequest(assetUrls: Map<string, string>): AssetRequestHandler {
 	return async (assetId: string): Promise<string> => {
-		return assetUrls.get(assetId) ?? "";
+		const url = assetUrls.get(assetId);
+		if (!url) throw new Error(`No URL registered for asset ${assetId}`);
+		return url;
 	};
 }
