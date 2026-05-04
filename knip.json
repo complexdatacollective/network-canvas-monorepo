@@ -8,12 +8,7 @@
 			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
 		},
 		"packages/interview": {
-			"entry": [
-				"src/index.ts",
-				".storybook/main.ts",
-				".storybook/preview.tsx",
-				"src/**/*.stories.tsx"
-			],
+			"entry": ["src/index.ts", ".storybook/main.ts", ".storybook/preview.tsx", "src/**/*.stories.tsx"],
 			"project": ["src/**/*.{ts,tsx}"]
 		},
 		"packages/protocol-validation": {},

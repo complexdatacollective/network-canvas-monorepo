@@ -11,6 +11,17 @@ import { useSelector } from "react-redux";
 import BooleanOption from "../../components/BooleanOption";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import useBeforeNext from "../../hooks/useBeforeNext";
+import { useStageSelector } from "../../hooks/useStageSelector";
+import useStageValidation from "../../hooks/useStageValidation";
+import { getNodePairs } from "../../selectors/dyad-census";
+import {
+	getEdgeColorForType,
+	getNetworkEdges,
+	getNetworkNodesForType,
+	getStageMetadata,
+} from "../../selectors/session";
 import { getCodebook } from "../../store/modules/protocol";
 import {
 	addEdge,
@@ -20,22 +31,11 @@ import {
 	updateEdge,
 	updateStageMetadata,
 } from "../../store/modules/session";
-import useBeforeNext from "../../hooks/useBeforeNext";
-import useStageValidation from "../../hooks/useStageValidation";
-import { getNodePairs } from "../../selectors/dyad-census";
-import {
-	getEdgeColorForType,
-	getNetworkEdges,
-	getNetworkNodesForType,
-	getStageMetadata,
-} from "../../selectors/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import type { VariableOptions, VariableOptionValue } from "../../utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";
 import Pair from "./Pair";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 const fadeVariants = {
 	initial: { opacity: 0, transition: { duration: 0.5 } },

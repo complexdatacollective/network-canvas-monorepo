@@ -8,14 +8,14 @@ import {
 } from "@codaco/shared-consts";
 import { useCallback, useEffect, useState } from "react";
 import Node from "../../components/ConnectedNode";
-import { updateNode } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getNetworkNodesForType } from "../../selectors/session";
+import { updateNode } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import IntroPanel from "../SlidesForm/IntroPanel";
 import SlidesForm from "../SlidesForm/SlidesForm";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 const AlterForm = (props: StageProps<"AlterForm">) => {
 	const { stage } = props;

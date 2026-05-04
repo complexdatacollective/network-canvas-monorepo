@@ -2,9 +2,9 @@
 
 import type { ToastVariant } from "@codaco/fresco-ui/Toast";
 import { type ReactNode, useCallback, useContext, useEffect, useRef } from "react";
+import { StageMetadataContext } from "../contexts/StageMetadataContext";
 import { useInterviewToastContext } from "../toast/InterviewToast";
 import { interviewToastManager } from "../toast/interviewToastManager";
-import { StageMetadataContext } from "../contexts/StageMetadataContext";
 import type { Direction } from "../types";
 
 type StageConstraint = {

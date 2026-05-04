@@ -17,13 +17,13 @@ import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCurrentStep } from "../../../contexts/CurrentStepContext";
-import { updateNode as updateNodeAction } from "../../../store/modules/session";
 import useProtocolForm from "../../../forms/useProtocolForm";
 import { useCelebrate } from "../../../hooks/useCelebrate";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 import { getNodeIconName } from "../../../selectors/name-generator";
 import { getPromptAdditionalAttributes } from "../../../selectors/session";
+import { updateNode as updateNodeAction } from "../../../store/modules/session";
 import { useAppDispatch } from "../../../store/store";
-import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type NodeFormProps = {
 	selectedNode: NcNode | null;

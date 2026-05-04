@@ -10,13 +10,13 @@ import { invariant } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { useSelector } from "react-redux";
 import useExternalData from "../../hooks/useExternalData";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getStageCardOptions } from "../../selectors/name-generator";
 import { getNetworkNodes, getNodeTypeDefinition } from "../../selectors/session";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
 import { getEntityAttributes } from "../../utils/networkEntities";
 import type { NameGeneratorRosterProps } from "./helpers";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 /**
  * Format details needed for list cards

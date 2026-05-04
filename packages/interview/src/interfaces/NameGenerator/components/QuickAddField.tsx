@@ -14,9 +14,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useCelebrate } from "../../../hooks/useCelebrate";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 import { getNodeIconName } from "../../../selectors/name-generator";
 import { getNodeColorSelector } from "../../../selectors/session";
-import { useStageSelector } from "../../../hooks/useStageSelector";
 
 function convertToNodeColor(color: NodeColorSequence): string {
 	switch (color) {

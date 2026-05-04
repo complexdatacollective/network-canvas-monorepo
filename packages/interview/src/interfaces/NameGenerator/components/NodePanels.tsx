@@ -5,15 +5,15 @@ import { invariant } from "es-toolkit";
 import { get } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Panels from "../../../components/Panels";
+import { useCurrentStep } from "../../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../../hooks/useStageSelector";
+import { getPanelConfiguration } from "../../../selectors/name-generator";
 import {
 	deleteNode as deleteNodeAction,
 	removeNodeFromPrompt as removeNodeFromPromptAction,
 } from "../../../store/modules/session";
-import { useCurrentStep } from "../../../contexts/CurrentStepContext";
-import { getPanelConfiguration } from "../../../selectors/name-generator";
 import { useAppDispatch } from "../../../store/store";
 import NodePanel from "./NodePanel";
-import { useStageSelector } from "../../../hooks/useStageSelector";
 
 /**
  * Configures and renders `NodePanels` according to the protocol config

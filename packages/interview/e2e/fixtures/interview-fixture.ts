@@ -196,9 +196,7 @@ export class InterviewFixture {
 			// transition to complete. The motion.div gets data-stage-step={n} only
 			// after handleExitComplete updates Redux (via onExitComplete or timer).
 			if (currentStep !== null) {
-				await this.page
-					.locator(`[data-stage-step="${currentStep}"]`)
-					.waitFor({ state: "attached", timeout: 5_000 });
+				await this.page.locator(`[data-stage-step="${currentStep}"]`).waitFor({ state: "attached", timeout: 5_000 });
 			}
 		} catch (error) {
 			const url = this.page.url();

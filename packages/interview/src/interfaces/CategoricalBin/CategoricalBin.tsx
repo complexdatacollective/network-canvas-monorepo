@@ -10,18 +10,18 @@ import { useSelector } from "react-redux";
 import NodeDrawer from "../../components/NodeDrawer";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import { updateNode } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { makeGetCodebookForNodeType } from "../../selectors/protocol";
 import { getNodeColorSelector } from "../../selectors/session";
+import { updateNode } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
 import CategoricalBinItem from "./components/CategoricalBinItem";
 import { useCategoricalBins } from "./useCategoricalBins";
 import { useCircleLayout } from "./useCircleLayout";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 type CategoricalBinStageProps = StageProps<"CategoricalBin">;
 
@@ -95,7 +95,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const hasExpanded = expandedBinIndex !== null;
 
 	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
-	const { containerRef, flexBasis } = useCircleLayout({
+	const { containerRef, cols, rows } = useCircleLayout({
 		count: circleCount,
 	});
 
@@ -176,11 +176,12 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 					<motion.div
 						key={id}
 						ref={containerRef}
-						className="catbin-circles flex size-full flex-wrap content-center items-center justify-center gap-4 data-expanded:content-start"
+						className="catbin-circles grid size-full content-center justify-center justify-items-center gap-4 data-expanded:content-start"
 						data-expanded={hasExpanded || undefined}
 						style={
 							{
 								"--catbin-panel-fraction": panelFraction,
+								gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
 							} as React.CSSProperties
 						}
 						variants={binsContainerVariants}
@@ -197,7 +198,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 								catColor={getCatColor(index)}
 								onDropNode={(node) => handleDropNode(node, index)}
 								nodes={bin.nodes}
-								flexBasis={flexBasis}
+								rows={rows}
 							/>
 						))}
 					</motion.div>

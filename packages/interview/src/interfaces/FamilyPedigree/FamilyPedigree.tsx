@@ -6,9 +6,10 @@ import { useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import Prompts from "../../components/Prompts/Prompts";
 import { useContractFlags } from "../../contract/context";
-import { toggleNodeAttributes } from "../../store/modules/session";
 import useBeforeNext from "../../hooks/useBeforeNext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getNetworkEdges, getNetworkNodes, getStageMetadata } from "../../selectors/session";
+import { toggleNodeAttributes } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import PedigreeChecklist from "./components/PedigreeChecklist";
@@ -25,7 +26,6 @@ import {
 } from "./utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
 import { validatePedigreeCompleteness } from "./utils/validatePedigree";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 	const {

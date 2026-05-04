@@ -3,9 +3,9 @@ import { entityAttributesProperty, type NcNode } from "@codaco/shared-consts";
 import { invariant, isNil } from "es-toolkit";
 import { usePrompts } from "../../components/Prompts/usePrompts";
 import useSortedNodeList from "../../hooks/useSortedNodeList";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { makeGetCodebookVariableById } from "../../selectors/protocol";
 import { getNetworkNodesForType } from "../../selectors/session";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 export type OrdinalBinItem = {
 	label: string;

@@ -7,10 +7,10 @@ import { useSelector } from "react-redux";
 import NodeList from "../../../components/NodeList";
 import Panel from "../../../components/Panel";
 import useExternalData from "../../../hooks/useExternalData";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 import { getPanelNodes } from "../../../selectors/name-generator";
 import { getStageSubject } from "../../../selectors/session";
 import ExternalNodeItem from "./ExternalNodeItem";
-import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type NodePanelProps = {
 	panelConfig: PanelType;

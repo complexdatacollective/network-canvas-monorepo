@@ -4,10 +4,10 @@ import { combineReducers, configureStore, type Middleware } from "@reduxjs/toolk
 import { useDispatch } from "react-redux";
 import type { InterviewPayload, SyncHandler } from "../contract/types";
 import logger from "./middleware/logger";
+import { createSyncMiddleware } from "./middleware/syncMiddleware";
 import protocol from "./modules/protocol";
 import session from "./modules/session";
 import ui from "./modules/ui";
-import { createSyncMiddleware } from "./middleware/syncMiddleware";
 
 const rootReducer = combineReducers({
 	session,

@@ -10,8 +10,8 @@ import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { useSelector } from "react-redux";
 import useProtocolForm from "../../../../../forms/useProtocolForm";
-import { getNodeForm, getNodeType } from "../../../utils/nodeUtils";
 import { useStageSelector } from "../../../../../hooks/useStageSelector";
+import { getNodeForm, getNodeType } from "../../../utils/nodeUtils";
 
 export default function GenericBioParentsStep() {
 	const nodeType = useStageSelector(getNodeType);

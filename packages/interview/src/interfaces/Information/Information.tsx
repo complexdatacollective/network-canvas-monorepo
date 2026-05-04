@@ -9,8 +9,8 @@ import type { Item } from "@codaco/protocol-validation";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useContractFlags } from "../../contract/context";
-import { getAssetManifest } from "../../store/modules/protocol";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
+import { getAssetManifest } from "../../store/modules/protocol";
 import type { StageProps } from "../../types";
 
 // UploadThing's CDN serves files uploaded via the `blob` router with an invalid

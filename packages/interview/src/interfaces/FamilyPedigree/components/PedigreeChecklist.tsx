@@ -8,10 +8,10 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, LayoutGroup, motion, useMotionValue } from "motion/react";
 import { type RefObject, useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 import { useFamilyPedigreeStore } from "../FamilyPedigreeProvider";
 import { getRelationshipTypeVariable } from "../utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable } from "../utils/nodeUtils";
-import { useStageSelector } from "../../../hooks/useStageSelector";
 
 type ChecklistItem = {
 	id: string;

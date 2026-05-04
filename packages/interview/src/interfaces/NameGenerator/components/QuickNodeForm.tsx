@@ -5,9 +5,9 @@ import { motion, type Variants } from "motion/react";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
 import { useContractFlags } from "../../../contract/context";
+import { useStageSelector } from "../../../hooks/useStageSelector";
 import { getPromptAdditionalAttributes } from "../../../selectors/session";
 import QuickAddField from "./QuickAddField";
-import { useStageSelector } from "../../../hooks/useStageSelector";
 
 const containerVariants: Variants = {
 	animate: {

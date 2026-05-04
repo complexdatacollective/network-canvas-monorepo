@@ -175,12 +175,7 @@ const Shell = ({
 
 	return (
 		<Provider store={reduxStore}>
-			<ContractProvider
-				onFinish={onFinish}
-				onRequestAsset={onRequestAsset}
-				onError={onError}
-				flags={flags}
-			>
+			<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} onError={onError} flags={flags}>
 				<CurrentStepProvider currentStep={currentStep} onStepChange={onStepChange}>
 					{/*
 					 * Interview-scoped DialogProvider (nested below the app-root one in

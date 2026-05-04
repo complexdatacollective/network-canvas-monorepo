@@ -25,8 +25,8 @@ import {
 	getPromptId,
 	makeGetNodeById,
 } from "../../selectors/session";
-import type { RootState } from "../store";
 import { getDefaultAttributesForEntityType } from "../../utils/getDefaultAttributesForEntityType";
+import type { RootState } from "../store";
 import { getShouldEncryptNames } from "./protocol";
 
 // reducer helpers:

@@ -1,7 +1,7 @@
 import type { ProtocolPayload, SessionPayload } from "@codaco/interview";
 
 declare global {
-	interface Window {
+	type Window = {
 		__test: {
 			installProtocol(protocol: ProtocolPayload): void;
 			setAssetUrl(assetId: string, url: string): void;
@@ -18,10 +18,8 @@ declare global {
 			resize(): void;
 			triggerRepaint(): void;
 		};
-	}
+	};
 
 	var __test: Window["__test"];
 	var __e2eMap: Window["__e2eMap"];
 }
-
-export {};

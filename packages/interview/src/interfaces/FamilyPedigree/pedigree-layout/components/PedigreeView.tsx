@@ -8,6 +8,7 @@ import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { useNodeMeasurement } from "../../../../hooks/useNodeMeasurement";
+import { useStageSelector } from "../../../../hooks/useStageSelector";
 import AddPersonFields, { type AddPersonMode } from "../../components/AddPersonForm";
 import { openAddChildWizard } from "../../components/wizards/AddChildWizard";
 import { openAddParentWizard } from "../../components/wizards/AddParentWizard";
@@ -26,7 +27,6 @@ import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey, getResolvedNodeFo
 import NodeContextMenu, { type NodeContextMenuAction } from "./NodeContextMenu";
 import PedigreeLayout from "./PedigreeLayout";
 import PedigreeNode, { computeNodeDisplayLabels } from "./PedigreeNode";
-import { useStageSelector } from "../../../../hooks/useStageSelector";
 
 type PedigreeViewProps = {
 	overrideNodes?: Map<string, NcNode>;

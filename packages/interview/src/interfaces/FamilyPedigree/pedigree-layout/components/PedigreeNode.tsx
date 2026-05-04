@@ -3,12 +3,12 @@ import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
+import { useStageSelector } from "../../../../hooks/useStageSelector";
 import { getNodeColorSelector, resolveNodeShape } from "../../../../selectors/session";
 import type { VariableConfig } from "../../store";
 import { getNodeShapeDefinition } from "../../utils/nodeUtils";
 import { useClickUnlessDragged } from "../useClickUnlessDragged";
 import { computeAllDisplayLabels } from "../utils/getDisplayLabel";
-import { useStageSelector } from "../../../../hooks/useStageSelector";
 
 export function AdoptionBrackets({ children }: { children: React.ReactNode }) {
 	const bracketStyle = "absolute top-1 bottom-1 w-1.5 border-white/80 border-y-2";

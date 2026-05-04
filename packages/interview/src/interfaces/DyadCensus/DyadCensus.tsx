@@ -7,14 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import {
-	addEdge,
-	type DyadCensusMetadataItem,
-	deleteEdge,
-	edgeExists,
-	updateStageMetadata,
-} from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import useBeforeNext from "../../hooks/useBeforeNext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import useStageValidation from "../../hooks/useStageValidation";
 import { getNodePairs } from "../../selectors/dyad-census";
 import {
@@ -23,12 +18,17 @@ import {
 	getNetworkNodesForType,
 	getStageMetadata,
 } from "../../selectors/session";
+import {
+	addEdge,
+	type DyadCensusMetadataItem,
+	deleteEdge,
+	edgeExists,
+	updateStageMetadata,
+} from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import Pair from "./components/Pair";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 const choiceVariants = {
 	initial: { opacity: 0, translateY: "120%" },

@@ -22,8 +22,8 @@ import { useStageSelector } from "../hooks/useStageSelector";
 import {
 	getValidationContext,
 	type Subject,
-	selectFieldMetadataWithSubject,
 	selectFieldMetadataFromVariables,
+	selectFieldMetadataWithSubject,
 } from "../selectors/forms";
 import { getCodebookVariablesForSubjectType } from "../selectors/protocol";
 

@@ -23,8 +23,9 @@ import NodeList from "../../components/NodeList";
 import Panel from "../../components/Panel";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import { addNode, deleteNode } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import useNodeLimits from "../../hooks/useNodeLimits";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getNodeVariables } from "../../selectors/interface";
 import { getSearchOptions, getSortOptions } from "../../selectors/name-generator";
 import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
@@ -34,6 +35,7 @@ import {
 	getPromptAdditionalAttributes,
 	getStageNodeCount,
 } from "../../selectors/session";
+import { addNode, deleteNode } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import { mapNCType } from "../../utils/createSorter";
 import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
@@ -42,8 +44,6 @@ import DataCard from "./DataCard";
 import DropOverlay from "./DropOverlay";
 import { convertNamesToUUIDs, type NameGeneratorRosterProps } from "./helpers";
 import useItems, { type UseItemElement } from "./useItems";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 /**
  * Maps Network Canvas variable types (which include 'hierarchy' and

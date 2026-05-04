@@ -8,18 +8,18 @@ import { createCanvasStore, useCanvasStore } from "../../canvas/useCanvasStore";
 import ConcentricCircles from "../../components/ConcentricCircles";
 import NodeDrawer from "../../components/NodeDrawer";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import { toggleEdge, toggleNodeAttributes, updateNode } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
 import useSortedNodeList from "../../hooks/useSortedNodeList";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getEdges, getNodes, getPlacedNodes, getUnplacedNodes } from "../../selectors/canvas";
 import { getPromptSortOrder } from "../../selectors/session";
+import { toggleEdge, toggleNodeAttributes, updateNode } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import CollapsablePrompts from "./CollapsablePrompts";
 import SimulationPanel from "./SimulationPanel";
 import { useForceSimulation } from "./useForceSimulation";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 type SociogramProps = StageProps<"Sociogram">;
 

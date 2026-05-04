@@ -7,8 +7,10 @@ import { useSelector } from "react-redux";
 import Canvas from "../../canvas/Canvas";
 import { createCanvasStore } from "../../canvas/useCanvasStore";
 import ConcentricCircles from "../../components/ConcentricCircles";
-import { updateNode } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getCategoricalOptions, getNetworkEdges, getNetworkNodes } from "../../selectors/session";
+import { updateNode } from "../../store/modules/session";
 import { type RootState, useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import type { VariableOptions } from "../../utils/codebook";
@@ -16,8 +18,6 @@ import Annotations, { type AnnotationsHandle } from "./Annotations";
 import ConvexHullLayer from "./ConvexHullLayer";
 import DrawingControls from "./DrawingControls";
 import PresetSwitcher from "./PresetSwitcher";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 type NarrativeProps = StageProps<"Narrative">;
 

@@ -5,10 +5,10 @@ import { motion } from "motion/react";
 import type React from "react";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { getCodebook } from "../store/modules/protocol";
+import { useStageSelector } from "../hooks/useStageSelector";
 import { useNodeLabel } from "../interfaces/Anonymisation/useNodeLabel";
 import { getNetworkNodes, resolveNodeShape } from "../selectors/session";
-import { useStageSelector } from "../hooks/useStageSelector";
+import { getCodebook } from "../store/modules/protocol";
 
 type ConnectedNodeProps = Omit<React.ComponentProps<typeof UINode>, "type" | "shape" | "color" | "label"> & {
 	nodeId: NcNode[typeof entityPrimaryKeyProperty];

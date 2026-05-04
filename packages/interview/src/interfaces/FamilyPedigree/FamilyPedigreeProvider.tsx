@@ -3,6 +3,7 @@ import { invariant } from "es-toolkit";
 import { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { useAppDispatch } from "../../store/store";
 import {
 	createFamilyPedigreeStore,
@@ -18,7 +19,6 @@ import {
 	getRelationshipTypeVariable,
 } from "./utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(undefined);
 

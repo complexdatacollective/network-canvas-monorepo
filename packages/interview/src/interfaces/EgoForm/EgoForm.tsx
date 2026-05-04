@@ -14,15 +14,15 @@ import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { updateEgo } from "../../store/modules/session";
 import useProtocolForm from "../../forms/useProtocolForm";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
 import { useScrolledToBottom } from "../../hooks/useScrolledToBottom";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { getEgoAttributes } from "../../selectors/session";
+import { updateEgo } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { BeforeNextFunction, StageProps } from "../../types";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 type EgoFormProps = StageProps<"EgoForm">;
 

@@ -18,16 +18,18 @@ import NodeBin from "../../components/NodeBin";
 import NodeList from "../../components/NodeList";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
+import useMediaQuery from "../../hooks/useMediaQuery";
+import useNodeLimits from "../../hooks/useNodeLimits";
+import usePortalTarget from "../../hooks/usePortalTarget";
+import { useStageSelector } from "../../hooks/useStageSelector";
+import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
+import { getNetworkNodesForPrompt, getPromptAdditionalAttributes, getStageNodeCount } from "../../selectors/session";
 import {
 	addNode as addNodeAction,
 	addNodeToPrompt as addNodeToPromptAction,
 	deleteNode as deleteNodeAction,
 } from "../../store/modules/session";
-import useMediaQuery from "../../hooks/useMediaQuery";
-import useNodeLimits from "../../hooks/useNodeLimits";
-import usePortalTarget from "../../hooks/usePortalTarget";
-import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
-import { getNetworkNodesForPrompt, getPromptAdditionalAttributes, getStageNodeCount } from "../../selectors/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import { usePassphrase } from "../Anonymisation/usePassphrase";
@@ -35,8 +37,6 @@ import { decryptData } from "../Anonymisation/utils";
 import NodeForm from "./components/NodeForm";
 import NodePanels from "./components/NodePanels";
 import QuickNodeForm from "./components/QuickNodeForm";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 type NameGeneratorProps = StageProps<"NameGeneratorQuickAdd" | "NameGenerator">;
 

@@ -10,17 +10,17 @@ import { useSelector } from "react-redux";
 import { ConnectedMotionNode } from "../../components/ConnectedNode";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
-import { edgeExists, toggleEdge } from "../../store/modules/session";
+import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useSortedNodeList from "../../hooks/useSortedNodeList";
+import { useStageSelector } from "../../hooks/useStageSelector";
 import { makeGetCodebookVariablesForNodeType } from "../../selectors/protocol";
 import { getNetworkEdges, getNetworkNodesForType } from "../../selectors/session";
+import { edgeExists, toggleEdge } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
 import type { ProtocolSortRule } from "../../utils/createSorter";
 import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
 
 type OneToManyDyadCensusProps = StageProps<"OneToManyDyadCensus">;
 

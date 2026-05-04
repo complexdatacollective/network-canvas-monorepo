@@ -7,11 +7,6 @@
 		"moduleResolution": "Bundler",
 		"jsx": "react-jsx"
 	},
-	"include": [
-		"fixtures/**/*.ts",
-		"helpers/**/*.ts",
-		"specs/**/*.ts",
-		"*.ts"
-	],
+	"include": ["fixtures/**/*.ts", "helpers/**/*.ts", "specs/**/*.ts", "*.ts"],
 	"exclude": ["node_modules"]
 }

@@ -1,35 +1,45 @@
 import { useCallback, useEffect, useState } from "react";
 
-const DEFAULT_MAX_SIZE = 600;
-
 /**
- * Finds the largest circle diameter that fits `count` circles into a
- * `width × height` area (accounting for gaps between items) by trying
- * every column count 1..count and picking the arrangement that
- * maximises the cell size.
+ * Picks the column count that maximises the cell size for `count` items
+ * inside a `width × height` area (accounting for gaps). Pure function so
+ * it produces the same `cols` for the same inputs.
+ *
+ * The bin's actual circle diameter is sized in CSS via container queries
+ * (see CategoricalBinItem), so a small drift in the measured container
+ * dimensions still yields a stable visual layout — only `cols` is
+ * decided here.
  */
-function computeCircleSize(width: number, height: number, count: number, gap: number): number {
-	if (count === 0 || width <= 0 || height <= 0) return 0;
+function computeCols(width: number, height: number, count: number, gap: number): number {
+	if (count === 0 || width <= 0 || height <= 0) return 1;
 
 	let best = 0;
+	let bestCols = 1;
 	for (let cols = 1; cols <= count; cols++) {
 		const rows = Math.ceil(count / cols);
 		const cellW = (width - gap * (cols - 1)) / cols;
 		const cellH = (height - gap * (rows - 1)) / rows;
 		const size = Math.min(cellW, cellH);
-		if (size > best) best = size;
+		if (size > best) {
+			best = size;
+			bestCols = cols;
+		}
 	}
 
-	// Subtract 1px to avoid exact-fit boundary issues with flex-wrap
-	return Math.max(Math.floor(best) - 1, 0);
+	return bestCols;
 }
 
 type UseCircleLayoutOptions = {
 	count: number;
-	maxSize?: number;
 };
 
-export function useCircleLayout({ count, maxSize = DEFAULT_MAX_SIZE }: UseCircleLayoutOptions) {
+// Snap measured dimensions before running the algorithm. Container size
+// can drift by a few dozen pixels between consecutive runs as the
+// AnimatePresence transition + ResizeObserver settle on different
+// equilibria; snapping ensures `cols` remains stable across that drift.
+const COLS_SNAP_PX = 50;
+
+export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 	const [dimensions, setDimensions] = useState({ width: 0, height: 0, gap: 0 });
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
@@ -46,10 +56,6 @@ export function useCircleLayout({ count, maxSize = DEFAULT_MAX_SIZE }: UseCircle
 			rafId = null;
 			const styles = getComputedStyle(container);
 			const computedGap = Number.parseFloat(styles.gap) || 0;
-
-			// When a bin expands, padding is added that reduces the content area by half.
-			// We need to subtract padding so circles are sized for the new content area when a bin is expanded.
-			// This ensures the circles resize to fit the new content area instead of overflowing it.
 			const padX =
 				(Number.parseFloat(styles.paddingInlineStart) || 0) + (Number.parseFloat(styles.paddingInlineEnd) || 0);
 			const padY =
@@ -74,10 +80,14 @@ export function useCircleLayout({ count, maxSize = DEFAULT_MAX_SIZE }: UseCircle
 	}, [container]);
 
 	const { width, height, gap } = dimensions;
-	const circleSize = Math.min(computeCircleSize(width, height, count, gap), maxSize);
+	const snappedW = Math.floor(width / COLS_SNAP_PX) * COLS_SNAP_PX;
+	const snappedH = Math.floor(height / COLS_SNAP_PX) * COLS_SNAP_PX;
+	const cols = computeCols(snappedW, snappedH, count, gap);
+	const rows = Math.ceil(count / cols);
 
 	return {
 		containerRef,
-		flexBasis: circleSize,
+		cols,
+		rows,
 	};
 }
