@@ -1,0 +1,9 @@
+{
+	"extends": "@codaco/tsconfig/web.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"rootDir": "src"
+	},
+	"include": ["src", ".storybook"],
+	"exclude": ["dist", "node_modules", "e2e"]
+}

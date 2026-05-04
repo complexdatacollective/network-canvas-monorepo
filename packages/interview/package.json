@@ -1,0 +1,86 @@
+{
+	"name": "@codaco/interview",
+	"version": "1.0.0-alpha.0",
+	"type": "module",
+	"license": "MIT",
+	"description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+		"directory": "packages/interview"
+	},
+	"sideEffects": [
+		"**/*.css",
+		"**/Shell.js"
+	],
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --build --noEmit",
+		"test": "vitest run",
+		"test:e2e": "./e2e/scripts/run.sh",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build",
+		"prepublishOnly": "pnpm build",
+		"clean": "rm -rf .turbo node_modules dist"
+	},
+	"peerDependencies": {
+		"@codaco/fresco-ui": "workspace:^",
+		"@codaco/protocol-validation": "11.4.0-alpha.0",
+		"@codaco/shared-consts": "5.0.0",
+		"@codaco/tailwind-config": "workspace:^",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"tailwindcss": "catalog:"
+	},
+	"dependencies": {
+		"@base-ui/react": "1.4.0",
+		"@codaco/network-query": "workspace:^",
+		"@reduxjs/toolkit": "^2.11.0",
+		"@faker-js/faker": "catalog:",
+		"es-toolkit": "catalog:",
+		"immer": "^11.1.4",
+		"motion": "catalog:",
+		"react-redux": "^9.2.0",
+		"redux-logger": "^3.0.6",
+		"redux-thunk": "^3.1.0",
+		"uuid": "^14.0.0"
+	},
+	"devDependencies": {
+		"@codaco/tsconfig": "workspace:*",
+		"@chromatic-com/storybook": "^5.1.2",
+		"@storybook/addon-a11y": "^10.3.5",
+		"@storybook/addon-docs": "^10.3.5",
+		"@storybook/addon-vitest": "^10.3.5",
+		"@storybook/react-vite": "^10.3.5",
+		"@tailwindcss/vite": "catalog:",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.0",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@vitejs/plugin-react": "catalog:",
+		"@vitest/browser": "^4.1.5",
+		"@vitest/browser-playwright": "^4.1.5",
+		"chromatic": "^16.2.0",
+		"jsdom": "^29.0.2",
+		"playwright": "^1.59.1",
+		"storybook": "^10.3.5",
+		"tinyglobby": "^0.2.0",
+		"typescript": "catalog:",
+		"vite": "catalog:",
+		"vite-plugin-dts": "catalog:",
+		"vitest": "catalog:"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}
