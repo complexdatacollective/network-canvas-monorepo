@@ -1,11 +1,10 @@
 import { merge } from "es-toolkit/compat";
-import React, { createContext, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { type ConfigProps, Form, type InjectedFormProps, reduxForm } from "redux-form";
-import Issues from "./Issues";
 
 type EditorOwnProps = Partial<ConfigProps<Record<string, unknown>, EditorOwnProps>> & {
 	form: string; // Make this required, so that consumers must specify a form name.
-	children?: React.ReactNode;
+	children?: ReactNode;
 };
 
 type EditorProps = EditorOwnProps &
@@ -57,18 +56,6 @@ const Editor = (props: EditorProps) => {
 		children,
 		values,
 	} = props;
-	const [isIssuesVisible, setIsIssuesVisible] = useState(false);
-
-	const hideIssues = () => {
-		setIsIssuesVisible(false);
-	};
-
-	// Show issues when submit fails
-	React.useEffect(() => {
-		if (submitFailed) {
-			setIsIssuesVisible(true);
-		}
-	}, [submitFailed]);
 
 	// Create context value with useful form information
 	const contextValue: FormContextType = {
@@ -88,7 +75,6 @@ const Editor = (props: EditorProps) => {
 			<Form onSubmit={handleSubmit} className="flex-1 h-full w-full">
 				{children}
 			</Form>
-			<Issues show={isIssuesVisible} hideIssues={hideIssues} />
 		</FormContext.Provider>
 	);
 };

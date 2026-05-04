@@ -1,16 +1,15 @@
 .issues {
-	position: sticky;
-	bottom: 0;
 	width: 100%;
+	flex-shrink: 0;
 	background-color: var(--color-sea-serpent);
 	transform-origin: 0 100%;
 	overflow: hidden;
 	color: var(--color-primary-foreground);
-	z-index: var(--z-default);
 	max-height: auto;
 }
 
 .issues__title-bar {
+	width: 100%;
 	background-color: var(--color-sea-serpent-dark);
 	padding: var(--space-sm) var(--space-md);
 	cursor: pointer;
@@ -18,6 +17,7 @@
 	flex-direction: row;
 	align-items: center;
 	justify-content: flex-start;
+	text-align: left;
 }
 
 .issues__title-bar-icon .icon {
