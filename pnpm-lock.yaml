@@ -100,7 +100,7 @@ catalogs:
       specifier: ^1.0.7
       version: 1.0.7
     tsx:
-      specifier: 4.21.0
+      specifier: ^4.21.0
       version: 4.21.0
     typescript:
       specifier: ^6.0.3
@@ -1479,6 +1479,9 @@ importers:
       '@vitest/browser-playwright':
         specifier: ^4.1.5
         version: 4.1.5(bufferutil@4.1.0)(playwright@1.59.1)(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.5)
+      chalk:
+        specifier: 5.6.2
+        version: 5.6.2
       chromatic:
         specifier: ^16.2.0
         version: 16.6.3
@@ -6974,6 +6977,10 @@ packages:
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
+
+  chalk@5.6.2:
+    resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
+    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
   change-case@3.1.0:
     resolution: {integrity: sha512-2AZp7uJZbYEzRPsFoa+ijKdvp9zsrnnt6+yFokfwEpeJm0xuJDVoxiRCAaTzyJND8GJkofo2IcKWaUZ/OECVzw==}
@@ -18724,6 +18731,8 @@ snapshots:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
+
+  chalk@5.6.2: {}
 
   change-case@3.1.0:
     dependencies:
