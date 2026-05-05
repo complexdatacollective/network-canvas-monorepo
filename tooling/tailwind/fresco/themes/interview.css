@@ -14,16 +14,6 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&display=swap');
 
-/*
- * Reference-import the theme tokens so theme() can resolve breakpoint
- * values inside @media queries below. `reference` makes the @theme block
- * available for compile-time resolution without re-emitting its CSS
- * rules into this file's output.
- *
- * https://github.com/tailwindlabs/tailwindcss/discussions/15366
- */
-@import '../theme.css' reference;
-
 @layer base {
   /*
    * Responsive font-size for interview mode. Tailwind's spacing/sizing
@@ -32,15 +22,25 @@
    * interview UI is sized as a single unit per viewport. Scoped to the
    * [data-interview] element itself so it only affects Shell's subtree;
    * the host page's typography is unaffected.
+   *
+   * Breakpoints below are hardcoded literals rather than `theme(--breakpoint-*)`
+   * calls. The proper Tailwind v4 way is `@import '../theme.css' reference;`
+   * to expose the tokens for compile-time resolution — but `reference` flips
+   * theme.css into reference-only mode globally, which retroactively cancels
+   * the `@theme static` :root emission from the earlier non-reference import,
+   * leaving every `--color-*` token undeclared at runtime. Hardcoding loses
+   * the single-source-of-truth, but the alternative is a much larger blast
+   * radius. Keep these in sync with `--breakpoint-tablet-landscape-max`
+   * (1279px) and `--breakpoint-desktop-lg` (1920px) in `theme.css`.
    */
   [data-interview] {
     font-size: 16px;
 
-    @media (width >= theme(--breakpoint-tablet-landscape-max)) {
+    @media (width >= 1279px) {
       font-size: 18px;
     }
 
-    @media (width >= theme(--breakpoint-desktop-lg)) {
+    @media (width >= 1920px) {
       font-size: 20px;
     }
   }
