@@ -102,12 +102,21 @@ type CopyProps = {
 
 const Copy = ({ children = "" }: CopyProps) => <div className="rules-preview-text__copy">{children}</div>;
 
+type RuleEntityProps = {
+	type: string;
+	color: string;
+	label: string;
+};
+
+const RuleEntity = ({ type, color, label }: RuleEntityProps) =>
+	type === "edge" ? <PreviewEdge color={color} label={label} /> : <PreviewNode color={color} label={label} size="sm" />;
+
 const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (type === "ego") {
 		return (
 			<>
 				<span style={{ "--node-label": "var(--color-charcoal)" } as React.CSSProperties}>
-					<PreviewNode label="Ego" color="platinum" />
+					<PreviewNode label="Ego" color="platinum" size="sm" />
 				</span>
 				<Copy>has</Copy>
 				<SimpleVariablePill
@@ -133,12 +142,10 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 		);
 	}
 
-	const PreviewComponent = type === "edge" ? PreviewEdge : PreviewNode;
-
 	if (isNil(options.attribute)) {
 		return (
 			<>
-				<PreviewComponent color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
+				<RuleEntity type={type} color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
 				<TypeOperator value={options.operator} />
 			</>
 		);
@@ -146,7 +153,7 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (isNil(options.value)) {
 		return (
 			<>
-				<PreviewComponent color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
+				<RuleEntity type={type} color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
 				<Operator value={options.operator} />
 				<Variable>{options.attribute}</Variable>
 			</>
@@ -154,7 +161,7 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	}
 	return (
 		<>
-			<PreviewComponent color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
+			<RuleEntity type={type} color={options.typeColor ?? ""} label={options.typeLabel ?? ""} />
 			<Copy>where</Copy>
 			<SimpleVariablePill
 				label={options.attribute ?? ""}

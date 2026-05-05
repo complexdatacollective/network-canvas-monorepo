@@ -446,7 +446,7 @@
 		"es-toolkit": "catalog:",
 		"fuse.js": "^7.3.0",
 		"lucide-react": "catalog:",
-		"nanoid": "^5.1.9",
+		"nanoid": "^5.1.11",
 		"react-aria-components": "^1.16.0",
 		"react-best-merge-refs": "^1.0.2",
 		"react-markdown": "^10.1.0",
