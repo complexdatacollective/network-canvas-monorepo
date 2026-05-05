@@ -50,8 +50,9 @@ global stylesheet so the scanner picks it up:
 
 `@codaco/fresco-ui/styles.css` re-exports `@codaco/tailwind-config/fresco.css`,
 which bundles both the default and interview theme variants. The
-interview theme only activates under `<main data-theme-interview>` (which
-`Shell` renders), so your host UI is unaffected outside that subtree.
+interview theme only activates while `Shell` is mounted (Shell sets
+`data-theme-interview` on `<html>` via a `useLayoutEffect`), so your
+host UI is unaffected at all other times.
 
 ### Vitest / jsdom
 
@@ -370,12 +371,13 @@ type InterviewerFlags = {
 
 ## Theming & DOM scope
 
-`Shell` renders a single root: `<main data-theme-interview>`. All design
-tokens (colours, fonts, spacing) and the responsive `font-size` scale
-(16/18/20px at the tablet/desktop breakpoints) are scoped to that
-attribute selector, so the package never bleeds styles into the host's
-own UI. The host page and the interview can live side by side — only
-descendants of `<main data-theme-interview>` see the interview theme.
+`Shell` renders a single `<main data-theme-interview>` element AND
+mirrors the same attribute onto `<html>` via a `useLayoutEffect` so
+the interview theme's `:root[data-theme-interview]` selectors match.
+That puts the responsive `font-size` scale (16/18/20px at tablet /
+desktop) on the document root, so `1rem` updates document-wide while
+Shell is mounted and every text-* / spacing utility scales together.
+The attribute is removed on unmount, restoring the host's typography.
 
 ---
 

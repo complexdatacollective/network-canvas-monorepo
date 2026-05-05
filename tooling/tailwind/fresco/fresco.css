@@ -9,8 +9,9 @@
  *
  * Both themes ship together because they don't conflict at runtime: the
  * default theme writes its variables under `:root`, and the interview
- * theme scopes its overrides to `:root:has([data-theme-interview])`,
- * which only matches when the interview Shell is mounted.
+ * theme scopes its overrides to `:root[data-theme-interview]`, which
+ * only matches while the interview Shell is mounted (Shell sets the
+ * attribute on `<html>` via a useLayoutEffect).
  */
 
 /* NC palette channel triplets (oklch L C H). Relative-color values used
@@ -24,7 +25,7 @@
 @import "./utilities.css";
 
 /* Theme variants. Default writes :root values; interview layers
-   overrides under :root:has([data-theme-interview]). */
+   overrides under :root[data-theme-interview]. */
 @import "./themes/default.css";
 @import "./themes/interview.css";
 
@@ -39,5 +40,5 @@
    `interview:[...]`). They live in the foundation barrel so any consumer
    of `@codaco/tailwind-config/fresco.css` gets them in the same Tailwind
    compilation pass that scans the components. */
-@custom-variant interview (:root:has([data-theme-interview]) &);
-@custom-variant dashboard (:root:not(:has([data-theme-interview])) &);
+@custom-variant interview (:root[data-theme-interview] &);
+@custom-variant dashboard (:root:not([data-theme-interview]) &);

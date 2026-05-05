@@ -5,7 +5,7 @@ import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
 import type { PostHog } from "posthog-js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
 import { AnalyticsProvider } from "./analytics/AnalyticsProvider";
 import { NULL_TRACKER, type Tracker } from "./analytics/tracker";
@@ -53,6 +53,18 @@ function Interview() {
 	} = useInterviewNavigation();
 
 	const { isE2E } = useContractFlags();
+
+	// Sets `data-theme-interview` on `<html>` so the interview theme's
+	// `:root[data-theme-interview]` selector matches and the responsive
+	// font-size override updates `1rem` document-wide. The marker on the
+	// `<main>` below stays put as a stable selector for tests/storybook.
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		root.setAttribute("data-theme-interview", "");
+		return () => {
+			root.removeAttribute("data-theme-interview");
+		};
+	}, []);
 
 	useStageNavigationAnalytics({
 		stage_index: displayedStep,

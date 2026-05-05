@@ -40,20 +40,20 @@ function setStoredTheme(theme: ThemeKey) {
 }
 
 function ThemeWrapper({ selectedTheme, children }: { selectedTheme: ThemeKey; children: React.ReactNode }) {
-	// Tie the interview theme attribute to a single, predictable DOM node
-	// (document.body) instead of a React-managed wrapper. Between stories in
-	// the same Chromatic worker iframe, React reconciliation over wrapper
-	// divs can leave the attribute in transitional state; toggling body
-	// directly with a cleanup function makes the write/remove deterministic.
+	// Tie the interview theme attribute to `<html>` so `1rem` tracks the
+	// responsive font-size override in tailwind-config's interview theme.
+	// Toggling document.documentElement directly (rather than a React-
+	// managed wrapper) keeps the write/remove deterministic between
+	// stories in the same Chromatic worker iframe.
 	useLayoutEffect(() => {
 		setStoredTheme(selectedTheme);
 		if (selectedTheme === "interview") {
-			document.body.setAttribute(INTERVIEW_ATTR, "");
+			document.documentElement.setAttribute(INTERVIEW_ATTR, "");
 		} else {
-			document.body.removeAttribute(INTERVIEW_ATTR);
+			document.documentElement.removeAttribute(INTERVIEW_ATTR);
 		}
 		return () => {
-			document.body.removeAttribute(INTERVIEW_ATTR);
+			document.documentElement.removeAttribute(INTERVIEW_ATTR);
 		};
 	}, [selectedTheme]);
 

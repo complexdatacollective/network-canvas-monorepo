@@ -1,9 +1,9 @@
 /*
  * Storybook preview Tailwind entry. Pulls the shared in-monorepo
  * foundation (sources both fresco-ui and interview package source);
- * both theme variants ship inside fresco.css, so the `interview` theme
- * (keyed off `[data-theme-interview]` via the `forceTheme` decorator)
- * activates automatically for stories that opt in.
+ * both theme variants ship inside fresco.css, and `preview.tsx`'s
+ * decorator sets `data-theme-interview` on `<html>` so every story
+ * in this package renders in interview mode.
  */
 @import "../../styles/host.css";
 
