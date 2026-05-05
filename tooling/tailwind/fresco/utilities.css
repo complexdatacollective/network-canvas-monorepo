@@ -105,3 +105,73 @@
    approach uses a pseudo-element selector that also matches non-editable
    elements like <select>, which we usually don't want to style as readonly. */
 @custom-variant is-read-only (&[readonly]);
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* Override default border color to use our theme values */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    @apply border-outline;
+  }
+
+  body {
+    @apply bg-background text-text publish-colors font-body;
+    position: relative; /* https://base-ui.com/react/overview/quick-start#ios-26-safari */
+  }
+
+  /* These tags are semantic, so I think its okay to apply styles to them directly in the global styles. */
+  strong {
+    @apply font-bold;
+  }
+
+  /* Within contexts that are already bold (headings, labels), push strong
+     to weight 900 so it remains visually distinct. */
+  :is(h1, h2, h3, h4, h5, h6) strong {
+    @apply font-black tracking-normal;
+  }
+
+  /* Labels additionally get slightly wider tracking on strong to further
+     reinforce the visual distinction. */
+  label strong {
+    @apply font-black tracking-wide;
+  }
+
+  em {
+    @apply italic;
+  }
+
+  s {
+    @apply line-through;
+  }
+
+  u {
+    @apply underline;
+  }
+
+  hr {
+    @apply my-6 rounded border-[1.2px] border-current/5;
+  }
+
+  kbd {
+    @apply font-monospace inline-flex items-center justify-center rounded-sm border border-current/15 bg-current/5 px-1.5 py-0.5 text-xs leading-none font-medium shadow-[0_1px_0_1px_oklch(from_currentColor_l_c_h/0.1)];
+  }
+
+  /* Slightly increase default stroke width for better visibility */
+  .lucide {
+    stroke-width: 2.5px;
+  }
+}
+
