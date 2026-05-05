@@ -13,6 +13,7 @@
  * self-host fonts should override these with their own font-loading.
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inclusive+Sans:ital@0;1&family=Nunito:wght@200..1000&display=swap');
 
 @layer theme {

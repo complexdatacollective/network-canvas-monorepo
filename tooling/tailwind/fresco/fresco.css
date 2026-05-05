@@ -25,3 +25,4 @@
 @plugin "./plugins/elevation/elevation";
 @plugin "./plugins/inset-surface/inset-surface";
 @plugin "./plugins/motion-spring";
+@plugin '@tailwindcss/forms';

@@ -1,11 +1,5 @@
 /*
  * Foundational utilities for the Fresco design system.
- *
- * These @utility definitions are referenced by both `@codaco/fresco-ui`
- * components (`focusable`, `focus-styles`) and `@codaco/interview`
- * components (`interface`, `root`). They live here so any consumer that
- * imports `@codaco/fresco-ui/styles.css` (which @import's this file)
- * gets them automatically — no per-host duplication.
  */
 
 /* Custom variant matching `:focus-visible` on the element OR any descendant.

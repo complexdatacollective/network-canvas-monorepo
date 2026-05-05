@@ -1,0 +1,11 @@
+{
+	"extends": "@codaco/tsconfig/base.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": false,
+		"outDir": "fresco/plugins",
+		"rootDir": "fresco/plugins",
+		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.build.json"
+	},
+	"include": ["fresco/plugins/**/*.ts"]
+}

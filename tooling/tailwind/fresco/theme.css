@@ -7,7 +7,6 @@
  * `colors.css` and the semantic CSS variables defined by a theme file
  * (e.g. `default-theme.css`).
  *
- * Consumers should `@import` this once after `@import "tailwindcss"`.
  */
 
 @theme {
