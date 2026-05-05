@@ -13,6 +13,12 @@ import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import {
+	actionCircleVariants,
+	actionIconClass,
+	actionPlusBadgeVariants,
+	actionPlusIconClass,
+} from "../../../components/actionButtonVariants";
 import { useCelebrate } from "../../../hooks/useCelebrate";
 import { useStageSelector } from "../../../hooks/useStageSelector";
 import { getNodeIconName } from "../../../selectors/name-generator";
@@ -222,7 +228,8 @@ export default function QuickAddField({
 							ref={circleRef}
 							data-toggle-circle
 							className={cx(
-								"elevation-high relative flex aspect-square size-28 items-center justify-center overflow-hidden rounded-full transition-[background-color,filter] duration-300 [&>.lucide]:aspect-square [&>.lucide]:h-16 [&>.lucide]:w-auto",
+								actionCircleVariants(),
+								"relative aspect-square size-28 transition-[background-color,filter] duration-300",
 								disabled ? "cursor-not-allowed saturate-0" : "cursor-pointer",
 							)}
 							style={{
@@ -266,18 +273,18 @@ export default function QuickAddField({
 										exit={{ y: "100%" }}
 										className="h-full"
 									>
-										<Icon name={icon as InterviewerIconName} className="h-full w-auto" />
+										<Icon name={icon as InterviewerIconName} className={actionIconClass} />
 									</motion.div>
 								)}
 							</AnimatePresence>
 						</motion.div>
 						<motion.div
-							className="bg-platinum text-charcoal absolute -top-2 -right-4 flex size-10 items-center justify-center rounded-full shadow-lg"
+							className={actionPlusBadgeVariants()}
 							animate={
 								!checked || meta.isValid ? { scale: 1, opacity: 1, rotate: 0 } : { scale: 0, opacity: 0, rotate: 180 }
 							}
 						>
-							<Plus className="size-6" size={12} />
+							<Plus className={actionPlusIconClass} />
 						</motion.div>
 					</button>
 				}

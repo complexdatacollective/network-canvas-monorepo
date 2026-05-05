@@ -16,6 +16,12 @@ import {
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	actionCircleVariants,
+	actionIconClass,
+	actionPlusBadgeVariants,
+	actionPlusIconClass,
+} from "../../../components/actionButtonVariants";
 import { useCurrentStep } from "../../../contexts/CurrentStepContext";
 import useProtocolForm from "../../../forms/useProtocolForm";
 import { useCelebrate } from "../../../hooks/useCelebrate";
@@ -134,17 +140,18 @@ const NodeForm = (props: NodeFormProps) => {
 							ref={circleRef}
 							data-toggle-circle
 							className={cx(
-								"elevation-high relative flex aspect-square size-28 items-center justify-center overflow-hidden rounded-full transition-[background-color,filter] duration-300 [&>.lucide]:aspect-square [&>.lucide]:h-16 [&>.lucide]:w-auto",
+								actionCircleVariants(),
+								"relative aspect-square size-28 transition-[background-color,filter] duration-300",
 								disabled ? "cursor-not-allowed saturate-0" : "cursor-pointer",
 							)}
 							style={{ backgroundColor: "var(--primary)" }}
 						>
 							<motion.div className="h-full">
-								<Icon name={icon as InterviewerIconName} className="h-full w-auto" />
+								<Icon name={icon as InterviewerIconName} className={actionIconClass} />
 							</motion.div>
 						</motion.div>
-						<motion.div className="bg-platinum text-charcoal absolute -top-2 -right-4 flex size-10 items-center justify-center rounded-full shadow-lg">
-							<Plus className="size-6" size={12} />
+						<motion.div className={actionPlusBadgeVariants()}>
+							<Plus className={actionPlusIconClass} />
 						</motion.div>
 					</button>
 				</motion.div>

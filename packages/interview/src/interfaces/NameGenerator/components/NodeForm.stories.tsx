@@ -2,18 +2,26 @@ import type { Form as TForm } from "@codaco/protocol-validation";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { configureStore } from "@reduxjs/toolkit";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { icons } from "lucide-react";
+import type { ComponentProps } from "react";
 import { Provider } from "react-redux";
 import NodeForm from "./NodeForm";
 
+const customIconOptions = ["add-a-person", "add-a-place"];
+
+const iconOptions = [...customIconOptions, ...Object.keys(icons)];
+
+type StoryArgs = ComponentProps<typeof NodeForm> & { icon: string };
+
 // Mock data for the story
-const mockProtocol = {
+const buildMockProtocol = (icon: string) => ({
 	name: "Test Protocol",
 	codebook: {
 		node: {
 			person: {
 				name: "Person",
 				displayVariable: "name",
-				iconVariant: "add-a-person",
+				icon,
 				variables: {
 					name: {
 						name: "Name",
@@ -190,7 +198,7 @@ const mockProtocol = {
 			},
 		},
 	],
-};
+});
 
 // Create a proper mock session that matches the expected structure
 const mockSession = {
@@ -233,7 +241,8 @@ const mockSession = {
 };
 
 // Create mock Redux store with proper structure
-const createMockStore = (overrides: Record<string, unknown> = {}) => {
+const createMockStore = (icon: string, overrides: Record<string, unknown> = {}) => {
+	const mockProtocol = buildMockProtocol(icon);
 	const mockProtocolState = {
 		id: "test-protocol-id",
 		codebook: mockProtocol.codebook,
@@ -266,8 +275,17 @@ const createMockStore = (overrides: Record<string, unknown> = {}) => {
 };
 
 // Story decorator to provide Redux store
-const ReduxDecorator = (Story: React.ComponentType, context: { parameters?: { reduxState?: unknown } }) => {
-	const store = createMockStore(context.parameters?.reduxState as Record<string, unknown> | undefined);
+const ReduxDecorator = (
+	Story: React.ComponentType,
+	context: {
+		args: { icon?: string };
+		parameters?: { reduxState?: unknown };
+	},
+) => {
+	const store = createMockStore(
+		context.args.icon ?? "add-a-person",
+		context.parameters?.reduxState as Record<string, unknown> | undefined,
+	);
 	return (
 		<Provider store={store}>
 			<div className="relative flex h-[400px] w-[800px] items-end justify-end p-6">
@@ -277,14 +295,23 @@ const ReduxDecorator = (Story: React.ComponentType, context: { parameters?: { re
 	);
 };
 
-const meta: Meta<typeof NodeForm> = {
+const meta: Meta<StoryArgs> = {
 	title: "Interview/interfaces/NameGenerator/NodeForm",
 	component: NodeForm,
 	decorators: [ReduxDecorator],
 	parameters: {
+		forceTheme: "interview",
 		layout: "centered",
 	},
+	args: {
+		icon: "add-a-person",
+	},
 	argTypes: {
+		icon: {
+			control: "select",
+			options: iconOptions,
+			description: "Icon for the node type (story-only — drives the redux codebook mock).",
+		},
 		selectedNode: {
 			control: "object",
 			description: "The node being edited, or null for creating a new node",
@@ -309,7 +336,7 @@ const meta: Meta<typeof NodeForm> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<StoryArgs>;
 
 // Basic form with all field types
 const basicForm: TForm = {
