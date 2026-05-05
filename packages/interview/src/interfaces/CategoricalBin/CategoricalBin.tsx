@@ -211,7 +211,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	return (
 		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
 			<Prompts />
-			<div className="flex size-full flex-col items-center gap-2">
+			<div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">
 				<div className="catbin-outer min-h-0 w-full flex-1">
 					<AnimatePresence mode="wait">
 						<motion.div
