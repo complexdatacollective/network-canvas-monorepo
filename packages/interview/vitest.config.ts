@@ -38,6 +38,16 @@ export default defineConfig({
 						storybookScript: "storybook dev -p 6006 --no-open",
 					}),
 				],
+				// d3-force is not reachable by Vite's static import scanner (it is
+				// only pulled in at runtime via the virtual project-annotations
+				// module). Without this, Vite discovers it as a new dependency
+				// mid-run, re-optimises the bundle, changes the `browserv` hash and
+				// invalidates in-flight fetches of setup-file-with-project-
+				// annotations.js — producing "Failed to fetch dynamically imported
+				// module" errors on every cold-cache run.
+				optimizeDeps: {
+					include: ["d3-force"],
+				},
 				test: {
 					name: "storybook",
 					testTimeout: 60_000,
