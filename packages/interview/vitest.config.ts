@@ -4,11 +4,15 @@ import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
+import pkg from "./package.json" with { type: "json" };
 
 const dirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
 	plugins: [react()],
+	define: {
+		__PACKAGE_VERSION__: JSON.stringify(pkg.version),
+	},
 	test: {
 		globals: true,
 		exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/specs/**", "**/storybook-static/**"],
