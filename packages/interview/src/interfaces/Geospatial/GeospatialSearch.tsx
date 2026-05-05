@@ -31,6 +31,7 @@ export default function GeospatialSearch({
 	map,
 	proximity,
 	resetKey,
+	onSearchPerformed,
 	className,
 }: UseGeospatialSearchProps & { className?: string }) {
 	const [isOpen, setIsOpen] = useState(false);
@@ -46,6 +47,7 @@ export default function GeospatialSearch({
 		map,
 		proximity,
 		resetKey,
+		onSearchPerformed,
 	});
 
 	// Layout inside component with useMemo to avoid shared instance issues

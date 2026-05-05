@@ -93,6 +93,26 @@ const Narrative = ({ stage }: NarrativeProps) => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [highlightIndex]);
 
+	const skipFirstHullsRef = useRef(true);
+	useEffect(() => {
+		if (skipFirstHullsRef.current) {
+			skipFirstHullsRef.current = false;
+			return;
+		}
+		track("narrative_preset_updated", { preset_index: presetIndex, changed: "group" });
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [showConvexHulls]);
+
+	const skipFirstEdgesRef = useRef(true);
+	useEffect(() => {
+		if (skipFirstEdgesRef.current) {
+			skipFirstEdgesRef.current = false;
+			return;
+		}
+		track("narrative_preset_updated", { preset_index: presetIndex, changed: "edge_type" });
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [showEdges]);
+
 	// Stage properties
 	const { presets } = stage;
 	const currentPreset = presets[presetIndex];

@@ -87,6 +87,9 @@ const EgoFormInner = (props: EgoFormProps) => {
 						cancel: { label: "Keep changes", value: false },
 					},
 				});
+				if (result) {
+					track("form_dismissed_without_save", { form_kind: "ego" });
+				}
 				return !!result;
 			}
 
@@ -105,7 +108,21 @@ const EgoFormInner = (props: EgoFormProps) => {
 			return true;
 		}
 
-		track("form_validation_failed", { form_kind: "ego" });
+		const fieldErrorEntries: Array<{ field_index: number; component: string; message: string }> = [];
+		const fieldErrors = formErrorsRef.current?.fieldErrors;
+		if (fieldErrors) {
+			for (const [name, messages] of Object.entries(fieldErrors)) {
+				if (!Array.isArray(messages) || messages.length === 0) continue;
+				const idx = form.fields.findIndex((f) => f.variable === name);
+				if (idx === -1) continue;
+				const f = form.fields[idx];
+				const component = f && "component" in f && typeof f.component === "string" ? f.component : "unknown";
+				for (const message of messages) {
+					fieldErrorEntries.push({ field_index: idx, component, message });
+				}
+			}
+		}
+		track("form_validation_failed", { form_kind: "ego", field_errors: fieldErrorEntries });
 
 		// Scroll to the first validation error after a tick so the store
 		// update has propagated to React and error elements are rendered.

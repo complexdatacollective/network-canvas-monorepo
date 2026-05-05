@@ -362,6 +362,11 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 								map={mapRef.current}
 								proximity={mapOptions.center}
 								resetKey={navState.activeIndex}
+								onSearchPerformed={() => {
+									const node = stageNodes[navState.activeIndex];
+									if (!node) return;
+									track("geospatial_search_performed", { node_id: node[entityPrimaryKeyProperty] });
+								}}
 								className="absolute top-4 left-4 z-20"
 							/>
 						)}

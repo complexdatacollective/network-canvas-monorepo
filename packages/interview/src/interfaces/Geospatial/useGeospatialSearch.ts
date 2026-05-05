@@ -18,6 +18,12 @@ export type UseGeospatialSearchProps = {
 	proximity?: [number, number];
 	/** When this value changes, the search state is reset */
 	resetKey?: string | number;
+	/**
+	 * Called once the debounced search query is sent to Mapbox, after the
+	 * 300ms idle window. The query string itself is intentionally not passed —
+	 * callers receive only the signal that a search occurred.
+	 */
+	onSearchPerformed?: () => void;
 };
 
 type UseGeospatialSearchReturn = {
@@ -37,6 +43,7 @@ export const useGeospatialSearch = ({
 	map,
 	proximity,
 	resetKey,
+	onSearchPerformed,
 }: UseGeospatialSearchProps): UseGeospatialSearchReturn => {
 	const [query, setQuery] = useState("");
 	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -60,6 +67,9 @@ export const useGeospatialSearch = ({
 	const searchBoxRef = useRef(searchBox);
 	searchBoxRef.current = searchBox;
 
+	const onSearchPerformedRef = useRef(onSearchPerformed);
+	onSearchPerformedRef.current = onSearchPerformed;
+
 	const proximityOption = useMemo(
 		() => (proximity ? { lng: proximity[0], lat: proximity[1] } : undefined),
 		[proximity],
@@ -75,6 +85,8 @@ export const useGeospatialSearch = ({
 				setIsLoading(false);
 				return;
 			}
+
+			onSearchPerformedRef.current?.();
 
 			try {
 				const response = await searchBoxRef.current.suggest(value, {

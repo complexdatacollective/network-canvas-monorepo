@@ -43,6 +43,38 @@ type SlidesFormAnalyticsProps = {
 	form_kind?: FormKind;
 };
 
+type FieldErrorEntry = { field_index: number; component: string; message: string };
+
+/**
+ * Build a structured field-error array from the form store's flattened
+ * Zod errors. Looks up each failed field's component by matching the
+ * field name against the form's `fields` array. Multiple messages per
+ * field produce multiple entries.
+ *
+ * The error message is included verbatim — engine messages may include
+ * codebook variable references in some validation kinds; we accept that
+ * leak for the diagnostic value.
+ */
+function buildFieldErrors(
+	formErrors: { fieldErrors?: Record<string, string[] | undefined> } | undefined,
+	fields: ReadonlyArray<{ variable: string; component?: string }>,
+): FieldErrorEntry[] {
+	const result: FieldErrorEntry[] = [];
+	const fieldErrors = formErrors?.fieldErrors;
+	if (!fieldErrors) return result;
+	for (const [name, messages] of Object.entries(fieldErrors)) {
+		if (!Array.isArray(messages) || messages.length === 0) continue;
+		const idx = fields.findIndex((f) => f.variable === name);
+		if (idx === -1) continue;
+		const f = fields[idx];
+		const component = f && "component" in f && typeof f.component === "string" ? f.component : "unknown";
+		for (const message of messages) {
+			result.push({ field_index: idx, component, message });
+		}
+	}
+	return result;
+}
+
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
 	form: Form;
 	items: T[];
@@ -63,6 +95,7 @@ type SlideHandle = {
 	submit: () => Promise<void>;
 	isDirty: () => boolean;
 	focusFirstError: () => void;
+	getFieldErrors: () => Array<{ field_index: number; component: string; message: string }>;
 };
 
 type SlideContentProps = {
@@ -143,6 +176,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function Sl
 		submit: () => storeApi!.getState().submitForm(),
 		isDirty: () => storeApi!.getState().isDirty,
 		focusFirstError: () => focusFirstError(formErrorsRef.current),
+		getFieldErrors: () => buildFieldErrors(formErrorsRef.current, form.fields),
 	}));
 
 	return (
@@ -257,6 +291,7 @@ export default function SlidesForm({
 					cancelLabel: "Cancel",
 					intent: "destructive",
 					onConfirm: () => {
+						track("form_dismissed_without_save", { form_kind });
 						setActiveIndex((prev) => prev - 1);
 					},
 				});
@@ -275,7 +310,8 @@ export default function SlidesForm({
 		const formIsValid = await slideRef.current?.validate();
 
 		if (!formIsValid) {
-			track("form_validation_failed", { form_kind });
+			const errs = slideRef.current?.getFieldErrors?.() ?? [];
+			track("form_validation_failed", { form_kind, field_errors: errs });
 			slideRef.current?.focusFirstError();
 			return false;
 		}

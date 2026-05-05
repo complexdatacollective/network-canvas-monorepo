@@ -104,6 +104,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 			{
 				direction: "forwards",
 				isMet: isIntroduction || hasEdge !== null,
+				kind: "comparison_response_required",
 				toast: {
 					description: "Please select a response before continuing.",
 					variant: "destructive",

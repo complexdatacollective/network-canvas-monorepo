@@ -2,6 +2,7 @@
 
 import type { ToastVariant } from "@codaco/fresco-ui/Toast";
 import { type ReactNode, useCallback, useContext, useEffect, useRef } from "react";
+import { useTrack } from "../analytics/useTrack";
 import { StageMetadataContext } from "../contexts/StageMetadataContext";
 import { useInterviewToastContext } from "../toast/InterviewToast";
 import { interviewToastManager } from "../toast/interviewToastManager";
@@ -10,6 +11,12 @@ import type { Direction } from "../types";
 type StageConstraint = {
 	direction: "forwards" | "backwards" | "both";
 	isMet: boolean;
+	/**
+	 * Structural validation kind for analytics. Stable, lowercase, snake_case.
+	 * Examples: "min_nodes", "required_field", "passphrase_mismatch".
+	 * Never a rendered message.
+	 */
+	kind?: string;
 	toast: {
 		description: string | ReactNode;
 		variant: ToastVariant;
@@ -34,6 +41,7 @@ type UseStageValidationOptions = {
 function useStageValidation({ constraints }: UseStageValidationOptions) {
 	const registerBeforeNext = useContext(StageMetadataContext);
 	const toastContext = useInterviewToastContext();
+	const track = useTrack();
 
 	const constraintsRef = useRef(constraints);
 	constraintsRef.current = constraints;
@@ -107,6 +115,11 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
 				const matchesDirection = constraint.direction === "both" || constraint.direction === direction;
 
 				if (matchesDirection && !constraint.isMet) {
+					track("stage_validation_failed", {
+						validation_kind: constraint.kind ?? "unknown",
+						direction,
+					});
+
 					if (!activeToasts.has(i)) {
 						const positionerProps = resolvePositionerPropsRef.current(constraint.toast.anchor);
 

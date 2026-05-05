@@ -345,6 +345,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 								renderItem={renderItem}
 								filterKeys={filterKeys}
 								filterFuseOptions={filterFuseOptions}
+								onFilterChange={handleFilterChange}
 								sortRules={initialSortRules}
 								dragAndDropHooks={dragAndDropHooks}
 								disabledKeys={disabledKeys}
