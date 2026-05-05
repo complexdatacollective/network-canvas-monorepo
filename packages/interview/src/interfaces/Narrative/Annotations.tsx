@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
+import { useTrack } from "../../analytics/useTrack";
 
 type Point = { x: number; y: number };
 
@@ -98,7 +99,11 @@ const Annotations = forwardRef<AnnotationsHandle, AnnotationsProps>(function Ann
 		[isDrawing, relativeCoords],
 	);
 
+	const track = useTrack();
 	const handlePointerUp = useCallback(() => {
+		if (isDrawing) {
+			track("annotation_drawn");
+		}
 		setIsDrawing(false);
 
 		const lineIndex = activeLineIndexRef.current;
@@ -107,7 +112,7 @@ const Annotations = forwardRef<AnnotationsHandle, AnnotationsProps>(function Ann
 			next[lineIndex] = true;
 			return next;
 		});
-	}, []);
+	}, [isDrawing, track]);
 
 	const handleLineFaded = useCallback(
 		(index: number) => {

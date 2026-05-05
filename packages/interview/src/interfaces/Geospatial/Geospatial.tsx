@@ -8,6 +8,7 @@ import { AnimatePresence, motion, type Variants } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import type { ThunkDispatch } from "redux-thunk";
+import { useTrack } from "../../analytics/useTrack";
 import Node from "../../components/ConnectedNode";
 import { usePrompts } from "../../components/Prompts/usePrompts";
 import { useCurrentStep } from "../../contexts/CurrentStepContext";
@@ -128,16 +129,21 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 		[dispatch, currentStep],
 	);
 
+	const track = useTrack();
 	const setLocationValue = useCallback(
-		(value: string | null) => {
+		(value: string | null, selectionKind: "search" | "pin" = "pin") => {
+			const nodeId = stageNodes[navState.activeIndex]![entityPrimaryKeyProperty];
+			if (value !== null) {
+				track("geospatial_location_selected", { node_id: nodeId, selection_kind: selectionKind });
+			}
 			void updateNode({
-				nodeId: stageNodes[navState.activeIndex]![entityPrimaryKeyProperty],
+				nodeId,
 				newAttributeData: {
 					[currentPrompt.variable!]: value,
 				},
 			});
 		},
-		[updateNode, stageNodes, navState.activeIndex, currentPrompt.variable],
+		[updateNode, stageNodes, navState.activeIndex, currentPrompt.variable, track],
 	);
 
 	const initialSelectionValue: string | undefined =
@@ -166,7 +172,7 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 		initialSelectionValue,
 		onSelectionChange: (value: string) => {
 			if (currentPrompt && stageNodes[navState.activeIndex]) {
-				setLocationValue(value);
+				setLocationValue(value, "search");
 			}
 		},
 	});

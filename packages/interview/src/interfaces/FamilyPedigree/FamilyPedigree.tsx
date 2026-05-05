@@ -2,7 +2,8 @@ import { Button } from "@codaco/fresco-ui/Button";
 import useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import Prompts from "../../components/Prompts/Prompts";
 import { useContractFlags } from "../../contract/context";
 import useBeforeNext from "../../hooks/useBeforeNext";
@@ -209,6 +210,14 @@ const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const showQuickStart = currentStepIndex === 0 && !hasNodes;
+	const track = useTrack();
+	const wizardShownRef = useRef(false);
+	useEffect(() => {
+		if (showQuickStart && !wizardShownRef.current) {
+			track("pedigree_wizard_shown");
+			wizardShownRef.current = true;
+		}
+	}, [showQuickStart, track]);
 	const showResetOption = currentStepIndex === 0 && hasNodes && isNetworkCommitted;
 
 	return (
@@ -327,6 +336,10 @@ const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 							if (egoId && result.egoAttributes) {
 								updateNode(egoId, result.egoAttributes);
 							}
+							track("pedigree_wizard_complete", {
+								nodes_created: Object.keys(result.batch.nodes ?? {}).length,
+								edges_created: Object.keys(result.batch.edges ?? {}).length,
+							});
 							void openDialog({
 								type: "acknowledge",
 								title: "Building the rest of your pedigree",

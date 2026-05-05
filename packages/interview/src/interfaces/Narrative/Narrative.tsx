@@ -3,6 +3,7 @@
 import { entityAttributesProperty } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import Canvas from "../../canvas/Canvas";
 import { createCanvasStore } from "../../canvas/useCanvasStore";
 import ConcentricCircles from "../../components/ConcentricCircles";
@@ -65,13 +66,18 @@ const Narrative = ({ stage }: NarrativeProps) => {
 		setIsFrozen((prev) => !prev);
 	}, []);
 
+	const track = useTrack();
+
 	const handleResetInteractions = useCallback(() => {
+		track("annotations_reset");
 		annotationLayer.current?.reset();
-	}, []);
+	}, [track]);
 
 	const handleChangePreset = useCallback(
 		(index: number) => {
 			if (index !== presetIndex) {
+				const direction = index > presetIndex ? "forward" : index < presetIndex ? "back" : "jumped";
+				track("narrative_preset_changed", { preset_index: index, direction });
 				setShowConvexHulls(true);
 				setShowEdges(true);
 				setShowHighlightedNodes(true);
@@ -79,8 +85,13 @@ const Narrative = ({ stage }: NarrativeProps) => {
 				setPresetIndex(index);
 			}
 		},
-		[presetIndex],
+		[presetIndex, track],
 	);
+
+	useEffect(() => {
+		track("narrative_preset_updated", { preset_index: presetIndex, changed: "highlight" });
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [highlightIndex]);
 
 	// Stage properties
 	const { presets } = stage;
