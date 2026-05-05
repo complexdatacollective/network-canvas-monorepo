@@ -87,7 +87,7 @@ export default function App() {
 	}
 
 	return (
-		<MotionConfig reducedMotion="user" skipAnimations>
+		<MotionConfig reducedMotion="always" skipAnimations>
 			<Toast.Provider toastManager={interviewToastManager}>
 				<DndStoreProvider>
 					<Shell

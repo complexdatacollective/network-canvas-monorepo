@@ -102,11 +102,6 @@ export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 
 		observer.observe(container);
 
-		// Kick off an initial settle window in case ResizeObserver doesn't fire
-		// again after observe (it always fires once, but that "once" is what we
-		// want to debounce against subsequent reflows).
-		settleTimer = setTimeout(commit, SETTLE_MS);
-
 		return () => {
 			observer.disconnect();
 			if (settleTimer !== null) clearTimeout(settleTimer);
@@ -119,9 +114,17 @@ export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 	const cols = computeCols(snappedW, snappedH, count, gap);
 	const rows = Math.ceil(count / cols);
 
+	// `false` until the first valid measurement has been committed. The container
+	// element should still be rendered so the ResizeObserver has something to
+	// measure — only the children that depend on cols/rows should be gated on
+	// this. Once true, stays true for the lifetime of the hook (we never
+	// transition back to "not ready" mid-session).
+	const isReady = width > 0 && height > 0;
+
 	return {
 		containerRef,
 		cols,
 		rows,
+		isReady,
 	};
 }

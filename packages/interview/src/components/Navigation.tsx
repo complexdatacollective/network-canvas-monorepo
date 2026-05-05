@@ -3,7 +3,7 @@ import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import ProgressBar from "@codaco/fresco-ui/ProgressBar";
 import { cva, cx } from "@codaco/fresco-ui/utils/cva";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { ComponentProps, Ref } from "react";
 import PassphrasePrompter from "./PassphrasePrompter";
 
@@ -119,6 +119,8 @@ const Navigation = ({
 	const BackIcon = orientation === "vertical" ? ChevronUp : ChevronLeft;
 	const ForwardIcon = orientation === "vertical" ? ChevronDown : ChevronRight;
 
+	const shouldReduceMotion = useReducedMotion();
+
 	return (
 		<MotionSurface
 			role="navigation"
@@ -146,7 +148,10 @@ const Navigation = ({
 				<ProgressBar percentProgress={progress} orientation={orientation} />
 			</motion.div>
 			<NavigationButton
-				className={cx(pulseNext && "bg-success animate-pulse-glow hover:enabled:bg-success outline-success")}
+				className={cx(
+					pulseNext && "bg-success hover:enabled:bg-success outline-success",
+					pulseNext && !shouldReduceMotion && "animate-pulse-glow",
+				)}
 				onClick={moveForward}
 				disabled={disableMoveForward}
 				icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
