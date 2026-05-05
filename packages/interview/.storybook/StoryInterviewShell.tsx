@@ -1,23 +1,23 @@
 "use client";
 
-import { Toast } from "@base-ui/react/toast";
-import { DndStoreProvider } from "@codaco/fresco-ui/dnd/dnd";
-import { MotionConfig } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
 import SuperJSON from "superjson";
 import {
 	type AssetRequestHandler,
 	type InterviewPayload,
-	InterviewToastViewport,
-	interviewToastManager,
+	isValidAssetType,
+	type ResolvedAsset,
 	Shell,
 	type StepChangeHandler,
 } from "../src";
 
-// Shape of the object SyntheticInterview.getInterviewPayload() returns —
-// flat session fields plus a separate `protocol` and `assetUrls`. We split
-// it into the package's `InterviewPayload` here so the Shell receives the
-// shape it expects.
+// SyntheticInterview emits assets as plain objects whose `url` field
+// (set by stories via `addAsset({ url: '/storybook/roster-100.json' })`)
+// is what we resolve `onRequestAsset` against. The shape isn't part of
+// the package's public ResolvedAsset type, so we treat each entry as a
+// loose record and pull off the fields we need.
+type RawAsset = Record<string, unknown>;
+
 type RawSyntheticPayload = {
 	id: string;
 	startTime: Date;
@@ -25,27 +25,69 @@ type RawSyntheticPayload = {
 	exportTime: Date | null;
 	lastUpdated: Date;
 	currentStep: number;
-	stageMetadata: unknown;
+	stageMetadata?: unknown;
 	network: InterviewPayload["session"]["network"];
-	protocol: InterviewPayload["protocol"];
+	protocol: Omit<InterviewPayload["protocol"], "assets" | "importedAt"> & {
+		importedAt: Date;
+		assets: RawAsset[];
+	};
 };
+
+// Derive the ResolvedAsset.type from the raw asset record. Stories may
+// declare it explicitly via `type:` (preferred), or we fall back to
+// inspecting the URL/value fields the way Fresco's preview did.
+function inferAssetType(asset: RawAsset): ResolvedAsset["type"] {
+	const t = asset.type;
+	if (typeof t === "string" && isValidAssetType(t)) return t;
+	if (typeof asset.value === "string") return "apikey";
+	if (typeof asset.url === "string" && asset.url.endsWith(".geojson")) return "geojson";
+	return "network";
+}
 
 function buildPayload(raw: RawSyntheticPayload): {
 	payload: InterviewPayload;
 	initialStep: number;
+	assetUrls: Record<string, string>;
 } {
 	const { protocol, ...sessionFields } = raw;
+
+	const assets: ResolvedAsset[] = protocol.assets.flatMap((a) => {
+		const assetId = typeof a.assetId === "string" ? a.assetId : null;
+		if (!assetId) return [];
+		return [
+			{
+				assetId,
+				name: typeof a.name === "string" ? a.name : assetId,
+				type: inferAssetType(a),
+				...(typeof a.value === "string" ? { value: a.value } : {}),
+			},
+		];
+	});
+
+	const assetUrls: Record<string, string> = {};
+	for (const a of protocol.assets) {
+		const id = typeof a.assetId === "string" ? a.assetId : null;
+		if (id && typeof a.url === "string") {
+			assetUrls[id] = a.url;
+		}
+	}
+
 	return {
 		payload: {
 			session: sessionFields as unknown as InterviewPayload["session"],
-			protocol,
+			protocol: {
+				...protocol,
+				importedAt: protocol.importedAt.toISOString(),
+				assets,
+			},
 		},
 		initialStep: raw.currentStep,
+		assetUrls,
 	};
 }
 
 const StoryInterviewShell = (props: { rawPayload: string }) => {
-	const { payload, initialStep } = useMemo(() => {
+	const { payload, initialStep, assetUrls } = useMemo(() => {
 		const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
 		return buildPayload(raw);
 	}, [props.rawPayload]);
@@ -56,32 +98,33 @@ const StoryInterviewShell = (props: { rawPayload: string }) => {
 		setCurrentStep(step);
 	}, []);
 
+	// Resolve to the URL the story declared (served from
+	// .storybook/static/storybook). The data: fallback only fires for
+	// assets the story mentioned without giving a URL.
 	const onRequestAsset: AssetRequestHandler = useCallback(
 		(assetId) =>
-			Promise.resolve(`data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`),
-		[],
+			Promise.resolve(
+				assetUrls[assetId] ?? `data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`,
+			),
+		[assetUrls],
 	);
 
 	const onSync = useCallback(() => Promise.resolve(), []);
 	const onFinish = useCallback(() => Promise.resolve(), []);
 
+	// Wrapping providers (DndStoreProvider, DialogProvider, Toast viewport,
+	// MotionConfig, etc.) come from the global decorator in preview.tsx,
+	// so this shell only owns the Shell + its props.
 	return (
-		<MotionConfig reducedMotion="user">
-			<Toast.Provider toastManager={interviewToastManager}>
-				<DndStoreProvider>
-					<Shell
-						payload={payload}
-						currentStep={currentStep}
-						onStepChange={onStepChange}
-						onSync={onSync}
-						onFinish={onFinish}
-						onRequestAsset={onRequestAsset}
-						flags={{ isDevelopment: true }}
-					/>
-					<InterviewToastViewport />
-				</DndStoreProvider>
-			</Toast.Provider>
-		</MotionConfig>
+		<Shell
+			payload={payload}
+			currentStep={currentStep}
+			onStepChange={onStepChange}
+			onSync={onSync}
+			onFinish={onFinish}
+			onRequestAsset={onRequestAsset}
+			flags={{ isDevelopment: true }}
+		/>
 	);
 };
 

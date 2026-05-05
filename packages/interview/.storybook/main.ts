@@ -12,6 +12,9 @@ export default defineMain({
 		check: false,
 	},
 	stories: ["../src/**/*.stories.@(ts|tsx)"],
+	// Static fixtures used by stories — roster JSON for NameGeneratorRoster
+	// and geojson layers for Geospatial. Served at `/storybook/<file>`.
+	staticDirs: ["./static"],
 	viteFinal: async (config) => {
 		config.plugins = [...(config.plugins ?? []), tailwindcss()];
 		// `~` resolves to the package root so stories can import
