@@ -1,13 +1,18 @@
 /*
  * @codaco/tailwind-config — Fresco interview theme
  *
- * Layered on top of `default-theme.css`. Activates whenever the document
+ * Layered on top of `themes/default.css`. Activates whenever the document
  * contains an element with the `data-interview` attribute (typically set
  * on `<body>` while the user is inside an interview session). Provides a
  * darker palette and Nunito-only typography tuned for the interview UI.
  *
- * The Nunito font is loaded from `fonts.css`.
+ * Loads Nunito from Google Fonts. The @import url(...) MUST come first:
+ * the CSS spec only allows @charset / @layer to precede @import in the
+ * stream. Consumers that self-host fonts should override this with their
+ * own font-loading.
  */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&display=swap');
 
 /*
  * Reference-import the theme tokens so theme() can resolve breakpoint
@@ -17,7 +22,7 @@
  *
  * https://github.com/tailwindlabs/tailwindcss/discussions/15366
  */
-@import '@codaco/tailwind-config/fresco/theme.css' reference;
+@import '../theme.css' reference;
 
 @layer base {
   /*

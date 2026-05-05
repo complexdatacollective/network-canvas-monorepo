@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/tailwind-config",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
 	"repository": {
 		"type": "git",
@@ -14,17 +14,15 @@
 	"files": [
 		"base.ts",
 		"fresco.ts",
+		"fresco.css",
 		"globals.css",
 		"fresco"
 	],
 	"exports": {
 		"./fresco": "./fresco.ts",
-		"./fresco/theme.css": "./fresco/theme.css",
-		"./fresco/colors.css": "./fresco/colors.css",
-		"./fresco/default-theme.css": "./fresco/default-theme.css",
-		"./fresco/interview-theme.css": "./fresco/interview-theme.css",
-		"./fresco/utilities.css": "./fresco/utilities.css",
-		"./fresco/fonts.css": "./fresco/fonts.css",
+		"./fresco.css": "./fresco.css",
+		"./fresco/themes/default.css": "./fresco/themes/default.css",
+		"./fresco/themes/interview.css": "./fresco/themes/interview.css",
 		"./fresco/plugins/elevation/elevation": "./fresco/plugins/elevation/elevation.ts",
 		"./fresco/plugins/inset-surface/inset-surface": "./fresco/plugins/inset-surface/inset-surface.ts",
 		"./fresco/plugins/motion-spring": "./fresco/plugins/motion-spring.ts",

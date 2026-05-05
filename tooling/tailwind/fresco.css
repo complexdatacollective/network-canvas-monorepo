@@ -1,0 +1,27 @@
+/*
+ * @codaco/tailwind-config — Fresco design-system foundation
+ *
+ * Single CSS entry that bundles Fresco's color triplets, design tokens,
+ * foundational utilities, and custom Tailwind plugins. Consumers @import
+ * this once after `@import "tailwindcss"` (the host owns the Tailwind
+ * import — this barrel intentionally does not include it).
+ *
+ * Theme variants (themes/default.css, themes/interview.css) and font
+ * loading are deliberately separate concerns and must be loaded by the
+ * host independently.
+ */
+
+/* NC palette channel triplets (oklch L C H). Relative-color values used
+   in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
+@import "./fresco/colors.css";
+
+/* Tailwind v4 @theme block defining the Fresco design system token surface. */
+@import "./fresco/theme.css";
+
+/* Foundational @utility / @custom-variant definitions used across packages. */
+@import "./fresco/utilities.css";
+
+/* Custom Tailwind plugins. */
+@plugin "./fresco/plugins/elevation/elevation";
+@plugin "./fresco/plugins/inset-surface/inset-surface";
+@plugin "./fresco/plugins/motion-spring";

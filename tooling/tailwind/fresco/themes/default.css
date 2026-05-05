@@ -4,13 +4,16 @@
  * Provides the semantic CSS variable values that `theme.css` resolves
  * against. Light theme by default, with a dark theme variant keyed off
  * `[data-theme='dark']`. Consumers may layer alternate themes (e.g.
- * `interview-theme.css`) on top of this by re-declaring the same
+ * `themes/interview.css`) on top of this by re-declaring the same
  * variables in their own `@layer theme` block.
  *
- * The Inclusive Sans (body) and Nunito (heading) fonts referenced below
- * are loaded from `fonts.css` (imported separately so its `@import url(...)`
- * lands at the top of the CSS stream, as the CSS spec requires).
+ * Loads Nunito (heading) and Inclusive Sans (body) from Google Fonts.
+ * The @import url(...) MUST come first: the CSS spec only allows
+ * @charset / @layer to precede @import in the stream. Consumers that
+ * self-host fonts should override these with their own font-loading.
  */
+
+@import url('https://fonts.googleapis.com/css2?family=Inclusive+Sans:ital@0;1&family=Nunito:wght@200..1000&display=swap');
 
 @layer theme {
   :root {
