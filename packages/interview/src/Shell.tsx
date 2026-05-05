@@ -1,7 +1,7 @@
 "use client";
 "use no memo";
 
-import "@codaco/tailwind-config/fresco/interview-theme.css";
+import "@codaco/tailwind-config/fresco/themes/interview.css";
 
 import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
 import { cx } from "@codaco/fresco-ui/utils/cva";

@@ -6,9 +6,8 @@ import isChromatic from "chromatic/isChromatic";
 import { StrictMode } from "react";
 import Providers from "./Providers";
 import "../src/styles.css";
-import "@codaco/tailwind-config/fresco/fonts.css";
-import "@codaco/tailwind-config/fresco/default-theme.css";
-import "@codaco/tailwind-config/fresco/interview-theme.css";
+import "@codaco/tailwind-config/fresco/themes/default.css";
+import "@codaco/tailwind-config/fresco/themes/interview.css";
 import "./preview.css";
 import { getInitialTheme, globalTypes, withTheme } from "./theme-switcher";
 

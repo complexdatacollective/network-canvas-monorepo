@@ -3,9 +3,9 @@
  *
  * Composes the fresco-ui styles (which include the Tailwind base + fresco-ui
  * utilities, including the foundational @utility definitions like `interface`
- * and `focusable` from @codaco/tailwind-config/fresco/utilities.css) and adds
- * an @source directive so Tailwind also scans the interview package source
- * for utilities used in its components (`size-28`, `aspect-square`, etc.).
+ * and `focusable` bundled into the @codaco/tailwind-config/fresco.css barrel)
+ * and adds an @source directive so Tailwind also scans the interview package
+ * source for utilities used in its components (`size-28`, `aspect-square`, etc.).
  *
  * Without the @source directive, the @tailwindcss/vite plugin only sees
  * fresco-ui's own @source declarations and misses classes used in

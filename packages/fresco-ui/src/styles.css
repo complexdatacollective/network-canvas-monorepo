@@ -2,42 +2,18 @@
  * @codaco/fresco-ui — Tailwind v4 CSS entry
  *
  * Consumers @import this once in their own Tailwind v4 entry. It pulls in
- * the Fresco design tokens, colors, default theme values, and custom
- * Tailwind plugins from `@codaco/tailwind-config`, then tells Tailwind to
+ * the Fresco design-system foundation (colors + theme tokens + utilities +
+ * plugins) from `@codaco/tailwind-config/fresco.css`, then tells Tailwind to
  * scan the package's compiled JS for utility classes.
+ *
+ * The host is responsible for loading a theme variant
+ * (`@codaco/tailwind-config/fresco/themes/default.css` or
+ * `themes/interview.css`) — themes carry their own font @imports.
  */
-
-/* Google Fonts @import for Nunito (heading font) and Inclusive Sans (body).
-   MUST be the first import: it nests an `@import url('https://fonts.…')`
-   which the CSS spec requires to precede all rules aside from @charset /
-   @layer. `@import "tailwindcss"` expands into thousands of real rules
-   during PostCSS processing, so anything that re-imports url() afterward
-   is rejected by @tailwindcss/postcss in consumer apps. */
-@import "@codaco/tailwind-config/fresco/fonts.css";
 
 @import "tailwindcss";
 
-/* NC palette channel triplets (oklch L C H). The relative-color values used
-   in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
-@import "@codaco/tailwind-config/fresco/colors.css";
-
-/* Tailwind v4 @theme block defining the Fresco design system token surface. */
-@import "@codaco/tailwind-config/fresco/theme.css";
-
-/* Default semantic theme values + Nunito heading font. Consumers may layer
-   alternate themes (e.g. interview, dark) on top of this. */
-@import "@codaco/tailwind-config/fresco/default-theme.css";
-
-/* Foundational @utility / @custom-variant definitions used by fresco-ui's
-   own components (`focusable`, `focus-styles`) and by sibling packages such
-   as `@codaco/interview` (`interface`, `root`). Importing here means every
-   consumer of fresco-ui's styles.css gets them automatically. */
-@import "@codaco/tailwind-config/fresco/utilities.css";
-
-/* Custom Tailwind plugins. */
-@plugin "@codaco/tailwind-config/fresco/plugins/elevation/elevation";
-@plugin "@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface";
-@plugin "@codaco/tailwind-config/fresco/plugins/motion-spring";
+@import "@codaco/tailwind-config/fresco.css";
 
 /* Source the package's compiled output so utility classes referenced in
    migrated components are discovered by Tailwind's class scanner. Path is

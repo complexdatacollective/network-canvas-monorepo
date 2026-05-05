@@ -1,5 +1,5 @@
 import "@codaco/fresco-ui/styles.css";
-import "@codaco/tailwind-config/fresco/interview-theme.css";
+import "@codaco/tailwind-config/fresco/themes/interview.css";
 import addonA11y from "@storybook/addon-a11y";
 import addonDocs from "@storybook/addon-docs";
 import addonVitest from "@storybook/addon-vitest";

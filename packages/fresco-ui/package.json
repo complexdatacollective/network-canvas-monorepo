@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/fresco-ui",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"type": "module",
 	"license": "MIT",
 	"description": "Fresco UI components, styles, and utilities",

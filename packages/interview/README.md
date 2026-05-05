@@ -25,7 +25,7 @@ pnpm add @codaco/interview
   "@codaco/fresco-ui": "^2.0.1",
   "@codaco/protocol-validation": "11.4.0-alpha.0",
   "@codaco/shared-consts": "5.0.0",
-  "@codaco/tailwind-config": "^0.4.0",
+  "@codaco/tailwind-config": "^0.5.0",
   "immer": "^11.1.4",
   "motion": "^12.38.0",
   "react": "^19.2.5",
@@ -43,7 +43,7 @@ global stylesheet so the scanner picks it up:
 ```css
 /* styles/globals.css */
 @import '@codaco/fresco-ui/styles.css';
-@import '@codaco/tailwind-config/fresco/interview-theme.css';
+@import '@codaco/tailwind-config/fresco/themes/interview.css';
 
 @source '../node_modules/@codaco/fresco-ui/dist/**/*.js';
 @source '../node_modules/@codaco/interview/dist/**/*.js';
@@ -55,7 +55,7 @@ your default theme is unaffected.
 
 ### Vitest / jsdom
 
-`Shell.tsx` carries `import "@codaco/tailwind-config/fresco/interview-theme.css"`
+`Shell.tsx` carries `import "@codaco/tailwind-config/fresco/themes/interview.css"`
 as a side effect. Node has no CSS loader, so any vitest test that
 imports from `@codaco/interview` (even just the schemas) needs Vite to
 process the package, otherwise you get
