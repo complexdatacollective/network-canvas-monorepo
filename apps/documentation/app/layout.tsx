@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import "@codaco/tailwind-config/globals.css";
 import "~/styles/globals.css";
 import "~/styles/tokyo-night-dark.css";
 
