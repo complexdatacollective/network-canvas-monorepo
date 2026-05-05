@@ -12,22 +12,13 @@
 		"**/*.css"
 	],
 	"files": [
-		"base.ts",
-		"fresco.ts",
 		"fresco.css",
-		"globals.css",
 		"fresco"
 	],
 	"exports": {
-		"./fresco": "./fresco.ts",
 		"./fresco.css": "./fresco.css",
 		"./fresco/themes/default.css": "./fresco/themes/default.css",
-		"./fresco/themes/interview.css": "./fresco/themes/interview.css",
-		"./fresco/plugins/elevation/elevation": "./fresco/plugins/elevation/elevation.ts",
-		"./fresco/plugins/inset-surface/inset-surface": "./fresco/plugins/inset-surface/inset-surface.ts",
-		"./fresco/plugins/motion-spring": "./fresco/plugins/motion-spring.ts",
-		"./base": "./base.ts",
-		"./globals.css": "./globals.css"
+		"./fresco/themes/interview.css": "./fresco/themes/interview.css"
 	},
 	"license": "MIT",
 	"scripts": {

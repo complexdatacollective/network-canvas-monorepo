@@ -1165,9 +1165,6 @@ importers:
 
   packages/fresco-ui:
     dependencies:
-      '@codaco/protocol-validation':
-        specifier: 11.4.0-alpha.0
-        version: 11.4.0-alpha.0
       '@codaco/shared-consts':
         specifier: 5.0.0
         version: link:../shared-consts
@@ -1271,6 +1268,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: ^5.1.2
         version: 5.1.2(storybook@10.3.6(@testing-library/dom@10.4.1)(bufferutil@4.1.0)(prettier@2.8.8)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
+      '@codaco/protocol-validation':
+        specifier: workspace:*
+        version: link:../protocol-validation
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
@@ -2786,16 +2786,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@codaco/protocol-validation@11.4.0-alpha.0':
-    resolution: {integrity: sha512-/58nFJxRjW2TV9iopfqPQM6utMVSZCYRcV0o8b5Rlk/oLSRN97KkqHUTI5j7QJcJYT8N/yNmw8aGq+tdlNseSg==}
-    hasBin: true
-
   '@codaco/shared-consts@0.0.2':
     resolution: {integrity: sha512-qPmZQm50NhIuQGznQx00kdCxXJ/rOW8UkCrLPQObmPFjq3iIOTwBjAWddq7gRBsDByRfdB/gMCwcd7Pay2aOFQ==}
-
-  '@codaco/shared-consts@5.0.0':
-    resolution: {integrity: sha512-7neTWHNjw6Y7FdVOU8htO2OshADlpS9vI+5mQEDWOdtlL8BdHmBflqQlZE8lFjzBin8tUI9jIlxsLlMYOpjm/w==}
-    engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
     resolution: {integrity: sha512-vjrAI2YPvzg55F5EpVXae7RAZzIpqTsUSjUcQ/laPaH3ZWjVgMeiMEFPCE+C85Oe16rNh0iOMN/XU7kxGaK4Vg==}
@@ -14501,17 +14493,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260421.1':
     optional: true
 
-  '@codaco/protocol-validation@11.4.0-alpha.0':
-    dependencies:
-      '@codaco/shared-consts': 5.0.0
-      '@faker-js/faker': 10.4.0
-      zod: 4.3.6
-
   '@codaco/shared-consts@0.0.2': {}
-
-  '@codaco/shared-consts@5.0.0':
-    dependencies:
-      zod: 4.3.6
 
   '@codaco/ui@5.8.6(@types/react@19.2.14)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:

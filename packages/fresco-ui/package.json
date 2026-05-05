@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/fresco-ui",
-	"version": "2.2.0",
+	"version": "2.3.0",
 	"type": "module",
 	"license": "MIT",
 	"description": "Fresco UI components, styles, and utilities",
@@ -420,7 +420,6 @@
 	},
 	"peerDependencies": {
 		"@base-ui/react": "^1.4.0",
-		"@codaco/protocol-validation": "11.4.0-alpha.0",
 		"@codaco/shared-consts": "5.0.0",
 		"@codaco/tailwind-config": "workspace:^",
 		"immer": "catalog:",
@@ -459,6 +458,7 @@
 	"devDependencies": {
 		"@base-ui/react": "catalog:",
 		"@chromatic-com/storybook": "^5.1.2",
+		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@faker-js/faker": "catalog:",
 		"@storybook/addon-a11y": "^10.3.5",
