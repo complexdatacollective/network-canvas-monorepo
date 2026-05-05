@@ -14,7 +14,7 @@ import Navigation from "./components/Navigation";
 import StageErrorBoundary from "./components/StageErrorBoundary";
 import { CurrentStepProvider } from "./contexts/CurrentStepContext";
 import { StageMetadataProvider } from "./contexts/StageMetadataContext";
-import { ContractProvider, useContractFlags } from "./contract/context";
+import { ContractProvider } from "./contract/context";
 import type {
 	AssetRequestHandler,
 	FinishHandler,
@@ -52,8 +52,6 @@ function Interview() {
 		progress,
 	} = useInterviewNavigation();
 
-	const { isE2E } = useContractFlags();
-
 	// Sets `data-theme-interview` on `<html>` so the interview theme's
 	// `:root[data-theme-interview]` selector matches and the responsive
 	// font-size override updates `1rem` document-wide. The marker on the
@@ -77,10 +75,6 @@ function Interview() {
 	const isPortraitAspectRatio = useMediaQuery("(max-aspect-ratio: 3/4)");
 	const navigationOrientation = isPortraitAspectRatio ? "horizontal" : "vertical";
 
-	// In E2E mode, use instant transitions so tests don't need to wait for
-	// animation completion before accessing stage content.
-	const transitionDuration = isE2E ? 0 : 0.5;
-
 	return (
 		<main
 			data-theme-interview
@@ -101,11 +95,11 @@ function Interview() {
 								key={displayedStep}
 								data-stage-step={displayedStep}
 								className="flex min-h-0 flex-1"
-								initial={isE2E ? false : "initial"}
+								initial="initial"
 								animate="animate"
 								exit="exit"
 								variants={variants}
-								transition={{ duration: transitionDuration }}
+								transition={{ duration: 0.5 }}
 							>
 								<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
 									<StageErrorBoundary>
