@@ -5,6 +5,13 @@ import { useTrack } from "../../analytics/useTrack";
 import type { CanvasStoreApi } from "../../canvas/useCanvasStore";
 import { useContractFlags } from "../../contract/context";
 import type { AppDispatch } from "../../store/store";
+// Workers are imported with `?worker&inline` so Vite emits a self-contained
+// Worker constructor backed by an inlined blob URL. This sidesteps the
+// absolute `/assets/<hash>.js` URLs that library-mode worker chunks emit
+// (which non-Vite consumer bundlers like Turbopack can't resolve), at the
+// cost of bundling the worker source into the main chunk.
+import ForceSimulationWorker from "./forceSimulation.worker?worker&inline";
+import ForceSimulationMockWorker from "./forceSimulation.worker.mock?worker&inline";
 
 const SIM_RANGE = 250;
 
@@ -85,20 +92,7 @@ export function useForceSimulation({
 
 		// In e2e tests, swap in a deterministic grid-layout worker so
 		// visual snapshots aren't sensitive to simulation randomness.
-		//
-		// Both branches must use the literal `new Worker(new URL(<literal>,
-		// import.meta.url), ...)` form. Webpack only treats a `new URL()`
-		// as a worker chunk (bundling its imports, evaluating it as a
-		// module) when it's nested directly inside `new Worker(...)`.
-		// Lifting the URL into a const turns it into a static asset
-		// import, which ships the file as raw text the browser can't run.
-		const worker = isE2E
-			? new Worker(new URL("./forceSimulation.worker.mock", import.meta.url), {
-					type: "module",
-				})
-			: new Worker(new URL("./forceSimulation.worker", import.meta.url), {
-					type: "module",
-				});
+		const worker = isE2E ? new ForceSimulationMockWorker() : new ForceSimulationWorker();
 		workerRef.current = worker;
 
 		worker.onmessage = (event: MessageEvent) => {

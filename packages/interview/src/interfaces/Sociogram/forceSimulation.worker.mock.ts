@@ -3,12 +3,6 @@
 // of automatic-layout sociogram stages don't capture a randomly-evolving
 // d3-force layout.
 //
-// The two-file split relies on webpack recognising the literal
-// `new Worker(new URL("./this-file", import.meta.url), {...})` pattern
-// in useForceSimulation.ts to bundle this file as a worker chunk —
-// extracting the URL into a const breaks that recognition and ships
-// the file as a static asset instead.
-//
 // Lays nodes out on a grid in simulation coordinates and emits `end`
 // immediately for every command, so isRunning settles on the next
 // event-loop turn (the test fixture waits on
