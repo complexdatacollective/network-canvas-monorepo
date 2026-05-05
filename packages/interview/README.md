@@ -200,8 +200,24 @@ different stages without re-creating the Redux store: only the
 | `onSync`          | `(id, session) => Promise`  | yes      | Called after every Redux commit. Persist the session however you like. |
 | `onFinish`        | `(id, AbortSignal) => Promise` | yes   | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight. |
 | `onRequestAsset`  | `(assetId) => Promise<url>` | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount. |
-| `onError`         | `(err, ctx?) => void`       | no       | Optional sink for thrown errors from internal handlers. Defaults to `console.error`. |
+| `analytics`       | `InterviewAnalyticsMetadata`| yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`. |
+| `posthogClient`   | `PostHog` (from posthog-js) | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`. |
+| `disableAnalytics`| `boolean`                   | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs. |
 | `flags`           | `{ isE2E?, isDevelopment? }`| no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger. |
+
+The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
+
+#### Analytics
+
+The interview package emits PostHog events directly — there is no `onError`-style host bridge. Three operating modes:
+
+1. **Host-supplied client** — pass `posthogClient`; the package emits via the host's instance, with `distinct_id` overridden per event to the interview id. Host instance config (autocapture, identify, session recording) is the host's responsibility.
+2. **Own instance** — omit `posthogClient`; the package lazy-imports `posthog-js` and inits a named instance (`'@codaco/interview'`) against `https://ph-relay.networkcanvas.com`.
+3. **Disabled** — pass `disableAnalytics={true}`; no events emitted, no posthog-js import.
+
+PII contract: events never include protocol-network data, protocol-author content (stage labels, prompt text, codebook labels, asset names), or participant input (form values, free-text, alter labels, search queries, passphrases). Events include only structural identifiers (stage type/index, prompt index, random node/edge UUIDs), codebook **internal ids** (e.g. `"person"`, `"friend"`), counts, durations, and package-defined discriminators.
+
+The full event taxonomy lives at [`docs/superpowers/specs/2026-05-05-interview-analytics-design.md`](../../docs/superpowers/specs/2026-05-05-interview-analytics-design.md).
 
 ### Toast viewport
 
@@ -236,6 +252,7 @@ import {
   type ProtocolPayload,
   isValidAssetType,
 } from '@codaco/interview';
+import { hashProtocol } from '@codaco/protocol-validation';
 
 export async function loadInterviewPayload(interviewId: string): Promise<InterviewPayload> {
   const interview = await db.interview.findUniqueOrThrow({
@@ -256,6 +273,10 @@ export async function loadInterviewPayload(interviewId: string): Promise<Intervi
 
   const protocol: ProtocolPayload = {
     ...interview.protocol,
+    // Content hash of { codebook, stages }. Computed at protocol-import time
+    // by `hashProtocol` from @codaco/protocol-validation; forwarded here as a
+    // super-property on every analytics event.
+    hash: interview.protocol.hash ?? hashProtocol(interview.protocol),
     importedAt: interview.protocol.importedAt.toISOString(),
     assets,
   };
