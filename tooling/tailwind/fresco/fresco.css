@@ -13,15 +13,15 @@
 
 /* NC palette channel triplets (oklch L C H). Relative-color values used
    in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
-@import "./fresco/colors.css";
+@import "./colors.css";
 
 /* Tailwind v4 @theme block defining the Fresco design system token surface. */
-@import "./fresco/theme.css";
+@import "./theme.css";
 
 /* Foundational @utility / @custom-variant definitions used across packages. */
-@import "./fresco/utilities.css";
+@import "./utilities.css";
 
 /* Custom Tailwind plugins. */
-@plugin "./fresco/plugins/elevation/elevation";
-@plugin "./fresco/plugins/inset-surface/inset-surface";
-@plugin "./fresco/plugins/motion-spring";
+@plugin "./plugins/elevation/elevation";
+@plugin "./plugins/inset-surface/inset-surface";
+@plugin "./plugins/motion-spring";
