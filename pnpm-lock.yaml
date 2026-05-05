@@ -1356,10 +1356,10 @@ importers:
         specifier: workspace:^
         version: link:../network-query
       '@codaco/protocol-validation':
-        specifier: 11.4.0-alpha.0
-        version: 11.4.0-alpha.0
+        specifier: workspace:^
+        version: link:../protocol-validation
       '@codaco/shared-consts':
-        specifier: 5.0.0
+        specifier: workspace:^
         version: link:../shared-consts
       '@codaco/tailwind-config':
         specifier: workspace:^
@@ -1488,9 +1488,6 @@ importers:
       jsdom:
         specifier: ^29.0.2
         version: 29.0.2
-      jszip:
-        specifier: ^3.10.1
-        version: 3.10.1
       playwright:
         specifier: ^1.59.1
         version: 1.59.1

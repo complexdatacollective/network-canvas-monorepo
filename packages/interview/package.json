@@ -37,8 +37,8 @@
 	},
 	"peerDependencies": {
 		"@codaco/fresco-ui": "workspace:^",
-		"@codaco/protocol-validation": "11.4.0-alpha.0",
-		"@codaco/shared-consts": "5.0.0",
+		"@codaco/protocol-validation": "workspace:^",
+		"@codaco/shared-consts": "workspace:^",
 		"@codaco/tailwind-config": "workspace:^",
 		"immer": "catalog:",
 		"motion": "catalog:",
@@ -94,7 +94,6 @@
 		"vite": "catalog:",
 		"vite-plugin-dts": "catalog:",
 		"vitest": "catalog:",
-		"jszip": "^3.10.1",
 		"superjson": "^2.2.5"
 	},
 	"publishConfig": {

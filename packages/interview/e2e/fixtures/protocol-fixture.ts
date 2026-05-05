@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Codebook, CurrentProtocol } from "@codaco/protocol-validation";
-import { CurrentProtocolSchema, VersionedProtocolSchema } from "@codaco/protocol-validation";
+import { CurrentProtocolSchema, extractProtocol } from "@codaco/protocol-validation";
 import type { Page } from "@playwright/test";
 import { v4 as uuid } from "uuid";
 import type { ProtocolPayload, ResolvedAsset, SessionPayload } from "../../src/contract/types.js";
@@ -43,41 +43,27 @@ export class ProtocolFixture {
 	}
 
 	async install(protocolPath: string): Promise<InstalledProtocol> {
-		const JSZip = (await import("jszip")).default;
-
 		const fileBuffer = await fs.readFile(protocolPath);
-		const zip = await JSZip.loadAsync(fileBuffer);
-
-		const protocolString = await zip.file("protocol.json")?.async("string");
-		if (!protocolString) {
-			throw new Error("protocol.json not found in zip");
-		}
-
-		const protocolJson = VersionedProtocolSchema.parse(JSON.parse(protocolString));
+		const { protocol: protocolJson, assets: extractedAssets } = await extractProtocol(fileBuffer);
 
 		const protocolId = uuid();
 		const protocolAssetDir = path.join(this.assetDir, protocolId);
 		await fs.mkdir(protocolAssetDir, { recursive: true });
 
-		const assetsFolder = zip.folder("assets");
-		if (assetsFolder) {
-			const assetFiles: { name: string; relativePath: string }[] = [];
-			assetsFolder.forEach((relativePath, file) => {
-				if (!file.dir) {
-					assetFiles.push({ name: file.name, relativePath });
-				}
-			});
+		// Write each non-apikey asset to disk under the `source` filename
+		// from the manifest so the asset server can serve it via the same
+		// path the rewritten `asset://` URLs point to.
+		const manifest = protocolJson.assetManifest ?? {};
+		for (const asset of extractedAssets) {
+			const manifestEntry = manifest[asset.id];
+			if (!manifestEntry || typeof manifestEntry !== "object" || !("type" in manifestEntry)) continue;
+			if (manifestEntry.type === "apikey") continue;
+			if (!("source" in manifestEntry) || typeof manifestEntry.source !== "string") continue;
 
-			for (const { name, relativePath } of assetFiles) {
-				const file = zip.file(name);
-				if (!file) continue;
-
-				const content = await file.async("nodebuffer");
-				const destPath = path.join(protocolAssetDir, relativePath);
-
-				await fs.mkdir(path.dirname(destPath), { recursive: true });
-				await fs.writeFile(destPath, content);
-			}
+			const destPath = path.join(protocolAssetDir, manifestEntry.source);
+			await fs.mkdir(path.dirname(destPath), { recursive: true });
+			const content = asset.data instanceof Blob ? Buffer.from(await asset.data.arrayBuffer()) : asset.data;
+			await fs.writeFile(destPath, content);
 		}
 
 		const protocolJsonStr = JSON.stringify(protocolJson);
