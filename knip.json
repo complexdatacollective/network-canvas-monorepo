@@ -28,6 +28,8 @@
 			"entry": [
 				"fresco/colors.css",
 				"fresco/plugins/elevation/elevation.ts",
+				"fresco/plugins/elevation/jwc.ts",
+				"fresco/plugins/elevation/utils.ts",
 				"fresco/plugins/inset-surface/inset-surface.ts",
 				"fresco/plugins/motion-spring.ts"
 			],
