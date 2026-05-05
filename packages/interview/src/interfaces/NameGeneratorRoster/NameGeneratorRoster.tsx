@@ -17,6 +17,7 @@ import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import Loading from "../../components/Loading";
 import NodeList from "../../components/NodeList";
 import Panel from "../../components/Panel";
@@ -86,6 +87,15 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 	const dropNodeColor = useStageSelector(getNodeColorSelector);
 
 	const { status: itemsStatus, items, excludeItems } = useItems(props);
+
+	const track = useTrack();
+	const rosterLoadedRef = useRef(false);
+	useEffect(() => {
+		if (!itemsStatus.isLoading && !itemsStatus.error && !rosterLoadedRef.current && items) {
+			track("roster_loaded", { entry_count: items.length });
+			rosterLoadedRef.current = true;
+		}
+	}, [itemsStatus.isLoading, itemsStatus.error, items, track]);
 
 	const stageNodeCount = useStageSelector(getStageNodeCount);
 	const minNodes = stage.behaviours?.minNodes ?? 0;

@@ -28,6 +28,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import useProtocolForm from "../../forms/useProtocolForm";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useInterviewNavigation from "../../hooks/useInterviewNavigation";
@@ -35,6 +36,12 @@ import useReadyForNextStage from "../../hooks/useReadyForNextStage";
 import { useScrolledToBottom } from "../../hooks/useScrolledToBottom";
 import type { Subject } from "../../selectors/forms";
 import type { BeforeNextFunction, Direction } from "../../types";
+
+type FormKind = "alter" | "alter_edge" | "ego" | "slides";
+
+type SlidesFormAnalyticsProps = {
+	form_kind?: FormKind;
+};
 
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
 	form: Form;
@@ -66,12 +73,14 @@ type SlideContentProps = {
 	submitButton: ReactNode;
 	onUpdate: (id: string, newAttributeData: NcNode[EntityAttributesProperty]) => void;
 	onReadyChange: (ready: boolean) => void;
+	form_kind?: FormKind;
 };
 
 const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function SlideContentInner(
-	{ item, form, subject, header, submitButton, onUpdate, onReadyChange },
+	{ item, form, subject, header, submitButton, onUpdate, onReadyChange, form_kind },
 	ref,
 ) {
+	const track = useTrack();
 	const id = item[entityPrimaryKeyProperty];
 	const rawAttributes = item[entityAttributesProperty];
 
@@ -92,6 +101,10 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function Sl
 
 	const handleSubmit: FormSubmitHandler = (values) => {
 		onUpdate(id, values as NcNode[EntityAttributesProperty]);
+		track("form_submitted", {
+			form_kind,
+			...(form_kind === "alter" || form_kind === "alter_edge" ? { entity_id: id } : {}),
+		});
 		return { success: true as const };
 	};
 
@@ -112,6 +125,18 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function Sl
 	useEffect(() => {
 		onReadyChange(isValid && fieldCount > 0 && hasScrolledToBottom);
 	}, [isValid, fieldCount, hasScrolledToBottom, onReadyChange]);
+
+	useEffect(() => {
+		track("form_opened", {
+			form_kind,
+			field_details: form.fields.map((f) => ("component" in f ? f.component : "unknown")),
+			...(form_kind === "alter" || form_kind === "alter_edge" ? { entity_id: id } : {}),
+		});
+		// Fire once per slide mount (item id change → new mount via key prop in
+		// parent AnimatePresence). Track is stable; deps include only the data
+		// snapshot we want to capture at mount.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	useImperativeHandle(ref, () => ({
 		validate: () => storeApi!.getState().validateForm(),
@@ -154,6 +179,8 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(function SlideCo
 	);
 });
 
+export type { FormKind };
+
 export default function SlidesForm({
 	items = [],
 	subject,
@@ -161,13 +188,26 @@ export default function SlidesForm({
 	onNavigateBack,
 	renderHeader,
 	form,
-}: SlidesFormProps) {
+	form_kind,
+}: SlidesFormProps & SlidesFormAnalyticsProps) {
 	const { confirm } = useDialog();
+	const track = useTrack();
 
 	const { moveForward } = useInterviewNavigation();
 
 	const slideRef = useRef<SlideHandle | null>(null);
 	const [activeIndex, setActiveIndex] = useState(0);
+	const previousIndexRef = useRef(0);
+
+	useEffect(() => {
+		if (activeIndex !== previousIndexRef.current) {
+			track("slides_form_slide_advanced", {
+				slide_index: activeIndex,
+				total_slides: items.length,
+			});
+			previousIndexRef.current = activeIndex;
+		}
+	}, [activeIndex, items.length, track]);
 
 	const slideCallbackRef = useCallback((handle: SlideHandle | null) => {
 		if (handle !== null) {
@@ -235,6 +275,7 @@ export default function SlidesForm({
 		const formIsValid = await slideRef.current?.validate();
 
 		if (!formIsValid) {
+			track("form_validation_failed", { form_kind });
 			slideRef.current?.focusFirstError();
 			return false;
 		}
@@ -285,6 +326,7 @@ export default function SlidesForm({
 						onUpdate={updateItem}
 						onReadyChange={setSlideReady}
 						submitButton={<button type="submit" key="submit" aria-label="Submit" hidden onClick={handleEnterSubmit} />}
+						form_kind={form_kind}
 					/>
 				</motion.div>
 			</AnimatePresence>

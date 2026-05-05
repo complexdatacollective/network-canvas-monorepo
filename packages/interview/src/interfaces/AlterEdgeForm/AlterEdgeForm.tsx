@@ -88,6 +88,7 @@ const AlterEdgeForm = (props: StageProps<"AlterEdgeForm">) => {
 			form={stage.form}
 			onNavigateBack={() => setShowIntro(true)}
 			renderHeader={renderHeader}
+			form_kind="alter_edge"
 		/>
 	);
 };

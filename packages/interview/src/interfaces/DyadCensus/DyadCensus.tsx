@@ -5,6 +5,7 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { useTrack } from "../../analytics/useTrack";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
 import { useCurrentStep } from "../../contexts/CurrentStepContext";
@@ -89,6 +90,13 @@ export default function DyadCensus(props: DyadCensusProps) {
 		setIsTouched(false);
 		setIsChanged(false);
 	}, [pairIndex, promptIndex]);
+
+	const track = useTrack();
+	useEffect(() => {
+		if (pair && !isIntroduction) {
+			track("pair_shown", { node_a_id: pair[0], node_b_id: pair[1] });
+		}
+	}, [pair, isIntroduction, track]);
 
 	// Validation
 	useStageValidation({

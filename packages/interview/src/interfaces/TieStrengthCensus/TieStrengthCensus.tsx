@@ -8,6 +8,7 @@ import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { useTrack } from "../../analytics/useTrack";
 import BooleanOption from "../../components/BooleanOption";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
@@ -99,6 +100,13 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
 	const pair = pairIndex >= 0 && pairIndex < pairs.length ? (pairs[pairIndex] ?? null) : null;
 	const [fromNode, toNode] = getNodePair(nodes, pair);
+
+	const track = useTrack();
+	useEffect(() => {
+		if (pair && !isIntroduction) {
+			track("pair_shown", { node_a_id: pair[0], node_b_id: pair[1] });
+		}
+	}, [pair, isIntroduction, track]);
 
 	// Compute edge state directly from Redux
 	const existingEdgeId = (pair && edgeExists(edges, pair[0], pair[1], createEdge)) ?? false;

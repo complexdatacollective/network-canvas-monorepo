@@ -5,8 +5,9 @@ import UINode from "@codaco/fresco-ui/Node";
 import type { Stage } from "@codaco/protocol-validation";
 import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { useTrack } from "../../analytics/useTrack";
 import NodeDrawer from "../../components/NodeDrawer";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
@@ -74,6 +75,21 @@ const getNodeLabel = (node: NcNode, getCodebook: ReturnType<typeof makeGetCodebo
 
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
+	const track = useTrack();
+	const previousExpandedRef = useRef<number | null>(null);
+	useEffect(() => {
+		const previous = previousExpandedRef.current;
+		if (expandedBinIndex !== null && previous === null) {
+			track("bin_expanded", { bin_index: expandedBinIndex });
+		} else if (expandedBinIndex === null && previous !== null) {
+			track("bin_collapsed", { bin_index: previous });
+		} else if (expandedBinIndex !== null && previous !== null && expandedBinIndex !== previous) {
+			track("bin_collapsed", { bin_index: previous });
+			track("bin_expanded", { bin_index: expandedBinIndex });
+		}
+		previousExpandedRef.current = expandedBinIndex;
+	}, [expandedBinIndex, track]);
+	const lastBinIndexRef = useRef<Map<string, number>>(new Map());
 
 	// Collapse expanded bin on document-level click or Escape press, so the wrapping
 	// container doesn't need an interactive role.
@@ -127,6 +143,18 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const handleDropNode = async (node: NcNode, binIndex: number) => {
 		const nodeId = node[entityPrimaryKeyProperty];
 		const bin = bins[binIndex]!;
+		const previousIndex = lastBinIndexRef.current.get(nodeId);
+		if (previousIndex === undefined) {
+			track("node_binned", { node_id: nodeId, node_type: node.type, bin_index: binIndex });
+		} else if (previousIndex !== binIndex) {
+			track("node_rebinned", {
+				node_id: nodeId,
+				node_type: node.type,
+				from_bin_index: previousIndex,
+				to_bin_index: binIndex,
+			});
+		}
+		lastBinIndexRef.current.set(nodeId, binIndex);
 
 		// If the node is being dropped into the 'other' bin, show a dialog to specify the value for the other variable
 		if (bin.isOther && otherVariable) {

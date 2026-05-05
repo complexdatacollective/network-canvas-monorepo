@@ -13,6 +13,7 @@ import type { VariableValue } from "@codaco/shared-consts";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import useProtocolForm from "../../forms/useProtocolForm";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";
@@ -32,6 +33,15 @@ const EgoFormInner = (props: EgoFormProps) => {
 
 	const dispatch = useAppDispatch();
 	const { openDialog } = useDialog();
+	const track = useTrack();
+
+	useEffect(() => {
+		track("form_opened", {
+			form_kind: "ego",
+			field_details: form.fields.map((f) => ("component" in f ? f.component : "unknown")),
+		});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const [nudgeVisible, setNudgeVisible] = useState(false);
 
@@ -95,6 +105,8 @@ const EgoFormInner = (props: EgoFormProps) => {
 			return true;
 		}
 
+		track("form_validation_failed", { form_kind: "ego" });
+
 		// Scroll to the first validation error after a tick so the store
 		// update has propagated to React and error elements are rendered.
 		setTimeout(() => {
@@ -118,9 +130,10 @@ const EgoFormInner = (props: EgoFormProps) => {
 			>;
 
 			await dispatch(updateEgo(completeData));
+			track("form_submitted", { form_kind: "ego" });
 			return { success: true };
 		},
-		[dispatch, form.fields],
+		[dispatch, form.fields, track],
 	);
 
 	useEffect(() => {

@@ -7,6 +7,7 @@ import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from 
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
+import { useTrack } from "../../analytics/useTrack";
 import { ConnectedMotionNode } from "../../components/ConnectedNode";
 import Prompts from "../../components/Prompts";
 import { usePrompts } from "../../components/Prompts/usePrompts";
@@ -56,6 +57,13 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 	const sortedSource = useSortedNodeList(nodes, bucketSortOrder);
 
 	const source = sortedSource[currentStep]!;
+
+	const track = useTrack();
+	useEffect(() => {
+		if (source) {
+			track("focal_node", { node_id: source[entityPrimaryKeyProperty] });
+		}
+	}, [source, track]);
 
 	const sortedTargets = useSortedNodeList(
 		nodes.filter((node) => node[entityPrimaryKeyProperty] !== source[entityPrimaryKeyProperty]),

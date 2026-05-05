@@ -3,6 +3,7 @@
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import Canvas from "../../canvas/Canvas";
 import { createCanvasStore, useCanvasStore } from "../../canvas/useCanvasStore";
 import ConcentricCircles from "../../components/ConcentricCircles";
@@ -47,6 +48,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 	const skewedTowardCenter = get(stage, "background.skewedTowardCenter");
 
 	const { currentStep } = useCurrentStep();
+	const track = useTrack();
 	const allNodes = useStageSelector(getNodes);
 	const placedNodes = useStageSelector(getPlacedNodes);
 	const unplacedNodes = useStageSelector(getUnplacedNodes);
@@ -110,6 +112,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 				const node = canvasNodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
 				if (node) {
 					const currentValue = node[entityAttributesProperty][highlightAttribute];
+					track(currentValue ? "node_deselected" : "node_selected", { node_id: nodeId });
 					dispatch(
 						toggleNodeAttributes({
 							nodeId,
@@ -119,12 +122,15 @@ const Sociogram = (stageProps: SociogramProps) => {
 				}
 			}
 		},
-		[createEdge, store, dispatch, allowHighlighting, highlightAttribute, canvasNodes],
+		[createEdge, store, dispatch, allowHighlighting, highlightAttribute, canvasNodes, track, currentStep],
 	);
 
 	// Handle drag end: sync single position to Redux
 	const handleNodeDragEnd = useCallback(
 		(nodeId: string, position: { x: number; y: number }) => {
+			if (layoutMode === "MANUAL") {
+				track("node_repositioned", { node_id: nodeId });
+			}
 			void dispatch(
 				updateNode({
 					nodeId,
@@ -135,12 +141,15 @@ const Sociogram = (stageProps: SociogramProps) => {
 				}),
 			);
 		},
-		[dispatch, layoutVariable, currentStep],
+		[dispatch, layoutVariable, currentStep, layoutMode, track],
 	);
 
-	// Handle drop from drawer to canvas
+	// Handle drop from drawer to canvas (first placement of an unplaced node)
 	const handleDrop = useCallback(
 		(nodeId: string, position: { x: number; y: number }) => {
+			if (layoutMode === "MANUAL") {
+				track("node_initial_positioned", { node_id: nodeId });
+			}
 			store.getState().setPosition(nodeId, position);
 			void dispatch(
 				updateNode({
@@ -152,7 +161,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 				}),
 			);
 		},
-		[store, dispatch, layoutVariable, currentStep],
+		[store, dispatch, layoutVariable, currentStep, layoutMode, track],
 	);
 
 	const background = backgroundImage ? (

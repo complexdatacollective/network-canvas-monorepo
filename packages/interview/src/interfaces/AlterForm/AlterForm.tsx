@@ -71,6 +71,7 @@ const AlterForm = (props: StageProps<"AlterForm">) => {
 			form={stage.form}
 			onNavigateBack={() => setShowIntro(true)}
 			renderHeader={renderHeader}
+			form_kind="alter"
 		/>
 	);
 };

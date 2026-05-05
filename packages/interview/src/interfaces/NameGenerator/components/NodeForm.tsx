@@ -16,6 +16,7 @@ import {
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTrack } from "../../../analytics/useTrack";
 import {
 	actionCircleVariants,
 	actionIconClass,
@@ -49,6 +50,7 @@ const NodeForm = (props: NodeFormProps) => {
 
 	const dispatch = useAppDispatch();
 	const { currentStep } = useCurrentStep();
+	const track = useTrack();
 
 	const circleRef = useRef<HTMLDivElement>(null);
 	const celebrate = useCelebrate(circleRef, { particles: true });
@@ -70,10 +72,23 @@ const NodeForm = (props: NodeFormProps) => {
 		}
 	}, [selectedNode]);
 
+	const previousShowRef = useRef(false);
+	useEffect(() => {
+		if (show && !previousShowRef.current) {
+			track("node_form_opened", {
+				...(selectedNode ? { node_id: selectedNode[entityPrimaryKeyProperty] } : {}),
+			});
+		}
+		previousShowRef.current = show;
+	}, [show, selectedNode, track]);
+
 	const handleClose = useCallback(() => {
+		track("node_form_dismissed_without_save", {
+			...(selectedNode ? { node_id: selectedNode[entityPrimaryKeyProperty] } : {}),
+		});
 		setShow(false);
 		onClose();
-	}, [onClose]);
+	}, [onClose, selectedNode, track]);
 
 	const variants = {
 		initial: { opacity: 0, y: "100%" },

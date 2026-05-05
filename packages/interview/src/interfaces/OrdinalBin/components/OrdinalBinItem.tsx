@@ -4,7 +4,8 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { SortOrder } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { motion } from "motion/react";
-import { memo } from "react";
+import { memo, useRef } from "react";
+import { useTrack } from "../../../analytics/useTrack";
 import NodeList from "../../../components/NodeList";
 import { usePrompts } from "../../../components/Prompts/usePrompts";
 import { useCurrentStep } from "../../../contexts/CurrentStepContext";
@@ -58,6 +59,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 	const { currentStep } = useCurrentStep();
 	const { prompt } = usePrompts();
 	const isPortrait = useMediaQuery("(orientation: portrait)");
+	const track = useTrack();
+	const lastBinIndexRef = useRef<Map<string, number>>(new Map());
 
 	const missingValue = typeof bin.value === "number" && bin.value < 0;
 	const blendPercent = Math.round((1 / totalBins) * index * 100);
@@ -74,9 +77,23 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 			return;
 		}
 
+		const nodeId = meta[entityPrimaryKeyProperty];
+		const previousIndex = lastBinIndexRef.current.get(nodeId);
+		if (previousIndex === undefined) {
+			track("node_binned", { node_id: nodeId, node_type: meta.type, bin_index: index });
+		} else if (previousIndex !== index) {
+			track("node_rebinned", {
+				node_id: nodeId,
+				node_type: meta.type,
+				from_bin_index: previousIndex,
+				to_bin_index: index,
+			});
+		}
+		lastBinIndexRef.current.set(nodeId, index);
+
 		void dispatch(
 			updateNode({
-				nodeId: meta[entityPrimaryKeyProperty],
+				nodeId,
 				newAttributeData: { [activePromptVariable]: bin.value },
 				currentStep,
 			}),
