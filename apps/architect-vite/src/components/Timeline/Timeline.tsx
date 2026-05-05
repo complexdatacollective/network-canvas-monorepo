@@ -11,7 +11,7 @@ import filterIcon from "~/images/timeline/filter-icon.svg";
 import skipLogicIcon from "~/images/timeline/skip-logic-icon.svg";
 import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import NewStageScreen from "../Screens/NewStageScreen";
 import InsertButton from "./InsertButton";
 
@@ -87,7 +87,7 @@ const Timeline = () => {
 		[stages, dispatch],
 	);
 
-	const itemClasses = cn(
+	const itemClasses = cx(
 		"relative grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
 		"hover:bg-timeline-hover transition-colors duration-300 ease-in-out",
 		// Focus state for accessibility
