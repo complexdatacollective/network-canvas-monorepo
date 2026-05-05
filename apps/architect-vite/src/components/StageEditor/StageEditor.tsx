@@ -2,12 +2,14 @@ import { type CurrentProtocol, type Stage, type StageType, validateProtocol } fr
 import { omit } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { getFormValues, isDirty as isFormDirty } from "redux-form";
+import { getFormValues, isDirty as isFormDirty, isInvalid } from "redux-form";
 import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import Editor from "~/components/Editor";
 import ExternalLink from "~/components/ExternalLink";
+import Issues from "~/components/Issues";
+import Tooltip from "~/components/NewComponents/Tooltip";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
@@ -71,6 +73,7 @@ const StageEditor = (props: StageEditorProps) => {
 	// Get form state
 	const hasUnsavedChanges = useSelector((state: RootState) => isFormDirty(formName)(state));
 	const formValues = useSelector((state: RootState) => getFormValues(formName)(state)) as Stage | undefined;
+	const isStageInvalid = useSelector((state: RootState) => isInvalid(formName)(state));
 
 	// Preview state
 	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
@@ -189,6 +192,12 @@ const StageEditor = (props: StageEditorProps) => {
 			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
 		});
 
+	const previewButton = (
+		<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview || isStageInvalid}>
+			{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
+		</Button>
+	);
+
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
 			<div className="relative flex flex-col h-dvh">
@@ -196,6 +205,7 @@ const StageEditor = (props: StageEditorProps) => {
 					<StageHeading />
 					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
 				</div>
+				<Issues />
 				<ControlBar
 					secondaryButtons={[
 						<Button key="cancel" onClick={handleCancel} color="platinum">
@@ -203,9 +213,16 @@ const StageEditor = (props: StageEditorProps) => {
 						</Button>,
 					]}
 					buttons={[
-						<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview}>
-							{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
-						</Button>,
+						isStageInvalid ? (
+							<Tooltip
+								key="preview"
+								content="Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."
+							>
+								{previewButton}
+							</Tooltip>
+						) : (
+							previewButton
+						),
 						...(hasUnsavedChanges
 							? [
 									<Button key="submit" type="submit" color="sea-green" iconPosition="right" icon="arrow-right">

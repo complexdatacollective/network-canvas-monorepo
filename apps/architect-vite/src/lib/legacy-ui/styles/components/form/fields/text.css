@@ -91,11 +91,15 @@
 	&.form-field-text--has-error {
 		.form-field-text__error {
 			opacity: 1;
+			border-bottom-left-radius: var(--radius-lg);
+			border-bottom-right-radius: var(--radius-lg);
 		}
 
 		.form-field-text__input {
 			margin-bottom: 0;
 			border: 0.125rem solid var(--color-error);
+			border-bottom-left-radius: 0;
+			border-bottom-right-radius: 0;
 		}
 	}
 }
