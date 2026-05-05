@@ -15,12 +15,18 @@ export type ResolvedAsset = {
 
 /**
  * Protocol payload: the validated protocol plus per-interview metadata
- * (id, importedAt) the package carries in its store. Always schema 8 —
+ * (id, importedAt, hash) the package carries in its store. Always schema 8 —
  * older protocols are migrated to the current version at import time, so
  * downstream code never sees a versioned union.
+ *
+ * `hash` is the host-computed canonical content hash (codebook + stages),
+ * produced by `hashProtocol` from `@codaco/protocol-validation` at protocol
+ * import time. Forwarded through analytics events as the `protocol_hash`
+ * super property.
  */
 export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
 	id: string;
+	hash: string;
 	importedAt: string; // ISO
 	assets: ResolvedAsset[];
 };
@@ -42,11 +48,20 @@ export type FinishHandler = (interviewId: string, signal: AbortSignal) => Promis
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
-export type ErrorHandler = (error: Error, context?: Record<string, unknown>) => void;
-
 export type StepChangeHandler = (step: number) => void;
 
 export type InterviewerFlags = {
 	isE2E?: boolean;
 	isDevelopment?: boolean;
+};
+
+/**
+ * Host-supplied analytics metadata. Strict typed schema — adding fields
+ * requires a package release. The host-app discriminator and installation
+ * id are required and become PostHog super properties on every event.
+ */
+export type InterviewAnalyticsMetadata = {
+	installationId: string;
+	hostApp: string;
+	hostVersion?: string;
 };
