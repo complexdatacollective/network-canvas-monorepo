@@ -163,7 +163,9 @@ const buildWithConvexHulls = () => {
 		"school",
 		["family", "work"],
 	];
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	si.addInformationStage({
 		title: "Complete",
 		text: "After the main stage.",
@@ -180,7 +182,9 @@ const buildWithHighlighting = () => {
 		highlight: [closeVar.id, trustedVar.id],
 	});
 	const hlValues = [true, false, true, null, true, false, true, false];
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, closeVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, closeVar.id, v);
+	});
 	si.addInformationStage({
 		title: "Complete",
 		text: "After the main stage.",
@@ -199,7 +203,9 @@ const buildFullFeatured = () => {
 		highlight: [closeVar.id],
 	});
 	const hlValues = [true, false, true, null, true, false, true, false, null, true];
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, closeVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, closeVar.id, v);
+	});
 	const groupValues: (string | string[] | null)[] = [
 		"family",
 		"family",
@@ -212,7 +218,9 @@ const buildFullFeatured = () => {
 		"school",
 		["family", "school"],
 	];
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	si.addEdges(
 		[
 			[0, 1],
@@ -262,7 +270,9 @@ const buildMultiplePresets = () => {
 		groupVariable: communityVar.id,
 	});
 	const hlValues = [true, false, true, null, true, false, true, false, null, true];
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, closeVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, closeVar.id, v);
+	});
 	const groupValues: (string | string[] | null)[] = [
 		"family",
 		"family",
@@ -275,9 +285,13 @@ const buildMultiplePresets = () => {
 		"family",
 		"school",
 	];
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	const trustedValues = Array.from({ length: 10 }, (_, i) => (i % 3 === 0 ? true : i % 3 === 1 ? false : null));
-	trustedValues.forEach((v, i) => si.setNodeAttribute(i, trustedVar.id, v));
+	trustedValues.forEach((v, i) => {
+		si.setNodeAttribute(i, trustedVar.id, v);
+	});
 	si.addEdges(
 		[
 			[0, 1],
@@ -352,7 +366,9 @@ const buildAllBehaviours = () => {
 		highlight: [closeVar.id],
 	});
 	const hlValues = [true, false, true, null, true, false, true, false, null, true];
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, closeVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, closeVar.id, v);
+	});
 	const groupValues: (string | string[] | null)[] = [
 		"family",
 		"family",
@@ -365,7 +381,9 @@ const buildAllBehaviours = () => {
 		"school",
 		["family", "work"],
 	];
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	si.addEdges(
 		[
 			[0, 1],
@@ -403,10 +421,14 @@ const buildManyNodes = () => {
 		highlight: [closeVar.id],
 	});
 	const hlValues = Array.from({ length: 15 }, (_, i) => (i % 3 === 0 ? true : i % 3 === 1 ? false : null));
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, closeVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, closeVar.id, v);
+	});
 	const catValues = ["family", "work", "school", "neighborhood"] as const;
 	const groupValues = Array.from({ length: 15 }, (_, i) => catValues[i % 4]!);
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	si.addEdges(
 		[
 			[0, 1],
@@ -450,7 +472,9 @@ const buildSingleNodeGroups = () => {
 		groupVariable: communityVar.id,
 	});
 	const groupValues: string[] = ["family", "work", "school", "neighborhood"];
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	si.addInformationStage({
 		title: "Complete",
 		text: "After the main stage.",
@@ -467,7 +491,9 @@ const buildTwoNodeGroup = () => {
 		groupVariable: communityVar.id,
 	});
 	const groupValues: string[] = ["family", "family", "work", "work"];
-	groupValues.forEach((v, i) => si.setNodeAttribute(i, communityVar.id, v));
+	groupValues.forEach((v, i) => {
+		si.setNodeAttribute(i, communityVar.id, v);
+	});
 	si.addInformationStage({
 		title: "Complete",
 		text: "After the main stage.",

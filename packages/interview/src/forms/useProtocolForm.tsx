@@ -1,5 +1,5 @@
 import Field from "@codaco/fresco-ui/form/Field/Field";
-import type { FieldValue, ValidationPropsCatalogue } from "@codaco/fresco-ui/form/Field/types";
+import type { FieldValue, ValidationPropsCatalogue, ValidFieldComponent } from "@codaco/fresco-ui/form/Field/types";
 import FieldNamespace from "@codaco/fresco-ui/form/FieldNamespace";
 import BooleanField from "@codaco/fresco-ui/form/fields/Boolean";
 import CheckboxGroupField from "@codaco/fresco-ui/form/fields/CheckboxGroup";
@@ -27,8 +27,7 @@ import {
 } from "../selectors/forms";
 import { getCodebookVariablesForSubjectType } from "../selectors/protocol";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fieldTypeMap: Record<ComponentType, React.ComponentType<any>> = {
+const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
 	Text: InputField,
 	TextArea: TextAreaField,
 	Number: InputField,

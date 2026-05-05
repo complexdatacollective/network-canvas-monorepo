@@ -10,7 +10,7 @@
 
 /* Custom variant matching `:focus-visible` on the element OR any descendant.
    Required by `focusable-within`. */
-@variant focus-visible-within (&:has(:focus-visible));
+@custom-variant focus-visible-within (&:has(:focus-visible));
 
 @utility focus-styles {
 	@apply outline-4 outline-offset-3 transition-all duration-200 ease-in-out;

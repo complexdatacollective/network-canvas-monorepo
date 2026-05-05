@@ -3,7 +3,6 @@ import type { FormSubmitHandler } from "@codaco/fresco-ui/form/store/types";
 import type { EntityAttributesProperty, NcNode } from "@codaco/shared-consts";
 import { motion, type Variants } from "motion/react";
 import { useCallback } from "react";
-import { useSelector } from "react-redux";
 import { useContractFlags } from "../../../contract/context";
 import { useStageSelector } from "../../../hooks/useStageSelector";
 import { getPromptAdditionalAttributes } from "../../../selectors/session";

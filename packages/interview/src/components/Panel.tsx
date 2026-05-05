@@ -58,11 +58,11 @@ const Panel = ({ title, children, minimize = false, panelNumber, noCollapse = fa
 
 	return (
 		<Surface className={panelClasses} elevation="high" spacing="none" noContainer data-testid={testId}>
-			<div className={headingClassNames({ spacing: "sm" })} onClick={toggleCollapsed}>
+			<button type="button" className={headingClassNames({ spacing: "sm" })} onClick={toggleCollapsed}>
 				<Heading level="h3" margin="none">
 					{title}
 				</Heading>
-			</div>
+			</button>
 			<div className={panelContentClasses()}>{children}</div>
 		</Surface>
 	);

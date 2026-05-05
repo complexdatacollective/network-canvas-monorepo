@@ -166,7 +166,7 @@ const getNodeListUsingTypes = (
 								...consolidatedAttributes,
 								[attributeKey]: value,
 							};
-						} catch (e) {
+						} catch {
 							return {
 								...consolidatedAttributes,
 								[attributeKey]: attributeValue,
@@ -207,7 +207,7 @@ const getNodeListUsingTypes = (
 									...consolidatedAttributes,
 									[uuid]: [...previousOptions, parsedOption] as (string | number)[],
 								};
-							} catch (e) {
+							} catch {
 								return {
 									...consolidatedAttributes,
 									[uuid]: [...previousOptions, option] as (string | number)[],

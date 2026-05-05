@@ -10,7 +10,7 @@ import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import { Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { type Suggestion, type UseGeospatialSearchProps, useGeospatialSearch } from "./useGeospatialSearch";
 
 // Wrapper type that extends Suggestion with the required Record constraint
@@ -67,20 +67,21 @@ export default function GeospatialSearch({
 		[resetField],
 	);
 
-	const handleBlur = useCallback(
-		(e: React.FocusEvent) => {
-			// Don't close if clicking the toggle button (let the toggle handle it)
-			if (buttonRef.current?.contains(e.relatedTarget)) {
-				return;
-			}
-			// Don't close if focus is moving within the search panel (input or suggestions)
-			if (panelRef.current?.contains(e.relatedTarget)) {
-				return;
-			}
+	// Close the panel when focus leaves both the toggle button and the panel itself.
+	// Implemented at document level (not via onBlur on the panel <div>) so the panel
+	// stays semantically non-interactive.
+	useEffect(() => {
+		if (!isOpen) return;
+		const handleFocusOut = (e: FocusEvent) => {
+			const next = e.relatedTarget as Node | null;
+			if (!next) return;
+			if (buttonRef.current?.contains(next)) return;
+			if (panelRef.current?.contains(next)) return;
 			resetField();
-		},
-		[resetField],
-	);
+		};
+		document.addEventListener("focusout", handleFocusOut);
+		return () => document.removeEventListener("focusout", handleFocusOut);
+	}, [isOpen, resetField]);
 
 	const handleClear = useCallback(() => {
 		clear();
@@ -166,6 +167,9 @@ export default function GeospatialSearch({
 		(item: SuggestionItem, itemProps: ItemProps) => (
 			<div
 				{...itemProps}
+				role="option"
+				aria-selected={false}
+				tabIndex={0}
 				onMouseDown={preventBlur}
 				onClick={handleSuggestionClick(item)}
 				onKeyDown={handleSuggestionKeyDown(item)}
@@ -212,7 +216,7 @@ export default function GeospatialSearch({
 			{/* Search panel - appears to right of toggle */}
 			<AnimatePresence>
 				{isOpen && (
-					<div ref={panelRef} className="relative" onBlur={handleBlur}>
+					<div ref={panelRef} className="relative">
 						<MotionSurface
 							noContainer
 							spacing="none"

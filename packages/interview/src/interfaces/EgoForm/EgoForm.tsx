@@ -13,7 +13,6 @@ import type { VariableValue } from "@codaco/shared-consts";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import useProtocolForm from "../../forms/useProtocolForm";
 import useBeforeNext from "../../hooks/useBeforeNext";
 import useReadyForNextStage from "../../hooks/useReadyForNextStage";

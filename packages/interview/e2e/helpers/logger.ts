@@ -14,4 +14,3 @@ export function log(phase: LogPhase, message: string, ...args: unknown[]): void 
 	const timestamp = chalk.gray(new Date().toISOString().split("T")[1]?.slice(0, 12));
 	console.log(`${timestamp} ${prefix} ${message}`, ...args);
 }
-

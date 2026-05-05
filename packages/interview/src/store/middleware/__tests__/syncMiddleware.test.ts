@@ -25,11 +25,12 @@ function createTestStore(middleware: ReturnType<typeof createSyncMiddleware>, in
 
 	return configureStore({
 		reducer: {
-			session: (state: SessionState | undefined = session, action: UnknownAction) => {
+			session: (state: SessionState | undefined, action: UnknownAction) => {
+				const current = state ?? session;
 				if (mutateSession.match(action)) {
-					return { ...state, ...action.payload };
+					return { ...current, ...action.payload };
 				}
-				return state;
+				return current;
 			},
 		},
 		preloadedState: { session },

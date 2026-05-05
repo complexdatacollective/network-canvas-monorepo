@@ -41,8 +41,9 @@ export function computeBioRelatives(
 	}
 
 	const queue = [egoId];
-	let current: string | undefined;
-	while ((current = queue.pop()) !== undefined) {
+	while (queue.length > 0) {
+		const current = queue.pop();
+		if (current === undefined) break;
 		const neighbors = geneticLinks.get(current);
 		if (!neighbors) continue;
 		for (const neighbor of neighbors) {

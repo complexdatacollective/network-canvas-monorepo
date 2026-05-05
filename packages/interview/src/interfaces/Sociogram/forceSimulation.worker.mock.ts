@@ -101,7 +101,7 @@ function emit(type: "tick" | "end") {
 	postMessage({ type, nodes });
 }
 
-onmessage = ({ data }: { data: Message }) => {
+self.onmessage = ({ data }: { data: Message }) => {
 	switch (data.type) {
 		case "initialize":
 			nodes = gridLayout(data.network.nodes);

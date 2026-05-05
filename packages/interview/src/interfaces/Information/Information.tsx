@@ -128,6 +128,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
 			return (
 				<audio controls autoPlay>
 					<source src={url} type={getMediaMimeType(assetMeta.name, "audio/mpeg")} />
+					<track kind="captions" />
 				</audio>
 			);
 		case "video":

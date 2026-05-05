@@ -102,10 +102,7 @@ const StoryInterviewShell = (props: { rawPayload: string }) => {
 	// .storybook/static/storybook). The data: fallback only fires for
 	// assets the story mentioned without giving a URL.
 	const onRequestAsset: AssetRequestHandler = useCallback(
-		(assetId) =>
-			Promise.resolve(
-				assetUrls[assetId] ?? `data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`,
-			),
+		(assetId) => Promise.resolve(assetUrls[assetId] ?? `data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`),
 		[assetUrls],
 	);
 

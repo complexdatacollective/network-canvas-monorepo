@@ -17,7 +17,6 @@ import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
-import { useSelector } from "react-redux";
 import Loading from "../../components/Loading";
 import NodeList from "../../components/NodeList";
 import Panel from "../../components/Panel";

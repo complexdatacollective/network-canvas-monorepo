@@ -671,7 +671,9 @@ const sessionReducer = createReducer(initialState, (builder) => {
 					const mergedPromptIDs = new Set<string>([]);
 
 					if (node.promptIDs) {
-						node.promptIDs.forEach((id) => mergedPromptIDs.add(id));
+						node.promptIDs.forEach((id) => {
+							mergedPromptIDs.add(id);
+						});
 					}
 
 					if (newModelData && "promptId" in newModelData) {

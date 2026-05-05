@@ -3,7 +3,6 @@ import useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
 import { useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import Prompts from "../../components/Prompts/Prompts";
 import { useContractFlags } from "../../contract/context";
 import useBeforeNext from "../../hooks/useBeforeNext";

@@ -151,6 +151,7 @@ const Annotations = forwardRef<AnnotationsHandle, AnnotationsProps>(function Ann
 				preserveAspectRatio="none"
 				xmlns="http://www.w3.org/2000/svg"
 				className="absolute inset-0 size-full"
+				aria-hidden="true"
 			>
 				{lines.map((line, index) => {
 					if (!linesShowing[index]) return null;

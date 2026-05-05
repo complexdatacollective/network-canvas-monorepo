@@ -12,7 +12,6 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import {
 	actionCircleVariants,
 	actionIconClass,
@@ -220,6 +219,7 @@ export default function QuickAddField({
 				disabled={disabled}
 				render={
 					<button
+						type="button"
 						ref={buttonRef}
 						className="focusable relative aspect-square size-28 rounded-full"
 						data-testid="quick-add-toggle"

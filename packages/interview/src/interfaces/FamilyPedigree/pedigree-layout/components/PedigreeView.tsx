@@ -6,7 +6,6 @@ import InputField from "@codaco/fresco-ui/form/fields/InputField";
 import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
 import { useMemo } from "react";
-import { useSelector } from "react-redux";
 import { useNodeMeasurement } from "../../../../hooks/useNodeMeasurement";
 import { useStageSelector } from "../../../../hooks/useStageSelector";
 import AddPersonFields, { type AddPersonMode } from "../../components/AddPersonForm";

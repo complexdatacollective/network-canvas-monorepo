@@ -54,7 +54,7 @@ describe("Types", () => {
 			},
 		];
 
-		let sorter;
+		let sorter: ReturnType<typeof createSorter>;
 
 		sorter = createSorter([
 			{
@@ -97,7 +97,7 @@ describe("Types", () => {
 			},
 		];
 
-		let sorter;
+		let sorter: ReturnType<typeof createSorter>;
 
 		sorter = createSorter([
 			{
@@ -587,7 +587,7 @@ describe("Missing attributes", () => {
 	});
 
 	it("handles missing property on some items", () => {
-		let sorter;
+		let sorter: ReturnType<typeof createSorter>;
 
 		const mockItems = [
 			{
@@ -627,7 +627,7 @@ describe("Missing attributes", () => {
 	});
 
 	it("handles undefined and null property values", () => {
-		let sorter;
+		let sorter: ReturnType<typeof createSorter>;
 		const mockItems = [
 			{
 				id: 3,
@@ -955,7 +955,7 @@ describe("Special cases", () => {
 	});
 
 	it('treats "*" property as fifo/lifo ordering', () => {
-		let sorter;
+		let sorter: ReturnType<typeof createSorter>;
 		const mockItems = [
 			{
 				position: 1,

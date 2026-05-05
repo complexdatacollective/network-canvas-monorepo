@@ -90,7 +90,14 @@ function Indicator({ selected, negative }: { selected: boolean; negative: boolea
 
 	return (
 		<div className={indicatorVariants({ selected, negative })}>
-			<svg viewBox="0 0 24 24" fill="none" className="size-full p-[0.15em]" stroke="currentColor" strokeWidth="3">
+			<svg
+				viewBox="0 0 24 24"
+				fill="none"
+				className="size-full p-[0.15em]"
+				stroke="currentColor"
+				strokeWidth="3"
+				aria-hidden="true"
+			>
 				{!negative ? (
 					<motion.path
 						d="M4 12L10 18L20 6"

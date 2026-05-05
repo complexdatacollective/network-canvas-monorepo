@@ -64,7 +64,7 @@ const DataCard = ({ label, details, className, ...articleProps }: DataCardProps)
 			aria-label={label}
 		>
 			<header className="border-platinum-dark/30 border-b px-4 pt-3 pb-2">
-				<Heading level="h4" margin="none" render={<h4 />}>
+				<Heading level="h4" margin="none">
 					{label}
 				</Heading>
 			</header>

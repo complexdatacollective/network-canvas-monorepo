@@ -131,6 +131,7 @@ const NodeForm = (props: NodeFormProps) => {
 			<AnimatePresence>
 				<motion.div key="add-button" className="absolute right-12 bottom-4 z-20" variants={variants}>
 					<button
+						type="button"
 						onClick={() => setShow(true)}
 						disabled={disabled}
 						aria-label="Add a person"

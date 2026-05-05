@@ -2,7 +2,6 @@ import { useDragSource } from "@codaco/fresco-ui/dnd/dnd";
 import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { useMemo } from "react";
-import { useSelector } from "react-redux";
 import { useStageSelector } from "../../../../hooks/useStageSelector";
 import { getNodeColorSelector, resolveNodeShape } from "../../../../selectors/session";
 import type { VariableConfig } from "../../store";
@@ -43,7 +42,7 @@ export function EgoIcon({ className, variant = "slate" }: { className?: string; 
 				};
 
 	return (
-		<svg viewBox="0 0 139.8 167.5" xmlns="http://www.w3.org/2000/svg" className={className}>
+		<svg viewBox="0 0 139.8 167.5" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
 			{/* Head - upper half */}
 			<path
 				fill={colors.primary}
@@ -178,9 +177,12 @@ export default function PedigreeNode({
 
 	const wrappedNode = isAdopted ? <AdoptionBrackets>{nodeElement}</AdoptionBrackets> : nodeElement;
 
-	return (
-		<div onClick={onClick} role={onClick ? "button" : undefined}>
-			{wrappedNode}
-		</div>
-	);
+	if (onClick) {
+		return (
+			<button type="button" onClick={onClick} className="contents">
+				{wrappedNode}
+			</button>
+		);
+	}
+	return <div>{wrappedNode}</div>;
 }

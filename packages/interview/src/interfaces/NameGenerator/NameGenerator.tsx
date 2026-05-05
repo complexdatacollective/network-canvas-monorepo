@@ -13,7 +13,6 @@ import {
 import { has } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSelector } from "react-redux";
 import NodeBin from "../../components/NodeBin";
 import NodeList from "../../components/NodeList";
 import Prompts from "../../components/Prompts";

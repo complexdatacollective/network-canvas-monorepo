@@ -321,6 +321,7 @@ export function PedigreeEdgeSvg({
 			className="absolute top-0 left-0"
 			width={width}
 			height={height}
+			aria-hidden="true"
 		>
 			{offsetX !== 0 || offsetY !== 0 ? (
 				<g transform={`translate(${offsetX},${offsetY})`}>{svgElements}</g>

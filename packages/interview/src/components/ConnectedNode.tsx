@@ -4,7 +4,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { motion } from "motion/react";
 import type React from "react";
 import { useMemo } from "react";
-import { useSelector } from "react-redux";
 import { useStageSelector } from "../hooks/useStageSelector";
 import { useNodeLabel } from "../interfaces/Anonymisation/useNodeLabel";
 import { getNetworkNodes, resolveNodeShape } from "../selectors/session";

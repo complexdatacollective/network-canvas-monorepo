@@ -33,11 +33,11 @@ vi.mock("es-toolkit", () => ({
 }));
 
 // The hook under test (imported after mocks are declared)
-import type { Map } from "mapbox-gl";
+import type { Map as MapboxMap } from "mapbox-gl";
 import { type Suggestion, useGeospatialSearch } from "../useGeospatialSearch";
 
 // Minimal Map stub (only flyTo is called by the hook)
-const mockMap = { flyTo: vi.fn() } as unknown as Map;
+const mockMap = { flyTo: vi.fn() } as unknown as MapboxMap;
 
 // ---------------------------------------------------------------------------
 

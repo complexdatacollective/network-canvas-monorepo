@@ -148,7 +148,9 @@ const buildWithHighlighting = () => {
 		highlight: { variable: highlightVar.id },
 	});
 	const hlValues = [true, false, true, null, true, false];
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, highlightVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, highlightVar.id, v);
+	});
 	si.addInformationStage({
 		title: "Complete",
 		text: "After the main stage.",
@@ -312,7 +314,9 @@ const buildEdgesAndHighlighting = () => {
 		highlight: { variable: highlightVar.id },
 	});
 	const hlValues = [true, false, true, false, true, false];
-	hlValues.forEach((v, i) => si.setNodeAttribute(i, highlightVar.id, v));
+	hlValues.forEach((v, i) => {
+		si.setNodeAttribute(i, highlightVar.id, v);
+	});
 	si.addEdges([
 		[0, 2],
 		[0, 4],

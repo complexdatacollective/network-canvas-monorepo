@@ -75,6 +75,22 @@ const getNodeLabel = (node: NcNode, getCodebook: ReturnType<typeof makeGetCodebo
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
 
+	// Collapse expanded bin on document-level click or Escape press, so the wrapping
+	// container doesn't need an interactive role.
+	useEffect(() => {
+		if (expandedBinIndex === null) return;
+		const collapse = () => setExpandedBinIndex(null);
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") collapse();
+		};
+		document.addEventListener("click", collapse);
+		document.addEventListener("keydown", onKey);
+		return () => {
+			document.removeEventListener("click", collapse);
+			document.removeEventListener("keydown", onKey);
+		};
+	}, [expandedBinIndex]);
+
 	const {
 		prompt: { id, otherVariable, otherVariablePrompt, variable },
 	} = usePrompts<CategoricalBinPrompts>();
@@ -163,13 +179,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	};
 
 	return (
-		<div
-			data-testid="categorical-bin-interface"
-			className="interface overflow-hidden pb-0"
-			onClick={() => {
-				setExpandedBinIndex(null);
-			}}
-		>
+		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
 			<Prompts />
 			<div className="catbin-outer min-h-0 w-full flex-1">
 				<AnimatePresence mode="wait">

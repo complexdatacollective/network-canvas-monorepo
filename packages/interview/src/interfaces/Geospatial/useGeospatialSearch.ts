@@ -1,6 +1,6 @@
 import { useSearchBoxCore } from "@mapbox/search-js-react";
 import { debounce } from "es-toolkit";
-import type { Map } from "mapbox-gl";
+import type { Map as MapboxMap } from "mapbox-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Zoom level when flying to a selected location
@@ -14,7 +14,7 @@ export type Suggestion = SuggestResponse["suggestions"][number];
 
 export type UseGeospatialSearchProps = {
 	accessToken: string | null | undefined;
-	map: Map | null;
+	map: MapboxMap | null;
 	proximity?: [number, number];
 	/** When this value changes, the search state is reset */
 	resetKey?: string | number;

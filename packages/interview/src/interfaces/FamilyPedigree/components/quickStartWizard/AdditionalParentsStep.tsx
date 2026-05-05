@@ -8,7 +8,6 @@ import { useFormValue } from "@codaco/fresco-ui/form/hooks/useFormValue";
 import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import { useSelector } from "react-redux";
 import useProtocolForm from "../../../../forms/useProtocolForm";
 import { useStageSelector } from "../../../../hooks/useStageSelector";
 import { getNodeForm, getNodeType } from "../../utils/nodeUtils";

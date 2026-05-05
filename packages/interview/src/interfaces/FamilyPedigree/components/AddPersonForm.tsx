@@ -5,7 +5,6 @@ import CheckboxGroupField from "@codaco/fresco-ui/form/fields/CheckboxGroup";
 import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import RichSelectGroupField from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import { useSelector } from "react-redux";
 import { useStageSelector } from "../../../hooks/useStageSelector";
 import type { VariableConfig } from "../store";
 import { getNodeLabelVariable } from "../utils/nodeUtils";

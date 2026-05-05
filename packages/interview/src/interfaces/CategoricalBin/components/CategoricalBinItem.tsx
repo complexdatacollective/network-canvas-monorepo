@@ -6,7 +6,6 @@ import type { Stage } from "@codaco/protocol-validation";
 import type { NcNode } from "@codaco/shared-consts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef } from "react";
-import { useSelector } from "react-redux";
 import NodeList from "../../../components/NodeList";
 import { usePrompts } from "../../../components/Prompts/usePrompts";
 import { useCelebrate } from "../../../hooks/useCelebrate";
@@ -109,11 +108,10 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 					initial="initial"
 					animate="animate"
 				>
-					<div
+					<button
+						type="button"
 						className={headerClasses}
 						onClick={onToggleExpand}
-						role="button"
-						tabIndex={0}
 						aria-expanded={true}
 						aria-label={`Category ${label}, ${nodes.length} items, expanded`}
 					>
@@ -121,7 +119,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 							<RenderMarkdown>{label}</RenderMarkdown>
 						</Heading>
 						<span className="ml-auto text-sm opacity-60">{nodes.length}</span>
-					</div>
+					</button>
 					<div ref={dropRef} {...dropPropsRest} className="min-h-0 flex-1 overflow-hidden p-2">
 						<motion.div initial="initial" animate="animate" className="size-full">
 							<NodeList id={listId} items={nodes} nodeSize="sm" announcedName={`${label} category`} />

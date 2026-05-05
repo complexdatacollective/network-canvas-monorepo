@@ -18,7 +18,7 @@ const findCategoricalKey = (
 		}
 	}
 
-	let foundKey;
+	let foundKey: string | undefined;
 	// check for a categorical variable with a valid option value
 	const categoricalVariable = collection.find((pair) => {
 		foundKey = findKey(object, (objectItem) => objectItem.name.toString() === pair.name.toString());

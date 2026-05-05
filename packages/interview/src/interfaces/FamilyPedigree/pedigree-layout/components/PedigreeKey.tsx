@@ -25,7 +25,7 @@ const LINE_Y = 10;
 
 function KeyLine({ entry, color }: { entry: KeyEntry; color: string }) {
 	return (
-		<svg width={LINE_WIDTH} height={20}>
+		<svg width={LINE_WIDTH} height={20} aria-hidden="true">
 			<line
 				x1={0}
 				y1={LINE_Y}

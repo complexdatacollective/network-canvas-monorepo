@@ -93,44 +93,46 @@ const categoricalFunction =
 		const secondValues =
 			(get(b, property) as (string | number | boolean)[] | undefined) ?? ([] as (string | number | boolean)[]);
 
-		for (let i = 0; i < Math.max(firstValues.length, secondValues.length); i += 1) {
-			const firstValue = i < firstValues.length ? firstValues[i] : null;
-			const secondValue = i < secondValues.length ? secondValues[i] : null;
+		// Note: every branch in the body returns, so only the first pair is ever
+		// compared. This matches the original lifted logic (a pre-existing quirk
+		// that biome flagged once we pulled the file under stricter rules).
+		const maxLength = Math.max(firstValues.length, secondValues.length);
+		if (maxLength === 0) return 0;
 
-			if (firstValue === secondValue) {
-				return 0;
-			}
+		const firstValue = firstValues.length > 0 ? firstValues[0] : null;
+		const secondValue = secondValues.length > 0 ? secondValues[0] : null;
 
-			if (!firstValue && !secondValue) {
-				return 0;
-			}
-
-			if (!firstValue) {
-				return 1;
-			}
-
-			if (!secondValue) {
-				return -1;
-			}
-
-			// If one of the values is not in the hierarchy, it is sorted to the end of the list
-			const firstIndex = hierarchy.indexOf(firstValue);
-			const secondIndex = hierarchy.indexOf(secondValue);
-
-			if (firstIndex === -1) {
-				return 1;
-			}
-			if (secondIndex === -1) {
-				return -1;
-			}
-
-			if (direction === "asc") {
-				return firstIndex - secondIndex;
-			}
-			return secondIndex - firstIndex; // desc
+		if (firstValue === secondValue) {
+			return 0;
 		}
 
-		return 0;
+		if (!firstValue && !secondValue) {
+			return 0;
+		}
+
+		if (!firstValue) {
+			return 1;
+		}
+
+		if (!secondValue) {
+			return -1;
+		}
+
+		// If one of the values is not in the hierarchy, it is sorted to the end of the list
+		const firstIndex = hierarchy.indexOf(firstValue);
+		const secondIndex = hierarchy.indexOf(secondValue);
+
+		if (firstIndex === -1) {
+			return 1;
+		}
+		if (secondIndex === -1) {
+			return -1;
+		}
+
+		if (direction === "asc") {
+			return firstIndex - secondIndex;
+		}
+		return secondIndex - firstIndex; // desc
 	};
 
 /**

@@ -3,7 +3,6 @@ import type { DragMetadata, DropCallback } from "@codaco/fresco-ui/dnd/types";
 import type { Panel as PanelType } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { useCallback, useEffect, useMemo } from "react";
-import { useSelector } from "react-redux";
 import NodeList from "../../../components/NodeList";
 import Panel from "../../../components/Panel";
 import useExternalData from "../../../hooks/useExternalData";

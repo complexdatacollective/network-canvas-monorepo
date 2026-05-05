@@ -7,7 +7,6 @@ import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, LayoutGroup, motion, useMotionValue } from "motion/react";
 import { type RefObject, useCallback, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import { useStageSelector } from "../../../hooks/useStageSelector";
 import { useFamilyPedigreeStore } from "../FamilyPedigreeProvider";
 import { getRelationshipTypeVariable } from "../utils/edgeUtils";
@@ -269,14 +268,18 @@ export default function PedigreeChecklist({
 											}
 										}}
 									>
-										<div onClick={(e) => e.stopPropagation()}>
+										<span
+											className="contents"
+											onClickCapture={(e) => e.stopPropagation()}
+											onKeyDownCapture={(e) => e.stopPropagation()}
+										>
 											<Checkbox
 												value={item.done}
 												onChange={() => toggleManualCheck(item.id)}
 												tabIndex={-1}
 												aria-hidden
 											/>
-										</div>
+										</span>
 										<span className={item.done ? "text-current/50 line-through" : ""}>
 											{item.label}
 											{item.required && !item.done && <span className="text-destructive ml-auto">&nbsp;*</span>}

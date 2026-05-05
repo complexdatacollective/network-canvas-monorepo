@@ -17,11 +17,7 @@
 				"e2e/fixtures/window-test.d.ts",
 				"e2e/host/src/global-augmentations.d.ts"
 			],
-			"project": [
-				"src/**/*.{ts,tsx,js}",
-				".storybook/**/*.{ts,tsx}",
-				"e2e/**/*.{ts,tsx}"
-			],
+			"project": ["src/**/*.{ts,tsx,js}", ".storybook/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
 			"paths": {
 				"~/*": ["./*"]
 			}

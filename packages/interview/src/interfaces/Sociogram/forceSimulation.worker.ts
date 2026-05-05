@@ -109,7 +109,7 @@ type Message =
 	| UpdateLinksMessage
 	| UpdateNodeMessage;
 
-onmessage = ({ data }: { data: Message }) => {
+self.onmessage = ({ data }: { data: Message }) => {
 	switch (data.type) {
 		case "initialize": {
 			const { network } = data;

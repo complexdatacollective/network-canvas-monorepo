@@ -138,7 +138,9 @@ export const createFamilyPedigreeStore = (
 								edgesToRemove.push(edgeId);
 							}
 						});
-						edgesToRemove.forEach((edgeId) => state.network.edges.delete(edgeId));
+						edgesToRemove.forEach((edgeId) => {
+							state.network.edges.delete(edgeId);
+						});
 					});
 				},
 

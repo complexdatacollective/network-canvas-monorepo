@@ -9,7 +9,6 @@ import {
 } from "@codaco/shared-consts";
 import { find } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import Node from "../../components/ConnectedNode";
 import { useStageSelector } from "../../hooks/useStageSelector";
 import { getNetworkEdgesForType, getNetworkNodes, makeGetEdgeColor } from "../../selectors/session";

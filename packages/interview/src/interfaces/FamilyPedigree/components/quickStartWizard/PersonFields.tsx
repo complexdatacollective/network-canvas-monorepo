@@ -4,7 +4,6 @@ import Field from "@codaco/fresco-ui/form/Field/Field";
 import type { FieldValue } from "@codaco/fresco-ui/form/Field/types";
 import FieldNamespace from "@codaco/fresco-ui/form/FieldNamespace";
 import InputField from "@codaco/fresco-ui/form/fields/InputField";
-import { useSelector } from "react-redux";
 import useProtocolForm from "../../../../forms/useProtocolForm";
 import { useStageSelector } from "../../../../hooks/useStageSelector";
 import { getNodeForm, getNodeType } from "../../utils/nodeUtils";

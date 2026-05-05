@@ -287,23 +287,28 @@ export default function PresetSwitcher({
 																onValueChange={(v) => onChangeHighlightIndex(Number(v))}
 																className="flex flex-col gap-2"
 															>
-																{highlightLabels.map((label, index) => (
-																	// `relative` anchors the hidden position-absolute
-																	// input emitted by base-ui's Radio. See
-																	// groupOptionVariants for details.
-																	<label
-																		key={index}
-																		className="relative flex cursor-pointer items-center gap-4 text-sm"
-																	>
-																		<Radio.Root
-																			value={String(index)}
-																			className="border-muted-foreground flex size-4 items-center justify-center rounded-full border"
+																{highlightLabels.map((label, index) => {
+																	const radioId = `highlight-radio-${index}`;
+																	return (
+																		// `relative` anchors the hidden position-absolute
+																		// input emitted by base-ui's Radio. See
+																		// groupOptionVariants for details.
+																		<label
+																			key={index}
+																			htmlFor={radioId}
+																			className="relative flex cursor-pointer items-center gap-4 text-sm"
 																		>
-																			<Radio.Indicator className="bg-primary size-2 rounded-full" />
-																		</Radio.Root>
-																		{label}
-																	</label>
-																))}
+																			<Radio.Root
+																				id={radioId}
+																				value={String(index)}
+																				className="border-muted-foreground flex size-4 items-center justify-center rounded-full border"
+																			>
+																				<Radio.Indicator className="bg-primary size-2 rounded-full" />
+																			</Radio.Root>
+																			{label}
+																		</label>
+																	);
+																})}
 															</RadioGroup>
 														</AnimatedPanel>
 													</Accordion.Item>
@@ -384,7 +389,7 @@ export default function PresetSwitcher({
 
 function ArrowSvg(props: React.ComponentProps<"svg">) {
 	return (
-		<svg width="20" height="12" viewBox="0 0 30 15" fill="none" {...props}>
+		<svg width="20" height="12" viewBox="0 0 30 15" fill="none" aria-hidden="true" {...props}>
 			<path d="M0 15 L12 3 Q15 0 18 3 L30 15Z" className="fill-surface/80 backdrop-blur-md" />
 		</svg>
 	);

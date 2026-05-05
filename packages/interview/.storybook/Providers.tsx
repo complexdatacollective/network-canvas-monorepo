@@ -8,9 +8,9 @@ import { Toaster } from "@codaco/fresco-ui/Toast";
 import { TooltipProvider } from "@codaco/fresco-ui/Tooltip";
 import { MotionConfig } from "motion/react";
 import type { ReactNode } from "react";
+import { InterviewToastViewport, interviewToastManager } from "../src";
 import { CurrentStepProvider } from "../src/contexts/CurrentStepContext";
 import { ContractProvider } from "../src/contract/context";
-import { InterviewToastViewport, interviewToastManager } from "../src";
 
 const noopAssetUrl = (assetId: string) =>
 	Promise.resolve(`data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`);
@@ -58,11 +58,7 @@ export default function Providers({
 					<TooltipProvider>
 						<DndStoreProvider>
 							<DialogProvider>
-								<ContractProvider
-									onFinish={noopFinish}
-									onRequestAsset={noopAssetUrl}
-									flags={{ isDevelopment: true }}
-								>
+								<ContractProvider onFinish={noopFinish} onRequestAsset={noopAssetUrl} flags={{ isDevelopment: true }}>
 									<CurrentStepProvider>{children}</CurrentStepProvider>
 								</ContractProvider>
 							</DialogProvider>

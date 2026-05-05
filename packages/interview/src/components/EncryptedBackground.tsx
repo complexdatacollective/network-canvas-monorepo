@@ -184,7 +184,7 @@ const getRandomChar = (): string => {
 	return encryptionChars[Math.floor(Math.random() * encryptionChars.length)]!;
 };
 
-const createStream = (yPosition = -20, thresholdPosition: number) => {
+const createStream = (yPosition: number, thresholdPosition: number) => {
 	const name = names[Math.floor(Math.random() * names.length)]!;
 	const shouldBeEncrypted = yPosition > thresholdPosition;
 

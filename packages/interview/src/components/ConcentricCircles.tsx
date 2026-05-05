@@ -19,7 +19,12 @@ export default function ConcentricCircles({ n = 4, skewed = true }: RadarProps) 
 	const radii = computeRadii(n, skewed ? 1.4 : 1);
 
 	return (
-		<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="aspect-square h-full max-w-full">
+		<svg
+			viewBox="0 0 100 100"
+			xmlns="http://www.w3.org/2000/svg"
+			className="aspect-square h-full max-w-full"
+			aria-hidden="true"
+		>
 			{radii.map((radius, index) => {
 				const t = index / n;
 				const colorPercent = Math.round(10 + t * 50);

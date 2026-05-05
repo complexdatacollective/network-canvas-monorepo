@@ -117,6 +117,7 @@ export default function Canvas({
 		<div
 			ref={mergedRef}
 			className="relative size-full overflow-hidden"
+			role="application"
 			aria-label={dropProps["aria-label"]}
 			data-zone-id={dropProps["data-zone-id"]}
 			tabIndex={dropProps.tabIndex}

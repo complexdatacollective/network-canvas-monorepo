@@ -8,7 +8,6 @@ import {
 } from "@codaco/shared-consts";
 import { invariant } from "es-toolkit";
 import { useCallback, useMemo } from "react";
-import { useSelector } from "react-redux";
 import useExternalData from "../../hooks/useExternalData";
 import { useStageSelector } from "../../hooks/useStageSelector";
 import { getStageCardOptions } from "../../selectors/name-generator";
