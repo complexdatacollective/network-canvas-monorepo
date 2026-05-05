@@ -24,6 +24,15 @@
 		},
 		"packages/protocol-validation": {},
 		"packages/network-exporters": {},
+		"tooling/tailwind": {
+			"entry": [
+				"fresco/colors.css",
+				"fresco/plugins/elevation/elevation.ts",
+				"fresco/plugins/inset-surface/inset-surface.ts",
+				"fresco/plugins/motion-spring.ts"
+			],
+			"project": ["fresco/**/*.{ts,css}"]
+		},
 		"apps/architect-vite": {
 			"entry": ["index.html!"],
 			"vite": true,

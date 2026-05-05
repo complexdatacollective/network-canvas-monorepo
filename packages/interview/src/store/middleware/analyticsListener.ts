@@ -6,7 +6,7 @@ import { addEdge, addNode, addNodeToPrompt, deleteEdge, deleteNode, removeNodeFr
 import { setPassphrase, setPassphraseInvalid } from "../modules/ui";
 import type { AppDispatch, RootState } from "../store";
 
-export type AnalyticsListenerArgs = {
+type AnalyticsListenerArgs = {
 	tracker: Tracker;
 };
 

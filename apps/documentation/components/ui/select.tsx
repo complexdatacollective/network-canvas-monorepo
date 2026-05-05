@@ -7,12 +7,9 @@ import {
 	Item,
 	ItemIndicator,
 	ItemText,
-	Label,
 	Portal,
 	Root,
-	Separator,
 	Trigger,
-	Value,
 	Viewport,
 } from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
@@ -24,17 +21,7 @@ const Select = Root;
 
 const SelectGroup = Group;
 
-const SelectValue = forwardRef<ComponentRef<typeof Value>, ComponentPropsWithoutRef<typeof Value>>(
-	({ className, ...props }, ref) => (
-		<span className={cn("overflow-hidden text-ellipsis whitespace-nowrap", className)}>
-			<Value ref={ref} {...props} />
-		</span>
-	),
-);
-
-SelectValue.displayName = Value.displayName;
-
-export const selectTriggerStyles = cn(
+const selectTriggerStyles = cn(
 	"text-input-foreground flex h-10 w-full items-center justify-between rounded-input border border-border bg-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
 	"focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
 );
@@ -81,13 +68,6 @@ const SelectContent = forwardRef<ComponentRef<typeof Content>, ComponentPropsWit
 );
 SelectContent.displayName = Content.displayName;
 
-const SelectLabel = forwardRef<ComponentRef<typeof Label>, ComponentPropsWithoutRef<typeof Label>>(
-	({ className, ...props }, ref) => (
-		<Label ref={ref} className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)} {...props} />
-	),
-);
-SelectLabel.displayName = Label.displayName;
-
 const SelectItem = forwardRef<ComponentRef<typeof Item>, ComponentPropsWithoutRef<typeof Item>>(
 	({ className, children, ...props }, ref) => (
 		<Item
@@ -110,11 +90,4 @@ const SelectItem = forwardRef<ComponentRef<typeof Item>, ComponentPropsWithoutRe
 );
 SelectItem.displayName = Item.displayName;
 
-const SelectSeparator = forwardRef<ComponentRef<typeof Separator>, ComponentPropsWithoutRef<typeof Separator>>(
-	({ className, ...props }, ref) => (
-		<Separator ref={ref} className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />
-	),
-);
-SelectSeparator.displayName = Separator.displayName;
-
-export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue };
+export { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger };

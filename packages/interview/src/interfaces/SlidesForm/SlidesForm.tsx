@@ -213,8 +213,6 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(function SlideCo
 	);
 });
 
-export type { FormKind };
-
 export default function SlidesForm({
 	items = [],
 	subject,

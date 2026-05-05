@@ -46,7 +46,6 @@
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
-		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@microflash/rehype-figure": "^2.1.4",
 		"@tailwindcss/container-queries": "catalog:",
