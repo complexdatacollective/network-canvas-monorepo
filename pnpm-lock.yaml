@@ -732,9 +732,6 @@ importers:
         specifier: 'catalog:'
         version: 19.2.5(react@19.2.5)
     devDependencies:
-      '@codaco/tailwind-config':
-        specifier: workspace:*
-        version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
