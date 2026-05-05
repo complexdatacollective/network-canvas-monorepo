@@ -2,6 +2,7 @@
 
 import useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import { AnimatePresence, motion } from "motion/react";
+import { useTrack } from "../../../../analytics/useTrack";
 import ActionButton from "../../../../components/ActionButton";
 import type { VariableConfig } from "../../store";
 import AdditionalParentsStep from "../quickStartWizard/AdditionalParentsStep";
@@ -20,6 +21,7 @@ type EgoCellWizardProps = {
 
 export default function EgoCellWizard({ egoId, onSubmit, variableConfig }: EgoCellWizardProps) {
 	const { openDialog } = useDialog();
+	const track = useTrack();
 
 	const handleClick = async () => {
 		const result = await openDialog({
@@ -65,6 +67,8 @@ export default function EgoCellWizard({ egoId, onSubmit, variableConfig }: EgoCe
 
 		if (result && typeof result === "object" && "batch" in result) {
 			onSubmit(result as EgoCellResult);
+		} else {
+			track("pedigree_wizard_abandoned");
 		}
 	};
 

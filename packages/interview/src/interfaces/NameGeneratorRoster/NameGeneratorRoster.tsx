@@ -97,6 +97,18 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 		}
 	}, [itemsStatus.isLoading, itemsStatus.error, items, track]);
 
+	const lastFilterStateRef = useRef<boolean>(false);
+	const handleFilterChange = useCallback(
+		(query: string) => {
+			const hasFilter = query.trim().length > 0;
+			if (hasFilter !== lastFilterStateRef.current) {
+				track("roster_filter_changed", { has_filter: hasFilter });
+				lastFilterStateRef.current = hasFilter;
+			}
+		},
+		[track],
+	);
+
 	const stageNodeCount = useStageSelector(getStageNodeCount);
 	const minNodes = stage.behaviours?.minNodes ?? 0;
 	const maxNodes = stage.behaviours?.maxNodes ?? Number.POSITIVE_INFINITY;

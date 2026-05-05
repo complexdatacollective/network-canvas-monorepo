@@ -1,6 +1,7 @@
 import { entityPrimaryKeyProperty, type NcEdge, type NcNode } from "@codaco/shared-consts";
 import { clamp } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTrack } from "../../analytics/useTrack";
 import type { CanvasStoreApi } from "../../canvas/useCanvasStore";
 import { useContractFlags } from "../../contract/context";
 import type { AppDispatch } from "../../store/store";
@@ -47,9 +48,11 @@ export function useForceSimulation({
 	currentStep,
 }: UseForceSimulationOptions) {
 	const { isE2E } = useContractFlags();
+	const track = useTrack();
 	const workerRef = useRef<Worker | null>(null);
 	const [isRunning, setIsRunning] = useState(false);
 	const [simulationEnabled, setSimulationEnabled] = useState(enabled);
+	const simStartedAtRef = useRef<number | null>(null);
 
 	// Keep refs updated so the effect can read latest values without re-running
 	const nodesRef = useRef(nodes);
@@ -105,6 +108,13 @@ export function useForceSimulation({
 			};
 
 			if (msgType === "tick") {
+				if (!isRunning) {
+					simStartedAtRef.current = Date.now();
+					track("simulation_started", {
+						node_count: nodesRef.current.length,
+						edge_count: edgesRef.current.length,
+					});
+				}
 				setIsRunning(true);
 				const entries: [string, { x: number; y: number }][] = simNodes
 					.filter((n) => n.nodeId)
@@ -116,6 +126,14 @@ export function useForceSimulation({
 					.map((n) => [n.nodeId, toNormalized(n)]);
 				store.getState().setBatchPositions(entries);
 				setIsRunning(false);
+				if (simStartedAtRef.current !== null) {
+					track("simulation_finished", {
+						duration_ms: Date.now() - simStartedAtRef.current,
+						node_count: nodesRef.current.length,
+						edge_count: edgesRef.current.length,
+					});
+					simStartedAtRef.current = null;
+				}
 				store.getState().syncToRedux(dispatch, layoutVariable, currentStep);
 			}
 		};

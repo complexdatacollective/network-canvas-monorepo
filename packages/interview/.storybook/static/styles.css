@@ -9,3 +9,7 @@
 @import "../../styles/host.css";
 @import "@codaco/tailwind-config/fresco/themes/default.css";
 @import "@codaco/tailwind-config/fresco/themes/interview.css";
+
+.sb-show-main, .docs-story {
+  @apply bg-background text-text; 
+}

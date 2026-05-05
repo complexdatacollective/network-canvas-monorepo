@@ -29,7 +29,7 @@ export default definePreview({
 					 * Required by Base UI's portal-based dialogs/popovers:
 					 * https://base-ui.com/react/overview/quick-start#portals
 					 */}
-					<div className="root h-full">
+					<div className="root h-full" data-interview>
 						<Providers disableAnimations={disableAnimations}>
 							<Story />
 						</Providers>
