@@ -647,9 +647,6 @@ importers:
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
-      '@codaco/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@docsearch/css':
         specifier: ^4.6.2
         version: 4.6.2
@@ -671,6 +668,9 @@ importers:
       '@posthog/react':
         specifier: 'catalog:'
         version: 1.9.0(@types/react@19.2.14)(posthog-js@1.372.2)(react@19.2.5)
+      '@radix-ui/react-collapsible':
+        specifier: ^1.1.12
+        version: 1.1.12(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@radix-ui/react-dialog':
         specifier: 'catalog:'
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -680,6 +680,15 @@ importers:
       '@radix-ui/react-popover':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@radix-ui/react-select':
+        specifier: ^2.2.6
+        version: 2.2.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@radix-ui/react-slot':
+        specifier: 'catalog:'
+        version: 1.2.4(@types/react@19.2.14)(react@19.2.5)
+      '@radix-ui/react-tooltip':
+        specifier: ^1.2.8
+        version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@t3-oss/env-nextjs':
         specifier: ^0.13.11
         version: 0.13.11(typescript@6.0.3)(zod@4.3.6)
@@ -1127,9 +1136,6 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
     devDependencies:
-      '@codaco/tailwind-config':
-        specifier: workspace:*
-        version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
@@ -1148,9 +1154,6 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.2.5
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 4.2.4
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1666,55 +1669,6 @@ importers:
       vite-plugin-dts:
         specifier: 'catalog:'
         version: 4.5.4(@types/node@22.19.17)(rollup@4.60.0)(typescript@6.0.3)(vite@8.0.10(@types/node@22.19.17)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-
-  packages/ui:
-    dependencies:
-      '@radix-ui/react-collapsible':
-        specifier: ^1.1.12
-        version: 1.1.12(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@radix-ui/react-dialog':
-        specifier: 'catalog:'
-        version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@radix-ui/react-label':
-        specifier: ^2.1.8
-        version: 2.1.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@radix-ui/react-select':
-        specifier: ^2.2.6
-        version: 2.2.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@radix-ui/react-slot':
-        specifier: 'catalog:'
-        version: 1.2.4(@types/react@19.2.14)(react@19.2.5)
-      '@radix-ui/react-tooltip':
-        specifier: ^1.2.8
-        version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      class-variance-authority:
-        specifier: 'catalog:'
-        version: 0.7.1
-      lucide-react:
-        specifier: 'catalog:'
-        version: 1.9.0(react@19.2.5)
-      tailwind-merge:
-        specifier: 'catalog:'
-        version: 3.5.0
-    devDependencies:
-      '@codaco/tailwind-config':
-        specifier: workspace:*
-        version: link:../../tooling/tailwind
-      '@codaco/tsconfig':
-        specifier: workspace:*
-        version: link:../../tooling/typescript
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
-      react:
-        specifier: 'catalog:'
-        version: 19.2.5
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 4.2.4
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
 
   tooling/tailwind:
     dependencies:
@@ -4803,19 +4757,6 @@ packages:
       '@types/react':
         optional: true
 
-  '@radix-ui/react-label@2.1.8':
-    resolution: {integrity: sha512-FmXs37I6hSBVDlO4y764TNz1rLgKwjJMQ0EGte6F3Cb3f4bIuHB/iLa/8I9VKkmOy+gNHq8rql3j686ACVV21A==}
-    peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
-      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      '@types/react-dom':
-        optional: true
-
   '@radix-ui/react-navigation-menu@1.2.14':
     resolution: {integrity: sha512-YB9mTFQvCOAQMHU+C/jVl96WmuWeltyUEpRJJky51huhds5W2FQr1J8D/16sQlf0ozxkPK8uF3niQMdUwZPv5w==}
     peerDependencies:
@@ -4883,19 +4824,6 @@ packages:
 
   '@radix-ui/react-primitive@2.1.3':
     resolution: {integrity: sha512-m9gTwRkhy2lvCPe6QJp4d3G1TYEUHn/FzJUtq9MjH46an1wJU+GdoGC5VLof8RX8Ft/DlpshApkhswDLZzHIcQ==}
-    peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
-      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      '@types/react-dom':
-        optional: true
-
-  '@radix-ui/react-primitive@2.1.4':
-    resolution: {integrity: sha512-9hQc4+GNVtJAIEPEqlYqW5RiYdrr8ea5XQ0ZOnD6fgru+83kqT15mq2OCcbe8KnjRZl5vF3ks69AKz3kh1jrhg==}
     peerDependencies:
       '@types/react': '*'
       '@types/react-dom': '*'
@@ -16308,15 +16236,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.14
 
-  '@radix-ui/react-label@2.1.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
-    dependencies:
-      '@radix-ui/react-primitive': 2.1.4(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      react: 19.2.5
-      react-dom: 19.2.5(react@19.2.5)
-    optionalDependencies:
-      '@types/react': 19.2.14
-      '@types/react-dom': 19.2.3(@types/react@19.2.14)
-
   '@radix-ui/react-navigation-menu@1.2.14(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
@@ -16403,15 +16322,6 @@ snapshots:
   '@radix-ui/react-primitive@2.1.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@radix-ui/react-slot': 1.2.3(@types/react@19.2.14)(react@19.2.5)
-      react: 19.2.5
-      react-dom: 19.2.5(react@19.2.5)
-    optionalDependencies:
-      '@types/react': 19.2.14
-      '@types/react-dom': 19.2.3(@types/react@19.2.14)
-
-  '@radix-ui/react-primitive@2.1.4(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
-    dependencies:
-      '@radix-ui/react-slot': 1.2.4(@types/react@19.2.14)(react@19.2.5)
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
     optionalDependencies:

@@ -2,7 +2,8 @@
 
 import { ChevronRight } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
-import { cn } from "../utils";
+
+import { cn } from "~/lib/utils";
 import { paragraphVariants } from "./Paragraph";
 
 export const Details = forwardRef<
@@ -17,7 +18,7 @@ export const Details = forwardRef<
 			ref={ref}
 			className={cn(
 				paragraphVariants({ margin: "forced" }),
-				"my-5 rounded-xl border-2 border-border px-5 [&_svg]:open:rotate-90", // Rotate the summary arrow
+				"my-5 rounded-xl border-2 border-border px-5 [&_svg]:open:rotate-90",
 				className,
 			)}
 			{...props}
@@ -29,8 +30,7 @@ export const Details = forwardRef<
 
 Details.displayName = "Details";
 
-// It seems like HTMLSummaryElement was removed from lib dom at some point,
-// but I can't find any information about it.
+// HTMLSummaryElement appears to have been removed from lib.dom; redefine locally.
 type HTMLSummaryElement = HTMLElement & {
 	open: boolean;
 };
@@ -45,11 +45,7 @@ export const Summary = forwardRef<
 	return (
 		<summary
 			ref={ref}
-			className={cn(
-				"flex cursor-pointer select-none list-none items-center gap-2",
-
-				className,
-			)}
+			className={cn("flex cursor-pointer select-none list-none items-center gap-2", className)}
 			{...props}
 		>
 			<ChevronRight size={24} className="inline-block h-6 w-6 text-accent transition-all" />

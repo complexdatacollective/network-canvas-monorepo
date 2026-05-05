@@ -2,7 +2,8 @@
 
 import { Content, Provider, Root, Trigger } from "@radix-ui/react-tooltip";
 import { type ComponentPropsWithoutRef, type ComponentRef, forwardRef } from "react";
-import { cn } from "./utils";
+
+import { cn } from "~/lib/utils";
 
 const TooltipProvider = Provider;
 

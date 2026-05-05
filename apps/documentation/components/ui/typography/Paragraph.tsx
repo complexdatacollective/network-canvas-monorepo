@@ -4,7 +4,7 @@ import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import { forwardRef } from "react";
 
-import { cn } from "../utils";
+import { cn } from "~/lib/utils";
 
 export const baseParagraphClasses = "text-pretty font-normal";
 
@@ -28,7 +28,6 @@ export const paragraphVariants = cva(baseParagraphClasses, {
 		{
 			variant: "lead",
 			margin: "default",
-			// className: '!my-7',
 		},
 	],
 	defaultVariants: {

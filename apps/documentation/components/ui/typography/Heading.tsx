@@ -5,7 +5,7 @@ import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { cn } from "../utils";
+import { cn } from "~/lib/utils";
 
 export const headingVariants = cva("text-balance", {
 	variants: {

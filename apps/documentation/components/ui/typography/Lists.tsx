@@ -1,4 +1,4 @@
-import { cn } from "../utils";
+import { cn } from "~/lib/utils";
 import { baseParagraphClasses } from "./Paragraph";
 
 type UnorderedListProps = React.HTMLAttributes<HTMLUListElement> & {

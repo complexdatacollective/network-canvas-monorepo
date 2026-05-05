@@ -1,4 +1,3 @@
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@codaco/ui";
 import { ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import type { Route } from "next";
@@ -7,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale, Project, SidebarPage, TSideBar, SidebarFolder as TSidebarFolder } from "~/app/types";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { cn } from "~/lib/utils";
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;

@@ -1,6 +1,7 @@
-import { Heading, Paragraph } from "@codaco/ui";
 import { Clock } from "lucide-react";
 import type { ReactNode } from "react";
+import Heading from "~/components/ui/typography/Heading";
+import Paragraph from "~/components/ui/typography/Paragraph";
 
 export const SummaryCard = ({ duration, children }: { children: ReactNode; duration: string }) => {
 	return (

@@ -1,5 +1,5 @@
-import { Heading } from "@codaco/ui";
 import type { ReactNode } from "react";
+import Heading from "~/components/ui/typography/Heading";
 import { cn } from "~/lib/utils";
 
 type PopoutBoxProps = {

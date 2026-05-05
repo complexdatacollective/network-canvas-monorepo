@@ -1,8 +1,11 @@
 import "@fontsource-variable/quicksand";
-import { Divider, Heading, ListItem, Paragraph, UnorderedList } from "@codaco/ui";
 
 import Link from "~/components/Link";
 import { ThemeProvider } from "~/components/Providers/theme-provider";
+import { Divider } from "~/components/ui/Divider";
+import Heading from "~/components/ui/typography/Heading";
+import { ListItem, UnorderedList } from "~/components/ui/typography/Lists";
+import Paragraph from "~/components/ui/typography/Paragraph";
 
 export default function NotFound() {
 	return (

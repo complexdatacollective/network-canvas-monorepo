@@ -1,8 +1,8 @@
 "use client";
 
-import { Heading } from "@codaco/ui";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import Heading from "~/components/ui/typography/Heading";
 import useHighlighted from "~/hooks/useHighlighted";
 import type { HeadingNode } from "~/lib/tableOfContents";
 import { cn } from "~/lib/utils";

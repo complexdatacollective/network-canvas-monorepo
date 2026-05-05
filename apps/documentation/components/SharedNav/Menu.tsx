@@ -1,4 +1,3 @@
-import { buttonVariants, Heading, headingVariants, Paragraph } from "@codaco/ui";
 import {
 	Content,
 	Indicator,
@@ -14,6 +13,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { buttonVariants } from "~/components/ui/Button";
+import Heading, { headingVariants } from "~/components/ui/typography/Heading";
+import Paragraph from "~/components/ui/typography/Paragraph";
 import { cn } from "~/lib/utils";
 
 type BaseMenu = {

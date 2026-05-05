@@ -3,7 +3,7 @@ import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { cn } from "./utils";
+import { cn } from "~/lib/utils";
 
 const baseButtonClasses = cn(
 	"inline-flex items-center justify-center truncate text-nowrap rounded-full text-xs font-semibold uppercase tracking-[3px] shadow-md ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50",
