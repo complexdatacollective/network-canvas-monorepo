@@ -66,7 +66,7 @@ const Section = ({
 				"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative",
 				"w-full max-w-7xl",
 				layout === "horizontal" && "grid grid-cols-[20rem_auto] gap-8",
-				layout === "vertical" && "flex flex-col mb-4",
+				layout === "vertical" && "flex flex-col gap-(--space-md) mb-4",
 				layout === "vertical" && containerClasses,
 				className,
 			)}

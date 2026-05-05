@@ -1,7 +1,7 @@
-import cx from "classnames";
 import { DeleteIcon, DownloadIcon, Eye as PreviewIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { APIKey, Audio, GeoJSON, Image, Network, Video } from "~/components/Thumbnail";
+import { cx } from "~/utils/cva";
 
 type AssetProps = {
 	id: string;
@@ -30,7 +30,7 @@ const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<Record<string, unk
 const Asset = ({
 	id,
 	isUsed = false,
-	onClick = () => {},
+	onClick,
 	onDelete = null,
 	onDownload = null,
 	onPreview = null,
@@ -39,7 +39,7 @@ const Asset = ({
 	const handleClick = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
-			onClick(id);
+			onClick?.(id);
 		},
 		[onClick, id],
 	);
@@ -77,33 +77,43 @@ const Asset = ({
 		return ASSET_COMPONENTS[assetType] || FallBackAssetComponent;
 	}, [type]);
 
-	const assetClasses = cx(
-		"asset-browser-asset",
-		{ "asset-browser-asset--clickable": onClick },
-		{ "asset-browser-asset--is-used": isUsed },
-	);
-
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent) => {
 			if (e.key === "Enter" || e.key === " ") {
 				e.preventDefault();
-				onClick(id);
+				onClick?.(id);
 			}
 		},
 		[onClick, id],
 	);
 
 	return (
-		<button type="button" onClick={handleClick} onKeyDown={handleKeyDown} className={assetClasses}>
-			<div className="asset-browser-asset__preview">
+		<button
+			type="button"
+			onClick={handleClick}
+			onKeyDown={handleKeyDown}
+			className={cx("group relative size-full", onClick && "cursor-pointer")}
+		>
+			<div
+				className={cx(
+					"flex size-full items-center justify-center",
+					"[&_.thumbnail]:flex [&_.thumbnail]:w-full",
+					onClick &&
+						"[&_.thumbnail]:cursor-pointer [&_.thumbnail]:transition-opacity [&_.thumbnail]:duration-200 [&_.thumbnail]:[transition-timing-function:ease] [&_.thumbnail:hover]:opacity-80",
+				)}
+			>
 				<PreviewComponent id={id} />
 			</div>
 
-			<div className="asset-browser-asset__controls">
+			<div
+				className={cx(
+					"absolute top-(--space-sm) right-(--space-sm) flex items-center justify-center rounded-lg bg-rich-black px-3 pt-2 pb-1 opacity-0 transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing) group-hover:opacity-100",
+				)}
+			>
 				{onPreview && (
 					<button
 						type="button"
-						className="asset-browser-asset__control"
+						className="ml-3 cursor-pointer text-white first:ml-0"
 						onClick={handlePreview}
 						aria-label="Preview asset"
 					>
@@ -114,7 +124,7 @@ const Asset = ({
 				{onDownload && (
 					<button
 						type="button"
-						className="asset-browser-asset__control"
+						className="ml-3 cursor-pointer text-white first:ml-0"
 						onClick={handleDownload}
 						aria-label="Download asset"
 					>
@@ -125,7 +135,7 @@ const Asset = ({
 				{onDelete && (
 					<button
 						type="button"
-						className="asset-browser-asset__control asset-browser-asset__control--delete"
+						className={cx("ml-3 text-white first:ml-0", isUsed ? "cursor-not-allowed" : "cursor-pointer")}
 						onClick={handleDelete}
 						title={isUsed ? "This asset is in use by the protocol and cannot be deleted" : ""}
 						aria-label={isUsed ? "Cannot delete - asset in use" : "Delete asset"}
@@ -134,6 +144,12 @@ const Asset = ({
 					</button>
 				)}
 			</div>
+
+			{!isUsed && (
+				<span className="absolute bottom-1.5 left-1.5 rounded-md bg-error px-2 py-1 text-xs text-error-foreground">
+					Unused
+				</span>
+			)}
 		</button>
 	);
 };

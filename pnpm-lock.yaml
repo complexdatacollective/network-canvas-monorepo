@@ -182,7 +182,7 @@ importers:
         specifier: ^7.28.5
         version: 7.28.5(@babel/core@7.29.0)
       '@codaco/protocol-validation':
-        specifier: ^11.4.0
+        specifier: workspace:*
         version: link:../../packages/protocol-validation
       '@codaco/ui':
         specifier: ^5.8.6
@@ -451,6 +451,9 @@ importers:
       csvtojson:
         specifier: ^2.0.14
         version: 2.0.14
+      cva:
+        specifier: 1.0.0-beta.4
+        version: 1.0.0-beta.4(typescript@6.0.3)
       dexie:
         specifier: ^4.4.2
         version: 4.4.2
