@@ -2,6 +2,7 @@ import type { Panel, StageSubject } from "@codaco/protocol-validation";
 import type { NcNode } from "@codaco/shared-consts";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import { useCaptureException } from "../analytics/useTrack";
 import { useContractHandlers } from "../contract/context";
 import { getAssetManifest, getCodebook } from "../store/modules/protocol";
 import { ensureError } from "../utils/ensureError";
@@ -11,7 +12,8 @@ import loadExternalData, { makeVariableUUIDReplacer } from "../utils/loadExterna
 const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject | null) => {
 	const assetManifest = useSelector(getAssetManifest);
 	const codebook = useSelector(getCodebook);
-	const { onRequestAsset, onError } = useContractHandlers();
+	const { onRequestAsset } = useContractHandlers();
+	const captureException = useCaptureException();
 
 	const [externalData, setExternalData] = useState<NcNode[] | null>(null);
 	const [status, setStatus] = useState<{
@@ -53,9 +55,7 @@ const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject 
 				}
 			} catch (e) {
 				const error = ensureError(e);
-				onError(error, {
-					tags: { feature: "external-data", dataSource: String(dataSource) },
-				});
+				captureException(error, { feature: "external-data" });
 				// eslint-disable-next-line no-console
 				console.error(error);
 				if (!cancelled) setStatus({ isLoading: false, error });
@@ -65,7 +65,7 @@ const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject 
 		return () => {
 			cancelled = true;
 		};
-	}, [dataSource, assetManifest, codebook, subject, onRequestAsset, onError]);
+	}, [dataSource, assetManifest, codebook, subject, onRequestAsset, captureException]);
 
 	return { externalData, status };
 };

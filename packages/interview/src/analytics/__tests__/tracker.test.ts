@@ -46,7 +46,7 @@ describe("createTracker", () => {
 		expect(props.distinct_id).toBe("session-1");
 	});
 
-	it("captureException applies distinct_id override and merges feature tag", () => {
+	it("captureException merges feature tag and distinct_id into properties", () => {
 		const client = { capture: vi.fn(), captureException: vi.fn() };
 		const tracker = createTracker({
 			client: client as never,
@@ -58,8 +58,7 @@ describe("createTracker", () => {
 		tracker.captureException(err, { feature: "external-data" });
 		expect(client.captureException).toHaveBeenCalledWith(
 			err,
-			"session-1",
-			expect.objectContaining({ feature: "external-data" }),
+			expect.objectContaining({ feature: "external-data", distinct_id: "session-1" }),
 		);
 	});
 

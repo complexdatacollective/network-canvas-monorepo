@@ -8,6 +8,7 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { Item } from "@codaco/protocol-validation";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
+import { useCaptureException } from "../../analytics/useTrack";
 import { useContractFlags } from "../../contract/context";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
 import { getAssetManifest } from "../../store/modules/protocol";
@@ -50,6 +51,7 @@ type MediaLoadState = "loading" | "loaded" | "error";
 
 function VideoPlayer({ src, name, isE2E }: { src: string; name: string; isE2E: boolean }) {
 	const [state, setState] = useState<MediaLoadState>("loading");
+	const captureException = useCaptureException();
 
 	// Disable autoPlay and preload to prevent browser crashes in headless E2E tests.
 	const mimeType = getMediaMimeType(name, "video/mp4");
@@ -76,7 +78,14 @@ function VideoPlayer({ src, name, isE2E }: { src: string; name: string; isE2E: b
 				preload={isE2E ? "none" : "auto"}
 				className={cx((state === "loading" && !isE2E) || state === "error" ? "invisible h-0" : "")}
 				onLoadedData={() => setState("loaded")}
-				onError={() => setState("error")}
+				onError={(e) => {
+					setState("error");
+					const code = e.currentTarget.error?.code ?? "unknown";
+					captureException(new Error(`video load failed: ${code}`), {
+						feature: "information-media",
+						media_kind: "video",
+					});
+				}}
 			>
 				<source src={src} type={mimeType} />
 			</video>

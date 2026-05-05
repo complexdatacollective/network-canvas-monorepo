@@ -6,8 +6,11 @@ import "@codaco/tailwind-config/fresco/themes/interview.css";
 import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
+import type { PostHog } from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
+import { AnalyticsProvider } from "./analytics/AnalyticsProvider";
+import { NULL_TRACKER, type Tracker } from "./analytics/tracker";
 import Navigation from "./components/Navigation";
 import StageErrorBoundary from "./components/StageErrorBoundary";
 import { CurrentStepProvider } from "./contexts/CurrentStepContext";
@@ -15,8 +18,8 @@ import { StageMetadataProvider } from "./contexts/StageMetadataContext";
 import { ContractProvider, useContractFlags } from "./contract/context";
 import type {
 	AssetRequestHandler,
-	ErrorHandler,
 	FinishHandler,
+	InterviewAnalyticsMetadata,
 	InterviewerFlags,
 	InterviewPayload,
 	StepChangeHandler,
@@ -127,10 +130,12 @@ type ShellProps = {
 	onSync: SyncHandler;
 	onFinish: FinishHandler;
 	onRequestAsset: AssetRequestHandler;
-	onError?: ErrorHandler;
 	currentStep?: number;
 	onStepChange?: StepChangeHandler;
 	flags?: InterviewerFlags;
+	analytics: InterviewAnalyticsMetadata;
+	posthogClient?: PostHog;
+	disableAnalytics?: boolean;
 };
 
 const Shell = ({
@@ -138,10 +143,12 @@ const Shell = ({
 	onSync,
 	onFinish,
 	onRequestAsset,
-	onError,
 	currentStep,
 	onStepChange,
 	flags,
+	analytics,
+	posthogClient,
+	disableAnalytics = false,
 }: ShellProps) => {
 	// Anchor onSync in a ref so the store factory receives a stable callback
 	// (the sync middleware closes over it once at store creation). Hosts
@@ -151,13 +158,29 @@ const Shell = ({
 	onSyncRef.current = onSync;
 	const stableOnSync = useCallback<SyncHandler>((...args) => onSyncRef.current(...args), []);
 
+	// Tracker holder. The AnalyticsProvider mounts asynchronously (dynamic
+	// import of posthog-js) so we cannot pass the tracker directly into the
+	// store factory. Instead we hand the listener middleware a stable forwarder
+	// that delegates to whatever tracker is currently resolved. The middleware
+	// keeps a static reference; AnalyticsProvider mutates trackerRef as the
+	// resolution completes.
+	const trackerRef = useRef<Tracker>(NULL_TRACKER);
+	const trackerHolder: Tracker = useMemo(
+		() => ({
+			track: (e, p) => trackerRef.current.track(e, p),
+			captureException: (err, p) => trackerRef.current.captureException(err, p),
+		}),
+		[],
+	);
+
 	const reduxStore = useMemo(
 		() =>
 			store(payload, {
 				onSync: stableOnSync,
 				isDevelopment: flags?.isDevelopment,
+				tracker: trackerHolder,
 			}),
-		[payload, stableOnSync, flags?.isDevelopment],
+		[payload, stableOnSync, flags?.isDevelopment, trackerHolder],
 	);
 
 	// In e2e mode, expose the live Redux store to Playwright tests so they can
@@ -173,24 +196,36 @@ const Shell = ({
 		};
 	}, [reduxStore, flags?.isE2E]);
 
+	const onTrackerChange = useCallback((next: Tracker) => {
+		trackerRef.current = next;
+	}, []);
+
 	return (
-		<Provider store={reduxStore}>
-			<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} onError={onError} flags={flags}>
-				<CurrentStepProvider currentStep={currentStep} onStepChange={onStepChange}>
-					{/*
-					 * Interview-scoped DialogProvider (nested below the app-root one in
-					 * components/Providers). Required because dialogs opened from inside
-					 * the interview render components that call useSelector, and
-					 * DialogProvider renders its dialogs at its own location in the tree.
-					 * Without this inner provider, dialog content would mount outside
-					 * the Redux Provider and throw on the first useSelector call.
-					 */}
-					<DialogProvider>
-						<Interview />
-					</DialogProvider>
-				</CurrentStepProvider>
-			</ContractProvider>
-		</Provider>
+		<AnalyticsProvider
+			analytics={analytics}
+			posthogClient={posthogClient}
+			disableAnalytics={disableAnalytics}
+			payload={payload}
+			onTrackerChange={onTrackerChange}
+		>
+			<Provider store={reduxStore}>
+				<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} flags={flags}>
+					<CurrentStepProvider currentStep={currentStep} onStepChange={onStepChange}>
+						{/*
+						 * Interview-scoped DialogProvider (nested below the app-root one in
+						 * components/Providers). Required because dialogs opened from inside
+						 * the interview render components that call useSelector, and
+						 * DialogProvider renders its dialogs at its own location in the tree.
+						 * Without this inner provider, dialog content would mount outside
+						 * the Redux Provider and throw on the first useSelector call.
+						 */}
+						<DialogProvider>
+							<Interview />
+						</DialogProvider>
+					</CurrentStepProvider>
+				</ContractProvider>
+			</Provider>
+		</AnalyticsProvider>
 	);
 };
 

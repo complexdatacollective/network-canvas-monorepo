@@ -32,7 +32,7 @@ export function createTracker({ client, superProperties, distinctId, ownsInstanc
 		},
 		captureException: (error, props) => {
 			try {
-				client.captureException(error, distinctId, merge(props));
+				client.captureException(error, merge(props));
 			} catch {
 				// Same: never throw out of analytics.
 			}

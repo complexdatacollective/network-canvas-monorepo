@@ -77,6 +77,7 @@ function buildPayload(raw: RawSyntheticPayload): {
 			session: sessionFields as unknown as InterviewPayload["session"],
 			protocol: {
 				...protocol,
+				hash: typeof protocol.id === "string" ? `storybook-${protocol.id}` : "storybook-hash",
 				importedAt: protocol.importedAt.toISOString(),
 				assets,
 			},
@@ -121,6 +122,8 @@ const StoryInterviewShell = (props: { rawPayload: string }) => {
 			onFinish={onFinish}
 			onRequestAsset={onRequestAsset}
 			flags={{ isDevelopment: true }}
+			analytics={{ installationId: "storybook", hostApp: "storybook" }}
+			disableAnalytics={true}
 		/>
 	);
 };

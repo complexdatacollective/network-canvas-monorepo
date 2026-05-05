@@ -3,13 +3,12 @@ import Surface from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import React, { Component, type ReactNode } from "react";
-import { useContractHandlers } from "../contract/context";
-import type { ErrorHandler } from "../contract/types";
+import { useCaptureException } from "../analytics/useTrack";
 import CopyDebugInfoButton from "./CopyDebugInfoButton";
 
 type StageErrorBoundaryInnerProps = {
 	children: ReactNode;
-	onError: ErrorHandler;
+	captureException: (error: Error, props?: Record<string, unknown>) => void;
 };
 
 type StageErrorBoundaryState = {
@@ -23,8 +22,9 @@ class StageErrorBoundaryInner extends Component<StageErrorBoundaryInnerProps, St
 	}
 
 	componentDidCatch(error: Error, info: React.ErrorInfo) {
-		this.props.onError(error, {
-			componentStack: info.componentStack,
+		this.props.captureException(error, {
+			component_stack: info.componentStack,
+			feature: "stage-error-boundary",
 		});
 		this.setState({ error });
 	}
@@ -65,8 +65,8 @@ type StageErrorBoundaryProps = {
 };
 
 const StageErrorBoundary = ({ children }: StageErrorBoundaryProps) => {
-	const { onError } = useContractHandlers();
-	return <StageErrorBoundaryInner onError={onError}>{children}</StageErrorBoundaryInner>;
+	const captureException = useCaptureException();
+	return <StageErrorBoundaryInner captureException={captureException}>{children}</StageErrorBoundaryInner>;
 };
 
 export default StageErrorBoundary;

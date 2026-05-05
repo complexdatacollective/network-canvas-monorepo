@@ -98,6 +98,8 @@ export default function App() {
 						currentStep={currentStep}
 						onStepChange={onStepChange}
 						flags={{ isE2E: true }}
+						analytics={{ installationId: "e2e", hostApp: "e2e" }}
+						disableAnalytics={true}
 					/>
 				</DndStoreProvider>
 				<InterviewToastViewport />

@@ -2,7 +2,9 @@
 
 import { combineReducers, configureStore, type Middleware } from "@reduxjs/toolkit";
 import { useDispatch } from "react-redux";
+import { NULL_TRACKER, type Tracker } from "../analytics/tracker";
 import type { InterviewPayload, SyncHandler } from "../contract/types";
+import { createAnalyticsListenerMiddleware } from "./middleware/analyticsListener";
 import logger from "./middleware/logger";
 import { createSyncMiddleware } from "./middleware/syncMiddleware";
 import protocol from "./modules/protocol";
@@ -19,6 +21,7 @@ type StoreOptions = {
 	onSync: SyncHandler;
 	isDevelopment?: boolean;
 	extraMiddleware?: Middleware[];
+	tracker?: Tracker;
 };
 
 export const store = (
@@ -26,6 +29,8 @@ export const store = (
 	options: StoreOptions,
 ) => {
 	const syncMiddleware = createSyncMiddleware({ onSync: options.onSync });
+	const tracker = options.tracker ?? NULL_TRACKER;
+	const analyticsMiddleware = createAnalyticsListenerMiddleware({ tracker }).middleware;
 
 	return configureStore({
 		reducer: rootReducer,
@@ -34,7 +39,12 @@ export const store = (
 				serializableCheck: {
 					ignoredActions: ["dialogs/addDialog", "dialogs/open/pending"],
 				},
-			}).concat(...(options.isDevelopment ? [logger] : []), syncMiddleware, ...(options.extraMiddleware ?? [])),
+			}).concat(
+				...(options.isDevelopment ? [logger] : []),
+				syncMiddleware,
+				analyticsMiddleware,
+				...(options.extraMiddleware ?? []),
+			),
 		preloadedState: {
 			session: sessionPayload,
 			protocol: protocolPayload,
