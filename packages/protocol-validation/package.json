@@ -27,6 +27,7 @@
 	"dependencies": {
 		"@codaco/shared-consts": "workspace:*",
 		"@faker-js/faker": "catalog:",
+		"ohash": "^2.0.11",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
