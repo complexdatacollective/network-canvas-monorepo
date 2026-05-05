@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
 import { AnalyticsProvider } from "./analytics/AnalyticsProvider";
 import { NULL_TRACKER, type Tracker } from "./analytics/tracker";
+import { useStageNavigationAnalytics } from "./analytics/useStageNavigationAnalytics";
 import Navigation from "./components/Navigation";
 import StageErrorBoundary from "./components/StageErrorBoundary";
 import { CurrentStepProvider } from "./contexts/CurrentStepContext";
@@ -54,6 +55,11 @@ function Interview() {
 	} = useInterviewNavigation();
 
 	const { isE2E } = useContractFlags();
+
+	useStageNavigationAnalytics({
+		stage_index: displayedStep,
+		stage_type: stage?.type,
+	});
 
 	const forwardButtonRef = useRef<HTMLButtonElement>(null);
 	const backButtonRef = useRef<HTMLButtonElement>(null);

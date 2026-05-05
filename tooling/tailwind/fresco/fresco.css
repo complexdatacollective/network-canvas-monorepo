@@ -26,3 +26,11 @@
 @plugin "./plugins/inset-surface/inset-surface";
 @plugin "./plugins/motion-spring";
 @plugin '@tailwindcss/forms';
+
+/* App-scoped variants. fresco-ui components hard-code `interview:` /
+   `dashboard:` prefixes (e.g. Button.tsx swaps default-color tokens via
+   `interview:[...]`). They live in the foundation barrel so any consumer
+   of `@codaco/tailwind-config/fresco.css` gets them in the same Tailwind
+   compilation pass that scans the components. */
+@custom-variant interview (:root:has([data-interview]) &);
+@custom-variant dashboard (:root:not(:has([data-interview])) &);

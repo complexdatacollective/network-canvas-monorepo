@@ -1,16 +1,7 @@
 /*
- * E2E host Tailwind CSS entry point.
- *
- * Composes the fresco-ui styles (which include the Tailwind base + fresco-ui
- * utilities, including the foundational @utility definitions like `interface`
- * and `focusable` bundled into the @codaco/tailwind-config/fresco.css barrel)
- * and adds an @source directive so Tailwind also scans the interview package
- * source for utilities used in its components (`size-28`, `aspect-square`, etc.).
- *
- * Without the @source directive, the @tailwindcss/vite plugin only sees
- * fresco-ui's own @source declarations and misses classes used in
- * @codaco/interview components.
+ * E2E host Tailwind entry. Pulls the shared in-monorepo foundation
+ * and loads only the interview theme — every e2e scenario renders
+ * an interview, so there's no need for the default theme tokens.
  */
-@import "@codaco/fresco-ui/styles.css";
-
-@source "../../../src/**/*.{ts,tsx}";
+@import "../../../styles/host.css";
+@import "@codaco/tailwind-config/fresco/themes/interview.css";

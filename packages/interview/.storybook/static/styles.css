@@ -1,0 +1,11 @@
+/*
+ * Storybook preview Tailwind entry. Pulls the shared in-monorepo
+ * foundation (sources both fresco-ui and interview package source)
+ * and loads both theme variants — Storybook needs `default` for
+ * non-interview-scoped stories and `interview` (keyed off
+ * `[data-interview]` via the `forceTheme` decorator) for stories that
+ * render against the interview design tokens.
+ */
+@import "../../styles/host.css";
+@import "@codaco/tailwind-config/fresco/themes/default.css";
+@import "@codaco/tailwind-config/fresco/themes/interview.css";
