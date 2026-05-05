@@ -1,16 +1,51 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import react from "@vitejs/plugin-react";
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
+
+const dirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
 	plugins: [react()],
 	test: {
-		environment: "jsdom",
 		globals: true,
-		include: [
-			"src/**/*.{test,spec}.{ts,tsx}",
-			"src/**/__tests__/**/*.{test,spec}.{ts,tsx}",
-			"e2e/host/src/**/*.{test,spec}.{ts,tsx}",
+		exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/specs/**", "**/storybook-static/**"],
+		projects: [
+			{
+				extends: true,
+				test: {
+					name: "units",
+					environment: "jsdom",
+					include: [
+						"src/**/*.{test,spec}.{ts,tsx}",
+						"src/**/__tests__/**/*.{test,spec}.{ts,tsx}",
+						"e2e/host/src/**/*.{test,spec}.{ts,tsx}",
+					],
+					exclude: ["**/*.stories.{ts,tsx}"],
+				},
+			},
+			{
+				extends: true,
+				plugins: [
+					storybookTest({
+						configDir: path.join(dirname, ".storybook"),
+						storybookScript: "storybook dev -p 6006 --no-open",
+					}),
+				],
+				test: {
+					name: "storybook",
+					testTimeout: 60_000,
+					browser: {
+						provider: playwright(),
+						enabled: true,
+						instances: [{ browser: "chromium" }],
+						headless: true,
+					},
+					exclude: ["**/*.test.{ts,tsx}"],
+				},
+			},
 		],
-		exclude: ["**/node_modules/**", "**/dist/**", "**/*.stories.{ts,tsx}"],
 	},
 });
