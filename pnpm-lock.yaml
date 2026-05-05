@@ -1384,7 +1384,7 @@ importers:
         version: 3.0.0
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.46.0
+        version: 1.46.1
       immer:
         specifier: 'catalog:'
         version: 11.1.4
