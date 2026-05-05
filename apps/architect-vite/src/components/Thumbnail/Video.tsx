@@ -1,6 +1,7 @@
 import cx from "classnames";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { thumbnailBase, thumbnailExisting, thumbnailIcon, thumbnailLabel } from "./styles";
 
 type VideoThumbnailProps = {
 	id: string;
@@ -10,15 +11,11 @@ type VideoThumbnailProps = {
 };
 
 const VideoThumbnail = ({ id, meta = { name: "" } }: VideoThumbnailProps) => (
-	<div
-		className={cx("thumbnail thumbnail--video", {
-			"thumbnail--existing": id === "existing",
-		})}
-	>
-		<div className="thumbnail__icon">
+	<div className={cx(thumbnailBase, id === "existing" && thumbnailExisting)}>
+		<div className={thumbnailIcon}>
 			<Icon name="menu-custom-interface" />
 		</div>
-		<div className="thumbnail__label">{meta.name}</div>
+		<div className={thumbnailLabel}>{meta.name}</div>
 	</div>
 );
 
