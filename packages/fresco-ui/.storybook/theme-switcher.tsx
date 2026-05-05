@@ -4,7 +4,7 @@ import { cx } from "../src/utils/cva";
 
 const THEME_KEY = "theme";
 const STORAGE_KEY = "storybook-theme-preference";
-const INTERVIEW_ATTR = "data-interview";
+const INTERVIEW_ATTR = "data-theme-interview";
 
 const themes = {
 	dashboard: {

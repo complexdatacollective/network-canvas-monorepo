@@ -1,8 +1,6 @@
 "use client";
 "use no memo";
 
-import "@codaco/tailwind-config/fresco/themes/interview.css";
-
 import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
@@ -73,7 +71,7 @@ function Interview() {
 
 	return (
 		<main
-			data-interview
+			data-theme-interview
 			className={cx(
 				"relative flex size-full flex-1 overflow-hidden bg-background text-text",
 				isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",

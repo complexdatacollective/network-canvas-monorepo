@@ -11,13 +11,11 @@ All exports are explicit; the `exports` field in `package.json` is the public AP
 
 ## Tailwind v4 surface
 
-The v4 surface ships a single foundation barrel plus theme variants. Tailwind v4 cares about ordering: `@import url(...)` (Google Fonts) must precede `@import "tailwindcss"`, and the `@theme` block must be loaded before any utilities reference its tokens. The barrel handles the foundation order internally; theme files load their own font `@import url(...)` at the top, so any theme can be the first `@import` in the host stream.
+The v4 surface ships a single foundation barrel that bundles every theme, plugin, and font. Tailwind v4 cares about `@import` ordering — by self-hosting fonts via `@font-face` (no external Google Fonts `@import url(...)`) the barrel composes safely no matter where consumers place it in their entry stream.
 
 | Export                                                              | Purpose                                                                                                       |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `@codaco/tailwind-config/fresco.css`                                | Foundation barrel — bundles colors, the `@theme` block, foundational utilities, and the three plugins.        |
-| `@codaco/tailwind-config/fresco/themes/default.css`                 | Default light + dark semantic variable values, plus Nunito + Inclusive Sans font loading.                     |
-| `@codaco/tailwind-config/fresco/themes/interview.css`               | Alternate palette + typography activated by `[data-interview]` on the document, plus Nunito font loading.     |
+| `@codaco/tailwind-config/fresco.css`                                | Foundation barrel — colors, the `@theme` block, foundational utilities, custom plugins, **both theme variants** (default + interview) with self-hosted Nunito + Inclusive Sans fonts. |
 | `@codaco/tailwind-config/fresco/plugins/elevation/elevation`        | Multi-layer realistic shadows (`elevation-low/medium/high`).                                                  |
 | `@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface`| Background-color-adaptive inset (pressed-in) shadows.                                                         |
 | `@codaco/tailwind-config/fresco/plugins/motion-spring`              | Spring-based transition utilities (`spring-short/medium/long`) generated via `motion`.                        |
@@ -27,18 +25,16 @@ The v4 surface ships a single foundation barrel plus theme variants. Tailwind v4
 `packages/fresco-ui/src/styles.css` is the canonical example. The minimal Fresco entry is:
 
 ```css
-@import "@codaco/tailwind-config/fresco/themes/default.css";
-
 @import "tailwindcss";
 
 @import "@codaco/tailwind-config/fresco.css";
 ```
 
-Optionally layer `themes/interview.css` after `themes/default.css` to enable the `[data-interview]` variant. Themes are mutually exclusive with each other and load their own fonts; the foundation barrel is loaded once at the document root.
+The default theme writes its values under `:root`; the interview theme layers overrides under `:root:has([data-theme-interview])`, which only matches when an element with `data-theme-interview` is mounted (e.g. the `<main>` rendered by `@codaco/interview`'s Shell). Both themes ship together in the foundation barrel.
 
 ### Theming
 
-The `@theme` block (bundled in `fresco.css`) exposes semantic CSS variables (`--background`, `--primary`, `--surface-*`, `--destructive`, etc.) that resolve against values declared in a theme file. Apps can supply their own theme by re-declaring the same variables inside an `@layer theme` block — see `fresco/themes/default.css` and `fresco/themes/interview.css` for the full set of slots.
+The `@theme` block (bundled in `fresco.css`) exposes semantic CSS variables (`--background`, `--primary`, `--surface-*`, `--destructive`, etc.) that resolve against values declared in a theme file. Apps can supply their own theme by re-declaring the same variables inside an `@layer theme` block — see `fresco/themes/default.css` and `fresco/themes/interview.css` (loaded by the barrel) for the full set of slots.
 
 ## Tailwind v3 surface
 

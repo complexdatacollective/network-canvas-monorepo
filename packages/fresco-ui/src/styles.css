@@ -3,13 +3,13 @@
  *
  * Consumers @import this once in their own Tailwind v4 entry. It pulls in
  * the Fresco design-system foundation (colors + theme tokens + utilities +
- * plugins + the `interview:` / `dashboard:` variants) from
- * `@codaco/tailwind-config/fresco.css`, then tells Tailwind to scan the
- * package's compiled JS for utility classes.
+ * plugins + the `interview:` / `dashboard:` variants + both theme variants
+ * with self-hosted fonts) from `@codaco/tailwind-config/fresco.css`, then
+ * tells Tailwind to scan the package's compiled JS for utility classes.
  *
- * The host is responsible for loading a theme variant
- * (`@codaco/tailwind-config/fresco/themes/default.css` or
- * `themes/interview.css`) — themes carry their own font @imports.
+ * The interview theme activates whenever a `[data-theme-interview]`
+ * element is present in the document; otherwise the default theme is
+ * active. Hosts no longer need to import theme variants separately.
  */
 
 @import "tailwindcss";
@@ -19,4 +19,4 @@
 /* Source the package's compiled output so utility classes referenced in
    migrated components are discovered by Tailwind's class scanner. Path is
    relative to dist/styles.css. */
-@source "./**/*.js";
+@source "./**/*.{js,ts,tsx}";

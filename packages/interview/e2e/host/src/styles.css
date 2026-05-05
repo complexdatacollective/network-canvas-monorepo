@@ -1,7 +1,6 @@
 /*
- * E2E host Tailwind entry. Pulls the shared in-monorepo foundation
- * and loads only the interview theme — every e2e scenario renders
- * an interview, so there's no need for the default theme tokens.
+ * E2E host Tailwind entry. Pulls the shared in-monorepo foundation;
+ * both themes ship inside fresco.css, and the interview theme activates
+ * via the `[data-theme-interview]` attribute on Shell's root.
  */
 @import "../../../styles/host.css";
-@import "@codaco/tailwind-config/fresco/themes/interview.css";

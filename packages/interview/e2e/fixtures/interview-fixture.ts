@@ -186,7 +186,7 @@ export class InterviewFixture {
 	}
 
 	private async waitForStageLoad(): Promise<void> {
-		const mainLocator = this.page.locator("main[data-interview]");
+		const mainLocator = this.page.locator("main[data-theme-interview]");
 		const currentStep = this.getCurrentStep();
 
 		try {

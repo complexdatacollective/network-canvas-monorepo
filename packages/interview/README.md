@@ -43,22 +43,21 @@ global stylesheet so the scanner picks it up:
 ```css
 /* styles/globals.css */
 @import '@codaco/fresco-ui/styles.css';
-@import '@codaco/tailwind-config/fresco/themes/interview.css';
 
 @source '../node_modules/@codaco/fresco-ui/dist/**/*.js';
 @source '../node_modules/@codaco/interview/dist/**/*.js';
 ```
 
-The `interview-theme.css` import only takes effect under
-`<main data-interview>` (which `Shell` renders). Outside that subtree,
-your default theme is unaffected.
+`@codaco/fresco-ui/styles.css` re-exports `@codaco/tailwind-config/fresco.css`,
+which bundles both the default and interview theme variants. The
+interview theme only activates under `<main data-theme-interview>` (which
+`Shell` renders), so your host UI is unaffected outside that subtree.
 
 ### Vitest / jsdom
 
-`Shell.tsx` carries `import "@codaco/tailwind-config/fresco/themes/interview.css"`
-as a side effect. Node has no CSS loader, so any vitest test that
-imports from `@codaco/interview` (even just the schemas) needs Vite to
-process the package, otherwise you get
+Node has no CSS loader, so any vitest test that imports from
+`@codaco/interview` (even just the schemas) needs Vite to process
+the package, otherwise you get
 *"TypeError: Unknown file extension `.css`"*. Inline the package on
 every project that uses jsdom:
 
@@ -371,12 +370,12 @@ type InterviewerFlags = {
 
 ## Theming & DOM scope
 
-`Shell` renders a single root: `<main data-interview>`. All design
+`Shell` renders a single root: `<main data-theme-interview>`. All design
 tokens (colours, fonts, spacing) and the responsive `font-size` scale
 (16/18/20px at the tablet/desktop breakpoints) are scoped to that
 attribute selector, so the package never bleeds styles into the host's
 own UI. The host page and the interview can live side by side — only
-descendants of `<main data-interview>` see the interview theme.
+descendants of `<main data-theme-interview>` see the interview theme.
 
 ---
 

@@ -2,13 +2,15 @@
  * @codaco/tailwind-config — Fresco design-system foundation
  *
  * Single CSS entry that bundles Fresco's color triplets, design tokens,
- * foundational utilities, and custom Tailwind plugins. Consumers @import
- * this once after `@import "tailwindcss"` (the host owns the Tailwind
- * import — this barrel intentionally does not include it).
+ * foundational utilities, custom Tailwind plugins, and both theme variants
+ * (default + interview). Consumers @import this once after
+ * `@import "tailwindcss"` (the host owns the Tailwind import — this barrel
+ * intentionally does not include it).
  *
- * Theme variants (themes/default.css, themes/interview.css) and font
- * loading are deliberately separate concerns and must be loaded by the
- * host independently.
+ * Both themes ship together because they don't conflict at runtime: the
+ * default theme writes its variables under `:root`, and the interview
+ * theme scopes its overrides to `:root:has([data-theme-interview])`,
+ * which only matches when the interview Shell is mounted.
  */
 
 /* NC palette channel triplets (oklch L C H). Relative-color values used
@@ -21,6 +23,11 @@
 /* Foundational @utility / @custom-variant definitions used across packages. */
 @import "./utilities.css";
 
+/* Theme variants. Default writes :root values; interview layers
+   overrides under :root:has([data-theme-interview]). */
+@import "./themes/default.css";
+@import "./themes/interview.css";
+
 /* Custom Tailwind plugins. */
 @plugin "./plugins/elevation/elevation";
 @plugin "./plugins/inset-surface/inset-surface";
@@ -32,5 +39,5 @@
    `interview:[...]`). They live in the foundation barrel so any consumer
    of `@codaco/tailwind-config/fresco.css` gets them in the same Tailwind
    compilation pass that scans the components. */
-@custom-variant interview (:root:has([data-interview]) &);
-@custom-variant dashboard (:root:not(:has([data-interview])) &);
+@custom-variant interview (:root:has([data-theme-interview]) &);
+@custom-variant dashboard (:root:not(:has([data-theme-interview])) &);
