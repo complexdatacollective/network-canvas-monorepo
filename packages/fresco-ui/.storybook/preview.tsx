@@ -4,11 +4,9 @@ import addonVitest from "@storybook/addon-vitest";
 import { definePreview } from "@storybook/react-vite";
 import isChromatic from "chromatic/isChromatic";
 import { StrictMode } from "react";
-import Providers from "./Providers";
 import "../src/styles.css";
-import "@codaco/tailwind-config/fresco/themes/default.css";
-import "@codaco/tailwind-config/fresco/themes/interview.css";
 import "./preview.css";
+import Providers from "./Providers";
 import { getInitialTheme, globalTypes, withTheme } from "./theme-switcher";
 
 // @chromatic-com/storybook is not included here because it doesn't export a
