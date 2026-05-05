@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import pkg from "./package.json" with { type: "json" };
 
 export default defineConfig({
 	plugins: [
@@ -14,6 +15,9 @@ export default defineConfig({
 			rollupTypes: true,
 		}),
 	],
+	define: {
+		__PACKAGE_VERSION__: JSON.stringify(pkg.version),
+	},
 	build: {
 		lib: {
 			entry: resolve(__dirname, "src/index.ts"),
