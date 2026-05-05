@@ -902,8 +902,11 @@ class GeospatialFixture {
 	 * Click the "Outside Selectable Areas" button.
 	 */
 	async selectOutsideSelectableAreas(): Promise<void> {
-		await this.outsideSelectableAreasButton.click();
-		// Wait for overlay to appear
+		// noWaitAfter: chromium misclassifies the React state update that follows
+		// this click as a scheduled navigation and the action's post-click auto-wait
+		// times out even though the click landed. The overlay assertion below is
+		// the real synchronization point.
+		await this.outsideSelectableAreasButton.click({ noWaitAfter: true });
 		await expect(this.outsideSelectableOverlay).toBeVisible();
 	}
 
