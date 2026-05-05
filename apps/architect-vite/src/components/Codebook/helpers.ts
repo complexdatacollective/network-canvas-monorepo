@@ -8,6 +8,7 @@ import type {
 } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { compact, get, reduce, uniq } from "es-toolkit/compat";
+import type { NodeShape } from "~/components/Node/Node";
 import type { RootState } from "~/ducks/store";
 import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
 import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
@@ -171,6 +172,7 @@ type VariableWithUsage = Variable & {
 type EntityProperties = {
 	name: string;
 	color?: string;
+	shape?: NodeShape;
 	variables: Record<string, VariableWithUsage>;
 };
 
@@ -207,6 +209,7 @@ export const getEntityProperties = (
 
 	const name = hasNameAndColor(entityType) ? entityType.name : "Ego";
 	const color = hasNameAndColor(entityType) ? entityType.color : undefined;
+	const shape = entity === "node" && "shape" in entityType ? entityType.shape?.default : undefined;
 
 	const variableIndex = getVariableIndex(state) as Record<string, string>;
 	const variableMeta = getVariableMetaByIndex(state);
@@ -246,6 +249,7 @@ export const getEntityProperties = (
 	return {
 		name,
 		color,
+		shape,
 		variables: variablesWithUsage,
 	};
 };
