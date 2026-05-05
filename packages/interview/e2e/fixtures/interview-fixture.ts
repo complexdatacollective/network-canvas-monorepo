@@ -124,7 +124,7 @@ export class InterviewFixture {
 
 	async nextButtonHasPulse(): Promise<boolean> {
 		const className = await this.nextButton.getAttribute("class");
-		return className?.includes("animate-pulse-glow") ?? false;
+		return className?.includes("bg-success") ?? false;
 	}
 
 	/**
