@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors, hasSubmitFailed } from "redux-form";
 import { Icon } from "~/lib/legacy-ui/components";
+import { cx } from "~/utils/cva";
 import { flattenIssues, getFieldId } from "../utils/issues";
 import scrollTo from "../utils/scrollTo";
 import { formName } from "./StageEditor/configuration";
@@ -102,8 +103,19 @@ const Issues = () => {
 			const fieldId = getFieldId(field);
 
 			return (
-				<li key={fieldId} className="issues__issue">
-					<a href={`#${fieldId}`} onClick={handleClickIssue}>
+				// `issues__issue` is preserved as a marker for the Issues.test.tsx selector
+				// (`container.querySelectorAll("li.issues__issue")`).
+				<li
+					key={fieldId}
+					className={cx(
+						"issues__issue m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) hover:bg-(--color-sea-green)",
+					)}
+				>
+					<a
+						href={`#${fieldId}`}
+						onClick={handleClickIssue}
+						className="block w-full px-(--space-xl) py-(--space-md) text-(--color-primary-foreground) no-underline before:mr-(--space-md) before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+					>
 						<span ref={(el) => setIssueRef(el, fieldId)}>{field}</span> - {issue}
 					</a>
 				</li>
@@ -116,7 +128,7 @@ const Issues = () => {
 		<AnimatePresence>
 			{isVisible && (
 				<motion.div
-					className="issues"
+					className="w-full shrink-0 origin-bottom-left overflow-hidden bg-(--color-sea-serpent) text-(--color-primary-foreground)"
 					variants={variants}
 					initial="hide"
 					animate="show"
@@ -127,23 +139,29 @@ const Issues = () => {
 						damping: 30,
 					}}
 				>
-					<div className="issues__panel">
+					<div>
 						<button
 							type="button"
-							className="issues__title-bar"
+							className="flex w-full cursor-pointer flex-row items-center justify-start bg-(--color-sea-serpent-dark) px-(--space-md) py-(--space-sm) text-left"
 							onClick={handleClickTitleBar}
 							aria-label={`${open ? "Collapse" : "Expand"} issues panel`}
 							aria-expanded={open}
 						>
-							<div className="issues__title-bar-icon">
-								<Icon name="info" />
+							<div>
+								<Icon name="info" className="relative top-[0.2rem] size-(--space-xl)" />
 							</div>
-							<div className="issues__title-bar-text">Issues ({flatIssues.length})</div>
-							<motion.div className="issues__title-bar-toggle" animate={{ rotate: isVisible ? 180 : 0 }}>
-								<Icon name="chevron-up" color="white" className="issues-toggle" />
+							<div className="mx-(--space-md) flex-auto text-sm font-(--font-weight-semibold) uppercase tracking-[0.05em]">
+								Issues ({flatIssues.length})
+							</div>
+							<motion.div animate={{ rotate: isVisible ? 180 : 0 }}>
+								<Icon name="chevron-up" color="white" className="size-(--space-md)" />
 							</motion.div>
 						</button>
-						<motion.ol className="issues__issues" initial={{ height: 0 }} animate={{ height: open ? "auto" : 0 }}>
+						<motion.ol
+							className="m-0 list-none overflow-x-hidden overflow-y-auto p-0 [counter-reset:issue] transition-[max-height] duration-(--animation-duration-standard) ease-(--animation-easing)"
+							initial={{ height: 0 }}
+							animate={{ height: open ? "auto" : 0 }}
+						>
 							{renderIssues()}
 						</motion.ol>
 					</div>
