@@ -26,6 +26,10 @@
 			],
 			"outputs": ["out/**", "dist/**"]
 		},
+		"@codaco/tailwind-config#build": {
+			"inputs": ["fresco/plugins/**/*.ts", "tsconfig*.json", "package.json"],
+			"outputs": ["fresco/plugins/**/*.js"]
+		},
 		"dev": {
 			"dependsOn": ["^build"],
 			"cache": false,
