@@ -40,7 +40,7 @@ const StageHeading = ({ _id }: { _id?: string }) => {
 			{/* <div className="flex items-center gap-4">
 				<h1 className="m-0">{label}</h1>
 			</div> */}
-			<div className="stage-name-container">
+			<div>
 				<IssueAnchor fieldName="label" description="Stage name" />
 				<h2>Stage Name</h2>
 				<ValidatedField

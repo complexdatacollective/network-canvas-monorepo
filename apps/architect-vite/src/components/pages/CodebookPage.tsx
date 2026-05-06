@@ -38,7 +38,7 @@ const CodebookPage = () => {
 		<div className="relative flex flex-col h-dvh">
 			<div className="flex-1 overflow-y-auto">
 				<Layout>
-					<div className="stage-heading">
+					<div className="flex flex-col">
 						<h1 className="screen-heading">Codebook</h1>
 						<p>
 							Below you can find an overview of the node and edge types that you have defined while creating your

@@ -21,8 +21,7 @@
 @import "./components/rule.css";
 @import "./components/rules.css";
 @import "./components/spotlight-modal.css";
-@import "./components/stage-editor.css";
-@import "./components/stage-heading.css";
+@import "./components/stage-editor/section.css";
 @import "./components/start.css";
 @import "./components/tip.css";
 @import "./components/variable-pill.css";

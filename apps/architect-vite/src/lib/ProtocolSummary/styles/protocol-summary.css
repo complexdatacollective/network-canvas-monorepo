@@ -76,30 +76,6 @@ h2.section-heading {
 	--base-font-size: 14px;
 }
 
-.protocol-summary-page .stage-heading {
-	position: sticky;
-	top: 0;
-	z-index: var(--z-global-ui);
-	border-bottom: 1px solid hsl(var(--platinum));
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.protocol-summary-page .stage-heading h1.screen-heading {
-	font-size: calc(var(--base-font-size) * 1.75);
-	margin: 0;
-}
-
-.protocol-summary-page .stage-heading p {
-	font-size: var(--base-font-size);
-	margin: 0.5em 0;
-}
-
-@media print {
-	.protocol-summary-page .stage-heading {
-		display: none;
-	}
-}
-
 .protocol-summary-page .protocol-summary-controls {
 	background: hsl(var(--cyber-grape));
 	padding: 1rem 2rem;

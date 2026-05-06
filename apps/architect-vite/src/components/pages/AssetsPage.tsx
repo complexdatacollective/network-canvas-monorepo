@@ -27,7 +27,7 @@ const AssetsPage = () => {
 							maxWidth: "80rem",
 						}}
 					>
-						<div className="stage-heading">
+						<div className="flex flex-col">
 							<h1 className="screen-heading">Resource Library</h1>
 							<p>
 								Welcome to the resource library. Here, you can import external data resources which can be used in
