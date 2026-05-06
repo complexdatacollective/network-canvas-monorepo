@@ -42,7 +42,6 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
 	return (
 		<Section
 			id={getFieldId("interviewScript")}
-			className="interview-script"
 			title="Interviewer Script"
 			summary={<p>Use this section to create notes or a guide for the interviewer.</p>}
 			toggleable

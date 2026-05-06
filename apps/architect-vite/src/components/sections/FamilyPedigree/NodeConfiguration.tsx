@@ -61,11 +61,11 @@ type VariableRowProps = {
 };
 
 const VariableRow = ({ name, label, description, entityType, options, onCreateOption }: VariableRowProps) => (
-	<div className="flex items-start gap-4">
-		<div className="flex flex-col gap-1 pt-2 grow">
+	<div className="flex items-start gap-(--space-md)">
+		<div className="flex flex-col gap-(--space-xs) pt-(--space-sm) grow">
 			<span className="font-semibold">
 				{label}
-				<span className="text-error ms-0.5">*</span>
+				<span className="text-error ms-(--space-xs)">*</span>
 			</span>
 			<span className="text-sm text-foreground/60 leading-snug">{description}</span>
 		</div>
@@ -178,7 +178,7 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 
 				{nodeType && (
 					<>
-						<div className="bg-surface-2 text-surface-2-foreground p-4 rounded flex flex-col gap-6 my-6">
+						<div className="bg-surface-2 text-surface-2-foreground p-(--space-md) rounded flex flex-col gap-(--space-lg) my-(--space-lg)">
 							<VariableRow
 								name="nodeConfig.nodeLabelVariable"
 								label="Node Label"
@@ -222,7 +222,7 @@ const NodeConfigurationInner = ({ form, handleChangeFields }: NodeConfigurationI
 								</p>
 							}
 							layout="vertical"
-							className="bg-surface-2 text-surface-2-foreground p-4"
+							className="bg-surface-2 text-surface-2-foreground p-(--space-md)"
 						>
 							<EditableList
 								label="Form Fields"

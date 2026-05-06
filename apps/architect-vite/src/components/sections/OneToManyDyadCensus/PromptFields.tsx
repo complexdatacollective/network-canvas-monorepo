@@ -58,7 +58,6 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
 						validation={{ required: true, maxLength: 220 }}
 						componentProps={{
 							inline: true,
-							className: "stage-editor-section-prompt__textarea",
 							label: "Prompt Text",
 							placeholder: "Enter text for the prompt here...",
 						}}

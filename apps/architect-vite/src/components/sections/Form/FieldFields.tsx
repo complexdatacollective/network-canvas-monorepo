@@ -76,7 +76,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 			>
 				<Row>
 					<h4>Prompt Text</h4>
-					<p className="text-sm text-current/70 mb-2">
+					<p className="text-sm text-current/70 mb-(--space-sm)">
 						Enter the question to display to the participant. Supports markdown formatting.
 					</p>
 					<ValidatedField
@@ -91,7 +91,7 @@ const PromptFields = ({ form, entity = null, type = null }: PromptFieldsProps) =
 				</Row>
 				<Row>
 					<h4>Hint Text</h4>
-					<p className="text-sm text-current/70 mb-2">
+					<p className="text-sm text-current/70 mb-(--space-sm)">
 						Optionally display a markdown-formatted hint below the question to help participants understand how to
 						answer.
 					</p>

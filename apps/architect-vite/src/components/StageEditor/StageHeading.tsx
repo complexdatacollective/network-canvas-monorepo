@@ -47,7 +47,6 @@ const StageHeading = ({ _id }: { _id?: string }) => {
 					name="label"
 					component={Text}
 					placeholder="Enter your stage name here"
-					className="stage-editor-section-title"
 					maxLength={50}
 					validation={{ required: true }}
 					autoFocus

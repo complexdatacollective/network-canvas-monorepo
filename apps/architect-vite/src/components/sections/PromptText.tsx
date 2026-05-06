@@ -25,7 +25,6 @@ const PromptText = ({ name = "text" }: PromptTextProps) => {
 					name={name}
 					component={RichText}
 					inline
-					className="stage-editor-section-prompt__textarea"
 					label=""
 					placeholder="Enter text for the prompt here..."
 					validation={{ required: true, maxLength: 220 }}
