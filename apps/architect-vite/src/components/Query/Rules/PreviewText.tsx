@@ -1,7 +1,14 @@
+import Node from "@codaco/fresco-ui/Node";
 import { get, isArray, isNil, join } from "es-toolkit/compat";
+import type { CSSProperties } from "react";
 import { SimpleVariablePill } from "../../Form/Fields/VariablePicker/VariablePill";
 import PreviewEdge from "../../sections/fields/EntitySelectField/PreviewEdge";
 import PreviewNode from "../../sections/fields/EntitySelectField/PreviewNode";
+
+// Ego is rendered as a one-off platinum node — not a real codebook color
+const EGO_NODE_STYLE: CSSProperties = {
+	["--base" as string]: "var(--color-platinum)",
+};
 
 const operatorsAsText = (isEgo: boolean) => ({
 	EXISTS: "where",
@@ -115,9 +122,12 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (type === "ego") {
 		return (
 			<>
-				<span style={{ "--node-label": "var(--color-charcoal)" } as React.CSSProperties}>
-					<PreviewNode label="Ego" color="platinum" size="sm" />
-				</span>
+				{/* Marker class. The rules-preview-rule stylesheet targets `.preview-node`
+				    to apply margin/max-width. Remove this wrapper when the rules + form-fields
+				    areas get their Tailwind migration*/}
+				<div className="preview-node">
+					<Node label="Ego" color="custom" size="sm" className="text-surface-2-foreground" style={EGO_NODE_STYLE} />
+				</div>
 				<Copy>has</Copy>
 				<SimpleVariablePill
 					label={options.attribute ?? ""}

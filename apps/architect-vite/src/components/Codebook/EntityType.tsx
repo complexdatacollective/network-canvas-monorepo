@@ -1,7 +1,7 @@
+import type { NodeShape } from "@codaco/fresco-ui/Node";
 import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
 import { Link } from "wouter";
-import type { NodeShape } from "~/components/Node/Node";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { deleteTypeAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";

@@ -1,6 +1,5 @@
+import Node, { type NodeColorSequence, type NodeShape } from "@codaco/fresco-ui/Node";
 import cx from "classnames";
-import type { NodeShape } from "~/components/Node/Node";
-import Node from "~/components/Node/Node";
 import { Icon } from "~/lib/legacy-ui/components";
 
 type EntityIconSize = "default" | "small" | "tiny";
@@ -22,7 +21,9 @@ const nodeSizeMap: Record<EntityIconSize, "xxs" | "xs" | "sm"> = {
 const renderIcon = (entity: string, color?: string, shape: NodeShape = "circle", size: EntityIconSize = "default") => {
 	switch (entity) {
 		case "node":
-			return <Node label="" color={color} shape={shape} size={nodeSizeMap[size]} />;
+			// Color comes from the codebook, which protocol-validation guarantees is
+			// a NodeColorSequence value when entity === "node".
+			return <Node label="" color={color as NodeColorSequence | undefined} shape={shape} size={nodeSizeMap[size]} />;
 		case "edge":
 			return <Icon name="links" color={color} />;
 		case "asset":

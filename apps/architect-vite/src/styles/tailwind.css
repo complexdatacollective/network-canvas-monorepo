@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Source the @codaco/fresco-ui compiled output so Tailwind discovers utility
+   classes referenced inside the package (e.g. `size-14`, `outline-node-1`,
+   `desktop:size-18`). Without this, fresco-ui components render unstyled
+   because their classes never make it into the generated stylesheet. */
+@source "../../node_modules/@codaco/fresco-ui/dist/**/*.js";
+
 @layer base {
 	:root {
 		/* UI Colors */
@@ -297,6 +303,23 @@
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
 
+	/* Node color tokens consumed by @codaco/fresco-ui/Node. The component reads
+	   `var(--color-node-N)` for its gradient base and uses `outline-node-N`
+	   utilities (auto-generated from these theme tokens) for the focus ring. */
+	--color-node-1: hsl(var(--neon-coral));
+	--color-node-2: hsl(var(--sea-serpent));
+	--color-node-3: hsl(var(--purple-pizazz));
+	--color-node-4: hsl(var(--neon-carrot));
+	--color-node-5: hsl(var(--kiwi));
+	--color-node-6: hsl(var(--cerulean-blue));
+	--color-node-7: hsl(var(--paradise-pink));
+	--color-node-8: hsl(var(--mustard));
+
+	/* Breakpoints used by fresco-ui responsive size variants (`tablet-landscape:`,
+	   `desktop:`). Mirrors the values in tooling/tailwind/fresco/theme.css. */
+	--breakpoint-tablet-landscape: 1024px;
+	--breakpoint-desktop: 1536px;
+
 	--space-0: 0;
 	--space-xs: 0.3rem;
 	--space-sm: 0.6rem;
@@ -484,6 +507,12 @@
 			transform: translate3d(4px, 0, 0);
 		}
 	}
+}
+
+/* Mirrors the `focusable` utility shipped with @codaco/fresco-ui — used by
+   fresco-ui components (Node, Button, etc.) for their focus ring. */
+@utility focusable {
+	@apply focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-mustard;
 }
 
 @utility h1 {

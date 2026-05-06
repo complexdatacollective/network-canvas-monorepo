@@ -1,6 +1,5 @@
+import Node, { type NodeColorSequence, type NodeShape } from "@codaco/fresco-ui/Node";
 import cx from "classnames";
-import type { NodeShape } from "~/components/Node/Node";
-import Node from "~/components/Node/Node";
 import Icon from "~/lib/legacy-ui/components/Icon";
 
 const SHAPES: Array<{ value: NodeShape; label: string }> = [
@@ -47,7 +46,7 @@ const ShapePicker = ({
 							aria-label={`Select shape ${label}`}
 							aria-pressed={input.value === value}
 						>
-							<Node label="" shape={value} color={nodeColor} size={nodeSize} />
+							<Node label="" shape={value} color={nodeColor as NodeColorSequence} size={nodeSize} />
 							{!small && <span className="form-fields-shape-picker__label">{label}</span>}
 						</button>
 					))}

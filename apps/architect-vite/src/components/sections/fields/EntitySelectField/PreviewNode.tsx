@@ -1,6 +1,8 @@
+import Node, { type NodeColorSequence, type NodeShape } from "@codaco/fresco-ui/Node";
 import cx from "classnames";
-import type { NodeShape, NodeSize } from "~/components/Node/Node";
-import Node from "~/components/Node/Node";
+import type { ComponentProps } from "react";
+
+type NodeSize = ComponentProps<typeof Node>["size"];
 
 type PreviewNodeProps = {
 	label: string;
@@ -23,7 +25,7 @@ const PreviewNode = ({
 		<Node
 			label={label}
 			selected={selected}
-			color={color}
+			color={color as NodeColorSequence}
 			shape={shape}
 			size={size}
 			onClick={!selected ? onClick : undefined}

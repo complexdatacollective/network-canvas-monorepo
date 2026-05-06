@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.4.1",
+		"@codaco/fresco-ui": "^2.5.3",
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
