@@ -1,5 +1,4 @@
 import type { VariableOptions } from "@codaco/protocol-validation";
-import cx from "classnames";
 import { Reorder } from "motion/react";
 import type React from "react";
 import { useRef } from "react";
@@ -49,9 +48,7 @@ type OptionsFieldProps = {
 };
 
 const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: OptionsFieldProps) => {
-	const classes = cx("options", {
-		"options--has-error": submitFailed && error,
-	});
+	const hasError = Boolean(submitFailed && error);
 
 	// Track stable wrapper objects - Reorder.Group needs stable references to track items
 	const internalItemsRef = useRef<InternalItem<OptionValue>[]>([]);
@@ -113,9 +110,17 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 	};
 
 	return (
+		// `form-field-container` is a marker hook for unmigrated parent stylesheets
+		// (codebook.css, rule.css, sections/*.css) that target `.form-field-container`
+		// for layout. Drop the class once the form-field area migrates.
 		<div className="form-field-container">
-			<div className={classes}>
-				<Reorder.Group className="options__options" onReorder={handleReorder} values={internalItems} axis="y">
+			<div>
+				<Reorder.Group
+					className="mb-(--space-md) flex flex-col gap-(--space-md)"
+					onReorder={handleReorder}
+					values={internalItems}
+					axis="y"
+				>
 					{internalItems.map((internalItem, index) => {
 						const field = `${fields.name}[${index}]`;
 						return (
@@ -125,12 +130,19 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 								index={index}
 								field={field}
 								fields={fields}
+								hasError={hasError}
 							/>
 						);
 					})}
 				</Reorder.Group>
 
-				<FieldError show={submitFailed && !!error} error={error} />
+				{/* Wrapper preserves the legacy `.options--has-error .form-field-error`
+				    margin/radius cascade now that the source CSS is gone. The actual
+				    error chrome (background, color, transitions) is owned by the
+				    deferred form-field-error stylesheet. */}
+				<div className={hasError ? "my-(--space-md) overflow-hidden rounded-xl" : undefined}>
+					<FieldError show={hasError} error={error} />
+				</div>
 			</div>
 			<AddItem onClick={() => fields.push({})} />
 		</div>

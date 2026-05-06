@@ -34,10 +34,16 @@ const Attribute = ({
 	entity,
 	type,
 }: AttributeProps) => {
+	// The legacy JSX referenced `bg-section-background`, but no such token
+	// exists — Tailwind silently dropped it. The original CSS also set no
+	// background, so the class was a documented no-op. Omitted here.
 	return (
-		<div className="assign-attributes-attribute bg-section-background">
-			<div className="assign-attributes-attribute__wrapper">
-				<div className="assign-attributes-attribute__variable">
+		<div className="my-(--space-md) flex rounded-(--radius) p-(--space-md) [&_.form-field]:mb-0 [&_.form-field]:bg-surface-2">
+			<div className="flex grow shrink-0 basis-auto flex-col">
+				{/* The legacy `.assign-attributes-attribute__variable` cascade overrode
+				    the form-fields-variable-picker fieldset margins. Replicate via the
+				    descendant selector so we don't need to touch the deferred picker. */}
+				<div className="grow shrink-0 basis-auto [&_.form-fields-variable-picker]:mt-0 [&_.form-fields-variable-picker]:mb-(--space-md)">
 					<ValidatedField
 						name={`${field}.variable`}
 						component={VariablePicker}
@@ -52,7 +58,7 @@ const Attribute = ({
 					/>
 				</div>
 				{variable && (
-					<fieldset className="assign-attributes-attribute__value">
+					<fieldset className="grow shrink-0 basis-auto rounded-(--radius) border-2 border-dashed border-border p-(--space-md) [&>legend]:px-(--space-md)">
 						<legend>Set value of variable to:</legend>
 						<ValidatedField
 							name={`${field}.value`}
@@ -71,7 +77,7 @@ const Attribute = ({
 			</div>
 			<button
 				type="button"
-				className="assign-attributes-attribute__delete"
+				className="flex grow-0 shrink-0 basis-(--space-3xl) cursor-pointer items-center justify-center pl-(--space-md) [&_.icon]:h-(--space-md) [&_.icon]:cursor-pointer"
 				onClick={handleDelete}
 				aria-label="Delete attribute"
 			>

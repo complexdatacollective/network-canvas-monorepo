@@ -9,6 +9,7 @@ import TextField from "~/components/Form/Fields/Text";
 import ValidatedField from "~/components/Form/ValidatedField";
 import { actionCreators as dialogsActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
+import { cx } from "~/utils/cva";
 import type { OptionValue } from "./Options";
 
 const isNumberLike = (value: string) => Number.parseInt(value, 10).toString() === value; // eslint-disable-line
@@ -46,9 +47,14 @@ const deleteOption =
 		});
 	};
 
+// Layout for the side controls (drag handle + delete button). Both are 3rem wide
+// flex centers; the only difference is `cursor: grab` for the handle.
+const sideControlClasses =
+	"flex w-(--space-2xl) cursor-pointer items-center justify-center bg-transparent text-sortable-foreground [&_.icon]:size-(--space-md) [&_.icon_.cls-1]:fill-sortable-foreground [&_.icon_.cls-2]:fill-sortable-foreground";
+
 const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
 	<div
-		className="options__option-delete"
+		className={sideControlClasses}
 		// eslint-disable-next-line react/jsx-props-no-spreading
 		{...props}
 	>
@@ -64,6 +70,7 @@ type OptionBaseProps = {
 	fields: {
 		remove: (index: number) => void;
 	};
+	hasError?: boolean;
 };
 
 // Props injected by HOCs
@@ -73,19 +80,34 @@ type OptionInjectedProps = {
 
 type OptionProps = OptionBaseProps & OptionInjectedProps;
 
-const Option = ({ field, handleDelete, internalItem }: OptionProps) => {
+const Option = ({ field, handleDelete, internalItem, hasError = false }: OptionProps) => {
 	const controls = useDragControls();
 
 	return (
-		<Reorder.Item className="options__option" value={internalItem} dragListener={false} dragControls={controls}>
-			<div className="options__option-controls options__option-controls--center">
-				<div className="options__option-handle" onPointerDown={(e) => controls.start(e)}>
+		<Reorder.Item
+			className={cx(
+				"z-(--z-fx) flex rounded-xl text-sortable-foreground transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) [&_.form-field-container]:m-0",
+				hasError ? "bg-error" : "bg-form-control",
+			)}
+			value={internalItem}
+			dragListener={false}
+			dragControls={controls}
+		>
+			<div className="flex grow-0 items-center p-(--space-md)">
+				<div className={cx(sideControlClasses, "cursor-grab")} onPointerDown={(e) => controls.start(e)}>
 					<GripVertical className="cursor-grab" />
 				</div>
 			</div>
-			<div className="options__option-values">
-				<div className="options__option-value">
-					<h4 className="options__option-label">Label</h4>
+			<div className="flex flex-1">
+				<div className="my-(--space-md) flex-1">
+					<h4
+						className={cx(
+							"mb-(--space-md) mx-0 mt-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
+							hasError && "text-primary-foreground",
+						)}
+					>
+						Label
+					</h4>
 					<ValidatedField<{ inline?: boolean; placeholder?: string }>
 						component={RichTextField as React.ComponentType<Record<string, unknown>>}
 						componentProps={{
@@ -96,8 +118,15 @@ const Option = ({ field, handleDelete, internalItem }: OptionProps) => {
 						validation={{ required: true, uniqueArrayAttribute: true }}
 					/>
 				</div>
-				<div className="options__option-value">
-					<h4 className="options__option-label">Value</h4>
+				<div className="my-(--space-md) ml-(--space-md) flex-1">
+					<h4
+						className={cx(
+							"mb-(--space-md) mx-0 mt-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
+							hasError && "text-primary-foreground",
+						)}
+					>
+						Value
+					</h4>
 					<ValidatedField<{
 						parse?: (value: string) => string | number;
 						placeholder?: string;
@@ -116,7 +145,7 @@ const Option = ({ field, handleDelete, internalItem }: OptionProps) => {
 					/>
 				</div>
 			</div>
-			<div className="options__option-controls">
+			<div className="flex grow-0 p-(--space-md)">
 				<DeleteOption onClick={handleDelete} />
 			</div>
 		</Reorder.Item>

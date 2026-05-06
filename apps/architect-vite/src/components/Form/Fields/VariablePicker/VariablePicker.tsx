@@ -85,6 +85,9 @@ const VariablePicker = ({
 
 	return (
 		<>
+			{/* `form-fields-variable-picker` is preserved as a styling hook for the
+			    deferred form-fields CSS file (`styles/components/form/fields/variable-picker.css`).
+			    Drop the marker once the form-fields area migrates. */}
 			<fieldset className="form-fields-variable-picker">
 				{label && <legend>{label}</legend>}
 
@@ -100,7 +103,7 @@ const VariablePicker = ({
 				<Button icon="add" onClick={() => setShowPicker(true)} color="sea-green">
 					{value ? "Change Variable" : "Select Variable"}
 				</Button>
-				{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
+				{invalid && touched && <p className="mb-0 text-error">{error}</p>}
 			</fieldset>
 			<VariableSpotlight
 				open={showPicker}

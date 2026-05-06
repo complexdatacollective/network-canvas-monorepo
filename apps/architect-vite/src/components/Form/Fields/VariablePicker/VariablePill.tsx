@@ -1,6 +1,5 @@
 import type { VariableType } from "@codaco/protocol-validation";
 import Tippy from "@tippyjs/react";
-import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useMemo, useRef, useState } from "react";
@@ -11,10 +10,22 @@ import { updateVariableByUUID } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
 import { Icon } from "~/lib/legacy-ui/components";
 import { getVariablesForSubject, makeGetVariableWithEntity } from "~/selectors/codebook";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import { validations } from "~/utils/validations";
 
 const EDIT_COMPLETE_BUTTON_ID = "editCompleteButton";
+
+const ICON_BACKGROUND_BY_TYPE: Record<VariableType, string> = {
+	number: "bg-paradise-pink",
+	text: "bg-cerulean-blue",
+	boolean: "bg-neon-carrot",
+	ordinal: "bg-sea-green",
+	categorical: "bg-mustard",
+	scalar: "bg-kiwi",
+	datetime: "bg-tomato",
+	layout: "bg-purple-pizazz",
+	location: "bg-slate-blue-dark",
+};
 
 type BaseVariablePillProps = {
 	type: VariableType;
@@ -23,28 +34,28 @@ type BaseVariablePillProps = {
 
 const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children }, ref) => {
 	const icon = useMemo(() => getIconForType(type), [type]);
-	// const backgroundColor = useMemo(() => getColorForType(type), [type]);
-
-	// TODO: remove these from the src/config/variables.ts file
-	const iconClasses = cn(
-		"variable-pill__icon",
-		type === "number" && "bg-paradise-pink",
-		type === "text" && "bg-cerulean-blue",
-		type === "boolean" && "bg-neon-carrot",
-		type === "ordinal" && "bg-sea-green",
-		type === "categorical" && "bg-mustard",
-		type === "scalar" && "bg-kiwi",
-		type === "datetime" && "bg-tomato",
-		type === "layout" && "bg-purple-pizazz",
-		type === "location" && "bg-slate-blue-dark",
-	);
 
 	return (
-		<motion.div className="variable-pill" ref={ref}>
-			<div className={iconClasses}>
+		// `variable-pill` class is preserved as a styling hook for unmigrated
+		// consumers (`codebook.css`, `rules/preview-rule.css`,
+		// `form/fields/variable-picker.css`, `protocol-summary.css`) that
+		// override `--variable-pill-width` / `--variable-pill-shadow-color` via
+		// cascade. Remove the marker once those areas migrate.
+		<motion.div
+			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-[var(--variable-pill-width,20rem)] shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
+			ref={ref}
+		>
+			<div
+				className={cx(
+					"flex shrink-0 basis-(--space-2xl) items-center justify-center [&_.icon]:w-(--space-lg)",
+					ICON_BACKGROUND_BY_TYPE[type],
+				)}
+			>
 				<img className="icon" src={icon} alt={type} />
 			</div>
-			<div className="variable-pill__container">{children}</div>
+			<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between [&_.label]:cursor-text [&_.label]:w-full [&_.label]:overflow-hidden [&_.label]:whitespace-nowrap [&_.label]:text-ellipsis">
+				{children}
+			</div>
 		</motion.div>
 	);
 });
@@ -56,7 +67,9 @@ type SimpleVariablePillProps = {
 export const SimpleVariablePill = ({ label, ...props }: SimpleVariablePillProps) => (
 	// eslint-disable-next-line react/jsx-props-no-spreading
 	<BaseVariablePill {...props}>
-		<motion.h4>{label}</motion.h4>
+		<motion.h4 className="m-0 grow shrink-0 px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground">
+			{label}
+		</motion.h4>
 	</BaseVariablePill>
 );
 
@@ -154,13 +167,13 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 				{editing ? (
 					<motion.div
 						key="edit"
-						style={{ flex: 1 }}
+						className="flex-1"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 					>
 						<Tippy theme="error" content={validation} visible={!!validation} placement="bottom">
-							<div style={{ width: "100%", flex: "1 auto" }}>
+							<div className="flex-auto w-full">
 								<TextInput
 									autoFocus
 									placeholder="Enter a new variable name..."
@@ -171,7 +184,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 										onKeyDown: handleKeyDown,
 									}}
 									adornmentRight={
-										<motion.div className="edit-buttons">
+										<motion.div className="relative right-(--space-md) flex shrink-0 grow-0">
 											<motion.div
 												title="Finished"
 												aria-label="Finished"
@@ -182,9 +195,10 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 												tabIndex={0} // Needed to allow focus
 												id={EDIT_COMPLETE_BUTTON_ID}
 												onClick={onEditComplete}
-												className={cx("edit-buttons__button", {
-													"edit-buttons__button--disabled": !canSubmit,
-												})}
+												className={cx(
+													"cursor-pointer [&_.icon]:size-(--space-md)",
+													!canSubmit && "cursor-not-allowed grayscale",
+												)}
 											>
 												<Icon name="tick" color="sea-green" />
 											</motion.div>
@@ -197,7 +211,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 												role="button"
 												tabIndex={0} // Needed to allow focus
 												onClick={handleCancel}
-												className="edit-buttons__button edit-buttons__button--cancel"
+												className="ml-(--space-sm) cursor-pointer [&_.icon]:size-(--space-md)"
 											>
 												<Icon name="cross" color="tomato" />
 											</motion.div>
@@ -210,7 +224,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 				) : (
 					<motion.h4
 						key="label"
-						className="label"
+						className="label m-0 grow shrink-0 px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}

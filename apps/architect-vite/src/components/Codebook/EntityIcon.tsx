@@ -1,6 +1,6 @@
 import Node, { type NodeColorSequence, type NodeShape } from "@codaco/fresco-ui/Node";
-import cx from "classnames";
 import { Icon } from "~/lib/legacy-ui/components";
+import { cva } from "~/utils/cva";
 
 type EntityIconSize = "default" | "small" | "tiny";
 
@@ -17,6 +17,18 @@ const nodeSizeMap: Record<EntityIconSize, "xxs" | "xs" | "sm"> = {
 	small: "xs",
 	tiny: "xxs",
 };
+
+const graphicVariants = cva({
+	base: "flex items-center justify-center",
+	variants: {
+		size: {
+			default: "mr-(--space-md)",
+			small: "mr-(--space-sm)",
+			tiny: "mr-(--space-xs)",
+		},
+	},
+	defaultVariants: { size: "default" },
+});
 
 const renderIcon = (entity: string, color?: string, shape: NodeShape = "circle", size: EntityIconSize = "default") => {
 	switch (entity) {
@@ -38,15 +50,10 @@ const EntityIcon = ({ entity, color, shape = "circle", label, size = "default" }
 		return renderIcon(entity, color, shape, size);
 	}
 
-	const classes = cx("entity-icon", {
-		"entity-icon--small": size === "small",
-		"entity-icon--tiny": size === "tiny",
-	});
-
 	return (
-		<div className={classes}>
-			<div className="entity-icon__graphic">{renderIcon(entity, color, shape, size)}</div>
-			<div className="entity-icon__label">{label}</div>
+		<div className="inline-flex flex-row items-center justify-start">
+			<div className={graphicVariants({ size })}>{renderIcon(entity, color, shape, size)}</div>
+			<div>{label}</div>
 		</div>
 	);
 };
