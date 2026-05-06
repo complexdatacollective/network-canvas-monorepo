@@ -129,6 +129,9 @@
 
 		--base-font-size: 16px;
 
+		--heading-font-family: "Nunito", sans-serif;
+		--body-font-family: "Inclusive Sans", sans-serif;
+
 		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 		--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
 		--modal-overlay: rgb(0 0 0 / 0.5);
@@ -207,7 +210,7 @@
 @layer base {
 	html {
 		font-size: var(--base-font-size);
-		font-family: "Quicksand", sans-serif;
+		font-family: var(--body-font-family);
 		font-optical-sizing: auto;
 		@apply h-full w-full;
 	}
@@ -346,6 +349,9 @@
 	--leading-tight: 1.1;
 	--leading-normal: 1.4;
 	--leading-relaxed: 1.6;
+
+	--font-body: var(--body-font-family);
+	--font-heading: var(--heading-font-family);
 
 	--font-weight-normal: 400;
 	--font-weight-medium: 500;
@@ -516,23 +522,23 @@
 }
 
 @utility h1 {
-	@apply text-3xl leading-tight font-bold my-6 mx-0;
+	@apply font-heading text-3xl leading-tight font-bold my-6 mx-0;
 }
 
 @utility h2 {
-	@apply text-2xl leading-tight font-bold my-6 mx-0;
+	@apply font-heading text-2xl leading-tight font-bold my-6 mx-0;
 }
 
 @utility h3 {
-	@apply text-xl leading-tight font-semibold my-2 mx-0;
+	@apply font-heading text-xl leading-tight font-semibold my-2 mx-0;
 }
 
 @utility h4 {
-	@apply text-lg leading-normal font-semibold my-2 mx-0;
+	@apply font-heading text-lg leading-normal font-semibold my-2 mx-0;
 }
 
 @utility hero {
-	@apply text-7xl leading-tight font-bold tracking-tight;
+	@apply font-heading text-7xl leading-tight font-bold tracking-tight;
 }
 
 @utility lead {
@@ -558,6 +564,7 @@
 
 /* Small heading utility - replaces .small-heading placeholder */
 @utility small-heading {
+	font-family: var(--heading-font-family);
 	font-size: var(--text-sm);
 	font-weight: 900;
 	line-height: var(--leading-normal);
