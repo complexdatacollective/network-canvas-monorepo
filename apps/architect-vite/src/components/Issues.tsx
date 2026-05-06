@@ -148,7 +148,15 @@ const Issues = () => {
 							aria-expanded={open}
 						>
 							<div>
-								<Icon name="info" className="relative top-[0.2rem] size-(--space-xl)" />
+								{/* Inline size beats `.icon[name="info"]` in legacy-ui icons.css (5rem). */}
+								<Icon
+									name="info"
+									className="relative top-[0.2rem]"
+									style={{
+										width: "var(--space-xl)",
+										height: "var(--space-xl)",
+									}}
+								/>
 							</div>
 							<div className="mx-(--space-md) flex-auto text-sm font-(--font-weight-semibold) uppercase tracking-[0.05em]">
 								Issues ({flatIssues.length})

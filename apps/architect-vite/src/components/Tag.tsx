@@ -21,9 +21,9 @@ const Tag = ({
 	disabled = false,
 }: TagProps) => {
 	const componentClasses = cn(
-		"inline-flex py-1 rounded-full items-center justify-center text-xs uppercase tracking-widest font-semibold border-2 border-transparent gap-2 px-2",
-		selected && "text-white bg-slate-blue",
-		light && "text-dark bg-platinum",
+		"inline-flex py-1 rounded-full items-center justify-center text-xs uppercase tracking-widest font-semibold border-2 border-transparent gap-2 px-2 bg-foreground/15 text-white",
+		selected && "bg-platinum text-surface-2-foreground",
+		light && "bg-platinum text-surface-2-foreground",
 		disabled && !!onClick && "",
 		disabled && "opacity-50 cursor-not-allowed",
 		onClick && !disabled && "cursor-pointer",

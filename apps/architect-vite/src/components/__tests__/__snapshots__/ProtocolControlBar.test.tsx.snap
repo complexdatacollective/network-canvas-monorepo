@@ -3,10 +3,10 @@
 exports[`<ProtocolControlBar /> > can render 1`] = `
 <div>
   <div
-    class="text-primary-foreground bg-primary w-full flex justify-between items-center py-4 px-6"
+    class="text-primary-foreground bg-primary w-full flex justify-between items-center py-(--space-md) px-(--space-xl)"
   >
     <div
-      class="flex gap-4"
+      class="flex gap-(--space-md)"
     >
       <div>
         <button
@@ -24,7 +24,7 @@ exports[`<ProtocolControlBar /> > can render 1`] = `
       </div>
     </div>
     <div
-      class="flex gap-4 ml-auto"
+      class="flex gap-(--space-md) ml-auto"
     >
       <div>
         <button

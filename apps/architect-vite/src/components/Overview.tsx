@@ -46,12 +46,12 @@ const Overview = ({
 	}, [setLocation]);
 
 	return (
-		<div className="overview">
-			<div className="overview__panel">
-				<div className="protocol-name">
+		<div className="w-full max-w-4xl mx-auto bg-white flex flex-col rounded relative mt-(--space-xl) overflow-hidden shadow-[0_var(--space-sm)_var(--space-xs)_0_var(--color-border)]">
+			<div className="py-(--space-md) px-(--space-lg)">
+				<div>
 					<input
 						type="text"
-						className="overview-name"
+						className="text-2xl font-bold w-full mb-(--space-sm) bg-transparent border-none outline-none p-0 text-inherit font-body focus:outline-none"
 						value={localName}
 						onChange={(e) => setLocalName(e.target.value)}
 						onBlur={() => {
@@ -71,12 +71,12 @@ const Overview = ({
 					/>
 				</div>
 			</div>
-			<div className="overview__footer">
-				<div className="icon">
+			<div className="py-(--space-md) px-(--space-lg) flex gap-(--space-lg) bg-slate-blue-dark">
+				<div className="h-full w-(--space-xl)">
 					<Icon name="protocol-card" />
 				</div>
-				<div className="action-buttons">
-					<div className="action-buttons__button" title="Printable Summary">
+				<div className="flex w-full justify-end items-center gap-(--space-md)">
+					<div title="Printable Summary">
 						<Button
 							onClick={handlePrintSummary}
 							color="slate-blue"
@@ -85,7 +85,7 @@ const Overview = ({
 							content="Printable Summary"
 						/>
 					</div>
-					<div className="action-buttons__button" title="Resource Library">
+					<div title="Resource Library">
 						<Button
 							onClick={handleNavigateToAssets}
 							color="neon-coral"
@@ -93,7 +93,7 @@ const Overview = ({
 							content="Resource Library"
 						/>
 					</div>
-					<div className="action-buttons__button" title="Manage Codebook">
+					<div title="Manage Codebook">
 						<Button
 							onClick={handleNavigateToCodebook}
 							color="sea-serpent"

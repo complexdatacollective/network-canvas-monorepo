@@ -83,14 +83,4 @@ const protocolsSlice = createSlice({
 
 export const { addProtocol, updateProtocol, updateProtocolMetadata, removeProtocol } = protocolsSlice.actions;
 
-// Selectors
-const selectAllProtocols = (state: RootState): StoredProtocol[] => {
-	const protocols = state.protocols || {};
-	return Object.values(protocols).sort((a, b) => b.lastModified - a.lastModified);
-};
-
-export const selectRecentProtocols = (limit: number) => (state: RootState) => {
-	return selectAllProtocols(state).slice(0, limit);
-};
-
 export default protocolsSlice.reducer;
