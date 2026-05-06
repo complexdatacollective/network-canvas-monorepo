@@ -1,10 +1,12 @@
+import "@codaco/tailwind-config/fonts/inclusive-sans.css";
+import "@codaco/tailwind-config/fonts/nunito.css";
 import addonA11y from "@storybook/addon-a11y";
 import addonDocs from "@storybook/addon-docs";
 import addonVitest from "@storybook/addon-vitest";
 import { definePreview } from "@storybook/react-vite";
 import { StrictMode, useLayoutEffect } from "react";
+import "./preview.css";
 import Providers from "./Providers";
-import "./static/styles.css";
 
 // Mirrors what Shell does at runtime: set `data-theme-interview` on
 // `<html>` so `:root[data-theme-interview]` matches and the responsive

@@ -1,8 +1,29 @@
-import { resolve } from "node:path";
+import { copyFile, mkdir } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { globSync } from "tinyglobby";
+import { defineConfig, type Plugin } from "vite";
 import dts from "vite-plugin-dts";
 import pkg from "./package.json" with { type: "json" };
+
+// Tailwind v4 source CSS (`@source` directives, `@theme`, etc.) is meant to
+// reach the consumer's Tailwind compile untouched — routing it through Vite's
+// PostCSS pipe risks stripping or rewriting the directives. Mirror the
+// approach in @codaco/fresco-ui and @codaco/tailwind-config: copy each
+// `src/**/*.css` file verbatim into `dist/`.
+const cssCopyPlugin = (): Plugin => ({
+	name: "interview-css-copy",
+	async closeBundle() {
+		const here = __dirname;
+		const files = globSync(["src/**/*.css"], { cwd: here });
+		for (const rel of files) {
+			const out = rel.replace(/^src\//, "dist/");
+			const absOut = resolve(here, out);
+			await mkdir(dirname(absOut), { recursive: true });
+			await copyFile(resolve(here, rel), absOut);
+		}
+	},
+});
 
 export default defineConfig({
 	plugins: [
@@ -14,6 +35,7 @@ export default defineConfig({
 			compilerOptions: { rootDir: resolve(__dirname, "src") },
 			rollupTypes: true,
 		}),
+		cssCopyPlugin(),
 	],
 	define: {
 		__PACKAGE_VERSION__: JSON.stringify(pkg.version),

@@ -12,7 +12,9 @@
  * fresco-ui source tree.
  */
 
-@import "tailwindcss";
+/* `@import "tailwindcss"` lives inside `@codaco/tailwind-config/fresco.css`
+   (the foundation owns the Tailwind runtime); importing it here too would
+   load Tailwind's runtime twice and produce duplicate utilities. */
 @import "@codaco/tailwind-config/fresco.css";
 
 @source "../../fresco-ui/src/**/*.{ts,tsx}";

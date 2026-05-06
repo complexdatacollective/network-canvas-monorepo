@@ -3,9 +3,9 @@
 	"compilerOptions": {
 		"noEmit": false,
 		"declaration": false,
-		"outDir": "fresco/plugins",
-		"rootDir": "fresco/plugins",
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.build.json"
+		"outDir": "dist/shared/plugins",
+		"rootDir": "shared/plugins",
+		"incremental": false
 	},
-	"include": ["fresco/plugins/**/*.ts"]
+	"include": ["shared/plugins/**/*.ts"]
 }

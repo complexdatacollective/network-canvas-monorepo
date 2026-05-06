@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/tailwind-config",
-	"version": "1.0.0-alpha.9",
+	"version": "1.0.0-alpha.11",
 	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
 	"repository": {
 		"type": "git",
@@ -11,27 +11,27 @@
 	"sideEffects": [
 		"**/*.css"
 	],
-	"files": [
-		"fresco"
-	],
 	"exports": {
-		"./fresco.css": "./fresco/fresco.css"
+		"./fresco.css": "./fresco/fresco.css",
+		"./colors.css": "./shared/colors.css",
+		"./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
+		"./fonts/nunito.css": "./shared/fonts/nunito.css"
 	},
 	"license": "MIT",
 	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
-		"clean": "rm -rf .turbo node_modules fresco/plugins/**/*.js",
-		"prepublishOnly": "pnpm build",
 		"typecheck": "tsgo --noEmit"
 	},
 	"dependencies": {
+		"@fontsource-variable/inclusive-sans": "^5.2.8",
+		"@fontsource-variable/nunito": "^5.2.7",
 		"@tailwindcss/forms": "^0.5.11",
 		"motion": "catalog:",
 		"tailwindcss": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vite": "catalog:"
 	},
 	"publishConfig": {
 		"access": "public"

@@ -1497,6 +1497,9 @@ importers:
       superjson:
         specifier: ^2.2.5
         version: 2.2.6
+      tinyglobby:
+        specifier: ^0.2.0
+        version: 0.2.16
       tsx:
         specifier: 'catalog:'
         version: 4.21.0
@@ -1669,6 +1672,12 @@ importers:
 
   tooling/tailwind:
     dependencies:
+      '@fontsource-variable/inclusive-sans':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource-variable/nunito':
+        specifier: ^5.2.7
+        version: 5.2.7
       '@tailwindcss/forms':
         specifier: ^0.5.11
         version: 0.5.11(tailwindcss@4.2.4)
@@ -1685,6 +1694,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.10(@types/node@25.6.0)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
 
   tooling/typescript: {}
 
@@ -3709,6 +3721,12 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource-variable/inclusive-sans@5.2.8':
+    resolution: {integrity: sha512-CSRL3U4GKwaDALSvBvbm8xyWvfZT4cizRwOhq2ABwLusdoufuweCX0jkl/jHapeQxJ0ld8auxmnTs9Px+4mgDw==}
+
+  '@fontsource-variable/nunito@5.2.7':
+    resolution: {integrity: sha512-2N8QhatkyKgSUbAGZO2FYLioxA32+RyI1EplVLawbpkGjUeui9Qg9VMrpkCaik1ydjFjfLV+kzQ0cGEsMrMenQ==}
 
   '@fontsource-variable/quicksand@5.2.10':
     resolution: {integrity: sha512-1uzkzGDwWgtFnxquAXuD7fZV9wHkALb49UPzRXxGTVeeLsNrGnIU0O/pcz6m1U7RDtpHz2qx77JhCpKaq7FrUg==}
@@ -15264,6 +15282,10 @@ snapshots:
       react-dom: 19.2.5(react@19.2.5)
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource-variable/inclusive-sans@5.2.8': {}
+
+  '@fontsource-variable/nunito@5.2.7': {}
 
   '@fontsource-variable/quicksand@5.2.10': {}
 

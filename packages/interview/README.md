@@ -22,10 +22,10 @@ pnpm add @codaco/interview
 
 ```jsonc
 {
-  "@codaco/fresco-ui": "^2.0.1",
-  "@codaco/protocol-validation": "11.4.0-alpha.0",
+  "@codaco/fresco-ui": "^2.5.4",
+  "@codaco/protocol-validation": "^11.5.0",
   "@codaco/shared-consts": "5.0.0",
-  "@codaco/tailwind-config": "^0.5.0",
+  "@codaco/tailwind-config": "^1.0.0-alpha.11",
   "immer": "^11.1.4",
   "motion": "^12.38.0",
   "react": "^19.2.5",
@@ -36,23 +36,34 @@ pnpm add @codaco/interview
 
 ### Tailwind
 
-Tailwind v4 scans your source for class usage. The package's compiled JS
-lives in your `node_modules`, so add an `@source` directive in your
-global stylesheet so the scanner picks it up:
+The package assumes the host has a Tailwind v4 build plugin wired up
+(`@tailwindcss/vite` for Vite, `@tailwindcss/postcss` for Next.js / any
+PostCSS pipeline). Each CSS file in the chain owns one concern, and
+consumers import them in order:
 
 ```css
 /* styles/globals.css */
-@import '@codaco/fresco-ui/styles.css';
-
-@source '../node_modules/@codaco/fresco-ui/dist/**/*.js';
-@source '../node_modules/@codaco/interview/dist/**/*.js';
+@import "@codaco/tailwind-config/fresco.css"; /* Tailwind v4 + theme + plugins + fonts */
+@import "@codaco/fresco-ui/styles.css";       /* @source for fresco-ui's dist */
+@import "@codaco/interview/styles.css";       /* @source for interview's dist */
 ```
 
-`@codaco/fresco-ui/styles.css` re-exports `@codaco/tailwind-config/fresco.css`,
-which bundles both the default and interview theme variants. The
-interview theme only activates while `Shell` is mounted (Shell sets
-`data-theme-interview` on `<html>` via a `useLayoutEffect`), so your
-host UI is unaffected at all other times.
+**Do not also `@import "tailwindcss"` yourself.** That import lives
+inside `@codaco/tailwind-config/fresco.css`; adding it again loads
+Tailwind's runtime twice and produces duplicate / conflicting
+utilities.
+
+Each of `@codaco/fresco-ui/styles.css` and `@codaco/interview/styles.css`
+is a tiny file containing only a `@source "./**/*.{js,ts,tsx}"`
+directive scoped to that package's compiled JS in `dist/`. With both
+imported, Tailwind's class scanner walks both packages' output and
+emits every utility class the components reference. Hosts no longer
+need to write `@source '../node_modules/...'` lines themselves.
+
+`@codaco/tailwind-config/fresco.css` bundles both the default and
+interview theme variants. The interview theme only activates while
+`Shell` is mounted (Shell sets `data-theme-interview` on `<html>` via a
+`useLayoutEffect`), so your host UI is unaffected at all other times.
 
 ### Vitest / jsdom
 

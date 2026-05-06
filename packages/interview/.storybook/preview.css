@@ -1,0 +1,19 @@
+/*
+ * Storybook preview Tailwind entry. Pulls the shared in-monorepo
+ * foundation (sources both fresco-ui and interview package source);
+ * both theme variants ship inside fresco.css, and `preview.tsx`'s
+ * decorator sets `data-theme-interview` on `<html>` so every story
+ * in this package renders in interview mode.
+ */
+@import "@codaco/tailwind-config/fresco.css";
+@import "@codaco/fresco-ui/styles.css";
+
+@layer base {
+	/* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
+   outside the canvas iframe, so the body rule above doesn't reach it.
+   Paint the docs preview canvas with the theme background directly. */
+	.sbdocs-preview {
+		@apply bg-background!;
+	}
+
+}

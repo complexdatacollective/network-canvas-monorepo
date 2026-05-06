@@ -1,22 +1,26 @@
 /*
- * @codaco/tailwind-config — Fresco design-system foundation
+ * @codaco/tailwind-config/fresco — Fresco design-system foundation
  *
  * Single CSS entry that bundles Fresco's color triplets, design tokens,
  * foundational utilities, custom Tailwind plugins, and both theme variants
- * (default + interview). Consumers @import this once after
- * `@import "tailwindcss"` (the host owns the Tailwind import — this barrel
- * intentionally does not include it).
+ * (default + interview).
  *
  * Both themes ship together because they don't conflict at runtime: the
  * default theme writes its variables under `:root`, and the interview
  * theme scopes its overrides to `:root[data-theme-interview]`, which
  * only matches while the interview Shell is mounted (Shell sets the
  * attribute on `<html>` via a useLayoutEffect).
+ *
+ * Consumers that import this file MUST NOT also `@import "tailwindcss"`
+ * themselves; doing so loads Tailwind's runtime twice and produces
+ * duplicate / conflicting utilities.
  */
+
+@import "tailwindcss";
 
 /* NC palette channel triplets (oklch L C H). Relative-color values used
    in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
-@import "./colors.css";
+@import "../shared/colors.css";
 
 /* Tailwind v4 @theme block defining the Fresco design system token surface. */
 @import "./theme.css";
@@ -29,10 +33,12 @@
 @import "./themes/default.css";
 @import "./themes/interview.css";
 
-/* Custom Tailwind plugins. */
-@plugin "./plugins/elevation/elevation";
-@plugin "./plugins/inset-surface/inset-surface";
-@plugin "./plugins/motion-spring";
+/* Custom Tailwind plugins. Bare specifiers resolve through Node module
+   resolution against the consumer's `node_modules`, mapped via this
+   package's `exports` field to compiled JS in `dist/shared/plugins/...`. */
+/* @plugin "../plugins/elevation";
+@plugin "../plugins/inset-surface";
+@plugin "../plugins/motion-spring"; */
 @plugin '@tailwindcss/forms';
 
 /* App-scoped variants. fresco-ui components hard-code `interview:` /

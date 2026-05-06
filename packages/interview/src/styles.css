@@ -1,17 +1,17 @@
 /*
- * @codaco/fresco-ui — Tailwind class-scanner glue.
+ * @codaco/interview — Tailwind class-scanner glue.
  *
  * This file's only job is to tell Tailwind v4 where this package's
  * compiled JS lives so the class-scanner emits the utility classes the
- * components reference. It does NOT bring in the design-system
+ * stage interfaces reference. It does NOT bring in the design-system
  * foundation; consumers @import `@codaco/tailwind-config/fresco.css`
  * separately for Tailwind v4 + theme + plugins + fonts.
  *
  * The intended import order in a consumer's entry CSS is:
  *
  *   @import "@codaco/tailwind-config/fresco.css";  // Tailwind + theme
- *   @import "@codaco/fresco-ui/styles.css";        // this file
- *   @import "@codaco/interview/styles.css";        // if also using @codaco/interview
+ *   @import "@codaco/fresco-ui/styles.css";        // fresco-ui scanner glue
+ *   @import "@codaco/interview/styles.css";        // this file
  *
  * Path is relative to `dist/styles.css` after the build's cssCopyPlugin
  * mirrors this file into the dist tree.

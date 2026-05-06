@@ -10,24 +10,7 @@
  * Provides a darker palette and Nunito-only typography tuned for
  * the interview UI.
  *
- * Self-hosts Nunito (latin subset). See `themes/default.css` for the
- * rationale — external `@import url(https://...)` calls violate CSS-spec
- * @import-ordering once these theme files get inlined into a consumer
- * bundle. The @font-face declaration is duplicated here so this theme is
- * usable standalone (without `themes/default.css`); browsers dedupe by
- * (family, weight, style) so loading both themes does not double-fetch.
  */
-
-@font-face {
-  font-family: 'Nunito';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 200 1000;
-  src: url('../fonts/nunito-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
-}
 
 @layer base {
   /*
@@ -64,8 +47,8 @@
 
 @layer theme {
   :root[data-theme-interview] {
-    --heading-font: 'Nunito', sans-serif;
-    --body-font: 'Nunito', sans-serif;
+    --heading-font: 'Nunito Variable', sans-serif;
+    --body-font: 'Nunito Variable', sans-serif;
     --spacing-base: 0.25em; /* TW default uses rem */
 
     --shadow-color: oklch(5% 0.01 260);

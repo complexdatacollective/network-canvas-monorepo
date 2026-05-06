@@ -79,7 +79,7 @@ function Interview() {
 		<main
 			data-theme-interview
 			className={cx(
-				"relative flex size-full flex-1 overflow-hidden bg-background text-text",
+				"relative flex size-full flex-1 overflow-hidden bg-background text-text scheme-dark",
 				isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
 			)}
 		>
