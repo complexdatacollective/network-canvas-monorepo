@@ -2,6 +2,7 @@
 
 import { Toast, type ToastObject } from "@base-ui/react/toast";
 import CloseButton from "@codaco/fresco-ui/CloseButton";
+import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
 import { type ToastVariant, toastVariants, variantIcons } from "@codaco/fresco-ui/Toast";
 import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { cva, cx } from "@codaco/fresco-ui/utils/cva";
@@ -99,9 +100,10 @@ function InterviewToastItem({ toast }: { toast: ToastObject<InterviewToastData> 
 
 export function InterviewToastViewport() {
 	const { toasts } = Toast.useToastManager();
+	const portalContainer = usePortalContainer();
 
 	return (
-		<Toast.Portal>
+		<Toast.Portal container={portalContainer ?? undefined}>
 			<Toast.Viewport aria-label="Interview notifications" className="pointer-events-none fixed inset-0 z-50">
 				{toasts.map((toast) => (
 					<InterviewToastItem key={toast.id} toast={toast} />
