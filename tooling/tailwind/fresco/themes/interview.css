@@ -23,6 +23,16 @@
    *
    * Using rem (not px) preserves user OS text-zoom. At default OS scaling
    * the values resolve to 16/18/20px, identical to the previous behavior.
+   *
+   * Breakpoints below are hardcoded literals rather than `theme(--breakpoint-*)`
+   * calls. The proper Tailwind v4 way is `@import '../theme.css' reference;`
+   * to expose the tokens for compile-time resolution — but `reference` flips
+   * theme.css into reference-only mode globally, which retroactively cancels
+   * the `@theme static` :root emission from the earlier non-reference import,
+   * leaving every `--color-*` token undeclared at runtime. Hardcoding loses
+   * the single-source-of-truth, but the alternative is a much larger blast
+   * radius. Keep these in sync with `--breakpoint-tablet-landscape-max`
+   * (1279px) and `--breakpoint-desktop-lg` (1920px) in `theme.css`.
    */
   [data-theme-interview] {
     --theme-root-size: 1rem;
