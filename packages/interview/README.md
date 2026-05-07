@@ -61,9 +61,9 @@ emits every utility class the components reference. Hosts no longer
 need to write `@source '../node_modules/...'` lines themselves.
 
 `@codaco/tailwind-config/fresco.css` bundles both the default and
-interview theme variants. The interview theme only activates while
-`Shell` is mounted (Shell sets `data-theme-interview` on `<html>` via a
-`useLayoutEffect`), so your host UI is unaffected at all other times.
+interview theme variants. Shell renders `<main data-theme-interview>`
+with a portal container so dialogs/popovers stay inside the themed
+subtree — no host-side setup required. See *Theming & DOM scope* below.
 
 ### Vitest / jsdom
 
@@ -382,13 +382,21 @@ type InterviewerFlags = {
 
 ## Theming & DOM scope
 
-`Shell` renders a single `<main data-theme-interview>` element AND
-mirrors the same attribute onto `<html>` via a `useLayoutEffect` so
-the interview theme's `:root[data-theme-interview]` selectors match.
-That puts the responsive `font-size` scale (16/18/20px at tablet /
-desktop) on the document root, so `1rem` updates document-wide while
-Shell is mounted and every text-* / spacing utility scales together.
-The attribute is removed on unmount, restoring the host's typography.
+`Shell` renders a single `<main data-theme-interview>` element. This is both the stable selector for tests / e2e fixtures and the wrapper that activates the interview theme: descendants pick up the dark palette, Nunito typography, and responsive root font-size automatically.
+
+`Shell` also provides a portal container (via `<PortalContainerProvider>` from `@codaco/fresco-ui/PortalContainer`) so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes opened from inside the interview render into a node *inside* the themed subtree — they inherit the interview palette automatically rather than portaling to `document.body`.
+
+If you render interview-themed UI **outside** of `Shell` (e.g. a "thank you" page after the interview ends), wrap that UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui/ThemedRegion`:
+
+```tsx
+import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
+
+<ThemedRegion theme="interview">
+  <ThankYouPage />
+</ThemedRegion>
+```
+
+`<ThemedRegion>` and its ancestors up to `<body>` must not have `transform`, `filter`, `perspective`, or `contain` set — these create new containing blocks for fixed-positioned descendants and would break modal/popover positioning.
 
 ---
 
