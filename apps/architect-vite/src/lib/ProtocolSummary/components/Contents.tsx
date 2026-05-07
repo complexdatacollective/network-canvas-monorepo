@@ -10,6 +10,8 @@ type Asset = {
 	[key: string]: unknown;
 };
 
+const headingClass = "uppercase font-semibold text-xs tracking-widest my-(--space-md)";
+
 const Contents = () => {
 	const { protocol } = useContext(SummaryContext);
 
@@ -18,11 +20,11 @@ const Contents = () => {
 	const assets = groupBy(toPairs(protocol.assetManifest ?? {}), ([, asset]) => (asset as Asset).type);
 
 	return (
-		<div className="protocol-summary-contents">
+		<div>
 			<h1>Contents</h1>
-			<div className="protocol-summary-contents__section">
-				<ol>
-					<li>Stages</li>
+			<div className="[&_li]:my-(--space-sm) [&_a]:text-neon-coral [&_ul_li]:flex [&_ul_li]:items-center [&_ul_li]:ps-0 [&_ol_ol]:ps-(--space-xl) [&_ol_ul]:ps-(--space-xl)">
+				<ol className="ps-0">
+					<li className={`list-none ${headingClass}`}>Stages</li>
 					<ol>
 						{protocol.stages &&
 							map(protocol.stages, ({ label, id }, index) => (
@@ -33,14 +35,14 @@ const Contents = () => {
 								</li>
 							))}
 					</ol>
-					<li>Codebook</li>
+					<li className={`list-none ${headingClass}`}>Codebook</li>
 					<ul>
 						{protocol.codebook?.ego && (
 							<li>
 								<DualLink to="#ego">Ego</DualLink>
 							</li>
 						)}
-						<li className="heading">Node types</li>
+						<li className={headingClass}>Node types</li>
 						<ul>
 							{nodes.map(([id]) => (
 								<li key={id}>
@@ -50,7 +52,7 @@ const Contents = () => {
 						</ul>
 						{!isEmpty(edges) && (
 							<>
-								<li className="heading">Edge types</li>
+								<li className={headingClass}>Edge types</li>
 								<ul>
 									{edges.map(([id]) => (
 										<li key={id}>
@@ -63,12 +65,12 @@ const Contents = () => {
 					</ul>
 					{!isEmpty(assets) && (
 						<>
-							<li>Assets</li>
+							<li className={`list-none ${headingClass}`}>Assets</li>
 							<ul>
 								{assets &&
 									map(assets, (typeAssets, type) => (
 										<React.Fragment key={type}>
-											<li className="heading">{type}</li>
+											<li className={headingClass}>{type}</li>
 											<ul>
 												{typeAssets.map(([id, asset]) => (
 													<li key={id}>

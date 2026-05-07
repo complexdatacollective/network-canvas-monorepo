@@ -8,6 +8,8 @@ type AssetProps = {
 	size?: string | null;
 };
 
+const mediaClass = "inline-block w-1/2 bg-[#808080] text-[0] [&_img]:w-full [&_video]:w-full";
+
 const Asset = ({ id, size = null }: AssetProps) => {
 	const { url, type, name, variables } = useAssetData(id);
 
@@ -39,7 +41,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
 	}, [type]);
 
 	return (
-		<div className="protocol-summary-asset-manifest__asset" id={`asset-${id}`}>
+		<div id={`asset-${id}`}>
 			{type === "image" && (
 				<MiniTable
 					rotated
@@ -50,7 +52,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
 						// eslint-disable-next-line jsx-a11y/media-has-caption
 						[
 							"Preview",
-							<div key="image-preview" className="protocol-summary-asset-manifest__asset-media">
+							<div key="image-preview" className={mediaClass}>
 								<img src={url} alt={name} />
 							</div>,
 						],
@@ -68,7 +70,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
 						["Duration", state.duration],
 						[
 							"Preview",
-							<div key="video-preview" className="protocol-summary-asset-manifest__asset-media">
+							<div key="video-preview" className={mediaClass}>
 								<video src={url} ref={videoRef} preload="auto">
 									<source src={`${url}#t=1`} type="video/mp4" />
 									<track kind="captions" srcLang="en" label="English" />

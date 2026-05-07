@@ -27,17 +27,13 @@ const AssetBadge = ({ id, link = false }: AssetBadgeProps) => {
 	const name = !link ? data.name : <DualLink to={`#asset-${id}`}>{data.name}</DualLink>;
 
 	return (
-		<div className="protocol-summary-asset-badge">
-			<div className="protocol-summary-asset-badge__content">
-				<MiniTable
-					rotated
-					rows={[
-						["Type", data.type],
-						["Name", name],
-					]}
-				/>
-			</div>
-		</div>
+		<MiniTable
+			rotated
+			rows={[
+				["Type", data.type],
+				["Name", name],
+			]}
+		/>
 	);
 };
 
