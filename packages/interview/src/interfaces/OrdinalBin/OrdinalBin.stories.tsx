@@ -119,7 +119,7 @@ const OrdinalBinStoryWrapper = (args: StoryArgs) => {
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/OrdinalBin",
+	title: "Interfaces/OrdinalBin",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

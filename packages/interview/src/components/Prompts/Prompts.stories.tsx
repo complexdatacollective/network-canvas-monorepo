@@ -82,7 +82,7 @@ const longPrompts: TPrompt[] = [
 ];
 
 const meta: Meta<typeof Prompts> = {
-	title: "Interview/Components/Prompts",
+	title: "Components/Prompts",
 	component: Prompts,
 	decorators: [MotionDecorator],
 	parameters: {

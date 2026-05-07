@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ConcentricCircles from "./ConcentricCircles";
 
 const meta: Meta<typeof ConcentricCircles> = {
-	title: "Interview/Components/ConcentricCircles",
+	title: "Components/ConcentricCircles",
 	component: ConcentricCircles,
 	parameters: {
 		forceTheme: "interview",

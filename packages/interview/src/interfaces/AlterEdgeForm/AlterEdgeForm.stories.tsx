@@ -99,7 +99,7 @@ const AlterEdgeFormStoryWrapper = (args: StoryArgs) => {
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/AlterEdgeForm",
+	title: "Interfaces/AlterEdgeForm",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

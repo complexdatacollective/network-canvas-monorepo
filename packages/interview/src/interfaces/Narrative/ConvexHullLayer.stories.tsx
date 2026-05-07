@@ -65,7 +65,7 @@ function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
 	}, [nodes, store]);
 
 	return (
-		<div className="relative bg-black" style={{ width: 500, height: 500 }}>
+		<div className="relative" style={{ width: 500, height: 500 }}>
 			<ConvexHullLayer store={store} nodes={nodes} groupVariable="group" categoricalOptions={CATEGORICAL_OPTIONS} />
 			{/* Render node dots for visual reference */}
 			{nodes.map((node) => {
@@ -91,7 +91,7 @@ function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
 }
 
 const meta: Meta<typeof ConvexHullLayer> = {
-	title: "Interview/Components/ConvexHullLayer",
+	title: "Components/ConvexHullLayer",
 	component: ConvexHullLayer,
 	parameters: {
 		forceTheme: "interview",

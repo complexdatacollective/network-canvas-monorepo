@@ -4,7 +4,7 @@ import { icons } from "lucide-react";
 import ActionButton from "./ActionButton";
 
 const meta: Meta<typeof ActionButton> = {
-	title: "Interview/Components/ActionButton",
+	title: "Components/ActionButton",
 	component: ActionButton,
 	parameters: {
 		forceTheme: "interview",

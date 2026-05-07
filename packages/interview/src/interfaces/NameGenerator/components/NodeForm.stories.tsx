@@ -296,7 +296,7 @@ const ReduxDecorator = (
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/NameGenerator/NodeForm",
+	title: "Interfaces/NameGenerator/NodeForm",
 	component: NodeForm,
 	decorators: [ReduxDecorator],
 	parameters: {

@@ -30,9 +30,10 @@
 		"test": "vitest run",
 		"test:e2e": "./e2e/scripts/run.sh",
 		"test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
-		"test:e2e:headed": "playwright test --config e2e/playwright.config.ts --headed",
+		"test:e2e:headed": "pnpm turbo build --filter @codaco/interview && playwright test --config e2e/playwright.config.ts --headed",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
+		"chromatic": "chromatic --exit-once-uploaded",
 		"prepublishOnly": "pnpm build",
 		"clean": "rm -rf .turbo node_modules dist"
 	},

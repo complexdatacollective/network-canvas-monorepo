@@ -120,7 +120,7 @@ const ReduxDecorator = (Story: React.ComponentType, context: { args: { icon?: st
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/NameGenerator/QuickAddField",
+	title: "Interfaces/NameGenerator/QuickAddField",
 	component: QuickAddField,
 	decorators: [ReduxDecorator],
 	parameters: {

@@ -124,7 +124,3 @@
    compilation pass that scans the components. */
 @custom-variant interview (:root[data-theme-interview] &);
 @custom-variant dashboard (:root:not([data-theme-interview]) &);
-
-@utility publish-colors {
-	--color: red;
-}

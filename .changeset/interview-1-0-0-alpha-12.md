@@ -12,4 +12,4 @@ This pairs with the parallel `@codaco/fresco-ui@2.6.0` cleanup. Each CSS file in
 @import "@codaco/interview/styles.css";
 ```
 
-The interview package's vite build now copies `src/**/*.css` verbatim into `dist/` via a `cssCopyPlugin` (mirroring fresco-ui and tailwind-config), so the `@source` directive ships through with its path intact.
+The interview package's vite build now copies `src/**/*.css` verbatim into `dist/` via a `cssCopyPlugin` (mirroring fresco-ui), so the `@source` directive ships through with its path intact.

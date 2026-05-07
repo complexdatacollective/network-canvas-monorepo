@@ -30,8 +30,7 @@
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",
-		"typescript": "catalog:",
-		"vite": "catalog:"
+		"typescript": "catalog:"
 	},
 	"publishConfig": {
 		"access": "public"

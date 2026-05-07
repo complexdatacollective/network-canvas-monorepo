@@ -122,7 +122,7 @@ function GeospatialStoryWrapper({ buildFn }: { buildFn: () => SyntheticInterview
 }
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/Geospatial",
+	title: "Interfaces/Geospatial",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

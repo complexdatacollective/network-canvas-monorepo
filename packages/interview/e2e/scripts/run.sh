@@ -20,11 +20,10 @@
 # runs so subsequent installs are no-ops; wipe with:
 #   docker volume rm interview-e2e-node-modules
 #
-# Sibling workspace packages (@codaco/fresco-ui, @codaco/protocol-validation,
-# etc.) ship dist-only — their package.json `exports` point at ./dist/*. We
-# build them via turbo before launching the vite host so those entry points
-# resolve. @codaco/interview itself is consumed from src by the e2e vite host
-# (see e2e/host/vite.config.ts alias), so it is excluded via `^...`.
+# Build @codaco/interview and its workspace deps before launching the vite
+# host. Sibling workspace packages ship dist-only (their package.json `exports`
+# point at ./dist/*), so the dist trees must exist before the host can resolve
+# them. Turbo's `^build` task wiring handles the dep order.
 
 set -euo pipefail
 
@@ -48,5 +47,5 @@ docker run --rm \
   sh -c "set -e \
     && corepack enable \
     && pnpm install --filter '@codaco/interview...' --frozen-lockfile \
-    && pnpm turbo build --filter '@codaco/interview^...' \
+    && pnpm turbo build --filter @codaco/interview \
     && pnpm --filter @codaco/interview exec playwright test --config=e2e/playwright.config.ts $*"

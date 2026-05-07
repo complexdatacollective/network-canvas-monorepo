@@ -44,7 +44,7 @@ const AnonymisationStoryWrapper = (args: StoryArgs) => {
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/Anonymisation",
+	title: "Interfaces/Anonymisation",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

@@ -1,12 +1,10 @@
 /*
- * Storybook-only base styles. Consumers of @codaco/fresco-ui supply their
- * own globals (see Fresco's globals.css for the canonical example) — this
- * file plays the same role for the storybook iframe so the theme bg paints
- * the full viewport instead of only the wrapper that carries bg-background.
+ * Import the tailwind foundation for fresco-ui.
  *
- * @reference pulls the design-system tokens/plugins into scope so @apply
- * works without re-emitting the bundle. The tokens live in tailwind-config
- * (fresco-ui's own styles.css is just @source glue).
+ * No need to @source components because they are part of the root that 
+ * tailwind scans. 
+ *
+ * Fonts are imported in JS so that url() paths resolve correctly.
  */
 @import "@codaco/tailwind-config/fresco.css";
 

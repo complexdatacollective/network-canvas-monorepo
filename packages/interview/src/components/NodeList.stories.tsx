@@ -135,7 +135,7 @@ const createMockNodes = (count: number, stageId?: string, idOffset = 0): NcNode[
 };
 
 const meta: Meta<typeof NodeList> = {
-	title: "Interview/Components/NodeList",
+	title: "Components/NodeList",
 	component: NodeList,
 	decorators: [ReduxDecorator],
 	parameters: {

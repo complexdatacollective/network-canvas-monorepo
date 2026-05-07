@@ -124,7 +124,7 @@ const TieStrengthCensusStoryWrapper = (args: StoryArgs) => {
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/TieStrengthCensus",
+	title: "Interfaces/TieStrengthCensus",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

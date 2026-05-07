@@ -1,12 +1,16 @@
 /*
- * Storybook preview Tailwind entry. Pulls the shared in-monorepo
- * foundation (sources both fresco-ui and interview package source);
- * both theme variants ship inside fresco.css, and `preview.tsx`'s
- * decorator sets `data-theme-interview` on `<html>` so every story
- * in this package renders in interview mode.
+ * Import the tailwind foundation for fresco-ui.
+ *
+ * No need to @source interview components because they are part of the root 
+ * that tailwind scans. However, fresco-ui components must be @source'd 
+ * since they live outside the root that tailwind scans. We @source the 
+ * relative path so we don't need to rebuild the fresco-ui package for changes 
+ * to propagate in the interview host.
+ *
+ * Fonts are imported in JS so that url() paths resolve correctly.
  */
 @import "@codaco/tailwind-config/fresco.css";
-@import "@codaco/fresco-ui/styles.css";
+@source "../../fresco-ui/src/**/*.{ts,tsx}";
 
 @layer base {
 	/* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
@@ -17,3 +21,4 @@
 	}
 
 }
+

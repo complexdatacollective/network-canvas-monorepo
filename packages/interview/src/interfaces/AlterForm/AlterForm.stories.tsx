@@ -89,7 +89,7 @@ const AlterFormStoryWrapper = (args: StoryArgs) => {
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/AlterForm",
+	title: "Interfaces/AlterForm",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

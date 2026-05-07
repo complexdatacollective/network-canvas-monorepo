@@ -415,6 +415,7 @@
 		"test:storybook": "vitest run --project=storybook",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
+		"chromatic": "chromatic --exit-once-uploaded",
 		"prepublishOnly": "pnpm build",
 		"clean": "rm -rf .turbo node_modules dist"
 	},

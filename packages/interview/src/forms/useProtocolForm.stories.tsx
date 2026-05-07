@@ -399,7 +399,7 @@ const ProtocolFormDemo = ({
 };
 
 const meta: Meta<typeof ProtocolFormDemo> = {
-	title: "Systems/Form/useProtocolForm",
+	title: "Hooks/useProtocolForm",
 	component: ProtocolFormDemo,
 	decorators: [ReduxDecorator],
 	parameters: {

@@ -36,9 +36,9 @@
 /* Custom Tailwind plugins. Bare specifiers resolve through Node module
    resolution against the consumer's `node_modules`, mapped via this
    package's `exports` field to compiled JS in `dist/shared/plugins/...`. */
-/* @plugin "../plugins/elevation";
-@plugin "../plugins/inset-surface";
-@plugin "../plugins/motion-spring"; */
+@plugin "../shared/plugins/elevation";
+@plugin "../shared/plugins/inset-surface";
+@plugin "../shared/plugins/motion-spring";
 @plugin '@tailwindcss/forms';
 
 /* App-scoped variants. fresco-ui components hard-code `interview:` /

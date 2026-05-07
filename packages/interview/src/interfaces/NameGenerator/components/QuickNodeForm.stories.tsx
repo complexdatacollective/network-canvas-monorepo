@@ -109,7 +109,7 @@ const ReduxDecorator = (Story: React.ComponentType) => {
 };
 
 const meta: Meta<typeof QuickNodeForm> = {
-	title: "Interview/interfaces/NameGenerator/QuickNodeForm",
+	title: "Interfaces/NameGenerator/QuickNodeForm",
 	component: QuickNodeForm,
 	decorators: [ReduxDecorator],
 	parameters: {

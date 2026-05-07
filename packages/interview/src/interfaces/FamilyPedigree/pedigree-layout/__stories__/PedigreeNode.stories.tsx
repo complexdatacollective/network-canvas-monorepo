@@ -109,7 +109,7 @@ function createNode(
 }
 
 const meta: Meta<typeof PedigreeNode> = {
-	title: "Interview/interfaces/FamilyPedigree/PedigreeNode",
+	title: "Interfaces/FamilyPedigree/PedigreeNode",
 	component: PedigreeNode,
 	decorators: [ReduxDecorator],
 	parameters: {

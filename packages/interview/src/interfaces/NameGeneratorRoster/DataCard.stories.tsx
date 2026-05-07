@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import DataCard from "./DataCard";
 
 const meta = {
-	title: "Interview/interfaces/NameGeneratorRoster/DataCard",
+	title: "Interfaces/NameGeneratorRoster/DataCard",
 	component: DataCard,
 	parameters: {
 		layout: "padded",

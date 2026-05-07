@@ -9,9 +9,9 @@
  *
  * The intended import order in a consumer's entry CSS is:
  *
- *   @import "@codaco/tailwind-config/fresco.css";  // Tailwind + theme
- *   @import "@codaco/fresco-ui/styles.css";        // this file
- *   @import "@codaco/interview/styles.css";        // if also using @codaco/interview
+ *   1. @codaco/tailwind-config/fresco.css   (Tailwind + theme)
+ *   2. @codaco/fresco-ui/styles.css         (this file)
+ *   3. @codaco/interview/styles.css         (if also using @codaco/interview)
  *
  * Path is relative to `dist/styles.css` after the build's cssCopyPlugin
  * mirrors this file into the dist tree.

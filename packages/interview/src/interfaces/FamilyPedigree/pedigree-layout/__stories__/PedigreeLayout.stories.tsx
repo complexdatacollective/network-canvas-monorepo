@@ -10,7 +10,7 @@ import PedigreeLayout from "../components/PedigreeLayout";
 import { AdoptionBrackets, EgoIcon } from "../components/PedigreeNode";
 
 const meta: Meta = {
-	title: "Systems/PedigreeLayout",
+	title: "Components/PedigreeLayout",
 	parameters: {
 		layout: "fullscreen",
 		backgrounds: { default: "dark" },

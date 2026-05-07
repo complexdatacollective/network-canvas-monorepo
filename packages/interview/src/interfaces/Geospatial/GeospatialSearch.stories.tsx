@@ -24,7 +24,7 @@ const createMockMap = () =>
 	}) as unknown as mapboxgl.Map;
 
 const meta: Meta<typeof GeospatialSearch> = {
-	title: "Interview/interfaces/Geospatial/GeospatialSearch",
+	title: "Interfaces/Geospatial/GeospatialSearch",
 	component: GeospatialSearch,
 	parameters: {
 		layout: "centered",

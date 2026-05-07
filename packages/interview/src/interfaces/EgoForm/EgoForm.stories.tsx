@@ -80,7 +80,7 @@ const EgoFormStoryWrapper = (args: StoryArgs) => {
 };
 
 const meta: Meta<StoryArgs> = {
-	title: "Interview/interfaces/EgoForm",
+	title: "Interfaces/EgoForm",
 	parameters: {
 		forceTheme: "interview",
 		layout: "fullscreen",

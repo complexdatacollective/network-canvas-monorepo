@@ -4,7 +4,7 @@ import { useState } from "react";
 import BooleanOption from "./BooleanOption";
 
 const meta: Meta<typeof BooleanOption> = {
-	title: "Interview/Components/BooleanOption",
+	title: "Components/BooleanOption",
 	component: BooleanOption,
 	parameters: {
 		layout: "centered",
