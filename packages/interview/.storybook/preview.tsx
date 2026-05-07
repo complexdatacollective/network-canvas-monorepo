@@ -1,6 +1,6 @@
+import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
 import "@codaco/tailwind-config/fonts/inclusive-sans.css";
 import "@codaco/tailwind-config/fonts/nunito.css";
-import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
 import addonA11y from "@storybook/addon-a11y";
 import addonDocs from "@storybook/addon-docs";
 import { DocsContainer, type DocsContainerProps } from "@storybook/addon-docs/blocks";
@@ -9,18 +9,6 @@ import { definePreview } from "@storybook/react-vite";
 import { type PropsWithChildren, StrictMode } from "react";
 import "./preview.css";
 import Providers from "./Providers";
-
-// This package's storybook only runs interview-themed stories, so apply
-// `data-theme-interview` to <body> once at module load. This makes body's
-// own `bg-background text-text publish-colors` (applied globally in
-// tailwind-config's theme.css) resolve to the interview palette, so any
-// background visible behind transformed or fixed-positioned content (e.g.
-// during stage transitions) matches the themed surface. The per-story
-// decorator below still wraps stories in <ThemedRegion> for the portal
-// container and to keep the contract identical to production usage via Shell.
-if (typeof document !== "undefined") {
-	document.body.setAttribute("data-theme-interview", "");
-}
 
 // Wrap each docs page in <ThemedRegion theme="interview"> so chrome rendered
 // outside the per-story decorator tree (notably `.sbdocs-preview`) inherits
