@@ -13,8 +13,8 @@ import { useCurrentStep } from "../../contexts/CurrentStepContext";
 import { useAssetUrl } from "../../hooks/useAssetUrl";
 import useSortedNodeList from "../../hooks/useSortedNodeList";
 import { useStageSelector } from "../../hooks/useStageSelector";
-import { getEdges, getNodes, getPlacedNodes, getUnplacedNodes } from "../../selectors/canvas";
-import { getPromptSortOrder } from "../../selectors/session";
+import { getEdges, getPlacedNodes, getUnplacedNodes } from "../../selectors/canvas";
+import { getNetworkNodesForType, getPromptSortOrder } from "../../selectors/session";
 import { toggleEdge, toggleNodeAttributes, updateNode } from "../../store/modules/session";
 import { useAppDispatch } from "../../store/store";
 import type { StageProps } from "../../types";
@@ -49,7 +49,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 
 	const { currentStep } = useCurrentStep();
 	const track = useTrack();
-	const allNodes = useStageSelector(getNodes);
+	const allNodes = useStageSelector(getNetworkNodesForType);
 	const placedNodes = useStageSelector(getPlacedNodes);
 	const unplacedNodes = useStageSelector(getUnplacedNodes);
 	const sortOrder = useStageSelector(getPromptSortOrder);

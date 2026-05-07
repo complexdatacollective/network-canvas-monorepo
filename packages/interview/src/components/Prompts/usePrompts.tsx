@@ -65,7 +65,6 @@ const processSortRules = (prompts: Prompt[] | null, codebookVariables: EntityDef
  * @property {Function} updatePrompt
  *
  * @returns {PromptState}
- * @private
  *
  * @example
  * const {
