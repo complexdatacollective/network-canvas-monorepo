@@ -4,6 +4,7 @@ import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { IconButton } from "@codaco/fresco-ui/Button";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
+import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
 import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import type { Stage } from "@codaco/protocol-validation";
@@ -155,6 +156,7 @@ export default function PresetSwitcher({
 	);
 
 	const [popoverOpen, setPopoverOpen] = useState(true);
+	const portalContainer = usePortalContainer();
 
 	const prevPresetRef = useRef(activePreset);
 	const backwards = activePreset < prevPresetRef.current;
@@ -227,7 +229,7 @@ export default function PresetSwitcher({
 						className="rounded-none outline-offset-0"
 					/>
 				</Popover.Trigger>
-				<Popover.Portal keepMounted>
+				<Popover.Portal container={portalContainer ?? undefined} keepMounted>
 					<AnimatePresence>
 						{popoverOpen && (
 							<Popover.Positioner align="center" sideOffset={14}>

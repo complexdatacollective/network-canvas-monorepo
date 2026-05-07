@@ -5,6 +5,7 @@ import Button from "@codaco/fresco-ui/Button";
 import Field from "@codaco/fresco-ui/form/Field/Field";
 import Form from "@codaco/fresco-ui/form/Form";
 import InputField from "@codaco/fresco-ui/form/fields/InputField";
+import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
 import { AnimatePresence, motion, type Transition, useWillChange } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { usePassphrase } from "../interfaces/Anonymisation/usePassphrase";
@@ -21,6 +22,7 @@ export default function PassphrasePrompter() {
 	const { setPassphrase, showPassphrasePrompter, passphraseInvalid } = usePassphrase();
 	const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
 	const [showTooltip, setShowTooltip] = useState(false);
+	const portalContainer = usePortalContainer();
 
 	const willChange = useWillChange();
 
@@ -80,7 +82,7 @@ export default function PassphrasePrompter() {
 							/>
 						)}
 					</AnimatePresence>
-					<Tooltip.Portal>
+					<Tooltip.Portal container={portalContainer ?? undefined}>
 						<Tooltip.Positioner sideOffset={5} side="right">
 							<Tooltip.Popup
 								render={

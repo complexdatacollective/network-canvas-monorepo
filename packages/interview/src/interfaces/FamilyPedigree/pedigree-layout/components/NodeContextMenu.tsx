@@ -3,6 +3,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import { ArrowSvg } from "@codaco/fresco-ui/Popover";
+import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { ReactElement } from "react";
 
@@ -33,10 +34,12 @@ export default function NodeContextMenu({
 	onAction,
 	children,
 }: NodeContextMenuProps) {
+	const portalContainer = usePortalContainer();
+
 	return (
 		<Menu.Root>
 			<Menu.Trigger render={children} />
-			<Menu.Portal>
+			<Menu.Portal container={portalContainer ?? undefined}>
 				<Menu.Positioner sideOffset={8}>
 					<Menu.Popup>
 						<Menu.Arrow className="data-[side=bottom]:top-[-15px] data-[side=left]:right-[-13px] data-[side=left]:rotate-90 data-[side=right]:left-[-13px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-14px] data-[side=top]:rotate-180">
