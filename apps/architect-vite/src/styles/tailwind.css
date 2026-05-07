@@ -416,6 +416,8 @@
 	--color-sortable-background: hsl(var(--slate-blue));
 	--color-sortable-foreground: hsl(var(--white));
 
+	--color-table-row-tint: rgb(58 106 117 / 5%);
+
 	--color-form-control: hsl(var(--sea-serpent));
 
 	--color-rules-type: hsl(var(--neon-coral));
@@ -685,5 +687,32 @@
 	&:not(:disabled):active {
 		box-shadow: unset;
 		transform: translateY(0.6rem);
+	}
+}
+
+@layer components {
+	/* vendor overrides */
+
+	/* react-grid-layout
+	 * Replaces the library's default resize-handle arrow with a chevron drawn
+	 * from `--color-active`, matching the architect Grid styling that lived
+	 * in `src/styles/components/grid.css` before the Tailwind migration.
+	 * Scoped to `.react-grid-item` so it only fires inside react-grid-layout
+	 * grids, not any other consumer of the library's `.react-resizable-handle`
+	 * class. */
+	.react-grid-item > .react-resizable-handle {
+		background: transparent;
+	}
+
+	.react-grid-item > .react-resizable-handle::after {
+		content: "";
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		width: 1rem;
+		height: 1rem;
+		border-bottom-right-radius: 0.5rem;
+		border-bottom: 2px solid var(--color-active);
+		border-right: 2px solid var(--color-active);
 	}
 }
