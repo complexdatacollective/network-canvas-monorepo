@@ -23,6 +23,7 @@ import Presets from "./Presets";
 import Prompts, { type PromptType } from "./Prompts";
 import QuickAdd from "./QuickAdd";
 import ScaffoldingStep from "./ScaffoldingStep";
+import SectionFrame from "./SectionFrame";
 import SkipLogic from "./SkipLogic";
 
 type FormFieldType = {
@@ -112,75 +113,67 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
 		| undefined;
 
 	return (
-		<div className="protocol-summary-stage page-break-marker" id={`stage-${id}`}>
-			<div className="protocol-summary-stage__heading">
-				<div className="protocol-summary-stage__wrapper">
-					<div className="protocol-summary-stage__summary">
-						<div className="stage-label" data-number={stageNumber}>
+		<div className="page-break-marker" id={`stage-${id}`}>
+			<div className="overflow-hidden">
+				<div className="flex items-center pb-(--space-xl)">
+					<div className="me-(--space-md) flex-1">
+						<div
+							className="flex items-center font-bold text-2xl before:me-(--space-md) before:flex before:size-(--space-3xl) before:flex-none before:items-center before:justify-center before:rounded-full before:bg-cyber-grape before:text-white before:content-[attr(data-number)] before:[font-family:var(--heading-font-family)]"
+							data-number={stageNumber}
+						>
 							<h1>{label}</h1>
 						</div>
 						{(subject || edgeType || !isEmpty(stageVariables)) && (
-							<table className="protocol-summary-mini-table protocol-summary-mini-table--rotated">
-								<tbody>
-									{subject && (
-										<tr>
-											<td>Subject</td>
-											<td>
-												<EntityBadge small type={subject.type} entity={subject.entity} link />
-											</td>
-										</tr>
-									)}
-									{edgeType && (
-										<tr>
-											<td>Edge Type</td>
-											<td>
-												<EntityBadge small type={edgeType.type} entity="edge" link />
-											</td>
-										</tr>
-									)}
-									{!isEmpty(stageVariables) && (
-										<tr>
-											<td>Variables</td>
-											<td>
-												{stageVariables.map(([variableId, variable], i) => (
-													<React.Fragment key={`${id}-${variableId}`}>
-														<DualLink to={`#variable-${variableId}`}>{variable}</DualLink>
-														{i !== stageVariables.length - 1 && ", "}
-													</React.Fragment>
-												))}
-											</td>
-										</tr>
-									)}
-								</tbody>
-							</table>
+							<MiniTable
+								rotated
+								rows={[
+									...(subject
+										? [
+												[
+													"Subject",
+													<EntityBadge key="subject" small type={subject.type} entity={subject.entity} link />,
+												],
+											]
+										: []),
+									...(edgeType
+										? [["Edge Type", <EntityBadge key="edge-type" small type={edgeType.type} entity="edge" link />]]
+										: []),
+									...(!isEmpty(stageVariables)
+										? [
+												[
+													"Variables",
+													<React.Fragment key="vars">
+														{stageVariables.map(([variableId, variable], i) => (
+															<React.Fragment key={`${id}-${variableId}`}>
+																<DualLink to={`#variable-${variableId}`}>{variable}</DualLink>
+																{i !== stageVariables.length - 1 && ", "}
+															</React.Fragment>
+														))}
+													</React.Fragment>,
+												],
+											]
+										: []),
+								]}
+							/>
 						)}
 					</div>
-					<div className="protocol-summary-stage__preview">
-						<div className="stage-image">
+					<div className="relative flex flex-[0_0_5cm] items-center">
+						<div className="flex-1 [&_img]:w-full [&_img]:rounded">
 							<img src={getInterfaceImage(type)} alt="" />
 						</div>
-						{/* <h4>
-              {type}
-            </h4> */}
 					</div>
 				</div>
 				{filter && (
-					<div className="protocol-summary-stage__heading-section">
-						<div className="protocol-summary-stage__heading-section-content">
-							<h2 className="section-heading">Network Filtering</h2>
-							<MiniTable rotated wide rows={[["Rules", <Filter key="filter" filter={filter} />]]} />
-						</div>
-					</div>
+					<SectionFrame title="Network Filtering">
+						<MiniTable rotated wide rows={[["Rules", <Filter key="filter" filter={filter} />]]} />
+					</SectionFrame>
 				)}
 				{skipLogic && (
-					<div className="protocol-summary-stage__heading-section">
-						<div className="protocol-summary-stage__heading-section-content">
-							<h2 className="section-heading">Skip Logic</h2>
-							<SkipLogic skipLogic={skipLogic} />
-						</div>
-					</div>
+					<SectionFrame title="Skip Logic">
+						<SkipLogic skipLogic={skipLogic} />
+					</SectionFrame>
 				)}
-				<div className="protocol-summary-stage__content">
+				<div>
 					<IntroductionPanel introductionPanel={introductionPanel ?? null} />
 					<MapOptions mapOptions={mapOptions ?? null} />
 					<DataSource dataSource={dataSource ?? null} />

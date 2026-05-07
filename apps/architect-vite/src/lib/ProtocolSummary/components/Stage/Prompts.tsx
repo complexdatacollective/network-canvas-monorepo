@@ -1,6 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
 import Prompt from "./Prompt";
+import SectionFrame from "./SectionFrame";
 
 export type PromptType = {
 	id?: string;
@@ -18,18 +19,15 @@ const Prompts = ({ prompts = null }: PromptsProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__prompts">
-			<div className="protocol-summary-stage__prompts-content">
-				<h2 className="section-heading">Prompts</h2>
-				<ol>
-					{prompts.map((prompt) => (
-						<li key={prompt.id}>
-							<Prompt {...prompt} />
-						</li>
-					))}
-				</ol>
-			</div>
-		</div>
+		<SectionFrame title="Prompts">
+			<ol className="m-0 ps-(--space-xl)">
+				{prompts.map((prompt) => (
+					<li className="my-(--space-md) pl-(--space-md)" key={prompt.id}>
+						<Prompt {...prompt} />
+					</li>
+				))}
+			</ol>
+		</SectionFrame>
 	);
 };
 

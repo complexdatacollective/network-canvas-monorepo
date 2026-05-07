@@ -4,6 +4,7 @@ import { getVariableMeta } from "../helpers";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
 import Variable from "../Variable";
+import SectionFrame from "./SectionFrame";
 
 type FormFieldType = {
 	prompt: string;
@@ -36,13 +37,10 @@ const Form = ({ form = null }: FormProps) => {
 		}) ?? [];
 
 	return (
-		<div className="protocol-summary-stage__form">
-			<div className="protocol-summary-stage__form-content">
-				<h2 className="section-heading">Form</h2>
-				{form.title && <h4>Title: {form.title}</h4>}
-				<MiniTable wide rows={[["Variable", "Component", "Prompt"], ...fieldRows]} />
-			</div>
-		</div>
+		<SectionFrame title="Form" wrapperClassName="break-inside-avoid">
+			{form.title && <h4>Title: {form.title}</h4>}
+			<MiniTable wide rows={[["Variable", "Component", "Prompt"], ...fieldRows]} />
+		</SectionFrame>
 	);
 };
 

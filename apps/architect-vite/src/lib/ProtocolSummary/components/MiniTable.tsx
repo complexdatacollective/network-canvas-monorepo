@@ -1,23 +1,26 @@
-import cx from "classnames";
 import type React from "react";
+import { cva } from "~/utils/cva";
 
 type MiniTableProps = {
 	rows?: React.ReactNode[][];
 	wide?: boolean;
 	lite?: boolean;
 	rotated?: boolean;
+	className?: string;
 };
 
-const MiniTable = ({ rows = [], wide = false, lite = false, rotated = false }: MiniTableProps) => {
-	const classes = cx(
-		"protocol-summary-mini-table",
-		{ "protocol-summary-mini-table--wide": wide },
-		{ "protocol-summary-mini-table--rotated": rotated },
-		{ "protocol-summary-mini-table--lite": lite },
-	);
+const tableVariants = cva({
+	base: "mini-table",
+	variants: {
+		wide: { true: "mini-table-wide" },
+		lite: { true: "mini-table-lite" },
+		rotated: { true: "mini-table-rotated" },
+	},
+});
 
+const MiniTable = ({ rows = [], wide = false, lite = false, rotated = false, className }: MiniTableProps) => {
 	return (
-		<table className={classes}>
+		<table className={tableVariants({ wide, lite, rotated, class: className })}>
 			{!rotated && rows.length > 0 && (
 				<thead>
 					<tr key="0">

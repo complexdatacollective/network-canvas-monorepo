@@ -44,8 +44,8 @@ const Variables = ({ variables }: VariablesProps) => {
 	const sortedVariables = sortBy(toPairs(variables), [(variable) => (variable[1] as Variable).name.toLowerCase()]);
 
 	return (
-		<div className="protocol-summary-variables">
-			<table className="protocol-summary-variables__data">
+		<div className="[&_a]:text-neon-coral">
+			<table className="w-full [&_th]:max-w-[7cm] [&_td]:max-w-[7cm] [&_thead>tr>th]:bg-platinum [&_thead>tr>th]:p-(--space-sm) [&_thead>tr>th]:pe-(--space-md) [&_thead>tr>th]:align-top [&_tbody>tr>td]:p-(--space-sm) [&_tbody>tr>td]:align-top [&_tbody>tr>td]:border-t [&_tbody>tr>td]:border-t-platinum-dark [&_tbody>tr>td:first-of-type]:break-words [&_tbody>tr>td:first-of-type]:hyphens-auto">
 				<thead>
 					<tr>
 						<th>Name</th>
@@ -55,7 +55,7 @@ const Variables = ({ variables }: VariablesProps) => {
 				</thead>
 				<tbody>
 					{isEmpty(variables) && (
-						<tr className="empty">
+						<tr>
 							<td colSpan={3}>No variables to display.</td>
 						</tr>
 					)}
@@ -86,7 +86,9 @@ const Variables = ({ variables }: VariablesProps) => {
 									{type}
 									<br />
 									<br />
-									{optionsRows.length > 0 && <MiniTable rows={[["Value", "Label"], ...optionsRows]} />}
+									{optionsRows.length > 0 && (
+										<MiniTable className="m-0 max-w-[7cm]" rows={[["Value", "Label"], ...optionsRows]} />
+									)}
 								</td>
 								<td>
 									{getUsedIn(indexEntry).map(([stageId, stageName]) => (

@@ -1,4 +1,5 @@
 import AssetBadge from "../AssetBadge";
+import SectionFrame from "./SectionFrame";
 
 type DataSourceProps = {
 	dataSource?: string | null;
@@ -10,12 +11,9 @@ const DataSource = ({ dataSource = null }: DataSourceProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__data-source">
-			<div className="protocol-summary-stage__data-source-content">
-				<h2 className="section-heading">DataSource</h2>
-				<AssetBadge id={dataSource} link />
-			</div>
-		</div>
+		<SectionFrame title="DataSource">
+			<AssetBadge id={dataSource} link />
+		</SectionFrame>
 	);
 };
 
