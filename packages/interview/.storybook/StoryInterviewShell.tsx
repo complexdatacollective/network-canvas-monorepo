@@ -87,14 +87,7 @@ function buildPayload(raw: RawSyntheticPayload): {
 	};
 }
 
-const StoryInterviewShell = (props: {
-	rawPayload: string;
-	// Optional Storybook action logger forwarded by stories that want to inspect
-	// dispatched actions. Currently a no-op (Shell doesn't expose its inner
-	// store), but accepting the prop keeps the existing story call sites
-	// type-clean while leaving room to wire it up later.
-	onAction?: (action: { type: string; payload?: unknown }) => void;
-}) => {
+const StoryInterviewShell = (props: { rawPayload: string }) => {
 	const { payload, initialStep, assetUrls } = useMemo(() => {
 		const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
 		return buildPayload(raw);

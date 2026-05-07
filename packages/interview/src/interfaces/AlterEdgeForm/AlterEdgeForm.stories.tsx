@@ -1,15 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
-import { action } from "storybook/actions";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
 import { SyntheticInterview } from "../../synthetic/SyntheticInterview";
 import type { ComponentType } from "../../synthetic/types";
-
-const logAction = action("redux");
-const onAction = (a: { type: string; payload?: unknown }) => {
-	logAction(a.type, a.payload);
-};
 
 const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
 	{ component: "RadioGroup", prompt: "How close is this relationship?" },
@@ -93,7 +87,7 @@ const AlterEdgeFormStoryWrapper = (args: StoryArgs) => {
 
 	return (
 		<div className="flex h-dvh w-full">
-			<StoryInterviewShell key={configKey} rawPayload={rawPayload} onAction={onAction} />
+			<StoryInterviewShell key={configKey} rawPayload={rawPayload} />
 		</div>
 	);
 };
@@ -216,7 +210,7 @@ const WithValidationWrapper = () => {
 
 	return (
 		<div className="flex h-dvh w-full">
-			<StoryInterviewShell rawPayload={rawPayload} onAction={onAction} />
+			<StoryInterviewShell rawPayload={rawPayload} />
 		</div>
 	);
 };
