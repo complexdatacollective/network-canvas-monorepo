@@ -59,6 +59,13 @@ export default definePreview({
 	},
 
 	decorators: [
+		// withTheme must be the outermost decorator so that <ThemedRegion>
+		// (and the <PortalContainerProvider> it bundles) wraps Providers —
+		// that puts <Toaster />, the DialogProvider's dialog map, and any
+		// Base UI portals inside the themed subtree, so they inherit the
+		// interview palette and route portals through the provider's
+		// container instead of escaping to document.body.
+		withTheme,
 		(Story) => {
 			// Disable Base UI animations whenever the browser is being driven by
 			// automation (Playwright in vitest browser mode, or Storybook's
@@ -88,7 +95,6 @@ export default definePreview({
 				</StrictMode>
 			);
 		},
-		withTheme,
 	],
 
 	globalTypes,
