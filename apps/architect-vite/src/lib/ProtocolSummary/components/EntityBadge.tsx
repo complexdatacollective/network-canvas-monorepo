@@ -19,11 +19,12 @@ const EntityBadge = ({ type, entity, link = false, small = false, tiny = false }
 
 	const color = get(codebook, [entity, type, "color"]);
 	const name = get(codebook, [entity, type, "name"]);
+	const shape = get(codebook, [entity, type, "shape", "default"]);
 
 	const size = tiny ? "tiny" : small ? "small" : "default";
 	const label = small || tiny ? name : <h2>{name}</h2>;
 
-	const badge = <EntityIcon color={color} entity={entity} label={label} size={size} />;
+	const badge = <EntityIcon color={color} entity={entity} shape={shape} label={label} size={size} />;
 
 	if (!link) {
 		return badge;

@@ -1,6 +1,7 @@
 import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
 import { Link } from "wouter";
+import type { NodeShape } from "~/components/Node/Node";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { deleteTypeAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
@@ -38,6 +39,7 @@ type EntityTypeProps = {
 	type: string;
 	name: string;
 	color: string;
+	shape?: NodeShape;
 	usage: UsageItem[];
 	inUse?: boolean;
 	handleDelete?: () => void;
@@ -48,6 +50,7 @@ type EntityTypeProps = {
 const EntityType = ({
 	name,
 	color,
+	shape,
 	inUse = true,
 	usage,
 	entity,
@@ -79,7 +82,7 @@ const EntityType = ({
 		<div className="codebook__entity">
 			<div className="codebook__entity-detail">
 				<div className="codebook__entity-icon">
-					<EntityIcon color={color} entity={entity} />
+					<EntityIcon color={color} entity={entity} shape={shape} />
 				</div>
 				<div className="codebook__entity-name">
 					<h2>{name}</h2>

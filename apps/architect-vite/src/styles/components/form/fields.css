@@ -1,17 +1,12 @@
 @import "./fields/native-select.css";
-@import "./fields/variable-select.css";
 @import "./fields/entity-select.css";
 @import "./fields/select.css";
 @import "./fields/input-preview.css";
 @import "./fields/variable-picker.css";
-@import "./fields/textarea.css";
-@import "./fields/markdown.css";
-@import "./fields/mode.css";
 @import "./fields/file.css";
 @import "./fields/audio.css";
 @import "./fields/image.css";
 @import "./fields/video.css";
-@import "./fields/data-source.css";
 @import "./fields/multi-select.css";
 @import "./fields/color-picker.css";
 @import "./fields/shape-picker.css";
