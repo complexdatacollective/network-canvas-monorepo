@@ -1,8 +1,8 @@
-import { Printer } from "lucide-react";
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useLocation } from "wouter";
+import ControlBar from "~/components/ControlBar";
 import { Layout } from "~/components/EditorLayout";
-import PageHeading from "~/components/ProjectNav/PageHeading";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
 import AssetManifest from "~/lib/ProtocolSummary/components/AssetManifest";
@@ -19,6 +19,8 @@ const dateWithSafeChars = (date: string, replaceWith = "-") =>
 	date.replace(/[^a-zA-Z\d\s]/gi, replaceWith).toLowerCase();
 
 const SummaryPage = () => {
+	const [, setLocation] = useLocation();
+
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
 
@@ -34,6 +36,10 @@ const SummaryPage = () => {
 	// Get the active protocol and metadata from Redux store
 	const protocol = useSelector(getProtocol);
 	const protocolName = useSelector(getProtocolName);
+
+	const handleGoBack = () => {
+		setLocation("/protocol");
+	};
 
 	const index = getCodebookIndex(protocol);
 
@@ -67,42 +73,55 @@ const SummaryPage = () => {
 				index,
 			}}
 		>
-			<Layout className="protocol-summary-page">
-				<div className="flex flex-col gap-(--space-lg) my-(--space-xl) mx-(--space-5xl) w-full max-w-[80rem]">
-					<PageHeading
-						title="Protocol Summary"
-						description="A comprehensive summary of your protocol, including stages, codebook, and assets."
-						actions={
-							<div className="print:hidden">
-								<Button onClick={print} color="sea-green" icon={<Printer />}>
-									Print
-								</Button>
+			<div className="relative flex flex-col h-dvh print:h-auto print:overflow-visible">
+				<div className="flex-1 overflow-y-auto print:overflow-visible">
+					<Layout className="protocol-summary-page">
+						<div className="screen-heading">
+							<div className="flex flex-col">
+								<h1 className="screen-heading">Protocol Summary</h1>
+								<p>
+									Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and
+									assets.
+								</p>
 							</div>
-						}
-					/>
-					<div className="protocol-summary">
-						<div className="page-break-marker">
-							<Cover />
 						</div>
+						<div className="protocol-summary">
+							<div className="page-break-marker">
+								<Cover />
+							</div>
 
-						<div className="page-break-marker">
-							<Contents />
-						</div>
+							<div className="page-break-marker">
+								<Contents />
+							</div>
 
-						<div>
-							<Stages />
-						</div>
+							<div>
+								<Stages />
+							</div>
 
-						<div>
-							<Codebook />
-						</div>
+							<div>
+								<Codebook />
+							</div>
 
-						<div>
-							<AssetManifest />
+							<div>
+								<AssetManifest />
+							</div>
 						</div>
-					</div>
+					</Layout>
 				</div>
-			</Layout>
+				<ControlBar
+					className="print:hidden"
+					secondaryButtons={[
+						<Button key="go-back" onClick={handleGoBack} color="platinum">
+							Go Back
+						</Button>,
+					]}
+					buttons={[
+						<Button key="print" onClick={print} color="sea-green">
+							Print
+						</Button>,
+					]}
+				/>
+			</div>
 		</SummaryContext.Provider>
 	);
 };
