@@ -27,9 +27,11 @@
 		"packages/network-exporters": {},
 		"tooling/tailwind": {
 			"entry": [
+				"shared/plugins/elevation/index.ts",
 				"shared/plugins/elevation/elevation.ts",
 				"shared/plugins/elevation/jwc.ts",
 				"shared/plugins/elevation/utils.ts",
+				"shared/plugins/inset-surface/index.ts",
 				"shared/plugins/inset-surface/inset-surface.ts",
 				"shared/plugins/motion-spring.ts"
 			],
