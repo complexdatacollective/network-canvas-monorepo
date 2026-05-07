@@ -120,15 +120,20 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> = plu
 				},
 				".publish-colors": {
 					// These need to be css Color values.
-					"--published-bg": "var(--scoped-bg, --color-background)",
+					"--published-bg": "var(--scoped-bg, var(--background))",
 					"--published-text": "var(--scoped-text, currentColor)",
 				},
 			});
 
-			// Use matchUtilities to create bg utilities that set --scoped-bg
-			// Transform var(--foo) to var(--color-foo) to match Tailwind's generated color variables
-			const toColorVar = (value: string) =>
-				typeof value === "string" && value.startsWith("var(--") ? value.replace(/^var\(--/, "var(--color-") : value;
+			// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
+			// --scoped-text point at the bare semantic tokens declared by the
+			// theme files (`--background`, `--text`, etc.) rather than going
+			// through Tailwind's `--color-*` indirection. Tailwind's
+			// `api.theme(...)` resolves color tokens to their `--color-*` form
+			// regardless of `@theme inline`, so we strip the prefix at plugin
+			// emit time. Literal values (oklch(...), currentColor) are
+			// unchanged because they don't match the pattern.
+			const stripColorPrefix = (value: string) => value.replace(/var\(--color-/g, "var(--");
 
 			// `modifiers: 'any'` ensures alpha-modified classes like `bg-primary/90`
 			// still set --scoped-bg. Shadow derivation uses the solid color, so the
@@ -136,7 +141,7 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> = plu
 			api.matchUtilities(
 				{
 					bg: (value) => ({
-						"--scoped-bg": toColorVar(value),
+						"--scoped-bg": stripColorPrefix(value),
 					}),
 				},
 				{
@@ -148,7 +153,7 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> = plu
 			api.matchUtilities(
 				{
 					text: (value) => ({
-						"--scoped-text": toColorVar(value),
+						"--scoped-text": stripColorPrefix(value),
 					}),
 				},
 				{
