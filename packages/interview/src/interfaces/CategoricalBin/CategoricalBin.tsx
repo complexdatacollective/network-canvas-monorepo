@@ -129,7 +129,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const hasExpanded = expandedBinIndex !== null;
 
 	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
-	const { containerRef, cols, rows, isReady } = useCircleLayout({
+	const { containerRef, cols, rows, isReady, pending } = useCircleLayout({
 		count: circleCount,
 	});
 
@@ -212,7 +212,11 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
 			<Prompts />
 			<div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">
-				<div className="catbin-outer min-h-0 w-full flex-1" ref={containerRef}>
+				<div
+					className="catbin-outer min-h-0 w-full flex-1"
+					ref={containerRef}
+					data-cb-layout-pending={pending || undefined}
+				>
 					{isReady && (
 						<AnimatePresence mode="wait">
 							<motion.div

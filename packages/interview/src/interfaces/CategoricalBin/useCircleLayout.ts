@@ -58,6 +58,11 @@ const MIN_PLAUSIBLE_PX = 64;
 
 export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 	const [dimensions, setDimensions] = useState({ width: 0, height: 0, gap: 0 });
+	// `true` while a settle timer is in flight (i.e. the container size changed
+	// recently and we haven't yet committed the new dimensions). Surfaced to the
+	// DOM so e2e tests can deterministically wait for layout to stabilise before
+	// capturing screenshots, instead of relying on a fixed `waitForTimeout`.
+	const [pending, setPending] = useState(false);
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
 	const containerRef = useCallback((el: HTMLDivElement | null) => {
@@ -88,6 +93,7 @@ export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 			}
 
 			setDimensions({ width, height, gap: computedGap });
+			setPending(false);
 		};
 
 		// Settle debounce: every observer callback restarts the timer. We only
@@ -98,6 +104,7 @@ export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 		const observer = new ResizeObserver(() => {
 			if (settleTimer !== null) clearTimeout(settleTimer);
 			settleTimer = setTimeout(commit, SETTLE_MS);
+			setPending(true);
 		});
 
 		observer.observe(container);
@@ -126,5 +133,6 @@ export function useCircleLayout({ count }: UseCircleLayoutOptions) {
 		cols,
 		rows,
 		isReady,
+		pending,
 	};
 }
