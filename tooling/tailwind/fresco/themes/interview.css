@@ -1,52 +1,45 @@
 /*
  * @codaco/tailwind-config — Fresco interview theme
  *
- * Layered on top of `themes/default.css`. Activates when the
- * `<html>` element carries the `data-theme-interview` attribute,
- * which `@codaco/interview`'s Shell sets via a useLayoutEffect on
- * mount (and clears on unmount). Setting the attribute at the
- * document root is what makes `1rem` track the responsive
- * font-size override below — rem is always rooted on `<html>`.
- * Provides a darker palette and Nunito-only typography tuned for
- * the interview UI.
+ * Layered on top of `themes/default.css`. Activates on any element
+ * carrying the `data-theme-interview` attribute. The wrapper sets a
+ * responsive `--theme-root-size` (1rem / 1.125rem / 1.25rem at default
+ * OS scaling, scaled proportionally under user text-zoom), which the
+ * type scale in `theme.css` consumes via calc(N * var(--theme-root-size)).
  *
+ * Provides a darker palette and Nunito-only typography tuned for the
+ * interview UI.
  */
 
 @layer base {
   /*
-   * Responsive font-size set on `:root` itself (the `<html>` element)
-   * so that `1rem` becomes 16/18/20px across the document while the
-   * interview Shell is mounted. Type scale (--text-* in theme.css) and
-   * spacing-base (em-derived in default.css) both track this root
-   * font-size, so utilities like `text-lg`, `p-4`, `gap-8`, `size-20`
-   * scale proportionally for the entire interview subtree. Reverts
-   * to the host's default font-size once Shell unmounts.
+   * The wrapper sets `font-size: var(--theme-root-size)` so that em-based
+   * spacing utilities (--spacing-base: 0.25em) track the same base. The
+   * sentinel itself is consumed by the type scale (--text-* in theme.css)
+   * via calc(N * var(--theme-root-size)). Because the sentinel resolves
+   * at the closest themed ancestor and inherits as a fixed value, nested
+   * text-* utilities don't compound — it mimics rem's root-anchoring
+   * behavior, scoped to this themed region.
    *
-   * Breakpoints below are hardcoded literals rather than `theme(--breakpoint-*)`
-   * calls. The proper Tailwind v4 way is `@import '../theme.css' reference;`
-   * to expose the tokens for compile-time resolution — but `reference` flips
-   * theme.css into reference-only mode globally, which retroactively cancels
-   * the `@theme static` :root emission from the earlier non-reference import,
-   * leaving every `--color-*` token undeclared at runtime. Hardcoding loses
-   * the single-source-of-truth, but the alternative is a much larger blast
-   * radius. Keep these in sync with `--breakpoint-tablet-landscape-max`
-   * (1279px) and `--breakpoint-desktop-lg` (1920px) in `theme.css`.
+   * Using rem (not px) preserves user OS text-zoom. At default OS scaling
+   * the values resolve to 16/18/20px, identical to the previous behavior.
    */
-  :root[data-theme-interview] {
-    font-size: 16px;
+  [data-theme-interview] {
+    --theme-root-size: 1rem;
+    font-size: var(--theme-root-size);
 
     @media (width >= 1279px) {
-      font-size: 18px;
+      --theme-root-size: 1.125rem;
     }
 
     @media (width >= 1920px) {
-      font-size: 20px;
+      --theme-root-size: 1.25rem;
     }
   }
 }
 
 @layer theme {
-  :root[data-theme-interview] {
+  [data-theme-interview] {
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Nunito Variable', sans-serif;
     --spacing-base: 0.25em; /* TW default uses rem */
