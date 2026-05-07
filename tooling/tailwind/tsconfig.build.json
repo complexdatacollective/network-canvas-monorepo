@@ -3,7 +3,7 @@
 	"compilerOptions": {
 		"noEmit": false,
 		"declaration": false,
-		"outDir": "dist/shared/plugins",
+		"outDir": "shared/plugins",
 		"rootDir": "shared/plugins",
 		"incremental": false
 	},

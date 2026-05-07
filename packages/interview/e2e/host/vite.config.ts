@@ -12,8 +12,14 @@ export default defineConfig({
 		__PACKAGE_VERSION__: JSON.stringify(pkg.version),
 	},
 	resolve: {
-		alias: {
-			"@codaco/interview": resolve(__dirname, "../../src/index.ts"),
-		},
+		// Regex aliases anchor the bare specifier and the styles.css subpath
+		// independently. A plain string alias on `@codaco/interview` would
+		// prefix-match subpaths and rewrite `@codaco/interview/styles.css` to
+		// `<src/index.ts>/styles.css`, which Vite then tries to open as a
+		// directory and crashes.
+		alias: [
+			{ find: /^@codaco\/interview$/, replacement: resolve(__dirname, "../../src/index.ts") },
+			{ find: /^@codaco\/interview\/styles\.css$/, replacement: resolve(__dirname, "../../src/styles.css") },
+		],
 	},
 });

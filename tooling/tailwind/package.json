@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/tailwind-config",
-	"version": "1.0.0-alpha.11",
+	"version": "1.0.0-alpha.12",
 	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
 	"repository": {
 		"type": "git",
@@ -19,7 +19,9 @@
 	},
 	"license": "MIT",
 	"scripts": {
-		"typecheck": "tsgo --noEmit"
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsgo --noEmit",
+		"prepublishOnly": "pnpm build"
 	},
 	"dependencies": {
 		"@fontsource-variable/inclusive-sans": "^5.2.8",
