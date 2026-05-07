@@ -7,14 +7,29 @@
  * foundation; consumers @import `@codaco/tailwind-config/fresco.css`
  * separately for Tailwind v4 + theme + plugins + fonts.
  *
+ * Importing this file is mandatory for any host that loads
+ * @codaco/interview — without it, Tailwind's auto-detection won't reach
+ * into node_modules/@codaco/interview/dist, the stage interface
+ * utilities (.interface, ActionButton sizing, etc.) won't be generated,
+ * and components will render unstyled.
+ *
  * The intended import order in a consumer's entry CSS is:
  *
  *   @import "@codaco/tailwind-config/fresco.css";  // Tailwind + theme
  *   @import "@codaco/fresco-ui/styles.css";        // fresco-ui scanner glue
  *   @import "@codaco/interview/styles.css";        // this file
  *
- * Path is relative to `dist/styles.css` after the build's cssCopyPlugin
- * mirrors this file into the dist tree.
+ * The @source path below is relative to `dist/styles.css` after the
+ * build's cssCopyPlugin mirrors this file into the dist tree, so it
+ * scans the compiled JS regardless of where the consumer's project
+ * root sits.
+ *
+ * Hosts that consume @codaco/interview *from source* (e.g. via a Vite
+ * alias pointing `@codaco/interview` at the package's src directory)
+ * should still @import this file — it ensures the published surface
+ * is covered. If your alias also makes interview src visible to the
+ * consumer's Tailwind base path, no additional @source is required;
+ * otherwise, add an explicit @source pointing at the source tree.
  */
 
 @source "./**/*.{js,ts,tsx}";

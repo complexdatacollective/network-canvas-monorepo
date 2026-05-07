@@ -41,11 +41,11 @@
 			"persistent": true
 		},
 		"test:e2e": {
-			"dependsOn": ["^build"],
+			"dependsOn": ["build"],
 			"cache": false
 		},
 		"test:e2e:headed": {
-			"dependsOn": ["^build"],
+			"dependsOn": ["build"],
 			"cache": false
 		},
 		"typecheck": {

@@ -1,9 +1,9 @@
 {
 	"name": "@codaco/interview",
-	"version": "1.0.0-alpha.12",
+	"version": "1.0.0-alpha.13",
 	"type": "module",
 	"license": "MIT",
-	"description": "Network Canvas interview engine \u2014 Shell component, synthetic network generator, session contract.",
+	"description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
