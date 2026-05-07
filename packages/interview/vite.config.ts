@@ -25,16 +25,22 @@ const cssCopyPlugin = (): Plugin => ({
 	},
 });
 
+// Skip dts emission for non-library consumers of this config (Storybook builds
+// the preview app; Vitest just runs tests). Storybook's CLI sets STORYBOOK=true;
+// Vitest sets VITEST=true.
+const isLibraryBuild = !process.env.STORYBOOK && !process.env.VITEST;
+
 export default defineConfig({
 	plugins: [
 		react(),
-		dts({
-			entryRoot: "src",
-			include: ["src/**/*.ts", "src/**/*.tsx"],
-			exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx"],
-			compilerOptions: { rootDir: resolve(__dirname, "src") },
-			rollupTypes: true,
-		}),
+		isLibraryBuild &&
+			dts({
+				entryRoot: "src",
+				include: ["src/**/*.ts", "src/**/*.tsx"],
+				exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx"],
+				compilerOptions: { rootDir: resolve(__dirname, "src") },
+				rollupTypes: true,
+			}),
 		cssCopyPlugin(),
 	],
 	define: {
