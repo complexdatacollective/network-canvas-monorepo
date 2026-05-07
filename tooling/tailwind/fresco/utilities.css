@@ -122,5 +122,5 @@
    `interview:[...]`). They live in the foundation barrel so any consumer
    of `@codaco/tailwind-config/fresco.css` gets them in the same Tailwind
    compilation pass that scans the components. */
-@custom-variant interview (:root[data-theme-interview] &);
-@custom-variant dashboard (:root:not([data-theme-interview]) &);
+@custom-variant interview ([data-theme-interview] &);
+@custom-variant dashboard (&:not([data-theme-interview] *):not([data-theme-interview]));
