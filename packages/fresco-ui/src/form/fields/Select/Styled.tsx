@@ -1,6 +1,7 @@
 import { Select } from "@base-ui/react/select";
 import { Check, ChevronDown } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
+import { usePortalContainer } from "../../../PortalContainer";
 import { dropdownItemVariants } from "../../../styles/controlVariants";
 import { cx, type VariantProps } from "../../../utils/cva";
 import type { FieldValueProps, InjectedFieldProps } from "../../Field/types";
@@ -27,6 +28,8 @@ function SelectField(props: SelectProps) {
 			onChange?.(convertedValue);
 		}
 	};
+
+	const portalContainer = usePortalContainer();
 
 	return (
 		<Select.Root
@@ -56,7 +59,7 @@ function SelectField(props: SelectProps) {
 					<ChevronDown className="h-[1.2em] w-[1.2em]" />
 				</Select.Icon>
 			</Select.Trigger>
-			<Select.Portal>
+			<Select.Portal container={portalContainer ?? undefined}>
 				<Select.Positioner className="z-50" alignItemWithTrigger={false}>
 					<Select.Popup
 						className={cx(

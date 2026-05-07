@@ -5,6 +5,7 @@ import { Check, ChevronsUpDown, SearchIcon } from "lucide-react";
 import { type ComponentPropsWithoutRef, useMemo, useState } from "react";
 import Button from "../../../Button";
 import Surface from "../../../layout/Surface";
+import { usePortalContainer } from "../../../PortalContainer";
 import { ScrollArea } from "../../../ScrollArea";
 import { dropdownItemVariants, proportionalLucideIconVariants } from "../../../styles/controlVariants";
 import { cx, type VariantProps } from "../../../utils/cva";
@@ -57,6 +58,8 @@ function ComboboxField(props: ComboboxFieldProps) {
 	// and only honour `input-change`, so base-ui's internal `input-clear` on
 	// item press doesn't wipe the user's search query.
 	const [inputValue, setInputValue] = useState("");
+
+	const portalContainer = usePortalContainer();
 
 	const handleValueChange = (newValue: unknown[] | null, _event: Combobox.Root.ChangeEventDetails) => {
 		if (newValue === null) {
@@ -140,7 +143,7 @@ function ComboboxField(props: ComboboxFieldProps) {
 					<ChevronsUpDown className="h-[1.2em] w-[1.2em]" />
 				</Combobox.Icon>
 			</Combobox.Trigger>
-			<Combobox.Portal>
+			<Combobox.Portal container={portalContainer ?? undefined}>
 				<Combobox.Positioner align="start" sideOffset={10}>
 					<Combobox.Popup
 						render={
