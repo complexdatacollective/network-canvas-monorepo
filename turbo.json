@@ -26,6 +26,11 @@
 			],
 			"outputs": ["out/**", "dist/**"]
 		},
+		"@codaco/tailwind-config#build": {
+			"dependsOn": ["^build"],
+			"inputs": ["shared/plugins/**/*.ts", "tsconfig*.json", "package.json"],
+			"outputs": ["shared/plugins/**/*.js"]
+		},
 		"dev": {
 			"dependsOn": ["^build"],
 			"cache": false,
