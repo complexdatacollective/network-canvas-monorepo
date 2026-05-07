@@ -54,6 +54,9 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^6.0.1
       version: 6.0.1
+    chromatic:
+      specifier: ^16.9.0
+      version: 16.9.0
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -1317,8 +1320,8 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(bufferutil@4.1.0)(playwright@1.59.1)(vite@8.0.10(@types/node@22.19.17)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.99.0)(terser@5.47.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.5)
       chromatic:
-        specifier: ^16.2.0
-        version: 16.6.3
+        specifier: 'catalog:'
+        version: 16.9.0
       jsdom:
         specifier: ^29.0.2
         version: 29.0.2
@@ -1489,8 +1492,8 @@ importers:
         specifier: 5.6.2
         version: 5.6.2
       chromatic:
-        specifier: ^16.2.0
-        version: 16.6.3
+        specifier: 'catalog:'
+        version: 16.9.0
       jsdom:
         specifier: ^29.0.2
         version: 29.0.2
@@ -7011,8 +7014,8 @@ packages:
       '@chromatic-com/playwright':
         optional: true
 
-  chromatic@16.6.3:
-    resolution: {integrity: sha512-N9WCRuezqrxujRvgnAlE9XKxXcF6q2kowKH2Ba82FYkRc4xlY9g8r+ESEph9jLv500s43/9oDmB/kZ9r24BcgQ==}
+  chromatic@16.9.0:
+    resolution: {integrity: sha512-KJ1qvHMMP3jYZksxA229dREL81TeS+XxerRgd83klJIgtuQdY8kYg5TClNaF+K9HAzHmF19VIDHF6d0XwsRqzQ==}
     hasBin: true
     peerDependencies:
       '@chromatic-com/cypress': ^0.*.* || ^1.0.0
@@ -18852,7 +18855,7 @@ snapshots:
 
   chromatic@13.3.5: {}
 
-  chromatic@16.6.3:
+  chromatic@16.9.0:
     dependencies:
       semver: 7.7.4
 
