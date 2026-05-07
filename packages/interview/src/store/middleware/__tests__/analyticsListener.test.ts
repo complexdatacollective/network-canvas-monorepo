@@ -13,8 +13,10 @@ import session, {
 import ui, { setPassphrase, setPassphraseInvalid } from "../../modules/ui";
 import { createAnalyticsListenerMiddleware } from "../analyticsListener";
 
-function makeTracker(): Tracker & { track: ReturnType<typeof vi.fn>; captureException: ReturnType<typeof vi.fn> } {
-	return { track: vi.fn(), captureException: vi.fn() };
+function makeTracker() {
+	const track = vi.fn<Tracker["track"]>();
+	const captureException = vi.fn<Tracker["captureException"]>();
+	return { track, captureException } satisfies Tracker;
 }
 
 function buildStore(tracker: Tracker, networkOverrides: { nodes?: unknown[]; edges?: unknown[] } = {}) {
@@ -44,7 +46,6 @@ function buildStore(tracker: Tracker, networkOverrides: { nodes?: unknown[]; edg
 					{ id: "s1", type: "NameGenerator", prompts: [{ id: "p1" }] },
 				],
 			} as never,
-			ui: undefined,
 		},
 		middleware: (g) =>
 			g({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),

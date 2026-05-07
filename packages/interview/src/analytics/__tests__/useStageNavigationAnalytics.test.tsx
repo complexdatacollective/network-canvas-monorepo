@@ -14,9 +14,7 @@ function makeWrapper(tracker: Tracker, stages: Array<{ type: string }>) {
 	const store = configureStore({
 		reducer: { session, protocol, ui },
 		preloadedState: {
-			session: undefined,
 			protocol: { id: "p", hash: "h", schemaVersion: 8, codebook: {}, stages } as never,
-			ui: undefined,
 		},
 		middleware: (g) => g({ serializableCheck: false }),
 	});

@@ -49,7 +49,6 @@ function buildStore(tracker: Tracker) {
 				},
 				stages: [{ id: "s0", type: "Information" }],
 			} as never,
-			ui: undefined,
 		},
 		middleware: (g) =>
 			g({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),

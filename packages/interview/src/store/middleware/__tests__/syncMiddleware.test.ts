@@ -13,7 +13,7 @@ function makeSession(overrides: Partial<SessionState> = {}): SessionState {
 		exportTime: null,
 		lastUpdated: new Date().toISOString(),
 		network: { ego: { _uid: "ego-1", [Symbol()]: {} }, nodes: [], edges: [] },
-		currentStep: 0,
+
 		...overrides,
 	} as SessionState;
 }
@@ -61,7 +61,7 @@ describe("syncMiddleware", () => {
 	it("syncs immediately on first state change (leading edge)", async () => {
 		const store = createTestStore(middleware);
 
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 
 		// Leading edge fires synchronously inside the debounce call, which
 		// triggers the async onSync. Flush the microtask queue so the mock
@@ -69,7 +69,10 @@ describe("syncMiddleware", () => {
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
-		expect(onSyncMock).toHaveBeenCalledWith("interview-1", expect.objectContaining({ currentStep: 1 }));
+		expect(onSyncMock).toHaveBeenCalledWith(
+			"interview-1",
+			expect.objectContaining({ lastUpdated: "2026-01-01T00:00:01.000Z" }),
+		);
 	});
 
 	it("does not sync when only promptIndex changes", async () => {
@@ -85,13 +88,13 @@ describe("syncMiddleware", () => {
 		const store = createTestStore(middleware);
 
 		// First change → leading edge sync
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
 
 		// Rapid subsequent changes within the 3s debounce window
-		store.dispatch(mutateSession({ currentStep: 2 }));
-		store.dispatch(mutateSession({ currentStep: 3 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:02.000Z" }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:03.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 
 		// Still only the initial sync — debounce absorbs these
@@ -101,7 +104,10 @@ describe("syncMiddleware", () => {
 		await vi.advanceTimersByTimeAsync(3000);
 
 		expect(onSyncMock).toHaveBeenCalledTimes(2);
-		expect(onSyncMock).toHaveBeenLastCalledWith("interview-1", expect.objectContaining({ currentStep: 3 }));
+		expect(onSyncMock).toHaveBeenLastCalledWith(
+			"interview-1",
+			expect.objectContaining({ lastUpdated: "2026-01-01T00:00:03.000Z" }),
+		);
 	});
 
 	it("does not lose changes made during an in-flight sync", async () => {
@@ -117,12 +123,12 @@ describe("syncMiddleware", () => {
 		const store = createTestStore(middleware);
 
 		// First change → leading edge sync starts (in-flight)
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
 
 		// Change state while sync is in-flight
-		store.dispatch(mutateSession({ currentStep: 2 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:02.000Z" }));
 
 		// Resolve the in-flight sync → .finally() should detect dirty state
 		// and call debouncedSync(). The debounce timer is still active from the
@@ -133,7 +139,10 @@ describe("syncMiddleware", () => {
 		// Advance past the debounce window so the trailing edge fires
 		await vi.advanceTimersByTimeAsync(3000);
 		expect(onSyncMock).toHaveBeenCalledTimes(2);
-		expect(onSyncMock).toHaveBeenLastCalledWith("interview-1", expect.objectContaining({ currentStep: 2 }));
+		expect(onSyncMock).toHaveBeenLastCalledWith(
+			"interview-1",
+			expect.objectContaining({ lastUpdated: "2026-01-01T00:00:02.000Z" }),
+		);
 	});
 
 	it("reads current state at sync time, not at dispatch time", async () => {
@@ -149,37 +158,40 @@ describe("syncMiddleware", () => {
 		const store = createTestStore(middleware);
 
 		// Leading edge sync fires with currentStep: 1
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 
 		// Let the sync complete
 		await vi.advanceTimersByTimeAsync(100);
 
 		// More changes within the debounce window
-		store.dispatch(mutateSession({ currentStep: 5 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:05.000Z" }));
 
 		// Advance past debounce → trailing edge fires
 		await vi.advanceTimersByTimeAsync(3000);
 
 		// The trailing edge should have the latest state (currentStep: 5)
-		expect(onSyncMock).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ currentStep: 5 }));
+		expect(onSyncMock).toHaveBeenLastCalledWith(
+			expect.any(String),
+			expect.objectContaining({ lastUpdated: "2026-01-01T00:00:05.000Z" }),
+		);
 	});
 
 	it("resets state when a new store connects", async () => {
 		const store1 = createTestStore(middleware);
 
 		// Trigger a sync on store 1
-		store1.dispatch(mutateSession({ currentStep: 1 }));
+		store1.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
 
 		// Create a new store with the same middleware (simulates navigating
 		// to a new interview). The middleware should reset its internal state.
-		const store2 = createTestStore(middleware, makeSession({ id: "interview-2", currentStep: 0 }));
+		const store2 = createTestStore(middleware, makeSession({ id: "interview-2" }));
 
 		// A change on store 2 should trigger a sync, even though the state
 		// shape might overlap with store 1's last synced state.
-		store2.dispatch(mutateSession({ currentStep: 1 }));
+		store2.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(onSyncMock).toHaveBeenCalledTimes(2);
@@ -190,13 +202,13 @@ describe("syncMiddleware", () => {
 		const store1 = createTestStore(middleware);
 
 		// Trigger leading edge + queue trailing
-		store1.dispatch(mutateSession({ currentStep: 1 }));
-		store1.dispatch(mutateSession({ currentStep: 2 }));
+		store1.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
+		store1.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:02.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
 
 		// Connect a new store before the trailing edge fires
-		createTestStore(middleware, makeSession({ id: "interview-2", currentStep: 0 }));
+		createTestStore(middleware, makeSession({ id: "interview-2" }));
 
 		// Advance past the original debounce window
 		await vi.advanceTimersByTimeAsync(3000);
@@ -212,12 +224,12 @@ describe("syncMiddleware", () => {
 		const store = createTestStore(middleware);
 
 		// First sync fails
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
 
 		// Second change should still trigger a sync
-		store.dispatch(mutateSession({ currentStep: 2 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:02.000Z" }));
 		await vi.advanceTimersByTimeAsync(3000);
 
 		expect(onSyncMock).toHaveBeenCalledTimes(2);
@@ -226,7 +238,7 @@ describe("syncMiddleware", () => {
 	it("does not sync when state is identical to last synced state", async () => {
 		const store = createTestStore(middleware);
 
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(onSyncMock).toHaveBeenCalledTimes(1);
 
@@ -238,19 +250,19 @@ describe("syncMiddleware", () => {
 		// produces the same result, but our test reducer always spreads
 		// (creating a new object). The middleware uses deep equality, so
 		// it should still skip the sync.
-		store.dispatch(mutateSession({ currentStep: 1 }));
+		store.dispatch(mutateSession({ lastUpdated: "2026-01-01T00:00:01.000Z" }));
 		await vi.advanceTimersByTimeAsync(3000);
 
 		// The trailing from the first cycle may fire, but the second dispatch
 		// should not produce an additional sync because the values match.
 		const callsWithStep1 = (onSyncMock.mock.calls as [string, SessionState][]).filter(
-			(call) => call[1].currentStep === 1,
+			(call) => call[1].lastUpdated === "2026-01-01T00:00:01.000Z",
 		);
 		// At most the leading + trailing of the first cycle
 		expect(callsWithStep1.length).toBeLessThanOrEqual(2);
 
 		// No call should have been made for the second dispatch
-		const allSteps = (onSyncMock.mock.calls as [string, SessionState][]).map((call) => call[1].currentStep);
-		expect(allSteps.every((step) => step === 1)).toBe(true);
+		const allSteps = (onSyncMock.mock.calls as [string, SessionState][]).map((call) => call[1].lastUpdated);
+		expect(allSteps.every((step) => step === "2026-01-01T00:00:01.000Z")).toBe(true);
 	});
 });

@@ -409,7 +409,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"typecheck": "tsc --build --noEmit",
+		"typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
 		"test": "vitest run",
 		"test:unit": "vitest run --project=unit",
 		"test:storybook": "vitest run --project=storybook",
@@ -470,6 +470,7 @@
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.0",
 		"@testing-library/user-event": "^14.6.1",
+		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "catalog:",
