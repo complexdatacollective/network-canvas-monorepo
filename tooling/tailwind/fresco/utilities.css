@@ -121,6 +121,12 @@
    `dashboard:` prefixes (e.g. Button.tsx swaps default-color tokens via
    `interview:[...]`). They live in the foundation barrel so any consumer
    of `@codaco/tailwind-config/fresco.css` gets them in the same Tailwind
-   compilation pass that scans the components. */
+   compilation pass that scans the components.
+
+   `dashboard` is intentionally asymmetric: `interview` matches descendants
+   of `[data-theme-interview]`, while `dashboard` excludes both descendants
+   AND the wrapper itself, so a `dashboard:` utility never applies inside
+   a themed region. The complex `:not()` form requires Baseline 2023
+   (Chrome 88+, Firefox 84+, Safari 16.4+). */
 @custom-variant interview ([data-theme-interview] &);
 @custom-variant dashboard (&:not([data-theme-interview] *):not([data-theme-interview]));
