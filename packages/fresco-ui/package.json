@@ -104,6 +104,14 @@
 			"types": "./dist/Tooltip.d.ts",
 			"default": "./dist/Tooltip.js"
 		},
+		"./PortalContainer": {
+			"types": "./dist/PortalContainer.d.ts",
+			"default": "./dist/PortalContainer.js"
+		},
+		"./ThemedRegion": {
+			"types": "./dist/ThemedRegion.d.ts",
+			"default": "./dist/ThemedRegion.js"
+		},
 		"./Table": {
 			"types": "./dist/Table.d.ts",
 			"default": "./dist/Table.js"
