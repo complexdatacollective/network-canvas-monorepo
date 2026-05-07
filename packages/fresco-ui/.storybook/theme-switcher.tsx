@@ -1,10 +1,9 @@
 import type { Decorator } from "@storybook/react-vite";
-import { useLayoutEffect } from "react";
+import { ThemedRegion } from "../src/ThemedRegion";
 import { cx } from "../src/utils/cva";
 
 const THEME_KEY = "theme";
 const STORAGE_KEY = "storybook-theme-preference";
-const INTERVIEW_ATTR = "data-theme-interview";
 
 const themes = {
 	dashboard: {
@@ -40,26 +39,17 @@ function setStoredTheme(theme: ThemeKey) {
 }
 
 function ThemeWrapper({ selectedTheme, children }: { selectedTheme: ThemeKey; children: React.ReactNode }) {
-	// Tie the interview theme attribute to `<html>` so `1rem` tracks the
-	// responsive font-size override in tailwind-config's interview theme.
-	// Toggling document.documentElement directly (rather than a React-
-	// managed wrapper) keeps the write/remove deterministic between
-	// stories in the same Chromatic worker iframe.
-	useLayoutEffect(() => {
-		setStoredTheme(selectedTheme);
-		if (selectedTheme === "interview") {
-			document.documentElement.setAttribute(INTERVIEW_ATTR, "");
-		} else {
-			document.documentElement.removeAttribute(INTERVIEW_ATTR);
-		}
-		return () => {
-			document.documentElement.removeAttribute(INTERVIEW_ATTR);
-		};
-	}, [selectedTheme]);
+	setStoredTheme(selectedTheme);
 
-	const isInterview = selectedTheme === "interview";
+	if (selectedTheme === "interview") {
+		return (
+			<ThemedRegion theme="interview" className="bg-background text-text publish-colors scheme-dark">
+				{children}
+			</ThemedRegion>
+		);
+	}
 
-	return <div className={cx("bg-background text-text publish-colors", isInterview && "scheme-dark")}>{children}</div>;
+	return <div className={cx("bg-background text-text publish-colors")}>{children}</div>;
 }
 
 export const withTheme: Decorator = (Story, context) => {
