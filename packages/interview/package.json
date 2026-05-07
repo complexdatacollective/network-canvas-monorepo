@@ -70,7 +70,7 @@
 		"zustand": "^5.0.12"
 	},
 	"devDependencies": {
-		"@chromatic-com/storybook": "^5.1.2",
+		"@chromatic-com/storybook": "catalog:",
 		"@codaco/tsconfig": "workspace:*",
 		"@playwright/test": "^1.59.1",
 		"@storybook/addon-a11y": "^10.3.5",
@@ -86,8 +86,8 @@
 		"@types/react-dom": "catalog:",
 		"@types/redux-logger": "^3.0.13",
 		"@vitejs/plugin-react": "catalog:",
-		"@vitest/browser": "^4.1.5",
-		"@vitest/browser-playwright": "^4.1.5",
+		"@vitest/browser": "catalog:",
+		"@vitest/browser-playwright": "catalog:",
 		"chalk": "5.6.2",
 		"chromatic": "catalog:",
 		"jsdom": "^29.0.2",
