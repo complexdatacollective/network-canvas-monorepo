@@ -10,7 +10,7 @@ import { type PropsWithChildren, StrictMode } from "react";
 import { ThemedRegion } from "../src/ThemedRegion";
 import "./preview.css";
 import Providers from "./Providers";
-import { getInitialTheme, globalTypes, THEME_KEY, type ThemeKey, withTheme } from "./theme-switcher";
+import { getInitialTheme, globalTypes, persistTheme, THEME_KEY, type ThemeKey } from "./theme-switcher";
 
 // Wrap each docs page in <ThemedRegion> when the toolbar's selected theme is
 // "interview" so chrome rendered outside the per-story decorator tree
@@ -85,13 +85,7 @@ export default definePreview({
 	},
 
 	decorators: [
-		// withTheme must be the outermost decorator so that <ThemedRegion>
-		// (and the <PortalContainerProvider> it bundles) wraps Providers —
-		// that puts <Toaster />, the DialogProvider's dialog map, and any
-		// Base UI portals inside the themed subtree, so they inherit the
-		// interview palette and route portals through the provider's
-		// container instead of escaping to document.body.
-		withTheme,
+		persistTheme,
 		(Story) => {
 			// Disable Base UI animations whenever the browser is being driven by
 			// automation (Playwright in vitest browser mode, or Storybook's

@@ -1,6 +1,5 @@
 import type { Decorator } from "@storybook/react-vite";
-import { ThemedRegion } from "../src/ThemedRegion";
-import { cx } from "../src/utils/cva";
+import { useEffect } from "react";
 
 export const THEME_KEY = "theme";
 const STORAGE_KEY = "storybook-theme-preference";
@@ -38,29 +37,19 @@ function setStoredTheme(theme: ThemeKey) {
 	}
 }
 
-function ThemeWrapper({ selectedTheme, children }: { selectedTheme: ThemeKey; children: React.ReactNode }) {
-	setStoredTheme(selectedTheme);
-
-	if (selectedTheme === "interview") {
-		return (
-			<ThemedRegion theme="interview" className="bg-background text-text publish-colors">
-				{children}
-			</ThemedRegion>
-		);
-	}
-
-	return <div className={cx("bg-background text-text publish-colors")}>{children}</div>;
-}
-
-export const withTheme: Decorator = (Story, context) => {
-	const selectedTheme =
-		(context.parameters.forceTheme as ThemeKey) ?? (context.globals[THEME_KEY] as ThemeKey) ?? "dashboard";
-
-	return (
-		<ThemeWrapper selectedTheme={selectedTheme}>
-			<Story />
-		</ThemeWrapper>
-	);
+/**
+ * Persists the toolbar's selected theme to localStorage on every change so
+ * `getInitialTheme()` can restore it on the next preview load. Storybook's
+ * `globalTypes` API doesn't expose an onChange hook directly, so this runs
+ * the side effect inside a decorator that re-renders whenever `context.globals[THEME_KEY]`
+ * changes.
+ */
+export const persistTheme: Decorator = (Story, context) => {
+	const theme = (context.globals[THEME_KEY] as ThemeKey | undefined) ?? "dashboard";
+	useEffect(() => {
+		setStoredTheme(theme);
+	}, [theme]);
+	return <Story />;
 };
 
 export const globalTypes = {
