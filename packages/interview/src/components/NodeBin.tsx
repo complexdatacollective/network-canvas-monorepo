@@ -2,6 +2,7 @@ import { type DragMetadata, useDropTarget } from "@codaco/fresco-ui/dnd/dnd";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { NcNode } from "@codaco/shared-consts";
 import { motion } from "motion/react";
+import nodeBinUrl from "./node-bin.svg";
 
 type NodeBinProps = {
 	accepts: (node: NcNode) => boolean;
@@ -26,10 +27,10 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
 			{...dropProps}
 			className={cx(
 				"pointer-events-auto absolute bottom-7 left-1/2 z-50",
-				"h-28 w-20 -translate-x-1/2 overflow-hidden",
-				"bg-[url(/images/node-bin.svg)] bg-contain bg-no-repeat",
+				"h-28 w-20 -translate-x-1/2 overflow-hidden bg-contain bg-no-repeat",
 				"drop-shadow-[0_2.4rem_2.4rem_var(--nc-drop-shadow-color,rgba(0,0,0,0.3))]",
 			)}
+			style={{ backgroundImage: `url(${nodeBinUrl})` }}
 			initial={{ opacity: 0, y: "1.8rem" }}
 			animate={
 				willAccept
