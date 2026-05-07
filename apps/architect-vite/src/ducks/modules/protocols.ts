@@ -1,6 +1,5 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { RootState } from "./root";
 
 // TODO: This is a stub implementation - needs full implementation
 // This file was created to fix TypeScript import errors
