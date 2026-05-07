@@ -9,7 +9,22 @@
  *
  */
 
-@theme static {
+/*
+ * `inline` makes Tailwind substitute the `var()` references below directly
+ * into the generated utility CSS instead of emitting `--color-*` (etc.)
+ * as registered properties via @property. Without `inline`, Tailwind's
+ * @property registration would resolve every `var(--background)` (etc.)
+ * at the :root cascade context, snapshotting the default-theme value —
+ * which means redeclaring `--background` inside `[data-theme-interview]`
+ * would have no effect on `bg-background` / `text-text` / etc. for
+ * descendants.
+ *
+ * `inline` causes `bg-background` to compile as `background-color: var(--background)`
+ * directly. The inner `var(--background)` then resolves at use-site, picking
+ * up the closest themed ancestor's override. Same applies to the type scale
+ * via `var(--theme-root-size)`, and spacing via `var(--spacing-base)`.
+ */
+@theme static inline {
   /*
    * Typography
    *
