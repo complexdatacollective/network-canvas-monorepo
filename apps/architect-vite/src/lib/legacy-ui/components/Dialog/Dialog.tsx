@@ -1,13 +1,15 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import cx from "classnames";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { cva } from "~/utils/cva";
 import Icon from "../Icon";
 import Modal from "../Modal";
 
+type DialogType = "notice" | "confirm" | "warning" | "error" | "simple";
+
 type DialogProps = {
 	children?: ReactNode;
-	type?: string;
+	type?: DialogType;
 	icon?: string;
 	show?: boolean;
 	options?: React.ReactElement[];
@@ -16,6 +18,22 @@ type DialogProps = {
 	onBlur?: () => void;
 	classNames?: string;
 };
+
+const dialogVariants = cva({
+	base: "fixed top-1/2 left-1/2 z-(--z-dialog) flex w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-(--space-lg) rounded-lg border-l-8 bg-surface-1 p-(--space-lg) text-foreground",
+	variants: {
+		type: {
+			notice: "border-l-info",
+			confirm: "border-l-info",
+			warning: "border-l-warning",
+			error: "border-l-error",
+			simple: "border-l-primary",
+		},
+	},
+	defaultVariants: {
+		type: "simple",
+	},
+});
 
 /*
  * Top level Dialog component, not intended to be used directly, if you need
@@ -54,19 +72,13 @@ const Dialog = ({
 						stiffness: 300,
 						damping: 30,
 					}}
-					className={cx(
-						"dialog",
-						{ [`dialog--${type}`]: type },
-						classNames,
-						"p-6 flex flex-col gap-6",
-						"bg-slate-blue-dark text-accent-foreground w-xl fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg",
-					)}
+					className={dialogVariants({ type, class: classNames })}
 				/>
 			}
 		>
-			<div className="flex gap-6">
+			<div className="flex gap-(--space-lg)">
 				{icon && (
-					<div className="flex items-center justify-center shrink-0">
+					<div className="flex shrink-0 items-center justify-center">
 						<Icon name={icon} />
 					</div>
 				)}
@@ -76,7 +88,7 @@ const Dialog = ({
 					{children}
 				</div>
 			</div>
-			<footer className="flex gap-4 justify-end">{options}</footer>
+			<footer className="flex justify-end gap-(--space-md)">{options}</footer>
 		</BaseDialog.Popup>
 	</Modal>
 );

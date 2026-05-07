@@ -1,7 +1,0 @@
-.scrollable {
-	overflow-x: hidden;
-	overflow-y: auto;
-	-webkit-overflow-scrolling: touch;
-	scroll-behavior: smooth;
-	flex: 1;
-}
