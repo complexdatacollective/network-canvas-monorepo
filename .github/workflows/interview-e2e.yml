@@ -74,7 +74,10 @@ jobs:
           retention-days: 14
 
   deploy-report:
-    if: always()
+    # Run on test pass or fail, but skip when e2e is cancelled (concurrency
+    # interrupt or manual cancel) — there's no artifact to deploy and the
+    # outputs are empty, so the job would just error out trying to download.
+    if: ${{ !cancelled() && needs.e2e.result != 'cancelled' }}
     needs: e2e
     runs-on: ubuntu-latest
     concurrency:
@@ -135,7 +138,10 @@ jobs:
             });
 
   result:
-    if: always()
+    # Same gate as deploy-report: only summarize the outcome when e2e
+    # actually ran. A cancelled e2e leaves needs.e2e.outputs.outcome empty,
+    # which would otherwise be misreported as a failure.
+    if: ${{ !cancelled() && needs.e2e.result != 'cancelled' }}
     needs: e2e
     runs-on: ubuntu-latest
     steps:
