@@ -24,7 +24,7 @@
  * up the closest themed ancestor's override. Same applies to the type scale
  * via `var(--theme-root-size)`, and spacing via `var(--spacing-base)`.
  */
-@theme static inline {
+@theme inline {
   /*
    * Typography
    *
