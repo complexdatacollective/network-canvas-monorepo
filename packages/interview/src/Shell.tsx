@@ -2,10 +2,11 @@
 "use no memo";
 
 import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
+import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
 import type { PostHog } from "posthog-js";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
 import { AnalyticsProvider } from "./analytics/AnalyticsProvider";
 import { NULL_TRACKER, type Tracker } from "./analytics/tracker";
@@ -52,18 +53,6 @@ function Interview() {
 		progress,
 	} = useInterviewNavigation();
 
-	// Sets `data-theme-interview` on `<html>` so the interview theme's
-	// `:root[data-theme-interview]` selector matches and the responsive
-	// font-size override updates `1rem` document-wide. The marker on the
-	// `<main>` below stays put as a stable selector for tests/storybook.
-	useLayoutEffect(() => {
-		const root = document.documentElement;
-		root.setAttribute("data-theme-interview", "");
-		return () => {
-			root.removeAttribute("data-theme-interview");
-		};
-	}, []);
-
 	useStageNavigationAnalytics({
 		stage_index: displayedStep,
 		stage_type: stage?.type,
@@ -76,12 +65,16 @@ function Interview() {
 	const navigationOrientation = isPortraitAspectRatio ? "horizontal" : "vertical";
 
 	return (
-		<main
-			data-theme-interview
-			className={cx(
-				"relative flex size-full flex-1 overflow-hidden bg-background text-text scheme-dark",
-				isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
-			)}
+		<ThemedRegion
+			theme="interview"
+			render={
+				<main
+					className={cx(
+						"relative flex size-full flex-1 overflow-hidden bg-background text-text scheme-dark",
+						isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
+					)}
+				/>
+			}
 		>
 			<StageMetadataProvider value={registerBeforeNext}>
 				<InterviewToastProvider
@@ -124,7 +117,7 @@ function Interview() {
 				forwardButtonRef={forwardButtonRef}
 				backButtonRef={backButtonRef}
 			/>
-		</main>
+		</ThemedRegion>
 	);
 }
 
