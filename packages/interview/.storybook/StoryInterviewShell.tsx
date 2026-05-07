@@ -8,6 +8,7 @@ import {
 	isValidAssetType,
 	type ResolvedAsset,
 	Shell,
+	StageMetadataSchema,
 	type StepChangeHandler,
 } from "../src";
 
@@ -49,7 +50,7 @@ function buildPayload(raw: RawSyntheticPayload): {
 	initialStep: number;
 	assetUrls: Record<string, string>;
 } {
-	const { protocol, ...sessionFields } = raw;
+	const { protocol, currentStep: _currentStep, stageMetadata, ...sessionDateFields } = raw;
 
 	const assets: ResolvedAsset[] = protocol.assets.flatMap((a) => {
 		const assetId = typeof a.assetId === "string" ? a.assetId : null;
@@ -72,9 +73,22 @@ function buildPayload(raw: RawSyntheticPayload): {
 		}
 	}
 
+	// SessionState expects ISO date strings (Redux refuses non-serializable
+	// values). SyntheticInterview emits live Date objects, so coerce here.
+	const parsedStageMetadata = StageMetadataSchema.safeParse(stageMetadata);
+	const session: InterviewPayload["session"] = {
+		id: sessionDateFields.id,
+		startTime: sessionDateFields.startTime.toISOString(),
+		finishTime: sessionDateFields.finishTime?.toISOString() ?? null,
+		exportTime: sessionDateFields.exportTime?.toISOString() ?? null,
+		lastUpdated: sessionDateFields.lastUpdated.toISOString(),
+		network: sessionDateFields.network,
+		...(parsedStageMetadata.success ? { stageMetadata: parsedStageMetadata.data } : {}),
+	};
+
 	return {
 		payload: {
-			session: sessionFields as unknown as InterviewPayload["session"],
+			session,
 			protocol: {
 				...protocol,
 				hash: typeof protocol.id === "string" ? `storybook-${protocol.id}` : "storybook-hash",
