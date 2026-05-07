@@ -1,9 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import cx from "classnames";
-import { memo, useRef, useState } from "react";
+import { memo, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
 
 type TextInputProps = {
@@ -46,54 +46,43 @@ const TextInput = ({
 }: TextInputProps) => {
 	const { error, invalid, touched } = meta;
 	const id = useRef(uuid());
-	const [hasFocus, setFocus] = useState(false);
-
-	const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
-		setFocus(true);
-		if (input.onFocus) {
-			input.onFocus(event);
-		}
-	};
-
-	const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-		setFocus(false);
-		if (input.onBlur) {
-			input.onBlur(event);
-		}
-	};
 
 	const hasLeftAdornment = !!adornmentLeft;
 	const hasRightAdornment = !!adornmentRight;
-	const hasAdornment = hasLeftAdornment || hasRightAdornment;
-
-	const seamlessClasses = cx(className, "form-field-text", {
-		"form-field-text--has-focus": hasFocus,
-		"form-field-text--has-error": invalid && touched && error,
-		"form-field-text--adornment": hasAdornment,
-		"form-field-text--has-left-adornment": hasLeftAdornment,
-		"form-field-text--has-right-adornment": hasRightAdornment,
-	});
+	const hasError = !!(invalid && touched && error);
 
 	const anyLabel = fieldLabel || label;
 
 	return (
 		<div className="form-field-container" hidden={hidden}>
 			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
-			<div className={seamlessClasses}>
+			<div className={cx("group relative", className)}>
 				<input
 					id={id.current}
 					name={input.name}
-					className="form-field form-field-text__input"
-					placeholder={placeholder?.toString()} // eslint-disable-line
+					className={cx(
+						"form-field placeholder:italic",
+						"group-hover:border-b-input-active focus:border-b-input-active",
+						hasLeftAdornment && "pl-[3.25em]",
+						hasRightAdornment && "pr-[3.25em]",
+						hasError && "border-2 border-error rounded-b-none",
+					)}
+					placeholder={placeholder?.toString()}
 					type={type}
 					{...input}
-					onBlur={handleBlur}
-					onFocus={handleFocus}
 				/>
-				{adornmentLeft && <div className="form-field-text__adornment-left">{adornmentLeft}</div>}
-				{adornmentRight && <div className="form-field-text__adornment-right">{adornmentRight}</div>}
-				{invalid && touched && (
-					<div className="form-field-text__error">
+				{adornmentLeft && (
+					<div className="absolute inset-y-0 left-[1em] flex w-[1.5em] items-center justify-center transition-all duration-(--animation-duration-fast) ease-(--animation-easing)">
+						{adornmentLeft}
+					</div>
+				)}
+				{adornmentRight && (
+					<div className="absolute inset-y-0 right-[1em] flex w-[1.5em] items-center justify-center transition-all duration-(--animation-duration-fast) ease-(--animation-easing)">
+						{adornmentRight}
+					</div>
+				)}
+				{hasError && (
+					<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-lg [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{error}
 					</div>
