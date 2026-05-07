@@ -70,7 +70,7 @@ function Interview() {
 			render={
 				<main
 					className={cx(
-						"relative flex size-full flex-1 overflow-hidden bg-background text-text scheme-dark",
+						"relative flex size-full flex-1 overflow-hidden bg-background text-text",
 						isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
 					)}
 				/>

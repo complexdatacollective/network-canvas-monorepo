@@ -43,7 +43,7 @@ function ThemeWrapper({ selectedTheme, children }: { selectedTheme: ThemeKey; ch
 
 	if (selectedTheme === "interview") {
 		return (
-			<ThemedRegion theme="interview" className="bg-background text-text publish-colors scheme-dark">
+			<ThemedRegion theme="interview" className="bg-background text-text publish-colors">
 				{children}
 			</ThemedRegion>
 		);

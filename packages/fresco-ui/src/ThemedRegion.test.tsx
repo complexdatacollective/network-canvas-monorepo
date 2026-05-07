@@ -4,7 +4,7 @@ import { usePortalContainer } from "./PortalContainer";
 import { ThemedRegion } from "./ThemedRegion";
 
 describe("ThemedRegion", () => {
-	it("renders a div with data-theme-interview when theme=interview", () => {
+	it("renders a div with data-theme-interview and scheme-dark when theme=interview", () => {
 		const { container } = render(
 			<ThemedRegion theme="interview">
 				<span data-testid="child">hello</span>
@@ -15,6 +15,7 @@ describe("ThemedRegion", () => {
 		expect(wrapper).not.toBeNull();
 		expect(wrapper?.tagName).toBe("DIV");
 		expect(wrapper?.hasAttribute("data-theme-interview")).toBe(true);
+		expect(wrapper).toHaveClass("scheme-dark");
 		expect(screen.getByTestId("child")).toHaveTextContent("hello");
 	});
 
@@ -27,6 +28,7 @@ describe("ThemedRegion", () => {
 
 		const wrapper = container.firstElementChild;
 		expect(wrapper).toHaveClass("custom-class");
+		expect(wrapper).toHaveClass("scheme-dark");
 		expect(wrapper).toHaveAttribute("id", "region");
 	});
 
@@ -41,6 +43,7 @@ describe("ThemedRegion", () => {
 		expect(wrapper?.tagName).toBe("MAIN");
 		expect(wrapper?.hasAttribute("data-theme-interview")).toBe(true);
 		expect(wrapper).toHaveClass("shell");
+		expect(wrapper).toHaveClass("scheme-dark");
 		expect(screen.getByTestId("child")).toBeInTheDocument();
 	});
 
