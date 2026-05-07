@@ -97,7 +97,7 @@ export default function PedigreeLayout({
 	totalWidth += diamondInset * 2;
 	totalHeight += diamondInset * 2;
 
-	const edgeColor = "var(--color-edge-1)";
+	const edgeColor = "var(--edge-1)";
 
 	return (
 		<div className="relative" style={{ width: totalWidth, height: totalHeight }}>

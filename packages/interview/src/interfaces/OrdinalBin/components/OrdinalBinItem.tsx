@@ -38,17 +38,17 @@ const itemVariants = {
 
 const getPromptColorClass = (color: string | undefined) => {
 	return cx(
-		color === "ord-color-seq-1" && "[--prompt-color:var(--color-ord-1)]",
-		color === "ord-color-seq-2" && "[--prompt-color:var(--color-ord-2)]",
-		color === "ord-color-seq-3" && "[--prompt-color:var(--color-ord-3)]",
-		color === "ord-color-seq-4" && "[--prompt-color:var(--color-ord-4)]",
-		color === "ord-color-seq-5" && "[--prompt-color:var(--color-ord-5)]",
-		color === "ord-color-seq-6" && "[--prompt-color:var(--color-ord-6)]",
-		color === "ord-color-seq-7" && "[--prompt-color:var(--color-ord-7)]",
-		color === "ord-color-seq-8" && "[--prompt-color:var(--color-ord-8)]",
-		color === "ord-color-seq-9" && "[--prompt-color:var(--color-ord-9)]",
-		color === "ord-color-seq-10" && "[--prompt-color:var(--color-ord-10)]",
-		!color && "[--prompt-color:var(--color-ord-1)]",
+		color === "ord-color-seq-1" && "[--prompt-color:var(--ord-1)]",
+		color === "ord-color-seq-2" && "[--prompt-color:var(--ord-2)]",
+		color === "ord-color-seq-3" && "[--prompt-color:var(--ord-3)]",
+		color === "ord-color-seq-4" && "[--prompt-color:var(--ord-4)]",
+		color === "ord-color-seq-5" && "[--prompt-color:var(--ord-5)]",
+		color === "ord-color-seq-6" && "[--prompt-color:var(--ord-6)]",
+		color === "ord-color-seq-7" && "[--prompt-color:var(--ord-7)]",
+		color === "ord-color-seq-8" && "[--prompt-color:var(--ord-8)]",
+		color === "ord-color-seq-9" && "[--prompt-color:var(--ord-9)]",
+		color === "ord-color-seq-10" && "[--prompt-color:var(--ord-10)]",
+		!color && "[--prompt-color:var(--ord-1)]",
 	);
 };
 
@@ -106,8 +106,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 
 	const panelClasses = cx(
 		"row-span-2 grid min-w-0 grid-rows-subgrid overflow-hidden shadow portrait:col-span-2 portrait:row-span-1 portrait:grid-cols-subgrid portrait:grid-rows-none",
-		"bg-[color-mix(in_oklch,var(--color-surface-1)_var(--blend-percent),var(--color-background)_calc(100%-var(--blend-percent)))]",
-		missingValue && "bg-[color-mix(in_oklch,var(--color-rich-black)_10%,var(--color-background)_90%)]",
+		"bg-[color-mix(in_oklch,var(--surface-1)_var(--blend-percent),var(--background)_calc(100%-var(--blend-percent)))]",
+		missingValue && "bg-[color-mix(in_oklch,var(--rich-black)_10%,var(--background)_90%)]",
 		isFirst && "rounded-tl rounded-bl portrait:rounded-tr portrait:rounded-bl-none",
 		isLast && "rounded-tr rounded-br portrait:rounded-tr-none portrait:rounded-bl",
 	);
@@ -116,8 +116,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 		"flex min-h-14 items-center justify-center px-2 text-center",
 		promptColorClass,
 		missingValue
-			? "bg-[color-mix(in_oklab,var(--color-rich-black)_20%,var(--color-background)_80%)]"
-			: "bg-[color-mix(in_oklab,var(--prompt-color)_var(--blend-percent),var(--color-background)_calc(100%-var(--blend-percent)))]",
+			? "bg-[color-mix(in_oklab,var(--rich-black)_20%,var(--background)_80%)]"
+			: "bg-[color-mix(in_oklab,var(--prompt-color)_var(--blend-percent),var(--background)_calc(100%-var(--blend-percent)))]",
 	);
 
 	const bodyClasses = cx(

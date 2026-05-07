@@ -1994,7 +1994,7 @@ export const Playground: StoryFn<StoryArgs> = ({ network, nodeStyle }) => {
 					renderNode={(node) => renderNode(node, stableEdges)}
 				/>
 			</div>
-			<PedigreeKey color="var(--color-edge-1)" className="mx-auto rounded-lg bg-white/10 p-4" />
+			<PedigreeKey color="var(--edge-1)" className="mx-auto rounded-lg bg-white/10 p-4" />
 		</div>
 	);
 };

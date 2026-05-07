@@ -20,37 +20,37 @@ const MAP_CONSTS = {
 
 // Map protocol color names to Tailwind CSS variable names
 const PROTOCOL_TO_THEME_VAR: Record<string, string> = {
-	"ord-color-seq-1": "--color-ord-1",
-	"ord-color-seq-2": "--color-ord-2",
-	"ord-color-seq-3": "--color-ord-3",
-	"ord-color-seq-4": "--color-ord-4",
-	"ord-color-seq-5": "--color-ord-5",
-	"ord-color-seq-6": "--color-ord-6",
-	"ord-color-seq-7": "--color-ord-7",
-	"ord-color-seq-8": "--color-ord-8",
-	"ord-color-seq-9": "--color-ord-9",
-	"ord-color-seq-10": "--color-ord-10",
-	"primary-color-seq-1": "--color-node-1",
-	"primary-color-seq-2": "--color-node-2",
-	"primary-color-seq-3": "--color-node-3",
-	"primary-color-seq-4": "--color-node-4",
-	"primary-color-seq-5": "--color-node-5",
-	"primary-color-seq-6": "--color-node-6",
-	"primary-color-seq-7": "--color-node-7",
-	"primary-color-seq-8": "--color-node-8",
-	"cat-color-seq-1": "--color-cat-1",
-	"cat-color-seq-2": "--color-cat-2",
-	"cat-color-seq-3": "--color-cat-3",
-	"cat-color-seq-4": "--color-cat-4",
-	"cat-color-seq-5": "--color-cat-5",
-	"cat-color-seq-6": "--color-cat-6",
-	"cat-color-seq-7": "--color-cat-7",
-	"cat-color-seq-8": "--color-cat-8",
-	"cat-color-seq-9": "--color-cat-9",
-	"cat-color-seq-10": "--color-cat-10",
+	"ord-color-seq-1": "--ord-1",
+	"ord-color-seq-2": "--ord-2",
+	"ord-color-seq-3": "--ord-3",
+	"ord-color-seq-4": "--ord-4",
+	"ord-color-seq-5": "--ord-5",
+	"ord-color-seq-6": "--ord-6",
+	"ord-color-seq-7": "--ord-7",
+	"ord-color-seq-8": "--ord-8",
+	"ord-color-seq-9": "--ord-9",
+	"ord-color-seq-10": "--ord-10",
+	"primary-color-seq-1": "--node-1",
+	"primary-color-seq-2": "--node-2",
+	"primary-color-seq-3": "--node-3",
+	"primary-color-seq-4": "--node-4",
+	"primary-color-seq-5": "--node-5",
+	"primary-color-seq-6": "--node-6",
+	"primary-color-seq-7": "--node-7",
+	"primary-color-seq-8": "--node-8",
+	"cat-color-seq-1": "--cat-1",
+	"cat-color-seq-2": "--cat-2",
+	"cat-color-seq-3": "--cat-3",
+	"cat-color-seq-4": "--cat-4",
+	"cat-color-seq-5": "--cat-5",
+	"cat-color-seq-6": "--cat-6",
+	"cat-color-seq-7": "--cat-7",
+	"cat-color-seq-8": "--cat-8",
+	"cat-color-seq-9": "--cat-9",
+	"cat-color-seq-10": "--cat-10",
 };
 
-const DEFAULT_COLOR_VAR = "--color-node-1";
+const DEFAULT_COLOR_VAR = "--node-1";
 const DEFAULT_FALLBACK = "rgb(226, 33, 91)";
 
 /**
@@ -243,7 +243,7 @@ export const useMapbox = ({
 			});
 
 			// Transit color - use project secondary color
-			const transitColor = convertCssColorToHex(styles.getPropertyValue("--color-secondary").trim()) || "#7c3aed";
+			const transitColor = convertCssColorToHex(styles.getPropertyValue("--secondary").trim()) || "#7c3aed";
 
 			// Add transit layers from mapbox-streets-v8 vector tileset
 			// Check if source already exists (some map styles include this tileset)

@@ -34,9 +34,9 @@ export default function EdgeLayer({ edges, store }: EdgeLayerProps) {
 		const newLines = edges.map((edge) => {
 			const el = document.createElementNS(svgNS, "line") as SVGLineElement;
 			const colorToken = get(edgeDefinitions, [edge.type, "color"], "edge-color-seq-1") as string;
-			// Codebook stores 'edge-color-seq-N', CSS variable is '--color-edge-N'
+			// Codebook stores 'edge-color-seq-N', CSS variable is '--edge-N'
 			const n = /\d+$/.exec(colorToken)?.[0] ?? "1";
-			el.setAttribute("stroke", `var(--color-edge-${n})`);
+			el.setAttribute("stroke", `var(--edge-${n})`);
 			el.setAttribute("stroke-width", "6");
 			el.setAttribute("stroke-linecap", "round");
 			el.setAttribute("vector-effect", "non-scaling-stroke");

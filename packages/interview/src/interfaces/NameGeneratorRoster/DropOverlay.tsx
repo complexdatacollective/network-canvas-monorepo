@@ -36,7 +36,7 @@ const DropOverlay = ({ dropTargetId, nodeColor, message }: DropOverlayProps) => 
 
 	return (
 		<motion.div
-			className="absolute inset-0 flex flex-col items-center justify-center bg-[rgb(58_58_117/80%)] [text-shadow:1px_1px_0.5em_var(--color-rich-black)]"
+			className="absolute inset-0 flex flex-col items-center justify-center bg-[rgb(58_58_117/80%)] [text-shadow:1px_1px_0.5em_var(--rich-black)]"
 			variants={variants}
 			initial="hidden"
 			animate="visible"

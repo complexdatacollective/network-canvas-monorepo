@@ -30,11 +30,7 @@ export default function CopyDebugInfoButton({
 	return (
 		<Button
 			onClick={copyDebugInfoToClipboard}
-			className={cx(
-				// 'h-auto w-auto rounded border border-platinum-dark bg-transparent p-1 text-primary/70 transition-all',
-				// 'hover:bg-transparent hover:text-primary/100',
-				className,
-			)}
+			className={cx(className)}
 			title="Copy to clipboard"
 			color="primary"
 			icon={<ClipboardCopy />}

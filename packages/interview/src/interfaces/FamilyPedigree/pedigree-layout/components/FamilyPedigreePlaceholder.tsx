@@ -53,8 +53,8 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 	const ego = { x: 1400, y: 1100 }; // square (slightly brighter)
 	const child3 = { x: 2200, y: 1100 }; // circle
 
-	const stroke = "var(--color-platinum)";
-	const lineStroke = "var(--color-platinum)";
+	const stroke = "var(--platinum)";
+	const lineStroke = "var(--platinum)";
 	const sw = 25; // stroke width
 
 	return (

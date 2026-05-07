@@ -81,7 +81,7 @@ function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
 						style={{
 							left: `${pos.x * 100}%`,
 							top: `${pos.y * 100}%`,
-							backgroundColor: `var(--color-cat-${colorIndex})`,
+							backgroundColor: `var(--cat-${colorIndex})`,
 						}}
 					/>
 				);

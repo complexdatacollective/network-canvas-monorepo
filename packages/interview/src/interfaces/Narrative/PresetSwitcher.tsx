@@ -366,7 +366,7 @@ export default function PresetSwitcher({
 																		<span
 																			className="inline-block size-3 rounded-full"
 																			style={{
-																				backgroundColor: `var(--color-cat-${index + 1})`,
+																				backgroundColor: `var(--cat-${index + 1})`,
 																			}}
 																		/>
 																		<RenderMarkdown>{option.label}</RenderMarkdown>
@@ -398,7 +398,7 @@ function ArrowSvg(props: React.ComponentProps<"svg">) {
 }
 
 function EdgeSwatch({ color }: { color: string }) {
-	// Codebook stores 'edge-color-seq-N', CSS variable is '--color-edge-N'
+	// Codebook stores 'edge-color-seq-N', CSS variable is '--edge-N'
 	const n = /\d+$/.exec(color)?.[0] ?? "1";
-	return <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: `var(--color-edge-${n})` }} />;
+	return <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: `var(--edge-${n})` }} />;
 }

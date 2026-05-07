@@ -33,12 +33,12 @@ export function EgoIcon({ className, variant = "slate" }: { className?: string; 
 	const colors =
 		variant === "platinum"
 			? {
-					primary: "var(--color-platinum)",
-					secondary: "var(--color-platinum-dark)",
+					primary: "var(--platinum)",
+					secondary: "var(--platinum-dark)",
 				}
 			: {
-					primary: "var(--color-slate-blue)",
-					secondary: "var(--color-slate-blue-dark)",
+					primary: "var(--slate-blue)",
+					secondary: "var(--slate-blue-dark)",
 				};
 
 	return (

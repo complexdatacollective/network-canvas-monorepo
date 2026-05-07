@@ -83,8 +83,8 @@ export default function ConvexHullLayer({ store, nodes, groupVariable, categoric
 		for (const [value, group] of groups) {
 			// Create a polygon for each group (will be updated to circle/ellipse as needed)
 			const el = document.createElementNS(svgNS, "polygon") as SVGPolygonElement;
-			el.setAttribute("fill", `var(--color-cat-${group.colorIndex})`);
-			el.setAttribute("stroke", `var(--color-cat-${group.colorIndex})`);
+			el.setAttribute("fill", `var(--cat-${group.colorIndex})`);
+			el.setAttribute("stroke", `var(--cat-${group.colorIndex})`);
 			el.setAttribute("opacity", "0.45");
 			el.setAttribute("stroke-width", "140");
 			el.setAttribute("vector-effect", "non-scaling-stroke");

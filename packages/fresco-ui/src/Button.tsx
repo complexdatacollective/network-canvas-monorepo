@@ -35,22 +35,18 @@ const buttonSpecificVariants = cva({
 			link: "elevation-none hover:elevation-none! text-link h-auto! rounded-none p-0! underline-offset-4 hover:translate-none! hover:enabled:underline",
 		},
 		color: {
-			default: "[--component-bg:var(--color-neutral-contrast)] [--component-text:var(--color-neutral)]",
+			default: "[--component-bg:var(--neutral-contrast)] [--component-text:var(--neutral)]",
 			dynamic:
 				"text-current [--component-bg:currentColor] [--component-text:color-mix(in_oklab,var(--published-bg,--background),currentColor_8%)]",
-			primary:
-				"focus:outline-primary [--component-bg:var(--color-primary-contrast)] [--component-text:var(--color-primary)]",
+			primary: "focus:outline-primary [--component-bg:var(--primary-contrast)] [--component-text:var(--primary)]",
 			secondary:
-				"focus:outline-secondary [--component-bg:var(--color-secondary-contrast)] [--component-text:var(--color-secondary)]",
-			warning:
-				"focus:outline-warning [--component-bg:var(--color-warning-contrast)] [--component-text:var(--color-warning)]",
-			info: "focus:outline-info [--component-bg:var(--color-info-contrast)] [--component-text:var(--color-info)]",
+				"focus:outline-secondary [--component-bg:var(--secondary-contrast)] [--component-text:var(--secondary)]",
+			warning: "focus:outline-warning [--component-bg:var(--warning-contrast)] [--component-text:var(--warning)]",
+			info: "focus:outline-info [--component-bg:var(--info-contrast)] [--component-text:var(--info)]",
 			destructive:
-				"focus:outline-destructive [--component-bg:var(--color-destructive-contrast)] [--component-text:var(--color-destructive)]",
-			success:
-				"focus:outline-success [--component-bg:var(--color-success-contrast)] [--component-text:var(--color-success)]",
-			accent:
-				"focus:outline-accent [--component-bg:var(--color-accent-contrast)] [--component-text:var(--color-accent)]",
+				"focus:outline-destructive [--component-bg:var(--destructive-contrast)] [--component-text:var(--destructive)]",
+			success: "focus:outline-success [--component-bg:var(--success-contrast)] [--component-text:var(--success)]",
+			accent: "focus:outline-accent [--component-bg:var(--accent-contrast)] [--component-text:var(--accent)]",
 		},
 		hasIcon: { true: "gap-2" },
 		iconPosition: {
