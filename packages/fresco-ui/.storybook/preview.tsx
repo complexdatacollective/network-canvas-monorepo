@@ -2,13 +2,36 @@ import "@codaco/tailwind-config/fonts/inclusive-sans.css";
 import "@codaco/tailwind-config/fonts/nunito.css";
 import addonA11y from "@storybook/addon-a11y";
 import addonDocs from "@storybook/addon-docs";
+import { DocsContainer, type DocsContainerProps } from "@storybook/addon-docs/blocks";
 import addonVitest from "@storybook/addon-vitest";
 import { definePreview } from "@storybook/react-vite";
 import isChromatic from "chromatic/isChromatic";
-import { StrictMode } from "react";
+import { type PropsWithChildren, StrictMode } from "react";
+import { ThemedRegion } from "../src/ThemedRegion";
 import "./preview.css";
 import Providers from "./Providers";
-import { getInitialTheme, globalTypes, withTheme } from "./theme-switcher";
+import { getInitialTheme, globalTypes, THEME_KEY, type ThemeKey, withTheme } from "./theme-switcher";
+
+// Wrap each docs page in <ThemedRegion> when the toolbar's selected theme is
+// "interview" so chrome rendered outside the per-story decorator tree
+// (notably `.sbdocs-preview`) inherits the interview palette and the portal
+// container — e.g. `bg-background` on the docs preview container resolves to
+// the interview --background instead of the default theme.
+const ThemedDocsContainer = ({ children, context }: PropsWithChildren<DocsContainerProps>) => {
+	const story = context.storyById();
+	const storyContext = context.getStoryContext(story);
+	const theme = (storyContext.globals[THEME_KEY] as ThemeKey | undefined) ?? "dashboard";
+
+	if (theme === "interview") {
+		return (
+			<ThemedRegion theme="interview" className="bg-background text-text publish-colors">
+				<DocsContainer context={context}>{children}</DocsContainer>
+			</ThemedRegion>
+		);
+	}
+
+	return <DocsContainer context={context}>{children}</DocsContainer>;
+};
 
 // @chromatic-com/storybook is not included here because it doesn't export a
 // CSF Next compatible preview addon. It only provides server-side preset
@@ -35,6 +58,9 @@ export default definePreview({
 				color: /(background|color)$/i,
 				date: /Date$/i,
 			},
+		},
+		docs: {
+			container: ThemedDocsContainer,
 		},
 		a11y: {
 			// 'todo' - show a11y violations in the test UI only

@@ -2,7 +2,7 @@ import type { Decorator } from "@storybook/react-vite";
 import { ThemedRegion } from "../src/ThemedRegion";
 import { cx } from "../src/utils/cva";
 
-const THEME_KEY = "theme";
+export const THEME_KEY = "theme";
 const STORAGE_KEY = "storybook-theme-preference";
 
 const themes = {
@@ -14,7 +14,7 @@ const themes = {
 	},
 } as const;
 
-type ThemeKey = keyof typeof themes;
+export type ThemeKey = keyof typeof themes;
 
 function getStoredTheme(): ThemeKey | null {
 	try {
