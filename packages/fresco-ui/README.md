@@ -61,10 +61,11 @@ does **not** re-export the design-system foundation, so the
 
 `@codaco/tailwind-config/fresco.css` bundles the default and interview
 theme variants together with self-hosted Nunito and Inclusive Sans
-woff2 files. The interview theme only activates when an element on the
-page sets the `data-theme-interview` attribute — typically
-`@codaco/interview`'s `Shell` component, while it's mounted; otherwise
-the default theme is active.
+woff2 files.
+
+The interview theme is activated by the `data-theme-interview` attribute. Hosts typically apply it via the `<ThemedRegion theme="interview">` component (exported from `@codaco/fresco-ui/ThemedRegion`), which also wires up a `<PortalContainerProvider>` so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes portal into a node inside the themed subtree (and therefore inherit the theme's CSS variables) instead of into `document.body`.
+
+**Containing-block constraint:** the `<ThemedRegion>` element and its ancestors up to `<body>` must not have `transform`, `filter`, `perspective`, or `contain` set. Any of these creates a new containing block for fixed-positioned descendants, which would break modal/popover positioning. If you cannot satisfy this constraint, fall back to applying `data-theme-interview` higher in the tree (e.g. `<body>`).
 
 ## Public API surface
 
