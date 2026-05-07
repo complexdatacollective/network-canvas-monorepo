@@ -11,6 +11,7 @@ import {
 	useState,
 } from "react";
 import { MotionSurface } from "./layout/Surface";
+import { usePortalContainer } from "./PortalContainer";
 import { cx } from "./utils/cva";
 
 export function BaseUISharedPopoverContainer({
@@ -152,9 +153,14 @@ function PopoverContent({
 	...props
 }: PopoverContentProps) {
 	const { mounted } = usePopoverContext();
+	const portalContainer = usePortalContainer();
 
 	return (
-		<BasePopover.Portal keepMounted={keepMounted} {...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}>
+		<BasePopover.Portal
+			container={portalContainer ?? undefined}
+			keepMounted={keepMounted}
+			{...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}
+		>
 			<AnimatePresence>
 				{mounted && (
 					<BasePopover.Positioner sideOffset={sideOffset} align={align} {...(anchor ? { anchor } : {})}>
