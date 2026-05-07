@@ -30,7 +30,7 @@ The v4 surface ships a single foundation barrel that bundles every theme, plugin
 @import "@codaco/tailwind-config/fresco.css";
 ```
 
-The default theme writes its values under `:root`; the interview theme layers overrides under `:root[data-theme-interview]`. `@codaco/interview`'s Shell sets that attribute on `<html>` via a `useLayoutEffect` while it's mounted, so both `1rem` (the type scale's base) and the theme's CSS variables apply document-wide. Both themes ship together in the foundation barrel.
+The default theme writes its values under `:root`; the interview theme layers overrides under `[data-theme-interview]`, which can be placed on any element. The type scale binds to a `--theme-root-size` sentinel that each theme declares (`1rem` for the default, `1rem`/`1.125rem`/`1.25rem` at viewport breakpoints for the interview theme). Both themes ship together in the foundation barrel; consumers typically wrap interview UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui`.
 
 ### Theming
 
