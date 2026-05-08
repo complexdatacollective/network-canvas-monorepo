@@ -54,28 +54,16 @@ type JoinProps = {
 };
 
 export const Join = ({ value = "" }: JoinProps) => (
-	<fieldset className="rules-preview-text__join">
-		<legend>{value.toLowerCase()}</legend>
+	<fieldset className="h-0 w-full border-t-4 border-platinum px-(--space-xl) py-(--space-md) text-center">
+		<legend className="px-(--space-md) italic uppercase text-platinum-dark">{value.toLowerCase()}</legend>
 	</fieldset>
 );
-
-type TypeProps = {
-	children?: React.ReactNode;
-};
-
-const _Type = ({ children = "" }: TypeProps) => <div className="rules-preview-text__type">{children}</div>;
-
-type EntityProps = {
-	children?: React.ReactNode;
-};
-
-const _Entity = ({ children = "" }: EntityProps) => <div className="rules-preview-text__entity">{children}s</div>;
 
 type VariableProps = {
 	children?: React.ReactNode;
 };
 
-const Variable = ({ children = "" }: VariableProps) => <div className="rules-preview-text__variable">{children}</div>;
+const Variable = ({ children = "" }: VariableProps) => <div>{children}</div>;
 
 type OperatorProps = {
 	value?: string;
@@ -83,7 +71,7 @@ type OperatorProps = {
 };
 
 const Operator = ({ value = "", isEgo = false }: OperatorProps) => (
-	<div className="rules-preview-text__operator">{get(operatorsAsText(isEgo), value, value.toLowerCase())}</div>
+	<div>{get(operatorsAsText(isEgo), value, value.toLowerCase())}</div>
 );
 
 type TypeOperatorProps = {
@@ -91,7 +79,7 @@ type TypeOperatorProps = {
 };
 
 const TypeOperator = ({ value = "" }: TypeOperatorProps) => (
-	<div className="rules-preview-text__operator">{get(typeOperatorsAsText, value, value.toLowerCase())}</div>
+	<div>{get(typeOperatorsAsText, value, value.toLowerCase())}</div>
 );
 
 type ValueProps = {
@@ -100,14 +88,18 @@ type ValueProps = {
 
 const Value = ({ value = "" }: ValueProps) => {
 	const formattedValue = formatValue(value);
-	return <div className="rules-preview-text__value">{formattedValue}</div>;
+	return (
+		<div className="-mb-[3px] mx-(--space-xs) border-b-[3px] border-dotted border-rules-assert font-semibold">
+			{formattedValue}
+		</div>
+	);
 };
 
 type CopyProps = {
 	children?: string;
 };
 
-const Copy = ({ children = "" }: CopyProps) => <div className="rules-preview-text__copy">{children}</div>;
+const Copy = ({ children = "" }: CopyProps) => <div>{children}</div>;
 
 type RuleEntityProps = {
 	type: string;
@@ -116,18 +108,17 @@ type RuleEntityProps = {
 };
 
 const RuleEntity = ({ type, color, label }: RuleEntityProps) =>
-	type === "edge" ? <PreviewEdge color={color} label={label} /> : <PreviewNode color={color} label={label} size="sm" />;
+	type === "edge" ? (
+		<PreviewEdge color={color} label={label} surface={2} />
+	) : (
+		<PreviewNode color={color} label={label} size="xs" />
+	);
 
 const PreviewText = ({ type, options }: PreviewTextProps) => {
 	if (type === "ego") {
 		return (
 			<>
-				{/* Marker class. The rules-preview-rule stylesheet targets `.preview-node`
-				    to apply margin/max-width. Remove this wrapper when the rules + form-fields
-				    areas get their Tailwind migration*/}
-				<div className="preview-node">
-					<Node label="Ego" color="custom" size="sm" className="text-surface-2-foreground" style={EGO_NODE_STYLE} />
-				</div>
+				<Node label="Ego" color="custom" size="xs" className="text-surface-2-foreground" style={EGO_NODE_STYLE} />
 				<Copy>has</Copy>
 				<SimpleVariablePill
 					label={options.attribute ?? ""}

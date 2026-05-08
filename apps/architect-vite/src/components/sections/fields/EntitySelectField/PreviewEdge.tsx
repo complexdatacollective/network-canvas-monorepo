@@ -6,13 +6,10 @@ type PreviewEdgeProps = {
 	color: string;
 	onClick?: (() => void) | null;
 	selected?: boolean;
+	surface?: 1 | 2;
 };
 
-// `preview-edge` marker is preserved as a styling hook for the unmigrated
-// `src/styles/components/rules/preview-rule.css` cascade (overrides background
-// to surface-2 when nested under .rules-preview-rule__text). Drop the marker
-// when the rules area migrates.
-const PreviewEdge = ({ label, color, onClick = null, selected = false }: PreviewEdgeProps) => {
+const PreviewEdge = ({ label, color, onClick = null, selected = false, surface = 1 }: PreviewEdgeProps) => {
 	const content = (
 		<>
 			<Icon name="links" color={color} />
@@ -20,14 +17,17 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false }: Preview
 		</>
 	);
 
+	const surfaceClasses =
+		surface === 2 ? "bg-surface-2 text-surface-2-foreground" : "bg-surface-1 text-surface-1-foreground";
+
 	const baseClasses =
-		"preview-edge relative m-(--space-sm) flex flex-row items-center rounded-full border-4 border-transparent bg-surface-1 px-(--space-md) py-(--space-sm) text-surface-1-foreground transition-[border-color] duration-(--animation-duration-standard) ease-(--animation-easing) [&_.icon]:mr-(--space-sm)";
+		"relative m-(--space-sm) flex flex-row items-center rounded-full border-4 border-transparent px-(--space-md) py-(--space-sm) transition-[border-color] duration-(--animation-duration-standard) ease-(--animation-easing) [&_.icon]:mr-(--space-sm)";
 
 	if (onClick && !selected) {
 		return (
 			<button
 				type="button"
-				className={cx(baseClasses, "clickable")}
+				className={cx(baseClasses, surfaceClasses, "clickable")}
 				style={{ "--edge-color": `var(--${color})` } as React.CSSProperties}
 				onClick={onClick}
 				aria-label={`Select edge ${label}`}
@@ -39,7 +39,7 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false }: Preview
 
 	return (
 		<div
-			className={cx(baseClasses, selected && "border-(--edge-color) pointer-events-none")}
+			className={cx(baseClasses, surfaceClasses, selected && "border-(--edge-color) pointer-events-none")}
 			style={{ "--edge-color": `var(--${color})` } as React.CSSProperties}
 		>
 			{content}

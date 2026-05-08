@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { compose } from "react-recompose";
 import DetachedField from "~/components/DetachedField";
@@ -55,18 +54,12 @@ const Rules = ({
 	handleCreateEdgeRule,
 	handleCreateEgoRule,
 }: RulesProps) => {
-	const isActive = get(meta, "active", false) as boolean;
 	// Default to true as may not be defined if used without redux-form
 	const isTouched = get(meta, "touched", true) as boolean;
 	const hasError = isTouched && !!error;
 
-	const classes = cx("rules-rules", {
-		"rules-rules--is-active": isActive,
-		"rules-rules--has-error": hasError,
-	});
-
 	return (
-		<div className={classes}>
+		<div>
 			<EditRule
 				codebook={codebook}
 				rule={draftRule || undefined}
@@ -75,7 +68,7 @@ const Rules = ({
 				onSave={handleSaveDraft}
 			/>
 
-			<div className="rules-rules__preview">
+			<div>
 				<h4>Rules</h4>
 				<PreviewRules
 					rules={rules as Array<Record<string, unknown> & { id: string }>}
@@ -83,11 +76,12 @@ const Rules = ({
 					onClickRule={handleClickRule}
 					onDeleteRule={handleDeleteRule}
 					codebook={codebook}
+					hasError={hasError}
 				/>
 				<FieldError show={hasError} error={error || ""} />
 			</div>
 
-			<div className="rules-rules__add-new">
+			<div className="mt-(--space-md) [&_button]:mr-(--space-md)">
 				<Button type="button" color="sea-serpent" onClick={handleCreateAlterRule}>
 					Add alter rule
 				</Button>
@@ -102,7 +96,7 @@ const Rules = ({
 			</div>
 
 			{rules.length > 1 && (
-				<div className="rules-rules__join">
+				<div className="mt-(--space-xl)">
 					<h4>Must match</h4>
 					<DetachedField
 						component={RadioGroup as React.ComponentType<Record<string, unknown>>}

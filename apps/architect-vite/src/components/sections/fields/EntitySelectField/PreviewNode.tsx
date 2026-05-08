@@ -32,10 +32,7 @@ const PreviewNode = ({
 		/>
 	);
 
-	// `preview-node` marker is preserved as a styling hook for the unmigrated
-	// `src/styles/components/rules/preview-rule.css` cascade. Drop the marker
-	// when the rules area migrates.
-	return <div className={cx("preview-node", onClick && !selected && "cursor-pointer")}>{content}</div>;
+	return <div className={cx(onClick && !selected && "cursor-pointer")}>{content}</div>;
 };
 
 export default PreviewNode;

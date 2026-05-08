@@ -37,12 +37,13 @@ const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>
 	const icon = useMemo(() => getIconForType(type), [type]);
 
 	return (
-		// `variable-pill` class is preserved as a styling hook for the two
-		// remaining unmigrated consumers — `rules/preview-rule.css` and
-		// `protocol-summary.css` — that override `--variable-pill-shadow-color`
-		// / preview-margin via cascade. The codebook width cascade has migrated
-		// to the `width` prop. Remove the marker once slices 33 (Rules) and 35
-		// (ProtocolSummary fold-in) close those last two cascades.
+		// `variable-pill` class is preserved as a styling hook for the
+		// remaining unmigrated consumer — `protocol-summary.css` — which
+		// overrides `--variable-pill-shadow-color` and preview margin via
+		// cascade. The codebook width cascade migrated to the `width` prop in
+		// slice 32; the rules-preview cascade migrated to arbitrary-child
+		// selectors on PreviewRule's `__text` row in slice 33. Remove the
+		// marker once slice 35 folds protocol-summary.css into tailwind.css.
 		<motion.div
 			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-[var(--variable-pill-width,20rem)] shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
 			style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}

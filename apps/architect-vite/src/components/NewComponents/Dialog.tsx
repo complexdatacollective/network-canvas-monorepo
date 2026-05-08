@@ -106,39 +106,36 @@ function Dialog({
 	onAnimationComplete,
 	...popupProps
 }: DialogProps) {
+	const resolvedFooter = footer ?? (
+		<>
+			<BaseDialog.Close
+				nativeButton={false}
+				render={
+					<Button
+						onClick={() => {
+							onCancel?.();
+							onOpenChange(false);
+						}}
+						color="platinum"
+					>
+						{cancelText}
+					</Button>
+				}
+			/>
+			{onConfirm && (
+				<Button onClick={onConfirm} color={confirmColor}>
+					{confirmText}
+				</Button>
+			)}
+		</>
+	);
+
 	return (
 		<Modal open={open} onOpenChange={onOpenChange}>
-			<DialogPopup header={header} footer={footer} onAnimationComplete={onAnimationComplete} {...popupProps}>
-				<div className="flex-1">
-					{title && !header && <DialogTitle>{title}</DialogTitle>}
-					{description && <DialogDescription>{description}</DialogDescription>}
-					{children}
-				</div>
-
-				<div className="border-t border-divider px-(--space-md) py-(--space-md) flex justify-end gap-(--space-sm)">
-					{!footer && (
-						<BaseDialog.Close
-							nativeButton={false}
-							render={
-								<Button
-									onClick={() => {
-										onCancel?.();
-										onOpenChange(false);
-									}}
-									color="platinum"
-								>
-									{cancelText}
-								</Button>
-							}
-						/>
-					)}
-
-					{onConfirm && (
-						<Button onClick={onConfirm} color={confirmColor}>
-							{confirmText}
-						</Button>
-					)}
-				</div>
+			<DialogPopup header={header} footer={resolvedFooter} onAnimationComplete={onAnimationComplete} {...popupProps}>
+				{title && !header && <DialogTitle>{title}</DialogTitle>}
+				{description && <DialogDescription>{description}</DialogDescription>}
+				{children}
 			</DialogPopup>
 		</Modal>
 	);
