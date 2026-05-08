@@ -4,7 +4,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 // TODO: This is a stub implementation - needs full implementation
 // This file was created to fix TypeScript import errors
 
-export type StoredProtocol = {
+type StoredProtocol = {
 	id: string;
 	protocol: CurrentProtocol;
 	name: string;
