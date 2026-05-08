@@ -1,7 +1,7 @@
-import cx from "classnames";
 import React, { Component, type RefObject } from "react";
 import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import DatePicker from "./DatePicker";
 
 type FieldInput = {
@@ -52,15 +52,16 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 
 		const { error, invalid = false, touched = false } = meta;
 
-		const formFieldClasses = cx(className, "form-field-date-picker", {
-			"form-field-date-picker--has-error": invalid && touched,
-		});
+		const hasError = !!(invalid && touched);
 
 		const anyLabel = fieldLabel || label;
 		return (
 			<div className="form-field-container" hidden={!!hidden} ref={this.ref}>
 				{anyLabel && <MarkdownLabel label={anyLabel} />}
-				<div className={formFieldClasses} data-name={input.name}>
+				<div
+					className={cx("text-input-foreground", hasError && "rounded-t-lg border-2 border-error", className)}
+					data-name={input.name}
+				>
 					<DatePicker
 						parameters={parameters}
 						value={typeof input.value === "string" ? input.value : null}
@@ -68,12 +69,10 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 						parentRef={this.ref}
 						placeholder={placeholder}
 					/>
-					{invalid && touched && (
-						<div className="form-field-date-picker__error">
-							<div className="form-field-date-picker__error-message">
-								<Icon name="warning" />
-								{error}
-							</div>
+					{hasError && (
+						<div className="flex items-center bg-error px-(--space-xs) py-(--space-sm) text-error-foreground [&_svg]:max-h-(--space-md)">
+							<Icon name="warning" />
+							{error}
 						</div>
 					)}
 				</div>

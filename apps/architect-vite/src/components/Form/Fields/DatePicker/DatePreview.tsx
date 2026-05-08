@@ -1,8 +1,14 @@
-import cx from "classnames";
 import { motion } from "motion/react";
 import React, { type MouseEvent } from "react";
+import { cx } from "~/utils/cva";
 import DateComponent from "./DatePicker/DateComponent";
 import { getMonthName } from "./helpers";
+
+const previewBase =
+	"flex h-(--datepicker-preview-height) items-center rounded-t-lg border-b-2 border-transparent bg-background px-(--space-md) text-base transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) focus:border-b-active";
+
+const partBase =
+	"inline-block cursor-pointer transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)";
 
 type DatePreviewProps = {
 	onClick?: (open?: boolean) => void;
@@ -55,68 +61,59 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 				}
 			};
 
-			const previewClass = cx("date-picker__preview", {
-				"date-picker__preview--is-empty": isEmpty,
-			});
-
 			if (!isActive && isEmpty && placeholder) {
 				return (
 					<motion.div
-						className={previewClass}
+						className={cx(previewBase, "cursor-pointer italic text-input-placeholder")}
 						onClick={handleClickPreview}
 						onKeyDown={handlePreviewKeyDown}
 						role="button"
 						tabIndex={0}
 						aria-label="Select date"
-						// layout
 						ref={previewRef}
 					>
-						<span className="date-picker__placeholder">{placeholder}</span>
+						<span className="italic text-input-placeholder">{placeholder}</span>
 					</motion.div>
 				);
 			}
 
 			return (
 				<motion.div
-					className={previewClass}
+					className={cx(previewBase, isEmpty && "cursor-pointer italic text-input-placeholder")}
 					onClick={handleClickPreview}
 					onKeyDown={handlePreviewKeyDown}
 					role="button"
 					tabIndex={0}
 					aria-label="Date picker"
-					// layout
 					ref={previewRef}
 				>
 					<button
 						type="button"
-						className={cx("date-picker__preview-part", {
-							"date-picker__preview-part--is-set": date.year,
-						})}
+						className={cx(partBase, date.year ? "not-italic text-input-foreground" : "italic text-input-placeholder")}
 						onClick={handleClickYear}
 						aria-label="Clear year"
 					>
 						{date.year || "Year"}
 					</button>
-					{["full", "month"].includes(type || "") && <div className="date-picker__preview-divider">/</div>}
+					{["full", "month"].includes(type || "") && <div className="px-(--space-sm) text-active">/</div>}
 					{["full", "month"].includes(type || "") && (
 						<button
 							type="button"
-							className={cx("date-picker__preview-part", {
-								"date-picker__preview-part--is-set": date.month,
-							})}
+							className={cx(
+								partBase,
+								date.month ? "not-italic text-input-foreground" : "italic text-input-placeholder",
+							)}
 							onClick={handleClickMonth}
 							aria-label="Clear month"
 						>
 							{date.month ? getMonthName(date.month) : "Month"}
 						</button>
 					)}
-					{["full"].includes(type || "") && <div className="date-picker__preview-divider">/</div>}
+					{["full"].includes(type || "") && <div className="px-(--space-sm) text-active">/</div>}
 					{["full"].includes(type || "") && (
 						<button
 							type="button"
-							className={cx("date-picker__preview-part", {
-								"date-picker__preview-part--is-set": date.day,
-							})}
+							className={cx(partBase, date.day ? "not-italic text-input-foreground" : "italic text-input-placeholder")}
 							onClick={handleClickDay}
 							aria-label="Clear day"
 						>
@@ -125,9 +122,10 @@ const DatePreview = ({ onClick = () => {}, isActive = false, placeholder = null 
 					)}
 					<button
 						type="button"
-						className={cx("date-picker__preview-clear", {
-							"date-picker__preview-clear--is-visible": !isEmpty || isActive,
-						})}
+						className={cx(
+							"ml-auto h-(--space-md) cursor-pointer border-b border-active leading-(--space-md) transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)",
+							!isEmpty || isActive ? "opacity-100" : "opacity-0",
+						)}
 						onClick={handleClear}
 						aria-label="Clear date"
 					>
