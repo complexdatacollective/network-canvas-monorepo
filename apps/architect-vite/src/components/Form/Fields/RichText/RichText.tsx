@@ -6,6 +6,7 @@ import { createEditor, type Descendant, type Editor, Transforms as SlateTransfor
 import type { HistoryEditor } from "slate-history";
 import { withHistory } from "slate-history";
 import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
+import { cx } from "~/utils/cva";
 import Element from "./Element";
 import Leaf from "./Leaf";
 import { toggleMark } from "./lib/actions";
@@ -31,6 +32,7 @@ type RichTextProps = {
 	inline?: boolean;
 	disallowedTypes?: string[];
 	autoFocus?: boolean;
+	hasError?: boolean;
 };
 
 const HOTKEYS: Record<string, string> = {
@@ -104,6 +106,7 @@ const RichText = ({
 	onChange = () => {},
 	value: initialValue = "",
 	placeholder = "Enter some text...",
+	hasError = false,
 }: RichTextProps) => {
 	const [isInitialized, setIsInitialized] = useState(false);
 	const [value, setValue] = useState<Descendant[]>(defaultValue);
@@ -226,9 +229,21 @@ const RichText = ({
 
 	return (
 		<Slate editor={editor} initialValue={value} value={value} onChange={setValue}>
-			<RichTextContainer>
+			<RichTextContainer hasError={hasError}>
 				<Toolbar />
-				<div className={`rich-text__editable ${inline ? "rich-text__editable--inline" : ""}`}>
+				<div
+					className={cx(
+						"cursor-text text-input-foreground px-(--space-md) py-0",
+						"border-b-2 border-b-transparent",
+						"transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
+						"group-hover:border-b-input-active group-data-[active]:border-b-input-active",
+						"focus:outline-none focus-within:outline-none [&_[contenteditable]]:outline-none",
+						"[&_ul]:my-(--space-md) [&_ul]:pl-(--space-lg) [&_ul]:list-disc",
+						"[&_ol]:my-(--space-md) [&_ol]:pl-(--space-lg) [&_ol]:list-decimal",
+						"[&_li]:my-(--space-xs) [&_li_p]:m-0",
+						!inline && "resize-y overflow-auto",
+					)}
+				>
 					<Editable
 						renderElement={Element}
 						renderLeaf={Leaf}
