@@ -1,5 +1,6 @@
 import type { Decorator } from "@storybook/react-vite";
 import { useEffect } from "react";
+import { ThemedRegion } from "../src/ThemedRegion";
 
 export const THEME_KEY = "theme";
 const STORAGE_KEY = "storybook-theme-preference";
@@ -38,17 +39,31 @@ function setStoredTheme(theme: ThemeKey) {
 }
 
 /**
- * Persists the toolbar's selected theme to localStorage on every change so
- * `getInitialTheme()` can restore it on the next preview load. Storybook's
- * `globalTypes` API doesn't expose an onChange hook directly, so this runs
- * the side effect inside a decorator that re-renders whenever `context.globals[THEME_KEY]`
- * changes.
+ * Wraps the story in <ThemedRegion> when interview is selected so children
+ * pick up `data-theme-interview` and the themed CSS variables resolve, and
+ * persists the toolbar selection to localStorage so `getInitialTheme()` can
+ * restore it on the next preview load. Storybook's `globalTypes` API doesn't
+ * expose an onChange hook directly, so the persistence side effect runs in
+ * the same decorator that re-renders when `context.globals[THEME_KEY]` changes.
+ *
+ * Must be the outermost decorator so `<ThemedRegion>` (and the
+ * `<PortalContainerProvider>` it bundles) wraps `<Providers>` — that puts
+ * `<Toaster />`, the DialogProvider's dialog map, and any Base UI portals
+ * inside the themed subtree.
  */
-export const persistTheme: Decorator = (Story, context) => {
+export const withTheme: Decorator = (Story, context) => {
 	const theme = (context.globals[THEME_KEY] as ThemeKey | undefined) ?? "dashboard";
 	useEffect(() => {
 		setStoredTheme(theme);
 	}, [theme]);
+
+	if (theme === "interview") {
+		return (
+			<ThemedRegion theme="interview" className="bg-background text-text publish-colors">
+				<Story />
+			</ThemedRegion>
+		);
+	}
 	return <Story />;
 };
 

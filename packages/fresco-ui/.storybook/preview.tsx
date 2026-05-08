@@ -10,7 +10,7 @@ import { type PropsWithChildren, StrictMode } from "react";
 import { ThemedRegion } from "../src/ThemedRegion";
 import "./preview.css";
 import Providers from "./Providers";
-import { getInitialTheme, globalTypes, persistTheme, THEME_KEY, type ThemeKey } from "./theme-switcher";
+import { getInitialTheme, globalTypes, THEME_KEY, type ThemeKey, withTheme } from "./theme-switcher";
 
 // Wrap each docs page in <ThemedRegion> when the toolbar's selected theme is
 // "interview" so chrome rendered outside the per-story decorator tree
@@ -85,7 +85,7 @@ export default definePreview({
 	},
 
 	decorators: [
-		persistTheme,
+		withTheme,
 		(Story) => {
 			// Disable Base UI animations whenever the browser is being driven by
 			// automation (Playwright in vitest browser mode, or Storybook's

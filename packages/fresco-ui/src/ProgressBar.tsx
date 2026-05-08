@@ -37,10 +37,10 @@ const ProgressBar = ({
 				// Orientation-specific styles. Multiplied by `--theme-root-size`
 				// so the bar grows with the theme's root size at breakpoints
 				// instead of staying anchored to the html root in rem.
-				orientation === "vertical" && "w-[calc(0.7*var(--theme-root-size))]",
-				orientation === "horizontal" && "h-[calc(0.7*var(--theme-root-size))]",
+				orientation === "vertical" && "w-3",
+				orientation === "horizontal" && "h-3",
 				// Complete state - pulse glow animation
-				nudge && "data-complete:animate-pulse-glow",
+				nudge && "motion-safe:data-complete:animate-pulse-glow",
 				// Clickable cursor
 				onClick && "cursor-pointer",
 				className,
