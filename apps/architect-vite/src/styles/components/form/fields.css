@@ -1,14 +1,4 @@
-@import "./fields/entity-select.css";
 @import "./fields/select.css";
-@import "./fields/input-preview.css";
-@import "./fields/variable-picker.css";
-@import "./fields/file.css";
-@import "./fields/audio.css";
-@import "./fields/image.css";
-@import "./fields/video.css";
-@import "./fields/color-picker.css";
-@import "./fields/shape-picker.css";
-@import "./fields/shape-variable-mapping.css";
 
 .form-field {
 	@apply form-field;

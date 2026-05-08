@@ -1,6 +1,6 @@
 import Node, { type NodeColorSequence, type NodeShape } from "@codaco/fresco-ui/Node";
-import cx from "classnames";
 import type { ComponentProps } from "react";
+import { cx } from "~/utils/cva";
 
 type NodeSize = ComponentProps<typeof Node>["size"];
 
@@ -32,13 +32,10 @@ const PreviewNode = ({
 		/>
 	);
 
-	const commonClasses = cx(
-		"preview-node",
-		{ "preview-node--selected": selected },
-		{ "preview-node--clickable": onClick },
-	);
-
-	return <div className={commonClasses}>{content}</div>;
+	// `preview-node` marker is preserved as a styling hook for the unmigrated
+	// `src/styles/components/rules/preview-rule.css` cascade. Drop the marker
+	// when the rules area migrates.
+	return <div className={cx("preview-node", onClick && !selected && "cursor-pointer")}>{content}</div>;
 };
 
 export default PreviewNode;

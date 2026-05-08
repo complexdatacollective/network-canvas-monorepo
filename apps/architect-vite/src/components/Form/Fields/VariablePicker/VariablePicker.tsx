@@ -85,10 +85,7 @@ const VariablePicker = ({
 
 	return (
 		<>
-			{/* `form-fields-variable-picker` is preserved as a styling hook for the
-			    deferred form-fields CSS file (`styles/components/form/fields/variable-picker.css`).
-			    Drop the marker once the form-fields area migrates. */}
-			<fieldset className="form-fields-variable-picker">
+			<fieldset className="rounded-(--radius) border-2 border-dashed border-border p-(--space-md) [&>legend]:px-(--space-md) [&_.variable-pill]:mb-(--space-md)">
 				{label && <legend>{label}</legend>}
 
 				{value && (

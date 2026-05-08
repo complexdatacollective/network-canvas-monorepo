@@ -1,8 +1,8 @@
-import cx from "classnames";
 import type React from "react";
 import { compose, withState } from "react-recompose";
 import Button from "~/lib/legacy-ui/components/Button";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import AssetBrowserWindow from "../../AssetBrowser/AssetBrowserWindow";
 
 type InputProps = {
@@ -79,22 +79,20 @@ const FileInput = ({
 		onChange(assetId);
 	};
 
-	const fieldClasses = cx("form-fields-file", className, "form-field-container", {
-		"form-fields-file--replace": !!value,
-		"form-fields-file--has-error": error,
-	});
-
 	return (
-		<div className={fieldClasses}>
+		// `form-field-container` is a deferred marker (slice 8 outcome) consumed
+		// by unmigrated parent stylesheets (codebook, sections). Removed in
+		// slice 31 alongside `form/fields.css` deletion.
+		<div className={cx("form-field form-field-container relative block", className)}>
 			{label && <h4 className="form-field-label">{label}</h4>}
 			{invalid && touched && (
-				<div className="form-fields-file__error">
+				<div className="flex items-center px-(--space-xs) py-(--space-sm) text-error [&_.icon]:mr-(--space-sm) [&_.icon]:size-(--space-md)">
 					<Icon name="warning" />
 					{error}
 				</div>
 			)}
-			<div className="form-fields-file__preview">{children?.(value)}</div>
-			<div className="form-fields-file__browse">
+			<div className={cx("relative overflow-hidden", value ? "block" : "hidden")}>{children?.(value)}</div>
+			<div className="mt-(--space-md)">
 				<Button onClick={handleBrowseLibrary} color="sea-green">
 					{!value ? "Select resource" : "Update resource"}
 				</Button>
