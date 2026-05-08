@@ -33,11 +33,11 @@ const BooleanOption = ({
 			className={cx(
 				"clickable relative cursor-pointer",
 				"inline-flex items-center w-full grow basis-full",
-				"border-2 border-solid border-transparent",
+				"border-2 border-solid",
 				"p-(--space-md) rounded",
 				"mr-(--space-xs) ml-0 last:mr-0",
 				"bg-input text-input-foreground",
-				selected && (negative ? "border-error" : "border-input-active"),
+				selected ? (negative ? "border-error" : "border-input-active") : "border-transparent",
 				classes,
 			)}
 			onClick={onClick}

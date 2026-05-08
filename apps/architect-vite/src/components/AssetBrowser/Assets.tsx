@@ -79,7 +79,7 @@ const Assets = ({
 							value: assetType,
 						}}
 						label="Show types:"
-						className="flex-row! items-center! mb-0! w-auto! [&_.form-field-radio]:mr-(--space-md)! [&_.form-field-radio]:mb-0!"
+						className="flex-row! items-center! mb-0! w-auto! [&_label]:mr-(--space-md)! [&_label]:mb-0!"
 					/>
 				</div>
 			)}

@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import cx from "classnames";
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
+import { cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
 
 type RadioProps = {
@@ -21,17 +21,20 @@ type RadioProps = {
 const Radio = ({ label, className = "", input, disabled = false, fieldLabel, ...rest }: RadioProps) => {
 	const id = useRef(uuid());
 
-	const componentClasses = cx("form-field-radio", className, {
-		"form-field-radio--disabled": disabled,
-	});
-
 	const { name, value, onChange, ...inputRest } = input;
 
 	return (
-		<label className={componentClasses} htmlFor={id.current}>
+		<label
+			data-disabled={disabled || undefined}
+			htmlFor={id.current}
+			className={cx(
+				"group relative inline-flex cursor-pointer items-center mb-(--space-md) last:mb-0",
+				"data-[disabled]:cursor-default data-[disabled]:pointer-events-none",
+				className,
+			)}
+		>
 			<input
 				type="radio"
-				className="form-field-radio__input"
 				id={id.current}
 				name={name}
 				// input.checked is only provided by redux form if type="checkbox" or type="radio" is
@@ -39,15 +42,27 @@ const Radio = ({ label, className = "", input, disabled = false, fieldLabel, ...
 				// input.value
 				checked={!!value}
 				onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.checked)}
+				className="peer absolute opacity-0"
 				{...(inputRest as Record<string, unknown>)}
 				{...(rest as Record<string, unknown>)}
 			/>
-			<div className="form-field-radio__radio" />
+			<div
+				className={cx(
+					"relative inline-block shrink-0 size-(--space-xl) mr-(--space-sm)",
+					"before:content-[''] before:absolute before:inset-0 before:rounded-full before:border-2 before:border-solid before:border-border",
+					"before:transition-[border-color] before:duration-(--animation-duration-standard) before:ease-(--animation-easing)",
+					"after:content-[''] after:absolute after:inset-[calc(var(--global-input-border-size)+var(--global-input-border-space))]",
+					"after:rounded-full after:bg-input-active after:opacity-0",
+					"after:transition-opacity after:duration-(--animation-duration-standard) after:ease-(--animation-easing)",
+					"peer-checked:before:border-input-active peer-checked:after:opacity-100",
+					"group-data-[disabled]:before:border-surface-2 group-data-[disabled]:after:opacity-0",
+				)}
+			/>
 			{label &&
 				(typeof label === "string" ? (
 					<MarkdownLabel inline label={label} className="form-field-inline-label" />
 				) : (
-					<div className="w-12 h-12">{label}</div>
+					<div className="size-(--space-2xl)">{label}</div>
 				))}
 		</label>
 	);
