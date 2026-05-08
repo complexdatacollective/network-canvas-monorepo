@@ -1,10 +1,10 @@
 import type { Variable } from "@codaco/protocol-validation";
-import cx from "classnames";
 import { keys as getKeys, isNull, toPairs } from "es-toolkit/compat";
 import type React from "react";
 import { Field } from "redux-form";
 import FieldError from "~/components/Form/FieldError";
 import { Button } from "~/lib/legacy-ui/components";
+import { cx } from "~/utils/cva";
 import Validation from "./Validation";
 
 const validate = (validations: Record<string, unknown>): string | undefined => {
@@ -75,13 +75,16 @@ const ValidationsField = ({
 	children = null,
 	...rest
 }: ValidationsFieldProps) => {
-	const fieldClassNames = cx("form-fields-multi-select__field", {
-		"form-fields-multi-select__field--has-error": submitFailed && error,
-	});
+	const hasError = !!(submitFailed && error);
 
 	return (
-		<div className={fieldClassNames}>
-			<div className="form-fields-multi-select__rules">
+		<div
+			className={cx(
+				hasError &&
+					"[--rule-bg:var(--color-error)] [&_.form-field-error]:my-(--space-xs) [&_.form-field-error]:rounded-(--space-xs)",
+			)}
+		>
+			<div className="flex flex-col gap-(--space-md)">
 				{input.value.map(([key, value]) => (
 					<Validation
 						key={key}
@@ -95,7 +98,7 @@ const ValidationsField = ({
 				))}
 				{children}
 			</div>
-			<FieldError show={!!(submitFailed && error)} error={error} />
+			<FieldError show={hasError} error={error} />
 		</div>
 	);
 };
@@ -128,7 +131,7 @@ const Validations = ({
 	const isFull = usedOptions.length === availableOptions.length;
 
 	return (
-		<div className="form-fields-multi-select">
+		<div className="flex flex-col gap-(--space-md) w-full [--rule-bg:var(--color-sortable-background)] [&_button]:m-0">
 			<Field
 				name={name}
 				component={ValidationsField}
