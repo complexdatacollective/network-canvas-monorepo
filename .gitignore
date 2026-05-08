@@ -58,6 +58,7 @@ apps/documentation/public/sidebar.json
 # Playwright e2e artifacts
 **/test-results/
 **/playwright-report/
+**/.playwright-mcp/
 packages/interview/e2e/.assets/
 
 # e2e host seed-silos generated artifacts (regenerated per script run)

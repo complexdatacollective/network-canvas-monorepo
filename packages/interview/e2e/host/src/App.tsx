@@ -5,7 +5,40 @@ import { InterviewToastViewport, interviewToastManager, Shell } from "@codaco/in
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { mockFinish, mockSync } from "./mockCallbacks";
-import { getTestState, installTestHooks, subscribe } from "./testHooks";
+import {
+	createInterview as createInterviewHook,
+	getTestState,
+	installProtocol as installProtocolHook,
+	installTestHooks,
+	setAssetUrl as setAssetUrlHook,
+	subscribe,
+} from "./testHooks";
+
+const ASSET_SERVER_URL = "http://localhost:4200";
+
+type BootstrapPayload = {
+	protocol: Parameters<typeof installProtocolHook>[0];
+	assetUrls: Record<string, string>;
+};
+
+// Auto-bootstrap path: `?bootstrap=<slug>` fetches a prepared bundle from the
+// asset server and installs it via the same hooks Playwright uses, then
+// redirects to `?interviewId=<id>&step=0`. Used by `pnpm dev:host` so devs
+// can land in an interview without a console paste.
+async function autoBootstrap(slug: string): Promise<string | null> {
+	try {
+		const res = await fetch(`${ASSET_SERVER_URL}/${slug}/bootstrap.json`);
+		if (!res.ok) return null;
+		const { protocol, assetUrls } = (await res.json()) as BootstrapPayload;
+		installProtocolHook(protocol);
+		for (const [id, url] of Object.entries(assetUrls)) {
+			setAssetUrlHook(id, url);
+		}
+		return createInterviewHook(protocol.id, "dev-host");
+	} catch {
+		return null;
+	}
+}
 
 globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 
@@ -41,8 +74,22 @@ export default function App() {
 
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
-		setActiveId(params.get("interviewId"));
-		setCurrentStep(getStepFromUrl());
+		const existingId = params.get("interviewId");
+		if (existingId) {
+			setActiveId(existingId);
+			setCurrentStep(getStepFromUrl());
+			return;
+		}
+		const bootstrapSlug = params.get("bootstrap");
+		if (bootstrapSlug) {
+			autoBootstrap(bootstrapSlug).then((id) => {
+				if (id) {
+					window.history.replaceState(null, "", `?interviewId=${id}&step=0`);
+					setActiveId(id);
+					setCurrentStep(0);
+				}
+			});
+		}
 	}, []);
 
 	const onStepChange = useCallback<StepChangeHandler>((step) => {

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Codebook, CurrentProtocol } from "@codaco/protocol-validation";
-import { CurrentProtocolSchema, extractProtocol } from "@codaco/protocol-validation";
+import { CurrentProtocolSchema, extractProtocol, hashProtocol } from "@codaco/protocol-validation";
 import type { Page } from "@playwright/test";
 import { v4 as uuid } from "uuid";
 import type { ProtocolPayload, ResolvedAsset, SessionPayload } from "../../src/contract/types.js";
@@ -50,31 +50,33 @@ export class ProtocolFixture {
 		const protocolAssetDir = path.join(this.assetDir, protocolId);
 		await fs.mkdir(protocolAssetDir, { recursive: true });
 
-		// Write each non-apikey asset to disk under the `source` filename
-		// from the manifest so the asset server can serve it via the same
-		// path the rewritten `asset://` URLs point to.
-		const manifest = protocolJson.assetManifest ?? {};
-		for (const asset of extractedAssets) {
-			const manifestEntry = manifest[asset.id];
-			if (!manifestEntry || typeof manifestEntry !== "object" || !("type" in manifestEntry)) continue;
-			if (manifestEntry.type === "apikey") continue;
-			if (!("source" in manifestEntry) || typeof manifestEntry.source !== "string") continue;
-
-			const destPath = path.join(protocolAssetDir, manifestEntry.source);
-			await fs.mkdir(path.dirname(destPath), { recursive: true });
-			const content = asset.data instanceof Blob ? Buffer.from(await asset.data.arrayBuffer()) : asset.data;
-			await fs.writeFile(destPath, content);
-		}
-
 		const protocolJsonStr = JSON.stringify(protocolJson);
 		const rewrittenStr = protocolJsonStr.replace(/asset:\/\/([^"]+)/g, `${this.assetServerUrl}/${protocolId}/$1`);
 		const rewrittenProtocol = CurrentProtocolSchema.parse(JSON.parse(rewrittenStr));
+
+		// Write each non-apikey asset to disk under the `source` filename from
+		// the manifest so the asset server can serve it via the same path the
+		// rewritten `asset://` URLs point to. Iterate after parse so the
+		// discriminated-union narrowing on `type` is available.
+		const manifest = rewrittenProtocol.assetManifest;
+		if (manifest) {
+			for (const asset of extractedAssets) {
+				const manifestEntry = manifest[asset.id];
+				if (!manifestEntry || manifestEntry.type === "apikey") continue;
+
+				const destPath = path.join(protocolAssetDir, manifestEntry.source);
+				await fs.mkdir(path.dirname(destPath), { recursive: true });
+				const content = asset.data instanceof Blob ? Buffer.from(await asset.data.arrayBuffer()) : asset.data;
+				await fs.writeFile(destPath, content);
+			}
+		}
 
 		const assets = this.buildResolvedAssets(rewrittenProtocol);
 
 		const payload: ProtocolPayload = {
 			...rewrittenProtocol,
 			id: protocolId,
+			hash: hashProtocol(rewrittenProtocol),
 			importedAt: new Date().toISOString(),
 			assets,
 		};

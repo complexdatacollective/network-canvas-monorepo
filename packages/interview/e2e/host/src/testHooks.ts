@@ -86,61 +86,64 @@ export function subscribe(fn: StateSubscriber): () => void {
 	};
 }
 
+export function installProtocol(protocol: ProtocolPayload): void {
+	state.protocols.set(protocol.id, protocol);
+	for (const asset of protocol.assets) {
+		state.assetUrls.set(asset.assetId, "");
+	}
+	persistState();
+	notifySubscribers();
+}
+
+export function setAssetUrl(assetId: string, url: string): void {
+	state.assetUrls.set(assetId, url);
+	persistState();
+	notifySubscribers();
+}
+
+export function createInterview(protocolId: string, participantId: string): string {
+	const id = uuid();
+	// This session is the initial payload Shell mounts with. After mount,
+	// Shell owns its state in Redux — getNetworkState reads from that live
+	// store, not from this snapshot.
+	const session: SessionPayload = {
+		id,
+		startTime: new Date().toISOString(),
+		finishTime: null,
+		exportTime: null,
+		lastUpdated: new Date().toISOString(),
+		network: createInitialNetwork(),
+		currentStep: 0,
+	};
+	state.interviews.set(id, { protocolId, participantId, session });
+	persistState();
+	notifySubscribers();
+	return id;
+}
+
+// Reads live state from the running Shell's Redux store. Shell exposes it on
+// window.__interviewStore when flags.isE2E is true.
+function getNetworkState(): SessionPayload["network"] | undefined {
+	return window.__interviewStore?.getState().session.network;
+}
+
+function reset(): void {
+	state = createEmptyState();
+	sessionStorage.removeItem(STORAGE_KEY);
+	notifySubscribers();
+}
+
 export function installTestHooks(): void {
 	// Restore persisted state so that protocols/interviews installed before
 	// a page navigation (page.goto) survive the reload.
 	state = restoreState();
 	subscribers.clear();
 
-	const testHooks = {
-		installProtocol(protocol: ProtocolPayload): void {
-			state.protocols.set(protocol.id, protocol);
-			for (const asset of protocol.assets) {
-				state.assetUrls.set(asset.assetId, "");
-			}
-			persistState();
-			notifySubscribers();
-		},
-
-		setAssetUrl(assetId: string, url: string): void {
-			state.assetUrls.set(assetId, url);
-			persistState();
-			notifySubscribers();
-		},
-
-		createInterview(protocolId: string, participantId: string): string {
-			const id = uuid();
-			// This session is the initial payload Shell mounts with. After
-			// mount, Shell owns its state in Redux — getNetworkState reads
-			// from that live store, not from this snapshot.
-			const session: SessionPayload = {
-				id,
-				startTime: new Date().toISOString(),
-				finishTime: null,
-				exportTime: null,
-				lastUpdated: new Date().toISOString(),
-				network: createInitialNetwork(),
-				currentStep: 0,
-			};
-			state.interviews.set(id, { protocolId, participantId, session });
-			persistState();
-			notifySubscribers();
-			return id;
-		},
-
-		// Reads live state from the running Shell's Redux store. Shell exposes
-		// it on window.__interviewStore when flags.isE2E is true.
-		getNetworkState(): SessionPayload["network"] | undefined {
-			return window.__interviewStore?.getState().session.network;
-		},
-
-		/** Clear all persisted state. Call this between test suites to reset. */
-		reset(): void {
-			state = createEmptyState();
-			sessionStorage.removeItem(STORAGE_KEY);
-			notifySubscribers();
-		},
+	(globalThis as Record<string, unknown>).__test = {
+		installProtocol,
+		setAssetUrl,
+		createInterview,
+		getNetworkState,
+		reset,
 	};
-
-	(globalThis as Record<string, unknown>).__test = testHooks;
 }
