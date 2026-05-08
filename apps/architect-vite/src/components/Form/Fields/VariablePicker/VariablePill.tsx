@@ -30,19 +30,22 @@ const ICON_BACKGROUND_BY_TYPE: Record<VariableType, string> = {
 type BaseVariablePillProps = {
 	type: VariableType;
 	children: React.ReactNode;
+	width?: string;
 };
 
-const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children }, ref) => {
+const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children, width }, ref) => {
 	const icon = useMemo(() => getIconForType(type), [type]);
 
 	return (
-		// `variable-pill` class is preserved as a styling hook for unmigrated
-		// consumers (`codebook.css`, `rules/preview-rule.css`,
-		// `form/fields/variable-picker.css`, `protocol-summary.css`) that
-		// override `--variable-pill-width` / `--variable-pill-shadow-color` via
-		// cascade. Remove the marker once those areas migrate.
+		// `variable-pill` class is preserved as a styling hook for the two
+		// remaining unmigrated consumers — `rules/preview-rule.css` and
+		// `protocol-summary.css` — that override `--variable-pill-shadow-color`
+		// / preview-margin via cascade. The codebook width cascade has migrated
+		// to the `width` prop. Remove the marker once slices 33 (Rules) and 35
+		// (ProtocolSummary fold-in) close those last two cascades.
 		<motion.div
 			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-[var(--variable-pill-width,20rem)] shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
+			style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}
 			ref={ref}
 		>
 			<div
@@ -75,9 +78,10 @@ export const SimpleVariablePill = ({ label, ...props }: SimpleVariablePillProps)
 
 type EditableVariablePillProps = {
 	uuid: string;
+	width?: string;
 };
 
-const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
+const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 	const dispatch = useAppDispatch();
 	const ref = useRef<HTMLDivElement>(null);
 
@@ -162,7 +166,7 @@ const EditableVariablePill = ({ uuid }: EditableVariablePillProps) => {
 	}
 
 	return (
-		<BaseVariablePill type={type as VariableType} ref={ref}>
+		<BaseVariablePill type={type as VariableType} width={width} ref={ref}>
 			<AnimatePresence initial={false} mode="wait">
 				{editing ? (
 					<motion.div

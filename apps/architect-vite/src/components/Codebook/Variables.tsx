@@ -1,10 +1,10 @@
-import cx from "classnames";
 import { get, isString } from "es-toolkit/compat";
 import type { ComponentProps } from "react";
 import { compose, withHandlers, withProps, withStateHandlers } from "react-recompose";
 import { connect } from "react-redux";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { deleteVariableAsync } from "~/ducks/modules/protocol/codebook";
+import { cx } from "~/utils/cva";
 import EditableVariablePill from "../Form/Fields/VariablePicker/VariablePill";
 import ControlsColumn from "./ControlsColumn";
 import UsageColumn from "./UsageColumn";
@@ -19,13 +19,7 @@ type SortDirectionType = typeof SortDirection.ASC | typeof SortDirection.DESC;
 const reverseSort = (direction: SortDirectionType) =>
 	direction === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC;
 
-const rowClassName = (index: number) => {
-	const isEven = index % 2 === 0;
-	return cx("codebook__variables-row", {
-		"codebook__variables-row--even": isEven,
-		"codebook__variables-row--odd": !isEven,
-	});
-};
+const rowClassName = (index: number) => (index % 2 === 0 ? "bg-surface-3" : "");
 
 type HeadingProps = {
 	children: React.ReactNode;
@@ -38,14 +32,15 @@ type HeadingProps = {
 const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps) => {
 	const isSorted = name === sortBy;
 	const newSortDirection = !isSorted ? SortDirection.ASC : reverseSort(sortDirection);
-	const sortClasses = cx("sort-direction", {
-		"sort-direction--asc": sortDirection === SortDirection.ASC,
-		"sort-direction--desc": sortDirection === SortDirection.DESC,
-	});
+	const sortClasses = cx(
+		"ml-(--space-sm) relative inline-block size-(--space-md)",
+		"after:block after:absolute after:text-xl after:-top-[0.15rem] after:text-action",
+		sortDirection === SortDirection.ASC ? 'after:[content:"\\25BE"]' : 'after:[content:"\\25B4"]',
+	);
 
 	return (
 		<th
-			className="codebook__variables-heading"
+			className="m-0 px-(--space-sm) py-(--space-md) text-base align-middle text-left normal-case"
 			onClick={() => onSort({ sortBy: name, sortDirection: newSortDirection })}
 		>
 			{children}
@@ -94,9 +89,9 @@ const Variables = ({
 
 	return (
 		<div>
-			<table className="codebook__variables">
+			<table className="mt-(--space-lg) w-full">
 				<thead>
-					<tr className="codebook__variables-row codebook__variables-row--heading">
+					<tr className="border-b-[0.2rem] border-divider">
 						<Heading
 							name="name"
 							// eslint-disable-next-line react/jsx-props-no-spreading
@@ -125,14 +120,14 @@ const Variables = ({
 				<tbody>
 					{variables.map(({ id, component, inUse, usage }, index) => (
 						<tr className={rowClassName(index)} key={id}>
-							<td className="codebook__variables-column">
-								<EditableVariablePill uuid={id} />
+							<td className="m-0 px-(--space-sm) py-(--space-md) text-base">
+								<EditableVariablePill uuid={id} width="25rem" />
 							</td>
-							<td className="codebook__variables-column">{component}</td>
-							<td className="codebook__variables-column codebook__variables-column--usage">
+							<td className="m-0 px-(--space-sm) py-(--space-md) text-base">{component}</td>
+							<td className="m-0 px-(--space-sm) py-(--space-md) text-base">
 								<UsageColumn inUse={inUse} usage={usage} />
 							</td>
-							<td className="codebook__variables-column codebook__variables-column--control">
+							<td className="m-0 px-(--space-sm) py-(--space-md) text-base">
 								<ControlsColumn onDelete={onDelete} inUse={inUse} id={id} />
 							</td>
 						</tr>

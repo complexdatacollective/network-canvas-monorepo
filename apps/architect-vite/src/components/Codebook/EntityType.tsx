@@ -79,15 +79,15 @@ const EntityType = ({
 	);
 
 	return (
-		<div className="codebook__entity">
-			<div className="codebook__entity-detail">
-				<div className="codebook__entity-icon">
+		<div className="overflow-hidden mx-auto my-(--space-xl) p-(--space-xl) bg-surface-3 rounded">
+			<div className="flex items-center">
+				<div className="grow-0 basis-(--space-5xl)">
 					<EntityIcon color={color} entity={entity} shape={shape} />
 				</div>
-				<div className="codebook__entity-name">
+				<div className="ps-(--space-lg)">
 					<h2>{name}</h2>
 				</div>
-				<div className="codebook__entity-meta">
+				<div className="flex-1 ps-(--space-xl)">
 					{!inUse && <Tag>not in use</Tag>}
 					{inUse && (
 						<>
@@ -95,7 +95,7 @@ const EntityType = ({
 						</>
 					)}
 				</div>
-				<div className="codebook__entity-control">
+				<div className="grow-0 flex gap-(--space-sm)">
 					<Button onClick={handleEdit} color="sea-green">
 						Edit entity
 					</Button>
@@ -105,7 +105,7 @@ const EntityType = ({
 				</div>
 			</div>
 			{variableArray.length > 0 && (
-				<div className="codebook__entity-variables">
+				<div>
 					<h3>Variables:</h3>
 					<VariablesTyped variables={variableArray} entity={entity} type={type} />
 				</div>

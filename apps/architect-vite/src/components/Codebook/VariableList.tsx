@@ -26,9 +26,9 @@ const Variables = ({
 
 	return (
 		<div>
-			<table className="codebook__variables">
+			<table className="mt-(--space-lg) w-full">
 				<thead>
-					<tr className="codebook__variables-row codebook__variables-row--heading">
+					<tr className="border-b-[0.2rem] border-divider">
 						<Heading
 							name="name"
 							// eslint-disable-next-line react/jsx-props-no-spreading
@@ -41,7 +41,7 @@ const Variables = ({
 				<tbody>
 					{variables.map((name, index) => (
 						<tr className={rowClassName(index)} key={name}>
-							<td className="codebook__variables-column">{name}</td>
+							<td className="m-0 px-(--space-sm) py-(--space-md) text-base">{name}</td>
 						</tr>
 					))}
 				</tbody>
