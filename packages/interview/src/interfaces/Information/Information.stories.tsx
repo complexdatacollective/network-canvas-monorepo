@@ -47,7 +47,6 @@ const InformationStoryWrapper = (args: StoryArgs) => {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/Information",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {

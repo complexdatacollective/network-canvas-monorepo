@@ -62,7 +62,6 @@ function NarrativeStoryWrapper({ buildFn }: { buildFn: () => SyntheticInterview 
 const meta: Meta = {
 	title: "Interfaces/Narrative",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 };

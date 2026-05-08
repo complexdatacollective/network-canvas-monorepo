@@ -103,7 +103,6 @@ const NameGeneratorRosterStoryWrapper = (args: StoryArgs) => {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/NameGeneratorRoster",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {

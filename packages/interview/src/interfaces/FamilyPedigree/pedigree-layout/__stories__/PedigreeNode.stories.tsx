@@ -114,7 +114,6 @@ const meta: Meta<typeof PedigreeNode> = {
 	decorators: [ReduxDecorator],
 	parameters: {
 		layout: "centered",
-		forceTheme: "interview",
 	},
 	args: {
 		allowDrag: false,

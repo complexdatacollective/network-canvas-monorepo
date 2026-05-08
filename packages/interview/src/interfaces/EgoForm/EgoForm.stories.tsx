@@ -82,7 +82,6 @@ const EgoFormStoryWrapper = (args: StoryArgs) => {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/EgoForm",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {

@@ -122,7 +122,6 @@ const CategoricalBinStoryWrapper = (args: StoryArgs) => {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/CategoricalBin",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {

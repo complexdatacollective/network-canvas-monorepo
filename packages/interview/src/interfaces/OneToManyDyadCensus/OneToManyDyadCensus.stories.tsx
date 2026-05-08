@@ -59,7 +59,6 @@ const OneToManyDyadCensusWrapper = (args: StoryArgs) => {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/OneToManyDyadCensus",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {

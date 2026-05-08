@@ -8,7 +8,6 @@ const meta = {
 	component: DataCard,
 	parameters: {
 		layout: "padded",
-		forceTheme: "interview",
 	},
 	tags: ["autodocs"],
 	argTypes: {

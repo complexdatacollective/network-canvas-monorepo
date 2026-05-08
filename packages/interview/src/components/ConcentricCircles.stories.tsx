@@ -5,7 +5,6 @@ const meta: Meta<typeof ConcentricCircles> = {
 	title: "Components/ConcentricCircles",
 	component: ConcentricCircles,
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	tags: ["autodocs"],

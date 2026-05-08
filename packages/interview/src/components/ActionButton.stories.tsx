@@ -7,7 +7,6 @@ const meta: Meta<typeof ActionButton> = {
 	title: "Components/ActionButton",
 	component: ActionButton,
 	parameters: {
-		forceTheme: "interview",
 		layout: "centered",
 	},
 	tags: ["autodocs"],

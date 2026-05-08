@@ -94,7 +94,6 @@ const meta: Meta<typeof ConvexHullLayer> = {
 	title: "Components/ConvexHullLayer",
 	component: ConvexHullLayer,
 	parameters: {
-		forceTheme: "interview",
 		layout: "centered",
 	},
 	tags: ["autodocs"],

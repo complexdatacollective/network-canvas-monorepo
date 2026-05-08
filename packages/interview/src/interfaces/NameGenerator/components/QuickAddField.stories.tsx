@@ -124,7 +124,6 @@ const meta: Meta<StoryArgs> = {
 	component: QuickAddField,
 	decorators: [ReduxDecorator],
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	args: {

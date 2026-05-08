@@ -33,7 +33,6 @@ function SociogramStoryWrapper({ buildFn }: { buildFn: () => SyntheticInterview 
 const meta: Meta = {
 	title: "Interfaces/Sociogram",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 };

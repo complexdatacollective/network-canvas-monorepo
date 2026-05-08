@@ -21,7 +21,7 @@ function buildInterview(args: StoryArgs) {
 	const interview = new SyntheticInterview();
 
 	const nodeType = interview.addNodeType({ name: "Person" });
-	nodeType.addVariable({ type: "text", name: "Name" });
+	const nameVar = nodeType.addVariable({ type: "text", name: "Name" });
 
 	interview.addInformationStage({
 		title: "Welcome",
@@ -65,6 +65,7 @@ function buildInterview(args: StoryArgs) {
 			label: "Name Generator",
 			initialNodes: args.initialNodeCount,
 			subject: { entity: "node", type: nodeType.id },
+			quickAdd: nameVar.id,
 			behaviours,
 		});
 
@@ -104,7 +105,6 @@ const NameGeneratorStoryWrapper = (args: StoryArgs) => {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/NameGenerator",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {
@@ -284,7 +284,7 @@ function buildExternalDataInterview() {
 	const interview = new SyntheticInterview();
 
 	const nodeType = interview.addNodeType({ name: "Person" });
-	nodeType.addVariable({ type: "text", name: "Name" });
+	const nameVar = nodeType.addVariable({ type: "text", name: "Name" });
 
 	interview.addInformationStage({
 		title: "Welcome",
@@ -295,6 +295,7 @@ function buildExternalDataInterview() {
 		label: "Name Generator",
 		initialNodes: 0,
 		subject: { entity: "node", type: nodeType.id },
+		quickAdd: nameVar.id,
 	});
 
 	stage.addPrompt({ text: "Name the people you know." });

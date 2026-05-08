@@ -300,7 +300,6 @@ const meta: Meta<StoryArgs> = {
 	component: NodeForm,
 	decorators: [ReduxDecorator],
 	parameters: {
-		forceTheme: "interview",
 		layout: "centered",
 	},
 	args: {

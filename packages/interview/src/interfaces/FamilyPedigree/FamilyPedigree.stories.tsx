@@ -121,7 +121,6 @@ type StoryArgs = {
 const meta: Meta<StoryArgs> = {
 	title: "Interfaces/FamilyPedigree",
 	parameters: {
-		forceTheme: "interview",
 		layout: "fullscreen",
 	},
 	argTypes: {
