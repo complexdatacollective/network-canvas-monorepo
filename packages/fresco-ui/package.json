@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/fresco-ui",
-	"version": "2.8.0",
+	"version": "2.9.0",
 	"type": "module",
 	"license": "MIT",
 	"description": "Fresco UI components, styles, and utilities",
@@ -431,7 +431,6 @@
 		"@base-ui/react": "^1.4.0",
 		"@codaco/shared-consts": "5.0.0",
 		"@codaco/tailwind-config": "workspace:^",
-		"immer": "catalog:",
 		"motion": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
@@ -453,6 +452,7 @@
 		"cva": "1.0.0-beta.4",
 		"es-toolkit": "catalog:",
 		"fuse.js": "^7.3.0",
+		"immer": "catalog:",
 		"lucide-react": "catalog:",
 		"nanoid": "^5.1.11",
 		"react-aria-components": "^1.16.0",
