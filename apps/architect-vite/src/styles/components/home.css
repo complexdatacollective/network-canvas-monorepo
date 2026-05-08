@@ -2,17 +2,6 @@
 
 /* Utility class for scrollable behavior - apply this class to HTML elements instead of @include scrollable */
 .scrollable {
-	--scrollbar-padding: 1.2rem;
-	--scrollbar-bottom-height: 2rem;
-	--scrollbar-opaque: rgb(0 0 0 / 100%);
-
-	mask-image: linear-gradient(
-		180deg,
-		transparent,
-		var(--scrollbar-opaque) var(--scrollbar-padding),
-		var(--scrollbar-opaque) calc(100% - var(--scrollbar-bottom-height)),
-		transparent 100%
-	);
 	overflow-x: hidden;
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;

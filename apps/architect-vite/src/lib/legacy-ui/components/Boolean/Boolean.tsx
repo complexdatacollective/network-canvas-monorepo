@@ -16,7 +16,7 @@ type BooleanProps = {
 	onChange: (value: boolean | null) => void;
 };
 
-const Boolean = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
+const BooleanToggle = ({ noReset, options = [], value = null, onChange = () => {} }: BooleanProps) => (
 	<div className="form-field">
 		<div className="flex w-full">
 			{options.map(({ label, value: optionValue, classes, icon, negative }) => (
@@ -41,4 +41,4 @@ const Boolean = ({ noReset, options = [], value = null, onChange = () => {} }: B
 	</div>
 );
 
-export default Boolean;
+export default BooleanToggle;

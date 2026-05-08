@@ -213,7 +213,7 @@ const VariableSpotlight = ({
 	}, [filterTerm, existingVariableNames]);
 
 	const renderResults = () => (
-		<Scroller className="[mask-image:none]">
+		<Scroller>
 			<ol className="m-0 list-none p-0">
 				{filterTerm && options.filter((item) => item.label === filterTerm).length !== 1 && (
 					<>
@@ -404,7 +404,7 @@ const VariableSpotlight = ({
 					/>
 				</header>
 				<motion.main
-					className="flex-auto max-h-[60vh] flex-col overflow-hidden pb-(--space-xs) [&_.scrollable]:[mask-image:none]"
+					className="flex-auto max-h-[60vh] flex-col overflow-hidden pb-(--space-xs)"
 					variants={resultsVariants}
 					transition={{ duration: 0.2, ease: "easeInOut" }}
 				>
