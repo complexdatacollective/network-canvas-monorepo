@@ -8,7 +8,6 @@ import { Toaster } from "@codaco/fresco-ui/Toast";
 import { TooltipProvider } from "@codaco/fresco-ui/Tooltip";
 import { MotionConfig } from "motion/react";
 import type { ReactNode } from "react";
-import { InterviewToastViewport, interviewToastManager } from "../src";
 import { CurrentStepProvider } from "../src/contexts/CurrentStepContext";
 import { ContractProvider } from "../src/contract/context";
 
@@ -36,9 +35,10 @@ const noopFinish = () => Promise.resolve();
  * - DialogProvider: required by stages that pop a confirmation dialog.
  * - TooltipProvider: required by any Tooltip-using component.
  * - Toast.Provider + Toaster: default toast surface.
- * - Second Toast.Provider + InterviewToastViewport: the channel the
- *   interview package's own toasts (validation errors, save indicators)
- *   route through.
+ *
+ * Interview-specific toasts (validation errors, etc.) are rendered by
+ * Shell's own internal Toast.Provider + InterviewToastViewport, so this
+ * decorator only needs to provide the default toast surface.
  */
 export default function Providers({
 	children,
@@ -65,9 +65,6 @@ export default function Providers({
 						</DndStoreProvider>
 					</TooltipProvider>
 					<Toaster />
-				</Toast.Provider>
-				<Toast.Provider toastManager={interviewToastManager} limit={3}>
-					<InterviewToastViewport />
 				</Toast.Provider>
 			</DirectionProvider>
 		</MotionConfig>

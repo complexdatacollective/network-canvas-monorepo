@@ -34,9 +34,11 @@ const ProgressBar = ({
 				"rounded-full",
 				// Background using color-mix
 				"[background-color:color-mix(in_oklch,currentColor_10%,transparent)]",
-				// Orientation-specific styles
-				orientation === "vertical" && "w-[0.7rem]",
-				orientation === "horizontal" && "h-[0.7rem]",
+				// Orientation-specific styles. Multiplied by `--theme-root-size`
+				// so the bar grows with the theme's root size at breakpoints
+				// instead of staying anchored to the html root in rem.
+				orientation === "vertical" && "w-[calc(0.7*var(--theme-root-size))]",
+				orientation === "horizontal" && "h-[calc(0.7*var(--theme-root-size))]",
 				// Complete state - pulse glow animation
 				nudge && "data-complete:animate-pulse-glow",
 				// Clickable cursor

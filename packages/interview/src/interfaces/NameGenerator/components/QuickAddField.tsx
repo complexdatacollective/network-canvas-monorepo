@@ -166,10 +166,10 @@ export default function QuickAddField({
 				{checked && (
 					<MotionSurface
 						noContainer
-						className="elevation-high bg-surface/80 w-sm rounded-xl backdrop-blur-md"
-						initial={{ opacity: 0, x: "4rem" }}
+						className="shadow-xl w-md rounded-xl"
+						initial={{ opacity: 0, x: "15%" }}
 						animate={{ opacity: 1, x: 0 }}
-						exit={{ opacity: 0, x: "4rem" }}
+						exit={{ opacity: 0, x: "15%" }}
 					>
 						<Tooltip open={showErrors && !!meta.errors?.length}>
 							<TooltipTrigger render={<div className="w-full" />}>
@@ -184,12 +184,13 @@ export default function QuickAddField({
 											name={targetVariable}
 											data-testid="quick-add-input"
 											{...fieldProps}
+											className="w-full"
 											value={fieldProps.value as string}
 											onChange={handleChange}
 											onBlur={handleBlur}
 										/>
 									</TooltipTrigger>
-									<TooltipContent align="center" className="max-w-2xs text-sm" sideOffset={25}>
+									<TooltipContent align="center" className=" text-sm" sideOffset={25}>
 										Press <kbd>Enter</kbd> when you are finished. The box will stay open so you can quickly enter
 										multiple names in a row.
 									</TooltipContent>
@@ -198,7 +199,7 @@ export default function QuickAddField({
 							<TooltipContent
 								side="bottom"
 								align="center"
-								className="bg-destructive text-destructive-contrast [&_svg_path]:fill-destructive max-w-2xs text-sm"
+								className="bg-destructive text-destructive-contrast [&_svg_path]:fill-destructive  text-sm"
 								sideOffset={10}
 							>
 								{meta.errors?.[0] && <Paragraph margin="none">{meta.errors[0]}</Paragraph>}

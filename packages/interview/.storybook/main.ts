@@ -23,6 +23,7 @@ export default defineMain({
 		config.resolve.alias = {
 			...(config.resolve.alias ?? {}),
 			"~": resolve(import.meta.dirname, ".."),
+			"@codaco/fresco-ui": resolve(import.meta.dirname, "../../fresco-ui/src"),
 		};
 		return config;
 	},

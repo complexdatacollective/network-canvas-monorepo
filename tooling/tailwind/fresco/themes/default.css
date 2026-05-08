@@ -19,6 +19,14 @@
     /* TW default uses rem, we use em so that spacing scales with local font size */
     --spacing-base: 0.25em;
 
+    /*
+     * `rem` keeps radius constant across cascade contexts (anchored to the
+     * html root font-size, so OS text-zoom still works). Theme files override
+     * this variable, which the `--radius` token in theme.css resolves at
+     * use-site.
+     */
+    --radius-base: 1.75rem;
+
     /* Used for relative color values */
     --base-hue: 290;
     --brand: oklch(10% 0.5 var(--base-hue));

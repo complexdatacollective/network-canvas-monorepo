@@ -101,6 +101,18 @@
 	@apply isolate;
 }
 
+/*
+ * Foundational themed-surface defaults. Applied to `body` so unthemed page
+ * chrome has reasonable defaults, AND to every `ThemedRegion` so the
+ * inherited / cascading themed values (font-family, color, --scoped-bg,
+ * --published-bg/--published-text) re-resolve at the themed region's
+ * cascade context — otherwise children inside a themed region would
+ * inherit the body-resolved values for the default theme.
+ */
+@utility theme-base {
+	@apply bg-background text-text publish-colors font-body;
+}
+
 /* Variant for elements with the readonly attribute. The default tailwind
    approach uses a pseudo-element selector that also matches non-editable
    elements like <select>, which we usually don't want to style as readonly. */

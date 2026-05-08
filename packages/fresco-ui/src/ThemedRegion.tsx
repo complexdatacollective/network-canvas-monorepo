@@ -13,10 +13,12 @@ type ThemedRegionProps = {
 
 export function ThemedRegion({ theme, render, children, className, ...rest }: ThemedRegionProps) {
 	const themeAttr = theme === "interview" ? { "data-theme-interview": "" } : {};
-	// Interview is a dark-only palette; apply Tailwind's `scheme-dark` utility
-	// (color-scheme: dark) so native UI inside the region — form controls,
-	// scrollbars, autofill backgrounds — matches the themed surface.
-	const themeClass = theme === "interview" ? "scheme-dark" : null;
+	// `theme-base` re-declares font-family / color / --scoped-bg /
+	// --published-bg / --published-text at the themed region so descendants
+	// pick up themed values via inheritance instead of the body-resolved
+	// defaults. Interview is dark-only, so add Tailwind's `scheme-dark`
+	// (color-scheme: dark) for native UI like form controls and scrollbars.
+	const themeClasses = cx("theme-base", theme === "interview" && "scheme-dark");
 	const body = <PortalContainerProvider>{children}</PortalContainerProvider>;
 
 	if (render && isValidElement<HTMLAttributes<HTMLElement>>(render)) {
@@ -25,14 +27,14 @@ export function ThemedRegion({ theme, render, children, className, ...rest }: Th
 			{
 				...themeAttr,
 				...rest,
-				className: cx(themeClass, render.props.className, className),
+				className: cx(themeClasses, render.props.className, className),
 			},
 			body,
 		);
 	}
 
 	return (
-		<div {...themeAttr} {...rest} className={cx(themeClass, className)}>
+		<div {...themeAttr} {...rest} className={cx(themeClasses, className)}>
 			{body}
 		</div>
 	);

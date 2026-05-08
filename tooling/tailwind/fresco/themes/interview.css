@@ -170,7 +170,7 @@
     --cat-9: oklch(var(--tomato));
     --cat-10: oklch(var(--slate-blue));
 
-    --radius: 2rem;
+    --radius-base: 2rem;
   }
 }
 

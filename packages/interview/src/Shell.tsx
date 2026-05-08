@@ -1,7 +1,9 @@
 "use client";
 "use no memo";
 
+import { Toast } from "@base-ui/react/toast";
 import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
+import { DndStoreProvider } from "@codaco/fresco-ui/dnd/dnd";
 import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import { AnimatePresence, motion } from "motion/react";
@@ -28,7 +30,8 @@ import type {
 import useInterviewNavigation from "./hooks/useInterviewNavigation";
 import useMediaQuery from "./hooks/useMediaQuery";
 import { store } from "./store/store";
-import { InterviewToastProvider } from "./toast/InterviewToast";
+import { InterviewToastProvider, InterviewToastViewport } from "./toast/InterviewToast";
+import { interviewToastManager } from "./toast/interviewToastManager";
 
 const variants = {
 	initial: { opacity: 0 },
@@ -70,53 +73,72 @@ function Interview() {
 			render={
 				<main
 					className={cx(
-						"relative flex size-full flex-1 overflow-hidden bg-background text-text publish-colors",
+						"relative flex size-full flex-1 overflow-hidden",
 						isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
 					)}
 				/>
 			}
 		>
-			<StageMetadataProvider value={registerBeforeNext}>
-				<InterviewToastProvider
+			{/*
+			 * DndStoreProvider sits inside ThemedRegion so its DragPreview's
+			 * portal lands in the themed portal container — cloned drag
+			 * previews then inherit the theme cascade. Hosts no longer need
+			 * to mount this provider themselves.
+			 */}
+			<DndStoreProvider>
+				<StageMetadataProvider value={registerBeforeNext}>
+					<InterviewToastProvider
+						forwardButtonRef={forwardButtonRef}
+						backButtonRef={backButtonRef}
+						orientation={navigationOrientation}
+					>
+						<AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
+							{showStage && stage && (
+								<motion.div
+									key={displayedStep}
+									data-stage-step={displayedStep}
+									className="flex min-h-0 flex-1"
+									initial="initial"
+									animate="animate"
+									exit="exit"
+									variants={variants}
+									transition={{ duration: 0.5 }}
+								>
+									<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
+										<StageErrorBoundary>
+											{CurrentInterface && (
+												<CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
+											)}
+										</StageErrorBoundary>
+									</div>
+								</motion.div>
+							)}
+						</AnimatePresence>
+					</InterviewToastProvider>
+				</StageMetadataProvider>
+				<Navigation
+					moveBackward={moveBackward}
+					moveForward={moveForward}
+					disableMoveForward={disableMoveForward}
+					disableMoveBackward={disableMoveBackward}
+					pulseNext={pulseNext}
+					progress={progress}
+					orientation={navigationOrientation}
 					forwardButtonRef={forwardButtonRef}
 					backButtonRef={backButtonRef}
-					orientation={navigationOrientation}
-				>
-					<AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-						{showStage && stage && (
-							<motion.div
-								key={displayedStep}
-								data-stage-step={displayedStep}
-								className="flex min-h-0 flex-1"
-								initial="initial"
-								animate="animate"
-								exit="exit"
-								variants={variants}
-								transition={{ duration: 0.5 }}
-							>
-								<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
-									<StageErrorBoundary>
-										{CurrentInterface && (
-											<CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
-										)}
-									</StageErrorBoundary>
-								</div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</InterviewToastProvider>
-			</StageMetadataProvider>
-			<Navigation
-				moveBackward={moveBackward}
-				moveForward={moveForward}
-				disableMoveForward={disableMoveForward}
-				disableMoveBackward={disableMoveBackward}
-				pulseNext={pulseNext}
-				progress={progress}
-				orientation={navigationOrientation}
-				forwardButtonRef={forwardButtonRef}
-				backButtonRef={backButtonRef}
-			/>
+				/>
+				{/*
+				 * Self-contained Toast.Provider for the interview manager so
+				 * the viewport's portal lands inside ThemedRegion (themed
+				 * surface + portal-container context) regardless of what the
+				 * host sets up. Hosts may still mount their own app-level
+				 * Toast.Provider for non-interview toasts; the two are
+				 * independent channels.
+				 */}
+				<Toast.Provider toastManager={interviewToastManager}>
+					<InterviewToastViewport />
+				</Toast.Provider>
+			</DndStoreProvider>
 		</ThemedRegion>
 	);
 }

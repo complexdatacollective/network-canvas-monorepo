@@ -27,11 +27,10 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
 			{...dropProps}
 			className={cx(
 				"pointer-events-auto absolute bottom-7 left-1/2 z-50",
-				"h-28 w-20 -translate-x-1/2 overflow-hidden bg-contain bg-no-repeat",
-				"drop-shadow-[0_2.4rem_2.4rem_var(--nc-drop-shadow-color,rgba(0,0,0,0.3))]",
+				"h-28 w-20 -translate-x-1/2 overflow-hidden",
+				"drop-shadow-[0_calc(2.4*var(--theme-root-size))_calc(2.4*var(--theme-root-size))_var(--nc-drop-shadow-color,rgba(0,0,0,0.3))]",
 			)}
-			style={{ backgroundImage: `url(${nodeBinUrl})` }}
-			initial={{ opacity: 0, y: "1.8rem" }}
+			initial={{ opacity: 0, y: "25%" }}
 			animate={
 				willAccept
 					? {
@@ -39,10 +38,23 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
 							y: 0,
 							scale: isOver ? 2 : 1,
 						}
-					: { opacity: 0, y: "1.8rem", scale: 1 }
+					: { opacity: 0, y: "25%", scale: 1 }
 			}
 			transition={{ type: "spring", stiffness: 500, damping: 30 }}
-		/>
+		>
+			{/*
+			 * Background lives on a child rather than `style` on the motion.div
+			 * because motion's `style` prop is reactive — passing a non-animated
+			 * CSS property like `backgroundImage` alongside `initial`/`animate`
+			 * doesn't reliably forward to the rendered element. A static child
+			 * div sidesteps that interaction.
+			 */}
+			<div
+				aria-hidden="true"
+				className="size-full bg-contain bg-no-repeat"
+				style={{ backgroundImage: `url(${nodeBinUrl})` }}
+			/>
+		</motion.div>
 	);
 };
 

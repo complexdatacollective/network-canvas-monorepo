@@ -9,7 +9,7 @@ import QuickAddField from "./QuickAddField";
 
 const containerVariants: Variants = {
 	animate: {
-		y: "0rem",
+		y: 0,
 		opacity: 1,
 		transition: {
 			when: "beforeChildren",

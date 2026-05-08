@@ -63,7 +63,7 @@ export default function PassphrasePrompter() {
 									<motion.button
 										key="lock"
 										layout
-										className="bg-platinum group flex size-[4.8rem] cursor-pointer items-center justify-center rounded-full"
+										className="bg-platinum group flex size-[calc(4.8*var(--theme-root-size))] cursor-pointer items-center justify-center rounded-full"
 										initial={{ scale: 0, opacity: 0 }}
 										animate={{
 											scale: 1,

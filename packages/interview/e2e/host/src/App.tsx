@@ -1,7 +1,5 @@
-import { Toast } from "@base-ui/react/toast";
-import { DndStoreProvider } from "@codaco/fresco-ui/dnd/dnd";
 import type { AssetRequestHandler, InterviewPayload, StepChangeHandler } from "@codaco/interview";
-import { InterviewToastViewport, interviewToastManager, Shell } from "@codaco/interview";
+import { Shell } from "@codaco/interview";
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { mockFinish, mockSync } from "./mockCallbacks";
@@ -135,22 +133,17 @@ export default function App() {
 
 	return (
 		<MotionConfig reducedMotion="always" skipAnimations>
-			<Toast.Provider toastManager={interviewToastManager}>
-				<DndStoreProvider>
-					<Shell
-						payload={payload}
-						onSync={mockSync}
-						onFinish={mockFinish}
-						onRequestAsset={mockAssetReq}
-						currentStep={currentStep}
-						onStepChange={onStepChange}
-						flags={{ isE2E: true }}
-						analytics={{ installationId: "e2e", hostApp: "e2e" }}
-						disableAnalytics={true}
-					/>
-				</DndStoreProvider>
-				<InterviewToastViewport />
-			</Toast.Provider>
+			<Shell
+				payload={payload}
+				onSync={mockSync}
+				onFinish={mockFinish}
+				onRequestAsset={mockAssetReq}
+				currentStep={currentStep}
+				onStepChange={onStepChange}
+				flags={{ isE2E: true }}
+				analytics={{ installationId: "e2e", hostApp: "e2e" }}
+				disableAnalytics={true}
+			/>
 		</MotionConfig>
 	);
 }

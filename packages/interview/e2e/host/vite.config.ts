@@ -20,6 +20,11 @@ export default defineConfig({
 		alias: [
 			{ find: /^@codaco\/interview$/, replacement: resolve(__dirname, "../../src/index.ts") },
 			{ find: /^@codaco\/interview\/styles\.css$/, replacement: resolve(__dirname, "../../src/styles.css") },
+			{
+				find: /^@codaco\/fresco-ui\/styles\.css$/,
+				replacement: resolve(__dirname, "../../../fresco-ui/src/styles.css"),
+			},
+			{ find: /^@codaco\/fresco-ui\/(.+)$/, replacement: resolve(__dirname, "../../../fresco-ui/src/$1") },
 		],
 	},
 });
