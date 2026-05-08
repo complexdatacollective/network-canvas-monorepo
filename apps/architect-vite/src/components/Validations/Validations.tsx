@@ -78,12 +78,7 @@ const ValidationsField = ({
 	const hasError = !!(submitFailed && error);
 
 	return (
-		<div
-			className={cx(
-				hasError &&
-					"[--rule-bg:var(--color-error)] [&_.form-field-error]:my-(--space-xs) [&_.form-field-error]:rounded-(--space-xs)",
-			)}
-		>
+		<div className={cx(hasError && "[--rule-bg:var(--color-error)]")}>
 			<div className="flex flex-col gap-(--space-md)">
 				{input.value.map(([key, value]) => (
 					<Validation
@@ -98,7 +93,11 @@ const ValidationsField = ({
 				))}
 				{children}
 			</div>
-			<FieldError show={hasError} error={error} />
+			<FieldError
+				show={hasError}
+				error={error}
+				className={hasError ? "my-(--space-xs) rounded-(--space-xs)" : undefined}
+			/>
 		</div>
 	);
 };

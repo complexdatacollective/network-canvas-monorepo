@@ -136,13 +136,11 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 					})}
 				</Reorder.Group>
 
-				{/* Wrapper preserves the legacy `.options--has-error .form-field-error`
-				    margin/radius cascade now that the source CSS is gone. The actual
-				    error chrome (background, color, transitions) is owned by the
-				    deferred form-field-error stylesheet. */}
-				<div className={hasError ? "my-(--space-md) overflow-hidden rounded-xl" : undefined}>
-					<FieldError show={hasError} error={error} />
-				</div>
+				<FieldError
+					show={hasError}
+					error={error}
+					className={hasError ? "my-(--space-md) overflow-hidden rounded-xl" : undefined}
+				/>
 			</div>
 			<AddItem onClick={() => fields.push({})} />
 		</div>

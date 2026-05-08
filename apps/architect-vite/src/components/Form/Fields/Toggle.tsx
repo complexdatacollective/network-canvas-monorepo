@@ -90,7 +90,7 @@ const Toggle = ({
 						)}
 					/>
 				</div>
-				{label && <MarkdownLabel inline label={label} className="form-field-inline-label" />}
+				{label && <MarkdownLabel inline label={label} className="[&>:first-child]:mt-0 [&>:last-child]:mb-0" />}
 			</label>
 			{hasError && (
 				<div className="flex items-center bg-error text-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">

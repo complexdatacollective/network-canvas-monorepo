@@ -14,9 +14,7 @@ type CustomEditor = Editor &
 		disallowedTypes?: string[];
 	};
 
-const Spacer = () => (
-	<div className="flex-none w-(--global-input-border-size) h-(--space-lg) mx-(--space-sm) bg-platinum-dark" />
-);
+const Spacer = () => <div className="flex-none w-[0.125rem] h-(--space-lg) mx-(--space-sm) bg-platinum-dark" />;
 
 const Toolbar = () => {
 	const editor = useSlate() as CustomEditor;

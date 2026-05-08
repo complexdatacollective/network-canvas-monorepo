@@ -1,6 +1,6 @@
 @import "./components/assets.css";
 @import "./components/codebook.css";
-@import "./components/form.css";
+@import "./components/form/fields/select.css";
 @import "./components/home.css";
 @import "./components/rule.css";
 @import "./components/rules.css";

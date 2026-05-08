@@ -41,7 +41,7 @@ const TextArea = ({
 	const hasError = !!(invalid && touched && error);
 
 	return (
-		<label htmlFor={id.current} className="form-field-container" hidden={hidden}>
+		<label htmlFor={id.current} className="form-field-container block" hidden={hidden}>
 			{(fieldLabel || label) && <MarkdownLabel label={fieldLabel || label || ""} />}
 			<div className={cx("group relative", className)}>
 				<textarea

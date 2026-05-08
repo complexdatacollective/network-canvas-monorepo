@@ -80,11 +80,8 @@ const FileInput = ({
 	};
 
 	return (
-		// `form-field-container` is a deferred marker (slice 8 outcome) consumed
-		// by unmigrated parent stylesheets (codebook, sections). Removed in
-		// slice 31 alongside `form/fields.css` deletion.
 		<div className={cx("form-field form-field-container relative block", className)}>
-			{label && <h4 className="form-field-label">{label}</h4>}
+			{label && <h4 className="h3">{label}</h4>}
 			{invalid && touched && (
 				<div className="flex items-center px-(--space-xs) py-(--space-sm) text-error [&_.icon]:mr-(--space-sm) [&_.icon]:size-(--space-md)">
 					<Icon name="warning" />

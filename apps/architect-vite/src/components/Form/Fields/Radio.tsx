@@ -51,7 +51,7 @@ const Radio = ({ label, className = "", input, disabled = false, fieldLabel, ...
 					"relative inline-block shrink-0 size-(--space-xl) mr-(--space-sm)",
 					"before:content-[''] before:absolute before:inset-0 before:rounded-full before:border-2 before:border-solid before:border-border",
 					"before:transition-[border-color] before:duration-(--animation-duration-standard) before:ease-(--animation-easing)",
-					"after:content-[''] after:absolute after:inset-[calc(var(--global-input-border-size)+var(--global-input-border-space))]",
+					"after:content-[''] after:absolute after:inset-[0.375rem]",
 					"after:rounded-full after:bg-input-active after:opacity-0",
 					"after:transition-opacity after:duration-(--animation-duration-standard) after:ease-(--animation-easing)",
 					"peer-checked:before:border-input-active peer-checked:after:opacity-100",
@@ -60,7 +60,7 @@ const Radio = ({ label, className = "", input, disabled = false, fieldLabel, ...
 			/>
 			{label &&
 				(typeof label === "string" ? (
-					<MarkdownLabel inline label={label} className="form-field-inline-label" />
+					<MarkdownLabel inline label={label} className="[&>:first-child]:mt-0 [&>:last-child]:mb-0" />
 				) : (
 					<div className="size-(--space-2xl)">{label}</div>
 				))}

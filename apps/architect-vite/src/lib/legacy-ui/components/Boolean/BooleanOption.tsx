@@ -24,7 +24,7 @@ const BooleanOption = ({
 		if (typeof label === "function") {
 			return label();
 		}
-		return <Markdown label={label as string} className="form-field-inline-label" />;
+		return <Markdown label={label as string} className="[&>:first-child]:mt-0 [&>:last-child]:mb-0" />;
 	};
 
 	return (
