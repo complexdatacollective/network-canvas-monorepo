@@ -17,7 +17,14 @@ type StoryArgs = {
 	maxNodes: number;
 };
 
-function buildInterview(args: StoryArgs) {
+/**
+ * When `initialNodeCount > 0`, prepend a one-prompt "Setup" NameGenerator stage
+ * that creates those nodes and assigns them to its prompt. This mirrors the
+ * production state in which alters always carry at least one promptID — it's
+ * also what makes the existing-network panel's "drag back to remove from this
+ * prompt" round-trip work in the demo stage.
+ */
+function buildInterview(args: StoryArgs): { interview: SyntheticInterview; demoStageStep: number } {
 	const interview = new SyntheticInterview();
 
 	const nodeType = interview.addNodeType({ name: "Person" });
@@ -27,6 +34,17 @@ function buildInterview(args: StoryArgs) {
 		title: "Welcome",
 		text: "Before the main stage.",
 	});
+
+	const hasSetupStage = args.initialNodeCount > 0;
+	if (hasSetupStage) {
+		const setup = interview.addStage("NameGeneratorQuickAdd", {
+			label: "Prior contacts",
+			initialNodes: { count: args.initialNodeCount, promptIndex: 0 },
+			subject: { entity: "node", type: nodeType.id },
+			quickAdd: nameVar.id,
+		});
+		setup.addPrompt({ text: "People named in earlier interview activity." });
+	}
 
 	const behaviours =
 		args.minNodes > 0 || args.maxNodes > 0
@@ -39,7 +57,6 @@ function buildInterview(args: StoryArgs) {
 	if (args.stageType === "NameGenerator") {
 		const stage = interview.addStage("NameGenerator", {
 			label: "Name Generator",
-			initialNodes: args.initialNodeCount,
 			subject: { entity: "node", type: nodeType.id },
 			behaviours,
 		});
@@ -63,7 +80,6 @@ function buildInterview(args: StoryArgs) {
 	} else {
 		const stage = interview.addStage("NameGeneratorQuickAdd", {
 			label: "Name Generator",
-			initialNodes: args.initialNodeCount,
 			subject: { entity: "node", type: nodeType.id },
 			quickAdd: nameVar.id,
 			behaviours,
@@ -85,15 +101,19 @@ function buildInterview(args: StoryArgs) {
 		text: "After the main stage.",
 	});
 
-	return interview;
+	// Welcome (0) → [Setup (1)?] → Demo → Complete. Land on Demo.
+	return { interview, demoStageStep: hasSetupStage ? 2 : 1 };
 }
 
 const NameGeneratorStoryWrapper = (args: StoryArgs) => {
 	const configKey = JSON.stringify(args);
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const interview = useMemo(() => buildInterview(args), [configKey]);
-	const rawPayload = useMemo(() => SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })), [interview]);
+	const { interview, demoStageStep } = useMemo(() => buildInterview(args), [configKey]);
+	const rawPayload = useMemo(
+		() => SuperJSON.stringify(interview.getInterviewPayload({ currentStep: demoStageStep })),
+		[interview, demoStageStep],
+	);
 
 	return (
 		<div className="flex h-dvh w-full">
@@ -201,9 +221,9 @@ export const MaxNodesReached: Story = {
 /**
  * Tests keyboard drag-and-drop from an "existing" side panel to the main node list.
  *
- * Setup: 3 initial nodes with empty promptIDs sit in the network. The "existing"
- * panel shows them (they're not assigned to the current prompt). The main list
- * is empty. Dragging a node from the panel to the main list adds it to the
+ * The 3 initial nodes are created by `buildInterview`'s prepended Setup stage,
+ * so they reach the demo stage's existing panel already carrying a prior
+ * promptID. The main list starts empty; dragging a node into it adds the
  * current prompt.
  */
 export const DragFromPanelToMainList: Story = {
@@ -264,6 +284,93 @@ export const DragFromPanelToMainList: Story = {
 	},
 };
 
+/**
+ * Round-trip: a node dragged from the existing panel into the main list can be
+ * dragged back into the panel to remove it from the current prompt while
+ * keeping it in the network.
+ *
+ * `buildInterview` prepends a Setup stage that creates the initial nodes and
+ * assigns them to its prompt, so they reach the demo stage's panel with a real
+ * promptID — letting the round-trip leave them at length 1 (still on the Setup
+ * prompt) rather than orphaning them.
+ */
+export const ExistingPanelRoundTrip: Story = {
+	args: {
+		stageType: "NameGeneratorQuickAdd",
+		initialNodeCount: 3,
+		promptCount: 2,
+		panelCount: 1,
+		minNodes: 0,
+		maxNodes: 0,
+	},
+	render: (args) => <NameGeneratorStoryWrapper {...args} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		const panel = await waitFor(
+			async () => {
+				const p = canvas.getByTestId("node-panel");
+				await expect(within(p).getAllByRole("option").length).toBe(3);
+				return p;
+			},
+			{ timeout: 5000 },
+		);
+
+		const mainList = canvas.getByTestId("node-list");
+		await expect(within(mainList).queryAllByRole("option").length).toBe(0);
+
+		// Forward: panel → main list.
+		within(panel).getAllByRole("option")[0]!.focus();
+		await userEvent.keyboard("{Control>}d{/Control}");
+		await userEvent.keyboard("{ArrowRight}");
+		await userEvent.keyboard("{Enter}");
+
+		await waitFor(
+			async () => {
+				await expect(within(panel).queryAllByRole("option").length).toBe(2);
+				await expect(within(mainList).queryAllByRole("option").length).toBe(1);
+			},
+			{ timeout: 5000 },
+		);
+
+		// Round-trip: main list → panel. The dragged EXISTING_NODE has two
+		// compatible targets (the panel and the NodeBin trash). The keyboard
+		// delegate cycles them in registration order, which isn't guaranteed,
+		// so cycle arrow keys until the live region announces the panel before
+		// pressing Enter.
+		within(mainList).getAllByRole("option")[0]!.focus();
+		await userEvent.keyboard("{Control>}d{/Control}");
+
+		const panelTitle = "Panel 1";
+		const seenAnnouncements: string[] = [];
+
+		const maxCycles = 6;
+		let landedOnPanel = false;
+		for (let i = 0; i < maxCycles; i++) {
+			await userEvent.keyboard("{ArrowLeft}");
+			const liveRegions = Array.from(document.querySelectorAll('[role="status"][aria-live="polite"]'));
+			const announcement = liveRegions.map((r) => r.textContent ?? "").join(" | ");
+			seenAnnouncements.push(announcement);
+			if (announcement.includes(panelTitle)) {
+				landedOnPanel = true;
+				break;
+			}
+		}
+		await expect(landedOnPanel, `Did not navigate to "${panelTitle}". Saw: ${JSON.stringify(seenAnnouncements)}`).toBe(
+			true,
+		);
+		await userEvent.keyboard("{Enter}");
+
+		await waitFor(
+			async () => {
+				await expect(within(panel).queryAllByRole("option").length).toBe(3);
+				await expect(within(mainList).queryAllByRole("option").length).toBe(0);
+			},
+			{ timeout: 5000 },
+		);
+	},
+};
+
 // --- External data panel ---
 
 /**
@@ -293,7 +400,6 @@ function buildExternalDataInterview() {
 
 	const stage = interview.addStage("NameGeneratorQuickAdd", {
 		label: "Name Generator",
-		initialNodes: 0,
 		subject: { entity: "node", type: nodeType.id },
 		quickAdd: nameVar.id,
 	});

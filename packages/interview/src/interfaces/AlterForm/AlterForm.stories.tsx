@@ -43,7 +43,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = interview.addStage("AlterForm", {
 		label: "Alter Form",
-		initialNodes: args.initialNodeCount,
+		initialNodes: { count: args.initialNodeCount },
 		subject: { entity: "node", type: nodeType.id },
 		introductionPanel: {
 			title: "About Each Person",
@@ -149,7 +149,7 @@ function buildValidatedInterview() {
 
 	const stage = interview.addStage("AlterForm", {
 		label: "Alter Form (Validated)",
-		initialNodes: 2,
+		initialNodes: { count: 2 },
 		subject: { entity: "node", type: nodeType.id },
 		introductionPanel: {
 			title: "About Each Person",

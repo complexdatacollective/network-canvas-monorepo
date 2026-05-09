@@ -45,7 +45,7 @@ type Story = StoryObj;
 const buildDefault = () => {
 	const { si, layoutVar } = createSociogramInterview(1);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 5 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 5 } });
 	stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
 	si.addInformationStage({
 		title: "Complete",
@@ -77,7 +77,7 @@ export const EmptyNetwork: Story = {
 const buildWithUnplacedNodes = () => {
 	const { si, layoutVar } = createSociogramInterview(3);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 6 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 6 } });
 	stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
 	for (let i = 3; i < 6; i++) {
 		si.setNodeAttribute(i, layoutVar.id, null);
@@ -97,7 +97,7 @@ const buildConcentricCircles = () => {
 	const { si, layoutVar } = createSociogramInterview(4);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	const stage = si.addStage("Sociogram", {
-		initialNodes: 6,
+		initialNodes: { count: 6 },
 		background: { concentricCircles: 4, skewedTowardCenter: true },
 	});
 	stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
@@ -115,7 +115,7 @@ export const ConcentricCircles: Story = {
 const buildWithEdges = () => {
 	const { si, layoutVar, et } = createSociogramInterview(5);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 5 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 5 } });
 	stage.addPrompt({
 		layout: { layoutVariable: layoutVar.id },
 		edges: { create: et.id, display: [et.id] },
@@ -141,7 +141,7 @@ export const WithEdges: Story = {
 const buildWithHighlighting = () => {
 	const { si, layoutVar, highlightVar } = createSociogramInterview(6);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 6 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 6 } });
 	stage.addPrompt({
 		layout: { layoutVariable: layoutVar.id },
 		highlight: { variable: highlightVar.id },
@@ -165,7 +165,7 @@ const buildAutomaticLayout = () => {
 	const { si, layoutVar, et } = createSociogramInterview(7);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	const stage = si.addStage("Sociogram", {
-		initialNodes: 8,
+		initialNodes: { count: 8 },
 		behaviours: { automaticLayout: { enabled: true } },
 	});
 	stage.addPrompt({
@@ -194,7 +194,7 @@ export const AutomaticLayout: Story = {
 const buildMultiplePrompts = () => {
 	const { si, layoutVar, highlightVar } = createSociogramInterview(8);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 5 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 5 } });
 	stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
 	stage.addPrompt({
 		text: "Now highlight people who are close friends.",
@@ -215,7 +215,7 @@ export const MultiplePrompts: Story = {
 const buildManyNodes = () => {
 	const { si, layoutVar } = createSociogramInterview(9);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 10 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 10 } });
 	stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
 	si.addEdges([
 		[0, 1],
@@ -247,7 +247,7 @@ const buildBackgroundImage = () => {
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	const bgAssetId = "bg-map-1";
 	const stage = si.addStage("Sociogram", {
-		initialNodes: 5,
+		initialNodes: { count: 5 },
 		background: { image: bgAssetId },
 	});
 	stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
@@ -270,7 +270,7 @@ const buildAutomaticLayoutLarge = () => {
 	const { si, layoutVar, et } = createSociogramInterview(11);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	const stage = si.addStage("Sociogram", {
-		initialNodes: 20,
+		initialNodes: { count: 20 },
 		behaviours: { automaticLayout: { enabled: true } },
 	});
 	stage.addPrompt({
@@ -305,7 +305,7 @@ export const AutomaticLayoutLarge: Story = {
 const buildEdgesAndHighlighting = () => {
 	const { si, layoutVar, highlightVar, et } = createSociogramInterview(12);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 6 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 6 } });
 	stage.addPrompt({
 		text: "Draw lines between people who know each other and highlight close friends.",
 		layout: { layoutVariable: layoutVar.id },
@@ -336,7 +336,7 @@ export const EdgesAndHighlighting: Story = {
 const buildLongPrompt = () => {
 	const { si, layoutVar } = createSociogramInterview(13);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Sociogram", { initialNodes: 5 });
+	const stage = si.addStage("Sociogram", { initialNodes: { count: 5 } });
 	stage.addPrompt({
 		text: "Position each person on the map based on how emotionally close you feel to them. Place people you feel very close to near the center and those you feel less connected with further out.",
 		layout: { layoutVariable: layoutVar.id },

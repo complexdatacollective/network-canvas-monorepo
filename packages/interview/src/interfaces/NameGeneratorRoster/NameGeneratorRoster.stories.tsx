@@ -38,7 +38,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = si.addStage("NameGeneratorRoster", {
 		label: "Select People",
-		initialNodes: args.initialSelectedCount,
+		initialNodes: { count: args.initialSelectedCount },
 		subject: { entity: "node", type: nodeType.id },
 		dataSource: "externalData",
 		behaviours: Object.keys(behaviours).length > 0 ? behaviours : undefined,

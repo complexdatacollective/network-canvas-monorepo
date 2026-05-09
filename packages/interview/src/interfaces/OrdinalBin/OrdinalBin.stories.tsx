@@ -74,7 +74,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = interview.addStage("OrdinalBin", {
 		label: "Rate People",
-		initialNodes: args.initialNodeCount,
+		initialNodes: { count: args.initialNodeCount },
 		subject: { entity: "node", type: nodeType.id },
 	});
 

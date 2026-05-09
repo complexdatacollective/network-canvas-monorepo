@@ -23,7 +23,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = interview.addStage("DyadCensus", {
 		label: "Dyad Census",
-		initialNodes: args.initialNodeCount,
+		initialNodes: { count: args.initialNodeCount },
 		subject: { entity: "node", type: nodeType.id },
 		introductionPanel: {
 			title: args.introTitle,

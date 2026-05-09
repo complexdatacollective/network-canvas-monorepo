@@ -44,7 +44,7 @@ function buildInterview(args: StoryArgs) {
 	// NameGenerator creates the nodes that edges will connect
 	si.addStage("NameGenerator", {
 		label: "Name Generator",
-		initialNodes: args.edgeCount + 1,
+		initialNodes: { count: args.edgeCount + 1 },
 		subject: { entity: "node", type: nt.id },
 	});
 
@@ -153,7 +153,7 @@ function buildValidatedInterview() {
 
 	si.addStage("NameGenerator", {
 		label: "Name Generator",
-		initialNodes: 3,
+		initialNodes: { count: 3 },
 		subject: { entity: "node", type: nt.id },
 	});
 

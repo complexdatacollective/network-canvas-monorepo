@@ -74,7 +74,7 @@ type Story = StoryObj;
 const buildDefault = () => {
 	const { si, layoutVar1 } = createNarrativeInterview(100);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 6 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 6 } }).addPreset({
 		label: "Social Network",
 		layoutVariable: layoutVar1.id,
 	});
@@ -103,7 +103,7 @@ const buildConcentricCirclesBackground = () => {
 	const { si, layoutVar1 } = createNarrativeInterview(102);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	si.addStage("Narrative", {
-		initialNodes: 8,
+		initialNodes: { count: 8 },
 		background: { concentricCircles: 4, skewedTowardCenter: true },
 	}).addPreset({
 		label: "Social Network",
@@ -119,7 +119,7 @@ const buildConcentricCirclesBackground = () => {
 const buildWithEdges = () => {
 	const { si, layoutVar1, friendshipEt } = createNarrativeInterview(103);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 6 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 6 } }).addPreset({
 		label: "Social Network",
 		layoutVariable: layoutVar1.id,
 		edges: { display: [friendshipEt.id] },
@@ -145,7 +145,7 @@ const buildWithEdges = () => {
 const buildWithConvexHulls = () => {
 	const { si, layoutVar1, communityVar } = createNarrativeInterview(104);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 10 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 10 } }).addPreset({
 		label: "Community Groups",
 		layoutVariable: layoutVar1.id,
 		groupVariable: communityVar.id,
@@ -175,7 +175,7 @@ const buildWithConvexHulls = () => {
 const buildWithHighlighting = () => {
 	const { si, layoutVar1, closeVar, trustedVar } = createNarrativeInterview(105);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 8 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 8 } }).addPreset({
 		label: "Close Friends",
 		layoutVariable: layoutVar1.id,
 		highlight: [closeVar.id, trustedVar.id],
@@ -194,7 +194,7 @@ const buildWithHighlighting = () => {
 const buildFullFeatured = () => {
 	const { si, layoutVar1, closeVar, communityVar, friendshipEt, professionalEt } = createNarrativeInterview(106);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 10 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 10 } }).addPreset({
 		label: "Full View",
 		layoutVariable: layoutVar1.id,
 		edges: { display: [friendshipEt.id, professionalEt.id] },
@@ -249,7 +249,7 @@ const buildMultiplePresets = () => {
 	const { si, layoutVar1, layoutVar2, closeVar, trustedVar, communityVar, friendshipEt, professionalEt } =
 		createNarrativeInterview(107);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	const stage = si.addStage("Narrative", { initialNodes: 10 });
+	const stage = si.addStage("Narrative", { initialNodes: { count: 10 } });
 	stage.addPreset({
 		label: "Social View",
 		layoutVariable: layoutVar1.id,
@@ -321,7 +321,7 @@ const buildWithFreeDraw = () => {
 	const { si, layoutVar1 } = createNarrativeInterview(108);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	si.addStage("Narrative", {
-		initialNodes: 5,
+		initialNodes: { count: 5 },
 		behaviours: { freeDraw: true },
 	}).addPreset({
 		label: "Social Network",
@@ -338,7 +338,7 @@ const buildWithRepositioning = () => {
 	const { si, layoutVar1 } = createNarrativeInterview(109);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	si.addStage("Narrative", {
-		initialNodes: 6,
+		initialNodes: { count: 6 },
 		behaviours: { allowRepositioning: true },
 	}).addPreset({
 		label: "Social Network",
@@ -355,7 +355,7 @@ const buildAllBehaviours = () => {
 	const { si, layoutVar1, closeVar, communityVar, friendshipEt, professionalEt } = createNarrativeInterview(110);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
 	si.addStage("Narrative", {
-		initialNodes: 10,
+		initialNodes: { count: 10 },
 		behaviours: { freeDraw: true, allowRepositioning: true },
 	}).addPreset({
 		label: "Full View",
@@ -412,7 +412,7 @@ const buildAllBehaviours = () => {
 const buildManyNodes = () => {
 	const { si, layoutVar1, closeVar, communityVar, friendshipEt, professionalEt } = createNarrativeInterview(111);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 15 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 15 } }).addPreset({
 		label: "Full View",
 		layoutVariable: layoutVar1.id,
 		edges: { display: [friendshipEt.id, professionalEt.id] },
@@ -465,7 +465,7 @@ const buildManyNodes = () => {
 const buildSingleNodeGroups = () => {
 	const { si, layoutVar1, communityVar } = createNarrativeInterview(112);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 4 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 4 } }).addPreset({
 		label: "Community Groups",
 		layoutVariable: layoutVar1.id,
 		groupVariable: communityVar.id,
@@ -484,7 +484,7 @@ const buildSingleNodeGroups = () => {
 const buildTwoNodeGroup = () => {
 	const { si, layoutVar1, communityVar } = createNarrativeInterview(113);
 	si.addInformationStage({ title: "Welcome", text: "Before the main stage." });
-	si.addStage("Narrative", { initialNodes: 4 }).addPreset({
+	si.addStage("Narrative", { initialNodes: { count: 4 } }).addPreset({
 		label: "Community Groups",
 		layoutVariable: layoutVar1.id,
 		groupVariable: communityVar.id,

@@ -69,7 +69,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = interview.addStage("CategoricalBin", {
 		label: "Categorise People",
-		initialNodes: args.initialNodeCount,
+		initialNodes: { count: args.initialNodeCount },
 		subject: { entity: "node", type: nodeType.id },
 	});
 

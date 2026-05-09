@@ -5,6 +5,7 @@ import {
 	type NcNetwork,
 	type VariableValue,
 } from "@codaco/shared-consts";
+import { invariant } from "es-toolkit";
 import {
 	COMPONENT_TO_VARIABLE_TYPE,
 	DEFAULT_CATEGORICAL_OPTIONS,
@@ -369,7 +370,6 @@ export class SyntheticInterview {
 								text: opts?.introductionPanel?.text ?? "",
 							}
 						: undefined,
-			initialNodes: opts?.initialNodes ?? 0,
 			initialEdges: opts?.initialEdges ?? [],
 		};
 
@@ -500,13 +500,16 @@ export class SyntheticInterview {
 		}
 
 		// Generate initial nodes (only for node-based stages)
-		if (entry.initialNodes > 0 && subject?.entity === "node") {
-			for (let i = 0; i < entry.initialNodes; i++) {
+		const initialNodeCount = opts?.initialNodes?.count ?? 0;
+		const initialNodePromptIndex = opts?.initialNodes?.promptIndex;
+		if (initialNodeCount > 0 && subject?.entity === "node") {
+			for (let i = 0; i < initialNodeCount; i++) {
 				this.nodes.push({
 					uid: this.nextId("node"),
 					type: subject.type,
 					stageId,
 					promptIDs: [],
+					promptIndices: initialNodePromptIndex !== undefined ? [initialNodePromptIndex] : undefined,
 					explicitAttributes: {},
 				});
 			}
@@ -556,7 +559,6 @@ export class SyntheticInterview {
 			prompts: [],
 			presets: [],
 			panels: [],
-			initialNodes: 0,
 			initialEdges: [],
 		};
 
@@ -1179,6 +1181,7 @@ export class SyntheticInterview {
 
 	getNetwork(): NcNetwork {
 		const valueGen = new ValueGenerator(this.seed);
+		const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
 
 		const ncNodes = this.nodes.map((nodeEntry, index) => {
 			const nodeType = this.nodeTypes.get(nodeEntry.type);
@@ -1194,11 +1197,21 @@ export class SyntheticInterview {
 				}
 			}
 
+			const stage = stagesById.get(nodeEntry.stageId);
+			const resolvedFromIndices = (nodeEntry.promptIndices ?? []).flatMap((promptIndex) => {
+				const prompt = stage?.prompts[promptIndex];
+				invariant(
+					prompt,
+					`Initial node references prompt index ${promptIndex} on stage ${nodeEntry.stageId}, but no such prompt exists`,
+				);
+				return [prompt.id];
+			});
+
 			return {
 				[entityPrimaryKeyProperty]: nodeEntry.uid,
 				type: nodeEntry.type,
 				stageId: nodeEntry.stageId,
-				promptIDs: nodeEntry.promptIDs,
+				promptIDs: [...nodeEntry.promptIDs, ...resolvedFromIndices],
 				[entityAttributesProperty]: attributes,
 			};
 		});

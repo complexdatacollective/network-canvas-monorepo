@@ -230,7 +230,6 @@ export type StageEntry = {
 	};
 	title?: string;
 	items?: InformationItem[];
-	initialNodes: number;
 	initialEdges: [number, number][];
 	// NameGeneratorQuickAdd
 	quickAdd?: string;
@@ -280,6 +279,9 @@ export type NodeEntry = {
 	type: string;
 	stageId: string;
 	promptIDs: string[];
+	// Indices into the owning stage's prompts. Resolved to prompt IDs at
+	// getNetwork() time, since prompts are added after the stage is created.
+	promptIndices?: number[];
 	explicitAttributes: Record<string, unknown>;
 };
 
@@ -292,6 +294,14 @@ export type EdgeEntry = {
 };
 
 // --- Input types for builder methods ---
+
+export type InitialNodesSpec = {
+	count: number;
+	// Index of the prompt these nodes should be assigned to (0-based) within
+	// the owning stage. Resolved at getNetwork() time. Omit for nodes that
+	// should sit in the network without belonging to any prompt.
+	promptIndex?: number;
+};
 
 export type AddNodeTypeInput = {
 	name?: string;
@@ -324,7 +334,7 @@ export type FormFieldInput = {
 export type AddStageInput = {
 	label?: string;
 	subject?: { entity: "node"; type: string } | { entity: "edge"; type: string };
-	initialNodes?: number;
+	initialNodes?: InitialNodesSpec;
 	initialEdges?: [number, number][];
 	background?: {
 		concentricCircles?: number;

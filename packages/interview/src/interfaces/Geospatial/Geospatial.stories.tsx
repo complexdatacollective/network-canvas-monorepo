@@ -208,7 +208,7 @@ export const Default: Story = {
 			});
 
 			const stage = si.addStage("Geospatial", {
-				initialNodes,
+				initialNodes: { count: initialNodes },
 				mapOptions: {
 					tokenAssetId: "mapbox-token",
 					style: MAP_STYLES[mapStyle],

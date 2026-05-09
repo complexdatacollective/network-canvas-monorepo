@@ -18,10 +18,10 @@ describe("SyntheticInterview", () => {
 			const a = new SyntheticInterview(42);
 			const b = new SyntheticInterview(42);
 
-			const stageA = a.addStage("Sociogram", { initialNodes: 5 });
+			const stageA = a.addStage("Sociogram", { initialNodes: { count: 5 } });
 			stageA.addPrompt();
 
-			const stageB = b.addStage("Sociogram", { initialNodes: 5 });
+			const stageB = b.addStage("Sociogram", { initialNodes: { count: 5 } });
 			stageB.addPrompt();
 
 			expect(a.getNetwork()).toEqual(b.getNetwork());
@@ -31,8 +31,8 @@ describe("SyntheticInterview", () => {
 			const a = new SyntheticInterview(1);
 			const b = new SyntheticInterview(2);
 
-			a.addStage("Sociogram", { initialNodes: 3 });
-			b.addStage("Sociogram", { initialNodes: 3 });
+			a.addStage("Sociogram", { initialNodes: { count: 3 } });
+			b.addStage("Sociogram", { initialNodes: { count: 3 } });
 
 			expect(a.getProtocol().id).not.toBe(b.getProtocol().id);
 
@@ -206,7 +206,7 @@ describe("SyntheticInterview", () => {
 
 		it("generates initial nodes", () => {
 			const si = new SyntheticInterview();
-			si.addStage("NameGenerator", { initialNodes: 5 });
+			si.addStage("NameGenerator", { initialNodes: { count: 5 } });
 
 			const network = si.getNetwork();
 			expect(network.nodes).toHaveLength(5);
@@ -333,7 +333,7 @@ describe("SyntheticInterview", () => {
 			nt.addVariable({ type: "boolean", name: "Active" });
 
 			si.addStage("Sociogram", {
-				initialNodes: 3,
+				initialNodes: { count: 3 },
 				subject: { entity: "node", type: nt.id },
 			});
 
@@ -349,7 +349,7 @@ describe("SyntheticInterview", () => {
 			const si = new SyntheticInterview();
 			const nt = si.addNodeType();
 			const stage = si.addStage("Sociogram", {
-				initialNodes: 3,
+				initialNodes: { count: 3 },
 				subject: { entity: "node", type: nt.id },
 			});
 
@@ -372,7 +372,7 @@ describe("SyntheticInterview", () => {
 			const si = new SyntheticInterview();
 			si.addEdgeType({ name: "Friendship" });
 			si.addStage("Sociogram", {
-				initialNodes: 5,
+				initialNodes: { count: 5 },
 				initialEdges: [
 					[0, 1],
 					[1, 2],
@@ -395,7 +395,7 @@ describe("SyntheticInterview", () => {
 	describe("getInterviewPayload", () => {
 		it("returns interview payload matching expected shape", () => {
 			const si = new SyntheticInterview();
-			si.addStage("Sociogram", { initialNodes: 3 });
+			si.addStage("Sociogram", { initialNodes: { count: 3 } });
 
 			const payload = si.getInterviewPayload();
 
@@ -410,11 +410,53 @@ describe("SyntheticInterview", () => {
 	describe("cross-stage nodes", () => {
 		it("nodes from earlier stages are in the network for later stages", () => {
 			const si = new SyntheticInterview();
-			si.addStage("NameGenerator", { initialNodes: 3 });
-			si.addStage("Sociogram", { initialNodes: 2 });
+			si.addStage("NameGenerator", { initialNodes: { count: 3 } });
+			si.addStage("Sociogram", { initialNodes: { count: 2 } });
 
 			const network = si.getNetwork();
 			expect(network.nodes).toHaveLength(5);
+		});
+	});
+
+	describe("initialNodes promptIndex assignment", () => {
+		it("assigns initial nodes to the prompt at the given index", () => {
+			const si = new SyntheticInterview();
+			const stage = si.addStage("NameGenerator", {
+				initialNodes: { count: 3, promptIndex: 0 },
+			});
+			stage.addPrompt({ text: "Prompt 1" });
+			stage.addPrompt({ text: "Prompt 2" });
+
+			const network = si.getNetwork();
+			const protocol = si.getProtocol();
+			const stageConfig = protocol.stages[0] as { prompts: { id: string }[] };
+			const firstPromptId = stageConfig.prompts[0]!.id;
+
+			expect(network.nodes).toHaveLength(3);
+			for (const node of network.nodes) {
+				expect(node.promptIDs).toEqual([firstPromptId]);
+			}
+		});
+
+		it("leaves promptIDs empty when no promptIndex is provided", () => {
+			const si = new SyntheticInterview();
+			const stage = si.addStage("NameGenerator", { initialNodes: { count: 2 } });
+			stage.addPrompt();
+
+			const network = si.getNetwork();
+			for (const node of network.nodes) {
+				expect(node.promptIDs).toEqual([]);
+			}
+		});
+
+		it("throws when promptIndex resolves to a non-existent prompt", () => {
+			const si = new SyntheticInterview();
+			const stage = si.addStage("NameGenerator", {
+				initialNodes: { count: 1, promptIndex: 5 },
+			});
+			stage.addPrompt({ text: "Only prompt" });
+
+			expect(() => si.getNetwork()).toThrow(/prompt index 5/);
 		});
 	});
 
@@ -488,7 +530,7 @@ describe("SyntheticInterview", () => {
 			});
 
 			const stage = si.addStage("TieStrengthCensus", {
-				initialNodes: 3,
+				initialNodes: { count: 3 },
 			});
 			stage.addPrompt({
 				createEdge: et.id,
@@ -513,7 +555,7 @@ describe("SyntheticInterview", () => {
 
 		it("auto-creates edge type and variable when none provided", () => {
 			const si = new SyntheticInterview();
-			const stage = si.addStage("TieStrengthCensus", { initialNodes: 3 });
+			const stage = si.addStage("TieStrengthCensus", { initialNodes: { count: 3 } });
 			stage.addPrompt();
 
 			const protocol = si.getProtocol();
@@ -529,7 +571,7 @@ describe("SyntheticInterview", () => {
 		it("creates stage with form fields for node attributes", () => {
 			const si = new SyntheticInterview();
 			const stage = si.addStage("AlterForm", {
-				initialNodes: 3,
+				initialNodes: { count: 3 },
 				introductionPanel: { title: "About each person" },
 			});
 			stage.addFormField({ component: "Text", prompt: "Nickname" });
@@ -554,7 +596,7 @@ describe("SyntheticInterview", () => {
 			const et = si.addEdgeType({ name: "Friendship" });
 
 			si.addStage("NameGenerator", {
-				initialNodes: 3,
+				initialNodes: { count: 3 },
 				subject: { entity: "node", type: nt.id },
 			});
 			si.addEdges(
@@ -665,7 +707,7 @@ describe("SyntheticInterview", () => {
 
 			const stage = si.addStage("FamilyPedigree", {
 				subject: { entity: "node", type: nt.id },
-				initialNodes: 3,
+				initialNodes: { count: 3 },
 				nodeConfig: {
 					type: nt.id,
 					nodeLabelVariable: nameVar.id,
@@ -749,7 +791,7 @@ describe("SyntheticInterview", () => {
 				],
 			});
 
-			si.addStage("NameGenerator", { initialNodes: 3 });
+			si.addStage("NameGenerator", { initialNodes: { count: 3 } });
 			si.addEdges(
 				[
 					[0, 1],
@@ -775,7 +817,7 @@ describe("SyntheticInterview", () => {
 	describe("stageMetadata passthrough", () => {
 		it("passes stageMetadata through to interview payload", () => {
 			const si = new SyntheticInterview();
-			si.addStage("FamilyPedigree", { initialNodes: 2 });
+			si.addStage("FamilyPedigree", { initialNodes: { count: 2 } });
 
 			const metadata = {
 				1: { hasSeenScaffoldPrompt: true, nodes: [] },

@@ -22,7 +22,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = si.addStage("OneToManyDyadCensus", {
 		label: "One-to-Many Dyad Census",
-		initialNodes: args.initialNodeCount,
+		initialNodes: { count: args.initialNodeCount },
 		subject: { entity: "node", type: nt.id },
 		behaviours: { removeAfterConsideration: args.removeAfterConsideration },
 	});

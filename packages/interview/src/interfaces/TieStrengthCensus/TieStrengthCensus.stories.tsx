@@ -69,7 +69,7 @@ function buildInterview(args: StoryArgs) {
 
 	const stage = si.addStage("TieStrengthCensus", {
 		label: "Rate Relationships",
-		initialNodes: args.initialNodeCount,
+		initialNodes: { count: args.initialNodeCount },
 		subject: { entity: "node", type: nt.id },
 		introductionPanel: {
 			title: "Rate Your Relationships",

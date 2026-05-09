@@ -162,7 +162,6 @@ export const Default: Story = {
 			si.addStage("FamilyPedigree", {
 				label: "Family Pedigree",
 				subject: { entity: "node", type: nodeType.id },
-				initialNodes: 0,
 				nodeConfig: {
 					type: nodeType.id,
 					nodeLabelVariable: nameVar.id,
@@ -230,7 +229,6 @@ function buildScenarioInterview() {
 	si.addStage("FamilyPedigree", {
 		label: "Family Pedigree",
 		subject: { entity: "node", type: nodeType.id },
-		initialNodes: 0,
 		nodeConfig: {
 			type: nodeType.id,
 			nodeLabelVariable: nameVar.id,
