@@ -113,176 +113,8 @@
   --container-6xl: calc(72 * var(--theme-root-size));
   --container-7xl: calc(80 * var(--theme-root-size));
 
-  /*****************************************************************************
-  *                               COLORS
-  *****************************************************************************/
-  --color-*: initial;
-
-  /*
-    Semantic colors
-  */
-  --color-background: var(--background);
-
-  --color-text: var(--text);
-
-  --color-primary: var(--primary);
-  --color-primary-contrast: var(--primary-contrast);
-
-  --color-neutral: var(--neutral);
-  --color-neutral-contrast: var(--neutral-contrast);
-
-  --color-accent: var(--accent);
-  --color-accent-contrast: var(--accent-contrast);
-
-  --color-secondary: var(--secondary);
-  --color-secondary-contrast: var(--secondary-contrast);
-
-  --color-surface: var(--surface);
-  --color-surface-contrast: var(--surface-contrast);
-  --color-surface-1: var(--surface-1);
-  --color-surface-1-contrast: var(--surface-1-contrast);
-  --color-surface-2: var(--surface-2);
-  --color-surface-2-contrast: var(--surface-2-contrast);
-  --color-surface-3: var(--surface-3);
-  --color-surface-3-contrast: var(--surface-3-contrast);
-  --color-surface-popover: var(--surface-popover);
-  --color-surface-popover-contrast: var(--surface-popover-contrast);
-
-  /* States */
-  --color-destructive: var(--destructive);
-  --color-destructive-contrast: var(--destructive-contrast);
-
-  --color-warning: var(--warning);
-  --color-warning-contrast: var(--warning-contrast);
-
-  --color-success: var(--success);
-  --color-success-contrast: var(--success-contrast);
-
-  --color-info: var(--info);
-  --color-info-contrast: var(--info-contrast);
-
-  --color-selected: var(--selected);
-  --color-selected-contrast: var(--selected-contrast);
-
-  --color-drag-valid: var(--drag-valid);
-  --color-drag-over: var(--drag-over);
-
-  /* UI elements */
-  --color-link: var(--link);
-
-  --color-outline: var(--outline);
-
-  --color-input: var(--input);
-  --color-input-contrast: var(--input-contrast);
-
-  --color-overlay: oklch(from var(--overlay) l c h / 0.45);
-
-  /* Color sequences */
-  --color-node-1: var(--node-1);
-  --color-node-1-contrast: var(--node-1-contrast);
-  --color-node-2: var(--node-2);
-  --color-node-2-contrast: var(--node-2-contrast);
-  --color-node-3: var(--node-3);
-  --color-node-3-contrast: var(--node-3-contrast);
-  --color-node-4: var(--node-4);
-  --color-node-4-contrast: var(--node-4-contrast);
-  --color-node-5: var(--node-5);
-  --color-node-5-contrast: var(--node-5-contrast);
-  --color-node-6: var(--node-6);
-  --color-node-6-contrast: var(--node-6-contrast);
-  --color-node-7: var(--node-7);
-  --color-node-7-contrast: var(--node-7-contrast);
-  --color-node-8: var(--node-8);
-  --color-node-8-contrast: var(--node-8-contrast);
-
-  --color-edge-1: var(--edge-1);
-  --color-edge-2: var(--edge-2);
-  --color-edge-3: var(--edge-3);
-  --color-edge-4: var(--edge-4);
-  --color-edge-5: var(--edge-5);
-  --color-edge-6: var(--edge-6);
-  --color-edge-7: var(--edge-7);
-  --color-edge-8: var(--edge-8);
-  --color-edge-9: var(--edge-9);
-  --color-edge-10: var(--edge-10);
-
-  --color-ord-1: var(--ord-1);
-  --color-ord-2: var(--ord-2);
-  --color-ord-3: var(--ord-3);
-  --color-ord-4: var(--ord-4);
-  --color-ord-5: var(--ord-5);
-  --color-ord-6: var(--ord-6);
-  --color-ord-7: var(--ord-7);
-  --color-ord-8: var(--ord-8);
-  --color-ord-9: var(--ord-9);
-  --color-ord-10: var(--ord-10);
-
-  --color-cat-1: var(--cat-1);
-  --color-cat-2: var(--cat-2);
-  --color-cat-3: var(--cat-3);
-  --color-cat-4: var(--cat-4);
-  --color-cat-5: var(--cat-5);
-  --color-cat-6: var(--cat-6);
-  --color-cat-7: var(--cat-7);
-  --color-cat-8: var(--cat-8);
-  --color-cat-9: var(--cat-9);
-  --color-cat-10: var(--cat-10);
-
-  /* Named colors - these reference colors.css triplets, so they keep oklch() */
-  --color-neon-coral: oklch(var(--neon-coral));
-  --color-neon-coral-dark: oklch(var(--neon-coral--dark));
-
-  --color-sea-green: oklch(var(--sea-green));
-  --color-sea-green-dark: oklch(var(--sea-green--dark));
-
-  --color-slate-blue: oklch(var(--slate-blue));
-  --color-slate-blue-dark: oklch(var(--slate-blue--dark));
-
-  --color-navy-taupe: oklch(var(--navy-taupe));
-  --color-navy-taupe-dark: oklch(var(--navy-taupe--dark));
-
-  --color-cyber-grape: oklch(var(--cyber-grape));
-  --color-cyber-grape-dark: oklch(var(--cyber-grape--dark));
-
-  --color-mustard: oklch(var(--mustard));
-  --color-mustard-dark: oklch(var(--mustard--dark));
-
-  --color-rich-black: oklch(var(--rich-black));
-  --color-rich-black-dark: oklch(var(--rich-black--dark));
-
-  --color-charcoal: oklch(var(--charcoal));
-  --color-charcoal-dark: oklch(var(--charcoal--dark));
-
-  --color-platinum: oklch(var(--platinum));
-  --color-platinum-dark: oklch(var(--platinum--dark));
-
-  --color-sea-serpent: oklch(var(--sea-serpent));
-  --color-sea-serpent-dark: oklch(var(--sea-serpent--dark));
-
-  --color-purple-pizazz: oklch(var(--purple-pizazz));
-  --color-purple-pizazz-dark: oklch(var(--purple-pizazz--dark));
-
-  --color-paradise-pink: oklch(var(--paradise-pink));
-  --color-paradise-pink-dark: oklch(var(--paradise-pink--dark));
-
-  --color-cerulean-blue: oklch(var(--cerulean-blue));
-  --color-cerulean-blue-dark: oklch(var(--cerulean-blue--dark));
-
-  --color-kiwi: oklch(var(--kiwi));
-  --color-kiwi-dark: oklch(var(--kiwi--dark));
-
-  --color-neon-carrot: oklch(var(--neon-carrot));
-  --color-neon-carrot-dark: oklch(var(--neon-carrot--dark));
-
-  --color-barbie-pink: oklch(var(--barbie-pink));
-  --color-barbie-pink-dark: oklch(var(--barbie-pink--dark));
-
-  --color-tomato: oklch(var(--tomato));
-  --color-tomato-dark: oklch(var(--tomato--dark));
-
-  --color-transparent: transparent;
-  --color-white: oklch(var(--white));
-  --color-black: oklch(var(--black));
+  /* Colors live in a separate `@theme inline reference` block below — see
+     the note at the bottom of this file for why. */
 
   /*
     Spacing
@@ -500,6 +332,192 @@
       transform: scale(0.8);
     }
   }
+}
+
+/*
+ * Color tokens — declared `inline reference` so:
+ * - `inline` causes utilities like `bg-primary` to compile to
+ *   `background-color: var(--primary)` (the inner `var()` resolves at the
+ *   element's cascade context, picking up themed overrides).
+ * - `reference` suppresses :root emission of `--color-*` aliases. Without
+ *   this, every `--color-X: var(--X)` snapshot lands at :root with the
+ *   default-theme value of `--X` baked in — and that resolved value
+ *   inherits down through `[data-theme-interview]`, ignoring the override.
+ *   Any direct `var(--color-X)` reference in component CSS or inline
+ *   styles would then paint with the default theme.
+ *
+ * Net effect: `bg-X` / `text-X` / `border-X` utilities work as before,
+ * Tailwind plugins still see colors via `api.theme()` (a compile-time
+ * read, independent of runtime emission), and there's no runtime
+ * `--color-X` for hand-written CSS to grab — forcing all consumers to
+ * use the cascade-aware `--X` primitives directly.
+ */
+@theme inline reference {
+  --color-*: initial;
+
+  /* Semantic colors */
+  --color-background: var(--background);
+
+  --color-text: var(--text);
+
+  --color-primary: var(--primary);
+  --color-primary-contrast: var(--primary-contrast);
+
+  --color-neutral: var(--neutral);
+  --color-neutral-contrast: var(--neutral-contrast);
+
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-contrast: var(--secondary-contrast);
+
+  --color-surface: var(--surface);
+  --color-surface-contrast: var(--surface-contrast);
+  --color-surface-1: var(--surface-1);
+  --color-surface-1-contrast: var(--surface-1-contrast);
+  --color-surface-2: var(--surface-2);
+  --color-surface-2-contrast: var(--surface-2-contrast);
+  --color-surface-3: var(--surface-3);
+  --color-surface-3-contrast: var(--surface-3-contrast);
+  --color-surface-popover: var(--surface-popover);
+  --color-surface-popover-contrast: var(--surface-popover-contrast);
+
+  /* States */
+  --color-destructive: var(--destructive);
+  --color-destructive-contrast: var(--destructive-contrast);
+
+  --color-warning: var(--warning);
+  --color-warning-contrast: var(--warning-contrast);
+
+  --color-success: var(--success);
+  --color-success-contrast: var(--success-contrast);
+
+  --color-info: var(--info);
+  --color-info-contrast: var(--info-contrast);
+
+  --color-selected: var(--selected);
+  --color-selected-contrast: var(--selected-contrast);
+
+  --color-drag-valid: var(--drag-valid);
+  --color-drag-over: var(--drag-over);
+
+  /* UI elements */
+  --color-link: var(--link);
+
+  --color-outline: var(--outline);
+
+  --color-input: var(--input);
+  --color-input-contrast: var(--input-contrast);
+
+  --color-overlay: oklch(from var(--overlay) l c h / 0.45);
+
+  /* Color sequences */
+  --color-node-1: var(--node-1);
+  --color-node-1-contrast: var(--node-1-contrast);
+  --color-node-2: var(--node-2);
+  --color-node-2-contrast: var(--node-2-contrast);
+  --color-node-3: var(--node-3);
+  --color-node-3-contrast: var(--node-3-contrast);
+  --color-node-4: var(--node-4);
+  --color-node-4-contrast: var(--node-4-contrast);
+  --color-node-5: var(--node-5);
+  --color-node-5-contrast: var(--node-5-contrast);
+  --color-node-6: var(--node-6);
+  --color-node-6-contrast: var(--node-6-contrast);
+  --color-node-7: var(--node-7);
+  --color-node-7-contrast: var(--node-7-contrast);
+  --color-node-8: var(--node-8);
+  --color-node-8-contrast: var(--node-8-contrast);
+
+  --color-edge-1: var(--edge-1);
+  --color-edge-2: var(--edge-2);
+  --color-edge-3: var(--edge-3);
+  --color-edge-4: var(--edge-4);
+  --color-edge-5: var(--edge-5);
+  --color-edge-6: var(--edge-6);
+  --color-edge-7: var(--edge-7);
+  --color-edge-8: var(--edge-8);
+  --color-edge-9: var(--edge-9);
+  --color-edge-10: var(--edge-10);
+
+  --color-ord-1: var(--ord-1);
+  --color-ord-2: var(--ord-2);
+  --color-ord-3: var(--ord-3);
+  --color-ord-4: var(--ord-4);
+  --color-ord-5: var(--ord-5);
+  --color-ord-6: var(--ord-6);
+  --color-ord-7: var(--ord-7);
+  --color-ord-8: var(--ord-8);
+  --color-ord-9: var(--ord-9);
+  --color-ord-10: var(--ord-10);
+
+  --color-cat-1: var(--cat-1);
+  --color-cat-2: var(--cat-2);
+  --color-cat-3: var(--cat-3);
+  --color-cat-4: var(--cat-4);
+  --color-cat-5: var(--cat-5);
+  --color-cat-6: var(--cat-6);
+  --color-cat-7: var(--cat-7);
+  --color-cat-8: var(--cat-8);
+  --color-cat-9: var(--cat-9);
+  --color-cat-10: var(--cat-10);
+
+  /* Named colors - these reference colors.css triplets, so they keep oklch() */
+  --color-neon-coral: oklch(var(--neon-coral));
+  --color-neon-coral-dark: oklch(var(--neon-coral--dark));
+
+  --color-sea-green: oklch(var(--sea-green));
+  --color-sea-green-dark: oklch(var(--sea-green--dark));
+
+  --color-slate-blue: oklch(var(--slate-blue));
+  --color-slate-blue-dark: oklch(var(--slate-blue--dark));
+
+  --color-navy-taupe: oklch(var(--navy-taupe));
+  --color-navy-taupe-dark: oklch(var(--navy-taupe--dark));
+
+  --color-cyber-grape: oklch(var(--cyber-grape));
+  --color-cyber-grape-dark: oklch(var(--cyber-grape--dark));
+
+  --color-mustard: oklch(var(--mustard));
+  --color-mustard-dark: oklch(var(--mustard--dark));
+
+  --color-rich-black: oklch(var(--rich-black));
+  --color-rich-black-dark: oklch(var(--rich-black--dark));
+
+  --color-charcoal: oklch(var(--charcoal));
+  --color-charcoal-dark: oklch(var(--charcoal--dark));
+
+  --color-platinum: oklch(var(--platinum));
+  --color-platinum-dark: oklch(var(--platinum--dark));
+
+  --color-sea-serpent: oklch(var(--sea-serpent));
+  --color-sea-serpent-dark: oklch(var(--sea-serpent--dark));
+
+  --color-purple-pizazz: oklch(var(--purple-pizazz));
+  --color-purple-pizazz-dark: oklch(var(--purple-pizazz--dark));
+
+  --color-paradise-pink: oklch(var(--paradise-pink));
+  --color-paradise-pink-dark: oklch(var(--paradise-pink--dark));
+
+  --color-cerulean-blue: oklch(var(--cerulean-blue));
+  --color-cerulean-blue-dark: oklch(var(--cerulean-blue--dark));
+
+  --color-kiwi: oklch(var(--kiwi));
+  --color-kiwi-dark: oklch(var(--kiwi--dark));
+
+  --color-neon-carrot: oklch(var(--neon-carrot));
+  --color-neon-carrot-dark: oklch(var(--neon-carrot--dark));
+
+  --color-barbie-pink: oklch(var(--barbie-pink));
+  --color-barbie-pink-dark: oklch(var(--barbie-pink--dark));
+
+  --color-tomato: oklch(var(--tomato));
+  --color-tomato-dark: oklch(var(--tomato--dark));
+
+  --color-transparent: transparent;
+  --color-white: oklch(var(--white));
+  --color-black: oklch(var(--black));
 }
 
 /* Override default border color to use our theme values */

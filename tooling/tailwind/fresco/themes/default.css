@@ -101,7 +101,7 @@
     );
     --warning-contrast: oklch(var(--white));
 
-    --success: var(--color-sea-green);
+    --success: oklch(var(--sea-green));
 
     --success-contrast: oklch(var(--white));
 

@@ -276,11 +276,11 @@ type TagItem = {
 };
 
 const TAG_COLORS: Record<TagItem["color"], string> = {
-	"node-1": "var(--color-node-1)",
-	"node-2": "var(--color-node-2)",
-	"node-3": "var(--color-node-3)",
-	"node-4": "var(--color-node-4)",
-	"node-5": "var(--color-node-5)",
+	"node-1": "var(--node-1)",
+	"node-2": "var(--node-2)",
+	"node-3": "var(--node-3)",
+	"node-4": "var(--node-4)",
+	"node-5": "var(--node-5)",
 };
 
 /**
