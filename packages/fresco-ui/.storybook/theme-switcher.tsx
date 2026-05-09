@@ -46,6 +46,13 @@ function setStoredTheme(theme: ThemeKey) {
  * expose an onChange hook directly, so the persistence side effect runs in
  * the same decorator that re-renders when `context.globals[THEME_KEY]` changes.
  *
+ * Also mirrors the selected theme onto `<body>`. The `<ThemedRegion>` div
+ * only paints the area covered by story content; the surrounding canvas
+ * (story padding when layout isn't "fullscreen", scrollbars, the storybook
+ * root backdrop) resolves `bg-background` from the body's `theme-base`
+ * utility — without the attribute on body that resolves against `:root`'s
+ * default palette, leaving stories framed by default-theme chrome.
+ *
  * Must be the outermost decorator so `<ThemedRegion>` (and the
  * `<PortalContainerProvider>` it bundles) wraps `<Providers>` — that puts
  * `<Toaster />`, the DialogProvider's dialog map, and any Base UI portals
@@ -55,6 +62,12 @@ export const withTheme: Decorator = (Story, context) => {
 	const theme = (context.globals[THEME_KEY] as ThemeKey | undefined) ?? "dashboard";
 	useEffect(() => {
 		setStoredTheme(theme);
+		if (typeof document === "undefined") return;
+		if (theme === "interview") {
+			document.body.setAttribute("data-theme-interview", "");
+		} else {
+			document.body.removeAttribute("data-theme-interview");
+		}
 	}, [theme]);
 
 	if (theme === "interview") {
@@ -85,5 +98,17 @@ export const globalTypes = {
 };
 
 export function getInitialTheme(): ThemeKey {
-	return getStoredTheme() ?? "dashboard";
+	const theme = getStoredTheme() ?? "dashboard";
+	// Mirror to <body> at module load so the very first paint matches the
+	// stored preference — without this, the toolbar's interview selection only
+	// reaches body via the withTheme effect post-mount, briefly framing the
+	// story in default-theme chrome on every reload.
+	if (typeof document !== "undefined") {
+		if (theme === "interview") {
+			document.body.setAttribute("data-theme-interview", "");
+		} else {
+			document.body.removeAttribute("data-theme-interview");
+		}
+	}
+	return theme;
 }
